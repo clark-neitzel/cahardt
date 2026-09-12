@@ -39,6 +39,7 @@ const AuditoriaEntregas = lazyComRetry(() => import('./pages/Admin/Embarques/Aud
 const ListaEntregasGerencial = lazyComRetry(() => import('./pages/Admin/Embarques/ListaEntregasGerencial'));
 const FormasPagamentoEntrega = lazyComRetry(() => import('./pages/Configuracoes/FormasPagamentoEntrega'));
 const PainelMotorista = lazyComRetry(() => import('./pages/Motorista/Entregas/PainelMotorista'));
+const PedidosOnlineAdmin = lazyComRetry(() => import('./pages/PedidosOnline/PedidosOnlineAdmin'));
 const DespesasPage = lazyComRetry(() => import('./pages/Caixa/DespesasPage'));
 const CaixaDiarioPage = lazyComRetry(() => import('./pages/Caixa/CaixaDiarioPage'));
 const RelatorioCaixaPrint = lazyComRetry(() => import('./pages/Caixa/RelatorioCaixaPrint'));
@@ -56,6 +57,7 @@ const DashboardFinanceiroPage = lazyComRetry(() => import('./pages/Financeiro/Da
 const CategoriasDespesaPage = lazyComRetry(() => import('./pages/Financeiro/CategoriasDespesaPage'));
 const ReguaCobrancaPage = lazyComRetry(() => import('./pages/Financeiro/ReguaCobrancaPage'));
 const NotasFiscais = lazyComRetry(() => import('./pages/Financeiro/NotasFiscais'));
+const PainelPendencias = lazyComRetry(() => import('./pages/Pendencias/PainelPendencias'));
 const RelatorioPedidos = lazyComRetry(() => import('./pages/Relatorios/RelatorioPedidos'));
 const RelatorioVendas = lazyComRetry(() => import('./pages/Relatorios/RelatorioVendas'));
 const RelatorioFlex = lazyComRetry(() => import('./pages/Relatorios/RelatorioFlex'));
@@ -94,14 +96,14 @@ const PontoPainel = lazyComRetry(() => import('./pages/RH/PontoPainel'));
 const ImportarPonto = lazyComRetry(() => import('./pages/RH/ImportarPonto'));
 const ConfigPonto = lazyComRetry(() => import('./pages/RH/ConfigPonto'));
 const BaterPonto = lazyComRetry(() => import('./pages/Ponto/BaterPonto'));
-const KitFestaAdmin = lazyComRetry(() => import('./pages/KitFesta/KitFestaAdmin'));
 const KitFestaSite = lazyComRetry(() => import('./pages/KitFestaSite/KitFestaSite'));
 const HomeSite = lazyComRetry(() => import('./pages/Site/HomeSite'));
 const TarefasAgenda = lazyComRetry(() => import('./pages/Tarefas/TarefasAgenda'));
 const TarefasParecer = lazyComRetry(() => import('./pages/Tarefas/TarefasParecer'));
 const CongeladosSite = lazyComRetry(() => import('./pages/Site/CongeladosSite'));
 const ListaPersonalizada = lazyComRetry(() => import('./pages/Site/ListaPersonalizada'));
-const SiteAdmin = lazyComRetry(() => import('./pages/SiteAdmin/SiteAdmin'));
+// KitFestaAdmin e SiteAdmin (telas administrativas) agora são montados DENTRO de
+// PedidosOnlineAdmin (B4) — não precisam mais de lazy import próprio aqui.
 
 import {
   Menu, X, LogOut, ChevronDown, ChevronRight,
@@ -109,10 +111,12 @@ import {
   PackageCheck, Truck, Wallet, Receipt, Search,
   Box, UserCog, Car, RefreshCw, FileText, ClipboardCheck,
   Settings, DollarSign, Building2, TrendingUp, FolderOpen, Warehouse,
-  Package, BookOpen as BookOpenIcon, Factory, Play, ClipboardList as ClipboardListIcon, Calendar as CalendarIcon, Lightbulb, BarChart3, BarChart2, History, Sparkles, BellRing, UserCheck, Tag, DatabaseZap, Percent, PartyPopper, Snowflake, Clock, Fingerprint, Inbox, Landmark, CalendarCheck, Star
+  Package, BookOpen as BookOpenIcon, Factory, Play, ClipboardList as ClipboardListIcon, Calendar as CalendarIcon, Lightbulb, BarChart3, BarChart2, History, Sparkles, BellRing, UserCheck, Tag, DatabaseZap, Percent, Clock, Fingerprint, Inbox, Landmark, CalendarCheck, Star, AlertTriangle, ShoppingBag
 } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { useMenuFavoritos } from './hooks/useMenuFavoritos';
+import { usePerfil } from './hooks/usePerfil';
+import { useFiltroSalvo } from './hooks/useFiltrosSalvos';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DiarioProvider } from './contexts/DiarioContext';
 import DiarioGateway from './components/Diario/DiarioGateway';
@@ -274,6 +278,48 @@ const SidebarCat = ({ icon: Icon, label, items, twoCols, favoritos, onToggleFav 
   );
 };
 
+// ── A2: menu por PERFIL (plano nav-design-vendas, 09/2026) ──
+// Whitelist de GRUPOS (não de itens individuais) aplicada em cima de
+// `desktopSections`, DEPOIS que cada item já passou pelo filtro de
+// permissão de sempre. Gestor nunca é filtrado (sempre vê tudo); o toggle
+// "Ver menu completo" no rodapé desliga este filtro para qualquer perfil.
+//
+// Regra de DESCOBERTA (correção pós-revisão, 09/2026 — a 1ª versão usava
+// lista fixa de rotas por perfil e apagava telas para as quais a pessoa
+// TINHA permissão de verdade, ex.: Junior/Josiane perdiam Embarque/Veículos/
+// Atendimentos por serem "entregador"): um grupo FORA da whitelist do
+// perfil só é escondido se sobrar no máximo 1 item nele depois do filtro de
+// permissão real. Grupo com 2+ itens liberados por permissão nunca é
+// escondido, seja qual for o perfil — a permissão acumulada da pessoa vale
+// mais que a expectativa genérica do perfil.
+const GRUPOS_POR_PERFIL = {
+  escritorio: ['Vendas', 'Logística', 'Financeiro', 'Configurações'],
+  pcp: ['PCP', 'Produção / Estoque'],
+  motorista: ['Vendas', 'Financeiro'],
+  vendedor: ['Vendas'],
+};
+
+function filtrarSecoesPorPerfil(secoes, perfil) {
+  // Entregador que TAMBÉM vende (tem meta) é tratado como vendedor no menu —
+  // mesma distinção que o Dashboard já faz com `temMeta` (usePerfil.js), para
+  // não tirar Catálogo/Pedidos/Clientes de quem acumula as duas funções (ex.:
+  // vendedor que também roda a própria entrega).
+  const motoristaPuro = perfil.entregador && perfil.temMeta === false;
+  const grupos = perfil.escritorio ? GRUPOS_POR_PERFIL.escritorio
+    : perfil.pcp ? GRUPOS_POR_PERFIL.pcp
+      : motoristaPuro ? GRUPOS_POR_PERFIL.motorista
+        : GRUPOS_POR_PERFIL.vendedor; // default: vendedor (inclui entregador com meta de venda)
+
+  return secoes.filter((s) => grupos.includes(s.label) || s.items.length >= 2);
+}
+
+// Rotas antigas que viraram aba de "Pedidos Online" (B4) — um favorito salvo
+// apontando para a rota velha precisa continuar achando o item no menu novo.
+const ROTAS_ANTIGAS_PARA_NOVA = {
+  '/kit-festa-admin': '/pedidos-online',
+  '/site-admin': '/pedidos-online',
+};
+
 // Componente de seção colapsável do menu mobile
 const MobileMenuSection = ({ label, icon: Icon, children, defaultOpen = false }) => {
   const [open, setOpen] = useState(defaultOpen);
@@ -320,6 +366,13 @@ const Layout = ({ children }) => {
   const { user, logout, hasPermission, loading } = useAuth();
   const { updateAvailable } = useVersionCheck();
   const { favoritos, toggle: toggleFavorito, limite: limiteFavoritos } = useMenuFavoritos(user?.id);
+  const perfil = usePerfil();
+  const [menuCompleto, setMenuCompleto] = useFiltroSalvo('menu:completo', false);
+  // Dica de descoberta (correção pós-revisão): na 1ª vez que o filtro de
+  // perfil esconder algum grupo, mostrar uma linha discreta oferecendo "Ver
+  // menu completo" — some sozinha depois que a pessoa abrir o menu completo
+  // ou fechar a dica (X), e nunca mais volta (por usuário, localStorage).
+  const [dicaMenuVista, setDicaMenuVista] = useFiltroSalvo('menu:dicaVista', false);
 
   if (!user || loading) return <>{children}</>;
 
@@ -353,8 +406,7 @@ const Layout = ({ children }) => {
       hasPermission('relatorioVendas') && { to: '/relatorios/vendas', icon: BarChart2, label: 'Rel. Vendas' },
       hasPermission('pedidos') && { to: '/relatorios/flex', icon: Percent, label: 'Análise Flex' },
       hasPermission('delivery') && { to: '/delivery', icon: Truck, label: 'Delivery' },
-      (isAdmin || hasPermission('kitFesta')) && { to: '/kit-festa-admin', icon: PartyPopper, label: 'Kit Festa' },
-      (isAdmin || hasPermission('kitFesta')) && { to: '/site-admin', icon: Snowflake, label: 'Site' },
+      (isAdmin || hasPermission('kitFesta')) && { to: '/pedidos-online', icon: ShoppingBag, label: 'Pedidos Online' },
       hasPermission('pedidos') && { to: '/rota', icon: Map, label: 'Rota' },
       hasPermission('rota') && { to: '/leads', icon: Target, label: 'Leads' },
       (isAdmin || hasPermission('Pode_Ver_Atendimentos')) && { to: '/atendimentos', icon: ClipboardCheck, label: 'Atendimentos' },
@@ -366,6 +418,7 @@ const Layout = ({ children }) => {
       hasPermission('Pode_Ver_Todas_Entregas') && { to: '/entregas', icon: Truck, label: 'Entregas' },
     ].filter(Boolean) },
     { label: 'Financeiro', icon: Wallet, twoCols: true, items: [
+      (hasPermission('Pode_Acessar_Financeiro_Gerencial') || hasPermission('Pode_Ver_Pendencias')) && { to: '/pendencias', icon: AlertTriangle, label: 'Central de Pendências' },
       hasPermission('Pode_Acessar_Caixa') && { to: '/caixa', icon: Wallet, label: 'Caixa' },
       hasPermission('Pode_Acessar_Caixa') && { to: '/despesas', icon: Receipt, label: 'Despesas' },
       hasPermission('Pode_Ver_Todas_Entregas') && { to: '/admin/auditoria-entregas', icon: Search, label: 'Auditoria' },
@@ -428,11 +481,25 @@ const Layout = ({ children }) => {
   ].filter(s => s.items.length > 0);
 
   // Favoritos válidos: só telas que o usuário ainda tem permissão de ver
-  // (perdeu a permissão → o atalho some sozinho, sem quebrar nada)
+  // (perdeu a permissão → o atalho some sozinho, sem quebrar nada). Deriva de
+  // `desktopSections` SEM o filtro de perfil (A2) — um favorito de um grupo
+  // que o perfil esconde não pode sumir, só a permissão real tira o favorito.
+  // Rota antiga favoritada (Kit Festa/Site) é remapeada para /pedidos-online.
   const todosItensMenu = desktopSections.flatMap(s => s.items);
   const itensFavoritos = favoritos
-    .map(f => todosItensMenu.find(i => i.to === f))
+    .map(f => todosItensMenu.find(i => i.to === (ROTAS_ANTIGAS_PARA_NOVA[f] || f)))
     .filter(Boolean);
+
+  // A2 — menu que aparece de fato: filtrado por perfil, a não ser que seja
+  // gestor (nunca perde nada) ou o usuário tenha ligado "Ver menu completo".
+  const secoesFiltradasPorPerfil = perfil.gestor ? desktopSections : filtrarSecoesPorPerfil(desktopSections, perfil);
+  const desktopSectionsVisiveis = menuCompleto ? desktopSections : secoesFiltradasPorPerfil;
+
+  // Dica de descoberta: só faz sentido oferecer "Ver menu completo" se o
+  // filtro de perfil está de fato escondendo algum grupo agora.
+  const algumGrupoEscondido = !perfil.gestor && secoesFiltradasPorPerfil.length < desktopSections.length;
+  const mostrarDicaMenu = algumGrupoEscondido && !menuCompleto && !dicaMenuVista;
+  const ativarMenuCompletoPelaDica = () => { setMenuCompleto(true); setDicaMenuVista(true); };
 
   return (
     <div className="min-h-screen bg-secondary flex">
@@ -477,13 +544,35 @@ const Layout = ({ children }) => {
               <div className="mx-2 mt-2 mb-1 px-3"><div className="h-px bg-white/10"></div></div>
             </>
           )}
-          {desktopSections.map(s => (
+          {desktopSectionsVisiveis.map(s => (
             <SidebarCat key={s.label} icon={s.icon} label={s.label} items={s.items} twoCols={s.twoCols} favoritos={favoritos} onToggleFav={handleToggleFavorito} />
           ))}
         </nav>
 
         {/* Footer */}
         <div className="border-t border-white/10 p-2 shrink-0 space-y-1">
+          {/* Dica de descoberta — some sozinha após abrir o menu completo ou fechar (X) */}
+          {mostrarDicaMenu && (
+            <div className="flex items-center gap-1.5 px-3 py-1 text-[11px] text-white/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+              <span className="flex-1 whitespace-nowrap overflow-hidden text-ellipsis">
+                Faltou alguma tela?{' '}
+                <button onClick={ativarMenuCompletoPelaDica} className="underline hover:text-white">Ver menu completo</button>
+              </span>
+              <button onClick={() => setDicaMenuVista(true)} title="Fechar dica" className="shrink-0 hover:text-white">✕</button>
+            </div>
+          )}
+          {/* A2 — escape sempre acessível: menu por perfil pode esconder um grupo que a
+              pessoa usa raramente mas usa (risco central do plano de navegação) */}
+          {!perfil.gestor && (
+            <button
+              onClick={() => setMenuCompleto(v => !v)}
+              title={menuCompleto ? 'Voltar ao menu do seu perfil' : 'Ver todos os grupos do menu'}
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[12px] text-white/60 hover:bg-white/10 hover:text-white transition-colors"
+            >
+              <Menu className="h-4 w-4 shrink-0" />
+              <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">{menuCompleto ? 'Menu do meu perfil' : 'Ver menu completo'}</span>
+            </button>
+          )}
           <DiarioCheckout />
           <div className="flex items-center gap-2 px-3 py-2">
             <div className="w-7 h-7 bg-white/15 rounded-full flex items-center justify-center shrink-0">
@@ -599,8 +688,9 @@ const Layout = ({ children }) => {
               </div>
             )}
 
-            {/* Categorias — mesmas seções e permissões do menu desktop, com estrela para favoritar */}
-            {desktopSections.map(s => (
+            {/* Categorias — mesmas seções e permissões do menu desktop, filtradas pelo
+                mesmo perfil (A2), com estrela para favoritar */}
+            {desktopSectionsVisiveis.map(s => (
               <MobileMenuSection key={s.label} label={s.label} icon={s.icon}>
                 {s.items.map(i => (
                   <div key={i.to} className="flex items-center">
@@ -629,6 +719,26 @@ const Layout = ({ children }) => {
                 <p className="text-[11px] text-gray-400">Logado</p>
               </div>
             </div>
+            {/* Dica de descoberta — mesma lógica do desktop */}
+            {mostrarDicaMenu && (
+              <div className="flex items-center gap-1.5 mb-2 px-1 text-[11px] text-gray-500">
+                <span className="flex-1">
+                  Faltou alguma tela?{' '}
+                  <button onClick={ativarMenuCompletoPelaDica} className="underline text-gray-700 font-medium">Ver menu completo</button>
+                </span>
+                <button onClick={() => setDicaMenuVista(true)} title="Fechar dica" className="shrink-0 p-1 text-gray-400 hover:text-gray-600">✕</button>
+              </div>
+            )}
+            {/* A2 — mesmo escape do desktop: sempre acessível, também no celular */}
+            {!perfil.gestor && (
+              <button
+                onClick={() => setMenuCompleto(v => !v)}
+                className="w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-white border border-gray-200 text-gray-600 hover:bg-gray-100 rounded-full text-sm font-semibold transition-colors mb-2"
+              >
+                <Menu className="h-4 w-4" />
+                {menuCompleto ? 'Menu do meu perfil' : 'Ver menu completo'}
+              </button>
+            )}
             <button
               onClick={() => { logout(); closeMobile(); }}
               className="w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-sm font-semibold transition-colors"
@@ -738,11 +848,12 @@ function App() {
               <Route path="/delivery" element={<PrivateRoute tab="delivery"><DeliveryKanban /></PrivateRoute>} />
               <Route path="/delivery/config" element={<PrivateRoute><DeliveryConfig /></PrivateRoute>} />
 
-              {/* Kit Festa — painel admin (agenda, produtos, pedidos do site) */}
-              <Route path="/kit-festa-admin" element={<PrivateRoute tab="kitFesta"><KitFestaAdmin /></PrivateRoute>} />
-
-              {/* Site Congelados — painel admin (pedidos do site, produtos) */}
-              <Route path="/site-admin" element={<PrivateRoute tab="kitFesta"><SiteAdmin /></PrivateRoute>} />
+              {/* Pedidos Online — casca única com abas Site (Congelados) / Kit Festa (B4).
+                  As duas rotas antigas viram redirect (compatibilidade com link/favorito
+                  salvo) — o conteúdo de cada canal continua o mesmo, só mudou a casca. */}
+              <Route path="/pedidos-online" element={<PrivateRoute tab="kitFesta"><PedidosOnlineAdmin /></PrivateRoute>} />
+              <Route path="/kit-festa-admin" element={<Navigate to="/pedidos-online?aba=kit-festa" replace />} />
+              <Route path="/site-admin" element={<Navigate to="/pedidos-online?aba=site" replace />} />
 
               {/* Rota / Leads (CRM) */}
               <Route path="/rota" element={<PrivateRoute tab="pedidos"><RotaLeads /></PrivateRoute>} />
@@ -772,6 +883,7 @@ function App() {
               <Route path="/notas-recebidas" element={<PrivateRoute tab="Pode_Acessar_Notas_Recebidas"><NotasRecebidasPage /></PrivateRoute>} />
               <Route path="/notas-fiscais" element={<PrivateRoute tab="Pode_Acessar_Notas_Fiscais"><NotasFiscais /></PrivateRoute>} />
               <Route path="/fornecedores" element={<PrivateRoute tab="Pode_Acessar_Fornecedores"><FornecedoresPage /></PrivateRoute>} />
+              <Route path="/pendencias" element={<PrivateRoute tab={['Pode_Acessar_Financeiro_Gerencial', 'Pode_Ver_Pendencias']}><PainelPendencias /></PrivateRoute>} />
               <Route path="/financeiro/fluxo-caixa" element={<PrivateRoute tab="Pode_Acessar_Financeiro_Gerencial"><FluxoCaixaPage /></PrivateRoute>} />
               <Route path="/financeiro/margem-produtos" element={<PrivateRoute tab="Pode_Acessar_Financeiro_Gerencial"><ProdutosMargemCusto /></PrivateRoute>} />
               <Route path="/financeiro/conciliacao" element={<PrivateRoute tab="Pode_Acessar_Financeiro_Gerencial"><ConciliacaoBancariaPage /></PrivateRoute>} />
@@ -849,7 +961,27 @@ function App() {
             </Routes>
             </Suspense>
           </Layout>
-          <Toaster position="top-right" />
+          <Toaster
+            position="top-right"
+            toastOptions={{
+              className: 'font-sans',
+              style: {
+                fontFamily: 'Manrope, sans-serif',
+                borderRadius: '9999px',
+                padding: '10px 16px',
+                fontSize: '14px',
+                fontWeight: 600,
+              },
+              success: {
+                style: { background: '#d4e9e2', color: '#006241' },
+                iconTheme: { primary: '#00754A', secondary: '#d4e9e2' },
+              },
+              error: {
+                style: { background: '#fee2e2', color: '#b91c1c' },
+                iconTheme: { primary: '#dc2626', secondary: '#fee2e2' },
+              },
+            }}
+          />
         </DiarioProvider>
       </AuthProvider>
     </Router>

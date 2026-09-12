@@ -396,7 +396,15 @@ export default function EtiquetasList() {
 
             {/* Modal de impressão */}
             {selecionada && (
-                <PrintModal et={selecionada} onClose={() => setSelecionada(null)} />
+                <PrintModal
+                    et={selecionada}
+                    onClose={() => {
+                        setSelecionada(null);
+                        // Fecha o modal (imprimiu ou desistiu) → cursor volta pra busca,
+                        // pronto pra achar o próximo produto sem precisar clicar de novo.
+                        setTimeout(() => inputRef.current?.focus(), 0);
+                    }}
+                />
             )}
         </div>
     );

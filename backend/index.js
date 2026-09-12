@@ -68,6 +68,7 @@ const kitFestaRoutes = require('./routes/kitFestaRoutes'); // Kit Festa: painel 
 const kitFestaPublicRoutes = require('./routes/kitFestaPublicRoutes'); // Kit Festa: site público do cliente
 const congeladosRoutes = require('./routes/congeladosRoutes'); // Site Congelados: painel admin
 const tarefaRoutes = require('./routes/tarefaRoutes'); // Tarefas da Equipe (agenda com alerta sonoro)
+const pendenciasRoutes = require('./routes/pendenciasRoutes'); // Central de Pendências (A3, 09/2026)
 const cobrancaRoutes = require('./routes/cobrancaRoutes'); // Régua de Cobrança (inadimplentes)
 const congeladosPublicRoutes = require('./routes/congeladosPublicRoutes'); // Site Congelados: site público do cliente
 const catalogoPersonalizadoRoutes = require('./routes/catalogoPersonalizadoRoutes'); // Catálogo Personalizado: gerar/listar (privado)
@@ -221,6 +222,7 @@ app.use('/api/kitfesta', authMiddleware, kitFestaRoutes); // Kit Festa: painel a
 app.use('/api/congelados', authMiddleware, congeladosRoutes); // Site Congelados: painel admin (produtos, pedidos)
 app.use('/api/catalogo-personalizado', authMiddleware, catalogoPersonalizadoRoutes); // Catálogo Personalizado: montar lista de preços e gerar link
 app.use('/api/tarefas', authMiddleware, tarefaRoutes); // Tarefas da Equipe (agenda com alerta sonoro)
+app.use('/api/pendencias', authMiddleware, pendenciasRoutes); // Central de Pendências (A3, 09/2026)
 app.use('/api/cobranca', cobrancaRoutes); // Régua de Cobrança de inadimplentes (auth inside)
 
 // Rota base

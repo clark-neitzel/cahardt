@@ -124,7 +124,7 @@ const TarefaDetalheModal = ({ oc, usuario, onClose, onConcluir, onEditar, onExcl
 const CardTarefa = ({ oc, userId, onClick, mostrarResponsavel }) => {
     const origem = estiloOrigem(oc, userId);
     return (
-        <button onClick={onClick} className="w-full text-left bg-white rounded-xl border border-gray-200 shadow-sm p-4 hover:border-primary/40 transition-colors min-h-[44px]">
+        <button onClick={onClick} className="w-full text-left bg-white rounded-xl raio-proprio border border-gray-200 shadow-sm p-4 hover:border-primary/40 transition-colors min-h-[44px]">
             <div className="flex items-center justify-between gap-2 mb-1.5">
                 <div className="flex items-center gap-2 min-w-0">
                     <span className={`shrink-0 w-2.5 h-2.5 rounded-full ${origem === 'admin' ? 'bg-house' : origem === 'colega' ? 'bg-amber-400' : 'bg-primary'}`} />

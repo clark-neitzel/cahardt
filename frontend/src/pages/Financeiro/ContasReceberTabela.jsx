@@ -22,6 +22,8 @@ import { useFiltrosSalvos, useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 import FiltroPeriodo, { usePeriodoSalvo } from '../../components/FiltroPeriodo';
 import { opcoesVendedorMulti } from '../../utils/vendedoresFiltro';
 import { papelResponsavel, CLASSE_PAPEL, ROTULO_PAPEL_CURTO } from '../../utils/responsavelCobranca';
+import PageHeader from '../../components/PageHeader';
+import EstadoVazio from '../../components/EstadoVazio';
 
 const fmt = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 const fmtData = (d) => d ? new Date(d).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '-';
@@ -214,6 +216,8 @@ const ContasReceberTabela = () => {
     const [loading, setLoading] = useState(false);
     const [syncing, setSyncing] = useState(null);
     const [syncingTodas, setSyncingTodas] = useState(false);
+    const [menuAcoesAberto, setMenuAcoesAberto] = useState(false);
+    const menuAcoesRef = useRef(null);
     const [syncLog, setSyncLog] = useState(null); // { progresso, total, itens: [{pedido, status, msg, aplicadas}], ativo }
     const [pedidoPopup, setPedidoPopup] = useState(null); // pedido completo
     const [pedidoLoading, setPedidoLoading] = useState(false);
@@ -440,6 +444,28 @@ const ContasReceberTabela = () => {
     }, [filtros, busca, vencDe, vencAte, pagDe, pagAte]);
 
     useEffect(() => { fetchData(); }, []); // eslint-disable-line
+
+    // Esc fecha o menu "⋯" do cabeçalho (Boas práticas de uso — CLAUDE.md).
+    // Fechar também num listener de pointerdown no document — não dá pra confiar só
+    // no backdrop: a sidebar (App.jsx) é fixed z-50, acima do backdrop (z-40), então
+    // um clique nela nunca alcança o onClick do backdrop. O listener aqui pega o
+    // clique real (bubbla até o document não importa quem ficou por cima visualmente)
+    // e fecha sempre que for fora do menu — sidebar incluída.
+    useEffect(() => {
+        if (!menuAcoesAberto) return;
+        const aoTeclar = (e) => { if (e.key === 'Escape') setMenuAcoesAberto(false); };
+        const aoClicarFora = (e) => {
+            if (menuAcoesRef.current && !menuAcoesRef.current.contains(e.target)) {
+                setMenuAcoesAberto(false);
+            }
+        };
+        document.addEventListener('keydown', aoTeclar);
+        document.addEventListener('pointerdown', aoClicarFora);
+        return () => {
+            document.removeEventListener('keydown', aoTeclar);
+            document.removeEventListener('pointerdown', aoClicarFora);
+        };
+    }, [menuAcoesAberto]);
 
     // Auto-refresh quando qualquer filtro muda (exceto "busca", que usa Enter/botão).
     // Stringifica arrays/strings pra evitar trigger por nova ref a cada render.
@@ -894,36 +920,66 @@ const ContasReceberTabela = () => {
 
     return (
         <div className="p-3 md:p-6 w-full">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
-                <div className="flex items-center gap-2">
-                    <div className="bg-amber-100 p-1.5 md:p-2 rounded-lg">
-                        <DollarSign className="h-4 w-4 md:h-5 md:w-5 text-amber-600" />
-                    </div>
-                    <h1 className="text-base md:text-2xl font-bold text-gray-900">Contas a Receber — Tabela</h1>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                    <Link to="/financeiro/contas-receber" className="px-3 py-1.5 md:px-4 md:py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-md font-medium text-xs md:text-sm">
-                        Ver resumo ↗
-                    </Link>
-                    {podeBaixar && (
-                        <button
-                            onClick={handleSyncCATodas}
-                            disabled={syncingTodas}
-                            title="Verifica no Conta Azul todas as contas abertas e aplica as baixas que já foram pagas lá"
-                            className="px-3 py-1.5 md:px-4 md:py-2 bg-primary hover:bg-blue-700 text-white rounded-md shadow-sm font-semibold text-xs md:text-sm disabled:opacity-60 inline-flex items-center gap-1.5"
-                        >
-                            <RefreshCw className={`w-4 h-4 ${syncingTodas ? 'animate-spin' : ''}`} />
-                            {syncingTodas ? 'Baixando...' : 'Baixar parcelas do CA'}
-                        </button>
-                    )}
-                    <button onClick={abrirRelatorio} className="px-3 py-1.5 md:px-4 md:py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-md font-medium text-xs md:text-sm inline-flex items-center gap-1.5" title="Relatório de itens por pedido (filtros atuais)">
-                        <Download className="w-4 h-4" /> Relatório
-                    </button>
-                    <button onClick={exportarCSV} className="px-3 py-1.5 md:px-4 md:py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-md font-medium text-xs md:text-sm inline-flex items-center gap-1.5">
-                        <Download className="w-4 h-4" /> CSV
-                    </button>
-                </div>
-            </div>
+            <PageHeader
+                icon={DollarSign}
+                cor="amber"
+                titulo="Contas a Receber — Tabela"
+                className="!p-0 mb-4"
+                acoes={
+                    <>
+                        {podeBaixar && (
+                            <button
+                                onClick={handleSyncCATodas}
+                                disabled={syncingTodas}
+                                title="Verifica no Conta Azul todas as contas abertas e aplica as baixas que já foram pagas lá"
+                                className="px-3 py-1.5 md:px-4 md:py-2 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-xs md:text-sm disabled:opacity-60 inline-flex items-center gap-1.5"
+                            >
+                                <RefreshCw className={`w-4 h-4 ${syncingTodas ? 'animate-spin' : ''}`} />
+                                {syncingTodas ? 'Baixando...' : 'Baixar parcelas do CA'}
+                            </button>
+                        )}
+                        <div className="relative" ref={menuAcoesRef}>
+                            <button
+                                onClick={() => setMenuAcoesAberto(v => !v)}
+                                title="Mais ações"
+                                className="p-2 md:p-2.5 bg-white border border-gray-300 text-gray-600 hover:bg-gray-50 rounded-full inline-flex items-center justify-center min-h-[38px] min-w-[38px]"
+                            >
+                                <MoreVertical className="w-4 h-4" />
+                            </button>
+                            {menuAcoesAberto && (
+                                <>
+                                    {/* Backdrop de reforço em telas sem sidebar por cima (mobile) — o
+                                        fechamento de verdade é o pointerdown no document acima, que
+                                        funciona mesmo com a sidebar (z-50) cobrindo este backdrop. */}
+                                    <div className="fixed inset-0 z-40" onClick={() => setMenuAcoesAberto(false)} />
+                                    <div className="absolute right-0 mt-1 w-52 bg-white rounded-xl border border-gray-200 shadow-lg z-50 py-1">
+                                        <Link
+                                            to="/financeiro/contas-receber"
+                                            onClick={() => setMenuAcoesAberto(false)}
+                                            className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 min-h-[44px]"
+                                        >
+                                            Ver resumo ↗
+                                        </Link>
+                                        <button
+                                            onClick={() => { setMenuAcoesAberto(false); abrirRelatorio(); }}
+                                            title="Relatório de itens por pedido (filtros atuais)"
+                                            className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 min-h-[44px]"
+                                        >
+                                            <Download className="w-4 h-4" /> Relatório
+                                        </button>
+                                        <button
+                                            onClick={() => { setMenuAcoesAberto(false); exportarCSV(); }}
+                                            className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 min-h-[44px]"
+                                        >
+                                            <Download className="w-4 h-4" /> CSV
+                                        </button>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    </>
+                }
+            />
 
             {/* Indicadores */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
@@ -1133,7 +1189,9 @@ const ContasReceberTabela = () => {
             <div className="xl:hidden space-y-2">
                 {loading && <div className="bg-white border rounded-lg p-6 text-center text-gray-500">Carregando...</div>}
                 {!loading && linhasOrdenadas.length === 0 && (
-                    <div className="bg-white border rounded-lg p-6 text-center text-gray-500">Nenhuma parcela encontrada.</div>
+                    <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+                        <EstadoVazio icon={DollarSign} titulo="Nenhuma parcela encontrada" descricao="Tente ajustar o período ou os filtros." />
+                    </div>
                 )}
                 {!loading && linhasOrdenadas.map(l => {
                     const eleg = elegivel(l);
@@ -1232,7 +1290,9 @@ const ContasReceberTabela = () => {
                             <tr><td colSpan={7} className="py-8 text-center text-gray-500">Carregando...</td></tr>
                         )}
                         {!loading && linhasOrdenadas.length === 0 && (
-                            <tr><td colSpan={7} className="py-8 text-center text-gray-500">Nenhuma parcela encontrada.</td></tr>
+                            <tr><td colSpan={7}>
+                                <EstadoVazio icon={DollarSign} titulo="Nenhuma parcela encontrada" descricao="Tente ajustar o período ou os filtros." />
+                            </td></tr>
                         )}
                         {!loading && linhasOrdenadas.map(l => {
                             const eleg = elegivel(l);

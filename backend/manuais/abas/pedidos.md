@@ -64,6 +64,8 @@ Central de consulta e gerenciamento de todos os pedidos lançados no sistema. Aq
    - Só aparecem (e só são aceitas) as condições **liberadas para o cliente** — a lista "Condições de pagamento permitidas" do cadastro do cliente (ou, se vazia, apenas a condição padrão dele). O backend também valida: escolher condição fora da lista dá erro "condição não liberada para este cliente". Para liberar outra condição, ajuste o cadastro do cliente
    - Ao **editar** um pedido cuja condição atual não está liberada (ex.: pedido vindo do Site Congelados com a condição "Site"), a tela pede para escolher uma condição liberada antes de salvar
 7. Adicione os produtos e quantidades
+   - Todo produto que o cliente **já comprou antes** mostra, logo abaixo do nome, **"Última vez: Nun em dd/mm"** — a quantidade e a data da compra mais recente, sem precisar clicar para expandir (o histórico completo, com preço e nº do pedido, continua disponível ao tocar no produto)
+   - Quando o cliente tem histórico, aparece o botão **"Repetir último pedido"** perto da data de entrega, com o resumo "(N itens · última compra dd/mm)". Ao tocar, o carrinho é pré-carregado com a **compra mais recente de cada produto** do histórico do cliente — mesmo preço/regra de desconto e mesmas travas de estoque de sempre; produto que não existe mais no catálogo é **ignorado** com um aviso. Se o carrinho já tiver itens, o app pergunta antes de **substituir** tudo. O pedido **nunca é enviado sozinho** — o vendedor revisa (e pode editar/remover itens) antes de Salvar/Enviar, como em qualquer pedido
 8. Clique em **Salvar** — o pedido é criado com status **ABERTO**
 
 ### Bloqueio de venda sem estoque (por usuário)

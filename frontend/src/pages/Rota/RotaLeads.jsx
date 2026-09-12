@@ -34,6 +34,8 @@ import SeloWhatsappCliente, { LegendaSeloWhatsapp } from '../../components/SeloW
 import ModalWhatsappCliente from '../../components/ModalWhatsappCliente';
 import whatsappClientesService from '../../services/whatsappClientesService';
 import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
+import PageHeader from '../../components/PageHeader';
+import { PEDIDO_ENVIO, rotuloStatus } from '../../constants/statusLabels';
 
 const DIAS_SIGLA = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'N/D'];
 
@@ -301,10 +303,18 @@ const CONTA_STATUS = {
     PARCIAL:  { label: 'Parcial',   cls: 'bg-yellow-100 text-yellow-700' },
 };
 
+// Mesmo padrão de numeração de ListaPedidos.jsx (fmtNumero): BN# bonificação, ZZ# especial, # normal.
+// Pedido recém-criado pode ainda não ter número do CA (rascunho ABERTO) — nunca interpolar
+// null/undefined direto na tela (vira "#null" para o usuário).
+const fmtNumeroPedido = (p) => p.numero == null ? '(rascunho)' : `${p.bonificacao ? 'BN' : p.especial ? 'ZZ' : ''}#${p.numero}`;
+
 const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostrarAcoes = true, podeEscolherVendedor = false, meuVendedorId, alerta, onAlertaVisto, onFinalizarTransferencia, onTransferenciaVista, foraFiltro, bloqueado, podeUsarIA = false, selo = {} }) => {
+    const navigate = useNavigate();
     const atendHoje = getAtendimentoHoje(cliente._atendimentos);
     const atendOutro = !atendHoje ? getAtendimentoOutroVendedor(cliente, meuVendedorId) : null;
     const doDia = itemTemDiaBase(cliente.Dia_de_venda); // Cliente do dia
+    const insight = cliente.clienteInsights?.[0];
+    const pedidoHoje = !atendHoje && !atendOutro ? getPedidoHoje(cliente._pedidos) : null;
 
     const [inadimplenciaData, setInadimplenciaData] = useState(null);
     const [loadingInad, setLoadingInad] = useState(false);
@@ -328,10 +338,32 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostr
     const [popup, setPopup] = useState(null); // { pendingAction }
     const [analisandoIA, setAnalisandoIA] = useState(false);
     const [orientacaoLocalIA, setOrientacaoLocalIA] = useState(null);
+    // Detalhes do card (cenário, dia, canais, inadimplência, alertas, observação) começam
+    // recolhidos — só nome, 1 badge, selo e os botões Atender/Pedido ficam sempre visíveis
+    // (Linguagem visual v2). Abre sozinho quando chega transferência pendente de ação — via
+    // efeito (não no useState) porque o card tem key estável e pode já estar montado quando
+    // a transferência chega (ex.: alguém transfere um cliente com a Rota aberta na tela).
+    const [detalhesAbertos, setDetalhesAbertos] = useState(!!alerta?.isTransferenciaAtiva);
+    useEffect(() => {
+        if (alerta?.isTransferenciaAtiva) setDetalhesAbertos(true);
+    }, [alerta?.isTransferenciaAtiva]);
+
+    // Badge principal da linha sempre visível — mesma prioridade/cores que o card já usava
+    // espalhadas em vários lugares, só concentradas numa única badge (nenhuma regra nova).
+    let badgePrincipal = null;
+    if (alerta?.isTransferenciaAtiva) {
+        badgePrincipal = { label: 'Transferência p/ você', cls: 'bg-indigo-100 text-indigo-700 border-indigo-200' };
+    } else if (cliente.inadimplente) {
+        badgePrincipal = { label: 'Inadimplente', cls: 'bg-red-100 text-red-700 border-red-200' };
+    } else if (alerta?.cor && !alerta.isTransferenciaResolvida) {
+        badgePrincipal = { label: alerta.acaoLabel || 'Retorno agendado', style: { backgroundColor: alerta.cor + '15', borderColor: alerta.cor, color: alerta.cor } };
+    } else if (insight?.insightPrincipalTipo && !atendHoje) {
+        const metaBadge = CENARIO_META[insight.insightPrincipalTipo] || {};
+        if (metaBadge.label) badgePrincipal = { label: metaBadge.label, cls: metaBadge.cor };
+    }
 
     const handleAtender = () => {
         if (bloqueado) return;
-        const insight = cliente.clienteInsights?.[0];
         if (!atendHoje && (insight?.orientacaoIaJson || insight?.insightPrincipalResumo)) {
             setPopup({ pendingAction: () => onAtendimento({ tipo: 'cliente', item: cliente }), insight });
         } else {
@@ -341,7 +373,6 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostr
 
     const handlePedido = () => {
         if (bloqueado) return;
-        const insight = cliente.clienteInsights?.[0];
         if (!atendHoje && (insight?.orientacaoIaJson || insight?.insightPrincipalResumo)) {
             setPopup({ pendingAction: () => onNovoPedido(cliente.UUID), insight });
         } else {
@@ -390,7 +421,7 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostr
                     </div>
 
                     {inadimplenciaData === 'loading' ? (
-                        <div className="flex items-center justify-center py-12 text-gray-400 text-sm gap-2">
+                        <div className="flex items-center justify-center py-12 text-gray-500 text-sm gap-2">
                             <Loader className="h-4 w-4 animate-spin" /> Carregando...
                         </div>
                     ) : inadimplenciaData === 'erro' ? (
@@ -448,7 +479,7 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostr
                                                 <div className="text-right shrink-0">
                                                     <p className="text-xs font-bold text-gray-800">{fmtMoeda(conta.valorTotal)}</p>
                                                     {conta.proximoVencimento && (
-                                                        <p className="text-[10px] text-gray-400">Próx: {fmtData(conta.proximoVencimento)}</p>
+                                                        <p className="text-[10px] text-gray-500">Próx: {fmtData(conta.proximoVencimento)}</p>
                                                     )}
                                                 </div>
                                             </div>
@@ -470,7 +501,7 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostr
                                                                             <span className="text-[10px] font-bold text-red-600">{p.diasAtraso}d atraso</span>
                                                                         )}
                                                                     </div>
-                                                                    <div className="text-[10px] text-gray-400 mt-0.5 flex flex-wrap gap-x-2">
+                                                                    <div className="text-[10px] text-gray-500 mt-0.5 flex flex-wrap gap-x-2">
                                                                         <span>Venc: {fmtData(p.dataVencimento)}</span>
                                                                         {p.dataPagamento && <span className="text-green-600">Pago: {fmtData(p.dataPagamento)}</span>}
                                                                         {p.valorPago && p.valorPago !== p.valor && (
@@ -504,221 +535,52 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostr
             className={`rounded-xl border overflow-hidden mb-3 ${atendOutro && !atendHoje ? 'bg-amber-50/50' : cliente.inadimplente ? 'bg-red-50/40' : 'bg-white'} ${alerta?.isHoje ? 'ring-2 animate-pulse-border shadow-sm' : cliente.inadimplente ? 'border-red-400 shadow-[0_0_0_4px_rgba(239,68,68,0.2)]' : doDia ? 'border-green-500/50 ring-1 ring-green-500/20 shadow-sm' : 'border-gray-200 shadow-sm'}`}
             style={alerta?.isHoje ? { borderColor: alerta.cor, '--alerta-cor': alerta.cor } : undefined}
         >
-            <div className="p-4">
+            <div className="p-4 flex flex-col gap-3">
+                {/* Linha sempre visível: nome grande + 1 badge (prioridade/cenário) */}
                 <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1 flex-wrap">
-                            <span className="text-[11px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded uppercase tracking-wide">Cliente</span>
-                            <BadgeAtendidoHoje atendHoje={atendHoje} atendOutro={atendOutro} pedidoHoje={!atendHoje && !atendOutro ? getPedidoHoje(cliente._pedidos) : null} />
-                            {(atendHoje?.gpsVendedor || atendOutro?.gpsVendedor) && (
-                                <button onClick={(e) => { e.stopPropagation(); abrirMapa(atendHoje?.gpsVendedor || atendOutro?.gpsVendedor); }} className="text-[10px] font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 px-1.5 py-0.5 rounded flex items-center gap-0.5" title="Ver onde o atendimento foi registrado">
-                                    <MapPin className="h-3 w-3" /> GPS
-                                </button>
-                            )}
-                            {/* Selo de WhatsApp — some por completo com a flag desligada */}
-                            <SeloWhatsappCliente cliente={cliente} {...selo} />
-                        </div>
-                        {/* Nome clicável */}
                         {podeEscolherVendedor && vendedorNome && (
-                            <div className="mb-0.5 mt-0.5 inline-flex items-center gap-0.5 text-[9px] text-purple-600 bg-purple-50 px-1 py-0.5 rounded font-semibold">
+                            <div className="mb-1 inline-flex items-center gap-0.5 text-[9px] text-purple-600 bg-purple-50 px-1 py-0.5 rounded font-semibold">
                                 <User className="h-2 w-2" /> {vendedorNome.split(' ')[0]}
                             </div>
                         )}
                         <button
                             onClick={() => onVerCliente(cliente)}
-                            className="text-left font-bold text-[14px] leading-tight text-gray-900 truncate w-full hover:text-blue-700 transition-colors"
+                            className="text-left font-bold text-base leading-tight text-gray-900 truncate w-full hover:text-primaryDark transition-colors"
                         >
                             {cliente.NomeFantasia || cliente.Nome}
                         </button>
-                        {cliente.End_Cidade && <p className="text-[11px] text-gray-500 mt-0.5">{cliente.End_Cidade}</p>}
+                        {cliente.End_Cidade && <p className="text-xs text-gray-500 mt-0.5 truncate">{cliente.End_Cidade}</p>}
                     </div>
+                    {badgePrincipal && (
+                        <span
+                            className={`shrink-0 text-[11px] font-bold px-2 py-1 rounded-full border whitespace-nowrap ${badgePrincipal.cls || ''}`}
+                            style={badgePrincipal.style}
+                        >
+                            {badgePrincipal.label}
+                        </span>
+                    )}
+                </div>
+
+                {/* Selo discreto: WhatsApp / GPS / status do atendimento de hoje */}
+                <div className="flex items-center gap-2 flex-wrap -mt-2">
+                    <SeloWhatsappCliente cliente={cliente} {...selo} />
                     {cliente.Ponto_GPS && (
-                        <button onClick={() => abrirMapa(cliente.Ponto_GPS)} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded shrink-0">
-                            <MapPin className="h-3.5 w-3.5" />
+                        <button onClick={() => abrirMapa(cliente.Ponto_GPS)} className="text-[11px] text-gray-500 hover:text-primaryDark flex items-center gap-0.5">
+                            <MapPin className="h-3 w-3" /> GPS
+                        </button>
+                    )}
+                    <BadgeAtendidoHoje atendHoje={atendHoje} atendOutro={atendOutro} pedidoHoje={pedidoHoje} />
+                    {(atendHoje?.gpsVendedor || atendOutro?.gpsVendedor) && (
+                        <button onClick={(e) => { e.stopPropagation(); abrirMapa(atendHoje?.gpsVendedor || atendOutro?.gpsVendedor); }} className="text-[10px] font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 px-1.5 py-0.5 rounded flex items-center gap-0.5" title="Ver onde o atendimento foi registrado">
+                            <MapPin className="h-3 w-3" /> GPS atend.
                         </button>
                     )}
                 </div>
 
-                {/* Informações de atendimento */}
-                <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2">
-                    {cliente.Dia_de_venda && (
-                        <span className="text-[12px] text-gray-600 flex items-center gap-1">
-                            <Calendar className="h-3 w-3 text-gray-400" />
-                            {cliente.Dia_de_venda}
-                            {cliente.Horario_Atendimento && ` · ${cliente.Horario_Atendimento}`}
-                        </span>
-                    )}
-                    {cliente.Dia_de_entrega && (
-                        <span className="text-[12px] text-gray-600 flex items-center gap-1">
-                            <Package className="h-3 w-3 text-gray-400" />
-                            Entrega: {cliente.Dia_de_entrega}
-                            {cliente.Horario_Entrega && ` · ${cliente.Horario_Entrega}`}
-                        </span>
-                    )}
-                </div>
-
-                {/* Canais de atendimento */}
-                {cliente.Formas_Atendimento?.length > 0 && (
-                    <div className="flex gap-1.5 mt-2">
-                        {cliente.Formas_Atendimento.some(f => f.toUpperCase() === 'PRESENCIAL') && <span className="text-[11px] bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded font-semibold flex items-center gap-0.5"><User className="h-3 w-3" />Presencial</span>}
-                        {cliente.Formas_Atendimento.some(f => f.toUpperCase() === 'WHATSAPP') && <span className="text-[11px] bg-green-50 text-green-700 px-1.5 py-0.5 rounded font-semibold flex items-center gap-0.5"><MessageCircle className="h-3 w-3" />WhatsApp</span>}
-                        {cliente.Formas_Atendimento.some(f => f.toUpperCase() === 'TELEFONE') && <span className="text-[11px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded font-semibold flex items-center gap-0.5"><Phone className="h-3 w-3" />Telefone</span>}
-                    </div>
-                )}
-
-                {/* Badge de inadimplência — clicável */}
-                {cliente.inadimplente && (
-                    <button
-                        onClick={abrirInadimplencia}
-                        className="mt-2 w-full flex items-center gap-1.5 bg-red-50 border border-red-200 hover:bg-red-100 active:bg-red-200 transition-colors rounded px-2 py-1.5 text-left"
-                    >
-                        <AlertCircle className="h-3.5 w-3.5 text-red-600 shrink-0" />
-                        <span className="text-[11px] font-bold text-red-700 flex-1">
-                            Inadimplente — {fmtMoeda(cliente.totalVencido)} em atraso
-                        </span>
-                        <ChevronRight className="h-3 w-3 text-red-400 shrink-0" />
-                    </button>
-                )}
-
-                {/* Orientação do dia — colapsada, hover/click para expandir */}
-                {(() => {
-                    const insight = cliente.clienteInsights?.[0];
-                    if (!insight?.insightPrincipalTipo || atendHoje) return null;
-                    const ia = orientacaoLocalIA || insight.orientacaoIaJson;
-                    const meta = CENARIO_META[insight.insightPrincipalTipo] || {};
-                    const motivo = gerarMotivoInsight(insight);
-                    return (
-                        <div
-                            className="mt-2"
-                            onMouseEnter={() => setOrientExpanded(true)}
-                            onMouseLeave={() => setOrientExpanded(false)}
-                        >
-                            {/* Linha sempre visível: badge cenário + motivo curto + botão IA + chevron */}
-                            <button
-                                className="flex items-center gap-1.5 w-full text-left"
-                                onClick={() => setOrientExpanded(v => !v)}
-                            >
-                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border shrink-0 ${meta.cor || 'bg-indigo-50 text-indigo-600 border-indigo-100'}`}>
-                                    {meta.label || 'Orientação'}
-                                </span>
-                                {motivo && (
-                                    <span className="text-[10px] text-gray-500 truncate">{motivo}</span>
-                                )}
-                                <span className="ml-auto flex items-center gap-0.5 shrink-0">
-                                    {podeUsarIA && (
-                                        <button
-                                            onClick={handleAnalisarIA}
-                                            disabled={analisandoIA}
-                                            className="p-0.5 rounded text-violet-400 hover:text-violet-600 hover:bg-violet-50 transition-colors disabled:opacity-40"
-                                            title="Analisar com IA"
-                                        >
-                                            {analisandoIA
-                                                ? <Loader className="h-3 w-3 animate-spin" />
-                                                : <Sparkles className="h-3 w-3" />
-                                            }
-                                        </button>
-                                    )}
-                                    <ChevronDown className={`h-3 w-3 text-gray-400 transition-transform ${orientExpanded ? 'rotate-180' : ''}`} />
-                                </span>
-                            </button>
-
-                            {/* Conteúdo expandido (hover desktop / click mobile) */}
-                            {orientExpanded && (
-                                ia ? (
-                                    <div className="mt-1.5 rounded-lg border border-violet-200 bg-violet-50/70 px-3 py-2 space-y-1">
-                                        {(ia.metaHoje || ia.objetivo) && <p className="text-[11px] text-violet-900"><span className="font-semibold">Meta:</span> {ia.metaHoje || ia.objetivo}</p>}
-                                        {ia.acao && <p className="text-[11px] text-violet-800 font-semibold border-t border-violet-100 pt-1 mt-1">{ia.acao}</p>}
-                                        {(ia.seNegar || ia.objecao) && (
-                                            <div className="bg-white/60 rounded px-2 py-1 border border-violet-100 mt-0.5">
-                                                <p className="text-[10px] text-violet-600"><span className="font-semibold">Se negar:</span> {ia.seNegar || ia.objecao}</p>
-                                            </div>
-                                        )}
-                                    </div>
-                                ) : (
-                                    <div className="mt-1.5 rounded-lg border border-indigo-100 bg-indigo-50/60 px-3 py-2">
-                                        {insight.proximaAcaoSugerida && <p className="text-[11px] text-indigo-800 font-semibold">{insight.proximaAcaoSugerida}</p>}
-                                    </div>
-                                )
-                            )}
-                        </div>
-                    );
-                })()}
-
-                {/* Alerta visual */}
-                {alerta?.cor && !alerta.isTransferenciaAtiva && !alerta.isTransferenciaResolvida && (
-                    <button
-                        onClick={() => onAlertaVisto && onAlertaVisto(alerta.atendimentoId)}
-                        className="mt-2 w-full text-left rounded-lg px-3 py-2 border text-[12px] flex items-center gap-2"
-                        style={{ backgroundColor: alerta.cor + '15', borderColor: alerta.cor, color: alerta.cor }}
-                    >
-                        <Bell className="h-3.5 w-3.5 shrink-0" />
-                        <div className="flex-1 min-w-0">
-                            {alerta.acaoLabel && <span className="font-bold">{alerta.acaoLabel}</span>}
-                            {alerta.assuntoRetorno && <span className="ml-1">· {alerta.assuntoRetorno}</span>}
-                            {alerta.dataRetorno && <span className="ml-1 text-[11px] opacity-75">({new Date(alerta.dataRetorno).toLocaleDateString('pt-BR')})</span>}
-                        </div>
-                        <span className="text-[10px] font-bold opacity-60 shrink-0">Marcar visto</span>
-                    </button>
-                )}
-
-                {/* Transferência ativa (eu sou o receptor) */}
-                {alerta?.isTransferenciaAtiva && (
-                    <div className="mt-2 rounded-lg border-2 border-indigo-300 bg-indigo-50 p-3 space-y-2">
-                        <div className="flex items-center gap-1.5 text-[11px] font-bold text-indigo-700">
-                            <ArrowLeftRight className="h-3.5 w-3.5" />
-                            Transferido por {alerta.transferenciaDeNome?.split(' ')[0] || '?'}
-                            {alerta.transferenciaAcaoLabel && <span className="font-normal ml-1">· {alerta.transferenciaAcaoLabel}</span>}
-                        </div>
-                        {alerta.transferenciaObs && (
-                            <p className="text-[12px] text-indigo-900 bg-white/60 rounded px-2 py-1.5 border border-indigo-200">{alerta.transferenciaObs}</p>
-                        )}
-                        <button
-                            onClick={() => onFinalizarTransferencia && onFinalizarTransferencia(alerta.transferenciaAtendimentoId)}
-                            className="w-full text-[11px] font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded py-1.5 flex items-center justify-center gap-1 transition-colors"
-                        >
-                            <Check className="h-3.5 w-3.5" /> Finalizar Transferência
-                        </button>
-                    </div>
-                )}
-
-                {/* Transferência resolvida (eu sou o remetente) */}
-                {alerta?.isTransferenciaResolvida && (
-                    <button
-                        onClick={() => onTransferenciaVista && onTransferenciaVista(alerta.transferenciaResolvidaId)}
-                        className="mt-2 w-full text-left rounded-lg px-3 py-2 border-2 border-green-300 bg-green-50 text-[12px] text-green-700 flex items-center gap-2"
-                    >
-                        <CheckCircle className="h-3.5 w-3.5 shrink-0 text-green-600" />
-                        <div className="flex-1 min-w-0">
-                            <span className="font-bold">Transferência resolvida</span>
-                            {alerta.transferenciaResolvidaPorNome && <span className="ml-1">por {alerta.transferenciaResolvidaPorNome.split(' ')[0]}</span>}
-                            {alerta.transferenciaResolvidaEm && <span className="ml-1 text-[11px] opacity-75">({new Date(alerta.transferenciaResolvidaEm).toLocaleDateString('pt-BR')})</span>}
-                        </div>
-                        <span className="text-[10px] font-bold opacity-60 shrink-0">Dispensar</span>
-                    </button>
-                )}
-
-                {/* Exibir observação se já atendido (próprio ou outro usuário) */}
-                {(atendHoje?.observacao || atendOutro?.observacao) && (() => {
-                    const obs = atendHoje?.observacao || atendOutro?.observacao;
-                    const longa = obs.length > 80;
-                    return (
-                        <div className="mt-2 bg-gray-50 border border-gray-100 rounded p-2">
-                            <button
-                                className="text-[11px] font-semibold text-gray-700 mb-0.5 flex items-center gap-1 w-full text-left"
-                                onClick={e => { e.stopPropagation(); setObsExpanded(v => !v); }}
-                            >
-                                <ClipboardList className="h-3 w-3" />
-                                Obs. Atendimento
-                                {longa && <ChevronDown className={`h-3 w-3 ml-auto text-gray-400 transition-transform ${obsExpanded ? 'rotate-180' : ''}`} />}
-                            </button>
-                            <p className={`text-[12px] text-gray-600 ${longa && !obsExpanded ? 'line-clamp-2' : ''}`}>{obs}</p>
-                        </div>
-                    );
-                })()}
-
-                {/* Alerta fora do filtro / outro vendedor */}
+                {/* Alerta fora do filtro / outro vendedor — fica visível (é aviso operacional, não cenário de venda) */}
                 {foraFiltro && (foraFiltro.outroDia || foraFiltro.outraForma || foraFiltro.outroVendedor) && (
-                    <div className="mt-2 rounded-lg px-2.5 py-1.5 border border-amber-300 bg-amber-50 text-[11px] text-amber-800 flex items-center gap-1.5">
+                    <div className="-mt-1 rounded-lg px-2.5 py-1.5 border border-amber-300 bg-amber-50 text-[11px] text-amber-800 flex items-center gap-1.5">
                         <Bell className="h-3 w-3 shrink-0" />
                         <span>
                             {foraFiltro.outroVendedor && `Cliente de ${cliente.vendedor?.nome?.split(' ')[0] || 'outro vendedor'}`}
@@ -730,27 +592,229 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostr
                     </div>
                 )}
 
-                {/* Ações */}
-                <div className="flex gap-1.5 mt-2 pt-2 border-t border-gray-100">
-                    {mostrarAcoes && (
+                {/* Ações da linha visível: Atender (principal) e Pedido (secundário) — fluxos
+                    independentes (Atender não leva a criar pedido), os dois ficam sempre à vista. */}
+                {mostrarAcoes && (
+                    <div className="flex gap-2">
                         <button
                             onClick={handleAtender}
                             disabled={bloqueado}
                             title={bloqueado ? 'Cliente de outro vendedor — peça transferência' : ''}
-                            className={`flex-1 text-[12px] font-semibold py-1.5 rounded flex items-center justify-center gap-1 ${bloqueado ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-blue-600 text-white active:opacity-80'}`}
+                            className={`flex-1 min-h-[44px] text-sm font-semibold rounded-full flex items-center justify-center gap-2 transition-colors ${bloqueado ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-primary hover:bg-primaryDark text-white active:opacity-80'}`}
                         >
-                            <ClipboardList className="h-3.5 w-3.5" /> Atender
+                            <ClipboardList className="h-4 w-4" /> Atender
                         </button>
-                    )}
+                        <button
+                            onClick={handlePedido}
+                            disabled={bloqueado}
+                            title={bloqueado ? 'Cliente de outro vendedor — peça transferência' : ''}
+                            className={`flex-1 min-h-[44px] text-sm font-semibold rounded-full flex items-center justify-center gap-2 transition-colors ${bloqueado ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white border border-primary text-primary hover:bg-mint/40 active:opacity-80'}`}
+                        >
+                            <Package className="h-4 w-4" /> Pedido
+                        </button>
+                    </div>
+                )}
+
+                {/* Ver pedido criado — só quando já existe pedido lançado hoje pelo card */}
+                {pedidoHoje && (
                     <button
-                        onClick={handlePedido}
-                        disabled={bloqueado}
-                        title={bloqueado ? 'Cliente de outro vendedor — peça transferência' : ''}
-                        className={`${mostrarAcoes ? 'w-auto' : 'w-full justify-center'} text-[12px] font-semibold px-2 py-1.5 rounded flex items-center gap-1 ${bloqueado ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-gray-100 text-gray-700 cursor-pointer active:opacity-80 hover:bg-gray-200 transition-colors'}`}
+                        onClick={() => navigate('/pedidos', { state: { highlightId: pedidoHoje.id, especial: !!pedidoHoje.especial, bonificacao: !!pedidoHoje.bonificacao } })}
+                        className="text-center text-xs font-semibold text-primary hover:text-primaryDark -mt-1"
                     >
-                        <Package className="h-3.5 w-3.5" /> Pedido
+                        Ver pedido {fmtNumeroPedido(pedidoHoje)} · {rotuloStatus(PEDIDO_ENVIO, pedidoHoje.statusEnvio)} →
                     </button>
-                </div>
+                )}
+
+                {/* Alternar detalhes: cenário/motivo, dia de venda/entrega, canais, inadimplência,
+                    alertas, transferência e observação — tudo que hoje concorria de peso igual
+                    com o nome sai daqui, um toque abaixo (Atender e Pedido continuam sempre visíveis). */}
+                <button
+                    className="flex items-center justify-center gap-1 text-[11px] font-semibold text-gray-500 hover:text-gray-700 -mt-1 py-1"
+                    onClick={() => setDetalhesAbertos(v => !v)}
+                >
+                    {detalhesAbertos ? 'Ver menos' : 'Ver mais'}
+                    <ChevronDown className={`h-3 w-3 transition-transform ${detalhesAbertos ? 'rotate-180' : ''}`} />
+                </button>
+
+                {detalhesAbertos && (
+                    <div className="flex flex-col gap-2 -mt-1 pt-2 border-t border-gray-100">
+                        {/* Informações de atendimento */}
+                        {(cliente.Dia_de_venda || cliente.Dia_de_entrega) && (
+                            <div className="flex flex-wrap gap-x-3 gap-y-1">
+                                {cliente.Dia_de_venda && (
+                                    <span className="text-[12px] text-gray-600 flex items-center gap-1">
+                                        <Calendar className="h-3 w-3 text-gray-400" />
+                                        {cliente.Dia_de_venda}
+                                        {cliente.Horario_Atendimento && ` · ${cliente.Horario_Atendimento}`}
+                                    </span>
+                                )}
+                                {cliente.Dia_de_entrega && (
+                                    <span className="text-[12px] text-gray-600 flex items-center gap-1">
+                                        <Package className="h-3 w-3 text-gray-400" />
+                                        Entrega: {cliente.Dia_de_entrega}
+                                        {cliente.Horario_Entrega && ` · ${cliente.Horario_Entrega}`}
+                                    </span>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Canais de atendimento */}
+                        {cliente.Formas_Atendimento?.length > 0 && (
+                            <div className="flex gap-1.5 flex-wrap">
+                                {cliente.Formas_Atendimento.some(f => f.toUpperCase() === 'PRESENCIAL') && <span className="text-[11px] bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded font-semibold flex items-center gap-0.5"><User className="h-3 w-3" />Presencial</span>}
+                                {cliente.Formas_Atendimento.some(f => f.toUpperCase() === 'WHATSAPP') && <span className="text-[11px] bg-green-50 text-green-700 px-1.5 py-0.5 rounded font-semibold flex items-center gap-0.5"><MessageCircle className="h-3 w-3" />WhatsApp</span>}
+                                {cliente.Formas_Atendimento.some(f => f.toUpperCase() === 'TELEFONE') && <span className="text-[11px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded font-semibold flex items-center gap-0.5"><Phone className="h-3 w-3" />Telefone</span>}
+                            </div>
+                        )}
+
+                        {/* Badge de inadimplência — clicável (detalhe do valor, o resumo já está na badge principal) */}
+                        {cliente.inadimplente && (
+                            <button
+                                onClick={abrirInadimplencia}
+                                className="w-full flex items-center gap-1.5 bg-red-50 border border-red-200 hover:bg-red-100 active:bg-red-200 transition-colors rounded px-2 py-1.5 text-left"
+                            >
+                                <AlertCircle className="h-3.5 w-3.5 text-red-600 shrink-0" />
+                                <span className="text-[11px] font-bold text-red-700 flex-1">
+                                    Inadimplente — {fmtMoeda(cliente.totalVencido)} em atraso
+                                </span>
+                                <ChevronRight className="h-3 w-3 text-red-400 shrink-0" />
+                            </button>
+                        )}
+
+                        {/* Orientação do dia — cenário + motivo + botão IA */}
+                        {insight?.insightPrincipalTipo && !atendHoje && (() => {
+                            const ia = orientacaoLocalIA || insight.orientacaoIaJson;
+                            const meta = CENARIO_META[insight.insightPrincipalTipo] || {};
+                            const motivo = gerarMotivoInsight(insight);
+                            return (
+                                <div
+                                    onMouseEnter={() => setOrientExpanded(true)}
+                                    onMouseLeave={() => setOrientExpanded(false)}
+                                >
+                                    {/* Linha sempre visível (dentro do expandido): badge cenário + motivo curto + botão IA + chevron */}
+                                    <button
+                                        className="flex items-center gap-1.5 w-full text-left"
+                                        onClick={() => setOrientExpanded(v => !v)}
+                                    >
+                                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border shrink-0 ${meta.cor || 'bg-indigo-50 text-indigo-600 border-indigo-100'}`}>
+                                            {meta.label || 'Orientação'}
+                                        </span>
+                                        {motivo && (
+                                            <span className="text-[10px] text-gray-500 truncate">{motivo}</span>
+                                        )}
+                                        <span className="ml-auto flex items-center gap-0.5 shrink-0">
+                                            {podeUsarIA && (
+                                                <button
+                                                    onClick={handleAnalisarIA}
+                                                    disabled={analisandoIA}
+                                                    className="p-0.5 rounded text-violet-400 hover:text-violet-600 hover:bg-violet-50 transition-colors disabled:opacity-40"
+                                                    title="Analisar com IA"
+                                                >
+                                                    {analisandoIA
+                                                        ? <Loader className="h-3 w-3 animate-spin" />
+                                                        : <Sparkles className="h-3 w-3" />
+                                                    }
+                                                </button>
+                                            )}
+                                            <ChevronDown className={`h-3 w-3 text-gray-400 transition-transform ${orientExpanded ? 'rotate-180' : ''}`} />
+                                        </span>
+                                    </button>
+
+                                    {/* Conteúdo expandido (hover desktop / click mobile) */}
+                                    {orientExpanded && (
+                                        ia ? (
+                                            <div className="mt-1.5 rounded-lg border border-violet-200 bg-violet-50/70 px-3 py-2 space-y-1">
+                                                {(ia.metaHoje || ia.objetivo) && <p className="text-[11px] text-violet-900"><span className="font-semibold">Meta:</span> {ia.metaHoje || ia.objetivo}</p>}
+                                                {ia.acao && <p className="text-[11px] text-violet-800 font-semibold border-t border-violet-100 pt-1 mt-1">{ia.acao}</p>}
+                                                {(ia.seNegar || ia.objecao) && (
+                                                    <div className="bg-white/60 rounded px-2 py-1 border border-violet-100 mt-0.5">
+                                                        <p className="text-[10px] text-violet-600"><span className="font-semibold">Se negar:</span> {ia.seNegar || ia.objecao}</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <div className="mt-1.5 rounded-lg border border-indigo-100 bg-indigo-50/60 px-3 py-2">
+                                                {insight.proximaAcaoSugerida && <p className="text-[11px] text-indigo-800 font-semibold">{insight.proximaAcaoSugerida}</p>}
+                                            </div>
+                                        )
+                                    )}
+                                </div>
+                            );
+                        })()}
+
+                        {/* Alerta visual (retorno agendado) — detalhe/ação, o resumo já está na badge principal */}
+                        {alerta?.cor && !alerta.isTransferenciaAtiva && !alerta.isTransferenciaResolvida && (
+                            <button
+                                onClick={() => onAlertaVisto && onAlertaVisto(alerta.atendimentoId)}
+                                className="w-full text-left rounded-lg px-3 py-2 border text-[12px] flex items-center gap-2"
+                                style={{ backgroundColor: alerta.cor + '15', borderColor: alerta.cor, color: alerta.cor }}
+                            >
+                                <Bell className="h-3.5 w-3.5 shrink-0" />
+                                <div className="flex-1 min-w-0">
+                                    {alerta.acaoLabel && <span className="font-bold">{alerta.acaoLabel}</span>}
+                                    {alerta.assuntoRetorno && <span className="ml-1">· {alerta.assuntoRetorno}</span>}
+                                    {alerta.dataRetorno && <span className="ml-1 text-[11px] opacity-75">({new Date(alerta.dataRetorno).toLocaleDateString('pt-BR')})</span>}
+                                </div>
+                                <span className="text-[10px] font-bold opacity-60 shrink-0">Marcar visto</span>
+                            </button>
+                        )}
+
+                        {/* Transferência ativa (eu sou o receptor) */}
+                        {alerta?.isTransferenciaAtiva && (
+                            <div className="rounded-lg border-2 border-indigo-300 bg-indigo-50 p-3 space-y-2">
+                                <div className="flex items-center gap-1.5 text-[11px] font-bold text-indigo-700">
+                                    <ArrowLeftRight className="h-3.5 w-3.5" />
+                                    Transferido por {alerta.transferenciaDeNome?.split(' ')[0] || '?'}
+                                    {alerta.transferenciaAcaoLabel && <span className="font-normal ml-1">· {alerta.transferenciaAcaoLabel}</span>}
+                                </div>
+                                {alerta.transferenciaObs && (
+                                    <p className="text-[12px] text-indigo-900 bg-white/60 rounded px-2 py-1.5 border border-indigo-200">{alerta.transferenciaObs}</p>
+                                )}
+                                <button
+                                    onClick={() => onFinalizarTransferencia && onFinalizarTransferencia(alerta.transferenciaAtendimentoId)}
+                                    className="w-full text-[11px] font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded py-1.5 flex items-center justify-center gap-1 transition-colors"
+                                >
+                                    <Check className="h-3.5 w-3.5" /> Finalizar Transferência
+                                </button>
+                            </div>
+                        )}
+
+                        {/* Transferência resolvida (eu sou o remetente) */}
+                        {alerta?.isTransferenciaResolvida && (
+                            <button
+                                onClick={() => onTransferenciaVista && onTransferenciaVista(alerta.transferenciaResolvidaId)}
+                                className="w-full text-left rounded-lg px-3 py-2 border-2 border-green-300 bg-green-50 text-[12px] text-green-700 flex items-center gap-2"
+                            >
+                                <CheckCircle className="h-3.5 w-3.5 shrink-0 text-green-600" />
+                                <div className="flex-1 min-w-0">
+                                    <span className="font-bold">Transferência resolvida</span>
+                                    {alerta.transferenciaResolvidaPorNome && <span className="ml-1">por {alerta.transferenciaResolvidaPorNome.split(' ')[0]}</span>}
+                                    {alerta.transferenciaResolvidaEm && <span className="ml-1 text-[11px] opacity-75">({new Date(alerta.transferenciaResolvidaEm).toLocaleDateString('pt-BR')})</span>}
+                                </div>
+                                <span className="text-[10px] font-bold opacity-60 shrink-0">Dispensar</span>
+                            </button>
+                        )}
+
+                        {/* Exibir observação se já atendido (próprio ou outro usuário) */}
+                        {(atendHoje?.observacao || atendOutro?.observacao) && (() => {
+                            const obs = atendHoje?.observacao || atendOutro?.observacao;
+                            const longa = obs.length > 80;
+                            return (
+                                <div className="bg-gray-50 border border-gray-100 rounded p-2">
+                                    <button
+                                        className="text-[11px] font-semibold text-gray-700 mb-0.5 flex items-center gap-1 w-full text-left"
+                                        onClick={e => { e.stopPropagation(); setObsExpanded(v => !v); }}
+                                    >
+                                        <ClipboardList className="h-3 w-3" />
+                                        Obs. Atendimento
+                                        {longa && <ChevronDown className={`h-3 w-3 ml-auto text-gray-400 transition-transform ${obsExpanded ? 'rotate-180' : ''}`} />}
+                                    </button>
+                                    <p className={`text-[12px] text-gray-600 ${longa && !obsExpanded ? 'line-clamp-2' : ''}`}>{obs}</p>
+                                </div>
+                            );
+                        })()}
+                    </div>
+                )}
             </div>
         </div>
         </>
@@ -2318,17 +2382,13 @@ const RotaLeads = () => {
         <div className="min-h-screen bg-gray-50">
             {/* Header */}
             <div className="bg-white border-b border-gray-200 sticky top-0 z-20">
-                <div className="px-3 md:px-4 pt-3 md:pt-4 pb-2 md:pb-3 flex justify-between items-center gap-3">
-                    <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                        <div className="bg-orange-100 p-1.5 rounded-lg flex-shrink-0">
-                            <Route className="h-4 w-4 text-orange-600" />
-                        </div>
-                        <div className="min-w-0">
-                            <h1 className="text-base font-bold text-gray-900 leading-tight">Rota / Leads</h1>
-                            <p className="text-[11px] text-gray-500">Dia base: {diaBase} · {new Date().toLocaleDateString('pt-BR')}</p>
-                        </div>
-                    </div>
-                    {podeEscolherVendedor && (
+                <PageHeader
+                    icon={Route}
+                    cor="orange"
+                    titulo="Rota / Leads"
+                    subtitulo={`Dia base: ${diaBase} · ${new Date().toLocaleDateString('pt-BR')}`}
+                    className="!p-3 md:!p-4 !pb-2 md:!pb-3"
+                    acoes={podeEscolherVendedor && (
                         <SelectBusca
                             value={vendedorFiltro}
                             onChange={handleFiltroVendedor}
@@ -2340,7 +2400,7 @@ const RotaLeads = () => {
                             ))}
                         </SelectBusca>
                     )}
-                </div>
+                />
 
                 {/* Campo de pesquisa */}
                 <div className="px-3 md:px-4 pb-2">

@@ -39,8 +39,9 @@
 | Rel. Vendas | `/relatorios/vendas` | Relatório por item vendido com filtros por coluna estilo Excel | [rel-vendas.md](rel-vendas.md) |
 | Análise Flex | `/relatorios/flex` | Análise do uso de flex por vendedor: descontos, acréscimos e orçamento consumido | [analise-flex.md](analise-flex.md) |
 | Delivery | `/delivery` | Kanban de acompanhamento de pedidos de entrega (Kit Festa) com WhatsApp | [delivery.md](delivery.md) |
-| Kit Festa | `/kit-festa-admin` | Painel do site de pedidos Kit Festa: fila de pedidos, agenda da cozinha, produtos do site, bairros, cupons e configurações | [kit-festa.md](kit-festa.md) |
-| Site (Congelados) | `/site-admin` | Painel do site de congelados (B2B): fila de pedidos do site, vincular cliente, virar pedido normal/especial e seleção de produtos do site | [site-congelados.md](site-congelados.md) |
+| Pedidos Online | `/pedidos-online` | Casca única com abas Site (Congelados) e Kit Festa — as rotas antigas `/kit-festa-admin` e `/site-admin` redirecionam para cá | [pedidos-online.md](pedidos-online.md) |
+| Kit Festa | `/pedidos-online?aba=kit-festa` | Aba "Kit Festa" de Pedidos Online: fila de pedidos, agenda da cozinha, produtos do site, bairros, cupons e configurações | [kit-festa.md](kit-festa.md) |
+| Site (Congelados) | `/pedidos-online?aba=site` | Aba "Site (Congelados)" de Pedidos Online: fila de pedidos do site, vincular cliente, virar pedido normal/especial e seleção de produtos do site | [site-congelados.md](site-congelados.md) |
 
 ---
 
@@ -58,6 +59,7 @@
 
 | Aba | Rota | Descrição | Manual |
 |-----|------|-----------|--------|
+| Central de Pendências | `/pendencias` | Painel agregado do que está esperando um clique do escritório/gerência: pedidos p/ aprovar, NF-e a emitir/rejeitada, caixas p/ conferir, notas recebidas, cobrança, produção e tarefas atrasadas | [pendencias.md](pendencias.md) |
 | Caixa Diário | `/caixa` | Resumo financeiro diário do motorista com baixas, despesas e fechamento | [caixa.md](caixa.md) |
 | Despesas | `/caixa/despesas` | Registro de despesas operacionais do dia (combustível, pedágio, hotel, etc.) | [despesas.md](despesas.md) |
 | Auditoria de Entregas | `/admin/auditoria-entregas` | Revisão e correção de pagamentos registrados pelos motoristas | [auditoria-entregas.md](auditoria-entregas.md) |

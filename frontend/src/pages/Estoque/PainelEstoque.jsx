@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import estoqueService from '../../services/estoqueService';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAtualizaAoVoltar } from '../../hooks/useAtualizaAoVoltar';
+import { useFocoInicial } from '../../hooks/useFocoInicial';
 
 // ─── Embalagem / peso do produto ──────────────────────────────────────────────
 // O catálogo tem 11 produtos com "COXINHA FRANGO" no nome. A embalagem ("C/50 30GR",
@@ -155,6 +156,12 @@ export default function PainelEstoque() {
 
     const formRef = useRef(null);
     const obsRef = useRef(null);
+    const { ref: quantidadeRef, voltarFoco: voltarFocoQuantidade } = useFocoInicial();
+    // Guarda SÍNCRONA contra dois cliques/Enter muito rápidos: `loadingAjuste` é estado —
+    // só vira `true` no próximo render, e dois cliques no mesmo tique passam pela checagem
+    // do `disabled` antes de o React re-renderizar (foi assim que saiu lançamento em dobro).
+    // Um `ref` muda no mesmo instante, então o 2º clique é barrado antes de virar rede.
+    const salvandoRef = useRef(false);
     const isAdmin = user?.permissoes?.admin === true;
 
     // Carrega permissões
@@ -274,6 +281,7 @@ export default function PainelEstoque() {
     };
 
     const handleAjuste = async (tipo) => {
+        if (salvandoRef.current) return; // 2º clique/Enter no mesmo tique — barrado antes da rede
         if (!produtoSelecionado) return toast.error('Selecione um produto.');
         const qtd = parseFloat(quantidade);
         if (!qtd || qtd <= 0) return toast.error('Informe uma quantidade válida.');
@@ -285,6 +293,7 @@ export default function PainelEstoque() {
             return toast.error('Para dar SAÍDA é obrigatório escrever o motivo (mínimo 3 letras). Ex.: perda, quebra, uso interno.');
         }
 
+        salvandoRef.current = true;
         setLoadingAjuste(true);
         try {
             const res = await estoqueService.ajustar({
@@ -325,9 +334,13 @@ export default function PainelEstoque() {
                 `${label} registrada! Disponível: ${Number(res.estoqueDisponivel).toFixed(0)} ${produtoSelecionado.unidade || 'un'}`,
                 { duration: 3000 }
             );
+            // Pedido do dono: depois de dar entrada/saída, o cursor volta sozinho pro campo
+            // Quantidade, pronto pro próximo lançamento (sem precisar clicar de novo).
+            voltarFocoQuantidade();
         } catch (err) {
             toast.error(err.response?.data?.error || 'Erro ao ajustar estoque.');
         } finally {
+            salvandoRef.current = false;
             setLoadingAjuste(false);
         }
     };
@@ -584,9 +597,19 @@ export default function PainelEstoque() {
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Quantidade</label>
                                     <input
+                                        ref={quantidadeRef}
                                         type="number"
                                         value={quantidade}
                                         onChange={e => setQuantidade(e.target.value)}
+                                        onKeyDown={e => {
+                                            if (e.key !== 'Enter') return;
+                                            e.preventDefault();
+                                            // Enter lança Entrada por padrão (ação mais comum); se só Saída
+                                            // estiver liberada para o produto, usa Saída.
+                                            if (loadingAjuste) return;
+                                            if (podeEntrada) handleAjuste('ENTRADA');
+                                            else if (podeSaida) handleAjuste('SAIDA');
+                                        }}
                                         placeholder="0"
                                         min="0"
                                         step="0.001"

@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Pedidos Online — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp -->
+<meta property="og:title" content="🛍️ Novidade no Hardt App: Pedidos Online, tudo num lugar só">
+<meta property="og:description" content="Site (Congelados) e Kit Festa viraram uma entrada de menu só, com uma aba para cada canal. Nada mudou no funcionamento de cada um.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  .hero { background: linear-gradient(168deg, var(--house) 0%, #16302a 100%); color: #fff; padding: 40px 16px 96px; }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow { display: inline-block; background: var(--gold); color: #2b230f; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .14em; padding: 6px 14px; border-radius: 999px; margin-bottom: 18px; }
+  .hero h1 { font-size: clamp(28px, 7vw, 40px); font-weight: 800; line-height: 1.12; margin: 0 0 12px; text-wrap: balance; }
+  .hero p { color: rgba(255,255,255,.75); font-size: 16px; max-width: 46ch; margin: 0 auto; text-wrap: balance; }
+
+  .mock { max-width: 420px; margin: -68px auto 28px; background: #fff; border-radius: 20px; box-shadow: 0 18px 44px rgba(20,40,34,.28); overflow: hidden; text-align: left; }
+  .mock-top { background: var(--house); color: #fff; padding: 14px 18px; display: flex; align-items: center; gap: 12px; }
+  .mock-top small { display: block; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .14em; color: rgba(255,255,255,.55); }
+  .mock-top strong { font-size: 16px; line-height: 1.2; }
+  .mock-ico { font-size: 24px; }
+  .mock-body { padding: 14px 18px 18px; }
+  .mock-pills { display: flex; gap: 6px; margin-bottom: 12px; }
+  .mock-pill { flex: 1; text-align: center; font-size: 12.5px; font-weight: 700; padding: 9px 6px; border-radius: 999px; border: 1.5px solid #d8d5cc; color: var(--ink-soft); }
+  .mock-pill.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .mock-linha { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 9px 0; border-top: 1px dashed #e3e1da; font-size: 12.5px; }
+  .mock-linha:first-of-type { border-top: none; }
+  .mock-linha b { display: block; font-size: 13px; }
+  .mock-linha span.badge { font-size: 10.5px; font-weight: 700; padding: 3px 8px; border-radius: 999px; background: #fef3c7; color: #92400e; }
+
+  .sec-label { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .16em; color: var(--primary-dark); margin: 34px 4px 12px; }
+  .acc { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; margin-bottom: 10px; overflow: hidden; box-shadow: 0 1px 2px rgba(30,57,50,.05); }
+  .acc-head { width: 100%; display: flex; align-items: center; gap: 12px; background: none; border: none; font: inherit; text-align: left; padding: 15px 16px; cursor: pointer; min-height: 56px; }
+  .acc-ico { width: 38px; height: 38px; border-radius: 11px; background: var(--mint); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  .acc-head:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n { width: 30px; height: 30px; flex-shrink: 0; border-radius: 50%; background: var(--primary); color: #fff; font-weight: 800; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .rodape { text-align: center; font-size: 13px; color: var(--ink-soft); margin-top: 40px; }
+  .rodape strong { color: var(--primary-dark); }
+
+  /* ── MOCKUPS DAS TELAS DO APP ── */
+  .tela { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; overflow: hidden; margin-bottom: 12px; box-shadow: 0 1px 2px rgba(30,57,50,.05); }
+  .tela-titulo { background: var(--house); color: #fff; padding: 12px 16px; font-size: 13px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .app-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+  .app-pill { font-size: 12px; font-weight: 700; padding: 7px 14px; border-radius: 999px; border: 1.5px solid #d8d5cc; color: #6b756f; background: #fff; }
+  .app-pill.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .app-card { background: #fff; border: 1px solid #e5e3dc; border-radius: 12px; overflow: hidden; margin-top: 10px; }
+  .app-card-head { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-bottom: 1px solid #f0efe9; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .12em; color: #6b756f; }
+  .app-card-body { padding: 0; }
+  .linha-pedido { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; border-top: 1px solid #f0efe9; font-size: 12.5px; }
+  .linha-pedido:first-child { border-top: none; }
+  .linha-pedido b { display: block; font-size: 13px; }
+  .linha-pedido small { color: #9aa5a0; }
+  .app-btn { display: inline-flex; align-items: center; gap: 6px; background: var(--primary); color: #fff; font-size: 11.5px; font-weight: 700; padding: 7px 12px; border-radius: 999px; white-space: nowrap; }
+  .app-btn.claro { background: #fff; border: 1.5px solid var(--primary); color: var(--primary); }
+  .pin { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background: var(--gold); color: #2b230f; font-size: 11px; font-weight: 800; flex-shrink: 0; vertical-align: 2px; margin-left: 6px; }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>Site e Kit Festa,<br>numa entrada só de menu</h1>
+    <p>Duas telas administrativas viraram uma: "Pedidos Online" — cada canal na sua aba, sem mudar em nada como cada um funciona por dentro.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="mock" aria-hidden="true">
+    <div class="mock-top">
+      <span class="mock-ico">🛍️</span>
+      <div>
+        <small>Pedidos Online</small>
+        <strong>Fila de hoje</strong>
+      </div>
+    </div>
+    <div class="mock-body">
+      <div class="mock-pills">
+        <span class="mock-pill on">❄️ Site (Congelados)</span>
+        <span class="mock-pill">🎉 Kit Festa</span>
+      </div>
+      <div class="mock-linha"><div><b>Mercado Bom Preço</b><small>8 itens · R$ 410</small></div><span class="badge">Aguardando</span></div>
+      <div class="mock-linha"><div><b>Padaria Central</b><small>5 itens · R$ 260</small></div><span class="badge">Aguardando</span></div>
+    </div>
+  </div>
+
+  <div class="sec-label">Como funciona — toque para abrir</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🛍️</span>
+      <strong>Uma entrada de menu, duas abas</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Antes, "Kit Festa" e "Site" eram duas linhas separadas no menu — a mesma tarefa (uma fila de pedidos chegando de fora para alguém vincular a um cliente e virar pedido de verdade) espalhada em dois lugares. Agora existe uma única entrada, <b>"Pedidos Online"</b>, com uma pílula para cada canal no topo da tela.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🔒</span>
+      <strong>Nada muda por dentro de cada canal</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>É só uma troca de casca de navegação: catálogo, agenda, entrega, cupons, bairros e as regras de conversão em pedido de <b>cada canal continuam exatamente como eram</b>. Quem já usa o Kit Festa ou o Site não precisa reaprender nada.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🔗</span>
+      <strong>Link e favorito antigos continuam funcionando</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Um favorito salvo apontando para a tela antiga do Kit Festa ou do Site continua levando direto para a aba certa dentro de Pedidos Online — não é preciso refazer nada.</p>
+    </div>
+  </div>
+
+  <div class="sec-label">As telas do app</div>
+
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 1 · Pedidos Online — abas no topo</div>
+    <div class="tela-corpo">
+      <div class="app-pills">
+        <span class="app-pill on">❄️ Site (Congelados)<span class="pin">1</span></span>
+        <span class="app-pill">🎉 Kit Festa</span>
+      </div>
+      <div class="app-card">
+        <div class="app-card-head">Fila de hoje<span class="pin" style="margin-left:auto;">2</span></div>
+        <div class="app-card-body">
+          <div class="linha-pedido"><div><b>Mercado Bom Preço</b><small>8 itens · R$ 410</small></div><span class="app-btn claro">Vincular cliente</span></div>
+          <div class="linha-pedido"><div><b>Padaria Central</b><small>5 itens · R$ 260</small></div><span class="app-btn">Virar pedido<span class="pin">3</span></span></div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Clique na pílula para trocar de canal — a última escolhida fica lembrada da próxima vez que a tela abrir.</span></div>
+      <div><span class="pin">2</span><span>Cada aba mostra a fila de pedidos daquele canal, do jeito que já era na tela antiga.</span></div>
+      <div><span class="pin">3</span><span>Os mesmos botões de sempre (<b>Vincular cliente</b>, <b>Virar pedido</b>) continuam fazendo exatamente o que já faziam.</span></div>
+    </div>
+  </div>
+
+  <div class="sec-label">Para começar a usar</div>
+  <div class="passos">
+    <div class="passo">
+      <span class="passo-n">1</span>
+      <div><b>Atualize o app:</b> toque no ícone de atualizar ↻ (ou feche e abra o app).</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">2</span>
+      <div>No menu, procure por <b>"Pedidos Online"</b> em vez de "Kit Festa"/"Site" separados.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">3</span>
+      <div>Escolha a aba do canal que quer ver — o resto funciona igual a antes.</div>
+    </div>
+  </div>
+
+  <p class="rodape">Dúvidas? Pergunte ao <strong>Clippy</strong> dentro do app — ele já conhece a tela nova.<br>— Hardt Salgados</p>
+</div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.parentElement;
+    const abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>

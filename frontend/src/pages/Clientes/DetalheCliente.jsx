@@ -13,7 +13,7 @@ import leadService from '../../services/leadService';
 import devolucaoService from '../../services/devolucaoService';
 import { API_URL } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
-import { ArrowLeft, MapPin, Phone, Mail, Calendar, FileText, Save, X, User, Building, DollarSign, MessageCircle, Clock, ClipboardList, ShoppingCart, Package, Sparkles, RefreshCw, Image, UserPlus, Search, ExternalLink, Truck, CreditCard, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, MapPin, Phone, Mail, Calendar, FileText, Save, X, User, Building, DollarSign, MessageCircle, Clock, ClipboardList, ShoppingCart, Package, Sparkles, RefreshCw, Image, UserPlus, Search, ExternalLink, Truck, CreditCard, AlertTriangle, ShieldCheck } from 'lucide-react';
 import SelectBusca from '../../components/SelectBusca';
 import CampoWhatsapps from '../../components/CampoWhatsapps';
 import { normalizarDoc, formatarDoc, mascaraDoc, validarDoc } from '../../utils/documento'; // inclui CNPJ ALFANUMÉRICO
@@ -21,6 +21,9 @@ import toast from 'react-hot-toast';
 import gpsClientesService from '../../services/gpsClientesService';
 import ModalPontoGps from '../../components/ModalPontoGps';
 import whatsappClientesService, { rotuloMotivo, calcularValidaAte } from '../../services/whatsappClientesService';
+import QualidadeGps, { avaliarGps } from '../../components/Clientes/QualidadeGps';
+import QualidadeWhatsapp, { avaliarWhatsapp } from '../../components/Clientes/QualidadeWhatsapp';
+import EstadoVazio from '../../components/EstadoVazio';
 
 // Data curta em pt-BR, tolerante a valor nulo/inválido vindo do backend
 const fmtDataBr = (v) => {
@@ -97,12 +100,14 @@ const DetalheCliente = () => {
     const perms = user?.permissoes || {};
     // Espelha o gate do backend (clienteController.atualizar): quem pode editar o cadastro sincronizado com o CA
     const podeEditarCadastroCA = perms.admin || perms.clientes?.edit || perms.Pode_Editar_GPS;
+    // Espelha o gate do backend (gpsClientesRoutes.js POST /cliente/:uuid/ponto)
+    const podeEditarPontoGps = !!(perms.admin || perms.Pode_Editar_GPS || perms.clientes?.edit || perms.Pode_Executar_Entregas);
     const [cliente, setCliente] = useState(null);
     // Ponto GPS: mapa + selo + cliente balcão
     const [showMapaGps, setShowMapaGps] = useState(false);
     const [gpsInfo, setGpsInfo] = useState(null); // { balcao, selo, sugestao, balcaoPorNome }
-    // Situação do WhatsApp do cliente (vem junto do detalhe; null = sem registro)
-    const [whatsappStatus, setWhatsappStatus] = useState(null);
+    // Situação do WhatsApp do cliente vem de `cliente.whatsappStatus` — lido só via
+    // `avaliarWhatsapp(cliente)` (situacaoWhatsappAtual), fonte única de verdade.
     // Validade da dispensa — só para completar "dispensado até" quando o registro
     // é antigo e não traz dispensaValidaAte. Falha em silêncio: é detalhe informativo.
     const [diasValidadeDispensa, setDiasValidadeDispensa] = useState(null);
@@ -185,7 +190,6 @@ const DetalheCliente = () => {
             ]);
 
             setCliente(clienteData);
-            setWhatsappStatus(clienteData?.whatsappStatus || null);
             if (clienteData?.whatsappStatus?.dispensaMotivo && !clienteData.whatsappStatus.dispensaValidaAte) {
                 whatsappClientesService.config()
                     .then(cfg => setDiasValidadeDispensa(cfg?.diasValidadeDispensa ?? null))
@@ -428,8 +432,32 @@ const DetalheCliente = () => {
         navigate('/clientes');
     };
 
+    // Recarrega só o pedacinho necessário depois de ajustar o ponto/WhatsApp
+    // na aba Qualidade dos Dados — evita re-buscar pedidos/atendimentos/insights.
+    const atualizarQualidadeGps = async () => {
+        try {
+            const r = await gpsClientesService.cliente(uuid);
+            setGpsInfo(r?.cliente?.gps || {});
+            if (r?.cliente?.Ponto_GPS) setFormData(f => ({ ...f, Ponto_GPS: r.cliente.Ponto_GPS }));
+        } catch { /* falha silenciosa: o card já mostrou o resultado do próprio salvamento */ }
+    };
+    const atualizarQualidadeWhatsapp = async () => {
+        try {
+            const c = await clienteService.detalhar(uuid);
+            setCliente(c);
+            if (c?.Telefone_Celular != null) setFormData(f => ({ ...f, Telefone_Celular: c.Telefone_Celular }));
+        } catch { /* falha silenciosa: o card já mostrou o resultado do próprio salvamento */ }
+    };
+
     if (loading) return <div className="p-8 text-center text-gray-500">Carregando detalhes do cliente...</div>;
     if (!cliente) return <div className="p-8 text-center text-gray-600">Cliente não encontrado.</div>;
+
+    // Qualidade dos dados: mesma regra usada dentro de QualidadeGps/QualidadeWhatsapp
+    // (avaliarGps/avaliarWhatsapp), para o número da aba e o "tudo certo" baterem
+    // com o que os cards mostram — sem recalcular a regra duas vezes.
+    const situacaoGpsAtual = avaliarGps(formData.Ponto_GPS, gpsInfo);
+    const situacaoWhatsappAtual = avaliarWhatsapp(cliente);
+    const pendenciasQualidade = (situacaoGpsAtual.ok ? 0 : 1) + (situacaoWhatsappAtual.ok ? 0 : 1);
 
     return (
         <div className="w-full px-3 sm:px-4 py-4 max-w-screen-2xl">
@@ -465,35 +493,94 @@ const DetalheCliente = () => {
                 </div>
             </div>
 
-            {/* Abas */}
-            <div className="flex flex-wrap border-b border-gray-200 mb-5 gap-0">
+            {/* Abas — pílula (Linguagem visual v2, CLAUDE.md), scroll horizontal no mobile */}
+            <div className="flex items-center gap-1.5 mb-5 overflow-x-auto hide-scrollbar pb-0.5">
                 <button
                     onClick={() => setAbaAtiva('operacional')}
-                    className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors ${abaAtiva === 'operacional' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}
+                    className={`shrink-0 whitespace-nowrap px-3.5 py-2 rounded-full text-sm font-bold min-h-[36px] transition-colors ${abaAtiva === 'operacional' ? 'bg-house text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'}`}
                 >
                     ✏️ Cadastro
                 </button>
                 <button
+                    onClick={() => setAbaAtiva('qualidade')}
+                    className={`shrink-0 whitespace-nowrap px-3.5 py-2 rounded-full text-sm font-bold min-h-[36px] flex items-center gap-1.5 transition-colors ${abaAtiva === 'qualidade' ? 'bg-house text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+                >
+                    <ShieldCheck className="h-3.5 w-3.5" /> Qualidade dos dados
+                    {pendenciasQualidade > 0 && (
+                        <span className={`rounded-full px-1.5 text-[11px] ${abaAtiva === 'qualidade' ? 'bg-white/20' : 'bg-black/[.08]'}`}>{pendenciasQualidade}</span>
+                    )}
+                </button>
+                <button
                     onClick={() => setAbaAtiva('admin')}
-                    className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors ${abaAtiva === 'admin' ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-500'}`}
+                    className={`shrink-0 whitespace-nowrap px-3.5 py-2 rounded-full text-sm font-bold min-h-[36px] transition-colors ${abaAtiva === 'admin' ? 'bg-house text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'}`}
                 >
                     ⚙️ Admin
                 </button>
                 <button
                     onClick={() => setAbaAtiva('historico')}
-                    className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors ${abaAtiva === 'historico' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}
+                    className={`shrink-0 whitespace-nowrap px-3.5 py-2 rounded-full text-sm font-bold min-h-[36px] transition-colors ${abaAtiva === 'historico' ? 'bg-house text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'}`}
                 >
                     Histórico ({atendimentos.length + pedidosCliente.length + devolucoesCliente.length + leadsCliente.reduce((acc, l) => acc + (l.atendimentos?.length || 0), 0)})
                 </button>
                 {leadsCliente.length > 0 && (
                     <button
                         onClick={() => setAbaAtiva('lead')}
-                        className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors ${abaAtiva === 'lead' ? 'border-orange-500 text-orange-600' : 'border-transparent text-gray-500'}`}
+                        className={`shrink-0 whitespace-nowrap px-3.5 py-2 rounded-full text-sm font-bold min-h-[36px] transition-colors ${abaAtiva === 'lead' ? 'bg-house text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'}`}
                     >
                         Lead ({leadsCliente.length})
                     </button>
                 )}
             </div>
+
+            {/* ============================= ABA: QUALIDADE DOS DADOS ============================= */}
+            {abaAtiva === 'qualidade' && (
+                pendenciasQualidade === 0 ? (
+                    <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+                        <EstadoVazio
+                            icon={ShieldCheck}
+                            titulo="Tudo certo com este cliente"
+                            descricao="Ponto GPS conferido e WhatsApp em ordem — nenhuma pendência de cadastro."
+                        />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 pt-0">
+                            <QualidadeGps
+                                clienteUuid={uuid}
+                                clienteNome={formData.NomeFantasia || formData.Nome || ''}
+                                pontoGps={formData.Ponto_GPS}
+                                gps={gpsInfo}
+                                podeEditar={podeEditarPontoGps}
+                                onAtualizado={atualizarQualidadeGps}
+                            />
+                            <QualidadeWhatsapp
+                                clienteUuid={uuid}
+                                clienteNome={formData.NomeFantasia || formData.Nome || ''}
+                                cliente={cliente}
+                                diasValidadeDispensa={diasValidadeDispensa}
+                                podeEditar={podeEditarCadastroCA}
+                                onAtualizado={atualizarQualidadeWhatsapp}
+                            />
+                        </div>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <QualidadeGps
+                            clienteUuid={uuid}
+                            clienteNome={formData.NomeFantasia || formData.Nome || ''}
+                            pontoGps={formData.Ponto_GPS}
+                            gps={gpsInfo}
+                            podeEditar={podeEditarPontoGps}
+                            onAtualizado={atualizarQualidadeGps}
+                        />
+                        <QualidadeWhatsapp
+                            clienteUuid={uuid}
+                            clienteNome={formData.NomeFantasia || formData.Nome || ''}
+                            cliente={cliente}
+                            diasValidadeDispensa={diasValidadeDispensa}
+                            podeEditar={podeEditarCadastroCA}
+                            onAtualizado={atualizarQualidadeWhatsapp}
+                        />
+                    </div>
+                )
+            )}
 
             {/* ============================= ABA: HISTÓRICO ============================= */}
             {abaAtiva === 'historico' && (() => {
@@ -998,10 +1085,13 @@ const DetalheCliente = () => {
                                 <MapPin className="h-4 w-4" /> Mapa
                             </button>
                         </div>
-                        {gpsInfo?.selo === 'CONFIRMADO' && (
+                        {/* Mesma classificação de `avaliarGps` usada na aba Qualidade dos Dados —
+                            só a CONDIÇÃO vem de lá (`chave`); a redação deste balão compacto é
+                            fixa de propósito (mais curta que o `desc` do card grande). */}
+                        {situacaoGpsAtual.chave === 'CONFIRMADO' && (
                             <p className="mt-1.5 text-xs font-semibold text-green-700">📍✅ Ponto confirmado pelas entregas reais</p>
                         )}
-                        {gpsInfo?.selo === 'SUSPEITO' && (
+                        {situacaoGpsAtual.chave === 'SUSPEITO' && (
                             <p className="mt-1.5 text-xs font-semibold text-amber-700">📍⚠️ Ponto suspeito — as entregas estão acontecendo em outro lugar (abra o mapa para corrigir)</p>
                         )}
 
@@ -1028,7 +1118,7 @@ const DetalheCliente = () => {
                             <label htmlFor="chkBalcao" className={`text-sm ${podeLiberarBalcao ? 'text-gray-700' : 'text-gray-400'}`}>
                                 🏪 <b>Cliente Balcão</b> — compra e retira na empresa (vende sem exigir ponto GPS)
                                 {!podeLiberarBalcao && <span className="block text-[11px]">Só quem tem a permissão "Liberar Cliente Balcão" pode marcar.</span>}
-                                {gpsInfo?.balcao && gpsInfo?.balcaoPorNome && <span className="block text-[11px] text-gray-500">Marcado por {gpsInfo.balcaoPorNome}</span>}
+                                {situacaoGpsAtual.balcaoPorNome && <span className="block text-[11px] text-gray-500">Marcado por {situacaoGpsAtual.balcaoPorNome}</span>}
                             </label>
                         </div>
                     </div>
@@ -1199,28 +1289,29 @@ const DetalheCliente = () => {
                                 onChange={(e) => setFormData({ ...formData, Telefone_Celular: e.target.value.replace(/\D/g, '') })}
                             />
                             <p className="text-xs text-gray-500 mt-1">Com DDD, só números.</p>
-                            {/* Situação do WhatsApp deste número. O sistema só sabe que a mensagem
-                                SAIU — não existe confirmação de entrega do bot. Nada de "entregue". */}
-                            {(whatsappStatus?.selo || whatsappStatus?.verificacaoStatus === 'EXISTE') && (
+                            {/* Situação do WhatsApp deste número — mesma classificação de
+                                `avaliarWhatsapp` usada na aba Qualidade dos Dados (única fonte de
+                                verdade; não reavaliar whatsappStatus.selo/verificacaoStatus aqui). */}
+                            {(situacaoWhatsappAtual.chave === 'EM_USO' || situacaoWhatsappAtual.chave === 'COM_PROBLEMA' || situacaoWhatsappAtual.chave === 'TEM_CONTA') && (
                                 <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                                    {whatsappStatus?.selo === 'EM_USO' && (
+                                    {situacaoWhatsappAtual.chave === 'EM_USO' && (
                                         <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
                                             WhatsApp em uso
                                         </span>
                                     )}
-                                    {whatsappStatus?.selo === 'COM_PROBLEMA' && (
+                                    {situacaoWhatsappAtual.chave === 'COM_PROBLEMA' && (
                                         <span className="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-700">
                                             Número com problema
                                         </span>
                                     )}
-                                    {whatsappStatus?.verificacaoStatus === 'EXISTE' && (
+                                    {situacaoWhatsappAtual.chave === 'TEM_CONTA' && (
                                         // NÃO escrever "Número verificado": este campo só diz que o
                                         // WhatsApp respondeu que EXISTE conta naquele número — nunca que
                                         // o número é DO CLIENTE. Aqui é o pior lugar para prometer a
                                         // mais: é a ficha que o vendedor abre COM O CLIENTE NA FRENTE,
                                         // e "verificado" faz ele deixar de conferir o número.
-                                        // Redação idêntica à de PendenciasWhatsapp.jsx de propósito —
-                                        // foi por as duas telas divergirem que isto escapou da 1ª limpeza.
+                                        // Redação idêntica à de PendenciasWhatsapp.jsx/QualidadeWhatsapp.jsx
+                                        // de propósito — foi por as telas divergirem que isto escapou da 1ª limpeza.
                                         <span className="text-xs text-gray-500"
                                             title="O WhatsApp respondeu que existe uma conta neste número. NÃO quer dizer que o número seja do cliente — isso continua sendo conferido com ele.">
                                             Tem conta de WhatsApp
@@ -1228,18 +1319,18 @@ const DetalheCliente = () => {
                                     )}
                                 </div>
                             )}
-                            {whatsappStatus?.selo === 'COM_PROBLEMA' && whatsappStatus?.seloMotivo && (
-                                <p className="text-xs text-red-600 mt-1 leading-snug">{whatsappStatus.seloMotivo}</p>
+                            {situacaoWhatsappAtual.chave === 'COM_PROBLEMA' && situacaoWhatsappAtual.seloMotivo && (
+                                <p className="text-xs text-red-600 mt-1 leading-snug">{situacaoWhatsappAtual.seloMotivo}</p>
                             )}
-                            {whatsappStatus?.dispensaMotivo && (
+                            {situacaoWhatsappAtual.chave === 'DISPENSADO' && (
                                 <p className="text-xs text-amber-700 mt-1 leading-snug">
-                                    Dispensado do WhatsApp: {rotuloMotivo(whatsappStatus.dispensaMotivo)}
-                                    {whatsappStatus.dispensaPorNome ? ` · por ${whatsappStatus.dispensaPorNome}` : ''}
-                                    {fmtDataBr(whatsappStatus.dispensaEm) ? ` · em ${fmtDataBr(whatsappStatus.dispensaEm)}` : ''}
+                                    Dispensado do WhatsApp: {rotuloMotivo(situacaoWhatsappAtual.dispensaMotivo)}
+                                    {situacaoWhatsappAtual.dispensaPorNome ? ` · por ${situacaoWhatsappAtual.dispensaPorNome}` : ''}
+                                    {fmtDataBr(situacaoWhatsappAtual.dispensaEm) ? ` · em ${fmtDataBr(situacaoWhatsappAtual.dispensaEm)}` : ''}
                                     {/* dispensaValidaAte vem do backend; dispensa antiga sem o campo cai
                                         no cálculo pela config, e sem nenhum dos dois o prazo é omitido */}
-                                    {fmtDataBr(calcularValidaAte(whatsappStatus.dispensaValidaAte, whatsappStatus.dispensaEm, diasValidadeDispensa))
-                                        ? <b> · dispensado até {fmtDataBr(calcularValidaAte(whatsappStatus.dispensaValidaAte, whatsappStatus.dispensaEm, diasValidadeDispensa))}</b>
+                                    {fmtDataBr(calcularValidaAte(situacaoWhatsappAtual.dispensaValidaAte, situacaoWhatsappAtual.dispensaEm, diasValidadeDispensa))
+                                        ? <b> · dispensado até {fmtDataBr(calcularValidaAte(situacaoWhatsappAtual.dispensaValidaAte, situacaoWhatsappAtual.dispensaEm, diasValidadeDispensa))}</b>
                                         : ''}
                                 </p>
                             )}

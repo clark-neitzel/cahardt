@@ -563,7 +563,7 @@ function CatalogoCard({ produto, onAbrir, montarMode, selecionado, onToggle }) {
             type="button"
             onClick={montarMode ? onToggle : onAbrir}
             title={montarMode ? 'Selecionar para o catálogo' : 'Ver detalhes do produto'}
-            className={`group text-left bg-white rounded-xl shadow-sm border overflow-hidden hover:shadow-md active:scale-[0.98] transition-all flex flex-col ${selecionado ? 'border-primary ring-2 ring-primary' : 'border-gray-200'}`}
+            className={`group text-left bg-white rounded-xl raio-proprio shadow-sm border overflow-hidden hover:shadow-md active:scale-[0.98] transition-all flex flex-col ${selecionado ? 'border-primary ring-2 ring-primary' : 'border-gray-200'}`}
         >
             <div className="relative aspect-[4/3] bg-gray-100" style={!img ? { background: tileGradient(produto.codigo || produto.nome) } : undefined}>
                 {img

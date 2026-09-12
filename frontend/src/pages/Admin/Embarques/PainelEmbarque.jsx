@@ -6,6 +6,8 @@ import embarqueService from '../../../services/embarqueService';
 import vendedorService from '../../../services/vendedorService';
 import NovaCargaModal from './NovaCargaModal';
 import DetalhesCargaModal from './DetalhesCargaModal';
+import PageHeader from '../../../components/PageHeader';
+import EstadoVazio from '../../../components/EstadoVazio';
 
 const PainelEmbarque = () => {
     const [embarques, setEmbarques] = useState([]);
@@ -58,32 +60,31 @@ const PainelEmbarque = () => {
 
     return (
         <div className="w-full px-3 md:px-0 py-4 md:py-6">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white p-4 md:p-5 rounded-t-xl shadow-sm border border-gray-200 border-b-0 gap-3">
-                <div className="flex items-center gap-3">
-                    <div className="bg-sky-100 p-2 rounded-lg">
-                        <Truck className="h-5 w-5 text-sky-600" />
-                    </div>
-                    <div>
-                        <h1 className="text-lg font-bold text-gray-900">Painel de Expedição</h1>
-                        <p className="text-xs text-gray-500 hidden sm:block">Gestão logística de romaneios, veículos e motoristas</p>
-                    </div>
-                </div>
-                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                    <Link
-                        to="/admin/embarques/mapa"
-                        className="flex items-center gap-2 px-4 py-2 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-sm w-full sm:w-auto justify-center min-h-[44px]"
-                    >
-                        <MapIcon className="h-4 w-4" />
-                        Mapa das entregas
-                    </Link>
-                    <button
-                        onClick={() => setIsNovaCargaOpen(true)}
-                        className="flex items-center gap-2 px-4 py-2 rounded-xl shadow-sm text-sm font-semibold text-white bg-sky-600 hover:bg-sky-700 transition-colors w-full sm:w-auto justify-center min-h-[44px]"
-                    >
-                        <Plus className="h-4 w-4" />
-                        Montar Nova Carga
-                    </button>
-                </div>
+            <div className="bg-white rounded-t-xl shadow-sm border border-gray-200 border-b-0">
+                <PageHeader
+                    icon={Truck}
+                    cor="sky"
+                    titulo="Painel de Expedição"
+                    subtitulo="Gestão logística de romaneios, veículos e motoristas"
+                    acoes={
+                        <>
+                            <Link
+                                to="/admin/embarques/mapa"
+                                className="flex items-center gap-2 px-4 py-2 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-sm w-full sm:w-auto justify-center min-h-[44px]"
+                            >
+                                <MapIcon className="h-4 w-4" />
+                                Mapa das entregas
+                            </Link>
+                            <button
+                                onClick={() => setIsNovaCargaOpen(true)}
+                                className="flex items-center gap-2 px-4 py-2 rounded-full shadow-sm text-sm font-semibold text-white bg-primary hover:bg-primaryDark transition-colors w-full sm:w-auto justify-center min-h-[44px]"
+                            >
+                                <Plus className="h-4 w-4" />
+                                Montar Nova Carga
+                            </button>
+                        </>
+                    }
+                />
             </div>
 
             {/* Desktop: Tabela */}
@@ -110,11 +111,8 @@ const PainelEmbarque = () => {
                             </tr>
                         ) : embarques.length === 0 ? (
                             <tr>
-                                <td colSpan="5" className="px-6 py-10 text-center">
-                                    <div className="flex flex-col items-center gap-2 text-gray-400">
-                                        <Truck className="h-10 w-10 text-gray-200" />
-                                        <span className="text-sm">Nenhuma carga despachada recentemente.</span>
-                                    </div>
+                                <td colSpan="5">
+                                    <EstadoVazio icon={Truck} titulo="Nenhuma carga despachada recentemente." />
                                 </td>
                             </tr>
                         ) : embarques.map((emb) => (
@@ -153,10 +151,7 @@ const PainelEmbarque = () => {
                         <span className="text-sm">Buscando frota…</span>
                     </div>
                 ) : embarques.length === 0 ? (
-                    <div className="flex flex-col items-center gap-2 py-10 text-gray-400">
-                        <Truck className="h-10 w-10 text-gray-200" />
-                        <span className="text-sm">Nenhuma carga despachada recentemente.</span>
-                    </div>
+                    <EstadoVazio icon={Truck} titulo="Nenhuma carga despachada recentemente." />
                 ) : (
                     <div className="divide-y divide-gray-100">
                         {embarques.map((emb) => (

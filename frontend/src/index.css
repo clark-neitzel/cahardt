@@ -129,5 +129,10 @@ button.hover\:bg-indigo-600:hover, button.hover\:bg-indigo-700:hover, a.hover\:b
 .border-blue-300 { border-color: #b6d5c7; }
 
 /* Botões em pílula (raio 50px universal da Starbucks) + toque que "afunda" */
-button.rounded, button.rounded-md { border-radius: 9999px; }
+/* Linguagem visual v2 (12/09/2026): cobre também rounded-lg/rounded-xl — rede de
+   segurança para botão que usa o raio de card por engano continuar virando pílula.
+   Escape: botão que usa rounded-lg/xl DE PROPÓSITO (segmented control, card-botão)
+   ganha a classe `raio-proprio` e fica de fora do remapeamento. */
+button.rounded, button.rounded-md,
+button.rounded-lg:not(.raio-proprio), button.rounded-xl:not(.raio-proprio) { border-radius: 9999px; }
 button:active:not(:disabled) { transform: scale(0.97); }

@@ -28,7 +28,7 @@ import { normalizarDoc } from '../../utils/documento'; // busca por CPF/CNPJ (in
 const DIA_SEMANA_MAP = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
 
 // Componente de input de quantidade que suporta frações (0,200 / 0.5 etc)
-const QuantidadeInput = ({ value, permiteFracao, onChange }) => {
+const QuantidadeInput = ({ value, permiteFracao, onChange, onEnterFoco }) => {
     const [text, setText] = useState(String(value));
     const [editing, setEditing] = useState(false);
 
@@ -63,7 +63,7 @@ const QuantidadeInput = ({ value, permiteFracao, onChange }) => {
                     setText(v);
                 }}
                 onBlur={e => commit(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') { e.target.blur(); } }}
+                onKeyDown={e => { if (e.key === 'Enter') { e.target.blur(); onEnterFoco && onEnterFoco(); } }}
             />
         );
     }
@@ -71,7 +71,7 @@ const QuantidadeInput = ({ value, permiteFracao, onChange }) => {
     // Inteiro: input numérico simples
     return (
         <input
-            type="number" min="1"
+            type="number" min="1" inputMode="numeric"
             className="w-12 text-center border border-gray-300 rounded bg-white text-gray-900 text-sm font-bold py-0.5"
             value={value}
             onFocus={e => e.target.select()}
@@ -79,6 +79,7 @@ const QuantidadeInput = ({ value, permiteFracao, onChange }) => {
                 const v = Number(e.target.value);
                 if (v >= 0) onChange(v);
             }}
+            onKeyDown={e => { if (e.key === 'Enter') { e.target.blur(); onEnterFoco && onEnterFoco(); } }}
         />
     );
 };
@@ -123,6 +124,10 @@ const NovoPedido = () => {
     const { user } = useAuth();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    // Ref espelhando `saving`: o estado do React só atualiza no próximo render, e um clique duplo
+    // muito rápido (ou o segundo toque no mobile) pode disparar handleSalvar de novo ANTES desse
+    // re-render acontecer — criando pedido em dobro. O ref é síncrono e evita a corrida.
+    const savingRef = useRef(false);
     const [especial, setEspecial] = useState(false);
     const [bonificacao, setBonificacao] = useState(false);
     // Bonificação COM ou SEM nota fiscal — resposta obrigatória de quem cria o pedido.
@@ -139,6 +144,11 @@ const NovoPedido = () => {
     // Core Data
     const [clientes, setClientes] = useState([]);
     const [produtos, setProdutos] = useState([]);
+    // true enquanto o catálogo de produtos está sendo (re)carregado (troca de tipo/condição de
+    // pedido). Usado para não deixar "Repetir último pedido" marcar tudo como indisponível
+    // durante a janela em que `produtos` está vazio/desatualizado (condição de corrida real —
+    // achado do revisor: Especial faz setProdutos([]) e o catálogo novo só chega depois, async).
+    const [carregandoProdutos, setCarregandoProdutos] = useState(false);
     const [todasCondicoes, setTodasCondicoes] = useState([]);
     const [vendedores, setVendedores] = useState([]);
 
@@ -231,12 +241,17 @@ const NovoPedido = () => {
     })();
 
     const recarregarProdutos = async (cats) => {
-        const paramsProd = { limit: 1000, ativo: true };
-        if (Array.isArray(cats) && cats.length > 0) paramsProd.categorias = cats.join(',');
-        if (categoriasComerciaisPermitidas) paramsProd.categoriaProdutoIds = categoriasComerciaisPermitidas.join(',');
-        const produtosData = await produtoService.listar(paramsProd);
-        const listaProdutos = produtosData.data || produtosData || [];
-        setProdutos(listaProdutos);
+        setCarregandoProdutos(true);
+        try {
+            const paramsProd = { limit: 1000, ativo: true };
+            if (Array.isArray(cats) && cats.length > 0) paramsProd.categorias = cats.join(',');
+            if (categoriasComerciaisPermitidas) paramsProd.categoriaProdutoIds = categoriasComerciaisPermitidas.join(',');
+            const produtosData = await produtoService.listar(paramsProd);
+            const listaProdutos = produtosData.data || produtosData || [];
+            setProdutos(listaProdutos);
+        } finally {
+            setCarregandoProdutos(false);
+        }
     };
 
     const carregarDadosBase = async () => {
@@ -567,25 +582,35 @@ const NovoPedido = () => {
                 // Especial: usa exclusivamente as categorias definidas na condição
                 const cats = catsEspecial;
                 (async () => {
-                    const paramsProd = { limit: 1000, ativo: true, categorias: cats.join(',') };
-                    if (categoriasComerciaisPermitidas) paramsProd.categoriaProdutoIds = categoriasComerciaisPermitidas.join(',');
-                    const produtosData = await produtoService.listar(paramsProd);
-                    const listaProdutos = produtosData.data || produtosData || [];
-                    setProdutos(listaProdutos);
-                    setItensMap(prev => reavaliarMapaItens(prev, cond, promocoesMap, listaProdutos));
+                    setCarregandoProdutos(true);
+                    try {
+                        const paramsProd = { limit: 1000, ativo: true, categorias: cats.join(',') };
+                        if (categoriasComerciaisPermitidas) paramsProd.categoriaProdutoIds = categoriasComerciaisPermitidas.join(',');
+                        const produtosData = await produtoService.listar(paramsProd);
+                        const listaProdutos = produtosData.data || produtosData || [];
+                        setProdutos(listaProdutos);
+                        setItensMap(prev => reavaliarMapaItens(prev, cond, promocoesMap, listaProdutos));
+                    } finally {
+                        setCarregandoProdutos(false);
+                    }
                 })();
             } else if (!especial && !bonificacao && catsEspecial.length > 0) {
                 // Pedido comum: expande categorias padrão com as extras definidas na condição
                 const catsPadrao = categoriasNormalRef.current || [];
                 const cats = Array.from(new Set([...catsPadrao, ...catsEspecial]));
                 (async () => {
-                    const paramsProd = { limit: 1000, ativo: true };
-                    if (cats.length > 0) paramsProd.categorias = cats.join(',');
-                    if (categoriasComerciaisPermitidas) paramsProd.categoriaProdutoIds = categoriasComerciaisPermitidas.join(',');
-                    const produtosData = await produtoService.listar(paramsProd);
-                    const listaProdutos = produtosData.data || produtosData || [];
-                    setProdutos(listaProdutos);
-                    setItensMap(prev => reavaliarMapaItens(prev, cond, promocoesMap, listaProdutos));
+                    setCarregandoProdutos(true);
+                    try {
+                        const paramsProd = { limit: 1000, ativo: true };
+                        if (cats.length > 0) paramsProd.categorias = cats.join(',');
+                        if (categoriasComerciaisPermitidas) paramsProd.categoriaProdutoIds = categoriasComerciaisPermitidas.join(',');
+                        const produtosData = await produtoService.listar(paramsProd);
+                        const listaProdutos = produtosData.data || produtosData || [];
+                        setProdutos(listaProdutos);
+                        setItensMap(prev => reavaliarMapaItens(prev, cond, promocoesMap, listaProdutos));
+                    } finally {
+                        setCarregandoProdutos(false);
+                    }
                 })();
             } else {
                 recalcularItens(cond);
@@ -796,6 +821,62 @@ const NovoPedido = () => {
         });
     }, [produtos, condicaoSelecionada, historicoMap, clienteId, reavaliarMapaItens, promocoesMap]);
 
+    // Resumo do histórico do cliente para o botão "Repetir último pedido": quantos produtos têm
+    // compra anterior e a data da compra mais recente entre eles (historicoMap já carregado).
+    const resumoHistoricoCliente = useMemo(() => {
+        let n = 0;
+        let maisRecente = null;
+        historicoMap.forEach(hist => {
+            if (hist?.compras?.length) {
+                n++;
+                const d = hist.compras[0].data;
+                if (!maisRecente || new Date(d) > new Date(maisRecente)) maisRecente = d;
+            }
+        });
+        return { n, maisRecente };
+    }, [historicoMap]);
+
+    // "Repetir último pedido": pré-carrega o carrinho com a compra MAIS RECENTE de cada item do
+    // histórico do cliente (dado que historicoComprasCliente já devolve — sem chamada nova ao
+    // backend). Passa pela MESMA setQuantidade usada ao adicionar item manualmente: preço atual
+    // do catálogo/regra de histórico, travas de estoque e promoção continuam valendo do mesmo
+    // jeito. NUNCA envia — só pré-carrega; o vendedor revisa e clica Salvar/Enviar como hoje.
+    const repetirUltimoPedido = useCallback(() => {
+        if (resumoHistoricoCliente.n === 0) return;
+        // Guarda contra a condição de corrida: catálogo ainda carregando/vazio (ex.: acabou de
+        // trocar para Pedido Especial) marcaria tudo como "indisponível" por engano — o botão já
+        // fica desabilitado nessa janela, isto aqui é reforço.
+        if (carregandoProdutos || produtos.length === 0) return;
+
+        const aplicar = () => {
+            let adicionados = 0;
+            let indisponiveis = 0;
+            historicoMap.forEach((hist, produtoId) => {
+                if (!hist?.compras?.length) return;
+                const qtd = Number(hist.compras[0].quantidade) || 0;
+                if (qtd <= 0) return;
+                // Produto descontinuado/fora do catálogo atual (tipo de pedido/condição): ignora com aviso
+                if (!produtos.some(p => p.id === produtoId)) { indisponiveis++; return; }
+                setQuantidade(produtoId, qtd);
+                adicionados++;
+            });
+            if (adicionados > 0) {
+                toast.success(`${adicionados} ${adicionados === 1 ? 'item pré-carregado' : 'itens pré-carregados'} do último pedido. Revise as quantidades e o preço antes de enviar.`, { duration: 6000 });
+            }
+            if (indisponiveis > 0) {
+                toast.error(`${indisponiveis} ${indisponiveis === 1 ? 'item não está' : 'itens não estão'} mais disponíveis.`, { duration: 6000 });
+            }
+        };
+
+        // Carrinho já tem itens: "repetir" sobrescreve, então confirma antes (ação irreversível
+        // de UI — mais previsível para o vendedor do que tentar mesclar quantidades diferentes).
+        if (itensMap.size > 0) {
+            if (!window.confirm('O carrinho já tem itens. Repetir o último pedido vai SUBSTITUIR o carrinho pela compra mais recente de cada produto do histórico. Continuar?')) return;
+            setItensMap(new Map());
+        }
+        aplicar();
+    }, [historicoMap, produtos, itensMap, resumoHistoricoCliente, setQuantidade, carregandoProdutos]);
+
     const setValorUnitario = useCallback((produtoId, valor) => {
         setItensMap(prev => {
             const m = new Map(prev);
@@ -921,6 +1002,9 @@ const NovoPedido = () => {
     };
 
     const handleSalvar = (statusEnvio) => {
+        // Guarda contra clique duplo/duplo toque: se já tem um salvamento em andamento, ignora
+        // silenciosamente a chamada extra (ref é síncrono, não espera o re-render do `saving`).
+        if (savingRef.current) return;
         // Bloqueio de estoque: ENVIAR não pode com item acima do disponível (salvar pode)
         if (statusEnvio === 'ENVIAR' && estourosEstoque.length > 0) {
             setErroEstoqueMsg(mensagemErroEstoque());
@@ -965,6 +1049,7 @@ const NovoPedido = () => {
             return;
         }
 
+        savingRef.current = true;
         setSaving(true);
         if (navigator.geolocation && statusEnvio === 'ENVIAR') {
             navigator.geolocation.getCurrentPosition(
@@ -1051,6 +1136,7 @@ const NovoPedido = () => {
                 toast.error(msg, { duration: 6000, style: { maxWidth: "600px" } });
             }
         } finally {
+            savingRef.current = false;
             setSaving(false);
         }
     };
@@ -1229,6 +1315,11 @@ const NovoPedido = () => {
                         {/* Info do produto */}
                         <div className="flex-1 min-w-0">
                             <div className="text-sm font-semibold text-gray-800 leading-tight line-clamp-2">{produto.nome}</div>
+                            {hist && hist.compras && hist.compras.length > 0 && (
+                                <div className="text-[11px] text-gray-500 mt-0.5">
+                                    Última vez: {hist.compras[0].quantidade}{produto.unidade || 'un'} em {fmtData(hist.compras[0].data)}
+                                </div>
+                            )}
                             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
                                 {/* Tag de Promoção */}
                                 {(() => {
@@ -1350,11 +1441,17 @@ const NovoPedido = () => {
                                     value={qtd}
                                     permiteFracao={!!produto.categoriaProduto?.permiteFracao}
                                     onChange={v => setQuantidade(produto.id, v)}
+                                    onEnterFoco={() => searchInputRef.current?.focus()}
                                 />
                             )}
                             <button
                                 onMouseDown={e => e.preventDefault()}
-                                onClick={() => setQuantidade(produto.id, qtd + 1)}
+                                onClick={() => {
+                                    const eraNovoNoCarrinho = qtd === 0;
+                                    setQuantidade(produto.id, qtd + 1);
+                                    // Item novo adicionado: devolve o foco pra busca, pro vendedor já procurar o próximo produto
+                                    if (eraNovoNoCarrinho) searchInputRef.current?.focus();
+                                }}
                                 className="w-8 h-8 flex items-center justify-center rounded-md bg-blue-600 text-white active:bg-blue-700 shadow-sm"
                             >
                                 <Plus className="h-4 w-4" />
@@ -1520,9 +1617,10 @@ const NovoPedido = () => {
                             </button>
                         )}
                         <button onClick={() => handleSalvar('ABERTO')}
-                            className={`px-3 py-1.5 font-bold text-xs border rounded-lg transition-colors ${estourosEstoque.length > 0 ? 'animate-pulse bg-amber-100 border-amber-400 text-amber-800' : 'text-primary border-primary/30 hover:bg-blue-50'}`}
+                            disabled={saving}
+                            className={`px-3 py-1.5 font-bold text-xs border rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${estourosEstoque.length > 0 ? 'animate-pulse bg-amber-100 border-amber-400 text-amber-800' : 'text-primary border-primary/30 hover:bg-blue-50'}`}
                             title={estourosEstoque.length > 0 ? 'Há itens sem estoque — salve o pedido para enviar depois' : undefined}>
-                            Salvar
+                            {saving ? 'Salvando...' : 'Salvar'}
                         </button>
                     </div>
                 </div>
@@ -1826,6 +1924,30 @@ const NovoPedido = () => {
                                 {/* ── ETAPA 3: Data de Entrega (só após condição selecionada) ── */}
                                 {tipoPedido && condicaoPagamentoId && (
                                     <div className="pt-2 border-t border-gray-100">
+                                        {/* "Repetir último pedido": só aparece quando há histórico do cliente.
+                                            Desabilitado enquanto o catálogo está carregando/vazio (troca de tipo
+                                            de pedido, ex. Especial) — senão marcaria tudo como indisponível. */}
+                                        {resumoHistoricoCliente.n > 0 && (() => {
+                                            const catalogoIndisponivel = carregandoProdutos || produtos.length === 0;
+                                            return (
+                                            <button
+                                                type="button"
+                                                disabled={catalogoIndisponivel}
+                                                onClick={repetirUltimoPedido}
+                                                className={`w-full mb-2 flex flex-col items-center justify-center gap-0.5 px-3 py-2.5 min-h-[44px] border rounded-full text-center transition-colors ${catalogoIndisponivel ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed' : 'bg-mint/40 border-primary/30 text-primaryDark hover:bg-mint/70'}`}
+                                            >
+                                                <span className="flex items-center gap-1.5 text-xs font-bold">
+                                                    <Clock className="h-3.5 w-3.5 shrink-0" />
+                                                    {catalogoIndisponivel ? 'Carregando catálogo…' : 'Repetir último pedido'}
+                                                </span>
+                                                {!catalogoIndisponivel && (
+                                                <span className="text-[10px] font-medium text-primaryDark/70">
+                                                    {resumoHistoricoCliente.n} {resumoHistoricoCliente.n === 1 ? 'item' : 'itens'}{resumoHistoricoCliente.maisRecente ? ` · última compra ${fmtData(resumoHistoricoCliente.maisRecente)}` : ''}
+                                                </span>
+                                                )}
+                                            </button>
+                                            );
+                                        })()}
                                         <label className="text-xs text-gray-500 font-medium">Data de Entrega *</label>
                                         {dataSugerida && !dataEntrega && (
                                             <p className="text-xs text-blue-500 mt-0.5 font-medium">
@@ -2760,7 +2882,7 @@ const NovoPedido = () => {
                                 Voltar e corrigir
                             </button>
                             <button
-                                disabled={!duplicataAceitouResponsabilidade}
+                                disabled={!duplicataAceitouResponsabilidade || saving}
                                 onClick={() => {
                                     duplicataConfirmadaRef.current = true;
                                     setDuplicataConfirmada(true);
@@ -2771,7 +2893,7 @@ const NovoPedido = () => {
                                     handleSalvar(status);
                                 }}
                                 className={`flex-1 py-2.5 rounded-lg font-bold text-sm transition-colors ${
-                                    duplicataAceitouResponsabilidade
+                                    duplicataAceitouResponsabilidade && !saving
                                         ? 'bg-orange-500 text-white'
                                         : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                                 }`}

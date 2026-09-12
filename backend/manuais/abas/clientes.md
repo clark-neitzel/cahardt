@@ -158,6 +158,15 @@ A barra de ações fica fixada no rodapé com os botões **Descartar** e **Salva
 > exato — antes, meta em `Itapoá` e cliente em `ITAPOA` simplesmente não se encontravam, e o
 > vendedor perdia bônus sem nenhum erro aparecer.
 
+### Qualidade dos dados (label: "🛡️ Qualidade dos dados", desde 09/2026)
+Aba nova que reúne, num só lugar, a situação do **ponto GPS** e do **WhatsApp** deste cliente — hoje esses dois dados só apareciam nas telas de auditoria em lote (Saúde dos Pontos GPS e Pendências de WhatsApp), que continuam existindo do jeito que são, para quem organiza a carteira toda de uma vez. A aba na ficha é o resumo do dia a dia, cliente por cliente.
+
+- A pílula da aba mostra um número quando há pendência (GPS sem ponto/suspeito, ou WhatsApp sem número/com problema); sem pendência, o número some e a aba mostra "Tudo certo com este cliente"
+- **Cartão Localização**: mini-mapa (só leitura) com o ponto cadastrado, e o selo — **Sem ponto GPS**, **Aguardando confirmação** (tem ponto, ainda sem entregas suficientes para confirmar), **Confirmado** (ponto validado pelas entregas reais), **Suspeito** (entregas acontecendo longe do cadastro) ou **Cliente balcão** (dispensado). Botão **Ajustar no mapa** abre o mesmo mapa de arrastar usado na Saúde dos Pontos GPS
+- **Cartão WhatsApp**: mesmo selo/vocabulário da aba Pendências de WhatsApp (Sem número · Dispensado · Número com problema · WhatsApp em uso · Tem conta de WhatsApp · Tem número sem histórico). Botão **Cadastrar/Atualizar WhatsApp** abre o mesmo popup usado quando o sistema bloqueia o ENVIAR do pedido por falta de número — inclusive o escape "Não consegui agora" para registrar dispensa
+- "Repetido" e "na empresa" (as outras duas situações que aparecem na Saúde dos Pontos GPS) dependem de cruzar TODOS os clientes de uma vez — por isso continuam exclusivas daquela tela de auditoria; a ficha individual não recalcula isso
+- Exige a mesma permissão de editar GPS/WhatsApp da aba Cadastro para os botões de ação aparecerem; sem a permissão, a aba mostra só a leitura
+
 ### Admin (label: "⚙️ Admin")
 Painel de debug do motor analítico (Inteligência Comercial). Exibe os dados calculados internamente para o cliente:
 

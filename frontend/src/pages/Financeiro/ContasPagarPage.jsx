@@ -935,6 +935,11 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
     const [enviarCA, setEnviarCA] = useState(true);
     const [valorTotal, setValorTotal] = useState(conta?.valorTotal != null ? fmt(conta.valorTotal) : (molde?.valorTotal != null ? fmt(molde.valorTotal) : ''));
     const [salvando, setSalvando] = useState(false);
+    // Guarda SÍNCRONA contra dois cliques rápidos em "Criar despesa"/"Salvar alterações":
+    // `salvando` é estado e só reflete no próximo render — dois cliques no mesmo tique
+    // liam o mesmo valor antigo e disparavam duas despesas. Um `ref` barra o 2º clique
+    // antes de virar rede (mesmo ajuste feito no Ajuste de Estoque).
+    const salvandoRef = useRef(false);
     // A despesa já foi gravada nesta abertura do modal? (caso típico: os dados salvaram e a
     // correção dos produtos falhou). Fechar no X depois disso tem que recarregar a lista,
     // senão a tela continua mostrando o valor antigo.
@@ -1008,6 +1013,10 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
     // descrição do fornecedor) e chave repetida faz o React embaralhar/perder edição.
     const uidRef = useRef(0);
     const novoUid = () => `linha-${++uidRef.current}`;
+    // Foco no campo Quantidade da linha recém-adicionada — depois de escolher o produto
+    // no combobox, o vendedor digita a quantidade direto, sem precisar clicar de novo
+    // (mesmo pedido feito para o Ajuste de Estoque).
+    const qtdRefs = useRef(new Map());
     const [opcoesProd, setOpcoesProd] = useState(null); // null = ainda não carregado
     const [carregandoProds, setCarregandoProds] = useState(false);
 
@@ -1056,7 +1065,9 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
             toast.error('Este produto já está na lista.');
             return;
         }
-        setItensCompra(prev => [...prev, { uid: novoUid(), vinculo: op.value, nome: op.nome, unidade: op.unidade, sub: op.sub, descOriginal: '', quantidade: '', valorUnitario: '', valorTotal: '', derivado: null }]);
+        const uid = novoUid();
+        setItensCompra(prev => [...prev, { uid, vinculo: op.value, nome: op.nome, unidade: op.unidade, sub: op.sub, descOriginal: '', quantidade: '', valorUnitario: '', valorTotal: '', derivado: null }]);
+        setTimeout(() => qtdRefs.current.get(uid)?.focus(), 0);
     };
     // Cálculo automático entre quantidade × unitário × total. Digitar o unitário sempre
     // recalcula o total, e digitar o total sempre recalcula o unitário. O que muda é a
@@ -1261,6 +1272,7 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
     };
 
     const salvar = async () => {
+        if (salvandoRef.current) return; // 2º clique no mesmo tique — barrado antes da rede
         if (contaCancelada) { toast.error('Despesa cancelada — não é possível alterar nada por aqui.'); return; }
         const parcelasValidas = parcelas.filter(p => !p.paga);
         // Numa despesa quitada nada disso é enviado (o backend recusa) — validar seria
@@ -1285,6 +1297,7 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
             if (!contaFinanceiraCaId) { toast.error('Escolha o banco/caixa.'); return; }
             if (pago && !dataPagamento) { toast.error('Informe a data do pagamento.'); return; }
         }
+        salvandoRef.current = true;
         setSalvando(true);
         try {
             const payload = {
@@ -1416,6 +1429,7 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
         } catch (e) {
             toast.error(e.response?.data?.error || 'Erro ao salvar despesa');
         } finally {
+            salvandoRef.current = false;
             setSalvando(false);
         }
     };
@@ -1646,6 +1660,7 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
                                                 <div className="flex flex-col justify-end">
                                                     <label className="block text-[11px] font-medium text-gray-500 mb-0.5">Qtd{it.unidade ? ` (${it.unidade})` : ''}</label>
                                                     <input
+                                                        ref={el => { if (el) qtdRefs.current.set(it.uid, el); else qtdRefs.current.delete(it.uid); }}
                                                         value={it.quantidade}
                                                         onChange={e => setItemCompra(idx, 'quantidade', e.target.value)}
                                                         inputMode="decimal"
@@ -1994,6 +2009,9 @@ const BaixaParcelaModal = ({ conta, parcela, onClose, onSuccess }) => {
     const [formaPagamento, setFormaPagamento] = useState('PIX');
     const [observacao, setObservacao] = useState('');
     const [salvando, setSalvando] = useState(false);
+    // Guarda síncrona contra clique duplo — mesmo risco do "Criar despesa": um clique
+    // repetido criaria duas baixas da mesma parcela antes do re-render desabilitar o botão.
+    const salvandoRef = useRef(false);
     const [contaFinanceiraCaId, setContaFinanceiraCaId] = useState('');
     const [contasFinanceiras, setContasFinanceiras] = useState([]);
     // Se a despesa vai ao Conta Azul, o banco é obrigatório (a baixa é empurrada nesse banco).
@@ -2056,11 +2074,13 @@ const BaixaParcelaModal = ({ conta, parcela, onClose, onSuccess }) => {
     };
 
     const confirmar = async () => {
+        if (salvandoRef.current) return; // 2º clique no mesmo tique — barrado antes da rede
         if (total <= 0 && vDesconto <= 0) { toast.error('Informe o valor pago.'); return; }
         if (principal < -0.005) { toast.error('Juros + multa não podem ser maiores que o valor pago.'); return; }
         if (precisaClassificarExcedente) { toast.error('Diga se o valor a mais é juros ou multa.'); return; }
         if (precisaClassificarFalta) { toast.error('Diga se a diferença é desconto ou pagamento parcial.'); return; }
         if (vaiAoCA && !contaFinanceiraCaId) { toast.error('Escolha o banco/caixa de onde saiu o pagamento.'); return; }
+        salvandoRef.current = true;
         setSalvando(true);
         try {
             await contasPagarService.baixarParcela(conta.id, parcela.id, {
@@ -2078,6 +2098,7 @@ const BaixaParcelaModal = ({ conta, parcela, onClose, onSuccess }) => {
         } catch (e) {
             toast.error(e.response?.data?.error || 'Erro ao dar baixa');
         } finally {
+            salvandoRef.current = false;
             setSalvando(false);
         }
     };
@@ -2235,6 +2256,9 @@ const BaixaLoteModal = ({ parcelaIds, valorTotal, onClose, onSuccess }) => {
     const [opcoes, setOpcoes] = useState({ contasFinanceiras: [], metodosPagamento: [] });
     const [carregando, setCarregando] = useState(true);
     const [salvando, setSalvando] = useState(false);
+    // Guarda síncrona contra clique duplo — mesmo risco das outras baixas: sem isso, dois
+    // cliques rápidos quitariam o lote duas vezes antes do re-render desabilitar o botão.
+    const salvandoRef = useRef(false);
 
     useEffect(() => {
         contasPagarService.opcoesBaixa()
@@ -2250,8 +2274,10 @@ const BaixaLoteModal = ({ parcelaIds, valorTotal, onClose, onSuccess }) => {
     }, []);
 
     const confirmar = async () => {
+        if (salvandoRef.current) return; // 2º clique no mesmo tique — barrado antes da rede
         if (!metodoPagamento) { toast.error('Escolha a forma de pagamento.'); return; }
         if (!contaFinanceiraCaId) { toast.error('Escolha o banco/caixa.'); return; }
+        salvandoRef.current = true;
         setSalvando(true);
         try {
             const r = await contasPagarService.baixarLote({ parcelaIds, dataPagamento, metodoPagamento, contaFinanceiraCaId });
@@ -2260,6 +2286,7 @@ const BaixaLoteModal = ({ parcelaIds, valorTotal, onClose, onSuccess }) => {
         } catch (e) {
             toast.error(e.response?.data?.error || 'Erro ao quitar as parcelas');
         } finally {
+            salvandoRef.current = false;
             setSalvando(false);
         }
     };

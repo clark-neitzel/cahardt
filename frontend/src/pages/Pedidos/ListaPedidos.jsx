@@ -16,8 +16,12 @@ import asaasService from '../../services/asaasService';
 import BoletosAsaasModal from '../Financeiro/BoletosAsaasModal';
 import PixAvulsoModal from './PixAvulsoModal';
 import ImprimirLoteModal from './ImprimirLoteModal';
+import PageHeader from '../../components/PageHeader';
+import EstadoVazio from '../../components/EstadoVazio';
 
-const fmtNumero = (pedido) => pedido.bonificacao ? `BN#${pedido.numero}` : pedido.especial ? `ZZ#${pedido.numero}` : `#${pedido.numero}`;
+// Pedido recém-criado pode ainda não ter número do CA (rascunho ABERTO) — nunca interpolar
+// null/undefined direto na tela (vira "#null" para o usuário).
+const fmtNumero = (pedido) => pedido.numero == null ? '(rascunho)' : pedido.bonificacao ? `BN#${pedido.numero}` : pedido.especial ? `ZZ#${pedido.numero}` : `#${pedido.numero}`;
 
 // Pedido "faturado" = RECEBIDO no app (faturamento local/especial aprovado) ou FATURADO no CA.
 // Enquanto não faturar, a linha leva a pílula dourada NOVO (pedido do dono, 07/2026).
@@ -213,6 +217,10 @@ const ListaPedidos = () => {
     const podeExcluirAmostra = user?.permissoes?.Pode_Excluir_Amostra || user?.permissoes?.admin;
     const podeVerTodosVendedores = user?.permissoes?.admin || user?.permissoes?.pedidos?.clientes === 'todos';
     const podeReatribuirVendedor = user?.permissoes?.admin || user?.permissoes?.Pode_Reatribuir_Vendedor;
+    // `permissoes.pedidos` é OBJETO ({view, edit, clientes}) — `edit === true` é o
+    // espelho exato do gate usado em RotaLeads.jsx; `!!perms.pedidos` liberaria até
+    // quem só LÊ a aba (regra do projeto, não repetir esse bug).
+    const podeCriarPedido = user?.permissoes?.admin || user?.permissoes?.pedidos?.edit === true;
     const [reatribuindo, setReatribuindo] = useState(false);
     const [novoVendedorId, setNovoVendedorId] = useState('');
     
@@ -815,17 +823,19 @@ const ListaPedidos = () => {
         setFiltroStatus('TODOS');
     };
 
+    // Ação do estado vazio: se tem filtro/busca/status ativo, oferece limpar;
+    // senão, oferece criar (só pra quem tem permissão) — nunca as duas ao mesmo tempo.
+    const temFiltroOuBuscaAtiva = isFiltroAtivo || !!busca.trim() || filtroStatus !== 'TODOS';
+    const acaoEstadoVazio = temFiltroOuBuscaAtiva
+        ? { label: 'Limpar filtros', onClick: limparFiltros }
+        : (podeCriarPedido ? { label: '+ Novo pedido', onClick: () => navigate('/pedidos/novo') } : undefined);
+
     // Retorno do render
     return (
         <>
         <div className="w-full py-3 sm:py-5 overflow-x-hidden px-3 sm:px-0">
             {/* Topbar */}
-            <div className="flex items-center gap-3 mb-4">
-                <div className="bg-mint p-2 rounded-lg">
-                    <Package className="h-5 w-5 text-blue-600" />
-                </div>
-                <h1 className="text-lg font-bold text-gray-900">Pedidos</h1>
-            </div>
+            <PageHeader icon={Package} cor="blue" titulo="Pedidos" className="!p-0 mb-4" />
 
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 sm:p-4 mb-4">
                 <div className="flex gap-2 w-full">
@@ -1154,10 +1164,11 @@ const ListaPedidos = () => {
                                 <span className="text-sm text-gray-500">Carregando amostras…</span>
                             </div>
                         ) : amostras.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center p-10 gap-2">
-                                <Package className="h-10 w-10 text-gray-200" />
-                                <span className="text-sm text-gray-400">Nenhuma amostra encontrada no período.</span>
-                            </div>
+                            <EstadoVazio
+                                icon={Package}
+                                titulo="Nenhuma amostra encontrada no período"
+                                acao={temFiltroOuBuscaAtiva ? { label: 'Limpar filtros', onClick: limparFiltros } : undefined}
+                            />
                         ) : (
                             amostras.map(amostra => {
                                 const isExpanded = expandedAmostra === amostra.id;
@@ -1195,8 +1206,8 @@ const ListaPedidos = () => {
                                                             <span className="text-gray-300">|</span>
                                                             <span>Criação: {new Date(amostra.createdAt).toLocaleDateString('pt-BR')}</span>
                                                         </div>
-                                                        {cidadeBairro.trim() && <div className="text-gray-400 capitalize">{cidadeBairro.toLowerCase()}</div>}
-                                                        <div className="text-[10px] text-gray-400">Solicitado por: {amostra.solicitadoPor?.nome || '-'}</div>
+                                                        {cidadeBairro.trim() && <div className="text-gray-500 capitalize">{cidadeBairro.toLowerCase()}</div>}
+                                                        <div className="text-[10px] text-gray-500">Solicitado por: {amostra.solicitadoPor?.nome || '-'}</div>
                                                     </div>
                                                 </div>
                                                 <div className="flex flex-col items-end gap-1.5 shrink-0">
@@ -1242,7 +1253,7 @@ const ListaPedidos = () => {
                                                         <span className="font-semibold text-gray-500">Observação da entrega: </span>
                                                         {amostra.observacaoEntrega}
                                                         {amostra.entregueEm && (
-                                                            <span className="text-gray-400"> · {new Date(amostra.entregueEm).toLocaleDateString('pt-BR')}</span>
+                                                            <span className="text-gray-500"> · {new Date(amostra.entregueEm).toLocaleDateString('pt-BR')}</span>
                                                         )}
                                                     </div>
                                                 )}
@@ -1281,10 +1292,12 @@ const ListaPedidos = () => {
                                 <span className="text-sm text-gray-500">Carregando pedidos…</span>
                             </div>
                         ) : pedidos.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center p-10 gap-2">
-                                <Package className="h-10 w-10 text-gray-200" />
-                                <span className="text-sm text-gray-400">Nenhum pedido encontrado nos filtros aplicados.</span>
-                            </div>
+                            <EstadoVazio
+                                icon={Package}
+                                titulo="Nenhum pedido encontrado"
+                                descricao={temFiltroOuBuscaAtiva ? 'Tente ajustar os filtros aplicados.' : undefined}
+                                acao={acaoEstadoVazio}
+                            />
                         ) : (
                             /* Filtro de status e busca já aplicados no servidor (paginado) */
                             pedidos.map((pedido) => (
@@ -1328,10 +1341,10 @@ const ListaPedidos = () => {
                                                 </>
                                             )}
                                         </div>
-                                        <div className="uppercase text-gray-400">
+                                        <div className="uppercase text-gray-500">
                                             {pedido.cliente?.End_Cidade || ''}{pedido.cliente?.End_Bairro ? ` - ${pedido.cliente.End_Bairro}` : ''}
                                         </div>
-                                        <div className="text-[10px] text-gray-400">Vendedor: {pedido.vendedor?.nome || '-'}</div>
+                                        <div className="text-[10px] text-gray-500">Vendedor: {pedido.vendedor?.nome || '-'}</div>
                                         {pedido.embarque && (
                                             <div className="text-[10px] text-gray-500 flex items-center gap-1 flex-wrap">
                                                 <Truck className="h-3 w-3 text-gray-400" />
@@ -1474,7 +1487,7 @@ const ListaPedidos = () => {
                                                                             )}
                                                                         </div>
                                                                         {links.length === 0 ? (
-                                                                            <p className="text-[11px] text-gray-400">Sem cobranças ativas</p>
+                                                                            <p className="text-[11px] text-gray-500">Sem cobranças ativas</p>
                                                                         ) : (
                                                                             links.map(cob => (
                                                                                 cob.url ? (
@@ -1490,7 +1503,7 @@ const ListaPedidos = () => {
                                                                                         {cob.label}{cob.tipo ? ` (${cob.tipo})` : ''}
                                                                                     </a>
                                                                                 ) : (
-                                                                                    <span key={cob.label} className="flex items-center gap-1.5 text-[11px] text-gray-400 py-0.5">
+                                                                                    <span key={cob.label} className="flex items-center gap-1.5 text-[11px] text-gray-500 py-0.5">
                                                                                         {cob.label}{cob.tipo ? ` (${cob.tipo})` : ''} — sem link
                                                                                     </span>
                                                                                 )
@@ -1651,7 +1664,7 @@ const ListaPedidos = () => {
                     {/* Rodapé: contador + Carregar mais (paginação servidor) */}
                     {!loading && pedidos.length > 0 && (
                         <div className="flex flex-col items-center gap-2 p-3 border-t border-gray-100">
-                            <span className="text-[11px] text-gray-400">
+                            <span className="text-[11px] text-gray-500">
                                 Mostrando {pedidos.length} de {total}
                             </span>
                             {pedidos.length < total && (
@@ -1855,9 +1868,9 @@ const ListaPedidos = () => {
                             </div>
 
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
-                                <div><p className="text-[10px] uppercase font-bold text-gray-400">Entrega</p><p className="font-bold">{new Date(selectedPedido.dataVenda).toLocaleDateString('pt-BR')}</p></div>
-                                <div><p className="text-[10px] uppercase font-bold text-gray-400">Emissão</p><p className="font-medium">{new Date(selectedPedido.createdAt).toLocaleDateString('pt-BR')}</p></div>
-                                <div className="col-span-2"><p className="text-[10px] uppercase font-bold text-gray-400">Pagamento</p><p className="font-medium">{selectedPedido.nomeCondicaoPagamento || 'N/D'}</p></div>
+                                <div><p className="text-[10px] uppercase font-bold text-gray-500">Entrega</p><p className="font-bold">{new Date(selectedPedido.dataVenda).toLocaleDateString('pt-BR')}</p></div>
+                                <div><p className="text-[10px] uppercase font-bold text-gray-500">Emissão</p><p className="font-medium">{new Date(selectedPedido.createdAt).toLocaleDateString('pt-BR')}</p></div>
+                                <div className="col-span-2"><p className="text-[10px] uppercase font-bold text-gray-500">Pagamento</p><p className="font-medium">{selectedPedido.nomeCondicaoPagamento || 'N/D'}</p></div>
                             </div>
 
                             {/* Especial convertido — faixa de origem */}
@@ -1878,7 +1891,7 @@ const ListaPedidos = () => {
                             {/* Recebimento — parcela a parcela, sem precisar abrir Contas a Receber */}
                             <div className="bg-green-50/50 p-3 rounded border border-green-100 space-y-1.5">
                                 <p className="text-[10px] uppercase font-bold text-green-700 flex items-center gap-1"><CircleDollarSign className="h-3.5 w-3.5" /> Recebimento</p>
-                                {!detalheExtra ? <p className="text-xs text-gray-400">Carregando…</p> : (() => {
+                                {!detalheExtra ? <p className="text-xs text-gray-500">Carregando…</p> : (() => {
                                     const cr = detalheExtra.contaReceber;
                                     if (!cr) return (
                                         <p className="text-xs text-gray-500">
@@ -1985,7 +1998,7 @@ const ListaPedidos = () => {
                                                 <li key={i} className="pl-3 relative">
                                                     <span className={`absolute -left-[5px] top-1.5 h-2 w-2 rounded-full ${ev.gold ? 'bg-[#cba258]' : 'bg-primary'}`}></span>
                                                     <p className="text-xs font-bold text-gray-800">{ev.titulo}</p>
-                                                    <p className="text-[10px] text-gray-400">{fmtDataHora(ev.t)}{ev.sub ? ` · ${ev.sub}` : ''}</p>
+                                                    <p className="text-[10px] text-gray-500">{fmtDataHora(ev.t)}{ev.sub ? ` · ${ev.sub}` : ''}</p>
                                                 </li>
                                             ))}
                                         </ol>
@@ -1994,7 +2007,7 @@ const ListaPedidos = () => {
                             })()}
 
                             <div className="bg-gray-50 p-3 rounded-lg border border-gray-100 space-y-2">
-                                <p className="text-[10px] uppercase font-bold text-gray-400">Itens</p>
+                                <p className="text-[10px] uppercase font-bold text-gray-500">Itens</p>
                                 {selectedPedido.itens?.map(item => (
                                     <div key={item.id} className="flex justify-between text-sm py-1 border-b border-gray-200 last:border-0">
                                         <div className="pr-4">
@@ -2063,7 +2076,7 @@ const ListaPedidos = () => {
                         </div>
                         <div className="p-3 sm:p-4 border-t bg-gray-50 flex justify-between items-center gap-2">
                             <div className="min-w-0">
-                                <p className="text-[10px] uppercase font-bold text-gray-400 leading-none">Total Geral</p>
+                                <p className="text-[10px] uppercase font-bold text-gray-500 leading-none">Total Geral</p>
                                 <p className="text-xl sm:text-2xl font-black text-primary whitespace-nowrap">R$ {Number((selectedPedido.itens?.reduce((acc, i) => acc + (Number(i.valor) * Number(i.quantidade)), 0) || 0) + Number(selectedPedido.valorFrete || 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                             </div>
                             <div className="flex gap-2">
@@ -2121,7 +2134,7 @@ const ListaPedidos = () => {
                                                                 )}
                                                             </div>
                                                             {links.length === 0 ? (
-                                                                <p className="text-[11px] text-gray-400">Sem cobranças ativas</p>
+                                                                <p className="text-[11px] text-gray-500">Sem cobranças ativas</p>
                                                             ) : (
                                                                 links.map(cob => (
                                                                     cob.url ? (
@@ -2137,7 +2150,7 @@ const ListaPedidos = () => {
                                                                             {cob.label}{cob.tipo ? ` (${cob.tipo})` : ''}
                                                                         </a>
                                                                     ) : (
-                                                                        <span key={cob.label} className="flex items-center gap-1.5 text-[11px] text-gray-400 py-0.5">
+                                                                        <span key={cob.label} className="flex items-center gap-1.5 text-[11px] text-gray-500 py-0.5">
                                                                             {cob.label}{cob.tipo ? ` (${cob.tipo})` : ''} — sem link
                                                                         </span>
                                                                     )

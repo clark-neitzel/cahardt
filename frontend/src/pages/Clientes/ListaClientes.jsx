@@ -12,6 +12,8 @@ import whatsappClientesService from '../../services/whatsappClientesService';
 import { opcoesVendedorFiltro, somenteAtivos } from '../../utils/vendedoresFiltro';
 import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 import { useAuth } from '../../contexts/AuthContext';
+import PageHeader from '../../components/PageHeader';
+import EstadoVazio from '../../components/EstadoVazio';
 
 const DIAS_SEMANA = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'DOM', 'N/D'];
 
@@ -379,8 +381,22 @@ const ListaClientes = () => {
         }
     };
 
+    // Ação do estado vazio: se tem filtro/busca ativo, oferece limpar; senão,
+    // oferece cadastrar (só pra quem tem permissão) — nunca as duas ao mesmo tempo.
+    const temFiltroOuBuscaAtiva = activeFiltersCount > 0 || !!search.trim();
+    const acaoEstadoVazio = temFiltroOuBuscaAtiva
+        ? { label: 'Limpar filtros', onClick: handleClearFilters }
+        : (podeCadastrar ? { label: '+ Novo cliente', onClick: () => navigate('/clientes/novo') } : undefined);
+
     return (
         <div className="max-w-screen-2xl mx-auto px-3 py-3 md:px-5 md:py-4 relative">
+            <PageHeader
+                icon={User}
+                cor="green"
+                titulo="Clientes"
+                subtitulo={erroCarga ? undefined : `${totalRegistros} cadastrado${totalRegistros !== 1 ? 's' : ''}`}
+                className="!p-0 !pb-3 md:!pb-4"
+            />
             {/* Ações em Lote */}
             {selectedIds.length > 0 && (
                 <div className="flex justify-end items-center mb-3">
@@ -635,7 +651,7 @@ const ListaClientes = () => {
                 )}
 
                 {/* Total */}
-                <div className="text-xs text-gray-400 pt-1 border-t border-gray-100">
+                <div className="text-xs text-gray-500 pt-1 border-t border-gray-100">
                     {loading
                         ? 'Carregando...'
                         : erroCarga
@@ -688,7 +704,9 @@ const ListaClientes = () => {
                                 </button>
                             </td></tr>
                         ) : clientes.length === 0 ? (
-                            <tr><td colSpan="8" className="text-center py-8 text-gray-400 text-sm">Nenhum cliente encontrado.</td></tr>
+                            <tr><td colSpan="8">
+                                <EstadoVazio icon={User} titulo="Nenhum cliente encontrado" descricao="Tente outro filtro ou cadastre um novo cliente." acao={acaoEstadoVazio} />
+                            </td></tr>
                         ) : (
                             clientes.map((cliente) => (
                                 <tr
@@ -712,7 +730,7 @@ const ListaClientes = () => {
                                         )}
                                         <div className="flex items-center gap-2 mt-1">
                                             {cliente.End_Cidade && (
-                                                <span className="text-[11px] text-gray-400 flex items-center gap-0.5">
+                                                <span className="text-[11px] text-gray-500 flex items-center gap-0.5">
                                                     <MapPin className="h-3 w-3" />{cliente.End_Cidade}/{cliente.End_Estado}
                                                 </span>
                                             )}
@@ -816,7 +834,7 @@ const ListaClientes = () => {
                         </button>
                     </div>
                 ) : clientes.length === 0 ? (
-                    <div className="text-center py-8 text-gray-400 text-sm">Nenhum cliente encontrado.</div>
+                    <EstadoVazio icon={User} titulo="Nenhum cliente encontrado" descricao="Tente outro filtro ou cadastre um novo cliente." acao={acaoEstadoVazio} />
                 ) : clientes.map((cliente) => (
                     <div
                         key={cliente.UUID}

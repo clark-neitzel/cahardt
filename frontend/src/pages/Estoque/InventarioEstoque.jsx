@@ -143,6 +143,10 @@ export default function InventarioEstoque() {
     const [enviando, setEnviando] = useState(false);
     const [resultado, setResultado] = useState(null);
     const autoEnvioRef = useRef(false);
+    // Guarda SÍNCRONA contra clique duplo (mesmo problema do Ajuste de Estoque: `enviando`
+    // é estado, só reflete no próximo render — dois cliques no mesmo tique liam o mesmo
+    // valor antigo). Um `ref` barra o 2º clique antes de ele virar rede.
+    const enviandoRef = useRef(false);
 
     // Persiste o rascunho a cada mudança — é isso que segura a contagem na câmara fria
     useEffect(() => { gravarDraft(draft); }, [draft]);
@@ -267,11 +271,13 @@ export default function InventarioEstoque() {
     };
 
     const enviar = useCallback(async () => {
+        if (enviandoRef.current) return; // 2º clique no mesmo tique — barrado antes da rede
         const d = lerDraft();
         if (!d || enviando) return;
         const itens = Object.entries(d.cont).map(([produtoId, contado]) => ({ produtoId, contado }));
         if (itens.length === 0) return;
 
+        enviandoRef.current = true;
         setEnviando(true);
         try {
             const res = await estoqueService.enviarInventario({
@@ -297,6 +303,7 @@ export default function InventarioEstoque() {
                 setDraft(prev => prev ? { ...prev, status: 'aguardando' } : prev);
             }
         } finally {
+            enviandoRef.current = false;
             setEnviando(false);
         }
     }, [enviando]);

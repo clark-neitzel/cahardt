@@ -91,36 +91,41 @@ export function usePeriodoSalvo(chave, presetPadrao = 'mes') {
     const [salvo, setSalvo] = useFiltrosSalvos(`${chave}:periodo`, { preset: presetPadrao, de: '', ate: '' });
     // Preset salvo que não existe (tela antiga / chave digitada errada no código) volta
     // ao padrão — senão resolveria como "mes" para sempre e o Limpar parecia não limpar.
-    const presetValido = PRESETS_PERIODO.some((p) => p.id === salvo.preset) ? salvo.preset : presetPadrao;
-    const [estado, setEstado] = useState({
-        preset: presetValido,
-        off: 0,
-        deBase: salvo.de || '',
-        ateBase: salvo.ate || '',
-    });
+    const preset = PRESETS_PERIODO.some((p) => p.id === salvo.preset) ? salvo.preset : presetPadrao;
+    const deBase = salvo.de || '';
+    const ateBase = salvo.ate || '';
 
-    // Espelha no armazenamento SÓ o preset (e as datas do personalizado) — nunca o off.
-    useEffect(() => {
-        setSalvo({
-            preset: estado.preset,
-            de: estado.preset === 'perso' ? estado.deBase : '',
-            ate: estado.preset === 'perso' ? estado.ateBase : '',
-        });
-    }, [estado.preset, estado.deBase, estado.ateBase]); // eslint-disable-line react-hooks/exhaustive-deps
+    // `off` (navegação das setas) é PURAMENTE local — nunca persistido (regra
+    // do sistema) — e nunca precisa "readotar" nada vindo de fora. Preset/
+    // de/ate, ao contrário, vêm direto de `salvo` (useFiltrosSalvos): antes
+    // este hook copiava esses três campos para um `estado` próprio no
+    // primeiro render e só empurrava mudanças para o armazenamento (nunca o
+    // contrário) — quando a correção do bug de `useFiltrosSalvos` (chave
+    // 'anon' transitória → id real do usuário) atualizava `salvo` depois do
+    // primeiro render, esse `estado` desatualizado era reescrito por cima do
+    // valor certo. Ler `preset`/`deBase`/`ateBase` direto de `salvo` a cada
+    // render elimina essa 2ª cópia — não tem o que ficar dessincronizado.
+    const [off, setOff] = useState(0);
 
     const periodo = useMemo(() => {
-        const { de, ate } = resolverPeriodo(estado.preset, estado.off, estado.deBase, estado.ateBase);
+        const { de, ate } = resolverPeriodo(preset, off, deBase, ateBase);
         return {
-            preset: estado.preset, off: estado.off, de, ate,
-            padrao: estado.preset === presetPadrao && estado.off === 0,
+            preset, off, de, ate,
+            padrao: preset === presetPadrao && off === 0,
         };
-    }, [estado, presetPadrao]);
+    }, [preset, off, deBase, ateBase, presetPadrao]);
 
     const controle = useMemo(() => ({
-        escolher: (preset, de = '', ate = '') => setEstado({ preset, off: 0, deBase: de, ateBase: ate }),
-        navegar: (delta) => setEstado((e) => (e.preset === 'todo' ? e : { ...e, off: e.off + delta })),
-        limpar: () => setEstado({ preset: presetPadrao, off: 0, deBase: '', ateBase: '' }),
-    }), [presetPadrao]);
+        escolher: (novoPreset, de = '', ate = '') => {
+            setOff(0);
+            setSalvo({ preset: novoPreset, de: novoPreset === 'perso' ? de : '', ate: novoPreset === 'perso' ? ate : '' });
+        },
+        navegar: (delta) => setOff((o) => (preset === 'todo' ? o : o + delta)),
+        limpar: () => {
+            setOff(0);
+            setSalvo({ preset: presetPadrao, de: '', ate: '' });
+        },
+    }), [preset, presetPadrao, setSalvo]);
 
     return [periodo, controle];
 }

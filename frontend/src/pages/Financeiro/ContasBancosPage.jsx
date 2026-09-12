@@ -300,7 +300,7 @@ const ContasBancosPage = () => {
                 {contas.length > 0 && (
                     <div className="md:hidden space-y-3">
                         {contas.map(c => (
-                            <button key={c.id || 'sem'} onClick={() => abrirExtrato({ id: c.id, nome: c.nome })} className="w-full text-left bg-white rounded-xl border border-gray-200 shadow-sm p-4 active:bg-gray-50">
+                            <button key={c.id || 'sem'} onClick={() => abrirExtrato({ id: c.id, nome: c.nome })} className="w-full text-left bg-white rounded-xl raio-proprio border border-gray-200 shadow-sm p-4 active:bg-gray-50">
                                 <div className="flex items-center justify-between mb-2">
                                     <span className="font-semibold text-gray-900">{c.nome}{!c.id && <span className="ml-2 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-gray-100 text-gray-600">sem banco</span>}</span>
                                     <ChevronRight className="h-4 w-4 text-gray-300" />

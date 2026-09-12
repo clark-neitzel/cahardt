@@ -185,14 +185,14 @@ A baixa continua sendo dada **aqui**, em Contas a Receber, quando o valor for de
 - Clique no ícone de atualização (reload) em uma conta específica, ou em **Sync Todas**
 
 ### Gerar relatório de inadimplência
-1. Clique no botão **Relatório** (no topo)
+1. No topo da tela "Contas a Receber — Tabela", abra o menu **"⋯"** (ao lado do botão verde principal) e clique em **Relatório**
 2. Defina o período de vencimento e opcionalmente a categoria de cliente
 3. Escolha o agrupamento: por pedido, por cliente, por vendedor ou sem agrupamento
 4. O relatório é gerado na tela com totais por grupo
 
 ### Exportar em CSV
 1. Aplique os filtros desejados
-2. Clique em **Exportar CSV**
+2. Abra o menu **"⋯"** no topo e clique em **CSV**
 3. O arquivo é baixado com as parcelas visíveis na tabela
 
 ---

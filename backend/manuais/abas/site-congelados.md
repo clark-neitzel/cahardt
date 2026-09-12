@@ -3,7 +3,7 @@
 Módulo do **site público da Hardt** voltado à revenda de congelados (B2B), com painel administrativo interno para gerenciar os produtos e os pedidos que chegam pelo site. Reaproveita a mesma estrutura do Kit Festa, mas é **personalizado por cliente**: cada cliente vê seus preços, suas condições de pagamento e seus dias de entrega, vindos do cadastro.
 
 ## Onde fica
-- **Painel admin:** menu lateral **Site** → rota `/site-admin`. Permissão: `kitFesta` (mesma do Kit Festa) ou administrador.
+- **Painel admin:** menu lateral **Pedidos Online** → aba **Site (Congelados)** → rota `/pedidos-online?aba=site` (menu único desde 09/2026; ver [pedidos-online.md](pedidos-online.md)). A rota antiga `/site-admin` continua funcionando e redireciona para cá. Permissão: `kitFesta` (mesma do Kit Festa) ou administrador.
 - **Site público (sem login do app):**
   - Página principal: `/inicio` — vitrine institucional com botão de WhatsApp flutuante e os caminhos "Kit Festa" e "Congelados".
   - Área do cliente de congelados: `/congelados` — catálogo + pedido.
@@ -41,7 +41,7 @@ Módulo do **site público da Hardt** voltado à revenda de congelados (B2B), co
    - A lista oficial vem do bot (`/api/congelados-publico/vendedores-site`, renovada a cada 5 min) e agora serve **só para conferir** se o vendedor do próprio cliente está autorizado — ela **nunca é exibida** ao cliente. Telefone pessoal do vendedor nunca aparece. O cliente ainda precisa tocar em **Enviar** no WhatsApp.
 10. **Final da página (padrão):** depois do último produto, a página termina com o **mesmo final das outras** (Início e Kit Festa): cartão **"Onde estamos"** (endereço, WhatsApp, e-mail, redes sociais e botões WhatsApp/Kit-Festa/Congelados) ao lado do **mapa do Google**, e o **rodapé simples** (logo + "Hardt Doces e Salgados Ltda® — Todos os direitos reservados.").
 
-## Painel admin (`/site-admin`)
+## Painel admin (`/pedidos-online?aba=site`)
 Duas abas:
 
 ### Pedidos do site

@@ -1,6 +1,6 @@
 # Kit Festa — Site de pedidos e painel da cozinha
 
-**Rota (painel admin):** `/kit-festa-admin`
+**Rota (painel admin):** `/pedidos-online?aba=kit-festa` — aba "Kit Festa" dentro de **Pedidos Online** (menu único desde 09/2026; ver [pedidos-online.md](pedidos-online.md)). A rota antiga `/kit-festa-admin` continua funcionando e redireciona para cá.
 **Site público do cliente:** `/kit-festa` (link enviado por WhatsApp/redes; não exige login do app)
 **Permissão:** `admin` ou `kitFesta`. Para liberar a outros usuários: **Usuários → editar → permissões → ligar "Kit Festa"** (a exclusão de pedidos continua só para admin).
 

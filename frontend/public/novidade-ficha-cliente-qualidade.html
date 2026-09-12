@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Qualidade dos Dados na Ficha do Cliente — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp (sem og:image de propósito — imagem grande vira cartão gigante) -->
+<meta property="og:title" content="🛡️ Novidade no Hardt App: Qualidade dos Dados na ficha do cliente">
+<meta property="og:description" content="GPS e WhatsApp do cliente numa aba só, dentro da própria ficha — sem precisar abrir as telas de auditoria em lote. Veja como ficou.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  .hero { background: linear-gradient(168deg, var(--house) 0%, #16302a 100%); color: #fff; padding: 40px 16px 56px; }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow { display: inline-block; background: var(--gold); color: #2b230f; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .14em; padding: 6px 14px; border-radius: 999px; margin-bottom: 18px; }
+  .hero h1 { font-size: clamp(28px, 7vw, 40px); font-weight: 800; line-height: 1.12; margin: 0 0 12px; text-wrap: balance; }
+  .hero p { color: rgba(255,255,255,.75); font-size: 16px; max-width: 46ch; margin: 0 auto; text-wrap: balance; }
+
+  .sec-label { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .16em; color: var(--primary-dark); margin: 34px 4px 12px; }
+  .acc { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; margin-bottom: 10px; overflow: hidden; box-shadow: 0 1px 2px rgba(30,57,50,.05); }
+  .acc-head { width: 100%; display: flex; align-items: center; gap: 12px; background: none; border: none; font: inherit; text-align: left; padding: 15px 16px; cursor: pointer; min-height: 56px; }
+  .acc-ico { width: 38px; height: 38px; border-radius: 11px; background: var(--mint); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  .acc-head:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n { width: 30px; height: 30px; flex-shrink: 0; border-radius: 50%; background: var(--primary); color: #fff; font-weight: 800; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .rodape { text-align: center; font-size: 13px; color: var(--ink-soft); margin-top: 40px; }
+  .rodape strong { color: var(--primary-dark); }
+
+  /* ── MOCKUPS DAS TELAS DO APP ── */
+  .tela { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; overflow: hidden; margin-bottom: 12px; box-shadow: 0 1px 2px rgba(30,57,50,.05); }
+  .tela-titulo { background: var(--house); color: #fff; padding: 12px 16px; font-size: 13px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .app-card { background: #fff; border: 1px solid #e5e3dc; border-radius: 12px; overflow: hidden; margin-bottom: 10px; }
+  .app-card-head { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-bottom: 1px solid #f0efe9; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .12em; color: #6b756f; }
+  .app-card-body { padding: 12px; }
+  .app-btn { display: inline-flex; align-items: center; gap: 6px; background: var(--primary); color: #fff; font-size: 12.5px; font-weight: 700; padding: 9px 16px; border-radius: 999px; }
+  .app-btn.claro { background: #fff; border: 1.5px solid var(--primary); color: var(--primary); }
+  .pin { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background: var(--gold); color: #2b230f; font-size: 11px; font-weight: 800; flex-shrink: 0; vertical-align: 2px; margin-left: 6px; }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+
+  /* pílulas de aba, como na ficha real */
+  .abas-mock { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
+  .aba-mock { padding: 7px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; color: #6b756f; background: #fff; border: 1px solid #d8d5cc; white-space: nowrap; display: inline-flex; align-items: center; gap: 5px; }
+  .aba-mock.ativa { background: var(--house); color: #fff; border-color: var(--house); }
+  .aba-mock .n { background: rgba(0,0,0,.08); border-radius: 999px; padding: 0 6px; font-size: 10.5px; }
+  .aba-mock.ativa .n { background: rgba(255,255,255,.2); }
+
+  .badge-mock { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 700; }
+  .badge-verde { background: var(--mint); color: var(--primary-dark); }
+  .badge-amarelo { background: #fef3c7; color: #92400e; }
+  .badge-cinza { background: #f1f0ec; color: #6b756f; }
+  .mini-mapa { height: 70px; border-radius: 8px; background: repeating-linear-gradient(45deg,#e9f2ee,#e9f2ee 8px,#dfece5 8px,#dfece5 16px); display: flex; align-items: center; justify-content: center; font-size: 22px; margin-bottom: 8px; }
+
+  .vazio-mock { text-align: center; padding: 22px 16px; }
+  .vazio-mock .bola { width: 52px; height: 52px; border-radius: 50%; background: var(--mint); display: flex; align-items: center; justify-content: center; font-size: 24px; margin: 0 auto 10px; }
+  .vazio-mock strong { display: block; font-size: 14px; color: var(--ink); }
+  .vazio-mock span { display: block; font-size: 12.5px; color: var(--ink-soft); margin-top: 3px; }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>GPS e WhatsApp do cliente,<br>direto na ficha</h1>
+    <p>A ficha de cada cliente ganhou uma aba nova, "Qualidade dos dados", com a situação do ponto GPS e do WhatsApp — sem precisar abrir outra tela para ver o que falta ajustar.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="sec-label">O que mudou</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🛡️</span>
+      <strong>Aba nova: "Qualidade dos dados"</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Abra a ficha de qualquer cliente (<b>Clientes → clique no cliente</b>) e as abas do topo agora são pílulas, com uma nova: <b>"Qualidade dos dados"</b>.</li>
+        <li>Quando o cliente tem alguma pendência (sem ponto GPS, ponto suspeito, sem WhatsApp ou número com problema), a pílula mostra um <b>número</b> — a quantidade de pendências daquele cliente.</li>
+        <li>Sem pendência nenhuma, a aba mostra só <b>"Tudo certo com este cliente"</b>.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">📍</span>
+      <strong>Cartão de Localização</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Mini-mapa com o ponto cadastrado e o selo de situação: <b>Sem ponto GPS</b>, <b>Aguardando confirmação</b>, <b>Confirmado</b> (validado pelas entregas reais), <b>Suspeito</b> (entregas acontecendo longe do cadastro) ou <b>Cliente balcão</b>.</li>
+        <li>Botão <b>"Ajustar no mapa"</b> abre o mesmo mapa de arrastar que já existe na tela Saúde dos Pontos GPS — corrige na hora, sem sair da ficha.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">💬</span>
+      <strong>Cartão de WhatsApp</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Mesmo selo da tela Pendências de WhatsApp: <b>Sem número</b>, <b>Dispensado</b>, <b>Número com problema</b>, <b>WhatsApp em uso</b> ou <b>Tem conta de WhatsApp</b>.</li>
+        <li>Botão <b>"Cadastrar/Atualizar WhatsApp"</b> abre o mesmo popup usado quando o sistema pede o número na hora de enviar um pedido — inclusive o "Não consegui agora" para registrar o motivo.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🧹</span>
+      <strong>As telas de faxina em lote continuam iguais</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li><b>Saúde dos Pontos GPS</b> e <b>Pendências de WhatsApp</b> não mudaram — continuam sendo o lugar para organizar a carteira inteira de uma vez.</li>
+        <li>A aba nova na ficha é só o resumo do dia a dia, cliente por cliente — não substitui a faxina em lote.</li>
+        <li>"Repetido" e "na empresa" (duas situações que só a Saúde dos Pontos GPS enxerga, porque cruzam TODOS os clientes) não aparecem na ficha individual.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="sec-label">A tela, sem mistério</div>
+
+  <div class="tela">
+    <div class="tela-titulo">📱 Ficha do cliente — abas em pílula</div>
+    <div class="tela-corpo">
+      <div class="abas-mock">
+        <span class="aba-mock">✏️ Cadastro</span>
+        <span class="aba-mock ativa">🛡️ Qualidade dos dados <span class="n">1</span><span class="pin">1</span></span>
+        <span class="aba-mock">⚙️ Admin</span>
+        <span class="aba-mock">Histórico (8)</span>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>O número na pílula é a <b>quantidade de pendências</b> daquele cliente (aqui, 1 — só o WhatsApp está faltando). Some sozinho quando não há nada pendente.</span></div>
+    </div>
+  </div>
+
+  <div class="tela">
+    <div class="tela-titulo">📱 Aba Qualidade dos dados — os dois cartões</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">📍 Localização</div>
+        <div class="app-card-body">
+          <div class="mini-mapa">📍</div>
+          <span class="badge-mock badge-verde">Confirmado<span class="pin">1</span></span>
+          <div style="font-size:11.5px;color:var(--ink-soft);margin-top:6px;">Ponto conferido pelas entregas reais — dentro do esperado.</div>
+        </div>
+      </div>
+      <div class="app-card">
+        <div class="app-card-head">💬 WhatsApp</div>
+        <div class="app-card-body">
+          <span class="badge-mock badge-amarelo">Sem número<span class="pin">2</span></span>
+          <div style="font-size:11.5px;color:var(--ink-soft);margin:6px 0 10px;">Nenhum número de WhatsApp cadastrado para este cliente.</div>
+          <span class="app-btn">💬 Cadastrar WhatsApp<span class="pin">3</span></span>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>No desktop os dois cartões ficam <b>lado a lado</b>; no celular, um embaixo do outro.</span></div>
+      <div><span class="pin">2</span><span>O selo usa o <b>mesmo vocabulário</b> das telas de auditoria em lote — não muda de nome de uma tela para outra.</span></div>
+      <div><span class="pin">3</span><span>Botão de ação abre o <b>mesmo popup</b> usado no bloqueio de envio do pedido: número com DDD, ou "Não consegui agora" para dispensar.</span></div>
+    </div>
+  </div>
+
+  <div class="tela">
+    <div class="tela-titulo">📱 Cliente sem pendência</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="vazio-mock">
+          <div class="bola">🛡️</div>
+          <strong>Tudo certo com este cliente</strong>
+          <span>Ponto GPS conferido e WhatsApp em ordem — nenhuma pendência de cadastro.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec-label">Para ver na prática</div>
+  <div class="passos">
+    <div class="passo">
+      <span class="passo-n">1</span>
+      <div><b>Atualize o app:</b> toque no ícone de atualizar ↻ (ou feche e abra o app).</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">2</span>
+      <div>Abra <b>Clientes</b> e toque em qualquer cliente da lista.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">3</span>
+      <div>Toque na pílula <b>"Qualidade dos dados"</b>, logo depois de "Cadastro".</div>
+    </div>
+  </div>
+
+  <p class="rodape">Dúvidas? Pergunte ao <strong>Clippy</strong> dentro do app — ele já conhece a tela nova.<br>— Hardt Salgados</p>
+</div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.parentElement;
+    const abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>

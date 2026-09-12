@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
-import api from '../../services/api';
+import React from 'react';
+import { usePerfil } from '../../hooks/usePerfil';
 import DashboardGeral from './DashboardGeral';
 import DashboardVendedorPessoal from './DashboardVendedorPessoal';
 import DashboardEntregador from './DashboardEntregador';
@@ -11,26 +10,12 @@ import { Carregando } from './dashUi';
  *  - Gestão (admin / Pode_Ver_Dashboard_Admin) → Dashboard Geral (5 abas)
  *  - Entregador (Pode_Executar_Entregas) sem meta de venda → Dashboard do Entregador
  *  - Demais (vendedores) → Dashboard pessoal do vendedor
+ *
+ * Detecção de perfil vem de `usePerfil` (hooks/usePerfil.js) — mesma fonte
+ * usada pelo filtro de menu em App.jsx, para nunca divergir.
  */
 const DashboardHome = () => {
-    const { user } = useAuth();
-    const p = user?.permissoes || {};
-
-    const gestor = !!p.admin
-        || !!p.Pode_Ver_Dashboard_Admin
-        || user?.email === 'clarksonneitzel@gmail.com'
-        || (user?.login && user.login.toLowerCase().includes('clark'));
-
-    const entregador = !gestor && (!!p.Pode_Executar_Entregas || !!p.Pode_Ver_Todas_Entregas);
-
-    // Entregador que também vende (tem meta) continua vendo o dashboard de vendedor
-    const [temMeta, setTemMeta] = useState(null);
-    useEffect(() => {
-        if (!entregador) return;
-        api.get('/metas/dashboard')
-            .then((res) => setTemMeta(!!res.data?.temMeta))
-            .catch(() => setTemMeta(false));
-    }, [entregador]);
+    const { gestor, entregador, temMeta } = usePerfil();
 
     if (gestor) return <DashboardGeral />;
     if (entregador) {

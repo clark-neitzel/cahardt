@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Menu por Perfil — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp -->
+<meta property="og:title" content="🧭 Novidade no Hardt App: menu enxuto para cada função">
+<meta property="og:description" content="O menu lateral agora mostra só o que faz sentido para quem está usando — vendedor, motorista, escritório ou PCP. Quem quiser ver tudo, o botão continua ali.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 96px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 7vw, 40px);
+    font-weight: 800;
+    line-height: 1.12;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.75);
+    font-size: 16px;
+    max-width: 46ch;
+    margin: 0 auto;
+    text-wrap: balance;
+  }
+
+  .mock { max-width: 420px; margin: -68px auto 28px; background: #fff; border-radius: 20px; box-shadow: 0 18px 44px rgba(20,40,34,.28); overflow: hidden; text-align: left; }
+  .mock-top { background: var(--house); color: #fff; padding: 14px 18px; display: flex; align-items: center; gap: 12px; }
+  .mock-top small { display: block; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .14em; color: rgba(255,255,255,.55); }
+  .mock-top strong { font-size: 16px; line-height: 1.2; }
+  .mock-ico { font-size: 24px; }
+  .mock-body { padding: 14px 18px 18px; }
+  .mini-menu { display: grid; gap: 6px; }
+  .mini-item { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 9px; font-size: 13px; color: var(--ink); background: #f7f6f2; }
+  .mini-item b { font-weight: 700; }
+  .mini-item.ativo { background: var(--mint); color: var(--primary-dark); font-weight: 700; }
+
+  .sec-label { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .16em; color: var(--primary-dark); margin: 34px 4px 12px; }
+  .acc { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; margin-bottom: 10px; overflow: hidden; box-shadow: 0 1px 2px rgba(30,57,50,.05); }
+  .acc-head { width: 100%; display: flex; align-items: center; gap: 12px; background: none; border: none; font: inherit; text-align: left; padding: 15px 16px; cursor: pointer; min-height: 56px; }
+  .acc-ico { width: 38px; height: 38px; border-radius: 11px; background: var(--mint); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  .acc-head:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  .tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; vertical-align: 1px; }
+  .tag.mint { background: var(--mint); color: var(--primary-dark); }
+
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n { width: 30px; height: 30px; flex-shrink: 0; border-radius: 50%; background: var(--primary); color: #fff; font-weight: 800; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .rodape { text-align: center; font-size: 13px; color: var(--ink-soft); margin-top: 40px; }
+  .rodape strong { color: var(--primary-dark); }
+
+  /* ── MOCKUPS DAS TELAS DO APP ── */
+  .tela { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; overflow: hidden; margin-bottom: 12px; box-shadow: 0 1px 2px rgba(30,57,50,.05); }
+  .tela-titulo { background: var(--house); color: #fff; padding: 12px 16px; font-size: 13px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .pin { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background: var(--gold); color: #2b230f; font-size: 11px; font-weight: 800; flex-shrink: 0; vertical-align: 2px; margin-left: 6px; }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+  .app-btn { display: inline-flex; align-items: center; gap: 6px; background: #fff; border: 1.5px solid #d8d5cc; color: var(--ink-soft); font-size: 12.5px; font-weight: 700; padding: 9px 14px; border-radius: 999px; }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>O menu agora mostra<br>só o que você usa</h1>
+    <p>O menu lateral (e o do celular) deixou de ser igual para todo mundo. Cada pessoa vê primeiro as telas do seu dia a dia — o resto continua a um clique de distância.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- mock do menu enxuto -->
+  <div class="mock" aria-hidden="true">
+    <div class="mock-top">
+      <span class="mock-ico">🧭</span>
+      <div>
+        <small>Menu · Vendedor de campo</small>
+        <strong>6 telas, não 62</strong>
+      </div>
+    </div>
+    <div class="mock-body">
+      <div class="mini-menu">
+        <div class="mini-item ativo">🏠 Início</div>
+        <div class="mini-item">🗺️ Rota</div>
+        <div class="mini-item">📖 Catálogo</div>
+        <div class="mini-item">📋 Pedidos</div>
+        <div class="mini-item">👥 Clientes</div>
+        <div class="mini-item">🎯 Leads</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec-label">Como funciona — toque para abrir</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🧭</span>
+      <strong>Um menu por função, não um só para todo mundo</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Antes, todo mundo via os mesmos 8 grupos do menu (Vendas, Financeiro, PCP, RH...), mesmo que a maioria estivesse vazia de sentido para aquela pessoa. Agora o app identifica sozinho a função de quem entrou e mostra primeiro os grupos que fazem sentido:</p>
+      <ul>
+        <li><b>Vendedor de campo</b> — Rota, Catálogo, Pedidos, Clientes, Leads.</li>
+        <li><b>Motorista/entregador "puro"</b> (sem meta de venda cadastrada) — Vendas (Rota) e Financeiro (Caixa/Despesas). Quem entrega <b>e também vende</b> continua vendo o menu completo de vendedor.</li>
+        <li><b>Escritório</b> — Vendas, Logística, Financeiro e Configurações.</li>
+        <li><b>PCP/Produção</b> — PCP e Produção/Estoque.</li>
+        <li><b>Gestão</b> — nada muda: o gestor sempre vê o menu inteiro, do jeito que já era.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🧩</span>
+      <strong>Permissão acumulada sempre vence a expectativa do perfil</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>O filtro nunca esconde uma tela para a qual você tem permissão de verdade e usa de fato: um grupo fora da lista do seu perfil só some se sobrar no máximo <b>1 item</b> nele. Assim, um motorista que também tem Embarque <b>e</b> Veículos liberados continua vendo esses grupos inteiros — só ficaria escondido se tivesse liberado apenas um dos dois.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🔓</span>
+      <strong>"Ver menu completo" — sempre ali, sem exceção</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Ninguém perde acesso de verdade: o filtro só <b>esconde</b> grupos, nunca tira uma permissão. Se você usa uma tela "de fora do seu grupo" de vez em quando, o botão <b>"Ver menu completo"</b> no rodapé do menu (computador e celular) mostra tudo o que sua permissão já deixa você ver — a escolha fica lembrada. Na primeira vez que algum grupo for escondido, uma dica discreta "Faltou alguma tela?" aparece perto desse botão, para ninguém precisar adivinhar que ele existe.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">⭐</span>
+      <strong>Favoritos continuam do jeito que eram</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Uma tela que você já tinha fixado em <b>★ Favoritos</b> continua aparecendo normalmente, mesmo que o grupo dela tenha sumido do seu menu por perfil. Favorito só some se você perder a <b>permissão</b> de verdade daquela tela — igual já era antes.</p>
+    </div>
+  </div>
+
+  <div class="sec-label">As telas do app</div>
+
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 1 · Menu do celular — vendedor de campo</div>
+    <div class="tela-corpo">
+      <div class="mini-menu">
+        <div class="mini-item ativo">🏠 Início</div>
+        <div class="mini-item">🗺️ Rota<span class="pin">1</span></div>
+        <div class="mini-item">📖 Catálogo</div>
+        <div class="mini-item">📋 Pedidos</div>
+        <div class="mini-item">👥 Clientes</div>
+      </div>
+      <div style="margin-top:12px;"><span class="app-btn">☰ Ver menu completo<span class="pin">2</span></span></div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>De uma mão só, sem rolar a tela, o vendedor acha <b>Rota</b> logo no topo — antes era preciso passar por Financeiro, PCP e RH vazios até achar o que usa.</span></div>
+      <div><span class="pin">2</span><span>O botão <b>"Ver menu completo"</b> fica sempre no rodapé — um toque mostra os outros grupos que a permissão da pessoa já libera.</span></div>
+    </div>
+  </div>
+
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 2 · Barra lateral — escritório</div>
+    <div class="tela-corpo">
+      <div class="mini-menu">
+        <div class="mini-item ativo">🏠 Início</div>
+        <div class="mini-item">📋 Vendas<span class="pin">1</span></div>
+        <div class="mini-item">🚚 Logística</div>
+        <div class="mini-item">💰 Financeiro</div>
+        <div class="mini-item">⚙️ Configurações<span class="pin">2</span></div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Quem tem permissão de Financeiro, Notas Fiscais ou Embarque vê o operacional do dia a dia — <b>PCP e RH</b> ficam fora do menu reduzido, a não ser que a pessoa acumule essa função.</span></div>
+      <div><span class="pin">2</span><span>Configurações (uso raro) continua acessível, só que sem competir visualmente com as telas do dia a dia.</span></div>
+    </div>
+  </div>
+
+  <div class="sec-label">Para conferir</div>
+  <div class="passos">
+    <div class="passo">
+      <span class="passo-n">1</span>
+      <div><b>Atualize o app:</b> toque no ícone de atualizar ↻ (ou feche e abra o app).</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">2</span>
+      <div>Abra o menu (computador: passe o mouse na barra verde; celular: toque no ☰) e veja os grupos do seu perfil.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">3</span>
+      <div>Quer ver tudo mesmo assim? Toque em <b>"Ver menu completo"</b> no rodapé do menu.</div>
+    </div>
+  </div>
+
+  <p class="rodape">Dúvidas? Pergunte ao <strong>Clippy</strong> dentro do app — ele já conhece o menu novo.<br>— Hardt Salgados</p>
+</div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.parentElement;
+    const abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>

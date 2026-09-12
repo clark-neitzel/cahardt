@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Cursor no lugar certo — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp (sem imagem, de propósito: preview compacto) -->
+<meta property="og:title" content="⌨️ Novidade no Hardt App: o cursor não some mais depois de lançar">
+<meta property="og:description" content="No Ajuste de Estoque, depois de dar entrada ou saída, o cursor volta sozinho pro campo Quantidade — dá pra digitar o próximo sem tocar na tela de novo. Enter também lança direto.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 96px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 7vw, 40px);
+    font-weight: 800;
+    line-height: 1.12;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.75);
+    font-size: 16px;
+    max-width: 46ch;
+    margin: 0 auto;
+    text-wrap: balance;
+  }
+
+  /* mock flutuando sobre o hero */
+  .mock {
+    max-width: 420px;
+    margin: -68px auto 34px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.28);
+    overflow: hidden;
+    text-align: left;
+  }
+  .mock-top {
+    background: var(--house);
+    color: #fff;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .mock-top small {
+    display: block;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    color: rgba(255,255,255,.55);
+  }
+  .mock-top strong { font-size: 15px; line-height: 1.2; }
+  .mock-ico { font-size: 24px; }
+  .mock-body { padding: 16px 14px 16px; }
+
+  /* ── SEÇÕES / ACCORDION ── */
+  .sec-label {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: var(--primary-dark);
+    margin: 34px 4px 12px;
+  }
+  .acc {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .acc-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: none;
+    border: none;
+    font: inherit;
+    text-align: left;
+    padding: 15px 16px;
+    cursor: pointer;
+    min-height: 56px;
+  }
+  .acc-ico {
+    width: 38px; height: 38px;
+    border-radius: 11px;
+    background: var(--mint);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  /* passos */
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n {
+    width: 30px; height: 30px; flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 800;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .rodape {
+    text-align: center;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 40px;
+  }
+  .rodape strong { color: var(--primary-dark); }
+
+  /* ── MOCKUPS DAS TELAS DO APP ── */
+  .tela {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .tela-titulo {
+    background: var(--house);
+    color: #fff;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .app-card {
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .app-card-body { padding: 12px; }
+  .app-input {
+    border: 1px solid #d8d5cc;
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 12.5px;
+    color: var(--ink);
+    background: #fff;
+    margin-bottom: 8px;
+  }
+  .app-input small { display: block; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: #9aa5a0; margin-bottom: 3px; }
+  .app-input .vazio { color: #b6bdb9; }
+  .app-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: var(--primary);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 800;
+    padding: 12px 16px;
+    border-radius: 999px;
+  }
+  .app-btn.vermelho { background: #ef4444; }
+  .botoes2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  /* campo de quantidade com foco em destaque (o que mudou) */
+  .app-input.focado {
+    border: 2px solid var(--primary);
+    box-shadow: 0 0 0 3px rgba(0,117,74,.16);
+    padding: 9px 11px;
+  }
+  .qtd-grande { font-size: 22px; font-weight: 800; text-align: center; display: block; }
+  .qtd-grande.vazio { color: #b6bdb9; }
+  .cursor-pisca {
+    display: inline-block;
+    width: 2px; height: 20px;
+    background: var(--primary);
+    vertical-align: middle;
+    margin-left: 2px;
+    animation: piscar 1s steps(1) infinite;
+    will-change: opacity;
+  }
+  @keyframes piscar { 50% { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .cursor-pisca { animation: none; } }
+
+  /* toast de sucesso */
+  .toast-ok {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-left: 4px solid var(--primary);
+    border-radius: 12px;
+    padding: 12px 14px;
+    font-size: 12.5px;
+    box-shadow: 0 6px 18px rgba(30,57,50,.12);
+    margin-bottom: 10px;
+  }
+
+  .pin {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    flex-shrink: 0;
+    vertical-align: 2px;
+    margin-left: 6px;
+  }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+
+  .tecla {
+    display: inline-block;
+    background: #f0efe9;
+    border: 1px solid #d8d5cc;
+    border-bottom-width: 2px;
+    border-radius: 6px;
+    padding: 2px 8px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-weight: 700;
+    font-size: 11.5px;
+    color: var(--ink);
+  }
+</style>
+</head>
+<body>
+
+<!-- ══════════ HERO ══════════ -->
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>O cursor não some<br>mais depois de lançar</h1>
+    <p>No Ajuste de Estoque: digite a quantidade, toque em Entrada (ou Saída) — e o cursor já volta sozinho pro campo Quantidade, pronto pro próximo lançamento. Sem precisar tocar na tela de novo.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- mock flutuando: o campo de quantidade com foco de volta -->
+  <div class="mock" aria-hidden="true">
+    <div class="mock-top">
+      <span class="mock-ico">📦</span>
+      <div>
+        <small>Produção / Estoque · Ajuste</small>
+        <strong>Entrada registrada!</strong>
+      </div>
+    </div>
+    <div class="mock-body">
+      <div class="toast-ok" style="margin-bottom:12px;">
+        <span style="color:var(--primary);font-size:16px;line-height:1;">✓</span>
+        <span>Entrada registrada! Disponível: 132 PT</span>
+      </div>
+      <div class="app-input focado">
+        <small>Quantidade</small>
+        <span class="qtd-grande vazio">0<span class="cursor-pisca"></span></span>
+      </div>
+      <div class="botoes2">
+        <span class="app-btn vermelho">− Saída</span>
+        <span class="app-btn">+ Entrada</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ O QUE MUDOU ══════════ -->
+  <div class="sec-label">O que mudou</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🎯</span>
+      <strong>Depois de lançar, o cursor volta pro campo Quantidade</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Em <b>Produção / Estoque → Ajuste de Estoque</b>: digite a quantidade e toque em <b>+ Entrada</b> ou <b>− Saída</b>.</li>
+        <li>O toque de confirmação aparece, o número some do campo (do jeito que já era) — mas agora o <b>cursor já está esperando dentro do campo Quantidade</b>, pronto pro próximo produto lançar.</li>
+        <li>Vale pra <b>Entrada e Saída</b>, e em qualquer aparelho — celular, tablet, computador.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">⏎</span>
+      <strong>Enter também lança — sem precisar tocar no botão</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Com o cursor no campo Quantidade, apertar <span class="tecla">Enter</span> já lança a <b>Entrada</b> (a ação mais comum). Se o produto só permitir <b>Saída</b> para o seu usuário, o <span class="tecla">Enter</span> lança a Saída.</p>
+      <p>Quem usa teclado numérico ou leitor conectado no computador ganha um fluxo bem mais rápido: <b>digita, Enter, digita, Enter…</b> sem tirar a mão do teclado.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🗣️</span>
+      <strong>Por que isso mudou</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Pedido direto do dono: <i>"dando entrada no estoque, digito a quantidade e dou entrada no +, o cursor some; ele deveria continuar dentro do início mais óbvio."</i></p>
+      <p>Quem lança vários produtos seguidos (uma remessa inteira, uma contagem) tinha que <b>tocar de novo no campo a cada produto</b> só para poder digitar — um toque a mais, repetido dezenas de vezes por dia.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">✅</span>
+      <strong>O que NÃO muda</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>As <b>permissões continuam as mesmas</b>: quem podia dar Entrada/Saída continua podendo, do mesmo jeito.</li>
+        <li>A <b>saída sem motivo continua recusada</b> — essa regra não mudou.</li>
+        <li>Nenhum comportamento de cálculo de estoque mudou — só o cursor.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ══════════ AS TELAS DO APP ══════════ -->
+  <div class="sec-label">A tela do app, sem mistério</div>
+
+  <div class="tela">
+    <div class="tela-titulo">📱 Ajuste de Estoque · logo depois de lançar</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-body">
+          <div class="prod-nome" style="font-weight:800;font-size:13px;">1-G-COXINHA AIPIM FRANGO C/20 130GR</div>
+          <div style="font-size:11.5px;color:#6b756f;margin-top:3px;">Disponível &nbsp;<b style="color:var(--primary-dark);">132 PT</b></div>
+        </div>
+      </div>
+      <div class="toast-ok">
+        <span style="color:var(--primary);font-size:16px;line-height:1;">✓</span>
+        <span>Entrada registrada! Disponível: 132 PT<span class="pin">1</span></span>
+      </div>
+      <div class="app-input focado">
+        <small>Quantidade<span class="pin">2</span></small>
+        <span class="qtd-grande vazio">0<span class="cursor-pisca"></span></span>
+      </div>
+      <div class="botoes2">
+        <span class="app-btn vermelho">− Saída</span>
+        <span class="app-btn">+ Entrada<span class="pin">3</span></span>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>O toque confirma que entrou</b> — o saldo já atualizado aparece na mensagem.</span></div>
+      <div><span class="pin">2</span><span><b>O campo Quantidade já está com o cursor piscando dentro</b> (a borda verde mostra o foco) — é só começar a digitar o próximo número.</span></div>
+      <div><span class="pin">3</span><span>Apertar <span class="tecla">Enter</span> aqui já lança direto, sem precisar tocar no botão.</span></div>
+    </div>
+  </div>
+
+  <!-- ══════════ COMO COMEÇAR ══════════ -->
+  <div class="sec-label">Para começar a usar</div>
+  <div class="passos">
+    <div class="passo">
+      <span class="passo-n">1</span>
+      <div><b>Atualize o app:</b> toque no ícone de atualizar ↻ (ou feche e abra o app).</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">2</span>
+      <div>Abra <b>Produção / Estoque → Ajuste de Estoque</b> e lance como sempre.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">3</span>
+      <div>Depois de lançar, <b>já digite o próximo número</b> — o cursor está esperando. ⌨️</div>
+    </div>
+  </div>
+
+  <p class="rodape">Dúvidas? Pergunte ao <strong>Clippy</strong> dentro do app — ele já conhece a novidade.<br>— Hardt Salgados</p>
+</div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.parentElement;
+    const abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>

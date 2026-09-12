@@ -12,6 +12,24 @@ A tela central de trabalho do vendedor. É aqui que começa qualquer ação de v
 
 > **Esta é a aba mais importante para vendas.** Criar pedido, registrar atendimento e prospectar lead — tudo começa aqui.
 
+### Como o card do cliente é organizado (desde 09/2026)
+
+Pensado para uso no celular com uma mão só. O card mostra **sempre visível** só o essencial:
+**nome do cliente**, **uma badge** (a informação mais importante daquele cliente no momento — por
+ordem de prioridade: transferência pendente para você → inadimplência → retorno agendado para
+hoje → cenário de venda sugerido pela IA), o **selo de WhatsApp/GPS** e **dois botões** — **Atender**
+(ação principal, verde, em destaque) e **Pedido** (ação secundária, contorno verde), lado a lado.
+São fluxos independentes (registrar atendimento não passa por criar pedido), por isso os dois
+ficam sempre à vista, não só o Atender. Se o vendedor já lançou um pedido para aquele cliente hoje,
+aparece logo abaixo o link **"Ver pedido #N · status"**, que leva direto para o pedido na aba
+Pedidos.
+
+Tudo o mais — dia de venda/entrega, canais de atendimento, o detalhe da inadimplência, a
+orientação de IA (cenário + motivo + análise), alerta de retorno, transferência e observação do
+atendimento — fica atrás de **"Ver mais"**, um toque abaixo (nada foi removido, só saiu da
+primeira leitura). Quando existe uma transferência de cliente esperando você
+finalizar, o card já abre com os detalhes expandidos para não passar despercebido.
+
 ---
 
 ## O que dá pra fazer aqui
@@ -47,10 +65,11 @@ A tela central de trabalho do vendedor. É aqui que começa qualquer ação de v
 
 ### Criar um pedido
 1. Localize o card do cliente
-2. Clique em **Novo Pedido**
+2. Clique em **Pedido** (botão de contorno verde, ao lado do Atender — já vem sempre visível, não precisa abrir "Ver mais")
 3. Se houver orientação de IA, confirme a leitura
 4. O app navega para `/pedidos/novo?clienteId=...`
 5. Preencha o pedido normalmente
+6. Depois de salvo, ao voltar para a Rota o card mostra o link **"Ver pedido #N · status"** — toque nele para ir direto ao pedido na aba Pedidos (a aba certa já abre sozinha: Pedidos, Especiais ou Bonificação)
 
 > **Layout da tela de pedido:** os passos são os mesmos no celular e no computador (cliente → tipo → condição de pagamento → data → qualidade do atendimento → produtos). No **computador (tela larga)** a tela mostra duas colunas: à esquerda o formulário e a lista de produtos; à direita um painel fixo **"Itens do Pedido"** com cada item (com botões de +/− e Remover), Subtotal, Frete, Flex e Total sempre visíveis, além do botão **Fechar pedido**. No **celular** o layout é em coluna única, com o botão de fechar fixo no rodapé (igual a antes). Em promoções **CONDICIONAIS**, cada condição mostra um **✓ verde** quando já foi atingida.
 
@@ -110,8 +129,8 @@ Lista de clientes e leads que **ainda não foram atendidos hoje** pelo vendedor 
 
 - Mostra o banner de meta da cidade/do dia no topo
 - Filtros de dia da semana e forma de atendimento ficam visíveis nesta sub-aba
-- Cards com botões de **Atender** e **Novo Pedido**
-- Clientes com alerta de inadimplência exibem ícone vermelho clicável
+- Card com botões **Atender** (principal) e **Pedido** (secundário) lado a lado, sempre visíveis
+- Clientes com alerta de inadimplência mostram a badge "Inadimplente" e o detalhe (ícone vermelho clicável) dentro de "Ver mais"
 - Leads mostram a etapa atual (NOVO, PROSPECÇÃO, etc.)
 - **Selo de WhatsApp** ao lado do nome do cliente, quando a chave "Mostrar selo nas listas" estiver ligada (ver seção própria abaixo)
 

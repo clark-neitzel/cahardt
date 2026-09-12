@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Card do Cliente na Rota — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp (sem og:image de propósito — cartão compacto) -->
+<meta property="og:title" content="🪧 Novidade no Hardt App: card da Rota mais limpo">
+<meta property="og:description" content="Nome grande, uma badge, Atender e Pedido em destaque. O resto continua tudo ali, só um toque abaixo em 'Ver mais'. Veja o antes e depois.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 56px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(26px, 7vw, 38px);
+    font-weight: 800;
+    line-height: 1.15;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.75);
+    font-size: 16px;
+    max-width: 46ch;
+    margin: 0 auto;
+    text-wrap: balance;
+  }
+
+  /* ── SEÇÕES / ACCORDION ── */
+  .sec-label {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: var(--primary-dark);
+    margin: 34px 4px 12px;
+  }
+  .acc {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .acc-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: none;
+    border: none;
+    font: inherit;
+    text-align: left;
+    padding: 15px 16px;
+    cursor: pointer;
+    min-height: 56px;
+  }
+  .acc-ico {
+    width: 38px; height: 38px;
+    border-radius: 11px;
+    background: var(--mint);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  /* passos */
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n {
+    width: 30px; height: 30px; flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 800;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .rodape {
+    text-align: center;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 40px;
+  }
+  .rodape strong { color: var(--primary-dark); }
+
+  /* ── MOCKUPS DAS TELAS DO APP (antes/depois) ── */
+  .antes-depois { display: grid; grid-template-columns: 1fr; gap: 18px; }
+  @media (min-width: 560px) { .antes-depois { grid-template-columns: 1fr 1fr; } }
+  .rotulo {
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    margin-bottom: 8px;
+    text-align: center;
+  }
+  .rotulo.antes { color: #b45309; }
+  .rotulo.depois { color: var(--primary-dark); }
+  .tela {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .tela-titulo {
+    background: var(--house);
+    color: #fff;
+    padding: 10px 14px;
+    font-size: 12px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tela-corpo { padding: 14px; background: #f7f6f2; }
+
+  /* card do cliente dentro do mock */
+  .cliente-card {
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-radius: 12px;
+    padding: 12px;
+  }
+  .badges-linha { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; margin-bottom: 6px; }
+  .badge-mini {
+    font-size: 9.5px;
+    font-weight: 800;
+    padding: 3px 6px;
+    border-radius: 999px;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+  }
+  .badge-cinza { background: #eef1ee; color: #6b756f; }
+  .badge-azul { background: #dbeafe; color: #1d4ed8; }
+  .badge-verde { background: var(--mint); color: var(--primary-dark); }
+  .badge-vermelho { background: #fee2e2; color: #b91c1c; }
+  .nome-antes { font-size: 13px; font-weight: 700; color: var(--ink); margin-bottom: 3px; }
+  .endereco-antes { font-size: 11px; color: #8b9490; margin-bottom: 10px; }
+  .btns-antes { display: flex; gap: 6px; flex-wrap: wrap; }
+  .btn-mini {
+    font-size: 10.5px;
+    font-weight: 700;
+    padding: 6px 10px;
+    border-radius: 999px;
+    border: 1.5px solid #d8d5cc;
+    color: #6b756f;
+    background: #fff;
+  }
+  .btn-mini.primario { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+  .nome-depois { font-size: 16px; font-weight: 800; color: var(--ink); }
+  .cidade-depois { font-size: 11.5px; color: #8b9490; margin-top: 1px; }
+  .linha-topo-depois { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+  .selo-linha { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 11px; color: #6b756f; font-weight: 600; }
+  .botoes-linha { display: flex; gap: 8px; margin-top: 10px; }
+  .btn-atender, .btn-pedido {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    flex: 1;
+    min-height: 40px;
+    font-size: 13px;
+    font-weight: 800;
+    border-radius: 999px;
+  }
+  .btn-atender {
+    background: var(--primary);
+    color: #fff;
+  }
+  .btn-pedido {
+    background: #fff;
+    color: var(--primary-dark);
+    border: 1.5px solid var(--primary);
+  }
+  .link-pedido { text-align: center; font-size: 11.5px; font-weight: 700; color: var(--primary-dark); margin-top: 8px; }
+  .ver-mais { text-align: center; font-size: 10.5px; font-weight: 700; color: #9aa5a0; margin-top: 8px; }
+
+  .pin {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    flex-shrink: 0;
+    vertical-align: 2px;
+    margin-left: 6px;
+  }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+</style>
+</head>
+<body>
+
+<!-- ══════════ HERO ══════════ -->
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>O card do cliente na Rota ficou mais fácil de ler</h1>
+    <p>Menos disputa de atenção na tela do celular: nome grande, uma badge, Atender e Pedido em destaque. O resto continua tudo lá — só um toque abaixo, em "Ver mais".</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- ══════════ COMO FUNCIONA ══════════ -->
+  <div class="sec-label">O que mudou</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🪧</span>
+      <strong>Uma badge só, não três</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>O card mostra <b>a informação mais importante daquele cliente no momento</b> — em vez de três ou quatro badges do mesmo tamanho disputando o seu olhar.</li>
+        <li>A ordem de prioridade é a que o app já usava: <b>transferência pendente para você</b> → <b>inadimplência</b> → <b>retorno agendado para hoje</b> → <b>cenário de venda sugerido pela IA</b> (novo sem compra, atrasado, parado, etc.).</li>
+        <li>Nenhuma regra de negócio mudou — é a mesma lógica de sempre, só que agora só a mais urgente aparece de cara.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">✅</span>
+      <strong>Atender e Pedido, lado a lado</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>O botão verde <b>Atender</b> é a ação principal, grande e fácil de tocar com o polegar — pensado para quem está na rua, muitas vezes com uma mão só.</li>
+        <li>O botão <b>Pedido</b> (contorno verde) fica ao lado, também sempre visível — são dois fluxos diferentes (registrar um atendimento não é a mesma coisa que lançar um pedido), então os dois continuam à mão, sem precisar abrir "Ver mais".</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🧾</span>
+      <strong>Ver pedido criado — sem sair da Rota</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Depois que você lança um pedido para o cliente pelo card, aparece o link <b>"Ver pedido #N · status"</b> logo abaixo do botão Atender.</li>
+        <li>Toque nele e vai direto para o pedido na aba <b>Pedidos</b> — não precisa mais sair da Rota e procurar na lista.</li>
+        <li>O status mostrado é sempre o real (Aberto, Enviar, Sincronizando, Faturado...) — nunca aparece "enviado" ou "aprovado" antes da hora.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">👇</span>
+      <strong>Nada sumiu — só foi para "Ver mais"</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Dia de venda/entrega, canais de atendimento, valor da inadimplência, orientação da IA (cenário + o que dizer + como reagir a objeção), alerta de retorno, transferência e observação do atendimento — <b>tudo continua no card</b>, dentro de "Ver mais".</li>
+        <li>Se existe uma <b>transferência esperando você finalizar</b>, o card já abre expandido sozinho, para não passar batido.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ══════════ AS TELAS DO APP ══════════ -->
+  <div class="sec-label">O card, antes e depois</div>
+
+  <div class="antes-depois">
+    <div>
+      <div class="rotulo antes">Antes</div>
+      <div class="tela">
+        <div class="tela-titulo">📱 Rota de hoje</div>
+        <div class="tela-corpo">
+          <div class="cliente-card">
+            <div class="badges-linha">
+              <span class="badge-cinza">Cliente</span>
+              <span class="badge-verde">Atendido</span>
+              <span class="badge-azul">Regular no prazo</span>
+            </div>
+            <div class="nome-antes">Padaria Central</div>
+            <div class="endereco-antes">Cidade Exemplo/SC</div>
+            <div class="btns-antes">
+              <span class="btn-mini primario">Atender</span>
+              <span class="btn-mini">Pedido</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="rotulo depois">Depois</div>
+      <div class="tela">
+        <div class="tela-titulo">📱 Rota de hoje</div>
+        <div class="tela-corpo">
+          <div class="cliente-card">
+            <div class="linha-topo-depois">
+              <div>
+                <div class="nome-depois">Padaria Central</div>
+                <div class="cidade-depois">Cidade Exemplo/SC</div>
+              </div>
+              <span class="badge-vermelho" style="border-radius:999px;">Inadimplente<span class="pin">1</span></span>
+            </div>
+            <div class="selo-linha">💬 WhatsApp · 📍 GPS<span class="pin">2</span></div>
+            <div class="botoes-linha">
+              <div class="btn-atender">✓ Atender</div>
+              <div class="btn-pedido">📦 Pedido</div>
+              <span class="pin" style="align-self:center;">3</span>
+            </div>
+            <div class="link-pedido">Ver pedido #4821 · Faturado →<span class="pin">4</span></div>
+            <div class="ver-mais">Ver mais ▾<span class="pin">5</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tela" style="margin-top:14px;">
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Uma badge só</b>, a mais importante — aqui, inadimplência. Antes eram até três badges do mesmo tamanho competindo com o nome.</span></div>
+      <div><span class="pin">2</span><span><b>Selo discreto</b> de WhatsApp e GPS — informação de apoio, não a primeira coisa que o olho vê.</span></div>
+      <div><span class="pin">3</span><span><b>Dois botões, pesos diferentes:</b> <b>Atender</b> em destaque (verde cheio) e <b>Pedido</b> ao lado (contorno) — são fluxos independentes, os dois continuam sempre visíveis.</span></div>
+      <div><span class="pin">4</span><span><b>Novo:</b> depois de lançar um pedido pelo card, o link leva direto para ele em Pedidos — sem precisar sair da Rota.</span></div>
+      <div><span class="pin">5</span><span><b>Ver mais</b> abre tudo o que não some: dia de venda/entrega, canais, valor da inadimplência, orientação de IA, alertas, transferência e observação.</span></div>
+    </div>
+  </div>
+
+  <!-- ══════════ RESUMO ══════════ -->
+  <div class="sec-label">Para usar</div>
+  <div class="passos">
+    <div class="passo">
+      <span class="passo-n">1</span>
+      <div><b>Atualize o app:</b> toque no ícone de atualizar ↻ (ou feche e abra o app).</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">2</span>
+      <div>Na Rota, o card já aparece no novo formato — nome, badge, selo e os botões <b>Atender</b> e <b>Pedido</b> lado a lado.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">3</span>
+      <div>Precisa de mais detalhe (dia de venda, orientação da IA, inadimplência)? Toque em <b>Ver mais</b>.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">4</span>
+      <div>Já lançou o pedido? Volte à Rota e toque em <b>Ver pedido</b> para ir direto até ele. ✅</div>
+    </div>
+  </div>
+
+  <p class="rodape">Dúvidas? Pergunte ao <strong>Clippy</strong> dentro do app — ele já conhece a tela nova.<br>— Hardt Salgados</p>
+</div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.parentElement;
+    const abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>

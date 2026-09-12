@@ -46,8 +46,9 @@ No **mobile**, a lista de cards aparece primeiro. Ao clicar em "Escolher", a lis
 5. Escreva a observação (o motivo):
    - **Saída: obrigatório** — mínimo 3 letras. Sem isso o sistema recusa com a mensagem *"Informe o motivo da saída (mínimo 3 caracteres)."* e nada é lançado
    - **Entrada: opcional** — continua como sempre foi
-6. Clique em **+ Entrada** ou **- Saída**
+6. Clique em **+ Entrada** ou **- Saída** (ou pressione **Enter** com o cursor no campo Quantidade — lança Entrada por padrão; se o produto só permitir Saída para o usuário, o Enter lança Saída)
 7. O estoque é atualizado imediatamente; o card na lista reflete o novo saldo
+8. **(09/2026)** Depois de lançar, o cursor volta sozinho para o campo **Quantidade** — dá para digitar o próximo lançamento sem tocar na tela de novo
 
 ### Produtos de nome parecido — confira o código e a embalagem (09/2026)
 O catálogo tem **11 produtos com "COXINHA FRANGO" no nome**, sendo três a mesma mini coxinha em

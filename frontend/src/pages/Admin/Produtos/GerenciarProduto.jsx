@@ -1042,13 +1042,13 @@ const GerenciarProduto = () => {
                   </div>
                 </div>
                 <div className="flex gap-1.5 px-4 pb-3">
-                  <button onClick={() => setAbaAtiva('dados')} className="flex-1 flex items-center justify-center gap-1.5 h-10 rounded-xl text-sm font-semibold" style={abaAtiva === 'dados' ? { background: '#EFF4FF', color: '#2563EB' } : { background: '#EEF0F7', color: '#7A8094' }}>
+                  <button onClick={() => setAbaAtiva('dados')} className="flex-1 flex items-center justify-center gap-1.5 h-10 rounded-xl raio-proprio text-sm font-semibold" style={abaAtiva === 'dados' ? { background: '#EFF4FF', color: '#2563EB' } : { background: '#EEF0F7', color: '#7A8094' }}>
                     <Save className="h-3.5 w-3.5" /> Dados
                   </button>
-                  <button onClick={() => setAbaAtiva('promocoes')} className="flex-1 flex items-center justify-center gap-1.5 h-10 rounded-xl text-sm font-semibold" style={abaAtiva === 'promocoes' ? { background: '#EFF4FF', color: '#2563EB' } : { background: '#EEF0F7', color: '#7A8094' }}>
+                  <button onClick={() => setAbaAtiva('promocoes')} className="flex-1 flex items-center justify-center gap-1.5 h-10 rounded-xl raio-proprio text-sm font-semibold" style={abaAtiva === 'promocoes' ? { background: '#EFF4FF', color: '#2563EB' } : { background: '#EEF0F7', color: '#7A8094' }}>
                     <Tag className="h-3.5 w-3.5" /> Promoções
                   </button>
-                  <button onClick={() => setAbaAtiva('compras')} className="flex-1 flex items-center justify-center gap-1.5 h-10 rounded-xl text-sm font-semibold" style={abaAtiva === 'compras' ? { background: '#EFF4FF', color: '#2563EB' } : { background: '#EEF0F7', color: '#7A8094' }}>
+                  <button onClick={() => setAbaAtiva('compras')} className="flex-1 flex items-center justify-center gap-1.5 h-10 rounded-xl raio-proprio text-sm font-semibold" style={abaAtiva === 'compras' ? { background: '#EFF4FF', color: '#2563EB' } : { background: '#EEF0F7', color: '#7A8094' }}>
                     <ShoppingCart className="h-3.5 w-3.5" /> Compras
                   </button>
                 </div>

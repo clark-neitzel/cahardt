@@ -34,7 +34,7 @@ Painel de expedição logística. Aqui são criados os "embarques" (cargas), que
 ## Como fazer (passo a passo real)
 
 ### Montar uma nova carga
-1. Clique em **Montar Nova Carga** (botão azul no canto superior)
+1. Clique em **Montar Nova Carga** (botão verde no canto superior)
 2. O modal abre com dois campos:
    - **Data Programada de Saída** — padrão é hoje
    - **Motorista / Responsável** — lista apenas usuários com `Pode_Executar_Entregas` ou `admin`

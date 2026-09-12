@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Central de Pendências — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp (sem og:image de propósito — imagem grande vira cartão gigante) -->
+<meta property="og:title" content="🔔 Novidade no Hardt App: Central de Pendências">
+<meta property="og:description" content="Uma tela só reúne o que está esperando um clique: pedidos p/ aprovar, NF-e, caixas, notas recebidas, produção e tarefas atrasadas — com botão de ação direto na linha.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 56px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 7vw, 40px);
+    font-weight: 800;
+    line-height: 1.12;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.75);
+    font-size: 16px;
+    max-width: 46ch;
+    margin: 0 auto;
+    text-wrap: balance;
+  }
+
+  .sec-label {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: var(--primary-dark);
+    margin: 34px 4px 12px;
+  }
+  .sec-label:first-of-type { margin-top: 28px; }
+
+  /* ── ACCORDION ── */
+  .acc {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .acc-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: none;
+    border: none;
+    font: inherit;
+    text-align: left;
+    padding: 15px 16px;
+    cursor: pointer;
+    min-height: 56px;
+  }
+  .acc-head:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+  .acc-ico {
+    width: 38px; height: 38px;
+    border-radius: 11px;
+    background: var(--mint);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  /* ── MOCKUPS DAS TELAS DO APP ── */
+  .tela {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .tela-titulo {
+    background: var(--house);
+    color: #fff;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .app-card {
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .app-card.vermelho { border-left: 3px solid #f87171; }
+  .app-card.ambar { border-left: 3px solid #fbbf24; }
+  .app-card.cinza { border-left: 3px solid #d1d5db; }
+  .app-card-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    border-bottom: 1px solid #f0efe9;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: #6b756f;
+  }
+  .app-card-head .n {
+    margin-left: auto;
+    background: #fee2e2;
+    color: #b91c1c;
+    font-size: 10.5px;
+    font-weight: 800;
+    padding: 2px 8px;
+    border-radius: 999px;
+  }
+  .app-card.ambar .app-card-head .n { background: #fef3c7; color: #92400e; }
+  .app-card.cinza .app-card-head .n { background: #f3f4f6; color: #4b5563; }
+  .app-card-body { padding: 10px 12px; }
+  .app-linha {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 7px 0;
+    border-bottom: 1px solid #f0efe9;
+  }
+  .app-linha:last-child { border-bottom: none; }
+  .app-linha .tx strong { display: block; font-size: 12.5px; color: var(--ink); }
+  .app-linha .tx span { display: block; font-size: 10.5px; color: #9aa5a0; }
+  .app-cabecalho {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 12px;
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-radius: 12px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+  }
+  .app-cabecalho-id { display: flex; align-items: center; gap: 8px; }
+  .app-cabecalho-icone {
+    width: 30px; height: 30px;
+    border-radius: 8px;
+    background: #fef3c7;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px;
+    flex-shrink: 0;
+  }
+  .app-cabecalho-titulos strong { display: block; font-size: 13.5px; color: var(--ink); }
+  .app-cabecalho-titulos small { display: block; font-size: 10.5px; color: #9aa5a0; }
+  .app-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--primary);
+    color: #fff;
+    font-size: 11.5px;
+    font-weight: 700;
+    padding: 7px 13px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .app-btn.claro { background: #fff; border: 1.5px solid var(--primary); color: var(--primary); }
+  .kpis { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 12px; }
+  .kpi { background: #fff; border: 1px solid #e5e3dc; border-radius: 10px; padding: 9px 11px; }
+  .kpi .rot { font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: #9aa5a0; }
+  .kpi .val { font-size: 18px; font-weight: 800; color: var(--ink); margin-top: 2px; }
+  .kpi .val.ambar { color: #b45309; }
+  .kpi .val.vermelho { color: #b91c1c; }
+  .pin {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    flex-shrink: 0;
+    vertical-align: 2px;
+    margin-left: 6px;
+  }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+
+  /* passos */
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n {
+    width: 30px; height: 30px; flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 800;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .rodape {
+    text-align: center;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 40px;
+  }
+  .rodape strong { color: var(--primary-dark); }
+</style>
+</head>
+<body>
+
+<!-- ══════════ HERO ══════════ -->
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>Uma tela só com<br>tudo que está esperando</h1>
+    <p>Em vez de abrir Pedidos, Notas Fiscais, Caixa, Notas Recebidas, PCP e Tarefas um por um, a <b>Central de Pendências</b> junta tudo — com contador e um botão de ação em cada linha.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- ══════════ O QUE MUDOU ══════════ -->
+  <div class="sec-label">O que é</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🔔</span>
+      <strong>Tudo que está parado, numa tela só</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Item novo no menu: <b>"Central de Pendências"</b>, no topo do grupo <b>Financeiro</b>.</li>
+        <li>Reúne 8 tipos de pendência: <b>pedidos p/ aprovar</b>, <b>NF-e a emitir</b>, <b>NF-e rejeitada</b>, <b>caixas p/ conferir</b>, <b>notas recebidas sem conta</b>, <b>faturados sem cobrança</b>, <b>produção sugerida</b> e <b>tarefas atrasadas</b>.</li>
+        <li>Cada bloco só aparece se tiver algo pendente — sem nada, some. Se estiver tudo em dia, a tela mostra <b>"Nada pendente 🎉"</b>.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">👆</span>
+      <strong>Botão de ação direto na linha</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Quando dá para resolver com <b>1 clique</b> (aprovar pedido, emitir NF-e, reemitir, aceitar produção, gerar boleto), o botão já aparece na própria linha — é <b>exatamente o mesmo botão</b> da tela original, só que sem precisar abrir ela.</li>
+        <li>Quando a pendência exige revisão (conferir caixa, gerar conta a pagar, concluir tarefa), o botão é <b>"Abrir"</b> e leva direto para a tela certa.</li>
+        <li>O link <b>"ver todos"</b> no rodapé de cada bloco mostra a lista completa daquele tipo, não só as 5 primeiras.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🚦</span>
+      <strong>Ordem por urgência, não por tipo</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Os blocos aparecem em ordem de <b>severidade</b>: vermelho (mais grave) → âmbar (precisa de atenção) → cinza (aviso).</li>
+        <li>No topo, 4 números resumem o dia: <b>Total de pendências</b>, <b>Dinheiro parado</b> (caixas a conferir + faturados sem cobrança), <b>Vencidas</b> (prazo já estourado) e <b>Avisos</b>.</li>
+        <li>Botão <b>"Atualizar"</b> recarrega tudo sem sair da tela — útil depois de resolver várias pendências seguidas.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🔒</span>
+      <strong>Quem vê a tela</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Quem já tem acesso a <b>Fluxo de Caixa/DRE</b> (financeiro gerencial) já enxerga a Central automaticamente.</li>
+        <li>Existe também uma permissão nova, <b>separada</b>, para quem deve ver só esta tela sem abrir os painéis financeiros completos — se precisar para alguém da equipe, é só pedir para liberar no cadastro do usuário.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ══════════ AS TELAS DO APP ══════════ -->
+  <div class="sec-label">A tela do app, sem mistério</div>
+
+  <div class="tela">
+    <div class="tela-titulo">📱 Central de Pendências</div>
+    <div class="tela-corpo">
+      <div class="app-cabecalho">
+        <div class="app-cabecalho-id">
+          <div class="app-cabecalho-icone">🔔</div>
+          <div class="app-cabecalho-titulos">
+            <strong>Central de Pendências<span class="pin">1</span></strong>
+            <small>23 pendência(s) esperando um clique</small>
+          </div>
+        </div>
+        <span class="app-btn claro">↻ Atualizar<span class="pin">2</span></span>
+      </div>
+
+      <div class="kpis">
+        <div class="kpi"><div class="rot">Total</div><div class="val">23<span class="pin" style="width:16px;height:16px;font-size:10px;">3</span></div></div>
+        <div class="kpi"><div class="rot">Dinheiro parado</div><div class="val ambar">R$ 8.420</div></div>
+        <div class="kpi"><div class="rot">Vencidas</div><div class="val vermelho">6</div></div>
+        <div class="kpi"><div class="rot">Avisos</div><div class="val ambar">4</div></div>
+      </div>
+
+      <div class="app-card ambar">
+        <div class="app-card-head">Pedidos aguardando aprovação<span class="n">4</span><span class="pin" style="margin-left:6px;">4</span></div>
+        <div class="app-card-body">
+          <div class="app-linha">
+            <div class="tx"><strong>Padaria Central</strong><span>Especial · há 2 dias</span></div>
+            <span class="app-btn">Aprovar<span class="pin" style="margin-left:4px;">5</span></span>
+          </div>
+          <div class="app-linha">
+            <div class="tx"><strong>Mercado Bom Preço</strong><span>Bonificação · há 1 dia</span></div>
+            <span class="app-btn">Aprovar</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="app-card cinza">
+        <div class="app-card-head">Caixas para conferir<span class="n">2</span></div>
+        <div class="app-card-body">
+          <div class="app-linha">
+            <div class="tx"><strong>Carlos (motorista)</strong><span>Rota de ontem</span></div>
+            <span class="app-btn claro">Abrir<span class="pin" style="margin-left:4px;">6</span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Cápsula âmbar + ícone: mesmo padrão de cabeçalho das outras telas do app.</span></div>
+      <div><span class="pin">2</span><span><b>Atualizar</b> recarrega os números na hora, sem sair da tela.</span></div>
+      <div><span class="pin">3</span><span>4 números resumem o dia: total, dinheiro parado, vencidas e avisos.</span></div>
+      <div><span class="pin">4</span><span>Cada bloco é um tipo de pendência, com o <b>contador real</b> no cabeçalho — bloco sem nada pendente some sozinho.</span></div>
+      <div><span class="pin">5</span><span>Botão de <b>ação em 1 clique</b>: aprova o pedido sem precisar abrir a tela de Pedidos (é o mesmo botão de lá).</span></div>
+      <div><span class="pin">6</span><span>Quando a pendência exige revisão humana (contar dinheiro, por exemplo), o botão é <b>"Abrir"</b> e leva para a tela certa.</span></div>
+    </div>
+  </div>
+
+  <!-- ══════════ PARA CONFERIR ══════════ -->
+  <div class="sec-label">Para começar a usar</div>
+  <div class="passos">
+    <div class="passo">
+      <span class="passo-n">1</span>
+      <div><b>Atualize o app:</b> toque no ícone de atualizar ↻ (ou feche e abra o app).</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">2</span>
+      <div>Abra o menu e toque em <b>"Central de Pendências"</b>, no topo do grupo Financeiro.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">3</span>
+      <div>Comece pelos blocos <b>vermelhos</b> (topo da lista) e resolva com o botão da própria linha, quando disponível.</div>
+    </div>
+  </div>
+
+  <p class="rodape">Dúvidas? Pergunte ao <strong>Clippy</strong> dentro do app — ele já conhece a tela nova.<br>— Hardt Salgados</p>
+</div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.parentElement;
+    const abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>

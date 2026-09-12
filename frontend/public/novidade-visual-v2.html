@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Visual Novo nas Telas — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp (sem og:image de propósito — imagem grande vira cartão gigante) -->
+<meta property="og:title" content="🎨 Novidade no Hardt App: visual novo nas telas mais usadas">
+<meta property="og:description" content="Cabeçalho igual em toda tela, botão de ação sempre verde e listas vazias que explicam o que fazer. Veja o que mudou em Expedição, Clientes, Contas a Receber, Pedidos e Rota.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 56px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 7vw, 40px);
+    font-weight: 800;
+    line-height: 1.12;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.75);
+    font-size: 16px;
+    max-width: 46ch;
+    margin: 0 auto;
+    text-wrap: balance;
+  }
+
+  .sec-label {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: var(--primary-dark);
+    margin: 34px 4px 12px;
+  }
+  .sec-label:first-of-type { margin-top: 28px; }
+
+  /* ── ACCORDION ── */
+  .acc {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .acc-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: none;
+    border: none;
+    font: inherit;
+    text-align: left;
+    padding: 15px 16px;
+    cursor: pointer;
+    min-height: 56px;
+  }
+  .acc-head:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+  .acc-ico {
+    width: 38px; height: 38px;
+    border-radius: 11px;
+    background: var(--mint);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  /* ── MOCKUPS DAS TELAS DO APP ── */
+  .tela {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .tela-titulo {
+    background: var(--house);
+    color: #fff;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .app-card {
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .app-card-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    border-bottom: 1px solid #f0efe9;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: #6b756f;
+  }
+  .app-card-body { padding: 12px; }
+  .app-cabecalho {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 12px;
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-radius: 12px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+  }
+  .app-cabecalho-id { display: flex; align-items: center; gap: 8px; }
+  .app-cabecalho-icone {
+    width: 30px; height: 30px;
+    border-radius: 8px;
+    background: var(--mint);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px;
+    flex-shrink: 0;
+  }
+  .app-cabecalho-titulos strong { display: block; font-size: 13.5px; color: var(--ink); }
+  .app-cabecalho-titulos small { display: block; font-size: 10.5px; color: #9aa5a0; }
+  .app-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--primary);
+    color: #fff;
+    font-size: 12.5px;
+    font-weight: 700;
+    padding: 9px 16px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .app-btn.claro { background: #fff; border: 1.5px solid var(--primary); color: var(--primary); }
+  .app-btn.velho { background: #0284c7; border-radius: 8px; }
+  .app-btn.icone { padding: 9px 11px; }
+  .app-input {
+    border: 1px solid #d8d5cc;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 12.5px;
+    color: #9aa5a0;
+    background: #fff;
+    margin-bottom: 8px;
+  }
+  .app-busca { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .app-busca .app-input { flex: 1; min-width: 140px; margin-bottom: 0; }
+  .app-vazio {
+    text-align: center;
+    padding: 26px 16px;
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-radius: 12px;
+  }
+  .app-vazio-icone {
+    width: 44px; height: 44px;
+    margin: 0 auto 10px;
+    border-radius: 50%;
+    background: var(--mint);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    color: var(--primary);
+  }
+  .app-vazio strong { display: block; font-size: 13px; color: #374151; margin-bottom: 3px; }
+  .app-vazio p { margin: 0; font-size: 11.5px; color: #6b756f; }
+  .pin {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    flex-shrink: 0;
+    vertical-align: 2px;
+    margin-left: 6px;
+  }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+
+  /* passos */
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n {
+    width: 30px; height: 30px; flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 800;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .rodape {
+    text-align: center;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 40px;
+  }
+  .rodape strong { color: var(--primary-dark); }
+</style>
+</head>
+<body>
+
+<!-- ══════════ HERO ══════════ -->
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>Um cabeçalho igual<br>em toda tela</h1>
+    <p>Expedição, Clientes, Contas a Receber, Pedidos e Rota ganharam o mesmo cabeçalho, o mesmo botão verde de ação e listas vazias que explicam o que fazer — em vez de texto cinza apagado.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- ══════════ O QUE MUDOU ══════════ -->
+  <div class="sec-label">O que mudou</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🪧</span>
+      <strong>Cabeçalho único em toda tela</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Toda tela principal agora abre com o mesmo formato: <b>ícone colorido do módulo + título + descrição curta</b>, sempre no mesmo lugar.</li>
+        <li>Antes cada tela improvisava o próprio cabeçalho (ou nem tinha, caso de <b>Clientes</b>) — agora é um padrão só, mais fácil de reconhecer onde você está.</li>
+        <li>Onde faz sentido, o cabeçalho mostra um número real, como <b>"1.148 cadastrados"</b> em Clientes.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">💊</span>
+      <strong>Botão de ação sempre verde e em pílula</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>A ação principal da tela (a que você mais usa) é sempre o <b>botão verde em pílula</b> — nunca mais azul, cinza ou com canto quadrado.</li>
+        <li>Em <b>Painel de Expedição</b>, o botão "Montar Nova Carga" deixou de ser azul e virou verde, igual ao resto do app.</li>
+        <li>Em <b>Contas a Receber</b>, os 4 botões que competiam lado a lado viraram <b>1 botão principal + um menu "⋯"</b> com o resto (Ver resumo, Relatório, CSV) — nada sumiu, só ficou mais organizado.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">📭</span>
+      <strong>Lista vazia agora explica o que fazer</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Quando um filtro não encontra nada, a tela mostra um <b>ícone, uma frase clara e (quando faz sentido) um botão de ação</b> — em vez do antigo "Nenhum registro encontrado" em cinza-claro, quase invisível.</li>
+        <li>Vale para <b>Pedidos</b>, <b>Clientes</b>, <b>Contas a Receber</b> e <b>Painel de Expedição</b>.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🔔</span>
+      <strong>Aviso de sucesso/erro com a cara do app</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>O aviso que aparece no canto da tela depois de salvar algo (o "toast") ganhou o visual do app: <b>fundo verde-claro</b> quando dá certo, <b>vermelho</b> quando dá erro, em pílula.</li>
+        <li>Isso vale para o app inteiro, não só para as 5 telas — é um ajuste único, que passa a valer em qualquer lugar que mostra esse aviso.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🧩</span>
+      <strong>Nada muda no funcionamento</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>É um ajuste <b>só de visual e organização</b>: os botões continuam fazendo exatamente a mesma coisa, nos mesmos lugares (dentro do menu "⋯" quando aplicável).</li>
+        <li>Filtros, permissões e dados continuam idênticos.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ══════════ AS TELAS DO APP ══════════ -->
+  <div class="sec-label">As telas do app, sem mistério</div>
+
+  <!-- TELA 1: Painel de Expedição -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 1 · Painel de Expedição</div>
+    <div class="tela-corpo">
+      <div class="app-cabecalho">
+        <div class="app-cabecalho-id">
+          <div class="app-cabecalho-icone">🚚</div>
+          <div class="app-cabecalho-titulos">
+            <strong>Painel de Expedição<span class="pin">1</span></strong>
+            <small>Gestão logística de romaneios, veículos e motoristas</small>
+          </div>
+        </div>
+        <span class="app-btn">➕ Montar Nova Carga<span class="pin">2</span></span>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Cápsula azul + ícone + título: o mesmo formato que agora abre em todas as telas principais.</span></div>
+      <div><span class="pin">2</span><span>O botão <b>"Montar Nova Carga"</b> era azul com canto quadrado; agora é <b>verde em pílula</b>, igual ao restante do app.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 2: Clientes -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 2 · Clientes</div>
+    <div class="tela-corpo">
+      <div class="app-cabecalho">
+        <div class="app-cabecalho-id">
+          <div class="app-cabecalho-icone">👤</div>
+          <div class="app-cabecalho-titulos">
+            <strong>Clientes<span class="pin">1</span></strong>
+            <small>1.148 cadastrados<span class="pin">2</span></small>
+          </div>
+        </div>
+      </div>
+      <div class="app-vazio">
+        <div class="app-vazio-icone">👤</div>
+        <strong>Nenhum cliente encontrado<span class="pin">3</span></strong>
+        <p>Tente outro filtro ou cadastre um novo cliente.</p>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>A tela de Clientes não tinha nenhum título — agora sempre abre com o cabeçalho.</span></div>
+      <div><span class="pin">2</span><span>O contador mostra o <b>número real</b> de clientes encontrados, atualizado com os filtros.</span></div>
+      <div><span class="pin">3</span><span>Filtro sem resultado agora mostra ícone + frase legível, em vez de um texto cinza-claro quase apagado.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 3: Contas a Receber -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 3 · Contas a Receber — Tabela</div>
+    <div class="tela-corpo">
+      <div class="app-cabecalho">
+        <div class="app-cabecalho-id">
+          <div class="app-cabecalho-icone">💰</div>
+          <div class="app-cabecalho-titulos">
+            <strong>Contas a Receber<span class="pin">1</span></strong>
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <span class="app-btn">↻ Baixar parcelas do CA<span class="pin">2</span></span>
+          <span class="app-btn claro icone" style="padding:9px 12px;">⋮<span class="pin">3</span></span>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Mesma cápsula + título das outras telas.</span></div>
+      <div><span class="pin">2</span><span>Só <b>1 botão principal</b> fica visível: a ação mais usada (baixar parcelas do Conta Azul).</span></div>
+      <div><span class="pin">3</span><span>O menu <b>"⋯"</b> guarda o resto: <b>Ver resumo</b>, <b>Relatório</b> e <b>CSV</b> — nenhuma ação foi removida, só organizada.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 4: Pedidos -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 4 · Pedidos</div>
+    <div class="tela-corpo">
+      <div class="app-cabecalho">
+        <div class="app-cabecalho-id">
+          <div class="app-cabecalho-icone">📦</div>
+          <div class="app-cabecalho-titulos">
+            <strong>Pedidos<span class="pin">1</span></strong>
+          </div>
+        </div>
+      </div>
+      <div class="app-vazio">
+        <div class="app-vazio-icone">📦</div>
+        <strong>Nenhum pedido encontrado<span class="pin">2</span></strong>
+        <p>Tente ajustar os filtros aplicados.</p>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Pedidos já tinha cabeçalho parecido — agora usa o mesmo componente das demais telas.</span></div>
+      <div><span class="pin">2</span><span>O antigo "Nenhum pedido encontrado nos filtros aplicados" em cinza-claro virou o mesmo formato de lista vazia das outras telas.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 5: Rota / Leads -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 5 · Rota / Leads</div>
+    <div class="tela-corpo">
+      <div class="app-cabecalho">
+        <div class="app-cabecalho-id">
+          <div class="app-cabecalho-icone">🧭</div>
+          <div class="app-cabecalho-titulos">
+            <strong>Rota / Leads<span class="pin">1</span></strong>
+            <small>Dia base: SEG · 12/09/2026</small>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Só o <b>topo fixo</b> da tela mudou de formato. Os cards de cliente na lista de atendimento continuam exatamente iguais — isso é ajuste de uma rodada futura.</span></div>
+    </div>
+  </div>
+
+  <!-- ══════════ PARA CONFERIR ══════════ -->
+  <div class="sec-label">Para ver as telas novas</div>
+  <div class="passos">
+    <div class="passo">
+      <span class="passo-n">1</span>
+      <div><b>Atualize o app:</b> toque no ícone de atualizar ↻ (ou feche e abra o app).</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">2</span>
+      <div>Abra qualquer uma das 5 telas: <b>Expedição</b>, <b>Clientes</b>, <b>Contas a Receber</b>, <b>Pedidos</b> ou <b>Rota</b>.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">3</span>
+      <div>Repare no cabeçalho novo e no botão verde em pílula — o resto funciona exatamente como antes.</div>
+    </div>
+  </div>
+
+  <p class="rodape">Dúvidas? Pergunte ao <strong>Clippy</strong> dentro do app.<br>— Hardt Salgados</p>
+</div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.parentElement;
+    const abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>

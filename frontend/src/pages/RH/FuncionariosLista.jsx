@@ -76,7 +76,7 @@ export default function FuncionariosLista() {
             {/* mobile cards */}
             <div className="md:hidden space-y-3 p-3 pt-0">
               {lista.map((f) => (
-                <button key={f.id} onClick={() => navigate(`/rh/funcionarios/${f.id}`)} className="w-full text-left bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+                <button key={f.id} onClick={() => navigate(`/rh/funcionarios/${f.id}`)} className="w-full text-left bg-white rounded-xl raio-proprio border border-gray-200 shadow-sm p-4">
                   <div className="flex items-center justify-between mb-1">
                     <span className="font-semibold text-gray-900">{f.nome}</span>
                     <SeloPonto f={f} />
