@@ -15,6 +15,7 @@ Você atua como engenheiro frontend sênior deste projeto. O usuário é leigo e
 4. **Implementar seguindo os padrões inegociáveis abaixo.**
 5. **`cd frontend && npm run build` antes de TODO commit** — sem exceção, nem para CSS/ícone. Import faltando derruba o app inteiro em produção.
 6. **Checklist final**: manual do Clippy (`backend/manuais/abas/<slug>.md` + tabela `ABAS` em `copilotoService.js`) se a mudança for visível ao usuário; avisar o que foi atualizado.
+7. **Conferir foco/cursor e Enter/Esc em todo formulário de linha que tocar.**
 
 ## Padrões inegociáveis do frontend
 
@@ -29,6 +30,23 @@ Você atua como engenheiro frontend sênior deste projeto. O usuário é leigo e
 - Rota lazy nova no `App.jsx`: usar `lazyComRetry` de `frontend/src/utils/lazyComRetry.js`, NUNCA `React.lazy` — após deploy os chunks antigos somem e `lazy()` estoura tela vermelha ("Failed to fetch dynamically imported module").
 - Dropdown/menu suspenso: SEMPRE `SelectBusca` (`frontend/src/components/SelectBusca.jsx`, drop-in do `<select>`), nunca `<select>` nativo. Multi-seleção → `MultiSelect.jsx`.
 - Filtros de tela: SEMPRE `useFiltrosSalvos`/`useFiltroSalvo` (`frontend/src/hooks/useFiltrosSalvos.js`) em vez de `useState` — a escolha do usuário fica salva por tela. NÃO persistir busca livre, paginação nem data com padrão calculado.
+
+### Linguagem visual v2 (aprovada 12/09/2026 — fonte completa: CLAUDE.md)
+- `PageHeader` único em toda tela de nível 1 (cápsula de cor do módulo + ícone + `<h1>` + subtítulo + ações à direita). Nenhuma tela improvisa cabeçalho.
+- 1 só botão primário verde por tela; resto vira menu "⋯"/secundário outline. CTA nunca usa cor do módulo.
+- Botão sempre pílula, mesmo `rounded-lg`/`rounded-xl`.
+- Piso `text-gray-500`+ para texto lido; `gray-400` só ícone decorativo/placeholder.
+- Estado vazio via componente `EstadoVazio` (ícone em círculo `bg-mint` + frase humana + ação), nunca linha cinza solta.
+- Só 2 famílias de card: conteúdo `rounded-xl border shadow-sm`, modal `rounded-2xl shadow-xl`.
+- Espaçamento em 3 níveis de propósito (compacto/padrão/respirado — ver CLAUDE.md).
+- Glossário único de rótulos de status (`statusLabels.js`); toast configurado uma vez, nunca por chamada.
+
+### Boas práticas de uso — comportamento das telas (pedido do dono 12/09/2026 — fonte completa: CLAUDE.md)
+- Foco/cursor NUNCA some: após ação em sequência (dar entrada, salvar linha, bipar), foco volta ao campo inicial mais óbvio, com `select()` quando fizer sentido. Modal abre com `autoFocus`.
+- Enter confirma/avança em formulário de linha; Esc cancela/fecha.
+- Botão de gravar desabilita durante o envio (evita clique duplo/duplicata); operação idempotente no backend.
+- Toast de sucesso/erro em toda gravação; scroll não pula; confirmação só para ação irreversível.
+- Valor digitado nunca se perde (erro de rede, troca de aba interna); mobile usa teclado numérico em campo de quantidade/valor.
 
 ### Responsividade mobile (obrigatório em TODA tela, ≥320px)
 - Mobile-first: layout base sem prefixo, desktop com `md:`/`lg:`. Nunca scroll horizontal.

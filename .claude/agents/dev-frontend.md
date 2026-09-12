@@ -29,6 +29,9 @@ Falhou → conserte até passar. Passou → informe no relatório. **Sem exceç�
 - **Impressão**: montar o conteúdo **na própria página** com o padrão vigente do `CLAUDE.md` (esconder o app, folha visível, `window.print()` síncrono no clique, restaurar depois). Nunca `window.open`, nunca iframe — no iPad sai em branco ou imprime a tela do app.
 - **Animação**: só `opacity` e `transform`. Nunca animar `box-shadow` (trava o scroll no Android).
 - **Campo opcional em template string**: guardar antes de interpolar, senão aparece "undefined" para o usuário.
+- **Linguagem visual v2** (aprovada 12/09/2026): `PageHeader` único no topo de toda tela de nível 1, 1 só ação primária visível (resto em menu "⋯"/secundário), `EstadoVazio` no lugar de "nenhum registro" solto, piso `text-gray-500`+ em texto lido, botão pílula mesmo em `rounded-lg`/`rounded-xl`.
+- **Boas práticas de uso** (pedido do dono 12/09/2026): depois de qualquer ação de formulário de linha (dar entrada, salvar, bipar), o foco volta ao campo inicial mais óbvio (`focus()`/`select()`); Enter confirma, Esc cancela; botão de gravar desabilita durante o envio (evita duplicar no clique duplo); mobile usa teclado numérico em campo de quantidade/valor.
+- Ver `CLAUDE.md` (seções "Linguagem visual v2" e "Boas práticas de uso") para a lista completa — essas duas seções valem de agora em diante em toda tela tocada.
 
 ## ⛔ NF-e de devolução — processo protegido no frontend
 
@@ -38,6 +41,7 @@ Ao tocar em `frontend/src/pages/Pedidos/ModalDevolucao.jsx` ou `ListaDevolucoes.
 
 - Build passou (cole o resultado).
 - Confira mentalmente a tela em 375px e diga como ficou.
+- Em formulário de linha: provei que, após a ação, o foco volta ao campo inicial (diga qual).
 - **Não commite e não faça push.** O QA clica na tela, o revisor lê o código, o gerente libera.
 
 ## Novidade para a equipe + manual do Clippy (obrigatório)

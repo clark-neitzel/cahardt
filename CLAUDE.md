@@ -398,6 +398,31 @@ Sempre: `bg-[cor]-100 p-2 rounded-lg` + ícone `h-5 w-5 text-[cor]-600`. Cada m�
 2. Garantir que a tela funciona no mobile (ver seção "Responsividade Mobile" abaixo)
 3. Não inventar estilos novos — reutilizar os padrões do design system
 
+### Linguagem visual v2 (aprovada pelo dono em 12/09/2026)
+
+> Baseado em `docs/melhorias-2026-09/relatorios/design.md` (seções 3 e 4) e `docs/melhorias-2026-09/01-navegacao-design.html` (Propostas 3 e 4).
+
+- **Cabeçalho de página ÚNICO:** todo topo de tela de nível 1 usa o componente `PageHeader` (`frontend/src/components/PageHeader.jsx` — a ser criado nesta rodada; até existir, seguir a estrutura: cápsula de cor do módulo + ícone + `<h1>` + subtítulo opcional + slot de ações à direita). Nenhuma tela improvisa cabeçalho; nenhuma tela fica sem título.
+- **Uma ação principal por tela:** só 1 botão primário verde visível no cabeçalho; as demais ações vão para um menu "⋯" ou botão secundário (outline). Barra com 3-4 botões do mesmo peso é proibida.
+- **Botão sempre pílula, inclusive `rounded-lg`/`rounded-xl`** (a camada de remapeamento em `index.css` passa a cobrir esses raios também); o CTA nunca usa a cor do módulo (sky/teal/orange), só `bg-primary`.
+- **Piso de cinza:** `text-gray-400` só em ícone decorativo e placeholder de input. Texto lido (estado vazio, metadado, legenda, subtítulo) usa `text-gray-500` no mínimo; corpo de texto `text-gray-600`+.
+- **Estado vazio com o componente `EstadoVazio`** (`frontend/src/components/EstadoVazio.jsx` — a criar): ícone em círculo `bg-mint`, frase humana em `text-gray-700`, e quando fizer sentido um botão de ação ("+ Novo cliente", "Limpar filtros"). Proibido "Nenhum registro encontrado" solto em linha de tabela cinza.
+- **Duas famílias de card só:** conteúdo `rounded-xl border border-gray-200 shadow-sm` e modal `rounded-2xl shadow-xl`. Eliminar `rounded-lg shadow`/`shadow-md` sem borda ao tocar na tela.
+- **Espaçamento em 3 níveis, escolhido de propósito:** compacto (listas densas de campo: Rota, Caixa) `p-3 gap-2`; padrão (maioria) `p-5 gap-3`; respirado (decisão/KPI, dashboards) `p-6 gap-4`. KPI = número em `text-2xl`/`text-3xl font-bold` + rótulo `text-xs uppercase` — o olho pousa no número.
+- **Toast (`react-hot-toast`)** com estilo do tema (sucesso verde/mint, erro vermelho), posição única, configurado uma vez no `main.jsx`/`App.jsx`, nunca por chamada.
+- **Glossário único de rótulos de status** (`frontend/src/constants/statusLabels.js` — a criar): o mesmo estado tem o mesmo texto em todas as telas.
+
+### BOAS PRÁTICAS DE USO — comportamento das telas (pedido do dono em 12/09/2026)
+
+- **Foco/cursor nunca some.** Depois de qualquer ação em sequência (adicionar item, dar entrada, salvar linha, bipar, aplicar filtro), o foco volta para o campo mais óbvio do próximo passo — normalmente o primeiro campo do formulário de linha (ex.: entrada de estoque: após clicar "+", cursor volta para "Quantidade" ou para a busca do produto, com o texto selecionado). Regra prática: todo botão que "consome" um campo e limpa o formulário chama `ref.current?.focus()` (e `select()`) no campo inicial logo após o `setState`. Modal abre com `autoFocus` no primeiro campo. Campo de leitor de código de barras nunca perde o foco (refoca no `onBlur` enquanto a tela de bipe estiver ativa). Nunca deixar o foco num botão desabilitado ou num elemento que foi removido.
+- **Enter avança/confirma, Esc cancela.** Em formulário de linha (item de pedido, contagem de inventário, entrada de estoque) Enter no último campo executa a ação principal; Esc fecha modal/limpa.
+- **Clique duplo não duplica.** Botão de ação que grava fica desabilitado com estado "salvando…" até a resposta; a operação também deve ser idempotente no backend.
+- **Feedback imediato.** Toda gravação mostra toast de sucesso/erro; a linha nova aparece na lista sem recarregar a página; o scroll não pula para o topo.
+- **Confirmação só para o irreversível** (excluir, estornar, cancelar NF). Ação comum não pede "tem certeza?".
+- **Valor digitado nunca se perde**: erro de rede mantém o formulário preenchido; ao trocar de aba dentro da tela, o rascunho permanece.
+- **Mobile**: teclado numérico (`inputMode="decimal"`/`"numeric"`) em campo de quantidade/valor; o botão principal do momento fica acessível sem rolar (barra fixa inferior nas telas de campo).
+- Ao mexer em qualquer tela, conferir esses itens nela (boy scout), mesmo que não seja o foco da tarefa.
+
 ---
 
 ## Responsividade Mobile — OBRIGATÓRIO em toda tela

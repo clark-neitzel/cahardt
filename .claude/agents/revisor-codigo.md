@@ -39,6 +39,8 @@ O projeto mora em `~/Projetos/CA-Hardt` (disco local). **Nunca** trabalhe na có
 - `SelectBusca` no lugar de `<select>` nativo; `useFiltrosSalvos` nos filtros; filtro de data com `FiltroPeriodo` + `usePeriodoSalvo` (a persistência é do preset, nunca de data absoluta); `lazyComRetry` em rota nova.
 - Impressão no padrão vigente do `CLAUDE.md` (na própria página, `print()` síncrono, limpeza garantida) — nunca `window.open`/iframe.
 - Campo opcional guardado antes de interpolar em template string.
+- **Linguagem visual v2**: tela nova/tocada usa `PageHeader`, `EstadoVazio`, 1 ação principal, sem `text-gray-400` em texto lido, botão pílula.
+- **Boas práticas de uso**: após ação que limpa formulário há `focus()` no campo inicial; botão de gravar desabilita durante o envio; Enter/Esc tratados.
 
 **Ambos**
 - Permissão do frontend espelha exatamente a do backend.
