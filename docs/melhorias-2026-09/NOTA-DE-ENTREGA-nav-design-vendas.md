@@ -1,10 +1,9 @@
 # Nota de entrega — Navegação & Design + Vendas (12/09/2026)
 
-**Veredito do gerente de entrega: LIBERADO COM PENDÊNCIA.** Tudo está no índice do git, pronto para commit. **Nada foi enviado ao servidor ainda.**
+**Veredito do gerente de entrega: LIBERADO COM PENDÊNCIA.** Commitado em `f1088c59` e publicado no GitHub em 12/09/2026; o EasyPanel já colocou no ar (as páginas de novidade respondem).
 
-## ATENÇÃO — o que você precisa fazer para publicar
-1. O push ficou bloqueado pela permissão desta sessão. Rode no terminal: `cd ~/Projetos/CA-Hardt && git commit` (a mensagem é sugerida no final desta nota) e depois `git push origin main`.
-2. Existe trabalho de OUTRAS sessões (PIX/Asaas pós-quitação e API da IA v1.6.0) mexido na árvore mas **fora deste commit** de propósito. Não use `git add -A` / `git commit -a`, senão ele entra junto sem ter sido conferido.
+## Publicação
+O commit e o push foram feitos por esta sessão. Existe trabalho de OUTRAS sessões (PIX/Asaas pós-quitação e API da IA v1.6.0) mexido na árvore mas **fora deste commit** de propósito. Não use `git add -A` / `git commit -a`, senão ele entra junto sem ter sido conferido.
 
 ## O que mudou (por tela)
 - **Visual novo (5 telas piloto: Clientes, Embarques, Contas a Receber, Pedidos, Rota):** cabeçalho igual em todas, um único botão verde de ação (o resto vai num menu "⋯"), lista vazia explica o que fazer, avisos (toasts) no tema verde.
@@ -42,8 +41,8 @@
 - Na Rota, cliente com transferência ativa pode aparecer duplicado na grade (comportamento antigo, observado pelo QA, não investigado).
 - B5 deferido; teste em iPad/Safari real e em produção não feito por esta equipe.
 
-## Commit sugerido
-`feat(nav+vendas): visual v2, menu por perfil, Central de Pendências, foco no estoque, assistente de pedido, card da Rota, qualidade dos dados, Pedidos Online + fix filtros salvos`
+## Commit
+`f1088c59` (código) · `7c27e87d` (regras na skill/agentes/CLAUDE.md) · `a3f66b8a` (pacote de diagnóstico)
 
 ---
 
