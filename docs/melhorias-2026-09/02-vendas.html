@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vendas em campo — Proposta CA-Hardt</title>
+<link rel="stylesheet" href="estilo.css">
+<style>
+  .avatar { width:40px; height:40px; border-radius:999px; background:var(--mint); display:inline-flex; align-items:center; justify-content:center; font-weight:800; color:var(--primary-dark); font-size:14px; flex:0 0 40px; }
+  .minimapa { height:130px; border-radius:12px; background:
+    radial-gradient(circle at 30% 40%, rgba(0,117,74,.18), transparent 55%),
+    repeating-linear-gradient(0deg, rgba(0,0,0,.04) 0 1px, transparent 1px 26px),
+    repeating-linear-gradient(90deg, rgba(0,0,0,.04) 0 1px, transparent 1px 26px),
+    #eef1ec;
+    display:flex; align-items:center; justify-content:center; font-size:26px; position:relative; border:1px solid var(--line);
+  }
+  .selo-discreto { font-size:11px; color: var(--ink-soft); font-weight:700; display:inline-flex; align-items:center; gap:4px; }
+</style>
+</head>
+<body>
+
+<nav class="topnav">
+  <div class="topnav-inner">
+    <a class="marca" href="index.html">CA-Hardt <em>2.0</em></a>
+    <a href="index.html">Visão geral</a>
+    <a href="01-navegacao-design.html">Navegação &amp; Design</a>
+    <a href="02-vendas.html" class="ativo">Vendas</a>
+    <a href="03-logistica-caixa.html">Logística &amp; Caixa</a>
+    <a href="04-financeiro.html">Financeiro</a>
+    <a href="05-producao.html">Produção</a>
+    <a href="06-seguranca-conexoes.html">Segurança &amp; Conexões</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">Proposta · Vendas em campo</span>
+    <h1>O vendedor já está com a moto ligada, uma mão livre e sol na tela</h1>
+    <p>Todo clique a mais custa caro na rua. Estas quatro mudanças tiram informação que hoje só aparece
+      tarde demais (ou em outra tela) e colocam na frente do vendedor exatamente na hora em que ele precisa dela —
+      sem trocar nenhuma regra de negócio, só a ordem e o lugar em que as coisas aparecem.</p>
+    <div class="resumo">
+      <div><b>4</b><span>propostas nesta página</span></div>
+      <div><b>0</b><span>regras de negócio novas</span></div>
+      <div><b>P–M</b><span>esforço predominante</span></div>
+      <div><b>3</b><span>telas de uso diário afetadas</span></div>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- ========================================================= -->
+  <section class="secao" id="assistente-pedido">
+    <h2>Assistente de Pedido</h2>
+    <p class="sub">Hoje o app só avisa "cliente inadimplente" ou "sem WhatsApp" na hora de apertar
+      <b>Enviar</b> — depois que o vendedor já digitou o pedido inteiro. E o histórico de compra do cliente
+      existe (é usado para sugerir preço), mas nunca aparece para lembrar <b>o que</b> e <b>quanto</b> ele
+      costuma comprar. A proposta é mostrar tudo isso assim que o cliente é escolhido, antes do carrinho.</p>
+
+    <div class="antes-depois">
+      <div>
+        <div class="rotulo antes">Antes</div>
+        <div class="tela mobile">
+          <div class="tela-top"><div><small>Novo Pedido</small><strong>Padaria Central</strong></div></div>
+          <div class="tela-body">
+            <div class="app-card">
+              <div class="app-card-h">Carrinho</div>
+              <div class="app-card-b">
+                <div class="linha"><div class="tx"><b>Coxinha 500g</b><span>18 un</span></div><div class="val">R$ 126,00</div></div>
+                <div class="linha"><div class="tx"><b>Risole de Carne 1kg</b><span>10 un</span></div><div class="val">R$ 95,00</div></div>
+                <div class="linha"><div class="tx"><b>Bolinha de Queijo 500g</b><span>12 un</span></div><div class="val">R$ 84,00</div></div>
+              </div>
+            </div>
+            <div class="alerta vermelho"><span class="pin">1</span><div>Cliente com título vencido de <b>R$ 320,00</b>. Confirme com o financeiro antes de continuar.</div></div>
+            <button class="btn primario bloco">Enviar pedido</button>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="rotulo depois">Depois</div>
+        <div class="tela mobile">
+          <div class="tela-top"><div><small>Novo Pedido</small><strong>Padaria Central</strong></div></div>
+          <div class="tela-body">
+            <div class="app-card">
+              <div class="app-card-h"><span class="pin">2</span>&nbsp;Antes de montar o pedido</div>
+              <div class="app-card-b">
+                <div class="alerta vermelho"><span class="pin">3</span><div>🔴 Título vencido de <b>R$ 320,00</b> — fale com o financeiro antes de vender a prazo.</div></div>
+                <div class="alerta amarelo" style="align-items:center;">
+                  <span class="pin">4</span>
+                  <div style="flex:1;">🟡 Sem WhatsApp cadastrado</div>
+                  <button class="btn pequeno secundario">Cadastrar agora</button>
+                </div>
+                <button class="btn primario bloco" style="margin-top:4px;"><span class="pin" style="background:#fff;color:var(--primary-dark);">5</span>&nbsp;Repetir último pedido (28/08 · 6 itens · R$ 840)</button>
+                <div class="rot-campo">Data de entrega sugerida <span class="pin">6</span></div>
+                <div class="campo">Sexta-feira, 12/09</div>
+              </div>
+            </div>
+            <div class="app-card">
+              <div class="app-card-h">Carrinho <span class="pin">7</span></div>
+              <div class="app-card-b">
+                <div class="linha"><div class="tx"><b>Coxinha 500g</b><span>última vez: 12 un em 28/08</span></div><div class="val">18 un</div></div>
+                <div class="linha"><div class="tx"><b>Risole de Carne 1kg</b><span>última vez: 8 un em 28/08</span></div><div class="val">10 un</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <ol class="legendas">
+      <li><b>1 —</b> Hoje o alerta só aparece aqui, depois do vendedor digitar o pedido inteiro — se soubesse antes, teria evitado o retrabalho.</li>
+      <li><b>2 —</b> Card novo, some quando o cliente ainda não foi escolhido; aparece assim que ele é selecionado, antes de qualquer produto.</li>
+      <li><b>3 —</b> Mesmo alerta de hoje, só que <b>antecipado</b> — nenhuma trava nova, nenhuma regra nova.</li>
+      <li><b>4 —</b> Alerta com atalho: resolve o cadastro na hora, sem sair da tela do pedido.</li>
+      <li><b>5 —</b> Recria o carrinho do último pedido desse cliente (mesmo tipo — normal ou especial), pronto para o vendedor ajustar antes de enviar.</li>
+      <li><b>6 —</b> A data sugerida automaticamente já existe hoje (dia de entrega do cliente) — só ganhou destaque no card.</li>
+      <li><b>7 —</b> Cada produto mostra a última quantidade comprada — o dado já é carregado hoje, só não aparece para o vendedor.</li>
+    </ol>
+
+    <div class="grid-3 mt-24">
+      <div class="card"><span class="chip p">Esforço P</span><h3>Alertas antecipados</h3><p>Mesma consulta de hoje, só reordenada na tela. Ganho: evita montar um pedido que vai travar no fim.</p></div>
+      <div class="card"><span class="chip m">Esforço M</span><h3>Repetir último pedido</h3><p>Usa o histórico que já existe, precisa recriar o carrinho. Ganho: menos digitação em pedidos repetidos (a maioria).</p></div>
+      <div class="card"><span class="chip p">Esforço P/M</span><h3>Quantidade por histórico</h3><p>Mesmo dado de preço já carregado, só exibindo a quantidade ao lado. Ganho: vendedor não precisa lembrar de cabeça.</p></div>
+    </div>
+  </section>
+
+  <!-- ========================================================= -->
+  <section class="secao" id="rota">
+    <h2>Card do cliente na Rota</h2>
+    <p class="sub">O card de cada cliente na Rota concentra muita informação no mesmo peso visual — três
+      badges, quatro botões, tudo do mesmo tamanho. Num celular, no sol, isso custa tempo de leitura. A
+      proposta é um card com uma hierarquia clara: nome grande, uma única prioridade, um botão de ação.</p>
+
+    <div class="antes-depois">
+      <div>
+        <div class="rotulo antes">Antes</div>
+        <div class="tela mobile">
+          <div class="tela-top"><div><small>Rota de hoje</small><strong>12 clientes</strong></div></div>
+          <div class="tela-body">
+            <div class="app-card"><div class="app-card-b">
+              <div style="display:flex; justify-content:space-between; align-items:center; gap:6px; flex-wrap:wrap;">
+                <b style="font-size:14px;">Padaria Central</b>
+                <span class="badge cinza">Rota 3</span>
+                <span class="badge azul">Prioridade média</span>
+                <span class="badge verde">Sem pendência</span>
+              </div>
+              <div class="pequeno texto-soft" style="margin-top:4px;">Av. Brasil, 500 · 2,3 km · última visita há 12 dias</div>
+              <div style="display:flex; gap:6px; margin-top:10px; flex-wrap:wrap;">
+                <button class="btn pequeno secundario">Ligar</button>
+                <button class="btn pequeno secundario">Mapa</button>
+                <button class="btn pequeno secundario">WhatsApp</button>
+                <button class="btn pequeno primario">Atender</button>
+              </div>
+            </div></div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="rotulo depois">Depois</div>
+        <div class="tela mobile">
+          <div class="tela-top"><div><small>Rota de hoje</small><strong>12 clientes</strong></div></div>
+          <div class="tela-body">
+            <div class="app-card"><div class="app-card-b" style="padding:16px 14px;">
+              <div style="display:flex; align-items:center; gap:10px;">
+                <div class="avatar">PC</div>
+                <div style="flex:1; min-width:0;">
+                  <div style="font-size:18px; font-weight:800;">Padaria Central</div>
+                  <div class="pequeno texto-soft">2,3 km · Av. Brasil, 500</div>
+                </div>
+                <span class="badge vermelho">Prioridade alta</span>
+                <span class="pin">1</span>
+              </div>
+              <div style="margin-top:8px;" class="selo-discreto">💬 WhatsApp · 📍 GPS <span class="pin">2</span></div>
+              <button class="btn primario bloco" style="margin-top:14px;">Atender <span class="pin" style="background:#fff;color:var(--primary-dark);">3</span></button>
+              <div class="pequeno" style="text-align:center; margin-top:10px;"><a href="#">Ver pedido criado →</a> <span class="pin">4</span></div>
+            </div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <ol class="legendas">
+      <li><b>1 —</b> Uma única prioridade em destaque, não três badges disputando atenção — as demais informações continuam existindo, só saem do primeiro olhar.</li>
+      <li><b>2 —</b> Selo de WhatsApp/GPS mantido, mas discreto — informação de apoio, não a primeira coisa que o olho vê.</li>
+      <li><b>3 —</b> Um botão só. Ligar, mapa e WhatsApp continuam disponíveis dentro da ficha do cliente, a um toque de distância.</li>
+      <li><b>4 —</b> Depois que o pedido é criado na Rota, um link leva direto pra ele — hoje é preciso sair da Rota e procurar em Pedidos.</li>
+    </ol>
+
+    <div class="card mt-16">
+      <span class="chip p">Esforço P/M</span>
+      <h3>Respiro e uma ação só</h3>
+      <p>É reorganizar o mesmo card, sem tirar nenhuma função — ligar, mapa e WhatsApp continuam existindo, só saem do card principal para a ficha do cliente. Ganho: menos leitura por clique num app usado centenas de vezes por dia, muitas vezes com uma mão só.</p>
+    </div>
+  </section>
+
+  <!-- ========================================================= -->
+  <section class="secao" id="clientes">
+    <h2>Clientes com cabeçalho e aba "Qualidade dos dados"</h2>
+    <p class="sub">Hoje o cadastro do cliente, o mapa de GPS e a situação do WhatsApp são três telas
+      separadas no menu — para ver os três lados de um mesmo cliente é preciso sair e voltar três vezes.
+      A proposta reúne isso na própria ficha do cliente, numa aba a mais, sem tirar as telas de faxina em
+      lote (continuam existindo para quem organiza a carteira toda de uma vez).</p>
+
+    <div class="mock-e-legenda">
+      <div class="tela desktop">
+        <div class="tela-top"><div><small>Clientes</small><strong>Ficha · Padaria Central</strong></div></div>
+        <div class="tela-body">
+          <div class="app-header">
+            <div class="titulo">
+              <div class="icone">👥</div>
+              <div><div class="h1">Clientes</div><div class="sub">1.148 cadastrados (exemplo)</div></div>
+            </div>
+            <span class="pin">1</span>
+          </div>
+          <div class="abas">
+            <span class="aba">Cadastro</span>
+            <span class="aba ativa">Qualidade dos dados <span class="n">12</span></span>
+            <span class="pin">2</span>
+          </div>
+          <div class="grid-2">
+            <div class="app-card">
+              <div class="app-card-h">📍 Localização</div>
+              <div class="app-card-b">
+                <div class="minimapa">📍</div>
+                <div class="pequeno texto-soft mt-8">Ponto conferido em 03/09 · dentro do raio esperado da cidade</div>
+              </div>
+            </div>
+            <div class="app-card">
+              <div class="app-card-h">💬 WhatsApp</div>
+              <div class="app-card-b">
+                <span class="badge verde">Confirmado pelo cliente</span>
+                <div class="pequeno texto-soft mt-8">Último envio: confirmação de pedido, entregue em 28/08</div>
+              </div>
+            </div>
+          </div>
+          <span class="pin">3</span>
+        </div>
+      </div>
+      <ol class="legendas">
+        <li><b>1 —</b> Cabeçalho de página que a tela de Clientes não tem hoje — título e contador, para o usuário saber onde está.</li>
+        <li><b>2 —</b> Aba nova "Qualidade dos dados", com o número de pendências daquele cliente (aqui, exemplo com 12 no total da carteira).</li>
+        <li><b>3 —</b> Mapa e situação do WhatsApp lado a lado, dentro da própria ficha — hoje são duas telas de auditoria separadas do cadastro.</li>
+      </ol>
+    </div>
+
+    <p class="pequeno texto-soft mt-16">As telas de faxina em lote (conferir o GPS de toda a carteira, disparar cobrança de WhatsApp para vários clientes de uma vez) continuam existindo do jeito que são hoje — a mudança é só ter o resumo também na ficha individual, para o dia a dia.</p>
+
+    <div class="rotulo depois mt-24">No celular</div>
+    <div class="tela mobile mt-8">
+      <div class="tela-top"><div><small>Clientes</small><strong>Padaria Central</strong></div></div>
+      <div class="tela-body">
+        <div class="abas">
+          <span class="aba">Cadastro</span>
+          <span class="aba ativa">Qualidade <span class="n">2</span></span>
+        </div>
+        <div class="app-card"><div class="app-card-b">
+          <div class="linha"><div class="tx"><b>📍 GPS</b><span>conferido em 03/09</span></div><span class="badge verde">Ok</span></div>
+          <div class="linha"><div class="tx"><b>💬 WhatsApp</b><span>confirmado pelo cliente</span></div><span class="badge verde">Ok</span></div>
+        </div></div>
+      </div>
+    </div>
+
+    <div class="card mt-16">
+      <span class="chip m">Esforço M</span>
+      <h3>Uma aba a mais na ficha existente</h3>
+      <p>Reaproveita o mapa e o selo de WhatsApp que já existem nas telas de auditoria — o trabalho é trazê-los para dentro da ficha do cliente, com um cabeçalho de página que hoje falta. Ganho: 3 rotas viram 1, sem perder a faxina em lote.</p>
+    </div>
+  </section>
+
+  <!-- ========================================================= -->
+  <section class="secao" id="pedidos-online">
+    <h2>Pedidos Online</h2>
+    <p class="sub">Site de Congelados, Kit Festa e pedidos feitos pelo WhatsApp da Ana caem em três
+      lugares diferentes do menu hoje, embora sejam a mesma tarefa: uma fila de pedidos chegando de fora
+      para alguém aprovar e virar pedido de verdade. A proposta junta as três entradas de menu numa só,
+      cada canal na sua aba — a lógica de cada um (catálogo, entrega, regras) continua exatamente igual.</p>
+
+    <div class="tela desktop">
+      <div class="tela-top"><div><small>Pedidos Online</small><strong>Fila de hoje</strong></div></div>
+      <div class="tela-body">
+        <div class="app-header">
+          <div class="titulo">
+            <div class="icone">🛍️</div>
+            <div><div class="h1">Pedidos Online</div><div class="sub">7 pedidos novos hoje</div></div>
+          </div>
+          <span class="pin">1</span>
+        </div>
+        <div class="abas">
+          <span class="aba ativa">Site (Congelados) <span class="n">4</span></span>
+          <span class="aba">Kit Festa <span class="n">2</span></span>
+          <span class="aba">WhatsApp da Ana <span class="n">1</span></span>
+          <span class="pin">2</span>
+        </div>
+        <div class="rolagem">
+          <table class="tabela">
+            <thead><tr><th>Cliente</th><th>Canal</th><th>Itens</th><th>Status</th><th>Ação</th></tr></thead>
+            <tbody>
+              <tr><td>Mercado Bom Preço</td><td><span class="chip">Site</span></td><td>8 itens · R$ 410</td><td><span class="badge amarelo">Aguardando</span></td><td><button class="btn pequeno secundario">Vincular cliente</button></td></tr>
+              <tr><td>Padaria Central</td><td><span class="chip">Site</span></td><td>5 itens · R$ 260</td><td><span class="badge verde">Cliente vinculado</span></td><td><button class="btn pequeno primario">Virar pedido</button></td></tr>
+              <tr><td>Buffet Sabor & Cia</td><td><span class="chip">Kit Festa</span></td><td>3 itens · R$ 780</td><td><span class="badge amarelo">Aguardando</span></td><td><button class="btn pequeno secundario">Vincular cliente</button></td></tr>
+              <tr><td>Cliente novo (11 9****-2210)</td><td><span class="chip">Ana · WhatsApp</span></td><td>4 itens · R$ 190</td><td><span class="badge amarelo">Aguardando</span></td><td><button class="btn pequeno secundario">Vincular cliente</button></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <span class="pin">3</span>
+      </div>
+    </div>
+
+    <ol class="legendas mt-16">
+      <li><b>1 —</b> Um único item de menu, com contador de pedidos novos somando os três canais — hoje é preciso abrir cada painel para saber se chegou algo.</li>
+      <li><b>2 —</b> Uma aba por canal (Site, Kit Festa, WhatsApp da Ana), cada uma com sua contagem — a fila e as regras de cada canal continuam separadas por dentro.</li>
+      <li><b>3 —</b> Os mesmos botões de hoje (Vincular cliente, Virar pedido), só reunidos numa lista só em vez de duas telas administrativas distintas.</li>
+    </ol>
+
+    <div class="card mt-16">
+      <span class="chip m">Esforço M</span>
+      <h3>Duas telas viram abas de uma só</h3>
+      <p>O trabalho é de navegação, não de regra de negócio: cada canal mantém seu catálogo, sua entrega e suas travas exatamente como são hoje. Ganho: 2 entradas de menu viram 1, com visão do que chegou por todos os canais digitais juntos. Contamos como esforço M (não P) porque mexe em duas telas administrativas inteiras, mesmo sem criar regra nova.</p>
+    </div>
+
+    <div class="card mt-16">
+      <span class="chip m">Esforço M</span>
+      <h3>Ana avisa de título em aberto antes de fechar o pedido pelo WhatsApp</h3>
+      <p>Quando o cliente já tem uma pendência financeira e fecha um pedido pelo WhatsApp da Ana, ela manda uma mensagem genérica avisando ("consta um título em aberto, o pedido vai para aprovação") — sem citar valor nem cobrar. O pedido continua caindo normalmente na fila de aprovação de hoje, só que o cliente já sabe o motivo antes de alguém falar com ele.</p>
+    </div>
+  </section>
+
+  <!-- ========================================================= -->
+  <section class="secao">
+    <h2>Ordem sugerida</h2>
+    <p class="sub">Da mudança mais barata e com menos risco para a mais trabalhosa.</p>
+    <ul class="muda">
+      <li>Alertas antecipados no Assistente de Pedido — mesma trava de hoje, só aparece mais cedo (Esforço P).</li>
+      <li>Card do cliente na Rota com uma ação só — reorganização visual, sem tirar função (Esforço P/M).</li>
+      <li>Botão "Repetir último pedido" e quantidade por histórico no carrinho (Esforço M).</li>
+      <li>Aba "Qualidade dos dados" na ficha do Cliente (Esforço M).</li>
+      <li>Unificar Site e Kit Festa em "Pedidos Online" (Esforço M — mexe em duas telas administrativas inteiras).</li>
+    </ul>
+  </section>
+
+  <footer class="rodape">
+    <span>Proposta gerada em 12/09/2026 · pacote em docs/melhorias-2026-09</span>
+    <a href="index.html">← Visão geral</a>
+  </footer>
+
+</div>
+
+</body>
+</html>

@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Navegação e linguagem visual</title>
+<link rel="stylesheet" href="estilo.css">
+<style>
+  .trio-perfil { display: grid; grid-template-columns: 1fr; gap: 10px; }
+  @media (min-width: 640px) { .trio-perfil { grid-template-columns: repeat(3, 1fr); } }
+  .trio-perfil .perfil-rot { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: var(--house); margin-bottom: 6px; }
+  .hamb-mock { width: 100%; max-width: 260px; margin: 0 auto; }
+  .hamb-top { display: flex; align-items: center; gap: 10px; background: var(--house); color: #fff; padding: 10px 12px; border-radius: 10px 10px 0 0; }
+  .hamb-icon { width: 22px; height: 16px; position: relative; }
+  .hamb-icon span, .hamb-icon::before, .hamb-icon::after { content:""; display:block; height: 2px; background: #fff; border-radius: 2px; position: absolute; left:0; right:0; }
+  .hamb-icon::before { top: 0; } .hamb-icon span { top: 7px; } .hamb-icon::after { top: 14px; }
+
+  .amostras { display: grid; grid-template-columns: 1fr; gap: 14px; }
+  @media (min-width: 780px) { .amostras { grid-template-columns: 1fr 1fr; } }
+  .amostra .cabecote { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+  .amostra h3 { font-size: 15px; font-weight: 800; }
+  .par { display: grid; grid-template-columns: 1fr; gap: 10px; align-items: stretch; }
+  @media (min-width: 480px) { .par { grid-template-columns: 1fr 1fr; } }
+  .par > div { background: var(--cream); border: 1px dashed var(--line); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; gap: 8px; min-height: 96px; min-width: 0; overflow-wrap: anywhere; }
+  .par .rot-mini { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: var(--ink-soft); }
+  .amostra p.exp { font-size: 13px; color: var(--ink-soft); margin-top: 10px; margin-bottom: 0; }
+
+  /* elementos-exemplo só para as amostras (não fazem parte do design system, são ilustrativos) */
+  .btn-quadrado { display: inline-flex; align-items: center; justify-content: center; padding: 8px 16px; background: #2563eb; color: #fff; border-radius: 6px; font-weight: 700; font-size: 13px; }
+  .cinza-claro { color: #b7b2a6; font-size: 13px; line-height: 1.5; margin: 0; }
+  .cinza-forte { color: var(--ink-2); font-size: 13px; line-height: 1.5; margin: 0; }
+  .h1-solto { font-size: 15px; font-weight: 800; color: var(--ink); }
+  .barra-botoes-igual { display: flex; gap: 6px; flex-wrap: wrap; }
+  .barra-botoes-igual span { background: #e5e7eb; color: #374151; font-size: 11px; font-weight: 700; padding: 6px 10px; border-radius: 6px; }
+  .barra-acao-unica { display: flex; align-items: center; gap: 8px; }
+  .kebab { width: 30px; height: 30px; border-radius: 999px; background: #fff; border: 1px solid var(--line); display: inline-flex; align-items: center; justify-content: center; font-weight: 800; color: var(--ink-soft); }
+  .toast-generico { background: #1f2937; color: #fff; font-size: 12px; font-weight: 600; padding: 8px 12px; border-radius: 8px; }
+  .toast-tema { background: var(--mint); color: var(--primary-dark); font-size: 12px; font-weight: 700; padding: 8px 12px; border-radius: 999px; display: flex; align-items: center; gap: 6px; }
+  .card3 { display: flex; gap: 8px; align-items: center; }
+  .card3 .mini { width: 34px; height: 26px; background: #fff; }
+  .mini.r1 { border-radius: 4px; border: 1px solid var(--line); box-shadow: 0 1px 2px rgba(0,0,0,.1); }
+  .mini.r2 { border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,.18); }
+  .mini.r3 { border-radius: 8px; border: none; box-shadow: 0 2px 6px rgba(0,0,0,.15); }
+  .mini.rd { border-radius: 12px; border: 1px solid var(--line); box-shadow: var(--shadow-sm); width: 40px; height: 30px; background: linear-gradient(180deg,#fff,#fafaf7); }
+
+  .espacos { display: grid; grid-template-columns: 1fr; gap: 14px; }
+  @media (min-width: 780px) { .espacos { grid-template-columns: repeat(3, 1fr); } }
+  .espacos .linha-esp { background: #fff; border-radius: 8px; border: 1px solid var(--line-2); display: flex; align-items: center; gap: 8px; }
+  .espacos .linha-esp .dot { width: 8px; height: 8px; border-radius: 999px; background: var(--primary); flex: 0 0 auto; }
+  .espacos .linha-esp .bar { height: 6px; border-radius: 999px; background: var(--line); flex: 1; }
+</style>
+</head>
+<body>
+
+<nav class="topnav">
+  <div class="topnav-inner">
+    <a class="marca" href="index.html">CA-Hardt <em>2.0</em></a>
+    <a href="index.html">Visão geral</a>
+    <a href="01-navegacao-design.html" class="ativo">Navegação &amp; Design</a>
+    <a href="02-vendas.html">Vendas</a>
+    <a href="03-logistica-caixa.html">Logística &amp; Caixa</a>
+    <a href="04-financeiro.html">Financeiro</a>
+    <a href="05-producao.html">Produção</a>
+    <a href="06-seguranca-conexoes.html">Segurança &amp; Conexões</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">Navegação &amp; Design</span>
+    <h1>Menu, cabeçalhos e cores — a base visual de todo o app</h1>
+    <p>Três mudanças que não criam tela nova nenhuma — reorganizam o que já existe para ficar mais fácil de achar e mais bonito de olhar, em qualquer tela do sistema.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- ============ PROPOSTA 1 — MENU POR PERFIL ============ -->
+  <section class="secao" id="menu-perfil">
+    <h2>1. Menu por perfil</h2>
+    <p class="sub">Hoje o menu lateral é <b>igual para todo mundo</b> — 62 itens em 8 grupos, só escondendo o que a pessoa não tem permissão. Um vendedor de campo vê grupos inteiros (Financeiro, PCP, RH) que nunca vai usar. A proposta é montar o menu pelo <b>perfil</b> da pessoa primeiro, e só depois aplicar a permissão — o vendedor abre o app e já vê 6 itens, não 62.</p>
+
+    <div class="antes-depois">
+      <div>
+        <div class="rotulo antes">Antes — o mesmo menu para todos</div>
+        <div class="tela desktop">
+          <div class="tela-top"><small>Menu lateral</small><strong>62 itens, 8 grupos, sempre visível</strong></div>
+          <div class="tela-body">
+            <div class="sidebar apagado">
+              <div class="grupo">Vendas · 13</div>
+              <div class="item">Rota</div>
+              <div class="item">Pedidos</div>
+              <div class="item">Clientes</div>
+              <div class="item">Leads</div>
+              <div class="item">… mais 9</div>
+              <div class="grupo">Financeiro · 16</div>
+              <div class="item">Contas a Receber</div>
+              <div class="item">Contas a Pagar</div>
+              <div class="item">Cobranças</div>
+              <div class="item">… mais 13</div>
+              <div class="grupo">PCP · 10</div>
+              <div class="item">Sugestões</div>
+              <div class="item">Ordens</div>
+              <div class="item">… mais 8</div>
+              <div class="grupo">Configurações · 8</div>
+              <div class="item">… mais 8</div>
+              <div class="grupo">Administração · 6</div>
+              <div class="item">… mais 6</div>
+              <div class="grupo">Produção/Estoque · 4</div>
+              <div class="item">… mais 4</div>
+              <div class="grupo">RH · 3</div>
+              <div class="item">… mais 3</div>
+              <div class="grupo">Logística · 2</div>
+              <div class="item">… mais 2</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="rotulo depois">Depois — um menu por perfil</div>
+        <div class="tela desktop">
+          <div class="tela-top"><small>Menu lateral</small><strong>Só o que a pessoa usa</strong></div>
+          <div class="tela-body">
+            <div class="trio-perfil">
+              <div>
+                <div class="perfil-rot">Vendedor <span class="pin">1</span></div>
+                <div class="sidebar">
+                  <div class="item ativo">Início</div>
+                  <div class="item">Rota</div>
+                  <div class="item">Catálogo</div>
+                  <div class="item">Pedidos</div>
+                  <div class="item">Clientes</div>
+                  <div class="item">Leads</div>
+                  <div class="grupo">Favoritos</div>
+                  <div class="item">⭐ 2 fixados</div>
+                </div>
+              </div>
+              <div>
+                <div class="perfil-rot">Motorista <span class="pin">2</span></div>
+                <div class="sidebar">
+                  <div class="item ativo">Início</div>
+                  <div class="item">Rota</div>
+                  <div class="item">Caixa</div>
+                </div>
+              </div>
+              <div>
+                <div class="perfil-rot">Escritório <span class="pin">3</span></div>
+                <div class="sidebar">
+                  <div class="item ativo">Início</div>
+                  <div class="item">Pendências</div>
+                  <div class="item">Pedidos</div>
+                  <div class="item">Notas Fiscais</div>
+                  <div class="item">Expedição</div>
+                  <div class="item">Compras</div>
+                  <div class="item">Caixa do Motorista</div>
+                  <div class="item">Recebíveis</div>
+                  <div class="item">Clientes</div>
+                  <div class="item">Configurações <span class="pin">4</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <ol class="legendas">
+      <li><span class="pin">1</span><span><b>Vendedor de campo</b> vê só as 6 telas do dia a dia, mais Favoritos para ajuste fino — nada de Financeiro, PCP ou RH ocupando espaço.</span></li>
+      <li><span class="pin">2</span><span><b>Motorista</b> vê o mínimo: Rota (entregas do dia) e Caixa (conferência). É o perfil mais enxuto do sistema.</span></li>
+      <li><span class="pin">3</span><span><b>Escritório</b> vê o operacional do dia a dia (já reduzido pelas fusões de tela deste pacote) — PCP e RH ficam fora, a não ser que a pessoa acumule função.</span></li>
+      <li><span class="pin">4</span><span>Configurações (uso raro) vai para o fim do menu, como um item só — não 8 linhas soltas competindo com o que se usa todo dia.</span></li>
+    </ol>
+
+    <div class="card mt-24">
+      <h3>No celular</h3>
+      <p>O mesmo corte vale para o menu hambúrguer: hoje ele abre a lista inteira de 62 itens; depois, abre só os itens do perfil da pessoa — o vendedor em campo, de uma mão só, acha "Rota" no topo sem rolar a tela.</p>
+      <div class="hamb-mock mt-16">
+        <div class="tela mobile" style="max-width:220px;">
+          <div class="hamb-top"><div class="hamb-icon"><span></span></div><strong style="font-size:13px;">Menu</strong></div>
+          <div class="tela-body" style="padding:10px;">
+            <div class="sidebar">
+              <div class="item ativo">Início</div>
+              <div class="item">Rota</div>
+              <div class="item">Catálogo</div>
+              <div class="item">Pedidos</div>
+              <div class="item">Clientes</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p class="mt-16"><span class="chip m">Esforço médio</span> — a lógica de detectar perfil já existe (é a mesma que escolhe o Dashboard hoje); o trabalho é montar a lista de itens por perfil e testar cada um. Favoritos continuam funcionando por cima, sem mudar.</p>
+
+    <div class="card mt-16">
+      <span class="chip g">Esforço G</span>
+      <h3>Extra (fica para depois): submenu em sanfona, não em janelinha flutuante</h3>
+      <p>Hoje, quando um grupo do menu tem submenu, ele abre numa janelinha flutuante calculada por coordenadas na tela — funciona, mas é frágil (em telas menores ou perto da borda, pode abrir cortada ou no lugar errado). A proposta é o submenu abrir <b>dentro do próprio menu</b>, empurrando os itens de baixo para o lado, como uma sanfona — sem cálculo de posição, sem risco de cortar. É um ajuste de estrutura maior que o menu por perfil acima, por isso fica marcado para uma etapa seguinte.</p>
+    </div>
+  </section>
+
+  <!-- ============ PROPOSTA 2 — CENTRAL DE PENDÊNCIAS ============ -->
+  <section class="secao" id="central-pendencias">
+    <h2>2. Início = Central de Pendências (escritório)</h2>
+    <p class="sub">Hoje, para saber "o que está parado esperando alguém", o escritório abre 6 a 8 telas diferentes (Pedidos, Notas Fiscais, Notas Recebidas, Caixa, PCP, Tarefas). A Central de Pendências junta tudo numa tela só, com contador e um botão de ação — <b>ela não substitui as telas de hoje, só aponta e leva até elas.</b></p>
+
+    <div class="tela desktop">
+      <div class="tela-top"><small>Início · Escritório</small><strong>Central de Pendências</strong></div>
+      <div class="tela-body">
+        <div class="kpis">
+          <div class="kpi"><div class="rot">Total pendências <span class="pin">1</span></div><div class="val">23</div></div>
+          <div class="kpi"><div class="rot">Dinheiro parado</div><div class="val vermelho">R$ 8.420</div></div>
+          <div class="kpi"><div class="rot">Vencidas</div><div class="val ambar">6</div></div>
+          <div class="kpi"><div class="rot">Avisos</div><div class="val">4</div></div>
+        </div>
+
+        <div class="abas mt-8">
+          <span class="aba ativa">Todos <span class="pin" style="width:16px;height:16px;font-size:10px;">2</span></span>
+          <span class="aba">Você</span>
+          <span class="aba">Ana (vendas)</span>
+          <span class="aba">João (financeiro)</span>
+        </div>
+
+        <div class="app-card mt-16">
+          <div class="app-card-h">Pedidos para aprovar <span class="n">4</span> <span class="pin" style="margin-left:6px;">3</span></div>
+          <div class="app-card-b">
+            <div class="linha">
+              <div class="tx"><b>Padaria Central</b><span>Especial · há 2 dias</span></div>
+              <button class="btn primario pequeno">Aprovar <span class="pin" style="margin-left:4px;">4</span></button>
+            </div>
+            <div class="linha">
+              <div class="tx"><b>Mercado Bom Preço</b><span>Bonificação · há 1 dia</span></div>
+              <button class="btn primario pequeno">Aprovar</button>
+            </div>
+            <div class="linha">
+              <div class="tx"><span class="texto-soft pequeno">ver todas (4) →</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="app-card">
+          <div class="app-card-h">NF-e para emitir <span class="n">7</span></div>
+          <div class="app-card-b">
+            <div class="linha">
+              <div class="tx"><b>Distribuidora Vale Verde</b><span>Faturado há 3h</span></div>
+              <button class="btn secundario pequeno">Emitir</button>
+            </div>
+            <div class="linha">
+              <div class="tx"><span class="texto-soft pequeno">ver todas (7) →</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="app-card">
+          <div class="app-card-h">Caixas para conferir <span class="n">2</span></div>
+          <div class="app-card-b">
+            <div class="linha">
+              <div class="tx"><b>Carlos (motorista)</b><span>Rota de ontem</span></div>
+              <button class="btn secundario pequeno">Abrir caixa</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="app-card">
+          <div class="app-card-h">Notas recebidas sem conta a pagar <span class="n">3</span></div>
+          <div class="app-card-b">
+            <div class="linha">
+              <div class="tx"><b>Embalagens São José</b><span>NOVA há 4 dias</span></div>
+              <button class="btn secundario pequeno">Gerar conta</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <ol class="legendas">
+      <li><span class="pin">1</span><span>Faixa de números no topo — total de pendências, dinheiro parado esperando conferência, quantas já venceram e quantos avisos informativos (sem ação obrigatória).</span></li>
+      <li><span class="pin">2</span><span>Filtro por responsável — o gestor vê tudo, cada vendedor/financeiro pode filtrar só o que é dele.</span></li>
+      <li><span class="pin">3</span><span>Cada bloco é uma pendência diferente (pedido, nota, caixa, produção…), com contador grande no cabeçalho.</span></li>
+      <li><span class="pin">4</span><span>Botão de ação em 1 clique na própria linha — resolve sem precisar abrir a tela original (que continua existindo para o caso de ver mais detalhe).</span></li>
+    </ol>
+
+    <p class="pequeno texto-soft mt-8">Outros blocos previstos (não cabem todos no mockup): NF-e rejeitada, boletos não enviados, sugestões de produção, tarefas atrasadas, canhotos não bipados, amostras paradas.</p>
+
+    <p class="mt-16"><span class="chip g">Esforço grande</span> — os dados já existem espalhados pelo sistema; o trabalho é uma consulta que junta esses dados e a tela nova. Pode nascer só com os 5 blocos mais valiosos e crescer depois.</p>
+  </section>
+
+  <!-- ============ PROPOSTA 3 — LINGUAGEM VISUAL V2 ============ -->
+  <section class="secao" id="linguagem-visual">
+    <h2>3. Linguagem visual v2</h2>
+    <p class="sub">A base do tema Starbucks (verde, Manrope, badges) já está certa e não muda. O que falta é <b>disciplina de execução</b> — hoje convivem 3 estilos de card, 4 estilos de cabeçalho e botões que escapam da regra da pílula. Amostras abaixo, sempre antes → depois.</p>
+
+    <div class="amostras">
+      <div class="card amostra">
+        <div class="cabecote"><h3>Cabeçalho de página único</h3><span class="chip m">M</span></div>
+        <div class="par">
+          <div><span class="rot-mini">Antes</span><span class="h1-solto">Clientes</span></div>
+          <div>
+            <span class="rot-mini">Depois</span>
+            <div class="app-header" style="margin:0;">
+              <div class="titulo"><span class="icone">👥</span><div><div class="h1" style="font-size:14px;">Clientes</div><div class="sub">1.148 cadastrados (exemplo)</div></div></div>
+            </div>
+          </div>
+        </div>
+        <p class="exp">Uma cápsula com ícone + título + subtítulo, igual em toda tela — hoje só algumas telas têm isso (ex.: Clientes hoje começa direto nos filtros).</p>
+      </div>
+
+      <div class="card amostra">
+        <div class="cabecote"><h3>Um só tipo de card</h3><span class="chip p">P</span></div>
+        <div class="par">
+          <div>
+            <span class="rot-mini">Antes — 3 famílias</span>
+            <div class="card3"><div class="mini r1"></div><div class="mini r2"></div><div class="mini r3"></div></div>
+          </div>
+          <div>
+            <span class="rot-mini">Depois — 1 padrão</span>
+            <div class="card3"><div class="mini rd"></div></div>
+          </div>
+        </div>
+        <p class="exp">Card de conteúdo sempre com o mesmo raio de borda e a mesma sombra leve — hoje há cards sem borda, com sombra pesada e com raios diferentes convivendo.</p>
+      </div>
+
+      <div class="card amostra">
+        <div class="cabecote"><h3>Botão sempre em pílula</h3><span class="chip p">P</span></div>
+        <div class="par">
+          <div><span class="rot-mini">Antes</span><span class="btn-quadrado">Salvar</span></div>
+          <div><span class="rot-mini">Depois</span><button class="btn primario">Salvar</button></div>
+        </div>
+        <p class="exp">Alguns botões primários ainda nascem quadrados/cantos levemente arredondados — a regra "sempre pílula" precisa cobrir todos, sem exceção por classe.</p>
+      </div>
+
+      <div class="card amostra">
+        <div class="cabecote"><h3>Texto de leitura mais escuro</h3><span class="chip m">M</span></div>
+        <div class="par">
+          <div><span class="rot-mini">Antes</span><p class="cinza-claro">Nenhum pedido encontrado para o período selecionado.</p></div>
+          <div><span class="rot-mini">Depois</span><p class="cinza-forte">Nenhum pedido encontrado para o período selecionado.</p></div>
+        </div>
+        <p class="exp">1.148 textos no sistema usam um cinza claro demais para leitura confortável — troca mecânica para um cinza mais escuro, tela por tela.</p>
+      </div>
+
+      <div class="card amostra">
+        <div class="cabecote"><h3>Estado vazio com ícone + frase + ação</h3><span class="chip m">M</span></div>
+        <div class="par">
+          <div><span class="rot-mini">Antes</span><p class="cinza-claro">Nenhum item.</p></div>
+          <div>
+            <span class="rot-mini">Depois</span>
+            <div class="vazio" style="padding:8px 4px;">
+              <div class="ico" style="width:34px;height:34px;font-size:16px;">📭</div>
+              <b style="font-size:12px;">Nada por aqui ainda</b>
+              <span style="font-size:11px;">Que tal criar o primeiro?</span>
+            </div>
+          </div>
+        </div>
+        <p class="exp">Hoje todo "vazio" é uma linha cinza — passa a ter ícone, frase humana e um botão de ação quando fizer sentido (ex.: "+ Novo cliente").</p>
+      </div>
+
+      <div class="card amostra">
+        <div class="cabecote"><h3>Uma ação principal por tela</h3><span class="chip m">M</span></div>
+        <div class="par">
+          <div><span class="rot-mini">Antes — 4 botões iguais</span><div class="barra-botoes-igual"><span>Relatório</span><span>CSV</span><span>Resumo</span><span>Baixar</span></div></div>
+          <div>
+            <span class="rot-mini">Depois</span>
+            <div class="barra-acao-unica"><button class="btn primario pequeno">Baixar parcelas</button><span class="kebab">⋯</span></div>
+          </div>
+        </div>
+        <p class="exp">Telas financeiras hoje empilham vários botões do mesmo peso. Fica 1 ação verde em destaque; o resto entra num menu "⋯".</p>
+      </div>
+
+      <div class="card amostra">
+        <div class="cabecote"><h3>Toast no tema</h3><span class="chip p">P</span></div>
+        <div class="par">
+          <div><span class="rot-mini">Antes</span><span class="toast-generico">Salvo com sucesso</span></div>
+          <div><span class="rot-mini">Depois</span><span class="toast-tema">✓ Salvo com sucesso</span></div>
+        </div>
+        <p class="exp">O aviso de confirmação usa hoje a cor padrão da biblioteca (cinza-escuro) em vez do verde do tema — mesma lib, só a cor e o formato mudam.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PROPOSTA 4 — ESPAÇAMENTO ============ -->
+  <section class="secao" id="espacamento">
+    <h2>4. Regras de espaçamento — 3 níveis</h2>
+    <p class="sub">Hoje o espaço entre elementos é decidido tela por tela, sem critério — algumas telas de uso intenso (Rota, Caixa) ficam "apertadas demais". A proposta fixa 3 níveis previsíveis:</p>
+
+    <div class="espacos">
+      <div class="card">
+        <h3>Compacto</h3>
+        <p class="pequeno texto-soft">Listas densas de uso repetitivo — Rota, Caixa Diário.</p>
+        <div style="display:grid;gap:4px;margin-top:10px;">
+          <div class="linha-esp" style="padding:6px 8px;"><div class="dot"></div><div class="bar"></div></div>
+          <div class="linha-esp" style="padding:6px 8px;"><div class="dot"></div><div class="bar"></div></div>
+          <div class="linha-esp" style="padding:6px 8px;"><div class="dot"></div><div class="bar"></div></div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Padrão</h3>
+        <p class="pequeno texto-soft">A maioria das telas — listas, formulários, cadastros.</p>
+        <div style="display:grid;gap:10px;margin-top:10px;">
+          <div class="linha-esp" style="padding:10px 12px;"><div class="dot"></div><div class="bar"></div></div>
+          <div class="linha-esp" style="padding:10px 12px;"><div class="dot"></div><div class="bar"></div></div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Respirado</h3>
+        <p class="pequeno texto-soft">Telas de decisão e KPI — dashboards, Financeiro Gerencial.</p>
+        <div style="display:grid;gap:16px;margin-top:10px;">
+          <div class="linha-esp" style="padding:16px 18px;"><div class="dot"></div><div class="bar"></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ORDEM SUGERIDA ============ -->
+  <section class="secao">
+    <h2>Ordem sugerida</h2>
+    <ul class="muda">
+      <li>Fechar o "buraco" da pílula no botão (correção rápida, sem risco) e elevar o piso de cinza nas 10 telas mais usadas.</li>
+      <li>Piloto do <b>componente de cabeçalho único</b> numa tela pequena (ex.: Embarque) antes de replicar nas ~60 telas.</li>
+      <li><b>Menu por perfil</b> — a lógica de detectar perfil já existe (é a mesma do Dashboard automático).</li>
+      <li><b>Central de Pendências v1</b> com os 5-6 blocos mais valiosos primeiro.</li>
+      <li>Estados vazios e "uma ação principal por tela" — aplicar conforme cada tela for tocada por outro motivo (não precisa de projeto à parte).</li>
+    </ul>
+  </section>
+
+  <footer class="rodape">
+    <span>Proposta gerada em 12/09/2026 · pacote em docs/melhorias-2026-09</span>
+    <a href="index.html">← Visão geral</a>
+  </footer>
+
+</div>
+</body>
+</html>

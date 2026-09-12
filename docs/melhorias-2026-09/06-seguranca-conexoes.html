@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Segurança &amp; Conexões — Propostas CA-Hardt 2.0</title>
+<link rel="stylesheet" href="estilo.css">
+<style>
+  /* cards de urgência (semana 1) */
+  .urgentes { display: grid; grid-template-columns: 1fr; gap: 14px; }
+  @media (min-width: 860px) { .urgentes { grid-template-columns: repeat(3, 1fr); } }
+  .urg { background: #fff; border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow-sm); overflow: hidden; }
+  .urg .faixa { padding: 5px 16px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: #fff; }
+  .urg.vermelho .faixa { background: var(--red); }
+  .urg.ambar .faixa { background: var(--amber); }
+  .urg .corpo { padding: 16px; }
+  .urg h3 { font-size: 16px; font-weight: 800; margin-bottom: 8px; }
+  .urg .rot { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-soft); margin: 10px 0 3px; }
+  .urg .rot:first-of-type { margin-top: 2px; }
+  .urg p.txt { font-size: 13.5px; color: var(--ink-2); margin: 0 0 0; }
+  .urg .rodape-urg { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; }
+
+  /* bolinha de status das conexões */
+  .dot { width: 10px; height: 10px; border-radius: 999px; display: inline-block; flex: 0 0 10px; }
+  .dot.verde { background: #22c55e; box-shadow: 0 0 0 3px rgba(34,197,94,.18); }
+  .dot.amarelo { background: #eab308; box-shadow: 0 0 0 3px rgba(234,179,8,.2); }
+  .dot.vermelho { background: var(--red); box-shadow: 0 0 0 3px rgba(220,38,38,.18); }
+
+  .conexoes-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  @media (min-width: 720px) { .tela.desktop .conexoes-grid { grid-template-columns: repeat(4, 1fr); } }
+  .conexao { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 11px 12px; display: flex; flex-direction: column; gap: 5px; position: relative; }
+  .conexao .topo { display: flex; align-items: center; gap: 7px; }
+  .conexao .topo b { font-size: 13px; font-weight: 800; }
+  .conexao .linha-info { font-size: 11.5px; color: var(--ink-soft); font-weight: 600; }
+  .conexao .linha-info.erro { color: #9a3412; }
+  .conexao .botoes { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+  .conexao .btn.pequeno { min-height: 28px; padding: 3px 10px; font-size: 12px; }
+
+  .abas-conteudo { display: grid; gap: 10px; }
+  .aba-desc { background: #fff; border: 1px dashed var(--line); border-radius: 12px; padding: 10px 12px; font-size: 13px; color: var(--ink-2); }
+  .aba-desc b { color: var(--house); }
+</style>
+</head>
+<body>
+
+<nav class="topnav">
+  <div class="topnav-inner">
+    <a class="marca" href="index.html">CA-Hardt <em>2.0</em></a>
+    <a href="index.html">Visão geral</a>
+    <a href="01-navegacao-design.html">Navegação &amp; Design</a>
+    <a href="02-vendas.html">Vendas</a>
+    <a href="03-logistica-caixa.html">Logística &amp; Caixa</a>
+    <a href="04-financeiro.html">Financeiro</a>
+    <a href="05-producao.html">Produção</a>
+    <a href="06-seguranca-conexoes.html" class="ativo">Segurança &amp; Conexões</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">Segurança e conexões externas · setembro 2026</span>
+    <h1>Trancar as portas certas e ver todas as conexões num só painel</h1>
+    <p>Dois consultores olharam o CA-Hardt por ângulos diferentes: um testou as travas e senhas do sistema, outro mapeou as 17 ligações que ele faz hoje com bancos, correios fiscais e o WhatsApp da Ana. Nenhum arquivo foi alterado e nenhum valor de senha ou chave saiu dali — este documento só organiza o que os dois encontraram em prioridades e telas.</p>
+    <div class="resumo">
+      <div><b>7,5/10</b><span>nota de segurança</span></div>
+      <div><b>17</b><span>conexões externas ativas</span></div>
+      <div><b>3</b><span>urgências desta semana</span></div>
+      <div><b>1</b><span>chave antiga para tirar do código</span></div>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <section class="secao" id="urgente">
+    <h2>As 3 coisas para fazer esta semana</h2>
+    <p class="sub">Nada disso significa "o sistema está vulnerável agora" — significa "estes são os primeiros 3 buracos a tapar antes de qualquer coisa nova". O resto do diagnóstico está na tabela logo abaixo.</p>
+    <div class="urgentes">
+      <div class="urg vermelho">
+        <div class="faixa">Urgente</div>
+        <div class="corpo">
+          <h3>Uma senha só abre 213 operações de manutenção</h3>
+          <div class="rot">O que é</div>
+          <p class="txt">Existe uma senha única do painel de manutenção usada por trás do sistema para consertar estoque, corrigir nota fiscal, mexer em caixa e financeiro — sem limite de tentativas erradas.</p>
+          <div class="rot">O que pode acontecer</div>
+          <p class="txt">Se essa senha vazar (notebook roubado, print de tela), quem a tem controla o sistema inteiro sem precisar de login de ninguém.</p>
+          <div class="rot">O que fazer</div>
+          <p class="txt">Bloquear depois de algumas tentativas erradas (como já acontece no login normal) e guardar um registro de quem usou o quê.</p>
+          <div class="rodape-urg"><span class="chip m">Esforço médio</span></div>
+        </div>
+      </div>
+      <div class="urg ambar">
+        <div class="faixa">Urgente</div>
+        <div class="corpo">
+          <h3>O backup no Google Drive leva as senhas juntas</h3>
+          <div class="rot">O que é</div>
+          <p class="txt">A cópia de segurança que vai para o Google Drive todo dia carrega, sem criptografia, todas as senhas e chaves que o sistema usa por dentro.</p>
+          <div class="rot">O que pode acontecer</div>
+          <p class="txt">Qualquer pessoa com acesso a essa pasta do Drive — ou se a conta Google for invadida — pega todas as senhas do sistema de uma vez só.</p>
+          <div class="rot">O que fazer</div>
+          <p class="txt">Embaralhar esse arquivo com uma senha própria antes de mandar para o Drive, guardada só localmente.</p>
+          <div class="rodape-urg"><span class="chip p">Esforço pequeno</span></div>
+        </div>
+      </div>
+      <div class="urg ambar">
+        <div class="faixa">Urgente</div>
+        <div class="corpo">
+          <h3>Peças internas do sistema estão desatualizadas</h3>
+          <div class="rot">O que é</div>
+          <p class="txt">O app usa dezenas de bibliotecas prontas por baixo dos panos; várias têm versões novas que corrigem falhas já conhecidas publicamente — algumas mexem com leitura de PDF e XML de nota fiscal.</p>
+          <div class="rot">O que pode acontecer</div>
+          <p class="txt">Não é falha do que foi programado aqui — é uma porta que fica destrancada até alguém atualizar a peça.</p>
+          <div class="rot">O que fazer</div>
+          <p class="txt">Atualizar as bibliotecas e testar com calma a impressão de NF-e e a leitura de certificado depois, que são os pontos mais sensíveis.</p>
+          <div class="rodape-urg"><span class="chip m">Esforço médio</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-24 rolagem">
+      <table class="tabela">
+        <thead>
+          <tr><th>Achado</th><th>Gravidade</th><th>Risco em 1 frase</th><th>Correção</th><th>Esforço</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><b>Upload de imagem de produto usa o código do produto sem conferir</b></td>
+            <td><span class="badge vermelho">Alto</span></td>
+            <td>Quem edita produto poderia, em tese, forçar o sistema a salvar um arquivo em outro lugar do que o esperado.</td>
+            <td>Validar o código do produto antes de usar no nome da pasta do arquivo.</td>
+            <td><span class="chip p">P</span></td>
+          </tr>
+          <tr>
+            <td><b>O sistema aceita pedido de qualquer site (CORS aberto)</b></td>
+            <td><span class="badge vermelho">Alto</span></td>
+            <td>Facilita golpe de página falsa imitando a tela de login do app.</td>
+            <td>Só aceitar pedidos vindos do próprio endereço do sistema.</td>
+            <td><span class="chip p">P</span></td>
+          </tr>
+          <tr>
+            <td><b>Chave do Conta Azul com valor fixo dentro do código</b></td>
+            <td><span class="badge vermelho">Alto</span></td>
+            <td>Se alguém tiver acesso ao código-fonte, essa chave antiga fica visível mesmo sem entrar no sistema.</td>
+            <td>Trocar a chave no painel do Conta Azul e tirar o valor fixo de dentro do código.</td>
+            <td><span class="chip p">P</span></td>
+          </tr>
+          <tr>
+            <td><b>Senha do aviso do Asaas comparada de um jeito mais simples</b></td>
+            <td><span class="badge amarelo">Médio</span></td>
+            <td>Um jeito teórico e bem mais difícil de "adivinhar" a senha aos poucos — os outros avisos do sistema já usam a forma segura.</td>
+            <td>Usar o mesmo método já aplicado nos outros avisos (NF-e, painel de manutenção).</td>
+            <td><span class="chip p">P</span></td>
+          </tr>
+          <tr>
+            <td><b>Cálculo de rota usa um servidor público, sem garantia</b></td>
+            <td><span class="badge amarelo">Médio</span></td>
+            <td>Se esse serviço público sair do ar, a divisão de carga e as rotas dos motoristas param, sem aviso prévio.</td>
+            <td>Configurar um endereço próprio para o cálculo de rota.</td>
+            <td><span class="chip p">P</span></td>
+          </tr>
+          <tr>
+            <td><b>Senha de acesso do GitHub vence sem avisar antes</b></td>
+            <td><span class="badge vermelho">Alto</span></td>
+            <td>Já travou uma publicação no meio, sem aviso — só se descobre quando o deploy falha.</td>
+            <td>Anotar a data de vencimento num lembrete e renovar antes do prazo.</td>
+            <td><span class="chip p">P</span></td>
+          </tr>
+          <tr>
+            <td><b>Chave que embaralha o certificado digital A1 não tem um valor próprio configurado</b></td>
+            <td><span class="badge amarelo">Médio</span></td>
+            <td>Sem essa chave própria, o sistema usa a mesma chave do login para proteger o certificado — funciona, mas mistura duas coisas que deveriam ficar separadas.</td>
+            <td>Configurar uma chave só para isso (dá para conferir se já está configurada direto no painel do sistema, é rápido).</td>
+            <td><span class="chip p">P</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="secao">
+    <h2>O que já está bem feito</h2>
+    <p class="sub">Para um sistema construído por uma pessoa só, o nível de cuidado já é bem acima da média — isso precisa continuar preservado em qualquer mudança futura.</p>
+    <ul class="muda">
+      <li>Login trava depois de várias tentativas erradas de senha, protegendo contra "chute" automático.</li>
+      <li>Senha de cada usuário é guardada de forma embaralhada e forte — ninguém, nem o próprio sistema, lê a senha original.</li>
+      <li>Certificado digital A1 fica criptografado em disco, nunca acessível por link direto.</li>
+      <li>Cada aviso automático (NF-e, cobrança) tem senha própria, diferente das outras.</li>
+      <li>O bug antigo de permissão "furada" (usuário via tela que não devia) já foi corrigido e generalizado.</li>
+      <li>A IA que atende no WhatsApp tem chave própria, separada de tudo mais, e só libera dado de cliente conferindo o telefone de quem está escrevendo.</li>
+      <li>O backup do banco de dados roda sozinho a cada 15 minutos, sem depender de ninguém lembrar.</li>
+    </ul>
+  </section>
+
+  <section class="secao" id="central-seguranca">
+    <h2>Central de Segurança</h2>
+    <p class="sub">Hoje quem pode fazer o quê no sistema, quem entrou por último e o status do backup/certificado ficam espalhados entre banco de dados, logs do servidor e a memória do dono. A proposta junta tudo numa tela só, dentro de Configurações, visível apenas para administrador.</p>
+
+    <div class="mock-e-legenda">
+      <div class="tela desktop">
+        <div class="tela-top"><div><small>Configurações</small><strong>Central de Segurança</strong></div></div>
+        <div class="tela-body">
+          <div class="app-header">
+            <div class="titulo"><span class="icone">🛡️</span><div><div class="h1">Central de Segurança</div><div class="sub">Só visível para administrador</div></div></div>
+          </div>
+          <div class="abas">
+            <span class="aba ativa">Usuários</span>
+            <span class="aba">Permissões sensíveis</span>
+            <span class="aba">Histórico de ações</span>
+            <span class="aba">Backup &amp; Certificado</span>
+            <span class="pin" style="margin-left:6px;">1</span>
+          </div>
+          <div class="alerta amarelo">
+            <span class="pin">2</span>
+            <span>2 usuários inativos ainda com permissão sensível — confira antes de reativar o acesso.</span>
+          </div>
+          <div class="app-card">
+            <div class="app-card-h">Usuários <span class="n">18</span> <span class="pin" style="margin-left:6px;">3</span></div>
+            <div class="app-card-b" style="padding:0;">
+              <div style="padding:0 14px;">
+                <div class="linha">
+                  <div class="tx"><b>Ana Paula</b><span>Vendas · último acesso há 12 min</span></div>
+                  <span class="badge verde">Ativo</span>
+                </div>
+                <div class="linha">
+                  <div class="tx"><b>Carlos</b><span>Motorista · último acesso ontem 18:40</span></div>
+                  <span class="badge verde">Ativo</span>
+                </div>
+                <div class="linha">
+                  <div class="tx"><b>Rafael (ex-financeiro)</b><span>Administrador · sem acesso há 96 dias</span></div>
+                  <span class="badge vermelho">Inativo + sensível</span>
+                  <span class="pin">4</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="abas-conteudo">
+            <div class="aba-desc"><b>Permissões sensíveis</b> — lista fixa (dar desconto na baixa, autorizar diferença de caixa, excluir registro, administrador, editar produto) e, para cada uma, quem tem hoje. Alerta visual quando um usuário inativo ainda aparece com alguma dessas permissões.</div>
+            <div class="aba-desc"><b>Histórico de ações</b> — linha por linha: "hoje 14:02 · Ana Paula · baixou parcela #1234 · R$ 350,00". Dá para filtrar por pessoa, tipo de ação ou período.</div>
+            <div class="aba-desc"><b>Backup &amp; Certificado</b> — três cartões: "Último backup do banco: há 12 min ✓", "Certificado digital A1: vence em 84 dias", "Backup no Drive: criptografado ✓".</div>
+          </div>
+        </div>
+      </div>
+      <ol class="legendas">
+        <li><span class="pin">1</span><span><b>Abas</b> organizam os 4 blocos sem precisar sair da tela: Usuários, Permissões sensíveis, Histórico e Backup &amp; Certificado.</span></li>
+        <li><span class="pin">2</span><span><b>Aviso automático</b> — some sozinho quando o problema é corrigido; some se todo mundo com permissão sensível estiver ativo.</span></li>
+        <li><span class="pin">3</span><span><b>Tabela de usuários</b> mostra perfil e último acesso — quem nunca voltou fica fácil de achar.</span></li>
+        <li><span class="pin">4</span><span><b>Badge vermelho</b> marca combinação de risco: usuário inativo que ainda tem permissão sensível.</span></li>
+      </ol>
+      <p class="pequeno texto-soft mt-8">Fora do mockup: bloco de <b>"sessões ativas"</b> (encerrar acesso à distância) fica de fora desta primeira versão — depende de uma mudança maior no login, entra depois.</p>
+    </div>
+  </section>
+
+  <section class="secao" id="central-conexoes">
+    <h2>Central de Conexões</h2>
+    <p class="sub">O status do WhatsApp da Ana já tem card próprio, o certificado digital tem o seu, o backup tem o seu — cada integração mora num canto diferente do Configurações, e várias (Asaas, e-mail, roteirização) não têm tela nenhuma hoje. A Central junta as 17 numa grade só, com um botão "Testar" em cada uma.</p>
+
+    <div class="mock-e-legenda">
+      <div class="tela desktop">
+        <div class="tela-top"><div><small>Configurações</small><strong>Central de Conexões</strong></div></div>
+        <div class="tela-body">
+          <div class="app-header">
+            <div class="titulo"><span class="icone">🔌</span><div><div class="h1">Central de Conexões</div><div class="sub">17 integrações · 2 pedindo atenção</div></div></div>
+          </div>
+          <div class="conexoes-grid">
+            <div class="conexao">
+              <div class="topo"><span class="dot verde"></span><b>Conta Azul</b></div>
+              <div class="linha-info">Última troca: há 4 min <span class="pin" style="width:16px;height:16px;font-size:10px;">1</span></div>
+              <div class="linha-info">Conectado desde 07/2026</div>
+              <div class="botoes"><span class="btn secundario pequeno">Testar</span> <span class="pin" style="width:16px;height:16px;font-size:10px;">2</span></div>
+            </div>
+            <div class="conexao">
+              <div class="topo"><span class="dot verde"></span><b>Focus NF-e</b></div>
+              <div class="linha-info">Última troca: há 19 min</div>
+              <div class="linha-info">0 erros recentes</div>
+              <div class="botoes"><span class="btn secundario pequeno">Testar</span></div>
+            </div>
+            <div class="conexao">
+              <div class="topo"><span class="dot verde"></span><b>SEFAZ / Certificado</b></div>
+              <div class="linha-info">Vence em 84 dias</div>
+              <div class="linha-info">Última captura: há 2h</div>
+              <div class="botoes"><span class="btn secundario pequeno">Testar</span></div>
+            </div>
+            <div class="conexao">
+              <div class="topo"><span class="dot verde"></span><b>Asaas (boleto/PIX)</b></div>
+              <div class="linha-info">Última troca: há 31 min</div>
+              <div class="linha-info">0 pendências</div>
+              <div class="botoes"><span class="btn secundario pequeno">Testar</span></div>
+            </div>
+            <div class="conexao" style="position:relative;">
+              <span class="pin" style="position:absolute; top:-8px; right:-8px;">3</span>
+              <div class="topo"><span class="dot amarelo"></span><b>WhatsApp (bot da Ana)</b></div>
+              <div class="linha-info">Última troca: há 4 min</div>
+              <div class="linha-info erro">3 mensagens na fila</div>
+              <div class="botoes"><span class="btn secundario pequeno">Testar</span><span class="btn primario pequeno">Reprocessar fila</span></div>
+            </div>
+            <div class="conexao">
+              <div class="topo"><span class="dot verde"></span><b>Google Drive</b></div>
+              <div class="linha-info">Último backup: há 12 min</div>
+              <div class="linha-info">Criptografado ✓</div>
+              <div class="botoes"><span class="btn secundario pequeno">Testar</span></div>
+            </div>
+            <div class="conexao">
+              <div class="topo"><span class="dot verde"></span><b>E-mail</b></div>
+              <div class="linha-info">Última troca: há 3 dias</div>
+              <div class="linha-info">Uso pontual (cobrança)</div>
+              <div class="botoes"><span class="btn secundario pequeno">Testar</span></div>
+            </div>
+            <div class="conexao">
+              <div class="topo"><span class="dot verde"></span><b>IA da Ana (canal que atende o cliente pelo WhatsApp)</b></div>
+              <div class="linha-info">Última troca: há 7 min</div>
+              <div class="linha-info">0 erros recentes</div>
+              <div class="botoes"><span class="btn secundario pequeno">Testar</span></div>
+            </div>
+            <div class="conexao">
+              <div class="topo"><span class="dot amarelo"></span><b>Roteirização (mapa)</b></div>
+              <div class="linha-info erro">Usando servidor público de teste</div>
+              <div class="linha-info">Sem endereço próprio configurado</div>
+              <div class="botoes"><span class="btn secundario pequeno">Testar</span></div>
+            </div>
+            <div class="conexao" style="position:relative;">
+              <span class="pin" style="position:absolute; top:-8px; right:-8px;">4</span>
+              <div class="topo"><span class="dot vermelho"></span><b>Deploy / GitHub</b></div>
+              <div class="linha-info erro">Senha de acesso vencida</div>
+              <div class="linha-info">Publicação travada</div>
+              <div class="botoes"><span class="btn secundario pequeno">Testar</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <ol class="legendas">
+        <li><span class="pin">1</span><span><b>"Última troca com sucesso"</b> mostra quando aquela integração funcionou por último, em tempo relativo — fácil de notar quando algo parou. Aparece em todo card; aqui marcado só como exemplo, no da Conta Azul.</span></li>
+        <li><span class="pin">2</span><span><b>"Testar"</b> dispara uma checagem rápida daquela conexão específica, na hora, sem precisar mexer em nada por fora — em todo card, não só no da Conta Azul aqui marcado como exemplo.</span></li>
+        <li><span class="pin">3</span><span><b>Bolinha amarela</b> = alguma pendência normal esperando (aqui, 3 mensagens de WhatsApp na fila). O botão <b>"Reprocessar fila"</b> só aparece quando existe fila — dispara o envio na hora, sem esperar o próximo ciclo automático.</span></li>
+        <li><span class="pin">4</span><span><b>Bolinha vermelha</b> = erro confirmado ou senha/credencial vencida — aqui, a senha de acesso do GitHub venceu e travou a publicação. É esse tipo de aviso que hoje só aparece no meio de um deploy, sem tempo de reação.</span></li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="secao" id="novas-conexoes">
+    <h2>Conexões novas que valem a pena</h2>
+    <p class="sub">Nem toda ideia precisa entrar já — esta tabela ordena por quanto custa fazer e quanto ganho traz, para o senhor decidir a ordem.</p>
+    <div class="rolagem">
+      <table class="tabela">
+        <thead>
+          <tr><th>Ideia</th><th>Ganho</th><th>Dificuldade</th><th>Quando</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><b>E-mail da nota fiscal ao cliente</b></td>
+            <td>Cliente recebe a NF-e sozinho, sem pedir por WhatsApp.</td>
+            <td><span class="chip p">Fácil</span> — o e-mail já existe e funciona</td>
+            <td>Pode começar já</td>
+          </tr>
+          <tr>
+            <td><b>Extrato do banco automático (Open Finance — ligação direta com o banco)</b></td>
+            <td>Acaba com a conferência manual do extrato baixado do banco.</td>
+            <td><span class="chip m">Média-alta</span> — depende do banco liberar</td>
+            <td>Próximos meses</td>
+          </tr>
+          <tr>
+            <td><b>Impressora de etiqueta em rede</b></td>
+            <td>Etiqueta sai direto na produção, sem passar pelo computador/navegador.</td>
+            <td><span class="chip m">Média</span> — depende do modelo</td>
+            <td>Testar com 1 impressora primeiro</td>
+          </tr>
+          <tr>
+            <td><b>WhatsApp oficial (Meta)</b></td>
+            <td>Permite promoção e lembrete de recompra — hoje proibido no número da Ana.</td>
+            <td><span class="chip m">Média</span> — exige conta comercial verificada</td>
+            <td>Só quando houver necessidade real de mensagem em massa</td>
+          </tr>
+          <tr>
+            <td><b>Agenda do Google para a produção</b></td>
+            <td>Espelha a agenda do PCP num calendário que a equipe já usa.</td>
+            <td><span class="chip p">Fácil</span></td>
+            <td>Perguntar à equipe antes de construir</td>
+          </tr>
+          <tr>
+            <td><b>Trânsito em tempo real no mapa</b></td>
+            <td>Pouco ganho — a rota hoje não reage ao trânsito de qualquer forma.</td>
+            <td><span class="chip p">Fácil</span> tecnicamente</td>
+            <td>Não vale agora</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="secao" id="plano">
+    <h2>Plano de 30 / 60 dias</h2>
+    <p class="sub">Primeiro estanca o que já é risco concreto, depois junta a visibilidade numa tela, por último soma valor novo.</p>
+    <div class="grid-2">
+      <div class="card">
+        <h3>Primeiras 4 semanas</h3>
+        <div class="rot-campo">Semana 1-2</div>
+        <ul class="muda">
+          <li>Embaralhar o backup que vai para o Google Drive.</li>
+          <li>Colocar limite de tentativas na senha do painel de manutenção + registrar quem usou.</li>
+          <li>Trocar a chave fixa do Conta Azul e tirá-la de dentro do código.</li>
+          <li>Configurar um endereço próprio para o cálculo de rota.</li>
+        </ul>
+        <div class="rot-campo">Semana 3-4</div>
+        <ul class="muda">
+          <li>Corrigir o upload de imagem de produto.</li>
+          <li>Fechar o sistema para aceitar pedido só do próprio endereço (CORS).</li>
+          <li>Padronizar a senha do aviso do Asaas no mesmo nível dos demais.</li>
+          <li>Atualizar as bibliotecas desatualizadas e testar NF-e/certificado/impressão.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Mês 2</h3>
+        <ul class="muda">
+          <li>Construir a Central de Segurança (usuários, permissões, histórico, backup/certificado).</li>
+          <li>Construir a Central de Conexões (status das 17 integrações num painel só).</li>
+          <li>Ligar um aviso antecipado para quando o Conta Azul ou o certificado perderem a conexão.</li>
+          <li>Anotar em calendário a renovação da senha de acesso do GitHub, antes de vencer de novo.</li>
+          <li>Primeira conexão nova: e-mail automático da nota fiscal ao cliente.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="mt-24">
+      <h3 style="font-size:16px; font-weight:800; color:var(--house); margin-bottom:10px;">Ordem sugerida</h3>
+      <ul class="muda">
+        <li>1. Tapar os 3 buracos urgentes desta semana (senha única, backup sem criptografia, bibliotecas).</li>
+        <li>2. Fechar as brechas concretas já mapeadas (upload de imagem, CORS, chave fixa, senha do Asaas).</li>
+        <li>3. Configurar o endereço próprio da roteirização e anotar o vencimento da senha do GitHub.</li>
+        <li>4. Construir a Central de Segurança e a Central de Conexões, uma tela de cada vez.</li>
+        <li>5. Só depois somar conexão nova — começando pelo e-mail automático da nota fiscal.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer class="rodape">
+    <span>Proposta gerada em 12/09/2026 · pacote em docs/melhorias-2026-09</span>
+    <a href="index.html">← Visão geral</a>
+  </footer>
+
+</div>
+</body>
+</html>

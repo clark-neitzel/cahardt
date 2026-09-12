@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Produção (PCP) — Proposta CA-Hardt</title>
+<link rel="stylesheet" href="estilo.css">
+<style>
+  .grande-botao { min-height:56px; font-size:16px; }
+  .menu-mock { max-width:230px; }
+  .sidebar .badge-nova { background:var(--gold); color:#2b230f; border-radius:999px; padding:0 7px; font-size:10px; font-weight:800; margin-left:auto; }
+</style>
+</head>
+<body>
+
+<nav class="topnav">
+  <div class="topnav-inner">
+    <a class="marca" href="index.html">CA-Hardt <em>2.0</em></a>
+    <a href="index.html">Visão geral</a>
+    <a href="01-navegacao-design.html">Navegação &amp; Design</a>
+    <a href="02-vendas.html">Vendas</a>
+    <a href="03-logistica-caixa.html">Logística &amp; Caixa</a>
+    <a href="04-financeiro.html">Financeiro</a>
+    <a href="05-producao.html" class="ativo">Produção</a>
+    <a href="06-seguranca-conexoes.html">Segurança &amp; Conexões</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">Proposta · Produção (PCP)</span>
+    <h1>O sistema já sabe o que falta produzir — falta ele avisar sozinho</h1>
+    <p>O cálculo de "o que está abaixo do mínimo e precisa de batelada nova" já existe e funciona bem.
+      Hoje ele só roda se alguém lembrar de clicar num botão. As três mudanças aqui juntam duas telas que
+      fazem quase a mesma coisa, fazem o cálculo acontecer sozinho todo dia, e mantêm o painel do chão de
+      fábrica exatamente como está — porque é outra pessoa, em outro contexto.</p>
+    <div class="resumo">
+      <div><b>3</b><span>propostas nesta página</span></div>
+      <div><b>2→1</b><span>telas de planejamento viram 1</span></div>
+      <div><b>P</b><span>esforço da sugestão automática</span></div>
+      <div><b>2</b><span>ideias extra de equipamento</span></div>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- ========================================================= -->
+  <section class="secao" id="planejamento">
+    <h2>Planejamento de Produção</h2>
+    <p class="sub">Hoje "Sugestões" e "Ordens" são duas telas, dois menus, e na prática dois caminhos
+      para chegar no mesmo lugar: uma Ordem de Produção. A proposta é uma única tela com abas — o cálculo
+      de sugestão e a lista de ordens convivem no mesmo lugar, na etapa que cada uma está.</p>
+
+    <div class="antes-depois">
+      <div>
+        <div class="rotulo antes">Antes — 2 telas, 2 caminhos</div>
+        <div class="tela-tabs-placeholder">
+          <div class="tela desktop mini-tela">
+            <div class="tela-top"><div><small>PCP</small><strong>Sugestões</strong></div></div>
+            <div class="tela-body">
+              <div class="linha"><div class="tx"><b>Coxinha 500g</b><span>Estoque: 40 · Mínimo: 200</span></div><button class="btn pequeno primario">Aceitar</button></div>
+              <div class="linha"><div class="tx"><b>Risole 1kg</b><span>Estoque: 12 · Mínimo: 80</span></div><button class="btn pequeno primario">Aceitar</button></div>
+            </div>
+          </div>
+          <div class="tela desktop mini-tela">
+            <div class="tela-top"><div><small>PCP</small><strong>Ordens</strong></div></div>
+            <div class="tela-body">
+              <div class="linha"><div class="tx"><b>OP 1042</b><span>Coxinha 500g · em produção</span></div><span class="badge azul">Aberta</span></div>
+              <button class="btn pequeno secundario bloco mt-8">+ Nova ordem manual</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="rotulo depois">Depois — 1 tela, 4 abas</div>
+        <div class="tela desktop">
+          <div class="tela-top"><div><small>PCP</small><strong>Planejamento de Produção</strong></div></div>
+          <div class="tela-body">
+            <div class="abas">
+              <span class="aba ativa">Sugeridas <span class="n">2</span></span>
+              <span class="aba">Em produção <span class="n">3</span></span>
+              <span class="aba">Concluídas</span>
+              <span class="aba">Todas</span>
+              <span class="pin">1</span>
+            </div>
+            <div class="app-card"><div class="app-card-b">
+              <div class="linha">
+                <div class="tx"><b>Coxinha 500g</b><span>Estoque atual: 40 un · Mínimo: 200 un</span></div>
+                <div class="val">2 bateladas <span class="pin">2</span></div>
+                <button class="btn pequeno primario" style="margin-left:8px;">Aceitar <span class="pin" style="background:#fff;color:var(--primary-dark);">3</span></button>
+              </div>
+              <div class="linha">
+                <div class="tx"><b>Risole de Carne 1kg</b><span>Estoque atual: 12 un · Mínimo: 80 un</span></div>
+                <div class="val">1 batelada</div>
+                <button class="btn pequeno primario" style="margin-left:8px;">Aceitar</button>
+              </div>
+            </div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <ol class="legendas">
+      <li><b>1 —</b> Quatro abas cobrindo o ciclo inteiro: o que o sistema sugeriu, o que já virou ordem e está em produção, o que já foi concluído, e a lista completa.</li>
+      <li><b>2 —</b> A conta de "quantas bateladas fazer" já é calculada hoje — só ganhou destaque na lista, ao lado do estoque atual e do mínimo.</li>
+      <li><b>3 —</b> O mesmo botão "Aceitar" de hoje, que vira Ordem de Produção — nenhuma regra nova, só um caminho a menos para chegar nele.</li>
+    </ol>
+
+    <div class="card mt-16">
+      <span class="chip m">Esforço M</span>
+      <h3>Duas telas, um só lugar</h3>
+      <p>O cálculo de sugestão e a lista de ordens já existem prontos — o trabalho é técnico de reunir as duas listas numa tela com abas, sem mudar a lógica de cada uma. Ganho: quem planeja a produção não precisa mais ficar pulando entre duas rotas do menu para fazer a mesma tarefa.</p>
+    </div>
+  </section>
+
+  <!-- ========================================================= -->
+  <section class="secao" id="sugestao-automatica">
+    <h2>Sugestão calculada sozinha todo dia às 5h</h2>
+    <p class="sub">Hoje o cálculo de "o que está abaixo do mínimo" só roda se alguém abrir a tela e
+      clicar em "Gerar Sugestões". A proposta é rodar esse mesmo cálculo sozinho, de madrugada, antes do
+      turno começar — avisando quem precisa saber. <b>Aceitar continua manual</b>, exatamente como hoje;
+      só o cálculo em si deixa de depender de alguém lembrar de clicar.</p>
+
+    <div class="grid-2">
+      <div>
+        <div class="rotulo depois">Aviso no menu</div>
+        <div class="sidebar menu-mock">
+          <div class="grupo">Produção</div>
+          <div class="item">📋 Dashboard PCP</div>
+          <div class="item ativo">🗓️ Planejamento <span class="badge-nova">2 novas</span> <span class="pin" style="margin-left:6px;">1</span></div>
+          <div class="item">🏭 Painel de Produção</div>
+          <div class="item">🏷️ Etiquetas</div>
+        </div>
+      </div>
+      <div>
+        <div class="rotulo depois">Aviso na Central de Pendências</div>
+        <div class="app-card">
+          <div class="app-card-h">Ordens de produção sugeridas <span class="n">2</span> <span class="pin">2</span></div>
+          <div class="app-card-b">
+            <div class="linha"><div class="tx"><b>Coxinha 500g</b><span>calculado hoje às 05h</span></div><button class="btn pequeno primario">Aceitar</button></div>
+            <div class="linha"><div class="tx"><b>Risole de Carne 1kg</b><span>calculado hoje às 05h</span></div><button class="btn pequeno primario">Aceitar</button></div>
+            <div class="pequeno texto-soft mt-8">ver todas (2) →</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <ol class="legendas">
+      <li><b>1 —</b> Um badge dourado no item de menu do Planejamento avisa que há sugestão nova, sem precisar entrar para saber.</li>
+      <li><b>2 —</b> O mesmo aviso aparece agregado na Central de Pendências (ver página de Navegação &amp; Design), junto com as outras pendências do dia.</li>
+    </ol>
+
+    <div class="card mt-16">
+      <span class="chip p">Esforço P</span>
+      <h3>Mover um cálculo que já existe para um horário fixo</h3>
+      <p>É reaproveitar a lógica de sugestão que já roda quando alguém clica no botão, só colocando-a num horário diário — o mesmo padrão já usado para outras rotinas automáticas do sistema (backup, snapshot de custo). Aceitar continua exigindo o clique de sempre, porque é decisão do chão de fábrica. Risco: nenhum — só antecipa um cálculo, não cria ordem sozinho.</p>
+    </div>
+  </section>
+
+  <!-- ========================================================= -->
+  <section class="secao" id="painel">
+    <h2>Painel do chão de fábrica continua separado</h2>
+    <p class="sub">O Painel de Produção não entra na fusão acima de propósito: é usado por outra pessoa
+      (o operador da produção, não quem planeja), em outro contexto (uma tela fixa perto da linha, tocada
+      com as mãos sujas de massa, não navegada como as telas de escritório). Juntar as duas atrapalharia
+      as duas — aqui a proposta é só reforçar o que já funciona: botões grandes, fáceis de acertar.</p>
+
+    <div class="tela mobile">
+      <div class="tela-top"><div><small>Painel de Produção</small><strong>OP 1042 · Coxinha 500g</strong></div></div>
+      <div class="tela-body">
+        <div class="app-card heroi">
+          <div class="app-card-b">
+            <div class="rot">Ordem em produção</div>
+            <div class="val">2 bateladas</div>
+          </div>
+        </div>
+        <div style="display:grid; gap:10px; margin-top:4px;">
+          <button class="btn primario bloco grande-botao">▶️ Iniciar</button>
+          <button class="btn secundario bloco grande-botao">📝 Apontar</button>
+          <button class="btn perigo bloco grande-botao" style="background:var(--primary-dark);">✅ Finalizar</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mt-16">
+      <span class="chip cinza">Sem mudança de fluxo</span>
+      <h3>Por que fica separado</h3>
+      <p>Quem planeja decide o quê e quanto produzir, olhando estoque e histórico — trabalho de escritório, no computador. Quem produz só precisa saber a ordem de agora e apertar um botão grande — trabalho de pé, na fábrica, no tablet ou celular fixado na parede. Manter as duas telas separadas é o que já funciona bem hoje; a única confirmação necessária aqui é continuar garantindo os botões com no mínimo 44px de altura de toque, do jeito que o padrão do app já pede.</p>
+    </div>
+  </section>
+
+  <!-- ========================================================= -->
+  <section class="secao">
+    <h2>Duas ideias extras de equipamento</h2>
+    <p class="sub">Vieram do levantamento de conexões possíveis com o sistema — não são mudanças de
+      tela, são pilotos de equipamento que reduziriam trabalho manual na produção e no estoque.</p>
+    <div class="grid-2">
+      <div class="card">
+        <span class="chip m">Piloto</span>
+        <h3>🖨️ Etiqueta direto na impressora térmica de rede</h3>
+        <p>Hoje a etiqueta é gerada na tela e impressa como qualquer documento. Uma impressora térmica de rede na linha de produção deixaria o operador imprimir a etiqueta pronta, no tamanho certo, sem passar pelo computador do escritório. Vale um piloto com uma impressora antes de decidir comprar mais.</p>
+      </div>
+      <div class="card">
+        <span class="chip m">Piloto</span>
+        <h3>📷 Leitor de código de barras na conferência de estoque</h3>
+        <p>A conferência de estoque (inventário) hoje é feita digitando ou tocando na tela. Um leitor de código de barras (ou a própria câmera do celular) agilizaria a contagem e reduziria erro de digitação de produto — o inventário offline que já existe no app seria o ponto natural para receber essa leitura.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================= -->
+  <section class="secao">
+    <h2>Ordem sugerida</h2>
+    <p class="sub">Da mudança mais barata e com menos risco para a mais trabalhosa.</p>
+    <ul class="muda">
+      <li>Sugestão calculada sozinha todo dia às 5h — reaproveita cálculo existente, aceitar continua manual (Esforço P).</li>
+      <li>Fundir Sugestões + Ordens em "Planejamento de Produção" com abas (Esforço M).</li>
+      <li>Piloto de leitor de código de barras na conferência de estoque (Esforço M, depende de equipamento).</li>
+      <li>Piloto de impressora térmica de rede para etiqueta (Esforço M, depende de equipamento).</li>
+      <li>Painel do chão de fábrica: manter separado, só reforçar o padrão de toque já existente (sem esforço de tela nova).</li>
+    </ul>
+  </section>
+
+  <footer class="rodape">
+    <span>Proposta gerada em 12/09/2026 · pacote em docs/melhorias-2026-09</span>
+    <a href="index.html">← Visão geral</a>
+  </footer>
+
+</div>
+
+</body>
+</html>

@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Diagnóstico e Propostas CA-Hardt 2.0</title>
+<link rel="stylesheet" href="estilo.css">
+<style>
+  .consultores { display: grid; grid-template-columns: 1fr; gap: 14px; }
+  @media (min-width: 720px) { .consultores { grid-template-columns: 1fr 1fr; } }
+  @media (min-width: 1000px) { .consultores { grid-template-columns: repeat(3, 1fr); } }
+  .consultores .card .ico { font-size: 22px; margin-bottom: 6px; display: block; }
+  .consultores ul { margin: 10px 0; padding-left: 18px; }
+  .consultores li { font-size: 13.5px; color: var(--ink-2); margin-bottom: 5px; }
+  .consultores .resumo-frase { font-size: 13px; font-weight: 700; color: var(--primary-dark); background: var(--mint); border-radius: 10px; padding: 8px 10px; margin-top: 8px; }
+  .comeco { display: grid; grid-template-columns: 1fr; gap: 14px; }
+  @media (min-width: 860px) { .comeco { grid-template-columns: repeat(3, 1fr); } }
+  .comeco .card .fase { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: var(--gold); background: var(--house); display: inline-block; padding: 4px 10px; border-radius: 999px; margin-bottom: 10px; }
+  .comeco ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+  .comeco li { font-size: 13.5px; display: flex; gap: 8px; align-items: flex-start; }
+  .comeco li::before { content: "→"; color: var(--primary); font-weight: 800; flex: 0 0 auto; }
+  .leitura { display: grid; grid-template-columns: 1fr; gap: 12px; }
+  @media (min-width: 720px) { .leitura { grid-template-columns: 1fr 1fr; } }
+  @media (min-width: 1000px) { .leitura { grid-template-columns: repeat(3, 1fr); } }
+  .leitura a.card { text-decoration: none; color: inherit; display: block; transition: transform .15s ease, box-shadow .15s ease; }
+  .leitura a.card:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+  .leitura a.card b { display: block; font-size: 15px; color: var(--house); margin-bottom: 4px; }
+  .leitura a.card span { font-size: 13px; color: var(--ink-soft); }
+  td .chip { white-space: nowrap; }
+</style>
+</head>
+<body>
+
+<nav class="topnav">
+  <div class="topnav-inner">
+    <a class="marca" href="index.html">CA-Hardt <em>2.0</em></a>
+    <a href="index.html" class="ativo">Visão geral</a>
+    <a href="01-navegacao-design.html">Navegação &amp; Design</a>
+    <a href="02-vendas.html">Vendas</a>
+    <a href="03-logistica-caixa.html">Logística &amp; Caixa</a>
+    <a href="04-financeiro.html">Financeiro</a>
+    <a href="05-producao.html">Produção</a>
+    <a href="06-seguranca-conexoes.html">Segurança &amp; Conexões</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">Diagnóstico completo · setembro 2026</span>
+    <h1>O app funciona. Agora vamos deixá-lo simples e bonito.</h1>
+    <p>Cinco consultores analisaram o CA-Hardt por fora (design, navegação, automação, segurança e conexões) sem mexer em nada. Este pacote reúne o que encontraram e transforma em 16 propostas visuais, prontas para o senhor decidir por onde começar.</p>
+    <div class="resumo">
+      <div><b>62</b><span>itens no menu hoje</span></div>
+      <div><b>17</b><span>conexões externas ativas</span></div>
+      <div><b>~20</b><span>rotinas automáticas já rodando</span></div>
+      <div><b>7,5/10</b><span>nota de segurança</span></div>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <section class="secao">
+    <h2>O que os 5 consultores encontraram</h2>
+    <p class="sub">Cada um olhou o sistema por um ângulo diferente, sem alterar nada — só leitura de código e telas.</p>
+    <div class="consultores">
+      <div class="card">
+        <span class="ico">🎨</span>
+        <h3>Design</h3>
+        <ul>
+          <li>O app "parece Starbucks" por fora, mas por baixo ainda tem 3 famílias de card e 4 jeitos diferentes de cabeçalho de tela convivendo.</li>
+          <li>Alguns botões escapam da regra "sempre pílula" e 1.148 textos usam um cinza claro demais para leitura.</li>
+          <li>Falta um "estado vazio" acolhedor — hoje é só uma linha cinza dentro da tabela.</li>
+        </ul>
+        <div class="resumo-frase">A base está certa; falta consistência e acabamento.</div>
+      </div>
+      <div class="card">
+        <span class="ico">🧭</span>
+        <h3>Experiência</h3>
+        <ul>
+          <li>62 itens de menu em 8 grupos — o mesmo menu inteiro aparece para todo mundo, só filtrado por permissão.</li>
+          <li>Financeiro (16 telas) e PCP (10 telas) têm bastante sobreposição — telas diferentes mostrando o mesmo dado por ângulos diferentes.</li>
+          <li>Uma cobrança de inadimplente cruza 5 telas com números que, por desenho, não batem entre si.</li>
+        </ul>
+        <div class="resumo-frase">Não falta função, falta navegação por tarefa em vez de por módulo.</div>
+      </div>
+      <div class="card">
+        <span class="ico">🤖</span>
+        <h3>Automação</h3>
+        <ul>
+          <li>O motor já roda: cerca de 20 rotinas de fundo cuidam de sync, cobrança, backup e conciliação sozinhas.</li>
+          <li>O problema não é falta de automação — é que boa parte dela termina numa fila que ninguém vê num lugar só.</li>
+          <li>O vendedor ainda monta o pedido do zero toda vez, sem "repetir o de sempre" nem alerta antecipado de pendência do cliente.</li>
+        </ul>
+        <div class="resumo-frase">O motor existe; falta o painel de controle.</div>
+      </div>
+      <div class="card">
+        <span class="ico">🔒</span>
+        <h3>Segurança</h3>
+        <ul>
+          <li>Nota 7,5/10 — acima da média para um sistema construído por uma pessoa só nesse ritmo.</li>
+          <li>Uma senha única abre 213 operações de manutenção em produção, sem limite de tentativas.</li>
+          <li>O backup para o Google Drive leva as senhas do sistema junto, sem criptografia.</li>
+        </ul>
+        <div class="resumo-frase">Nada crítico agora — são 3 buracos concretos para tapar logo.</div>
+      </div>
+      <div class="card">
+        <span class="ico">🔌</span>
+        <h3>Conexões</h3>
+        <ul>
+          <li>17 integrações externas reais rodando (Conta Azul, NF-e, Asaas, WhatsApp, Google Drive e mais).</li>
+          <li>O bot da Ana no WhatsApp é o padrão mais maduro — fila, repetição e histórico bem feitos.</li>
+          <li>Nenhuma tela mostra a saúde de todas as conexões juntas — cada uma tem seu canto isolado.</li>
+        </ul>
+        <div class="resumo-frase">O ganho mais barato agora é consolidar visibilidade, não somar conexão nova.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="secao">
+    <h2>As 16 propostas, em ordem de impacto</h2>
+    <p class="sub">Consolidado das cinco análises. Cada linha leva direto para o mockup da tela na página correspondente.</p>
+    <div class="rolagem">
+      <table class="tabela">
+        <thead>
+          <tr>
+            <th>Proposta</th>
+            <th>Área</th>
+            <th>O que muda</th>
+            <th>Esforço</th>
+            <th>Página</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><b>Menu por perfil</b></td>
+            <td>Navegação</td>
+            <td>Cada pessoa vê só o que usa — vendedor não enxerga tela de financeiro.</td>
+            <td><span class="chip m">M</span></td>
+            <td><a href="01-navegacao-design.html#menu-perfil">Ver mockup →</a></td>
+          </tr>
+          <tr>
+            <td><b>Central de Pendências</b></td>
+            <td>Navegação / Automação</td>
+            <td>Uma tela reúne tudo que está esperando um clique, com atalho direto.</td>
+            <td><span class="chip g">G</span></td>
+            <td><a href="01-navegacao-design.html#central-pendencias">Ver mockup →</a></td>
+          </tr>
+          <tr>
+            <td><b>Linguagem visual v2</b></td>
+            <td>Design</td>
+            <td>Cabeçalho único, botão sempre pílula, texto mais escuro e legível.</td>
+            <td><span class="chip m">M</span></td>
+            <td><a href="01-navegacao-design.html#linguagem-visual">Ver mockup →</a></td>
+          </tr>
+          <tr>
+            <td><b>Assistente de Pedido</b></td>
+            <td>Vendas</td>
+            <td>Alerta de pendência do cliente e botão "repetir último pedido" na hora de vender.</td>
+            <td><span class="chip m">M</span></td>
+            <td><a href="02-vendas.html#assistente-pedido">Ver mockup →</a></td>
+          </tr>
+          <tr>
+            <td><b>Pedidos Online</b></td>
+            <td>Vendas</td>
+            <td>Site de Congelados e Kit Festa viram uma aba só, mesma fila de aprovação.</td>
+            <td><span class="chip m">M</span></td>
+            <td><a href="02-vendas.html#pedidos-online">Ver mockup →</a></td>
+          </tr>
+          <tr>
+            <td><b>Expedição unificada</b></td>
+            <td>Logística</td>
+            <td>Carga e mapa de entrega na mesma tela, sem trocar de página no meio da montagem.</td>
+            <td><span class="chip m">M</span></td>
+            <td><a href="03-logistica-caixa.html#expedicao">Ver mockup →</a></td>
+          </tr>
+          <tr>
+            <td><b>Painel do Pedido</b></td>
+            <td>Logística</td>
+            <td>Linha do tempo do pedido (aprovado → NF → entregue → recebido), de qualquer tela.</td>
+            <td><span class="chip g">G</span></td>
+            <td><a href="03-logistica-caixa.html#painel-pedido">Ver mockup →</a></td>
+          </tr>
+          <tr>
+            <td><b>Caixa do Motorista</b></td>
+            <td>Logística</td>
+            <td>Caixa, despesas e divergências de entrega numa tela só, em abas.</td>
+            <td><span class="chip m">M</span></td>
+            <td><a href="03-logistica-caixa.html#caixa-motorista">Ver mockup →</a></td>
+          </tr>
+          <tr>
+            <td><b>Financeiro Gerencial unificado</b></td>
+            <td>Financeiro</td>
+            <td>5 telas gerenciais (visão geral, fluxo de caixa, saldos, DRE, margem) viram abas de uma só.</td>
+            <td><span class="chip g">G</span></td>
+            <td><a href="04-financeiro.html#gerencial">Ver mockup →</a></td>
+          </tr>
+          <tr>
+            <td><b>Recebíveis</b></td>
+            <td>Financeiro</td>
+            <td>Parcelas, cobrança automática e fechamento por responsável juntos, com aviso da diferença de totais.</td>
+            <td><span class="chip m">M</span></td>
+            <td><a href="04-financeiro.html#recebiveis">Ver mockup →</a></td>
+          </tr>
+          <tr>
+            <td><b>Compras</b></td>
+            <td>Financeiro</td>
+            <td>Nota recebida, conta a pagar e fornecedor no mesmo funil, em abas.</td>
+            <td><span class="chip m">M</span></td>
+            <td><a href="04-financeiro.html#compras">Ver mockup →</a></td>
+          </tr>
+          <tr>
+            <td><b>Planejamento de Produção</b></td>
+            <td>Produção</td>
+            <td>Sugestões e ordens do PCP numa tela só, com cálculo automático diário.</td>
+            <td><span class="chip m">M</span></td>
+            <td><a href="05-producao.html#planejamento">Ver mockup →</a></td>
+          </tr>
+          <tr>
+            <td><b>Central de Segurança</b></td>
+            <td>Segurança</td>
+            <td>Usuários, permissões sensíveis, backup e certificado digital num só lugar.</td>
+            <td><span class="chip m">M</span></td>
+            <td><a href="06-seguranca-conexoes.html#central-seguranca">Ver mockup →</a></td>
+          </tr>
+          <tr>
+            <td><b>Central de Conexões</b></td>
+            <td>Conexões</td>
+            <td>Status das 17 integrações externas num painel só, com botão "testar agora".</td>
+            <td><span class="chip m">M</span></td>
+            <td><a href="06-seguranca-conexoes.html#central-conexoes">Ver mockup →</a></td>
+          </tr>
+          <tr>
+            <td><b>Aviso de título em aberto no WhatsApp</b></td>
+            <td>Vendas</td>
+            <td>A Ana avisa o cliente sobre um título em aberto antes de fechar o pedido pelo WhatsApp — mensagem genérica, o pedido continua indo para aprovação normalmente.</td>
+            <td><span class="chip m">M</span></td>
+            <td><a href="02-vendas.html#pedidos-online">Ver proposta →</a></td>
+          </tr>
+          <tr>
+            <td><b>Submenu em sanfona</b></td>
+            <td>Navegação</td>
+            <td>Submenu abre dentro do próprio menu lateral, em vez de janelinha flutuante calculada por coordenadas (fica para depois).</td>
+            <td><span class="chip g">G</span></td>
+            <td><a href="01-navegacao-design.html#menu-perfil">Ver proposta →</a></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="secao">
+    <h2>Por onde começar</h2>
+    <p class="sub">Ordem sugerida: primeiro o que é barato e evita risco, depois o que junta telas e economiza cliques.</p>
+    <div class="comeco">
+      <div class="card">
+        <span class="fase">Primeiras 4 semanas</span>
+        <h3>Parar o sangramento + ganho rápido</h3>
+        <ul>
+          <li>Criptografar o backup que vai para o Google Drive (leva senha do sistema hoje).</li>
+          <li>Colocar limite de tentativas na senha única que abre 213 operações administrativas.</li>
+          <li>Corrigir letra fina demais e botões fora do padrão nas telas mais usadas.</li>
+          <li>Piloto do menu por perfil + primeira versão da Central de Pendências (5-6 blocos).</li>
+        </ul>
+      </div>
+      <div class="card">
+        <span class="fase">2º mês</span>
+        <h3>Fechar brechas + juntar conexões</h3>
+        <ul>
+          <li>Corrigir upload de imagem de produto, a regra de quais sites podem chamar o servidor (CORS) e o aviso automático que o Asaas manda ao servidor (webhook).</li>
+          <li>Atualizar bibliotecas com falha crítica conhecida (testando o build antes de publicar).</li>
+          <li>Central de Conexões — ver de relance se cada integração está saudável.</li>
+          <li>Assistente de Pedido: alerta antecipado de pendência + botão "repetir último pedido".</li>
+        </ul>
+      </div>
+      <div class="card">
+        <span class="fase">3º mês</span>
+        <h3>Fundir as telas de maior ganho</h3>
+        <ul>
+          <li>Financeiro Gerencial unificado (5 telas em abas).</li>
+          <li>Recebíveis e Compras (juntar telas que hoje mostram o mesmo dado picado).</li>
+          <li>Painel do Pedido com linha do tempo completa.</li>
+          <li>Central de Segurança completa (usuários, permissões, auditoria).</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="secao">
+    <h2>Como ler este pacote</h2>
+    <p class="sub">Seis páginas, uma por área. Cada uma explica o problema, mostra o mockup da tela proposta e o esforço estimado.</p>
+    <div class="leitura">
+      <a class="card" href="01-navegacao-design.html">
+        <b>01 · Navegação &amp; Design</b>
+        <span>Menu por perfil, Central de Pendências e a linguagem visual v2 do app inteiro.</span>
+      </a>
+      <a class="card" href="02-vendas.html">
+        <b>02 · Vendas</b>
+        <span>Assistente de Pedido, melhorias na Rota, Clientes e Pedidos Online.</span>
+      </a>
+      <a class="card" href="03-logistica-caixa.html">
+        <b>03 · Logística &amp; Caixa</b>
+        <span>Expedição unificada, Painel do Pedido e Caixa do Motorista.</span>
+      </a>
+      <a class="card" href="04-financeiro.html">
+        <b>04 · Financeiro</b>
+        <span>Financeiro Gerencial unificado, Recebíveis e Compras.</span>
+      </a>
+      <a class="card" href="05-producao.html">
+        <b>05 · Produção</b>
+        <span>Planejamento de Produção juntando Sugestões e Ordens do PCP.</span>
+      </a>
+      <a class="card" href="06-seguranca-conexoes.html">
+        <b>06 · Segurança &amp; Conexões</b>
+        <span>Central de Segurança, Central de Conexões e o plano de 30 dias.</span>
+      </a>
+    </div>
+  </section>
+
+  <footer class="rodape">
+    <span>Proposta gerada em 12/09/2026 · pacote em docs/melhorias-2026-09</span>
+    <a href="index.html">← Visão geral</a>
+  </footer>
+
+</div>
+</body>
+</html>

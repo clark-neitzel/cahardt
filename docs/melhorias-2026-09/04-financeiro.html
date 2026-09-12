@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Financeiro — Proposta CA-Hardt 2.0</title>
+<link rel="stylesheet" href="estilo.css">
+<style>
+  .periodo-pill { display: inline-flex; align-items: center; gap: 8px; background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 6px 6px 6px 12px; font-size: 13px; font-weight: 700; margin-bottom: 14px; }
+  .periodo-pill button { border: 0; background: var(--gray-bg); width: 26px; height: 26px; border-radius: 999px; font-weight: 800; color: var(--ink-2); }
+  .periodo-pill .meio { padding: 4px 8px; }
+  .barras-mock { display: flex; align-items: flex-end; gap: 6px; height: 90px; padding: 8px 4px 0; }
+  .barras-mock .b { flex: 1; background: linear-gradient(180deg, var(--primary), var(--primary-dark)); border-radius: 4px 4px 0 0; min-width: 6px; }
+  .painel-cliente { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 14px; }
+  .painel-cliente h4 { font-size: 14px; margin-bottom: 2px; }
+  .toggle-mini { display: inline-flex; gap: 6px; align-items: center; }
+  .interruptor { width: 34px; height: 20px; border-radius: 999px; background: var(--gray-bg); position: relative; display: inline-block; border: 1px solid var(--line); }
+  .interruptor::after { content: ""; position: absolute; width: 14px; height: 14px; border-radius: 999px; background: #fff; top: 2px; left: 2px; box-shadow: 0 1px 2px rgba(0,0,0,.3); }
+  .interruptor.on { background: var(--primary); }
+  .interruptor.on::after { left: 16px; }
+  .mini-alerta-card { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 8px; }
+  .mini-alerta-card .num { font-size: 26px; font-weight: 800; color: var(--house); }
+  /* evita que o mock "estoure" a coluna no mobile (grid 1fr sem min-width:0 herda o min-content dos filhos) */
+  .mock-e-legenda > * { min-width: 0; }
+  .tela, .tela * { min-width: 0; }
+</style>
+</head>
+<body>
+
+<nav class="topnav">
+  <div class="topnav-inner">
+    <a class="marca" href="index.html">CA-Hardt <em>2.0</em></a>
+    <a href="index.html">Visão geral</a>
+    <a href="01-navegacao-design.html">Navegação &amp; Design</a>
+    <a href="02-vendas.html">Vendas</a>
+    <a href="03-logistica-caixa.html">Logística &amp; Caixa</a>
+    <a href="04-financeiro.html" class="ativo">Financeiro</a>
+    <a href="05-producao.html">Produção</a>
+    <a href="06-seguranca-conexoes.html">Segurança &amp; Conexões</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">Proposta 4 de 6 · Financeiro</span>
+    <h1>16 itens de menu; 5 telas repetem a mesma navegação de mês.</h1>
+    <p>O Financeiro é o grupo mais pesado do sistema. Cinco telas gerenciais (Visão Geral, Fluxo de Caixa, Saldos por Conta, DRE, Margem) já usam o mesmo seletor de período hoje — só o conteúdo muda. Contas a Receber, Cobranças sob Responsabilidade e Régua de Cobrança mostram o mesmo cliente de três ângulos diferentes. E Notas Recebidas, Contas a Pagar e Fornecedores são o mesmo funil de compra em três rotas. As propostas abaixo juntam cada grupo em uma tela com abas — sem tirar nenhuma função.</p>
+    <div class="resumo">
+      <div><b>11→3</b><span>itens do grupo Financeiro agrupados em 3 telas com abas</span></div>
+      <div><b>5→1</b><span>telas gerenciais viram abas de uma só</span></div>
+      <div><b>3→1</b><span>Recebíveis: Receber + Responsável + Régua</span></div>
+      <div><b>3→1</b><span>Compras: Notas + Contas a Pagar + Fornecedores</span></div>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+<!-- ===================== GERENCIAL ===================== -->
+<section class="secao" id="gerencial">
+  <h2>Financeiro Gerencial — uma tela só, com abas</h2>
+  <p class="sub">Visão Geral, Fluxo de Caixa, Saldos por Conta, DRE e Margem por Produto já compartilham a mesma permissão, o mesmo público (a gestão) e o mesmo controle de período. Hoje são 5 rotas separadas — escolher o mês de novo em cada uma. Juntas numa tela com abas, o período escolhido vale para todas.</p>
+
+  <div class="card mt-16">
+    <span class="chip g">Esforço G</span>
+    <span class="chip">Ganho: maior alavancagem de navegação do pacote inteiro</span>
+    <p class="mt-8">É a fusão de maior porte (toca 5 telas), mas o "trabalho de tela" já existe hoje em cada uma — a maior parte do esforço é reorganizar, não recriar.</p>
+  </div>
+
+  <div class="mock-e-legenda mt-24">
+    <div class="tela desktop">
+      <div class="tela-top"><small>Financeiro Gerencial</small><strong>Setembro 2026</strong></div>
+      <div class="tela-body">
+        <div class="periodo-pill">
+          <button>‹</button>
+          <span class="meio">Este mês · 01/09 – 30/09 ▾ <span class="pin">1</span></span>
+          <button>›</button>
+        </div>
+        <div class="abas">
+          <span class="aba ativa">Visão geral <span class="pin" style="margin-left:2px;">2</span></span>
+          <span class="aba">Fluxo de caixa</span>
+          <span class="aba">Saldos por conta</span>
+          <span class="aba">DRE</span>
+          <span class="aba">Margem por produto</span>
+        </div>
+        <div class="kpis">
+          <div class="kpi"><div class="rot">A receber</div><div class="val">R$ 84.300</div></div>
+          <div class="kpi"><div class="rot">A pagar</div><div class="val vermelho">R$ 31.900</div></div>
+          <div class="kpi"><div class="rot">Resultado do mês</div><div class="val verde">R$ 22.600</div></div>
+          <div class="kpi"><div class="rot">Inadimplência</div><div class="val ambar">4,2%</div></div>
+        </div>
+        <div class="grid-2">
+          <div class="app-card">
+            <div class="app-card-h">Fluxo de caixa · 30 dias <span class="pin">3</span></div>
+            <div class="app-card-b">
+              <div class="barras-mock">
+                <div class="b" style="height:40%"></div><div class="b" style="height:55%"></div><div class="b" style="height:35%"></div>
+                <div class="b" style="height:70%"></div><div class="b" style="height:50%"></div><div class="b" style="height:60%"></div>
+                <div class="b" style="height:45%"></div><div class="b" style="height:80%"></div><div class="b" style="height:65%"></div>
+                <div class="b" style="height:30%"></div><div class="b" style="height:58%"></div><div class="b" style="height:48%"></div>
+              </div>
+            </div>
+          </div>
+          <div class="app-card">
+            <div class="app-card-h">Contas</div>
+            <div class="app-card-b">
+              <div class="linha"><div class="tx"><b>Caixa Banco do Brasil</b></div><span class="val">R$ 41.200</span></div>
+              <div class="linha"><div class="tx"><b>Asaas</b></div><span class="val">R$ 6.750</span></div>
+              <div class="linha"><div class="tx"><b>Dinheiro em caixa</b></div><span class="val">R$ 1.180</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <ol class="legendas">
+      <li><span class="pin">1</span><span>O seletor de período fica <b>fixo no topo</b> e vale para as 5 abas — escolher "Este mês" uma vez só, não cinco.</span></li>
+      <li><span class="pin">2</span><span>As abas reaproveitam exatamente o conteúdo das telas de hoje — <b>Visão Geral</b> mostrada aqui, mas <b>Fluxo de Caixa</b>, <b>Saldos por Conta</b>, <b>DRE</b> e <b>Margem</b> viram só um clique de distância.</span></li>
+      <li><span class="pin">3</span><span>Os gráficos e cards não mudam — só o "redor" (menu, período) some da conta.</span></li>
+    </ol>
+  </div>
+
+  <p class="pequeno texto-soft mt-24">No celular, as abas viram um carrossel de pílulas (mesmo padrão usado no filtro de categoria do Catálogo):</p>
+  <div class="tela mobile mt-8">
+    <div class="tela-top"><small>Financeiro Gerencial</small><strong>Setembro</strong></div>
+    <div class="tela-body">
+      <div class="periodo-pill" style="width:100%; justify-content:space-between;">
+        <button>‹</button><span class="meio">Este mês ▾</span><button>›</button>
+      </div>
+      <div class="abas">
+        <span class="aba ativa">Visão geral</span>
+        <span class="aba">Fluxo</span>
+        <span class="aba">Saldos</span>
+        <span class="aba">DRE</span>
+        <span class="aba">Margem</span>
+      </div>
+      <div class="kpis">
+        <div class="kpi"><div class="rot">A receber</div><div class="val">R$ 84.300</div></div>
+        <div class="kpi"><div class="rot">A pagar</div><div class="val vermelho">R$ 31.900</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== RECEBÍVEIS ===================== -->
+<section class="secao" id="recebiveis">
+  <h2>Recebíveis — Contas a Receber, Por Responsável e Cobrança automática juntas</h2>
+  <p class="sub">Contas a Receber, Cobranças sob Responsabilidade e Régua de Cobrança mostram o <b>mesmo cliente inadimplente</b> com números que, por desenho, não batem entre si (ex.: saldo em aberto considera baixa parcial, total do vale não). Hoje isso só está explicado no manual — na tela, a pessoa só vê números diferentes e desconfia de erro.</p>
+
+  <div class="mock-e-legenda mt-24">
+    <div class="tela desktop">
+      <div class="tela-top"><small>Recebíveis</small><strong>Setembro 2026</strong></div>
+      <div class="tela-body">
+        <div class="abas">
+          <span class="aba ativa">Parcela a parcela</span>
+          <span class="aba">Cobrar automático</span>
+          <span class="aba">Por responsável</span>
+        </div>
+        <div class="alerta azul">
+          <span class="pin" style="background:#1d4ed8;color:#fff;">1</span>
+          <span>Nesta aba, "Saldo em aberto" já considera baixas parciais. Na aba <b>Por responsável</b>, o "Total do vale" soma o valor cheio — por isso os números não são iguais entre as abas.</span>
+        </div>
+        <div class="app-card">
+          <div class="app-card-b" style="padding:0;">
+            <div class="linha" style="padding:10px 14px;">
+              <div class="tx"><b>Padaria Central <span class="pin" style="margin-left:4px;">2</span></b><span>Parcela venc. 05/09 · R$ 620,00</span></div>
+              <span class="badge vermelho">Vencido</span>
+            </div>
+            <div class="linha" style="padding:10px 14px;">
+              <div class="tx"><b>Mercado Bom Preço</b><span>Parcela venc. 20/09 · R$ 1.100,00</span></div>
+              <span class="badge amarelo">Parcial</span>
+            </div>
+            <div class="linha" style="padding:10px 14px;">
+              <div class="tx"><b>Distribuidora Sul</b><span>Parcela venc. 28/09 · R$ 940,00</span></div>
+              <span class="badge verde">Pago</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <ol class="legendas">
+      <li><span class="pin">1</span><span>A divergência entre abas <b>vira uma frase fixa na tela</b>, em vez de o usuário descobrir lendo o manual por fora.</span></li>
+      <li><span class="pin">2</span><span>Clicar no nome do cliente abre o mesmo painel lateral — <b>em qualquer uma das 3 abas</b>.</span></li>
+    </ol>
+  </div>
+
+  <p class="pequeno texto-soft mt-24">O painel do cliente, aberto a partir de qualquer aba:</p>
+  <div class="mock-e-legenda mt-8">
+    <div class="painel-cliente" style="max-width:420px;">
+      <h4>Padaria Central <span class="pin">1</span></h4>
+      <p class="pequeno texto-soft">CNPJ 12.345.678/0001-90 · vendedor Carlos</p>
+      <div class="kpis mt-8" style="grid-template-columns: 1fr 1fr;">
+        <div class="kpi"><div class="rot">Em aberto</div><div class="val vermelho">R$ 620</div></div>
+        <div class="kpi"><div class="rot">Pago no mês</div><div class="val verde">R$ 2.310</div></div>
+      </div>
+      <div class="app-card mt-8">
+        <div class="app-card-h">Cobranças enviadas <span class="pin">2</span></div>
+        <div class="app-card-b">
+          <div class="linha"><div class="tx"><b>WhatsApp</b><span>08/09 · lembrete de vencimento</span></div></div>
+          <div class="linha"><div class="tx"><b>WhatsApp</b><span>11/09 · 2ª cobrança</span></div></div>
+        </div>
+      </div>
+      <button class="btn primario bloco mt-8">Cobrar agora <span class="pin" style="background:#fff;color:var(--primary-dark);">3</span></button>
+    </div>
+
+    <ol class="legendas">
+      <li><span class="pin">1</span><span>Mesmo cabeçalho de cliente, disponível a partir das 3 abas de Recebíveis.</span></li>
+      <li><span class="pin">2</span><span>Histórico de WhatsApp de cobrança — mostra o que já foi enviado, evita mandar cobrança em duplicidade sem querer.</span></li>
+      <li><span class="pin">3</span><span><b>Cobrar agora</b> dispara uma cobrança manual avulsa, fora da régua automática.</span></li>
+    </ol>
+  </div>
+
+  <div class="card mt-16">
+    <span class="chip m">Esforço M</span>
+    <span class="chip">Ganho: acaba a desconfiança de "números que não batem"</span>
+  </div>
+</section>
+
+<!-- ===================== COMPRAS ===================== -->
+<section class="secao" id="compras">
+  <h2>Compras — Caixa de entrada, Contas a Pagar e Fornecedores juntos</h2>
+  <p class="sub">Notas Recebidas, Contas a Pagar e Fornecedores são o mesmo funil sempre feito em ordem: a nota chega → vira uma conta a pagar → é paga. Hoje são 3 rotas sem aba comum. Juntas, clicar num fornecedor já filtra as contas dele.</p>
+
+  <div class="mock-e-legenda mt-24">
+    <div class="tela desktop">
+      <div class="tela-top"><small>Compras</small><strong>Caixa de entrada</strong></div>
+      <div class="tela-body">
+        <div class="abas">
+          <span class="aba ativa">Caixa de entrada <span class="n">3</span></span>
+          <span class="aba">Contas a pagar</span>
+          <span class="aba">Fornecedores <span class="pin" style="margin-left:2px;">1</span></span>
+        </div>
+        <div class="app-card">
+          <div class="app-card-b" style="padding:0;">
+            <div class="linha" style="padding:10px 14px; flex-wrap:wrap;">
+              <div class="tx">
+                <b>Distribuidora Sul</b>
+                <span>NF-e 88.213 · R$ 4.200,00</span>
+                <div class="mt-8" style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                  <span class="badge amarelo">5 dias sem conta</span>
+                  <span class="pin">2</span>
+                </div>
+              </div>
+              <button class="btn primario pequeno">Gerar conta <span class="pin" style="background:#fff;color:var(--primary-dark);">3</span></button>
+            </div>
+            <div class="linha" style="padding:10px 14px;">
+              <div class="tx"><b>Embalagens Rio</b><span>NF-e 12.045 · R$ 980,00 · NOVA</span></div>
+              <button class="btn secundario pequeno">Gerar conta</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <ol class="legendas">
+      <li><span class="pin">1</span><span>Clicar num fornecedor na aba <b>Fornecedores</b> já leva para <b>Contas a Pagar</b> filtrado só por ele — não precisa digitar o nome de novo.</span></li>
+      <li><span class="pin">2</span><span>Selo de aviso quando uma nota fica "NOVA" há muitos dias sem virar conta a pagar — hoje isso só é descoberto abrindo a tela por acaso.</span></li>
+      <li><span class="pin">3</span><span><b>Gerar conta</b> continua sendo um clique manual, como hoje.</span></li>
+    </ol>
+  </div>
+
+  <div class="card mt-16">
+    <h3>Extra: gerar conta a pagar automaticamente, por fornecedor</h3>
+    <p>Para fornecedor de sempre (ex.: aluguel, insumo fixo), hoje toda nota nova exige o mesmo clique manual "Gerar conta a pagar" — mesmo sendo sempre igual. A proposta é uma regrinha por fornecedor: "sempre gerar automático".</p>
+    <div class="linha" style="border:1px solid var(--line); border-radius:10px; padding:10px 12px;">
+      <div class="tx"><b>Distribuidora de Embalagens Rio</b><span>Gerar conta a pagar automaticamente ao chegar nota nova</span></div>
+      <span class="toggle-mini"><span class="interruptor"></span> Desligado <span class="pin">1</span></span>
+    </div>
+    <ol class="legendas mt-8">
+      <li><span class="pin">1</span><span><b>Desligado por padrão em todo fornecedor</b> — precisa ser ligado um a um, por decisão explícita. É risco fiscal ligar automação sem revisão (categoria errada, conta errada), então nunca liga sozinho, mesmo em fornecedor recorrente. Só a <b>baixa</b> continua manual mesmo quando ligado.</span></li>
+    </ol>
+    <span class="chip p mt-8">Esforço P</span>
+  </div>
+</section>
+
+<!-- ===================== AVISOS DIÁRIOS ===================== -->
+<section class="secao" id="boleto-nao-enviado">
+  <h2>Avisos diários que hoje não existem</h2>
+  <p class="sub">Três pendências financeiras hoje só aparecem se alguém abrir a tela certa por acaso. A proposta é cada uma virar um contador na <a href="01-navegacao-design.html">Central de Pendências</a> — visível ao abrir o sistema, sem precisar procurar.</p>
+
+  <div class="grid-3 mt-16">
+    <div class="mini-alerta-card">
+      <span class="badge amarelo">Financeiro</span>
+      <div class="num">7</div>
+      <b>Boleto/PIX não enviado</b>
+      <span class="pequeno texto-soft">Pedido faturado a prazo, cobrança não gerada há mais de 24h.</span>
+      <span class="chip p" style="align-self:flex-start;">Esforço P</span>
+    </div>
+    <div class="mini-alerta-card">
+      <span class="badge amarelo">Compras</span>
+      <div class="num">3</div>
+      <b>Nota sem conta a pagar</b>
+      <span class="pequeno texto-soft">Nota chegou "NOVA" e segue sem virar conta a pagar há mais de N dias.</span>
+      <span class="chip p" style="align-self:flex-start;">Esforço P</span>
+    </div>
+    <div class="mini-alerta-card">
+      <span class="badge amarelo">Fiscal</span>
+      <div class="num">12</div>
+      <b>Canhoto não bipado</b>
+      <span class="pequeno texto-soft">Canhoto de entrega não voltou (bipado) em até N dias.</span>
+      <span class="chip p" style="align-self:flex-start;">Esforço P</span>
+    </div>
+  </div>
+
+  <div class="alerta azul mt-16">
+    <span>Os números acima são só exemplo de como ficaria — nenhum é uma contagem real de hoje.</span>
+  </div>
+</section>
+
+<!-- ===================== ORDEM SUGERIDA ===================== -->
+<section class="secao">
+  <h2>Ordem sugerida</h2>
+  <ul class="muda">
+    <li><span><b>1. Avisos diários</b> na Central de Pendências — menor esforço (P cada), ganho imediato de visibilidade.</span></li>
+    <li><span><b>2. Compras</b> (Notas + Contas a Pagar + Fornecedores) — funil já é sempre feito em ordem, fusão natural.</span></li>
+    <li><span><b>3. Recebíveis</b> — resolve a desconfiança real dos "números que não batem".</span></li>
+    <li><span><b>4. Financeiro Gerencial</b> — maior esforço (G, toca 5 telas), mas é o maior ganho de navegação do pacote inteiro.</span></li>
+  </ul>
+</section>
+
+  <footer class="rodape">
+    <span>Proposta gerada em 12/09/2026 · pacote em docs/melhorias-2026-09</span>
+    <a href="index.html">← Visão geral</a>
+  </footer>
+
+</div>
+
+</body>
+</html>

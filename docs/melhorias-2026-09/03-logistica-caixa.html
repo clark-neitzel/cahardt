@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Logística &amp; Caixa — Proposta CA-Hardt 2.0</title>
+<link rel="stylesheet" href="estilo.css">
+<style>
+  /* --- mapa mock (expedição) --- */
+  .mapa-mock { background: linear-gradient(160deg, #dcece4, #c9e3d7); border-radius: 14px; border: 1px solid var(--line); position: relative; min-height: 220px; overflow: hidden; }
+  .mapa-mock .rota-linha { position: absolute; border-top: 3px dashed rgba(30,57,50,.35); }
+  .mapa-mock .ponto { position: absolute; width: 14px; height: 14px; border-radius: 999px; border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.25); }
+  .mapa-mock .ponto.p1 { background: var(--primary); }
+  .mapa-mock .ponto.p2 { background: var(--gold); }
+  .mapa-mock .ponto.p3 { background: var(--blue); }
+  .mapa-mock .central { position: absolute; width: 20px; height: 20px; border-radius: 6px; background: var(--house); border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.3); }
+  .lista-cargas { display: grid; gap: 8px; }
+  .carga-card { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+  .carga-card.ativa { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(0,117,74,.15); }
+  .carga-card .top { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .carga-card .top b { font-size: 14px; }
+  .carga-card .meta { font-size: 12px; color: var(--ink-soft); font-weight: 600; }
+  .toggle-lm { display: inline-flex; background: var(--gray-bg); border-radius: 999px; padding: 3px; gap: 3px; margin-bottom: 12px; }
+  .toggle-lm span { padding: 6px 14px; border-radius: 999px; font-size: 12px; font-weight: 700; color: var(--ink-soft); }
+  .toggle-lm span.on { background: var(--house); color: #fff; }
+  .barra-fixa-mock { background: #fff; border-top: 1px solid var(--line); padding: 10px 14px; margin: 12px -14px -14px; display: flex; gap: 8px; }
+  .tela.mobile .barra-fixa-mock { margin: 12px -14px -14px; }
+  .pedido-card-mini { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+  .pedido-card-mini .top { display: flex; justify-content: space-between; gap: 8px; align-items: center; margin-bottom: 6px; }
+  .grid-cargas-mapa { grid-template-columns: 1fr; }
+  @media (min-width: 900px) { .grid-cargas-mapa { grid-template-columns: 240px 1fr; } }
+  /* evita que o mock "estoure" a coluna no mobile (grid 1fr sem min-width:0 herda o min-content dos filhos) */
+  .mock-e-legenda > * { min-width: 0; }
+  .tela, .tela * { min-width: 0; }
+</style>
+</head>
+<body>
+
+<nav class="topnav">
+  <div class="topnav-inner">
+    <a class="marca" href="index.html">CA-Hardt <em>2.0</em></a>
+    <a href="index.html">Visão geral</a>
+    <a href="01-navegacao-design.html">Navegação &amp; Design</a>
+    <a href="02-vendas.html">Vendas</a>
+    <a href="03-logistica-caixa.html" class="ativo">Logística &amp; Caixa</a>
+    <a href="04-financeiro.html">Financeiro</a>
+    <a href="05-producao.html">Produção</a>
+    <a href="06-seguranca-conexoes.html">Segurança &amp; Conexões</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">Proposta 3 de 6 · Logística e Caixa</span>
+    <h1>O pedido não pode sumir entre uma tela e outra.</h1>
+    <p>Hoje um pedido passa por 9 telas diferentes até virar dinheiro no banco — cada uma isolada, sem mostrar o que já aconteceu antes nem o que falta depois. As quatro propostas abaixo juntam o que já é feito junto na prática (embarque + mapa, caixa + despesas + auditoria) e criam um fio condutor visível para acompanhar qualquer pedido do início ao fim.</p>
+    <div class="resumo">
+      <div><b>9→1</b><span>telas viram uma linha do tempo linkável</span></div>
+      <div><b>3→1</b><span>Caixa + Despesas + Auditoria numa tela só</span></div>
+      <div><b>2→1</b><span>Embarque + Mapa numa Expedição só</span></div>
+      <div><b>0</b><span>telas removidas — só ficam mais fáceis de achar</span></div>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+<!-- ===================== PAINEL DO PEDIDO ===================== -->
+<section class="secao" id="painel-pedido">
+  <h2>Painel do Pedido — a linha do tempo de cada venda</h2>
+  <p class="sub">Um pedido cruza Vendas → Logística → Financeiro sem nenhum lugar que mostre isso junto. Hoje, para saber "cadê o dinheiro do pedido 4821", alguém precisa abrir Pedidos, depois Notas Fiscais, depois Embarque, depois Caixa, depois Contas a Receber — de cabeça, carregando o número. O Painel do Pedido é uma tela nova que qualquer uma dessas telas pode abrir com um clique, mostrando os 7 marcos do pedido e para onde ir se algo travou.</p>
+
+  <div class="card mt-16">
+    <span class="chip g">Esforço G</span>
+    <span class="chip">Ganho: elimina a navegação "cega" nas 9 telas de hoje</span>
+    <p class="mt-8">Não substitui nenhuma tela operacional (cada etapa continua com sua ação própria) — só dá um lugar para <strong>ver o estado inteiro do pedido</strong> e pular direto para a etapa pendente. É o maior esforço das 4 propostas desta página, porque exige colocar o botão "Ver linha do tempo" em várias telas diferentes (Pedidos, Embarque, Caixa, Contas a Receber), não só criar a tela nova.</p>
+  </div>
+
+  <div class="mock-e-legenda mt-24">
+    <div>
+      <div class="tela desktop">
+        <div class="tela-top"><small>Painel do Pedido</small><strong>Pedido #4821</strong></div>
+        <div class="tela-body">
+          <div class="app-header">
+            <div class="titulo">
+              <span class="icone">📦</span>
+              <div>
+                <div class="h1">Pedido #4821 <span class="pin">1</span></div>
+                <div class="sub">Padaria Central · R$ 1.480,00 · vendedor Carlos</div>
+              </div>
+            </div>
+            <span class="badge verde">Em andamento</span>
+          </div>
+
+          <div class="app-card">
+            <div class="app-card-h">Linha do tempo <span class="pin">2</span></div>
+            <div class="app-card-b">
+              <div class="timeline">
+                <div class="tl"><span class="dot ok">✓</span><div class="tx"><b>Aprovado</b><span>02/09</span></div></div>
+                <div class="tl"><span class="dot ok">✓</span><div class="tx"><b>NF emitida</b><span>02/09</span></div></div>
+                <div class="tl"><span class="dot ok">✓</span><div class="tx"><b>Embarcado</b><span>03/09</span></div></div>
+                <div class="tl"><span class="dot atual">●</span><div class="tx"><b>Entregue</b><span>03/09 · Carlos</span></div></div>
+                <div class="tl"><span class="dot pend">○</span><div class="tx"><b>Caixa conferido</b><span>pendente</span></div></div>
+                <div class="tl"><span class="dot pend">○</span><div class="tx"><b>Recebido</b><span>pendente</span></div></div>
+                <div class="tl"><span class="dot pend">○</span><div class="tx"><b>Conciliado</b><span>pendente</span></div></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="app-card">
+            <div class="app-card-h">Próximo passo <span class="pin">3</span></div>
+            <div class="app-card-b" style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+              <span class="pequeno texto-soft">Conferir o caixa do <strong>Carlos</strong> de <strong>11/09</strong> para liberar o recebimento.</span>
+              <a class="btn primario pequeno" href="#caixa-motorista">Ir para o Caixa</a>
+            </div>
+          </div>
+
+          <div class="app-card">
+            <div class="app-card-h" style="color:var(--red);">Exemplo: quando algo travou <span class="pin">4</span></div>
+            <div class="app-card-b">
+              <div class="timeline">
+                <div class="tl"><span class="dot ok">✓</span><div class="tx"><b>Aprovado</b><span>09/09</span></div></div>
+                <div class="tl"><span class="dot erro">!</span><div class="tx"><b>NF rejeitada</b><span>SEFAZ · corrigir CFOP</span></div></div>
+                <div class="tl"><span class="dot pend">○</span><div class="tx"><b>Embarcado</b><span>—</span></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <p class="pequeno texto-soft mt-16">Como se abre a partir de qualquer tela — exemplo num card de pedido:</p>
+      <div class="pedido-card-mini mt-8" style="max-width:420px;">
+        <div class="top">
+          <b>Pedido #4821 · Padaria Central</b>
+          <span class="badge verde">Entregue</span>
+        </div>
+        <div class="pequeno texto-soft">R$ 1.480,00 · 03/09</div>
+        <a class="btn secundario pequeno mt-8" href="#painel-pedido">Ver linha do tempo <span class="pin">5</span></a>
+      </div>
+
+      <p class="pequeno texto-soft mt-16">No celular do motorista, os mesmos 7 marcos aparecem em coluna, no estilo de rastreio de encomenda — o marco atual em destaque:</p>
+      <div class="tela mobile mt-8" style="max-width:280px;">
+        <div class="tela-top"><small>Pedido</small><strong>#4821</strong></div>
+        <div class="tela-body">
+          <div class="timeline">
+            <div class="tl"><span class="dot ok">✓</span><div class="tx"><b>Aprovado</b></div></div>
+            <div class="tl"><span class="dot ok">✓</span><div class="tx"><b>NF emitida</b></div></div>
+            <div class="tl"><span class="dot ok">✓</span><div class="tx"><b>Embarcado</b></div></div>
+            <div class="tl"><span class="dot atual">●</span><div class="tx"><b>Entregue</b></div></div>
+            <div class="tl"><span class="dot pend">○</span><div class="tx"><b>Caixa conferido</b></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <ol class="legendas">
+      <li><span class="pin">1</span><span><b>Cabeçalho fixo</b> — número do pedido, cliente, valor e vendedor sempre visíveis, não importa em qual marco o pedido está.</span></li>
+      <li><span class="pin">2</span><span><b>7 marcos horizontais</b> (verticais no celular) — verde com ✓ para o que já aconteceu, dourado para o passo atual, cinza para o que falta.</span></li>
+      <li><span class="pin">3</span><span><b>Próximo passo</b> sempre em destaque, com botão que leva direto à tela que resolve — sem precisar adivinhar em qual módulo procurar.</span></li>
+      <li><span class="pin">4</span><span>Quando algo dá errado (ex.: <b>NF rejeitada</b> pela SEFAZ), o marco fica vermelho e os seguintes somem — fica claro que o fluxo parou ali.</span></li>
+      <li><span class="pin">5</span><span>Em <b>Pedidos</b>, <b>Embarque</b>, <b>Caixa</b> e <b>Contas a Receber</b>, cada card de pedido ganha este botão — é o "fio condutor" entrando nas telas que já existem, sem trocar nada nelas.</span></li>
+    </ol>
+  </div>
+</section>
+
+<!-- ===================== EXPEDIÇÃO ===================== -->
+<section class="secao" id="expedicao">
+  <h2>Expedição — Embarque e Mapa numa tela só</h2>
+  <p class="sub">Montar a carga (Embarque) e decidir a divisão das entregas no mapa já são, na prática, a mesma tarefa feita em sequência — hoje em duas telas separadas, obrigando o escritório a "voltar" toda vez que troca de carga. A Expedição junta as duas: lista de cargas de um lado, mapa do outro, no mesmo lugar.</p>
+
+  <div class="antes-depois mt-16">
+    <div>
+      <div class="rotulo antes">Antes</div>
+      <div class="card">2 telas separadas (Embarque e Mapa das Entregas) + a tela de Entregas isolada para conferir depois. Trocar de carga significa navegar para outra rota.</div>
+    </div>
+    <div>
+      <div class="rotulo depois">Depois</div>
+      <div class="card">1 tela "Expedição", com aba <b>Histórico</b> reaproveitando o que hoje é a tela de Entregas — mesmos filtros, mesma informação, um lugar a menos para lembrar.</div>
+    </div>
+  </div>
+
+  <div class="mock-e-legenda mt-24">
+    <div class="tela desktop">
+      <div class="tela-top"><small>Expedição</small><strong>Terça-feira, 15/09</strong></div>
+      <div class="tela-body">
+        <div class="abas">
+          <span class="aba ativa">Cargas do dia</span>
+          <span class="aba">Histórico</span>
+        </div>
+        <div class="toggle-lm">
+          <span class="on">Lista</span>
+          <span>Mapa</span>
+          <span class="pin" style="margin-left:4px;">1</span>
+        </div>
+        <div class="grid-2 grid-cargas-mapa" style="gap:14px;">
+          <div>
+            <div class="lista-cargas">
+              <div class="carga-card ativa">
+                <div class="top"><b>Carga 1 · Carlos</b><span class="badge azul">18 entregas</span></div>
+                <div class="meta">Saída prevista 16:30 <span class="pin">2</span></div>
+              </div>
+              <div class="carga-card">
+                <div class="top"><b>Carga 2 · João</b><span class="badge azul">14 entregas</span></div>
+                <div class="meta">Saída prevista 16:30</div>
+              </div>
+              <div class="carga-card">
+                <div class="top"><b>Carga 3 · sem motorista</b><span class="badge cinza">6 pedidos</span></div>
+                <div class="meta">Aguardando divisão</div>
+              </div>
+            </div>
+            <div style="display:flex; gap:8px; margin-top:12px;">
+              <button class="btn secundario pequeno" style="flex:1;">Sugerir divisão <span class="pin">3</span></button>
+            </div>
+            <button class="btn primario pequeno bloco mt-8">Confirmar cargas <span class="pin">4</span></button>
+          </div>
+          <div class="mapa-mock">
+            <div class="central" style="top:100px; left:150px;"></div>
+            <div class="ponto p1" style="top:40px; left:60px;"></div>
+            <div class="ponto p1" style="top:70px; left:110px;"></div>
+            <div class="ponto p1" style="top:30px; left:200px;"></div>
+            <div class="ponto p2" style="top:130px; left:60px;"></div>
+            <div class="ponto p2" style="top:160px; left:120px;"></div>
+            <div class="ponto p3" style="top:150px; left:220px;"></div>
+            <div class="ponto p3" style="top:190px; left:260px;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <ol class="legendas">
+      <li><span class="pin">1</span><span>Botão <b>Lista | Mapa</b> troca a forma de ver a <em>mesma</em> informação — não são mais duas telas, é uma alternância de visualização.</span></li>
+      <li><span class="pin">2</span><span>Cada carga mostra o motorista, quantas entregas e o horário — clicar destaca essa carga também no mapa ao lado.</span></li>
+      <li><span class="pin">3</span><span><b>Sugerir divisão</b> continua existindo exatamente como hoje (cálculo por distância) — só que agora sem trocar de tela para ver o resultado.</span></li>
+      <li><span class="pin">4</span><span><b>Confirmar cargas</b> fecha a expedição do dia, do mesmo jeito que hoje.</span></li>
+    </ol>
+  </div>
+</section>
+
+<!-- ===================== CAIXA DO MOTORISTA ===================== -->
+<section class="secao" id="caixa-motorista">
+  <h2>Caixa do Motorista — Resumo, Despesas e Divergências juntos</h2>
+  <p class="sub">Caixa, Despesas e Auditoria de Entregas já são usadas em sequência, uma dentro da outra na prática — hoje em 3 rotas e 3 permissões diferentes. Viram 3 abas de uma tela só, o admin abre direto na aba certa sem sair do contexto daquele motorista/dia.</p>
+
+  <div class="antes-depois mt-16">
+    <div>
+      <div class="rotulo antes">Antes</div>
+      <div class="card">Caixa Diário, Despesas do Motorista e Auditoria de Entregas — 3 telas, 3 permissões, o admin precisa saber em qual delas está o que procura.</div>
+    </div>
+    <div>
+      <div class="rotulo depois">Depois</div>
+      <div class="card">"Caixa do Motorista": abas <b>Resumo do dia</b> · <b>Despesas</b> · <b>Divergências</b>. Um link de fora (ex.: do Painel do Pedido) já abre na aba certa.</div>
+    </div>
+  </div>
+
+  <div class="mock-e-legenda mt-24">
+    <div>
+      <div class="tela desktop">
+        <div class="tela-top"><small>Caixa do Motorista</small><strong>Carlos · 11/09</strong></div>
+        <div class="tela-body">
+          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
+            <div class="abas" style="margin-bottom:0; flex:1; min-width:0;">
+              <span class="aba ativa">Resumo do dia</span>
+              <span class="aba">Despesas</span>
+              <span class="aba">Divergências <span class="n">2</span></span>
+            </div>
+            <span class="pin">1</span>
+          </div>
+          <div class="app-card heroi">
+            <div class="app-card-b">
+              <div class="rot">Falta conferir</div>
+              <div class="val">R$ 1.250,00 <span class="pin" style="background:#fff;color:var(--house);">2</span></div>
+            </div>
+          </div>
+          <div style="display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap;">
+            <button class="btn primario pequeno">Processar recebimentos</button>
+            <button class="btn secundario pequeno">Registrar despesa</button>
+            <button class="btn secundario pequeno">Fechar caixa</button>
+            <span class="pin" style="align-self:center;">3</span>
+          </div>
+          <div class="app-card">
+            <div class="app-card-h">Conferência de devoluções <span class="n">2</span> <span class="pin">4</span></div>
+            <div class="app-card-b">
+              <div class="linha"><div class="tx"><b>Mercado Bom Preço</b><span>4 caixas de coxinha devolvidas</span></div><span class="badge amarelo">A conferir</span></div>
+              <div class="linha"><div class="tx"><b>Padaria Central</b><span>1 fardo de kibe devolvido</span></div><span class="badge amarelo">A conferir</span></div>
+            </div>
+          </div>
+          <div class="app-card">
+            <div class="app-card-h">Entregas do dia</div>
+            <div class="app-card-b">
+              <div class="linha"><div class="tx"><b>Padaria Central</b><span>Dinheiro</span></div><span class="val">R$ 480,00</span></div>
+              <div class="linha"><div class="tx"><b>Mercado Bom Preço</b><span>PIX</span></div><span class="val">R$ 770,00</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <ol class="legendas">
+      <li><span class="pin">1</span><span>As 3 abas substituem as 3 telas de hoje — a bolinha vermelha mostra quantas divergências esperam revisão, sem precisar entrar para saber.</span></li>
+      <li><span class="pin">2</span><span>O card em destaque (verde-escuro) mostra de cara <b>quanto falta conferir</b> — é a pergunta que o admin mais faz ao abrir a tela.</span></li>
+      <li><span class="pin">3</span><span>As 3 ações principais do dia ficam sempre visíveis — no mobile elas viram a barra fixa (ver ao lado).</span></li>
+      <li><span class="pin">4</span><span>Conferência de devoluções continua igual a hoje (contar o que voltou no caminhão), só que agora dentro da mesma tela do resto do caixa.</span></li>
+    </ol>
+  </div>
+
+  <p class="pequeno texto-soft mt-24">No celular do motorista, a barra inferior mostra só a ação principal do momento — muda sozinha conforme o dia avança:</p>
+  <div class="tela mobile mt-8">
+    <div class="tela-top"><small>Caixa do Motorista</small><strong>Meu caixa · hoje</strong></div>
+    <div class="tela-body">
+      <div class="app-card heroi">
+        <div class="app-card-b">
+          <div class="rot">A prestar contas</div>
+          <div class="val">R$ 1.250,00</div>
+        </div>
+      </div>
+      <div class="app-card">
+        <div class="app-card-h">Entregas de hoje</div>
+        <div class="app-card-b">
+          <div class="linha"><div class="tx"><b>Padaria Central</b><span>Entregue · Dinheiro</span></div><span class="val">R$ 480</span></div>
+          <div class="linha"><div class="tx"><b>Mercado Bom Preço</b><span>Entregue · PIX</span></div><span class="val">R$ 770</span></div>
+        </div>
+      </div>
+      <div class="barra-fixa-mock">
+        <button class="btn primario bloco">Conferir dinheiro do dia</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== DEVOLUÇÃO ===================== -->
+<section class="secao" id="devolucao">
+  <h2>Devolução marcada na rua fica visível</h2>
+  <p class="sub">O motorista sinaliza a devolução na rota, mas ela só se torna "oficial" quando alguém confere no Caixa — correto por desenho (o motorista não decide, só avisa). O problema é que, até alguém abrir o Caixa daquele dia, ninguém mais no escritório sabe que aquela devolução está esperando.</p>
+
+  <div class="mock-e-legenda mt-24">
+    <div class="pedido-card-mini" style="max-width:420px;">
+      <b>Pedido #4790 · Mercado Bom Preço</b>
+      <div class="mt-8" style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+        <span class="badge amarelo">Devolução</span>
+        <span class="pequeno" style="color:#78350f; font-weight:700;">aguardando conferência</span>
+        <span class="pin">1</span>
+      </div>
+      <div class="pequeno texto-soft mt-8">Marcada por João na rota de 10/09</div>
+      <a class="btn secundario pequeno mt-8" href="#caixa-motorista">Conferir no Caixa de 10/09 <span class="pin">2</span></a>
+    </div>
+
+    <ol class="legendas">
+      <li><span class="pin">1</span><span>Mesmo badge aparece no card do pedido em <b>Pedidos</b> e num aviso no <b>Início</b> — não precisa mais abrir o Caixa "só para checar" se tem devolução parada.</span></li>
+      <li><span class="pin">2</span><span>O link já leva direto para o caixa do dia e do motorista certos — sem precisar descobrir qual data procurar.</span></li>
+    </ol>
+  </div>
+
+  <div class="card mt-16">
+    <span class="chip p">Esforço P</span>
+    <span class="chip">Ganho: nada de devolução "esquecida" até alguém abrir o Caixa por acaso</span>
+  </div>
+</section>
+
+<!-- ===================== ORDEM SUGERIDA ===================== -->
+<section class="secao">
+  <h2>Ordem sugerida</h2>
+  <ul class="muda">
+    <li><span><b>1. Badge de devolução pendente</b> — menor esforço (P), resolve um ponto cego real hoje mesmo.</span></li>
+    <li><span><b>2. Caixa do Motorista</b> (fusão de Caixa + Despesas + Auditoria) — maior alívio de navegação do dia a dia do escritório.</span></li>
+    <li><span><b>3. Expedição</b> (Embarque + Mapa) — junta o que já é usado em sequência.</span></li>
+    <li><span><b>4. Painel do Pedido</b> — o maior em esforço (toca em várias telas para adicionar o link), mas é o que dá o fio condutor entre Vendas, Logística e Financeiro.</span></li>
+  </ul>
+</section>
+
+  <footer class="rodape">
+    <span>Proposta gerada em 12/09/2026 · pacote em docs/melhorias-2026-09</span>
+    <a href="index.html">← Visão geral</a>
+  </footer>
+
+</div>
+
+</body>
+</html>
