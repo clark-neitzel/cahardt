@@ -2,14 +2,17 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { MapPinned, Loader2, ArrowLeft, User, Users, CalendarDays, MapPinOff, RefreshCw } from 'lucide-react';
+import { MapPinned, Loader2, ArrowLeft, User, Users, CalendarDays, MapPinOff, RefreshCw, Crosshair, X, Check } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
 import { useFiltrosSalvos } from '../../hooks/useFiltrosSalvos';
 import PageHeader from '../../components/PageHeader';
+import ModalPontoGps from '../../components/ModalPontoGps';
+import { usePeriodoSalvo } from '../../components/FiltroPeriodo';
 import vendedorService from '../../services/vendedorService';
 import categoriaClienteService from '../../services/categoriaClienteService';
 import mapaClientesService from '../../services/mapaClientesService';
+import gpsClientesService from '../../services/gpsClientesService';
 import { opcoesVendedorMulti, somenteAtivos } from '../../utils/vendedoresFiltro';
 import useDadosMapa, { FILTROS_PADRAO } from './mapaClientes/useDadosMapa';
 import FiltrosMapa from './mapaClientes/FiltrosMapa';
@@ -29,6 +32,10 @@ import { criarIconeFatias } from './mapaClientes/marcador';
 // dias diferentes, paradas por dia e a lista de quem ficou fora por não ter GPS.
 // Uma carga só (GET /mapa-clientes); filtros, contagens e legenda rodam no
 // navegador. Sem km/OSRM/IA nesta fase.
+// Fase 1.1: filtro Perfil (fornecedor some por padrão), "Compras no período"
+// (GET /mapa-clientes/compras + filtro em memória) e ponto GPS pelo mapa —
+// ModalPontoGps (mesmo da ficha) ou modo "Marcar no mapa" (o próximo toque no
+// mapa principal vira o ponto; grava pela mesma rota POST /gps-clientes/.../ponto).
 // ─────────────────────────────────────────────────────────────────────────────
 
 const ABAS = [
@@ -39,6 +46,12 @@ const ABAS = [
 ];
 
 const ATIVO_API = { ativos: 'true', inativos: 'false', todos: 'todos' };
+const fmtPonto = (c) => `${c.lat.toFixed(6)},${c.lng.toFixed(6)}`;
+const parsePonto = (s) => {
+    if (!s) return null;
+    const [lat, lng] = String(s).split(',').map(x => parseFloat(String(x).trim()));
+    return (isNaN(lat) || isNaN(lng)) ? null : { lat, lng };
+};
 
 export default function MapaClientes() {
     const navigate = useNavigate();
@@ -46,13 +59,43 @@ export default function MapaClientes() {
     const perms = user?.permissoes || {};
     // Espelho exato do gate do PUT /mapa-clientes/config
     const podeSalvarPadrao = !!(perms.admin || perms.clientes?.edit);
+    // Espelho exato do gate do POST /gps-clientes/cliente/:uuid/ponto
+    const podeEditarGps = !!(perms.admin || perms.Pode_Editar_GPS || perms.clientes?.edit || perms.Pode_Executar_Entregas);
 
     const [filtros, setFiltros] = useFiltrosSalvos('mapa-clientes', FILTROS_PADRAO);
-    const dm = useDadosMapa(filtros);
+
+    // ── Compras no período (só consulta quando o filtro está ligado) ────────
+    const [periodo, periodoCtl] = usePeriodoSalvo('mapa-clientes', 'todo');
+    const [compras, setCompras] = useState({ uuids: null, carregando: false });
+    const pedidoCompras = useRef(0);
+    const comprasLigado = filtros.compras !== 'qualquer';
+    useEffect(() => {
+        if (!comprasLigado) { pedidoCompras.current++; setCompras({ uuids: null, carregando: false }); return; }
+        const id = ++pedidoCompras.current;
+        setCompras(c => ({ ...c, carregando: true }));
+        mapaClientesService.compras({ de: periodo.de, ate: periodo.ate, ativo: ATIVO_API[filtros.ativo] || 'true' })
+            .then(r => { if (id === pedidoCompras.current) setCompras({ uuids: new Set(r?.uuids || []), carregando: false }); })
+            .catch(e => {
+                if (id !== pedidoCompras.current) return;
+                console.error('[MapaClientes] compras', e);
+                toast.error(e?.response?.data?.error || 'Não foi possível buscar quem comprou no período.');
+                setCompras({ uuids: null, carregando: false });
+            });
+    }, [comprasLigado, periodo.de, periodo.ate, filtros.ativo]);
+
+    const dm = useDadosMapa(filtros, compras);
 
     const [selecionado, setSelecionado] = useState(null);       // uuid
     const [aba, setAba] = useState('cliente');
     const [sheetAberta, setSheetAberta] = useState(false);
+    // Ponto GPS pelo mapa
+    const [gpsModal, setGpsModal] = useState(null);             // uuid com o ModalPontoGps aberto
+    const [marcando, setMarcando] = useState(null);             // uuid em modo "Marcar no mapa"
+    const marcandoRef = useRef(null);                            // espelho p/ o handler do Leaflet
+    const [pontoEscolhido, setPontoEscolhido] = useState(null); // { uuid, lat, lng } aguardando confirmação
+    const [salvandoPonto, setSalvandoPonto] = useState(false);
+    const salvandoPontoRef = useRef(false);
+    const marcadorPrevia = useRef(null);
     const toqueY = useRef(null);
     // Instante do último arraste da alça: o click que vem logo depois (< 300 ms) é o
     // eco do gesto e deve ser ignorado; um toque posterior tem de funcionar normalmente
@@ -136,7 +179,11 @@ export default function MapaClientes() {
         const map = L.map(mapRef.current, { zoomControl: true, attributionControl: true })
             .setView([-25.9, -49.2], 8);
         L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' }).addTo(map);
-        map.on('click', () => setSelecionado(null));
+        map.on('click', (e) => {
+            // Modo "Marcar no mapa": o toque vira o ponto candidato (confirmação abaixo)
+            if (marcandoRef.current) { setPontoEscolhido({ uuid: marcandoRef.current, lat: e.latlng.lat, lng: e.latlng.lng }); return; }
+            setSelecionado(null);
+        });
         mapObj.current = map;
         // A sidebar muda a largura: o Leaflet precisa ser avisado para redesenhar
         const observarTamanho = new ResizeObserver(() => map.invalidateSize({ animate: false }));
@@ -168,13 +215,90 @@ export default function MapaClientes() {
                 icon: criarIconeFatias(cores, { selecionado: c.uuid === selecionado, destaque: destaque.has(c.uuid) }),
                 keyboard: false,
                 title: c.fantasia || c.nome || '',
-            }).on('click', () => { setSelecionado(c.uuid); setAba('cliente'); setSheetAberta(true); });
+            }).on('click', (e) => {
+                if (marcandoRef.current) { setPontoEscolhido({ uuid: marcandoRef.current, lat: e.latlng.lat, lng: e.latlng.lng }); return; }
+                setSelecionado(c.uuid); setAba('cliente'); setSheetAberta(true);
+            });
             grupo.addLayer(mk);
         }
         grupo.addTo(map);
         camada.current = grupo;
         if (!enquadrou.current && dm.visiveisNoMapa.length) { enquadrou.current = true; enquadrar(); }
     }, [dm.visiveisNoMapa, selecionado, destaque, enquadrar]);
+
+    // ── Ponto GPS pelo mapa ─────────────────────────────────────────────────
+    marcandoRef.current = marcando;
+    // Cursor em mira enquanto o modo está armado (inline vence o .leaflet-grab do CSS)
+    useEffect(() => {
+        const el = mapObj.current?.getContainer();
+        if (!el) return;
+        el.style.cursor = marcando ? 'crosshair' : '';
+        return () => { el.style.cursor = ''; };
+    }, [marcando]);
+    // Prévia do ponto candidato (alfinete cinza) enquanto se confirma
+    useEffect(() => {
+        const map = mapObj.current;
+        if (marcadorPrevia.current) { marcadorPrevia.current.remove(); marcadorPrevia.current = null; }
+        if (!map || !pontoEscolhido) return;
+        marcadorPrevia.current = L.circleMarker([pontoEscolhido.lat, pontoEscolhido.lng], {
+            radius: 11, color: '#00754A', fillColor: '#00754A', fillOpacity: 0.35, weight: 3,
+        }).addTo(map);
+        return () => { if (marcadorPrevia.current) { marcadorPrevia.current.remove(); marcadorPrevia.current = null; } };
+    }, [pontoEscolhido]);
+
+    const iniciarMarcacao = (uuid) => {
+        setMarcando(uuid);
+        setPontoEscolhido(null);
+        setSheetAberta(false); // no celular o painel cobre o mapa
+    };
+    const cancelarMarcacao = () => {
+        setMarcando(null);
+        setPontoEscolhido(null);
+        setSheetAberta(true);
+    };
+    // Resultado do ModalPontoGps e do "Marcar no mapa" cai aqui: pino se move / entra no mapa sem recarregar
+    const aplicarPontoSalvo = (uuid, ponto, r) => {
+        if (r?.pendente) {
+            toast('Mudança registrada — espera aprovação da logística (o ponto antigo segue valendo).', { icon: '🕓', duration: 6000 });
+            return;
+        }
+        const gps = parsePonto(ponto);
+        if (!gps) return;
+        dm.atualizarLocal(uuid, { gps });
+        if (!r?.offline) toast.success('Ponto GPS salvo');
+    };
+    const confirmarPonto = async () => {
+        if (!pontoEscolhido || salvandoPontoRef.current) return;
+        salvandoPontoRef.current = true;
+        setSalvandoPonto(true);
+        const { uuid, lat, lng } = pontoEscolhido;
+        const ponto = fmtPonto({ lat, lng });
+        try {
+            const r = await gpsClientesService.salvarPonto(uuid, { ponto, posicaoAutor: null, origem: 'CADASTRO', autorizacao: null });
+            if (r?.semMudanca) {
+                toast('O ponto escolhido é o mesmo já salvo — nada foi alterado.', { icon: 'ℹ️', duration: 5000 });
+            } else {
+                aplicarPontoSalvo(uuid, ponto, r);
+            }
+            setMarcando(null); setPontoEscolhido(null); setSheetAberta(true);
+        } catch (e) {
+            const resp = e?.response?.data;
+            if (resp?.codigo === 'PROXIMO') {
+                // Precisa da autorização da logística — o modal já tem esse fluxo
+                toast.error(`${resp.error || resp.mensagem || 'Ponto muito perto de outro cliente.'} Use "Alterar ponto GPS" para pedir a autorização da logística.`, { duration: 8000 });
+            } else if (!e?.response) {
+                toast.error('Sem internet agora — tente de novo quando o sinal voltar.');
+            } else {
+                toast.error(resp?.error || resp?.mensagem || 'Não foi possível salvar o ponto.', { duration: 7000 });
+            }
+            setPontoEscolhido(null); // continua em modo de marcação para tentar outro lugar
+        } finally {
+            salvandoPontoRef.current = false;
+            setSalvandoPonto(false);
+        }
+    };
+    const clienteGpsModal = gpsModal ? porUuid.get(gpsModal) : null;
+    const clienteMarcando = marcando ? porUuid.get(marcando) : null;
 
     // ── Ações ───────────────────────────────────────────────────────────────
     const abrirCliente = (uuid) => {
@@ -232,6 +356,9 @@ export default function MapaClientes() {
                     vendedores={opVendedoresFiltro}
                     categorias={categorias}
                     onEnquadrar={() => enquadrar()}
+                    periodo={periodo}
+                    periodoCtl={periodoCtl}
+                    comprasCarregando={compras.carregando}
                 />
                 <Contadores contadores={dm.contadores} onVerSemGps={() => irPara('semgps')} onVerParadas={() => irPara('paradas')} />
 
@@ -246,6 +373,36 @@ export default function MapaClientes() {
                                 <div className="flex items-center gap-2 text-gray-600 text-sm font-medium">
                                     <Loader2 className="h-5 w-5 animate-spin text-primary" /> Carregando os clientes…
                                 </div>
+                            </div>
+                        )}
+                        {marcando && !dm.carregando && (
+                            /* No desktop a legenda fica no canto direito de cima: a faixa se limita à esquerda para não cobri-la */
+                            <div className="absolute left-3 right-3 md:right-auto md:w-[min(520px,calc(100%-300px))] top-3 z-[1060] bg-house text-white rounded-xl p-3 text-sm shadow-lg">
+                                {pontoEscolhido ? (
+                                    <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                                        <span className="flex-1 min-w-0">
+                                            <span className="font-semibold">Salvar novo ponto aqui?</span>
+                                            <span className="block text-xs text-white/80 truncate">{clienteMarcando?.fantasia || clienteMarcando?.nome || 'Cliente'} · {pontoEscolhido.lat.toFixed(5)}, {pontoEscolhido.lng.toFixed(5)}</span>
+                                        </span>
+                                        <div className="flex gap-2 shrink-0">
+                                            <button type="button" onClick={() => setPontoEscolhido(null)} disabled={salvandoPonto} className="flex-1 sm:flex-none px-3 py-2 min-h-[40px] bg-white/10 hover:bg-white/20 border border-white/30 rounded-full text-xs font-semibold disabled:opacity-50">Escolher outro</button>
+                                            <button type="button" onClick={confirmarPonto} disabled={salvandoPonto} className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-4 py-2 min-h-[40px] bg-primary hover:bg-primaryDark rounded-full text-xs font-semibold disabled:opacity-50">
+                                                {salvandoPonto ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} Salvar aqui
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center gap-2">
+                                        <Crosshair className="h-5 w-5 shrink-0" />
+                                        <span className="flex-1 min-w-0">
+                                            <span className="font-semibold">Toque no local do cliente</span>
+                                            <span className="block text-xs text-white/80 truncate">{clienteMarcando?.fantasia || clienteMarcando?.nome || 'Cliente'}</span>
+                                        </span>
+                                        <button type="button" onClick={cancelarMarcacao} className="shrink-0 inline-flex items-center gap-1 px-3 py-2 min-h-[40px] bg-white/10 hover:bg-white/20 border border-white/30 rounded-full text-xs font-semibold">
+                                            <X className="h-4 w-4" /> Cancelar
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         )}
                         {dm.erro && !dm.carregando && (
@@ -315,7 +472,9 @@ export default function MapaClientes() {
                         <div className="flex-1 overflow-y-auto p-3 md:p-4">
                             {aba === 'cliente' && (
                                 clienteSel
-                                    ? <DrawerCliente cliente={clienteSel} categorias={categorias} vendedoresAtivos={vendedoresAtivos} onSalvo={aoSalvar} onFechar={() => setSelecionado(null)} />
+                                    ? <DrawerCliente cliente={clienteSel} categorias={categorias} vendedoresAtivos={vendedoresAtivos} onSalvo={aoSalvar} onFechar={() => setSelecionado(null)}
+                                        onAlterarGps={podeEditarGps ? (uuid) => setGpsModal(uuid) : undefined}
+                                        onMarcarNoMapa={podeEditarGps ? iniciarMarcacao : undefined} />
                                     : (
                                         <div className="text-center py-8 px-4">
                                             <div className="bg-mint w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-3"><MapPinned className="h-6 w-6 text-primary" /></div>
@@ -342,11 +501,24 @@ export default function MapaClientes() {
                                 />
                             )}
                             {aba === 'paradas' && <PainelParadas contadores={dm.contadores} />}
-                            {aba === 'semgps' && <ListaSemGps clientes={dm.semGps} onSelecionar={abrirCliente} />}
+                            {aba === 'semgps' && <ListaSemGps clientes={dm.semGps} onSelecionar={abrirCliente} onAlterarGps={podeEditarGps ? (uuid) => setGpsModal(uuid) : undefined} />}
                         </div>
                     </div>
                 </div>
             </div>
+
+            {/* Mesmo modal da ficha do cliente (localizar pelo endereço, minha posição, travas e
+                autorização). Fica sempre montado, como em DetalheCliente: é o `aberto=false` que
+                limpa o mapa e o watch de geolocalização dele. */}
+            <ModalPontoGps
+                aberto={!!clienteGpsModal}
+                onFechar={() => setGpsModal(null)}
+                clienteUuid={clienteGpsModal?.uuid || null}
+                clienteNome={clienteGpsModal ? (clienteGpsModal.fantasia || clienteGpsModal.nome || '') : ''}
+                pontoAtual={clienteGpsModal?.gps ? fmtPonto(clienteGpsModal.gps) : null}
+                origem="CADASTRO"
+                onSalvo={(ponto, r) => { if (clienteGpsModal) aplicarPontoSalvo(clienteGpsModal.uuid, ponto, r); }}
+            />
         </div>
     );
 }

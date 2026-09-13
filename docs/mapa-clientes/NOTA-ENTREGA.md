@@ -49,3 +49,41 @@ Em *Clientes* agora tem o botão *Mapa*: todos os clientes com GPS num mapa, col
 ✅ Filtros ficam lembrados; funciona no celular
 
 Como usar: https://cahardt-github.xrqvlq.easypanel.host/novidade-mapa-clientes.html
+
+---
+
+# Fase 1.1 (13/09/2026) — Perfil, Compras no período e ponto GPS no mapa
+
+**Veredito do gerente de entrega: LIBERADO COM PENDÊNCIA.**
+
+## O que mudou
+
+- **Filtro Perfil**: por padrão o mapa mostra **só clientes**; fornecedor fica de fora. (O que aparecia como "fornecedor no mapa" era cliente que também está marcado como fornecedor na ficha — o filtro resolve, sem mexer no cadastro.)
+- **Filtro Compras no período**: seletor de período igual ao do Financeiro + "comprou / não comprou". Conta só pedido que vale como venda (mesma régua da comissão e das metas); devolução não tira o cliente de "comprou". Um cartão mostra quantos compraram no período.
+- **Ponto GPS direto no mapa**: no painel do cliente e na aba Sem GPS há o botão **Alterar/Cadastrar ponto GPS** (mesmo popup da ficha: endereço, coordenada ou arrastar) e **"Marcar no mapa"** — toca no lugar e confirma. O pino se move ou entra no mapa na hora. Mesmas travas do módulo GPS (ponto perto de outro pede autorização pelo popup).
+
+## O que foi testado
+
+- **Dev backend**: curl — perfis nos dois formatos do banco; `/compras` bate com consulta direta no banco; datas inválidas e `de > ate` → 400; sem token → 401; vendedor vê só os seus.
+- **QA (clicando)**: aprovado, sem defeito funcional.
+- **Revisor**: aprovado; achados corrigidos (manual, contador de filtros, faixa sobre a legenda, novidade).
+- **Gerente**: build `✓ built` (exit 0); `FiltroPeriodo`/`usePeriodoSalvo` e `SelectBusca` (nenhum `<select>` nativo); permissão dos botões GPS no front = rota do backend (`admin | Pode_Editar_GPS | clientes.edit | Pode_Executar_Entregas`); `WHERE_PEDIDO_RECEITA` reutilizado; schema não tocado; sem `$transaction`; sem segredo; manual sem número do banco local; novidade sem `og:image`, 5 accordions abertos, 12 mocks, `novidades.json` válido e só com a linha do Mapa.
+
+## O que você precisa conferir
+
+1. **No iPhone/iPad real**: abrir Clientes → Mapa → tocar num pino → **Marcar no mapa** → tocar no lugar → Salvar aqui. Conferir que o toque é reconhecido e que o pino se move. Não foi testado em aparelho.
+
+## Pendente / de fora
+
+- Ocultação dos botões GPS para usuário **sem** permissão não foi vista na tela (todo usuário local tem permissão); o backend recusa com 403 de qualquer forma.
+- Offline: só o popup de GPS trata; "Marcar no mapa" precisa de rede.
+
+## Texto complementar para o WhatsApp
+
+*🗺️ Mapa de Clientes — atualização*
+
+✅ Filtro *Perfil*: por padrão só clientes (fornecedor fica de fora)
+✅ Filtro *Compras no período*: quem comprou ou não comprou no período que você escolher
+✅ *Ponto GPS pelo mapa*: no painel do cliente ou na aba Sem GPS, toque em *Marcar no mapa*, escolha o lugar e confirme — o pino entra na hora
+
+Detalhes: https://cahardt-github.xrqvlq.easypanel.host/novidade-mapa-clientes.html

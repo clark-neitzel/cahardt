@@ -13,6 +13,8 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const { parseLatLng, haversineMetros } = require('./pontoService');
 const whatsCliente = require('./whatsappClienteService');
+const dayjs = require('dayjs');
+const { WHERE_PEDIDO_RECEITA } = require('./projecaoVendasService');
 
 const CONFIG_KEY = 'mapa_clientes_config';
 const RAIO_PADRAO_M = 1000;
@@ -61,6 +63,23 @@ const whereAtivo = (ativo) => {
 const parseDias = (s) => String(s ?? '').split(',').map(x => x.trim()).filter(Boolean);
 const diasReais = (dias) => dias.filter(d => d !== 'N/D');
 
+// Perfis no banco (coluna texto com JSON) vem em DOIS formatos, ambos reais:
+//   '["Cliente","Fornecedor"]'  (string por item — cadastro antigo/importado do CA)
+//   '[{"perfil":"FORNECEDOR"}]' (objeto por item — cadastro feito no app)
+// Normaliza para MAIÚSCULAS sem repetição; vazio/inválido → ["CLIENTE"].
+const PERFIL_PADRAO = 'CLIENTE';
+const parsePerfis = (raw) => {
+    let lista = [];
+    try { lista = JSON.parse(raw || '[]'); } catch { lista = []; }
+    if (!Array.isArray(lista)) lista = [];
+    const out = [];
+    for (const item of lista) {
+        const v = String((item && typeof item === 'object' ? item.perfil : item) ?? '').trim().toUpperCase();
+        if (v && !out.includes(v)) out.push(v);
+    }
+    return out.length ? out : [PERFIL_PADRAO];
+};
+
 const vazioParaNull = (v) => {
     const t = v == null ? '' : String(v).trim();
     return t ? t : null;
@@ -69,7 +88,7 @@ const vazioParaNull = (v) => {
 // `select` enxuto — TODOS os nomes conferidos contra prisma/schema.prisma
 // (model Cliente, ClienteWhatsappStatus, ClienteGps, ClienteInsight).
 const SELECT_CLIENTE = {
-    UUID: true, Nome: true, NomeFantasia: true, Ativo: true,
+    UUID: true, Nome: true, NomeFantasia: true, Ativo: true, Perfis: true,
     End_Cidade: true, End_Bairro: true,
     Dia_de_entrega: true, Dia_de_venda: true, Ponto_GPS: true,
     Telefone: true, Telefone_Celular: true,
@@ -102,6 +121,7 @@ const montarCliente = (c, cfgWhats) => {
         nome: c.Nome,
         fantasia: vazioParaNull(c.NomeFantasia),
         ativo: c.Ativo === true,
+        perfis: parsePerfis(c.Perfis),
         cidade: vazioParaNull(c.End_Cidade),
         bairro: vazioParaNull(c.End_Bairro),
         categoriaId: c.categoriaCliente?.id || c.categoriaClienteId || null,
@@ -134,6 +154,7 @@ const montarOpcoes = (clientes) => {
     const categorias = new Map();
     const diasEntrega = new Map();
     const diasVenda = new Map();
+    const perfis = new Map();
     const inc = (map, chave, extra) => {
         const e = map.get(chave) || { ...extra, qtd: 0 };
         e.qtd++;
@@ -145,6 +166,7 @@ const montarOpcoes = (clientes) => {
         if (c.categoriaId) inc(categorias, c.categoriaId, { id: c.categoriaId, nome: c.categoriaNome });
         for (const d of c.diasEntrega) inc(diasEntrega, d, { valor: d });
         for (const d of c.diasVenda) inc(diasVenda, d, { valor: d });
+        for (const p of c.perfis) inc(perfis, p, { valor: p });
     }
     const ORDEM_DIAS = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'DOM', 'N/D'];
     const porDia = (a, b) => {
@@ -157,6 +179,9 @@ const montarOpcoes = (clientes) => {
         categorias: [...categorias.values()].sort((a, b) => ordenarPt(a.nome || '', b.nome || '')),
         diasEntrega: [...diasEntrega.values()].sort(porDia),
         diasVenda: [...diasVenda.values()].sort(porDia),
+        // { valor, total } — CLIENTE primeiro, depois alfabético (cliente com 2 perfis conta nos 2)
+        perfis: [...perfis.values()].map(e => ({ valor: e.valor, total: e.qtd }))
+            .sort((a, b) => (a.valor === PERFIL_PADRAO ? -1 : b.valor === PERFIL_PADRAO ? 1 : ordenarPt(a.valor, b.valor))),
     };
 };
 
@@ -176,6 +201,27 @@ const carregar = async ({ reqUser, ativo = 'true' }) => {
         clientes,
         opcoes: montarOpcoes(clientes),
     };
+};
+
+// ── 3.5 Compras no período ──────────────────────────────────────────────────
+// UUIDs dos clientes visíveis (mesma visibilidade e mesmo `ativo` do GET /) que
+// têm pedido que CONTA COMO VENDA no período — WHERE_PEDIDO_RECEITA, a mesma
+// régua da comissão, das metas e do Dashboard Geral (faturado ou especial, sem
+// bonificação), pela `dataVenda`. Devolução NÃO tira o cliente da lista: ele
+// comprou; a devolução só abate o valor (aqui interessa o ato de comprar).
+// `de`/`ate` = 'YYYY-MM-DD' ou '' (sem limite). Validação de formato é da rota.
+const compras = async ({ reqUser, ativo = 'true', de = '', ate = '' }) => {
+    const dataVenda = {};
+    if (de) dataVenda.gte = dayjs(de).startOf('day').toDate();
+    if (ate) dataVenda.lte = dayjs(ate).endOf('day').toDate();
+    const where = {
+        ...WHERE_PEDIDO_RECEITA,
+        ...(Object.keys(dataVenda).length ? { dataVenda } : {}),
+        cliente: { ...whereAtivo(ativo), ...whereVisibilidade(reqUser) },
+    };
+    const linhas = await prisma.pedido.findMany({ where, select: { clienteId: true }, distinct: ['clienteId'] });
+    const uuids = linhas.map(l => l.clienteId).sort();
+    return { de: de || null, ate: ate || null, uuids, total: uuids.length };
 };
 
 // ── 3.2 Vizinhos atendidos em dias diferentes ───────────────────────────────
@@ -268,6 +314,8 @@ module.exports = {
     setConfig,
     whereVisibilidade,
     parseDias,
+    parsePerfis,
     carregar,
+    compras,
     vizinhos,
 };

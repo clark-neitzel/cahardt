@@ -127,6 +127,14 @@ Notas de implementação (backend):
 - `situacao` via helper **novo e exportado** `situacaoWhatsapp(cliente, cfg)` em `whatsappClienteService.js` (extraído da cadeia de `:463-470`, mais `SEM_HISTORICO` quando tem número e selo é null/EM_USO ausente) — aditivo; o relatório existente pode continuar como está (boy-scout opcional: fazer o relatório chamar o helper).
 - `ativo='todos'` devolve inativos com `ativo:false` (o filtro de tela decide).
 
+### 3.1.1 Fase 1.1 (13/09) — aditivo ao 3.1
+- Cada cliente: `"perfis": ["CLIENTE"] | ["CLIENTE","FORNECEDOR"] | ["FORNECEDOR"]` (maiúsculas; sem `Perfis` ou inválido → `["CLIENTE"]`).
+- `opcoes.perfis`: `[{ "valor": "CLIENTE", "total": 1154 }, { "valor": "FORNECEDOR", "total": 78 }]` (CLIENTE primeiro; cliente com 2 perfis conta nos 2). Filtro é do frontend (padrão: só CLIENTE).
+
+### 3.5 `GET /api/mapa-clientes/compras` — quem comprou no período
+Query: `de`, `ate` = `YYYY-MM-DD` ou vazio (sem limite); `ativo` igual ao 3.1. Formato inválido ou `de > ate` → 400.
+Resposta 200: `{ "de": "2026-08-01"|null, "ate": "2026-08-31"|null, "uuids": ["…"], "total": 19 }` — UUIDs (mesma visibilidade do 3.1) com pedido que conta como venda (`WHERE_PEDIDO_RECEITA`: faturado ou especial, sem bonificação) por `dataVenda`. Devolução não retira o cliente.
+
 ### 3.2 `GET /api/mapa-clientes/vizinhos` — pares em dias diferentes
 Query: `raio` (metros, inteiro 100..20000; omitido → `config.raioMetros`), `limite` (1..500, padrão 200), `ativo` (igual a 3.1, padrão `'true'`).
 Mesma visibilidade de 3.1. Universo: clientes do conjunto visível com `gps != null` **e** `diasEntrega` com pelo menos um dia real (exclui `[]` e `['N/D']`). Cliente balcão entra normalmente (tem entrega? se `balcao` true, **excluir** — quem retira na empresa não gera parada).

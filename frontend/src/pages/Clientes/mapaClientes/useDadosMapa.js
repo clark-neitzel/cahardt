@@ -10,8 +10,13 @@ export const FILTROS_PADRAO = {
     whatsapp: 'todos',   // todos | com | sem
     gps: 'todos',        // todos | com | sem
     ativo: 'ativos',     // ativos | inativos | todos
+    perfis: ['CLIENTE'], // perfil do cadastro (CLIENTE / FORNECEDOR…) — fornecedor some por padrão
+    compras: 'qualquer', // qualquer | comprou | naoComprou (junto com o FiltroPeriodo 'mapa-clientes')
     colorirPor: 'diaEntrega',
 };
+
+// Cliente sem `perfis` (backend antigo / cadastro sem marcação) conta como CLIENTE.
+export const perfisDoCliente = (c) => (Array.isArray(c.perfis) && c.perfis.length ? c.perfis : ['CLIENTE']);
 
 const ATIVO_API = { ativos: 'true', inativos: 'false', todos: 'todos' };
 
@@ -19,7 +24,8 @@ const chaveBairro = (c) => `${c.cidade || ''}|${c.bairro || ''}`;
 
 // Carrega a base UMA vez (e a cada salvamento), aplica os filtros no navegador e
 // deriva tudo que a tela mostra: pinos, contadores, legenda, valores ocultos.
-export default function useDadosMapa(filtros) {
+// `compras` = { uuids: Set<string> | null } — quem comprou no período (null = ainda não carregou).
+export default function useDadosMapa(filtros, compras = null) {
     const [dados, setDados] = useState(null);
     const [carregando, setCarregando] = useState(true);
     const [erro, setErro] = useState(null);
@@ -53,7 +59,9 @@ export default function useDadosMapa(filtros) {
     const clientes = dados?.clientes || [];
 
     // ── Filtros da tela (tudo no navegador) ─────────────────────────────────
-    const filtrados = useMemo(() => {
+    // `filtradosBase` = todos os filtros MENOS o de compras (é sobre ele que se conta
+    // "comprou no período: N" — com "não comprou" marcado o número ainda faz sentido).
+    const filtradosBase = useMemo(() => {
         const f = filtros;
         const cid = new Set(f.cidades || []);
         const bai = new Set(f.bairros || []);
@@ -61,9 +69,11 @@ export default function useDadosMapa(filtros) {
         const ven = new Set(f.vendedores || []);
         const dE = new Set(f.diasEntrega || []);
         const dV = new Set(f.diasVenda || []);
+        const per = new Set(f.perfis || []);
         return clientes.filter(c => {
             if (f.ativo === 'ativos' && c.ativo === false) return false;
             if (f.ativo === 'inativos' && c.ativo !== false) return false;
+            if (per.size && !perfisDoCliente(c).some(p => per.has(p))) return false;
             if (cid.size && !cid.has(c.cidade)) return false;
             if (bai.size && !bai.has(chaveBairro(c))) return false;
             if (cat.size && !cat.has(c.categoriaId || SEM_VALOR)) return false;
@@ -77,6 +87,19 @@ export default function useDadosMapa(filtros) {
             return true;
         });
     }, [clientes, filtros]);
+
+    const comprasUuids = compras?.uuids || null;
+    const comprouNoPeriodo = useMemo(
+        () => (comprasUuids ? filtradosBase.filter(c => comprasUuids.has(c.uuid)).length : null),
+        [filtradosBase, comprasUuids]
+    );
+    const filtrados = useMemo(() => {
+        // Enquanto a lista de compras não chegou, não filtra (evita o mapa "piscar" vazio)
+        if (filtros.compras === 'qualquer' || !comprasUuids) return filtradosBase;
+        if (filtros.compras === 'comprou') return filtradosBase.filter(c => comprasUuids.has(c.uuid));
+        if (filtros.compras === 'naoComprou') return filtradosBase.filter(c => !comprasUuids.has(c.uuid));
+        return filtradosBase;
+    }, [filtradosBase, filtros.compras, comprasUuids]);
 
     const comGps = useMemo(() => filtrados.filter(c => !!c.gps), [filtrados]);
     const semGps = useMemo(() => filtrados.filter(c => !c.gps), [filtrados]);
@@ -150,8 +173,9 @@ export default function useDadosMapa(filtros) {
             semDiaEntrega: filtrados.filter(c => !diasReais(c.diasEntrega).length).length,
             semDiaVenda: filtrados.filter(c => !diasReais(c.diasVenda).length).length,
             porDiaEntrega, porDiaVenda,
+            comprouNoPeriodo, // null = filtro de compras desligado
         };
-    }, [filtrados, comGps, semGps]);
+    }, [filtrados, comGps, semGps, comprouNoPeriodo]);
 
     const toggleValor = useCallback((chave) => {
         setValoresOcultos(prev => {
@@ -175,6 +199,7 @@ export default function useDadosMapa(filtros) {
                     if (patch.Dia_de_venda !== undefined) { n.diaVendaRaw = patch.Dia_de_venda; n.diasVenda = parseDias(patch.Dia_de_venda); }
                     if (patch.categoriaId !== undefined) { n.categoriaId = patch.categoriaId; n.categoriaNome = patch.categoriaNome ?? null; }
                     if (patch.vendedorId !== undefined) { n.vendedorId = patch.vendedorId; n.vendedorNome = patch.vendedorNome ?? null; n.vendedorAtivo = patch.vendedorAtivo ?? true; }
+                    if (patch.gps !== undefined) n.gps = patch.gps; // { lat, lng } | null — pino muda de lugar / entra no mapa
                     if (patch.telefoneCelular !== undefined) {
                         n.telefoneCelular = patch.telefoneCelular;
                         n.whatsapp = { temNumero: !!patch.telefoneCelular, situacao: patch.telefoneCelular ? 'SEM_HISTORICO' : 'SEM_NUMERO' };

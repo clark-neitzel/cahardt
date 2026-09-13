@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { SlidersHorizontal, X, Maximize } from 'lucide-react';
 import MultiSelect from '../../../components/MultiSelect';
 import SelectBusca from '../../../components/SelectBusca';
+import FiltroPeriodo from '../../../components/FiltroPeriodo';
 import { DIAS_SEMANA } from '../../../components/DayPicker';
 import { OPCOES_COLORIR, SEM_VALOR } from './coresMapa';
 import { FILTROS_PADRAO } from './useDadosMapa';
@@ -12,7 +13,13 @@ import { FILTROS_PADRAO } from './useDadosMapa';
 // `opcoes` vem do backend (montadas do conjunto inteiro — opção nunca some do menu
 // por causa do resultado); `vendedores` = { valor, label } com "(inativo)";
 // `categorias` = união do cadastro com as que aparecem nos clientes.
-export default function FiltrosMapa({ filtros, setFiltros, opcoes, vendedores, categorias, onEnquadrar }) {
+// `periodo`/`periodoCtl` = usePeriodoSalvo('mapa-clientes', 'todo') — o período das
+// compras é persistido pelo PRESET (regra do sistema), não por data absoluta.
+const ROTULO_PERFIL = { CLIENTE: 'Cliente', FORNECEDOR: 'Fornecedor' };
+const rotuloPerfil = (v) => ROTULO_PERFIL[v] || (v ? v.charAt(0) + v.slice(1).toLowerCase() : '');
+const mesmoConjunto = (a = [], b = []) => a.length === b.length && [...a].sort().every((v, i) => v === [...b].sort()[i]);
+
+export default function FiltrosMapa({ filtros, setFiltros, opcoes, vendedores, categorias, onEnquadrar, periodo, periodoCtl, comprasCarregando }) {
     const [aberto, setAberto] = useState(false);
 
     const set = (campo, valor) => setFiltros(prev => ({ ...prev, [campo]: valor }));
@@ -31,15 +38,30 @@ export default function FiltrosMapa({ filtros, setFiltros, opcoes, vendedores, c
     ], [categorias]);
     const opVendedores = useMemo(() => [...(vendedores || []), { valor: SEM_VALOR, label: 'Sem vendedor' }], [vendedores]);
     const opDias = useMemo(() => DIAS_SEMANA.map(d => ({ valor: d, label: d })), []);
+    // Perfis: os que o backend conhece (com contagem) ∪ os marcados no filtro salvo
+    // (opção nunca some do menu por causa do resultado); sem backend novo: CLIENTE/FORNECEDOR.
+    const opPerfis = useMemo(() => {
+        const m = new Map();
+        const lista = opcoes?.perfis?.length ? opcoes.perfis : [{ valor: 'CLIENTE' }, { valor: 'FORNECEDOR' }];
+        lista.forEach(p => p?.valor && m.set(p.valor, { valor: p.valor, label: `${rotuloPerfil(p.valor)}${p.total != null ? ` (${p.total})` : ''}` }));
+        (filtros.perfis || []).forEach(v => { if (!m.has(v)) m.set(v, { valor: v, label: rotuloPerfil(v) }); });
+        return [...m.values()];
+    }, [opcoes, filtros.perfis]);
 
     const ativos = useMemo(() => {
         let n = 0;
         ['cidades', 'bairros', 'categorias', 'vendedores', 'diasEntrega', 'diasVenda'].forEach(k => { if ((filtros[k] || []).length) n++; });
-        ['whatsapp', 'gps', 'ativo'].forEach(k => { if (filtros[k] !== FILTROS_PADRAO[k]) n++; });
+        ['whatsapp', 'gps', 'ativo', 'compras'].forEach(k => { if (filtros[k] !== FILTROS_PADRAO[k]) n++; });
+        if (!mesmoConjunto(filtros.perfis || [], FILTROS_PADRAO.perfis)) n++;
+        // O período só pesa quando o filtro de compras está ligado (sozinho ele não filtra nada)
+        if (filtros.compras !== 'qualquer' && periodo && !periodo.padrao) n++;
         return n;
-    }, [filtros]);
+    }, [filtros, periodo]);
 
-    const limpar = () => setFiltros(prev => ({ ...FILTROS_PADRAO, colorirPor: prev.colorirPor }));
+    const limpar = () => {
+        setFiltros(prev => ({ ...FILTROS_PADRAO, colorirPor: prev.colorirPor }));
+        periodoCtl?.limpar();
+    };
 
     return (
         <div className="bg-white border-x border-t border-gray-200 rounded-t-xl">
@@ -126,6 +148,26 @@ export default function FiltrosMapa({ filtros, setFiltros, opcoes, vendedores, c
                             <option value="inativos">Só inativos</option>
                             <option value="todos">Ativos e inativos</option>
                         </SelectBusca>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Perfil</label>
+                        <MultiSelect options={opPerfis} selected={filtros.perfis || []} onChange={v => set('perfis', v)} valueKey="valor" labelKey="label" placeholder="Todos os perfis" summaryNoun="perfil" />
+                    </div>
+                    <div className="md:col-span-2">
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Compras no período</label>
+                        <div className="flex flex-col sm:flex-row gap-2">
+                            <SelectBusca value={filtros.compras} onChange={e => set('compras', e.target.value)} className="w-full sm:w-56">
+                                <option value="qualquer">Qualquer</option>
+                                <option value="comprou">Comprou no período</option>
+                                <option value="naoComprou">Não comprou no período</option>
+                            </SelectBusca>
+                            {periodo && periodoCtl && <FiltroPeriodo periodo={periodo} controle={periodoCtl} className="w-full sm:w-auto" />}
+                        </div>
+                        {filtros.compras !== 'qualquer' && (
+                            <p className="text-[11px] text-gray-500 mt-1">
+                                {comprasCarregando ? 'Buscando quem comprou no período…' : 'Conta pedido que vale como venda (faturado ou especial, sem bonificação) pela data da venda.'}
+                            </p>
+                        )}
                     </div>
                 </div>
             )}

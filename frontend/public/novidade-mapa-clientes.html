@@ -223,6 +223,23 @@
     </div>
   </div>
 
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">📍</span>
+      <strong>Novo: filtro por perfil, compras no período e ponto GPS pelo mapa</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li><b>Perfil</b>: o mapa passa a mostrar por padrão <b>só quem é cliente</b> — fornecedor fica de fora. No filtro Perfil dá para incluir fornecedores (ou ver só eles); cada opção mostra quantos cadastros tem.</li>
+        <li><b>Compras no período</b>: escolha <b>"Comprou no período"</b> ou <b>"Não comprou no período"</b> e o período ao lado (Hoje, últimos 7/30 dias, este mês, este ano ou datas suas). Serve para achar quem <b>parou de comprar</b> numa região, ou quem está ativo. O cartão <b>"Comprou no período"</b> mostra a contagem. Conta pedido que vale como venda (faturado ou especial), pela data da venda.</li>
+        <li><b>Ponto GPS sem sair do mapa</b>: no painel do cliente (e na aba Sem GPS) apareceu o botão <b>Alterar / Cadastrar ponto GPS</b> — abre o mesmo mapa da ficha, com "Endereço", "Minha posição" e as travas de sempre (ponto duplicado, dentro da empresa, autorização da logística quando está colado em outro cliente).</li>
+        <li><b>Marcar no mapa</b>: para quem já está olhando a rua no mapa grande — toque no botão, depois toque no lugar certo, confirme <b>"Salvar aqui"</b>. O pino muda de lugar na hora; cliente sem GPS entra no mapa e sai da lista Sem GPS.</li>
+        <li><b>Sem internet?</b> Use <b>Alterar ponto GPS</b>: o ponto fica na fila do aparelho e é enviado sozinho quando o sinal voltar. <b>Marcar no mapa</b> só funciona online.</li>
+      </ul>
+    </div>
+  </div>
+
   <!-- ══════════ AS TELAS DO APP ══════════ -->
   <div class="sec-label">As telas do app, sem mistério</div>
 
@@ -330,6 +347,58 @@
       <div><span class="pin">3</span><span><b>Salvar como padrão</b> grava o raio para todo mundo. Só aparece para quem pode editar clientes.</span></div>
       <div><span class="pin">4</span><span>Cada linha é um <b>par</b>: distância entre os dois e o dia de entrega de cada um. Toque para o mapa enquadrar e destacar os dois.</span></div>
       <div><span class="pin">5</span><span><b>Editar</b> abre o painel daquele cliente para acertar o dia — e o par some da lista quando os dois passam a ter um dia em comum.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 4: perfil, compras e GPS -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 4 · Perfil, compras no período e ponto GPS</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">⚙︎ Filtros</div>
+        <div class="app-card-body">
+          <div class="app-input"><small>Perfil<span class="pin">1</span></small>Cliente (1.120)</div>
+          <div class="app-input" style="border:none;padding:0;margin-bottom:4px"><small>Compras no período<span class="pin">2</span></small></div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">
+            <div class="app-input" style="flex:1;margin:0;min-width:150px">Não comprou no período</div>
+            <div class="app-input" style="margin:0;display:flex;align-items:center;gap:8px;white-space:nowrap"><span style="color:#9aa5a0">‹</span> Últimos 30 dias · 14/08 – 12/09 ▾ <span style="color:#9aa5a0">›</span><span class="pin">3</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="kpi">
+        <div><small>Clientes no filtro</small><strong>37</strong></div>
+        <div><small>Comprou no período</small><strong style="color:var(--primary)">0</strong><span class="pin">4</span></div>
+      </div>
+      <div class="app-card">
+        <div class="app-card-body">
+          <div style="font-weight:700;font-size:13.5px">Padaria Exemplo</div>
+          <div style="font-size:11.5px;color:#6b756f;margin-bottom:8px">📞 (47) 3000-0000 · Último pedido: 02/07/2026</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">
+            <span class="app-btn claro" style="padding:7px 12px;font-size:11.5px">📍 Alterar ponto GPS</span><span class="pin">5</span>
+            <span class="app-btn claro" style="padding:7px 12px;font-size:11.5px;border-color:#d8d5cc;color:#374151">✛ Marcar no mapa</span><span class="pin">6</span>
+          </div>
+        </div>
+      </div>
+      <div class="app-card">
+        <div class="mapa" style="height:150px">
+          <div style="position:absolute;left:8px;right:8px;top:8px;background:var(--house);color:#fff;border-radius:10px;padding:8px 10px;font-size:11.5px;display:flex;align-items:center;gap:8px;z-index:2">
+            <span style="flex:1"><b>Salvar novo ponto aqui?</b><br><span style="opacity:.8">Padaria Exemplo</span></span>
+            <span style="border:1px solid rgba(255,255,255,.4);border-radius:999px;padding:5px 9px">Escolher outro</span>
+            <span style="background:var(--primary);border-radius:999px;padding:5px 9px;font-weight:700">✓ Salvar aqui</span><span class="pin">7</span>
+          </div>
+          <span class="pino" style="left:30%;top:70%;background:#9ca3af"></span>
+          <span class="pino sel" style="left:52%;top:64%;background:#00754A;opacity:.7"></span>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Perfil</b>: começa marcado só "Cliente" — fornecedor não aparece no mapa a menos que você o inclua aqui. O número entre parênteses é quantos cadastros têm aquele perfil.</span></div>
+      <div><span class="pin">2</span><span><b>Compras no período</b>: "Qualquer" (padrão), "Comprou no período" ou "Não comprou no período". Vale sobre pedidos que contam como venda (faturado ou especial, sem bonificação), pela data da venda.</span></div>
+      <div><span class="pin">3</span><span>O <b>período</b> é o mesmo controle do resto do app: presets, setas para pular o período inteiro, ou datas suas. Fica lembrado por usuário; o padrão é "Todo o período".</span></div>
+      <div><span class="pin">4</span><span>Com o filtro ligado aparece o cartão <b>"Comprou no período"</b> — conta sobre os outros filtros (região, vendedor…), então mesmo com "Não comprou" marcado ele mostra quantos daquela região compraram.</span></div>
+      <div><span class="pin">5</span><span><b>Alterar / Cadastrar ponto GPS</b> abre o mesmo mapa da ficha (arrasta até a porta, "Endereço", "Minha posição"). As travas são as mesmas: ponto duplicado, ponto dentro da empresa, e autorização da logística quando está colado em outro cliente. O botão também existe em cada linha da aba <b>Sem GPS</b>. Só aparece para quem pode editar GPS.</span></div>
+      <div><span class="pin">6</span><span><b>Marcar no mapa</b>: arma o modo "mira" — aparece a faixa <i>Toque no local do cliente · Cancelar</i> e o próximo toque no mapa grande escolhe o ponto. No celular o painel se recolhe para o mapa ficar livre.</span></div>
+      <div><span class="pin">7</span><span>Confirme em <b>Salvar aqui</b> (ou "Escolher outro"). O pino vai para o lugar novo na hora, sem recarregar; cliente sem GPS entra no mapa e sai da lista Sem GPS. Se o ponto ficar colado em outro cliente, o app avisa para usar "Alterar ponto GPS" e pedir a autorização da logística.</span></div>
     </div>
   </div>
 

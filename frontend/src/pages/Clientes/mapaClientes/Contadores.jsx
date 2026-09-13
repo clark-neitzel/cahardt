@@ -12,9 +12,11 @@ export default function Contadores({ contadores, onVerSemGps, onVerParadas }) {
         { rotulo: 'Sem ponto GPS', valor: c.semGps, cor: c.semGps ? 'text-amber-700' : 'text-gray-900', onClick: onVerSemGps },
         { rotulo: 'Com WhatsApp', valor: c.comWhatsapp, sub: `${c.semWhatsapp} sem` },
     ];
+    // Só aparece com o filtro "Compras no período" ligado (null = desligado)
+    if (c.comprouNoPeriodo != null) cards.push({ rotulo: 'Comprou no período', valor: c.comprouNoPeriodo, cor: 'text-primaryDark' });
     return (
         <div className="bg-white border-x border-gray-200 px-2 md:px-3 py-2">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            <div className={`grid grid-cols-2 ${cards.length > 4 ? 'md:grid-cols-5' : 'md:grid-cols-4'} gap-2`}>
                 {cards.map(k => {
                     const Tag = k.onClick ? 'button' : 'div';
                     return (

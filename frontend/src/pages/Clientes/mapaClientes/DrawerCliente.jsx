@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { X, Phone, MessageCircle, ExternalLink, Loader2, Save, Store } from 'lucide-react';
+import { X, Phone, MessageCircle, ExternalLink, Loader2, Save, Store, MapPin, Crosshair } from 'lucide-react';
 import toast from 'react-hot-toast';
 import clienteService from '../../../services/clienteService';
 import SelectBusca from '../../../components/SelectBusca';
@@ -13,6 +13,8 @@ import ModalWhatsappCliente from '../../../components/ModalWhatsappCliente';
 // WhatsApp/celular NÃO vai neste body: usa o ModalWhatsappCliente, que já faz o
 // PATCH próprio e trata 403 ("já tem número") / 400 (WHATSAPP_NAO_EXISTE).
 // Erro ao salvar: toast, painel continua aberto com os valores digitados.
+// Ponto GPS: `onAlterarGps(uuid)` abre o ModalPontoGps (na página) e `onMarcarNoMapa(uuid)`
+// arma o modo "toque no mapa principal" — os dois só chegam se o usuário pode editar GPS.
 
 const SITUACAO = {
     SEM_NUMERO: { rotulo: 'Sem número', classe: 'bg-gray-100 text-gray-700' },
@@ -28,7 +30,7 @@ const fmtData = (v) => {
     return isNaN(d.getTime()) ? null : d.toLocaleDateString('pt-BR');
 };
 
-export default function DrawerCliente({ cliente, categorias, vendedoresAtivos, onSalvo, onFechar }) {
+export default function DrawerCliente({ cliente, categorias, vendedoresAtivos, onSalvo, onFechar, onAlterarGps, onMarcarNoMapa }) {
     const [form, setForm] = useState({ Dia_de_entrega: '', Dia_de_venda: '', categoriaClienteId: '', idVendedor: '' });
     const [salvando, setSalvando] = useState(false);
     // Ref, não só state: dois cliques no mesmo frame passariam pelo `salvando`
@@ -149,6 +151,20 @@ export default function DrawerCliente({ cliente, categorias, vendedoresAtivos, o
                     {ultimo ? `Último pedido: ${ultimo}` : 'Sem pedido registrado'}
                     {linhaCompra ? ` · ${linhaCompra}` : ''}
                 </p>
+                {(onAlterarGps || onMarcarNoMapa) && (
+                    <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
+                        {onAlterarGps && (
+                            <button type="button" onClick={() => onAlterarGps(cliente.uuid)} className="inline-flex items-center gap-1.5 px-3 py-2 min-h-[40px] bg-white border border-primary text-primary hover:bg-mint/40 rounded-full text-xs font-medium">
+                                <MapPin className="h-4 w-4" /> {cliente.gps ? 'Alterar ponto GPS' : 'Cadastrar ponto GPS'}
+                            </button>
+                        )}
+                        {onMarcarNoMapa && (
+                            <button type="button" onClick={() => onMarcarNoMapa(cliente.uuid)} title="O próximo toque no mapa vira o ponto do cliente" className="inline-flex items-center gap-1.5 px-3 py-2 min-h-[40px] bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-full text-xs font-medium">
+                                <Crosshair className="h-4 w-4" /> Marcar no mapa
+                            </button>
+                        )}
+                    </div>
+                )}
             </div>
 
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-3 space-y-3">

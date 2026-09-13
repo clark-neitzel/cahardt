@@ -17,6 +17,15 @@ const mapaClientesService = {
         const response = await api.get('/mapa-clientes/vizinhos', { params });
         return response.data;
     },
+    // Clientes que COMPRARAM no período (de/ate 'YYYY-MM-DD'; vazio = sem limite).
+    // Devolve { de, ate, uuids: string[], total } — o filtro "Compras no período" roda em memória.
+    compras: async ({ de = '', ate = '', ativo = 'true' } = {}) => {
+        const params = { ativo };
+        if (de) params.de = de;
+        if (ate) params.ate = ate;
+        const response = await api.get('/mapa-clientes/compras', { params });
+        return response.data;
+    },
     config: async () => {
         const response = await api.get('/mapa-clientes/config');
         return response.data;
