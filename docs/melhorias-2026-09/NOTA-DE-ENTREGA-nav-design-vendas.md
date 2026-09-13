@@ -79,3 +79,21 @@ https://cahardt-github.xrqvlq.easypanel.host/novidade-ficha-cliente-qualidade.ht
 *🛍️ Pedidos Online, tudo num lugar só*
 Site (Congelados) e Kit Festa viraram uma entrada de menu só, com uma aba pra cada canal. Nada mudou no funcionamento de cada um.
 https://cahardt-github.xrqvlq.easypanel.host/novidade-pedidos-online.html
+
+---
+
+## Complemento 12/09 — prévia do "Repetir último pedido"
+
+**Veredito: LIBERADO.** Estes 4 arquivos estão só na árvore de trabalho (ainda não no índice): `frontend/src/pages/Pedidos/NovoPedido.jsx`, `backend/manuais/abas/pedidos.md`, `frontend/public/novidade-repetir-pedido.html`, `frontend/public/novidades.json`. Adicione-os com `git add` desses 4 caminhos (não `-A`) antes do commit.
+
+**O que mudou:** o botão "Repetir último pedido" saiu do card do cliente e foi para o topo da lista de produtos. Tocar nele **não coloca mais nada direto no carrinho**: abre a prévia "Conferir antes de adicionar", com uma linha por produto — quantidade editável, preço aproximado, situação (disponível / sem estoque / produto não disponível, este sem checkbox), "Selecionar todos" e total. Só entra no carrinho ao confirmar; se o carrinho já tinha itens, um aviso amarelo avisa que será **substituído** e o botão diz "Substituir carrinho por N itens". Quantidade zero ou apagada não conta no total nem no botão.
+
+**Testado:** QA clicou nos 9 critérios (todos PASSOU), inclusive carrinho já cheio, item sem estoque, item fora do catálogo, Esc/foco, clique duplo no confirmar e um pedido real criado (201, 18 itens, valores iguais aos da prévia) e apagado em seguida. Revisor pediu 3 ajustes (quantidade ≤ 0 não conta; rótulo "(aprox.)"; texto "Produto não disponível"), feitos e reconferidos. Gerente: diff dos 4 arquivos sem nada de outras sessões (0 ocorrências de AlertaPagamento/parcelaEfetiva), build passou, JSON válido, novidade com accordions abertos, sem og:image e sem link "abrir o app", manual do Clippy atualizado.
+
+**Dívida registrada:** produto que saiu do catálogo aparece na prévia como "Produto não disponível (código)" em vez do nome, porque `historicoComprasCliente` (backend) não devolve o nome do produto. Não bloqueia (a linha nunca entra no carrinho); corrigir no backend quando essa rota for tocada.
+
+**Texto de WhatsApp atualizado (substitui o de "Repetir último pedido" acima):**
+
+*🔁 Repetir último pedido, agora com conferência*
+No Novo Pedido, todo item já comprado mostra a última quantidade e data. E no topo da lista de produtos, o botão *Repetir último pedido* abre uma prévia pra você conferir e ajustar a quantidade de cada item antes de colocar no carrinho — nada entra sem você confirmar.
+https://cahardt-github.xrqvlq.easypanel.host/novidade-repetir-pedido.html

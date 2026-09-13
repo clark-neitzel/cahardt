@@ -836,46 +836,142 @@ const NovoPedido = () => {
         return { n, maisRecente };
     }, [historicoMap]);
 
-    // "Repetir último pedido": pré-carrega o carrinho com a compra MAIS RECENTE de cada item do
-    // histórico do cliente (dado que historicoComprasCliente já devolve — sem chamada nova ao
-    // backend). Passa pela MESMA setQuantidade usada ao adicionar item manualmente: preço atual
-    // do catálogo/regra de histórico, travas de estoque e promoção continuam valendo do mesmo
-    // jeito. NUNCA envia — só pré-carrega; o vendedor revisa e clica Salvar/Enviar como hoje.
-    const repetirUltimoPedido = useCallback(() => {
+    // Preço "atual" para a prévia do "Repetir último pedido" — a MESMA regra usada por
+    // setQuantidade ao adicionar item novo no carrinho (histórico do cliente prevalece; senão,
+    // preço de tabela + acréscimo da condição). Não replica o clamp de piso de promoção/desconto:
+    // esse clamp é aplicado de qualquer jeito no momento real da inserção via setQuantidade — aqui
+    // é só a estimativa que o vendedor confere antes de decidir.
+    const calcularPrecoPreviaRepetir = useCallback((produtoId) => {
+        const produto = produtos.find(p => p.id === produtoId);
+        if (!produto) return 0;
+        const hist = historicoMap.get(produtoId);
+        if (hist && hist.ultimoPreco) return Number(hist.ultimoPreco);
+        const precoTabela = Number(produto.valorVenda || 0);
+        const acrescimo = condicaoSelecionada ? Number(condicaoSelecionada.acrescimoPreco) : 0;
+        return precoTabela * (1 + acrescimo / 100);
+    }, [produtos, condicaoSelecionada, historicoMap]);
+
+    // ── "Repetir último pedido" — modal de prévia ("Conferir antes de adicionar") ──
+    // Estado por linha é minimalista (produtoId + quantidade editável + marcado); tudo o mais
+    // (nome, situação, preço) é derivado a cada render em `linhasPreviaRepetir`, pra não duplicar
+    // fonte de verdade nem ficar com dado desatualizado se o catálogo mudar enquanto o modal está aberto.
+    const [previaRepetirAberta, setPreviaRepetirAberta] = useState(false);
+    const [previaRepetirItens, setPreviaRepetirItens] = useState([]); // [{ produtoId, quantidade, marcado }]
+    const [previaRepetirSubstituir, setPreviaRepetirSubstituir] = useState(false); // carrinho já tinha itens ao abrir
+    const [aplicandoPreviaRepetir, setAplicandoPreviaRepetir] = useState(false);
+    const primeiroCampoPreviaRef = useRef(null);
+
+    const abrirPreviaRepetirPedido = useCallback(() => {
         if (resumoHistoricoCliente.n === 0) return;
         // Guarda contra a condição de corrida: catálogo ainda carregando/vazio (ex.: acabou de
-        // trocar para Pedido Especial) marcaria tudo como "indisponível" por engano — o botão já
-        // fica desabilitado nessa janela, isto aqui é reforço.
+        // trocar para Pedido Especial) marcaria tudo como "fora do catálogo" por engano — o botão
+        // já fica desabilitado nessa janela, isto aqui é reforço.
         if (carregandoProdutos || produtos.length === 0) return;
 
-        const aplicar = () => {
-            let adicionados = 0;
-            let indisponiveis = 0;
-            historicoMap.forEach((hist, produtoId) => {
-                if (!hist?.compras?.length) return;
-                const qtd = Number(hist.compras[0].quantidade) || 0;
-                if (qtd <= 0) return;
-                // Produto descontinuado/fora do catálogo atual (tipo de pedido/condição): ignora com aviso
-                if (!produtos.some(p => p.id === produtoId)) { indisponiveis++; return; }
-                setQuantidade(produtoId, qtd);
-                adicionados++;
-            });
-            if (adicionados > 0) {
-                toast.success(`${adicionados} ${adicionados === 1 ? 'item pré-carregado' : 'itens pré-carregados'} do último pedido. Revise as quantidades e o preço antes de enviar.`, { duration: 6000 });
-            }
-            if (indisponiveis > 0) {
-                toast.error(`${indisponiveis} ${indisponiveis === 1 ? 'item não está' : 'itens não estão'} mais disponíveis.`, { duration: 6000 });
-            }
-        };
+        const itens = [];
+        historicoMap.forEach((hist, produtoId) => {
+            if (!hist?.compras?.length) return;
+            const qtd = Number(hist.compras[0].quantidade) || 0;
+            if (qtd <= 0) return;
+            const existeNoCatalogo = produtos.some(p => p.id === produtoId);
+            itens.push({ produtoId, quantidade: qtd, marcado: existeNoCatalogo });
+        });
+        if (itens.length === 0) return;
 
-        // Carrinho já tem itens: "repetir" sobrescreve, então confirma antes (ação irreversível
-        // de UI — mais previsível para o vendedor do que tentar mesclar quantidades diferentes).
-        if (itensMap.size > 0) {
-            if (!window.confirm('O carrinho já tem itens. Repetir o último pedido vai SUBSTITUIR o carrinho pela compra mais recente de cada produto do histórico. Continuar?')) return;
-            setItensMap(new Map());
+        setPreviaRepetirSubstituir(itensMap.size > 0);
+        setPreviaRepetirItens(itens);
+        setPreviaRepetirAberta(true);
+    }, [resumoHistoricoCliente, carregandoProdutos, produtos, historicoMap, itensMap]);
+
+    // Linhas da prévia com tudo já calculado para exibir (nome, unidade, data, preço, situação)
+    const linhasPreviaRepetir = useMemo(() => {
+        return previaRepetirItens.map(item => {
+            const produto = produtos.find(p => p.id === item.produtoId);
+            const hist = historicoMap.get(item.produtoId);
+            const foraCatalogo = !produto;
+            const semEstoque = !foraCatalogo && produto.controlaEstoqueEfetivo === true
+                && Number(item.quantidade) > Number(produto.estoqueDisponivel || 0);
+            const situacao = foraCatalogo ? 'foraCatalogo' : (semEstoque ? 'semEstoque' : 'disponivel');
+            return {
+                ...item,
+                // Sem produto no catálogo atual: `historicoComprasCliente` (backend) não devolve
+                // nome, só produtoId — não dá pra mostrar o nome real sem mudar o backend (dívida
+                // documentada no relatório). `null` aqui = a linha mostra "Produto não disponível"
+                // + o UUID abreviado, em vez do UUID inteiro cru.
+                nome: produto?.nome || null,
+                unidade: produto?.unidade || 'un',
+                permiteFracao: !!produto?.categoriaProduto?.permiteFracao,
+                dataUltimaCompra: hist?.compras?.[0]?.data || null,
+                estoqueDisponivel: produto?.estoqueDisponivel,
+                preco: foraCatalogo ? 0 : calcularPrecoPreviaRepetir(item.produtoId),
+                situacao
+            };
+        });
+    }, [previaRepetirItens, produtos, historicoMap, calcularPrecoPreviaRepetir]);
+
+    const previaRepetirSelecionaveis = useMemo(() => linhasPreviaRepetir.filter(l => l.situacao !== 'foraCatalogo'), [linhasPreviaRepetir]);
+    // Quantidade 0/vazia/negativa (item marcado mas em edição, ainda sem terminar de digitar) NUNCA
+    // conta como "vai entrar" — nem no contador do botão, nem no total. `setQuantidadePreviaRepetir`
+    // (onBlur) já clampa para o mínimo 1, então isso é reforço para o instante entre digitar e sair do campo.
+    const previaRepetirMarcados = useMemo(() => previaRepetirSelecionaveis.filter(l => l.marcado && Number(l.quantidade) > 0), [previaRepetirSelecionaveis]);
+    const previaRepetirTodosMarcados = previaRepetirSelecionaveis.length > 0 && previaRepetirSelecionaveis.every(l => l.marcado);
+    const previaRepetirTotal = previaRepetirMarcados.reduce((s, l) => s + l.preco * (Number(l.quantidade) || 0), 0);
+
+    const alternarMarcadoPreviaRepetir = (produtoId) => {
+        setPreviaRepetirItens(prev => prev.map(it => it.produtoId === produtoId ? { ...it, marcado: !it.marcado } : it));
+    };
+    // Durante a digitação aceita o valor cru (inclusive vazio/0, pra não atrapalhar quem está
+    // apagando pra escrever de novo) — `previaRepetirMarcados` acima já exclui isso dos totais.
+    const setQuantidadePreviaRepetir = (produtoId, novaQtd) => {
+        setPreviaRepetirItens(prev => prev.map(it => it.produtoId === produtoId ? { ...it, quantidade: novaQtd } : it));
+    };
+    // Ao sair do campo (onBlur): vazio/0/negativo vira 1 — nunca fica um item marcado com
+    // quantidade inválida esperando o vendedor lembrar de corrigir (pedido do dono).
+    const confirmarQuantidadePreviaRepetir = (produtoId, valorDigitado) => {
+        const n = Number(String(valorDigitado).replace(',', '.'));
+        const clamp = !isFinite(n) || n <= 0 ? 1 : n;
+        setPreviaRepetirItens(prev => prev.map(it => it.produtoId === produtoId ? { ...it, quantidade: clamp } : it));
+    };
+    const alternarTodosPreviaRepetir = () => {
+        const proximoValor = !previaRepetirTodosMarcados;
+        setPreviaRepetirItens(prev => prev.map(it => {
+            const existeNoCatalogo = produtos.some(p => p.id === it.produtoId);
+            return existeNoCatalogo ? { ...it, marcado: proximoValor } : it;
+        }));
+    };
+
+    const fecharPreviaRepetirPedido = useCallback(() => {
+        if (aplicandoPreviaRepetir) return;
+        setPreviaRepetirAberta(false);
+    }, [aplicandoPreviaRepetir]);
+
+    // Esc fecha o modal; foco no primeiro checkbox/quantidade ao abrir.
+    useEffect(() => {
+        if (!previaRepetirAberta) return;
+        const aoTeclar = (e) => { if (e.key === 'Escape') fecharPreviaRepetirPedido(); };
+        window.addEventListener('keydown', aoTeclar);
+        const t = setTimeout(() => primeiroCampoPreviaRef.current?.focus(), 50);
+        return () => { window.removeEventListener('keydown', aoTeclar); clearTimeout(t); };
+    }, [previaRepetirAberta, fecharPreviaRepetirPedido]);
+
+    // Confirmar: só agora os itens marcados entram no carrinho, pela MESMA setQuantidade usada ao
+    // adicionar item manualmente (preço/regra de histórico, travas de estoque e promoção intactas).
+    // Se o carrinho já tinha itens ao abrir a prévia, substitui (igual ao combinado antes; o botão
+    // já deixa isso escrito). NUNCA envia — só popula o carrinho; Salvar/Enviar continuam manuais.
+    const confirmarPreviaRepetirPedido = useCallback(() => {
+        if (aplicandoPreviaRepetir || previaRepetirMarcados.length === 0) return;
+        setAplicandoPreviaRepetir(true);
+        try {
+            if (previaRepetirSubstituir) setItensMap(new Map());
+            previaRepetirMarcados.forEach(l => setQuantidade(l.produtoId, Number(l.quantidade) || 0));
+            const n = previaRepetirMarcados.length;
+            setPreviaRepetirAberta(false);
+            toast.success(`${n} ${n === 1 ? 'item adicionado' : 'itens adicionados'} ao carrinho. Revise as quantidades e o preço antes de enviar.`, { duration: 6000 });
+            searchInputRef.current?.focus();
+        } finally {
+            setAplicandoPreviaRepetir(false);
         }
-        aplicar();
-    }, [historicoMap, produtos, itensMap, resumoHistoricoCliente, setQuantidade, carregandoProdutos]);
+    }, [aplicandoPreviaRepetir, previaRepetirMarcados, previaRepetirSubstituir, setQuantidade]);
 
     const setValorUnitario = useCallback((produtoId, valor) => {
         setItensMap(prev => {
@@ -1924,30 +2020,6 @@ const NovoPedido = () => {
                                 {/* ── ETAPA 3: Data de Entrega (só após condição selecionada) ── */}
                                 {tipoPedido && condicaoPagamentoId && (
                                     <div className="pt-2 border-t border-gray-100">
-                                        {/* "Repetir último pedido": só aparece quando há histórico do cliente.
-                                            Desabilitado enquanto o catálogo está carregando/vazio (troca de tipo
-                                            de pedido, ex. Especial) — senão marcaria tudo como indisponível. */}
-                                        {resumoHistoricoCliente.n > 0 && (() => {
-                                            const catalogoIndisponivel = carregandoProdutos || produtos.length === 0;
-                                            return (
-                                            <button
-                                                type="button"
-                                                disabled={catalogoIndisponivel}
-                                                onClick={repetirUltimoPedido}
-                                                className={`w-full mb-2 flex flex-col items-center justify-center gap-0.5 px-3 py-2.5 min-h-[44px] border rounded-full text-center transition-colors ${catalogoIndisponivel ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed' : 'bg-mint/40 border-primary/30 text-primaryDark hover:bg-mint/70'}`}
-                                            >
-                                                <span className="flex items-center gap-1.5 text-xs font-bold">
-                                                    <Clock className="h-3.5 w-3.5 shrink-0" />
-                                                    {catalogoIndisponivel ? 'Carregando catálogo…' : 'Repetir último pedido'}
-                                                </span>
-                                                {!catalogoIndisponivel && (
-                                                <span className="text-[10px] font-medium text-primaryDark/70">
-                                                    {resumoHistoricoCliente.n} {resumoHistoricoCliente.n === 1 ? 'item' : 'itens'}{resumoHistoricoCliente.maisRecente ? ` · última compra ${fmtData(resumoHistoricoCliente.maisRecente)}` : ''}
-                                                </span>
-                                                )}
-                                            </button>
-                                            );
-                                        })()}
                                         <label className="text-xs text-gray-500 font-medium">Data de Entrega *</label>
                                         {dataSugerida && !dataEntrega && (
                                             <p className="text-xs text-blue-500 mt-0.5 font-medium">
@@ -2123,6 +2195,29 @@ const NovoPedido = () => {
                             )}
                         </div>
                     </div>
+
+                    {/* "Repetir último pedido": faixa no topo da lista de produtos, só quando há
+                        histórico do cliente e o catálogo já carregou (evita marcar tudo como "fora
+                        do catálogo" durante a troca de tipo de pedido, ex. Especial). */}
+                    {resumoHistoricoCliente.n > 0 && (() => {
+                        const catalogoIndisponivel = carregandoProdutos || produtos.length === 0;
+                        return (
+                            <button
+                                type="button"
+                                disabled={catalogoIndisponivel}
+                                onClick={abrirPreviaRepetirPedido}
+                                className={`w-full flex items-center justify-center gap-2 px-3 py-2.5 min-h-[44px] border-b text-center transition-colors ${catalogoIndisponivel ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed' : 'bg-mint/40 border-primary/20 text-primaryDark hover:bg-mint/70'}`}
+                            >
+                                <Clock className="h-3.5 w-3.5 shrink-0" />
+                                <span className="text-xs font-bold">
+                                    {catalogoIndisponivel
+                                        ? 'Carregando catálogo…'
+                                        : <>Repetir último pedido <span className="font-medium text-primaryDark/70">({resumoHistoricoCliente.n} {resumoHistoricoCliente.n === 1 ? 'item' : 'itens'}{resumoHistoricoCliente.maisRecente ? ` · última compra ${fmtData(resumoHistoricoCliente.maisRecente)}` : ''})</span></>
+                                    }
+                                </span>
+                            </button>
+                        );
+                    })()}
 
                     {/* Produtos já comprados */}
                     {produtosJaComprados.length > 0 && (
@@ -2899,6 +2994,146 @@ const NovoPedido = () => {
                                 }`}
                             >
                                 Confirmar e continuar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal de prévia do "Repetir último pedido" — "Conferir antes de adicionar".
+                Nada entra no carrinho até confirmar aqui; ao confirmar, passa pela MESMA
+                setQuantidade usada ao adicionar item na mão (preço/estoque/promoção intactos). */}
+            {previaRepetirAberta && (
+                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 px-0 sm:px-4">
+                    <div className="bg-white w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[92vh] sm:max-h-[85vh] flex flex-col">
+                        {/* Header */}
+                        <div className="px-4 py-3.5 border-b border-gray-100 flex items-start gap-3">
+                            <div className="flex-1 min-w-0">
+                                <p className="font-bold text-gray-900 text-base leading-tight">Conferir antes de adicionar</p>
+                                <p className="text-xs text-gray-500 mt-0.5">Compra mais recente de cada produto do histórico do cliente</p>
+                            </div>
+                            <button onClick={fecharPreviaRepetirPedido} className="text-gray-400 hover:text-gray-600 p-1 -mr-1 shrink-0">
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+
+                        {previaRepetirSubstituir && (
+                            <div className="mx-4 mt-3 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800 font-medium">
+                                O carrinho já tem itens — ao confirmar, ele será <b>SUBSTITUÍDO</b> pelos itens marcados abaixo.
+                            </div>
+                        )}
+
+                        {/* Selecionar todos */}
+                        <div className="px-4 pt-3 pb-1 flex items-center justify-between">
+                            <label className="flex items-center gap-2 text-xs font-semibold text-gray-600">
+                                <input
+                                    type="checkbox"
+                                    className="w-4 h-4 accent-primary"
+                                    checked={previaRepetirTodosMarcados}
+                                    onChange={alternarTodosPreviaRepetir}
+                                    disabled={previaRepetirSelecionaveis.length === 0}
+                                />
+                                Selecionar todos
+                            </label>
+                            <span className="text-xs text-gray-500">{previaRepetirMarcados.length} de {previaRepetirSelecionaveis.length} selecionados</span>
+                        </div>
+
+                        {/* Lista em cards */}
+                        <div className="overflow-y-auto flex-1 px-4 py-2 space-y-2">
+                            {linhasPreviaRepetir.map((l, idx) => {
+                                const foraCatalogo = l.situacao === 'foraCatalogo';
+                                const semEstoque = l.situacao === 'semEstoque';
+                                // Primeiro campo focável da lista (checkbox do primeiro item selecionável)
+                                const primeiroSelecionavelIdx = linhasPreviaRepetir.findIndex(x => x.situacao !== 'foraCatalogo');
+                                const ehPrimeiroFoco = !foraCatalogo && idx === primeiroSelecionavelIdx;
+                                return (
+                                    <div
+                                        key={l.produtoId}
+                                        onClick={foraCatalogo ? undefined : () => alternarMarcadoPreviaRepetir(l.produtoId)}
+                                        className={`rounded-xl border p-3 flex items-start gap-3 ${foraCatalogo ? 'bg-gray-50 border-gray-200 opacity-70' : `cursor-pointer ${semEstoque ? 'bg-amber-50 border-amber-200' : 'bg-white border-gray-200'}`}`}
+                                    >
+                                        {foraCatalogo ? (
+                                            <div className="w-4 h-4 mt-1 shrink-0" aria-hidden="true" />
+                                        ) : (
+                                            <input
+                                                ref={ehPrimeiroFoco ? primeiroCampoPreviaRef : null}
+                                                type="checkbox"
+                                                className="w-4 h-4 mt-1 accent-primary shrink-0"
+                                                checked={l.marcado}
+                                                onClick={e => e.stopPropagation()}
+                                                onChange={() => alternarMarcadoPreviaRepetir(l.produtoId)}
+                                            />
+                                        )}
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-semibold text-gray-800 leading-tight line-clamp-2">
+                                                {l.nome || (
+                                                    <span className="text-gray-500 italic font-medium">
+                                                        Produto não disponível <span className="not-italic font-mono text-[11px] text-gray-400">({String(l.produtoId).slice(0, 8)}…)</span>
+                                                    </span>
+                                                )}
+                                            </p>
+                                            <p className="text-[11px] text-gray-500 mt-0.5">
+                                                Última compra: {fmtData(l.dataUltimaCompra)}
+                                                {!foraCatalogo && (
+                                                    <> · R$ {l.preco.toFixed(2).replace('.', ',')}/{l.unidade} <span className="text-gray-400">(aprox.)</span></>
+                                                )}
+                                            </p>
+                                            {foraCatalogo && (
+                                                <span className="inline-block mt-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-gray-200 text-gray-600 uppercase">Não está mais no catálogo</span>
+                                            )}
+                                            {semEstoque && (
+                                                <span className="inline-block mt-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 uppercase">Sem estoque suficiente (disp. {Number(l.estoqueDisponivel || 0)} {l.unidade})</span>
+                                            )}
+                                        </div>
+                                        {!foraCatalogo && (
+                                            <input
+                                                type="number"
+                                                min={l.permiteFracao ? '0.001' : '1'}
+                                                step={l.permiteFracao ? 'any' : '1'}
+                                                inputMode="numeric"
+                                                className="w-16 text-center border border-gray-300 rounded-md bg-white text-gray-900 text-sm font-bold py-2 shrink-0"
+                                                value={l.quantidade}
+                                                onClick={e => e.stopPropagation()}
+                                                onFocus={e => e.target.select()}
+                                                onChange={e => {
+                                                    const v = Number(e.target.value.toString().replace(',', '.'));
+                                                    setQuantidadePreviaRepetir(l.produtoId, isNaN(v) ? '' : v);
+                                                }}
+                                                onBlur={e => confirmarQuantidadePreviaRepetir(l.produtoId, e.target.value)}
+                                            />
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {/* Total estimado */}
+                        <div className="px-4 py-2 border-t border-gray-100 flex items-center justify-between">
+                            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Total estimado</span>
+                            <span className="text-base font-bold text-gray-900">R$ {previaRepetirTotal.toFixed(2).replace('.', ',')}</span>
+                        </div>
+
+                        {/* Botões */}
+                        <div className="px-4 py-3 border-t border-gray-100 flex gap-2">
+                            <button
+                                type="button"
+                                onClick={fecharPreviaRepetirPedido}
+                                disabled={aplicandoPreviaRepetir}
+                                className="flex-1 min-h-[44px] py-2.5 rounded-full border border-gray-300 text-gray-700 font-semibold text-sm disabled:opacity-50"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                type="button"
+                                onClick={confirmarPreviaRepetirPedido}
+                                disabled={previaRepetirMarcados.length === 0 || aplicandoPreviaRepetir}
+                                className="flex-[2] min-h-[44px] py-2.5 rounded-full bg-primary hover:bg-primaryDark text-white font-bold text-sm shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                                {aplicandoPreviaRepetir
+                                    ? 'Adicionando…'
+                                    : previaRepetirSubstituir
+                                        ? `Substituir carrinho por ${previaRepetirMarcados.length} ${previaRepetirMarcados.length === 1 ? 'item' : 'itens'}`
+                                        : `Adicionar ${previaRepetirMarcados.length} ${previaRepetirMarcados.length === 1 ? 'item' : 'itens'} ao carrinho`}
                             </button>
                         </div>
                     </div>
