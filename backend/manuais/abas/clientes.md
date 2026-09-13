@@ -20,6 +20,7 @@ Cadastro completo de clientes da empresa — **o cadastro agora é 100% do app**
 - Selecionar clientes em lote e atualizar: vendedor, dia de entrega, dia de venda e formas de atendimento
 - Abrir o popup de inadimplência do cliente (valores vencidos, parcelas em aberto)
 - Entrar no detalhe do cliente para editar o cadastro completo (inclusive razão social, CNPJ e endereço)
+- **Ver a carteira no mapa** (botão **Mapa** no topo da lista, ao lado de Saúde GPS): todos os clientes com GPS como pinos, coloridos por dia de entrega/venda, categoria, vendedor, WhatsApp ou cidade; lista de vizinhos atendidos em dias diferentes; e edição rápida de dia de entrega, dia de venda, categoria, vendedor e WhatsApp sem sair do mapa. Aparece para quem vê a tela de Clientes (não exige `clientes.edit`). Manual próprio: [mapa-clientes.md](mapa-clientes.md)
 
 ---
 

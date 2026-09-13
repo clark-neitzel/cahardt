@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Mapa de Clientes — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp (sem imagem de propósito: o cartão sai compacto) -->
+<meta property="og:title" content="🗺️ Novidade no Hardt App: Mapa de Clientes">
+<meta property="og:description" content="Todos os clientes no mapa, coloridos por dia de entrega, venda, vendedor ou categoria. Veja quem é vizinho e recebe em dias diferentes — e corrija na hora, sem sair do mapa.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A; --primary-dark: #006241; --house: #1E3932; --mint: #d4e9e2;
+    --cream: #f2f0eb; --gold: #cba258; --ink: rgba(0,0,0,.87); --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--cream); color: var(--ink); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero { background: linear-gradient(168deg, var(--house) 0%, #16302a 100%); color: #fff; padding: 40px 16px 96px; }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow { display: inline-block; background: var(--gold); color: #2b230f; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .14em; padding: 6px 14px; border-radius: 999px; margin-bottom: 18px; }
+  .hero h1 { font-size: clamp(28px, 7vw, 40px); font-weight: 800; line-height: 1.12; margin: 0 0 12px; text-wrap: balance; }
+  .hero p { color: rgba(255,255,255,.75); font-size: 16px; max-width: 46ch; margin: 0 auto; text-wrap: balance; }
+
+  /* mock do mapa flutuando sobre o hero */
+  .mock { max-width: 420px; margin: -68px auto 28px; background: #fff; border-radius: 20px; box-shadow: 0 18px 44px rgba(20,40,34,.28); overflow: hidden; text-align: left; }
+  .mock-top { background: var(--house); color: #fff; padding: 14px 18px; display: flex; align-items: center; gap: 12px; }
+  .mock-top small { display: block; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .14em; color: rgba(255,255,255,.55); }
+  .mock-top strong { font-size: 16px; line-height: 1.2; }
+  .mock-ico { font-size: 24px; }
+
+  /* mapa desenhado em CSS */
+  .mapa { position: relative; height: 230px; background-color: #e8efe9;
+    background-image: linear-gradient(rgba(0,0,0,.06) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,.06) 1px, transparent 1px);
+    background-size: 34px 34px; overflow: hidden; }
+  .mapa::before { content: ''; position: absolute; left: -10%; top: 58%; width: 120%; height: 14px; background: #fff; transform: rotate(-8deg); opacity: .9; }
+  .mapa::after { content: ''; position: absolute; left: 62%; top: -10%; width: 12px; height: 120%; background: #fff; transform: rotate(12deg); opacity: .9; }
+  .pino { position: absolute; width: 18px; height: 18px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.4); transform: translate(-50%,-50%); }
+  .pino.sel { outline: 3px solid var(--gold); outline-offset: 1px; }
+  .leg { position: absolute; right: 8px; top: 8px; background: rgba(255,255,255,.95); border: 1px solid #e3e1da; border-radius: 12px; padding: 8px 10px; font-size: 11px; box-shadow: 0 4px 12px rgba(0,0,0,.12); }
+  .leg b { display: block; font-size: 9px; text-transform: uppercase; letter-spacing: .12em; color: #6b756f; margin-bottom: 4px; }
+  .leg div { display: flex; align-items: center; gap: 6px; margin: 2px 0; color: #374151; }
+  .leg i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .leg .off { color: #b0b5b2; text-decoration: line-through; }
+  .leg .off i { background: #d1d5db !important; }
+  .mock-body { padding: 12px 16px 14px; font-size: 13px; color: var(--ink-soft); }
+  .mock-body b { color: var(--ink); }
+
+  /* ── SEÇÕES / ACCORDION ── */
+  .sec-label { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .14em; color: var(--ink-soft); margin: 30px 4px 12px; }
+  .acc { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; margin-bottom: 10px; overflow: hidden; box-shadow: 0 1px 2px rgba(30,57,50,.05); }
+  .acc-head { width: 100%; display: flex; align-items: center; gap: 12px; background: none; border: none; padding: 14px 16px; text-align: left; cursor: pointer; font: inherit; color: var(--ink); }
+  .acc-ico { width: 38px; height: 38px; flex-shrink: 0; border-radius: 12px; background: var(--mint); display: flex; align-items: center; justify-content: center; font-size: 19px; }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  .acc-head:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  /* passos */
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n { width: 30px; height: 30px; flex-shrink: 0; border-radius: 50%; background: var(--primary); color: #fff; font-weight: 800; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+  .rodape { text-align: center; font-size: 13px; color: var(--ink-soft); margin-top: 40px; }
+  .rodape strong { color: var(--primary-dark); }
+
+  /* ── MOCKUPS DAS TELAS DO APP ── */
+  .tela { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; overflow: hidden; margin-bottom: 12px; box-shadow: 0 1px 2px rgba(30,57,50,.05); }
+  .tela-titulo { background: var(--house); color: #fff; padding: 12px 16px; font-size: 13px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .app-card { background: #fff; border: 1px solid #e5e3dc; border-radius: 12px; overflow: hidden; margin-bottom: 10px; }
+  .app-card-head { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-bottom: 1px solid #f0efe9; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .12em; color: #6b756f; }
+  .app-card-body { padding: 12px; }
+  .app-input { border: 1px solid #d8d5cc; border-radius: 8px; padding: 8px 10px; font-size: 12.5px; color: var(--ink); background: #fff; margin-bottom: 8px; }
+  .app-input small { display: block; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: #9aa5a0; margin-bottom: 2px; }
+  .app-btn { display: inline-flex; align-items: center; gap: 6px; background: var(--primary); color: #fff; font-size: 12.5px; font-weight: 700; padding: 9px 16px; border-radius: 999px; }
+  .app-btn.claro { background: #fff; border: 1.5px solid var(--primary); color: var(--primary); }
+  .app-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+  .app-pill { font-size: 12px; font-weight: 700; padding: 7px 14px; border-radius: 999px; border: 1.5px solid #d8d5cc; color: #6b756f; background: #fff; }
+  .app-pill.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .dias { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
+  .dia { font-size: 10.5px; font-weight: 800; padding: 6px 8px; border-radius: 6px; border: 1px solid #d8d5cc; color: #6b756f; background: #fff; }
+  .dia.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .badge { display: inline-block; font-size: 10.5px; font-weight: 700; padding: 3px 8px; border-radius: 999px; margin-right: 4px; }
+  .b-verde { background: #dcfce7; color: #166534; } .b-cinza { background: #f3f4f6; color: #374151; } .b-ambar { background: #fef3c7; color: #b45309; }
+  .kpi { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 10px; }
+  .kpi div { border: 1px solid #e5e3dc; border-radius: 8px; padding: 6px 10px; background: #fff; }
+  .kpi small { display: block; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: #6b756f; }
+  .kpi strong { font-size: 17px; }
+  .par { border: 1px solid #e5e3dc; border-radius: 10px; padding: 8px 10px; background: #fff; margin-bottom: 6px; font-size: 12.5px; }
+  .par.on { border-color: var(--primary); background: var(--mint); }
+  .par small { color: #6b756f; font-weight: 700; }
+  .pin { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background: var(--gold); color: #2b230f; font-size: 11px; font-weight: 800; flex-shrink: 0; vertical-align: 2px; margin-left: 6px; }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+</style>
+</head>
+<body>
+
+<!-- ══════════ HERO ══════════ -->
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>Todos os clientes<br>num mapa só</h1>
+    <p>Veja a carteira inteira por região, colorida por dia de entrega, dia de venda, vendedor ou categoria. Descubra quem é vizinho e recebe em dias diferentes — e corrija na hora, sem sair do mapa.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- mock do mapa -->
+  <div class="mock" aria-hidden="true">
+    <div class="mock-top">
+      <span class="mock-ico">🗺️</span>
+      <div>
+        <small>Clientes · Mapa</small>
+        <strong>Colorido por dia de entrega</strong>
+      </div>
+    </div>
+    <div class="mapa">
+      <span class="pino" style="left:14%;top:30%;background:#2563eb"></span>
+      <span class="pino" style="left:22%;top:44%;background:#2563eb"></span>
+      <span class="pino" style="left:31%;top:26%;background:#ea580c"></span>
+      <span class="pino sel" style="left:36%;top:52%;background:conic-gradient(#2563eb 0 50%, #0891b2 50% 100%)"></span>
+      <span class="pino" style="left:44%;top:70%;background:#0891b2"></span>
+      <span class="pino" style="left:52%;top:38%;background:#ea580c"></span>
+      <span class="pino" style="left:58%;top:80%;background:#db2777"></span>
+      <span class="pino" style="left:18%;top:78%;background:#7c3aed"></span>
+      <span class="pino" style="left:27%;top:64%;background:#0891b2"></span>
+      <span class="pino" style="left:48%;top:18%;background:conic-gradient(#ea580c 0 50%, #db2777 50% 100%)"></span>
+      <span class="pino" style="left:66%;top:60%;background:#7c3aed"></span>
+      <div class="leg">
+        <b>Dia de entrega</b>
+        <div><i style="background:#2563eb"></i> SEG · 26</div>
+        <div><i style="background:#ea580c"></i> TER · 72</div>
+        <div class="off"><i style="background:#7c3aed"></i> QUA · 40</div>
+        <div><i style="background:#0891b2"></i> QUI · 63</div>
+        <div><i style="background:#db2777"></i> SEX · 31</div>
+      </div>
+    </div>
+    <div class="mock-body">Cada bolinha é um cliente. <b>Duas cores no mesmo pino</b> = recebe em dois dias. Toque num item da legenda para esconder aquele dia e enxergar só o resto. <i style="font-size:11px">(números ilustrativos)</i></div>
+  </div>
+
+  <!-- ══════════ O QUE MUDOU ══════════ -->
+  <div class="sec-label">O que mudou</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🗺️</span>
+      <strong>Um mapa com a carteira inteira</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Dentro de <b>Clientes</b> apareceu o botão <b>Mapa</b>. Ele mostra todos os clientes que têm ponto GPS cadastrado, e você escolhe o que a cor do pino significa: <b>dia de entrega</b>, <b>dia de venda</b>, <b>categoria</b>, <b>vendedor</b>, <b>WhatsApp</b> (tem / não tem) ou <b>cidade</b>.</p>
+      <ul>
+        <li>Cliente com dois dias de entrega aparece com o pino <b>dividido em fatias</b> — uma cor por dia.</li>
+        <li>A <b>legenda</b> mostra quantos clientes tem em cada cor e é clicável: toque num dia para esconder os pinos dele e ver só o resto.</li>
+        <li>Os <b>filtros</b> (cidade, bairro, categoria, vendedor, dias, WhatsApp, GPS, ativos/inativos) ficam <b>lembrados</b> — ao voltar na tela, está do jeito que você deixou.</li>
+        <li>Quem é vendedor de campo vê no mapa <b>só os próprios clientes</b>, igual à lista de Clientes.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">✏️</span>
+      <strong>Corrigir na hora, sem sair do mapa</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Toque num pino e abre o painel do cliente (no celular ele sobe de baixo). Ali dá para mudar <b>dia de entrega</b>, <b>dia de venda</b>, <b>categoria</b> e <b>vendedor</b> e salvar — o pino troca de cor na mesma hora.</p>
+      <ul>
+        <li>O <b>WhatsApp</b> é alterado pelo mesmo popup que o app já usa no envio do pedido.</li>
+        <li>Toda alteração fica <b>registrada no histórico</b> (quem mudou, o quê, de que valor para qual).</li>
+        <li>Precisa de mais? O link <b>"Abrir ficha completa"</b> leva ao cadastro inteiro.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🏘️</span>
+      <strong>Vizinhos atendidos em dias diferentes</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>A aba <b>Vizinhos</b> lista os pares de clientes que ficam a poucos metros um do outro mas <b>não têm nenhum dia de entrega em comum</b> — o caminhão passa duas vezes na mesma rua. Os pares mais próximos aparecem primeiro.</p>
+      <ul>
+        <li>O <b>raio</b> (em metros) é ajustável na hora; quem tem permissão de editar clientes pode <b>salvar como padrão</b> para todo mundo.</li>
+        <li>Toque num par: o mapa <b>enquadra os dois</b> e os destaca; botões "Editar" abrem cada um para acertar o dia.</li>
+        <li>Cliente balcão (retira na empresa) e cliente sem dia de entrega não entram na conta.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">📅</span>
+      <strong>Paradas por dia e quem ficou fora</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>A aba <b>Paradas</b> mostra quantos clientes do filtro caem em cada dia — de entrega e de venda. Km rodados por dia vem numa próxima etapa.</li>
+        <li>A aba <b>Sem GPS</b> lista quem não aparece no mapa por não ter ponto cadastrado, com atalho para a ficha (o ponto é cadastrado na aba Qualidade dos dados).</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ══════════ AS TELAS DO APP ══════════ -->
+  <div class="sec-label">As telas do app, sem mistério</div>
+
+  <!-- TELA 1: mapa + legenda -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 1 · O mapa, os filtros e a legenda</div>
+    <div class="tela-corpo">
+      <div class="app-pills" style="margin-bottom:10px">
+        <span class="app-pill">⚙︎ Filtros · 2<span class="pin">1</span></span>
+        <span class="app-pill on">Dia de entrega<span class="pin">2</span></span>
+        <span class="app-pill">Dia de venda</span>
+        <span class="app-pill">Vendedor</span>
+      </div>
+      <div class="kpi">
+        <div><small>Clientes no filtro</small><strong>128</strong></div>
+        <div><small>Sem ponto GPS</small><strong style="color:#b45309">9</strong><span class="pin">3</span></div>
+      </div>
+      <div class="app-card">
+        <div class="mapa" style="height:160px">
+          <span class="pino" style="left:20%;top:40%;background:#2563eb"></span>
+          <span class="pino" style="left:38%;top:62%;background:conic-gradient(#2563eb 0 50%, #0891b2 50% 100%)"></span>
+          <span class="pino" style="left:55%;top:30%;background:#ea580c"></span>
+          <span class="pino" style="left:30%;top:78%;background:#0891b2"></span>
+          <div class="leg">
+            <b>Dia de entrega<span class="pin">4</span></b>
+            <div><i style="background:#2563eb"></i> SEG · 26</div>
+            <div class="off"><i style="background:#7c3aed"></i> QUA · 40</div>
+            <div><i style="background:#0891b2"></i> QUI · 63</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Filtros</b>: cidade, bairro (depende da cidade), categoria, vendedor (inclusive quem já saiu, marcado "inativo"), dia de entrega, dia de venda, WhatsApp, GPS e ativos/inativos. O número mostra quantos estão ligados; "Limpar" volta ao padrão. Ficam lembrados para a próxima vez.</span></div>
+      <div><span class="pin">2</span><span><b>Colorir por</b>: escolha o que a cor do pino representa. Cada dia da semana tem cor fixa (SEG azul, TER laranja, QUA roxo, QUI ciano, SEX rosa).</span></div>
+      <div><span class="pin">3</span><span>Os cartões contam o filtro atual. Toque em <b>"Sem ponto GPS"</b> para ver a lista de quem ficou fora do mapa.</span></div>
+      <div><span class="pin">4</span><span><b>Legenda clicável</b>: "SEG · 26" = 26 clientes com entrega na segunda. Toque para esconder/mostrar. Cliente com dois dias conta nos dois — quando um dos dias está escondido, a fatia dele fica cinza e o pino continua no mapa. Cliente com "N/D" ou sem dia entra em <b>"Sem dia de entrega"</b> (cinza) — nos cartões e na aba Paradas vale a mesma regra.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 2: painel do cliente -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 2 · Painel do cliente — edição rápida</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-body">
+          <div style="font-weight:700;font-size:13.5px">Padaria Exemplo<span class="pin">1</span></div>
+          <div style="font-size:11.5px;color:#6b756f;margin-bottom:6px">Centro · Cidade Exemplo</div>
+          <span class="badge b-verde">WhatsApp em uso</span><span class="badge b-cinza">Cliente balcão</span><span class="pin">2</span>
+          <div style="font-size:11.5px;color:#6b756f;margin-top:8px">📞 (47) 3000-0000 &nbsp; 💬 (47) 99000-0000 <span class="app-btn claro" style="padding:4px 10px;font-size:11px">Alterar WhatsApp</span><span class="pin">3</span></div>
+        </div>
+      </div>
+      <div class="app-card">
+        <div class="app-card-head">✏️ Edição rápida</div>
+        <div class="app-card-body">
+          <div class="app-input" style="border:none;padding:0;margin-bottom:4px"><small>Dia de entrega<span class="pin">4</span></small></div>
+          <div class="dias"><span class="dia on">SEG</span><span class="dia">TER</span><span class="dia">QUA</span><span class="dia on">QUI</span><span class="dia">SEX</span><span class="dia">SAB</span><span class="dia">DOM</span><span class="dia">N/D</span></div>
+          <div class="app-input"><small>Categoria</small>Padaria</div>
+          <div class="app-input"><small>Vendedor</small>Nome do vendedor<span class="pin">5</span></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+            <span style="font-size:11.5px;color:var(--primary);font-weight:700">↗ Abrir ficha completa<span class="pin">6</span></span>
+            <span class="app-btn">💾 Salvar<span class="pin">7</span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Abre ao <b>tocar num pino</b> (no celular o painel sobe de baixo; puxe a alça para abrir/fechar). Nome fantasia, razão social, bairro e cidade.</span></div>
+      <div><span class="pin">2</span><span>Selos: situação do <b>WhatsApp</b> (mesmo vocabulário da tela Pendências de WhatsApp), <b>Cliente balcão</b>, <b>Sem ponto GPS</b>, <b>Inativo</b>.</span></div>
+      <div><span class="pin">3</span><span>Telefone e celular. <b>"Alterar WhatsApp"</b> abre o mesmo popup do envio de pedido — sem a opção "Não consegui agora", que só existe no bloqueio do pedido.</span></div>
+      <div><span class="pin">4</span><span><b>Dia de entrega e dia de venda</b>: toque nos dias para marcar/desmarcar, igual à ficha do cliente.</span></div>
+      <div><span class="pin">5</span><span><b>Categoria e vendedor</b>: menus com busca. No vendedor aparecem só os ativos (se o atual já saiu, ele continua listado como "inativo" até você trocar).</span></div>
+      <div><span class="pin">6</span><span>Precisa de mais campos? <b>"Abrir ficha completa"</b> vai para o cadastro inteiro.</span></div>
+      <div><span class="pin">7</span><span><b>Salvar</b> grava só o que mudou. O pino troca de cor na hora e a alteração fica no histórico. Se der erro, o painel continua aberto com o que você digitou.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 3: vizinhos -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 3 · Aba Vizinhos — quem recebe em dias diferentes</div>
+    <div class="tela-corpo">
+      <div class="app-pills" style="margin-bottom:10px">
+        <span class="app-pill">👤 Cliente</span><span class="app-pill on">👥 Vizinhos<span class="pin">1</span></span><span class="app-pill">📅 Paradas</span><span class="app-pill">📍 Sem GPS</span>
+      </div>
+      <div class="app-card">
+        <div class="app-card-head">Raio de vizinhança</div>
+        <div class="app-card-body">
+          <div style="display:flex;gap:8px;align-items:center">
+            <div class="app-input" style="flex:1;margin:0">1000 m<span class="pin">2</span></div>
+            <span class="app-btn">Aplicar</span>
+          </div>
+          <div style="font-size:11.5px;color:var(--primary);font-weight:700;margin-top:8px">Salvar como padrão para todos<span class="pin">3</span></div>
+        </div>
+      </div>
+      <div class="par on">
+        <small>42 m · Cidade Exemplo</small><br>
+        <b>Padaria Exemplo</b> <small>(SEG)</small> ⇄ <b>Mercado Exemplo</b> <small>(QUI)</small><span class="pin">4</span>
+        <div style="display:flex;gap:6px;margin-top:8px"><span class="app-btn claro" style="flex:1;justify-content:center;padding:6px">Editar Padaria</span><span class="app-btn claro" style="flex:1;justify-content:center;padding:6px">Editar Mercado</span><span class="pin">5</span></div>
+      </div>
+      <div class="par"><small>180 m</small><br><b>Lanchonete Exemplo</b> <small>(TER)</small> ⇄ <b>Bar Exemplo</b> <small>(SEX)</small></div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>As abas do painel: <b>Cliente</b> (ficha e edição), <b>Vizinhos</b>, <b>Paradas</b> (clientes por dia) e <b>Sem GPS</b> (quem ficou fora do mapa).</span></div>
+      <div><span class="pin">2</span><span><b>Raio</b> em metros (de 100 a 20.000). Mude e toque em <b>Aplicar</b> para recalcular — a lista respeita os filtros da tela (os dois clientes precisam estar no filtro).</span></div>
+      <div><span class="pin">3</span><span><b>Salvar como padrão</b> grava o raio para todo mundo. Só aparece para quem pode editar clientes.</span></div>
+      <div><span class="pin">4</span><span>Cada linha é um <b>par</b>: distância entre os dois e o dia de entrega de cada um. Toque para o mapa enquadrar e destacar os dois.</span></div>
+      <div><span class="pin">5</span><span><b>Editar</b> abre o painel daquele cliente para acertar o dia — e o par some da lista quando os dois passam a ter um dia em comum.</span></div>
+    </div>
+  </div>
+
+  <!-- ══════════ COMO ACESSAR ══════════ -->
+  <div class="sec-label">Para começar a usar</div>
+  <div class="passos">
+    <div class="passo"><span class="passo-n">1</span><div><b>Atualize o app:</b> toque no ícone de atualizar ↻ (ou feche e abra o app).</div></div>
+    <div class="passo"><span class="passo-n">2</span><div>Abra <b>Clientes</b> e toque no botão <b>🗺️ Mapa</b>, no topo.</div></div>
+    <div class="passo"><span class="passo-n">3</span><div>Escolha <b>"Colorir por"</b> e use a legenda para enxergar um dia de cada vez.</div></div>
+    <div class="passo"><span class="passo-n">4</span><div>Toque num pino (ou num par da aba <b>Vizinhos</b>), ajuste o dia e toque em <b>Salvar</b>. Pronto! ✅</div></div>
+  </div>
+
+  <p class="rodape">Dúvidas? Pergunte ao <strong>Clippy</strong> dentro do app — ele já conhece a tela nova.<br>— Hardt Salgados</p>
+</div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.parentElement;
+    const abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>

@@ -723,7 +723,11 @@ const clienteController = {
 
             const atual = await prisma.cliente.findUnique({
                 where: { UUID: uuid },
-                select: { Documento: true, End_Estado: true, Telefone_Celular: true, fiscal: { select: { inscricaoEstadual: true } } }
+                select: {
+                    Documento: true, End_Estado: true, Telefone_Celular: true, fiscal: { select: { inscricaoEstadual: true } },
+                    // usados só pela auditoria (diff de/para) gravada após o update
+                    Dia_de_entrega: true, Dia_de_venda: true, idVendedor: true, categoriaClienteId: true, Nome: true, NomeFantasia: true
+                }
             });
             if (!atual) return res.status(404).json({ error: 'Cliente não encontrado' });
 
@@ -892,16 +896,52 @@ const clienteController = {
                     indicacaoId: indicacaoId === "" ? null : indicacaoId,
                     // Inteligência Comercial
                     categoriaClienteId: categoriaClienteId === "" ? null : categoriaClienteId,
-                    cicloCompraPersonalizadoDias: cicloCompraPersonalizadoDias !== undefined && cicloCompraPersonalizadoDias !== ''
-                        ? parseInt(cicloCompraPersonalizadoDias)
-                        : null,
-                    insightAtivo: insightAtivo !== undefined ? insightAtivo : true,
-                    observacaoComercialFixa: observacaoComercialFixa || null,
+                    // PATCH parcial: campo AUSENTE no body = não mexe (undefined). Antes, um
+                    // PATCH com um campo só (ex.: { Telefone_Celular }) apagava o ciclo
+                    // personalizado, religava o insight e apagava a observação fixa.
+                    cicloCompraPersonalizadoDias: cicloCompraPersonalizadoDias === undefined ? undefined
+                        : (cicloCompraPersonalizadoDias === '' || cicloCompraPersonalizadoDias === null ? null : parseInt(cicloCompraPersonalizadoDias)),
+                    insightAtivo: insightAtivo === undefined ? undefined : !!insightAtivo,
+                    observacaoComercialFixa: observacaoComercialFixa === undefined ? undefined : (observacaoComercialFixa || null),
                     recebeAvisoPedido: recebeAvisoPedido !== undefined ? recebeAvisoPedido : undefined,
                     ...cadastro,
                     ...cadastroWhatsapp
                 }
             });
+
+            // Auditoria (audit_logs) das mudanças que reorganizam a carteira: dia de
+            // entrega/venda, vendedor, categoria e celular. Fora de transação, best-effort:
+            // nunca altera a resposta nem desfaz o update já feito.
+            try {
+                const CAMPOS_AUDITADOS = ['Dia_de_entrega', 'Dia_de_venda', 'idVendedor', 'categoriaClienteId', 'Telefone_Celular'];
+                const norm = (v) => (v === undefined || v === null || v === '') ? null : String(v);
+                const mudancas = {};
+                for (const campo of CAMPOS_AUDITADOS) {
+                    if (req.body[campo] === undefined) continue;          // não veio no PATCH
+                    const de = norm(atual[campo]);
+                    const para = norm(cliente[campo]);
+                    if (de !== para) mudancas[campo] = { de, para };
+                }
+                if (Object.keys(mudancas).length) {
+                    const autor = await prisma.vendedor.findUnique({ where: { id: req.user.id }, select: { nome: true } });
+                    await prisma.auditLog.create({
+                        data: {
+                            acao: 'CLIENTE_ALTERADO',
+                            entidade: 'Cliente',
+                            entidadeId: uuid,
+                            usuarioId: req.user.id,
+                            usuarioNome: autor?.nome || req.user.nome || 'desconhecido',
+                            detalhes: JSON.stringify({
+                                origem: req.body.origem ? String(req.body.origem).slice(0, 60) : null,
+                                cliente: atual.NomeFantasia || atual.Nome || null,
+                                mudancas
+                            })
+                        }
+                    });
+                }
+            } catch (audErr) {
+                console.error('[Clientes] auditoria da alteração falhou (cliente já salvo):', audErr.message);
+            }
 
             // Carimbo da consulta ao bot quando o número mudou (best-effort — já salvou)
             if (verifResultado) {

@@ -2,6 +2,7 @@ process.env.TZ = 'America/Sao_Paulo';
 
 const express = require('express');
 const cors = require('cors');
+const compression = require('compression'); // gzip das respostas (payloads grandes, ex.: /api/mapa-clientes ~670 KB)
 const helmet = require('helmet');
 const path = require('path');
 const axios = require('axios');
@@ -98,6 +99,7 @@ app.set('trust proxy', 1);
 // CORS aberto (revertido para destravar o app). Restrição por allowlist será
 // reintroduzida depois de confirmar a origem exata que o app usa no navegador.
 app.use(cors());
+app.use(compression());
 
 // Cabeçalhos de segurança. CSP e cross-origin-resource-policy desligados para não
 // bloquear imagens de /uploads (carregadas pelo frontend em outro domínio) nem o
@@ -156,6 +158,7 @@ app.use('/api/clientes', authMiddleware, clienteRoutes);
 app.use('/api/cidades', authMiddleware, require('./routes/cidades')); // Lista canônica de cidades (dropdowns) — padronização de grafia
 app.use('/api/gps-clientes', authMiddleware, require('./routes/gpsClientesRoutes')); // Ponto GPS confiável por cliente
 app.use('/api/whatsapp-clientes', authMiddleware, require('./routes/whatsappClienteRoutes')); // WhatsApp do cliente: obrigatório, verificado e com selo
+app.use('/api/mapa-clientes', authMiddleware, require('./routes/mapaClientesRoutes')); // Mapa de Clientes (reorganização por dia/região)
 app.use('/api/vendedores', authMiddleware, vendedorRoutes);
 app.use('/api/config', authMiddleware, configRoutes);
 app.use('/api/tabela-precos', authMiddleware, tabelaPrecoRoutes);

@@ -85,6 +85,26 @@ const dispensaValida = (status, dias) => {
     return limite >= Date.now();
 };
 
+// ── Situação do WhatsApp de UM cliente ───────────────────────────────────────
+// Mesma cadeia if/else do relatório de Pendências (`pendencias`, abaixo), extraída
+// para quem precisa classificar cliente a cliente (Mapa de Clientes). O relatório
+// só conhece 3 situações (as que exigem ação); aqui completamos com EM_USO e
+// SEM_HISTORICO para o cliente QUE TEM número, sem mudar a classificação dele.
+// `cliente` precisa trazer `Telefone_Celular` e `whatsappStatus` (pode ser null).
+const situacaoWhatsapp = (cliente, cfg) => {
+    const st = cliente?.whatsappStatus || null;
+    const temNumero = numeroValido(cliente?.Telefone_Celular);
+    const dias = Number(cfg?.diasValidadeDispensa) > 0 ? Number(cfg.diasValidadeDispensa) : DIAS_VALIDADE_PADRAO;
+    const temDispensa = dispensaValida(st, dias);
+    let situacao;
+    if (!temNumero && temDispensa) situacao = 'DISPENSADO';
+    else if (!temNumero) situacao = 'SEM_NUMERO';
+    else if (st?.selo === 'COM_PROBLEMA') situacao = 'COM_PROBLEMA';
+    else if (st?.selo === 'EM_USO') situacao = 'EM_USO';
+    else situacao = 'SEM_HISTORICO';
+    return { temNumero, situacao };
+};
+
 const validaAte = (dispensaEm, dias) =>
     dispensaEm ? new Date(new Date(dispensaEm).getTime() + dias * 24 * 60 * 60 * 1000) : null;
 
@@ -524,6 +544,7 @@ module.exports = {
     getConfig,
     setConfig,
     dispensaValida,
+    situacaoWhatsapp,
     registrarDispensa,
     registrarVerificacao,
     validarPedidoEnviar,

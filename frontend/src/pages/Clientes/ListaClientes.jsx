@@ -458,6 +458,13 @@ const ListaClientes = () => {
                             </span>
                         )}
                     </button>
+                    <button
+                        onClick={() => navigate('/clientes/mapa')}
+                        title="Mapa de Clientes"
+                        className="shrink-0 px-3 py-2 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-sm flex items-center gap-1.5 min-h-[38px]"
+                    >
+                        🗺️<span className="hidden lg:inline">Mapa</span>
+                    </button>
                     {podeCadastrar && (
                         <button
                             onClick={() => navigate('/clientes/saude-gps')}
