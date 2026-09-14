@@ -22,46 +22,65 @@ const TABS = [
   { id: 'config', label: 'Configurações', icon: Settings },
 ];
 
-export default function SiteAdmin() {
+export default function SiteAdmin({ embutido = false }) {
   const [tab, setTab] = useState('pedidos');
   const linkCliente = `${window.location.origin}/congelados`;
   const linkHome = `${window.location.origin}/inicio`;
   const copiar = () => navigator.clipboard.writeText(linkCliente).then(() => toast.success('Link copiado!'));
 
+  // `embutido`: montado dentro de Pedidos Online (casca já tem cabeçalho, ações
+  // e abas em pasta) — aqui só as sub-abas viram chips, no padrão da aba de Pedidos.
   return (
-    <div className="w-full px-3 md:px-6 py-4">
-      {/* Cabeçalho */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
-        <div className="flex items-center gap-2">
-          <Snowflake className="h-6 w-6 text-sky-500" />
-          <div>
-            <h1 className="text-xl font-bold text-gray-800">Site · Congelados</h1>
-            <p className="text-xs text-gray-500">Página principal · pedidos de congelados · conversão em pedidos</p>
+    <div className={embutido ? 'w-full' : 'w-full px-3 md:px-6 py-4'}>
+      {!embutido && (
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+          <div className="flex items-center gap-2">
+            <Snowflake className="h-6 w-6 text-sky-500" />
+            <div>
+              <h1 className="text-xl font-bold text-gray-800">Site · Congelados</h1>
+              <p className="text-xs text-gray-500">Página principal · pedidos de congelados · conversão em pedidos</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <a href={linkHome} target="_blank" rel="noreferrer"
+              className="text-xs px-3 py-2 rounded-lg border border-sky-200 text-sky-700 hover:bg-sky-50 flex items-center gap-1.5">
+              <Link2 className="h-4 w-4" /> Abrir site
+            </a>
+            <button onClick={copiar} className="text-xs px-3 py-2 rounded-lg bg-sky-600 text-white hover:bg-sky-700 flex items-center gap-1.5">
+              Copiar link do cliente
+            </button>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <a href={linkHome} target="_blank" rel="noreferrer"
-            className="text-xs px-3 py-2 rounded-lg border border-sky-200 text-sky-700 hover:bg-sky-50 flex items-center gap-1.5">
-            <Link2 className="h-4 w-4" /> Abrir site
-          </a>
-          <button onClick={copiar} className="text-xs px-3 py-2 rounded-lg bg-sky-600 text-white hover:bg-sky-700 flex items-center gap-1.5">
-            Copiar link do cliente
-          </button>
-        </div>
-      </div>
+      )}
 
-      {/* Abas */}
-      <div className="flex gap-1 overflow-x-auto border-b border-gray-200 mb-4 -mx-1 px-1">
-        {TABS.map(t => {
-          const Icon = t.icon; const active = tab === t.id;
-          return (
-            <button key={t.id} onClick={() => setTab(t.id)}
-              className={`flex items-center gap-1.5 px-3 py-2.5 text-sm whitespace-nowrap border-b-2 transition-colors ${active ? 'border-sky-600 text-sky-700 font-semibold' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
-              <Icon className="h-4 w-4" /> {t.label}
-            </button>
-          );
-        })}
-      </div>
+      {/* Sub-abas */}
+      {embutido ? (
+        <div className="flex items-center gap-1.5 mb-3 overflow-x-auto scrollbar-hide">
+          {TABS.map(t => {
+            const Icon = t.icon; const active = tab === t.id;
+            return (
+              <button key={t.id} onClick={() => setTab(t.id)}
+                className={`flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold rounded-full border transition-colors shrink-0 ${active
+                  ? 'bg-sky-100 text-sky-800 border-sky-300'
+                  : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'}`}>
+                <Icon className="h-3.5 w-3.5" /> {t.label}
+              </button>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="flex gap-1 overflow-x-auto border-b border-gray-200 mb-4 -mx-1 px-1">
+          {TABS.map(t => {
+            const Icon = t.icon; const active = tab === t.id;
+            return (
+              <button key={t.id} onClick={() => setTab(t.id)}
+                className={`flex items-center gap-1.5 px-3 py-2.5 text-sm whitespace-nowrap border-b-2 transition-colors ${active ? 'border-sky-600 text-sky-700 font-semibold' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+                <Icon className="h-4 w-4" /> {t.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {tab === 'pedidos' && <PedidosTab />}
       {tab === 'produtos' && <ProdutosTab />}

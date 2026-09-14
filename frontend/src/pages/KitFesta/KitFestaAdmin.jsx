@@ -20,7 +20,7 @@ const TABS = [
   { id: 'config', label: 'Configurações', icon: Settings },
 ];
 
-export default function KitFestaAdmin() {
+export default function KitFestaAdmin({ embutido = false }) {
   const [tab, setTab] = useState('pedidos');
 
   // Link público do site (a página /kit-festa do próprio front)
@@ -29,44 +29,64 @@ export default function KitFestaAdmin() {
     navigator.clipboard.writeText(linkPublico).then(() => toast.success('Link copiado!'));
   };
 
+  // `embutido`: montado dentro de Pedidos Online (casca já tem cabeçalho, ações
+  // e abas em pasta) — aqui só as sub-abas viram chips, no padrão da aba de Pedidos.
   return (
-    <div className="w-full px-3 md:px-6 py-4">
-      {/* Cabeçalho */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
-        <div className="flex items-center gap-2">
-          <PartyPopper className="h-6 w-6 text-emerald-600" />
-          <div>
-            <h1 className="text-xl font-bold text-gray-800">Kit Festa</h1>
-            <p className="text-xs text-gray-500">Site de pedidos · agenda da cozinha · conversão em pedidos</p>
+    <div className={embutido ? 'w-full' : 'w-full px-3 md:px-6 py-4'}>
+      {!embutido && (
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+          <div className="flex items-center gap-2">
+            <PartyPopper className="h-6 w-6 text-emerald-600" />
+            <div>
+              <h1 className="text-xl font-bold text-gray-800">Kit Festa</h1>
+              <p className="text-xs text-gray-500">Site de pedidos · agenda da cozinha · conversão em pedidos</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <a href={linkPublico} target="_blank" rel="noreferrer"
+              className="text-xs px-3 py-2 rounded-lg border border-emerald-200 text-emerald-700 hover:bg-emerald-50 flex items-center gap-1.5">
+              <Link2 className="h-4 w-4" /> Abrir site
+            </a>
+            <button onClick={copiarLink}
+              className="text-xs px-3 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 flex items-center gap-1.5">
+              Copiar link do cliente
+            </button>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <a href={linkPublico} target="_blank" rel="noreferrer"
-            className="text-xs px-3 py-2 rounded-lg border border-emerald-200 text-emerald-700 hover:bg-emerald-50 flex items-center gap-1.5">
-            <Link2 className="h-4 w-4" /> Abrir site
-          </a>
-          <button onClick={copiarLink}
-            className="text-xs px-3 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 flex items-center gap-1.5">
-            Copiar link do cliente
-          </button>
-        </div>
-      </div>
+      )}
 
-      {/* Abas */}
-      <div className="flex gap-1 overflow-x-auto border-b border-gray-200 mb-4 -mx-1 px-1">
-        {TABS.map(t => {
-          const Icon = t.icon;
-          const active = tab === t.id;
-          return (
-            <button key={t.id} onClick={() => setTab(t.id)}
-              className={`flex items-center gap-1.5 px-3 py-2.5 text-sm whitespace-nowrap border-b-2 transition-colors ${active
-                ? 'border-emerald-600 text-emerald-700 font-semibold'
-                : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
-              <Icon className="h-4 w-4" /> {t.label}
-            </button>
-          );
-        })}
-      </div>
+      {/* Sub-abas */}
+      {embutido ? (
+        <div className="flex items-center gap-1.5 mb-3 overflow-x-auto scrollbar-hide">
+          {TABS.map(t => {
+            const Icon = t.icon;
+            const active = tab === t.id;
+            return (
+              <button key={t.id} onClick={() => setTab(t.id)}
+                className={`flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold rounded-full border transition-colors shrink-0 ${active
+                  ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                  : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'}`}>
+                <Icon className="h-3.5 w-3.5" /> {t.label}
+              </button>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="flex gap-1 overflow-x-auto border-b border-gray-200 mb-4 -mx-1 px-1">
+          {TABS.map(t => {
+            const Icon = t.icon;
+            const active = tab === t.id;
+            return (
+              <button key={t.id} onClick={() => setTab(t.id)}
+                className={`flex items-center gap-1.5 px-3 py-2.5 text-sm whitespace-nowrap border-b-2 transition-colors ${active
+                  ? 'border-emerald-600 text-emerald-700 font-semibold'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+                <Icon className="h-4 w-4" /> {t.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* Conteúdo */}
       <div>
