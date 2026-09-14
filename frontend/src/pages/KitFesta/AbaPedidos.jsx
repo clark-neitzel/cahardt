@@ -122,7 +122,7 @@ export default function AbaPedidos() {
             const nomeSite = cli ? nomeDoSite(p.nomeCliente, nomeExib) : '';
             return (
             <button key={p.id} onClick={() => setAberto(p)}
-              className={`text-left bg-white rounded-xl border p-3 hover:shadow-md transition-shadow ${novo ? 'border-amber-300 ring-1 ring-amber-200' : 'border-gray-200'} ${inativo ? 'opacity-60' : ''}`}>
+              className={`text-left bg-white rounded-xl raio-proprio border p-3 hover:shadow-md transition-shadow ${novo ? 'border-amber-300 ring-1 ring-amber-200' : 'border-gray-200'} ${inativo ? 'opacity-60' : ''}`}>
               <div className="flex items-center justify-between mb-1">
                 <span className="font-mono text-xs text-gray-400">#{p.numero}</span>
                 <div className="flex items-center gap-1.5">
