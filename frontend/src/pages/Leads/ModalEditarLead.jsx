@@ -7,6 +7,7 @@ import configService from '../../services/configService';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 import SelectBusca from '../../components/SelectBusca';
+import CampoCidade from '../../components/CampoCidade';
 
 const DIAS_OPCOES = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'DOM', 'N/D'];
 const CANAIS = [
@@ -189,6 +190,10 @@ const ModalEditarLead = ({ lead, onClose, onSalvo, onExcluido, user }) => {
             toast.error('Informe o nome do estabelecimento.');
             return;
         }
+        if (!(form.cidade || '').trim()) {
+            toast.error('Informe a cidade.');
+            return;
+        }
         try {
             setSaving(true);
             await leadService.atualizar(lead.id, {
@@ -260,9 +265,7 @@ const ModalEditarLead = ({ lead, onClose, onSalvo, onExcluido, user }) => {
                     {/* Cidade, Origem, Categoria */}
                     <div>
                         <label className="block text-[13px] font-semibold text-gray-700 mb-1">Cidade</label>
-                        <input type="text" value={form.cidade} onChange={e => setForm(f => ({ ...f, cidade: e.target.value }))}
-                            placeholder="Ex: Chapecó"
-                            className="block w-full border border-gray-300 rounded-lg p-3 bg-white text-gray-900 text-[14px] focus:ring-primary focus:border-primary" />
+                        <CampoCidade value={form.cidade} onChange={v => setForm(f => ({ ...f, cidade: v }))} placeholder="Ex: Chapecó" />
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                         <div>

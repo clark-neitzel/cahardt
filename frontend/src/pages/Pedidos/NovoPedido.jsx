@@ -24,6 +24,7 @@ import AvisoWhatsappFaltante from '../../components/AvisoWhatsappFaltante';
 import whatsappClientesService, { numeroWhatsappValido } from '../../services/whatsappClientesService';
 import { somAviso } from '../../utils/sons';
 import { normalizarDoc } from '../../utils/documento'; // busca por CPF/CNPJ (inclui alfanumérico)
+import { chaveBusca } from '../../utils/cidade'; // busca sem acento/caixa ("pao" acha "Pão")
 
 const DIA_SEMANA_MAP = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
 
@@ -1240,22 +1241,22 @@ const NovoPedido = () => {
     const clientesBusca = useMemo(() => {
         if (!showClienteModal) return [];
         const raw = clienteSearchText.trim();
-        const lowerSearch = raw.toLowerCase();
+        const lowerSearch = chaveBusca(raw); // sem acento/caixa
         const docSearch = normalizarDoc(raw); // CPF/CNPJ digitado (com ou sem pontuação, inclui letras)
         return clientes.filter(c =>
             !raw ||
-            (c.NomeFantasia || c.Nome)?.toLowerCase().includes(lowerSearch) ||
+            chaveBusca(c.NomeFantasia || c.Nome).includes(lowerSearch) ||
             (docSearch && normalizarDoc(c.Documento).includes(docSearch))
         );
     }, [clientes, clienteSearchText, showClienteModal]);
 
     // Otimização: Cachear as listas de produtos (só recalcula quando necessário)
     const { produtosJaComprados, produtosComPromoNaoComprados, produtosOutros } = useMemo(() => {
-        const termoBusca = produtoSearch.toLowerCase().trim();
+        const termoBusca = chaveBusca(produtoSearch); // sem acento/caixa: "pao" acha "Pão"
         const filtrados = produtos.filter(p => {
             if (!termoBusca) return true;
-            return (p.nome && p.nome.toLowerCase().includes(termoBusca))
-                || (p.codigo && p.codigo.toLowerCase().includes(termoBusca));
+            return (p.nome && chaveBusca(p.nome).includes(termoBusca))
+                || (p.codigo && chaveBusca(p.codigo).includes(termoBusca));
         });
 
         const historicoPorData = Array.from(historicoMap.entries())

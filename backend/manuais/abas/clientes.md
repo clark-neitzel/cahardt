@@ -147,6 +147,16 @@ Aba padrão ao abrir o detalhe. Contém tudo que é editável pelo time comercia
 
 A barra de ações fica fixada no rodapé com os botões **Descartar** e **Salvar Alterações**.
 
+> **Campo Cidade é uma lista com sugestão (desde 09/2026):** ao tocar em **Cidade** abre uma lista
+> com todas as cidades já existentes no sistema (clientes e leads), com busca no topo. A busca
+> **ignora acento, cedilha e maiúscula/minúscula** — digitar `itapoa` acha `Itapoá`, `sao fran` acha
+> `São Francisco do Sul`. Escolhendo da lista, a cidade entra com a **grafia exata** que já está
+> gravada. Se a cidade ainda não existe, aparece o botão **Usar "…"** (ou Enter) e o nome digitado
+> entra já arrumado (primeira letra maiúscula, `do/da/de` minúsculo, acentos digitados mantidos).
+> Se a lista não carregar (sem rede), o campo continua aceitando texto — o cadastro nunca trava.
+> Essa mesma busca sem acento vale para **todos os menus com busca do app** (cliente, produto,
+> vendedor, filtros de cidade, condição de pagamento).
+>
 > **Grafia da cidade (desde 08/2026):** o nome da cidade é gravado sempre na forma oficial, não
 > importa como for digitado. `JOINVILLE`, `joinville` e `Joinville ` (com espaço no fim) viram
 > todos `Joinville`; `ITAPOA` vira `Itapoá`; `JARAGUA DO SUL` vira `Jaraguá do Sul`. Erros de

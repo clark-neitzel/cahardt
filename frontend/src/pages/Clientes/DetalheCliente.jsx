@@ -15,6 +15,8 @@ import { API_URL } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { ArrowLeft, MapPin, Phone, Mail, Calendar, FileText, Save, X, User, Building, DollarSign, MessageCircle, Clock, ClipboardList, ShoppingCart, Package, Sparkles, RefreshCw, Image, UserPlus, Search, ExternalLink, Truck, CreditCard, AlertTriangle, ShieldCheck } from 'lucide-react';
 import SelectBusca from '../../components/SelectBusca';
+import CampoCidade from '../../components/CampoCidade';
+import { normalizarCidade } from '../../utils/cidade';
 import CampoWhatsapps from '../../components/CampoWhatsapps';
 import { normalizarDoc, formatarDoc, mascaraDoc, validarDoc } from '../../utils/documento'; // inclui CNPJ ALFANUMÉRICO
 import toast from 'react-hot-toast';
@@ -354,7 +356,7 @@ const DetalheCliente = () => {
                 End_Numero: r.endereco?.numero || f.End_Numero,
                 End_Complemento: r.endereco?.complemento || f.End_Complemento,
                 End_Bairro: r.endereco?.bairro || f.End_Bairro,
-                End_Cidade: r.endereco?.cidade || f.End_Cidade,
+                End_Cidade: normalizarCidade(r.endereco?.cidade) || f.End_Cidade, // Receita devolve MAIÚSCULO
                 End_Estado: r.endereco?.uf || f.End_Estado,
                 End_CEP: r.endereco?.cep || f.End_CEP
             }));
@@ -1503,8 +1505,7 @@ const DetalheCliente = () => {
                                     </div>
                                     <div className="col-span-2 md:col-span-3">
                                         <label className="block text-xs text-gray-400 mb-0.5">Cidade</label>
-                                        <input type="text" className="block w-full border border-gray-200 rounded-lg p-2.5 text-sm bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                            value={formData.End_Cidade} onChange={(e) => setFormData({ ...formData, End_Cidade: e.target.value })} />
+                                        <CampoCidade value={formData.End_Cidade} onChange={(v) => setFormData({ ...formData, End_Cidade: v })} />
                                     </div>
                                     <div className="col-span-1">
                                         <label className="block text-xs text-gray-400 mb-0.5">UF</label>

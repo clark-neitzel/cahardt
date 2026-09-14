@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown, X, Check } from 'lucide-react';
+import { chaveBusca } from '../utils/cidade';
 
 // Supports string arrays OR object arrays { value, label }
 // `summary`: ao invés de listar todos os chips selecionados, mostra um resumo
@@ -99,7 +100,7 @@ const MultiSelect = ({ options, selected, onChange, placeholder = "Selecione..."
                         <div className="py-2 px-4 text-gray-500">Nenhuma opção disponível</div>
                     ) : (
                         options
-                            .filter((option) => !searchable || !query.trim() || String(getLabel(option)).toLowerCase().includes(query.trim().toLowerCase()))
+                            .filter((option) => !searchable || !chaveBusca(query) || chaveBusca(getLabel(option)).includes(chaveBusca(query))) // busca sem acento/caixa
                             .map((option) => {
                             const val = getValue(option);
                             const label = getLabel(option);

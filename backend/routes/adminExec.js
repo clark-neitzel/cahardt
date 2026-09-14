@@ -60,7 +60,7 @@ router.get('/ping', (req, res) => {
         ok: true,
         // Marcador de deploy: bumpar a cada mudança de backend que precise de confirmação
         // em produção (não há outro jeito de saber de fora qual versão está no ar).
-        deployMarker: 'nf-bonificacao-2026-09-11',
+        deployMarker: 'backfill-cidades-2026-09-13',
         uptimeSegundos: Math.round(process.uptime()),
         timestamp: new Date().toISOString(),
         openaiConfigurada: !!process.env.OPENAI_API_KEY,
@@ -11417,13 +11417,13 @@ router.get('/diag-cidades', async (req, res) => {
 // O dry-run é o PADRÃO, como nas outras rotas destrutivas deste arquivo
 // (`limpar-pedidos-abertos-antigos`, `backfill-contas-receber`, `asaas-quitar-residuo-ca`).
 //
-// COMO SABER SE O DEPLOY DESTA FASE JÁ SUBIU (sem disputar o `deployMarker`)
-// -------------------------------------------------------------------------
+// COMO SABER SE O DEPLOY DESTA FASE JÁ SUBIU
+// ------------------------------------------
 // `GET /backfill-cidades-snapshots` é a sonda: devolve 404 antes do deploy e 200 depois.
-// É somente leitura e idempotente, então pode ser chamada à vontade. O `deployMarker` do
-// /ping NÃO é bumpado aqui de propósito — nem a Fase 0 nem a Fase 1 o tocaram, ele é a
-// sonda de uma entrega paralela ainda aberta, e disputá-lo apagaria a sonda dela e
-// garantiria conflito de merge.
+// É somente leitura e idempotente, então pode ser chamada à vontade. Em 09/2026 (corpo
+// estendido dryRun/aprovado/apelidos/regraMeta + rota /backfill-cidades/reverter) o
+// `deployMarker` do /ping passou a 'backfill-cidades-2026-09-13' — a entrega paralela
+// que o usava (nf-bonificacao) já estava commitada.
 // ============================================================================
 
 // POST /api/admin-exec/backfill-cidades
@@ -11446,27 +11446,62 @@ router.get('/diag-cidades', async (req, res) => {
 // mostrou ao dono ("SAO BENTO DO SUL" -> "Sao Bento do Sul"). Por isso a resposta passa a
 // trazer `avisoForaDoDicionario`. O caminho certo continua sendo acrescentar a linha em
 // CIDADES_CANONICAS, com aprovação.
+//
+// (09/2026) Corpo estendido — todos opcionais:
+//   dryRun:   true (padrão) | false. `confirmar: true` continua valendo como dryRun:false.
+//   aprovado: [ { chave, nomeFinal } ]  — libera grupos FORA do dicionário, um a um. O
+//             nomeFinal tem que ser o que `normalizarCidade` produz; se divergir, o grupo
+//             NÃO é aplicado e sai em `aprovadoDivergente` (senão a Fase 1 re-sujaria).
+//   apelidos: { "joinvile": "joinville" } — erro de digitação -> chave/nome certo. Só
+//             vale nesta chamada; o permanente é a linha em CIDADES_CANONICAS.
+//   regraMeta: "somar" — funde colisões de meta_cidades (soma valor + união dos dias).
+//             SEM isso as colisões NÃO são tocadas e saem em `metaCidades.pendentes`.
+// Dicionário + "só espaço" continuam aprovados por padrão (é a lista que o dono aprovou).
 router.post('/backfill-cidades', async (req, res) => {
     try {
         const backfill = require('../services/backfillCidadesService');
-        const permitirForaDoDicionario = req.body?.permitirForaDoDicionario === true;
+        const b = req.body || {};
+        const opcoes = {
+            permitirForaDoDicionario: b.permitirForaDoDicionario === true,
+            aprovado: b.aprovado,
+            apelidos: b.apelidos,
+            regraMeta: b.regraMeta,
+        };
+        const dryRun = b.confirmar === true ? false : b.dryRun !== false;
 
-        if (req.body?.confirmar !== true) {
-            const plano = await backfill.montarPlano({ permitirForaDoDicionario });
+        if (dryRun) {
+            const plano = await backfill.montarPlano(opcoes);
             return res.json({
                 ok: true,
                 dryRun: true,
                 escreveu: false,
-                comoAplicar: 'POST /api/admin-exec/backfill-cidades { "confirmar": true }',
+                comoAplicar: 'POST /api/admin-exec/backfill-cidades { "dryRun": false, "regraMeta": "somar", ... }',
                 geradoEm: new Date().toISOString(),
                 ...backfill.planoParaResposta(plano),
             });
         }
 
-        const r = await backfill.aplicar({ permitirForaDoDicionario });
+        const r = await backfill.aplicar(opcoes);
         res.json({ dryRun: false, ...r });
     } catch (err) {
         console.error('[backfill-cidades]', err);
+        if (!res.headersSent) res.status(500).json({ ok: false, erro: err.message });
+    }
+});
+
+// POST /api/admin-exec/backfill-cidades/reverter { "arquivo": "backfill-cidades-....json" }
+// Mesma reversão da rota abaixo, no formato pedido em 09/2026: o `arquivo` é OBRIGATÓRIO
+// (reverter "o último" sem dizer qual é caminho da rota antiga, com `confirmar`).
+router.post('/backfill-cidades/reverter', async (req, res) => {
+    try {
+        const arquivo = String(req.body?.arquivo || '').trim();
+        if (!arquivo || arquivo.includes('/') || arquivo.includes('..')) {
+            return res.status(400).json({ ok: false, error: 'Envie { "arquivo": "<nome do snapshot .json>" } (ver GET /backfill-cidades-snapshots).' });
+        }
+        const backfill = require('../services/backfillCidadesService');
+        res.json(await backfill.reverter({ arquivo }));
+    } catch (err) {
+        console.error('[backfill-cidades/reverter]', err);
         if (!res.headersSent) res.status(500).json({ ok: false, erro: err.message });
     }
 });

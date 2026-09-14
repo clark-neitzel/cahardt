@@ -27,8 +27,8 @@
  *
  * O QUE **NÃO** É TOCADO
  * ----------------------
- * · `catalogos_personalizados.cliente_cidade` — é SNAPSHOT histórico do que o cliente viu
- *   no link público `/lista/:token`. Reescrever histórico não traz ganho e traz risco.
+ * · (09/2026) `catalogos_personalizados.cliente_cidade` PASSOU a entrar, a pedido: é o
+ *   campo composto "Cidade · UF" — só a parte da cidade é normalizada, a UF fica intocada.
  * · Linhas de `meta_cidades` com o texto "Sem cidade" — a sentinela de CIDADES_CANONICAS
  *   faz `normalizarCidade('Sem cidade') === 'Sem cidade'`, então elas caem naturalmente em
  *   "não muda". NÃO existe exceção especial no código para elas: se a sentinela sair do
@@ -90,7 +90,25 @@ const ALVOS = [
     { chave: 'leads', model: 'lead', rotulo: 'Lead', campo: 'cidade', pk: 'id' },
     { chave: 'fornecedores', model: 'fornecedor', rotulo: 'Fornecedor', campo: 'cidade', pk: 'id' },
     { chave: 'kitFestaBairros', model: 'kitFestaBairro', rotulo: 'KitFestaBairro', campo: 'cidade', pk: 'id' },
+    // `cliente_cidade` é COMPOSTO ("Joinville · SC" — catalogoPersonalizadoService.js:88).
+    // Só a parte da cidade é normalizada; a UF fica exatamente como está. Entrou na Fase 2
+    // em 09/2026 a pedido (antes ficava de fora como "snapshot histórico"): mudar só a
+    // caixa/acento do rótulo do link público não altera preço nem item do catálogo.
+    { chave: 'catalogos', model: 'catalogoPersonalizado', rotulo: 'CatalogoPersonalizado', campo: 'clienteCidade', pk: 'id', composto: true },
 ];
+
+/** "Joinville · SC" -> { cidade: 'Joinville', uf: 'SC' }. Sem separador: tudo é cidade, salvo UF sozinha. */
+function decomporComposto(valor) {
+    const bruto = String(valor == null ? '' : valor);
+    const partes = bruto.split('·');
+    if (partes.length > 1) return { cidade: partes[0].trim(), uf: partes.slice(1).join('·').trim() };
+    const unico = bruto.trim();
+    if (/^[A-Za-z]{2}$/.test(unico)) return { cidade: '', uf: unico }; // "SC" sozinho = estado, não cidade
+    return { cidade: unico, uf: '' };
+}
+function recomporComposto(cidade, uf) {
+    return [cidade, uf].filter(Boolean).join(' · ') || null;
+}
 
 /**
  * De onde vem o nome novo desta mudança — é o que decide se ela pode ser aplicada sem uma
@@ -107,6 +125,77 @@ function classificarMudanca(valor, nomeFinal) {
 }
 
 const APROVADAS_POR_PADRAO = new Set(['dicionario', 'espacos']);
+
+/**
+ * Nome final de UM valor cru, respeitando os APELIDOS passados na chamada.
+ *   apelidos: { 'joinvile': 'joinville' } (chave errada -> chave/nome certo). O alvo é
+ *   resolvido pelo dicionário quando existe (devolve o acento), senão por normalizarCidade.
+ * Devolve { nomeFinal, viaApelido }. `nomeFinal` null = valor só de espaço.
+ */
+function nomeFinalDe(valor, apelidos) {
+    const chave = chaveCidade(valor);
+    if (chave && apelidos && Object.prototype.hasOwnProperty.call(apelidos, chave)) {
+        const alvo = String(apelidos[chave] || '');
+        const chaveAlvo = chaveCidade(alvo);
+        const nome = Object.prototype.hasOwnProperty.call(CIDADES_CANONICAS, chaveAlvo)
+            ? CIDADES_CANONICAS[chaveAlvo]
+            : normalizarCidade(alvo);
+        if (nome) return { nomeFinal: nome, viaApelido: true };
+    }
+    return { nomeFinal: normalizarCidade(valor), viaApelido: false };
+}
+
+/**
+ * Normaliza as opções do corpo da chamada (rota) para o formato interno.
+ *   aprovado:  [{ chave, nomeFinal }]  -> Map chave -> nomeFinal
+ *   apelidos:  { chaveErrada: alvo }    -> objeto com as chaves passadas por chaveCidade
+ *   regraMeta: 'somar' | null (null = fusões de meta NÃO são tocadas, saem como pendentes)
+ */
+function normalizarOpcoes({ permitirForaDoDicionario = false, aprovado, apelidos, regraMeta } = {}) {
+    const aprovadoMap = new Map();
+    for (const a of (Array.isArray(aprovado) ? aprovado : [])) {
+        const chave = chaveCidade(a?.chave);
+        const nome = normalizarCidade(a?.nomeFinal);
+        if (chave && nome) aprovadoMap.set(chave, nome);
+    }
+    const apelidosMap = {};
+    if (apelidos && typeof apelidos === 'object' && !Array.isArray(apelidos)) {
+        for (const [de, para] of Object.entries(apelidos)) {
+            const chave = chaveCidade(de);
+            if (chave && para) apelidosMap[chave] = String(para);
+        }
+    }
+    return {
+        permitirForaDoDicionario: permitirForaDoDicionario === true,
+        aprovado: aprovadoMap,
+        apelidos: apelidosMap,
+        regraMeta: regraMeta === 'somar' ? 'somar' : null,
+    };
+}
+
+/**
+ * Esta mudança pode ser gravada? Ordem das travas:
+ *   1. apelido passado na chamada            -> sim ('apelidoNaChamada')
+ *   2. dicionário / só espaço                -> sim (aprovadas por padrão — o dicionário É a
+ *      lista que o dono aprovou linha a linha)
+ *   3. chave em `aprovado` com o MESMO nome  -> sim ('aprovadoNaChamada')
+ *      com nome DIFERENTE                    -> NÃO, e sai em `aprovadoDivergente` (gravar um
+ *      nome que `normalizarCidade` não produz quebraria a idempotência: a Fase 1 re-sujaria;
+ *      o caminho certo é a linha em CIDADES_CANONICAS)
+ *   4. permitirForaDoDicionario              -> sim, com o aviso
+ */
+function decidirAplicacao(valor, nomeFinal, viaApelido, op) {
+    if (viaApelido) return { classificacao: 'apelidoNaChamada', aplicar: true, divergente: null };
+    const classificacao = classificarMudanca(valor, nomeFinal);
+    if (APROVADAS_POR_PADRAO.has(classificacao)) return { classificacao, aplicar: true, divergente: null };
+    const chave = chaveCidade(valor);
+    if (op.aprovado.has(chave)) {
+        const pedido = op.aprovado.get(chave);
+        if (pedido === nomeFinal) return { classificacao: 'aprovadoNaChamada', aplicar: true, divergente: null };
+        return { classificacao, aplicar: false, divergente: { chave, pedido, calculado: nomeFinal } };
+    }
+    return { classificacao, aplicar: op.permitirForaDoDicionario, divergente: null };
+}
 
 /**
  * AVISO que acompanha toda resposta com `permitirForaDoDicionario: true`.
@@ -148,10 +237,16 @@ function bancoDoAmbiente() {
 // ============================================================================
 // 1) PLANO — só LEITURA. É o que o dry-run devolve e o que o `aplicar` executa.
 // ============================================================================
-async function montarPlano({ permitirForaDoDicionario = false } = {}) {
+async function montarPlano(opcoes = {}) {
+    const op = normalizarOpcoes(opcoes);
+    const { permitirForaDoDicionario } = op;
     const tabelas = [];
     const ignoradosEmBranco = [];
     const semAprovacao = [];
+    const aprovadoDivergente = [];
+    const registrarDivergente = (tabela, d, linhas) => {
+        if (d) aprovadoDivergente.push({ tabela, ...d, linhas });
+    };
 
     // ------------------------------------------------------- tabelas simples
     for (const alvo of ALVOS) {
@@ -173,8 +268,12 @@ async function montarPlano({ permitirForaDoDicionario = false } = {}) {
 
         const variantes = [];
         for (const [valor, ids] of porValor.entries()) {
-            const nomeFinal = normalizarCidade(valor);
-            if (!nomeFinal) {
+            // Campo composto ("Joinville · SC"): só a parte da cidade passa pela regra.
+            const parte = alvo.composto ? decomporComposto(valor) : { cidade: valor, uf: '' };
+            if (alvo.composto && !parte.cidade) continue;   // só UF ("SC") — não é cidade, não mexe
+            const { nomeFinal: nomeCidade, viaApelido } = nomeFinalDe(parte.cidade, op.apelidos);
+            const nomeFinal = alvo.composto ? recomporComposto(nomeCidade, parte.uf) : nomeCidade;
+            if (!nomeCidade) {
                 // Só espaço. Gravar null seria uma mudança que ninguém aprovou — o valor
                 // fica como está e SEMPRE aparece em `ignoradosEmBranco`, para o dono ver
                 // que existe e decidir. (A versão anterior tinha aqui um
@@ -185,9 +284,9 @@ async function montarPlano({ permitirForaDoDicionario = false } = {}) {
                 continue;
             }
             if (valor === nomeFinal) continue;               // já está no nome oficial
-            const classificacao = classificarMudanca(valor, nomeFinal);
-            const aplicar = APROVADAS_POR_PADRAO.has(classificacao) || permitirForaDoDicionario;
-            if (!aplicar) {
+            const { classificacao, aplicar, divergente } = decidirAplicacao(parte.cidade, nomeCidade, viaApelido, op);
+            registrarDivergente(alvo.chave, divergente, ids.length);
+            if (!aplicar && !divergente) {
                 semAprovacao.push({ tabela: alvo.chave, de: valor, para: nomeFinal, linhas: ids.length });
             }
             variantes.push({ de: valor, para: nomeFinal, linhas: ids.length, classificacao, seraAplicado: aplicar, ids });
@@ -238,12 +337,13 @@ async function montarPlano({ permitirForaDoDicionario = false } = {}) {
     // "Joiville" e meta em "Joinville" são chaves diferentes e viram a MESMA linha.
     const porMetaENome = new Map();
     for (const m of metasCidades) {
-        const nomeFinal = normalizarCidade(m.cidade);
+        const { nomeFinal, viaApelido } = nomeFinalDe(m.cidade, op.apelidos);
         if (!nomeFinal) {
             // Mesmo caso das tabelas simples: só espaço. Não mexe, mas REPORTA.
             ignoradosEmBranco.push({ tabela: 'metaCidades', valor: m.cidade, linhas: 1, id: m.id });
             continue;
         }
+        m._viaApelido = viaApelido;
         const k = `${m.metaMensalVendedorId} ${nomeFinal}`;
         if (!porMetaENome.has(k)) porMetaENome.set(k, { nomeFinal, linhas: [] });
         porMetaENome.get(k).linhas.push(m);
@@ -251,16 +351,17 @@ async function montarPlano({ permitirForaDoDicionario = false } = {}) {
 
     const metaSimples = [];
     const metaMerges = [];
+    const metaPendentes = [];   // colisões que NÃO serão tocadas (sem regraMeta:'somar')
     for (const grupo of porMetaENome.values()) {
         const { nomeFinal, linhas } = grupo;
 
         if (linhas.length === 1) {
             const m = linhas[0];
             if (m.cidade === nomeFinal) continue;            // não muda (é o caso de "Sem cidade")
-            const classificacao = classificarMudanca(m.cidade, nomeFinal);
-            const aplicar = APROVADAS_POR_PADRAO.has(classificacao) || permitirForaDoDicionario;
+            const { classificacao, aplicar, divergente } = decidirAplicacao(m.cidade, nomeFinal, m._viaApelido, op);
+            registrarDivergente('metaCidades', divergente, 1);
             if (!aplicar) {
-                semAprovacao.push({ tabela: 'metaCidades', de: m.cidade, para: nomeFinal, linhas: 1 });
+                if (!divergente) semAprovacao.push({ tabela: 'metaCidades', de: m.cidade, para: nomeFinal, linhas: 1 });
                 continue;
             }
             metaSimples.push({
@@ -281,25 +382,16 @@ async function montarPlano({ permitirForaDoDicionario = false } = {}) {
             || (num(b.valor) - num(a.valor))
             || a.id.localeCompare(b.id));
 
-        const naoAprovada = ordenadas.find(m => m.cidade !== nomeFinal
-            && !APROVADAS_POR_PADRAO.has(classificarMudanca(m.cidade, nomeFinal)));
-        if (naoAprovada && !permitirForaDoDicionario) {
-            semAprovacao.push({
-                tabela: 'metaCidades', de: naoAprovada.cidade, para: nomeFinal,
-                linhas: ordenadas.length, fusao: true,
-            });
-            continue;                                        // a fusão inteira fica de fora
-        }
-
         // A regra (soma dos valores + união dos dias) vem da MESMA função que a tela de metas
-        // usa ao salvar. Não é uma segunda implementação: é a mesma.
+        // usa ao salvar. Não é uma segunda implementação: é a mesma. Como um apelido da
+        // chamada pode ter juntado chaves diferentes, o nome final é forçado ao do grupo.
         const { cidades } = deduplicarMetasCidades(ordenadas.map(m => ({
-            cidade: m.cidade, valor: num(m.valor), diasSemana: m.diasSemana,
+            cidade: nomeFinal, valor: num(m.valor), diasSemana: m.diasSemana,
         })));
         const aplicado = cidades[0];
         const vencedora = ordenadas[0];
 
-        metaMerges.push({
+        const descricao = {
             metaMensalVendedorId: vencedora.metaMensalVendedorId,
             vendedor: vencedora.metaMensalVendedor?.vendedor?.nome || null,
             mes: vencedora.metaMensalVendedor?.mesReferencia || null,
@@ -308,6 +400,37 @@ async function montarPlano({ permitirForaDoDicionario = false } = {}) {
                 id: m.id, cidade: m.cidade, valor: num(m.valor), diasSemana: m.diasSemana,
                 papel: m.id === vencedora.id ? 'FICA' : 'APAGADA',
             })),
+            proposta: { valor: aplicado.valor, diasSemana: aplicado.diasSemana, regra: 'soma + união dos dias' },
+        };
+
+        // Sem `regraMeta: 'somar'` a colisão NÃO é tocada: fica listada como pendente para o
+        // dono decidir. (Renomear só uma das linhas estouraria o @@unique, então o grupo
+        // inteiro fica parado — nem a linha "simples" dele é mexida.)
+        if (op.regraMeta !== 'somar') {
+            metaPendentes.push({ ...descricao, motivo: 'colisão de meta sem regraMeta:"somar" — não tocada' });
+            continue;
+        }
+
+        const naoAprovada = ordenadas.find(m => m.cidade !== nomeFinal
+            && !decidirAplicacao(m.cidade, nomeFinal, m._viaApelido, op).aplicar);
+        if (naoAprovada) {
+            const d = decidirAplicacao(naoAprovada.cidade, nomeFinal, naoAprovada._viaApelido, op).divergente;
+            registrarDivergente('metaCidades', d, ordenadas.length);
+            if (!d) {
+                semAprovacao.push({
+                    tabela: 'metaCidades', de: naoAprovada.cidade, para: nomeFinal,
+                    linhas: ordenadas.length, fusao: true,
+                });
+            }
+            continue;                                        // a fusão inteira fica de fora
+        }
+
+        metaMerges.push({
+            metaMensalVendedorId: descricao.metaMensalVendedorId,
+            vendedor: descricao.vendedor,
+            mes: descricao.mes,
+            nomeFinal,
+            antes: descricao.antes,
             depois: {
                 id: vencedora.id, cidade: aplicado.cidade,
                 valor: aplicado.valor, diasSemana: aplicado.diasSemana,
@@ -333,9 +456,15 @@ async function montarPlano({ permitirForaDoDicionario = false } = {}) {
         + ufMudancas.length + metaLinhasTocadas;
 
     return {
-        tabelas, ufMudancas, metaSimples, metaMerges,
-        ignoradosEmBranco, semAprovacao,
+        tabelas, ufMudancas, metaSimples, metaMerges, metaPendentes,
+        ignoradosEmBranco, semAprovacao, aprovadoDivergente,
         permitirForaDoDicionario,
+        opcoes: {
+            permitirForaDoDicionario,
+            aprovado: [...op.aprovado.entries()].map(([chave, nomeFinal]) => ({ chave, nomeFinal })),
+            apelidos: op.apelidos,
+            regraMeta: op.regraMeta,
+        },
         resumo: {
             registrosQueMudam: {
                 clientes: tabelas.find(t => t.tabela === 'clientes').linhasQueMudam,
@@ -343,12 +472,16 @@ async function montarPlano({ permitirForaDoDicionario = false } = {}) {
                 fornecedores: tabelas.find(t => t.tabela === 'fornecedores').linhasQueMudam,
                 kitFestaBairros: tabelas.find(t => t.tabela === 'kitFestaBairros').linhasQueMudam,
                 metaCidades: metaLinhasTocadas,
-                catalogos: 0,   // NÃO backfillado de propósito (snapshot histórico do link público)
+                catalogos: tabelas.find(t => t.tabela === 'catalogos').linhasQueMudam,
             },
             fornecedoresUfCorrigida: ufMudancas.length,
             metaFusoes: metaMerges.length,
             metaLinhasApagadasNaFusao: metaMerges.reduce((t, m) => t + m._perdedoras.length, 0),
+            // Colisões de meta que ficaram paradas por falta de `regraMeta: 'somar'`.
+            metaFusoesPendentes: metaPendentes.length,
             mudancasSemAprovacao: semAprovacao.length,
+            // `aprovado` pediu um nome diferente do que a regra de gravação produz — não aplicado.
+            aprovadoDivergente: aprovadoDivergente.length,
             valoresIgnoradosEmBranco: ignoradosEmBranco.length,
             totalLinhas,
             // Rodar de novo tem que dar zero aqui. `false` depois de aplicar = algo ficou para trás.
@@ -363,19 +496,23 @@ function planoParaResposta(plano) {
         resumo: plano.resumo,
         // Só aparece quando a trava foi furada — em operação normal o campo nem existe.
         ...(plano.permitirForaDoDicionario ? { avisoForaDoDicionario: AVISO_FORA_DO_DICIONARIO } : {}),
-        catalogosPersonalizados: 'NÃO backfillado de propósito — cliente_cidade é snapshot histórico do link público /lista/:token',
+        opcoes: plano.opcoes,
+        // Cada tabela lista, por valor exato, o que vira o quê, quantas linhas e os ids
+        // (o dry-run tem que dizer EXATAMENTE o que mudaria — ids inclusive).
         tabelas: plano.tabelas.map(t => ({
             tabela: t.tabela, model: t.model, campo: t.campo,
             linhasQueMudam: t.linhasQueMudam,
-            variantes: t.variantes.map(({ ids, ...v }) => v),
+            variantes: t.variantes.map(v => ({ ...v, chave: chaveCidade(t.tabela === 'catalogos' ? decomporComposto(v.de).cidade : v.de) })),
         })),
         fornecedoresUf: plano.ufMudancas,
         metaCidades: {
             simples: plano.metaSimples,
             fusoes: plano.metaMerges.map(({ _vencedora, _perdedoras, _aplicado, ...m }) => m),
+            pendentes: plano.metaPendentes,
         },
         ignoradosEmBranco: plano.ignoradosEmBranco,
         mudancasSemAprovacao: plano.semAprovacao,
+        aprovadoDivergente: plano.aprovadoDivergente,
     };
 }
 
@@ -390,12 +527,25 @@ function montarSnapshot(plano, nomeArquivo) {
         geradoEm: new Date().toISOString(),
         banco: bancoDoAmbiente(),
         permitirForaDoDicionario: plano.permitirForaDoDicionario,
+        opcoes: plano.opcoes,
         // id -> valor antigo, por model. É isto que a reversão lê.
         tabelas: plano.tabelas.map(t => ({
             tabela: t.tabela, model: t.model, campo: t.campo, pk: t.pk,
             linhas: t.variantes.filter(v => v.seraAplicado)
                 .flatMap(v => v.ids.map(id => ({ id, de: v.de, para: v.para }))),
         })),
+        // Visão PLANA (id, tabela, campo, valorAntes, valorDepois) — só leitura humana /
+        // conferência; a reversão usa as seções estruturadas acima e abaixo.
+        registros: [
+            ...plano.tabelas.flatMap(t => t.variantes.filter(v => v.seraAplicado)
+                .flatMap(v => v.ids.map(id => ({ id, tabela: t.model, campo: t.campo, valorAntes: v.de, valorDepois: v.para })))),
+            ...plano.ufMudancas.map(u => ({ id: u.id, tabela: 'Fornecedor', campo: 'uf', valorAntes: u.de, valorDepois: u.para })),
+            ...plano.metaSimples.map(m => ({ id: m.id, tabela: 'MetaCidade', campo: 'cidade', valorAntes: m.de, valorDepois: m.para })),
+            ...plano.metaMerges.flatMap(m => [
+                { id: m._vencedora.id, tabela: 'MetaCidade', campo: 'cidade+valor+diasSemana', valorAntes: { cidade: m._vencedora.cidade, valor: num(m._vencedora.valor), diasSemana: m._vencedora.diasSemana }, valorDepois: { cidade: m._aplicado.cidade, valor: m._aplicado.valor, diasSemana: m._aplicado.diasSemana } },
+                ...m._perdedoras.map(p => ({ id: p.id, tabela: 'MetaCidade', campo: '(linha apagada na fusão)', valorAntes: { cidade: p.cidade, valor: num(p.valor), diasSemana: p.diasSemana }, valorDepois: null })),
+            ]),
+        ],
         fornecedorUf: plano.ufMudancas,
         metaSimples: plano.metaSimples.map(m => ({ id: m.id, de: m.de, para: m.para })),
         // Na fusão o snapshot guarda a LINHA INTEIRA da(s) apagada(s) — sem isso não há como
@@ -483,20 +633,21 @@ async function listarSnapshots() {
  */
 let _emAndamento = null;
 
-async function aplicar({ permitirForaDoDicionario = false } = {}) {
+async function aplicar(opcoes = {}) {
     if (_emAndamento) {
         return { ok: false, aplicado: false, erro: `já existe um "${_emAndamento}" em andamento — espere terminar` };
     }
     _emAndamento = 'backfill-cidades';
     try {
-        return await aplicarDeVerdade({ permitirForaDoDicionario });
+        return await aplicarDeVerdade(opcoes);
     } finally {
         _emAndamento = null;
     }
 }
 
-async function aplicarDeVerdade({ permitirForaDoDicionario }) {
-    const plano = await montarPlano({ permitirForaDoDicionario });
+async function aplicarDeVerdade(opcoes) {
+    const plano = await montarPlano(opcoes);
+    const { permitirForaDoDicionario } = plano;
     const resposta = planoParaResposta(plano);
 
     if (plano.resumo.totalLinhas === 0) {
@@ -532,44 +683,66 @@ async function aplicarDeVerdade({ permitirForaDoDicionario }) {
     // exatamente as linhas que registrou. `id = ANY(array)` com ~900 ids é index scan de
     // chave primária, barato; e a guarda `campo = valor antigo` faz a contagem significar
     // alguma coisa (linha que alguém editou no meio não é sobrescrita e some da conta).
+    //
+    // (09/2026) Os `updateMany` de UMA tabela rodam dentro de UMA transação por tabela —
+    // com callback e timeout generoso — para a tabela ficar inteira ou não ficar (metade
+    // dos clientes corrigidos e metade não é o pior dos mundos para o snapshot). São no
+    // máximo algumas dezenas de statements por PK, cabem folgados em 20 s. Só banco aqui
+    // dentro: o snapshot já foi gravado antes, e o carimbo do resultado vem depois.
     for (const t of plano.tabelas) {
         const alvo = ALVOS.find(a => a.chave === t.tabela);
+        const aplicaveis = t.variantes.filter(v => v.seraAplicado);
+        previsto.tabelas[t.tabela] = aplicaveis.reduce((n, v) => n + v.ids.length, 0);
         let linhas = 0;
-        let linhasPrevistas = 0;
-        for (const v of t.variantes) {
-            if (!v.seraAplicado) continue;
-            linhasPrevistas += v.ids.length;
+        if (aplicaveis.length) {
             try {
-                const r = await prisma[alvo.model].updateMany({
-                    where: { [alvo.pk]: { in: v.ids }, [t.campo]: v.de },
-                    data: { [t.campo]: v.para },
-                });
-                linhas += r.count;
+                linhas = await prisma.$transaction(async (tx) => {
+                    let n = 0;
+                    for (const v of aplicaveis) {
+                        const r = await tx[alvo.model].updateMany({
+                            where: { [alvo.pk]: { in: v.ids }, [t.campo]: v.de },
+                            data: { [t.campo]: v.para },
+                        });
+                        n += r.count;
+                    }
+                    return n;
+                }, { timeout: 20000, maxWait: 10000 });
             } catch (e) {
-                falhas.push({ tabela: t.tabela, de: v.de, para: v.para, erro: e.message });
+                falhas.push({ tabela: t.tabela, erro: e.message, aviso: 'transação da tabela desfeita — nenhuma linha desta tabela foi alterada' });
             }
         }
         efeitos.tabelas[t.tabela] = linhas;
-        previsto.tabelas[t.tabela] = linhasPrevistas;
     }
 
-    // -------- fornecedores.uf --------
-    for (const u of plano.ufMudancas) {
+    // -------- fornecedores.uf (uma transação, mesma regra) --------
+    if (plano.ufMudancas.length) {
         try {
-            const r = await prisma.fornecedor.updateMany({ where: { id: u.id, uf: u.de }, data: { uf: u.para } });
-            efeitos.fornecedoresUf += r.count;
+            efeitos.fornecedoresUf = await prisma.$transaction(async (tx) => {
+                let n = 0;
+                for (const u of plano.ufMudancas) {
+                    const r = await tx.fornecedor.updateMany({ where: { id: u.id, uf: u.de }, data: { uf: u.para } });
+                    n += r.count;
+                }
+                return n;
+            }, { timeout: 20000, maxWait: 10000 });
         } catch (e) {
-            falhas.push({ tabela: 'fornecedores.uf', id: u.id, erro: e.message });
+            falhas.push({ tabela: 'fornecedores.uf', erro: e.message });
         }
     }
 
-    // -------- 5) meta_cidades: primeiro as simples, depois as fusões --------
-    for (const m of plano.metaSimples) {
+    // -------- 5) meta_cidades: primeiro as simples (uma transação), depois as fusões --------
+    if (plano.metaSimples.length) {
         try {
-            const r = await prisma.metaCidade.updateMany({ where: { id: m.id, cidade: m.de }, data: { cidade: m.para } });
-            efeitos.metaSimples += r.count;
+            efeitos.metaSimples = await prisma.$transaction(async (tx) => {
+                let n = 0;
+                for (const m of plano.metaSimples) {
+                    const r = await tx.metaCidade.updateMany({ where: { id: m.id, cidade: m.de }, data: { cidade: m.para } });
+                    n += r.count;
+                }
+                return n;
+            }, { timeout: 20000, maxWait: 10000 });
         } catch (e) {
-            falhas.push({ tabela: 'metaCidades', id: m.id, de: m.de, para: m.para, erro: e.message });
+            falhas.push({ tabela: 'metaCidades', erro: e.message });
         }
     }
 
@@ -660,7 +833,7 @@ async function aplicarDeVerdade({ permitirForaDoDicionario }) {
     }
 
     // Confere sozinho que ficou idempotente — se sobrou mudança, algo não foi aplicado.
-    const conferencia = await montarPlano({ permitirForaDoDicionario });
+    const conferencia = await montarPlano(opcoes);
 
     return {
         ok: falhas.length === 0 && !corridaDetectada,

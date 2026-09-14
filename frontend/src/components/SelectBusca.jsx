@@ -1,6 +1,7 @@
 import React, { Children, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronDown, Search, Check } from 'lucide-react';
+import { chaveBusca } from '../utils/cidade';
 
 // Drop-in para o <select> nativo (menu escuro do sistema, sem busca).
 // Uso idêntico ao <select>: value, onChange({target:{value}}), <option>/<optgroup> como filhos.
@@ -62,10 +63,11 @@ const SelectBusca = ({ value, onChange, children, className = '', disabled = fal
     const mostrarBusca = selecionavel.length > LIMIAR_BUSCA;
 
     const filtrados = useMemo(() => {
-        const q = query.trim().toLowerCase();
+        // Busca sem acento e sem caixa: "itapoa" acha "Itapoá", "sao" acha "São".
+        const q = chaveBusca(query);
         if (!q) return opcoes;
-        const termos = q.split(/\s+/);
-        return opcoes.filter(o => o.grupo || termos.every(t => (o.label || '').toLowerCase().includes(t)));
+        const termos = q.split(' ');
+        return opcoes.filter(o => o.grupo || termos.every(t => chaveBusca(o.label).includes(t)));
     }, [opcoes, query]);
     const navegaveis = filtrados.map((o, i) => (!o.grupo && !o.disabled ? i : -1)).filter(i => i >= 0);
 

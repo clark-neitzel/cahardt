@@ -1,5 +1,11 @@
 [
   {
+    "slug": "cidades",
+    "titulo": "Cidade em lista + busca sem acento",
+    "resumo": "O campo Cidade do cadastro de cliente (Novo Cliente e ficha) e de lead (Rota e Leads) virou uma lista com busca: escolhendo da lista a cidade entra com a grafia exata que já existe no sistema (\"Itapoá\", \"Jaraguá do Sul\"); cidade que ainda não existe entra por \"Usar …\" e é arrumada sozinha (primeira letra maiúscula, \"do/da/de\" minúsculo, acentos mantidos). A cidade que vem da consulta por CNPJ já aparece arrumada no campo. E todos os menus com busca do app (cliente, produto, vendedor, filtros de cidade, condição de pagamento) passaram a ignorar acento, cedilha e maiúscula: \"itapoa\" acha \"Itapoá\", \"acucar\" acha \"Açúcar\". Por que importa: meta por cidade, comissão e painéis casam a cidade pelo nome exato — grafia diferente fazia o vendedor perder bônus sem aviso.",
+    "data": "2026-09-13"
+  },
+  {
     "slug": "mapa-clientes",
     "titulo": "Mapa de Clientes",
     "resumo": "Clientes → botão Mapa: todos os clientes com ponto GPS num mapa, coloridos por dia de entrega, dia de venda, categoria, vendedor, WhatsApp ou cidade (cliente com dois dias aparece com o pino em fatias). Legenda clicável com contagens, filtros que ficam lembrados, painel lateral (no celular, sobe de baixo) com a ficha resumida e edição rápida — dia de entrega, dia de venda, categoria e vendedor salvam na hora, WhatsApp pelo mesmo popup de sempre. Aba Vizinhos lista quem mora a poucos metros um do outro mas recebe em dias diferentes (raio ajustável); aba Paradas mostra quantos clientes caem em cada dia; aba Sem GPS lista quem ficou fora do mapa. Atualização 13/09: filtro Perfil (por padrão só clientes — fornecedor fica de fora), filtro \"Compras no período\" (comprou / não comprou, com o seletor de período) e ponto GPS direto no mapa — botão Alterar/Cadastrar ponto GPS no painel e na aba Sem GPS, ou \"Marcar no mapa\": toque no lugar e confirme.",

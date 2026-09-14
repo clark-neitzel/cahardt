@@ -5,6 +5,8 @@ import vendedorService from '../../services/vendedorService';
 import { useAuth } from '../../contexts/AuthContext';
 import { ArrowLeft, UserPlus, Search, Building, MapPin, Mail, Save, X, CheckCircle, AlertTriangle, Loader2 } from 'lucide-react';
 import SelectBusca from '../../components/SelectBusca';
+import CampoCidade from '../../components/CampoCidade';
+import { normalizarCidade } from '../../utils/cidade';
 import CampoWhatsapps from '../../components/CampoWhatsapps';
 import ModalPontoGps from '../../components/ModalPontoGps';
 import { mascaraDoc, normalizarDoc, validarDoc } from '../../utils/documento';
@@ -124,7 +126,7 @@ const NovoCliente = () => {
                     End_Numero: r.endereco?.numero || f.End_Numero,
                     End_Complemento: r.endereco?.complemento || f.End_Complemento,
                     End_Bairro: r.endereco?.bairro || f.End_Bairro,
-                    End_Cidade: r.endereco?.cidade || f.End_Cidade,
+                    End_Cidade: normalizarCidade(r.endereco?.cidade) || f.End_Cidade, // Receita devolve MAIÚSCULO
                     End_Estado: r.endereco?.uf || f.End_Estado,
                     End_CEP: r.endereco?.cep || f.End_CEP
                 }));
@@ -414,7 +416,7 @@ const NovoCliente = () => {
                         </div>
                         <div className="md:col-span-3">
                             <Campo label="Cidade">
-                                <input type="text" className={inputCls} value={form.End_Cidade} onChange={(e) => set('End_Cidade', e.target.value)} />
+                                <CampoCidade value={form.End_Cidade} onChange={(v) => set('End_Cidade', v)} />
                             </Campo>
                         </div>
                         <div className="md:col-span-1">
