@@ -10,6 +10,7 @@ import clienteService from '../../services/clienteService';
 import produtoService from '../../services/produtoService';
 import tabelaPrecoService from '../../services/tabelaPrecoService';
 import pedidoService from '../../services/pedidoService';
+import repetirPedidoService from '../../services/repetirPedidoService';
 import configService from '../../services/configService';
 import promocaoService from '../../services/promocaoService';
 import vendedorService from '../../services/vendedorService';
@@ -150,6 +151,18 @@ const NovoPedido = () => {
     // durante a janela em que `produtos` está vazio/desatualizado (condição de corrida real —
     // achado do revisor: Especial faz setProdutos([]) e o catálogo novo só chega depois, async).
     const [carregandoProdutos, setCarregandoProdutos] = useState(false);
+    // Espelha `carregandoProdutos` de forma SÍNCRONA (ref, não state). O efeito que aplica o
+    // "Repetir último pedido" pendente (~linha 970) roda no MESMO flush do efeito que troca a
+    // condição de pagamento e dispara o recarregamento do catálogo — nesse instante o `setState`
+    // de carregandoProdutos ainda não repintou, então ler o state aqui veria sempre o valor velho
+    // (false) e aplicaria o carrinho antes do catálogo novo chegar. A ref é atualizada no mesmo
+    // instante síncrono do setCarregandoProdutos, então reflete a realidade mesmo dentro do
+    // mesmo flush de efeitos.
+    const carregandoProdutosRef = useRef(false);
+    // Guarda o clienteId da busca de "último pedido" mais recente em voo — troca rápida de
+    // cliente não deixa a resposta de uma busca velha sobrescrever `ultimoPedido` com o pedido do
+    // cliente errado (achado do revisor).
+    const ultimoPedidoReqRef = useRef(null);
     const [todasCondicoes, setTodasCondicoes] = useState([]);
     const [vendedores, setVendedores] = useState([]);
 
@@ -178,6 +191,8 @@ const NovoPedido = () => {
 
     // Histórico de compras do cliente por produto
     const [historicoMap, setHistoricoMap] = useState(new Map()); // produtoId → { ultimoPreco, ultimaCompra, compras[] }
+    // Último pedido "de verdade" do cliente (pedido inteiro), para o botão "Repetir último pedido"
+    const [ultimoPedido, setUltimoPedido] = useState(null);
 
     // Promoções ativas por produto (produtoId → promoção)
     const [promocoesMap, setPromocoesMap] = useState(new Map());
@@ -243,6 +258,7 @@ const NovoPedido = () => {
 
     const recarregarProdutos = async (cats) => {
         setCarregandoProdutos(true);
+        carregandoProdutosRef.current = true;
         try {
             const paramsProd = { limit: 1000, ativo: true };
             if (Array.isArray(cats) && cats.length > 0) paramsProd.categorias = cats.join(',');
@@ -252,6 +268,7 @@ const NovoPedido = () => {
             setProdutos(listaProdutos);
         } finally {
             setCarregandoProdutos(false);
+            carregandoProdutosRef.current = false;
         }
     };
 
@@ -447,6 +464,8 @@ const NovoPedido = () => {
             setCondicaoPagamentoId('');
             setIsEncaixe(false);
             setHistoricoMap(new Map());
+            setUltimoPedido(null);
+            ultimoPedidoReqRef.current = null; // nenhum cliente selecionado: qualquer resposta em voo é descartada
             setInadimplenciaCliente(null);
             return;
         }
@@ -526,6 +545,21 @@ const NovoPedido = () => {
                 setHistoricoMap(map);
             }).catch(() => { });
 
+            // Carregar o último pedido "de verdade" do cliente, para "Repetir último pedido"
+            // Achado do revisor (IMPORTANTE): troca rápida de cliente — se o vendedor troca de
+            // cliente de novo antes desta busca responder, a resposta do cliente ANTERIOR podia
+            // chegar depois e sobrescrever `ultimoPedido` com o pedido do cliente errado. Guarda
+            // com um ref o clienteId mais recente pedido e só aplica a resposta se ainda for ele.
+            setUltimoPedido(null);
+            ultimoPedidoReqRef.current = clienteId;
+            repetirPedidoService.obterUltimoPedido(clienteId).then(res => {
+                if (ultimoPedidoReqRef.current !== clienteId) return; // cliente já trocou de novo
+                setUltimoPedido(res?.pedido || null);
+            }).catch(() => {
+                if (ultimoPedidoReqRef.current !== clienteId) return;
+                setUltimoPedido(null);
+            });
+
             // Abrir o formulário (Data/Condição) para o vendedor configurar
             setMostrarFormulario(true);
 
@@ -572,6 +606,10 @@ const NovoPedido = () => {
     };
 
     useEffect(() => {
+        // Marca um novo "ciclo" de resolução da condição — sempre, mesmo quando não recarrega o
+        // catálogo (senão o "Repetir último pedido" não tem como saber se este efeito já rodou
+        // para a condição nova; ver `cicloCargaRef`/pendingRepetirRef mais abaixo).
+        cicloCargaRef.current += 1;
         // Resolver SÓ entre as condições liberadas para o cliente (a mesma lista do dropdown).
         // Resolver em todasCondicoes deixava o pedido assumir uma tabela não liberada
         // (ex.: "À vista - Funcionário") sem ninguém ter escolhido.
@@ -584,6 +622,7 @@ const NovoPedido = () => {
                 const cats = catsEspecial;
                 (async () => {
                     setCarregandoProdutos(true);
+                    carregandoProdutosRef.current = true;
                     try {
                         const paramsProd = { limit: 1000, ativo: true, categorias: cats.join(',') };
                         if (categoriasComerciaisPermitidas) paramsProd.categoriaProdutoIds = categoriasComerciaisPermitidas.join(',');
@@ -593,6 +632,7 @@ const NovoPedido = () => {
                         setItensMap(prev => reavaliarMapaItens(prev, cond, promocoesMap, listaProdutos));
                     } finally {
                         setCarregandoProdutos(false);
+                        carregandoProdutosRef.current = false;
                     }
                 })();
             } else if (!especial && !bonificacao && catsEspecial.length > 0) {
@@ -601,6 +641,7 @@ const NovoPedido = () => {
                 const cats = Array.from(new Set([...catsPadrao, ...catsEspecial]));
                 (async () => {
                     setCarregandoProdutos(true);
+                    carregandoProdutosRef.current = true;
                     try {
                         const paramsProd = { limit: 1000, ativo: true };
                         if (cats.length > 0) paramsProd.categorias = cats.join(',');
@@ -611,6 +652,7 @@ const NovoPedido = () => {
                         setItensMap(prev => reavaliarMapaItens(prev, cond, promocoesMap, listaProdutos));
                     } finally {
                         setCarregandoProdutos(false);
+                        carregandoProdutosRef.current = false;
                     }
                 })();
             } else {
@@ -715,6 +757,20 @@ const NovoPedido = () => {
         return novoMapa;
     }, [checkPromoLiberada, vendedorSelecionado, especial]);
 
+    // Piso de preço permitido para um produto (mínimo entre "tabela × limite flex do vendedor"
+    // e "preço promocional", quando aplicável). Usado só em `setQuantidade`, ao adicionar item
+    // novo ao carrinho. O cálculo de divergência do "Repetir último pedido" usa `reavaliarMapaItens`
+    // diretamente (mesma regra de preço, mas aplicada ao mapa inteiro de uma vez).
+    const calcularValorMinimoPermitido = useCallback((valorBase, produtoId) => {
+        const promoNova = promocoesMap.get(produtoId);
+        const temporarioLiberado = (promoNova?.tipo === 'SIMPLES');
+        const catSemLimite = clienteSelecionado?.categoriaCliente?.semLimiteDesconto || false;
+        const limiteBasePerc = catSemLimite ? 100 : (vendedorSelecionado?.maxDescontoFlex !== undefined ? Number(vendedorSelecionado.maxDescontoFlex) : 100);
+        const limitePerc = temporarioLiberado ? 0 : limiteBasePerc;
+        const minDePromo = temporarioLiberado ? Number(promoNova.precoPromocional) : valorBase;
+        return Number((minDePromo * (1 - limitePerc / 100)).toFixed(2));
+    }, [promocoesMap, clienteSelecionado, vendedorSelecionado]);
+
     const recalcularItens = useCallback((condicao) => {
         if (!condicao) return;
         setItensMap(prev => reavaliarMapaItens(prev, condicao, promocoesMap, produtos));
@@ -763,16 +819,7 @@ const NovoPedido = () => {
                 }
 
                 // Restrição: Se o Vendedor atual sofreu redução de limite Flex e o histórico é muito velho, corrige para a Tabela.
-                const promoNova = promocoesMap.get(produtoId);
-                // Prevemos temporariamente se a promo estaria ativa pra essa 1 unidade adicionada
-                const temporarioLiberado = (promoNova?.tipo === 'SIMPLES'); // CONDICIONAL nao bate meta de cara, só dps.
-
-                const catSemLimite = clienteSelecionado?.categoriaCliente?.semLimiteDesconto || false;
-                const limiteBasePerc = catSemLimite ? 100 : (vendedorSelecionado?.maxDescontoFlex !== undefined ? Number(vendedorSelecionado.maxDescontoFlex) : 100);
-                // Mínimo Tolerável no Adicionar
-                const limitePerc = temporarioLiberado ? 0 : limiteBasePerc;
-                const minDePromo = temporarioLiberado ? Number(promoNova.precoPromocional) : valorBase;
-                const valorMinimoRealPermitido = Number((minDePromo * (1 - limitePerc / 100)).toFixed(2));
+                const valorMinimoRealPermitido = calcularValorMinimoPermitido(valorBase, produtoId);
 
                 // Exemplo Cliente Comprou a 42. Promo pede mínimo 39. Histórico 42 prevalece e o auto-atualizar ignora.
                 if (valorUnitario < valorMinimoRealPermitido && valorMinimoRealPermitido > 0) {
@@ -820,159 +867,210 @@ const NovoPedido = () => {
             }
             return reavaliarMapaItens(m, condicaoSelecionada, promocoesMap, produtos);
         });
-    }, [produtos, condicaoSelecionada, historicoMap, clienteId, reavaliarMapaItens, promocoesMap]);
+    }, [produtos, condicaoSelecionada, historicoMap, clienteId, reavaliarMapaItens, promocoesMap, calcularValorMinimoPermitido]);
 
-    // Resumo do histórico do cliente para o botão "Repetir último pedido": quantos produtos têm
-    // compra anterior e a data da compra mais recente entre eles (historicoMap já carregado).
-    const resumoHistoricoCliente = useMemo(() => {
-        let n = 0;
-        let maisRecente = null;
-        historicoMap.forEach(hist => {
-            if (hist?.compras?.length) {
-                n++;
-                const d = hist.compras[0].data;
-                if (!maisRecente || new Date(d) > new Date(maisRecente)) maisRecente = d;
+    // ── "Repetir último pedido" ──
+    // Repete o PEDIDO INTEIRO anterior (não a compra mais recente de cada produto, que é o que
+    // `historicoMap` guarda). Se algo mudou desde então (tipo, condição, catálogo, estoque ou —
+    // o ponto central — se o preço de hoje não bate com o preço do último pedido), a repetição é
+    // BLOQUEADA: mostra a lista de divergências e pede pra montar manual. Sem meio-termo.
+    const [modalRepetir, setModalRepetir] = useState(null); // { divergencias: [], itens: [], candidato, condicaoUltimo, substituir, total } | null
+    const [aplicandoRepetir, setAplicandoRepetir] = useState(false);
+    // Guarda o que falta aplicar quando repetir exige trocar a condição de pagamento: trocar a
+    // condição dispara o useEffect (~linha 594) que recarrega o catálogo e reavalia o carrinho —
+    // só populamos o carrinho DEPOIS que esse ciclo terminar (carregandoProdutos volta a false),
+    // senão o carrinho é pisado pelo recálculo da troca de condição.
+    const pendingRepetirRef = useRef(null); // { candidato, condicaoId, numero, n, cicloAntes } | null
+    // Conta quantas vezes o efeito de `condicaoPagamentoId` (~linha 594) rodou. Incrementado de
+    // forma SÍNCRONA no início desse efeito — serve para o efeito de aplicar o pending (abaixo)
+    // saber se aquele efeito já rodou para a condição nova NESTE flush, mesmo em caminhos que não
+    // disparam fetch (senão o pending seria aplicado antes do catálogo novo ser avaliado, ou —
+    // no caminho síncrono sem fetch — nunca teria certeza de já ter rodado).
+    const cicloCargaRef = useRef(0);
+
+    // Calcula, na hora do clique, se dá pra repetir o último pedido tal como veio, e já monta
+    // o Map candidato com os preços recalculados (mesma regra de `setQuantidade`/`reavaliarMapaItens`).
+    const calcularDivergenciasRepetirPedido = useCallback(() => {
+        if (!ultimoPedido) return null;
+        const divergencias = [];
+
+        // 1) Tipo do pedido (normal × especial × bonificação) — bonificação nunca repete (produto
+        // vai de graça, não faz sentido herdar preço/condição de um pedido pago).
+        if (tipoPedido === 'BONIFICACAO') {
+            divergencias.push('Repetir não vale para bonificação.');
+        } else {
+            const criandoEspecial = tipoPedido === 'ESPECIAL';
+            if (!!ultimoPedido.especial !== criandoEspecial) {
+                divergencias.push(
+                    ultimoPedido.especial
+                        ? 'O último pedido era um pedido especial e este é normal.'
+                        : 'O último pedido era um pedido normal e este é especial.'
+                );
             }
+        }
+
+        // 2) Condição de pagamento — o Pedido não guarda o ID da condição, só o nome e o par
+        // tipoPagamento+opcaoCondicaoPagamento gravados na hora. Reencontra do mesmo jeito que a
+        // tela já faz ao restaurar rascunho (~linha 322): pelo nome primeiro, com fallback pelo par.
+        const condicaoUltimo = condicoesPermitidas.find(c => c.nomeCondicao === ultimoPedido.nomeCondicaoPagamento)
+            || condicoesPermitidas.find(c => c.tipoPagamento === ultimoPedido.tipoPagamento && c.opcaoCondicao === ultimoPedido.opcaoCondicaoPagamento);
+        if (!condicaoUltimo) {
+            divergencias.push(`Condição "${ultimoPedido.nomeCondicaoPagamento || '—'}" não está mais disponível para este cliente.`);
+        }
+
+        // 3) Produto no catálogo + 4) estoque — por item
+        const candidato = new Map();
+        (ultimoPedido.itens || []).forEach(item => {
+            const produto = produtos.find(p => p.id === item.produtoId);
+            const nomeItem = item.nome || 'sem nome';
+            if (!produto) {
+                divergencias.push(`Produto ${nomeItem} não está mais no catálogo.`);
+                return;
+            }
+            if (produto.controlaEstoqueEfetivo === true && Number(item.quantidade) > Number(produto.estoqueDisponivel || 0)) {
+                divergencias.push(`Produto ${nomeItem}: sem estoque suficiente (disp. ${Number(produto.estoqueDisponivel || 0)} ${produto.unidade || 'un'}).`);
+            }
+            if (!condicaoUltimo) return; // sem condição não dá pra calcular preço de hoje
+            const precoTabela = Number(produto.valorVenda || 0);
+            const acrescimo = Number(condicaoUltimo.acrescimoPreco) || 0;
+            const valorBaseHoje = precoTabela * (1 + acrescimo / 100);
+            candidato.set(item.produtoId, {
+                quantidade: Number(item.quantidade) || 0,
+                valorUnitario: Number(item.valor),
+                valorBase: Number(valorBaseHoje.toFixed(2)),
+                flexUnitario: Number((Number(item.valor) - valorBaseHoje).toFixed(2)),
+                veioDeHistorico: true
+            });
         });
-        return { n, maisRecente };
-    }, [historicoMap]);
 
-    // Preço "atual" para a prévia do "Repetir último pedido" — a MESMA regra usada por
-    // setQuantidade ao adicionar item novo no carrinho (histórico do cliente prevalece; senão,
-    // preço de tabela + acréscimo da condição). Não replica o clamp de piso de promoção/desconto:
-    // esse clamp é aplicado de qualquer jeito no momento real da inserção via setQuantidade — aqui
-    // é só a estimativa que o vendedor confere antes de decidir.
-    const calcularPrecoPreviaRepetir = useCallback((produtoId) => {
-        const produto = produtos.find(p => p.id === produtoId);
-        if (!produto) return 0;
-        const hist = historicoMap.get(produtoId);
-        if (hist && hist.ultimoPreco) return Number(hist.ultimoPreco);
-        const precoTabela = Number(produto.valorVenda || 0);
-        const acrescimo = condicaoSelecionada ? Number(condicaoSelecionada.acrescimoPreco) : 0;
-        return precoTabela * (1 + acrescimo / 100);
-    }, [produtos, condicaoSelecionada, historicoMap]);
+        // 5) Preço — roda a MESMA reavaliação usada em qualquer alteração do carrinho, com a
+        // condição do ÚLTIMO pedido (é ela que será aplicada), e compara item a item.
+        let reavaliado = candidato;
+        if (condicaoUltimo && candidato.size > 0) {
+            reavaliado = reavaliarMapaItens(candidato, condicaoUltimo, promocoesMap, produtos);
+            (ultimoPedido.itens || []).forEach(item => {
+                if (!candidato.has(item.produtoId)) return; // já sinalizado (fora do catálogo)
+                const recalculado = reavaliado.get(item.produtoId);
+                if (!recalculado) return;
+                const diff = Math.abs(Number(recalculado.valorUnitario) - Number(item.valor));
+                if (diff > 0.005) {
+                    divergencias.push(`Produto ${item.nome || 'sem nome'}: no último pedido R$ ${Number(item.valor).toFixed(2).replace('.', ',')}, hoje só é possível R$ ${Number(recalculado.valorUnitario).toFixed(2).replace('.', ',')}.`);
+                }
+            });
+        }
 
-    // ── "Repetir último pedido" — modal de prévia ("Conferir antes de adicionar") ──
-    // Estado por linha é minimalista (produtoId + quantidade editável + marcado); tudo o mais
-    // (nome, situação, preço) é derivado a cada render em `linhasPreviaRepetir`, pra não duplicar
-    // fonte de verdade nem ficar com dado desatualizado se o catálogo mudar enquanto o modal está aberto.
-    const [previaRepetirAberta, setPreviaRepetirAberta] = useState(false);
-    const [previaRepetirItens, setPreviaRepetirItens] = useState([]); // [{ produtoId, quantidade, marcado }]
-    const [previaRepetirSubstituir, setPreviaRepetirSubstituir] = useState(false); // carrinho já tinha itens ao abrir
-    const [aplicandoPreviaRepetir, setAplicandoPreviaRepetir] = useState(false);
-    const primeiroCampoPreviaRef = useRef(null);
+        return { divergencias, candidato: reavaliado, condicaoUltimo };
+    }, [ultimoPedido, tipoPedido, condicoesPermitidas, produtos, promocoesMap, reavaliarMapaItens]);
 
-    const abrirPreviaRepetirPedido = useCallback(() => {
-        if (resumoHistoricoCliente.n === 0) return;
-        // Guarda contra a condição de corrida: catálogo ainda carregando/vazio (ex.: acabou de
-        // trocar para Pedido Especial) marcaria tudo como "fora do catálogo" por engano — o botão
-        // já fica desabilitado nessa janela, isto aqui é reforço.
+    const abrirModalRepetirPedido = useCallback(() => {
+        if (!ultimoPedido) return;
+        // Guarda contra a condição de corrida: catálogo ainda carregando/vazio marcaria tudo como
+        // "fora do catálogo" por engano — o botão já fica desabilitado nessa janela, isto é reforço.
         if (carregandoProdutos || produtos.length === 0) return;
 
-        const itens = [];
-        historicoMap.forEach((hist, produtoId) => {
-            if (!hist?.compras?.length) return;
-            const qtd = Number(hist.compras[0].quantidade) || 0;
-            if (qtd <= 0) return;
-            const existeNoCatalogo = produtos.some(p => p.id === produtoId);
-            itens.push({ produtoId, quantidade: qtd, marcado: existeNoCatalogo });
-        });
-        if (itens.length === 0) return;
+        const resultado = calcularDivergenciasRepetirPedido();
+        if (!resultado) return;
+        const { divergencias, candidato, condicaoUltimo } = resultado;
 
-        setPreviaRepetirSubstituir(itensMap.size > 0);
-        setPreviaRepetirItens(itens);
-        setPreviaRepetirAberta(true);
-    }, [resumoHistoricoCliente, carregandoProdutos, produtos, historicoMap, itensMap]);
+        if (divergencias.length > 0) {
+            setModalRepetir({ divergencias, itens: [], candidato: null, condicaoUltimo: null, substituir: false, total: 0 });
+            return;
+        }
 
-    // Linhas da prévia com tudo já calculado para exibir (nome, unidade, data, preço, situação)
-    const linhasPreviaRepetir = useMemo(() => {
-        return previaRepetirItens.map(item => {
+        const itens = (ultimoPedido.itens || []).map(item => {
             const produto = produtos.find(p => p.id === item.produtoId);
-            const hist = historicoMap.get(item.produtoId);
-            const foraCatalogo = !produto;
-            const semEstoque = !foraCatalogo && produto.controlaEstoqueEfetivo === true
-                && Number(item.quantidade) > Number(produto.estoqueDisponivel || 0);
-            const situacao = foraCatalogo ? 'foraCatalogo' : (semEstoque ? 'semEstoque' : 'disponivel');
+            const c = candidato.get(item.produtoId);
             return {
-                ...item,
-                // Sem produto no catálogo atual: `historicoComprasCliente` (backend) não devolve
-                // nome, só produtoId — não dá pra mostrar o nome real sem mudar o backend (dívida
-                // documentada no relatório). `null` aqui = a linha mostra "Produto não disponível"
-                // + o UUID abreviado, em vez do UUID inteiro cru.
-                nome: produto?.nome || null,
+                produtoId: item.produtoId,
+                nome: item.nome,
                 unidade: produto?.unidade || 'un',
-                permiteFracao: !!produto?.categoriaProduto?.permiteFracao,
-                dataUltimaCompra: hist?.compras?.[0]?.data || null,
-                estoqueDisponivel: produto?.estoqueDisponivel,
-                preco: foraCatalogo ? 0 : calcularPrecoPreviaRepetir(item.produtoId),
-                situacao
+                quantidade: Number(item.quantidade) || 0,
+                valorUnitario: c ? Number(c.valorUnitario) : Number(item.valor)
             };
         });
-    }, [previaRepetirItens, produtos, historicoMap, calcularPrecoPreviaRepetir]);
+        const total = itens.reduce((s, l) => s + l.valorUnitario * l.quantidade, 0);
+        setModalRepetir({ divergencias: [], itens, candidato, condicaoUltimo, substituir: itensMap.size > 0, total });
+    }, [ultimoPedido, carregandoProdutos, produtos, calcularDivergenciasRepetirPedido, itensMap]);
 
-    const previaRepetirSelecionaveis = useMemo(() => linhasPreviaRepetir.filter(l => l.situacao !== 'foraCatalogo'), [linhasPreviaRepetir]);
-    // Quantidade 0/vazia/negativa (item marcado mas em edição, ainda sem terminar de digitar) NUNCA
-    // conta como "vai entrar" — nem no contador do botão, nem no total. `setQuantidadePreviaRepetir`
-    // (onBlur) já clampa para o mínimo 1, então isso é reforço para o instante entre digitar e sair do campo.
-    const previaRepetirMarcados = useMemo(() => previaRepetirSelecionaveis.filter(l => l.marcado && Number(l.quantidade) > 0), [previaRepetirSelecionaveis]);
-    const previaRepetirTodosMarcados = previaRepetirSelecionaveis.length > 0 && previaRepetirSelecionaveis.every(l => l.marcado);
-    const previaRepetirTotal = previaRepetirMarcados.reduce((s, l) => s + l.preco * (Number(l.quantidade) || 0), 0);
+    const fecharModalRepetir = useCallback(() => {
+        if (aplicandoRepetir) return;
+        setModalRepetir(null);
+    }, [aplicandoRepetir]);
 
-    const alternarMarcadoPreviaRepetir = (produtoId) => {
-        setPreviaRepetirItens(prev => prev.map(it => it.produtoId === produtoId ? { ...it, marcado: !it.marcado } : it));
-    };
-    // Durante a digitação aceita o valor cru (inclusive vazio/0, pra não atrapalhar quem está
-    // apagando pra escrever de novo) — `previaRepetirMarcados` acima já exclui isso dos totais.
-    const setQuantidadePreviaRepetir = (produtoId, novaQtd) => {
-        setPreviaRepetirItens(prev => prev.map(it => it.produtoId === produtoId ? { ...it, quantidade: novaQtd } : it));
-    };
-    // Ao sair do campo (onBlur): vazio/0/negativo vira 1 — nunca fica um item marcado com
-    // quantidade inválida esperando o vendedor lembrar de corrigir (pedido do dono).
-    const confirmarQuantidadePreviaRepetir = (produtoId, valorDigitado) => {
-        const n = Number(String(valorDigitado).replace(',', '.'));
-        const clamp = !isFinite(n) || n <= 0 ? 1 : n;
-        setPreviaRepetirItens(prev => prev.map(it => it.produtoId === produtoId ? { ...it, quantidade: clamp } : it));
-    };
-    const alternarTodosPreviaRepetir = () => {
-        const proximoValor = !previaRepetirTodosMarcados;
-        setPreviaRepetirItens(prev => prev.map(it => {
-            const existeNoCatalogo = produtos.some(p => p.id === it.produtoId);
-            return existeNoCatalogo ? { ...it, marcado: proximoValor } : it;
-        }));
-    };
-
-    const fecharPreviaRepetirPedido = useCallback(() => {
-        if (aplicandoPreviaRepetir) return;
-        setPreviaRepetirAberta(false);
-    }, [aplicandoPreviaRepetir]);
-
-    // Esc fecha o modal; foco no primeiro checkbox/quantidade ao abrir.
+    // Esc fecha o modal
     useEffect(() => {
-        if (!previaRepetirAberta) return;
-        const aoTeclar = (e) => { if (e.key === 'Escape') fecharPreviaRepetirPedido(); };
+        if (!modalRepetir) return;
+        const aoTeclar = (e) => { if (e.key === 'Escape') fecharModalRepetir(); };
         window.addEventListener('keydown', aoTeclar);
-        const t = setTimeout(() => primeiroCampoPreviaRef.current?.focus(), 50);
-        return () => { window.removeEventListener('keydown', aoTeclar); clearTimeout(t); };
-    }, [previaRepetirAberta, fecharPreviaRepetirPedido]);
+        return () => window.removeEventListener('keydown', aoTeclar);
+    }, [modalRepetir, fecharModalRepetir]);
 
-    // Confirmar: só agora os itens marcados entram no carrinho, pela MESMA setQuantidade usada ao
-    // adicionar item manualmente (preço/regra de histórico, travas de estoque e promoção intactas).
-    // Se o carrinho já tinha itens ao abrir a prévia, substitui (igual ao combinado antes; o botão
-    // já deixa isso escrito). NUNCA envia — só popula o carrinho; Salvar/Enviar continuam manuais.
-    const confirmarPreviaRepetirPedido = useCallback(() => {
-        if (aplicandoPreviaRepetir || previaRepetirMarcados.length === 0) return;
-        setAplicandoPreviaRepetir(true);
-        try {
-            if (previaRepetirSubstituir) setItensMap(new Map());
-            previaRepetirMarcados.forEach(l => setQuantidade(l.produtoId, Number(l.quantidade) || 0));
-            const n = previaRepetirMarcados.length;
-            setPreviaRepetirAberta(false);
-            toast.success(`${n} ${n === 1 ? 'item adicionado' : 'itens adicionados'} ao carrinho. Revise as quantidades e o preço antes de enviar.`, { duration: 6000 });
-            searchInputRef.current?.focus();
-        } finally {
-            setAplicandoPreviaRepetir(false);
+    // Aplica o carrinho pendente assim que a troca de condição (e o recálculo que ela dispara)
+    // terminar — é o gatilho do `pendingRepetirRef` acima.
+    //
+    // Achado do revisor (BLOQUEANTE): este efeito e o efeito de `condicaoPagamentoId` (~linha 594)
+    // rodam no MESMO flush quando `confirmarRepetirPedido` chama `setCondicaoPagamentoId`. Ler
+    // `carregandoProdutos` (state) aqui não bastava: o `setCarregandoProdutos(true)` do outro
+    // efeito ainda não tinha repintado neste flush, então este efeito via sempre o valor velho
+    // (false) e aplicava o carrinho ANTES do catálogo novo chegar — o `reavaliarMapaItens` do
+    // fetch então descartava em silêncio itens fora do catálogo novo. Corrigido com:
+    // 1) `cicloCargaRef` — incrementado de forma síncrona dentro do efeito de condição, prova que
+    //    aquele efeito já rodou para a condição nova neste flush (cobre também o caminho SEM
+    //    fetch, aplicando o pending na hora);
+    // 2) `carregandoProdutosRef` — espelha `carregandoProdutos` de forma síncrona, sem esperar
+    //    repintura;
+    // 3) revalidação final contra o catálogo/condição ATUAIS antes de aplicar — se o fetch mudou
+    //    o catálogo (categoriasEspecial) e algum item saiu ou o preço mudou, NÃO aplica: mostra o
+    //    modal de divergência (reaproveita `calcularDivergenciasRepetirPedido`) e não dá o toast
+    //    de sucesso.
+    useEffect(() => {
+        const pending = pendingRepetirRef.current;
+        if (!pending) return;
+        if (condicaoPagamentoId !== pending.condicaoId) return; // ainda não trocou
+        if (cicloCargaRef.current <= pending.cicloAntes) return; // efeito da condição nova ainda não rodou neste flush
+        if (carregandoProdutosRef.current) return; // catálogo da nova condição ainda carregando
+
+        pendingRepetirRef.current = null;
+        const resultado = calcularDivergenciasRepetirPedido();
+        if (!resultado || resultado.divergencias.length > 0) {
+            setAplicandoRepetir(false);
+            setModalRepetir({
+                divergencias: resultado?.divergencias?.length
+                    ? resultado.divergencias
+                    : ['O catálogo mudou durante a troca de condição de pagamento. Confira o pedido manualmente.'],
+                itens: [], candidato: null, condicaoUltimo: null, substituir: false, total: 0
+            });
+            return;
         }
-    }, [aplicandoPreviaRepetir, previaRepetirMarcados, previaRepetirSubstituir, setQuantidade]);
+        setItensMap(resultado.candidato);
+        setAplicandoRepetir(false);
+        toast.success(`Pedido #${pending.numero} repetido: ${pending.n} ${pending.n === 1 ? 'item' : 'itens'}`, { duration: 6000 });
+    }, [condicaoPagamentoId, carregandoProdutos, produtos, calcularDivergenciasRepetirPedido]);
+
+    // Confirmar: sem checkbox nem quantidade editável — a repetição é fiel ao que já foi conferido
+    // no modal. Troca a condição de pagamento para a do último pedido e substitui o carrinho pelos
+    // mesmos itens/preços já validados.
+    const confirmarRepetirPedido = useCallback(() => {
+        if (!modalRepetir || modalRepetir.divergencias.length > 0 || aplicandoRepetir || !modalRepetir.condicaoUltimo) return;
+        setAplicandoRepetir(true);
+        const alvo = modalRepetir.condicaoUltimo.idCondicao;
+        const numero = ultimoPedido?.numero;
+        const n = modalRepetir.itens.length;
+        if (condicaoPagamentoId === alvo) {
+            // Já está na condição certa: aplica direto, sem esperar recálculo de troca.
+            setItensMap(modalRepetir.candidato);
+            setModalRepetir(null);
+            setAplicandoRepetir(false);
+            toast.success(`Pedido #${numero} repetido: ${n} ${n === 1 ? 'item' : 'itens'}`, { duration: 6000 });
+        } else {
+            // `cicloAntes` marca o "ciclo" atual do efeito de condição — o efeito de aplicação
+            // acima só libera o pending quando `cicloCargaRef` passar deste valor, provando que o
+            // efeito de condição já rodou (e, se disparou fetch, que ele já terminou) para o alvo.
+            pendingRepetirRef.current = { candidato: modalRepetir.candidato, condicaoId: alvo, numero, n, cicloAntes: cicloCargaRef.current };
+            setModalRepetir(null);
+            setCondicaoPagamentoId(alvo);
+        }
+    }, [modalRepetir, aplicandoRepetir, condicaoPagamentoId, ultimoPedido]);
 
     const setValorUnitario = useCallback((produtoId, valor) => {
         setItensMap(prev => {
@@ -1999,7 +2097,7 @@ const NovoPedido = () => {
                                                 {condicoesPermitidas.map(c => (
                                                     <li key={c.idCondicao}
                                                         className={`py-2.5 px-3 text-sm font-semibold cursor-pointer hover:bg-gray-50 border-b border-gray-50 flex justify-between ${condicaoPagamentoId === c.idCondicao ? 'bg-blue-50 text-blue-800' : 'text-gray-900'}`}
-                                                        onClick={() => { setCondicaoPagamentoId(c.idCondicao); setMostrarCondicoesDropdown(false); }}>
+                                                        onClick={() => { pendingRepetirRef.current = null; setCondicaoPagamentoId(c.idCondicao); setMostrarCondicoesDropdown(false); }}>
                                                         {c.nomeCondicao}
                                                         {condicaoPagamentoId === c.idCondicao && <CheckCircle className="h-4 w-4 text-blue-600" />}
                                                     </li>
@@ -2197,23 +2295,24 @@ const NovoPedido = () => {
                         </div>
                     </div>
 
-                    {/* "Repetir último pedido": faixa no topo da lista de produtos, só quando há
-                        histórico do cliente e o catálogo já carregou (evita marcar tudo como "fora
-                        do catálogo" durante a troca de tipo de pedido, ex. Especial). */}
-                    {resumoHistoricoCliente.n > 0 && (() => {
+                    {/* "Repetir último pedido": faixa no topo da lista de produtos, só quando há um
+                        último pedido de verdade do cliente e o catálogo já carregou (evita marcar
+                        tudo como "fora do catálogo" durante a troca de tipo de pedido, ex. Especial). */}
+                    {ultimoPedido && (() => {
                         const catalogoIndisponivel = carregandoProdutos || produtos.length === 0;
+                        const nItens = (ultimoPedido.itens || []).length;
                         return (
                             <button
                                 type="button"
                                 disabled={catalogoIndisponivel}
-                                onClick={abrirPreviaRepetirPedido}
+                                onClick={abrirModalRepetirPedido}
                                 className={`w-full flex items-center justify-center gap-2 px-3 py-2.5 min-h-[44px] border-b text-center transition-colors ${catalogoIndisponivel ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed' : 'bg-mint/40 border-primary/20 text-primaryDark hover:bg-mint/70'}`}
                             >
                                 <Clock className="h-3.5 w-3.5 shrink-0" />
                                 <span className="text-xs font-bold">
                                     {catalogoIndisponivel
                                         ? 'Carregando catálogo…'
-                                        : <>Repetir último pedido <span className="font-medium text-primaryDark/70">({resumoHistoricoCliente.n} {resumoHistoricoCliente.n === 1 ? 'item' : 'itens'}{resumoHistoricoCliente.maisRecente ? ` · última compra ${fmtData(resumoHistoricoCliente.maisRecente)}` : ''})</span></>
+                                        : <>Repetir último pedido <span className="font-medium text-primaryDark/70">(#{ultimoPedido.numero} · {fmtData(ultimoPedido.dataVenda || ultimoPedido.createdAt)} · {nItens} {nItens === 1 ? 'item' : 'itens'})</span></>
                                     }
                                 </span>
                             </button>
@@ -3001,142 +3100,103 @@ const NovoPedido = () => {
                 </div>
             )}
 
-            {/* Modal de prévia do "Repetir último pedido" — "Conferir antes de adicionar".
-                Nada entra no carrinho até confirmar aqui; ao confirmar, passa pela MESMA
-                setQuantidade usada ao adicionar item na mão (preço/estoque/promoção intactos). */}
-            {previaRepetirAberta && (
+            {/* Modal do "Repetir último pedido". Dois modos, sem meio-termo:
+                - SEM divergência: lista somente leitura (fiel ao último pedido), confirma e substitui o carrinho.
+                - COM divergência: lista os motivos em vermelho, bloqueado, nada entra no carrinho. */}
+            {modalRepetir && (
                 <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 px-0 sm:px-4">
                     <div className="bg-white w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[92vh] sm:max-h-[85vh] flex flex-col">
-                        {/* Header */}
-                        <div className="px-4 py-3.5 border-b border-gray-100 flex items-start gap-3">
-                            <div className="flex-1 min-w-0">
-                                <p className="font-bold text-gray-900 text-base leading-tight">Conferir antes de adicionar</p>
-                                <p className="text-xs text-gray-500 mt-0.5">Compra mais recente de cada produto do histórico do cliente</p>
-                            </div>
-                            <button onClick={fecharPreviaRepetirPedido} className="text-gray-400 hover:text-gray-600 p-1 -mr-1 shrink-0">
-                                <X className="h-5 w-5" />
-                            </button>
-                        </div>
-
-                        {previaRepetirSubstituir && (
-                            <div className="mx-4 mt-3 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800 font-medium">
-                                O carrinho já tem itens — ao confirmar, ele será <b>SUBSTITUÍDO</b> pelos itens marcados abaixo.
-                            </div>
-                        )}
-
-                        {/* Selecionar todos */}
-                        <div className="px-4 pt-3 pb-1 flex items-center justify-between">
-                            <label className="flex items-center gap-2 text-xs font-semibold text-gray-600">
-                                <input
-                                    type="checkbox"
-                                    className="w-4 h-4 accent-primary"
-                                    checked={previaRepetirTodosMarcados}
-                                    onChange={alternarTodosPreviaRepetir}
-                                    disabled={previaRepetirSelecionaveis.length === 0}
-                                />
-                                Selecionar todos
-                            </label>
-                            <span className="text-xs text-gray-500">{previaRepetirMarcados.length} de {previaRepetirSelecionaveis.length} selecionados</span>
-                        </div>
-
-                        {/* Lista em cards */}
-                        <div className="overflow-y-auto flex-1 px-4 py-2 space-y-2">
-                            {linhasPreviaRepetir.map((l, idx) => {
-                                const foraCatalogo = l.situacao === 'foraCatalogo';
-                                const semEstoque = l.situacao === 'semEstoque';
-                                // Primeiro campo focável da lista (checkbox do primeiro item selecionável)
-                                const primeiroSelecionavelIdx = linhasPreviaRepetir.findIndex(x => x.situacao !== 'foraCatalogo');
-                                const ehPrimeiroFoco = !foraCatalogo && idx === primeiroSelecionavelIdx;
-                                return (
-                                    <div
-                                        key={l.produtoId}
-                                        onClick={foraCatalogo ? undefined : () => alternarMarcadoPreviaRepetir(l.produtoId)}
-                                        className={`rounded-xl border p-3 flex items-start gap-3 ${foraCatalogo ? 'bg-gray-50 border-gray-200 opacity-70' : `cursor-pointer ${semEstoque ? 'bg-amber-50 border-amber-200' : 'bg-white border-gray-200'}`}`}
-                                    >
-                                        {foraCatalogo ? (
-                                            <div className="w-4 h-4 mt-1 shrink-0" aria-hidden="true" />
-                                        ) : (
-                                            <input
-                                                ref={ehPrimeiroFoco ? primeiroCampoPreviaRef : null}
-                                                type="checkbox"
-                                                className="w-4 h-4 mt-1 accent-primary shrink-0"
-                                                checked={l.marcado}
-                                                onClick={e => e.stopPropagation()}
-                                                onChange={() => alternarMarcadoPreviaRepetir(l.produtoId)}
-                                            />
-                                        )}
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-semibold text-gray-800 leading-tight line-clamp-2">
-                                                {l.nome || (
-                                                    <span className="text-gray-500 italic font-medium">
-                                                        Produto não disponível <span className="not-italic font-mono text-[11px] text-gray-400">({String(l.produtoId).slice(0, 8)}…)</span>
-                                                    </span>
-                                                )}
-                                            </p>
-                                            <p className="text-[11px] text-gray-500 mt-0.5">
-                                                Última compra: {fmtData(l.dataUltimaCompra)}
-                                                {!foraCatalogo && (
-                                                    <> · R$ {l.preco.toFixed(2).replace('.', ',')}/{l.unidade} <span className="text-gray-400">(aprox.)</span></>
-                                                )}
-                                            </p>
-                                            {foraCatalogo && (
-                                                <span className="inline-block mt-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-gray-200 text-gray-600 uppercase">Não está mais no catálogo</span>
-                                            )}
-                                            {semEstoque && (
-                                                <span className="inline-block mt-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 uppercase">Sem estoque suficiente (disp. {Number(l.estoqueDisponivel || 0)} {l.unidade})</span>
-                                            )}
-                                        </div>
-                                        {!foraCatalogo && (
-                                            <input
-                                                type="number"
-                                                min={l.permiteFracao ? '0.001' : '1'}
-                                                step={l.permiteFracao ? 'any' : '1'}
-                                                inputMode="numeric"
-                                                className="w-16 text-center border border-gray-300 rounded-md bg-white text-gray-900 text-sm font-bold py-2 shrink-0"
-                                                value={l.quantidade}
-                                                onClick={e => e.stopPropagation()}
-                                                onFocus={e => e.target.select()}
-                                                onChange={e => {
-                                                    const v = Number(e.target.value.toString().replace(',', '.'));
-                                                    setQuantidadePreviaRepetir(l.produtoId, isNaN(v) ? '' : v);
-                                                }}
-                                                onBlur={e => confirmarQuantidadePreviaRepetir(l.produtoId, e.target.value)}
-                                            />
-                                        )}
+                        {modalRepetir.divergencias.length > 0 ? (
+                            <>
+                                {/* Header — bloqueado */}
+                                <div className="px-4 py-3.5 border-b border-gray-100 flex items-start gap-3">
+                                    <div className="flex-1 min-w-0">
+                                        <p className="font-bold text-gray-900 text-base leading-tight">Não é possível repetir o pedido #{ultimoPedido?.numero}</p>
                                     </div>
-                                );
-                            })}
-                        </div>
+                                    <button onClick={fecharModalRepetir} className="text-gray-400 hover:text-gray-600 p-1 -mr-1 shrink-0">
+                                        <X className="h-5 w-5" />
+                                    </button>
+                                </div>
 
-                        {/* Total estimado */}
-                        <div className="px-4 py-2 border-t border-gray-100 flex items-center justify-between">
-                            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Total estimado</span>
-                            <span className="text-base font-bold text-gray-900">R$ {previaRepetirTotal.toFixed(2).replace('.', ',')}</span>
-                        </div>
+                                <div className="overflow-y-auto flex-1 px-4 py-3 space-y-2">
+                                    {modalRepetir.divergencias.map((d, i) => (
+                                        <div key={i} className="flex items-start gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                                            <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                                            <span>{d}</span>
+                                        </div>
+                                    ))}
+                                    <p className="text-sm text-gray-600 pt-1">Para não errar o pedido, monte-o manualmente.</p>
+                                </div>
 
-                        {/* Botões */}
-                        <div className="px-4 py-3 border-t border-gray-100 flex gap-2">
-                            <button
-                                type="button"
-                                onClick={fecharPreviaRepetirPedido}
-                                disabled={aplicandoPreviaRepetir}
-                                className="flex-1 min-h-[44px] py-2.5 rounded-full border border-gray-300 text-gray-700 font-semibold text-sm disabled:opacity-50"
-                            >
-                                Cancelar
-                            </button>
-                            <button
-                                type="button"
-                                onClick={confirmarPreviaRepetirPedido}
-                                disabled={previaRepetirMarcados.length === 0 || aplicandoPreviaRepetir}
-                                className="flex-[2] min-h-[44px] py-2.5 rounded-full bg-primary hover:bg-primaryDark text-white font-bold text-sm shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                            >
-                                {aplicandoPreviaRepetir
-                                    ? 'Adicionando…'
-                                    : previaRepetirSubstituir
-                                        ? `Substituir carrinho por ${previaRepetirMarcados.length} ${previaRepetirMarcados.length === 1 ? 'item' : 'itens'}`
-                                        : `Adicionar ${previaRepetirMarcados.length} ${previaRepetirMarcados.length === 1 ? 'item' : 'itens'} ao carrinho`}
-                            </button>
-                        </div>
+                                <div className="px-4 py-3 border-t border-gray-100">
+                                    <button
+                                        type="button"
+                                        onClick={fecharModalRepetir}
+                                        className="w-full min-h-[44px] py-2.5 rounded-full bg-primary hover:bg-primaryDark text-white font-bold text-sm shadow-sm"
+                                    >
+                                        Entendi
+                                    </button>
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                {/* Header — sem divergência */}
+                                <div className="px-4 py-3.5 border-b border-gray-100 flex items-start gap-3">
+                                    <div className="flex-1 min-w-0">
+                                        <p className="font-bold text-gray-900 text-base leading-tight">Repetir pedido #{ultimoPedido?.numero} de {fmtData(ultimoPedido?.dataVenda || ultimoPedido?.createdAt)}</p>
+                                        <p className="text-xs text-gray-500 mt-0.5">{modalRepetir.condicaoUltimo?.nomeCondicao}</p>
+                                    </div>
+                                    <button onClick={fecharModalRepetir} disabled={aplicandoRepetir} className="text-gray-400 hover:text-gray-600 p-1 -mr-1 shrink-0 disabled:opacity-50">
+                                        <X className="h-5 w-5" />
+                                    </button>
+                                </div>
+
+                                {modalRepetir.substituir && (
+                                    <div className="mx-4 mt-3 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800 font-medium">
+                                        O carrinho já tem itens — ao confirmar, ele será <b>SUBSTITUÍDO</b> pelos itens abaixo.
+                                    </div>
+                                )}
+
+                                {/* Lista em cards, somente leitura */}
+                                <div className="overflow-y-auto flex-1 px-4 py-3 space-y-2">
+                                    {modalRepetir.itens.map(l => (
+                                        <div key={l.produtoId} className="rounded-xl border border-gray-200 bg-white p-3 flex items-center justify-between gap-3">
+                                            <div className="min-w-0">
+                                                <p className="text-sm font-semibold text-gray-800 leading-tight line-clamp-2">{l.nome}</p>
+                                                <p className="text-[11px] text-gray-500 mt-0.5">{l.quantidade} {l.unidade} × R$ {l.valorUnitario.toFixed(2).replace('.', ',')}</p>
+                                            </div>
+                                            <span className="text-sm font-bold text-gray-900 shrink-0">R$ {(l.quantidade * l.valorUnitario).toFixed(2).replace('.', ',')}</span>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {/* Total */}
+                                <div className="px-4 py-2 border-t border-gray-100 flex items-center justify-between">
+                                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Total</span>
+                                    <span className="text-base font-bold text-gray-900">R$ {modalRepetir.total.toFixed(2).replace('.', ',')}</span>
+                                </div>
+
+                                {/* Botões */}
+                                <div className="px-4 py-3 border-t border-gray-100 flex gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={fecharModalRepetir}
+                                        disabled={aplicandoRepetir}
+                                        className="flex-1 min-h-[44px] py-2.5 rounded-full border border-gray-300 text-gray-700 font-semibold text-sm disabled:opacity-50"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={confirmarRepetirPedido}
+                                        disabled={aplicandoRepetir}
+                                        className="flex-[2] min-h-[44px] py-2.5 rounded-full bg-primary hover:bg-primaryDark text-white font-bold text-sm shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                    >
+                                        {aplicandoRepetir ? 'Repetindo…' : 'Repetir pedido'}
+                                    </button>
+                                </div>
+                            </>
+                        )}
                     </div>
                 </div>
             )}

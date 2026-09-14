@@ -7,7 +7,7 @@
 <link rel="icon" href="/logo-192.png">
 <!-- Preview do link no WhatsApp (sem og:image de propósito: cartão compacto) -->
 <meta property="og:title" content="🔁 Novidade no Hardt App: Repetir último pedido">
-<meta property="og:description" content="No topo da lista de produtos, um botão abre uma prévia para conferir e ajustar a compra mais recente de cada item antes de colocar no carrinho — e todo item já comprado mostra a última quantidade e data direto na lista.">
+<meta property="og:description" content="O botão \"Repetir último pedido\" agora repete o PEDIDO INTEIRO anterior, com a mesma condição e os mesmos preços. Se algo mudou — preço, catálogo, estoque ou condição — a repetição é bloqueada e avisa por quê, em vez de montar um pedido errado.">
 <meta property="og:type" content="website">
 <style>
   :root {
@@ -59,10 +59,11 @@
     border-radius: 999px; padding: 10px 14px; font-size: 12.5px; font-weight: 800; text-align: center;
   }
   .mock-pill small { font-weight: 600; font-size: 10.5px; color: rgba(0,98,65,.75); }
-  .mock-item { border-top: 1px solid #f0efe9; padding: 10px 0; }
+  .mock-item { border-top: 1px solid #f0efe9; padding: 10px 0; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
   .mock-item:first-of-type { border-top: none; }
   .mock-item .nome { font-size: 13.5px; font-weight: 700; }
-  .mock-item .ultima { font-size: 11px; color: var(--ink-soft); margin-top: 2px; }
+  .mock-item .qtd { font-size: 11px; color: var(--ink-soft); margin-top: 2px; }
+  .mock-item .preco { font-size: 13px; font-weight: 800; color: var(--ink); flex-shrink: 0; }
 
   /* ── SEÇÕES / ACCORDION ── */
   .sec-label { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .16em; color: var(--primary-dark); margin: 34px 4px 12px; }
@@ -88,42 +89,32 @@
   .tela-corpo { padding: 16px; background: #f7f6f2; }
   .app-card { background: #fff; border: 1px solid #e5e3dc; border-radius: 12px; overflow: hidden; margin-bottom: 10px; }
   .app-card-head { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-bottom: 1px solid #f0efe9; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .12em; color: #6b756f; }
-  .app-card-body { padding: 12px; }
-  .app-btn { display: inline-flex; align-items: center; gap: 6px; background: var(--primary); color: #fff; font-size: 12.5px; font-weight: 700; padding: 9px 16px; border-radius: 999px; }
   .app-btn-pill {
-    display: flex; flex-direction: column; align-items: center; gap: 2px; width: 100%;
+    display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%;
     background: var(--mint); border: 1px solid rgba(0,117,74,.3); color: var(--primary-dark);
     border-radius: 999px; padding: 10px 14px; font-size: 12.5px; font-weight: 800; text-align: center;
   }
   .app-btn-pill small { font-weight: 600; font-size: 10.5px; color: rgba(0,98,65,.75); }
-  .app-produto { display: flex; gap: 10px; padding: 9px 12px; border-top: 1px solid #f0efe9; align-items: flex-start; }
-  .app-produto:first-of-type { border-top: none; }
-  .app-produto .foto { width: 34px; height: 34px; border-radius: 8px; background: #ece9e2; flex-shrink: 0; }
-  .app-produto .nome { font-size: 13px; font-weight: 700; }
-  .app-produto .ultima { font-size: 10.5px; color: var(--ink-soft); margin-top: 2px; }
-  .app-confirm { background: #fff8ea; border: 1px solid #eddca0; border-radius: 10px; padding: 10px 12px; font-size: 12px; color: #7a5c14; }
-  .app-confirm b { color: #5c4400; }
   .app-modal { background: #fff; border: 1px solid #e5e3dc; border-radius: 16px; overflow: hidden; }
   .app-modal-head { padding: 12px 14px; border-bottom: 1px solid #f0efe9; }
   .app-modal-head strong { display: block; font-size: 13.5px; }
   .app-modal-head small { display: block; font-size: 10.5px; color: #9aa5a0; margin-top: 2px; }
-  .app-selecionar-todos { display: flex; align-items: center; justify-content: space-between; padding: 9px 14px; font-size: 11px; font-weight: 700; color: #6b756f; border-bottom: 1px solid #f0efe9; }
-  .app-check-row { display: flex; align-items: flex-start; gap: 9px; padding: 10px 14px; border-top: 1px solid #f0efe9; }
-  .app-check-row:first-of-type { border-top: none; }
-  .app-check-row.fora { background: #fafaf8; opacity: .75; }
-  .app-check-row.semestoque { background: #fffaf0; }
-  .app-check { width: 15px; height: 15px; border-radius: 4px; border: 1.5px solid #cfcdc4; flex-shrink: 0; margin-top: 2px; }
-  .app-check.on { background: var(--primary); border-color: var(--primary); }
-  .app-check-row .nome { font-size: 12.5px; font-weight: 700; }
-  .app-check-row .info { font-size: 10.5px; color: var(--ink-soft); margin-top: 2px; }
-  .app-tag-cinza { display: inline-block; margin-top: 5px; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; background: #e5e3dc; color: #6b756f; padding: 2px 7px; border-radius: 999px; }
-  .app-tag-ambar { display: inline-block; margin-top: 5px; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; background: #fde8b8; color: #8a5a00; padding: 2px 7px; border-radius: 999px; }
-  .app-qtd-box { width: 32px; height: 28px; border: 1px solid #d8d5cc; border-radius: 7px; background: #fff; flex-shrink: 0; margin-left: auto; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: var(--ink); }
+  .app-item-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 14px; border-top: 1px solid #f0efe9; }
+  .app-item-row:first-of-type { border-top: none; }
+  .app-item-row .nome { font-size: 12.5px; font-weight: 700; }
+  .app-item-row .info { font-size: 10.5px; color: var(--ink-soft); margin-top: 2px; }
+  .app-item-row .preco { font-size: 12.5px; font-weight: 800; color: var(--ink); flex-shrink: 0; white-space: nowrap; }
+  .app-confirm { background: #fff8ea; border: 1px solid #eddca0; border-radius: 10px; padding: 10px 12px; font-size: 12px; color: #7a5c14; margin: 10px 14px 0; }
+  .app-confirm b { color: #5c4400; }
   .app-modal-total { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-top: 1px solid #f0efe9; font-size: 11px; font-weight: 700; color: #6b756f; text-transform: uppercase; letter-spacing: .06em; }
   .app-modal-total span:last-child { font-size: 14px; color: var(--ink); text-transform: none; letter-spacing: 0; }
   .app-modal-botoes { display: flex; gap: 8px; padding: 12px 14px; border-top: 1px solid #f0efe9; }
   .app-btn-sec { flex: 1; text-align: center; padding: 9px; border: 1.5px solid #d8d5cc; border-radius: 999px; font-size: 12px; font-weight: 700; color: #6b756f; }
   .app-btn-prim { flex: 2; text-align: center; padding: 9px; border-radius: 999px; font-size: 12px; font-weight: 800; color: #fff; background: var(--primary); }
+  .app-btn-prim.full { flex: 1; }
+  .app-divergencia { display: flex; gap: 8px; align-items: flex-start; background: #fdecec; border: 1px solid #f4b8b8; border-radius: 10px; padding: 9px 11px; font-size: 12px; color: #a02020; margin: 12px 14px 0; }
+  .app-divergencia .ico { flex-shrink: 0; }
+  .app-motiv-texto { padding: 4px 14px 14px; font-size: 12px; color: var(--ink-soft); }
   .pin { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background: var(--gold); color: #2b230f; font-size: 11px; font-weight: 800; flex-shrink: 0; vertical-align: 2px; margin-left: 6px; }
   .legenda { padding: 12px 16px 16px; }
   .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
@@ -148,31 +139,30 @@
 <header class="hero">
   <div class="hero-inner">
     <span class="eyebrow">✦ Novidade no Hardt App</span>
-    <h1>Repetir o último<br>pedido do cliente</h1>
-    <p>No Novo Pedido, todo produto já comprado mostra a última quantidade e data direto na lista — e um botão novo, no topo da lista de produtos, abre uma prévia para você conferir e ajustar antes de colocar no carrinho.</p>
+    <h1>Repetir o último<br>pedido, igualzinho</h1>
+    <p>O botão "Repetir último pedido" agora repete o PEDIDO INTEIRO anterior — mesmos itens, mesma condição, mesmos preços. Se algo não bate mais, o app avisa por quê e pede para montar na mão, em vez de arriscar um pedido errado.</p>
   </div>
 </header>
 
 <div class="wrap">
 
-  <!-- mock da lista de produtos com "última vez" -->
+  <!-- mock da faixa + prévia do pedido -->
   <div class="mock" aria-hidden="true">
     <div class="mock-top">
-      <span class="mock-ico">🛒</span>
+      <span class="mock-ico">🔁</span>
       <div>
-        <small>Novo Pedido · Produtos</small>
-        <strong>Padaria Exemplo</strong>
+        <small>Repetir pedido #916 de 14/05</small>
+        <strong>À vista - Dinheiro</strong>
       </div>
     </div>
     <div class="mock-body">
-      <div class="mock-pill">🔁 Repetir último pedido<small>7 itens · última compra 28/08</small></div>
       <div class="mock-item">
-        <div class="nome">Coxinha de Frango C/50 · 30GR</div>
-        <div class="ultima">Última vez: 20un em 28/08</div>
+        <div><div class="nome">Coxinha de Frango C/50 · 30GR</div><div class="qtd">1 PT × R$ 26,87</div></div>
+        <div class="preco">R$ 26,87</div>
       </div>
       <div class="mock-item">
-        <div class="nome">Risole de Carne C/50 · 25GR</div>
-        <div class="ultima">Última vez: 10un em 28/08</div>
+        <div><div class="nome">Churros Doce de Leite C/50 · 30GR</div><div class="qtd">2 PT × R$ 26,87</div></div>
+        <div class="preco">R$ 53,74</div>
       </div>
     </div>
   </div>
@@ -182,65 +172,49 @@
 
   <div class="acc aberto">
     <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
-      <span class="acc-ico">👀</span>
-      <strong>A última compra aparece sem precisar clicar</strong>
-      <span class="acc-seta">▼</span>
-    </button>
-    <div class="acc-corpo">
-      <p>Todo produto que o cliente já comprou antes mostra, logo abaixo do nome, <b>"Última vez: Nun em dd/mm"</b> — a quantidade e a data da compra mais recente.</p>
-      <p>Antes esse dado só aparecia clicando para expandir o produto. Agora vem pronto na lista, e o histórico completo (preço e número do pedido) continua disponível ao tocar no produto, como sempre.</p>
-    </div>
-  </div>
-
-  <div class="acc aberto">
-    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
       <span class="acc-ico">🔁</span>
-      <strong>Faixa "Repetir último pedido" no topo da lista</strong>
+      <strong>Agora repete o pedido inteiro, não item por item</strong>
       <span class="acc-seta">▼</span>
     </button>
     <div class="acc-corpo">
-      <p>Quando o cliente tem histórico, aparece essa faixa logo no topo da lista de produtos (embaixo da busca), já mostrando o resumo: quantos itens e a data da última compra.</p>
-      <p>Ela reúne a <b>compra mais recente de cada produto</b> do histórico do cliente — não é necessariamente um único pedido antigo, é o que ele levou de cada item pela última vez.</p>
+      <p>Antes, "Repetir último pedido" juntava a <b>compra mais recente de cada produto</b> que o cliente já levou na vida — e isso trazia de volta produto que ele já parou de comprar.</p>
+      <p>Agora o botão repete <b>o último pedido de verdade</b> — o mesmo conjunto de itens, nas mesmas quantidades, com a mesma condição de pagamento e os mesmos preços de então.</p>
     </div>
   </div>
 
   <div class="acc aberto">
     <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
-      <span class="acc-ico">🔍</span>
-      <strong>Prévia antes de entrar no carrinho</strong>
+      <span class="acc-ico">💰</span>
+      <strong>Só repete se o preço de hoje bater com o de antes</strong>
       <span class="acc-seta">▼</span>
     </button>
     <div class="acc-corpo">
-      <p>Tocar na faixa não coloca nada no carrinho direto — abre o modal <b>"Conferir antes de adicionar"</b>, com uma linha por produto: nome, quantidade da última compra (<b>editável</b>), data da compra e o preço atual (mesma regra do carrinho: o último preço pago pelo cliente, senão a tabela + acréscimo da condição).</p>
-      <p>Cada item vem com um <b>checkbox marcado</b> por padrão — desmarque o que não quiser levar, ou use "Selecionar todos". O total estimado dos itens marcados fica sempre visível no rodapé do modal.</p>
+      <p>Antes de mostrar qualquer coisa, o app confere: o pedido é do mesmo tipo (normal/especial)? A condição de pagamento ainda está liberada para este cliente? Todo produto ainda está no catálogo, com estoque suficiente? E o principal — <b>o preço que o app aplicaria hoje é exatamente igual ao que o cliente pagou da última vez?</b></p>
+      <p>Só quando tudo bate, a repetição é liberada — sem meio-termo, sem "quase igual".</p>
     </div>
   </div>
 
   <div class="acc aberto">
     <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
-      <span class="acc-ico">🛡️</span>
-      <strong>Situação de cada item, e nada pula trava</strong>
+      <span class="acc-ico">✅</span>
+      <strong>Sem divergência: conferir e repetir</strong>
       <span class="acc-seta">▼</span>
     </button>
     <div class="acc-corpo">
-      <ul>
-        <li>Produto com <b>estoque insuficiente</b> para a quantidade aparece com aviso âmbar, mas continua marcável — você decide se leva assim mesmo (a trava de verdade continua valendo na hora de Enviar, como sempre).</li>
-        <li>Produto que <b>saiu do catálogo</b> (descontinuado, ou fora da condição/tipo de pedido escolhido) aparece cinza, <b>sem checkbox</b> — nunca entra no carrinho.</li>
-        <li>Só ao tocar em <b>"Adicionar"</b> os itens marcados entram de fato no carrinho, pela mesma função usada ao adicionar item na mão — preço, trava de estoque e promoção continuam valendo do mesmo jeito.</li>
-        <li>O modal só <b>monta a prévia</b> — o pedido continua exigindo que você revise e toque em Salvar/Enviar, como qualquer pedido novo.</li>
-      </ul>
+      <p>Abre "Repetir pedido #N de dd/mm" com a lista <b>somente leitura</b> — produto, quantidade, preço e subtotal — e o total no rodapé. Se o carrinho já tinha itens, um aviso amarelo avisa que ele será substituído.</p>
+      <p>Ao tocar em <b>"Repetir pedido"</b>, a condição de pagamento muda para a do último pedido e o carrinho é preenchido com os mesmos itens e preços. Nada é enviado sozinho — o vendedor revisa e toca em Salvar/Enviar como em qualquer pedido.</p>
     </div>
   </div>
 
   <div class="acc aberto">
     <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
-      <span class="acc-ico">⚠️</span>
-      <strong>Carrinho com itens? O modal já avisa</strong>
+      <span class="acc-ico">🚫</span>
+      <strong>Com divergência: bloqueado, e diz o motivo</strong>
       <span class="acc-seta">▼</span>
     </button>
     <div class="acc-corpo">
-      <p>Se você já tinha adicionado produtos na mão antes de abrir a prévia, o modal mostra um aviso amarelo dizendo que o carrinho vai ser <b>substituído</b> pelos itens marcados — e o próprio botão de confirmar já vem escrito "Substituir carrinho por N itens" em vez de "Adicionar N itens ao carrinho", para não ter susto.</p>
-      <p>Carrinho vazio? O botão já diz "Adicionar", sem aviso nenhum.</p>
+      <p>Se qualquer coisa mudou desde o último pedido, abre "Não é possível repetir o pedido #N" com a lista dos motivos, em vermelho — nome do produto e o que houve: fora do catálogo, sem estoque, condição não disponível, ou o preço diferente.</p>
+      <p><b>Nenhum item entra no carrinho.</b> A tela pede para montar o pedido manualmente — do jeito de sempre, produto por produto.</p>
     </div>
   </div>
 
@@ -248,98 +222,90 @@
   <div class="sec-label">As telas do app</div>
 
   <div class="tela">
-    <div class="tela-titulo">🛒 Tela 1 · Novo Pedido — lista de produtos</div>
+    <div class="tela-titulo">✅ Tela 1 · Repetir sem divergência</div>
     <div class="tela-corpo" aria-hidden="true">
-      <div class="app-btn-pill" style="margin-bottom:10px;flex-direction:row;justify-content:center;">🔁 Repetir último pedido (7 itens · última compra 28/08)<span class="pin">1</span></div>
-      <div class="app-card">
-        <div class="app-card-head">Produtos já comprados</div>
-        <div class="app-produto">
-          <div class="foto"></div>
-          <div>
-            <div class="nome">Coxinha de Frango C/50 · 30GR<span class="pin">2</span></div>
-            <div class="ultima">Última vez: 20un em 28/08</div>
-          </div>
+      <div class="app-modal">
+        <div class="app-modal-head">
+          <strong>Repetir pedido #916 de 14/05<span class="pin">1</span></strong>
+          <small>À vista - Dinheiro<span class="pin">2</span></small>
         </div>
-        <div class="app-produto">
-          <div class="foto"></div>
+        <div class="app-confirm">
+          <b>⚠️ O carrinho já tem itens</b> — ao confirmar, ele será SUBSTITUÍDO pelos itens abaixo.<span class="pin">3</span>
+        </div>
+        <div class="app-item-row">
           <div>
-            <div class="nome">Risole de Carne C/50 · 25GR</div>
-            <div class="ultima">Última vez: 10un em 28/08</div>
+            <div class="nome">Churros Doce de Leite C/50 · 30GR</div>
+            <div class="info">1 PT × R$ 26,87</div>
           </div>
+          <div class="preco">R$ 26,87</div>
+        </div>
+        <div class="app-item-row">
+          <div>
+            <div class="nome">Coxinha de Frango C/50 · 30GR</div>
+            <div class="info">2 PT × R$ 26,87</div>
+          </div>
+          <div class="preco">R$ 53,74</div>
+        </div>
+        <div class="app-item-row">
+          <div>
+            <div class="nome">Travesseiro de Pizza C/50 · 30GR</div>
+            <div class="info">1 PT × R$ 26,87</div>
+          </div>
+          <div class="preco">R$ 26,87</div>
+        </div>
+        <div class="app-modal-total"><span>Total<span class="pin">4</span></span><span>R$ 107,48</span></div>
+        <div class="app-modal-botoes">
+          <span class="app-btn-sec">Cancelar</span>
+          <span class="app-btn-prim">Repetir pedido<span class="pin">5</span></span>
         </div>
       </div>
     </div>
     <div class="legenda">
-      <div><span class="pin">1</span><span>A faixa <b>"Repetir último pedido"</b> fica no topo da lista de produtos, embaixo da busca — só aparece quando o cliente tem histórico e já mostra quantos itens e a data da última compra. Enquanto o catálogo troca (ex.: acabou de escolher Especial), ela fica cinza escrito "Carregando catálogo…".</span></div>
-      <div><span class="pin">2</span><span>Assim que o cliente é escolhido, todo item já comprado antes já vem com <b>"Última vez"</b> — sem precisar tocar em nada.</span></div>
+      <div><span class="pin">1</span><span>O título já mostra o <b>número e a data</b> do pedido que vai ser repetido.</span></div>
+      <div><span class="pin">2</span><span>A condição de pagamento do último pedido — é ela que vale ao repetir, mesmo que outra esteja selecionada no formulário agora.</span></div>
+      <div><span class="pin">3</span><span>Se o carrinho já tinha itens, esse aviso aparece: confirmar aqui <b>substitui</b> tudo.</span></div>
+      <div><span class="pin">4</span><span>Lista <b>somente leitura</b> — sem checkbox, sem quantidade editável. É a repetição fiel; ajustar fica para depois, no carrinho.</span></div>
+      <div><span class="pin">5</span><span>Só ao tocar aqui os itens entram no carrinho, com a condição de pagamento já trocada. O pedido continua exigindo Salvar/Enviar manual.</span></div>
     </div>
   </div>
 
   <div class="tela">
-    <div class="tela-titulo">🔍 Tela 2 · Modal "Conferir antes de adicionar"</div>
+    <div class="tela-titulo">🚫 Tela 2 · Repetir com divergência (bloqueado)</div>
     <div class="tela-corpo" aria-hidden="true">
       <div class="app-modal">
         <div class="app-modal-head">
-          <strong>Conferir antes de adicionar<span class="pin">1</span></strong>
-          <small>Compra mais recente de cada produto do histórico</small>
+          <strong>Não é possível repetir o pedido #904293<span class="pin">1</span></strong>
         </div>
-        <div class="app-confirm" style="margin:10px 14px 0;">
-          <b>⚠️ O carrinho já tem itens</b> — ao confirmar, ele será SUBSTITUÍDO pelos itens marcados abaixo.<span class="pin">2</span>
+        <div class="app-divergencia">
+          <span class="ico">⚠️</span>
+          <span>Produto 4-Mini Empada Frango C/50 · 32GR: no último pedido R$ 41,84, hoje só é possível R$ 43,51.<span class="pin">2</span></span>
         </div>
-        <div class="app-selecionar-todos">
-          <span>☑ Selecionar todos<span class="pin">3</span></span>
-          <span style="font-weight:600;">2 de 3 selecionados</span>
+        <div class="app-divergencia">
+          <span class="ico">⚠️</span>
+          <span>Produto 4-Mini Kibe Carne C/50 · 28GR não está mais no catálogo.<span class="pin">3</span></span>
         </div>
-        <div class="app-check-row">
-          <span class="app-check on"></span>
-          <div>
-            <div class="nome">Coxinha de Frango C/50 · 30GR</div>
-            <div class="info">Última compra: 28/08 · R$ 32,00/cx</div>
-          </div>
-          <span class="app-qtd-box">20<span class="pin">4</span></span>
-        </div>
-        <div class="app-check-row semestoque">
-          <span class="app-check on"></span>
-          <div>
-            <div class="nome">Risole de Carne C/50 · 25GR</div>
-            <div class="info">Última compra: 28/08 · R$ 28,50/cx</div>
-            <span class="app-tag-ambar">Sem estoque suficiente (disp. 4 cx)<span class="pin">5</span></span>
-          </div>
-          <span class="app-qtd-box">10</span>
-        </div>
-        <div class="app-check-row fora">
-          <div style="width:15px;flex-shrink:0;"></div>
-          <div>
-            <div class="nome">Empada de Palmito C/30 · 20GR</div>
-            <div class="info">Última compra: 12/07 · R$ 24,00/cx</div>
-            <span class="app-tag-cinza">Não está mais no catálogo<span class="pin">6</span></span>
-          </div>
-        </div>
-        <div class="app-modal-total"><span>Total estimado</span><span>R$ 925,00</span></div>
+        <div class="app-motiv-texto">Para não errar o pedido, monte-o manualmente.<span class="pin">4</span></div>
         <div class="app-modal-botoes">
-          <span class="app-btn-sec">Cancelar</span>
-          <span class="app-btn-prim">Substituir carrinho por 2 itens<span class="pin">7</span></span>
+          <span class="app-btn-prim full">Entendi<span class="pin">5</span></span>
         </div>
       </div>
     </div>
     <div class="legenda">
-      <div><span class="pin">1</span><span>Nada entra no carrinho só de abrir o modal — é uma <b>prévia</b> para conferir antes.</span></div>
-      <div><span class="pin">2</span><span>Se o carrinho já tinha itens, esse aviso aparece: confirmar aqui <b>substitui</b> tudo pelos itens marcados.</span></div>
-      <div><span class="pin">3</span><span><b>"Selecionar todos"</b> marca ou desmarca de uma vez só os itens que podem ser adicionados.</span></div>
-      <div><span class="pin">4</span><span>A <b>quantidade é editável</b> — ajuste antes de confirmar, sem precisar corrigir depois no carrinho.</span></div>
-      <div><span class="pin">5</span><span>Estoque insuficiente para a quantidade: aviso âmbar, mas o item continua marcável — a trava de verdade vale na hora de Enviar.</span></div>
-      <div><span class="pin">6</span><span>Produto que saiu do catálogo aparece cinza, <b>sem checkbox</b> — nunca entra no carrinho.</span></div>
-      <div><span class="pin">7</span><span>O botão já avisa a ação: <b>"Substituir"</b> quando o carrinho tinha itens, <b>"Adicionar"</b> quando estava vazio. Fica desabilitado com 0 itens marcados.</span></div>
+      <div><span class="pin">1</span><span>Título já deixa claro: a repetição <b>não vai acontecer</b> para este pedido.</span></div>
+      <div><span class="pin">2</span><span>Cada linha em vermelho nomeia o produto e o motivo — aqui, o preço de tabela mudou desde a última compra.</span></div>
+      <div><span class="pin">3</span><span>Outros motivos possíveis: produto sem estoque suficiente, condição de pagamento não liberada para o cliente, ou tipo de pedido diferente (normal × especial).</span></div>
+      <div><span class="pin">4</span><span>A orientação é direta: monte o pedido produto por produto, do jeito de sempre.</span></div>
+      <div><span class="pin">5</span><span>Um único botão para fechar — <b>nenhum item entra no carrinho</b>, nada fica pela metade.</span></div>
     </div>
   </div>
 
   <!-- ══════════ PASSOS ══════════ -->
   <div class="sec-label">Para começar a usar</div>
   <div class="passos">
-    <div class="passo"><div class="passo-n">1</div><div>Abra <b>Novo Pedido</b> para um cliente que já tem compras anteriores.</div></div>
-    <div class="passo"><div class="passo-n">2</div><div>Escolha <b>tipo de pedido</b> e <b>condição de pagamento</b> — a faixa aparece no topo da lista de produtos, já com o catálogo carregado.</div></div>
-    <div class="passo"><div class="passo-n">3</div><div>Toque em <b>"Repetir último pedido"</b> e confira o modal: desmarque o que não quiser, ajuste quantidades.</div></div>
-    <div class="passo"><div class="passo-n">4</div><div>Toque em <b>"Adicionar"</b> (ou "Substituir", se o carrinho já tinha itens) — só aí os itens entram no carrinho.</div></div>
+    <div class="passo"><div class="passo-n">1</div><div>Abra <b>Novo Pedido</b> para um cliente que já tem um pedido de verdade anterior (bonificação não conta).</div></div>
+    <div class="passo"><div class="passo-n">2</div><div>Escolha <b>tipo de pedido</b> e <b>condição de pagamento</b> — a faixa "Repetir último pedido" aparece no topo da lista, com o número e a data do último pedido.</div></div>
+    <div class="passo"><div class="passo-n">3</div><div>Toque na faixa: se tudo bater com hoje, confira a lista e toque em <b>"Repetir pedido"</b>.</div></div>
+    <div class="passo"><div class="passo-n">4</div><div>Se algo mudou, a tela mostra o motivo e pede para montar manualmente — sem nada entrar no carrinho.</div></div>
     <div class="passo"><div class="passo-n">5</div><div>Ajuste o que precisar e toque em <b>Salvar/Enviar</b>, como em qualquer pedido.</div></div>
   </div>
 

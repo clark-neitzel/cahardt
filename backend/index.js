@@ -24,6 +24,7 @@ const contaFinanceiraRoutes = require('./routes/contaFinanceiraRoutes'); // New
 const condicaoPagamentoRoutes = require('./routes/condicaoPagamentoRoutes');
 const migrationRoutes = require('./routes/migrationRoutes'); // Migration endpoint
 const pedidoRoutes = require('./routes/pedidoRoutes'); // New Pedidos Module
+const pedidoRepetirRoutes = require('./routes/pedidoRepetirRoutes'); // GET /ultimo-pedido — "Repetir último pedido" (pedido inteiro, não por produto)
 const promocaoRoutes = require('./routes/promocaoRoutes'); // Sistema de Promoções
 const leadRoutes = require('./routes/leadRoutes'); // CRM: Leads
 const atendimentoRoutes = require('./routes/atendimentoRoutes'); // CRM: Atendimentos
@@ -164,6 +165,7 @@ app.use('/api/config', authMiddleware, configRoutes);
 app.use('/api/tabela-precos', authMiddleware, tabelaPrecoRoutes);
 app.use('/api/condicoes-pagamento', authMiddleware, condicaoPagamentoRoutes);
 app.use('/api/contas-financeiras', authMiddleware, contaFinanceiraRoutes);
+app.use('/api/pedidos', authMiddleware, pedidoRepetirRoutes); // ANTES de pedidoRoutes: senão GET /:id captura "ultimo-pedido" como id
 app.use('/api/pedidos', authMiddleware, pedidoRoutes);
 app.use('/api/promocoes', promocaoRoutes); // authMiddleware já aplicado internamente na rota
 app.use('/api/leads', authMiddleware, leadRoutes); // CRM: Leads
