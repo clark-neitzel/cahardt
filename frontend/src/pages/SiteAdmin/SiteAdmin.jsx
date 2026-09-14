@@ -4,6 +4,8 @@ import toast from 'react-hot-toast';
 import congeladosService from '../../services/congeladosService';
 import api, { API_URL } from '../../services/api';
 import SelectBusca from '../../components/SelectBusca';
+import { List, Hourglass, UserX, CheckCircle, XCircle, Ban, MessageCircle as IconeWhatsIA } from 'lucide-react';
+import { BarraBuscaPedidos, ChipsStatusPedidos, PendentesPedidos, ListaLinhasPedidos, LinhaPedidoOnline } from '../PedidosOnline/listaEstiloPedidos';
 
 const money = (n) => 'R$ ' + Number(n || 0).toFixed(2).replace('.', ',');
 const imgUrl = (u) => !u ? null : (u.startsWith('http') ? u : `${API_URL}${u}`);
@@ -127,57 +129,33 @@ function PedidosTab() {
     catch (e) { toast.error(e?.response?.data?.error || 'Erro ao excluir.'); }
   };
 
-  const PILLS = [{ id: '', label: 'Todos', cls: 'bg-gray-100 text-gray-700' },
-    ...Object.keys(STATUS_INFO).map(s => ({ id: s, label: STATUS_INFO[s].label, cls: STATUS_INFO[s].cls }))];
+  // Chips de status no desenho da aba de Pedidos (cor ativa por status)
+  const CHIPS = [
+    { key: '', label: 'Todos', icon: List, active: 'bg-gray-200 text-gray-800 border-gray-400' },
+    { key: 'AGUARDANDO', label: 'Aguardando', icon: Hourglass, active: 'bg-amber-100 text-amber-800 border-amber-300' },
+    { key: 'PENDENTE_CADASTRO', label: 'Sem cadastro', icon: UserX, active: 'bg-orange-100 text-orange-800 border-orange-300' },
+    { key: 'CONVERTIDO', label: 'Convertido', icon: CheckCircle, active: 'bg-green-100 text-green-800 border-green-300' },
+    { key: 'RECUSADO', label: 'Recusado', icon: XCircle, active: 'bg-red-100 text-red-800 border-red-300' },
+    { key: 'CANCELADO', label: 'Cancelado', icon: Ban, active: 'bg-gray-100 text-gray-800 border-gray-300' },
+  ];
+  const nAguardando = counts.AGUARDANDO || 0;
+  const nSemCadastro = counts.PENDENTE_CADASTRO || 0;
 
   return (
     <div>
-      <div className="flex flex-wrap gap-2 mb-3 items-center">
-        <div className="relative flex-1 min-w-[220px]">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar nome, razão, fantasia, cidade, CPF ou CNPJ…"
-            className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-sky-200 focus:border-sky-400" />
-        </div>
-        <button onClick={() => carregar()} className="p-2 border border-gray-300 rounded-lg text-gray-500 hover:bg-gray-50" title="Atualizar"><RefreshCw size={16} /></button>
-      </div>
+      <BarraBuscaPedidos valor={busca} onChange={setBusca} onAtualizar={() => carregar()}
+        placeholder="Buscar nome, razão, fantasia, cidade, CPF ou CNPJ…" />
 
-      {/* pílulas de status com contagem */}
-      <div className="flex flex-wrap gap-2 mb-4">
-        {PILLS.map(pl => {
-          const active = status === pl.id; const n = counts[pl.id] || 0;
-          return (
-            <button key={pl.id || 'todos'} onClick={() => setStatus(pl.id)}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition ${active ? 'border-sky-500 bg-sky-600 text-white' : `border-transparent ${pl.cls} hover:brightness-95`}`}>
-              {pl.label}
-              <span className={`inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[11px] ${active ? 'bg-white/25' : 'bg-black/10'}`}>{n}</span>
-            </button>
-          );
-        })}
-      </div>
+      <PendentesPedidos onClick={setStatus} itens={[
+        { key: 'AGUARDANDO', label: 'Aguardando', total: nAguardando, color: 'amber', icon: Hourglass },
+        { key: 'PENDENTE_CADASTRO', label: 'Sem cadastro', total: nSemCadastro, color: 'red', icon: UserX },
+      ]} />
 
-      {/* aviso visual de pedidos novos que precisam de atenção */}
-      {atencao > 0 && (
-        <div className="mb-4 flex items-center gap-2.5 rounded-xl border border-amber-300 bg-amber-50 px-4 py-2.5 text-amber-800">
-          <span className="cg-pulse" style={{ width: 9, height: 9, borderRadius: 999, background: '#f59e0b', flex: 'none' }} />
-          <Megaphone className="h-4 w-4 flex-none" />
-          <span className="text-sm font-medium">{atencao} pedido{atencao > 1 ? 's' : ''} novo{atencao > 1 ? 's' : ''} aguardando — aprove ou vincule o cliente.</span>
-        </div>
-      )}
+      <ChipsStatusPedidos chips={CHIPS} valor={status} onChange={setStatus} contagens={counts} />
 
-      {loading ? <p className="text-gray-400 text-sm py-10 text-center">Carregando…</p>
-        : lista.length === 0 ? <p className="text-gray-400 text-sm py-10 text-center">Nenhum pedido {status ? 'neste status' : 'do site'} ainda.</p>
-          : (
-            <div className="space-y-3">
-              {lista.map(p => (
-                <PedidoCard key={p.id} p={p} onAbrir={() => setDetalhe(p)} />
-              ))}
-            </div>
-          )}
-
-      <style>{`
-        @keyframes cg-attn { 0%,100%{ opacity:1 } 50%{ opacity:.3 } }
-        .cg-pulse{ animation:cg-attn 1.4s ease-in-out infinite; will-change:opacity; }
-      `}</style>
+      <ListaLinhasPedidos loading={loading} vazio={lista.length === 0 ? `Nenhum pedido ${status ? 'neste status' : 'do site'} ainda.` : null}>
+        {lista.map(p => <PedidoLinha key={p.id} p={p} onAbrir={() => setDetalhe(p)} />)}
+      </ListaLinhasPedidos>
 
       {detalhe && <PedidoDetalhe pedido={detalhe} onClose={() => setDetalhe(null)}
         onAprovar={() => { setAprovar(detalhe); setDetalhe(null); }}
@@ -194,50 +172,38 @@ function PedidosTab() {
 const fmtDataPedido = (p) => p.dataEntrega ? String(p.dataEntrega).slice(0, 10).split('-').reverse().join('/') : (p.diaEntrega || '');
 const ehRetirada = (p) => p.modo === 'retirada';
 
-// Card-resumo: clicável, abre o detalhe completo
-function PedidoCard({ p, onAbrir }) {
+// Linha da lista (desenho da aba de Pedidos): clicável, abre o detalhe completo
+function PedidoLinha({ p, onAbrir }) {
   const s = STATUS_INFO[p.status] || { label: p.status, cls: 'bg-gray-100 text-gray-600' };
   const atencao = p.status === 'AGUARDANDO' || p.status === 'PENDENTE_CADASTRO';
   const inativo = p.status === 'CANCELADO' || p.status === 'RECUSADO';
   const cli = p.congeladosCliente?.cliente;
   const cidade = cli?.End_Cidade || '';
   const data = fmtDataPedido(p);
+  const criado = p.createdAt ? new Date(p.createdAt).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }).replace(',', '') : '';
   return (
-    <button onClick={onAbrir}
-      className={`w-full text-left rounded-xl p-4 bg-white border hover:shadow-md transition ${atencao ? 'border-amber-300 ring-1 ring-amber-200' : 'border-gray-200'} ${inativo ? 'opacity-60' : ''}`}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs font-mono px-1.5 py-0.5 rounded bg-sky-50 text-sky-600">#{p.numero}</span>
-            <b className="text-gray-800">{p.nomeCliente}</b>
-            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${s.cls}`}>{s.label}</span>
-            {atencao && (
-              <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-amber-500 text-white font-semibold">
-                <span className="cg-pulse" style={{ width: 6, height: 6, borderRadius: 999, background: '#fff', flex: 'none' }} /> Novo
-              </span>
-            )}
-            {p.encaixe && <span className="text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 font-semibold">Encaixe</span>}
-            {p.celularAlterado && <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700">telefone novo</span>}
-          </div>
-          <div className="text-xs text-gray-500 mt-1 truncate">
-            Doc: {p.documentoCliente}{cidade ? ` · ${cidade}` : ''}{p.telefoneCliente ? ` · ${p.telefoneCliente}` : ''}
-          </div>
-          <div className="flex flex-wrap items-center gap-1.5 mt-2">
-            <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium ${ehRetirada(p) ? 'bg-violet-100 text-violet-700' : 'bg-sky-100 text-sky-700'}`}>
-              {ehRetirada(p) ? <Store className="h-3 w-3" /> : <Truck className="h-3 w-3" />}
-              {ehRetirada(p) ? 'Retirada' : 'Entrega'}{data ? ` · ${data}` : ''}
-            </span>
-            {p.condicaoNome && <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">{p.condicaoNome}</span>}
-            {p.pedido?.numero && <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700">→ #{p.pedido.numero}</span>}
-          </div>
-        </div>
-        <div className="text-right shrink-0">
-          <div className="font-bold text-gray-800">{money(p.total)}</div>
-          <div className="text-xs text-gray-400">{p.totalCaixas} cx · {p.itens?.length || 0} itens</div>
-          <div className="text-[11px] text-sky-600 mt-1 font-medium">ver detalhes ›</div>
-        </div>
-      </div>
-    </button>
+    <LinhaPedidoOnline
+      numero={`#${p.numero}`} novo={atencao} inativo={inativo}
+      nome={p.nomeCliente} valor={money(p.total)}
+      linha2={[
+        `${ehRetirada(p) ? 'Retirada' : 'Entrega'}: ${data || '-'}`,
+        criado ? `Pedido: ${criado}` : '',
+        p.condicaoNome || '',
+      ]}
+      linha3={cidade}
+      extras={[
+        `Doc: ${p.documentoCliente || '-'}${p.telefoneCliente ? ` · Tel: ${p.telefoneCliente}` : ''}`,
+        `${p.totalCaixas} cx · ${p.itens?.length || 0} itens`,
+      ]}
+      selos={[
+        { texto: s.label, cls: s.cls },
+        p?.origem === 'WHATSAPP_IA' ? { texto: 'WhatsApp IA', cls: 'bg-purple-100 text-purple-700', icon: IconeWhatsIA } : null, // pedido tirado pela Ana (bot)
+        p.encaixe ? { texto: 'Encaixe', cls: 'bg-orange-100 text-orange-700' } : null,
+        p.celularAlterado ? { texto: 'telefone novo', cls: 'bg-yellow-100 text-yellow-700' } : null,
+        p.pedido?.numero ? { texto: `→ Pedido #${p.pedido.numero}`, cls: 'bg-green-100 text-green-800' } : null,
+      ]}
+      onAbrir={onAbrir}
+    />
   );
 }
 

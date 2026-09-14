@@ -7,6 +7,8 @@ import vendedorService from '../../services/vendedorService';
 import { useAuth } from '../../contexts/AuthContext';
 import SelectBusca from '../../components/SelectBusca';
 import { normalizarDoc } from '../../utils/documento'; // inclui CNPJ ALFANUMÉRICO
+import { BarraBuscaPedidos, ChipsStatusPedidos, PendentesPedidos, ListaLinhasPedidos, LinhaPedidoOnline } from '../PedidosOnline/listaEstiloPedidos';
+import { List, Hourglass, UserX, CheckCircle, XCircle, Ban, MessageCircle } from 'lucide-react';
 
 const money = (n) => 'R$ ' + Number(n || 0).toFixed(2).replace('.', ',');
 const docLabel = (doc) => (normalizarDoc(doc).length === 14 ? 'CNPJ' : 'CPF');
@@ -22,13 +24,14 @@ const feitoEm = (d) => {
     return new Date(d).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }).replace(',', ' ·');
   } catch { return null; }
 };
-const STATUS_FILTROS = [
-  ['', 'Todos'],
-  ['AGUARDANDO', 'Aguardando'],
-  ['PENDENTE_CADASTRO', 'Sem cadastro'],
-  ['CONVERTIDO', 'Convertidos'],
-  ['RECUSADO', 'Recusados'],
-  ['CANCELADO', 'Cancelados'],
+// Chips de status no desenho da aba de Pedidos (cor ativa por status)
+const CHIPS_STATUS = [
+  { key: '', label: 'Todos', icon: List, active: 'bg-gray-200 text-gray-800 border-gray-400' },
+  { key: 'AGUARDANDO', label: 'Aguardando', icon: Hourglass, active: 'bg-amber-100 text-amber-800 border-amber-300' },
+  { key: 'PENDENTE_CADASTRO', label: 'Sem cadastro', icon: UserX, active: 'bg-red-100 text-red-800 border-red-300' },
+  { key: 'CONVERTIDO', label: 'Convertidos', icon: CheckCircle, active: 'bg-green-100 text-green-800 border-green-300' },
+  { key: 'RECUSADO', label: 'Recusados', icon: XCircle, active: 'bg-gray-100 text-gray-800 border-gray-300' },
+  { key: 'CANCELADO', label: 'Cancelados', icon: Ban, active: 'bg-gray-100 text-gray-800 border-gray-300' },
 ];
 const BADGE = {
   AGUARDANDO: 'bg-amber-100 text-amber-700',
@@ -69,93 +72,62 @@ export default function AbaPedidos() {
   const atencao = useMemo(() => lista.filter(p => p.status === 'AGUARDANDO' || p.status === 'PENDENTE_CADASTRO').length, [lista]);
   const filtrada = status ? lista.filter(p => p.status === status) : lista;
 
+  const nAguardando = useMemo(() => lista.filter(p => p.status === 'AGUARDANDO').length, [lista]);
+  const nSemCadastro = useMemo(() => lista.filter(p => p.status === 'PENDENTE_CADASTRO').length, [lista]);
+
   return (
     <div>
-      <div className="flex flex-col md:flex-row md:items-center gap-2 mb-3">
-        <div className="relative flex-1">
-          <Search className="h-4 w-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-          <input className="w-full border border-gray-300 rounded-lg pl-9 pr-3 py-2 text-sm" placeholder="Buscar nome, razão, fantasia, cidade, CPF ou CNPJ..."
-            value={busca} onChange={e => setBusca(e.target.value)} />
-        </div>
-        <button onClick={() => carregar()} className="p-2 border border-gray-300 rounded-lg text-gray-500 hover:bg-gray-50 self-start" title="Atualizar"><RefreshCw className="h-4 w-4" /></button>
-      </div>
+      <BarraBuscaPedidos valor={busca} onChange={setBusca} onAtualizar={() => carregar()}
+        placeholder="Buscar nome, razão, fantasia, cidade, CPF ou CNPJ..." />
 
-      {/* pílulas de status com contagem */}
-      <div className="flex flex-wrap gap-2 mb-3">
-        {STATUS_FILTROS.map(([v, l]) => {
-          const active = status === v; const n = v === '' ? (counts[''] || 0) : (counts[v] || 0);
-          const cls = v === '' ? 'bg-gray-100 text-gray-700' : (BADGE[v] || 'bg-gray-100 text-gray-600');
+      <PendentesPedidos onClick={setStatus} itens={[
+        { key: 'AGUARDANDO', label: 'Aguardando', total: nAguardando, color: 'amber', icon: Hourglass },
+        { key: 'PENDENTE_CADASTRO', label: 'Sem cadastro', total: nSemCadastro, color: 'red', icon: UserX },
+      ]} />
+
+      <ChipsStatusPedidos chips={CHIPS_STATUS} valor={status} onChange={setStatus} contagens={counts} />
+
+      <ListaLinhasPedidos loading={loading} vazio={filtrada.length === 0 ? 'Nenhum pedido encontrado.' : null}>
+        {filtrada.map(p => {
+          const novo = p.status === 'AGUARDANDO' || p.status === 'PENDENTE_CADASTRO';
+          const inativo = p.status === 'RECUSADO' || p.status === 'CANCELADO';
+          const cli = p.kitFestaCliente?.cliente;
+          // Vinculado a um cadastro → mostra nome (razão social) e documento do cadastro; senão, o que veio do site
+          const nomeExib = cli?.Nome || p.nomeCliente;
+          const docExib = cli?.Documento || p.cpfCliente;
+          const fantasia = cli?.NomeFantasia && cli.NomeFantasia !== nomeExib ? cli.NomeFantasia : '';
+          const cidade = cli?.End_Cidade || '';
+          const nomeSite = cli ? nomeDoSite(p.nomeCliente, nomeExib) : '';
+          const dataEnt = String(p.data || '').slice(0, 10).split('-').reverse().join('/');
+          const feito = feitoEm(p.createdAt);
           return (
-            <button key={v || 'todos'} onClick={() => setStatus(v)}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition ${active ? 'border-emerald-500 bg-emerald-600 text-white' : `border-transparent ${cls} hover:brightness-95`}`}>
-              {l}
-              <span className={`inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[11px] ${active ? 'bg-white/25' : 'bg-black/10'}`}>{n}</span>
-            </button>
+            <LinhaPedidoOnline key={p.id}
+              numero={`#${p.numero}`} novo={novo} inativo={inativo}
+              nome={fantasia ? `${nomeExib} · ${fantasia}` : nomeExib}
+              valor={money(p.total)}
+              linha2={[
+                `${p.modo === 'entrega' ? 'Entrega' : 'Retirada'}: ${dataEnt}${p.horario ? ` ${p.horario}` : ''}`,
+                feito ? `Pedido: ${feito}` : '',
+                nomeSite ? `por: ${nomeSite}` : '',
+              ]}
+              linha3={cidade}
+              extras={[
+                `${docExib ? `${docLabel(docExib)}: ${docExib}` : ''}${p.telefoneCliente ? `${docExib ? ' · ' : ''}Tel: ${p.telefoneCliente}` : ''}`,
+                `${p.totalCaixas} caixa(s)`,
+              ]}
+              selos={[
+                { texto: STATUS_LABEL[p.status] || p.status, cls: BADGE[p.status] || 'bg-gray-100 text-gray-700' },
+                p.status === 'PENDENTE_CADASTRO' ? { texto: 'Cliente sem cadastro no app', cls: 'bg-red-50 text-red-700 border border-red-200', icon: AlertTriangle } : null,
+                p.celularAlterado ? { texto: 'Celular alterado — atualizar no cadastro', cls: 'bg-amber-50 text-amber-700 border border-amber-200', icon: Phone } : null,
+                p.status === 'CANCELADO'
+                  ? { texto: `Pedido ${p.pedido?.numero ? `#${p.pedido.numero} ` : ''}excluído no sistema`, cls: 'bg-gray-100 text-gray-600' }
+                  : (p.pedido ? { texto: `→ Pedido ${p.pedido.numero ? `#${p.pedido.numero}` : 'criado'}`, cls: 'bg-green-100 text-green-800' } : null),
+              ]}
+              onAbrir={() => setAberto(p)}
+            />
           );
         })}
-      </div>
-
-      {/* aviso visual de pedidos novos que precisam de atenção */}
-      {atencao > 0 && (
-        <div className="mb-3 flex items-center gap-2.5 rounded-xl border border-amber-300 bg-amber-50 px-4 py-2.5 text-amber-800">
-          <span className="animate-pulse" style={{ width: 9, height: 9, borderRadius: 999, background: '#f59e0b', flexShrink: 0 }} />
-          <Megaphone className="h-4 w-4 flex-none" />
-          <span className="text-sm font-medium">{atencao} pedido{atencao > 1 ? 's' : ''} novo{atencao > 1 ? 's' : ''} aguardando — aprove ou vincule o cliente.</span>
-        </div>
-      )}
-
-      {loading ? (
-        <div className="p-12 text-center text-gray-400"><Loader2 className="h-6 w-6 animate-spin inline" /></div>
-      ) : filtrada.length === 0 ? (
-        <div className="p-12 text-center text-gray-400 text-sm">Nenhum pedido encontrado.</div>
-      ) : (
-        <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-3">
-          {filtrada.map(p => {
-            const novo = p.status === 'AGUARDANDO' || p.status === 'PENDENTE_CADASTRO';
-            const inativo = p.status === 'RECUSADO' || p.status === 'CANCELADO';
-            const cli = p.kitFestaCliente?.cliente;
-            // Vinculado a um cadastro → mostra nome (razão social) e documento do cadastro; senão, o que veio do site
-            const nomeExib = cli?.Nome || p.nomeCliente;
-            const docExib = cli?.Documento || p.cpfCliente;
-            const fantasia = cli?.NomeFantasia && cli.NomeFantasia !== nomeExib ? cli.NomeFantasia : '';
-            const cidade = cli?.End_Cidade || '';
-            const nomeSite = cli ? nomeDoSite(p.nomeCliente, nomeExib) : '';
-            return (
-            <button key={p.id} onClick={() => setAberto(p)}
-              className={`text-left bg-white rounded-xl raio-proprio border p-3 hover:shadow-md transition-shadow ${novo ? 'border-amber-300 ring-1 ring-amber-200' : 'border-gray-200'} ${inativo ? 'opacity-60' : ''}`}>
-              <div className="flex items-center justify-between mb-1">
-                <span className="font-mono text-xs text-gray-400">#{p.numero}</span>
-                <div className="flex items-center gap-1.5">
-                  {novo && <span className="inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded-full bg-amber-500 text-white font-semibold"><span className="animate-pulse" style={{ width: 5, height: 5, borderRadius: 999, background: '#fff' }} />Novo</span>}
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${BADGE[p.status]}`}>{STATUS_LABEL[p.status]}</span>
-                </div>
-              </div>
-              <div className="font-semibold text-gray-800 text-sm">{nomeExib}</div>
-              <div className="text-xs text-gray-400">{[fantasia, cidade, p.telefoneCliente || docExib].filter(Boolean).join(' · ')}</div>
-              {nomeSite && <div className="text-[11px] text-gray-400 mt-0.5">Pedido feito por {nomeSite}</div>}
-              <div className="flex items-center gap-2 text-xs text-gray-500 mt-2">
-                <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{String(p.data).slice(0, 10).split('-').reverse().join('/')}</span>
-                <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{p.horario}</span>
-                <span className="flex items-center gap-1">{p.modo === 'entrega' ? <Truck className="h-3 w-3" /> : <Package className="h-3 w-3" />}{p.modo}</span>
-              </div>
-              <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-50">
-                <span className="text-xs text-gray-400">{p.totalCaixas} caixa(s)</span>
-                <span className="font-bold text-emerald-700 text-sm">{money(p.total)}</span>
-              </div>
-              {p.status === 'PENDENTE_CADASTRO' && (
-                <div className="mt-2 text-xs text-red-600 flex items-center gap-1"><AlertTriangle className="h-3 w-3" /> Cliente sem cadastro no app</div>
-              )}
-              {p.celularAlterado && (
-                <div className="mt-1 text-xs text-amber-600 flex items-center gap-1"><Phone className="h-3 w-3" /> Celular alterado — atualizar no cadastro</div>
-              )}
-              {p.status === 'CANCELADO'
-                ? <div className="mt-1 text-xs text-gray-500">Pedido {p.pedido?.numero ? `#${p.pedido.numero} ` : ''}excluído no sistema</div>
-                : p.pedido && <div className="mt-1 text-xs text-emerald-600">→ Pedido {p.pedido.numero ? `#${p.pedido.numero}` : 'criado'}</div>}
-            </button>
-            );
-          })}
-        </div>
-      )}
+      </ListaLinhasPedidos>
 
       {aberto && <ModalPedido pedido={aberto} isAdmin={isAdmin} onClose={() => setAberto(null)} onChanged={() => { setAberto(null); carregar(); }} />}
     </div>
