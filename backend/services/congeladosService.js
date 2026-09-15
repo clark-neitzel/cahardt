@@ -762,23 +762,63 @@ const congeladosService = {
     // v1.6.0 — promoções vigentes dos produtos que estão no site (contexto: tabela "Site").
     // No reconhecimento por telefone, `catalogo[].promocao.precoPromo` já vem com o acréscimo
     // da condição do cliente — é esse que a Ana deve falar.
+    // v1.6.1 — soma `regras`: explicação de como as promoções funcionam NESTE sistema (a Ana
+    // já recebia a LISTA de promoções, mas não o "manual" delas). Escrito a partir do código
+    // real de promocaoService.avaliarLiberada / calcularFlexComPromocao e da 1ª passada de
+    // criarPedidoSite (subtotalNormal = soma a preço de tabela, ANTES do desconto — é o valor
+    // usado para avaliar a condição VALOR_TOTAL).
     async promocoesVigentes() {
         const catalogo = await this.catalogoVisitante({ paraIA: true });
         return {
             promocoes: catalogo
                 .filter(p => p.promocao)
                 .map(p => ({ ...p.promocao, id_site: p.id, nome: p.nome, produto: { ...p } })),
+            regras: {
+                resumo: 'Existem dois tipos de promoção: PRECO (preço promocional vale sempre, qualquer '
+                    + 'quantidade, dentro do período) e CONDICIONAL (só é liberada se o carrinho atender pelo '
+                    + 'menos um dos grupos de condições cadastrados). O preço com desconto só é aplicado ao '
+                    + 'item cuja promoção está vigente e, no caso CONDICIONAL, liberada — os demais itens do '
+                    + 'pedido seguem o preço normal.',
+                tipos: {
+                    PRECO: 'Preço promocional (precoPromo) vale no período (validoDe–validoAte) para qualquer '
+                        + 'quantidade do produto — não depende do resto do carrinho.',
+                    CONDICIONAL: 'Só é liberada se pelo menos UM grupo de "condicoes" for atendido (grupos são '
+                        + '"ou" entre si). Dentro de um grupo, TODAS as condições precisam ser verdadeiras ao '
+                        + 'mesmo tempo ("e" entre elas). Cada condição é de um destes tipos: PRODUTO_QUANTIDADE '
+                        + '(quantidade mínima de um produto específico no pedido) ou VALOR_TOTAL (valor mínimo '
+                        + 'do pedido inteiro).',
+                },
+                precos: 'precoPromo já inclui o acréscimo % da condição de pagamento do cliente (mesma conta '
+                    + 'da tela de pedido do vendedor) — é o valor que a Ana deve falar para o cliente. '
+                    + 'precoPromoBase é o preço promocional cadastrado, sem esse acréscimo.',
+                validade: 'validoDe/validoAte (formato AAAA-MM-DD) — fora desse período a promoção nem aparece '
+                    + 'nesta lista, porque ela só traz promoções VIGENTES.',
+                naoExiste: ['LEVE_MAIS'],
+                comoUsar: 'Para aplicar uma promoção ao criar o pedido, mande o campo "promocaoId" no item '
+                    + '(POST /congelados/pedido, itens[].promocaoId). O servidor SEMPRE valida de novo e '
+                    + 'recalcula o preço — nunca confia em preço mandado pelo cliente/bot. Se a promoção não '
+                    + 'existir/não estiver mais vigente, o erro vem com code "PROMOCAO_INVALIDA"; se existir '
+                    + 'mas a condição do carrinho ainda não foi atendida, vem com code "PROMOCAO_NAO_LIBERADA" '
+                    + '(a mensagem de erro já descreve a condição em português).',
+                observacao: 'A condição VALOR_TOTAL (e a quantidade mínima de PRODUTO_QUANTIDADE) é avaliada '
+                    + 'com os preços NORMAIS de tabela, somados ANTES de qualquer desconto de promoção — '
+                    + 'ou seja, o cliente não consegue "se qualificar" para uma promoção usando o preço já '
+                    + 'promocional de outro item.',
+            },
         };
     },
 
     // v1.6.0 — produtos do site sem estoque (opção b do item 6). Não existe previsão de retorno
     // no cadastro: `previsaoRetorno` é sempre null.
+    // v1.6.1 — soma `orientacao` (campo fixo): instrução curta para a Ana, já que o sistema não
+    // tem essa data — evita a IA inventar prazo.
     async indisponiveis() {
         const catalogo = await this.catalogoVisitante({ paraIA: true });
         return {
             produtos: catalogo
                 .filter(p => p.indisponivel)
                 .map(p => ({ id: p.id, produtoId: p.produtoId, nome: p.nome, previsaoRetorno: null, produto: { ...p } })),
+            orientacao: 'Sem previsão no sistema — a Ana deve perguntar ao responsável.',
         };
     },
 

@@ -22,8 +22,20 @@ INSERT INTO promocao_condicao_grupos (id, promocao_id) VALUES ('promo-qa-cond-g1
 INSERT INTO promocao_condicoes (id, grupo_id, tipo, produto_id, quantidade_minima, valor_minimo) VALUES
  ('promo-qa-cond-c1','promo-qa-cond-g1','PRODUTO_QUANTIDADE','77cacf21-9cf4-4367-a8c4-d2ec3bc36e3c',3,NULL) ON CONFLICT (id) DO NOTHING;
 -- etiqueta da coxinha tradicional (peso unitário 130g, 20 un, pacote 2600g)
+-- v1.6.1: nome_produto/modo_preparo/alergenos/codigo_barras/armazenamento testam o objeto único
+-- de produto usando a etiqueta como fonte (nomeCurto, modoPreparo literal, sub-objeto `etiqueta`).
+INSERT INTO etiquetas_produtos (id, produto_id, codigo_produto, nome_produto, peso_unitario, peso_tabela_nutricional, quantidade_embalagem, peso_pacote, composicao, modo_preparo, codigo_barras, alergenos, contem_gluten, contem_lactose, armazenamento, ativo, created_at, updated_at)
+VALUES ('et-qa-0001','640c37ca-e578-4832-99a3-24c2d6e410b1','3059','Coxinha Tradicional de Frango',130,100,20,2600,'massa, frango','Fritar em óleo quente (180°C) por 5 a 7 minutos, ou assar em forno pré-aquecido a 200°C por 20 minutos.','7891234567890',ARRAY['Trigo','Leite'],true,true,'Manter congelado a -18°C. Após descongelar, consumir em até 24h.',true,now(),now())
+ON CONFLICT (id) DO UPDATE SET
+  nome_produto = EXCLUDED.nome_produto, modo_preparo = EXCLUDED.modo_preparo,
+  codigo_barras = EXCLUDED.codigo_barras, alergenos = EXCLUDED.alergenos,
+  contem_gluten = EXCLUDED.contem_gluten, contem_lactose = EXCLUDED.contem_lactose,
+  armazenamento = EXCLUDED.armazenamento, updated_at = now();
+-- etiqueta do 2º produto do site, SEM rótulo de preparo na categoria (testa que preparoTipo vem
+-- null nesse caso — NÃO deriva de modo_preparo — e que modoPreparo ainda sai como texto literal)
 INSERT INTO etiquetas_produtos (id, produto_id, codigo_produto, nome_produto, peso_unitario, peso_tabela_nutricional, quantidade_embalagem, peso_pacote, composicao, modo_preparo, ativo, created_at, updated_at)
-VALUES ('et-qa-0001','640c37ca-e578-4832-99a3-24c2d6e410b1','3059','COXINHA TRADICIONAL FRANGO',130,100,20,2600,'massa, frango','fritar',true,now(),now()) ON CONFLICT (id) DO NOTHING;
+VALUES ('et-qa-0002','7f5e61d0-0092-418e-8d48-5512f4b41cf7','9999','Risoles de Carne',45,100,20,900,'massa, carne','Assar em forno pré-aquecido a 200°C por 25 minutos, sem descongelar.',true,now(),now())
+ON CONFLICT (id) DO UPDATE SET nome_produto = EXCLUDED.nome_produto, modo_preparo = EXCLUDED.modo_preparo, updated_at = now();
 -- preparo por categoria (site)
 INSERT INTO congelados_config (chave, valor, updated_at) VALUES ('categoriasNomes', '{"6b469a55-95c6-41e9-b033-6d3b33f33311":{"preparo":"Para fritar"},"83936f52-150c-4e99-b803-4014e581da37":{"preparo":"Para aquecer"}}'::jsonb, now())
 ON CONFLICT (chave) DO UPDATE SET valor = EXCLUDED.valor;

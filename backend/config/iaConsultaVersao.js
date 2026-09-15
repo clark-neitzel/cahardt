@@ -31,7 +31,19 @@
 // itens[].promocaoId + observacaoInterna + origem e devolve origem + itens[]. Tudo aditivo —
 // nenhum campo removido/renomeado/tipo alterado (ultimoPedido segue array, grupo segue ID,
 // embalagem segue string, preparo segue rótulo). Aviso informativo sobre a fila em AVISOS.
-const VERSAO_API = '1.6.0';
+// · 1.6.1 (2026-09-15) objeto único de produto passa a usar os Dados da Etiqueta do PCP como
+// fonte principal quando existir etiqueta ativa: nomeCurto (etiqueta.nomeProduto), pesoUnidadeG/
+// embalagemInfo.unidadesPorEmbalagem/pesoG (etiqueta.pesoUnitario/quantidadeEmbalagem/pesoPacote).
+// preparoTipo continua vindo SÓ do rótulo curado da categoria (NÃO derivado de etiqueta.modoPreparo
+// — revisão de código pegou que um regex sobre texto livre classificava errado frases com negativa,
+// ex. "Não fritar, assar..." virava FRITO); campos novos `modoPreparo` (texto literal da etiqueta,
+// até 300 chars, para a Ana citar quando preparoTipo vier null) e `etiqueta` (codigoBarras,
+// alergenos[], contemGluten, contemLactose, armazenamento — null sem etiqueta cadastrada).
+// GET congelados/promocoes ganha `regras` (como promoção PRECO/CONDICIONAL funciona neste
+// sistema). GET congelados/indisponiveis ganha `orientacao` (texto fixo, já que não existe
+// previsão de retorno no cadastro). Tudo aditivo — nenhum campo removido/renomeado; `tamanho`
+// continua vindo só do código/nome (a etiqueta não tem esse campo).
+const VERSAO_API = '1.6.1';
 
 const AVISOS = [
     // AVISO INFORMATIVO (v1.6.0, não é quebra de contrato): nenhum campo removido/renomeado.

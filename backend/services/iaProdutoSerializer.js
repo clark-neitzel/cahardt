@@ -181,9 +181,14 @@ function produtoParaIA({ produto, cp = null, etiqueta = null, promo = null, prep
     const p = produto || cp?.produto || null;
     const site = cp || p?.congeladosProduto || null;
     const nomeCompleto = p?.nome || site?.nomeSite || '';
+    // Etiqueta ativa do PCP (Dados da Etiqueta) é a fonte mais confiável de nome/peso/preparo
+    // quando existir — cadastro dedicado, feito à mão, em vez de derivado por regex do nome do
+    // sistema. `unidadesPorCaixa` do site continua tendo prioridade (é o que o pedido usa pra
+    // fechar caixa) — a etiqueta só entra quando o site não tem esse dado.
     const base = site?.precoCongelados != null ? dec(site.precoCongelados) : dec(p?.valorVenda);
     const precoTabela = round2(base * (1 + dec(acrescimoPct) / 100));
     const unidadesPorEmbalagem = (site?.unidadesPorCaixa > 0 ? site.unidadesPorCaixa : null)
+        ?? (etiqueta?.quantidadeEmbalagem > 0 ? etiqueta.quantidadeEmbalagem : null)
         ?? (p?.quantidadePorCaixa > 0 ? p.quantidadePorCaixa : null)
         ?? unidadesDoNome(nomeCompleto);
     const pesoUnidadeG = (etiqueta?.pesoUnitario > 0 ? etiqueta.pesoUnitario : null) ?? pesoDoNome(nomeCompleto);
@@ -191,6 +196,14 @@ function produtoParaIA({ produto, cp = null, etiqueta = null, promo = null, prep
         ?? ((unidadesPorEmbalagem && pesoUnidadeG) ? unidadesPorEmbalagem * pesoUnidadeG : null);
     const ativo = !!p && p.ativo !== false && (site ? site.ativo !== false : true);
     const disponivel = ativo && Number(p?.estoqueDisponivel || 0) > 0;
+    // preparoTipo SÓ vem do rótulo curado da categoria (vocabulário controlado pelo admin) — NUNCA
+    // do texto livre da etiqueta. `modoPreparo` é texto digitado à mão no PCP para instrução de
+    // preparo ("Fritar...", "Assar...") e frequentemente contém negativas ("Não fritar, assar...",
+    // "Produto cru, não recomendamos fritura") que um regex por substring classificaria errado
+    // (achando "fritar" ou "cru" no meio da frase, inclusive quando a frase nega isso) — a Ana
+    // acabaria afirmando o contrário do rótulo real. Revisão 2026-09-15.
+    const modoPreparo = etiqueta?.modoPreparo ? String(etiqueta.modoPreparo).trim().slice(0, 300) : null;
+    const preparoTipo = preparoTipoDe(preparoLabel);
 
     return {
         id: site?.id || null,                 // congeladosProdutoId — é o que vai em itens[].id ao criar pedido
@@ -199,10 +212,13 @@ function produtoParaIA({ produto, cp = null, etiqueta = null, promo = null, prep
         nome: site?.nomeSite || nomeCompleto, // mesma regra do catálogo (nomeSite ‖ nome)
         nomeSite: site?.nomeSite || null,
         nomeCompleto,
-        nomeCurto: nomeCurtoDe(nomeCompleto),
+        // etiqueta.nomeProduto é digitado à mão no PCP (nome limpo, sem código/prefixo) — mais
+        // confiável que o derivado por regex do nome do sistema; usa só quando há etiqueta ativa.
+        nomeCurto: etiqueta?.nomeProduto ? String(etiqueta.nomeProduto).trim() : nomeCurtoDe(nomeCompleto),
         linha: site ? 'CONGELADOS' : null,
         grupo: p?.categoriaProduto?.id || null,      // ID (igual ao catálogo)
         grupoNome: p?.categoriaProduto?.nome || null,
+        // tamanho (P/M/G/GG) só é derivável do código/nome do sistema — a etiqueta não tem esse campo.
         tamanho: tamanhoDe(nomeCompleto),
         pesoUnidadeG,
         unidade: p?.unidade || '',
@@ -215,7 +231,19 @@ function produtoParaIA({ produto, cp = null, etiqueta = null, promo = null, prep
             pesoG,
         },
         preparo: preparoLabel ? String(preparoLabel) : '',
-        preparoTipo: preparoTipoDe(preparoLabel),
+        preparoTipo,
+        // Texto livre do "Modo de Preparo" da etiqueta (cortado em 300 chars) — a Ana pode citar
+        // literalmente quando o cliente perguntar "como preparo?".
+        modoPreparo,
+        // Dados da etiqueta ativa úteis para perguntas do tipo "tem glúten?"/"tem lactose?"/
+        // "como guardar?". null quando não há etiqueta cadastrada para o produto.
+        etiqueta: etiqueta ? {
+            codigoBarras: etiqueta.codigoBarras || null,
+            alergenos: Array.isArray(etiqueta.alergenos) ? etiqueta.alergenos : [],
+            contemGluten: !!etiqueta.contemGluten,
+            contemLactose: !!etiqueta.contemLactose,
+            armazenamento: etiqueta.armazenamento || null,
+        } : null,
         precoTabela,
         precoCliente: precoCliente != null ? round2(precoCliente) : null,
         preco: precoCliente != null ? round2(precoCliente) : precoTabela,

@@ -56,8 +56,8 @@ mencionada na mensagem. Assim a mudança nunca pega o app de surpresa.
 | GET | `/congelados/grupos` | — | Categorias/grupos do catálogo de congelados |
 | GET | `/congelados/config` | — | Dados da loja, mínimo padrão, se atende sábado/domingo (`entregas.sabado/domingo`). **(v1.6)** + `horaCorte` (`"HH:MM"` ou `null`) |
 | GET | `/congelados/produto/:id/ficha` | `:id` = id do produto no site | Ficha técnica/nutricional do produto |
-| GET | `/congelados/promocoes` | — | **(v1.6)** Promoções vigentes dos produtos do site, contexto tabela "Site": `{ promocoes:[{ id, nome, tipo:"PRECO"\|"CONDICIONAL", precoPromo, precoNormal, condicao, validoAte, tabelas:["*"], produtoId, id_site, produto }] }` — ver seção v1.6 |
-| GET | `/congelados/indisponiveis` | — | **(v1.6)** Produtos do site sem estoque: `{ produtos:[{ id, produtoId, nome, previsaoRetorno:null, produto }] }` |
+| GET | `/congelados/promocoes` | — | **(v1.6)** Promoções vigentes dos produtos do site, contexto tabela "Site": `{ promocoes:[{ id, nome, tipo:"PRECO"\|"CONDICIONAL", precoPromo, precoNormal, condicao, validoAte, tabelas:["*"], produtoId, id_site, produto }] }`. **(v1.6.1)** ganha também `regras` (como promoção funciona neste sistema) — ver seção v1.6.1 |
+| GET | `/congelados/indisponiveis` | — | **(v1.6)** Produtos do site sem estoque: `{ produtos:[{ id, produtoId, nome, previsaoRetorno:null, produto }] }`. **(v1.6.1)** ganha também `orientacao` (texto fixo — não existe previsão no cadastro) |
 | POST | `/congelados/reconhecer-telefone` | `{ telefone }` | Se o telefone bater com um cliente cadastrado: catálogo já com preço/condição/dias de entrega REAIS dele. **(v1.4)** cada produto traz `comprado:true/false` e a resposta traz `ultimoPedido:[{id,congeladosProdutoId,produtoId,nome,unidade,quantidade,precoUnit}]` (o "de sempre" — **array**, formato inalterado). **(v1.5)** o telefone também casa com os WhatsApps cadastrados na lista do cliente. **(v1.6)** cada item do `catalogo[]` ganha o objeto único de produto (com `precoCliente` = preço dele e `promocao.precoPromo` já com o acréscimo da condição dele); cada item de `ultimoPedido[]` ganha o sub-objeto `produto`; a resposta ganha `ultimoPedidoDetalhe` (objeto de pedido com itens), `pedidosEmAberto[]`, `proximasEntregas[]`, `horaCorte`, `ultimaCompraEm`, `diasSemComprar`, `vendedorInfo`; `condicaoPadrao` ganha `prazoDias`, `parcelas`, `tipoPagamento`. Senão: `{ reconhecido: false }` |
 | POST | `/congelados/criar-senha-telefone` | `{ telefone, senha }` | Cria a senha do site (mesma conta do login) — só funciona se `telefone` bater com um cadastro. Devolve `{ token, cliente }` |
 | POST | `/congelados/check-doc` | `{ documento }` (CPF/CNPJ) | `{ situacao, temCadastroApp, nome }` — descobre se o documento já tem cadastro/senha |
@@ -223,27 +223,59 @@ Aparece **no mesmo nível do item** em `GET /congelados/catalogo`, `POST /congel
 | `nome` | `nomeSite` ‖ nome do sistema (campo antigo, inalterado) | — |
 | `nomeSite` | nome exatamente como aparece no site | não preenchido no admin do site |
 | `nomeCompleto` | nome do sistema, ex. `1-G-COXINHA TRADICIONAL FRANGO C/20 130GR` | — |
-| `nomeCurto` | derivado do nome do sistema: tira o prefixo `<dígito>-[XX-][P/M/G/GG-]`, o ` C/<un>` e o ` <peso>GR` → `COXINHA TRADICIONAL FRANGO` | nunca (cai no `nomeCompleto` se nada casar) |
+| `nomeCurto` | **(v1.6.1)** `etiqueta.nomeProduto` (nome digitado à mão no PCP, sem código/prefixo) quando há etiqueta ativa; senão derivado do nome do sistema: tira o prefixo `<dígito>-[XX-][P/M/G/GG-]`, o ` C/<un>` e o ` <peso>GR` → `COXINHA TRADICIONAL FRANGO` | nunca (cai no `nomeCompleto` se nada casar) |
 | `linha` | `"CONGELADOS"` | `null` se o produto não está no site |
 | `grupo` / `grupoNome` | ID / nome da categoria comercial | sem categoria |
-| `tamanho` | `P`/`M`/`G`/`GG` lido do nome do sistema (só se estiver exatamente nessa posição) | nome fora do padrão |
-| `pesoUnidadeG` | peso unitário em g: etiqueta do produto → senão o `<peso>GR` do nome | sem etiqueta e nome sem `GR` |
+| `tamanho` | `P`/`M`/`G`/`GG` lido do nome do sistema (só se estiver exatamente nessa posição) — a etiqueta não tem esse campo | nome fora do padrão |
+| `pesoUnidadeG` | peso unitário em g: `etiqueta.pesoUnitario` → senão o `<peso>GR` do nome | sem etiqueta e nome sem `GR` |
 | `unidade`, `unidades`, `embalagem` | campos antigos (inalterados) | — |
-| `embalagemInfo` | `{ rotulo, unidade, unidadesPorEmbalagem, pesoG }` — `unidadesPorEmbalagem` = unidades do site → senão qtd. por caixa do cadastro → senão `C/<n>` do nome; `pesoG` = peso do pacote da etiqueta → senão `unidades × pesoUnidadeG` | os sub-campos vêm `null` quando não há fonte |
+| `embalagemInfo` | `{ rotulo, unidade, unidadesPorEmbalagem, pesoG }` — **(v1.6.1)** `unidadesPorEmbalagem` = unidades do site → senão `etiqueta.quantidadeEmbalagem` → senão qtd. por caixa do cadastro → senão `C/<n>` do nome; `pesoG` = `etiqueta.pesoPacote` → senão `unidadesPorEmbalagem × pesoUnidadeG` | os sub-campos vêm `null` quando não há fonte |
 | `preparo` | rótulo livre da categoria (campo antigo) | `""` se a categoria não tem rótulo |
-| `preparoTipo` | `FRITO` / `ASSADO` / `PRONTO` / `CRU`, normalizado do rótulo da categoria (não do produto) | categoria sem rótulo ou rótulo não reconhecido |
+| `preparoTipo` | `FRITO` / `ASSADO` / `PRONTO` / `CRU`, normalizado **só** do rótulo curado da categoria (campo `preparo` acima) — vocabulário controlado pelo admin. **Nunca** derivado do texto livre de `modoPreparo`: um regex sobre texto livre classificaria errado frases com negativa (ex.: "Não fritar, assar em forno…" contém a palavra "fritar") | categoria sem rótulo configurado ou rótulo não reconhecido. **Quando vier `null`, use `modoPreparo` (se houver) para descrever o preparo em palavras — não tente classificar por conta própria** |
+| `modoPreparo` | **(v1.6.1)** texto livre do "Modo de Preparo" da etiqueta do PCP, cortado em 300 caracteres — pode ser citado literalmente pela Ana, inclusive como alternativa quando `preparoTipo` vier `null` | sem etiqueta cadastrada para o produto |
+| `etiqueta` | **(v1.6.1)** `{ codigoBarras, alergenos:[], contemGluten, contemLactose, armazenamento }` da etiqueta ativa do PCP — útil para "tem glúten?"/"tem lactose?"/"como guardar?" | `null` sem etiqueta cadastrada |
 | `precoTabela` | preço de tabela do contexto: base × (1 + acréscimo% da condição). No catálogo público = tabela "Site" | — |
 | `precoCliente` | preço do cliente reconhecido (último preço negociado, com piso do flex) — o mesmo `preco` do item | `null` no catálogo público e nos itens de histórico |
 | `preco` | campo antigo (inalterado no catálogo). No sub-objeto `produto` = `precoCliente` ‖ `precoTabela` | — |
 | `minimoPorItem` | sempre `1` (não existe no cadastro) | — |
 | `ativo` | produto ativo no app **e** no site | — |
 | `disponivel` / `indisponivel` | `disponivel` = ativo e estoque disponível > 0 (mesma regra do site) | — |
-| `previsaoRetorno` | **sempre `null`** — não existe previsão de retorno no cadastro | sempre |
+| `previsaoRetorno` | **sempre `null`** — não existe previsão de retorno no cadastro. **(v1.6.1)** `GET /congelados/indisponiveis` também devolve um `orientacao` de nível superior: `"Sem previsão no sistema — a Ana deve perguntar ao responsável."` | sempre |
 | `promocao` | promoção vigente do produto (objeto abaixo) | sem promoção vigente |
 | `imagem` / `imagens` | foto principal / todas | sem foto |
 
 > Não derivamos `preparo`/`linha` do prefixo `1-`/`2-`/`FR` do nome: o significado desses códigos
-> não está documentado. `preparoTipo` vem da categoria; se a categoria não tiver rótulo, vem `null`.
+> não está documentado. `preparoTipo` vem **só** da categoria (vocabulário controlado); se a
+> categoria não tiver rótulo, vem `null` — **não** é derivado do texto livre `modoPreparo` (decisão
+> revista em v1.6.1: um regex sobre texto livre do PCP classificava errado frases com negativa,
+> tipo "Não fritar, assar em forno…"). `tamanho` continua vindo só do código/nome — a etiqueta não
+> tem campo de tamanho.
+
+### Regras de promoção (v1.6.1) — `regras` em `GET /congelados/promocoes`
+
+A resposta de `GET /congelados/promocoes` ganhou um bloco `regras` explicando, em português, como
+as promoções funcionam neste sistema (a Ana já recebia a lista, mas não o "manual"):
+
+```json
+{ "promocoes": [ /* … */ ],
+  "regras": {
+    "resumo": "…",
+    "tipos": { "PRECO": "…", "CONDICIONAL": "…" },
+    "precos": "precoPromo já inclui o acréscimo % da condição de pagamento do cliente…",
+    "validade": "validoDe/validoAte (AAAA-MM-DD)…",
+    "naoExiste": ["LEVE_MAIS"],
+    "comoUsar": "mandar itens[].promocaoId em POST /congelados/pedido…",
+    "observacao": "a condição VALOR_TOTAL é avaliada com preços NORMAIS, antes do desconto…" } }
+```
+
+- `PRECO` (nossa `SIMPLES`): o preço promocional vale no período, para qualquer quantidade.
+- `CONDICIONAL`: liberada se **pelo menos um** grupo de `condicoes` for atendido (grupos = "ou"
+  entre si); dentro de um grupo, **todas** as condições precisam bater ("e" entre elas). Tipos de
+  condição: `PRODUTO_QUANTIDADE` (quantidade mínima de um produto) e `VALOR_TOTAL` (valor mínimo
+  do pedido).
+- A condição `VALOR_TOTAL` (e a quantidade mínima de `PRODUTO_QUANTIDADE`) é avaliada com os preços
+  **normais** de tabela, somados **antes** de qualquer desconto de promoção — regra R10 do plano,
+  mesma estimativa da tela do vendedor (`criarPedidoSite`, `subtotalNormal`).
 
 ### Promoções (v1.6) — `GET /congelados/promocoes` e `produto.promocao`
 
@@ -394,9 +426,9 @@ pedido real; sem `fonte` tenta o real e depois a fila.
 
 ```bash
 K='x-ia-api-key: SUACHAVE'; J='Content-Type: application/json'; B=https://<dominio>/api/ia-consulta/v1
-curl -H "$K" $B/congelados/catalogo | jq '.dados[0] | {id,nome,nomeCurto,precoTabela,embalagemInfo,tamanho,pesoUnidadeG,preparoTipo,disponivel,promocao}'
-curl -H "$K" $B/congelados/promocoes | jq '.dados.promocoes'
-curl -H "$K" $B/congelados/indisponiveis | jq '.dados.produtos'
+curl -H "$K" $B/congelados/catalogo | jq '.dados[0] | {id,nome,nomeCurto,precoTabela,embalagemInfo,tamanho,pesoUnidadeG,preparoTipo,modoPreparo,etiqueta,disponivel,promocao}'
+curl -H "$K" $B/congelados/promocoes | jq '.dados.promocoes, .dados.regras'
+curl -H "$K" $B/congelados/indisponiveis | jq '.dados.produtos, .dados.orientacao'
 curl -H "$K" -H "$J" -X POST -d '{"telefone":"5547999998888"}' $B/congelados/reconhecer-telefone | jq '.dados | {ultimoPedidoDetalhe,pedidosEmAberto,proximasEntregas,horaCorte,vendedorInfo,condicaoPadrao}'
 curl -H "$K" -H "$J" -X POST -d '{"telefone":"5547999998888","limite":5,"comItens":true}' $B/cliente/historico-pedidos | jq '.dados.pedidos[] | {fonte,numero,numeroFila,dataPrevista,entregueEm,entregador,status,emAberto,origem}'
 curl -H "$K" -H "$J" -X POST -d '{"telefone":"5547999998888"}' $B/cliente/produtos-comprados | jq '.dados.resumo, .dados.produtos[0]'
@@ -523,6 +555,22 @@ curl -H "x-ia-api-key: SUACHAVE" -X POST -H "Content-Type: application/json" \
   `null` até configurar). **Tudo aditivo** — `ultimoPedido` segue array, `grupo` segue ID,
   `embalagem` segue string, `preparo` segue rótulo; `dataEntrega` segue sendo a hora real da entrega
   (a prevista está em `dataPrevista`).
+- **1.6.1** (2026-09-15) — Ajustes pedidos pelo dono na v1.6.0. Objeto único de produto passa a usar
+  os **Dados da Etiqueta do PCP** como fonte principal quando existe etiqueta ativa: `nomeCurto` =
+  `etiqueta.nomeProduto`; `pesoUnidadeG`/`embalagemInfo.unidadesPorEmbalagem`/`embalagemInfo.pesoG`
+  priorizam `etiqueta.pesoUnitario`/`quantidadeEmbalagem`/`pesoPacote`. `preparoTipo` continua vindo
+  **só** do rótulo curado da categoria (revisado durante o QA desta versão: um regex sobre o texto
+  livre `modoPreparo` classificava errado frases com negativa, ex. "Não fritar, assar em forno…" →
+  virava `FRITO`; a versão publicada não deriva `preparoTipo` de `modoPreparo`). Campos novos:
+  `modoPreparo` (texto literal da etiqueta, até 300 chars — a Ana pode citá-lo quando `preparoTipo`
+  vier `null`) e `etiqueta` (`codigoBarras`, `alergenos[]`,
+  `contemGluten`, `contemLactose`, `armazenamento`; `null` sem etiqueta cadastrada). `GET
+  /congelados/promocoes` ganha `regras` (explica PRECO vs. CONDICIONAL, como funciona a avaliação
+  de grupos/condições e que `VALOR_TOTAL` é calculado com preços normais antes do desconto). `GET
+  /congelados/indisponiveis` ganha `orientacao` (texto fixo pedindo para a Ana perguntar ao
+  responsável, já que não existe previsão de retorno no cadastro). **Tudo aditivo** — nenhum campo
+  removido/renomeado; `tamanho` continua vindo só do código/nome do sistema (a etiqueta não tem
+  esse campo); `preparo` continua sendo o rótulo livre da categoria quando ela tiver um configurado.
 
 ## Fase 2 — Criação de pedido pela IA (IMPLEMENTADA na v1.4)
 
