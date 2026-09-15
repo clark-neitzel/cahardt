@@ -362,7 +362,6 @@ O **valor do título** em Contas a Receber sempre acompanha as parcelas: depois 
 - **Embarque** — pedidos faturados são adicionados a embarques na aba Embarque
 - **Entregas** — após o embarque, o status de entrega aparece no card do pedido
 - **Contas a Receber** — faturamento no CA gera contas a receber; reverter especial cancela a conta no CA
-- **Sincronizar** (`/admin/sync`) — histórico de execuções dos robôs (o envio de pedidos ao CA foi desligado em 23/07/2026)
 
 ---
 

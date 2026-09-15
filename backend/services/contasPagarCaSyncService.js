@@ -1,10 +1,15 @@
 /**
  * Contas a Pagar / Fornecedores ↔ Conta Azul (API v2)
  *
+ * Desde 07/2026 (CA_SOMENTE_LEITURA) o app é o dono do financeiro: fornecedor, despesa e
+ * baixa "já paguei" NÃO são mais enviados ao CA (Fase 1 da remoção do CA, 09/2026, removeu
+ * o código de envio morto — os 3 blocos abaixo só drenam a fila para "só no app"). A LEITURA
+ * de baixas antigas feitas no CA continua ativa (títulos legados que só existem lá).
+ *
  * Workers 100% isolados (nunca derrubam o servidor):
- *   1. processarFilaFornecedores (60s)  — Fornecedor ENVIAR → POST /v1/pessoas (perfil Fornecedor)
- *   2. processarFilaDespesas     (60s)  — ContaPagar ENVIAR → POST contas-a-pagar (HTTP 202 + protocolo)
- *                                         + AGUARDANDO_PROTOCOLO → GET /v1/protocolo/{id} → parcelas CA
+ *   1. processarFilaFornecedores (60s)  — hoje só drena a fila (Fornecedor ENVIAR → NAO_ENVIAR)
+ *   2. processarFilaDespesas     (60s)  — despesa nova: só drena a fila; AGUARDANDO_PROTOCOLO
+ *                                         de antes do corte ainda é finalizado (GET /v1/protocolo/{id})
  *   3. conferirBaixasCA          (30min)— parcelas com idParcelaCA → GET baixas → ledger origem CA
  *
  * Referência da API: backend/docs/ca-api-v2-referencia.md
@@ -15,9 +20,6 @@
 const prisma = require('../config/database');
 const contaAzulService = require('./contaAzulService');
 const { garantirContaFinanceira } = require('./contaFinanceiraGuardService');
-// CNPJ ALFANUMÉRICO: normalizar documento preservando letras (nunca replace(/\D/g,'')).
-const { normalizarDoc } = require('../utils/documento');
-const cidadeService = require('./cidadeService'); // cadastro oficial de cidades (09/2026) — modo tolerante aqui
 // App é o dono do financeiro (desde 07/2026): com esta chave ligada, Contas a Pagar
 // PARA de enviar ao CA (fornecedor, despesa, baixa "já paguei"). A LEITURA continua
 // (conferência de baixas de títulos antigos que ainda vivem no CA). Ver contaAzulModo.js.
@@ -290,78 +292,6 @@ async function resolverContaFinanceiraPadrao() {
 }
 
 // ─────────────────────────────────────────────────────────────
-// Importação de fornecedores do CA (rota POST /api/fornecedores/importar-ca)
-// ─────────────────────────────────────────────────────────────
-
-async function importarFornecedoresCA() {
-    let importados = 0;
-    let atualizados = 0;
-    let pagina = 1;
-
-    while (pagina <= 100) {
-        // tipo_perfil=Fornecedor (com acento/maiúscula, exatamente assim — spec oficial)
-        const url = `${BASE}/v1/pessoas?pagina=${pagina}&tamanho_pagina=100&tipo_perfil=Fornecedor&com_endereco=true`;
-        const response = await contaAzulService._axiosGet(url, 'FORNECEDORES_IMPORT');
-        // Response de pessoas usa items/totalItems (camelCase — diferente do resto da API)
-        const lista = response.data?.items || response.data?.itens || [];
-        if (lista.length === 0) break;
-
-        for (const p of lista) {
-            if (!p?.id) continue;
-            const cnpjCpf = normalizarDoc(p.documento) || null; // preserva letras (CNPJ alfanumérico)
-            const dados = {
-                cnpjCpf,
-                razaoSocial: p.nome || cnpjCpf || 'Fornecedor sem nome',
-                nomeFantasia: p.nome_fantasia || null,
-                email: p.email || null,
-                telefone: p.telefone || null,
-                // Grafia oficial da cidade (Fase 1): o CA devolve o que o usuário digitou lá,
-                // MAIÚSCULA e com espaço sobrando incluídos. Este worker roda sozinho e cria
-                // fornecedor — sem isto ele re-sujaria o banco depois do backfill da Fase 2.
-                // (09/2026) Cadastro oficial: TOLERANTE — worker automático nunca pode quebrar por
-                // cidade desconhecida; ela vira pendência (origem CA_FORNECEDOR) na tela Cidades.
-                cidade: await cidadeService.resolver(p.endereco?.cidade, { modo: 'tolerante', origem: 'CA_FORNECEDOR', exemplo: `fornecedores:ca=${p.id}`, uf: p.endereco?.estado }),
-                // A UF vinha sem NENHUM tratamento. Só `trim` + `toUpperCase`: NÃO cortar em 2
-                // caracteres aqui, porque o CA às vezes manda o nome do estado por extenso
-                // ("Santa Catarina") e cortar produziria a UF ERRADA ("SA").
-                uf: String(p.endereco?.estado || '').trim().toUpperCase() || null,
-                observacoes: p.observacoes_gerais || null,
-                ativo: p.ativo !== false,
-                statusEnvioCA: 'SINCRONIZADO',
-                erroEnvioCA: null
-            };
-
-            // Match primário por contaAzulId; secundário por cnpjCpf
-            let existente = await prisma.fornecedor.findUnique({ where: { contaAzulId: p.id } });
-            if (!existente && cnpjCpf) {
-                existente = await prisma.fornecedor.findFirst({ where: { cnpjCpf, contaAzulId: null } });
-            }
-
-            if (existente) {
-                await prisma.fornecedor.update({
-                    where: { id: existente.id },
-                    data: { ...dados, contaAzulId: p.id }
-                });
-                atualizados++;
-            } else {
-                await prisma.fornecedor.create({
-                    data: { ...dados, contaAzulId: p.id, origem: 'CA' }
-                });
-                importados++;
-            }
-        }
-
-        const totalItems = Number(response.data?.totalItems || 0);
-        if (totalItems && pagina * 100 >= totalItems) break;
-        if (lista.length < 100) break;
-        pagina++;
-        await sleep(300);
-    }
-
-    return { importados, atualizados };
-}
-
-// ─────────────────────────────────────────────────────────────
 // WORKER 1 — Envio de fornecedores (60s)
 // ─────────────────────────────────────────────────────────────
 
@@ -384,91 +314,6 @@ async function processarFilaFornecedores() {
             return;
         }
 
-        if (!(await temTokenCA())) return; // CA não conectado → pula silenciosamente
-
-        const pendentes = await prisma.fornecedor.findMany({
-            where: { statusEnvioCA: 'ENVIAR' },
-            take: 5,
-            orderBy: { criadoEm: 'asc' }
-        });
-        if (pendentes.length === 0) return;
-
-        console.log(`[ContasPagar CA] Enviando ${pendentes.length} fornecedor(es) ao CA...`);
-
-        for (const f of pendentes) {
-            try {
-                await prisma.fornecedor.update({ where: { id: f.id }, data: { statusEnvioCA: 'ENVIANDO' } });
-
-                const docNorm = normalizarDoc(f.cnpjCpf); // dígitos p/ CPF; letras+dígitos p/ CNPJ alfanumérico
-
-                // ── Antes de criar, procura no CA pelo CNPJ/CPF (evita cadastro DUPLICADO de fornecedor).
-                // Se já existir lá, adota o cadastro existente. Se a busca falhar, NÃO cria às cegas.
-                if (docNorm) {
-                    let existenteCaId = null;
-                    try {
-                        existenteCaId = await contaAzulService.buscarFornecedorPorDocumento(docNorm);
-                    } catch (buscaErr) {
-                        console.warn(`[ContasPagar CA] ⚠️ Busca de fornecedor por documento falhou ("${f.razaoSocial}") — não cria neste ciclo (evita duplicar):`, erroCAtexto(buscaErr));
-                        await prisma.fornecedor.update({ where: { id: f.id }, data: { statusEnvioCA: 'ENVIAR' } });
-                        await sleep(1200);
-                        continue;
-                    }
-                    if (existenteCaId) {
-                        await prisma.fornecedor.update({
-                            where: { id: f.id },
-                            data: { contaAzulId: existenteCaId, statusEnvioCA: 'SINCRONIZADO', erroEnvioCA: null }
-                        });
-                        console.log(`[ContasPagar CA] 🔗 Fornecedor "${f.razaoSocial}" já existia no CA (${existenteCaId}) — adotado, sem duplicar.`);
-                        await sleep(1200);
-                        continue;
-                    }
-                }
-
-                // CPF = 11 dígitos numéricos; CNPJ = 14 posições (numérico OU alfanumérico).
-                const ehPF = docNorm.length === 11;
-                const payload = {
-                    nome: f.razaoSocial,
-                    tipo_pessoa: ehPF ? 'Física' : 'Jurídica', // com acento, exatamente assim (spec)
-                    perfis: [{ tipo_perfil: 'Fornecedor' }]
-                };
-                // Envia o CNPJ COM as letras (alfanumérico) — antes o strip deixava o payload sem documento.
-                if (docNorm.length === 14) payload.cnpj = docNorm;
-                if (docNorm.length === 11) payload.cpf = docNorm;
-                if (!ehPF && f.nomeFantasia) payload.nome_fantasia = f.nomeFantasia;
-                if (f.email) payload.email = f.email;
-                if (f.telefone) payload.telefone_comercial = String(f.telefone).replace(/\D/g, '');
-                if (f.observacoes) payload.observacao = String(f.observacoes).substring(0, 2000);
-                if (f.inscricaoEstadual) {
-                    payload.inscricoes = [{
-                        indicador_inscricao_estadual: 'CONTRIBUINTE',
-                        inscricao_estadual: String(f.inscricaoEstadual).substring(0, 20)
-                    }];
-                }
-                if (f.cidade || f.uf) {
-                    payload.enderecos = [{ cidade: f.cidade || undefined, estado: f.uf || undefined, pais: 'Brasil' }];
-                }
-
-                const response = await contaAzulService._axiosRequest('post', `${BASE}/v1/pessoas`, payload, 'FORNECEDOR_ENVIO');
-                const pessoaId = response.data?.id;
-                if (!pessoaId) throw new Error(`CA respondeu sem id de pessoa: ${JSON.stringify(response.data).substring(0, 500)}`);
-
-                await prisma.fornecedor.update({
-                    where: { id: f.id },
-                    data: { contaAzulId: pessoaId, statusEnvioCA: 'SINCRONIZADO', erroEnvioCA: null }
-                });
-                console.log(`[ContasPagar CA] ✅ Fornecedor "${f.razaoSocial}" criado no CA (${pessoaId}).`);
-            } catch (error) {
-                const msg = erroCAtexto(error);
-                console.error(`[ContasPagar CA] ❌ Erro ao enviar fornecedor "${f.razaoSocial}":`, msg);
-                try {
-                    await prisma.fornecedor.update({
-                        where: { id: f.id },
-                        data: { statusEnvioCA: 'ERRO', erroEnvioCA: msg }
-                    });
-                } catch (_) { /* nunca derrubar o worker */ }
-            }
-            await sleep(1200); // respeita 10 req/s do CA
-        }
     } catch (error) {
         console.error('[ContasPagar CA] Erro no worker de fornecedores (isolado):', error.message);
     } finally {
@@ -708,204 +553,6 @@ async function _enviarDespesasPendentes() {
         return;
     }
 
-    const pendentes = await prisma.contaPagar.findMany({
-        where: { statusEnvioCA: 'ENVIAR', status: { not: 'CANCELADO' } },
-        include: { fornecedor: true, parcelas: { orderBy: { numeroParcela: 'asc' } }, rateios: true },
-        take: 5,
-        orderBy: { criadoEm: 'asc' }
-    });
-    if (pendentes.length === 0) return;
-
-    console.log(`[ContasPagar CA] Enviando ${pendentes.length} despesa(s) ao CA...`);
-
-    for (const conta of pendentes) {
-        try {
-            // Fornecedor precisa estar SINCRONIZADO com contaAzulId (CA exige `contato`)
-            if (!conta.fornecedor) {
-                await prisma.contaPagar.update({
-                    where: { id: conta.id },
-                    data: { statusEnvioCA: 'ERRO', erroEnvioCA: 'Conta sem fornecedor vinculado — o CA exige o fornecedor (contato).' }
-                });
-                continue;
-            }
-            if (conta.fornecedor.statusEnvioCA === 'ERRO') {
-                await prisma.contaPagar.update({
-                    where: { id: conta.id },
-                    data: { statusEnvioCA: 'ERRO', erroEnvioCA: `Fornecedor "${conta.fornecedor.razaoSocial}" com erro de envio ao CA. Corrija o fornecedor e reenvie.` }
-                });
-                continue;
-            }
-            if (conta.fornecedor.statusEnvioCA !== 'SINCRONIZADO' || !conta.fornecedor.contaAzulId) {
-                // Fornecedor ainda na fila — espera o próximo ciclo (mantém ENVIAR)
-                continue;
-            }
-
-            const parcelasAbertas = conta.parcelas.filter((p) => p.status !== 'CANCELADO');
-            if (parcelasAbertas.length === 0) {
-                await prisma.contaPagar.update({
-                    where: { id: conta.id },
-                    data: { statusEnvioCA: 'ERRO', erroEnvioCA: 'Conta sem parcelas válidas para enviar.' }
-                });
-                continue;
-            }
-
-            await prisma.contaPagar.update({ where: { id: conta.id }, data: { statusEnvioCA: 'ENVIANDO' } });
-
-            // ── IDEMPOTÊNCIA: antes de POSTar, verifica se já existe no CA um evento com este
-            // codigo_referencia (id da nossa conta). Se existir → ADOTA sem criar outro (evita duplicar).
-            try {
-                const eventoExistente = await _encontrarEventoPorReferencia(conta.id, conta);
-                if (eventoExistente) {
-                    await prisma.contaPagar.update({
-                        where: { id: conta.id },
-                        data: { idEventoCA: eventoExistente, statusEnvioCA: 'AGUARDANDO_PROTOCOLO', erroEnvioCA: null }
-                    });
-                    // Mapeia as parcelas do evento já existente (fecha em ENVIADO se casar tudo).
-                    await _mapearParcelasCA(conta.id, eventoExistente);
-                    console.log('[ContasPagar CA] ♻️ Evento já existia no CA (codigo_referencia) — adotado, sem duplicar.');
-                    await sleep(1200);
-                    continue; // próxima conta — NÃO faz o POST
-                }
-            } catch (buscaErr) {
-                // A busca de idempotência FALHOU (rede/parse). Não sabemos se o evento existe:
-                // por segurança NÃO duplicamos às cegas. Reverte para ENVIAR e tenta de novo no
-                // próximo ciclo. Preferimos "tentar depois" a "criar despesa duplicada".
-                console.warn(`[ContasPagar CA] ⚠️ Busca de idempotência falhou para "${conta.descricao}" — pulando neste ciclo (mantém ENVIAR, sem POST para não duplicar):`, erroCAtexto(buscaErr));
-                try {
-                    await prisma.contaPagar.update({ where: { id: conta.id }, data: { statusEnvioCA: 'ENVIAR' } });
-                } catch (_) { /* isolado */ }
-                await sleep(1200);
-                continue;
-            }
-
-            // ── CONCILIAÇÃO: a nota pode já ter sido lançada MANUALMENTE no CA.
-            // Casa pelo número da nota (+ fornecedor/valor) e ADOTA em vez de duplicar.
-            // Falha aqui NUNCA bloqueia — cai no POST normal. (Só p/ contas de NF-e.)
-            if (conta.numeroNota) {
-                try {
-                    const eventoManual = await _encontrarEventoPorNumeroNota(conta);
-                    if (eventoManual) {
-                        await prisma.contaPagar.update({
-                            where: { id: conta.id },
-                            data: { idEventoCA: eventoManual, statusEnvioCA: 'AGUARDANDO_PROTOCOLO', erroEnvioCA: null }
-                        });
-                        await _mapearParcelasCA(conta.id, eventoManual);
-                        console.log(`[ContasPagar CA] 🔗 Nota ${conta.numeroNota} já lançada no CA — despesa conciliada (sem duplicar).`);
-                        await sleep(1200);
-                        continue;
-                    }
-                } catch (conciliaErr) {
-                    console.warn(`[ContasPagar CA] Conciliação por nº da nota falhou p/ "${conta.descricao}" — segue criando normal:`, erroCAtexto(conciliaErr));
-                }
-            }
-
-            // Banco e forma escolhidos na entrada da nota (condição de pagamento) → payload da despesa.
-            const contaFinanceiraId = conta.contaFinanceiraCaId || await resolverContaFinanceiraPadrao();
-            const metodoPagamentoCA = conta.metodoPagamentoCA || null;
-            const valorTotal = Math.round(parcelasAbertas.reduce((s, p) => s + Number(p.valor), 0) * 100) / 100;
-            const dataCompetencia = fmtDataCA(conta.competencia || parcelasAbertas[0].dataVencimento || new Date());
-            const notaParcela = conta.numeroNota ? `NF ${conta.numeroNota}` : conta.descricao;
-
-            // Descrição no CA = descrição automática (nº da nota + fornecedor, usada na conciliação)
-            // + as observações digitadas na conferência. Cap de 255 p/ não estourar o campo do CA
-            // (o texto completo continua no campo observação).
-            const obsTxt = String(conta.observacoes || '').trim();
-            const descricaoCA = (obsTxt ? `${conta.descricao} — ${obsTxt}` : conta.descricao).substring(0, 255);
-
-            const payload = {
-                descricao: descricaoCA,
-                // Referência única (id da nossa conta) — rastreio e base para evitar duplicidade no reenvio
-                codigo_referencia: conta.id,
-                // observacao é OBRIGATÓRIA na spec — nunca mandar vazia
-                observacao: conta.observacoes || `Lançado pelo app Hardt — ${conta.descricao}`,
-                data_competencia: dataCompetencia,
-                valor: valorTotal,
-                contato: conta.fornecedor.contaAzulId,
-                conta_financeira: contaFinanceiraId,
-                condicao_pagamento: {
-                    parcelas: parcelasAbertas.map((p, i) => ({
-                        descricao: `Parcela (${i + 1}/${parcelasAbertas.length})`,
-                        data_vencimento: fmtDataCA(p.dataVencimento),
-                        nota: notaParcela, // obrigatória na spec
-                        conta_financeira: contaFinanceiraId,
-                        ...(metodoPagamentoCA ? { metodo_pagamento: metodoPagamentoCA } : {}),
-                        // CA exige valor_liquido além do valor_bruto (HTTP 400 "O valor líquido deve ser informado").
-                        // Na criação não há juros/multa/desconto → líquido = bruto.
-                        detalhe_valor: { valor_bruto: Number(p.valor), valor_liquido: Number(p.valor) }
-                    }))
-                }
-            };
-
-            // Categoria (rateio) — spec não marca como obrigatório, mas sem ele fica sem categoria.
-            // Nota gerada da conferência já grava as linhas de rateio (uma ou várias categorias).
-            let categoriaCaId = conta.categoriaCaId;
-            const rateiosComCa = (conta.rateios || []).filter((r) => r.categoriaCaId);
-
-            if (rateiosComCa.length > 0) {
-                let itensRateio = rateiosComCa.map((r) => ({ id_categoria: r.categoriaCaId, valor: round2(Number(r.valor)) }));
-                // A soma do rateio deve bater com o valor do evento — ajusta o último por arredondamento
-                const somaRateio = round2(itensRateio.reduce((s, r) => s + r.valor, 0));
-                const diff = round2(valorTotal - somaRateio);
-                if (diff !== 0 && itensRateio.length > 0) {
-                    itensRateio[itensRateio.length - 1].valor = round2(itensRateio[itensRateio.length - 1].valor + diff);
-                }
-                payload.rateio = itensRateio;
-            } else {
-                if (!categoriaCaId && conta.categoria) {
-                    try {
-                        const cats = await listarCategoriasDespesa();
-                        const alvo = String(conta.categoria).trim().toLowerCase();
-                        categoriaCaId = cats.find((c) => c.nome.trim().toLowerCase() === alvo)?.id || null;
-                    } catch (_) { /* envia sem rateio */ }
-                }
-                if (categoriaCaId) {
-                    payload.rateio = [{ id_categoria: categoriaCaId, valor: valorTotal }];
-                } else {
-                    console.warn(`[ContasPagar CA] ⚠️ Conta "${conta.descricao}" sem categoria CA — enviando SEM rateio (comportamento não confirmado na spec).`);
-                }
-            }
-
-            const response = await contaAzulService._axiosRequest(
-                'post', `${BASE}/v1/financeiro/eventos-financeiros/contas-a-pagar`, payload, 'CONTA_PAGAR_ENVIO'
-            );
-
-            // Criação é ASSÍNCRONA: CA responde 200/202 com { protocolo, status:PENDING }.
-            // (O campo real é `protocolo` — não `protocolId`.) Defensivo caso venha evento direto.
-            const protocolId = response.data?.protocolo || response.data?.protocolId || response.data?.protocol_id || null;
-            const eventoDireto = !protocolId && response.data?.evento_financeiro_id ? response.data.evento_financeiro_id : null;
-
-            if (protocolId) {
-                await prisma.contaPagar.update({
-                    where: { id: conta.id },
-                    data: {
-                        protocoloCA: protocolId,
-                        categoriaCaId: categoriaCaId || conta.categoriaCaId,
-                        statusEnvioCA: 'AGUARDANDO_PROTOCOLO',
-                        erroEnvioCA: null
-                    }
-                });
-                console.log(`[ContasPagar CA] 📨 Despesa "${conta.descricao}" aceita (HTTP ${response.status}), protocolo ${protocolId}.`);
-            } else if (eventoDireto) {
-                await prisma.contaPagar.update({
-                    where: { id: conta.id },
-                    data: { idEventoCA: eventoDireto, categoriaCaId: categoriaCaId || conta.categoriaCaId, statusEnvioCA: 'AGUARDANDO_PROTOCOLO', erroEnvioCA: null }
-                });
-                await _mapearParcelasCA(conta.id, eventoDireto);
-            } else {
-                throw new Error(`CA respondeu ${response.status} sem protocolId: ${JSON.stringify(response.data).substring(0, 800)}`);
-            }
-        } catch (error) {
-            const msg = erroCAtexto(error);
-            console.error(`[ContasPagar CA] ❌ Erro ao enviar despesa "${conta.descricao}":`, msg);
-            try {
-                await prisma.contaPagar.update({
-                    where: { id: conta.id },
-                    data: { statusEnvioCA: 'ERRO', erroEnvioCA: msg }
-                });
-            } catch (_) { /* isolado */ }
-        }
-        await sleep(1200);
-    }
 }
 
 async function _consultarProtocolosPendentes() {
@@ -1049,81 +696,6 @@ async function _empurrarBaixasPendentes() {
         return;
     }
 
-    const pagamentos = await prisma.pagamentoParcelaPagar.findMany({
-        where: {
-            statusEnvioCA: 'ENVIAR',
-            estornado: false,
-            idBaixaCA: null,
-            parcelaPagar: { idParcelaCA: { not: null } }
-        },
-        include: { parcelaPagar: true },
-        take: 20,
-        orderBy: { criadoEm: 'asc' }
-    });
-    if (pagamentos.length === 0) return;
-
-    for (const pg of pagamentos) {
-        const parcelaCA = pg.parcelaPagar.idParcelaCA;
-        try {
-            // Já quitada no CA (despesa adotada de lançamento manual já pago, ou baixa via DDA)?
-            // Então NÃO empurra outra baixa — só marca ENVIADO para não duplicar pagamento.
-            let naoPago = NaN;
-            try {
-                const det = await contaAzulService.buscarParcelaDetalhe(parcelaCA);
-                const status = String(det?.status || '').toUpperCase();
-                naoPago = Number(det?.nao_pago ?? NaN);
-                if (status === 'QUITADO' || status === 'RECEBIDO' || (Number.isFinite(naoPago) && naoPago <= 0.01)) {
-                    await prisma.pagamentoParcelaPagar.update({
-                        where: { id: pg.id },
-                        data: { statusEnvioCA: 'ENVIADO', erroEnvioCA: null }
-                    });
-                    console.log(`[ContasPagar CA] ↷ Parcela ${parcelaCA} já quitada no CA — baixa "já paguei" não reenviada.`);
-                    continue;
-                }
-            } catch (_) { /* sem detalhe → tenta baixar assim mesmo */ }
-
-            const contaFinanceira = pg.contaFinanceiraCaId || await resolverContaFinanceiraPadrao();
-            const valorBaixa = (Number.isFinite(naoPago) && naoPago > 0)
-                ? Math.min(Number(pg.valorPago), round2(naoPago))
-                : Number(pg.valorPago);
-            const metodo = METODOS_BAIXA_VALIDOS.has(pg.formaPagamento) ? pg.formaPagamento : undefined;
-
-            const baixa = await contaAzulService.criarBaixa(parcelaCA, {
-                data_pagamento: fmtDataCA(pg.dataPagamento),
-                composicao_valor: { valor_bruto: round2(valorBaixa) },
-                conta_financeira: contaFinanceira,
-                ...(metodo ? { metodo_pagamento: metodo } : {}),
-                observacao: pg.observacao || 'Baixa registrada no app Hardt (já paguei).'
-            });
-
-            await prisma.pagamentoParcelaPagar.update({
-                where: { id: pg.id },
-                data: { statusEnvioCA: 'ENVIADO', idBaixaCA: baixa?.id || null, erroEnvioCA: null }
-            });
-            await prisma.parcelaPagar.update({ where: { id: pg.parcelaPagarId }, data: { baixadoViaCA: true } }).catch(() => {});
-            console.log(`[ContasPagar CA] 💸 Baixa "já paguei" empurrada ao CA (parcela ${parcelaCA}, R$ ${round2(valorBaixa)}).`);
-        } catch (error) {
-            const msg = erroCAtexto(error);
-
-            // Recusa DEFINITIVA: parcela vinculada à Conta Digital do CA — o próprio CA dá
-            // (ou já deu) a baixa quando o pagamento é efetivado por lá, e bloqueia baixa
-            // manual via API para sempre. Retentar é inútil; a parcela aqui já está paga.
-            const contaDigital = error?.response?.status === 400 && /conta digital/i.test(msg);
-            if (contaDigital) {
-                await prisma.pagamentoParcelaPagar.update({
-                    where: { id: pg.id },
-                    data: { statusEnvioCA: 'ENVIADO', erroEnvioCA: null }
-                }).catch(() => {});
-                console.log(`[ContasPagar CA] ↷ Parcela ${parcelaCA} é da Conta Digital do CA — baixa é automática lá; parando de reenviar.`);
-                continue;
-            }
-
-            console.error(`[ContasPagar CA] ❌ Falha ao empurrar baixa da parcela ${parcelaCA}:`, msg);
-            // Mantém ENVIAR (tenta no próximo ciclo); grava o último erro para diagnóstico.
-            await prisma.pagamentoParcelaPagar.update({ where: { id: pg.id }, data: { erroEnvioCA: msg } }).catch(() => {});
-        }
-        await sleep(600);
-    }
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -1455,7 +1027,6 @@ module.exports = {
     backfillBancoImportadas,
     statusBancoImportadas: () => ({ rodando: _bancoImportadas.rodando, progresso: _bancoImportadas.progresso }),
     extrairContaFinanceiraId,
-    importarFornecedoresCA,
     listarCategoriasDespesaSeguro,
     listarContasFinanceirasSeguro,
     METODOS_PAGAMENTO_BAIXA,

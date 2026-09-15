@@ -1,22 +1,10 @@
 const prisma = require('../config/database');
-const contaAzulService = require('./contaAzulService');
 const estoqueService = require('./estoqueService');
 const { CA_SOMENTE_LEITURA } = require('../config/contaAzulModo');
-// CNPJ ALFANUMÉRICO: normalizar preservando letras (14 posições = CNPJ, mesmo com letras).
-const { normalizarDoc } = require('../utils/documento');
 
 const syncPedidosService = {
     // Flag to prevent overlapping executions if the sync takes longer than the interval
     isRunning: false,
-    // Flag para evitar múltiplos timers de syncProdutos em ciclos consecutivos
-    _syncProdutosAgendado: false,
-
-    _resolverIndicadorIE: (cliente) => {
-        const tipoPessoa = String(cliente?.Tipo_Pessoa || '').toUpperCase();
-        const documentoNorm = normalizarDoc(cliente?.Documento); // preserva letras do CNPJ alfanumérico
-        const ehCnpj = tipoPessoa.includes('JUR') || documentoNorm.length === 14;
-        return ehCnpj ? 'CONTRIBUINTE' : 'NAO_CONTRIBUINTE';
-    },
 
     processarFila: async () => {
         if (syncPedidosService.isRunning) {
@@ -61,38 +49,19 @@ const syncPedidosService = {
 
             console.log(`🚀 Iniciando Sync de Pedidos: ${pedidosPendentes.length} pendentes.`);
 
-            let pedidosEnviados = 0;
             for (const pedido of pedidosPendentes) {
                 const statusAntes = pedido.statusEnvio;
                 await syncPedidosService.enviarPedidoContaAzul(pedido);
-                // Verificar se o pedido foi enviado com sucesso (statusEnvio virou RECEBIDO no banco)
+                // Verificar se o pedido foi faturado com sucesso (statusEnvio virou RECEBIDO no banco)
                 const pedidoAtualizado = await prisma.pedido.findUnique({ where: { id: pedido.id }, select: { statusEnvio: true } });
                 if (pedidoAtualizado?.statusEnvio === 'RECEBIDO' && statusAntes !== 'RECEBIDO') {
-                    pedidosEnviados++;
-                    // Deduz do estoqueTotal agora que o pedido foi confirmado pelo CA
+                    // Deduz do estoqueTotal agora que o pedido foi confirmado
                     estoqueService.faturarPedido(pedido.id).catch(err =>
                         console.error(`[Estoque] Falha ao faturar estoque do pedido ${pedido.id}:`, err.message)
                     );
                 }
-                // Pause slightly to respect API rate limits (10 req/s on CA)
+                // Pausa entre pedidos (mantida do tempo do envio ao CA; inofensiva agora).
                 await new Promise(resolve => setTimeout(resolve, 1500));
-            }
-
-            // Se houve envio com sucesso, agendar syncProdutos em 60s (estoque mudou)
-            if (pedidosEnviados > 0 && !syncPedidosService._syncProdutosAgendado) {
-                syncPedidosService._syncProdutosAgendado = true;
-                console.log(`📦 [Worker] ${pedidosEnviados} pedido(s) enviado(s) → syncProdutos agendado para 60s (estoque atualizado).`);
-                setTimeout(async () => {
-                    try {
-                        console.log('📦 [Worker] Executando syncProdutos pós-pedido...');
-                        await contaAzulService.syncProdutos();
-                        console.log('✅ [Worker] syncProdutos pós-pedido concluído.');
-                    } catch (e) {
-                        console.error('⚠️ [Worker] Erro no syncProdutos pós-pedido:', e.message);
-                    } finally {
-                        syncPedidosService._syncProdutosAgendado = false;
-                    }
-                }, 60000); // 60 segundos após o envio
             }
 
         } catch (error) {
@@ -141,254 +110,6 @@ const syncPedidosService = {
                 });
             }
             return;
-        }
-
-        try {
-            // Marca como SINCRONIZANDO se ainda for ENVIAR
-            if (pedido.statusEnvio === 'ENVIAR') {
-                await prisma.pedido.update({
-                    where: { id: pedido.id },
-                    data: { statusEnvio: 'SINCRONIZANDO' }
-                });
-            }
-
-            // Mapeando dados para o Payload
-            let numeroVenda = pedido.numero;
-
-            // 1. Resolve Número da Venda (Idempotência Base)
-            if (!numeroVenda) {
-                numeroVenda = await contaAzulService.obterProximoNumeroPedido();
-                console.log(`[Pedido ${pedido.id}] Próximo número reservado: ${numeroVenda}`);
-                await prisma.pedido.update({
-                    where: { id: pedido.id },
-                    data: { numero: numeroVenda }
-                });
-                pedido.numero = numeroVenda;
-            } else {
-                // Checa se já existe no CA com este número
-                const vendaExistente = await contaAzulService.buscarPedidoPorNumero(numeroVenda);
-                if (vendaExistente && vendaExistente.id) {
-                    console.log(`[Pedido ${pedido.id}] Venda ${numeroVenda} já existia no CA. Marcando como Recebido.`);
-                    await prisma.pedido.update({
-                        where: { id: pedido.id },
-                        data: {
-                            idVendaContaAzul: vendaExistente.id,
-                            statusEnvio: 'RECEBIDO',
-                            erroEnvio: null
-                        }
-                    });
-                    return;
-                }
-            }
-
-            // 2. Construir Payload
-            const totalPedido = pedido.itens.reduce((acc, current) => {
-                return acc + (Number(current.quantidade) * Number(current.valor));
-            }, 0);
-
-            // Antes da venda, tenta manter o indicador de IE coerente no cliente CA
-            try {
-                const indicadorIE = syncPedidosService._resolverIndicadorIE(pedido.cliente);
-                await contaAzulService.atualizarPessoaCA(
-                    pedido.cliente.contaAzulId || pedido.cliente.UUID,
-                    {
-                        inscricoes: [
-                            {
-                                indicador_inscricao_estadual: indicadorIE
-                            }
-                        ]
-                    }
-                );
-                console.log(`[Pedido ${pedido.id}] Indicador de IE do cliente atualizado no CA: ${indicadorIE}.`);
-            } catch (ieError) {
-                console.warn(`[Pedido ${pedido.id}] Falha ao ajustar IE do cliente no CA: ${ieError.message}`);
-            }
-
-            // Fetch seller for linking, checking if it exists in CA first
-            let vendedorIdCA = null;
-            if (pedido.vendedor && pedido.vendedor.id) {
-                vendedorIdCA = pedido.vendedor.id; // Usually the internal ID is the ContaAzul ID for Vendedores
-                // Could double-check if it's a valid uuid form here if necessary
-            }
-
-            // Data no fuso BRT (SP/GMT-3) conforme exigido pela API CA
-            const d = new Date(pedido.dataVenda);
-            const dataVendaStr = d.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }); // "YYYY-MM-DD"
-
-            const qtdParcelas = Math.max(1, Number(pedido.qtdParcelas) || 1);
-
-            // Interpreta opções como "7/14/21" ou "7,14,21" (offsets explícitos por parcela).
-            // Só usa se a opção contiver múltiplos números separados — ignora "1x", "2x", "À vista" etc.
-            const parseDayOffsets = (opcao) => {
-                if (!opcao || typeof opcao !== 'string') return [];
-                // Exige pelo menos um separador (, / ; espaço) entre números para ser considerado lista de offsets
-                if (!/\d[\s,/;]+\d/.test(opcao)) return [];
-                const offsets = (opcao.match(/\d+/g) || [])
-                    .map(Number)
-                    .filter((n) => Number.isFinite(n) && n >= 0);
-                return offsets;
-            };
-
-            const offsetsFromOption = parseDayOffsets(pedido.opcaoCondicaoPagamento);
-            const intervaloDias = Number(pedido.intervaloDias) || 0;
-            const dueDayOffsets = offsetsFromOption.length === qtdParcelas
-                ? offsetsFromOption
-                : Array.from({ length: qtdParcelas }, (_, index) => Math.max(0, intervaloDias) * (index + 1));
-
-            // Frete opcional — precisa somar ao total das parcelas (CA valida isso)
-            const valorFrete = Number(pedido.valorFrete || 0);
-            const totalComFrete = Number(totalPedido) + (valorFrete > 0 ? valorFrete : 0);
-
-            // Divide o total em centavos para evitar drift de ponto flutuante.
-            const totalCentavos = Math.round(Number(totalComFrete.toFixed(2)) * 100);
-            const baseParcelaCentavos = Math.floor(totalCentavos / qtdParcelas);
-            const remainderCentavos = totalCentavos - (baseParcelaCentavos * qtdParcelas);
-
-            let contaFinId = pedido.idContaFinanceira || undefined;
-
-            // Validar compatibilidade entre conta financeira e tipo de pagamento
-            // O CA rejeita combinações inválidas (ex: BOLETO_BANCARIO + conta de DINHEIRO)
-            if (contaFinId && pedido.tipoPagamento) {
-                try {
-                    const contaFin = await prisma.contaFinanceira.findUnique({ where: { id: contaFinId } });
-                    if (contaFin) {
-                        // Mapa de compatibilidade: tipoUso da conta → tipos de pagamento aceitos
-                        const compatMap = {
-                            'DINHEIRO': ['DINHEIRO'],
-                            'PIX': ['PIX', 'PIX_PAGAMENTO_INSTANTANEO'],
-                            'BOLETO_BANCARIO': ['BOLETO_BANCARIO', 'A_PRAZO'],
-                            'CARTAO': ['CARTAO', 'CARTAO_CREDITO', 'CARTAO_DEBITO'],
-                        };
-                        const tiposAceitos = compatMap[contaFin.tipoUso] || [];
-                        if (tiposAceitos.length > 0 && !tiposAceitos.includes(pedido.tipoPagamento)) {
-                            console.warn(`[Pedido ${pedido.id}] ⚠️ Conta "${contaFin.nomeBanco}" (${contaFin.tipoUso}) incompatível com tipoPagamento "${pedido.tipoPagamento}". Omitindo id_conta_financeira do payload.`);
-                            contaFinId = undefined;
-                        }
-                    }
-                } catch (contaErr) {
-                    console.warn(`[Pedido ${pedido.id}] Erro ao validar conta financeira: ${contaErr.message}`);
-                }
-            }
-
-
-            // Montar linha de promoções nos produtos do pedido
-            const itensEmPromocao = pedido.itens.filter(item => item.emPromocao && item.nomePromocao);
-            const linhaPromo = itensEmPromocao.length > 0
-                ? `PROMO - ${itensEmPromocao.map(item => item.produto?.nome || '').filter(Boolean).join('; ')}`
-                : null;
-
-            // Condições "Vendedor responsável" / "Escritório responsável" não existem nativamente
-            // no CA: enviamos como tipo_pagamento OUTRO e marcamos na observação para filtragem.
-            const nomeCondNorm = (pedido.nomeCondicaoPagamento || '').toLowerCase();
-            const ehVendResp = nomeCondNorm.includes('vendedor respons');
-            const ehEscrResp = nomeCondNorm.includes('escrit') && nomeCondNorm.includes('respons');
-            const linhaCobrancaEspecial = ehVendResp
-                ? 'Cobrança: Vendedor responsável'
-                : ehEscrResp
-                    ? 'Cobrança: Escritório responsável'
-                    : null;
-
-            const linhaReferencia = `Referente ao pedido #${numeroVenda}`;
-            const observacoesFinal = [linhaReferencia, pedido.observacoes, linhaPromo, linhaCobrancaEspecial].filter(Boolean).join('\n');
-
-            // Mapear tipos de pagamento internos para os valores aceitos pela API do CA
-            const tipoPagamentoMap = {
-                'PIX': 'PIX_PAGAMENTO_INSTANTANEO',
-                'CARTAO': 'CARTAO_CREDITO',
-            };
-            let tipoPagamentoCA = tipoPagamentoMap[pedido.tipoPagamento] || pedido.tipoPagamento || "A_PRAZO";
-
-            // Vend-Resp / Escr-Resp: força OUTRO no CA (não existe opção equivalente)
-            if (ehVendResp || ehEscrResp) {
-                tipoPagamentoCA = 'OUTRO';
-            }
-
-            const payload = {
-                id_cliente: pedido.cliente.contaAzulId || pedido.cliente.UUID,
-                numero: numeroVenda,
-                situacao: "APROVADO",
-                data_venda: dataVendaStr,
-                id_categoria: pedido.idCategoria || "b2771a7a-2120-4af5-affb-8e6fac7e48af",
-                observacoes: observacoesFinal,
-                itens: pedido.itens.map(item => ({
-                    id: item.produto.contaAzulId, // id real do produto no CA
-                    descricao: item.descricao || item.produto.nome,
-                    quantidade: Number(item.quantidade),
-                    valor: Number(item.valor),
-                    tipo: "PRODUTO"
-                })),
-                condicao_pagamento: {
-                    tipo_pagamento: tipoPagamentoCA,
-                    id_conta_financeira: contaFinId,
-                    opcao_condicao_pagamento: (() => {
-                        // CA aceita apenas: "À vista", "Nx" (ex: 1x, 12x) ou dias (ex: "30", "30,60").
-                        const opc = (pedido.opcaoCondicaoPagamento || '').trim();
-                        const jaValido = /^À vista$/i.test(opc)
-                            || /^\d+x$/i.test(opc)
-                            || /^\d+(\s*,\s*\d+)*$/.test(opc);
-                        if (jaValido) return opc;
-                        if (qtdParcelas === 1 && intervaloDias === 0) return 'À vista';
-                        if (intervaloDias > 0) {
-                            return dueDayOffsets.filter(n => n > 0).join(',') || `${qtdParcelas}x`;
-                        }
-                        return `${qtdParcelas}x`;
-                    })(),
-                    pagamento_a_vista: false, // Pode ser dinâmico em futuras issues
-                    parcelas: []
-                }
-            };
-
-            // Frete opcional — envia ao CA (já foi incluído no total das parcelas acima)
-            if (valorFrete > 0) {
-                payload.composicao_de_valor = { frete: Number(valorFrete.toFixed(2)) };
-            }
-
-            // Adiciona Id de Vendedor se for um UUID valido (O CA rejeita se for null ou string aleatoria)
-            const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-            if (vendedorIdCA && uuidRegex.test(vendedorIdCA)) {
-                payload.id_vendedor = vendedorIdCA;
-            }
-
-            for (let i = 1; i <= qtdParcelas; i++) {
-                const parcelaCentavos = baseParcelaCentavos + (i === qtdParcelas ? remainderCentavos : 0);
-                const dataVenc = new Date(d);
-                dataVenc.setDate(dataVenc.getDate() + dueDayOffsets[i - 1]);
-
-                payload.condicao_pagamento.parcelas.push({
-                    data_vencimento: dataVenc.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }),
-                    valor: Number((parcelaCentavos / 100).toFixed(2)),
-                    descricao: `Parcela ${i}/${qtdParcelas}`
-                });
-            }
-
-            console.log(`[Pedido ${pedido.id}] Payload construído, enviando via POST...`);
-
-            // 3. Submeter via ContaAzul Service
-            const resultadoCA = await contaAzulService.enviarPedido(payload);
-            console.log(`[Pedido ${pedido.id}] Sucesso ContaAzul ID: ${resultadoCA.id}`);
-
-            // 4. Salvar Sucesso
-            await prisma.pedido.update({
-                where: { id: pedido.id },
-                data: {
-                    idVendaContaAzul: resultadoCA.id,
-                    statusEnvio: 'RECEBIDO',
-                    erroEnvio: null
-                }
-            });
-
-        } catch (error) {
-            console.error(`[Pedido ${pedido.id}] Erro no envio:`, error.message);
-            // Salvar erro para tentar depois e mudar pra ERRO (ou deixar SINCRONIZANDO p/ retries dependendo da sua estratégia).
-            // Vamos mudar pra ERRO pra não travar a fila com re-tentativas infinitas de payloads quebrados.
-            await prisma.pedido.update({
-                where: { id: pedido.id },
-                data: {
-                    statusEnvio: 'ERRO',
-                    erroEnvio: error.message || 'Erro desconhecido ao comunicar com CA',
-                    numero: null // Limpa o número para buscar um novo na próxima tentativa
-                }
-            });
         }
     }
 };

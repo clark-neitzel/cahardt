@@ -646,21 +646,20 @@ async function deveEnviarLembrete(grupo) {
     return !jaEnviado;
 }
 
-// ── Conferência no Conta Azul antes de enviar ────────────────────────
+// ── Conferência local antes de enviar ────────────────────────────────
+// Até 09/2026 esta checagem sincronizava antes com o Conta Azul (baixa feita
+// lá, mas ainda não replicada aqui). O dono confirmou (15/09/2026, plano de
+// remoção do CA): a régua nunca dependeu de fato do CA — a baixa que conta é
+// sempre a do app (Caixa/Asaas/manual). Continua relendo a parcela no banco
+// local antes de cada envio — protege contra o cliente ter sido baixado
+// (aqui mesmo) no intervalo entre montar a fila e o envio de fato.
 
 /**
- * Antes de cobrar, sincroniza as contas do grupo com o Conta Azul (aplica
- * baixas feitas lá que ainda não chegaram aqui) e refiltra as parcelas.
- * Retorna true se ainda sobrou algo em aberto para cobrar.
+ * Relê as parcelas do grupo no banco local (podem ter sido baixadas desde que
+ * a fila foi montada) e refiltra. Retorna true se ainda sobrou algo em aberto
+ * para cobrar.
  */
-async function conferirNoCA(grupo) {
-    const contasReceberSyncService = require('./contasReceberSyncService');
-    const contas = [...new Set(grupo.parcelasVencidas.map(p => p.contaReceberId))];
-    for (const contaId of contas) {
-        try { await contasReceberSyncService.sincronizarConta(contaId); }
-        catch (e) { /* sem vínculo com o CA ou CA fora do ar — segue com o dado local */ }
-    }
-
+async function conferirAindaEmAberto(grupo) {
     const ids = grupo.parcelasVencidas.map(p => p.parcelaId);
     const atuais = await prisma.parcela.findMany({ where: { id: { in: ids } } });
     const abertas = new Map(
@@ -687,7 +686,7 @@ const getStatusExecucao = () => ({ ..._status });
 /**
  * Roda a régua como FILA: avalia todo mundo, e envia um cliente por vez com
  * intervalo de 1 minuto entre mensagens (proteção do WhatsApp). Antes de cada
- * envio confere no Conta Azul se a dívida ainda está em aberto.
+ * envio confere localmente se a dívida ainda está em aberto.
  * opts.configId: processa só os grupos daquela forma de recebimento (disparo
  * por horário próprio da forma).
  */
@@ -723,11 +722,12 @@ async function executarRegua({ forcarManual = false, configId = null } = {}) {
         let enviados = 0;
         for (const { grupo, tipo, numeroAviso } of fila) {
             try {
-                // Confere no CA se ainda está em aberto (só para cobrança de vencidas)
-                if (tipo !== 'LEMBRETE' && !(await conferirNoCA(grupo))) {
-                    resumo.puladosPagosCA++;
+                // Confere localmente se ainda está em aberto (só para cobrança de vencidas) —
+                // protege contra baixa registrada entre montar a fila e o envio de fato.
+                if (tipo !== 'LEMBRETE' && !(await conferirAindaEmAberto(grupo))) {
+                    resumo.puladosPagosCA++; // nome do campo mantido (histórico), já não é sobre o CA
                     _status.processados++;
-                    console.log(`[Cobranca] Pulado (pago no CA): ${grupo.cliente.Nome}`);
+                    console.log(`[Cobranca] Pulado (já quitado): ${grupo.cliente.Nome}`);
                     continue;
                 }
 
@@ -763,12 +763,12 @@ async function cobrarClienteAgora(clienteId) {
     const candidatos = grupos.filter(g => g.cliente.UUID === clienteId && g.parcelasVencidas.length > 0);
     if (!candidatos.length) return { ok: false, motivo: 'Cliente sem parcelas vencidas em aberto' };
 
-    // Confere no CA antes de cobrar (se pagou lá, não incomoda o cliente)
+    // Confere localmente antes de cobrar (se já foi baixado, não incomoda o cliente)
     const doCliente = [];
     for (const grupo of candidatos) {
-        if (await conferirNoCA(grupo)) doCliente.push(grupo);
+        if (await conferirAindaEmAberto(grupo)) doCliente.push(grupo);
     }
-    if (!doCliente.length) return { ok: false, motivo: 'Parcelas já baixadas no Conta Azul — nada a cobrar (painel será atualizado)' };
+    if (!doCliente.length) return { ok: false, motivo: 'Parcelas já baixadas — nada a cobrar (painel será atualizado)' };
 
     const resultados = [];
     for (const grupo of doCliente) {

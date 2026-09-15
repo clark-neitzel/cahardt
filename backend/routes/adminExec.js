@@ -60,7 +60,7 @@ router.get('/ping', (req, res) => {
         ok: true,
         // Marcador de deploy: bumpar a cada mudança de backend que precise de confirmação
         // em produção (não há outro jeito de saber de fora qual versão está no ar).
-        deployMarker: 'cidades-cadastro-2026-09-14',
+        deployMarker: 'remocao-ca-fases-1-4-2026-09-15',
         uptimeSegundos: Math.round(process.uptime()),
         timestamp: new Date().toISOString(),
         openaiConfigurada: !!process.env.OPENAI_API_KEY,
@@ -6151,112 +6151,6 @@ router.get('/diag-pagamentos-pagar', async (req, res) => {
                 }))
             }))
         });
-    } catch (e) {
-        res.status(500).json({ ok: false, error: e.message });
-    }
-});
-
-// POST /api/admin-exec/ca-extrato-transferencias-sync — importa as transferências
-// entre contas feitas no Conta Azul para a tabela TransferenciaConta (Saldos por
-// Conta). Body: { dias: 30 } ou { de: 'YYYY-MM-DD', ate: 'YYYY-MM-DD' } p/ backfill.
-// Idempotente (id da transferência no CA) — repetir não duplica.
-router.post('/ca-extrato-transferencias-sync', async (req, res) => {
-    try {
-        const caExtratoService = require('../services/caExtratoService');
-        const r = await caExtratoService.sincronizarTransferencias({
-            dias: Number(req.body?.dias) || 30,
-            de: req.body?.de || null,
-            ate: req.body?.ate || null
-        });
-        res.json(r);
-    } catch (e) {
-        res.status(500).json({ ok: false, error: e.response?.data || e.message });
-    }
-});
-
-// POST /api/admin-exec/ca-extrato-despesas-sync — importa despesas lançadas
-// direto no Conta Azul para o Contas a Pagar do app (IMPORTADO_CA/NAO_ENVIAR,
-// parcelas com idParcelaCA; as baixas chegam pelo worker de 30min).
-// Body: { dias: 2 } ou { de, ate } (janela de DATA DE ALTERAÇÃO no CA) e
-// { limite: 400 } (máx. de contas novas por rodada). Idempotente.
-router.post('/ca-extrato-despesas-sync', async (req, res) => {
-    try {
-        const caExtratoService = require('../services/caExtratoService');
-        const r = await caExtratoService.sincronizarDespesas({
-            dias: Number(req.body?.dias) || 2,
-            de: req.body?.de || null,
-            ate: req.body?.ate || null,
-            limite: Number(req.body?.limite) || 400
-        });
-        res.json(r);
-    } catch (e) {
-        res.status(500).json({ ok: false, error: e.response?.data || e.message });
-    }
-});
-
-// POST /api/admin-exec/ca-extrato-recebimentos-sync — espelha no app os
-// recebimentos baixados DIRETO no CA em contas importadas/avulsas (ledger
-// pagamentoParcela + quitação da parcela local) e atualiza o arquivo
-// ca_receber_importado. Body: { dias: 2 } ou { de, ate } (janela de DATA DE
-// ALTERAÇÃO no CA) e { limite: 300 }. Idempotente.
-router.post('/ca-extrato-recebimentos-sync', async (req, res) => {
-    try {
-        const caExtratoService = require('../services/caExtratoService');
-        const r = await caExtratoService.sincronizarRecebimentos({
-            dias: Number(req.body?.dias) || 2,
-            de: req.body?.de || null,
-            ate: req.body?.ate || null,
-            limite: Number(req.body?.limite) || 300
-        });
-        res.json(r);
-    } catch (e) {
-        res.status(500).json({ ok: false, error: e.response?.data || e.message });
-    }
-});
-
-// POST /api/admin-exec/ca-extrato-conciliacao-sync — gera as linhas de extrato da
-// Conciliação Bancária para as contas do Conta Azul (padrão: conta com "conta azul"
-// no nome) a partir dos movimentos do app. Body: { dias } ou { de, ate }. Idempotente.
-router.post('/ca-extrato-conciliacao-sync', async (req, res) => {
-    try {
-        const caExtratoService = require('../services/caExtratoService');
-        const r = await caExtratoService.sincronizarExtratoConciliacao({
-            dias: Number(req.body?.dias) || 30,
-            de: req.body?.de || null,
-            ate: req.body?.ate || null
-        });
-        res.json(r);
-    } catch (e) {
-        res.status(500).json({ ok: false, error: e.message });
-    }
-});
-
-// POST /api/admin-exec/ca-extrato-conciliacao-limpar — remove TODAS as linhas de
-// extrato GERADAS automaticamente do Conta Azul (fitId ca-...) para regenerar do
-// zero (ex.: após ajuste na regra anti-duplicidade). Não toca em linha de OFX/PDF.
-router.post('/ca-extrato-conciliacao-limpar', async (req, res) => {
-    try {
-        const linhas = await prisma.extratoLancamento.findMany({
-            where: { fitId: { startsWith: 'ca-' } },
-            select: { id: true, importacaoId: true }
-        });
-        const ids = linhas.map(l => l.id);
-        let removidas = 0;
-        if (ids.length) {
-            await prisma.$transaction(async (tx) => {
-                await tx.transferenciaConta.updateMany({
-                    where: { extratoLancamentoId: { in: ids } },
-                    data: { extratoLancamentoId: null }
-                });
-                const r = await tx.extratoLancamento.deleteMany({ where: { id: { in: ids } } });
-                removidas = r.count;
-                // Importações "Conta Azul (automático)" que ficaram vazias
-                await tx.extratoImportacao.deleteMany({
-                    where: { nomeArquivo: 'Conta Azul (automático)', lancamentos: { none: {} } }
-                });
-            }, { timeout: 20000, maxWait: 10000 });
-        }
-        res.json({ ok: true, removidas });
     } catch (e) {
         res.status(500).json({ ok: false, error: e.message });
     }

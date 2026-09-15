@@ -8,7 +8,6 @@ const Catalogo = lazyComRetry(() => import('./pages/Produtos/Catalogo'));
 const DetalheProduto = lazyComRetry(() => import('./pages/Produtos/DetalheProduto'));
 const ListaProdutos = lazyComRetry(() => import('./pages/Admin/Produtos/ListaProdutos'));
 const GerenciarProduto = lazyComRetry(() => import('./pages/Admin/Produtos/GerenciarProduto'));
-const PainelSync = lazyComRetry(() => import('./pages/Admin/Sync/PainelSync'));
 const ContabilidadePage = lazyComRetry(() => import('./pages/Admin/Contabilidade/ContabilidadePage'));
 const ListaClientes = lazyComRetry(() => import('./pages/Clientes/ListaClientes'));
 const DetalheCliente = lazyComRetry(() => import('./pages/Clientes/DetalheCliente'));
@@ -444,7 +443,6 @@ const Layout = ({ children }) => {
       hasPermission('vendedores') && { to: '/admin/vendedores', icon: UserCog, label: 'Usuários' },
       isAdmin && { to: '/admin/mensagens', icon: BellRing, label: 'Mensagens' },
       (user?.permissoes?.admin || hasPermission('Pode_Acessar_Veiculos')) && { to: '/admin/veiculos', icon: Car, label: 'Veículos' },
-      hasPermission('sync') && { to: '/admin/sync', icon: RefreshCw, label: 'Sincronizar' },
       hasPermission('Pode_Acessar_Contabilidade') && { to: '/admin/contabilidade', icon: Landmark, label: 'Contabilidade' },
     ].filter(Boolean) },
     { label: 'RH', icon: UserCheck, items: [
@@ -936,7 +934,6 @@ function App() {
               <Route path="/admin/embarques" element={<PrivateRoute tab="Pode_Acessar_Embarque"><PainelEmbarque /></PrivateRoute>} />
               <Route path="/admin/embarques/mapa" element={<PrivateRoute tab="Pode_Acessar_Embarque"><MapaExpedicao /></PrivateRoute>} />
               <Route path="/admin/auditoria-entregas" element={<PrivateRoute tab="Pode_Ver_Todas_Entregas"><AuditoriaEntregas /></PrivateRoute>} />
-              <Route path="/admin/sync" element={<PrivateRoute tab="sync"><PainelSync /></PrivateRoute>} />
               <Route path="/admin/vendedores" element={<PrivateRoute tab="vendedores"><ListaVendedores /></PrivateRoute>} />
               <Route path="/admin/mensagens" element={<PrivateRoute><MensagensAgendadas /></PrivateRoute>} />
               <Route path="/admin/veiculos" element={<PrivateRoute tab="Pode_Acessar_Veiculos"><Veiculos /></PrivateRoute>} />

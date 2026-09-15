@@ -9,7 +9,7 @@ Cobra automaticamente os clientes inadimplentes por **WhatsApp** (bot), **e-mail
 ## Como os envios saem (fila e proteções)
 
 - Os envios saem em **fila, 1 mensagem por minuto** — proteção para o número de WhatsApp não ser bloqueado por rajada.
-- **Antes de cada envio o sistema confere no Conta Azul** se a dívida ainda está em aberto (sincroniza as baixas feitas lá). Se o cliente já pagou no CA, o envio é pulado e o painel se atualiza.
+- **Antes de cada envio o sistema confere no próprio app** se o título ainda está em aberto (relê a parcela no banco local — não depende mais do Conta Azul desde 09/2026). Se o cliente já foi baixado nesse meio-tempo, o envio é pulado e o painel se atualiza.
 - A régua só roda nos **dias da semana marcados** (padrão: segunda a sexta — não cobra em fim de semana).
 - **Vencimento que cai em sábado/domingo** conta como vencido só na segunda (opção "prorrogar fim de semana", ligada por padrão). Ex.: venceu sábado + 1 dia de carência → 1º aviso sai na terça.
 - Horários são sempre no **horário de São Paulo**.

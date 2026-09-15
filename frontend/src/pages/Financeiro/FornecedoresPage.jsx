@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import fornecedorService from '../../services/fornecedorService';
-import { Building2, X, Download, Loader2 } from 'lucide-react';
+import { Building2, X, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import SelectBusca from '../../components/SelectBusca';
 import CampoCidade from '../../components/CampoCidade';
@@ -14,27 +14,6 @@ const UFS = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', '
 
 // CNPJ (num/alfanumérico) → XX.XXX.XXX/XXXX-XX · CPF → XXX.XXX.XXX-XX
 const fmtCnpjCpf = (v) => (normalizarDoc(v) ? formatarDoc(v) : '—');
-
-const BadgeCAFornecedor = ({ fornecedor }) => {
-    const s = String(fornecedor?.statusEnvioCA || '').toUpperCase();
-    if (s === 'SINCRONIZADO' || s === 'ENVIADO') {
-        return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 whitespace-nowrap">Sincronizado ✓</span>;
-    }
-    if (s === 'ERRO') {
-        return (
-            <span
-                className="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-700 whitespace-nowrap cursor-help"
-                title={fornecedor?.erroEnvioCA || 'Erro ao enviar para a Conta Azul'}
-            >
-                Erro
-            </span>
-        );
-    }
-    if (s === 'ENVIANDO' || s === 'PENDENTE') {
-        return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-700 whitespace-nowrap">Enviando ao CA…</span>;
-    }
-    return <span className="text-gray-400 text-xs">—</span>;
-};
 
 const FornecedoresPage = () => {
     const { hasPermission } = useAuth();
@@ -48,7 +27,6 @@ const FornecedoresPage = () => {
     const [loading, setLoading] = useState(false);
     const [busca, setBusca] = useState(buscaInicial);
     const [buscaInput, setBuscaInput] = useState(buscaInicial);
-    const [importando, setImportando] = useState(false);
     const [modal, setModal] = useState(null); // { fornecedor: null } = novo | { fornecedor }
 
     useEffect(() => {
@@ -69,19 +47,6 @@ const FornecedoresPage = () => {
     }, [busca]);
 
     useEffect(() => { fetchData(); }, [fetchData]);
-
-    const importarCA = async () => {
-        setImportando(true);
-        try {
-            const res = await fornecedorService.importarCA();
-            toast.success(`${Number(res?.importados || 0)} importados, ${Number(res?.atualizados || 0)} atualizados`);
-            fetchData();
-        } catch (e) {
-            toast.error(e.response?.data?.error || 'Erro ao importar da Conta Azul');
-        } finally {
-            setImportando(false);
-        }
-    };
 
     const cidadeUf = (f) => {
         if (f.cidade && f.uf) return `${f.cidade}/${f.uf}`;
@@ -117,18 +82,8 @@ const FornecedoresPage = () => {
                         placeholder="Buscar por nome ou CNPJ…"
                         className="w-full md:w-72 border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
                     />
-                    {podeEditar && (
-                        <button
-                            onClick={importarCA}
-                            disabled={importando}
-                            className="w-full md:w-auto px-4 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-md font-medium text-sm inline-flex items-center justify-center gap-2 disabled:opacity-50"
-                        >
-                            {importando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                            {importando ? 'Importando…' : 'Importar da Conta Azul'}
-                        </button>
-                    )}
                     <div className="text-xs text-gray-500 md:ml-auto">
-                        {fornecedores.length} fornecedor{fornecedores.length === 1 ? '' : 'es'} · importados da Conta Azul e mantidos em sincronia
+                        {fornecedores.length} fornecedor{fornecedores.length === 1 ? '' : 'es'}
                     </div>
                 </div>
 
@@ -153,7 +108,6 @@ const FornecedoresPage = () => {
                         >
                             <div className="flex items-center justify-between mb-1 gap-2">
                                 <span className="font-semibold text-gray-900 truncate">{f.nomeFantasia || f.razaoSocial || 'Sem nome'}</span>
-                                <BadgeCAFornecedor fornecedor={f} />
                             </div>
                             <div className="text-sm text-gray-500">{fmtCnpjCpf(f.cnpjCpf)} · {cidadeUf(f)}</div>
                             {f.nomeFantasia && f.razaoSocial && (
@@ -172,13 +126,12 @@ const FornecedoresPage = () => {
                                     <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Fornecedor</th>
                                     <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">CNPJ</th>
                                     <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Cidade/UF</th>
-                                    <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Conta Azul</th>
                                     <th className="px-5 py-3"></th>
                                 </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200 text-sm">
                                 {fornecedores.length === 0 && !loading && (
-                                    <tr><td colSpan={5} className="px-5 py-8 text-center text-gray-400">Nenhum fornecedor encontrado.</td></tr>
+                                    <tr><td colSpan={4} className="px-5 py-8 text-center text-gray-400">Nenhum fornecedor encontrado.</td></tr>
                                 )}
                                 {fornecedores.map(f => (
                                     <tr key={f.id} className="hover:bg-gray-50">
@@ -188,7 +141,6 @@ const FornecedoresPage = () => {
                                         </td>
                                         <td className="px-5 py-3 text-gray-600">{fmtCnpjCpf(f.cnpjCpf)}</td>
                                         <td className="px-5 py-3 text-gray-600">{cidadeUf(f)}</td>
-                                        <td className="px-5 py-3"><BadgeCAFornecedor fornecedor={f} /></td>
                                         <td className="px-5 py-3 text-right">
                                             {podeEditar && (
                                                 <button
@@ -208,8 +160,7 @@ const FornecedoresPage = () => {
 
                 {/* Banner */}
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-900">
-                    <span className="font-semibold">Sincronia com a Conta Azul:</span>{' '}
-                    os fornecedores existentes são importados automaticamente da Conta Azul. Fornecedor criado aqui é enviado para a Conta Azul na hora — você não cadastra duas vezes.
+                    O cadastro de fornecedores é feito aqui no app.
                 </div>
             </div>
 
@@ -299,7 +250,7 @@ const FornecedorModal = ({ fornecedor, onClose, onSuccess }) => {
                 toast.success('Fornecedor atualizado!');
             } else {
                 await fornecedorService.criar(payload);
-                toast.success('Fornecedor criado! Enviando para a Conta Azul…');
+                toast.success('Fornecedor criado!');
             }
             onSuccess();
         } catch (e) {

@@ -3,10 +3,9 @@ import { useAuth } from '../../contexts/AuthContext';
 import contasPagarService from '../../services/contasPagarService';
 import fornecedorService from '../../services/fornecedorService';
 import {
-    Wallet, X, Trash2, FileText, RefreshCw, MoreVertical, Loader2, Undo2, Filter, Package, UploadCloud, Printer, Copy
+    Wallet, X, Trash2, FileText, RefreshCw, MoreVertical, Loader2, Undo2, Filter, Package, Printer, Copy
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import ImportarCaModal from './ImportarCaModal';
 import ComboBusca from '../../components/ComboBusca';
 import SelectBusca from '../../components/SelectBusca';
 import FiltroPeriodo, { usePeriodoSalvo } from '../../components/FiltroPeriodo';
@@ -435,7 +434,6 @@ const ContasPagarPage = () => {
 
     // Modais
     const [despesaModal, setDespesaModal] = useState(null); // { conta: null } = nova | { conta } = editar
-    const [importarModal, setImportarModal] = useState(false); // importar CSV do Conta Azul
     const [baixaModal, setBaixaModal] = useState(null);     // { conta, parcela }
     const [detalheConta, setDetalheConta] = useState(null); // conta
     // Conta cujo modal de detalhes foi fechado para abrir uma ação (editar/baixar/duplicar).
@@ -575,14 +573,6 @@ const ContasPagarPage = () => {
                 </div>
                 {podeBaixar && (
                     <div className="flex items-center gap-2">
-                        <button
-                            onClick={() => setImportarModal(true)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 md:px-4 md:py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-md text-xs md:text-sm font-medium"
-                            title="Importar o CSV de Contas a pagar exportado do Conta Azul"
-                        >
-                            <UploadCloud className="h-4 w-4" />
-                            <span className="hidden sm:inline">Importar do CA</span>
-                        </button>
                         <button
                             onClick={() => setDespesaModal({ conta: null })}
                             className="px-3 py-1.5 md:px-4 md:py-2 bg-primary hover:bg-blue-700 text-white rounded-md shadow-sm text-xs md:text-sm font-semibold"
@@ -848,14 +838,6 @@ const ContasPagarPage = () => {
                     lance a despesa (manual ou da nota fiscal) e dê a <span className="font-semibold">baixa</span> aqui quando pagar — uma parcela ou várias em lote. Marque as pagas para <span className="font-semibold">imprimir os recibos</span> (um por folha). O Conta Azul entra só para o histórico: despesas antigas pagas por lá (DDA) têm a baixa refletida aqui sozinha.
                 </div>
             </div>
-
-            {/* Modal Importar do Conta Azul (CSV) */}
-            {importarModal && (
-                <ImportarCaModal
-                    onClose={() => setImportarModal(false)}
-                    onSuccess={() => { setImportarModal(false); fetchData(); }}
-                />
-            )}
 
             {/* Modal Nova/Editar Despesa */}
             {despesaModal && (

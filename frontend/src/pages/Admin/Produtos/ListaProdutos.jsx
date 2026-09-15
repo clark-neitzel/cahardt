@@ -1,11 +1,11 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import produtoService from '../../../services/produtoService';
 import configService from '../../../services/configService';
 import categoriaProdutoService from '../../../services/categoriaProdutoService';
 import api, { API_URL } from '../../../services/api';
-import { Search, ArrowLeft, Plus, X, Loader2 } from 'lucide-react';
+import { Search, Plus, X, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import MultiSelect from '../../../components/MultiSelect';
 import ComboBusca from '../../../components/ComboBusca';
@@ -208,12 +208,6 @@ const ListaProdutos = () => {
             <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-6 gap-4">
                 <h1 className="text-2xl font-bold text-gray-800 text-center sm:text-left">Gerenciar Produtos</h1>
                 <div className="flex items-center justify-center sm:justify-end gap-4">
-                    <Link
-                        to="/admin/sync"
-                        className="text-primary hover:text-blue-700 text-sm font-medium flex items-center"
-                    >
-                        ir para Sincronização <ArrowLeft className="h-4 w-4 ml-1 rotate-180" />
-                    </Link>
                     {podeEditar && (
                         <button
                             onClick={() => setModalNovo(true)}

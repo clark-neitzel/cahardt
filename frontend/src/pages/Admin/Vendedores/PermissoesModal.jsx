@@ -3,7 +3,7 @@ import {
     X, Save, Shield, Monitor, Search,
     LayoutDashboard, BookOpen, ClipboardList, Map, Target, Users,
     PackageCheck, Truck, Wallet, Receipt,
-    Box, UserCog, Car, RefreshCw, FileText,
+    Box, UserCog, Car, FileText,
     Settings, DollarSign, Warehouse, TrendingUp,
     Factory, Package, BookOpen as BookOpenIcon, Play, Calendar, Lightbulb, BarChart3, BarChart2,
     Clock, CalendarOff, ClipboardCheck, Tag, PartyPopper, Inbox, Building2, CalendarCheck, BellRing,
@@ -29,7 +29,6 @@ const DEFAULT_PERMISSIONS = {
     produtos: { view: false, edit: false },
     vendedores: { view: false, edit: false },
     relatorioVendas: false,
-    sync: { view: false, edit: false },
     configuracoes: { view: false, edit: false },
     // Dashboard
     Pode_Ver_Dashboard_Vendas: false,
@@ -331,7 +330,6 @@ const BOOL_INDEX = [
     { sec: 'admin', path: 'produtos.view', nome: 'Ver Produtos (Admin)', desc: 'Menu Produtos visível', kw: 'menu produtos admin cadastro' },
     { sec: 'admin', path: 'vendedores.view', nome: 'Ver Usuários', desc: 'A tela de equipe/acessos', kw: 'menu usuarios equipe vendedores' },
     { sec: 'admin', path: 'Pode_Acessar_Veiculos', nome: 'Veículos', desc: 'Menu Veículos visível', kw: 'veiculo carro caminhao menu' },
-    { sec: 'admin', path: 'sync.view', nome: 'Sincronizar', desc: 'Menu Sincronizar visível', kw: 'sincronizar conta azul sync' },
     { sec: 'admin', path: 'produtos.edit', nome: 'Gerenciar Produtos', desc: 'Editar dados dos produtos', kw: 'editar produto gerenciar' },
     { sec: 'admin', path: 'vendedores.edit', nome: 'Gerenciar Vendedores', desc: 'Editar dados e permissões dos vendedores', kw: 'editar usuarios permissoes dados' },
     { sec: 'admin', path: 'Pode_Editar_Veiculos', nome: 'Editar Veículos', desc: 'Cadastrar/editar/excluir veículos, lançar manutenção', kw: 'cadastrar veiculo manutencao editar', danger: true },
@@ -1277,7 +1275,6 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
             <MenuToggle icon={Box} label="Produtos" checked={!!permissoes.produtos?.view} onChange={() => toggleView('produtos')} />
             <MenuToggle icon={UserCog} label="Vendedores" checked={!!permissoes.vendedores?.view} onChange={() => toggleView('vendedores')} />
             <MenuToggle icon={Car} label="Veículos" checked={!!permissoes.Pode_Acessar_Veiculos} onChange={() => toggleBool('Pode_Acessar_Veiculos')} />
-            <MenuToggle icon={RefreshCw} label="Sincronizar" checked={!!permissoes.sync?.view} onChange={() => toggleView('sync')} />
 
             <div className="border-t mt-3 pt-3">
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 px-2">Permissões avançadas</p>

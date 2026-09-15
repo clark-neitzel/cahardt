@@ -48,7 +48,6 @@ const ContasBancosPage = () => {
     const [periodo, setPeriodo] = useState(opcoesPeriodo[0]);
     const [dados, setDados] = useState(null);
     const [loading, setLoading] = useState(false);
-    const [comSaldoCA, setComSaldoCA] = useState(false);
 
     // Extrato (drill-down) da conta selecionada
     const [contaSel, setContaSel] = useState(null); // { id, nome }
@@ -61,10 +60,10 @@ const ContasBancosPage = () => {
     const [showAjuste, setShowAjuste] = useState(false);
     const [ajuste, setAjuste] = useState({ tipo: 'SAIDA', valor: '', data: hojeYMD(), descricao: '' });
 
-    const carregar = useCallback(async (p, saldoCA) => {
+    const carregar = useCallback(async (p) => {
         setLoading(true);
         try {
-            const d = await financeiroGerencialService.porConta(p.de, p.ate, saldoCA);
+            const d = await financeiroGerencialService.porConta(p.de, p.ate);
             setDados(d);
         } catch (e) {
             toast.error(e.response?.data?.error || 'Erro ao carregar o resumo por conta');
@@ -73,7 +72,7 @@ const ContasBancosPage = () => {
         }
     }, []);
 
-    useEffect(() => { carregar(periodo, comSaldoCA); }, [periodo, comSaldoCA, carregar]);
+    useEffect(() => { carregar(periodo); }, [periodo, carregar]);
 
     const abrirExtrato = useCallback(async (conta) => {
         setContaSel(conta);
@@ -99,7 +98,7 @@ const ContasBancosPage = () => {
         try {
             const [d] = await Promise.all([
                 financeiroGerencialService.extratoPorConta(conta.id, periodo.de, periodo.ate),
-                carregar(periodo, comSaldoCA)
+                carregar(periodo)
             ]);
             setExtrato(d);
         } catch (e) {
@@ -107,7 +106,7 @@ const ContasBancosPage = () => {
         } finally {
             setLoadingExtrato(false);
         }
-    }, [periodo, comSaldoCA, carregar]);
+    }, [periodo, carregar]);
 
     const moverLancamento = useCallback(async (lanc, novaContaId) => {
         const destinoAtual = contaSel?.id || 'sem';
@@ -178,7 +177,7 @@ const ContasBancosPage = () => {
                     <h1 className="text-base md:text-2xl font-bold text-gray-900">Saldos por Conta</h1>
                 </div>
                 <button
-                    onClick={() => carregar(periodo, comSaldoCA)}
+                    onClick={() => carregar(periodo)}
                     disabled={loading}
                     className="px-3 py-1.5 md:px-4 md:py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-md text-xs md:text-sm font-medium inline-flex items-center gap-1.5 disabled:opacity-50"
                 >
@@ -187,7 +186,7 @@ const ContasBancosPage = () => {
             </div>
 
             <div className="p-3 md:p-6 space-y-4">
-                {/* Chips de período + toggle saldo CA */}
+                {/* Chips de período */}
                 <div className="flex items-center justify-between gap-2 flex-wrap">
                     <div className="flex gap-2 overflow-x-auto hide-scrollbar">
                         {opcoesPeriodo.map(p => (
@@ -204,15 +203,6 @@ const ContasBancosPage = () => {
                             </button>
                         ))}
                     </div>
-                    <button
-                        onClick={() => setComSaldoCA(v => !v)}
-                        className={`shrink-0 px-3 py-1.5 min-h-[36px] rounded-full text-xs font-medium border transition-colors ${
-                            comSaldoCA ? 'bg-mint/50 border-primary text-primaryDark' : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
-                        }`}
-                        title="Consulta o saldo atual de cada conta direto no Conta Azul (pode demorar alguns segundos)"
-                    >
-                        {comSaldoCA ? '✓ ' : ''}Saldo atual no Conta Azul
-                    </button>
                 </div>
 
                 {/* KPIs */}
@@ -260,7 +250,6 @@ const ContasBancosPage = () => {
                                         <th className="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Saídas</th>
                                         <th className="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide" title="Transferências entre contas da empresa (não é receita nem despesa)">Transf. ±</th>
                                         <th className="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Resultado</th>
-                                        {comSaldoCA && <th className="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Saldo atual (CA)</th>}
                                         <th className="px-5 py-3"></th>
                                     </tr>
                                 </thead>
@@ -282,11 +271,6 @@ const ContasBancosPage = () => {
                                             <td className={`px-5 py-3 text-right font-semibold ${c.resultado < 0 ? 'text-red-700' : 'text-gray-900'}`}>
                                                 {c.resultado < 0 ? '−' : '+'}{fmt(Math.abs(c.resultado))}
                                             </td>
-                                            {comSaldoCA && (
-                                                <td className="px-5 py-3 text-right font-medium text-gray-700">
-                                                    {c.saldoCA == null ? <span className="text-gray-300 font-normal">—</span> : `R$ ${fmt(c.saldoCA)}`}
-                                                </td>
-                                            )}
                                             <td className="px-5 py-3 text-right text-gray-300"><ChevronRight className="h-4 w-4 inline" /></td>
                                         </tr>
                                     ))}
@@ -325,12 +309,6 @@ const ContasBancosPage = () => {
                                         <span className="font-semibold text-purple-700">
                                             {(c.transfEntrada - c.transfSaida) < 0 ? '−' : '+'}{fmt(Math.abs(c.transfEntrada - c.transfSaida))}
                                         </span>
-                                    </div>
-                                )}
-                                {comSaldoCA && (
-                                    <div className="mt-2 pt-2 border-t border-gray-100 text-sm flex items-center justify-between">
-                                        <span className="text-xs text-gray-500">Saldo atual no CA</span>
-                                        <span className="font-semibold text-gray-800">{c.saldoCA == null ? '—' : `R$ ${fmt(c.saldoCA)}`}</span>
                                     </div>
                                 )}
                             </button>

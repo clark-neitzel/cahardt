@@ -86,7 +86,7 @@ function AbaInadimplentes({ podeEditar }) {
     };
 
     const executarAgora = async () => {
-        if (!window.confirm('Iniciar a fila de cobrança AGORA? Os envios saem 1 por minuto, conferindo no Conta Azul antes de cada um.')) return;
+        if (!window.confirm('Iniciar a fila de cobrança AGORA? Os envios saem 1 por minuto, conferindo no sistema se o título ainda está em aberto antes de cada um.')) return;
         setExecutando(true);
         try {
             const r = await cobrancaService.executarRegua();
@@ -166,7 +166,7 @@ function AbaInadimplentes({ podeEditar }) {
             {dados.execucao?.executando && (
                 <div className="bg-mint/50 border border-primary/20 rounded-xl p-3 flex items-center gap-3 text-sm text-primaryDark">
                     <Loader2 className="h-4 w-4 animate-spin shrink-0" />
-                    <span>Fila de envio em andamento: <b>{dados.execucao.processados}/{dados.execucao.total}</b> (1 mensagem por minuto, conferindo no Conta Azul antes de cada envio)</span>
+                    <span>Fila de envio em andamento: <b>{dados.execucao.processados}/{dados.execucao.total}</b> (1 mensagem por minuto, conferindo no sistema se o título ainda está em aberto antes de cada envio)</span>
                     <button onClick={carregar} className="ml-auto p-1.5 text-primaryDark hover:bg-mint rounded-full"><RefreshCw className="h-4 w-4" /></button>
                 </div>
             )}

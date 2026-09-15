@@ -13,10 +13,6 @@ const fornecedorService = {
         const response = await api.put(`/fornecedores/${id}`, dados);
         return response.data;
     },
-    importarCA: async () => {
-        const response = await api.post('/fornecedores/importar-ca');
-        return response.data;
-    },
     // Cria (ou devolve, se já existir pelo documento) o cadastro de pessoa deste fornecedor —
     // usado pelo Novo Usuário/Vincular cadastro. Retorna { cliente, jaExistia? }.
     criarCadastroPessoa: async (id) => {

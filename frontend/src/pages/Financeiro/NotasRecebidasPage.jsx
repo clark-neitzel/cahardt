@@ -2237,7 +2237,7 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
             })
             .catch(() => {
                 setOpcoesErro(true); // ENCERRA a tentativa — sem isto o effect re-dispara para sempre
-                toast.error('Não consegui carregar os bancos do Conta Azul.', { id: 'opcoes-baixa-erro' });
+                toast.error('Não consegui carregar os bancos e formas de pagamento.', { id: 'opcoes-baixa-erro' });
             })
             .finally(() => {
                 buscandoOpcoesRef.current = false;
@@ -2485,19 +2485,19 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
             irParaPrimeiroPendente();
             return;
         }
-        // Se vai enviar ao CA, todo grupo do rateio precisa ter categoria da lista do CA (com id)
+        // Se vai registrar forma de pagamento e banco, todo grupo do rateio precisa ter categoria da lista (com id)
         if (enviarCA) {
             if (semCategoria) {
-                toast.error('Defina a categoria de custo dos itens (ou a categoria padrão) antes de enviar para a Conta Azul.');
+                toast.error('Defina a categoria de custo dos itens (ou a categoria padrão) antes de registrar a forma de pagamento.');
                 return;
             }
             const semCa = rateio.find(g => caIdDaCategoria(g.categoria) == null);
             if (semCa) {
-                toast.error(`A categoria "${semCa.categoria || 'sem categoria'}" não existe na Conta Azul. Escolha uma categoria da lista ou desmarque "Enviar para a Conta Azul".`);
+                toast.error(`A categoria "${semCa.categoria || 'sem categoria'}" não está na lista de categorias. Escolha uma categoria da lista ou desmarque "Registrar forma de pagamento e banco".`);
                 return;
             }
         }
-        // Enviando ao CA: forma + banco são obrigatórios (condição da despesa)
+        // Forma + banco são obrigatórios quando "Registrar forma de pagamento e banco" está marcado
         if (enviarCA) {
             if (!metodoPagamento) { toast.error('Escolha a forma de pagamento.'); return; }
             if (!contaFinanceiraCaId) { toast.error('Escolha o banco/caixa da despesa.'); return; }
@@ -3082,7 +3082,7 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                                Quem decide repetir é o usuário, por este botão. */
                             <div className="flex flex-col sm:flex-row sm:items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5 text-sm text-amber-900">
                                 <span>
-                                    <span className="font-semibold">Não consegui carregar os bancos e formas de pagamento do Conta Azul.</span>{' '}
+                                    <span className="font-semibold">Não consegui carregar os bancos e formas de pagamento.</span>{' '}
                                     Sem eles não dá para registrar a forma de pagamento — desmarque a opção acima para gerar a despesa mesmo assim.
                                 </span>
                                 <button

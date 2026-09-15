@@ -89,7 +89,6 @@
 | Usuários (Vendedores) | `/admin/vendedores` | Gerenciamento de usuários, permissões, Flex e formas de atendimento | [vendedores.md](vendedores.md) |
 | Mensagens Agendadas | `/admin/mensagens-agendadas` | Configuração de mensagens automáticas de WhatsApp para a equipe | [mensagens-agendadas.md](mensagens-agendadas.md) |
 | Veículos | `/veiculos` | Cadastro e controle da frota com manutenções preventivas | [veiculos.md](veiculos.md) |
-| Sincronizar | `/admin/sync` | Controle da integração OAuth com o Conta Azul e histórico de execuções | [sincronizar.md](sincronizar.md) |
 | Contabilidade | `/admin/contabilidade` | Relatórios de consulta para o escritório de contabilidade (títulos, recebimentos, NF, banco da baixa) | [contabilidade.md](contabilidade.md) |
 
 ---

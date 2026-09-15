@@ -73,8 +73,10 @@ const authController = {
 
             console.log('✅ Acesso Conta Azul obtido e salvo com sucesso!');
 
-            // Redireciona de volta para a URL CORRETA do frontend
-            res.redirect('https://cahardt-github.xrqvlq.easypanel.host/admin/sync?status=success');
+            // Redireciona de volta para o frontend. O Painel de Sincronização (/admin/sync) foi
+            // removido em 09/2026 (plano de remoção do CA) — manda para Saldos por Conta, tela
+            // que ainda depende de o token existir (leitura de baixas/transferências antigas).
+            res.redirect('https://cahardt-github.xrqvlq.easypanel.host/financeiro/por-conta?status=success');
 
         } catch (error) {
             console.error('Erro na autenticação Conta Azul:', error.response?.data || error.message);

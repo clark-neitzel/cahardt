@@ -167,7 +167,7 @@ router.delete('/reset/:grupo', async (req, res) => {
     try {
         const resultado = await prisma.$transaction(async (tx) => {
             return resetGroup.run(tx);
-        }, { timeout: 30000 });
+        }, { timeout: 30000, maxWait: 10000 });
 
         console.log(`🗑️ RESET [${grupo}] executado por ${req.user.id}:`, resultado);
         res.json({ ok: true, grupo, label: resetGroup.label, detalhes: resultado });
@@ -190,13 +190,17 @@ router.delete('/reset-transacional', async (req, res) => {
     try {
         const resultado = await prisma.$transaction(async (tx) => {
             const detalhes = {};
-            // Ordem respeitando FKs: pedidos requerem embarques vazios depois
-            const ordem = ['metas', 'insights', 'caixa', 'entregas', 'pedidos', 'embarques', 'atendimentos', 'leads', 'despesas', 'roteirizacoes', 'diario', 'manutencao', 'sync'];
+            // Ordem respeitando FKs: pedidos requerem embarques vazios depois.
+            // 'sync' saiu da ordem em 09/2026 (remoção do Conta Azul): a tela de
+            // Sincronização não existe mais, mas o grupo RESET_GROUPS.sync (limpa
+            // SyncLog) continua disponível para reset individual — SyncLog ainda é
+            // escrito pelo keep-alive do token em contaAzulService.js.
+            const ordem = ['metas', 'insights', 'caixa', 'entregas', 'pedidos', 'embarques', 'atendimentos', 'leads', 'despesas', 'roteirizacoes', 'diario', 'manutencao'];
             for (const grupo of ordem) {
                 detalhes[grupo] = await RESET_GROUPS[grupo].run(tx);
             }
             return detalhes;
-        }, { timeout: 60000 });
+        }, { timeout: 60000, maxWait: 10000 });
 
         console.log(`🗑️ RESET TOTAL executado por ${req.user.id}:`, resultado);
         res.json({ ok: true, mensagem: 'Todos os dados transacionais foram limpos.', detalhes: resultado });

@@ -17,7 +17,6 @@ const responderErroCidade = (res, e) => res.status(e.status || 400).json({
     error: e.message, codigo: e.codigo, cidade: e.cidade, sugestoes: e.sugestoes || [], cidadeInativa: e.cidadeInativa || undefined,
 });
 const verificarAuth = require('../middlewares/authMiddleware');
-const contasPagarCaSyncService = require('../services/contasPagarCaSyncService');
 
 const getPerms = async (userId) => {
     const vendedor = await prisma.vendedor.findUnique({
@@ -282,20 +281,6 @@ router.post('/:id/cadastro-pessoa', verificarAuth, checkAcesso, async (req, res)
     } catch (error) {
         console.error('Erro ao criar cadastro de pessoa do fornecedor:', error);
         res.status(500).json({ error: 'Erro ao criar o cadastro de pessoa do fornecedor.' });
-    }
-});
-
-// ── POST /importar-ca — importa fornecedores do Conta Azul (paginado, upsert) ──
-router.post('/importar-ca', verificarAuth, checkEscrita, async (req, res) => {
-    try {
-        const resultado = await contasPagarCaSyncService.importarFornecedoresCA();
-        res.json({
-            message: `Importação concluída: ${resultado.importados} novo(s), ${resultado.atualizados} atualizado(s).`,
-            ...resultado
-        });
-    } catch (error) {
-        console.error('Erro ao importar fornecedores do CA:', error?.response?.data || error);
-        res.status(500).json({ error: error.message || 'Erro ao importar fornecedores do Conta Azul.' });
     }
 });
 

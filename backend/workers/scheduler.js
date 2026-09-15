@@ -6,58 +6,41 @@
 function startSchedulers() {
     // === 1. KEEP-ALIVE SYSTEM ===
     // Garante que o token nunca expire mesmo se o sistema estiver ocioso.
-    // Executa a cada 45 minutos (45 * 60 * 1000 = 2700000 ms)
+    // Executa a cada 45 minutos (45 * 60 * 1000 = 2700000 ms). Fica para a Fase 6 da
+    // remoção do CA (docs/plano-remocao-conta-azul.md) — enquanto isso, se o token já
+    // estiver morto (refresh_token expirado/revogado), NÃO fica gritando a cada 45min:
+    // 1 linha de warn (o `contaAzulService` já registra o detalhe em SyncLog).
     console.log('⏰ Iniciando sistema de Keep-Alive do Token Conta Azul...');
     const contaAzulService = require('../services/contaAzulService');
 
     // Primeira execução imediata (async, não bloqueia)
-    contaAzulService.getAccessToken().catch(err => console.error('⚠️ Erro no Keep-Alive inicial:', err.message));
+    contaAzulService.getAccessToken().catch(() => console.warn('⚠️ Keep-Alive: token do Conta Azul indisponível (reconectar em /financeiro/por-conta).'));
 
     setInterval(async () => {
-        console.log('⏰ Keep-Alive: Verificando Token...');
         try {
             await contaAzulService.getAccessToken();
-        } catch (error) {
-            console.error('⚠️ Keep-Alive Error:', error.message);
+        } catch (_) {
+            console.warn('⚠️ Keep-Alive: token do Conta Azul indisponível (reconectar em /financeiro/por-conta).');
         }
     }, 2700000); // 45 minutos
 
-    // === 2. AUTO-SYNC SYSTEM (Dados) ===
-    // Sincroniza produtos automaticamente a cada 1 Hora.
-    // Clientes NÃO sincronizam mais (07/2026): o cadastro é 100% do app — um sync
-    // do CA sobrescreveria as edições feitas aqui.
-    console.log('⏰ Iniciando sistema de Auto-Sync (Dados)...');
-    setInterval(async () => {
-        console.log('🔄 Auto-Sync: Buscando novidades na Conta Azul...');
-        try {
-            // Delta Sync automático
-            await contaAzulService.syncProdutos();
-            console.log('✅ Auto-Sync finalizado com sucesso.');
-        } catch (error) {
-            console.error('⚠️ Auto-Sync Error:', error.message);
-        }
-    }, 3600000); // 60 minutos (1 hora)
+    // === 2. AUTO-SYNC SYSTEM (Dados) — DESLIGADO (Fase 3 da remoção do CA, 09/2026) ===
+    // Sincronizava produtos automaticamente a cada 1 hora. Desde que produtos são
+    // 100% do app (dono confirmou, 09/2026, docs/plano-remocao-conta-azul.md),
+    // nenhum produto novo nasce no CA — o agendamento foi removido. A chamada avulsa
+    // que syncPedidosService.js fazia após faturar um pedido também foi removida —
+    // `contaAzulService.syncProdutos()` não tem mais nenhum consumidor no app.
 
-    // === 3. AUTO-SYNC PEDIDOS (Bidirecional) ===
-    // Detecta automaticamente pedidos alterados/excluídos no CA a cada 15 minutos.
-    // Não depende do usuário clicar no botão — roda em background continuamente.
-    console.log('⏰ Iniciando Auto-Sync de Pedidos (CA → App)...');
-    const _runSyncPedidos = async () => {
-        try {
-            await contaAzulService.syncPedidosModificados();
-        } catch (err) {
-            console.error('⚠️ Auto-Sync Pedidos Error:', err.message);
-        }
-    };
-    // Primeira execução 2min após o start (para o servidor estar estável)
-    setTimeout(_runSyncPedidos, 120000);
-    // Execuções subsequentes a cada 15min
-    setInterval(_runSyncPedidos, 900000); // 15 minutos
+    // === 3. AUTO-SYNC PEDIDOS (Bidirecional) — DESLIGADO (Fase 3 da remoção do CA, 09/2026) ===
+    // Detectava pedido alterado/excluído no CA a cada 15 minutos. Desde 23/07/2026
+    // (CA_SOMENTE_LEITURA) nenhum pedido novo nasce no CA — não há mais o que
+    // detectar. A função `contaAzulService.syncPedidosModificados()` continua
+    // existindo (sem consumidor), só o agendamento foi removido.
 
-
-    // === 4. WORKER DE PEDIDOS (Upload para CA) ===
-    // Checa a fila de pedidos a enviar a cada 30 segundos
-    console.log('⏰ Iniciando Worker de Pedidos (Upload para CA)...');
+    // === 4. WORKER DE PEDIDOS (Faturamento local) ===
+    // Checa a fila de pedidos a faturar a cada 30 segundos. Desde CA_SOMENTE_LEITURA
+    // (23/07/2026) o faturamento é só local — não envia mais nada ao CA.
+    console.log('⏰ Iniciando Worker de Pedidos (Faturamento local)...');
     const syncPedidosService = require('../services/syncPedidosService');
     setInterval(async () => {
         await syncPedidosService.processarFila();
@@ -443,26 +426,13 @@ function startSchedulers() {
     setTimeout(_runExtratoAsaas, 240000);          // 4min após o start
     setInterval(_runExtratoAsaas, 30 * 60 * 1000); // a cada 30 minutos
 
-    // === 11. TRANSFERÊNCIAS DO CONTA AZUL → SALDOS POR CONTA ===
-    // Transferência entre contas feita no CA passa a aparecer sozinha no app
-    // (janela de 30 dias, idempotente pelo id da transferência no CA). Isolado.
-    console.log('⏰ Iniciando Worker de transferências do Conta Azul (extrato CA)...');
-    const caExtratoService = require('../services/caExtratoService');
-    const _runExtratoCA = async () => {
-        try { await caExtratoService.sincronizarTransferencias({ dias: 30 }); }
-        catch (err) { console.error('⚠️ Extrato CA (transferências) Error:', err.message); }
-        // Despesas lançadas direto no CA (janela de 2 dias de alteração; idempotente)
-        try { await caExtratoService.sincronizarDespesas({ dias: 2 }); }
-        catch (err) { console.error('⚠️ Extrato CA (despesas) Error:', err.message); }
-        // Recebimentos baixados direto no CA em contas importadas/avulsas (espelha ledger)
-        try { await caExtratoService.sincronizarRecebimentos({ dias: 2 }); }
-        catch (err) { console.error('⚠️ Extrato CA (recebimentos) Error:', err.message); }
-        // Extrato da conta Conta Azul IP na Conciliação Bancária (derivado dos movimentos)
-        try { await caExtratoService.sincronizarExtratoConciliacao({ dias: 30 }); }
-        catch (err) { console.error('⚠️ Extrato CA (conciliação) Error:', err.message); }
-    };
-    setTimeout(_runExtratoCA, 300000);            // 5min após o start
-    setInterval(_runExtratoCA, 3 * 3600000);      // a cada 3 horas
+    // === 11. TRANSFERÊNCIAS DO CONTA AZUL → SALDOS POR CONTA — DESLIGADO (Fase 4 da
+    // remoção do CA, 09/2026) ===
+    // Puxava transferências/despesas/recebimentos lançados direto no CA a cada 3h.
+    // O dono confirmou (15/09/2026): "importar o extrato do CA" é só o upload manual
+    // de OFX/PDF na Conciliação Bancária (conciliacaoBancaria.js) — a sincronização
+    // automática via API nunca foi o que ele usa. caExtratoService.js continua no
+    // repo (funções exportadas, sem consumidor) até uma limpeza cosmética futura.
 
     // === 12. NF-e PRESA EM "PROCESSANDO" (fallback do webhook da Focus) ===
     // O webhook é a via normal, mas a Focus desiste de reenviar depois de

@@ -8,7 +8,7 @@ permissao: Pode_Acessar_Fornecedores
 
 ## O que é
 
-Cadastro de fornecedores da empresa, usado pelo módulo de Contas a Pagar. Desde 07/2026 os fornecedores ficam **só no app** (não são mais enviados ao Conta Azul). Quem já existe no CA ainda pode ser **importado** de uma vez com um botão, para não redigitar.
+Cadastro de fornecedores da empresa, usado pelo módulo de Contas a Pagar. Desde 07/2026 os fornecedores ficam **só no app** (não são mais enviados ao Conta Azul). O botão de importar do Conta Azul foi removido em 09/2026 (plano de remoção do CA) — fornecedor novo é cadastrado direto aqui.
 
 ---
 
@@ -39,7 +39,6 @@ Cadastro de fornecedores da empresa, usado pelo módulo de Contas a Pagar. Desde
 > `SA`, um estado que não existe, e isso quebraria em silêncio a conferência da inscrição
 > estadual.
 - Editar um fornecedor
-- **Importar do Conta Azul**: busca todos os cadastros com perfil "Fornecedor" no CA e cria/atualiza aqui (casa por vínculo com o CA ou, se não houver, pelo CNPJ/CPF). Mostra quantos foram importados e quantos atualizados
 - Ativar/inativar fornecedor
 - **Excluir um fornecedor** (botão "Excluir" dentro do "Abrir"/editar): se ele **não tiver** despesas nem notas ligadas, é excluído direto. Se **tiver**, o app oferece **mesclar** — move as despesas e notas para outro fornecedor **de mesmo CNPJ** (útil para juntar cadastros duplicados) e então exclui o duplicado. A exclusão é só no app; o cadastro no Conta Azul não é apagado.
 
@@ -48,7 +47,7 @@ Cadastro de fornecedores da empresa, usado pelo módulo de Contas a Pagar. Desde
 ## Relação com o Conta Azul
 
 - **Envio desligado (07/2026):** fornecedor criado no app fica **só no app** — não é mais enviado ao Conta Azul.
-- **Importar do Conta Azul** continua funcionando: traz os cadastros com perfil "Fornecedor" que já existem lá (casa por vínculo com o CA ou pelo CNPJ/CPF).
+- **Importação desligada (09/2026):** o botão "Importar do Conta Azul" foi removido — não busca mais nada de lá. Fornecedores que já tinham sido importados antes continuam no cadastro normalmente (com `contaAzulId` preenchido, campo legado).
 - Fornecedores que estavam "presos" tentando ser enviados ao CA foram convertidos automaticamente para **"só no app"**.
 
 ---
@@ -58,7 +57,7 @@ Cadastro de fornecedores da empresa, usado pelo módulo de Contas a Pagar. Desde
 | Permissão | Efeito |
 |-----------|--------|
 | `Pode_Acessar_Fornecedores` | Ver a lista de fornecedores |
-| `Pode_Editar_Fornecedores` | Criar, editar e importar do CA |
+| `Pode_Editar_Fornecedores` | Criar e editar |
 | `admin` | Tudo acima |
 
 ---
@@ -66,7 +65,7 @@ Cadastro de fornecedores da empresa, usado pelo módulo de Contas a Pagar. Desde
 ## Depende de / Interfere em
 
 - **Contas a Pagar** — o fornecedor identifica a quem se paga cada despesa
-- **Conta Azul** — cadastro espelhado via API (`/v1/pessoas`, perfil Fornecedor)
+- **Conta Azul** — legado: fornecedores importados até 09/2026 guardam `contaAzulId`; não há mais leitura nem escrita ativa nessa API
 
 ---
 
@@ -74,6 +73,6 @@ Cadastro de fornecedores da empresa, usado pelo módulo de Contas a Pagar. Desde
 
 | Caminho | Papel |
 |---------|-------|
-| `backend/routes/fornecedores.js` | Rotas da API (listar, criar, editar, importar do CA) |
-| `backend/services/contasPagarCaSyncService.js` | Robô de envio ao CA e importação |
+| `backend/routes/fornecedores.js` | Rotas da API (listar, criar, editar) |
+| `backend/services/contasPagarCaSyncService.js` | Robô do CA: envio de fornecedor **desligado** por `CA_SOMENTE_LEITURA` (drena fila p/ "só no app") |
 | `frontend/src/pages/Financeiro/Fornecedores*` | Telas do módulo |

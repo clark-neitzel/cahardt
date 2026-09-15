@@ -15,15 +15,11 @@ const router = express.Router();
 const prisma = require('../config/database');
 const verificarAuth = require('../middlewares/authMiddleware');
 const contasPagarCaSyncService = require('../services/contasPagarCaSyncService');
-const importacaoCaService = require('../services/importacaoCaService');
 const categoriaDespesaService = require('../services/categoriaDespesaService');
 const contaAzulService = require('../services/contaAzulService');
 // App é o dono do financeiro: com esta chave ligada, Contas a Pagar não envia mais ao CA
 // (a despesa/baixa nasce "só no app"). A forma/banco continuam sendo capturados p/ os saldos.
 const { CA_SOMENTE_LEITURA } = require('../config/contaAzulModo');
-
-// CSV do Conta Azul fica em memória (máx 15 MB) — parse imediato, nada salvo em disco.
-const uploadCsv = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 } });
 
 // PDF da despesa: salvo em disco na pasta backend/uploads/contas-pagar/ (máx 30 MB, somente PDF).
 // ATENÇÃO: tem que ser '../uploads' (backend/uploads) — é a pasta persistida entre deploys, a mesma
@@ -60,17 +56,6 @@ const uploadPdf = multer({
         else cb(new Error('Somente arquivos PDF são aceitos.'));
     }
 });
-
-/** Decodifica o buffer do CSV: UTF-8 (com BOM) e, se vier "sujo", tenta Latin1. */
-function decodificarCsv(buffer) {
-    let txt = buffer.toString('utf8');
-    if (txt.charCodeAt(0) === 0xfeff) txt = txt.slice(1); // remove BOM
-    if (txt.includes('�')) { // caractere inválido → provavelmente Latin1/Windows-1252
-        const alt = buffer.toString('latin1');
-        if (!alt.includes('�')) txt = alt;
-    }
-    return txt;
-}
 
 const getPerms = async (userId) => {
     const vendedor = await prisma.vendedor.findUnique({
@@ -249,35 +234,6 @@ router.get('/produtos-opcoes', verificarAuth, checkAcesso, async (req, res) => {
     } catch (error) {
         console.error('Erro ao listar opções de produto:', error);
         res.status(500).json({ error: 'Erro ao listar produtos.' });
-    }
-});
-
-// ── POST /importar-ca — importar o CSV "Contas a pagar" do Conta Azul ──
-// dryRun=1 → só devolve a prévia (não grava). Sem dryRun → grava de fato.
-// As contas nascem IMPORTADO_CA / NAO_ENVIAR (não voltam ao CA — já existem lá).
-router.post('/importar-ca', verificarAuth, checkEscrita, uploadCsv.single('arquivo'), async (req, res) => {
-    try {
-        if (!req.file || !req.file.buffer) {
-            return res.status(400).json({ error: 'Envie o arquivo CSV exportado do Conta Azul.' });
-        }
-        const texto = decodificarCsv(req.file.buffer);
-        const dryRun = ['1', 'true'].includes(String(req.query.dryRun || '').toLowerCase());
-        const resumo = await importacaoCaService.importar(texto, { dryRun, userId: req.user.id });
-        if (resumo.totalContas === 0) {
-            return res.status(400).json({
-                error: resumo.avisos[0] || 'Nenhuma conta a pagar encontrada no arquivo.',
-                resumo
-            });
-        }
-        res.json({
-            message: dryRun
-                ? 'Prévia gerada.'
-                : `Importação concluída: ${resumo.novas} nova(s), ${resumo.atualizadas} atualizada(s).`,
-            resumo
-        });
-    } catch (error) {
-        console.error('Erro ao importar CSV do Conta Azul:', error);
-        res.status(500).json({ error: 'Não consegui ler esse arquivo. Confira se é o CSV de Contas a pagar do Conta Azul.' });
     }
 });
 

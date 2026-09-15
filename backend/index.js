@@ -14,7 +14,6 @@ require('dotenv').config();
 axios.defaults.timeout = 60000;
 
 const produtoRoutes = require('./routes/produtoRoutes');
-const syncRoutes = require('./routes/syncRoutes');
 const clienteRoutes = require('./routes/clienteRoutes');
 const authRoutes = require('./routes/authRoutes'); // New
 const vendedorRoutes = require('./routes/vendedorRoutes'); // New
@@ -138,9 +137,8 @@ app.use('/api', (req, res, next) => {
 });
 
 // Rotas
-// (auth e sync abertos)
+// (auth aberta)
 app.use('/api/auth', authRoutes);
-app.use('/api/sync', syncRoutes);
 app.use('/api/kitfesta-publico', kitFestaPublicRoutes); // Kit Festa: site público (auth do cliente é interna)
 app.use('/api/congelados-publico', congeladosPublicRoutes); // Site Congelados: site público (auth do cliente é interna)
 app.use('/api/catalogo-personalizado-publico', catalogoPersonalizadoPublicRoutes); // Catálogo Personalizado: página pública por token (sem login)
