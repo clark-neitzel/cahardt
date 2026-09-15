@@ -18,7 +18,9 @@ export default function ItensPcp() {
     const navigate = useNavigate();
     const [itens, setItens] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [search, setSearch] = useState('');
+    // Busca também é lembrada por usuário (pedido do dono 15/09/2026): ao abrir um
+    // subproduto e voltar, a lista reabre filtrada do mesmo jeito.
+    const [search, setSearch] = useFiltroSalvo('itens-pcp:search', '');
     const [ativoFiltro, setAtivoFiltro] = useFiltroSalvo('itens-pcp:ativoFiltro', 'true');
 
     const carregar = useCallback(async () => {

@@ -56,6 +56,7 @@ Matérias-primas (MP), Produtos Acabados (PA) e Embalagens (EMB) **não são cri
 
 - **Busca**: pesquisa por nome ou código em tempo real.
 - **Status**: dropdown para exibir Ativos / Inativos / Todos.
+- **Os filtros ficam salvos por usuário**: a busca e o status escolhidos permanecem ao abrir um subproduto e voltar, e também ao sair e entrar de novo no sistema (neste mesmo aparelho). Para ver a lista inteira, limpe o campo de busca.
 
 ## Tipos de item no PCP
 
