@@ -26,10 +26,15 @@ const categoriaProdutoService = {
         });
     },
 
+    // D4 (plano Etapa 1 Entrada de Notas, 09/2026): `controlaEstoque` saiu da tela de
+    // Categorias comerciais — o PUT passa a IGNORAR o campo (nunca mais grava), mesmo que
+    // o corpo venha com ele (cliente antigo em cache, chamada manual etc.). O campo
+    // continua no schema — só não é mais editável por aqui.
     atualizar: async (id, dados) => {
+        const { controlaEstoque, ...dadosPermitidos } = dados || {};
         return await prisma.categoriaProduto.update({
             where: { id },
-            data: dados
+            data: dadosPermitidos
         });
     },
 

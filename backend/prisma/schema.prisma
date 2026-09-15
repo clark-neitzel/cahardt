@@ -94,6 +94,14 @@ model Produto {
   // continua recebendo custo e histórico de compras — só não movimenta quantidade.
   controlaEstoque Boolean? @map("controla_estoque")
 
+  // Entrada de Notas Etapa 1 (09/2026): quando o produto nasce do botão "Criar produto
+  // novo" da conferência de nota, guarda como ele veio escrito no XML (xProd) e o id da
+  // NotaEntrada de origem — vira "Cadastrado a partir da NF-e X em '...'" na ficha.
+  // Sem relation para NotaEntrada de propósito (mesmo padrão de outras colunas sem FK
+  // deste schema): evita qualquer risco de push falhar por linha órfã.
+  nomeOrigemNota String? @map("nome_origem_nota")
+  notaOrigemId   String? @map("nota_origem_id")
+
   custoHistorico ProdutoCustoHistorico[]
 
   @@map("produtos")
@@ -3892,6 +3900,12 @@ model CompraItem {
   estoqueAnterior Decimal? @map("estoque_anterior") @db.Decimal(12, 3) // saldo do produto/insumo antes desta entrada
   custoAnterior   Decimal? @map("custo_anterior") @db.Decimal(12, 6) // custoManual (Produto) / custoUnitario (ItemPcp) antes
   custoPosterior  Decimal? @map("custo_posterior") @db.Decimal(12, 6) // o que esta compra deixou gravado no alvo
+
+  // D1 (Etapa 1 Entrada de Notas, 09/2026): produto vinculado cuja categoria de estoque
+  // NÃO controla estoque (ex.: Material de Uso e Consumo) grava aqui SÓ o histórico de
+  // preço/fornecedor — quantidade/custo médio do alvo não são tocados. `true` é o sinal
+  // para a tela não confundir isso com uma entrada de estoque de verdade.
+  semEstoque Boolean @default(false) @map("sem_estoque")
 
   estornado   Boolean   @default(false) // entrada cancelada (cancelar-conferência)
   estornadoEm DateTime? @map("estornado_em")

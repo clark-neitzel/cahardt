@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Entrada de notas: proposta de redesenho</title>
+<style>
+:root{--p:#00754A;--pd:#006241;--house:#1E3932;--mint:#d4e9e2;--bg:#f2f0eb;--gold:#cba258;--txt:rgba(0,0,0,.87);--mut:#6b7280;--b:#e5e7eb}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.5 Manrope,-apple-system,"SF Pro Text",Segoe UI,sans-serif;letter-spacing:-.01em;padding-inline:16px;padding-block:0 60px}
+.wrap{max-width:1040px;margin:0 auto}
+.hero{background:var(--house);color:#fff;border-radius:16px;padding:28px 24px;margin:20px 0}
+.hero h1{margin:0 0 6px;font-size:26px}
+.hero p{margin:0;opacity:.85;max-width:720px}
+.hero .tag{display:inline-block;background:var(--gold);color:#1E3932;font-weight:700;font-size:12px;padding:3px 10px;border-radius:999px;margin-bottom:12px}
+h2{font-size:13px;text-transform:uppercase;letter-spacing:.12em;color:#4b5563;margin:36px 0 12px;display:flex;align-items:center;gap:10px}
+h2 .n{background:var(--p);color:#fff;width:26px;height:26px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;font-size:13px}
+h3{font-size:16px;margin:22px 0 8px}
+.card{background:#fff;border:1px solid var(--b);border-radius:12px;box-shadow:0 1px 2px rgba(0,0,0,.04);padding:20px;margin-bottom:16px}
+.alerta{border-left:4px solid #dc2626;background:#fef2f2}
+.ok{border-left:4px solid var(--p);background:#f0fdf4}
+.aviso{border-left:4px solid var(--gold);background:#fffbeb}
+p{margin:8px 0}
+ul{margin:8px 0;padding-left:20px}li{margin:4px 0}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#6b7280;background:#f9fafb;padding:10px 12px;border-bottom:1px solid var(--b)}
+td{padding:10px 12px;border-bottom:1px solid #f3f4f6;vertical-align:top}
+.tab{overflow-x:auto}
+.sim{color:var(--p);font-weight:700}.nao{color:#dc2626;font-weight:700}.meio{color:#b45309;font-weight:700}
+/* mock */
+.tela{background:#f2f0eb;border:1px solid #d1d5db;border-radius:14px;padding:14px;margin:14px 0;position:relative}
+.tela .barra{display:flex;gap:6px;margin-bottom:12px}.tela .barra i{width:10px;height:10px;border-radius:999px;background:#d1d5db;display:block}
+.app-card{background:#fff;border:1px solid var(--b);border-radius:12px;padding:14px;margin-bottom:10px;position:relative}
+.app-card .t{font-weight:700;font-size:15px}
+.app-card .s{color:var(--mut);font-size:12.5px}
+.chip{display:inline-block;font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:999px;background:#f3f4f6;color:#374151;margin-right:4px}
+.chip.verde{background:#dcfce7;color:#166534}.chip.roxo{background:#f3e8ff;color:#6b21a8}.chip.amb{background:#fef3c7;color:#92400e}.chip.mint{background:var(--mint);color:var(--pd)}.chip.vermelho{background:#fee2e2;color:#991b1b}
+.btn{display:inline-block;padding:7px 14px;border-radius:999px;font-size:13px;font-weight:600;border:1px solid transparent;margin:3px 4px 3px 0}
+.btn.p{background:var(--p);color:#fff}.btn.o{background:#fff;border-color:var(--p);color:var(--p)}.btn.g{background:#fff;border-color:#d1d5db;color:#374151}.btn.d{background:#fff;border-color:#dc2626;color:#dc2626}
+.btn.sel{box-shadow:0 0 0 3px var(--mint)}
+.campo{margin:8px 0}.campo label{display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:3px}
+.inp{border:1px solid #d1d5db;border-radius:6px;padding:7px 10px;font-size:13.5px;background:#fff;display:flex;justify-content:space-between;align-items:center}
+.inp.ro{background:#f9fafb;color:#6b7280}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:640px){.grid2{grid-template-columns:1fr}}
+.pin{display:inline-flex;width:22px;height:22px;border-radius:999px;background:var(--gold);color:#1E3932;font-weight:800;font-size:12px;align-items:center;justify-content:center;margin-left:6px;vertical-align:middle;flex:none}
+.legenda{background:#fff;border:1px dashed var(--gold);border-radius:12px;padding:12px 16px;margin:10px 0 20px}
+.legenda div{display:flex;gap:10px;margin:6px 0;font-size:14px}
+.modal{background:#fff;border-radius:16px;border:1px solid var(--b);box-shadow:0 10px 30px rgba(0,0,0,.12);padding:18px;max-width:560px;margin:10px auto}
+.modal .mt{font-weight:800;font-size:16px;margin-bottom:2px}
+.rad{display:flex;gap:8px;flex-wrap:wrap}.rad span{border:1px solid #d1d5db;border-radius:999px;padding:5px 12px;font-size:13px;background:#fff}.rad span.on{background:var(--mint);border-color:var(--p);color:var(--pd);font-weight:700}
+.q{background:#fff;border:1px solid var(--b);border-radius:12px;padding:14px 18px;margin:10px 0}
+.q b{display:block;margin-bottom:4px}
+.q .op{color:var(--mut);font-size:14px}
+.passos li{margin:8px 0}
+small.f{color:var(--mut);font-size:12px}
+code{background:#f3f4f6;padding:1px 5px;border-radius:4px;font-size:12.5px}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="hero">
+  <span class="tag">PROPOSTA · para aprovação antes de mexer</span>
+  <h1>Entrada de notas de compra: como está e como fica</h1>
+  <p>Diagnóstico do que acontece hoje na conferência da nota, mockups da tela proposta e a análise do que a contabilidade precisa receber. Nada foi alterado no sistema ainda. Versão de 15/09/2026.</p>
+</div>
+
+<h2><span class="n">1</span> O que aconteceu com o aro e o pneu (e com mais 110 itens)</h2>
+<div class="card alerta">
+  <p><b>O botão "+ Criar produto novo" da conferência não cria um produto.</b> Ele cria um <i>insumo do PCP</i> (Matéria-prima, Embalagem, Subproduto ou Produto acabado), sem nenhum produto no cadastro por trás. Por isso o aro e o pneu só aparecem em PCP → Subprodutos, sem categoria, com tipo travado e sem como excluir.</p>
+  <p>Contando no banco de produção de hoje (backup das 15:01):</p>
+  <ul>
+    <li><b>112 insumos do PCP</b> foram criados assim, sem produto por trás (só hoje foram 57: bota, luvas, cápsulas de café, camiseta térmica, balança, mousepad, fitas…).</li>
+    <li>O resto do sistema tem a regra "Matéria-prima, Embalagem e Produto acabado só nascem de um Produto do cadastro; só Subproduto nasce solto". A conferência da nota é o único lugar que <b>ignora essa regra</b>.</li>
+    <li>Não há erro na nota nem no XML. A tela induziu ao erro: pediu um "tipo" que a pessoa não tinha como saber e não ofereceu criar um produto de verdade.</li>
+  </ul>
+</div>
+
+<h3>A tela de hoje, com os pontos de confusão</h3>
+<div class="tela">
+  <div class="barra"><i></i><i></i><i></i></div>
+  <div class="app-card">
+    <div class="t">PNEU BOARTYRE COM CAMARA DE AR 4.00 8 4PR</div>
+    <div class="s">cód. do fornecedor 1368 · CFOP 6108 · 1 UN × R$ 74,05 = R$ 74,05 · NCM 4011.90.90 · EAN 7899…</div>
+    <div class="campo"><label>Nosso produto <span class="pin">1</span></label>
+      <div class="inp"><span>Buscar em Produtos e Insumos (PCP)…</span><span>▾</span></div></div>
+    <div class="grid2">
+      <div class="campo"><label>Criar produto novo <span class="pin">2</span></label>
+        <div class="inp">PNEU BOARTYRE COM CAMARA DE AR 4.00 8 4PR</div></div>
+      <div class="campo"><label>Tipo <span class="pin">3</span></label>
+        <div class="inp"><span>Subproduto</span><span>▾</span></div></div>
+    </div>
+    <div class="grid2">
+      <div class="campo"><label>Unidade</label><div class="inp">UN</div></div>
+      <div class="campo"><label>Categoria <span class="pin">4</span></label><div class="inp"><span>Manutenção de Equipamentos</span><span>▾</span></div></div>
+    </div>
+    <span class="btn g">Este item não é estoque <span class="pin" style="margin-left:4px">5</span></span>
+  </div>
+</div>
+<div class="legenda">
+  <div><span class="pin">1</span><span>O menu mistura Produtos do cadastro e Insumos do PCP como se fossem a mesma coisa. Quem confere não sabe a diferença.</span></div>
+  <div><span class="pin">2</span><span>"Criar produto novo" cria um insumo do PCP, não um produto. O nome fica solto, sem histórico do que veio na nota.</span></div>
+  <div><span class="pin">3</span><span>O "Tipo" (MP/SUB/PA/EMB) é uma escolha técnica do PCP que a pessoa da conferência não tem como decidir. Depois de salvo não muda mais.</span></div>
+  <div><span class="pin">4</span><span>Esta "Categoria" é a <b>categoria da despesa</b> (Contas a Pagar e DRE). Não tem relação com a categoria do produto. O nome igual confunde.</span></div>
+  <div><span class="pin">5</span><span>"Não é estoque" tem os motivos serviço, frete, imposto, consumo imediato e outro. Falta "imobilizado" (freezer, balança, máquina), que hoje cai em "outro".</span></div>
+</div>
+
+<div class="card aviso">
+  <p><b>Três "categorias" com o mesmo nome, em três tabelas diferentes:</b></p>
+  <div class="tab"><table>
+    <tr><th>Onde aparece</th><th>O que é de verdade</th><th>Para que serve</th></tr>
+    <tr><td>Categoria do produto (cadastro)</td><td>Lista fixa: Matéria-Prima, Material de Uso e Consumo, Produto Acabado, Mercadoria para Revenda, Outras…</td><td>É a que <b>decide se controla estoque</b>. Hoje só "Produto Acabado" e "Material p/ revenda" estão marcados como controla. Matéria-Prima está <span class="nao">desligada</span>, mas a nota soma estoque mesmo assim. Aí vem a confusão.</td></tr>
+    <tr><td>Categoria comercial (Inteligência Comercial)</td><td>Kit festa, Tortinhas, Mini Salgados Assados, Produtos para Fritar…</td><td>Agrupamento de venda (delivery, site, dashboards). Tem um botão "controla estoque" que <b>não é lido em lugar nenhum</b> (botão morto).</td></tr>
+    <tr><td>Categoria na conferência da nota</td><td>Categoria de <b>despesa</b> (Manutenção de Equipamentos, Insumos, Embalagens…)</td><td>Só Contas a Pagar e DRE gerencial. Não classifica o item para fins fiscais.</td></tr>
+  </table></div>
+</div>
+
+<h2><span class="n">2</span> A tela proposta</h2>
+<div class="card ok">
+  <p><b>Regra nova, simples:</b> cada item da nota tem <b>três destinos</b> e só três. Todo produto criado na conferência nasce no cadastro de Produtos, com categoria, categoria comercial, código de barras e NCM da nota. O PCP recebe o espelho automaticamente quando a categoria for de produção (Matéria-Prima ou Embalagem). Ninguém mais escolhe "tipo do PCP" na conferência.</p>
+</div>
+
+<h3>Tela 1 · Item da nota com os três destinos</h3>
+<div class="tela">
+  <div class="barra"><i></i><i></i><i></i></div>
+  <div class="app-card">
+    <div class="t">PNEU BOARTYRE COM CAMARA DE AR 4.00 8 4PR</div>
+    <div class="s">cód. do fornecedor 1368 · CFOP 6108 · 1 UN × R$ 74,05 = R$ 74,05 · NCM 4011.90.90 · EAN 7899123456789</div>
+    <div style="margin:10px 0 6px;font-size:12px;font-weight:700;color:#374151">O que fazer com este item? <span class="pin">1</span></div>
+    <span class="btn o">🔗 Vincular a um produto</span>
+    <span class="btn o">➕ Criar produto novo</span>
+    <span class="btn g">🚫 Não é estoque</span>
+    <div class="campo" style="margin-top:12px"><label>Categoria da despesa (Contas a Pagar / DRE) <span class="pin">2</span></label>
+      <div class="inp"><span>Manutenção de Equipamentos</span><span>▾</span></div>
+      <small class="f">Segue a categoria padrão da nota. Troque só se este item for de outra natureza.</small></div>
+  </div>
+
+  <div class="app-card" style="border-color:var(--p)">
+    <div class="t">FARINHA DE TRIGO ESPECIAL 25KG</div>
+    <div class="s">cód. do fornecedor 4410 · 10 SC × R$ 128,00</div>
+    <span class="chip verde">🔗 Vinculado</span> <b>Farinha de Trigo Especial</b> <span class="chip mint">Matéria-Prima</span> <span class="pin">3</span>
+    <div class="grid2" style="margin-top:8px">
+      <div class="campo"><label>Conversão</label><div class="inp">1 SC da nota = <b>&nbsp;25&nbsp;</b> KG nosso</div></div>
+      <div class="campo"><label>Resultado</label><div class="inp ro">250 KG · custo R$ 5,12/KG</div></div>
+    </div>
+    <small class="f">Memorizado para o fornecedor: da próxima vez já vem preenchido.</small>
+  </div>
+
+  <div class="app-card">
+    <div class="t">FREEZER HORIZONTAL 400L</div>
+    <div class="s">cód. do fornecedor 77 · 1 UN × R$ 3.890,00</div>
+    <span class="chip amb">🚫 Não é estoque</span> <span class="pin">4</span>
+    <div class="rad" style="margin-top:8px"><span>Serviço</span><span>Frete</span><span>Imposto/taxa</span><span>Consumo imediato</span><span class="on">Imobilizado</span><span>Outro</span></div>
+  </div>
+</div>
+<div class="legenda">
+  <div><span class="pin">1</span><span>Três botões, um destino. Some o menu que misturava produto e insumo, some o "tipo do PCP".</span></div>
+  <div><span class="pin">2</span><span>A categoria da despesa continua existindo, mas com o nome completo, para não confundir com a categoria do produto. Vem preenchida pela categoria padrão da nota.</span></div>
+  <div><span class="pin">3</span><span>Vinculou: mostra o produto escolhido e a categoria dele. Só pede a conversão se a unidade da nota for diferente da nossa.</span></div>
+  <div><span class="pin">4</span><span>"Não é estoque" ganha o motivo <b>Imobilizado</b>. Isso já serve para a contabilidade separar despesa de ativo (seção 3).</span></div>
+</div>
+
+<h3>Tela 2 · Criar produto novo (abre por cima do item)</h3>
+<div class="tela">
+  <div class="barra"><i></i><i></i><i></i></div>
+  <div class="modal">
+    <div class="mt">Criar produto a partir da nota</div>
+    <div class="s" style="color:var(--mut);font-size:12.5px">Nasce no cadastro de Produtos, igual a um produto criado à mão.</div>
+    <div class="campo"><label>Nome do produto <span class="pin">1</span></label>
+      <div class="inp">Pneu do carrinho de entrega 4.00-8</div>
+      <small class="f">Na nota veio como: <i>PNEU BOARTYRE COM CAMARA DE AR 4.00 8 4PR</i> (fica guardado no produto)</small></div>
+    <div class="grid2">
+      <div class="campo"><label>Categoria <span class="pin">2</span></label><div class="inp"><span>Material de Uso e Consumo</span><span>▾</span></div>
+        <small class="f">Esta categoria <b>não controla estoque</b>: a compra vira só despesa.</small></div>
+      <div class="campo"><label>Categoria comercial <span class="pin">3</span></label><div class="inp"><span>— nenhuma —</span><span>▾</span></div>
+        <small class="f">Só para produto que se vende (Tortinhas, Kit festa…).</small></div>
+    </div>
+    <div class="grid2">
+      <div class="campo"><label>Código de barras (EAN) <span class="pin">4</span></label><div class="inp ro">7899123456789 · da nota</div></div>
+      <div class="campo"><label>NCM <span class="pin">4</span></label><div class="inp ro">4011.90.90 · da nota</div></div>
+    </div>
+    <div class="grid2">
+      <div class="campo"><label>Unidade nossa</label><div class="inp"><span>UN</span><span>▾</span></div></div>
+      <div class="campo"><label>Conversão</label><div class="inp">1 UN da nota = <b>&nbsp;1&nbsp;</b> UN</div></div>
+    </div>
+    <div class="campo"><label>Controle de estoque <span class="pin">5</span></label>
+      <div class="rad"><span class="on">Segue a categoria (não controla)</span><span>Controlar sempre</span><span>Nunca controlar</span></div></div>
+    <div style="margin-top:14px;text-align:right"><span class="btn g">Cancelar</span><span class="btn p">Criar e vincular</span></div>
+  </div>
+</div>
+<div class="legenda">
+  <div><span class="pin">1</span><span>Nome vem preenchido com o texto da nota e pode ser trocado. O texto original fica guardado no produto ("nome na nota") e o de-para do fornecedor é memorizado, então a próxima nota já cai no produto certo.</span></div>
+  <div><span class="pin">2</span><span>Categoria do produto, obrigatória, da lista oficial (Matéria-Prima, Uso e Consumo, Produto Acabado, Revenda, Outras). É ela que diz se controla estoque. Matéria-Prima e Embalagem geram o insumo do PCP automaticamente.</span></div>
+  <div><span class="pin">3</span><span>Categoria comercial, opcional. Só faz sentido para o que se vende.</span></div>
+  <div><span class="pin">4</span><span>EAN e NCM preenchidos do XML, sem digitar. Hoje o cadastro nem aceita NCM na criação; passa a aceitar.</span></div>
+  <div><span class="pin">5</span><span>Exceção por produto, quando precisar fugir da regra da categoria. O padrão é seguir a categoria.</span></div>
+</div>
+
+<h3>Tela 3 · Ficha do produto depois de criado (Produtos)</h3>
+<div class="tela">
+  <div class="barra"><i></i><i></i><i></i></div>
+  <div class="app-card">
+    <div class="t">Pneu do carrinho de entrega 4.00-8 <span class="chip">Uso e Consumo</span> <span class="chip verde">Ativo</span></div>
+    <div class="s">Código APP-1207 · EAN 7899123456789 · NCM 4011.90.90 · UN</div>
+    <div class="s" style="margin-top:6px">📄 Cadastrado a partir da NF-e 47061 (Maringá Rua Pioneiro) em 15/09/2026 como <i>"PNEU BOARTYRE COM CAMARA DE AR 4.00 8 4PR"</i> <span class="pin">1</span></div>
+    <div class="s">🏷️ Fornecedores que já vieram com este produto: Maringá Rua Pioneiro (cód. 1368) <span class="pin">2</span></div>
+    <div class="s">💰 Custo médio R$ 77,80 · última compra R$ 74,05 (08/09) <span class="pin">3</span></div>
+  </div>
+</div>
+<div class="legenda">
+  <div><span class="pin">1</span><span>O histórico guarda de que nota o produto nasceu e o nome original.</span></div>
+  <div><span class="pin">2</span><span>O de-para por fornecedor, que já existe, passa a aparecer na ficha do produto.</span></div>
+  <div><span class="pin">3</span><span>Custo médio alimentado pelas entradas, igual a hoje.</span></div>
+</div>
+
+<h3>O que muda por baixo (resumo)</h3>
+<div class="card">
+  <ul>
+    <li><b>Conferência</b> passa a criar Produto pelo mesmo serviço da tela Produtos (nome, categoria, categoria comercial, EAN, NCM, unidade, controle de estoque, nome na nota).</li>
+    <li><b>PCP</b>: quando a categoria for Matéria-Prima ou Embalagem, o insumo do PCP é gerado sozinho, ligado ao produto (a função para isso já existe, só não era chamada).</li>
+    <li><b>Estoque</b>: passa a respeitar a categoria. Categoria que não controla estoque não soma estoque na entrada, vira só despesa (ver decisão D1).</li>
+    <li><b>Não é estoque</b> ganha o motivo Imobilizado.</li>
+    <li><b>Os 112 insumos já criados sem produto</b> precisam de uma tela de "transformar em produto" que preserve receitas, estoque, custo e de-para do fornecedor. É a parte mais delicada e fica como etapa separada.</li>
+  </ul>
+</div>
+
+<h2><span class="n">3</span> O que a contabilidade precisa receber das notas de entrada</h2>
+<div class="card">
+  <p><b>Hoje o contador recebe:</b> (a) o XML original de cada nota, salvo no Drive por mês; (b) o Pacote do Mês com CSV de contas a pagar e o rateio por categoria de despesa; (c) o relatório de notas de entrada, que é <b>por nota</b> (número, fornecedor, datas, valor, status), não por item.</p>
+  <p>O XML tem tudo, mas exige abrir arquivo por arquivo. Os relatórios do app não têm nenhum campo fiscal. A categoria de despesa é gerencial (DRE) e não diz o que o contador precisa saber: se aquilo é insumo, uso e consumo, revenda, ativo imobilizado ou serviço.</p>
+</div>
+<div class="tab card"><table>
+  <tr><th>O que o contador precisa, por item</th><th>Está gravado?</th><th>Sai em relatório?</th><th>Observação</th></tr>
+  <tr><td>Fornecedor: CNPJ, razão social</td><td class="sim">Sim</td><td class="sim">Sim</td><td></td></tr>
+  <tr><td>Fornecedor: IE e UF</td><td class="nao">Não</td><td class="nao">Não</td><td>Só no XML. Cadastro de fornecedor mínimo é criado sem IE/UF.</td></tr>
+  <tr><td>Data de emissão e data de entrada (competência)</td><td class="sim">Sim</td><td class="sim">Sim</td><td>OK.</td></tr>
+  <tr><td>Natureza da operação</td><td class="meio">Por nota</td><td class="nao">Não</td><td></td></tr>
+  <tr><td>CFOP, NCM, EAN, código do fornecedor, quantidade, unidade, valor</td><td class="sim">Sim</td><td class="nao">Não</td><td>Gravado por item, mas nenhum relatório mostra.</td></tr>
+  <tr><td>CST / CSOSN</td><td class="nao">Não</td><td class="nao">Não</td><td>Só no XML.</td></tr>
+  <tr><td>ICMS (base e valor), ICMS-ST, IPI, PIS, COFINS</td><td class="nao">Não</td><td class="nao">Não</td><td>Só no XML. Com Simples Nacional o crédito é limitado, mas o contador ainda precisa do valor para o SPED e para conferir.</td></tr>
+  <tr><td>Frete, seguro, desconto, despesas acessórias</td><td class="nao">Não</td><td class="nao">Não</td><td>Ficam diluídos no total da nota.</td></tr>
+  <tr><td>Classificação: insumo × uso e consumo × revenda × imobilizado × serviço</td><td class="meio">Parcial</td><td class="nao">Não</td><td>Só "não é estoque" tem motivo, e sem "imobilizado". Item que vira estoque não tem classificação nenhuma além da categoria de despesa.</td></tr>
+  <tr><td>Nota de serviço (NFS-e) com ISS retido</td><td class="meio">Parcial</td><td class="meio">Por nota</td><td>Sem retenções por nota.</td></tr>
+</table></div>
+
+<div class="card ok">
+  <p><b>Proposta para a contabilidade (frente separada, sem risco para o que já roda):</b></p>
+  <ol class="passos">
+    <li><b>Gravar os impostos do XML por item</b> na captura da nota: CST/CSOSN, base e valor de ICMS, ICMS-ST, IPI, PIS, COFINS, e por nota: frete, seguro, desconto, outras despesas. Campos novos, só acrescentam; notas antigas podem ser reprocessadas a partir do XML já salvo.</li>
+    <li><b>Classificação fiscal por item derivada automaticamente</b> do destino escolhido na conferência: produto com categoria Matéria-Prima/Embalagem = <i>insumo</i>; Uso e Consumo = <i>uso e consumo</i>; Revenda = <i>revenda</i>; "não é estoque" Imobilizado = <i>ativo</i>; Serviço = <i>serviço</i>. Ninguém precisa preencher nada a mais: a tela nova já resolve.</li>
+    <li><b>Novo relatório "Livro de entradas por item"</b> em Administração → Contabilidade, com filtro de período e exportação CSV: uma linha por item com nota, fornecedor (CNPJ/IE/UF), datas, natureza, CFOP, NCM, CST, quantidades, valores, impostos, classificação fiscal e categoria de despesa. Entra também no Pacote do Mês.</li>
+    <li><b>Fornecedor completo</b>: ao criar o fornecedor mínimo na conferência, já copiar IE, UF e endereço do XML.</li>
+  </ol>
+  <p>Sugiro validar a lista de colunas do item 3 com o seu contador antes de implementar. Posso mandar o modelo do CSV para ele opinar.</p>
+</div>
+
+<h2><span class="n">4</span> Decisões que só você pode tomar</h2>
+<div class="q"><b>D1 · Entrada respeita a categoria?</b>
+  <span class="op">Hoje toda nota conferida soma estoque, mesmo em categoria que "não controla estoque" (decisão de 07/2026). Na proposta, categoria que não controla vira só despesa e não soma estoque. E hoje Matéria-Prima está marcada como "não controla" no cadastro de categorias; precisaria ser ligada, senão farinha não entra no estoque. Opções: (a) ligar Matéria-Prima e respeitar a categoria (recomendo); (b) manter tudo somando como hoje e a categoria só organizar o cadastro.</span></div>
+<div class="q"><b>D2 · Embalagem é categoria própria?</b>
+  <span class="op">A lista de categorias não tem "Embalagem" (hoje embalagens caem em Uso e Consumo ou Outras). Para gerar o insumo EMB do PCP sozinho, é melhor criar a categoria "Embalagem". Opções: (a) criar (recomendo); (b) deixar embalagem como Matéria-Prima.</span></div>
+<div class="q"><b>D3 · Os 112 insumos já criados sem produto</b>
+  <span class="op">Opções: (a) tela para transformar cada um em produto, um a um, escolhendo categoria (o sistema preserva receitas, estoque e de-para); (b) eu gero uma lista e você marca em massa o que vira produto e o que é só inativar; (c) deixar como está e só cuidar do daqui pra frente. O aro e o pneu, de qualquer forma, viram "não é estoque" e são inativados.</span></div>
+<div class="q"><b>D4 · Botão morto de "controla estoque" na categoria comercial</b>
+  <span class="op">Opções: (a) remover o botão da tela (recomendo, evita a confusão); (b) manter.</span></div>
+<div class="q"><b>D5 · Contabilidade entra nesta entrega ou na próxima?</b>
+  <span class="op">Recomendo separar: primeiro a tela de entrada (etapa 1), depois o livro de entradas por item (etapa 3), depois de validar as colunas com o contador.</span></div>
+
+<h2><span class="n">5</span> Plano por etapas e porte</h2>
+<div class="card">
+  <div class="tab"><table>
+    <tr><th>Etapa</th><th>O que entrega</th><th>Porte</th><th>Equipe</th></tr>
+    <tr><td>1</td><td>Tela nova da conferência (três destinos, criar produto de verdade, Imobilizado, categoria da despesa com nome claro, PCP automático, estoque pela categoria)</td><td>Médio/grande (área de estoque e financeiro)</td><td>arquiteto → dev-backend + dev-frontend → QA + revisor → gerente de entrega</td></tr>
+    <tr><td>2</td><td>Transformar insumos sem produto em produtos (tela ou lote), arrumar aro e pneu</td><td>Médio</td><td>dev-backend → QA + revisor → gerente</td></tr>
+    <tr><td>3</td><td>Impostos por item, classificação fiscal, Livro de entradas por item com CSV, fornecedor completo</td><td>Médio</td><td>dev-backend + dev-frontend → QA + revisor → gerente</td></tr>
+  </table></div>
+  <p style="margin-top:12px">Cada etapa sai com manual do Clippy atualizado e página de novidade para o grupo, como de costume.</p>
+</div>
+
+</div></body></html>

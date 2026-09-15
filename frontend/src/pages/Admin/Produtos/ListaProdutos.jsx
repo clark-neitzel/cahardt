@@ -9,6 +9,7 @@ import { Search, Plus, X, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import MultiSelect from '../../../components/MultiSelect';
 import ComboBusca from '../../../components/ComboBusca';
+import SelectBusca from '../../../components/SelectBusca';
 import { useFiltroSalvo } from '../../../hooks/useFiltrosSalvos';
 import { useAuth } from '../../../contexts/AuthContext';
 
@@ -63,6 +64,8 @@ const ListaProdutos = () => {
     const criarProduto = async () => {
         if (!podeEditar) { toast.error('Você não tem permissão para criar produtos.'); return; }
         if (!novoProduto.nome.trim()) { toast.error('Informe o nome do produto.'); return; }
+        // Categoria agora é OBRIGATÓRIA no backend (POST /api/produtos exige categoria válida)
+        if (!novoProduto.categoria.trim()) { toast.error('Escolha a categoria do produto — é obrigatória.'); return; }
         setCriando(true);
         try {
             // Bem do imobilizado (freezer, painel) não tem preço de venda — o campo fica em
@@ -260,15 +263,19 @@ const ListaProdutos = () => {
                                     className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm text-right focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
                             </div>
                             <div className="md:col-span-2">
-                                <label className="text-sm font-medium text-gray-700">Categoria</label>
-                                <ComboBusca
+                                <label className="text-sm font-medium text-gray-700">Categoria *</label>
+                                <SelectBusca
                                     value={novoProduto.categoria}
-                                    onChange={val => setNovoProduto(prev => ({ ...prev, categoria: val }))}
-                                    options={availableCategories.map(c => ({ value: c, label: c }))}
-                                    placeholder="Sem categoria"
-                                    extraAction={{ label: '+ Criar categoria nova…', onClick: criarCategoriaNova }}
-                                    className="mt-1 w-full"
-                                />
+                                    onChange={e => setNovoProduto(prev => ({ ...prev, categoria: e.target.value }))}
+                                    className={`mt-1 w-full ${!novoProduto.categoria.trim() ? 'border-amber-300' : ''}`}
+                                >
+                                    <option value="">Escolher categoria…</option>
+                                    {opcoesCategorias.map(c => <option key={c} value={c}>{c}</option>)}
+                                </SelectBusca>
+                                <div className="mt-1 flex items-center justify-between gap-2">
+                                    <small className="text-xs text-gray-500">Obrigatória — define se o produto controla estoque.</small>
+                                    <button type="button" onClick={criarCategoriaNova} className="text-xs text-primary hover:underline whitespace-nowrap">+ Criar categoria nova…</button>
+                                </div>
                             </div>
                         </div>
                         <div className="flex flex-col md:flex-row gap-3 pt-1">

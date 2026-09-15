@@ -27,6 +27,21 @@ async function flagsCategorias() {
 // Comparação de nome de categoria: sem acidente de caixa alta nem espaço nas pontas.
 const chaveNome = (n) => String(n ?? '').trim().toLowerCase();
 
+// Etapa 1 Entrada de Notas (09/2026): categoria de estoque → tipo do item PCP espelho.
+// "Matéria-Prima" e "Embalagem" são as duas categorias de produção que viram MP/EMB
+// automaticamente ao criar um Produto pela conferência de nota ou ao promover um item
+// PCP órfão a Produto ("Enviar para Produtos"). Nomes digitados podem variar em
+// acento/caixa/hífen — normaliza antes de comparar. Usado por routes/notasEntrada.js
+// e services/pcpItemService.js.
+const normalizarNomeCategoria = (s) => String(s || '')
+    .normalize('NFD').replace(/[̀-ͯ]/g, '') // remove acentos
+    .toLowerCase()
+    .replace(/[-_]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+const CATEGORIA_NORMALIZADA_PARA_TIPO_PCP = { 'materia prima': 'MP', 'embalagem': 'EMB' };
+const tipoPcpDaCategoria = (nomeCategoria) => CATEGORIA_NORMALIZADA_PARA_TIPO_PCP[normalizarNomeCategoria(nomeCategoria)] || null;
+
 const categoriaEstoqueService = {
 
     // Flags de todas as categorias (nome, controlaEstoque, contabilizaFlex, vendavel).
@@ -112,7 +127,10 @@ const categoriaEstoqueService = {
             .filter(r => r.vendavel === false)
             .map(r => r.nome)
             .filter(n => typeof n === 'string' && n.length > 0);
-    }
+    },
+
+    // Categoria de estoque → tipo do item PCP espelho (MP | EMB | null). Ver comentário acima.
+    tipoPcpDaCategoria
 };
 
 module.exports = categoriaEstoqueService;

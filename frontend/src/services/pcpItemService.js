@@ -10,6 +10,14 @@ const pcpItemService = {
     atualizar: (id, dados) => api.put(`/pcp/itens/${id}`, dados).then(r => r.data),
     toggleAtivo: (id) => api.patch(`/pcp/itens/${id}/ativo`).then(r => r.data),
     proximoCodigo: () => api.get('/pcp/itens/proximo-codigo').then(r => r.data),
+    // Item órfão (sem produto por trás) → vira Produto de verdade. Body: { nome?, categoria,
+    // categoriaProdutoId?, controlaEstoque? }. Categoria Matéria-Prima/Embalagem: item continua
+    // ativo como espelho. Outra categoria: item é inativado (estoque não é transferido sozinho).
+    // → { produto, item, tornouEspelhoPcp, estoqueNaoTransferido }
+    promoverProduto: (id, dados) => api.post(`/pcp/itens/${id}/promover-produto`, dados).then(r => r.data),
+    // Só remove órfão SEM nenhum uso (receita, ordem, movimentação, ledger de nota, CompraItem,
+    // de-para de fornecedor) — senão o backend recusa com 409 e o motivo. Sucesso: 204 (sem corpo).
+    excluir: (id) => api.delete(`/pcp/itens/${id}`).then(r => r.data),
 };
 
 export default pcpItemService;

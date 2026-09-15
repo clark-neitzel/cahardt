@@ -14,13 +14,17 @@ Matérias-primas (MP), Produtos Acabados (PA) e Embalagens (EMB) **não são cri
 
 ## O que dá pra fazer aqui
 
-- Ver a lista de subprodutos com estoque atual e mínimo (destaque vermelho quando abaixo do mínimo)
+- Ver a lista de itens do PCP (MP, SUB, PA, EMB — não é mais só subproduto) com estoque atual e mínimo (destaque vermelho quando abaixo do mínimo)
 - Buscar por nome ou código
-- Filtrar por status: ativos, inativos ou todos
+- Filtrar por status (ativos, inativos ou todos) e por **tipo** (09/2026 — antes a tela só listava SUB; agora dá para ver MP/PA/EMB também, o que inclui os itens **órfãos** — sem produto por trás — de qualquer tipo)
 - Criar novo subproduto
 - Editar um subproduto existente
 - Ativar ou desativar um subproduto
 - **(Fase 6) Histórico de compras** no formulário do item: compras vindas das Notas Recebidas (fornecedor, nota, quantidade convertida, custo). O **custo unitário** do insumo é atualizado por média ponderada a cada compra conferida — é ele que alimenta o custo das receitas
+- **(09/2026) Item "órfão" (sem produto por trás)**: a coluna/selo **"Produto"** mostra **"sem produto"** (âmbar) quando o item não está ligado a nenhum Produto do cadastro, e **"produto ✓"** (verde) quando está. Só o item órfão ganha as ações abaixo — item já ligado a produto não mostra esses botões (o produto é quem manda)
+  - **Enviar para Produtos**: promove o item a um Produto de verdade — escolhe nome, **categoria** (obrigatória), categoria comercial e controle de estoque. Se a categoria for **Matéria-Prima ou Embalagem**, o item do PCP **continua ativo** e vira o espelho do produto novo (usado nas receitas normalmente). Qualquer outra categoria: o item do PCP é **inativado** e o **estoque dele NÃO é transferido sozinho** para o produto — o app avisa isso antes de confirmar
+  - **Mudar tipo**: troca o tipo do item (MP/SUB/PA/EMB) — só funciona em item órfão que **não** seja um subproduto resultado de uma receita ativa (nesse caso o app recusa com a explicação: "é um subproduto de verdade, não dá para promover a produto")
+  - **Excluir**: só aparece habilitado quando o item **nunca foi usado** (não é ingrediente nem resultado de receita, não tem ordem de produção, movimentação, compra ou de-para de fornecedor apontando para ele). Item em uso mostra o botão desabilitado — a alternativa é **Inativar**. Ação irreversível, pede confirmação
 
 ## Como fazer (passo a passo real)
 

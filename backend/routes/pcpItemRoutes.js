@@ -128,7 +128,7 @@ router.post('/importar-lote', async (req, res) => {
     }
 });
 
-// PUT /api/pcp/itens/:id — atualizar
+// PUT /api/pcp/itens/:id — atualizar (órfão pode mudar `tipo` — D3, ver pcpItemService.atualizar)
 router.put('/:id', async (req, res) => {
     try {
         const permissoes = await getPermsFromDB(req.user.id);
@@ -142,8 +142,29 @@ router.put('/:id', async (req, res) => {
         return res.json(item);
     } catch (err) {
         if (err.code === 'P2002') return res.status(409).json({ error: 'Código já existe.' });
+        if (err.status) return res.status(err.status).json({ error: err.message });
         console.error('[PCP Itens] Erro atualizar:', err.message);
         return res.status(500).json({ error: err.message });
+    }
+});
+
+// POST /api/pcp/itens/:id/promover-produto — D3: "Enviar para Produtos" (item órfão vira Produto)
+// body { nome?, categoria, categoriaProdutoId?, controlaEstoque? }
+router.post('/:id/promover-produto', async (req, res) => {
+    try {
+        const permissoes = await getPermsFromDB(req.user.id);
+        if (!temPermissaoPcp(permissoes)) return res.status(403).json({ error: 'Sem permissão PCP.' });
+
+        const resultado = await prisma.$transaction(
+            (tx) => pcpItemService.promoverProduto(req.params.id, req.body, req.user.id, tx),
+            { timeout: 20000, maxWait: 10000 }
+        );
+        return res.status(201).json(resultado);
+    } catch (err) {
+        if (err.code === 'P2002') return res.status(409).json({ error: 'Código já existe.' });
+        if (err.status) return res.status(err.status).json({ error: err.message });
+        console.error('[PCP Itens] Erro promover a produto:', err.message);
+        return res.status(500).json({ error: 'Erro ao promover o item a produto.' });
     }
 });
 
@@ -158,6 +179,22 @@ router.patch('/:id/ativo', async (req, res) => {
     } catch (err) {
         console.error('[PCP Itens] Erro toggle ativo:', err.message);
         return res.status(500).json({ error: err.message });
+    }
+});
+
+// DELETE /api/pcp/itens/:id — só órfão sem uso nenhum (ver pcpItemService.excluir); fora
+// isso o caminho é inativar (PATCH /:id/ativo).
+router.delete('/:id', async (req, res) => {
+    try {
+        const permissoes = await getPermsFromDB(req.user.id);
+        if (!temPermissaoPcp(permissoes)) return res.status(403).json({ error: 'Sem permissão PCP.' });
+
+        await pcpItemService.excluir(req.params.id);
+        return res.status(204).send();
+    } catch (err) {
+        if (err.status) return res.status(err.status).json({ error: err.message });
+        console.error('[PCP Itens] Erro excluir:', err.message);
+        return res.status(500).json({ error: 'Erro ao excluir o item.' });
     }
 });
 

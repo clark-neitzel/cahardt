@@ -25,6 +25,11 @@ const categoriaDespesaService = require('../services/categoriaDespesaService');
 const googleDriveService = require('../services/googleDriveService');
 // Toda nota conferida SOMA no estoque (decisão do dono, 07/2026) — ledger + aplicação/estorno.
 const notaEstoqueService = require('../services/notaEstoqueService');
+// Etapa 1 Entrada de Notas (09/2026): "Criar produto novo" na conferência cria um Produto
+// de verdade (não mais um ItemPcp solto) — ver produtoService.criar.
+const produtoService = require('../services/produtoService');
+const categoriaEstoqueService = require('../services/categoriaEstoqueService');
+const pcpItemService = require('../services/pcpItemService');
 // CNPJ ALFANUMÉRICO: documento/chave podem conter letras — normalizar preservando-as.
 const { normalizarDoc, normalizarChaveNFe } = require('../utils/documento');
 // App é o dono do financeiro: com esta chave ligada, a conta a pagar gerada da nota
@@ -1356,22 +1361,6 @@ router.post('/:id/desvincular-parcelas', verificarAuth, checkEscrita, async (req
     }
 });
 
-// ── Gera o próximo código sequencial de item PCP por tipo (ex.: MP-001) ──
-const proximoCodigoItemPcp = async (tx, tipo) => {
-    const prefixo = `${tipo}-`;
-    const existentes = await tx.itemPcp.findMany({
-        where: { codigo: { startsWith: prefixo } },
-        select: { codigo: true }
-    });
-    let maior = 0;
-    const re = new RegExp(`^${tipo}-(\\d+)$`);
-    for (const it of existentes) {
-        const m = re.exec(it.codigo);
-        if (m) maior = Math.max(maior, parseInt(m[1], 10));
-    }
-    return `${prefixo}${String(maior + 1).padStart(3, '0')}`;
-};
-
 // Decodifica o vínculo unificado "PROD:<id>" / "PCP:<id>" → { produtoId, itemPcpId } (o não usado = null)
 const decodeVinculo = (value) => {
     const s = String(value || '');
@@ -1380,9 +1369,16 @@ const decodeVinculo = (value) => {
     return { produtoId: null, itemPcpId: null };
 };
 
+// Etapa 1 Entrada de Notas (09/2026): categoria de estoque → tipo do item PCP espelho
+// (Matéria-Prima → MP, Embalagem → EMB). Compartilhado com pcpItemService (promoção de
+// item órfão) — mora em categoriaEstoqueService.tipoPcpDaCategoria.
+const tipoPcpDaCategoria = categoriaEstoqueService.tipoPcpDaCategoria;
+
 // Motivos válidos para "este item NÃO é estoque" (destino explícito do item que não vira
-// produto/insumo): serviço embutido, frete, imposto/taxa lançado como item, consumo imediato.
-const MOTIVOS_SEM_ESTOQUE = ['SERVICO', 'FRETE', 'IMPOSTO', 'CONSUMO_IMEDIATO', 'OUTRO'];
+// produto/insumo): serviço embutido, frete, imposto/taxa lançado como item, consumo
+// imediato, bem imobilizado (freezer, painel LED, móveis — não é produto/insumo de
+// compra recorrente, mas também não é exatamente "consumo imediato").
+const MOTIVOS_SEM_ESTOQUE = ['SERVICO', 'FRETE', 'IMPOSTO', 'CONSUMO_IMEDIATO', 'IMOBILIZADO', 'OUTRO'];
 
 // Normaliza a marcação "não é estoque" vinda do corpo → { motivo, obs } ou null.
 const lerSemEstoque = (it) => {
@@ -1392,32 +1388,49 @@ const lerSemEstoque = (it) => {
     return { motivo, obs: obs || null };
 };
 
-// Item tem destino explícito? (vínculo com produto/insumo, criação de item PCP novo,
+// Item tem destino explícito? (vínculo com produto/insumo, criação de produto novo,
 // ou marcação "não é estoque" com motivo)
 const temDestinoExplicito = (it) => {
     if (!it) return false;
     const { produtoId, itemPcpId } = decodeVinculo(it.vinculo);
-    return !!(produtoId || itemPcpId || it.criarItemPcp || lerSemEstoque(it));
+    return !!(produtoId || itemPcpId || it.criarProduto || lerSemEstoque(it));
 };
 
 // Validação dos itens do de-para (mesma para gerar-conta, registrar-entrada e correção).
 // Devolve null se tudo OK, ou { error, itensPendentes? } — o chamador responde 400 com
 // { ok:false, ...retorno }. `itensPendentes` só aparece na trava de destino obrigatório.
+// ASSÍNCRONA desde 09/2026 (Etapa 1): `criarProduto.categoria` é conferida contra o
+// cadastro de CategoriaEstoque antes de abrir a transação — todos os 3 chamadores usam
+// `await`.
 //
 // `exigirDestino` (conferência de nota que NÃO é NFS-e): CADA item da nota precisa de um
-// destino — vínculo (PROD:/PCP:), item PCP novo, ou motivo "não é estoque". Item em branco
+// destino — vínculo (PROD:/PCP:), produto novo, ou motivo "não é estoque". Item em branco
 // era descartado em silêncio (não somava estoque nem gerava custo/CompraItem); a partir de
 // 08/2026 a conferência trava. NFS-e continua isenta (serviço não vira estoque).
-const validarItensBody = (itensBody, itensNota, { nota = null, exigirDestino = false } = {}) => {
+//
+// `criarItemPcp` (nome antigo do botão "+ Criar item PCP") foi DESATIVADO em 09/2026: a
+// conferência criava um insumo do PCP solto, sem produto por trás (112 casos em produção,
+// ver docs/entrada-notas/plano-etapa1.md) — quem manda um corpo assim recebe 400 com a
+// orientação de usar `criarProduto`.
+const validarItensBody = async (itensBody, itensNota, { nota = null, exigirDestino = false } = {}) => {
     for (const it of itensBody) {
         if (!it?.itemId || !itensNota.has(it.itemId)) {
             return { error: 'Item informado não pertence a esta nota.' };
         }
         if (it.criarItemPcp) {
-            const { nome, tipo, unidade } = it.criarItemPcp;
-            if (!nome?.trim()) return { error: 'Informe o nome do novo item PCP.' };
-            if (!['MP', 'SUB', 'PA', 'EMB'].includes(tipo)) return { error: 'Tipo do novo item PCP inválido (use MP, SUB, PA ou EMB).' };
-            if (!unidade?.trim()) return { error: 'Informe a unidade do novo item PCP.' };
+            return { error: 'Criar item PCP direto da conferência não é mais permitido — crie um produto (categoria Matéria-Prima ou Embalagem vira insumo do PCP automaticamente).' };
+        }
+        if (it.criarProduto) {
+            const { nome, categoria, unidade } = it.criarProduto;
+            if (!nome?.trim()) return { error: 'Informe o nome do novo produto.' };
+            if (!unidade?.trim()) return { error: 'Informe a unidade do novo produto.' };
+            if (!categoria?.trim()) return { error: 'Escolha a categoria de estoque do novo produto.' };
+            const categoriaCanonica = await categoriaEstoqueService.canonizarNome(categoria);
+            const categoriaExiste = await prisma.categoriaEstoque.findUnique({ where: { nome: categoriaCanonica }, select: { nome: true } });
+            if (!categoriaExiste) {
+                const itemNota = itensNota.get(it.itemId);
+                return { error: `Categoria de estoque "${categoria}" não encontrada (item "${itemNota?.descricao || it.itemId}"). Cadastre-a em Configurações → Categorias de Estoque antes de usá-la.` };
+            }
         }
         const semEstoque = lerSemEstoque(it);
         if (semEstoque) {
@@ -1451,9 +1464,11 @@ const validarItensBody = (itensBody, itensNota, { nota = null, exigirDestino = f
 
 /**
  * Núcleo compartilhado da conferência de itens (gerar-conta E registrar-entrada):
- * decodifica o vínculo (PROD:/PCP:), cria o ItemPcp novo quando pedido, grava a
- * categoria efetiva no item da nota (só no gerar-conta) e memoriza o de-para por
- * fornecedor+cProd (FornecedorProdutoVinculo). Roda DENTRO da transação (tx).
+ * decodifica o vínculo (PROD:/PCP:), cria o Produto novo quando pedido (Etapa 1,
+ * 09/2026 — `criarProduto`, no lugar do antigo `criarItemPcp`), grava a categoria
+ * efetiva no item da nota (só no gerar-conta) e memoriza o de-para por fornecedor+cProd
+ * (FornecedorProdutoVinculo). Roda DENTRO da transação (tx) — produto + espelho PCP
+ * (quando a categoria é Matéria-Prima/Embalagem) + entrada de estoque são tudo-ou-nada.
  *
  * Também grava/limpa a marcação "não é estoque" (motivo + observação + quem marcou e
  * quando) no NotaEntradaItem: item marcado NÃO entra em `vinculados` (não soma estoque,
@@ -1461,28 +1476,46 @@ const validarItensBody = (itensBody, itensNota, { nota = null, exigirDestino = f
  * Item que passa a ter vínculo tem a marcação LIMPA (o usuário pode mudar de ideia numa
  * reconferência/correção).
  *
- * @returns {Array} itens vinculados prontos para a entrada de estoque:
- *                  [{ itemNota, produtoId, itemPcpId, fator }]
+ * @returns {{ vinculados: Array, produtosCriados: Array }}
+ *   vinculados: itens prontos para a entrada de estoque — [{ itemNota, produtoId, itemPcpId, fator }]
+ *   produtosCriados: [{ id, nome, codigo, categoria, itemPcpId }] — para o toast da tela.
  */
 const processarItensConferencia = async (tx, nota, itensBody, itensNota, { catPadrao = null, catPadraoCaId = null, gravarCategoria = true, usuarioId = null } = {}) => {
     const vinculados = [];
+    const produtosCriados = [];
     for (const it of itensBody) {
         const itemNota = itensNota.get(it.itemId);
 
-        // Decodifica o vínculo unificado (PROD:/PCP:) ou cria um ItemPcp novo.
+        // Decodifica o vínculo unificado (PROD:/PCP:) ou cria um Produto novo.
         let { produtoId, itemPcpId } = decodeVinculo(it.vinculo);
-        if (!produtoId && !itemPcpId && it.criarItemPcp) {
-            const codigo = await proximoCodigoItemPcp(tx, it.criarItemPcp.tipo);
-            const novo = await tx.itemPcp.create({
-                data: {
-                    codigo,
-                    nome: it.criarItemPcp.nome.trim(),
-                    tipo: it.criarItemPcp.tipo,
-                    unidade: it.criarItemPcp.unidade.trim().toUpperCase(),
-                    ativo: true
-                }
-            });
-            itemPcpId = novo.id;
+        if (!produtoId && !itemPcpId && it.criarProduto) {
+            const cp = it.criarProduto;
+            const { produto } = await produtoService.criar({
+                nome: cp.nome,
+                categoria: cp.categoria,
+                categoriaProdutoId: cp.categoriaProdutoId || null,
+                controlaEstoque: cp.controlaEstoque,
+                unidade: cp.unidade,
+                ean: cp.ean?.trim() || itemNota.ean || null,
+                ncm: cp.ncm?.trim() || itemNota.ncm || null,
+                nomeOrigemNota: itemNota.descricao,
+                notaOrigemId: nota.id
+            }, { id: usuarioId }, tx);
+            produtoId = produto.id;
+            const criado = { id: produto.id, nome: produto.nome, codigo: produto.codigo, categoria: produto.categoria, itemPcpId: null };
+
+            // Categoria Matéria-Prima/Embalagem: o produto vira TAMBÉM o espelho no PCP —
+            // é a regra de fundo (MP/EMB só nascem de um Produto do cadastro, via importar)
+            // passando a valer também na conferência da nota. O vínculo do ITEM DA NOTA
+            // (o que entra no estoque e no de-para do fornecedor) continua sendo o
+            // produtoId — por isso NÃO atribuímos a `itemPcpId` aqui (só no retorno, para
+            // o toast/telas de PCP mostrarem o espelho criado junto).
+            const tipoPcp = tipoPcpDaCategoria(produto.categoria);
+            if (tipoPcp) {
+                const itemPcpCriado = await pcpItemService.importar({ produtoId: produto.id, tipo: tipoPcp }, tx);
+                criado.itemPcpId = itemPcpCriado.id;
+            }
+            produtosCriados.push(criado);
         }
         const temProduto = !!(produtoId || itemPcpId);
         const fator = Number(it.fatorConversao) > 0 ? round4(it.fatorConversao) : 1;
@@ -1567,7 +1600,7 @@ const processarItensConferencia = async (tx, nota, itensBody, itensNota, { catPa
             }
         });
     }
-    return vinculados;
+    return { vinculados, produtosCriados };
 };
 
 // ── POST /:id/gerar-conta — cria a Conta a Pagar a partir da nota ──
@@ -1659,7 +1692,7 @@ router.post('/:id/gerar-conta', verificarAuth, checkEscrita, async (req, res) =>
         const itensBody = Array.isArray(itens) ? itens : [];
         const itensNota = new Map(nota.itens.map((i) => [i.id, i]));
         // Trava: em nota que não é NFS-e, todo item precisa de destino (vínculo ou "não é estoque").
-        const erroItens = validarItensBody(itensBody, itensNota, { nota, exigirDestino: true });
+        const erroItens = await validarItensBody(itensBody, itensNota, { nota, exigirDestino: true });
         if (erroItens) return res.status(400).json({ ok: false, ...erroItens });
 
         const catPadrao = categoriaPadrao?.trim() || null;
@@ -1697,14 +1730,18 @@ router.post('/:id/gerar-conta', verificarAuth, checkEscrita, async (req, res) =>
 
         let contaCriada;
         let estoqueResultado = { itens: [], avisos: [] }; // entradas de estoque aplicadas NA transação
+        let produtosCriados = [];
         await prisma.$transaction(async (tx) => {
-            // 1) Cria itens PCP pedidos, resolve o de-para e memoriza produto+categoria
-            const vinculados = await processarItensConferencia(tx, nota, itensBody, itensNota, {
+            // 1) Cria produtos pedidos (+ espelho PCP quando MP/Embalagem), resolve o
+            // de-para e memoriza produto+categoria
+            const resultadoItens = await processarItensConferencia(tx, nota, itensBody, itensNota, {
                 catPadrao,
                 catPadraoCaId,
                 gravarCategoria: true,
                 usuarioId: req.user.id
             });
+            const vinculados = resultadoItens.vinculados;
+            produtosCriados = resultadoItens.produtosCriados;
 
             // 2) Cria a conta a pagar + parcelas + rateio
             const catIds = await categoriaDespesaService.garantirIds(rateio.map((g) => g.categoria), tx);
@@ -1815,7 +1852,9 @@ router.post('/:id/gerar-conta', verificarAuth, checkEscrita, async (req, res) =>
             notaStatus: 'CONFERIDA',
             // O que entrou no estoque nesta conferência (para a tela mostrar).
             estoque: estoqueResultado.itens,
-            estoqueAvisos: estoqueResultado.avisos
+            estoqueAvisos: estoqueResultado.avisos,
+            // Produtos criados pelo botão "Criar produto novo" nesta conferência (Etapa 1, 09/2026).
+            produtosCriados
         };
 
         // 7) Confirmação da operação na SEFAZ ("recebi a mercadoria") — FORA da transação,
@@ -1825,6 +1864,7 @@ router.post('/:id/gerar-conta', verificarAuth, checkEscrita, async (req, res) =>
 
         res.status(201).json(resposta);
     } catch (error) {
+        if (error.status) return res.status(error.status).json({ error: error.message });
         console.error('Erro ao gerar conta a pagar da nota:', error);
         res.status(500).json({ error: 'Erro ao gerar a conta a pagar da nota.' });
     }
@@ -1873,15 +1913,19 @@ router.post('/:id/registrar-entrada', verificarAuth, checkEscrita, async (req, r
         const itensBody = Array.isArray(req.body?.itens) ? req.body.itens : [];
         const itensNota = new Map(nota.itens.map((i) => [i.id, i]));
         // Trava: em nota que não é NFS-e, todo item precisa de destino (vínculo ou "não é estoque").
-        const erroItens = validarItensBody(itensBody, itensNota, { nota, exigirDestino: true });
+        const erroItens = await validarItensBody(itensBody, itensNota, { nota, exigirDestino: true });
         if (erroItens) return res.status(400).json({ ok: false, ...erroItens });
 
         let estoqueResultado = { itens: [], avisos: [] };
+        let produtosCriados = [];
         await prisma.$transaction(async (tx) => {
             // Mesma memória de vínculo do gerar-conta (sem categoria — aqui não há despesa)
-            const vinculados = itensBody.length > 0
-                ? await processarItensConferencia(tx, nota, itensBody, itensNota, { gravarCategoria: false, usuarioId: req.user.id })
-                : [];
+            let vinculados = [];
+            if (itensBody.length > 0) {
+                const resultadoItens = await processarItensConferencia(tx, nota, itensBody, itensNota, { gravarCategoria: false, usuarioId: req.user.id });
+                vinculados = resultadoItens.vinculados;
+                produtosCriados = resultadoItens.produtosCriados;
+            }
 
             await tx.notaEntrada.update({
                 where: { id: nota.id },
@@ -1920,7 +1964,8 @@ router.post('/:id/registrar-entrada', verificarAuth, checkEscrita, async (req, r
             motivo,
             // O que entrou no estoque (sem custo) — para a tela mostrar.
             estoque: estoqueResultado.itens,
-            estoqueAvisos: estoqueResultado.avisos
+            estoqueAvisos: estoqueResultado.avisos,
+            produtosCriados
         };
 
         // Confirmação da operação na SEFAZ — a mercadoria entrou de verdade no CNPJ.
@@ -1930,6 +1975,7 @@ router.post('/:id/registrar-entrada', verificarAuth, checkEscrita, async (req, r
 
         res.json(resposta);
     } catch (error) {
+        if (error.status) return res.status(error.status).json({ error: error.message });
         console.error('Erro ao registrar entrada sem pagamento:', error);
         res.status(500).json({ error: 'Erro ao registrar a entrada sem pagamento.' });
     }
@@ -2287,7 +2333,7 @@ router.post('/:id/cancelar-conferencia', verificarAuth, checkEscrita, async (req
 // só informa PARA ONDE vai e em QUE conversão — nunca quanto vale.
 // =============================================================
 
-// ── POST /:id/corrigir-entrada-estoque — body { itens: [{ itemId, vinculo, fatorConversao, criarItemPcp? }] } ──
+// ── POST /:id/corrigir-entrada-estoque — body { itens: [{ itemId, vinculo, fatorConversao, criarProduto? }] } ──
 router.post('/:id/corrigir-entrada-estoque', verificarAuth, checkAcesso, checkCorrigirEstoque, async (req, res) => {
     try {
         const nota = await prisma.notaEntrada.findUnique({
@@ -2320,20 +2366,23 @@ router.post('/:id/corrigir-entrada-estoque', verificarAuth, checkAcesso, checkCo
         // (inclusive nota antiga, conferida antes da trava) e tem guarda própria logo abaixo —
         // travar aqui deixaria a nota velha sem caminho de correção. A marcação "não é estoque"
         // que vier no corpo continua sendo validada e gravada.
-        const erroItens = validarItensBody(itensBody, itensNota, { nota });
+        const erroItens = await validarItensBody(itensBody, itensNota, { nota });
         if (erroItens) return res.status(400).json({ ok: false, ...erroItens });
         // Nada aplicado hoje E nada vinculado agora = pedido vazio (não é "corrigir para zero").
-        const vaiVincular = itensBody.some((i) => i.vinculo || i.criarItemPcp);
+        const vaiVincular = itensBody.some((i) => i.vinculo || i.criarProduto);
         if (antesAplicado.length === 0 && !vaiVincular) {
             return res.status(400).json({ error: 'Esta nota não tem entrada de estoque — vincule pelo menos um item a um produto ou insumo para lançar a entrada.' });
         }
 
         let resultado = { antes: [], depois: [], avisos: [], alvos: { produtoIds: [], itemPcpIds: [] } };
+        let produtosCriados = [];
         await prisma.$transaction(async (tx) => {
-            // Mesmo núcleo da conferência: resolve PROD:/PCP:, cria item PCP novo se pedido e
+            // Mesmo núcleo da conferência: resolve PROD:/PCP:, cria produto novo se pedido e
             // atualiza a memória do de-para por fornecedor+cProd (a próxima nota já vem certa).
             // Categoria NÃO é tocada — mexer nela mudaria o rateio da despesa/DRE.
-            const vinculados = await processarItensConferencia(tx, nota, itensBody, itensNota, { gravarCategoria: false, usuarioId: req.user.id });
+            const resultadoItens = await processarItensConferencia(tx, nota, itensBody, itensNota, { gravarCategoria: false, usuarioId: req.user.id });
+            const vinculados = resultadoItens.vinculados;
+            produtosCriados = resultadoItens.produtosCriados;
 
             resultado = await notaEstoqueService.corrigirEstoqueNota(
                 tx,
@@ -2377,9 +2426,11 @@ router.post('/:id/corrigir-entrada-estoque', verificarAuth, checkAcesso, checkCo
             antes: resultado.antes,
             depois: resultado.depois,
             custos,
-            avisos: resultado.avisos
+            avisos: resultado.avisos,
+            produtosCriados
         });
     } catch (error) {
+        if (error.status) return res.status(error.status).json({ error: error.message });
         console.error('Erro ao corrigir a entrada de estoque da nota:', error);
         res.status(500).json({ error: 'Erro ao corrigir a entrada de estoque da nota.' });
     }

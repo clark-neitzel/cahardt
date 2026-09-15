@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const pcpReceitaService = require('../services/pcpReceitaService');
 const categoriaEstoqueService = require('../services/categoriaEstoqueService');
+const produtoService = require('../services/produtoService');
 
 // Moeda em português para os textos que o usuário lê (log de auditoria).
 // Mesmo padrão de uma linha já usado em cobrancaService.js e reciboEspecialPdf.js.
@@ -164,7 +165,51 @@ const produtoController = {
                 console.error('Custo por receita indisponível (segue sem):', e.message);
             }
 
-            res.json({ ...produto, custoReceita });
+            // "Cadastrado a partir da NF-e X (fornecedor) em data como '…'" (Tela 3 da
+            // proposta) — lookup simples da nota de origem; falha aqui não derruba a ficha.
+            let notaOrigem = null;
+            if (produto.notaOrigemId) {
+                try {
+                    notaOrigem = await prisma.notaEntrada.findUnique({
+                        where: { id: produto.notaOrigemId },
+                        select: { numero: true, fornecedorNome: true, emissao: true }
+                    });
+                } catch (e) {
+                    console.error('Nota de origem indisponível (segue sem):', e.message);
+                }
+            }
+
+            // "Fornecedores que já vieram com este produto" — de-para memorizado por
+            // fornecedor+código (FornecedorProdutoVinculo). Nome do fornecedor é
+            // best-effort (nem todo CNPJ tem Fornecedor cadastrado).
+            let vinculosFornecedor = [];
+            try {
+                const vinculos = await prisma.fornecedorProdutoVinculo.findMany({
+                    where: { produtoId: id },
+                    select: { fornecedorCnpj: true, codigoFornecedor: true, descricaoFornecedor: true },
+                    orderBy: { atualizadoEm: 'desc' }
+                });
+                if (vinculos.length > 0) {
+                    const cnpjs = [...new Set(vinculos.map((v) => v.fornecedorCnpj).filter(Boolean))];
+                    const fornecedores = cnpjs.length > 0
+                        ? await prisma.fornecedor.findMany({
+                            where: { cnpjCpf: { in: cnpjs } },
+                            select: { cnpjCpf: true, razaoSocial: true }
+                        })
+                        : [];
+                    const nomePorCnpj = new Map(fornecedores.map((f) => [f.cnpjCpf, f.razaoSocial]));
+                    vinculosFornecedor = vinculos.map((v) => ({
+                        fornecedorCnpj: v.fornecedorCnpj,
+                        fornecedorNome: nomePorCnpj.get(v.fornecedorCnpj) || null,
+                        codigoFornecedor: v.codigoFornecedor,
+                        descricaoFornecedor: v.descricaoFornecedor
+                    }));
+                }
+            } catch (e) {
+                console.error('Vínculos de fornecedor indisponíveis (segue sem):', e.message);
+            }
+
+            res.json({ ...produto, custoReceita, notaOrigem, vinculosFornecedor });
         } catch (error) {
             console.error(error);
             res.status(500).json({ error: 'Erro ao buscar produto' });
@@ -247,71 +292,15 @@ const produtoController = {
     // Fase 6 — criar produto novo: nasce PRIMEIRO no Conta Azul (POST /v1/produtos)
     // e só então é salvo aqui com o contaAzulId retornado (origem APP).
     // Se o CA estiver fora, nada é criado — o usuário tenta de novo.
+    // 09/2026: miolo extraído para produtoService.criar (reaproveitado pela
+    // conferência de nota e pela promoção de item PCP órfão a produto).
     criar: async (req, res) => {
         try {
-            const { nome, codigo, ean, unidade, categoria, valorVenda, descricao } = req.body || {};
-            if (!nome?.trim()) return res.status(400).json({ error: 'Informe o nome do produto.' });
-            const unidadeFinal = String(unidade || 'UN').trim().substring(0, 10).toUpperCase() || 'UN';
-            const valor = parseFloat(String(valorVenda ?? '0').replace(',', '.'));
-            if (!Number.isFinite(valor) || valor < 0) return res.status(400).json({ error: 'Valor de venda inválido.' });
-
-            // Duplicidade local por nome (evita criar 2x no CA sem querer)
-            const jaExiste = await prisma.produto.findFirst({
-                where: { nome: { equals: nome.trim(), mode: 'insensitive' } },
-                select: { id: true, nome: true }
-            });
-            if (jaExiste) {
-                return res.status(400).json({ error: `Já existe um produto chamado "${jaExiste.nome}".` });
-            }
-
-            // 1) Cria no Conta Azul (era a fonte do catálogo até 23/07/2026).
-            // CA somente leitura: o produto nasce SÓ no app, com um id local no
-            // lugar do contaAzulId (coluna obrigatória/única — vínculo legado).
             const { CA_SOMENTE_LEITURA } = require('../config/contaAzulModo');
-            const contaAzulService = require('../services/contaAzulService');
-            let criadoCA;
-            if (CA_SOMENTE_LEITURA) {
-                criadoCA = { id: `app-${require('crypto').randomUUID()}` };
-            } else {
-                try {
-                    criadoCA = await contaAzulService.criarProdutoCA({
-                        nome,
-                        codigoSku: codigo,
-                        codigoEan: ean,
-                        valorVenda: valor,
-                        categoriaNome: categoria,
-                        descricao
-                    });
-                } catch (e) {
-                    console.error('[Produtos] Falha ao criar produto no CA:', e.message);
-                    return res.status(502).json({ error: `Não consegui criar o produto na Conta Azul: ${e.message}` });
-                }
-            }
-
-            // 2) Salva local com o vínculo (origem APP)
-            const produto = await prisma.produto.create({
-                data: {
-                    contaAzulId: criadoCA.id,
-                    codigo: codigo?.trim() || '',
-                    nome: nome.trim(),
-                    valorVenda: valor,
-                    unidade: unidadeFinal,
-                    ean: ean?.trim() || '',
-                    // Nome canônico da tabela de categorias (ver canonizarNome):
-                    // "imobilizado" digitado à mão gruda em "Imobilizado" e a trava
-                    // do "Vende" continua valendo.
-                    categoria: await categoriaEstoqueService.canonizarNome(categoria) || '',
-                    descricao: descricao?.trim() || '',
-                    status: 'ATIVO',
-                    ativo: true,
-                    origem: 'APP',
-                    // O preço foi definido aqui, no app — o CA nunca deve sobrescrevê-lo.
-                    precoLocal: true
-                }
-            });
-
+            const { produto } = await produtoService.criar(req.body || {}, req.user);
             res.status(201).json({ ...produto, message: CA_SOMENTE_LEITURA ? 'Produto criado no app!' : 'Produto criado no app e na Conta Azul!' });
         } catch (error) {
+            if (error.status) return res.status(error.status).json({ error: error.message });
             console.error('Erro ao criar produto:', error);
             res.status(500).json({ error: 'Erro ao criar o produto.' });
         }
@@ -326,11 +315,14 @@ const produtoController = {
             // Whitelist: apenas campos gerenciados localmente
             // 'unidade', 'categoria' e 'ativo' são editáveis no app e NÃO são mais
             // sobrescritos pelo sync do CA (cadastro de produtos é do app desde 08/2026)
+            // 09/2026: 'ncm' e 'ean' entraram na whitelist — a ficha do produto criado a
+            // partir de uma nota (Entrada de Notas) precisa editar os dois quando o XML
+            // veio incompleto ou trocado (plano Etapa 1, contrato item 1).
             const CAMPOS_PERMITIDOS = [
                 'ativo', 'descricao', 'estoqueMinimo', 'unidade', 'custoManual',
                 'categoria', 'categoriaProdutoId', 'produtoSubstitutoId',
                 'permiteRecomendacao', 'prioridadeRecomendacao', 'controlaEstoque',
-                'validadeDias', 'quantidadePorCaixa', 'valorVenda'
+                'validadeDias', 'quantidadePorCaixa', 'valorVenda', 'ncm', 'ean'
             ];
             const data = {};
             for (const campo of CAMPOS_PERMITIDOS) {
@@ -368,6 +360,10 @@ const produtoController = {
             if (data.categoria !== undefined) {
                 data.categoria = await categoriaEstoqueService.canonizarNome(data.categoria) || null;
             }
+            // NCM/EAN: texto livre, trim; vazio vira string vazia (mesmo padrão de 'ean' na
+            // criação) — nunca null, pra não colidir com o tipo String (não String?) do schema.
+            if (data.ncm !== undefined) data.ncm = String(data.ncm ?? '').trim() || null;
+            if (data.ean !== undefined) data.ean = String(data.ean ?? '').trim();
             // Ativo: só true/false de verdade
             if (data.ativo !== undefined) {
                 data.ativo = data.ativo === true || data.ativo === 'true';

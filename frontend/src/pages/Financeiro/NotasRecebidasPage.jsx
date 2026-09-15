@@ -3,7 +3,9 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import notasEntradaService from '../../services/notasEntradaService';
 import contasPagarService from '../../services/contasPagarService';
-import { Inbox, Trash2, Loader2, RefreshCw, X, FileDown, Printer, Search, Upload, Calendar, FilePlus, UploadCloud, Clock, Link2, Unlink, PackageCheck, Undo2, Wrench, ArrowRight, ShieldCheck, ShieldAlert } from 'lucide-react';
+import categoriaProdutoService from '../../services/categoriaProdutoService';
+import api from '../../services/api';
+import { Inbox, Trash2, Loader2, RefreshCw, X, FileDown, Printer, Search, Upload, Calendar, FilePlus, UploadCloud, Clock, Link2, Unlink, PackageCheck, Undo2, Wrench, ArrowRight, ShieldCheck, ShieldAlert, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ComboBusca from '../../components/ComboBusca';
 import SelectBusca from '../../components/SelectBusca';
@@ -162,6 +164,7 @@ const MOTIVOS_SEM_ESTOQUE = [
     { value: 'FRETE', label: 'Frete' },
     { value: 'IMPOSTO', label: 'Imposto / taxa' },
     { value: 'CONSUMO_IMEDIATO', label: 'Consumo imediato' },
+    { value: 'IMOBILIZADO', label: 'Imobilizado' },
     { value: 'OUTRO', label: 'Outro' }
 ];
 const motivoSemEstoqueLabel = (m) => MOTIVOS_SEM_ESTOQUE.find(x => x.value === m)?.label || m || '';
@@ -177,6 +180,17 @@ const toastEstoque = (estoque) => {
     );
     const resto = lista.length - MAX_ITENS;
     toast(`Estoque atualizado: ${partes.join(' · ')}${resto > 0 ? ` e mais ${resto}` : ''}`, { icon: '📦', duration: 7000 });
+};
+
+// Toast "N produto(s) criado(s)" — resp.produtosCriados = [{ id, nome, codigo, categoria, itemPcpId }]
+const toastProdutosCriados = (produtosCriados) => {
+    const lista = Array.isArray(produtosCriados) ? produtosCriados : [];
+    if (lista.length === 0) return;
+    const nomes = lista.map(p => p?.nome).filter(Boolean);
+    toast.success(
+        `${lista.length} ${lista.length === 1 ? 'produto criado' : 'produtos criados'}: ${nomes.join(', ')}`,
+        { icon: '➕', duration: 8000 }
+    );
 };
 
 // Badge da nota: STATUS_NOTA é estático — aqui o label vira dinâmico pelo motivo
@@ -1257,9 +1271,11 @@ const ehInsumoPcp = (p) => {
 // Rótulo do cabeçalho de grupo: o backend já manda pronto em `grupo`
 // ('Produtos' / 'Insumos (PCP)'); só montamos um se ele faltar.
 const grupoDaOpcao = (p) => {
+    // Rótulo claro para não confundir insumo do PCP (subproduto/espelho) com produto de
+    // verdade — mesmo quando o backend já manda um `grupo` mais curto.
+    if (ehInsumoPcp(p)) return 'Insumo do PCP (subproduto/espelho)';
     const g = String(p?.grupo || '').trim();
-    if (g) return g;
-    return ehInsumoPcp(p) ? 'Insumos (PCP)' : 'Produtos';
+    return g || 'Produtos';
 };
 
 const ComboProduto = ({ value, itens, onSelect, onCriarNovo, invalido }) => {
@@ -1288,6 +1304,219 @@ const ComboProduto = ({ value, itens, onSelect, onCriarNovo, invalido }) => {
             invalido={invalido}
             extraAction={{ label: '+ Criar produto novo…', onClick: onCriarNovo }}
         />
+    );
+};
+
+// Controle de estoque do produto novo: 'segue' (omitido/null = segue a categoria),
+// 'true' (controlar sempre) ou 'false' (nunca controlar) — mesmas 3 opções em todo lugar
+// que cria produto a partir de um item (conferência, correção, promover órfão do PCP).
+const CONTROLE_ESTOQUE_OPCOES = [
+    { value: 'segue', label: 'Segue a categoria' },
+    { value: 'true', label: 'Controlar sempre' },
+    { value: 'false', label: 'Nunca controlar' }
+];
+
+// Modal "Criar produto a partir da nota" (Tela 2 da proposta aprovada) — usado tanto na
+// conferência quanto na correção de entrada. Cria só o RASCUNHO do produto: a criação de
+// verdade acontece junto do POST de conferência/correção (campo `criarProduto` no item),
+// nunca aqui — este modal só preenche o objeto que entra no payload.
+const ModalCriarProdutoNota = ({ aberto, itemNota, valorInicial, onCancelar, onConfirmar }) => {
+    const [nome, setNome] = useState('');
+    const [categoria, setCategoria] = useState('');
+    const [categoriaProdutoId, setCategoriaProdutoId] = useState('');
+    const [ean, setEan] = useState('');
+    const [ncm, setNcm] = useState('');
+    const [unidade, setUnidade] = useState('');
+    const [fator, setFator] = useState('1');
+    const [controle, setControle] = useState('segue');
+    const [categoriasEstoque, setCategoriasEstoque] = useState([]);
+    const [categoriasProduto, setCategoriasProduto] = useState([]);
+    const [carregando, setCarregando] = useState(false);
+
+    useEffect(() => {
+        if (!aberto) return;
+        setNome(valorInicial?.nome || itemNota?.descricao || '');
+        setCategoria(valorInicial?.categoria || '');
+        setCategoriaProdutoId(valorInicial?.categoriaProdutoId || '');
+        setEan(valorInicial?.ean || itemNota?.ean || '');
+        setNcm(valorInicial?.ncm || itemNota?.ncm || '');
+        setUnidade(valorInicial?.unidade || itemNota?.unidade || '');
+        setFator(valorInicial?.fator || '1');
+        setControle(valorInicial?.controlaEstoque === true ? 'true' : valorInicial?.controlaEstoque === false ? 'false' : 'segue');
+        setCarregando(true);
+        Promise.all([
+            api.get('/categorias-estoque').then(r => (Array.isArray(r?.data) ? r.data : [])).catch(() => []),
+            categoriaProdutoService.listar().catch(() => [])
+        ]).then(([ce, cp]) => {
+            setCategoriasEstoque(ce);
+            setCategoriasProduto(Array.isArray(cp) ? cp : []);
+        }).finally(() => setCarregando(false));
+    }, [aberto, itemNota, valorInicial]);
+
+    if (!aberto) return null;
+
+    const categoriaEscolhida = categoriasEstoque.find(c => c.nome === categoria);
+    const dicaCategoria = !categoria
+        ? ''
+        : categoriaEscolhida
+            ? (categoriaEscolhida.controlaEstoque === false
+                ? 'Esta categoria não controla estoque: a compra vira só despesa.'
+                : 'Esta categoria controla estoque.')
+            : ''; // categoria digitada/legada que não está na lista carregada — sem dica
+
+    const confirmar = () => {
+        if (!nome.trim()) { toast.error('Informe o nome do produto.'); return; }
+        if (!categoria.trim()) { toast.error('Escolha a categoria do produto — é obrigatória.'); return; }
+        if (!unidade.trim()) { toast.error('Informe a unidade do produto.'); return; }
+        const fatorNum = parseFator(fator);
+        if (fatorNum <= 0) { toast.error('Informe a conversão de quantidade (maior que zero).'); return; }
+        onConfirmar({
+            nome: nome.trim(),
+            categoria: categoria.trim(),
+            categoriaProdutoId: categoriaProdutoId || null,
+            controlaEstoque: controle === 'segue' ? null : controle === 'true',
+            unidade: unidade.trim(),
+            ean: ean.trim() || null,
+            ncm: ncm.trim() || null,
+            fator: fator
+        });
+    };
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/40 p-0 md:p-4" onClick={onCancelar}>
+            <div className="bg-white rounded-t-2xl md:rounded-2xl w-full max-w-lg max-h-[92vh] overflow-y-auto p-5 space-y-4" onClick={e => e.stopPropagation()}>
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h2 className="text-lg font-bold text-gray-900">Criar produto a partir da nota</h2>
+                        <p className="text-xs text-gray-500 mt-0.5">Nasce no cadastro de Produtos, igual a um produto criado à mão.</p>
+                    </div>
+                    <button onClick={onCancelar} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 shrink-0">
+                        <X className="h-5 w-5" />
+                    </button>
+                </div>
+
+                <div>
+                    <label className="text-sm font-medium text-gray-700">Nome do produto *</label>
+                    <input
+                        value={nome}
+                        onChange={e => setNome(e.target.value)}
+                        className="mt-1 w-full min-h-[44px] border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                    />
+                    {String(itemNota?.descricao || '').trim() && (
+                        <small className="text-xs text-gray-500">
+                            Na nota veio como: <i>{itemNota.descricao}</i> (fica guardado no produto)
+                        </small>
+                    )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                        <label className="text-sm font-medium text-gray-700">Categoria *</label>
+                        <SelectBusca
+                            value={categoria}
+                            onChange={e => setCategoria(e.target.value)}
+                            className="mt-1 w-full"
+                        >
+                            <option value="">{carregando ? 'Carregando…' : 'Escolher categoria…'}</option>
+                            {categoriasEstoque.map(c => <option key={c.nome} value={c.nome}>{c.nome}</option>)}
+                        </SelectBusca>
+                        {dicaCategoria && (
+                            <small className={`text-xs ${dicaCategoria.includes('não controla') ? 'text-amber-700' : 'text-green-700'}`}>{dicaCategoria}</small>
+                        )}
+                    </div>
+                    <div>
+                        <label className="text-sm font-medium text-gray-700">Categoria comercial</label>
+                        <SelectBusca
+                            value={categoriaProdutoId}
+                            onChange={e => setCategoriaProdutoId(e.target.value)}
+                            className="mt-1 w-full"
+                        >
+                            <option value="">— nenhuma —</option>
+                            {categoriasProduto.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                        </SelectBusca>
+                        <small className="text-xs text-gray-500">Só para produto que se vende (Tortinhas, Kit festa…).</small>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                        <label className="text-sm font-medium text-gray-700">Código de barras (EAN)</label>
+                        <input
+                            value={ean}
+                            onChange={e => setEan(e.target.value)}
+                            placeholder="da nota"
+                            className="mt-1 w-full min-h-[44px] border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                        />
+                    </div>
+                    <div>
+                        <label className="text-sm font-medium text-gray-700">NCM</label>
+                        <input
+                            value={ncm}
+                            onChange={e => setNcm(e.target.value)}
+                            placeholder="da nota"
+                            className="mt-1 w-full min-h-[44px] border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                        />
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                        <label className="text-sm font-medium text-gray-700">Unidade nossa *</label>
+                        <input
+                            value={unidade}
+                            onChange={e => setUnidade(e.target.value.toUpperCase())}
+                            placeholder="UN, KG, PCT…"
+                            className="mt-1 w-full min-h-[44px] border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                        />
+                    </div>
+                    <div>
+                        <label className="text-sm font-medium text-gray-700">Conversão *</label>
+                        <div className="mt-1 flex items-center gap-2 text-sm text-gray-700 min-h-[44px]">
+                            <span className="whitespace-nowrap">1 {itemNota?.unidade || 'un'} da nota =</span>
+                            <input
+                                value={fator}
+                                onChange={e => setFator(e.target.value)}
+                                inputMode="decimal"
+                                className="w-16 border border-gray-300 rounded px-2 py-2 text-sm text-right focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                            />
+                            <span className="truncate">{unidade || '?'}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <label className="text-sm font-medium text-gray-700">Controle de estoque</label>
+                    <div className="mt-1 flex flex-wrap gap-2">
+                        {CONTROLE_ESTOQUE_OPCOES.map(o => (
+                            <button
+                                key={o.value}
+                                type="button"
+                                onClick={() => setControle(o.value)}
+                                className={`px-3 py-2 min-h-[44px] rounded-full text-xs font-semibold border ${controle === o.value ? 'bg-primary border-primary text-white' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'}`}
+                            >
+                                {o.label}
+                            </button>
+                        ))}
+                    </div>
+                    <small className="text-xs text-gray-500">Exceção por produto — o padrão é seguir a categoria.</small>
+                </div>
+
+                <div className="flex flex-col md:flex-row md:justify-end gap-2 pt-1">
+                    <button
+                        onClick={onCancelar}
+                        className="w-full md:w-auto px-4 py-3 md:py-2 min-h-[44px] bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-full font-medium text-sm"
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        onClick={confirmar}
+                        className="w-full md:w-auto px-4 py-3 md:py-2 min-h-[44px] bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm"
+                    >
+                        Criar e vincular
+                    </button>
+                </div>
+            </div>
+        </div>
     );
 };
 
@@ -1737,6 +1966,7 @@ const PainelRegistrarEntrada = ({ nota, obterItens, onCancelar, onChanged, bloqu
             });
             toast.success(resp?.message || 'Entrada registrada sem pagamento!');
             toastEstoque(resp?.estoque);
+            toastProdutosCriados(resp?.produtosCriados);
             for (const aviso of [...(resp?.avisos || []), ...(resp?.estoqueAvisos || [])]) {
                 toast(aviso, { icon: '⚠️', duration: 8000 });
             }
@@ -2167,6 +2397,8 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
     // Ação em massa: motivo escolhido para marcar todos os itens ainda pendentes
     const [motivoEmMassa, setMotivoEmMassa] = useState('');
     const [obsEmMassa, setObsEmMassa] = useState('');
+    // Índice do item com o modal "Criar produto a partir da nota" aberto ('' = fechado)
+    const [modalProdutoIdx, setModalProdutoIdx] = useState('');
     // Refs das linhas de item — usados pelo atalho "ir para o primeiro item pendente"
     const refsItens = useRef([]);
 
@@ -2263,8 +2495,13 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
     const escolherProduto = (idx, val) =>
         setVinculo(idx, { vinculoValue: val, novo: null, semEstoqueAtivo: false, semEstoqueMotivo: '', semEstoqueObs: '' });
 
-    const criarProdutoNovo = (idx, novo) =>
-        setVinculo(idx, { novo, vinculoValue: '', semEstoqueAtivo: false, semEstoqueMotivo: '', semEstoqueObs: '' });
+    // `dados` vem do ModalCriarProdutoNota: { nome, categoria, categoriaProdutoId,
+    // controlaEstoque, unidade, ean, ncm, fator }. O `fator` alimenta o MESMO campo de
+    // conversão que o vínculo a produto existente usa (coluna "Conversão" do item).
+    const criarProdutoNovo = (idx, dados) => {
+        const { fator, ...novo } = dados;
+        setVinculo(idx, { novo, vinculoValue: '', fator: fator || '1', semEstoqueAtivo: false, semEstoqueMotivo: '', semEstoqueObs: '' });
+    };
 
     // Marca o item SEM escolher motivo — ele fica pendente até a pessoa escolher.
     const marcarSemEstoque = (idx) =>
@@ -2369,6 +2606,7 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
             }
         } else if (v.novo) {
             if (!v.novo.nome.trim() || !v.novo.unidade.trim()) pendencia = 'Preencha nome e unidade do produto novo.';
+            else if (!v.novo.categoria) pendencia = 'Escolha a categoria do produto novo.';
             else if (fator <= 0) pendencia = 'Informe a conversão de quantidade.';
         } else if (v.vinculoValue) {
             if (fator <= 0) pendencia = 'Informe a conversão de quantidade.';
@@ -2410,8 +2648,18 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
         itemId: v.itemId,
         vinculo: v.novo || v.semEstoqueMotivo ? null : (v.vinculoValue || null),
         fatorConversao: !v.semEstoqueMotivo && parseFator(v.fator) > 0 ? parseFator(v.fator) : null,
-        criarItemPcp: v.novo && !v.semEstoqueMotivo
-            ? { nome: v.novo.nome.trim(), tipo: v.novo.tipo, unidade: v.novo.unidade.trim() }
+        // `criarItemPcp` foi desativado pelo backend — todo produto novo nasce por aqui,
+        // via `criarProduto` (o PCP ganha o espelho sozinho quando a categoria for de produção).
+        criarProduto: v.novo && !v.semEstoqueMotivo
+            ? {
+                nome: v.novo.nome.trim(),
+                categoria: v.novo.categoria,
+                categoriaProdutoId: v.novo.categoriaProdutoId || undefined,
+                controlaEstoque: v.novo.controlaEstoque,
+                unidade: v.novo.unidade.trim(),
+                ean: v.novo.ean || undefined,
+                ncm: v.novo.ncm || undefined
+            }
             : null,
         semEstoqueMotivo: v.semEstoqueMotivo || null,
         semEstoqueObs: v.semEstoqueMotivo === 'OUTRO' ? (String(v.semEstoqueObs || '').trim() || null) : null
@@ -2530,6 +2778,7 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
             );
             // Itens somados no estoque — resp.estoque = [{ nome, unidade, quantidade, destino }]
             toastEstoque(resp?.estoque);
+            toastProdutosCriados(resp?.produtosCriados);
             for (const aviso of [...(resp?.avisos || []), ...(resp?.estoqueAvisos || [])]) {
                 toast(aviso, { icon: '⚠️', duration: 8000 });
             }
@@ -2765,11 +3014,35 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                                     </div>
                                 )}
 
-                                {/* ── DESTINO DO ITEM ──
-                                    Ou entra no estoque (produto vinculado / produto novo), ou é
-                                    marcado como "não é estoque" com motivo. Os dois se excluem. */}
+                                {/* ── DESTINO DO ITEM (mock aprovado: 3 destinos, só 3) ──
+                                    Vincular a um produto / Criar produto novo / Não é estoque. */}
+                                <div className="mt-3 text-xs font-semibold text-gray-700">O que fazer com este item?</div>
+                                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                                    <button
+                                        type="button"
+                                        onClick={() => { if (v.novo) setVinculo(idx, { novo: null }); if (semEstoque) desmarcarSemEstoque(idx); }}
+                                        className={`px-3 py-2 min-h-[44px] rounded-full text-xs font-semibold border inline-flex items-center gap-1.5 ${!semEstoque && !v.novo ? 'bg-primary border-primary text-white' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'}`}
+                                    >
+                                        <Link2 className="h-3.5 w-3.5" /> Vincular a um produto
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setModalProdutoIdx(idx)}
+                                        className={`px-3 py-2 min-h-[44px] rounded-full text-xs font-semibold border inline-flex items-center gap-1.5 ${v.novo ? 'bg-primary border-primary text-white' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'}`}
+                                    >
+                                        <Plus className="h-3.5 w-3.5" /> Criar produto novo
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => marcarSemEstoque(idx)}
+                                        className={`px-3 py-2 min-h-[44px] rounded-full text-xs font-semibold border inline-flex items-center gap-1.5 ${semEstoque ? 'bg-gray-700 border-gray-700 text-white' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'}`}
+                                    >
+                                        <Unlink className="h-3.5 w-3.5" /> Não é estoque
+                                    </button>
+                                </div>
+
                                 {semEstoque ? (
-                                    <div className="mt-3 bg-gray-50 border border-gray-200 rounded-lg p-3">
+                                    <div className="mt-2 bg-gray-50 border border-gray-200 rounded-lg p-3">
                                         <div className="flex flex-col md:flex-row md:items-end gap-2">
                                             <div className="flex-1 min-w-0">
                                                 <label className="text-xs font-medium text-gray-500">Este item não é estoque — por quê?</label>
@@ -2795,52 +3068,26 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                                                 </div>
                                             )}
                                         </div>
-                                        <div className="mt-2 flex flex-col sm:flex-row sm:items-center gap-2">
-                                            <span className="text-xs text-gray-600">Não soma estoque nem gera custo de produto — só entra na despesa.</span>
-                                            <button
-                                                type="button"
-                                                onClick={() => desmarcarSemEstoque(idx)}
-                                                className="sm:ml-auto shrink-0 px-3 py-2 min-h-[44px] sm:min-h-0 sm:py-1.5 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-full font-medium text-xs"
-                                            >
-                                                Desfazer — quero vincular um produto
-                                            </button>
+                                        <div className="mt-2 text-xs text-gray-600">
+                                            Não soma estoque nem gera custo de produto — só entra na despesa.
                                         </div>
                                     </div>
                                 ) : (
-                                <>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-2">
                                     {/* Nosso produto */}
                                     <div>
                                         <label className="text-xs font-medium text-gray-500">Nosso produto</label>
                                         {v.novo ? (
-                                            <div className="mt-1 space-y-2 border border-gray-200 rounded-lg p-2 bg-white">
-                                                <input
-                                                    value={v.novo.nome}
-                                                    onChange={e => setVinculo(idx, { novo: { ...v.novo, nome: e.target.value } })}
-                                                    placeholder="Nome do produto novo"
-                                                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
-                                                />
-                                                <div className="flex gap-2">
-                                                    <SelectBusca
-                                                        value={v.novo.tipo}
-                                                        onChange={e => setVinculo(idx, { novo: { ...v.novo, tipo: e.target.value } })}
-                                                        className="flex-1 min-w-0"
-                                                    >
-                                                        {TIPOS_ITEM_PCP.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-                                                    </SelectBusca>
-                                                    <input
-                                                        value={v.novo.unidade}
-                                                        onChange={e => setVinculo(idx, { novo: { ...v.novo, unidade: e.target.value } })}
-                                                        placeholder="un. (kg, un, L…)"
-                                                        className="w-24 border border-gray-300 rounded px-2 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
-                                                    />
+                                            <div className="mt-1 space-y-1 border border-primary/40 rounded-lg p-2 bg-mint/20">
+                                                <div className="text-sm font-semibold text-gray-900">{v.novo.nome}</div>
+                                                <div className="flex flex-wrap items-center gap-1.5">
+                                                    <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded-full bg-mint text-primaryDark">{v.novo.categoria}</span>
+                                                    <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded-full bg-green-100 text-green-800">produto novo</span>
                                                 </div>
-                                                <button
-                                                    onClick={() => setVinculo(idx, { novo: null, vinculoValue: '' })}
-                                                    className="text-xs text-gray-500 hover:text-gray-700 underline"
-                                                >
-                                                    Cancelar produto novo
-                                                </button>
+                                                <div className="flex gap-3 pt-1">
+                                                    <button onClick={() => setModalProdutoIdx(idx)} className="text-xs text-primary hover:underline">Editar</button>
+                                                    <button onClick={() => setVinculo(idx, { novo: null, vinculoValue: '' })} className="text-xs text-gray-500 hover:text-gray-700 underline">Cancelar</button>
+                                                </div>
                                             </div>
                                         ) : (
                                             <ComboProduto
@@ -2848,12 +3095,12 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                                                 itens={itensPcp}
                                                 invalido={!vinculado}
                                                 onSelect={val => escolherProduto(idx, val)}
-                                                onCriarNovo={() => criarProdutoNovo(idx, { nome: it.descricao || '', tipo: 'MP', unidade: '' })}
+                                                onCriarNovo={() => setModalProdutoIdx(idx)}
                                             />
                                         )}
                                     </div>
 
-                                    {/* Conversão */}
+                                    {/* Conversão — só pede quando a unidade da nota difere da nossa */}
                                     <div>
                                         <label className="text-xs font-medium text-gray-500">Conversão de quantidade</label>
                                         <div className="mt-1 flex items-center gap-2 text-sm text-gray-700 min-h-[38px]">
@@ -2891,23 +3138,22 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                                         </div>
                                     </div>
                                 </div>
-
-                                {/* Escape: o item não é mercadoria (serviço, frete, imposto…) */}
-                                <button
-                                    type="button"
-                                    onClick={() => marcarSemEstoque(idx)}
-                                    className="mt-2 w-full sm:w-auto px-4 py-3 sm:py-2 min-h-[44px] bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-full font-medium text-xs inline-flex items-center justify-center gap-1.5"
-                                >
-                                    <Unlink className="h-3.5 w-3.5" /> Este item não é estoque
-                                </button>
-                                </>
                                 )}
 
-                                {/* Categoria de custo por item (não se aplica ao registrar entrada sem pagamento) */}
+                                <ModalCriarProdutoNota
+                                    aberto={modalProdutoIdx === idx}
+                                    itemNota={it}
+                                    valorInicial={v.novo ? { ...v.novo, fator: v.fator } : null}
+                                    onCancelar={() => setModalProdutoIdx('')}
+                                    onConfirmar={(dados) => { criarProdutoNovo(idx, dados); setModalProdutoIdx(''); }}
+                                />
+
+                                {/* Categoria da DESPESA (Contas a Pagar / DRE) — não confundir com a categoria
+                                    do PRODUTO (essa fica dentro do modal "Criar produto novo"). */}
                                 {!entradaAberta && (
                                     <div className="mt-3">
                                         <div className="flex items-center gap-2">
-                                            <label className="text-xs font-medium text-gray-500">Categoria de custo</label>
+                                            <label className="text-xs font-medium text-gray-500">Categoria da despesa (Contas a Pagar / DRE)</label>
                                             {String(it.vinculo?.categoria || '').trim() && (
                                                 <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded-full bg-green-100 text-green-800">lembrado ✓</span>
                                             )}
@@ -2920,6 +3166,7 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                                             placeholder="Usar categoria padrão…"
                                             className="mt-1 md:max-w-md"
                                         />
+                                        <small className="text-xs text-gray-500">Segue a categoria padrão da nota. Troque só se este item for de outra natureza.</small>
                                     </div>
                                 )}
                             </div>
@@ -3315,8 +3562,15 @@ const PainelCorrigirEntrada = ({ nota, itensPcp, modo = 'corrigir', onCancelar, 
     }));
     const [salvando, setSalvando] = useState(false);
     const [confirmando, setConfirmando] = useState(false);
+    // Índice do item com o modal "Criar produto a partir da nota" aberto ('' = fechado)
+    const [modalProdutoIdx, setModalProdutoIdx] = useState('');
 
     const setVinculo = (idx, patch) => setVinculos(prev => prev.map((v, i) => (i === idx ? { ...v, ...patch } : v)));
+    // `dados` vem do ModalCriarProdutoNota — mesmo formato usado na conferência.
+    const criarProdutoNovo = (idx, dados) => {
+        const { fator, ...novo } = dados;
+        setVinculo(idx, { novo, vinculoValue: '', fator: fator || '1' });
+    };
 
     // Situação de cada item: como está hoje × como vai ficar.
     const linhas = useMemo(() => itensNota.map((it, idx) => {
@@ -3343,8 +3597,8 @@ const PainelCorrigirEntrada = ({ nota, itensPcp, modo = 'corrigir', onCancelar, 
     const validar = () => {
         for (let i = 0; i < linhas.length; i++) {
             const { v, it, vinculado, fator } = linhas[i];
-            if (v.novo && (!v.novo.nome.trim() || !v.novo.unidade.trim())) {
-                return `Preencha nome e unidade do produto novo do item "${it.descricao || i + 1}".`;
+            if (v.novo && (!v.novo.nome.trim() || !v.novo.unidade.trim() || !v.novo.categoria)) {
+                return `Preencha nome, categoria e unidade do produto novo do item "${it.descricao || i + 1}".`;
             }
             if (vinculado && fator <= 0) {
                 return `Informe a conversão de quantidade do item "${it.descricao || i + 1}" (ou desfaça o vínculo).`;
@@ -3368,13 +3622,23 @@ const PainelCorrigirEntrada = ({ nota, itensPcp, modo = 'corrigir', onCancelar, 
                     itemId: v.itemId,
                     vinculo: v.novo ? null : (v.vinculoValue || null),
                     fatorConversao: parseFator(v.fator) > 0 ? parseFator(v.fator) : null,
-                    criarItemPcp: v.novo
-                        ? { nome: v.novo.nome.trim(), tipo: v.novo.tipo, unidade: v.novo.unidade.trim() }
+                    // `criarItemPcp` foi desativado pelo backend — produto novo nasce via `criarProduto`.
+                    criarProduto: v.novo
+                        ? {
+                            nome: v.novo.nome.trim(),
+                            categoria: v.novo.categoria,
+                            categoriaProdutoId: v.novo.categoriaProdutoId || undefined,
+                            controlaEstoque: v.novo.controlaEstoque,
+                            unidade: v.novo.unidade.trim(),
+                            ean: v.novo.ean || undefined,
+                            ncm: v.novo.ncm || undefined
+                        }
                         : null
                 }))
             });
             toast.success(resp?.message || (lancando ? 'Entrada lançada!' : 'Entrada corrigida!'));
             toastEstoque(resp?.depois);
+            toastProdutosCriados(resp?.produtosCriados);
             for (const aviso of (resp?.avisos || [])) toast(aviso, { icon: '⚠️', duration: 8000 });
             onChanged();
         } catch (e) {
@@ -3488,39 +3752,37 @@ const PainelCorrigirEntrada = ({ nota, itensPcp, modo = 'corrigir', onCancelar, 
                                     )}
                                 </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
+                                <div className="flex flex-wrap gap-1.5 mt-1">
+                                    <button
+                                        type="button"
+                                        onClick={() => { if (v.novo) setVinculo(idx, { novo: null }); }}
+                                        className={`px-3 py-2 min-h-[44px] rounded-full text-xs font-semibold border inline-flex items-center gap-1.5 ${!v.novo ? 'bg-primary border-primary text-white' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'}`}
+                                    >
+                                        <Link2 className="h-3.5 w-3.5" /> Vincular a um produto
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setModalProdutoIdx(idx)}
+                                        className={`px-3 py-2 min-h-[44px] rounded-full text-xs font-semibold border inline-flex items-center gap-1.5 ${v.novo ? 'bg-primary border-primary text-white' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'}`}
+                                    >
+                                        <Plus className="h-3.5 w-3.5" /> Criar produto novo
+                                    </button>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-2">
                                     {/* Nosso produto */}
                                     <div>
                                         <label className="text-xs font-medium text-gray-500">Nosso produto</label>
                                         {v.novo ? (
-                                            <div className="mt-1 space-y-2 border border-gray-200 rounded-lg p-2 bg-white">
-                                                <input
-                                                    value={v.novo.nome}
-                                                    onChange={e => setVinculo(idx, { novo: { ...v.novo, nome: e.target.value } })}
-                                                    placeholder="Nome do produto novo"
-                                                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
-                                                />
-                                                <div className="flex gap-2">
-                                                    <SelectBusca
-                                                        value={v.novo.tipo}
-                                                        onChange={e => setVinculo(idx, { novo: { ...v.novo, tipo: e.target.value } })}
-                                                        className="flex-1 min-w-0"
-                                                    >
-                                                        {TIPOS_ITEM_PCP.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-                                                    </SelectBusca>
-                                                    <input
-                                                        value={v.novo.unidade}
-                                                        onChange={e => setVinculo(idx, { novo: { ...v.novo, unidade: e.target.value } })}
-                                                        placeholder="un. (kg, un, L…)"
-                                                        className="w-24 border border-gray-300 rounded px-2 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
-                                                    />
+                                            <div className="mt-1 space-y-1 border border-primary/40 rounded-lg p-2 bg-mint/20">
+                                                <div className="text-sm font-semibold text-gray-900">{v.novo.nome}</div>
+                                                <div className="flex flex-wrap items-center gap-1.5">
+                                                    <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded-full bg-mint text-primaryDark">{v.novo.categoria}</span>
+                                                    <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded-full bg-green-100 text-green-800">produto novo</span>
                                                 </div>
-                                                <button
-                                                    onClick={() => setVinculo(idx, { novo: null, vinculoValue: '' })}
-                                                    className="text-xs text-gray-500 hover:text-gray-700 underline"
-                                                >
-                                                    Cancelar produto novo
-                                                </button>
+                                                <div className="flex gap-3 pt-1">
+                                                    <button onClick={() => setModalProdutoIdx(idx)} className="text-xs text-primary hover:underline">Editar</button>
+                                                    <button onClick={() => setVinculo(idx, { novo: null, vinculoValue: '' })} className="text-xs text-gray-500 hover:text-gray-700 underline">Cancelar</button>
+                                                </div>
                                             </div>
                                         ) : (
                                             <ComboProduto
@@ -3528,10 +3790,18 @@ const PainelCorrigirEntrada = ({ nota, itensPcp, modo = 'corrigir', onCancelar, 
                                                 itens={itensPcp}
                                                 invalido={!vinculado}
                                                 onSelect={val => setVinculo(idx, { vinculoValue: val })}
-                                                onCriarNovo={() => setVinculo(idx, { novo: { nome: it.descricao || '', tipo: 'MP', unidade: '' }, vinculoValue: '' })}
+                                                onCriarNovo={() => setModalProdutoIdx(idx)}
                                             />
                                         )}
                                     </div>
+
+                                    <ModalCriarProdutoNota
+                                        aberto={modalProdutoIdx === idx}
+                                        itemNota={it}
+                                        valorInicial={v.novo ? { ...v.novo, fator: v.fator } : null}
+                                        onCancelar={() => setModalProdutoIdx('')}
+                                        onConfirmar={(dados) => { criarProdutoNovo(idx, dados); setModalProdutoIdx(''); }}
+                                    />
 
                                     {/* Conversão */}
                                     <div>

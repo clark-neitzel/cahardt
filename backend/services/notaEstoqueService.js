@@ -29,6 +29,16 @@
  * corrigidas. O CompraItem antigo não guarda o custo de antes/depois: quem chama
  * refaz o custo pelo histórico de compras válidas (é o mesmo que o estorno legado fazia).
  *
+ * D1 (Etapa 1 Entrada de Notas, 09/2026): a entrada por aqui agora TAMBÉM respeita
+ * `produtoControlaEstoque` (estoqueService) para o destino PROD — igual sempre foi no
+ * fluxo antigo (Fase 6/estornarEstoqueLegado). Produto de categoria que não controla
+ * estoque (ex.: Material de Uso e Consumo) não soma quantidade nem mexe em custo médio,
+ * mas ainda ganha uma linha em `CompraItem` (histórico de preço/fornecedor) marcada
+ * `semEstoque: true` — sem linha no ledger `NotaEntradaEstoqueMov` (não houve
+ * movimento de estoque para registrar ali). O estorno da nota (`estornarEstoqueNota`)
+ * marca esse `CompraItem` como estornado do mesmo jeito, por nota inteira — não precisa
+ * de tratamento especial lá.
+ *
  * CORREÇÃO (corrigirEstoqueNota) — 08/2026: conferência com produto/conversão errados
  * não obriga mais a cancelar a despesa. `corrigirEstoqueNota` estorna o ledger e
  * reaplica com os vínculos certos DENTRO da mesma transação, sem encostar em
@@ -132,9 +142,29 @@ async function aplicarEstoqueNota(tx, nota, itensResolvidos, { comCusto = false,
         if (item.destino === 'PROD' && item.produtoId) {
             const p = await tx.produto.findUnique({
                 where: { id: item.produtoId },
-                select: { id: true, nome: true, unidade: true, estoqueTotal: true, estoqueDisponivel: true, custoManual: true }
+                select: {
+                    id: true, nome: true, unidade: true, estoqueTotal: true, estoqueDisponivel: true,
+                    custoManual: true, categoria: true, controlaEstoque: true
+                }
             });
             if (!p) { avisos.push(`Produto do item "${item.itemNota?.descricao || ''}" não encontrado — entrada pulada.`); continue; }
+
+            // D1 (decisão do dono, Etapa 1 Entrada de Notas 09/2026): entrada RESPEITA a
+            // categoria do produto. Produto cuja categoria (ou override próprio) NÃO
+            // controla estoque não soma quantidade nem mexe em custo médio — mas ainda
+            // grava o histórico de compras (preço pago), marcado como "sem estoque".
+            const estoqueService = require('./estoqueService');
+            const controla = await estoqueService.produtoControlaEstoque(p, tx);
+            if (!controla) {
+                if (custoCompra != null && item.itemNota) {
+                    await criarCompraItem(tx, nota, item, p.unidade, qtd, custoCompra, { produtoId: p.id }, contaPagarId, {}, { semEstoque: true });
+                }
+                if (!p.categoria && p.controlaEstoque == null) {
+                    avisos.push(`Produto "${p.nome}" está sem categoria de estoque — tratado como "não controla estoque" nesta entrada (confira a categoria dele).`);
+                }
+                itens.push({ nome: p.nome, unidade: p.unidade, quantidade: qtd, destino: 'PROD', semEstoque: true });
+                continue;
+            }
 
             const totalAntes = num(p.estoqueTotal);
             const totalDepois = round(totalAntes + qtd, 3);
@@ -172,7 +202,6 @@ async function aplicarEstoqueNota(tx, nota, itensResolvidos, { comCusto = false,
             }
 
             // Produto com controle de estoque: recalcula reservado/disponível (reservas de pedidos)
-            const estoqueService = require('./estoqueService');
             await estoqueService.recalcularEstoqueProduto(p.id, tx);
 
             // Custo pela regra nova, DEPOIS da entrada (o CompraItem já existe e o estoque já
@@ -268,13 +297,14 @@ async function aplicarEstoqueNota(tx, nota, itensResolvidos, { comCusto = false,
 // `snapshot` = { estoqueAnterior, custoAnterior, custoPosterior } do alvo nesta entrada:
 // é o que permite ao estorno das COMPRAS (compraEstoqueService) devolver o custo exato
 // e ao replay começar do saldo certo, sem depender só do ledger da nota.
-async function criarCompraItem(tx, nota, item, unidadeNossa, qtd, custoCompra, alvo, contaPagarId, snapshot = {}) {
+async function criarCompraItem(tx, nota, item, unidadeNossa, qtd, custoCompra, alvo, contaPagarId, snapshot = {}, extra = {}) {
     const it = item.itemNota;
     return tx.compraItem.create({
         data: {
             estoqueAnterior: snapshot.estoqueAnterior != null ? snapshot.estoqueAnterior : null,
             custoAnterior: snapshot.custoAnterior != null ? snapshot.custoAnterior : null,
             custoPosterior: snapshot.custoPosterior != null ? snapshot.custoPosterior : null,
+            semEstoque: extra.semEstoque === true,
             notaEntradaId: nota.id,
             contaPagarId: contaPagarId || nota.contaPagarId || null,
             produtoId: alvo.produtoId || null,
@@ -540,8 +570,11 @@ async function estoqueAplicado(db, notaId) {
         where: { notaEntradaId: notaId, estornado: false }
     });
     if (n > 0) return true;
+    // D1 (Etapa 1, 09/2026): CompraItem `semEstoque: true` é só histórico de preço — não
+    // representa estoque aplicado (exclui, senão uma nota só com itens "sem estoque"
+    // mentiria "tem entrada de estoque").
     const legado = await db.compraItem.count({
-        where: { notaEntradaId: notaId, estornado: false }
+        where: { notaEntradaId: notaId, estornado: false, semEstoque: false }
     });
     return legado > 0;
 }
@@ -583,10 +616,18 @@ async function entradaAplicada(db, notaId) {
  * O CompraItem não guarda o id do item da nota — o vínculo é refeito pela descrição
  * do item (`descricaoFornecedor` = xProd, a mesma chave que o fluxo antigo usava para
  * não duplicar), com a quantidade da nota como desempate quando a descrição repete.
+ *
+ * D1 (Etapa 1, 09/2026): exclui `semEstoque: true` — são compras de produto que NÃO
+ * controla estoque (histórico de preço só), nunca representaram uma entrada de estoque
+ * de verdade. Sem esse filtro, uma nota cujo ledger ficou vazio (ex.: só sobrou um item
+ * "sem estoque" depois de uma correção) cairia neste fallback e a tela de correção
+ * mostraria esse item como se tivesse estoque aplicado — e o recompute de custo em
+ * `corrigir-entrada-estoque` tentaria refazer o custo médio de um produto que nunca
+ * teve custo médio tocado por aqui.
  */
 async function entradaLegado(db, notaId) {
     const compras = await db.compraItem.findMany({
-        where: { notaEntradaId: notaId, estornado: false },
+        where: { notaEntradaId: notaId, estornado: false, semEstoque: false },
         orderBy: { criadoEm: 'asc' },
         include: {
             produto: { select: { id: true, nome: true, unidade: true } },

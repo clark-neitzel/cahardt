@@ -881,6 +881,8 @@ const GerenciarProduto = () => {
                 valorVenda: precoNum.toFixed(2),
                 unidade: unidadeLimpa,
                 categoria: (formData.categoria || '').trim() || null,
+                ncm: String(formData.ncm ?? '').trim() || null,
+                ean: String(formData.ean ?? '').trim(),
                 custoManual: custoManualVal === '' ? null : parseFloat(custoManualVal.replace(',', '.')),
                 categoriaProdutoId: formData.categoriaProdutoId || null,
                 produtoSubstitutoId: formData.produtoSubstitutoId || null,
@@ -1206,16 +1208,41 @@ const GerenciarProduto = () => {
                       {[
                         { k: 'Nome', v: formData.nome },
                         { k: 'Código', v: formData.codigo, mono: true },
-                        { k: 'EAN', v: formData.ean || '—', mono: true },
-                        { k: 'NCM', v: formData.ncm || '—', mono: true },
                         { k: 'Peso', v: `${formData.pesoLiquido||'0'} kg`, mono: true },
                         ...(formData.contaAzulUpdatedAt ? [{ k: 'Atualizado', v: new Date(formData.contaAzulUpdatedAt).toLocaleDateString('pt-BR'), mono: true }] : []),
                       ].map((row, i, arr) => (
-                        <div key={row.k} className="flex items-center justify-between py-2.5 gap-3" style={{ borderBottom: i < arr.length-1 ? '1px solid #F2F3F8' : 'none' }}>
+                        <div key={row.k} className="flex items-center justify-between py-2.5 gap-3" style={{ borderBottom: '1px solid #F2F3F8' }}>
                           <span className="text-sm" style={{ color: '#8A90A2' }}>{row.k}</span>
                           <span className={`text-sm font-semibold text-right ${row.mono?'font-mono':''}`} style={{ color: '#16192B' }}>{row.v}</span>
                         </div>
                       ))}
+                      {/* EAN e NCM — antes travados, agora editáveis (vêm da nota quando o produto nasce da conferência) */}
+                      <div className="flex items-center justify-between py-2.5 gap-3" style={{ borderBottom: '1px solid #F2F3F8' }}>
+                        <span className="text-sm" style={{ color: '#8A90A2' }}>EAN</span>
+                        {podeEditar ? (
+                          <input value={formData.ean} onChange={e => setFormData(prev => ({ ...prev, ean: e.target.value }))}
+                            placeholder="Código de barras" className="text-sm font-semibold font-mono text-right border border-gray-300 rounded px-2 py-1 w-40 focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
+                        ) : <span className="text-sm font-semibold font-mono text-right" style={{ color: '#16192B' }}>{formData.ean || '—'}</span>}
+                      </div>
+                      <div className="flex items-center justify-between py-2.5 gap-3" style={{ borderBottom: '1px solid #F2F3F8' }}>
+                        <span className="text-sm" style={{ color: '#8A90A2' }}>NCM</span>
+                        {podeEditar ? (
+                          <input value={formData.ncm} onChange={e => setFormData(prev => ({ ...prev, ncm: e.target.value }))}
+                            placeholder="0000.00.00" className="text-sm font-semibold font-mono text-right border border-gray-300 rounded px-2 py-1 w-32 focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
+                        ) : <span className="text-sm font-semibold font-mono text-right" style={{ color: '#16192B' }}>{formData.ncm || '—'}</span>}
+                      </div>
+                      {(produto?.notaOrigem || produto?.nomeOrigemNota) && (
+                        <div className="flex items-start gap-1.5 mt-2 pt-2 text-xs" style={{ borderTop: '1px dashed #EEF0F7', color: '#6B7280' }}>
+                          <span>📄</span>
+                          <span>Cadastrado a partir da NF-e{produto.notaOrigem?.numero ? ` ${produto.notaOrigem.numero}` : ''}{produto.notaOrigem?.fornecedorNome ? ` (${produto.notaOrigem.fornecedorNome})` : ''}{produto.notaOrigem?.emissao ? ` em ${new Date(produto.notaOrigem.emissao).toLocaleDateString('pt-BR')}` : ''}{produto.nomeOrigemNota ? <> como <i>"{produto.nomeOrigemNota}"</i></> : null}</span>
+                        </div>
+                      )}
+                      {Array.isArray(produto?.vinculosFornecedor) && produto.vinculosFornecedor.length > 0 && (
+                        <div className="flex items-start gap-1.5 mt-1.5 text-xs" style={{ color: '#6B7280' }}>
+                          <span>🏷️</span>
+                          <span>Fornecedores que já vieram com este produto: {produto.vinculosFornecedor.map(v => `${v.fornecedorNome || v.fornecedorCnpj || 'sem nome'} (cód. ${v.codigoFornecedor})`).join(', ')}</span>
+                        </div>
+                      )}
                       <div className="mt-3 pt-3" style={{ borderTop: '1px solid #F2F3F8' }}>
                         <div className="flex items-center mb-1.5">
                           <span className="text-sm" style={{ color: '#8A90A2' }}>Categoria</span>
@@ -1236,7 +1263,7 @@ const GerenciarProduto = () => {
                         {podeEditar && <div className="mt-1 text-xs" style={{ color: '#9AA0B4' }}>Agrupa estoque, relatórios e flex. Salve para confirmar.</div>}
                       </div>
                       <div className="flex items-center gap-2 mt-3 pt-3" style={{ borderTop: '1px dashed #EEF0F7', color: '#9AA0B4', fontSize: 11.5 }}>
-                        <AlertCircle className="h-3.5 w-3.5 flex-shrink-0"/>Nome, código, EAN, NCM e peso vêm do cadastro original — somente leitura.
+                        <AlertCircle className="h-3.5 w-3.5 flex-shrink-0"/>Nome, código e peso vêm do cadastro original — somente leitura. EAN e NCM são editáveis.
                       </div>
                     </div>
                   </div>
@@ -1498,7 +1525,10 @@ const GerenciarProduto = () => {
                                             </div>
                                             <div style={{ gridColumn: 'span 2' }}>
                                                 <div className="font-bold tracking-[.05em] uppercase mb-1" style={{ fontSize: 10.5, color: '#9AA0B4' }}>EAN</div>
-                                                <div className="font-semibold font-mono" style={{ fontSize: 14, color: '#16192B' }}>{formData.ean || '—'}</div>
+                                                {podeEditar ? (
+                                                    <input value={formData.ean} onChange={e => setFormData(prev => ({ ...prev, ean: e.target.value }))}
+                                                        placeholder="Código de barras" className="w-full font-semibold font-mono border border-gray-300 rounded px-2 py-1.5 focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" style={{ fontSize: 14, color: '#16192B' }} />
+                                                ) : <div className="font-semibold font-mono" style={{ fontSize: 14, color: '#16192B' }}>{formData.ean || '—'}</div>}
                                             </div>
                                             <div>
                                                 <div className="font-bold tracking-[.05em] uppercase mb-1" style={{ fontSize: 10.5, color: '#9AA0B4' }}>Código</div>
@@ -1506,7 +1536,10 @@ const GerenciarProduto = () => {
                                             </div>
                                             <div>
                                                 <div className="font-bold tracking-[.05em] uppercase mb-1" style={{ fontSize: 10.5, color: '#9AA0B4' }}>NCM</div>
-                                                <div className="font-semibold font-mono" style={{ fontSize: 14, color: '#16192B' }}>{formData.ncm || '—'}</div>
+                                                {podeEditar ? (
+                                                    <input value={formData.ncm} onChange={e => setFormData(prev => ({ ...prev, ncm: e.target.value }))}
+                                                        placeholder="0000.00.00" className="w-full font-semibold font-mono border border-gray-300 rounded px-2 py-1.5 focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" style={{ fontSize: 14, color: '#16192B' }} />
+                                                ) : <div className="font-semibold font-mono" style={{ fontSize: 14, color: '#16192B' }}>{formData.ncm || '—'}</div>}
                                             </div>
                                             <div>
                                                 <div className="font-bold tracking-[.05em] uppercase mb-1" style={{ fontSize: 10.5, color: '#9AA0B4' }}>Peso</div>
@@ -1540,8 +1573,20 @@ const GerenciarProduto = () => {
                                         </div>
                                         <div className="flex items-center gap-2 mt-3 pt-3" style={{ borderTop: '1px dashed #EEF0F7', color: '#9AA0B4', fontSize: 11.5 }}>
                                             <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
-                                            Nome, código, EAN, NCM e peso vêm do cadastro original — somente leitura.
+                                            Nome, código e peso vêm do cadastro original — somente leitura. EAN e NCM são editáveis.
                                         </div>
+                                        {(produto?.notaOrigem || produto?.nomeOrigemNota) && (
+                                            <div className="flex items-start gap-1.5 mt-2 pt-2 text-xs" style={{ borderTop: '1px dashed #EEF0F7', color: '#6B7280' }}>
+                                                <span>📄</span>
+                                                <span>Cadastrado a partir da NF-e{produto.notaOrigem?.numero ? ` ${produto.notaOrigem.numero}` : ''}{produto.notaOrigem?.fornecedorNome ? ` (${produto.notaOrigem.fornecedorNome})` : ''}{produto.notaOrigem?.emissao ? ` em ${new Date(produto.notaOrigem.emissao).toLocaleDateString('pt-BR')}` : ''}{produto.nomeOrigemNota ? <> como <i>"{produto.nomeOrigemNota}"</i></> : null}</span>
+                                            </div>
+                                        )}
+                                        {Array.isArray(produto?.vinculosFornecedor) && produto.vinculosFornecedor.length > 0 && (
+                                            <div className="flex items-start gap-1.5 mt-1.5 text-xs" style={{ color: '#6B7280' }}>
+                                                <span>🏷️</span>
+                                                <span>Fornecedores que já vieram com este produto: {produto.vinculosFornecedor.map(v => `${v.fornecedorNome || v.fornecedorCnpj || 'sem nome'} (cód. ${v.codigoFornecedor})`).join(', ')}</span>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>

@@ -19,7 +19,7 @@ const notasEntradaService = {
     },
     // Gera a Conta a Pagar da nota; itens vinculados somam no estoque.
     // Cada item leva um DESTINO obrigatório (NF-e de produto): `vinculo` ('PROD:<id>'|'PCP:<id>' + fatorConversao),
-    // `criarItemPcp`, ou `semEstoqueMotivo` ('SERVICO'|'FRETE'|'IMPOSTO'|'CONSUMO_IMEDIATO'|'OUTRO'
+    // `criarProduto`, ou `semEstoqueMotivo` ('SERVICO'|'FRETE'|'IMPOSTO'|'CONSUMO_IMEDIATO'|'IMOBILIZADO'|'OUTRO'
     //  — 'OUTRO' exige `semEstoqueObs`). Sem destino o backend recusa com 400 + `itensPendentes`.
     // → resposta inclui estoque: [{ nome, unidade, quantidade, destino }] (vazio se nenhum item vinculado)
     gerarConta: async (id, dados) => {
@@ -49,7 +49,7 @@ const notasEntradaService = {
     },
     // Registra a ENTRADA sem gerar pagamento (bonificação, amostra, remessa/troca, comodato, outro).
     // Itens vinculados SOMAM NO ESTOQUE (sem alterar o custo).
-    // payload: { motivo, observacao?, itens?: [{ itemId, vinculo: 'PROD:<id>'|'PCP:<id>'|null, fatorConversao|null, criarItemPcp|null, semEstoqueMotivo|null, semEstoqueObs|null }] }
+    // payload: { motivo, observacao?, itens?: [{ itemId, vinculo: 'PROD:<id>'|'PCP:<id>'|null, fatorConversao|null, criarProduto|null, semEstoqueMotivo|null, semEstoqueObs|null }] }
     // → { ok, message, status, motivo, estoque: [{ nome, unidade, quantidade, destino }] }
     registrarEntrada: async (id, payload) => {
         const response = await api.post(`/notas-entrada/${id}/registrar-entrada`, payload);
@@ -78,7 +78,7 @@ const notasEntradaService = {
     // Corrige SÓ o estoque/custo de uma nota já lançada (produto ou conversão errados),
     // sem tocar na despesa, nas parcelas nem nos pagamentos. O valor da nota é intocável —
     // o payload só diz para onde vai e em que conversão.
-    // payload: { itens: [{ itemId, vinculo: 'PROD:<id>'|'PCP:<id>'|null, fatorConversao|null, criarItemPcp|null }] }
+    // payload: { itens: [{ itemId, vinculo: 'PROD:<id>'|'PCP:<id>'|null, fatorConversao|null, criarProduto|null }] }
     // → { ok, message, antes: [], depois: [], custos: [], avisos: [] }
     corrigirEntradaEstoque: async (id, payload) => {
         const response = await api.post(`/notas-entrada/${id}/corrigir-entrada-estoque`, payload);

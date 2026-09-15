@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Nota de Entrada cria Produto de verdade — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp -->
+<meta property="og:title" content="📦 Novidade no Hardt App: nota de entrada agora cria Produto de verdade">
+<meta property="og:description" content="Três destinos para cada item da nota: vincular a um produto, criar produto novo (com categoria e PCP automático) ou marcar como 'não é estoque' — agora com o motivo Imobilizado.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 56px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(26px, 7vw, 38px);
+    font-weight: 800;
+    line-height: 1.14;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.75);
+    font-size: 16px;
+    max-width: 48ch;
+    margin: 0 auto;
+    text-wrap: balance;
+  }
+
+  /* ── SEÇÕES / ACCORDION ── */
+  .sec-label {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: var(--primary-dark);
+    margin: 34px 4px 12px;
+  }
+  .acc {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .acc-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: none;
+    border: none;
+    font: inherit;
+    text-align: left;
+    padding: 15px 16px;
+    cursor: pointer;
+    min-height: 56px;
+  }
+  .acc-ico {
+    width: 38px; height: 38px;
+    border-radius: 11px;
+    background: var(--mint);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  /* passos */
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n {
+    width: 30px; height: 30px; flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 800;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .rodape {
+    text-align: center;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 40px;
+  }
+  .rodape strong { color: var(--primary-dark); }
+
+  /* ── MOCKUPS DAS TELAS DO APP ── */
+  .tela {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .tela-titulo {
+    background: var(--house);
+    color: #fff;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .app-card {
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 10px;
+    padding: 12px;
+  }
+  .app-card.destaque { border-color: rgba(0,117,74,.35); background: #fbfffd; }
+  .app-t { font-size: 13px; font-weight: 700; color: var(--ink); }
+  .app-s { font-size: 11px; color: #8b9490; margin-top: 2px; }
+  .app-input {
+    border: 1px solid #d8d5cc;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 12.5px;
+    color: var(--ink);
+    background: #fff;
+    margin-bottom: 8px;
+  }
+  .app-input small { display: block; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: #9aa5a0; margin-bottom: 2px; }
+  .app-input.ok { background: var(--mint); border-color: rgba(0,117,74,.25); }
+  .app-input.ro { color: #8b9490; }
+  .app-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--primary);
+    color: #fff;
+    font-size: 12.5px;
+    font-weight: 700;
+    padding: 9px 16px;
+    border-radius: 999px;
+  }
+  .app-btn.claro { background: #fff; border: 1.5px solid var(--primary); color: var(--primary); }
+  .app-btn.cinza { background: #fff; border: 1.5px solid #d8d5cc; color: #6b756f; }
+  .app-pills { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+  .app-pill {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 7px 14px;
+    border-radius: 999px;
+    border: 1.5px solid #d8d5cc;
+    color: #6b756f;
+    background: #fff;
+  }
+  .app-pill.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .app-pill.on.cinza { background: #4b5563; border-color: #4b5563; }
+  .app-chip { display: inline-block; font-size: 10.5px; font-weight: 700; padding: 3px 9px; border-radius: 999px; }
+  .app-chip.verde { background: #dcfce7; color: #166534; }
+  .app-chip.mint { background: var(--mint); color: var(--primary-dark); }
+  .app-chip.amb { background: #fef3c7; color: #92400e; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .pin {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    flex-shrink: 0;
+    vertical-align: 2px;
+    margin-left: 6px;
+  }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+</style>
+</head>
+<body>
+
+<!-- ══════════ HERO ══════════ -->
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>A nota de entrada agora cria Produto de verdade</h1>
+    <p>Cada item da nota tem três destinos, e só três: vincular a um produto, criar produto novo ou dizer que não é estoque. O PCP ganha o insumo sozinho quando faz sentido — ninguém mais escolhe "tipo do PCP" na conferência.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- ══════════ COMO FUNCIONA ══════════ -->
+  <div class="sec-label">O que mudou</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🎯</span>
+      <strong>Três destinos, e só três</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Na conferência de Notas Recebidas, todo item da nota agora mostra três botões: <b>🔗 Vincular a um produto</b>, <b>➕ Criar produto novo</b> e <b>🚫 Não é estoque</b>.</li>
+        <li>Sumiu o campo "Tipo do PCP" (MP/SUB/PA/EMB) que existia antes na conferência — ele confundia insumo solto com produto de verdade.</li>
+        <li>A busca de "vincular a um produto" mostra o catálogo de Produtos e também os insumos do PCP já existentes, agora rotulados claramente como <b>"Insumo do PCP (subproduto/espelho)"</b> — para não confundir com produto de verdade.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">➕</span>
+      <strong>Criar produto novo = nasce igual a um produto de verdade</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>O item que ainda não existe no cadastro vira <b>Produto de verdade</b> — com categoria, categoria comercial, código de barras (EAN) e NCM, tudo puxado da nota e editável.</li>
+        <li>Se a categoria escolhida for <b>Matéria-Prima</b> ou <b>Embalagem</b>, o insumo do PCP nasce <b>sozinho</b>, automaticamente, já ligado ao produto — sem precisar cadastrar duas vezes.</li>
+        <li>O produto guarda de onde veio: número da nota, fornecedor, data e o texto original do XML.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🚫</span>
+      <strong>"Não é estoque" ganhou o motivo Imobilizado</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Além de Serviço, Frete, Imposto/taxa e Consumo imediato, agora dá para marcar um item como <b>Imobilizado</b> — freezer, painel, móveis — direto na conferência.</li>
+        <li>A categoria da despesa (Contas a Pagar / DRE) continua existindo do lado, só com o nome mais claro para não confundir com a categoria do produto.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">📐</span>
+      <strong>Estoque passa a respeitar a categoria do produto</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Produto de categoria que <b>não controla estoque</b> (ex.: Uso e Consumo) vira <b>só despesa</b> ao ser conferido — não soma quantidade, mas o histórico de compras (fornecedor/preço) continua sendo gravado.</li>
+        <li>Produto de categoria que controla estoque continua somando normalmente.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🔧</span>
+      <strong>PCP → Itens: promover, mudar tipo ou excluir órfãos</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Item do PCP sem produto por trás (criado pela conferência antiga) ganha o selo <b>"sem produto"</b> e três ações novas: <b>Enviar para Produtos</b>, <b>Mudar tipo</b> e <b>Excluir</b>.</li>
+        <li><b>Enviar para Produtos</b> promove o item a um Produto de verdade, escolhendo categoria — Matéria-Prima/Embalagem mantém o item ativo como espelho; qualquer outra categoria inativa o item (o app avisa antes de confirmar).</li>
+        <li><b>Excluir</b> só funciona em item que nunca foi usado em receita, ordem de produção, compra ou movimentação — senão o app explica por que não dá e sugere Inativar.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ══════════ AS TELAS DO APP ══════════ -->
+  <div class="sec-label">As telas do app</div>
+
+  <!-- TELA 1: os três destinos -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 1 · Item da nota com os três destinos</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-t">PNEU BOARTYRE COM CAMARA DE AR 4.00 8 4PR</div>
+        <div class="app-s">cód. fornecedor 1368 · 1 UN × R$ 74,05<span class="pin">1</span></div>
+        <div class="app-pills">
+          <span class="app-pill">🔗 Vincular a um produto</span>
+          <span class="app-pill">➕ Criar produto novo</span>
+          <span class="app-pill on cinza">🚫 Não é estoque</span>
+        </div>
+        <div class="app-input ro"><small>Categoria da despesa (Contas a Pagar / DRE)<span class="pin">2</span></small>Manutenção de Equipamentos</div>
+      </div>
+      <div class="app-card destaque">
+        <div class="app-t">FARINHA DE TRIGO ESPECIAL 25KG</div>
+        <div class="app-s">cód. fornecedor 4410 · 10 SC × R$ 128,00</div>
+        <div style="margin-top:6px;"><span class="app-chip verde">🔗 Vinculado</span> <b style="font-size:12.5px">Farinha de Trigo Especial</b> <span class="app-chip mint">Matéria-Prima</span><span class="pin">3</span></div>
+        <div class="grid2" style="margin-top:8px;">
+          <div class="app-input ro" style="margin-bottom:0;"><small>Conversão</small>1 SC = 25 KG</div>
+          <div class="app-input ro" style="margin-bottom:0;"><small>Resultado</small>250 KG · R$ 5,12/KG</div>
+        </div>
+      </div>
+      <div class="app-card">
+        <div class="app-t">FREEZER HORIZONTAL 400L</div>
+        <div class="app-s">cód. fornecedor 77 · 1 UN × R$ 3.890,00</div>
+        <div style="margin-top:6px;"><span class="app-chip amb">🚫 Não é estoque</span><span class="pin">4</span></div>
+        <div class="app-pills" style="margin-top:8px;">
+          <span class="app-pill">Serviço</span><span class="app-pill">Frete</span><span class="app-pill">Consumo imediato</span><span class="app-pill on">Imobilizado</span><span class="app-pill">Outro</span>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Três botões, um destino. Some o menu que misturava produto e insumo, some o "tipo do PCP".</span></div>
+      <div><span class="pin">2</span><span>Categoria da despesa, com nome completo para não confundir com a categoria do produto. Vem preenchida pela categoria padrão da nota.</span></div>
+      <div><span class="pin">3</span><span>Item vinculado mostra o produto e a categoria dele — a conversão só aparece quando a unidade da nota é diferente da nossa.</span></div>
+      <div><span class="pin">4</span><span>"Não é estoque" ganha o motivo <b>Imobilizado</b> — separa despesa de bem do imobilizado direto na conferência.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 2: criar produto novo -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 2 · Criar produto a partir da nota</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div style="font-size:13px;font-weight:800;margin-bottom:4px;">Criar produto a partir da nota</div>
+        <div class="app-input"><small>Nome do produto<span class="pin">1</span></small>Pneu do carrinho de entrega 4.00-8</div>
+        <div class="app-s" style="margin:-4px 0 8px;">Na nota veio como: <i>PNEU BOARTYRE COM CAMARA DE AR 4.00 8 4PR</i></div>
+        <div class="grid2">
+          <div class="app-input ok"><small>Categoria<span class="pin">2</span></small>Material de Uso e Consumo</div>
+          <div class="app-input"><small>Categoria comercial<span class="pin">3</span></small>— nenhuma —</div>
+        </div>
+        <div class="grid2">
+          <div class="app-input ro"><small>EAN<span class="pin">4</span></small>7899123456789 · da nota</div>
+          <div class="app-input ro"><small>NCM<span class="pin">4</span></small>4011.90.90 · da nota</div>
+        </div>
+        <div style="font-size:11px;font-weight:700;color:#92400e;margin:-2px 0 8px;">Esta categoria não controla estoque: a compra vira só despesa.</div>
+        <div class="app-pills"><span class="app-pill on">Segue a categoria</span><span class="app-pill">Controlar sempre</span><span class="app-pill">Nunca controlar</span><span class="pin">5</span></div>
+        <div style="text-align:right;margin-top:6px;"><span class="app-btn cinza">Cancelar</span> <span class="app-btn">Criar e vincular</span></div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Nome vem preenchido com o texto da nota e pode ser trocado. O texto original fica guardado no produto ("nome na nota").</span></div>
+      <div><span class="pin">2</span><span>Categoria do produto, obrigatória — é ela que diz se controla estoque. Matéria-Prima/Embalagem geram o insumo do PCP sozinhas.</span></div>
+      <div><span class="pin">3</span><span>Categoria comercial, opcional — só para o que se vende.</span></div>
+      <div><span class="pin">4</span><span>EAN e NCM preenchidos do XML, sem digitar — e agora editáveis.</span></div>
+      <div><span class="pin">5</span><span>Exceção por produto, quando precisar fugir da regra da categoria. O padrão é seguir a categoria.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 3: ficha do produto -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 3 · Ficha do produto depois de criado</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-t">Pneu do carrinho de entrega 4.00-8 <span class="app-chip">Uso e Consumo</span> <span class="app-chip verde">Ativo</span></div>
+        <div class="app-s">Código APP-1207 · EAN 7899123456789 · NCM 4011.90.90 · UN</div>
+        <div class="app-s" style="margin-top:8px;">📄 Cadastrado a partir da NF-e 47061 (Maringá Rua Pioneiro) em 15/09/2026 como <i>"PNEU BOARTYRE COM CAMARA DE AR 4.00 8 4PR"</i><span class="pin">1</span></div>
+        <div class="app-s">🏷️ Fornecedores que já vieram com este produto: Maringá Rua Pioneiro (cód. 1368)<span class="pin">2</span></div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>A ficha guarda de que nota o produto nasceu e o nome original.</span></div>
+      <div><span class="pin">2</span><span>O de-para por fornecedor passa a aparecer direto na ficha do produto.</span></div>
+    </div>
+  </div>
+
+  <!-- ══════════ COMO USAR ══════════ -->
+  <div class="sec-label">Para usar</div>
+  <div class="passos">
+    <div class="passo">
+      <span class="passo-n">1</span>
+      <div><b>Atualize o app:</b> toque no ícone de atualizar ↻ (ou feche e abra o app).</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">2</span>
+      <div>Abra <b>Financeiro → Notas Recebidas</b> e confira uma nota nova.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">3</span>
+      <div>Para cada item, escolha um dos três botões: <b>Vincular</b>, <b>Criar produto novo</b> ou <b>Não é estoque</b>.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">4</span>
+      <div>Gere a conta normalmente — o toast avisa quantos produtos foram criados. ✅</div>
+    </div>
+  </div>
+
+  <p class="rodape">Dúvidas? Pergunte ao <strong>Clippy</strong> dentro do app — ele já conhece a tela nova.<br>— Hardt Salgados</p>
+</div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.parentElement;
+    const abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>
