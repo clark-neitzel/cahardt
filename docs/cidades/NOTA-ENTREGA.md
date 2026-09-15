@@ -36,3 +36,68 @@
 - Reteste do QA nos 2 pontos corrigidos (Esc e validação) — cobertos pela conferência do dono acima.
 - Achado do QA, fora do escopo, **não incluído**: `frontend/src/pages/PCP/EtiquetaForm.jsx:295` usa Fragment nas opções e deixa o menu de produto vazio (ver memória "SelectBusca: Fragment = menu vazio"). Abrir tarefa própria.
 - Ajuste pequeno para a próxima vez que tocar: rótulo "Cidade" do editar lead sem `*` apesar de obrigatório; `STATUS.md` ainda diz "Fase 4 não iniciada".
+
+---
+
+# Nota de entrega — Cadastro oficial de cidades (fase 5, backend + frontend)
+
+**Veredito do gerente de entrega (15/09/2026): LIBERADO COM PENDÊNCIA** — pode commitar e publicar
+**na ordem da seção "Pendente"** (backend primeiro, semente, só depois o frontend).
+
+## O que mudou (no uso)
+- **Existe uma lista oficial de cidades** (Configurações → Cidades). Todo campo Cidade do app — Novo Cliente, ficha do cliente,
+  novo/editar lead, fornecedor, bairro do Kit Festa, meta por cidade — **só aceita cidade dessa lista**, com a UF ao lado.
+  O botão **Usar "…"** (texto livre) acabou.
+- **Cidade nova** entra por **"Cadastrar nova cidade…"** (nome + UF). Se já existir uma parecida, o app pergunta "Você quis dizer…?".
+  Quem pode cadastrar cliente ou editar Rota pode cadastrar cidade; os demais veem o aviso "peça ao escritório".
+- **Consulta de CNPJ:** se a Receita devolver uma cidade que não está na lista, o app pergunta "cadastrar ou escolher outra?" antes de gravar.
+- **Tela Configurações → Cidades:** buscar, editar nome/UF (reescreve os registros que usam a cidade), inativar/reativar,
+  **fundir** duas cidades repetidas (com Simular antes e arquivo de reversão) e aba **Pendências** — cidades que chegaram sozinhas
+  pela Conta Azul ou pela IA do WhatsApp ficam ali para o escritório cadastrar ou apontar para a certa.
+- **O que chega automático nunca trava:** sincronização do Conta Azul, fornecedores do CA e leads criados pela IA continuam
+  entrando mesmo com cidade desconhecida (vira pendência). A API da IA (`/v1`) não mudou nada de formato.
+- Mapa de Clientes: o filtro de cidade mostra "Cidade · UF".
+- Manuais do Clippy: novo `config-cidades.md` + clientes, leads, rota, metas, mapa. Página de novidade `novidade-cidades.html`
+  (já registrada em `novidades.json`).
+
+## O que foi testado e por quem
+- **Dev-backend** (banco local): semente (58 cidades, idempotente), resolver/sugestões, 400 `CIDADE_NAO_CADASTRADA` nos 7 pontos
+  estritos, modo tolerante com pendência (CA e IA), fusão com snapshot e reversão, renomear, inativar em uso — detalhado no `STATUS.md`.
+- **QA clicando:** bloco 1 (7 formulários, Receita/CNPJ, mobile) 11/11; bloco 2 (tela Cidades) passou com 1 defeito
+  (a simulação da fusão mostrava zero) → corrigido no `PlanoFusao`, build OK, **sem reteste do QA**.
+- **Revisor:** aprovado após 3 costuras corrigidas (`incluirInativas` aceito no backend, `podeGerirCidades` exige `.edit`,
+  UF por extenso do CA via `ufDeTexto`).
+- **Gerente (conferido por conta própria):** `npm run build` ✓ (5,3 s); `node --check` em 35 arquivos ✓; `npx prisma validate` ✓;
+  schema só ACRESCENTA (`Cidade`, `CidadePendente`) ✓; permissão criar/gerir idêntica back × front (`configuracoes.edit`, não `.view`) ✓;
+  IA v1: rota `criar-lead` tolerante, resposta igual, doc aditivo ✓; 6 transações com `timeout 20000 / maxWait 10000` ✓;
+  snapshot em `../uploads` (volume) ✓; `SelectBusca` na UF e na fusão ✓; cards mobile na tela Cidades ✓; ABAS/README/manual ✓;
+  novidade sem `og:image`, sem "Abrir o app", 4 accordions abertos, 43 legendas ✓; nenhum segredo ✓.
+  **O defeito corrigido sem reteste foi provado pela API:** `POST /cidades/:id/fundir {dryRun:true}` no servidor local devolveu
+  `resumo.totalLinhas: 1` e `tabelas:[{clientes, 1, "Abatiá" → "Araquari"}]` — exatamente os campos que o `PlanoFusao` lê.
+
+## O que o dono precisa conferir (1 minuto, DEPOIS de publicar back + semente + front)
+1. Clientes → Novo Cliente → Cidade: digitar `itapoa` → aparece "Itapoá · SC"; digitar uma cidade inventada → aparece só **Cadastrar nova cidade…**.
+2. Configurações → Cidades → escolher uma cidade → **Fundir** em outra → **Simular**: a prévia tem que mostrar o número de registros (não zero). **Não confirmar.**
+3. Configurações → Cidades → aba **Pendências**: deve abrir vazia (ou com as cidades que o CA trouxe).
+
+## Pendente / fora desta entrega (ordem obrigatória)
+1. Publicar o **backend** e conferir `GET /api/admin-exec/ping` → `deployMarker: cidades-cadastro-2026-09-14`.
+2. Rodar a **semente em produção**: `POST /api/admin-exec/cidades-semente {"dryRun":true}` → conferir → `{"dryRun":false}`.
+   Completar a UF das cidades que saírem em `semUf` (ambíguas) na tela Cidades.
+3. **Prova do volume:** fazer uma fusão/renomeação de teste (ou reaproveitar snapshot) → **publicar de novo** →
+   `GET /api/admin-exec/backfill-cidades-snapshots` ainda tem que listar o arquivo.
+4. Só então publicar o **frontend** (sem a semente o campo Cidade fica sem opções).
+5. **Backfill dos dados antigos** (fase 3) continua parado: aguarda as **8 respostas do dono** sobre a lista aprovada/apelidos/regra das metas.
+6. Sync do Conta Azul e worker de fornecedores só foram exercitados pelo `resolver` tolerante (sem token do CA local) — observar a aba Pendências na 1ª semana.
+7. Reteste do QA na simulação de fusão — coberto pelo item 2 da conferência do dono.
+
+## Texto para o grupo do WhatsApp
+📍 *Novidade no Hardt App: cadastro oficial de cidades*
+
+Agora o app tem UMA lista de cidades. Todo campo *Cidade* (cliente, lead, fornecedor, bairro do Kit Festa, meta) só aceita cidade dessa lista — acabou "Itapoá" escrita de três jeitos.
+
+✅ Cidade nova? Toque em *Cadastrar nova cidade…* (nome + UF). Se já existir uma parecida, o app avisa.
+✅ Consulta de CNPJ: se vier cidade desconhecida, ele pergunta antes de gravar.
+✅ Escritório: *Configurações → Cidades* para editar, fundir repetidas e resolver pendências.
+
+Veja como funciona: https://cahardt-github.xrqvlq.easypanel.host/novidade-cidades.html

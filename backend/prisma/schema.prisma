@@ -4371,3 +4371,44 @@ model CaReceberImportado {
   @@index([clienteCaId])
   @@map("ca_receber_importado")
 }
+
+// ============================================================================
+// CADASTRO OFICIAL DE CIDADES (09/2026 — docs/cidades/PLANO-CADASTRO.md)
+// As 6 tabelas que guardam cidade (clientes, leads, fornecedores, kitfesta_bairros,
+// meta_cidades, catalogos_personalizados) continuam gravando TEXTO (= `nome` da linha
+// ativa). NÃO há FK de propósito: `clientes` está no teto de colunas. A unicidade é pela
+// chave normalizada (`chaveCidade(nome)` — sem acento, minúscula).
+// ============================================================================
+model Cidade {
+  id           String    @id @default(uuid())
+  nome         String // nome oficial: "Itapoá", "Jaraguá do Sul" (== normalizarCidade(nome))
+  uf           String?   @db.VarChar(2) // "SC"; null só quando o nome é ambíguo e o dono ainda não escolheu
+  chave        String    @unique // chaveCidade(nome): "itapoa" — é o que impede a repetição
+  ibge         String? // código IBGE, opcional
+  ativo        Boolean   @default(true)
+  fundidaEmId  String?   @map("fundida_em_id") // preenchido quando esta cidade foi fundida em outra (histórico)
+  criadoEm     DateTime  @default(now()) @map("criado_em")
+  criadoPor    String?   @map("criado_por") // id do usuário; null = semente/automático
+  atualizadoEm DateTime  @updatedAt @map("atualizado_em")
+
+  @@index([ativo])
+  @@map("cidades")
+}
+
+// Cidade que chegou por entrada AUTOMÁTICA (sync do CA, IA externa) e não existe na lista.
+// Gravou normalizada no registro de origem e ficou aqui para o admin decidir (cadastrar ou apontar).
+model CidadePendente {
+  id          String    @id @default(uuid())
+  chave       String    @unique // uma pendência por grafia
+  nomeBruto   String    @map("nome_bruto") // como veio
+  nomeGravado String    @map("nome_gravado") // o que foi gravado (normalizarCidade)
+  uf          String?   @db.VarChar(2)
+  origem      String // CA_SYNC | IA_LEAD | CA_FORNECEDOR
+  ocorrencias Int       @default(1)
+  exemplo     String? // "clientes:UUID" do 1º registro
+  resolvidoEm DateTime? @map("resolvido_em")
+  cidadeId    String?   @map("cidade_id") // para onde foi resolvida
+  criadoEm    DateTime  @default(now()) @map("criado_em")
+
+  @@map("cidades_pendentes")
+}

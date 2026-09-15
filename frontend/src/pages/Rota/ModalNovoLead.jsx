@@ -7,6 +7,7 @@ import api from '../../services/api';
 import toast from 'react-hot-toast';
 import SelectBusca from '../../components/SelectBusca';
 import CampoCidade from '../../components/CampoCidade';
+import { erroCidadeNaoCadastrada } from '../../services/cidadeService';
 
 const DIAS_OPCOES = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'DOM', 'N/D'];
 const CANAIS = [
@@ -25,6 +26,7 @@ const ORIGENS_PADRAO = [
 
 const ModalNovoLead = ({ onClose, onSalvo, onCriado, user, vendedorId: propVendedorId, podeEscolherVendedor: propPodeEscolher, vendedores: propVendedores }) => {
     const callback = onSalvo || onCriado;
+    const [abrirCadastroCidade, setAbrirCadastroCidade] = useState(null); // 400 CIDADE_NAO_CADASTRADA
     const [form, setForm] = useState({
         nomeEstabelecimento: '',
         contato: '',
@@ -239,7 +241,14 @@ const ModalNovoLead = ({ onClose, onSalvo, onCriado, user, vendedorId: propVende
             callback();
         } catch (e) {
             console.error(e);
-            toast.error('Erro ao criar lead.', { duration: 5000 });
+            const ec = erroCidadeNaoCadastrada(e);
+            if (ec) {
+                // Cidade fora do cadastro oficial: abre o cadastro já com o nome.
+                toast.error(`A cidade "${ec.cidade}" não está no cadastro. Cadastre-a ou escolha outra.`, { duration: 5000 });
+                setAbrirCadastroCidade({ nome: ec.cidade, n: Date.now() });
+            } else {
+                toast.error(e.response?.data?.error || 'Erro ao criar lead.', { duration: 5000 });
+            }
         } finally {
             setSaving(false);
         }
@@ -310,7 +319,7 @@ const ModalNovoLead = ({ onClose, onSalvo, onCriado, user, vendedorId: propVende
                     {/* Cidade, Origem, Categoria */}
                     <div>
                         <label className="block text-[13px] font-semibold text-gray-700 mb-1">Cidade *</label>
-                        <CampoCidade value={form.cidade} onChange={v => setForm(f => ({ ...f, cidade: v }))} placeholder="Ex: Chapecó" />
+                        <CampoCidade value={form.cidade} onChange={v => setForm(f => ({ ...f, cidade: v }))} placeholder="Ex: Chapecó" abrirCadastroCom={abrirCadastroCidade} />
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                         <div>

@@ -6,7 +6,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { ArrowLeft, UserPlus, Search, Building, MapPin, Mail, Save, X, CheckCircle, AlertTriangle, Loader2 } from 'lucide-react';
 import SelectBusca from '../../components/SelectBusca';
 import CampoCidade from '../../components/CampoCidade';
-import { normalizarCidade } from '../../utils/cidade';
+import ModalCidadeReceita from '../../components/ModalCidadeReceita';
+import { resolverCidadeDaReceita, erroCidadeNaoCadastrada } from '../../services/cidadeService';
 import CampoWhatsapps from '../../components/CampoWhatsapps';
 import ModalPontoGps from '../../components/ModalPontoGps';
 import { mascaraDoc, normalizarDoc, validarDoc } from '../../utils/documento';
@@ -67,6 +68,11 @@ const NovoCliente = () => {
     // Erro do WhatsApp — do backend (mensagem pronta) ou da validação daqui.
     // Serve para os dois: mostra o texto E marca o campo de vermelho.
     const [erroWhatsapp, setErroWhatsapp] = useState('');
+    // Cidade da Receita fora do cadastro oficial → modal "cadastrar ou escolher outra".
+    // Enquanto não resolver, End_Cidade fica vazio e o campo marcado.
+    const [cidadeReceita, setCidadeReceita] = useState(null); // { nome, uf, sugestoes }
+    const [cidadeInvalida, setCidadeInvalida] = useState(false);
+    const [abrirCadastroCidade, setAbrirCadastroCidade] = useState(null); // { nome, n } — 400 CIDADE_NAO_CADASTRADA
     // Interruptor do módulo. Nasce DESLIGADO: enquanto não for ligado, esta tela se
     // comporta exatamente como antes (WhatsApp opcional). Quem manda é o backend —
     // se não der para ler a config, NÃO exigimos nada aqui.
@@ -126,10 +132,16 @@ const NovoCliente = () => {
                     End_Numero: r.endereco?.numero || f.End_Numero,
                     End_Complemento: r.endereco?.complemento || f.End_Complemento,
                     End_Bairro: r.endereco?.bairro || f.End_Bairro,
-                    End_Cidade: normalizarCidade(r.endereco?.cidade) || f.End_Cidade, // Receita devolve MAIÚSCULO
                     End_Estado: r.endereco?.uf || f.End_Estado,
                     End_CEP: r.endereco?.cep || f.End_CEP
                 }));
+                // Cidade NUNCA entra fora do cadastro oficial: existe → grava o nome oficial;
+                // não existe → modal pergunta "cadastrar ou escolher outra" (o resto já entrou).
+                if (r.endereco?.cidade) {
+                    const rc = await resolverCidadeDaReceita({ cidade: r.endereco.cidade, uf: r.endereco.uf });
+                    if (rc.ok) { setForm(f => ({ ...f, End_Cidade: rc.nome || f.End_Cidade })); setCidadeInvalida(false); }
+                    else { setForm(f => ({ ...f, End_Cidade: '' })); setCidadeInvalida(true); setCidadeReceita(rc); }
+                }
             }
         } catch (e) {
             setConsulta({ encontrado: false, erro: e.response?.data?.erro || 'Falha na consulta — preencha manualmente' });
@@ -201,6 +213,12 @@ const NovoCliente = () => {
                 if (window.confirm(`${resp.error}.\n\nAbrir o cadastro existente?`)) {
                     navigate(`/clientes/${resp.clienteExistente.UUID}`);
                 }
+            } else if (erroCidadeNaoCadastrada(e)) {
+                // Cidade fora do cadastro oficial: abre o modal de cadastro já com o nome.
+                const { cidade } = erroCidadeNaoCadastrada(e);
+                setCidadeInvalida(true);
+                alert(`A cidade "${cidade}" não está no cadastro. Cadastre-a ou escolha outra da lista.`);
+                setAbrirCadastroCidade({ nome: cidade, n: Date.now() });
             } else if (resp?.codigo === 'WHATSAPP_NAO_EXISTE') {
                 // Mensagem pronta do backend — mostrada com destaque no campo do celular
                 setErroWhatsapp(resp.error);
@@ -416,7 +434,9 @@ const NovoCliente = () => {
                         </div>
                         <div className="md:col-span-3">
                             <Campo label="Cidade">
-                                <CampoCidade value={form.End_Cidade} onChange={(v) => set('End_Cidade', v)} />
+                                <CampoCidade value={form.End_Cidade} onChange={(v) => { set('End_Cidade', v); setCidadeInvalida(false); }}
+                                    invalido={cidadeInvalida} ufSugerida={form.End_Estado || 'SC'} abrirCadastroCom={abrirCadastroCidade} />
+                                {cidadeInvalida && !form.End_Cidade && <p className="text-xs text-amber-700 mt-1">Escolha a cidade da lista (a da Receita não estava cadastrada).</p>}
                             </Campo>
                         </div>
                         <div className="md:col-span-1">
@@ -506,6 +526,9 @@ const NovoCliente = () => {
                 origem="CADASTRO"
                 onEscolher={(ponto) => setPontoGps(ponto)}
             />
+            <ModalCidadeReceita pendente={cidadeReceita}
+                onEscolher={(nome) => { set('End_Cidade', nome); setCidadeInvalida(false); setCidadeReceita(null); }}
+                onCancelar={() => setCidadeReceita(null)} />
         </div>
     );
 };

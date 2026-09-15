@@ -5,6 +5,8 @@ import fornecedorService from '../../services/fornecedorService';
 import { Building2, X, Download, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import SelectBusca from '../../components/SelectBusca';
+import CampoCidade from '../../components/CampoCidade';
+import { erroCidadeNaoCadastrada } from '../../services/cidadeService';
 // CPF/CNPJ (inclui CNPJ ALFANUMÉRICO) — módulo único do projeto.
 import { mascaraDoc, formatarDoc, validarDoc, normalizarDoc } from '../../utils/documento';
 
@@ -237,6 +239,7 @@ const FornecedorModal = ({ fornecedor, onClose, onSuccess }) => {
     });
     const [salvando, setSalvando] = useState(false);
     const [excluindo, setExcluindo] = useState(false);
+    const [abrirCadastroCidade, setAbrirCadastroCidade] = useState(null); // 400 CIDADE_NAO_CADASTRADA
 
     const set = (campo, valor) => setForm(prev => ({ ...prev, [campo]: valor }));
 
@@ -300,6 +303,12 @@ const FornecedorModal = ({ fornecedor, onClose, onSuccess }) => {
             }
             onSuccess();
         } catch (e) {
+            const ec = erroCidadeNaoCadastrada(e);
+            if (ec) {
+                toast.error(`A cidade "${ec.cidade}" não está no cadastro. Cadastre-a ou escolha outra.`, { duration: 5000 });
+                setAbrirCadastroCidade({ nome: ec.cidade, n: Date.now() });
+                return;
+            }
             toast.error(e.response?.data?.error || 'Erro ao salvar fornecedor');
         } finally {
             setSalvando(false);
@@ -340,7 +349,7 @@ const FornecedorModal = ({ fornecedor, onClose, onSuccess }) => {
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Cidade</label>
-                            <input value={form.cidade} onChange={e => set('cidade', e.target.value)} className={inputCls} />
+                            <CampoCidade value={form.cidade} onChange={v => set('cidade', v)} ufSugerida={form.uf || 'SC'} abrirCadastroCom={abrirCadastroCidade} />
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">UF</label>

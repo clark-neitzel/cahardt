@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const prisma = require('../config/database'); // singleton compartilhado (pool único)
 const categoriaEstoqueService = require('./categoriaEstoqueService');
 const { normalizarCidade } = require('../utils/cidade'); // grafia oficial da cidade (Fase 1)
+const cidadeService = require('./cidadeService'); // cadastro oficial de cidades (09/2026): UF quando o cadastro não tem
 
 // WhatsApp central da loja para o botão "fazer pedido" da página pública.
 // Pode ser sobrescrito em app_configs (chave "catalogo_publico_whatsapp"); default abaixo.
@@ -89,7 +90,9 @@ async function criar({ vendedor, clienteUuid, clienteNome, condicaoId, produtoId
         // rótulo na página pública do catálogo. Normalizamos SÓ a parte da cidade, ANTES de
         // juntar — assim não existe string composta para desmontar depois (nem o caso chato
         // de "faltou o separador"), e a UF continua exatamente como está no cadastro.
-        cidadeDestino = [normalizarCidade(cliente.End_Cidade), cliente.End_Estado]
+        // (09/2026) Sem UF no cadastro do cliente, usa a UF da tabela `cidades` (só leitura).
+        const ufDestino = cliente.End_Estado || await cidadeService.ufDaCidade(cliente.End_Cidade);
+        cidadeDestino = [normalizarCidade(cliente.End_Cidade), ufDestino]
             .filter(Boolean).join(' · ') || null;
     } else {
         nomeDestino = (clienteNome || '').trim();

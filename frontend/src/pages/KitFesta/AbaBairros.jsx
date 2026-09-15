@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Plus, Trash2, MapPin, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { kitFestaService } from '../../services/kitFestaService';
+import CampoCidade from '../../components/CampoCidade';
+import { erroCidadeNaoCadastrada } from '../../services/cidadeService';
 
 const vazio = { nome: '', cidade: 'Joinville', cep: '', taxa: '', ativo: true };
 
@@ -11,6 +13,7 @@ export default function AbaBairros() {
   const [form, setForm] = useState(vazio);
   const [editId, setEditId] = useState(null);
   const [salvando, setSalvando] = useState(false);
+  const [abrirCadastroCidade, setAbrirCadastroCidade] = useState(null); // 400 CIDADE_NAO_CADASTRADA
 
   const carregar = () => {
     setLoading(true);
@@ -28,7 +31,13 @@ export default function AbaBairros() {
       await kitFestaService.salvarBairro(editId, { ...form, taxa: Number(form.taxa) || 0 });
       toast.success(editId ? 'Bairro atualizado' : 'Bairro adicionado');
       cancelar(); carregar();
-    } catch (e) { toast.error(e.response?.data?.error || 'Erro ao salvar'); }
+    } catch (e) {
+      const ec = erroCidadeNaoCadastrada(e);
+      if (ec) {
+        toast.error(`A cidade "${ec.cidade}" não está no cadastro. Cadastre-a ou escolha outra.`, { duration: 5000 });
+        setAbrirCadastroCidade({ nome: ec.cidade, n: Date.now() });
+      } else toast.error(e.response?.data?.error || 'Erro ao salvar');
+    }
     finally { setSalvando(false); }
   };
 
@@ -56,8 +65,7 @@ export default function AbaBairros() {
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className="text-xs text-gray-500">Cidade</label>
-              <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value={form.cidade}
-                onChange={e => setForm({ ...form, cidade: e.target.value })} />
+              <CampoCidade value={form.cidade} onChange={v => setForm({ ...form, cidade: v })} abrirCadastroCom={abrirCadastroCidade} />
             </div>
             <div>
               <label className="text-xs text-gray-500">CEP</label>

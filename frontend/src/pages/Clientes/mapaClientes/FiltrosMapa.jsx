@@ -24,7 +24,8 @@ export default function FiltrosMapa({ filtros, setFiltros, opcoes, vendedores, c
 
     const set = (campo, valor) => setFiltros(prev => ({ ...prev, [campo]: valor }));
 
-    const opCidades = useMemo(() => (opcoes?.cidades || []).map(c => ({ valor: c.valor, label: `${c.valor} (${c.qtd})` })), [opcoes]);
+    // UF chega na faceta quando o backend a devolve (cadastro oficial de cidades); sem UF, só o nome.
+    const opCidades = useMemo(() => (opcoes?.cidades || []).map(c => ({ valor: c.valor, label: `${c.valor}${c.uf ? ` · ${c.uf}` : ''} (${c.qtd})` })), [opcoes]);
     // Bairros dependem da cidade marcada (quando há cidade, só os dela)
     const opBairros = useMemo(() => {
         const cid = new Set(filtros.cidades || []);

@@ -67,7 +67,7 @@ mencionada na mensagem. Assim a mudança nunca pega o app de surpresa.
 | GET | `/congelados/perfil` | header `Authorization: Bearer <token>` | Dados do cliente autenticado (nome, dias de entrega, condição padrão) |
 | POST | `/cliente/reconhecer-telefone` | `{ telefone }` | **Geral, qualquer linha.** Se bater com um cadastro: `{ reconhecido:true, cliente:{nome,documento,cidade,vendedor}, diasEntrega:[...], diasVenda:[...], condicaoPagamento:{nome,valorMinimo} }`. **(v1.5)** o telefone também casa com os WhatsApps cadastrados na lista do cliente. Senão: `{ reconhecido:false }` |
 | POST | `/cliente/historico-pedidos` | `{ telefone, limite?, comItens? }` (limite padrão 10, máx 30) | Se o telefone bater: `{ reconhecido:true, cliente:{nome}, pedidos:[{numero,data,dataEntrega,statusEntrega,tipo,total}] }`. **(v1.4)** com `comItens:true`, cada pedido também traz `itens:[{produtoId,nome,quantidade,unidade,precoUnit}]`. Senão: `{ reconhecido:false }` |
-| POST | `/cliente/criar-lead` | `{ nomeEstabelecimento, whatsapp, contato?, cidade?, observacoes? }` | Cria um prospect no CRM interno (mesma tabela que os vendedores veem). Retorna `{ id, numero, etapa }`. `origemLead` é sempre fixado como `"WHATSAPP_IA"`. **(v1.5.1)** a `cidade` é gravada com a grafia oficial (`"JOINVILLE"`/`"joinvile"` → `"Joinville"`, `"ITAPOA"` → `"Itapoá"`) — mande como o cliente escreveu, sem tratar |
+| POST | `/cliente/criar-lead` | `{ nomeEstabelecimento, whatsapp, contato?, cidade?, observacoes? }` | Cria um prospect no CRM interno (mesma tabela que os vendedores veem). Retorna `{ id, numero, etapa }`. `origemLead` é sempre fixado como `"WHATSAPP_IA"`. **(v1.5.1)** a `cidade` é gravada com a grafia oficial (`"JOINVILLE"`/`"joinvile"` → `"Joinville"`, `"ITAPOA"` → `"Itapoá"`) — mande como o cliente escreveu, sem tratar. **(09/2026, cadastro oficial de cidades)** cidade que não existe na lista do CA-Hardt **continua sendo aceita** (modo tolerante): o lead é criado normalmente e a cidade vira uma pendência interna para o escritório cadastrar ou corrigir. Nunca devolve erro por causa da cidade; a resposta não mudou |
 | POST | `/cliente/buscar` | `{ busca, limite? }` (mín. 3 caracteres; padrão 10, máx 20) | **(v1.5, só painel da equipe)** Busca parcial por Razão Social, Nome Fantasia ou CPF/CNPJ (11+ dígitos = documento). Retorna `{ clientes:[{documento,nome,nomeFantasia,cidade,vendedor,ativo,telefones,whatsapps}] }`. Ver seção "Busca e ficha para o painel". |
 | POST | `/cliente/ficha` | `{ documento }` (com ou sem pontuação) | **(v1.5, só painel da equipe)** Ficha de UM cliente pela chave `documento`. Retorna `{ encontrado, cliente:{nome,nomeFantasia,documento,cidade,vendedor,ativo}, diasEntrega, diasVenda, condicaoPagamento, whatsapps, telefones }`. |
 | POST | `/congelados/pedido` | `{ telefone, itens:[{id,quantidade}], data?, modo?, observacoes?, idempotencyKey?, visitante?:{nome,telefone,cpf?} }` | **(v1.4)** Cria pedido de Congelados na fila de aprovação (`AGUARDANDO`; `PENDENTE_CADASTRO` se telefone novo). Preço recalculado no servidor. Retorna `{ id, numero, status, total }`. Ver "Fase 2". |
@@ -286,6 +286,11 @@ curl -H "x-ia-api-key: SUACHAVE" -X POST -H "Content-Type: application/json" \
   Por que isso importa do lado do CA-Hardt: cidade era texto livre, e quem casa cidade faz
   comparação exata — meta em `"Itapoá"` contra lead/pedido em `"ITAPOA"` zerava o realizado do
   vendedor sem erro nenhum aparecer.
+- **(2026-09-14, sem mudança de versão — aditivo)** Cadastro oficial de cidades no CA-Hardt. Para
+  esta API **nada muda**: `POST /cliente/criar-lead` continua aceitando qualquer texto em `cidade`
+  (modo tolerante). Se a cidade não existir na lista oficial, o lead é criado do mesmo jeito, com o
+  nome normalizado, e a cidade fica como **pendência** na tela Configurações → Cidades do app para o
+  escritório cadastrar ou apontar para a cidade certa. Resposta inalterada: `{ id, numero, etapa }`.
 
 ## Fase 2 — Criação de pedido pela IA (IMPLEMENTADA na v1.4)
 

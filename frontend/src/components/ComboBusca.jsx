@@ -50,7 +50,12 @@ const ComboBusca = ({
     const onKey = (e) => {
         if (e.key === 'ArrowDown') { e.preventDefault(); setHi(h => Math.min(h + 1, filtrados.length - 1)); }
         else if (e.key === 'ArrowUp') { e.preventDefault(); setHi(h => Math.max(h - 1, 0)); }
-        else if (e.key === 'Enter') { e.preventDefault(); if (filtrados[hi]) escolher(filtrados[hi]); else usarNovo(); }
+        else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (filtrados[hi]) escolher(filtrados[hi]);
+            else if (podeCriar) usarNovo();
+            else if (extraAction && query.trim()) { const q = query.trim(); setOpen(false); setQuery(''); extraAction.onClick(q); }
+        }
         else if (e.key === 'Escape') { e.preventDefault(); setOpen(false); setQuery(''); }
     };
 
@@ -117,7 +122,8 @@ const ComboBusca = ({
                     </div>
                     {extraAction && (
                         <div className="p-2 border-t border-gray-100">
-                            <button type="button" onClick={() => { extraAction.onClick(); setOpen(false); setQuery(''); }}
+                            {/* Recebe o texto digitado na busca (ex.: "Cadastrar nova cidade…" já com o nome). */}
+                            <button type="button" onClick={() => { const q = query.trim(); setOpen(false); setQuery(''); extraAction.onClick(q); }}
                                 className="w-full text-left px-2 py-2 text-sm text-primary font-medium hover:bg-blue-50 rounded">{extraAction.label}</button>
                         </div>
                     )}

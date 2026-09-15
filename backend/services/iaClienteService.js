@@ -228,12 +228,14 @@ const iaClienteService = {
             whatsapp: soDigitos(whatsapp),
             contato: contato || null,
             // A cidade aqui é TEXTO CRU de LLM (o cliente escreveu no WhatsApp e a IA repassou):
-            // chega "joinvile", "JOINVILLE", "Joinville ". `leadService.criar` normaliza de novo —
-            // é idempotente, e ter as duas camadas deixa explícito que este ponto não confia na entrada.
-            cidade: normalizarCidade(cidade),
+            // chega "joinvile", "JOINVILLE", "Joinville ". `leadService.criar` resolve pelo cadastro
+            // oficial de cidades em modo TOLERANTE (abaixo): cidade conhecida vira o nome oficial;
+            // desconhecida é gravada normalizada e vira pendência para o escritório — NUNCA erro.
+            // Contrato v1 intacto: a resposta continua { id, numero, etapa }.
+            cidade: cidade == null ? null : String(cidade),   // cru de propósito: a pendência guarda "como veio"
             observacoes: observacoes || null,
             origemLead: 'WHATSAPP_IA',
-        });
+        }, { modo: 'tolerante', origem: 'IA_LEAD' });
         return { id: lead.id, numero: lead.numero, etapa: lead.etapa };
     },
 };

@@ -6,7 +6,7 @@ const pedidoService = require('./pedidoService');
 const webhookService = require('./webhookService');
 // Validação de CPF/CNPJ (inclui CNPJ ALFANUMÉRICO) — módulo único do projeto.
 const { normalizarDoc, validarCpf, validarCnpj } = require('../utils/documento');
-const { normalizarCidade } = require('../utils/cidade'); // grafia oficial da cidade (Fase 1)
+const cidadeService = require('./cidadeService'); // cadastro oficial de cidades (09/2026)
 
 const money2 = (n) => 'R$ ' + Number(n || 0).toFixed(2).replace('.', ',');
 
@@ -911,9 +911,13 @@ const kitFestaService = {
         return prisma.kitFestaBairro.findMany({ orderBy: [{ ordem: 'asc' }, { nome: 'asc' }] });
     },
     async adminSalvarBairro(id, dados) {
+        // Cadastro oficial de cidades (09/2026): só cidade da lista (estrito); em branco = Joinville.
+        // O erro sobe com { status: 400, codigo: 'CIDADE_NAO_CADASTRADA', cidade, sugestoes } e o
+        // controller repassa esses campos para a tela.
+        const cidadeResolvida = await cidadeService.resolver(dados.cidade, { modo: 'estrito' });
         const payload = {
             nome: dados.nome,
-            cidade: normalizarCidade(dados.cidade) || 'Joinville',
+            cidade: cidadeResolvida || 'Joinville',
             cep: dados.cep || null,
             taxa: Number(dados.taxa) || 0,
             ativo: dados.ativo != null ? !!dados.ativo : true,

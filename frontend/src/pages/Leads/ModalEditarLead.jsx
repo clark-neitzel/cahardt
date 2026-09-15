@@ -8,6 +8,7 @@ import api from '../../services/api';
 import toast from 'react-hot-toast';
 import SelectBusca from '../../components/SelectBusca';
 import CampoCidade from '../../components/CampoCidade';
+import { erroCidadeNaoCadastrada } from '../../services/cidadeService';
 
 const DIAS_OPCOES = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'DOM', 'N/D'];
 const CANAIS = [
@@ -41,6 +42,8 @@ const ModalEditarLead = ({ lead, onClose, onSalvo, onExcluido, user }) => {
     const diasIniciais = lead.diasVisita
         ? lead.diasVisita.split(',').map(d => d.trim()).filter(Boolean)
         : [];
+
+    const [abrirCadastroCidade, setAbrirCadastroCidade] = useState(null); // 400 CIDADE_NAO_CADASTRADA
 
     const [form, setForm] = useState({
         nomeEstabelecimento: lead.nomeEstabelecimento || '',
@@ -218,7 +221,13 @@ const ModalEditarLead = ({ lead, onClose, onSalvo, onExcluido, user }) => {
             onSalvo && onSalvo();
         } catch (e) {
             console.error(e);
-            toast.error('Erro ao salvar lead.');
+            const ec = erroCidadeNaoCadastrada(e);
+            if (ec) {
+                toast.error(`A cidade "${ec.cidade}" não está no cadastro. Cadastre-a ou escolha outra.`, { duration: 5000 });
+                setAbrirCadastroCidade({ nome: ec.cidade, n: Date.now() });
+            } else {
+                toast.error(e.response?.data?.error || 'Erro ao salvar lead.');
+            }
         } finally {
             setSaving(false);
         }
@@ -265,7 +274,7 @@ const ModalEditarLead = ({ lead, onClose, onSalvo, onExcluido, user }) => {
                     {/* Cidade, Origem, Categoria */}
                     <div>
                         <label className="block text-[13px] font-semibold text-gray-700 mb-1">Cidade</label>
-                        <CampoCidade value={form.cidade} onChange={v => setForm(f => ({ ...f, cidade: v }))} placeholder="Ex: Chapecó" />
+                        <CampoCidade value={form.cidade} onChange={v => setForm(f => ({ ...f, cidade: v }))} placeholder="Ex: Chapecó" abrirCadastroCom={abrirCadastroCidade} />
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                         <div>

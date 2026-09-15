@@ -46,9 +46,13 @@ const leadController = {
 
     criar: async (req, res) => {
         try {
-            const lead = await leadService.criar(req.body);
+            const lead = await leadService.criar(req.body, { modo: 'estrito' });
             res.status(201).json(lead);
         } catch (error) {
+            // Cadastro oficial de cidades (09/2026): cidade fora da lista -> 400 com sugestões.
+            if (error.codigo === 'CIDADE_NAO_CADASTRADA') {
+                return res.status(400).json({ error: error.message, codigo: error.codigo, cidade: error.cidade, sugestoes: error.sugestoes || [], cidadeInativa: error.cidadeInativa || undefined });
+            }
             console.error('[leadController.criar]', error);
             res.status(500).json({ error: 'Erro ao criar lead.' });
         }
@@ -60,9 +64,12 @@ const leadController = {
             if (!perms.admin && !perms.Pode_Editar_Lead) {
                 return res.status(403).json({ error: 'Sem permissão para editar leads.' });
             }
-            const lead = await leadService.atualizar(req.params.id, req.body);
+            const lead = await leadService.atualizar(req.params.id, req.body, { modo: 'estrito' });
             res.json(lead);
         } catch (error) {
+            if (error.codigo === 'CIDADE_NAO_CADASTRADA') {
+                return res.status(400).json({ error: error.message, codigo: error.codigo, cidade: error.cidade, sugestoes: error.sugestoes || [], cidadeInativa: error.cidadeInativa || undefined });
+            }
             console.error('[leadController.atualizar]', error);
             res.status(500).json({ error: 'Erro ao atualizar lead.' });
         }

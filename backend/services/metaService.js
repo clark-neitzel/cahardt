@@ -6,10 +6,21 @@ const { calcularFlexDinamico } = require('./flexService');
 const projecaoVendasService = require('./projecaoVendasService');
 const { deduplicarMetasCidades } = require('../utils/metaCidadeMerge'); // fusão de cidades repetidas (@@unique de meta_cidades)
 const { normalizarCidade } = require('../utils/cidade'); // grafia oficial da cidade (Fase 1)
+const cidadeService = require('./cidadeService'); // cadastro oficial de cidades (09/2026)
 
 const metaService = {
     salvarMetaMensal: async (dados, usuarioLogadoId) => {
-        const { vendedorId, mesReferencia, diasTrabalho, valorMensal, flexMensal, metasProdutos, metasPromocoes, metasCidades } = dados;
+        const { vendedorId, mesReferencia, diasTrabalho, valorMensal, flexMensal, metasProdutos, metasPromocoes } = dados;
+
+        // CADASTRO OFICIAL DE CIDADES (09/2026): cada cidade da meta tem que existir na lista.
+        // Resolvido ANTES de qualquer gravação (e antes do dedupe) — cidade desconhecida sobe
+        // { status: 400, codigo: 'CIDADE_NAO_CADASTRADA', cidade, sugestoes } e nada é tocado.
+        // Linha sem cidade continua sendo descartada pelo `deduplicarMetasCidades` logo abaixo.
+        const metasCidades = [];
+        for (const mc of (Array.isArray(dados.metasCidades) ? dados.metasCidades : [])) {
+            const cidade = await cidadeService.resolver(mc?.cidade, { modo: 'estrito' });
+            metasCidades.push({ ...mc, cidade });
+        }
 
         const metaSalva = await prisma.metaMensalVendedor.upsert({
             where: { vendedorId_mesReferencia: { vendedorId, mesReferencia } },

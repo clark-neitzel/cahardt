@@ -3,6 +3,7 @@ const prisma = require('../config/database');
 const consultaCnpjService = require('../services/consultaCnpjService');
 const { normalizarDoc, validarDoc, ehCnpj } = require('../utils/documento');
 const { normalizarCidade } = require('../utils/cidade'); // grafia oficial da cidade (Fase 1 — blindagem da escrita)
+const cidadeService = require('../services/cidadeService'); // cadastro oficial de cidades (09/2026): só aceita cidade da lista
 
 // WhatsApps vinculados ao cadastro (tabela lateral cliente_whatsapps — usados pelo painel do
 // bot de WhatsApp para achar o cliente). Normaliza para só dígitos, sem vazios nem repetidos.
@@ -38,9 +39,10 @@ async function upsertFornecedorDoCadastro(dados) {
         inscricaoEstadual: dados.InscricaoEstadual || null,
         email: dados.Email || null,
         telefone: dados.Telefone_Celular || dados.Telefone || null,
-        // `dados.End_Cidade` já vem normalizado de `dadosComuns`; o normalizador é
-        // idempotente e fica aqui como cinto de segurança para quem chamar esta
-        // função com um objeto montado em outro lugar.
+        // `dados.End_Cidade` já vem RESOLVIDO pelo cadastro de cidades em `dadosComuns`
+        // (`cidadeService.resolver`, modo estrito); o normalizador é idempotente sobre um
+        // nome da tabela e fica aqui como cinto de segurança para quem chamar esta função
+        // com um objeto montado em outro lugar.
         cidade: normalizarCidade(dados.End_Cidade),
         uf: dados.End_Estado || null,
         ativo: true
@@ -549,6 +551,20 @@ const clienteController = {
                 }
             }
 
+            // CADASTRO OFICIAL DE CIDADES (09/2026): a cidade tem que existir na lista. Modo
+            // estrito — cidade desconhecida devolve 400 CIDADE_NAO_CADASTRADA com sugestões e a
+            // tela oferece "Cadastrar nova cidade…". Resolvido ANTES de qualquer gravação.
+            let cidadeResolvida = null;
+            try {
+                cidadeResolvida = await cidadeService.resolver(b.End_Cidade, { modo: 'estrito' });
+            } catch (cidErr) {
+                if (!cidErr.codigo) throw cidErr;
+                return res.status(cidErr.status || 400).json({
+                    error: cidErr.message, codigo: cidErr.codigo, cidade: cidErr.cidade,
+                    sugestoes: cidErr.sugestoes || [], cidadeInativa: cidErr.cidadeInativa || undefined,
+                });
+            }
+
             const dadosComuns = {
                 Documento: docNorm,
                 Nome: nome,
@@ -557,7 +573,7 @@ const clienteController = {
                 Email: emailNorm || null,
                 Telefone: soDigitos(b.Telefone) || null,
                 Telefone_Celular: celularNorm || null,
-                End_Cidade: normalizarCidade(b.End_Cidade),
+                End_Cidade: cidadeResolvida,
                 End_Estado: ufNorm || null
             };
 
@@ -822,6 +838,21 @@ const clienteController = {
                 ? { Telefone_Celular: celularNorm || null }
                 : {};
 
+            // CADASTRO OFICIAL DE CIDADES (09/2026): só valida quando o campo VEIO no PATCH
+            // (`undefined` = não mexeu — a ficha só manda End_Cidade quando o usuário alterou).
+            let cidadeResolvida;
+            if (podeEditarCadastro && End_Cidade !== undefined) {
+                try {
+                    cidadeResolvida = await cidadeService.resolver(End_Cidade, { modo: 'estrito' });
+                } catch (cidErr) {
+                    if (!cidErr.codigo) throw cidErr;
+                    return res.status(cidErr.status || 400).json({
+                        error: cidErr.message, codigo: cidErr.codigo, cidade: cidErr.cidade,
+                        sugestoes: cidErr.sugestoes || [], cidadeInativa: cidErr.cidadeInativa || undefined,
+                    });
+                }
+            }
+
             const cadastro = podeEditarCadastro ? {
                 Email: emailNorm !== undefined ? (emailNorm || null) : undefined,
                 Indicador_Inscricao_Estadual: Indicador_Inscricao_Estadual !== undefined ? (Indicador_Inscricao_Estadual || null) : undefined,
@@ -835,7 +866,7 @@ const clienteController = {
                 End_Numero: End_Numero !== undefined ? (String(End_Numero || '').trim() || null) : undefined,
                 End_Complemento: End_Complemento !== undefined ? (String(End_Complemento || '').trim() || null) : undefined,
                 End_Bairro: End_Bairro !== undefined ? (String(End_Bairro || '').trim() || null) : undefined,
-                End_Cidade: End_Cidade !== undefined ? normalizarCidade(End_Cidade) : undefined,
+                End_Cidade: End_Cidade !== undefined ? cidadeResolvida : undefined,
                 End_Estado: End_Estado !== undefined ? (ufFinal || null) : undefined,
                 End_CEP: End_CEP !== undefined ? (soDigitos(End_CEP) || null) : undefined
             } : {};

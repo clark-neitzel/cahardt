@@ -132,7 +132,7 @@ const APROVADAS_POR_PADRAO = new Set(['dicionario', 'espacos']);
  *   resolvido pelo dicionário quando existe (devolve o acento), senão por normalizarCidade.
  * Devolve { nomeFinal, viaApelido }. `nomeFinal` null = valor só de espaço.
  */
-function nomeFinalDe(valor, apelidos) {
+function nomeFinalDe(valor, apelidos, cadastro) {
     const chave = chaveCidade(valor);
     if (chave && apelidos && Object.prototype.hasOwnProperty.call(apelidos, chave)) {
         const alvo = String(apelidos[chave] || '');
@@ -140,9 +140,20 @@ function nomeFinalDe(valor, apelidos) {
         const nome = Object.prototype.hasOwnProperty.call(CIDADES_CANONICAS, chaveAlvo)
             ? CIDADES_CANONICAS[chaveAlvo]
             : normalizarCidade(alvo);
-        if (nome) return { nomeFinal: nome, viaApelido: true };
+        if (nome) return { nomeFinal: nome, viaApelido: true, viaCadastro: false };
     }
-    return { nomeFinal: normalizarCidade(valor), viaApelido: false };
+    // (09/2026) CADASTRO OFICIAL (`tabela cidades`, docs/cidades/PLANO-CADASTRO.md): depois dos
+    // apelidos da chamada e ANTES do dicionário. A chave pode entrar direto ("joinville") ou via
+    // apelido do dicionário ("joinvile" -> chave "joinville"); cidade inativa com `fundidaEmId`
+    // já vem resolvida para o nome do destino em `mapaParaBackfill`. O cadastro é a lista que o
+    // dono mantém na tela Cidades — por isso conta como aprovado (ver `decidirAplicacao`).
+    if (chave && cadastro && cadastro.size) {
+        const chaveAlvo = Object.prototype.hasOwnProperty.call(CIDADES_CANONICAS, chave)
+            ? chaveCidade(CIDADES_CANONICAS[chave]) : chave;
+        const nome = cadastro.get(chaveAlvo) || cadastro.get(chave);
+        if (nome) return { nomeFinal: nome, viaApelido: false, viaCadastro: true };
+    }
+    return { nomeFinal: normalizarCidade(valor), viaApelido: false, viaCadastro: false };
 }
 
 /**
@@ -151,7 +162,7 @@ function nomeFinalDe(valor, apelidos) {
  *   apelidos:  { chaveErrada: alvo }    -> objeto com as chaves passadas por chaveCidade
  *   regraMeta: 'somar' | null (null = fusões de meta NÃO são tocadas, saem como pendentes)
  */
-function normalizarOpcoes({ permitirForaDoDicionario = false, aprovado, apelidos, regraMeta } = {}) {
+function normalizarOpcoes({ permitirForaDoDicionario = false, aprovado, apelidos, regraMeta, somenteChaves, fusao } = {}) {
     const aprovadoMap = new Map();
     for (const a of (Array.isArray(aprovado) ? aprovado : [])) {
         const chave = chaveCidade(a?.chave);
@@ -165,11 +176,22 @@ function normalizarOpcoes({ permitirForaDoDicionario = false, aprovado, apelidos
             if (chave && para) apelidosMap[chave] = String(para);
         }
     }
+    // `somenteChaves` (fusão/renomear): restringe o plano às variantes dessas chaves. Sem isso o
+    // plano é o backfill inteiro. `fusao`: { tipo, de, para, usuarioId } — só para o snapshot.
+    const somente = Array.isArray(somenteChaves) && somenteChaves.length
+        ? new Set(somenteChaves.map(chaveCidade).filter(Boolean)) : null;
     return {
         permitirForaDoDicionario: permitirForaDoDicionario === true,
         aprovado: aprovadoMap,
         apelidos: apelidosMap,
         regraMeta: regraMeta === 'somar' ? 'somar' : null,
+        somenteChaves: somente,
+        // Para `meta_cidades` a restrição inclui as chaves DESTINO dos apelidos: a linha de meta
+        // que já está em "B" precisa entrar no grupo para a colisão (A+B na mesma meta) ser
+        // enxergada e fundida — senão o rename de A estoura o @@unique.
+        somenteChavesMeta: somente
+            ? new Set([...somente, ...Object.values(apelidosMap).map(chaveCidade).filter(Boolean)]) : null,
+        fusao: fusao && typeof fusao === 'object' ? fusao : null,
     };
 }
 
@@ -184,8 +206,10 @@ function normalizarOpcoes({ permitirForaDoDicionario = false, aprovado, apelidos
  *      o caminho certo é a linha em CIDADES_CANONICAS)
  *   4. permitirForaDoDicionario              -> sim, com o aviso
  */
-function decidirAplicacao(valor, nomeFinal, viaApelido, op) {
+function decidirAplicacao(valor, nomeFinal, viaApelido, op, viaCadastro = false) {
     if (viaApelido) return { classificacao: 'apelidoNaChamada', aplicar: true, divergente: null };
+    // Nome vindo do cadastro oficial (tabela `cidades`): é a lista que o dono mantém — aprovado.
+    if (viaCadastro) return { classificacao: 'cadastroCidades', aplicar: true, divergente: null };
     const classificacao = classificarMudanca(valor, nomeFinal);
     if (APROVADAS_POR_PADRAO.has(classificacao)) return { classificacao, aplicar: true, divergente: null };
     const chave = chaveCidade(valor);
@@ -240,6 +264,14 @@ function bancoDoAmbiente() {
 async function montarPlano(opcoes = {}) {
     const op = normalizarOpcoes(opcoes);
     const { permitirForaDoDicionario } = op;
+    // Cadastro oficial (chave -> nome ativo). Require tardio: cidadeService também requer este
+    // arquivo (para `fundirCidade`) — no topo daria dependência circular.
+    let cadastro = new Map();
+    try {
+        cadastro = await require('./cidadeService').mapaParaBackfill();
+    } catch (e) {
+        console.error('[backfill-cidades] cadastro de cidades indisponível (segue só com dicionário):', e.message);
+    }
     const tabelas = [];
     const ignoradosEmBranco = [];
     const semAprovacao = [];
@@ -271,7 +303,8 @@ async function montarPlano(opcoes = {}) {
             // Campo composto ("Joinville · SC"): só a parte da cidade passa pela regra.
             const parte = alvo.composto ? decomporComposto(valor) : { cidade: valor, uf: '' };
             if (alvo.composto && !parte.cidade) continue;   // só UF ("SC") — não é cidade, não mexe
-            const { nomeFinal: nomeCidade, viaApelido } = nomeFinalDe(parte.cidade, op.apelidos);
+            if (op.somenteChaves && !op.somenteChaves.has(chaveCidade(parte.cidade))) continue; // fusão: só a origem
+            const { nomeFinal: nomeCidade, viaApelido, viaCadastro } = nomeFinalDe(parte.cidade, op.apelidos, cadastro);
             const nomeFinal = alvo.composto ? recomporComposto(nomeCidade, parte.uf) : nomeCidade;
             if (!nomeCidade) {
                 // Só espaço. Gravar null seria uma mudança que ninguém aprovou — o valor
@@ -284,7 +317,7 @@ async function montarPlano(opcoes = {}) {
                 continue;
             }
             if (valor === nomeFinal) continue;               // já está no nome oficial
-            const { classificacao, aplicar, divergente } = decidirAplicacao(parte.cidade, nomeCidade, viaApelido, op);
+            const { classificacao, aplicar, divergente } = decidirAplicacao(parte.cidade, nomeCidade, viaApelido, op, viaCadastro);
             registrarDivergente(alvo.chave, divergente, ids.length);
             if (!aplicar && !divergente) {
                 semAprovacao.push({ tabela: alvo.chave, de: valor, para: nomeFinal, linhas: ids.length });
@@ -305,7 +338,7 @@ async function montarPlano(opcoes = {}) {
     // — coerente com a decisão da Fase 1 em `routes/fornecedores.js`: 'Santa Catarina' NÃO
     // vira 'SA'. Cortar cego em 2 caracteres inventaria uma UF inexistente que passa por
     // válida em todo relatório que filtra por estado.
-    const fornecedores = await prisma.fornecedor.findMany({
+    const fornecedores = op.somenteChaves ? [] : await prisma.fornecedor.findMany({
         where: { uf: { not: null } },
         select: { id: true, uf: true },
     });
@@ -337,13 +370,15 @@ async function montarPlano(opcoes = {}) {
     // "Joiville" e meta em "Joinville" são chaves diferentes e viram a MESMA linha.
     const porMetaENome = new Map();
     for (const m of metasCidades) {
-        const { nomeFinal, viaApelido } = nomeFinalDe(m.cidade, op.apelidos);
+        if (op.somenteChavesMeta && !op.somenteChavesMeta.has(chaveCidade(m.cidade))) continue; // fusão: origem + destino
+        const { nomeFinal, viaApelido, viaCadastro } = nomeFinalDe(m.cidade, op.apelidos, cadastro);
         if (!nomeFinal) {
             // Mesmo caso das tabelas simples: só espaço. Não mexe, mas REPORTA.
             ignoradosEmBranco.push({ tabela: 'metaCidades', valor: m.cidade, linhas: 1, id: m.id });
             continue;
         }
         m._viaApelido = viaApelido;
+        m._viaCadastro = viaCadastro;
         const k = `${m.metaMensalVendedorId} ${nomeFinal}`;
         if (!porMetaENome.has(k)) porMetaENome.set(k, { nomeFinal, linhas: [] });
         porMetaENome.get(k).linhas.push(m);
@@ -358,7 +393,7 @@ async function montarPlano(opcoes = {}) {
         if (linhas.length === 1) {
             const m = linhas[0];
             if (m.cidade === nomeFinal) continue;            // não muda (é o caso de "Sem cidade")
-            const { classificacao, aplicar, divergente } = decidirAplicacao(m.cidade, nomeFinal, m._viaApelido, op);
+            const { classificacao, aplicar, divergente } = decidirAplicacao(m.cidade, nomeFinal, m._viaApelido, op, m._viaCadastro);
             registrarDivergente('metaCidades', divergente, 1);
             if (!aplicar) {
                 if (!divergente) semAprovacao.push({ tabela: 'metaCidades', de: m.cidade, para: nomeFinal, linhas: 1 });
@@ -412,9 +447,9 @@ async function montarPlano(opcoes = {}) {
         }
 
         const naoAprovada = ordenadas.find(m => m.cidade !== nomeFinal
-            && !decidirAplicacao(m.cidade, nomeFinal, m._viaApelido, op).aplicar);
+            && !decidirAplicacao(m.cidade, nomeFinal, m._viaApelido, op, m._viaCadastro).aplicar);
         if (naoAprovada) {
-            const d = decidirAplicacao(naoAprovada.cidade, nomeFinal, naoAprovada._viaApelido, op).divergente;
+            const d = decidirAplicacao(naoAprovada.cidade, nomeFinal, naoAprovada._viaApelido, op, naoAprovada._viaCadastro).divergente;
             registrarDivergente('metaCidades', d, ordenadas.length);
             if (!d) {
                 semAprovacao.push({
@@ -464,7 +499,9 @@ async function montarPlano(opcoes = {}) {
             aprovado: [...op.aprovado.entries()].map(([chave, nomeFinal]) => ({ chave, nomeFinal })),
             apelidos: op.apelidos,
             regraMeta: op.regraMeta,
+            somenteChaves: op.somenteChaves ? [...op.somenteChaves] : null,
         },
+        fusao: op.fusao,
         resumo: {
             registrosQueMudam: {
                 clientes: tabelas.find(t => t.tabela === 'clientes').linhasQueMudam,
@@ -523,7 +560,9 @@ function montarSnapshot(plano, nomeArquivo) {
     return {
         versao: 1,
         arquivo: nomeArquivo,
-        tipo: 'backfill-cidades',
+        tipo: plano.fusao ? (plano.fusao.tipo || 'fusao') : 'backfill-cidades',
+        // Fusão/renomear pela tela Cidades: { tipo, de, para, usuarioId } — quem, o quê.
+        ...(plano.fusao ? { fusao: plano.fusao } : {}),
         geradoEm: new Date().toISOString(),
         banco: bancoDoAmbiente(),
         permitirForaDoDicionario: plano.permitirForaDoDicionario,
@@ -594,6 +633,7 @@ async function listarSnapshots() {
             try {
                 const j = JSON.parse(await fs.readFile(completo, 'utf8'));
                 cabecalho = {
+                    tipo: j.tipo || null, fusao: j.fusao || null,
                     geradoEm: j.geradoEm || null, banco: j.banco || null,
                     aplicadoEm: j.aplicadoEm || null, revertidoEm: j.revertidoEm || null,
                     linhas: (j.tabelas || []).reduce((t, x) => t + (x.linhas ? x.linhas.length : 0), 0)
@@ -1019,6 +1059,37 @@ async function reverterDeVerdade({ arquivo }) {
     return { ok: pulados.length === 0, arquivo: alvo.arquivo, efeitos, pulados };
 }
 
+// ============================================================================
+// 5) FUSÃO / RENOMEAR de UMA cidade (motor da tela Configurações → Cidades, 09/2026)
+// ============================================================================
+/**
+ * Reescreve todo texto da chave de `deNome` (todas as grafias — "JOINVILLE", "Joinville ") para
+ * `paraNome` nas 6 tabelas, reaproveitando o plano + snapshot + transações por tabela + reversão
+ * do backfill. É o MESMO motor, só restrito à origem:
+ *   · apelidos { chaveDe: paraNome }  -> a origem vira o destino (viaApelido = aprovado);
+ *   · somenteChaves [chaveDe]         -> nenhuma outra cidade é tocada (fornecedores.uf idem);
+ *   · regraMeta 'somar'               -> meta em A + meta em B na mesma meta mensal viram uma;
+ *   · snapshot com { tipo, de, para, usuarioId }.
+ * `dryRun: true` devolve o plano (linhas por tabela, colisões de meta); `false` aplica.
+ * Quem chama (cidadeService) marca a origem como fundida DEPOIS, só se `ok` não for false.
+ */
+async function fundirCidade({ deNome, paraNome, dryRun = true, usuarioId = null, tipo = 'fusao' } = {}) {
+    const chaveDe = chaveCidade(deNome);
+    const para = normalizarCidade(paraNome);
+    if (!chaveDe || !para) throw new Error('fundirCidade: informe deNome e paraNome.');
+    const opcoes = {
+        apelidos: { [chaveDe]: para },
+        somenteChaves: [chaveDe],
+        regraMeta: 'somar',
+        fusao: { tipo, de: String(deNome), para, usuarioId: usuarioId || null, em: new Date().toISOString() },
+    };
+    if (dryRun) {
+        const plano = await montarPlano(opcoes);
+        return { ok: true, dryRun: true, escreveu: false, ...planoParaResposta(plano) };
+    }
+    return aplicar(opcoes);
+}
+
 module.exports = {
     DIR_SNAPSHOTS,
     ALVOS,
@@ -1029,4 +1100,5 @@ module.exports = {
     listarSnapshots,
     aplicar,
     reverter,
+    fundirCidade,
 };

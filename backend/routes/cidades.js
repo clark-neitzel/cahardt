@@ -1,85 +1,175 @@
 /**
- * GET /api/cidades — LISTA CANÔNICA DE CIDADES DO SISTEMA.
+ * /api/cidades — CADASTRO OFICIAL DE CIDADES (09/2026, docs/cidades/PLANO-CADASTRO.md §4).
  *
- * Para que serve: alimentar os dropdowns de cidade (filtro de clientes/leads, meta por
- * cidade, dashboards) na Fase 4 da padronização. Hoje cada tela monta a própria lista a
- * partir das linhas que carregou, e por isso a MESMA cidade aparece duas vezes
- * ("Joinville" e "JOINVILLE") — que é o defeito visível do problema que a Fase 1 conserta
- * na escrita.
+ * Antes (08/2026) esta rota era só-leitura e montava a lista pelo DISTINCT de clientes/leads/
+ * metas. Agora a fonte é a tabela `cidades` (mantida na tela Configurações → Cidades) e todo
+ * campo Cidade do app só aceita item dessa lista. O formato do `GET /` foi MANTIDO
+ * (`{ ok, total, cidades: string[], detalhe: [{ cidade, registros }] }`) e só ganhou campos —
+ * o `CampoCidade` do frontend antigo continua funcionando durante a janela de deploy.
  *
- * De onde vem: o distinct de `clientes."End_Cidade"`, `leads.cidade` e
- * `meta_cidades.cidade`, tudo passado por `normalizarCidade` e deduplicado pela chave de
- * comparação (`chaveCidade`). Ou seja: é a lista DEPOIS da padronização, mesmo antes de o
- * backfill da Fase 2 rodar — a tela já mostra o nome certo enquanto o banco ainda tem a
- * grafia velha.
+ * Montada em `index.js` com `authMiddleware` (qualquer logado lê; escrita checa permissão aqui).
  *
- * Fornecedores, bairros do Kit Festa e catálogo personalizado ficam DE FORA de propósito:
- * são cadastros de outra natureza (fornecedor de São Paulo não é cidade de venda) e
- * poluiriam o dropdown do vendedor com dezenas de cidades onde a empresa não atende.
+ * PERMISSÕES (§6 do plano — o frontend espelha EXATAMENTE isto; `GET /` devolve `permissoes`
+ * já calculadas para a tela não repetir a conta):
+ *   · criar (POST /)                 = admin || clientes.edit || rota.edit
+ *     (quem pode abrir cadastro de cliente ou prospectar na Rota pode abrir cidade; a checagem
+ *      de "parecida" segura a bagunça)
+ *   · gerir (PUT, inativar, reativar, fundir, pendências) = admin || configuracoes
+ *     ⚠️ `permissoes.configuracoes` é OBJETO ({view, edit}) — `!!perms.configuracoes` liberaria
+ *     quem só vê. Gerir reescreve dado nas 6 tabelas: exige `configuracoes.edit === true`
+ *     (ou `configuracoes === true` nos cadastros antigos em que era booleano).
  *
- * SOMENTE LEITURA. Auth normal do app (sem permissão especial): é uma lista de nomes de
- * cidade, sem dado de cliente, valor ou telefone — qualquer tela logada pode montar filtro.
- *
- * Custo: 3 GROUP BY no Postgres, uma linha por grafia distinta (~121 em 08/2026), nunca a
- * tabela inteira. As respostas de /api já saem com `Cache-Control: no-store` (global no
- * index.js) — nada a fazer aqui.
+ * Erro padrão das rotas de negócio que gravam cidade (cliente, lead, fornecedor, bairro, meta):
+ *   400 { codigo: 'CIDADE_NAO_CADASTRADA', cidade: 'X', sugestoes: [{ id, nome, uf }] }
+ * Aqui os códigos próprios: CIDADE_JA_EXISTE (409), CIDADE_PARECIDA (409), UF_INVALIDA (400),
+ * CIDADE_EM_USO (400), CIDADE_NAO_ENCONTRADA (404).
  */
 const express = require('express');
 const router = express.Router();
-const prisma = require('../config/database');
-const { chaveCidade, normalizarCidade } = require('../utils/cidade');
+const cidadeService = require('../services/cidadeService');
+const { ufDe } = require('../utils/ufPorCidade');
 
+/** `req.user.permissoes` pode vir string JSON (token velho) ou objeto (authMiddleware atual). */
+function permsDe(req) {
+    const p = req.user?.permissoes;
+    if (!p) return {};
+    if (typeof p === 'string') { try { return JSON.parse(p) || {}; } catch { return {}; } }
+    return p;
+}
+function podeCriar(perms) {
+    return !!(perms.admin || perms.clientes?.edit || perms.rota?.edit);
+}
+function podeGerir(perms) {
+    const c = perms.configuracoes;
+    return !!(perms.admin || c === true || (c && typeof c === 'object' && c.edit === true));
+}
+const exigir = (teste, mensagem) => (req, res, next) => {
+    if (teste(permsDe(req))) return next();
+    res.status(403).json({ ok: false, error: mensagem, codigo: 'SEM_PERMISSAO' });
+};
+const exigirCriar = exigir(podeCriar, 'Sem permissão para cadastrar cidades. Peça ao escritório.');
+const exigirGerir = exigir(podeGerir, 'Só quem edita Configurações pode gerir o cadastro de cidades.');
+
+/** Erro do service -> resposta HTTP com os campos que o front trata (`codigo`, `cidade`, `sugestoes`...). */
+function responderErro(res, err, contexto) {
+    const status = err.status || 500;
+    if (status >= 500) console.error(`[cidades] ${contexto}:`, err);
+    const { message, status: _s, stack: _st, ...extra } = err;
+    res.status(status).json({ ok: false, error: status >= 500 ? 'Erro interno no cadastro de cidades.' : message, ...extra });
+}
+
+// GET / — lista (formato antigo mantido + uf/id/ativo/uso). Só ativas por padrão;
+// `?todas=1` (ou `?incluirInativas=1`, alias usado pelo front) inclui inativas (tela de gestão).
+// `?semUso=1` pula a contagem (mais rápido).
 router.get('/', async (req, res) => {
     try {
-        // Uma fonte que falhe (tabela ausente num ambiente) devolve [] e o resto continua —
-        // um dropdown incompleto é ruim, um 500 na tela é pior.
-        const consulta = (sql) => prisma.$queryRawUnsafe(sql).catch((e) => {
-            console.error('[cidades] falha em fonte:', e.message);
-            return [];
-        });
-
-        const [rClientes, rLeads, rMetas] = await Promise.all([
-            consulta(`SELECT "End_Cidade" AS valor, COUNT(*)::int AS n FROM clientes
-                      WHERE "End_Cidade" IS NOT NULL AND btrim("End_Cidade") <> '' GROUP BY 1`),
-            consulta(`SELECT cidade AS valor, COUNT(*)::int AS n FROM leads
-                      WHERE cidade IS NOT NULL AND btrim(cidade) <> '' GROUP BY 1`),
-            consulta(`SELECT cidade AS valor, COUNT(*)::int AS n FROM meta_cidades
-                      WHERE cidade IS NOT NULL AND btrim(cidade) <> '' GROUP BY 1`),
-        ]);
-
-        // Deduplicação pela CHAVE, não pelo nome: é a chave que junta "Joinville" e
-        // "JOINVILLE", e é ela que os apelidos de CIDADES_CANONICAS fundem ("Joiville"
-        // também cai em Joinville). Map (não objeto) porque o nome vem do banco:
-        // "constructor" e "__proto__" são só mais um nome aqui.
-        const porChave = new Map();
-        const registrar = (valor, n) => {
-            const nome = normalizarCidade(valor);
-            if (!nome) return;                      // vazio nunca vira opção do dropdown
-            const chave = chaveCidade(nome);
-            const atual = porChave.get(chave);
-            if (atual) atual.registros += n;
-            else porChave.set(chave, { cidade: nome, registros: n });
-        };
-        for (const r of rClientes) registrar(r.valor, r.n);
-        for (const r of rLeads) registrar(r.valor, r.n);
-        for (const r of rMetas) registrar(r.valor, r.n);
-
-        const cidades = [...porChave.values()]
-            .sort((a, b) => a.cidade.localeCompare(b.cidade, 'pt-BR'));
-
+        const todas = req.query.todas === '1' || req.query.todas === 'true' || req.query.incluirInativas === '1' || req.query.incluirInativas === 'true';
+        const comUso = !(req.query.semUso === '1' || req.query.semUso === 'true');
+        const { cidades, foraDoCadastro } = await cidadeService.listar({ incluirInativas: todas, comUso });
+        const perms = permsDe(req);
         res.json({
             ok: true,
             total: cidades.length,
-            // `cidades`: só os nomes, que é o que o <option> precisa.
-            // `detalhe`: nome + quantos registros usam — para a tela poder pôr as mais
-            // usadas no topo sem precisar de outra rota.
-            cidades: cidades.map(c => c.cidade),
-            detalhe: cidades,
+            cidades: cidades.filter(c => c.ativo).map(c => c.nome),          // string[] — o <option> antigo
+            detalhe: cidades.map(c => ({
+                cidade: c.nome, registros: c.registros,                         // campos antigos
+                id: c.id, uf: c.uf, ibge: c.ibge, ativo: c.ativo, fundidaEmId: c.fundidaEmId,
+                uso: c.uso, criadoEm: c.criadoEm, atualizadoEm: c.atualizadoEm,
+            })),
+            foraDoCadastro,                                                     // grafias no banco sem cidade cadastrada
+            permissoes: { criar: podeCriar(perms), gerir: podeGerir(perms) },
         });
-    } catch (err) {
-        console.error('[GET /api/cidades]', err);
-        res.status(500).json({ ok: false, erro: 'Não foi possível carregar a lista de cidades.' });
-    }
+    } catch (err) { responderErro(res, err, 'GET /'); }
+});
+
+// GET /resolver?nome=X&uf=SC — a cidade existe? (usado pela consulta de CNPJ antes de preencher)
+router.get('/resolver', async (req, res) => {
+    try {
+        const nome = String(req.query.nome || '').trim();
+        if (!nome) return res.status(400).json({ ok: false, error: 'Informe ?nome=' });
+        try {
+            const nomeOficial = await cidadeService.resolver(nome, { modo: 'estrito' });
+            if (!nomeOficial) return res.json({ existe: false, nomeSugerido: null, sugestoes: [] });
+            const { cidades } = await cidadeService.listar({ comUso: false });
+            const cidade = cidades.find(c => c.nome === nomeOficial) || null;
+            return res.json({ existe: true, cidade: cidade ? { id: cidade.id, nome: cidade.nome, uf: cidade.uf } : { id: null, nome: nomeOficial, uf: null } });
+        } catch (e) {
+            if (e.codigo !== 'CIDADE_NAO_CADASTRADA') throw e;
+            return res.json({
+                existe: false, nomeSugerido: e.cidade, sugestoes: e.sugestoes || [],
+                ...(e.cidadeInativa ? { cidadeInativa: e.cidadeInativa } : {}),
+                ufSugerida: String(req.query.uf || '').trim().toUpperCase().slice(0, 2) || ufDe(nome),
+            });
+        }
+    } catch (err) { responderErro(res, err, 'GET /resolver'); }
+});
+
+// GET /sugestoes?nome=X — "você quis dizer" (máx. 5)
+router.get('/sugestoes', async (req, res) => {
+    try {
+        const nome = String(req.query.nome || '').trim();
+        const sugestoes = nome ? await cidadeService.sugerir(nome) : [];
+        res.json({ sugestoes, ufSugerida: nome ? ufDe(nome) : null });
+    } catch (err) { responderErro(res, err, 'GET /sugestoes'); }
+});
+
+// GET /pendentes — cidades que chegaram por CA/IA e não existem na lista (gerir)
+router.get('/pendentes', exigirGerir, async (req, res) => {
+    try {
+        const pendentes = await cidadeService.pendentes();
+        res.json({ ok: true, total: pendentes.length, pendentes });
+    } catch (err) { responderErro(res, err, 'GET /pendentes'); }
+});
+
+// POST /pendentes/:id/resolver { cidadeId } | { criar: { nome, uf } }
+router.post('/pendentes/:id/resolver', exigirGerir, async (req, res) => {
+    try {
+        const r = await cidadeService.resolverPendente(req.params.id, req.body || {}, { usuarioId: req.user?.id || null });
+        res.json({ ok: true, ...r });
+    } catch (err) { responderErro(res, err, 'POST /pendentes/:id/resolver'); }
+});
+
+// POST / { nome, uf, ibge?, confirmarParecida? } -> 201 { cidade }
+router.post('/', exigirCriar, async (req, res) => {
+    try {
+        const b = req.body || {};
+        const cidade = await cidadeService.criar(
+            { nome: b.nome, uf: b.uf, ibge: b.ibge, confirmarParecida: b.confirmarParecida === true },
+            { usuarioId: req.user?.id || null },
+        );
+        res.status(201).json({ ok: true, cidade });
+    } catch (err) { responderErro(res, err, 'POST /'); }
+});
+
+// PUT /:id { nome?, uf?, ibge? } — renomear reescreve as 6 tabelas (snapshot)
+router.put('/:id', exigirGerir, async (req, res) => {
+    try {
+        const b = req.body || {};
+        const r = await cidadeService.editar(req.params.id, { nome: b.nome, uf: b.uf, ibge: b.ibge }, { usuarioId: req.user?.id || null });
+        res.json({ ok: true, ...r });
+    } catch (err) { responderErro(res, err, 'PUT /:id'); }
+});
+
+router.post('/:id/inativar', exigirGerir, async (req, res) => {
+    try {
+        res.json({ ok: true, cidade: await cidadeService.inativar(req.params.id) });
+    } catch (err) { responderErro(res, err, 'POST /:id/inativar'); }
+});
+
+router.post('/:id/reativar', exigirGerir, async (req, res) => {
+    try {
+        res.json({ ok: true, cidade: await cidadeService.reativar(req.params.id) });
+    } catch (err) { responderErro(res, err, 'POST /:id/reativar'); }
+});
+
+// POST /:id/fundir { destinoId, dryRun: true|false } — dry-run devolve o plano; real aplica com snapshot
+router.post('/:id/fundir', exigirGerir, async (req, res) => {
+    try {
+        const b = req.body || {};
+        const dryRun = b.dryRun !== false;
+        const r = await cidadeService.fundir(req.params.id, b.destinoId, { dryRun, usuarioId: req.user?.id || null });
+        res.json({ ...r, ok: r.ok !== false });
+    } catch (err) { responderErro(res, err, 'POST /:id/fundir'); }
 });
 
 module.exports = router;

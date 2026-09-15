@@ -6,7 +6,12 @@ const { normalizarDoc } = require('../utils/documento');
 // inclusive MAIÚSCULA e com espaço sobrando. `syncPedidosModificados` roda no scheduler
 // a cada poucos minutos e CRIA cliente: sem isto, o worker re-sujaria o banco depois do
 // backfill da Fase 2, sem ninguém ver.
-const { normalizarCidade } = require('../utils/cidade');
+// Cadastro oficial de cidades (09/2026): o sync do CA é entrada AUTOMÁTICA — modo TOLERANTE,
+// nunca estrito (uma cidade desconhecida no CA não pode derrubar o sync inteiro). Cidade fora
+// da lista é gravada normalizada e vira pendência (origem CA_SYNC) na tela Cidades.
+const cidadeService = require('./cidadeService');
+// UF pode vir por extenso do CA ("Santa Catarina") — nunca cortar em 2 letras cru (vira "SA").
+const { ufDeTexto } = require('../utils/ufPorCidade');
 
 const CLIENT_ID = process.env.CONTA_AZUL_CLIENT_ID || '6f6gpe5la4bvg6oehqjh2ugp97';
 const CLIENT_SECRET = process.env.CONTA_AZUL_CLIENT_SECRET || '1fvmga9ikj9dk4mkctoqvm2nfna7ht2t60p2qmg7kq04le0gb1ls';
@@ -653,7 +658,8 @@ const contaAzulService = {
                     // Qualquer texto de verdade NUNCA vira `null` (`normalizarCidade` só devolve
                     // `null` para vazio/só espaço), então isto não reintroduz o risco de apagar
                     // cidade boa. A escolha da FONTE (`||` em cascata) fica exatamente como estava.
-                    End_Cidade: cidadeBrutaCA == null ? undefined : normalizarCidade(cidadeBrutaCA),
+                    End_Cidade: cidadeBrutaCA == null ? undefined
+                        : await cidadeService.resolver(cidadeBrutaCA, { modo: 'tolerante', origem: 'CA_SYNC', exemplo: `clientes:${c.id}`, uf: ufDeTexto(enderecoPrincipal.estado || enderecoPrincipal.state?.name || enderecoPrincipal.state) }),
                     End_Estado: enderecoPrincipal.estado || enderecoPrincipal.state?.name || enderecoPrincipal.state,
                     End_CEP: enderecoPrincipal.cep || enderecoPrincipal.zip_code,
                     End_Pais: enderecoPrincipal.pais || 'Brasil',
@@ -1020,7 +1026,7 @@ const contaAzulService = {
             End_Numero: ender.numero || ender.number || null,
             End_Complemento: ender.complemento || ender.complement || null,
             End_Bairro: ender.bairro || ender.neighborhood || null,
-            End_Cidade: normalizarCidade(ender.cidade || ender.city?.name || ender.city),
+            End_Cidade: await cidadeService.resolver(ender.cidade || ender.city?.name || ender.city, { modo: 'tolerante', origem: 'CA_SYNC', exemplo: `clientes:${uuid}`, uf: ufDeTexto(ender.estado || ender.state?.name || ender.state) }),
             End_Estado: ender.estado || ender.state?.name || ender.state || null,
             End_CEP: ender.cep || ender.zip_code || null,
             Ativo: typeof p.ativo === 'boolean' ? p.ativo : undefined,
@@ -1668,7 +1674,7 @@ const contaAzulService = {
                                             Perfil_Filtro: 'PADRAO',
                                             End_Logradouro: enderecoC.logradouro || null,
                                             End_Numero: enderecoC.numero || null,
-                                            End_Cidade: normalizarCidade(enderecoC.cidade),
+                                            End_Cidade: await cidadeService.resolver(enderecoC.cidade, { modo: 'tolerante', origem: 'CA_SYNC', exemplo: `clientes:${c.id}`, uf: ufDeTexto(enderecoC.estado) }),
                                             End_Estado: enderecoC.estado || null,
                                             End_CEP: enderecoC.cep || null,
                                             End_Pais: enderecoC.pais || 'Brasil',

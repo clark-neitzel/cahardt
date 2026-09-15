@@ -17,7 +17,7 @@ const contaAzulService = require('./contaAzulService');
 const { garantirContaFinanceira } = require('./contaFinanceiraGuardService');
 // CNPJ ALFANUMÉRICO: normalizar documento preservando letras (nunca replace(/\D/g,'')).
 const { normalizarDoc } = require('../utils/documento');
-const { normalizarCidade } = require('../utils/cidade'); // grafia oficial da cidade (Fase 1)
+const cidadeService = require('./cidadeService'); // cadastro oficial de cidades (09/2026) — modo tolerante aqui
 // App é o dono do financeiro (desde 07/2026): com esta chave ligada, Contas a Pagar
 // PARA de enviar ao CA (fornecedor, despesa, baixa "já paguei"). A LEITURA continua
 // (conferência de baixas de títulos antigos que ainda vivem no CA). Ver contaAzulModo.js.
@@ -318,7 +318,9 @@ async function importarFornecedoresCA() {
                 // Grafia oficial da cidade (Fase 1): o CA devolve o que o usuário digitou lá,
                 // MAIÚSCULA e com espaço sobrando incluídos. Este worker roda sozinho e cria
                 // fornecedor — sem isto ele re-sujaria o banco depois do backfill da Fase 2.
-                cidade: normalizarCidade(p.endereco?.cidade),
+                // (09/2026) Cadastro oficial: TOLERANTE — worker automático nunca pode quebrar por
+                // cidade desconhecida; ela vira pendência (origem CA_FORNECEDOR) na tela Cidades.
+                cidade: await cidadeService.resolver(p.endereco?.cidade, { modo: 'tolerante', origem: 'CA_FORNECEDOR', exemplo: `fornecedores:ca=${p.id}`, uf: p.endereco?.estado }),
                 // A UF vinha sem NENHUM tratamento. Só `trim` + `toUpperCase`: NÃO cortar em 2
                 // caracteres aqui, porque o CA às vezes manda o nome do estado por extenso
                 // ("Santa Catarina") e cortar produziria a UF ERRADA ("SA").

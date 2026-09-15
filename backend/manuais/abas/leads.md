@@ -27,15 +27,24 @@ Gestão completa dos leads (prospecções) do sistema. Um lead é um potencial c
 
 ---
 
-> **Campo Cidade é uma lista com sugestão (desde 09/2026):** ao tocar em **Cidade** abre uma lista
-> com todas as cidades já existentes no sistema (clientes e leads), com busca no topo. A busca
+> **Campo Cidade só aceita cidade do cadastro oficial (desde 09/2026):** ao tocar em **Cidade** abre a
+> lista oficial de cidades (Configurações → Cidades), com a UF ao lado e busca no topo. A busca
 > **ignora acento, cedilha e maiúscula/minúscula** — digitar `itapoa` acha `Itapoá`, `sao fran` acha
-> `São Francisco do Sul`. Escolhendo da lista, a cidade entra com a **grafia exata** que já está
-> gravada. Se a cidade ainda não existe, aparece o botão **Usar "…"** (ou Enter) e o nome digitado
-> entra já arrumado (primeira letra maiúscula, `do/da/de` minúsculo, acentos digitados mantidos).
-> Se a lista não carregar (sem rede), o campo continua aceitando texto — o cadastro nunca trava.
+> `São Francisco do Sul`. Escolhendo da lista, a cidade entra com a **grafia oficial**. Se a cidade
+> ainda não existe, aparece **"Cadastrar nova cidade…"**: abre um modal com o nome e a UF (padrão SC)
+> e, se houver cidade parecida, pergunta **"Você quis dizer Itapoá?"** — *Usar esta* escolhe a
+> existente, *Cadastrar mesmo assim* cria a nova. Quem pode cadastrar cidade: admin, Clientes → editar
+> ou Rota → editar; quem não pode vê "Peça ao escritório para cadastrar" e só escolhe da lista.
+> Não existe mais o botão **Usar "…"** com texto livre: cidade fora da lista é recusada ao salvar
+> (aviso "A cidade 'X' não está no cadastro", com sugestões). Se a lista não carregar (sem rede), o
+> campo mostra "tentar de novo" — não volta a texto livre.
 > Essa mesma busca sem acento vale para **todos os menus com busca do app** (cliente, produto,
 > vendedor, filtros de cidade, condição de pagamento).
+>
+> **Consulta de CNPJ:** a cidade que a Receita devolve é conferida com a lista antes de entrar no
+> formulário. Conhecida → preenche direto (grafia oficial). Desconhecida → modal "A Receita informou
+> X / UF. Cadastrar esta cidade ou escolher outra?" com sugestões; os outros campos entram normalmente
+> e só a Cidade fica vazia e marcada até você decidir.
 >
 > **Grafia da cidade (desde 08/2026):** o nome da cidade é gravado sempre na forma oficial, não
 > importa como for digitado. `JOINVILLE`, `joinville` e `Joinville ` (com espaço no fim) viram
@@ -44,7 +53,9 @@ Gestão completa dos leads (prospecções) do sistema. Um lead é um potencial c
 > `Joinvlle`, `Noinville`, `Joinvillevile` → `Joinville`), e `São Francisco` incompleto vira
 > `São Francisco do Sul`. Você **não precisa** se preocupar com maiúscula/minúscula ou acento —
 > digite como preferir. Isso vale também para a cidade que vem da consulta por CNPJ (a Receita
-> devolve tudo em MAIÚSCULA) e para o que chega do Conta Azul.
+> devolve tudo em MAIÚSCULA) e para o que chega do Conta Azul. Cidade que chega do Conta Azul ou da
+> IA de atendimento e **não está no cadastro** é gravada mesmo assim e vira uma **pendência** em
+> Configurações → Cidades (o automático nunca trava) — ver [config-cidades.md](config-cidades.md).
 > **Por que isso importa:** metas por cidade, comissão e dashboards casam a cidade pelo nome
 > exato — antes, meta em `Itapoá` e cliente em `ITAPOA` simplesmente não se encontravam, e o
 > vendedor perdia bônus sem nenhum erro aparecer.

@@ -16,7 +16,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { ArrowLeft, MapPin, Phone, Mail, Calendar, FileText, Save, X, User, Building, DollarSign, MessageCircle, Clock, ClipboardList, ShoppingCart, Package, Sparkles, RefreshCw, Image, UserPlus, Search, ExternalLink, Truck, CreditCard, AlertTriangle, ShieldCheck } from 'lucide-react';
 import SelectBusca from '../../components/SelectBusca';
 import CampoCidade from '../../components/CampoCidade';
-import { normalizarCidade } from '../../utils/cidade';
+import ModalCidadeReceita from '../../components/ModalCidadeReceita';
+import { resolverCidadeDaReceita, erroCidadeNaoCadastrada } from '../../services/cidadeService';
 import CampoWhatsapps from '../../components/CampoWhatsapps';
 import { normalizarDoc, formatarDoc, mascaraDoc, validarDoc } from '../../utils/documento'; // inclui CNPJ ALFANUMÉRICO
 import toast from 'react-hot-toast';
@@ -169,6 +170,11 @@ const DetalheCliente = () => {
         tambemFornecedor: false
     });
     const [consultandoCnpj, setConsultandoCnpj] = useState(false);
+    // Cidade da Receita fora do cadastro oficial → modal "cadastrar ou escolher outra";
+    // 400 CIDADE_NAO_CADASTRADA ao salvar → abre o cadastro já com o nome.
+    const [cidadeReceita, setCidadeReceita] = useState(null);
+    const [cidadeInvalida, setCidadeInvalida] = useState(false);
+    const [abrirCadastroCidade, setAbrirCadastroCidade] = useState(null);
 
     // Indicação (busca de cliente)
     const [indicacaoSearch, setIndicacaoSearch] = useState('');
@@ -356,10 +362,15 @@ const DetalheCliente = () => {
                 End_Numero: r.endereco?.numero || f.End_Numero,
                 End_Complemento: r.endereco?.complemento || f.End_Complemento,
                 End_Bairro: r.endereco?.bairro || f.End_Bairro,
-                End_Cidade: normalizarCidade(r.endereco?.cidade) || f.End_Cidade, // Receita devolve MAIÚSCULO
                 End_Estado: r.endereco?.uf || f.End_Estado,
                 End_CEP: r.endereco?.cep || f.End_CEP
             }));
+            // Cidade NUNCA entra fora do cadastro oficial (o resto do endereço já entrou acima).
+            if (r.endereco?.cidade) {
+                const rc = await resolverCidadeDaReceita({ cidade: r.endereco.cidade, uf: r.endereco.uf });
+                if (rc.ok) { setFormData(f => ({ ...f, End_Cidade: rc.nome || f.End_Cidade })); setCidadeInvalida(false); }
+                else { setFormData(f => ({ ...f, End_Cidade: '' })); setCidadeInvalida(true); setCidadeReceita(rc); }
+            }
             const ieMsg = r.inscricaoEstadual
                 ? `IE encontrada na SEFAZ: ${r.inscricaoEstadual}`
                 : (r.ieConsulta?.ok ? 'SEFAZ: sem IE (não contribuinte).' : 'IE não consultada automaticamente — confira manualmente.');
@@ -412,6 +423,13 @@ const DetalheCliente = () => {
             alert('Dados atualizados com sucesso!');
             navigate('/clientes');
         } catch (error) {
+            const ec = erroCidadeNaoCadastrada(error);
+            if (ec) {
+                setCidadeInvalida(true);
+                alert(`A cidade "${ec.cidade}" não está no cadastro. Cadastre-a ou escolha outra da lista.`);
+                setAbrirCadastroCidade({ nome: ec.cidade, n: Date.now() });
+                return;
+            }
             alert('Erro ao atualizar cliente: ' + (error.response?.data?.error || error.message));
         }
     };
@@ -1126,6 +1144,10 @@ const DetalheCliente = () => {
                     </div>
                 </SectionCard>
 
+                <ModalCidadeReceita pendente={cidadeReceita}
+                    onEscolher={(nome) => { setFormData(f => ({ ...f, End_Cidade: nome })); setCidadeInvalida(false); setCidadeReceita(null); }}
+                    onCancelar={() => setCidadeReceita(null)} />
+
                 <ModalPontoGps
                     aberto={showMapaGps}
                     onFechar={() => setShowMapaGps(false)}
@@ -1505,7 +1527,8 @@ const DetalheCliente = () => {
                                     </div>
                                     <div className="col-span-2 md:col-span-3">
                                         <label className="block text-xs text-gray-400 mb-0.5">Cidade</label>
-                                        <CampoCidade value={formData.End_Cidade} onChange={(v) => setFormData({ ...formData, End_Cidade: v })} />
+                                        <CampoCidade value={formData.End_Cidade} onChange={(v) => { setFormData({ ...formData, End_Cidade: v }); setCidadeInvalida(false); }}
+                                            invalido={cidadeInvalida} ufSugerida={formData.End_Estado || 'SC'} abrirCadastroCom={abrirCadastroCidade} />
                                     </div>
                                     <div className="col-span-1">
                                         <label className="block text-xs text-gray-400 mb-0.5">UF</label>

@@ -148,7 +148,7 @@ const ordenarPt = (a, b) => String(a).localeCompare(String(b), 'pt-BR');
 
 // Opções de filtro montadas do CONJUNTO INTEIRO devolvido (regra do projeto: a
 // opção não some do menu por causa do resultado filtrado).
-const montarOpcoes = (clientes) => {
+const montarOpcoes = (clientes, ufPorCidade = new Map()) => {
     const cidades = new Map();
     const bairros = new Map();
     const categorias = new Map();
@@ -161,7 +161,8 @@ const montarOpcoes = (clientes) => {
         map.set(chave, e);
     };
     for (const c of clientes) {
-        if (c.cidade) inc(cidades, c.cidade, { valor: c.cidade });
+        // (09/2026) `uf` vem do cadastro oficial de cidades — campo ADICIONADO à faceta ("Cidade · UF").
+        if (c.cidade) inc(cidades, c.cidade, { valor: c.cidade, uf: ufPorCidade.get(c.cidade) || null });
         if (c.bairro) inc(bairros, `${c.cidade || ''}|${c.bairro}`, { valor: c.bairro, cidade: c.cidade });
         if (c.categoriaId) inc(categorias, c.categoriaId, { id: c.categoriaId, nome: c.categoriaNome });
         for (const d of c.diasEntrega) inc(diasEntrega, d, { valor: d });
@@ -187,10 +188,14 @@ const montarOpcoes = (clientes) => {
 
 // ── 3.1 Carga completa ──────────────────────────────────────────────────────
 const carregar = async ({ reqUser, ativo = 'true' }) => {
-    const [linhas, config, cfgWhats] = await Promise.all([
+    const [linhas, config, cfgWhats, ufPorCidade] = await Promise.all([
         buscarClientes({ reqUser, ativo }),
         getConfig(),
         whatsCliente.getConfig(),
+        // UF por nome de cidade (cadastro oficial). Falha aqui não pode derrubar o mapa.
+        require('./cidadeService').listar({ comUso: false })
+            .then(({ cidades }) => new Map(cidades.map(c => [c.nome, c.uf])))
+            .catch((e) => { console.error('[mapa-clientes] cidades indisponíveis:', e.message); return new Map(); }),
     ]);
     const clientes = linhas.map(c => montarCliente(c, cfgWhats));
     const comGps = clientes.filter(c => c.gps).length;
@@ -199,7 +204,7 @@ const carregar = async ({ reqUser, ativo = 'true' }) => {
         config,
         totais: { clientes: clientes.length, comGps, semGps: clientes.length - comGps },
         clientes,
-        opcoes: montarOpcoes(clientes),
+        opcoes: montarOpcoes(clientes, ufPorCidade),
     };
 };
 

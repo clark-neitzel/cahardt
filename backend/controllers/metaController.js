@@ -18,6 +18,10 @@ const metaController = {
             const meta = await metaService.salvarMetaMensal(dados, usuarioLogadoId);
             res.status(200).json(meta);
         } catch (error) {
+            // Cadastro oficial de cidades (09/2026): cidade fora da lista -> 400 com sugestões.
+            if (error.codigo === 'CIDADE_NAO_CADASTRADA') {
+                return res.status(400).json({ error: error.message, codigo: error.codigo, cidade: error.cidade, sugestoes: error.sugestoes || [], cidadeInativa: error.cidadeInativa || undefined });
+            }
             console.error("[MetaController - salvarMetaMensal]", error);
             res.status(500).json({ error: "Erro interno ao salvar meta." });
         }

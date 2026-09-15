@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Novidade: Cidade em lista e busca sem acento — Hardt App</title>
+<title>Novidade: Cadastro oficial de cidades — Hardt App</title>
 <link rel="icon" href="/logo-192.png">
 <!-- Preview do link no WhatsApp (sem og:image de propósito: cartão compacto) -->
-<meta property="og:title" content="📍 Novidade no Hardt App: Cidade em lista + busca sem acento">
-<meta property="og:description" content="O campo Cidade do cadastro virou uma lista com busca (escolhe a cidade certa em 2 toques) e todos os menus do app acham 'Itapoá' mesmo digitando 'itapoa'.">
+<meta property="og:title" content="📍 Novidade no Hardt App: Cadastro oficial de cidades">
+<meta property="og:description" content="Cidade agora é uma lista oficial: nada de 'Itapoá' escrita de três jeitos. Cidade nova entra por 'Cadastrar nova cidade…' com aviso de parecidas; a consulta de CNPJ pergunta antes de gravar; Configurações → Cidades funde repetidas.">
 <meta property="og:type" content="website">
 <style>
   :root {
@@ -94,6 +94,35 @@
   .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
   .legenda .pin { margin: 1px 0 0; }
   .legenda b { color: var(--ink); }
+  .app-modal { background: #fff; border: 1px solid #e3e1da; border-radius: 14px; overflow: hidden; margin: 8px 0; box-shadow: 0 10px 24px rgba(30,57,50,.14); }
+  .app-modal-head { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid #f0efe9; font-size: 13px; font-weight: 800; color: var(--ink); }
+  .app-modal-body { padding: 12px; font-size: 12.5px; color: var(--ink-soft); }
+  .app-modal-foot { display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; padding: 10px 12px; border-top: 1px solid #f0efe9; }
+  .app-btn.sec { background: #fff; color: var(--primary); border: 1px solid var(--primary); }
+  .app-btn.mudo { background: transparent; color: #6b756f; }
+  .app-btn.perigo { background: #dc2626; }
+  .aviso { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; border-radius: 8px; padding: 8px 10px; font-size: 12px; margin: 8px 0; }
+  .sug { display: flex; align-items: center; justify-content: space-between; gap: 6px; border: 1px solid #e5e3dc; border-radius: 8px; padding: 7px 10px; background: #fff; margin-top: 6px; font-size: 12.5px; }
+  .sug b { color: var(--ink); }
+  .sug .usar { color: var(--primary); font-weight: 700; font-size: 11.5px; border: 1px solid var(--primary); border-radius: 999px; padding: 4px 9px; white-space: nowrap; }
+  .app-tab { display: inline-block; padding: 6px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; border: 1px solid #e3e1da; color: #4b5550; margin-right: 6px; margin-bottom: 8px; }
+  .app-tab.on { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .app-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 9px 12px; border-top: 1px solid #f0efe9; font-size: 12.5px; }
+  .app-row:first-child { border-top: 0; }
+  .app-row .nome { font-weight: 700; color: var(--ink); }
+  .app-row .meta { font-size: 11px; color: #6b756f; }
+  .app-row .acoes { display: flex; gap: 6px; color: #6b756f; font-size: 13px; }
+  .badge { font-size: 10.5px; font-weight: 700; padding: 3px 8px; border-radius: 999px; }
+  .badge.ok { background: #dcfce7; color: #166534; }
+  .badge.amb { background: #fef3c7; color: #92400e; }
+  .plano { border: 1px solid #e5e3dc; border-radius: 8px; overflow: hidden; margin-top: 8px; }
+  .plano div { display: flex; justify-content: space-between; padding: 6px 10px; border-top: 1px solid #f0efe9; font-size: 12px; }
+  .plano div:first-child { border-top: 0; }
+  .plano b { color: var(--ink); }
+  .lista { border: 1px solid #e3e1da; border-radius: 10px; overflow: hidden; margin-top: 8px; }
+  .lista .hit { padding: 10px 12px; background: #eef6f2; font-weight: 700; color: var(--primary-dark); font-size: 14px; }
+  .lista .mudo { padding: 6px 12px; font-size: 11px; color: #9aa5a0; border-top: 1px solid #f0efe9; }
+  .lista .novo { padding: 10px 12px; color: var(--primary); font-weight: 700; font-size: 13px; border-top: 1px solid #f0efe9; }
 </style>
 </head>
 <body>
@@ -101,8 +130,8 @@
 <header class="hero">
   <div class="hero-inner">
     <span class="eyebrow">✦ Novidade no Hardt App</span>
-    <h1>Cidade em lista<br>e busca sem acento</h1>
-    <p>O campo Cidade do cadastro de cliente e de lead virou uma lista com busca: você escolhe a cidade que já existe e ela entra escrita do jeito certo. E todos os menus do app agora acham a opção mesmo sem acento ou maiúscula.</p>
+    <h1>Cadastro oficial<br>de cidades</h1>
+    <p>Agora existe UMA lista de cidades para o app inteiro. O campo Cidade só aceita cidade dessa lista; cidade nova entra por um passo próprio, com aviso quando já existe uma parecida. Chega de "Itapoá", "ITAPOA" e "itapoa " bagunçando meta, comissão e painéis.</p>
   </div>
 </header>
 
@@ -113,15 +142,15 @@
       <span class="mock-ico">📍</span>
       <div>
         <small>Clientes · Novo Cliente · Cidade</small>
-        <strong>Digitou "itapoa"…</strong>
+        <strong>Digitou "itapua"…</strong>
       </div>
     </div>
     <div class="mock-body">
       <div class="mock-label">Digite a cidade…</div>
-      <div class="mock-input">🔍 <span>itapoa</span><span class="cursor"></span></div>
+      <div class="mock-input">🔍 <span>itapua</span><span class="cursor"></span></div>
       <div class="lista">
-        <div class="hit">Itapoá</div>
-        <div class="mudo">1 item</div>
+        <div class="mudo">Nenhuma cidade com esse nome.</div>
+        <div class="novo">＋ Cadastrar nova cidade…</div>
       </div>
     </div>
   </div>
@@ -130,126 +159,222 @@
 
   <div class="acc aberto">
     <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
-      <span class="acc-ico">📍</span>
-      <strong>Cidade agora é uma lista com busca</strong>
+      <span class="acc-ico">📋</span>
+      <strong>Uma lista oficial para o app inteiro</strong>
       <span class="acc-seta">▼</span>
     </button>
     <div class="acc-corpo">
-      <p>No cadastro de cliente (Novo Cliente e a ficha do cliente) e no cadastro de lead (Rota e Leads), o campo <b>Cidade</b> deixou de ser um texto livre. Ao tocar nele abre uma lista com <b>todas as cidades que já existem</b> no sistema (de clientes e de leads).</p>
+      <p>Todo campo <b>Cidade</b> do app — cliente (Novo Cliente e ficha), lead (Rota e Leads), fornecedor, bairro do Kit Festa e meta por cidade — passou a usar a <b>mesma lista</b>, com a UF ao lado de cada nome.</p>
       <ul>
-        <li>Toque, digite as primeiras letras e escolha. A cidade entra <b>exatamente como já está gravada</b> — "Itapoá" com acento, "Jaraguá do Sul" com a caixa certa.</li>
-        <li>Não precisa acento nem maiúscula para achar: <b>"itapoa"</b> acha <b>Itapoá</b>, <b>"sao fran"</b> acha <b>São Francisco do Sul</b>.</li>
-        <li>Cidade que ainda não existe? Digite o nome e toque em <b>Usar "…"</b>. Ela entra arrumada sozinha: "sao bento do sul" vira <b>São Bento do Sul</b> (mantendo os acentos que você digitou).</li>
-        <li>A cidade que vem da <b>consulta por CNPJ</b> já aparece arrumada no campo ("JOINVILLE" vira "Joinville") antes mesmo de salvar.</li>
+        <li>Toque, digite as primeiras letras (sem acento também acha) e escolha. A cidade entra escrita <b>do jeito oficial</b>.</li>
+        <li>O antigo <b>Usar "…"</b> (que aceitava qualquer texto) <b>não existe mais</b>. Era por ali que a mesma cidade entrava escrita de vários jeitos.</li>
+        <li>Se a lista não carregar (sem sinal), o campo avisa e oferece <b>tentar de novo</b> — não volta a aceitar texto solto.</li>
       </ul>
     </div>
   </div>
 
   <div class="acc aberto">
     <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
-      <span class="acc-ico">🔍</span>
-      <strong>Todos os menus buscam sem acento</strong>
+      <span class="acc-ico">➕</span>
+      <strong>Cidade nova: "Cadastrar nova cidade…"</strong>
       <span class="acc-seta">▼</span>
     </button>
     <div class="acc-corpo">
-      <p>Vale para <b>qualquer menu com busca do app</b> — cliente, produto, vendedor, cidade nos filtros, condição de pagamento: a busca ignora acento, cedilha e maiúscula/minúscula.</p>
+      <p>Quando a cidade não aparece, no fim da lista há o botão <b>Cadastrar nova cidade…</b>. Abre uma janelinha com <b>nome + UF</b> (SC já vem escolhida).</p>
       <ul>
-        <li>"acucar" acha <b>Açúcar</b>; "JOAO" acha <b>João</b>; "coxinha  frango" (com espaço a mais) acha do mesmo jeito.</li>
-        <li>Não mudou nada de lugar — é o mesmo menu de sempre, só mais tolerante ao que você digita, principalmente no teclado do celular.</li>
+        <li>Antes de gravar o app mostra <b>"Você quis dizer…?"</b> com as parecidas — "Itapua" avisa que já existe <b>Itapoá</b>. Toque em <b>Usar esta</b> e pronto, sem criar repetida.</li>
+        <li>Se for mesmo nova, <b>Cadastrar</b>. Ela entra na hora no seu campo e passa a aparecer para todo mundo.</li>
+        <li>Quem pode cadastrar cidade: quem já pode cadastrar cliente ou gerenciar leads/rota. Sem essa permissão, a janela avisa para <b>pedir ao escritório</b> e só deixa escolher da lista.</li>
       </ul>
     </div>
   </div>
 
   <div class="acc aberto">
     <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
-      <span class="acc-ico">🎯</span>
-      <strong>Por que isso importa</strong>
+      <span class="acc-ico">🏛️</span>
+      <strong>Consulta de CNPJ pergunta antes</strong>
       <span class="acc-seta">▼</span>
     </button>
     <div class="acc-corpo">
-      <p>Meta por cidade, comissão e os painéis casam a cidade <b>pelo nome exato</b>. Quando a mesma cidade existia escrita de vários jeitos ("Itapoá", "ITAPOA", "itapoa "), a meta não enxergava os pedidos e o vendedor <b>perdia bônus sem nenhum aviso</b>. Escolhendo da lista, isso não acontece mais.</p>
+      <p>Ao buscar o CNPJ, a Receita traz a cidade em maiúsculo. Se ela já está na lista, entra direto com o nome certo. Se <b>não</b> está, o app pergunta: <b>"A Receita informou X / UF. Cadastrar esta cidade ou escolher outra?"</b> — com as parecidas para tocar.</p>
+      <ul>
+        <li>Os outros dados (razão social, endereço, IE…) entram normalmente; só a cidade fica esperando sua escolha, com o campo marcado.</li>
+        <li>Se você deixar em branco, o cadastro não salva até escolher uma cidade da lista.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">⚙️</span>
+      <strong>Configurações → Cidades (escritório)</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Tela nova para cuidar da lista: buscar, <b>editar nome/UF</b>, <b>inativar</b> (só cidade sem uso) e <b>fundir</b> duas cidades repetidas — escolhe a que some e a que fica, toca em <b>Simular</b> para ver quantos registros mudam em cada tabela, e só então <b>Fundir agora</b>. Um arquivo de reversão é guardado antes.</p>
+      <ul>
+        <li>Aba <b>Pendências</b>: cidades que chegaram sozinhas pela Conta Azul ou pela IA do WhatsApp com nome desconhecido. Para cada uma: <b>Cadastrar</b> ou <b>Apontar para…</b> uma que já existe (o app reescreve os registros).</li>
+        <li>No <b>Mapa de Clientes</b>, o filtro de cidade mostra a UF ao lado ("Itapoá · SC").</li>
+      </ul>
     </div>
   </div>
 
   <div class="sec-label">As telas do app</div>
 
   <div class="tela">
-    <div class="tela-titulo">📱 Tela 1 · Cadastro do cliente — campo Cidade</div>
+    <div class="tela-titulo">📱 Tela 1 · Campo Cidade — cidade que não está na lista</div>
     <div class="tela-corpo">
       <div class="app-card">
         <div class="app-card-head">📍 Endereço</div>
         <div class="app-card-body">
-          <div class="app-grid">
-            <div class="app-input"><div><small>Bairro</small>Centro</div></div>
-            <div class="app-input foco"><div><small>Cidade</small><span style="color:#9aa5a0">Cidade</span></div><span class="seta">▼<span class="pin">1</span></span></div>
-          </div>
+          <div class="app-input foco"><div><small>Cidade</small><span style="color:#9aa5a0">Cidade</span></div><span class="seta">▼<span class="pin">1</span></span></div>
           <div class="app-menu">
-            <div class="busca">🔍 <span>itapoa<span class="pin">2</span></span></div>
-            <div class="item hit">Itapoá<span class="pin">3</span></div>
-            <div class="item mudo">1 item</div>
-          </div>
-          <div class="app-grid">
-            <div class="app-input"><div><small>UF</small>SC</div></div>
-            <div class="app-input"><div><small>CEP</small>89249-000</div></div>
+            <div class="busca">🔍 <span>itapua<span class="pin">2</span></span></div>
+            <div class="item mudo">Nenhuma cidade com esse nome. Use "Cadastrar nova cidade…" abaixo.</div>
+            <div class="item usar">＋ Cadastrar nova cidade…<span class="pin">3</span></div>
           </div>
         </div>
       </div>
     </div>
     <div class="legenda">
-      <div><span class="pin">1</span><span>O campo <b>Cidade</b> agora abre uma lista ao tocar (mesmo lugar de sempre, no bloco Endereço, ao lado de Bairro e UF).</span></div>
-      <div><span class="pin">2</span><span>Campo de busca no topo da lista: digite sem acento e sem maiúscula — <b>"itapoa"</b> já encontra.</span></div>
-      <div><span class="pin">3</span><span>Toque na cidade encontrada: ela entra com a <b>grafia exata</b> que já existe no sistema.</span></div>
+      <div><span class="pin">1</span><span>O campo <b>Cidade</b> abre a lista oficial ao tocar (com a UF embaixo de cada nome).</span></div>
+      <div><span class="pin">2</span><span>Busca sem acento. Quando nada bate, <b>não aparece mais "Usar …"</b>.</span></div>
+      <div><span class="pin">3</span><span><b>Cadastrar nova cidade…</b> leva o que você digitou para a janela de cadastro (Tela 2).</span></div>
     </div>
   </div>
 
   <div class="tela">
-    <div class="tela-titulo">📱 Tela 2 · Cidade que ainda não existe</div>
+    <div class="tela-titulo">📱 Tela 2 · Cadastrar nova cidade — "Você quis dizer…?"</div>
     <div class="tela-corpo">
-      <div class="app-card">
-        <div class="app-card-head">📍 Endereço</div>
-        <div class="app-card-body">
-          <div class="app-input foco"><div><small>Cidade</small><span style="color:#9aa5a0">Cidade</span></div><span class="seta">▼</span></div>
-          <div class="app-menu">
-            <div class="busca">🔍 <span>sao bento do sul</span></div>
-            <div class="item usar">Usar "sao bento do sul"<span class="pin">1</span></div>
-            <div class="item mudo">0 itens</div>
+      <div class="app-modal">
+        <div class="app-modal-head">📍 Cadastrar nova cidade</div>
+        <div class="app-modal-body">
+          <div class="app-grid">
+            <div class="app-input foco"><div><small>Nome da cidade</small>Itapua<span class="pin">1</span></div></div>
+            <div class="app-input"><div><small>UF</small>SC<span class="pin">2</span></div><span class="seta">▼</span></div>
           </div>
-          <div class="app-input"><div><small>Cidade</small><b>São Bento do Sul</b></div><span class="seta">▼<span class="pin">2</span></span></div>
+          <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:#6b756f">💡 Você quis dizer…?<span class="pin">3</span></div>
+          <div class="sug"><span><b>Itapoá</b> · SC</span><span class="usar">Usar esta</span></div>
+        </div>
+        <div class="app-modal-foot">
+          <span class="app-btn mudo">Cancelar</span>
+          <span class="app-btn">Cadastrar mesmo assim<span class="pin">4</span></span>
         </div>
       </div>
     </div>
     <div class="legenda">
-      <div><span class="pin">1</span><span>Quando nenhuma cidade da lista bate com o que foi digitado, aparece <b>Usar "…"</b>. Toque nele (ou dê Enter) para aceitar o nome novo.</span></div>
-      <div><span class="pin">2</span><span>O nome entra <b>arrumado</b>: primeira letra maiúscula em cada palavra, "do/da/de" minúsculo, acentos que você digitou mantidos. Depois de salvo, a cidade passa a aparecer na lista para todo mundo.</span></div>
+      <div><span class="pin">1</span><span>O nome já vem preenchido com o que você digitou (arrumado: primeira letra maiúscula, "do/da/de" minúsculo).</span></div>
+      <div><span class="pin">2</span><span><b>UF</b> obrigatória; SC já vem escolhida (ou a UF que a Receita trouxe).</span></div>
+      <div><span class="pin">3</span><span>Se existe cidade parecida, ela aparece aqui. <b>Usar esta</b> escolhe a existente e <b>não cria nada</b>.</span></div>
+      <div><span class="pin">4</span><span>Só se for mesmo outra cidade: <b>Cadastrar mesmo assim</b>. Ela entra no campo e na lista de todos.</span></div>
     </div>
   </div>
 
   <div class="tela">
-    <div class="tela-titulo">📱 Tela 3 · Qualquer menu com busca do app</div>
+    <div class="tela-titulo">📱 Tela 3 · Consulta de CNPJ — cidade desconhecida</div>
     <div class="tela-corpo">
+      <div class="app-modal">
+        <div class="app-modal-head">🏛️ Cidade não cadastrada</div>
+        <div class="app-modal-body">
+          A Receita informou <b style="color:var(--ink)">Barra Velha / SC</b>, que ainda não está no cadastro de cidades do app. Cadastrar esta cidade ou escolher outra?<span class="pin">1</span>
+          <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:#6b756f;margin-top:10px">Parecidas no cadastro</div>
+          <div class="sug"><span><b>Barra do Sul</b> · SC</span><span class="usar">Usar esta<span class="pin">2</span></span></div>
+        </div>
+        <div class="app-modal-foot">
+          <span class="app-btn mudo">Deixar em branco<span class="pin">3</span></span>
+          <span class="app-btn sec">Escolher outra<span class="pin">4</span></span>
+          <span class="app-btn">📍 Cadastrar "Barra Velha"<span class="pin">5</span></span>
+        </div>
+      </div>
       <div class="app-card">
-        <div class="app-card-head">🧾 Novo Pedido · Produto</div>
         <div class="app-card-body">
-          <div class="app-input foco"><div><small>Produto</small><span style="color:#9aa5a0">Selecionar…</span></div><span class="seta">▼</span></div>
-          <div class="app-menu">
-            <div class="busca">🔍 <span>pao de queijo<span class="pin">1</span></span></div>
-            <div class="item hit">Pão de Queijo 1kg<span class="pin">2</span></div>
-            <div class="item hit">Pão de Queijo Mini 500g</div>
+          <div class="app-grid">
+            <div class="app-input"><div><small>Razão social</small>Mercado Bom Preço Ltda</div></div>
+            <div class="app-input" style="border-color:#f59e0b"><div><small>Cidade</small><span style="color:#9aa5a0">Cidade</span></div><span class="seta">▼<span class="pin">6</span></span></div>
           </div>
         </div>
       </div>
     </div>
     <div class="legenda">
-      <div><span class="pin">1</span><span>Busca digitada sem acento, direto do teclado do celular.</span></div>
-      <div><span class="pin">2</span><span>O menu encontra as opções com acento normalmente. Funciona em todos os menus com busca (cliente, produto, vendedor, filtros de cidade, condição de pagamento…).</span></div>
+      <div><span class="pin">1</span><span>Aparece só quando a cidade da Receita <b>não está</b> na lista. Cidade conhecida entra direto, sem perguntar.</span></div>
+      <div><span class="pin">2</span><span>Parecidas para tocar — pode ser só uma grafia diferente da mesma cidade.</span></div>
+      <div><span class="pin">3</span><span><b>Deixar em branco</b>: o campo fica vazio e marcado; você escolhe depois (não salva sem cidade).</span></div>
+      <div><span class="pin">4</span><span><b>Escolher outra</b>: abre a lista dentro da própria janela.</span></div>
+      <div><span class="pin">5</span><span><b>Cadastrar</b>: abre a Tela 2 já com nome e UF da Receita.</span></div>
+      <div><span class="pin">6</span><span>Os outros campos da Receita já entraram; só a cidade fica com a borda âmbar esperando.</span></div>
+    </div>
+  </div>
+
+  <div class="tela">
+    <div class="tela-titulo">🖥️ Tela 4 · Configurações → Cidades — fundir repetidas</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">📍 Cidades</div>
+        <div class="app-card-body">
+          <span class="app-tab on">Cadastro</span><span class="app-tab">Pendências (2)<span class="pin">5</span></span>
+          <div class="app-input"><div>🔍 <span style="color:#9aa5a0">Buscar cidade…</span></div><span class="app-btn sec" style="padding:5px 10px;font-size:11px">⇄ Fundir cidades<span class="pin">1</span></span></div>
+          <div class="app-row"><div><div class="nome">Itapoá <span class="meta">· SC</span></div><div class="meta">212 registros</div></div><div class="acoes"><span class="badge ok">Ativa</span> ✎ ⇄ ⊘</div></div>
+          <div class="app-row"><div><div class="nome">Itapoa <span class="meta">· <span style="color:#b45309">sem UF</span></span></div><div class="meta">7 registros</div></div><div class="acoes"><span class="badge ok">Ativa</span> ✎ ⇄<span class="pin">2</span> ⊘</div></div>
+        </div>
+      </div>
+      <div class="app-modal">
+        <div class="app-modal-head">⇄ Fundir cidades</div>
+        <div class="app-modal-body">
+          <div class="app-grid">
+            <div class="app-input"><div><small>Origem (some)</small>Itapoa</div><span class="seta">▼</span></div>
+            <div class="app-input"><div><small>Destino (fica)</small>Itapoá · SC</div><span class="seta">▼</span></div>
+          </div>
+          <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:#6b756f">Simulação — o que vai mudar<span class="pin">3</span></div>
+          <div class="plano">
+            <div><span>Clientes</span><b>5</b></div>
+            <div><span>Leads</span><b>1</b></div>
+            <div><span>Metas por cidade</span><b>1</b></div>
+            <div><b>Total de registros</b><b>7</b></div>
+          </div>
+          <div class="aviso">⚠️ Metas por cidade: 1 colisão de meta (os valores serão somados)</div>
+        </div>
+        <div class="app-modal-foot">
+          <span class="app-btn mudo">Cancelar</span>
+          <span class="app-btn perigo">Fundir agora<span class="pin">4</span></span>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Menu Configurações → <b>Cidades</b>. Busca sem acento, filtro "mostrar inativas", botão <b>Fundir cidades</b>.</span></div>
+      <div><span class="pin">2</span><span>Em cada linha: <b>editar</b> nome/UF (renomear avisa quantos registros reescreve), <b>fundir</b> em outra, <b>inativar</b> (recusado se a cidade está em uso — funda antes).</span></div>
+      <div><span class="pin">3</span><span><b>Simular</b> mostra quantos registros mudam em cada tabela e se alguma meta por cidade vai colidir (soma os valores). Nada é gravado.</span></div>
+      <div><span class="pin">4</span><span><b>Fundir agora</b> pede confirmação, grava um arquivo de reversão e reescreve tudo. A origem fica inativa.</span></div>
+      <div><span class="pin">5</span><span>Aba <b>Pendências</b>: cidades que vieram sozinhas (Conta Azul, IA do WhatsApp) — Tela 5.</span></div>
+    </div>
+  </div>
+
+  <div class="tela">
+    <div class="tela-titulo">🖥️ Tela 5 · Aba Pendências</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">⚠️ Cidades que chegaram sozinhas</div>
+        <div class="app-card-body">
+          <div class="app-row" style="border:1px solid #e5e3dc;border-radius:10px;flex-wrap:wrap">
+            <div><div class="nome">GARUVA <span class="meta">· SC</span><span class="pin">1</span></div><div class="meta">gravada como "Garuva" · 3 ocorrências</div></div>
+            <span class="badge amb">Conta Azul<span class="pin">2</span></span>
+            <div style="width:100%;display:flex;gap:6px;margin-top:8px"><span class="app-btn" style="padding:6px 12px;font-size:11.5px">＋ Cadastrar<span class="pin">3</span></span><span class="app-btn sec" style="padding:6px 12px;font-size:11.5px">→ Apontar para…<span class="pin">4</span></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Como o nome chegou e como foi gravado. O cliente/lead <b>já foi salvo</b> — a integração nunca trava por causa de cidade.</span></div>
+      <div><span class="pin">2</span><span>De onde veio: Conta Azul, IA do WhatsApp ou fornecedor do CA.</span></div>
+      <div><span class="pin">3</span><span><b>Cadastrar</b>: abre a janela da Tela 2 com o nome preenchido; ao salvar, a pendência some.</span></div>
+      <div><span class="pin">4</span><span><b>Apontar para…</b>: escolhe uma cidade existente e o app reescreve os registros com ela.</span></div>
     </div>
   </div>
 
   <div class="sec-label">Para começar a usar</div>
   <div class="passos">
-    <div class="passo"><span class="passo-n">1</span><div><b>Abra um cadastro</b> — Clientes → Novo Cliente (ou a ficha de um cliente), ou o Novo Lead na Rota.</div></div>
-    <div class="passo"><span class="passo-n">2</span><div><b>Toque em Cidade</b> e digite as primeiras letras, sem se preocupar com acento.</div></div>
-    <div class="passo"><span class="passo-n">3</span><div><b>Escolha da lista.</b> Só use <b>Usar "…"</b> se a cidade realmente não aparecer — confira antes se não é só uma grafia diferente.</div></div>
+    <div class="passo"><span class="passo-n">1</span><div><b>Escolha sempre da lista.</b> Digite as primeiras letras, sem acento, e toque na cidade.</div></div>
+    <div class="passo"><span class="passo-n">2</span><div><b>Não achou?</b> Toque em <b>Cadastrar nova cidade…</b>, confira o "Você quis dizer…?" e só cadastre se for mesmo outra cidade.</div></div>
+    <div class="passo"><span class="passo-n">3</span><div><b>Escritório:</b> Configurações → Cidades para arrumar UF, fundir repetidas e resolver as Pendências.</div></div>
   </div>
 
   <p class="rodape">Dúvida? Pergunte ao <strong>Clippy</strong> dentro do app ou fale com o escritório.</p>

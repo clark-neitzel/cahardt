@@ -5,6 +5,9 @@ import { Trash2, Search, Sparkles, MapPin, Package, Tag, ChevronDown, ChevronUp,
 import api from '../../../services/api';
 import produtoService from '../../../services/produtoService';
 import promocaoService from '../../../services/promocaoService';
+import CampoCidade from '../../../components/CampoCidade';
+import { erroCidadeNaoCadastrada } from '../../../services/cidadeService';
+import { chaveBusca } from '../../../utils/cidade';
 
 const STORAGE_KEY_FATOR = 'meta_fator_crescimento';
 const DIAS_SEMANA = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'DOM'];
@@ -39,6 +42,7 @@ const MetaFormModal = ({ isOpen, onClose, metaData, vendedores, mesAtualStr }) =
     const [novaCidade, setNovaCidade] = useState('');
     const [novaCidadeValor, setNovaCidadeValor] = useState('');
     const [novaCidadeDias, setNovaCidadeDias] = useState([]);
+    const [abrirCadastroCidade, setAbrirCadastroCidade] = useState(null); // 400 CIDADE_NAO_CADASTRADA
 
     const [activeTab, setActiveTab] = useState('calendario');
     const [loading, setLoading] = useState(false);
@@ -186,7 +190,7 @@ const MetaFormModal = ({ isOpen, onClose, metaData, vendedores, mesAtualStr }) =
     const adicionarCidade = () => {
         const cidadeNorm = novaCidade.trim();
         if (!cidadeNorm || !novaCidadeValor) return;
-        if (metasCidades.some(mc => mc.cidade.toLowerCase() === cidadeNorm.toLowerCase())) {
+        if (metasCidades.some(mc => chaveBusca(mc.cidade) === chaveBusca(cidadeNorm))) {
             toast.error("Cidade já adicionada");
             return;
         }
@@ -318,7 +322,12 @@ const MetaFormModal = ({ isOpen, onClose, metaData, vendedores, mesAtualStr }) =
             onClose(true);
         } catch (error) {
             console.error("Erro ao salvar meta:", error);
-            toast.error(error.response?.data?.error || "Erro ao salvar meta");
+            const ec = erroCidadeNaoCadastrada(error);
+            if (ec) {
+                toast.error(`A cidade "${ec.cidade}" não está no cadastro. Cadastre-a ou escolha outra.`, { duration: 5000 });
+                setNovaCidade(ec.cidade);
+                setAbrirCadastroCidade({ nome: ec.cidade, n: Date.now() });
+            } else toast.error(error.response?.data?.error || "Erro ao salvar meta");
         } finally {
             setLoading(false);
         }
@@ -705,21 +714,20 @@ const MetaFormModal = ({ isOpen, onClose, metaData, vendedores, mesAtualStr }) =
                                     </div>
 
                                     <div className="mb-4 border border-gray-200 rounded-xl p-3 bg-gray-50 space-y-2">
-                                        <div className="flex gap-2">
-                                            <input
-                                                type="text"
+                                        <div className="flex flex-col sm:flex-row gap-2">
+                                            <CampoCidade
                                                 value={novaCidade}
-                                                onChange={(e) => setNovaCidade(e.target.value)}
+                                                onChange={setNovaCidade}
                                                 placeholder="Nome da cidade"
-                                                className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"
-                                                onKeyDown={(e) => e.key === 'Enter' && adicionarCidade()}
+                                                className="flex-1 min-w-0"
+                                                abrirCadastroCom={abrirCadastroCidade}
                                             />
                                             <input
                                                 type="number"
                                                 value={novaCidadeValor}
                                                 onChange={(e) => setNovaCidadeValor(e.target.value)}
                                                 placeholder="R$ Meta mensal"
-                                                className="w-36 border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"
+                                                className="w-full sm:w-36 border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"
                                                 onKeyDown={(e) => e.key === 'Enter' && adicionarCidade()}
                                             />
                                         </div>

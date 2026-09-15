@@ -60,7 +60,7 @@ router.get('/ping', (req, res) => {
         ok: true,
         // Marcador de deploy: bumpar a cada mudança de backend que precise de confirmação
         // em produção (não há outro jeito de saber de fora qual versão está no ar).
-        deployMarker: 'backfill-cidades-2026-09-13',
+        deployMarker: 'cidades-cadastro-2026-09-14',
         uptimeSegundos: Math.round(process.uptime()),
         timestamp: new Date().toISOString(),
         openaiConfigurada: !!process.env.OPENAI_API_KEY,
@@ -11485,6 +11485,161 @@ router.post('/backfill-cidades', async (req, res) => {
         res.json({ dryRun: false, ...r });
     } catch (err) {
         console.error('[backfill-cidades]', err);
+        if (!res.headersSent) res.status(500).json({ ok: false, erro: err.message });
+    }
+});
+
+// ============================================================================
+// POST /api/admin-exec/cidades-semente  { "dryRun": true }  — CADASTRO OFICIAL DE CIDADES
+// (09/2026, docs/cidades/PLANO-CADASTRO.md item 7)
+//
+// Popula a tabela `cidades` a partir do que JÁ existe nas 6 tabelas (clientes, leads,
+// meta_cidades, fornecedores, kitfesta_bairros, catalogos_personalizados) + os nomes oficiais
+// do dicionário CIDADES_CANONICAS. O nome de cada grupo sai de `decidirNomeFinal` — a MESMA
+// regra do diag-cidades (o que o dono já viu na lista). UF por `utils/ufPorCidade.js`; nome
+// ambíguo ("Bom Jesus" existe em várias UFs) ou fora da lista fica SEM UF, e o dono completa
+// na tela Configurações → Cidades (`semUf[]` na resposta).
+// Exclui a sentinela "Sem cidade" e valores que são só UF ("SC"). Idempotente: 2ª chamada
+// devolve tudo em `jaExistiam` e cria 0.
+// Sequência de publicação: deploy backend → semente dry-run → real → dono completa UFs →
+// só então publicar o frontend que tira o "Usar 'X'" do campo Cidade.
+// ============================================================================
+router.post('/cidades-semente', async (req, res) => {
+    try {
+        const { chaveCidade, normalizarCidade, CIDADES_CANONICAS } = require('../utils/cidade');
+        const { decidirNomeFinal } = require('../utils/cidadeNomeFinal');
+        const { ufDe, ehAmbiguo } = require('../utils/ufPorCidade');
+        const cidadeService = require('../services/cidadeService');
+        const dryRun = req.body?.dryRun !== false;
+
+        const consulta = (sql) => prisma.$queryRawUnsafe(sql).catch((e) => {
+            console.error('[cidades-semente] falha em fonte:', e.message);
+            return [];
+        });
+        const [rClientes, rLeads, rMetas, rFornecedores, rBairros, rCatalogos] = await Promise.all([
+            consulta(`SELECT "End_Cidade" AS valor, COUNT(*)::int AS n FROM clientes WHERE "End_Cidade" IS NOT NULL AND btrim("End_Cidade") <> '' GROUP BY 1`),
+            consulta(`SELECT cidade AS valor, COUNT(*)::int AS n FROM leads WHERE cidade IS NOT NULL AND btrim(cidade) <> '' GROUP BY 1`),
+            consulta(`SELECT cidade AS valor, COUNT(*)::int AS n FROM meta_cidades WHERE cidade IS NOT NULL AND btrim(cidade) <> '' GROUP BY 1`),
+            consulta(`SELECT cidade AS valor, COUNT(*)::int AS n FROM fornecedores WHERE cidade IS NOT NULL AND btrim(cidade) <> '' GROUP BY 1`),
+            consulta(`SELECT cidade AS valor, COUNT(*)::int AS n FROM kitfesta_bairros WHERE cidade IS NOT NULL AND btrim(cidade) <> '' GROUP BY 1`),
+            consulta(`SELECT cliente_cidade AS valor, COUNT(*)::int AS n FROM catalogos_personalizados WHERE cliente_cidade IS NOT NULL AND btrim(cliente_cidade) <> '' GROUP BY 1`),
+        ]);
+        const parteCidadeDoCatalogo = (composto) => {
+            const bruto = String(composto == null ? '' : composto);
+            const partes = bruto.split('·');
+            if (partes.length > 1) return partes[0].trim();
+            const unico = bruto.trim();
+            return /^[A-Za-z]{2}$/.test(unico) ? '' : unico;
+        };
+
+        // grupos por chave crua (igual ao diag): chave -> { variantes: valor -> total, fontes }
+        const grupos = new Map();
+        const registrar = (valorBruto, fonte, n) => {
+            const valor = String(valorBruto == null ? '' : valorBruto);
+            const chave = chaveCidade(valor);
+            if (!chave) return;
+            let g = grupos.get(chave);
+            if (!g) { g = { chave, variantes: new Map(), total: 0, fontes: new Set() }; grupos.set(chave, g); }
+            g.variantes.set(valor, (g.variantes.get(valor) || 0) + n);
+            g.total += n;
+            g.fontes.add(fonte);
+        };
+        for (const r of rClientes) registrar(r.valor, 'clientes', r.n);
+        for (const r of rLeads) registrar(r.valor, 'leads', r.n);
+        for (const r of rMetas) registrar(r.valor, 'metaCidades', r.n);
+        for (const r of rFornecedores) registrar(r.valor, 'fornecedores', r.n);
+        for (const r of rBairros) registrar(r.valor, 'kitFestaBairros', r.n);
+        for (const r of rCatalogos) registrar(parteCidadeDoCatalogo(r.valor), 'catalogos', r.n);
+
+        // candidatas: chave FINAL -> { nome, registros, origem, grafias }
+        const candidatas = new Map();
+        const excluidas = [];
+        const propor = (nomeFinal, info) => {
+            const nome = normalizarCidade(nomeFinal);
+            if (!nome) return;
+            const chave = chaveCidade(nome);
+            if (chave === 'sem cidade') { excluidas.push({ valor: nome, motivo: 'sentinela "Sem cidade" não é cidade' }); return; }
+            if (/^[a-z]{2}$/.test(chave)) { excluidas.push({ valor: nome, motivo: 'só UF, não é cidade' }); return; }
+            const atual = candidatas.get(chave);
+            if (atual) {
+                atual.registros += info.registros || 0;
+                for (const g of (info.grafias || [])) atual.grafias.add(g);
+                if (info.precisaAprovacao) atual.precisaAprovacao = true;
+            } else {
+                candidatas.set(chave, {
+                    chave, nome, registros: info.registros || 0, origem: info.origem,
+                    origemNomeFinal: info.origemNomeFinal || null, precisaAprovacao: !!info.precisaAprovacao,
+                    grafias: new Set(info.grafias || []),
+                });
+            }
+        };
+        for (const g of grupos.values()) {
+            const variantes = [...g.variantes.entries()].map(([valor, total]) => ({ valor, total }));
+            const d = decidirNomeFinal(g.chave, variantes);
+            propor(d.nomeFinal, {
+                registros: g.total, origem: 'banco', origemNomeFinal: d.origemNomeFinal,
+                precisaAprovacao: d.precisaAprovacao, grafias: variantes.map(v => v.valor),
+            });
+        }
+        for (const [chave, nome] of Object.entries(CIDADES_CANONICAS)) {
+            if (chave === 'sem cidade') continue;
+            propor(nome, { registros: 0, origem: 'dicionario', origemNomeFinal: 'dicionario' });
+        }
+
+        // o que já existe
+        const existentes = await prisma.cidade.findMany({ select: { id: true, chave: true, nome: true, uf: true, ativo: true } });
+        const porChave = new Map(existentes.map(c => [c.chave, c]));
+
+        const criadas = [], jaExistiam = [], semUf = [], aCriar = [];
+        for (const c of [...candidatas.values()].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))) {
+            const uf = ufDe(c.chave);
+            const item = {
+                nome: c.nome, uf, registros: c.registros, origem: c.origem, origemNomeFinal: c.origemNomeFinal,
+                precisaAprovacao: c.precisaAprovacao, grafias: [...c.grafias],
+                ...(uf ? {} : { motivoSemUf: ehAmbiguo(c.chave) ? 'nome existe em mais de uma UF' : 'fora da lista embutida (utils/ufPorCidade.js)' }),
+            };
+            const ex = porChave.get(c.chave);
+            if (ex) { jaExistiam.push({ ...item, id: ex.id, ufAtual: ex.uf, ativo: ex.ativo }); continue; }
+            aCriar.push({ ...item, chave: c.chave });
+            if (!uf) semUf.push(item);
+        }
+
+        if (!dryRun && aCriar.length) {
+            // createMany com skipDuplicates: idempotente mesmo se duas chamadas correrem juntas
+            // (a @unique em `chave` segura). Sem transação: são inserts independentes, sem "tudo ou nada".
+            await prisma.cidade.createMany({
+                data: aCriar.map(c => ({ nome: c.nome, uf: c.uf, chave: c.chave, criadoPor: null })),
+                skipDuplicates: true,
+            });
+            cidadeService.invalidarCache();
+            const depois = await prisma.cidade.findMany({ where: { chave: { in: aCriar.map(c => c.chave) } }, select: { id: true, chave: true } });
+            const idPorChave = new Map(depois.map(c => [c.chave, c.id]));
+            for (const c of aCriar) criadas.push({ ...c, id: idPorChave.get(c.chave) || null });
+        }
+
+        res.json({
+            ok: true,
+            dryRun,
+            escreveu: !dryRun && aCriar.length > 0,
+            resumo: {
+                candidatas: candidatas.size,
+                grafiasNoBanco: grupos.size,
+                jaExistiam: jaExistiam.length,
+                criadas: dryRun ? 0 : criadas.length,
+                seriamCriadas: dryRun ? aCriar.length : undefined,
+                semUf: semUf.length,
+                excluidas: excluidas.length,
+                totalNaTabelaDepois: existentes.length + (dryRun ? 0 : criadas.length),
+            },
+            criadas: dryRun ? aCriar : criadas,
+            jaExistiam,
+            semUf,
+            excluidas,
+            comoAplicar: dryRun ? 'POST /api/admin-exec/cidades-semente { "dryRun": false }' : undefined,
+            proximoPasso: 'Completar a UF das cidades em `semUf` em Configurações → Cidades; só então publicar o frontend.',
+        });
+    } catch (err) {
+        console.error('[cidades-semente]', err);
         if (!res.headersSent) res.status(500).json({ ok: false, erro: err.message });
     }
 });

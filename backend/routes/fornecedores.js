@@ -10,6 +10,12 @@ const express = require('express');
 const router = express.Router();
 const prisma = require('../config/database');
 const { normalizarCidade } = require('../utils/cidade'); // grafia oficial da cidade (Fase 1)
+const cidadeService = require('../services/cidadeService'); // cadastro oficial de cidades (09/2026)
+
+/** Erro do cadastro de cidades -> 400 { codigo, cidade, sugestoes } (o front trata em toda tela que grava cidade). */
+const responderErroCidade = (res, e) => res.status(e.status || 400).json({
+    error: e.message, codigo: e.codigo, cidade: e.cidade, sugestoes: e.sugestoes || [], cidadeInativa: e.cidadeInativa || undefined,
+});
 const verificarAuth = require('../middlewares/authMiddleware');
 const contasPagarCaSyncService = require('../services/contasPagarCaSyncService');
 
@@ -87,6 +93,11 @@ router.post('/', verificarAuth, checkEscrita, async (req, res) => {
             if (duplicado) return res.status(400).json({ error: `Já existe um fornecedor com este documento: ${duplicado.razaoSocial}.` });
         }
 
+        // Cadastro oficial de cidades (09/2026): só cidade da lista (estrito).
+        let cidadeResolvida = null;
+        try { cidadeResolvida = await cidadeService.resolver(cidade, { modo: 'estrito' }); }
+        catch (e) { if (e.codigo) return responderErroCidade(res, e); throw e; }
+
         const fornecedor = await prisma.fornecedor.create({
             data: {
                 cnpjCpf: doc,
@@ -95,7 +106,7 @@ router.post('/', verificarAuth, checkEscrita, async (req, res) => {
                 inscricaoEstadual: inscricaoEstadual?.trim() || null,
                 email: email?.trim() || null,
                 telefone: telefone?.trim() || null,
-                cidade: normalizarCidade(cidade),
+                cidade: cidadeResolvida,
                 uf: uf?.trim()?.toUpperCase()?.substring(0, 2) || null,
                 observacoes: observacoes?.trim() || null,
                 ativo: ativo !== false,
@@ -141,7 +152,11 @@ router.put('/:id', verificarAuth, checkEscrita, async (req, res) => {
         if (inscricaoEstadual !== undefined) data.inscricaoEstadual = inscricaoEstadual?.trim() || null;
         if (email !== undefined) data.email = email?.trim() || null;
         if (telefone !== undefined) data.telefone = telefone?.trim() || null;
-        if (cidade !== undefined) data.cidade = normalizarCidade(cidade);
+        if (cidade !== undefined) {
+            // Cadastro oficial de cidades (09/2026): só cidade da lista (estrito).
+            try { data.cidade = await cidadeService.resolver(cidade, { modo: 'estrito' }); }
+            catch (e) { if (e.codigo) return responderErroCidade(res, e); throw e; }
+        }
         if (uf !== undefined) data.uf = uf?.trim()?.toUpperCase()?.substring(0, 2) || null;
         if (observacoes !== undefined) data.observacoes = observacoes?.trim() || null;
         if (ativo !== undefined) data.ativo = ativo !== false;

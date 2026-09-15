@@ -279,7 +279,7 @@ Antes de registrar um atendimento ou criar pedido, o sistema pode exibir um popu
 
 - **Pedidos** — novo pedido criado aqui aparece na aba Pedidos
 - **Atendimentos** — todos os registros desta tela aparecem no Painel de Atendimentos
-- **Leads** — leads criados aqui aparecem na aba Leads. No modal de novo lead o campo **Cidade** é uma lista com sugestão (busca ignora acento/caixa; cidade nova entra por **Usar "…"** já arrumada) — ver [leads.md](leads.md)
+- **Leads** — leads criados aqui aparecem na aba Leads. No modal de novo lead o campo **Cidade** só aceita cidade do cadastro oficial (busca ignora acento/caixa; cidade nova entra por **"Cadastrar nova cidade…"**, com UF e aviso de parecida — quem tem Rota → editar pode cadastrar) — ver [leads.md](leads.md) e [config-cidades.md](config-cidades.md)
 - **Análise IA** — as orientações geradas pela IA são logadas e visíveis na aba Análise IA
 - **Clientes** — os dados de ciclo, última compra e inadimplência vêm do cadastro de clientes
 - **Embarque** — as entregas exibidas nas sub-abas Entregas e Entregues vêm dos embarques criados
@@ -292,7 +292,7 @@ Antes de registrar um atendimento ou criar pedido, o sistema pode exibir um popu
 |---------|-------|
 | `frontend/src/pages/Rota/RotaLeads.jsx` | Componente principal com cards, sub-abas e filtros |
 | `frontend/src/pages/Rota/ModalAtendimento.jsx` | Modal de registro de atendimento |
-| `frontend/src/pages/Rota/ModalNovoLead.jsx` | Modal de cadastro de lead — o campo **Cidade** é uma lista com sugestão das cidades já existentes (busca ignora acento/caixa; cidade nova entra por **Usar "…"** já arrumada). Detalhe em [leads.md](leads.md) |
+| `frontend/src/pages/Rota/ModalNovoLead.jsx` | Modal de cadastro de lead — o campo **Cidade** só aceita cidade do cadastro oficial (busca ignora acento/caixa; cidade nova por **"Cadastrar nova cidade…"**). Detalhe em [leads.md](leads.md) |
 | `frontend/src/pages/Rota/ClientePopup.jsx` | Popup de detalhes do cliente |
 | `frontend/src/components/Rota/MetaCidadeHojeBanner.jsx` | Banner de meta da cidade |
 | `frontend/src/services/leadService.js` | API de leads |

@@ -56,7 +56,7 @@ Mapa (dentro de Clientes, botão **Mapa** no topo da lista) que mostra **todos o
 
 ## Filtros disponíveis
 
-Cidade · Bairro (dependente da cidade) · Categoria · Vendedor (ativos e inativos) · Dia de entrega · Dia de venda · WhatsApp (todos / tem / não tem) · GPS (todos / com / sem) · Ativos / Inativos · Perfil (padrão: só clientes; fornecedores só quando pedido) · Compras no período (qualquer / comprou / não comprou, com data de/até) · Colorir por (dia de entrega, dia de venda, categoria, vendedor, WhatsApp, cidade). Todos são lembrados por usuário.
+Cidade (mostra "Cidade · UF", com a UF do cadastro oficial de cidades) · Bairro (dependente da cidade) · Categoria · Vendedor (ativos e inativos) · Dia de entrega · Dia de venda · WhatsApp (todos / tem / não tem) · GPS (todos / com / sem) · Ativos / Inativos · Perfil (padrão: só clientes; fornecedores só quando pedido) · Compras no período (qualquer / comprou / não comprou, com data de/até) · Colorir por (dia de entrega, dia de venda, categoria, vendedor, WhatsApp, cidade). Todos são lembrados por usuário.
 
 ## Permissões necessárias
 

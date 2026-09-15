@@ -35,6 +35,10 @@ Cadastro e gestão das metas mensais de vendas por vendedor. Para cada vendedor 
    - Dias de trabalho (quais dias da semana o vendedor trabalha)
    - Metas por produto: produto + quantidade ou valor alvo
    - Metas por cidade: cidade + valor alvo + dias de visita
+     - **A cidade vem do cadastro oficial (desde 09/2026):** o campo é a lista de Configurações →
+       Cidades (busca sem acento). Cidade fora da lista é recusada ao salvar (aviso "A cidade 'X'
+       não está no cadastro", com sugestões) — cadastre pelo **"Cadastrar nova cidade…"** do próprio
+       campo ou em Configurações → Cidades. Ver [config-cidades.md](config-cidades.md).
      - **A cidade é gravada com a grafia oficial.** Se você digitar `JOINVILLE`, `joinville`
        ou `Joinville ` (com espaço), o sistema salva `Joinville`. Cidades com acento também são
        corrigidas: `ITAPOA` vira `Itapoá`, `JARAGUA DO SUL` vira `Jaraguá do Sul`.

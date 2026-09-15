@@ -25,6 +25,7 @@ const GerenciarComissoes = lazyComRetry(() => import('./pages/Configuracoes/Comi
 const CategoriasProduto = lazyComRetry(() => import('./pages/Configuracoes/CategoriasProduto'));
 const CategoriasCliente = lazyComRetry(() => import('./pages/Configuracoes/CategoriasCliente'));
 const CategoriasEstoque = lazyComRetry(() => import('./pages/Configuracoes/CategoriasEstoque'));
+const ConfigCidades = lazyComRetry(() => import('./pages/Configuracoes/Cidades'));
 const DashboardHome = lazyComRetry(() => import('./pages/Dashboard/DashboardHome'));
 const DashboardVendedorPessoal = lazyComRetry(() => import('./pages/Dashboard/DashboardVendedorPessoal'));
 const ListaPedidos = lazyComRetry(() => import('./pages/Pedidos/ListaPedidos'));
@@ -112,7 +113,7 @@ import {
   PackageCheck, Truck, Wallet, Receipt, Search,
   Box, UserCog, Car, RefreshCw, FileText, ClipboardCheck,
   Settings, DollarSign, Building2, TrendingUp, FolderOpen, Warehouse,
-  Package, BookOpen as BookOpenIcon, Factory, Play, ClipboardList as ClipboardListIcon, Calendar as CalendarIcon, Lightbulb, BarChart3, BarChart2, History, Sparkles, BellRing, UserCheck, Tag, DatabaseZap, Percent, Clock, Fingerprint, Inbox, Landmark, CalendarCheck, Star, AlertTriangle, ShoppingBag
+  Package, BookOpen as BookOpenIcon, Factory, Play, ClipboardList as ClipboardListIcon, Calendar as CalendarIcon, Lightbulb, BarChart3, BarChart2, History, Sparkles, BellRing, UserCheck, Tag, DatabaseZap, Percent, Clock, Fingerprint, Inbox, Landmark, CalendarCheck, Star, AlertTriangle, ShoppingBag, MapPin
 } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { useMenuFavoritos } from './hooks/useMenuFavoritos';
@@ -478,6 +479,7 @@ const Layout = ({ children }) => {
       { to: '/config/categorias-produto', icon: FolderOpen, label: 'Cat. Produtos' },
       { to: '/config/categorias-cliente', icon: FolderOpen, label: 'Cat. Clientes' },
       { to: '/config/categorias-estoque', icon: FolderOpen, label: 'Cat. Estoque' },
+      { to: '/config/cidades', icon: MapPin, label: 'Cidades' },
     ] : []) },
   ].filter(s => s.items.length > 0);
 
@@ -948,6 +950,7 @@ function App() {
               <Route path="/config/categorias-produto" element={<PrivateRoute tab="configuracoes"><CategoriasProduto /></PrivateRoute>} />
               <Route path="/config/categorias-cliente" element={<PrivateRoute tab="configuracoes"><CategoriasCliente /></PrivateRoute>} />
               <Route path="/config/categorias-estoque" element={<PrivateRoute tab="configuracoes"><CategoriasEstoque /></PrivateRoute>} />
+              <Route path="/config/cidades" element={<PrivateRoute tab="configuracoes"><ConfigCidades /></PrivateRoute>} />
 
               {/* RH — Currículos */}
               <Route path="/rh/curriculos" element={<PrivateRoute tab="Pode_Ver_RH"><ListaCurriculos /></PrivateRoute>} />

@@ -2,7 +2,11 @@ const svc = require('../services/kitFestaService');
 
 const erro = (res, e, ctx) => {
     console.error(`[KitFesta] ${ctx}:`, e.message);
-    res.status(400).json({ error: e.message });
+    // Campos extras do cadastro de cidades (codigo/cidade/sugestoes) seguem para a tela, quando existem.
+    res.status(e.status && e.status < 500 ? e.status : 400).json({
+        error: e.message,
+        ...(e.codigo ? { codigo: e.codigo, cidade: e.cidade, sugestoes: e.sugestoes || [] } : {}),
+    });
 };
 
 const kitFestaController = {
