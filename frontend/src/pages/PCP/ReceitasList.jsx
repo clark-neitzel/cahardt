@@ -17,7 +17,9 @@ export default function ReceitasList() {
     const navigate = useNavigate();
     const [receitas, setReceitas] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [search, setSearch] = useState('');
+    // Busca também é lembrada por usuário (pedido do dono 15/09/2026): ao abrir uma
+    // receita e voltar, a lista reabre filtrada do mesmo jeito.
+    const [search, setSearch] = useFiltroSalvo('receitas-list:search', '');
     const [statusFiltro, setStatusFiltro] = useFiltroSalvo('receitas-list:statusFiltro', '');
 
     const carregar = useCallback(async () => {
