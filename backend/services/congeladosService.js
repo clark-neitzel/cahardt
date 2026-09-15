@@ -4,6 +4,12 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const pedidoService = require('./pedidoService');
 const webhookService = require('./webhookService');
+// v1.6.0 da API da IA: objeto único de produto/pedido, promoções vigentes e hora de corte.
+// Só usados no caminho da IA (parâmetro `paraIA`/`criarPedidoIA`) — o site público não muda.
+const promocaoService = require('./promocaoService');
+const iaProduto = require('./iaProdutoSerializer');
+const iaPedidoService = require('./iaPedidoService');
+const iaConsultaConfig = require('../config/iaConsultaConfig');
 
 const JWT_SECRET = require('../config/jwtSecret');
 const money2 = (n) => 'R$ ' + Number(n || 0).toFixed(2).replace('.', ',');
@@ -396,17 +402,52 @@ const congeladosService = {
                 o.preparo = (ov && typeof ov === 'object' && ov.preparo) ? String(ov.preparo).trim() : '';
                 // "indisponivel": sem estoque disponível
                 o.indisponivel = produtoIndisponivel(cp.produto);
+                // Registro cru pendurado como propriedade NÃO enumerável: JSON.stringify e
+                // `{...spread}` ignoram — o site público continua recebendo o mesmo JSON. Só o
+                // caminho da IA (_enriquecerCatalogoParaIA) lê isso, sem query extra.
+                Object.defineProperty(o, '_cp', { value: cp, enumerable: false, writable: false });
                 return o;
             });
     },
 
     // Catálogo do VISITANTE (sem login): aplica a tabela "Site" (acréscimo %) sobre o
     // preço base. Cliente logado tem o catálogo personalizado em meuCatalogo().
-    async catalogoVisitante() {
+    // `paraIA` (v1.6.0): soma o objeto único de produto da IA em cada item (só a rota da IA
+    // passa true; a rota pública do site continua sem os campos novos).
+    async catalogoVisitante({ paraIA = false } = {}) {
         const [lista, ctx] = await Promise.all([this.catalogoPublico(), contextoPreco(null)]);
         lista.forEach(p => {
             p.preco = precoVendedor({ base: p.preco, acrescimoPct: ctx.acrescimoPct, maxDescontoPct: ctx.maxDescontoPct });
         });
+        if (paraIA) await this._enriquecerCatalogoParaIA(lista, { acrescimoPct: ctx.acrescimoPct, comPrecoCliente: false });
+        return lista;
+    },
+
+    // v1.6.0 — soma ao catálogo já serializado os campos do objeto único de produto da IA
+    // (nomeCurto, nomeCompleto, embalagemInfo, tamanho, pesoUnidadeG, preparoTipo, precoTabela,
+    // precoCliente, disponivel, previsaoRetorno, promocao…). Nunca sobrescreve campo existente.
+    // Extras (etiquetas, promoções) carregados em LOTE — sem N+1.
+    // `extras` (revisor 09/2026): se o chamador já carregou (catalogoPorTelefone monta o union
+    // com os produtos dos pedidos do reconhecimento e carrega uma vez só), reaproveita em vez de
+    // buscar de novo — sem o parâmetro, comportamento idêntico ao de antes.
+    async _enriquecerCatalogoParaIA(lista, { acrescimoPct = 0, comPrecoCliente = false, extras = null } = {}) {
+        const cps = lista.map(p => p._cp).filter(Boolean);
+        const extrasFinal = extras || await iaProduto.carregarExtrasProdutos(cps.map(cp => cp.produto));
+        for (const p of lista) {
+            const cp = p._cp;
+            if (!cp?.produto) continue;
+            const novos = iaProduto.produtoParaIA({
+                produto: cp.produto,
+                cp,
+                etiqueta: extrasFinal.etiquetas.get(cp.produtoId) || null,
+                promo: extrasFinal.promos.get(cp.produtoId) || null,
+                preparoLabel: p.preparo || '',
+                acrescimoPct,
+                precoCliente: comPrecoCliente ? p.preco : null,
+                nomePorProdutoId: extrasFinal.nomes,
+            });
+            iaProduto.enriquecerItem(p, novos);
+        }
         return lista;
     },
 
@@ -524,8 +565,9 @@ const congeladosService = {
         return ids;
     },
 
-    // Catálogo + flag "comprado" + último pedido (para repetir), tudo personalizado
-    async meuCatalogo(clienteId) {
+    // Catálogo + flag "comprado" + último pedido (para repetir), tudo personalizado.
+    // `paraIA` (v1.6.0): só a rota da IA passa true — soma o objeto único de produto.
+    async meuCatalogo(clienteId, { paraIA = false } = {}) {
         const auth = await prisma.congeladosCliente.findUnique({ where: { id: clienteId } });
         const clienteUuid = auth?.clienteUuid || null;
         const cliente = clienteUuid
@@ -546,7 +588,22 @@ const congeladosService = {
         // Último pedido (para "repetir último pedido"), remontado sobre o catálogo já com o preço do
         // cliente. Mesma regra do reconhecimento por telefone — helper único _ultimoPedidoCliente.
         const ultimoPedido = await this._ultimoPedidoCliente(clienteUuid, catalogo);
+        if (paraIA) {
+            await this._enriquecerCatalogoParaIA(catalogo, { acrescimoPct: ctx.acrescimoPct, comPrecoCliente: true });
+            this._anexarProdutoNoUltimoPedido(ultimoPedido, catalogo);
+        }
         return { catalogo, ultimoPedido };
+    },
+
+    // v1.6.0 — cada item de `ultimoPedido[]` (array, formato INALTERADO) ganha o sub-objeto
+    // `produto`, copiado do item já enriquecido do catálogo (mesmo congeladosProdutoId).
+    _anexarProdutoNoUltimoPedido(ultimoPedido, catalogo) {
+        if (!Array.isArray(ultimoPedido) || !ultimoPedido.length) return;
+        const porId = new Map(catalogo.map(p => [p.id, p]));
+        for (const it of ultimoPedido) {
+            const p = porId.get(it.id);
+            it.produto = p ? { ...p } : null; // spread não copia o _cp (não enumerável)
+        }
     },
 
     // Último pedido REAL do cliente (não bonificação, não excluído), remontado sobre o catálogo já
@@ -635,14 +692,93 @@ const congeladosService = {
         catalogo.forEach(p => { p.comprado = compradosIds.has(p.produtoId); });
         const ultimoPedido = await this._ultimoPedidoCliente(cliente.UUID, catalogo);
 
+        // ── v1.6.0 (tudo aditivo; `ultimoPedido` continua ARRAY, `condicaoPadrao` continua objeto) ──
+        // Revisor 09/2026 (caminho quente — roda a cada mensagem do bot): busca os registros CRUS
+        // do último pedido e da fila/em-aberto primeiro, monta o UNION de produtos com o catálogo
+        // e carrega etiquetas/promoções/preparo por categoria UMA vez só — antes eram até 3 cargas
+        // (catálogo + ultimoPedidoDetalhe + pedidosEmAberto) para praticamente o mesmo conjunto.
+        const [regUltimoPedido, regsAberto] = await Promise.all([
+            iaPedidoService.buscarUltimoPedidoRegistro(cliente),
+            iaPedidoService.buscarPedidosEmAbertoRegistros(cliente),
+        ]);
+        const entradasPedidos = [
+            ...(regUltimoPedido ? [{ fonte: 'PEDIDO', reg: regUltimoPedido }] : []),
+            ...regsAberto.fila.map(reg => ({ fonte: 'FILA', reg })),
+            ...regsAberto.pedidos.map(reg => ({ fonte: 'PEDIDO', reg })),
+        ];
+        const produtosCatalogo = catalogo.map(p => p._cp?.produto).filter(Boolean);
+        const produtosPedidos = iaPedidoService.produtosDeEntradas(entradasPedidos);
+        const [extras, preparos] = await Promise.all([
+            iaProduto.carregarExtrasProdutos([...produtosCatalogo, ...produtosPedidos]),
+            iaPedidoService.preparoPorCategoria(),
+        ]);
+
+        await this._enriquecerCatalogoParaIA(catalogo, { acrescimoPct: ctx.acrescimoPct, comPrecoCliente: true, extras });
+        this._anexarProdutoNoUltimoPedido(ultimoPedido, catalogo);
+        const precoClientePorProduto = {};
+        catalogo.forEach(p => { precoClientePorProduto[p.produtoId] = p.preco; });
+        const ctxPedido = { acrescimoPct: ctx.acrescimoPct, precoClientePorProduto, extras, preparos, regUltimoPedido, regsAberto };
+        const [ultimoPedidoDetalhe, pedidosEmAberto, horaCorte, tabela, vendedor] = await Promise.all([
+            iaPedidoService.ultimoPedidoDetalhe(cliente, ctxPedido),
+            iaPedidoService.pedidosEmAberto(cliente, ctxPedido),
+            iaConsultaConfig.horaCorte(),
+            ctx.condicaoPadrao?.id
+                ? prisma.tabelaPreco.findUnique({ where: { id: ctx.condicaoPadrao.id }, select: { qtdParcelas: true, parcelasDias: true, tipoPagamento: true } }).catch(() => null)
+                : Promise.resolve(null),
+            cliente.idVendedor
+                ? prisma.vendedor.findUnique({ where: { id: cliente.idVendedor }, select: { nome: true, ativo: true, nomeVendedorBotHardt: true } }).catch(() => null)
+                : Promise.resolve(null),
+        ]);
+        const condicaoPadrao = ctx.condicaoPadrao
+            ? { ...ctx.condicaoPadrao, prazoDias: tabela?.parcelasDias ?? null, parcelas: tabela?.qtdParcelas ?? null, tipoPagamento: tabela?.tipoPagamento ?? null }
+            : null;
+        const ultimaCompraEm = ultimoPedidoDetalhe?.data ? iaProduto.dataSP(ultimoPedidoDetalhe.data) : null;
+        const diasSemComprar = ultimaCompraEm
+            ? Math.max(0, Math.round((Date.parse(iaPedidoService.hojeSP()) - Date.parse(ultimaCompraEm)) / 86400000))
+            : null;
+
         return {
             reconhecido: true,
             cliente: { nome: cliente.NomeFantasia || cliente.Nome, documento: cliente.Documento },
-            condicaoPadrao: ctx.condicaoPadrao,
+            condicaoPadrao,
             diasEntrega: diasEntregaLabels(cliente.Dia_de_entrega),
             diasEntregaNums: diasEntregaNums(cliente.Dia_de_entrega),
             catalogo,
             ultimoPedido,
+            // v1.6.0
+            ultimoPedidoDetalhe,
+            pedidosEmAberto,
+            proximasEntregas: iaPedidoService.proximasEntregas(diasEntregaNums(cliente.Dia_de_entrega), 2),
+            horaCorte,
+            ultimaCompraEm,
+            diasSemComprar,
+            // Mesma regra do site: só se o vendedor está ativo. Telefone do vendedor nunca sai.
+            vendedorInfo: vendedor && vendedor.ativo !== false
+                ? { nome: vendedor.nome, nomeBot: vendedor.nomeVendedorBotHardt || null, ativo: true }
+                : null,
+        };
+    },
+
+    // v1.6.0 — promoções vigentes dos produtos que estão no site (contexto: tabela "Site").
+    // No reconhecimento por telefone, `catalogo[].promocao.precoPromo` já vem com o acréscimo
+    // da condição do cliente — é esse que a Ana deve falar.
+    async promocoesVigentes() {
+        const catalogo = await this.catalogoVisitante({ paraIA: true });
+        return {
+            promocoes: catalogo
+                .filter(p => p.promocao)
+                .map(p => ({ ...p.promocao, id_site: p.id, nome: p.nome, produto: { ...p } })),
+        };
+    },
+
+    // v1.6.0 — produtos do site sem estoque (opção b do item 6). Não existe previsão de retorno
+    // no cadastro: `previsaoRetorno` é sempre null.
+    async indisponiveis() {
+        const catalogo = await this.catalogoVisitante({ paraIA: true });
+        return {
+            produtos: catalogo
+                .filter(p => p.indisponivel)
+                .map(p => ({ id: p.id, produtoId: p.produtoId, nome: p.nome, previsaoRetorno: null, produto: { ...p } })),
         };
     },
 
@@ -663,11 +799,18 @@ const congeladosService = {
         const map = {};
         rows.forEach(r => { map[r.chave] = r.valor; });
         // minimoSite: mínimo da tabela "Site" — usado para o visitante (sem condição própria).
-        return { ...DEFAULT_CONFIG, ...map, minimoSite: dec(site?.valorMinimo) };
+        // horaCorte (v1.6.0): hora de corte do pedido (app_configs.ia_consulta_config); null = não configurada.
+        const horaCorte = await iaConsultaConfig.horaCorte();
+        return { ...DEFAULT_CONFIG, ...map, minimoSite: dec(site?.valorMinimo), horaCorte };
     },
 
     // ───────── Criação de pedido (cliente logado ou visitante) ─────────
-    async criarPedidoSite({ clienteId, visitante, itens, diaEntrega, dataEntrega, modo, observacoes, telefone, idempotencyKey }) {
+    // Parâmetros INTERNOS (v1.6.0 — só criarPedidoIA passa; a rota pública do site nunca chega
+    // aqui com eles, mesmo que o JSON traga `promocaoId`/`origem`/`observacaoInterna`):
+    //   permitirPromocao — aceita itens[].promocaoId (validada e recalculada no servidor);
+    //   origem           — SITE (padrão) | WHATSAPP_IA;
+    //   observacaoInterna— texto só da equipe (coluna própria; nunca vai para Pedido.observacoes).
+    async criarPedidoSite({ clienteId, visitante, itens, diaEntrega, dataEntrega, modo, observacoes, telefone, idempotencyKey }, { permitirPromocao = false, origem = 'SITE', observacaoInterna = null } = {}) {
         if (!Array.isArray(itens) || itens.length === 0) throw new Error('Carrinho vazio.');
 
         let auth;
@@ -707,9 +850,11 @@ const congeladosService = {
         const produtoIds = cps.map(c => c.produtoId);
         const ultimaMap = await precoUltimaCompraMap(auth.clienteUuid, produtoIds);
 
-        let subtotal = 0;
-        let totalCaixas = 0;
-        const itensData = [];
+        // 1ª passada: preço normal de cada item (é também o "subtotal a preços normais" que a
+        // promoção CONDICIONAL de VALOR_TOTAL avalia — mesma estimativa da tela do vendedor,
+        // feita ANTES do desconto).
+        let subtotalNormal = 0;
+        const carrinho = []; // { cp, qtd, precoNormal, promocaoId }
         for (const it of itens) {
             const cp = cpMap[it.congeladosProdutoId];
             if (!cp) throw new Error('Produto indisponível no carrinho.');
@@ -717,18 +862,60 @@ const congeladosService = {
             const qtd = parseInt(it.quantidade) || 0;
             if (qtd <= 0) continue;
             const base = cp.precoCongelados != null ? dec(cp.precoCongelados) : dec(cp.produto?.valorVenda);
-            const preco = precoVendedor({ base, acrescimoPct: ctx.acrescimoPct, ultimoPreco: ultimaMap[cp.produtoId], maxDescontoPct: ctx.maxDescontoPct });
-            subtotal += preco * qtd;
-            totalCaixas += qtd;
+            const precoNormal = precoVendedor({ base, acrescimoPct: ctx.acrescimoPct, ultimoPreco: ultimaMap[cp.produtoId], maxDescontoPct: ctx.maxDescontoPct });
+            subtotalNormal += precoNormal * qtd;
+            // promocaoId SÓ conta com permitirPromocao (caminho da IA); o site público ignora.
+            carrinho.push({ cp, qtd, precoNormal, promocaoId: permitirPromocao && it.promocaoId ? String(it.promocaoId) : null });
+        }
+        if (!carrinho.length) throw new Error('Carrinho vazio.');
+
+        // 2ª passada: promoção por item (v1.6.0). O preço NUNCA vem do bot — ele só referencia a
+        // promoção; o servidor valida (vigente, do produto certo, condição atendida) e recalcula:
+        // precoPromocional × (1 + acréscimo% da condição) — a mesma conta da tela do vendedor.
+        // Ignora o último preço negociado e o piso do flex: promoção é preço sancionado.
+        let subtotal = 0;
+        let totalCaixas = 0;
+        const itensData = [];
+        const itensCarrinho = carrinho.map(c => ({ produtoId: c.cp.produtoId, quantidade: c.qtd }));
+        for (const c of carrinho) {
+            let preco = c.precoNormal;
+            let promoAplicada = null;
+            if (c.promocaoId) {
+                const promo = await promocaoService.buscarVigentePorId(c.promocaoId);
+                if (!promo) {
+                    const e = new Error(`Promoção ${c.promocaoId} não está vigente.`);
+                    e.code = 'PROMOCAO_INVALIDA';
+                    throw e;
+                }
+                if (promo.produtoId !== c.cp.produtoId) {
+                    const e = new Error(`A promoção "${promo.nome}" não é do produto "${c.cp.produto?.nome || ''}".`);
+                    e.code = 'PROMOCAO_INVALIDA';
+                    throw e;
+                }
+                if (!promocaoService.avaliarLiberada(promo, itensCarrinho, subtotalNormal)) {
+                    const nomes = {};
+                    cps.forEach(k => { nomes[k.produtoId] = k.nomeSite || k.produto?.nome; });
+                    const cond = promocaoService.descreverCondicao(promo, nomes);
+                    const e = new Error(`A promoção "${promo.nome}" exige: ${cond || 'condição não atendida'}.`);
+                    e.code = 'PROMOCAO_NAO_LIBERADA';
+                    throw e;
+                }
+                preco = Math.round(dec(promo.precoPromocional) * (1 + dec(ctx.acrescimoPct) / 100) * 100) / 100;
+                promoAplicada = promo;
+            }
+            subtotal += preco * c.qtd;
+            totalCaixas += c.qtd;
             itensData.push({
-                congeladosProdutoId: cp.id,
-                nomeProduto: cp.produto?.nome || '',
-                quantidade: qtd,
-                unidadesPorCaixa: cp.unidadesPorCaixa || 0,
+                congeladosProdutoId: c.cp.id,
+                nomeProduto: c.cp.produto?.nome || '',
+                quantidade: c.qtd,
+                unidadesPorCaixa: c.cp.unidadesPorCaixa || 0,
                 precoUnitario: preco,
+                promocaoId: promoAplicada ? promoAplicada.id : null,
+                nomePromocao: promoAplicada ? promoAplicada.nome : null,
             });
         }
-        if (!itensData.length) throw new Error('Carrinho vazio.');
+        // Mínimo da condição continua sendo checado sobre o subtotal FINAL (com promoção).
 
         if (minimo > 0 && subtotal < minimo) {
             throw new Error(`Pedido mínimo de R$ ${minimo.toFixed(2).replace('.', ',')} para esta condição de pagamento.`);
@@ -795,6 +982,9 @@ const congeladosService = {
                 total: subtotal,
                 totalCaixas,
                 observacoes: observacoes || null,
+                // v1.6.0: colunas próprias — nada disso vai parar em Pedido.observacoes (NF-e/recibo).
+                origem: origem === 'WHATSAPP_IA' ? 'WHATSAPP_IA' : 'SITE',
+                observacaoInterna: observacaoInterna || null,
                 status: semCadastro ? 'PENDENTE_CADASTRO' : 'AGUARDANDO',
                 idempotencyKey: idempotencyKey || null,
                 itens: { create: itensData },
@@ -812,23 +1002,31 @@ const congeladosService = {
     // mensagem (autenticado pelo WhatsApp) — nunca por CPF digitado. Cliente reconhecido nasce
     // AGUARDANDO com o preço da condição dele; telefone novo exige nome+CPF e nasce PENDENTE_CADASTRO.
     // O pedido cai na MESMA fila de aprovação do site; o faturamento aprova escolhendo tipo/data.
-    async criarPedidoIA({ telefone, itens, data, modo, observacoes, visitante, idempotencyKey }) {
+    // v1.6.0 (aditivo): aceita `itens[].promocaoId` (validada/recalculada no servidor — `precoUnit`
+    // do body é IGNORADO), `observacaoInterna` (só a equipe vê, coluna própria, 500 chars) e
+    // `origem` (aceito e ignorado: aqui é sempre WHATSAPP_IA). A resposta ganhou `origem` e
+    // `itens[]` (com sub-objeto `produto`), inclusive no caminho idempotente.
+    async criarPedidoIA({ telefone, itens, data, modo, observacoes, visitante, idempotencyKey, observacaoInterna }) {
         if (!Array.isArray(itens) || itens.length === 0) throw new Error('Carrinho vazio.');
 
         // Idempotência: se a mesma chave já criou um pedido, devolve o mesmo (retry/timeout do bot).
         if (idempotencyKey) {
-            const existente = await prisma.congeladosPedido.findFirst({ where: { idempotencyKey } }).catch(() => null);
-            if (existente) return { id: existente.id, numero: existente.numero, status: existente.status, total: dec(existente.total) };
+            const existente = await prisma.congeladosPedido.findFirst({ where: { idempotencyKey }, select: { id: true } }).catch(() => null);
+            if (existente) return this._respostaPedidoIA(existente.id);
         }
 
-        const itensMap = itens.map(i => ({ congeladosProdutoId: i.id, quantidade: i.quantidade }));
+        const itensMap = itens.map(i => ({ congeladosProdutoId: i.id, quantidade: i.quantidade, promocaoId: i.promocaoId || null }));
         const obs = observacoes ? `[WhatsApp IA] ${observacoes}` : '[WhatsApp IA]';
+        const obsInterna = observacaoInterna
+            ? String(observacaoInterna).replace(/\r?\n/g, ' ').replace(/\s{2,}/g, ' ').trim().slice(0, 500) || null
+            : null;
+        const opcoesIA = { permitirPromocao: true, origem: 'WHATSAPP_IA', observacaoInterna: obsInterna };
 
         const cliente = await this._clientePorTelefone(telefone);
         let pedido;
         if (cliente) {
             const cc = await this._congeladosClienteVinculado(cliente, telefone);
-            pedido = await this.criarPedidoSite({ clienteId: cc.id, itens: itensMap, dataEntrega: data, modo, observacoes: obs, telefone, idempotencyKey });
+            pedido = await this.criarPedidoSite({ clienteId: cc.id, itens: itensMap, dataEntrega: data, modo, observacoes: obs, telefone, idempotencyKey }, opcoesIA);
         } else {
             if (!visitante?.nome || !docValido(normalizarDoc(visitante?.cpf))) {
                 const e = new Error('Cliente novo (telefone não reconhecido): informe nome e CPF/CNPJ para criar o pedido.');
@@ -838,9 +1036,58 @@ const congeladosService = {
             pedido = await this.criarPedidoSite({
                 visitante: { documento: visitante.cpf, nome: visitante.nome, telefone: visitante.telefone || telefone },
                 itens: itensMap, dataEntrega: data, modo, observacoes: obs, telefone: visitante.telefone || telefone, idempotencyKey,
-            });
+            }, opcoesIA);
         }
-        return { id: pedido.id, numero: pedido.numero, status: pedido.status, total: dec(pedido.total) };
+        return this._respostaPedidoIA(pedido.id);
+    },
+
+    // Resposta do POST /congelados/pedido da IA: campos antigos (id, numero, status, total) +
+    // origem + itens[] com o objeto único de produto. Recarrega o pedido com os produtos.
+    async _respostaPedidoIA(congeladosPedidoId) {
+        const cp = await prisma.congeladosPedido.findUnique({
+            where: { id: congeladosPedidoId },
+            include: { itens: { include: { congeladosProduto: { include: { produto: { include: iaProduto.PRODUTO_INCLUDE_IA } } } } } },
+        });
+        if (!cp) throw new Error('Pedido não encontrado.');
+        const acrescimoPct = cp.tabelaPrecoId
+            ? dec((await prisma.tabelaPreco.findUnique({ where: { id: cp.tabelaPrecoId }, select: { acrescimoPreco: true } }).catch(() => null))?.acrescimoPreco)
+            : 0;
+        const extras = await iaProduto.carregarExtrasProdutos(cp.itens.map(i => i.congeladosProduto?.produto).filter(Boolean));
+        const cfgRow = await prisma.congeladosConfig.findUnique({ where: { chave: 'categoriasNomes' } }).catch(() => null);
+        const overrides = (cfgRow && cfgRow.valor) || {};
+        return {
+            id: cp.id,
+            numero: cp.numero,
+            status: cp.status,
+            total: dec(cp.total),
+            origem: cp.origem || 'SITE',
+            itens: cp.itens.map(it => {
+                const prod = it.congeladosProduto?.produto || null;
+                const catId = prod?.categoriaProduto?.id;
+                const ov = catId ? overrides[catId] : null;
+                return {
+                    id: it.congeladosProdutoId,
+                    produtoId: it.congeladosProduto?.produtoId || null,
+                    nome: it.nomeProduto,
+                    quantidade: it.quantidade,
+                    unidade: prod?.unidade || null,
+                    precoUnit: dec(it.precoUnitario),
+                    precoTotal: Math.round(dec(it.precoUnitario) * it.quantidade * 100) / 100,
+                    promocaoId: it.promocaoId || null,
+                    nomePromocao: it.nomePromocao || null,
+                    produto: prod ? iaProduto.produtoParaIA({
+                        produto: prod,
+                        cp: it.congeladosProduto,
+                        etiqueta: extras.etiquetas.get(prod.id) || null,
+                        promo: extras.promos.get(prod.id) || null,
+                        preparoLabel: (ov && typeof ov === 'object' && ov.preparo) ? String(ov.preparo).trim() : '',
+                        acrescimoPct,
+                        precoCliente: dec(it.precoUnitario),
+                        nomePorProdutoId: extras.nomes,
+                    }) : null,
+                };
+            }),
+        };
     },
 
     // Garante uma conta do site (CongeladosCliente) vinculada ao Cliente reconhecido, para o pedido
@@ -867,11 +1114,13 @@ const congeladosService = {
     },
 
     async meusPedidos(clienteId) {
-        return prisma.congeladosPedido.findMany({
+        const lista = await prisma.congeladosPedido.findMany({
             where: { congeladosClienteId: clienteId },
             orderBy: { createdAt: 'desc' },
             include: { itens: true },
         });
+        // A observação interna (combinado da Ana com a equipe) NUNCA sai para o cliente no site.
+        return lista.map(({ observacaoInterna, ...p }) => p);
     },
 
     // ============================================================
@@ -1081,6 +1330,9 @@ const congeladosService = {
             });
         }
 
+        // Pedido.observacoes vai para a NF-e (infCpl) e para o recibo: só a observação do cliente
+        // entra aqui. `cp.observacaoInterna` (v1.6.0) fica SÓ na fila — o model Pedido não tem
+        // campo de observação interna, e criar um está fora do escopo desta entrega.
         const novoPedido = await pedidoService.criar({
             clienteId: cId,
             vendedorId: cliente?.idVendedor || null,

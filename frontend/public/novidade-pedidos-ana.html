@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Pedidos da Ana na fila do site — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp -->
+<meta property="og:title" content="🤖 Novidade no Hardt App: Pedidos da Ana na fila do site">
+<meta property="og:description" content="A Ana (assistente de WhatsApp) começou a tirar pedido de alguns clientes de congelados — e ele entra na mesma fila de aprovação de sempre. Veja como identificar e o que ela combina com o cliente.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 96px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 7vw, 40px);
+    font-weight: 800;
+    line-height: 1.12;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.75);
+    font-size: 16px;
+    max-width: 46ch;
+    margin: 0 auto;
+    text-wrap: balance;
+  }
+  .hero .piloto {
+    display: inline-block;
+    margin-top: 16px;
+    background: rgba(255,255,255,.12);
+    border: 1px solid rgba(255,255,255,.22);
+    color: #fff;
+    font-size: 12.5px;
+    font-weight: 700;
+    padding: 7px 14px;
+    border-radius: 999px;
+  }
+
+  /* mock da fila flutuando sobre o hero */
+  .mock {
+    max-width: 420px;
+    margin: -68px auto 28px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.28);
+    overflow: hidden;
+    text-align: left;
+  }
+  .mock-top {
+    background: var(--house);
+    color: #fff;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .mock-top small {
+    display: block;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    color: rgba(255,255,255,.55);
+  }
+  .mock-top strong { font-size: 16px; line-height: 1.2; }
+  .mock-ico { font-size: 24px; }
+  .mock-body { padding: 14px 16px 16px; }
+  .mock-card {
+    border: 1px solid #e5e3dc;
+    border-radius: 12px;
+    padding: 11px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .mock-linha1 { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .mock-nome { font-weight: 800; font-size: 14.5px; color: var(--ink); }
+  .mock-valor { font-weight: 800; font-size: 14.5px; color: var(--primary-dark); }
+  .mock-selos { display: flex; flex-wrap: wrap; gap: 6px; }
+  .selo {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 11px; font-weight: 700;
+    padding: 4px 9px; border-radius: 999px;
+  }
+  .selo-status { background: #dbeafe; color: #1e40af; }
+  .selo-ia { background: #f3e8ff; color: #7e22ce; }
+  .mock-detalhe { font-size: 12px; color: var(--ink-soft); }
+
+  /* ── SEÇÕES / ACCORDION ── */
+  .sec-label {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: var(--primary-dark);
+    margin: 34px 4px 12px;
+  }
+  .acc {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .acc-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: none;
+    border: none;
+    font: inherit;
+    text-align: left;
+    padding: 15px 16px;
+    cursor: pointer;
+    min-height: 56px;
+  }
+  .acc-ico {
+    width: 38px; height: 38px;
+    border-radius: 11px;
+    background: var(--mint);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  /* passos */
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n {
+    width: 30px; height: 30px; flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 800;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .rodape {
+    text-align: center;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 40px;
+  }
+  .rodape strong { color: var(--primary-dark); }
+
+  /* ── MOCKUPS DAS TELAS DO APP ── */
+  .tela {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .tela-titulo {
+    background: var(--house);
+    color: #fff;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .app-card {
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .app-card-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    border-bottom: 1px solid #f0efe9;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: #6b756f;
+  }
+  .app-card-body { padding: 12px; }
+  .app-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 11px; font-weight: 700;
+    padding: 4px 10px; border-radius: 999px;
+  }
+  .app-badge.status { background: #dbeafe; color: #1e40af; }
+  .app-badge.ia { background: #f3e8ff; color: #7e22ce; }
+  .app-badge.promo { background: var(--mint); color: var(--primary-dark); }
+  .app-obs {
+    font-size: 12.5px;
+    color: #92400e;
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    border-radius: 10px;
+    padding: 9px 11px;
+    margin-bottom: 8px;
+  }
+  .app-interno {
+    background: #fffbeb;
+    border: 1px solid #fcd34d;
+    border-radius: 10px;
+    padding: 9px 11px;
+    margin-bottom: 8px;
+  }
+  .app-interno .titulo {
+    font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em;
+    color: #b45309; margin-bottom: 4px;
+    display: flex; align-items: center; gap: 5px;
+  }
+  .app-interno .texto { font-size: 12.5px; color: #78350f; }
+  .app-item {
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 8px; font-size: 12.5px; padding: 6px 0;
+    border-bottom: 1px solid #f4f3ee;
+  }
+  .app-item:last-child { border-bottom: none; }
+  .app-item .desc { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; color: var(--ink); }
+  .app-item .val { color: #6b756f; white-space: nowrap; }
+  .pin {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    flex-shrink: 0;
+    vertical-align: 2px;
+    margin-left: 6px;
+  }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+</style>
+</head>
+<body>
+
+<!-- ══════════ HERO ══════════ -->
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>A Ana também<br>tira pedido agora</h1>
+    <p>A Ana (assistente de WhatsApp da empresa) vai tirar o pedido semanal de alguns clientes de congelados. O pedido dela cai na mesma fila de sempre — quem aprova é a equipe, do jeito de sempre.</p>
+    <span class="piloto">🧪 Piloto com 5 clientes</span>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- mock do card da fila -->
+  <div class="mock" aria-hidden="true">
+    <div class="mock-top">
+      <span class="mock-ico">🛒</span>
+      <div>
+        <small>Pedidos Online · Site (Congelados)</small>
+        <strong>Fila de aprovação</strong>
+      </div>
+    </div>
+    <div class="mock-body">
+      <div class="mock-card">
+        <div class="mock-linha1">
+          <span class="mock-nome">Confeitaria Doce Lar</span>
+          <span class="mock-valor">R$ 486,00</span>
+        </div>
+        <div class="mock-selos">
+          <span class="selo selo-status">Aguardando</span>
+          <span class="selo selo-ia">💬 WhatsApp IA</span>
+        </div>
+        <div class="mock-detalhe">Entrega: 18/09 · 6 cx · 9 itens</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ O QUE MUDOU ══════════ -->
+  <div class="sec-label">O que mudou</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🤖</span>
+      <strong>A Ana entra na mesma fila de sempre</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>No piloto, a Ana passou a tirar o pedido semanal de <b>5 clientes</b> de congelados, pelo próprio WhatsApp.</li>
+        <li>O pedido que ela monta entra <b>igualzinho a um pedido do site</b> em <b>Pedidos Online → Site (Congelados)</b> — mesma fila, mesmo fluxo.</li>
+        <li>A equipe de faturamento <b>aprova do jeito de sempre</b>: confere, aprova e gera o pedido no sistema. Nada muda no processo de aprovação.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🏷️</span>
+      <strong>Selo roxo "WhatsApp IA"</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Todo pedido tirado pela Ana ganha um selo roxo <b>"WhatsApp IA"</b> no card da fila e no topo do detalhe.</li>
+        <li>Pedido feito pelo cliente direto no site <b>não tem esse selo</b> — é só para diferenciar quem tirou o pedido.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🔒</span>
+      <strong>Bloco "Interno · só a equipe vê"</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>No detalhe do pedido, logo abaixo do "Obs:" do cliente, aparece um bloco âmbar com o que a <b>Ana combinou com o cliente</b> na conversa — por exemplo, uma promoção que ele aceitou.</li>
+        <li>Esse combinado <b>não vai para o pedido</b>, não vai para a <b>nota fiscal</b> nem para o <b>recibo</b> — é só um recado interno, só a equipe de faturamento vê ao abrir o pedido.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🎁</span>
+      <strong>Chip verde de promoção nos itens</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Quando a Ana aplica uma <b>promoção vigente do sistema</b> num item, ele ganha um chip verde <b>"Promo: nome da promoção"</b>.</li>
+        <li>O preço já vem <b>calculado pelo próprio sistema</b> — a Ana nunca inventa preço nem desconto por conta própria.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">👀</span>
+      <strong>O que a Ana enxerga — e o que ela NÃO faz</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p><b>Para montar o pedido, ela agora enxerga do cliente:</b></p>
+      <ul>
+        <li>Histórico de pedidos, com os itens de cada um.</li>
+        <li>Produtos que ele costuma comprar.</li>
+        <li>Promoções vigentes do sistema.</li>
+        <li>Produtos em falta no momento.</li>
+        <li>Se o cliente já tem pedido aberto naquela semana (evita duplicar).</li>
+      </ul>
+      <p><b>O que ela NÃO faz:</b></p>
+      <ul>
+        <li>Não fala sobre <b>cobrança ou inadimplência</b> com o cliente.</li>
+        <li><b>Não aprova</b> pedido — quem aprova continua sendo a equipe.</li>
+        <li><b>Não cria preço</b> — usa sempre o preço/promoção calculado pelo sistema.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ══════════ AS TELAS DO APP ══════════ -->
+  <div class="sec-label">As telas do app</div>
+
+  <!-- TELA 1: card na fila -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 1 · Card na fila — Pedidos Online → Site</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-body">
+          <div class="mock-linha1" style="margin-bottom:8px;">
+            <span class="mock-nome">Panificadora Bom Sabor</span>
+            <span class="mock-valor">R$ 312,50</span>
+          </div>
+          <div class="mock-selos">
+            <span class="app-badge status">Aguardando</span>
+            <span class="app-badge ia">💬 WhatsApp IA<span class="pin">1</span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>O selo roxo <b>"WhatsApp IA"</b> aparece junto dos outros selos do card, na fila de <b>Pedidos Online → Site (Congelados)</b>. Pedido comum do site não tem esse selo.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 2: detalhe do pedido -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 2 · Detalhe do pedido</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">🛒 Pedido #4821</div>
+        <div class="app-card-body">
+          <div class="mock-selos" style="margin-bottom:10px;">
+            <span class="app-badge status">Aguardando</span>
+            <span class="app-badge ia">💬 WhatsApp IA<span class="pin">1</span></span>
+          </div>
+          <div class="app-obs"><b>Obs:</b> Entregar antes das 10h, se possível.</div>
+          <div class="app-interno">
+            <div class="titulo">💬 Interno · só a equipe vê<span class="pin">2</span></div>
+            <div class="texto">Cliente aceitou a promoção do enroladinho, ficou com 2 pct. Confirmou que quer manter o mesmo dia de sempre.</div>
+          </div>
+          <div class="app-item">
+            <span class="desc"><b>3×</b> Coxinha de Frango 500g</span>
+            <span class="val">R$ 87,00</span>
+          </div>
+          <div class="app-item">
+            <span class="desc"><b>2×</b> Enroladinho de Salsicha <span class="app-badge promo">Promo: Combo Enroladinho<span class="pin">3</span></span></span>
+            <span class="val">R$ 54,00</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>O selo <b>"WhatsApp IA"</b> repete no topo do detalhe, junto com o status do pedido.</span></div>
+      <div><span class="pin">2</span><span>Bloco âmbar <b>"Interno · só a equipe vê"</b>: o que a Ana combinou com o cliente na conversa. Não entra no pedido, na nota nem no recibo.</span></div>
+      <div><span class="pin">3</span><span>Chip verde <b>"Promo: nome da promoção"</b> no item — só aparece quando a promoção é uma vigente do sistema; o preço já vem calculado, a Ana não inventa preço.</span></div>
+    </div>
+  </div>
+
+  <!-- ══════════ PARA A EQUIPE ══════════ -->
+  <div class="sec-label">Para aprovar um pedido da Ana</div>
+  <div class="passos">
+    <div class="passo">
+      <span class="passo-n">1</span>
+      <div>Abra <b>Pedidos Online → Site (Congelados)</b>, como sempre.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">2</span>
+      <div>Repare no selo roxo <b>"WhatsApp IA"</b> — é assim que dá para saber que foi a Ana quem tirou o pedido.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">3</span>
+      <div>Confira o bloco âmbar <b>"Interno"</b> (se tiver) antes de aprovar — é o combinado da conversa com o cliente.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">4</span>
+      <div>Aprove e gere o pedido <b>do jeito de sempre</b>. Nada muda no processo. ✅</div>
+    </div>
+  </div>
+
+  <p class="rodape">Dúvidas? Pergunte ao <strong>Clippy</strong> dentro do app.<br>— Hardt Salgados</p>
+</div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.parentElement;
+    const abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>

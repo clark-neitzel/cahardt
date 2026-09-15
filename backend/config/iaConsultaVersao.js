@@ -21,9 +21,31 @@
 // · 1.5.1 (2026-08-26) padronização de grafia de cidade (Fase 1): a 'cidade' recebida em
 // cliente/criar-lead é gravada com o nome oficial. NENHUM campo de resposta removido ou
 // renomeado — só o VALOR gravado muda; aviso informativo registrado em AVISOS.
-const VERSAO_API = '1.5.1';
+// · 1.6.0 (2026-09-10) dados para a Ana tirar o pedido semanal: objeto ÚNICO de produto
+// (somado ao catálogo/reconhecimento; sub-objeto `produto` nos itens de pedido) e de pedido
+// (`fonte` PEDIDO|FILA, dataPrevista/entregueEm/entregador/status/emAberto/origem/nfeNumero);
+// histórico passa a incluir a FILA de aprovação no topo; reconhecimentos ganham
+// ultimoPedidoDetalhe/pedidosEmAberto/proximasEntregas/horaCorte/vendedorInfo/endereco; novos
+// GET congelados/promocoes, GET congelados/indisponiveis, POST cliente/produtos-comprados,
+// POST cliente/situacao (só painel), GET cliente/pedido/:numero; POST congelados/pedido aceita
+// itens[].promocaoId + observacaoInterna + origem e devolve origem + itens[]. Tudo aditivo —
+// nenhum campo removido/renomeado/tipo alterado (ultimoPedido segue array, grupo segue ID,
+// embalagem segue string, preparo segue rótulo). Aviso informativo sobre a fila em AVISOS.
+const VERSAO_API = '1.6.0';
 
 const AVISOS = [
+    // AVISO INFORMATIVO (v1.6.0, não é quebra de contrato): nenhum campo removido/renomeado.
+    // O histórico passa a INCLUIR entradas novas (fila de aprovação) — um consumidor que lia
+    // `pedidos[0].numero` como "último pedido real" precisa olhar `fonte`.
+    {
+        desde: '2026-09-10',
+        mensagem: "POST /cliente/historico-pedidos: a lista passa a incluir, NO TOPO e fora do 'limite', "
+            + "os pedidos ainda na fila de aprovação (fonte:'FILA', status AGUARDANDO/PENDENTE_CADASTRO, "
+            + "'numero' = número da fila, o mesmo devolvido por POST /congelados/pedido). Entradas antigas "
+            + "continuam iguais, com fonte:'PEDIDO'. Nenhum campo foi removido. Note também que 'dataEntrega' "
+            + "sempre foi a hora REAL da entrega (null até o motorista entregar) — a data prevista está no "
+            + "campo novo 'dataPrevista'."
+    },
     // AVISO INFORMATIVO (não é quebra de contrato): nenhum campo de resposta foi removido
     // nem renomeado. O que muda é o VALOR gravado a partir da `cidade` enviada em
     // POST /cliente/criar-lead — por isso está aqui, para o app consumidor não estranhar.

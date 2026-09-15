@@ -92,7 +92,74 @@ const promocaoService = {
         if (flex > 0) return 0;
         // Se vender abaixo do promo, flex negativo normalmente
         return flex;
-    }
+    },
+
+    // ── v1.6.0 da API da IA (aditivo; nada acima mudou) ─────────────────────────────────────
+
+    /**
+     * Todas as promoções VIGENTES (ATIVA e dentro do período), com grupos/condições.
+     * Uma por produto: se houver mais de uma vigente no mesmo produto, fica a criada por
+     * último (mesma escolha implícita do findFirst de buscarAtivaPorProduto).
+     * @param {{ produtoIds?: string[] | null }} opts — restringe aos produtos informados
+     * @returns {Promise<Map<string, object>>} produtoId → promoção
+     */
+    listarVigentes: async ({ produtoIds = null } = {}) => {
+        const agora = new Date();
+        const where = { status: 'ATIVA', dataInicio: { lte: agora }, dataFim: { gte: agora } };
+        if (Array.isArray(produtoIds)) {
+            if (!produtoIds.length) return new Map();
+            where.produtoId = { in: produtoIds };
+        }
+        const lista = await prisma.promocao.findMany({
+            where,
+            include: { grupos: { include: { condicoes: true } } },
+            orderBy: { criadoEm: 'desc' },
+        });
+        const map = new Map();
+        for (const p of lista) if (!map.has(p.produtoId)) map.set(p.produtoId, p); // 1ª = mais recente
+        return map;
+    },
+
+    /**
+     * Promoção vigente pelo id (usada na criação de pedido pela IA). Devolve null se não
+     * existe, está ENCERRADA ou fora do período.
+     */
+    buscarVigentePorId: async (id) => {
+        if (!id) return null;
+        const agora = new Date();
+        return prisma.promocao.findFirst({
+            where: { id: String(id), status: 'ATIVA', dataInicio: { lte: agora }, dataFim: { gte: agora } },
+            include: { grupos: { include: { condicoes: true } } },
+        });
+    },
+
+    /**
+     * Texto humano da condição (para a Ana falar e para a mensagem de erro):
+     *   SIMPLES → null; CONDICIONAL → grupos unidos por " ou ", condições por " e ".
+     * @param {object} promo — com grupos.condicoes
+     * @param {Map<string,string>|object} nomePorProdutoId — produtoId → nome (opcional)
+     */
+    descreverCondicao: (promo, nomePorProdutoId = null) => {
+        if (!promo || promo.tipo !== 'CONDICIONAL' || !Array.isArray(promo.grupos)) return null;
+        const nomeDe = (pid) => {
+            if (!nomePorProdutoId) return null;
+            if (nomePorProdutoId instanceof Map) return nomePorProdutoId.get(pid) || null;
+            return nomePorProdutoId[pid] || null;
+        };
+        const fmtQtd = (q) => { const n = Number(q || 0); return Number.isInteger(n) ? String(n) : n.toFixed(3).replace(/\.?0+$/, ''); };
+        const fmtReal = (v) => 'R$ ' + Number(v || 0).toFixed(2).replace('.', ',');
+        const grupos = promo.grupos
+            .map(g => (g.condicoes || []).map(c => {
+                if (c.tipo === 'PRODUTO_QUANTIDADE') {
+                    const nome = nomeDe(c.produtoId);
+                    return `a partir de ${fmtQtd(c.quantidadeMinima)} un${nome ? ` de ${nome}` : ''}`;
+                }
+                if (c.tipo === 'VALOR_TOTAL') return `pedido a partir de ${fmtReal(c.valorMinimo)}`;
+                return null;
+            }).filter(Boolean).join(' e '))
+            .filter(Boolean);
+        return grupos.length ? grupos.join(' ou ') : null;
+    },
 };
 
 module.exports = promocaoService;

@@ -1,8 +1,11 @@
 const svc = require('../services/congeladosService');
 
+// `code` (v1.6.0, aditivo): quando a regra de negócio dá um código fechado (VISITANTE_SEM_CPF,
+// PROMOCAO_INVALIDA, PROMOCAO_NAO_LIBERADA) ele vai junto — antes ficava só no `e.code` e o bot
+// nunca recebia.
 const erro = (res, e, ctx) => {
     console.error(`[Congelados] ${ctx}:`, e.message);
-    res.status(400).json({ error: e.message });
+    res.status(400).json(e.code ? { error: e.message, code: e.code } : { error: e.message });
 };
 
 const congeladosController = {
@@ -42,6 +45,24 @@ const congeladosController = {
     meuCatalogo: async (req, res) => {
         try { res.json(await svc.meuCatalogo(req.congelados.id)); }
         catch (e) { erro(res, e, 'meuCatalogo'); }
+    },
+    // ── v1.6.0 — caminhos da IA (mesmas URLs da /v1; resposta = antiga + objeto único de produto).
+    // O site público continua chamando `catalogo`/`meuCatalogo` sem enriquecimento.
+    catalogoIA: async (req, res) => {
+        try { res.json(await svc.catalogoVisitante({ paraIA: true })); }
+        catch (e) { erro(res, e, 'catalogoIA'); }
+    },
+    meuCatalogoIA: async (req, res) => {
+        try { res.json(await svc.meuCatalogo(req.congelados.id, { paraIA: true })); }
+        catch (e) { erro(res, e, 'meuCatalogoIA'); }
+    },
+    promocoes: async (req, res) => {
+        try { res.json(await svc.promocoesVigentes()); }
+        catch (e) { erro(res, e, 'promocoes'); }
+    },
+    indisponiveis: async (req, res) => {
+        try { res.json(await svc.indisponiveis()); }
+        catch (e) { erro(res, e, 'indisponiveis'); }
     },
     catalogoPorTelefone: async (req, res) => {
         try { res.json(await svc.catalogoPorTelefone(req.body.telefone)); }

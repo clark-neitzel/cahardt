@@ -3352,6 +3352,13 @@ model CongeladosPedido {
 
   observacoes String? @db.Text
 
+  // v1.6.0 da API da IA (09/2026): de onde veio o pedido e o combinado interno da Ana.
+  //   origem: SITE | WHATSAPP_IA — null nos pedidos antigos (= SITE).
+  //   observacaoInterna: texto que SÓ a equipe vê no card da fila (combinado da Ana com o
+  //   cliente). NUNCA vai para Pedido.observacoes (que sai na NF-e e no recibo).
+  origem            String? // SITE | WHATSAPP_IA (null = SITE)
+  observacaoInterna String? @map("observacao_interna") @db.Text
+
   // Fluxo: AGUARDANDO | PENDENTE_CADASTRO | RECUSADO | CONVERTIDO | CANCELADO
   status       String  @default("AGUARDANDO")
   motivoRecusa String? @map("motivo_recusa") @db.Text
@@ -3386,6 +3393,11 @@ model CongeladosPedidoItem {
   quantidade       Int // nº de caixas
   unidadesPorCaixa Int     @default(0) @map("unidades_por_caixa")
   precoUnitario    Decimal @map("preco_unitario") @db.Decimal(12, 2)
+
+  // v1.6.0 da API da IA: promoção aplicada no preço deste item (só pedido da Ana, validada no
+  // servidor). Snapshot solto (sem @relation), igual a PedidoItem.promocaoId/nomePromocao.
+  promocaoId   String? @map("promocao_id")
+  nomePromocao String? @map("nome_promocao")
 
   @@map("congelados_pedido_itens")
 }

@@ -52,25 +52,30 @@ mencionada na mensagem. Assim a mudança nunca pega o app de surpresa.
 | GET | `/kitfesta/slots` | `?data=YYYY-MM-DD&modo=retirada\|entrega` | Horários daquele dia com capacidade/lotação |
 | POST | `/kitfesta/validar-cupom` | `{ codigo, totalCaixas }` | Validação do cupom (tipo, valor, mínimo de caixas) |
 | POST | `/kitfesta/verificar-entrega` | `{ cep }` | `{ atende: true\|false\|null, distanciaKm, raioKm, endereco }` |
-| GET | `/congelados/catalogo` | — | Catálogo com preço **genérico** (tabela "Site", visitante sem cadastro) |
+| GET | `/congelados/catalogo` | — | Catálogo com preço **genérico** (tabela "Site", visitante sem cadastro). **(v1.6)** cada item traz também o [objeto único de produto](#objeto-único-de-produto-v16) (`nomeCurto`, `nomeCompleto`, `embalagemInfo`, `tamanho`, `pesoUnidadeG`, `preparoTipo`, `precoTabela`, `precoCliente:null`, `disponivel`, `previsaoRetorno`, `promocao`…) somado aos campos antigos |
 | GET | `/congelados/grupos` | — | Categorias/grupos do catálogo de congelados |
-| GET | `/congelados/config` | — | Dados da loja, mínimo padrão, se atende sábado/domingo (`entregas.sabado/domingo`) |
+| GET | `/congelados/config` | — | Dados da loja, mínimo padrão, se atende sábado/domingo (`entregas.sabado/domingo`). **(v1.6)** + `horaCorte` (`"HH:MM"` ou `null`) |
 | GET | `/congelados/produto/:id/ficha` | `:id` = id do produto no site | Ficha técnica/nutricional do produto |
-| POST | `/congelados/reconhecer-telefone` | `{ telefone }` | Se o telefone bater com um cliente cadastrado: catálogo já com preço/condição/dias de entrega REAIS dele. **(v1.4)** cada produto traz `comprado:true/false` e a resposta traz `ultimoPedido:[{id,congeladosProdutoId,produtoId,nome,unidade,quantidade,precoUnit}]` (o "de sempre"). **(v1.5)** o telefone também casa com os WhatsApps cadastrados na lista do cliente. Senão: `{ reconhecido: false }` |
+| GET | `/congelados/promocoes` | — | **(v1.6)** Promoções vigentes dos produtos do site, contexto tabela "Site": `{ promocoes:[{ id, nome, tipo:"PRECO"\|"CONDICIONAL", precoPromo, precoNormal, condicao, validoAte, tabelas:["*"], produtoId, id_site, produto }] }` — ver seção v1.6 |
+| GET | `/congelados/indisponiveis` | — | **(v1.6)** Produtos do site sem estoque: `{ produtos:[{ id, produtoId, nome, previsaoRetorno:null, produto }] }` |
+| POST | `/congelados/reconhecer-telefone` | `{ telefone }` | Se o telefone bater com um cliente cadastrado: catálogo já com preço/condição/dias de entrega REAIS dele. **(v1.4)** cada produto traz `comprado:true/false` e a resposta traz `ultimoPedido:[{id,congeladosProdutoId,produtoId,nome,unidade,quantidade,precoUnit}]` (o "de sempre" — **array**, formato inalterado). **(v1.5)** o telefone também casa com os WhatsApps cadastrados na lista do cliente. **(v1.6)** cada item do `catalogo[]` ganha o objeto único de produto (com `precoCliente` = preço dele e `promocao.precoPromo` já com o acréscimo da condição dele); cada item de `ultimoPedido[]` ganha o sub-objeto `produto`; a resposta ganha `ultimoPedidoDetalhe` (objeto de pedido com itens), `pedidosEmAberto[]`, `proximasEntregas[]`, `horaCorte`, `ultimaCompraEm`, `diasSemComprar`, `vendedorInfo`; `condicaoPadrao` ganha `prazoDias`, `parcelas`, `tipoPagamento`. Senão: `{ reconhecido: false }` |
 | POST | `/congelados/criar-senha-telefone` | `{ telefone, senha }` | Cria a senha do site (mesma conta do login) — só funciona se `telefone` bater com um cadastro. Devolve `{ token, cliente }` |
 | POST | `/congelados/check-doc` | `{ documento }` (CPF/CNPJ) | `{ situacao, temCadastroApp, nome }` — descobre se o documento já tem cadastro/senha |
 | POST | `/congelados/login` | `{ documento, senha }` | `{ token, cliente }` se a senha bater |
 | POST | `/congelados/criar-senha` | `{ documento, senha, nome?, telefone? }` | Cria a senha **só se a conta ainda não tiver uma** (senão erro "já tem senha, use esqueci-senha") |
 | POST | `/congelados/esqueci-senha` | `{ documento }` | Manda um código de 6 caracteres pelo WhatsApp — **só para o telefone já cadastrado**, nunca pra quem pediu |
 | POST | `/congelados/reset-senha` | `{ documento, codigo, novaSenha }` | Confirma o código e define a nova senha. Devolve `{ token, cliente }` |
-| GET | `/congelados/meu-catalogo` | header `Authorization: Bearer <token>` | Catálogo com preço/condição/dias de entrega do cliente autenticado |
+| GET | `/congelados/meu-catalogo` | header `Authorization: Bearer <token>` | Catálogo com preço/condição/dias de entrega do cliente autenticado. **(v1.6)** itens com o objeto único de produto; `ultimoPedido[].produto` |
 | GET | `/congelados/perfil` | header `Authorization: Bearer <token>` | Dados do cliente autenticado (nome, dias de entrega, condição padrão) |
-| POST | `/cliente/reconhecer-telefone` | `{ telefone }` | **Geral, qualquer linha.** Se bater com um cadastro: `{ reconhecido:true, cliente:{nome,documento,cidade,vendedor}, diasEntrega:[...], diasVenda:[...], condicaoPagamento:{nome,valorMinimo} }`. **(v1.5)** o telefone também casa com os WhatsApps cadastrados na lista do cliente. Senão: `{ reconhecido:false }` |
-| POST | `/cliente/historico-pedidos` | `{ telefone, limite?, comItens? }` (limite padrão 10, máx 30) | Se o telefone bater: `{ reconhecido:true, cliente:{nome}, pedidos:[{numero,data,dataEntrega,statusEntrega,tipo,total}] }`. **(v1.4)** com `comItens:true`, cada pedido também traz `itens:[{produtoId,nome,quantidade,unidade,precoUnit}]`. Senão: `{ reconhecido:false }` |
+| POST | `/cliente/reconhecer-telefone` | `{ telefone }` | **Geral, qualquer linha.** Se bater com um cadastro: `{ reconhecido:true, cliente:{nome,documento,cidade,vendedor}, diasEntrega:[...], diasVenda:[...], condicaoPagamento:{nome,valorMinimo} }`. **(v1.5)** o telefone também casa com os WhatsApps cadastrados na lista do cliente. **(v1.6)** + `ultimoPedidoDetalhe`, `pedidosEmAberto[]`, `proximasEntregas[]`, `horaCorte`, `ultimaCompraEm`, `diasSemComprar`, `vendedorInfo`, `endereco`; `condicaoPagamento` ganha `id`, `prazoDias`, `parcelas`, `tipoPagamento`, `permiteEspecial`. Senão: `{ reconhecido:false }` |
+| POST | `/cliente/historico-pedidos` | `{ telefone, limite?, comItens? }` (limite padrão 10, máx 30) | Se o telefone bater: `{ reconhecido:true, cliente:{nome}, pedidos:[{numero,data,dataEntrega,statusEntrega,tipo,total}] }`. **(v1.4)** com `comItens:true`, cada pedido também traz `itens:[{produtoId,nome,quantidade,unidade,precoUnit}]`. **(v1.6)** cada pedido é o [objeto único de pedido](#objeto-único-de-pedido-v16) (`fonte`, `numeroFila`, `dataPrevista`, `entregueEm`, `entregador`, `status`, `emAberto`, `origem`, `nfeNumero`…), os itens ganham `id`, `precoTotal`, `promocaoId`, `produto`, e **pedidos ainda na fila de aprovação entram no topo** (`fonte:"FILA"`, fora do `limite`). Senão: `{ reconhecido:false }` |
+| POST | `/cliente/produtos-comprados` | `{ telefone, meses? }` (padrão 12, máx 24) | **(v1.6)** Agregado do que o cliente compra: `{ reconhecido, janelaMeses, resumo:{totalPedidos,primeiroPedido,ultimoPedido,intervaloMedioDias}, produtos:[{ produtoId, id, nome, unidade, ultimaCompra, primeiraCompra, vezes, qtdMedia, qtdTotal, ultimoPreco, semanasDesdeUltima, noSite, produto }] }`, ordenado por `ultimaCompra` desc |
+| GET | `/cliente/pedido/:numero` | `?telefone=…&fonte=PEDIDO\|FILA` (**`telefone` obrigatório**) | **(v1.6)** "Meu pedido chegou?": `{ reconhecido, cliente:{nome}, encontrado, pedido }` — só pedido DO cliente do telefone (número de outro cliente → `encontrado:false`). Sem `fonte` tenta o Pedido real e depois a fila |
+| POST | `/cliente/situacao` | `{ telefone }` | **(v1.6, 🔒 só painel da equipe — NUNCA tool da IA)** `{ reconhecido, inadimplente, titulosVencidos, valorVencido, vencidoDesde, diasAtraso, titulosAbertos, valorAberto }` |
 | POST | `/cliente/criar-lead` | `{ nomeEstabelecimento, whatsapp, contato?, cidade?, observacoes? }` | Cria um prospect no CRM interno (mesma tabela que os vendedores veem). Retorna `{ id, numero, etapa }`. `origemLead` é sempre fixado como `"WHATSAPP_IA"`. **(v1.5.1)** a `cidade` é gravada com a grafia oficial (`"JOINVILLE"`/`"joinvile"` → `"Joinville"`, `"ITAPOA"` → `"Itapoá"`) — mande como o cliente escreveu, sem tratar. **(09/2026, cadastro oficial de cidades)** cidade que não existe na lista do CA-Hardt **continua sendo aceita** (modo tolerante): o lead é criado normalmente e a cidade vira uma pendência interna para o escritório cadastrar ou corrigir. Nunca devolve erro por causa da cidade; a resposta não mudou |
 | POST | `/cliente/buscar` | `{ busca, limite? }` (mín. 3 caracteres; padrão 10, máx 20) | **(v1.5, só painel da equipe)** Busca parcial por Razão Social, Nome Fantasia ou CPF/CNPJ (11+ dígitos = documento). Retorna `{ clientes:[{documento,nome,nomeFantasia,cidade,vendedor,ativo,telefones,whatsapps}] }`. Ver seção "Busca e ficha para o painel". |
-| POST | `/cliente/ficha` | `{ documento }` (com ou sem pontuação) | **(v1.5, só painel da equipe)** Ficha de UM cliente pela chave `documento`. Retorna `{ encontrado, cliente:{nome,nomeFantasia,documento,cidade,vendedor,ativo}, diasEntrega, diasVenda, condicaoPagamento, whatsapps, telefones }`. |
-| POST | `/congelados/pedido` | `{ telefone, itens:[{id,quantidade}], data?, modo?, observacoes?, idempotencyKey?, visitante?:{nome,telefone,cpf?} }` | **(v1.4)** Cria pedido de Congelados na fila de aprovação (`AGUARDANDO`; `PENDENTE_CADASTRO` se telefone novo). Preço recalculado no servidor. Retorna `{ id, numero, status, total }`. Ver "Fase 2". |
+| POST | `/cliente/ficha` | `{ documento }` (com ou sem pontuação) | **(v1.5, só painel da equipe)** Ficha de UM cliente pela chave `documento`. Retorna `{ encontrado, cliente:{nome,nomeFantasia,documento,cidade,vendedor,ativo}, diasEntrega, diasVenda, condicaoPagamento, whatsapps, telefones }`. **(v1.6)** + `horaCorte`; `condicaoPagamento` com os mesmos extras do reconhecimento |
+| POST | `/congelados/pedido` | `{ telefone, itens:[{id,quantidade,promocaoId?}], data?, modo?, observacoes?, observacaoInterna?, origem?, idempotencyKey?, visitante?:{nome,telefone,cpf?} }` | **(v1.4)** Cria pedido de Congelados na fila de aprovação (`AGUARDANDO`; `PENDENTE_CADASTRO` se telefone novo). Preço recalculado no servidor. Retorna `{ id, numero, status, total }`. **(v1.6)** aceita `itens[].promocaoId` (validada e recalculada aqui — `precoUnit` no body é ignorado), `observacaoInterna` (só a equipe vê) e `origem` (sempre gravado `WHATSAPP_IA`); a resposta ganha `origem` e `itens[]` (com `produto`), inclusive na repetição por `idempotencyKey`. Erros com `code`: `VISITANTE_SEM_CPF`, `PROMOCAO_INVALIDA`, `PROMOCAO_NAO_LIBERADA`. Ver "Fase 2" e "v1.6.0". |
 | POST | `/kitfesta/pedido` | `{ telefone, itens:[{id,quantidade,opcao?}], modo, data, horario, enderecoEntrega?, cep?, cupomCodigo?, observacoes?, idempotencyKey?, visitante?:{nome,telefone,cpf?} }` | **(v1.4)** Cria pedido de Kit Festa na fila de aprovação. Webhook automático desligado (a Ana confirma). Retorna `{ id, numero, status, total }`. Ver "Fase 2". |
 
 ### Imagem de produto — JÁ disponível (não precisa de endpoint novo)
@@ -192,6 +197,216 @@ WhatsApp (campo "WhatsApps" na tela de cliente, tabela `cliente_whatsapps`). Os 
 `reconhecer-telefone` (geral e Congelados) casam também por esses números, com a mesma tolerância
 de sempre (com/sem 9º dígito, com/sem DDI 55, ignorando pontuação).
 
+## v1.6.0 — dados para a Ana tirar o pedido semanal (2026-09-10)
+
+Pedido do bot em `backend/docs/pedido-bot-ana-v1.6.0.md` (8 itens) — todos atendidos, **tudo
+aditivo**: nenhum campo de `/v1` foi removido, renomeado ou mudou de tipo. Onde o bot pediu um nome
+que colidia com um campo existente, o novo entrou com outro nome e o antigo ficou intacto:
+`ultimoPedido` continua **array** (o objeto é `ultimoPedidoDetalhe`); `grupo` continua o **ID** da
+categoria (o nome humano é `grupoNome`); `embalagem` continua **string** (o objeto é
+`embalagemInfo`); `preparo` continua o rótulo livre (o enum é `preparoTipo`); `nome` continua
+`nomeSite ‖ nome do sistema` (o curto derivado é `nomeCurto`, o de auditoria é `nomeCompleto`).
+
+### Objeto único de produto (v1.6)
+
+Aparece **no mesmo nível do item** em `GET /congelados/catalogo`, `POST /congelados/reconhecer-telefone`
+(`catalogo[]`) e `GET /congelados/meu-catalogo`, e como **sub-objeto `produto`** em: itens de
+`historico-pedidos` (com `comItens`), `produtos-comprados`, `ultimoPedido[]`/`ultimoPedidoDetalhe.itens`,
+`pedidosEmAberto[].itens`, resposta de `POST /congelados/pedido`, `promocoes[]`, `indisponiveis[]` e
+`GET /cliente/pedido/:numero`.
+
+| Campo | O que é | Vem `null`/vazio quando |
+|---|---|---|
+| `id` | id do produto **no site** (`congeladosProdutoId`) — é o que vai em `itens[].id` ao criar pedido | produto não está no site (item de histórico antigo) |
+| `produtoId` | id do produto no app | — |
+| `codigo` | código do cadastro (numérico, ex. `"3059"`) | `""` se não houver |
+| `nome` | `nomeSite` ‖ nome do sistema (campo antigo, inalterado) | — |
+| `nomeSite` | nome exatamente como aparece no site | não preenchido no admin do site |
+| `nomeCompleto` | nome do sistema, ex. `1-G-COXINHA TRADICIONAL FRANGO C/20 130GR` | — |
+| `nomeCurto` | derivado do nome do sistema: tira o prefixo `<dígito>-[XX-][P/M/G/GG-]`, o ` C/<un>` e o ` <peso>GR` → `COXINHA TRADICIONAL FRANGO` | nunca (cai no `nomeCompleto` se nada casar) |
+| `linha` | `"CONGELADOS"` | `null` se o produto não está no site |
+| `grupo` / `grupoNome` | ID / nome da categoria comercial | sem categoria |
+| `tamanho` | `P`/`M`/`G`/`GG` lido do nome do sistema (só se estiver exatamente nessa posição) | nome fora do padrão |
+| `pesoUnidadeG` | peso unitário em g: etiqueta do produto → senão o `<peso>GR` do nome | sem etiqueta e nome sem `GR` |
+| `unidade`, `unidades`, `embalagem` | campos antigos (inalterados) | — |
+| `embalagemInfo` | `{ rotulo, unidade, unidadesPorEmbalagem, pesoG }` — `unidadesPorEmbalagem` = unidades do site → senão qtd. por caixa do cadastro → senão `C/<n>` do nome; `pesoG` = peso do pacote da etiqueta → senão `unidades × pesoUnidadeG` | os sub-campos vêm `null` quando não há fonte |
+| `preparo` | rótulo livre da categoria (campo antigo) | `""` se a categoria não tem rótulo |
+| `preparoTipo` | `FRITO` / `ASSADO` / `PRONTO` / `CRU`, normalizado do rótulo da categoria (não do produto) | categoria sem rótulo ou rótulo não reconhecido |
+| `precoTabela` | preço de tabela do contexto: base × (1 + acréscimo% da condição). No catálogo público = tabela "Site" | — |
+| `precoCliente` | preço do cliente reconhecido (último preço negociado, com piso do flex) — o mesmo `preco` do item | `null` no catálogo público e nos itens de histórico |
+| `preco` | campo antigo (inalterado no catálogo). No sub-objeto `produto` = `precoCliente` ‖ `precoTabela` | — |
+| `minimoPorItem` | sempre `1` (não existe no cadastro) | — |
+| `ativo` | produto ativo no app **e** no site | — |
+| `disponivel` / `indisponivel` | `disponivel` = ativo e estoque disponível > 0 (mesma regra do site) | — |
+| `previsaoRetorno` | **sempre `null`** — não existe previsão de retorno no cadastro | sempre |
+| `promocao` | promoção vigente do produto (objeto abaixo) | sem promoção vigente |
+| `imagem` / `imagens` | foto principal / todas | sem foto |
+
+> Não derivamos `preparo`/`linha` do prefixo `1-`/`2-`/`FR` do nome: o significado desses códigos
+> não está documentado. `preparoTipo` vem da categoria; se a categoria não tiver rótulo, vem `null`.
+
+### Promoções (v1.6) — `GET /congelados/promocoes` e `produto.promocao`
+
+```json
+{ "id": "…", "nome": "Coxinha Tradicional de Frango G (pct 20un)", "tipo": "PRECO", "tipoSistema": "SIMPLES",
+  "produtoId": "…", "precoPromo": 39.90, "precoPromoBase": 38.00, "precoNormal": 44.13,
+  "condicao": null, "condicoes": [], "validoDe": "2026-09-09", "validoAte": "2026-09-30", "tabelas": ["*"] }
+```
+
+- Na lista de `GET /congelados/promocoes`, `nome` é o **nome do produto** (`congeladosService.promocoesVigentes`
+  sobrescreve, de propósito, o `nome` da promoção pelo `nome` do item do catálogo — é o que a Ana fala pro
+  cliente). O nome da própria promoção fica em `produto.promocao.nome`.
+- `tipo`: `PRECO` (nossa `SIMPLES`) ou `CONDICIONAL`. **`LEVE_MAIS` não existe** neste sistema.
+- `CONDICIONAL`: `condicao` é o texto humano (`"a partir de 3 un de BOLINHO DE CARNE"`,
+  `"pedido a partir de R$ 300,00"`; grupos unidos por `" ou "`, condições por `" e "`) e
+  `condicoes` é a estrutura (`[[{ tipo:"PRODUTO_QUANTIDADE"|"VALOR_TOTAL", produtoId, produtoNome,
+  quantidadeMinima, valorMinimo }]]` — array externo = OU, interno = E).
+- `tabelas` é sempre `["*"]` (promoção aqui não tem vínculo com tabela de preço).
+- `precoPromo` = `precoPromoBase × (1 + acréscimo% da condição do contexto)` — a mesma conta da tela
+  do vendedor. Em `GET /congelados/promocoes` o contexto é a tabela "Site"; **no reconhecimento por
+  telefone, `catalogo[].promocao.precoPromo` já vem com o acréscimo da condição do cliente — é esse
+  que a Ana deve falar.** `precoNormal` é o preço de tabela do contexto (não o negociado).
+- Só produtos que estão no site e vigentes (`ATIVA` e dentro do período). Promoção encerrada ou
+  vencida não aparece.
+
+### Criar pedido com promoção, observação interna e origem (v1.6) — `POST /congelados/pedido`
+
+```json
+{ "telefone": "5547999998888",
+  "itens": [ { "id": "<id do site>", "quantidade": 8 }, { "id": "<id do site>", "quantidade": 3, "promocaoId": "<id da promoção>" } ],
+  "observacoes": "sem cebola",
+  "observacaoInterna": "Cliente aceitou a promoção do bolinho (3 pct).",
+  "origem": "WHATSAPP_IA",
+  "idempotencyKey": "…" }
+→ dados: { "id", "numero", "status": "AGUARDANDO", "total", "origem": "WHATSAPP_IA",
+           "itens": [ { "id", "produtoId", "nome", "quantidade", "unidade", "precoUnit", "precoTotal", "promocaoId", "nomePromocao", "produto": {…} } ] }
+```
+
+- **O preço nunca vem do bot.** `promocaoId` é só referência: o servidor confere que a promoção está
+  vigente, que é daquele produto e que a condição foi atendida (olhando o carrinho inteiro), e então
+  recalcula `precoUnit = precoPromoBase × (1 + acréscimo% da condição do cliente)`, ignorando o
+  último preço negociado e o piso do flex. **`precoUnit`/`valor` no body são ignorados.**
+- Erros `400 { error, code }`: `PROMOCAO_INVALIDA` (não existe / encerrada / fora do período / de
+  outro produto), `PROMOCAO_NAO_LIBERADA` (condicional não atendida — a mensagem diz o que falta),
+  `VISITANTE_SEM_CPF` (telefone novo sem nome+CPF). Nada é gravado quando dá erro.
+- O mínimo da condição continua sendo checado sobre o total **final** (com promoção). Promoção
+  condicional de `VALOR_TOTAL` é avaliada sobre o subtotal **a preços normais** (mesma estimativa da
+  tela do vendedor).
+- `observacaoInterna` (até 500 caracteres, quebras de linha viram espaço) fica numa **coluna
+  própria** da fila: a equipe vê no card do pedido; **nunca** vai para o pedido real, para a NF-e
+  nem para o recibo. `observacoes` continua sendo só a observação do cliente (a fila grava com o
+  prefixo `[WhatsApp IA]`, que a API remove ao devolver).
+- `origem` é aceito e **ignorado**: neste endpoint o pedido nasce sempre `WHATSAPP_IA` (pedidos do
+  site nascem `SITE`). Serve para a equipe filtrar/auditar na fila.
+- Ao aprovar, o Pedido real reavalia a promoção pela regra do vendedor (`emPromocao`/flex) — igual a
+  um pedido lançado na tela.
+
+### Objeto único de pedido (v1.6)
+
+Usado em `historico-pedidos`, `ultimoPedidoDetalhe`, `pedidosEmAberto[]` e `GET /cliente/pedido/:numero`.
+Os campos antigos (`numero, data, dataEntrega, statusEntrega, tipo, total, itens[]`) mantêm nome, tipo e
+semântica.
+
+| Campo | `fonte: "PEDIDO"` (pedido real) | `fonte: "FILA"` (ainda na fila de aprovação) |
+|---|---|---|
+| `id` | id do Pedido | id do pedido da fila |
+| `numero` | número do Pedido (campo antigo) | **número da fila** — o mesmo devolvido por `POST /congelados/pedido` |
+| `numeroFila` | número da fila de onde veio (ou `null`) | = `numero` |
+| `data` | data de venda (campo antigo) | data em que entrou na fila |
+| `criadoEm` | quando foi lançado | idem |
+| `dataPrevista` | data prevista de entrega (= data de venda) | data escolhida no pedido (pode ser `null`) |
+| `dataEntrega` | **hora REAL da entrega** (campo antigo — `null` até o motorista entregar). ⚠️ não é a data prevista | `null` |
+| `entregueEm` | = `dataEntrega` quando `statusEntrega` ∈ ENTREGUE/ENTREGUE_PARCIAL/DEVOLVIDO | `null` |
+| `entregador` | nome do responsável pela carga | `null` |
+| `status` | `APROVADO` ‖ `CANCELADO` | `AGUARDANDO` ‖ `PENDENTE_CADASTRO` |
+| `statusEntrega` | campo antigo (`PENDENTE`/`ENTREGUE`/`ENTREGUE_PARCIAL`/`DEVOLVIDO`) | `"PENDENTE"` |
+| `emAberto` | não cancelado, `statusEntrega = PENDENTE` e `dataPrevista >= hoje` (São Paulo) | `true` |
+| `tipo` | campo antigo (`NORMAL`/`ESPECIAL`/`BONIFICACAO`) | `null` (o faturamento decide) |
+| `total` | campo antigo | total da fila |
+| `modo` | `null` | `entrega` ‖ `retirada` |
+| `origem` | `WHATSAPP_IA` ‖ `SITE` ‖ `KIT_FESTA` ‖ `APP` | `WHATSAPP_IA` ‖ `SITE` |
+| `canalOrigem` | canal cru do app (`VISITA`/`WHATSAPP`/`LIGACAO`/`SITE_CONGELADOS`/`KIT_FESTA`/`null`) | `null` |
+| `observacoes` | observação do pedido | observação do cliente (sem o prefixo `[WhatsApp IA]`) |
+| `observacaoInterna` | a que veio da fila (se o pedido nasceu na fila) | a enviada em `observacaoInterna` |
+| `nfeNumero` | número da NF-e (ou `null`) | `null` |
+| `itens[]` (só com `comItens`) | `{ produtoId, nome, quantidade, unidade, precoUnit }` (antigos) + `id`, `precoTotal`, `promocaoId`, `produto` | idem + `nomePromocao` |
+
+- **Fila no histórico:** `POST /cliente/historico-pedidos` passa a devolver, **no topo e fora do
+  `limite`**, os pedidos ainda em `AGUARDANDO`/`PENDENTE_CADASTRO` (`fonte:"FILA"`). Pedido da fila já
+  convertido não entra (o Pedido real correspondente entra com `numeroFila`). Registrado em
+  `meta.avisos` como aviso informativo. Use `fonte` para distinguir.
+- `ultimoPedidoDetalhe` = último pedido **real** (não bonificação, não cancelado — o lançado por
+  último). Pedido ainda na fila não conta como "último": está em `pedidosEmAberto`.
+- `pedidosEmAberto` = fila aberta + pedidos reais com `emAberto` (máx. 5), com itens — "já tem
+  pedido esta semana" sem chamar o histórico.
+- Datas com hora em ISO; datas sem hora (`ultimaCompra`, `vencidoDesde`, `validoAte`,
+  `proximasEntregas[]`, `ultimaCompraEm`) em `YYYY-MM-DD`.
+
+### Extras no reconhecimento (v1.6)
+
+Nos dois `reconhecer-telefone`: `proximasEntregas` (próximas 2 datas a partir de amanhã que caem
+nos dias de entrega do cadastro — `[]` sem dias cadastrados), `ultimaCompraEm`/`diasSemComprar`
+(do `ultimoPedidoDetalhe`), `vendedorInfo { nome, nomeBot, ativo }` (só se o vendedor está ativo;
+`nomeBot` é o nome usado no marcador `[Vendedor Hardt: Nome]`, `null` se não preenchido), e, no
+geral, `endereco { logradouro, numero, complemento, bairro, cidade, uf, cep }`. A condição de pagamento
+ganha `id`, `prazoDias`, `parcelas`, `tipoPagamento`, `permiteEspecial` ("boleto 7 dias, mínimo R$ 100").
+
+### Hora de corte (v1.6) — `horaCorte`
+
+Valor único da empresa, vindo de `app_configs` (chave `ia_consulta_config`). **Sem tela por
+enquanto**; enquanto ninguém gravar, vem **`null`** em todos os endpoints (reconhecimentos, ficha e
+`/congelados/config`) — o bot já lida com `null`. Para configurar em produção (psql/TablePlus):
+
+```sql
+INSERT INTO app_configs(key, value) VALUES ('ia_consulta_config', '{"horaCorte":"17:00"}')
+ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
+```
+
+Formato `HH:MM` (24h); valor inválido vale como não configurado. Cache de 30 s no servidor.
+
+### Situação financeira (v1.6) — `POST /cliente/situacao` 🔒 só painel
+
+Mesma regra de `/cliente/buscar` e `/cliente/ficha`: **não entra nas tools da IA**. A Ana não fala de
+cobrança nem muda o atendimento; o backend do bot usa isso só para avisar a equipe quando um pedido
+da Ana entra para um cliente inadimplente. Mesma conta do selo "inadimplente" do cadastro no app:
+parcelas em aberto vencidas antes de hoje (meia-noite em São Paulo), descontando o que já foi pago
+ou descontado, ignorando pedido excluído/cancelado no CA e a conta de especial já pago em dinheiro
+que só espera a conferência do Caixa. `titulosAbertos`/`valorAberto` = em aberto ainda **não**
+vencido. Valores com 2 casas; `vencidoDesde` `YYYY-MM-DD` ou `null`.
+
+### Produtos comprados (v1.6) — `POST /cliente/produtos-comprados`
+
+Só pedidos reais (não bonificação, não cancelado, não excluído) na janela (`meses`, padrão 12, máx.
+24). Por produto: `vezes` (pedidos distintos), `qtdTotal`, `qtdMedia` (= total ÷ vezes, 1 casa),
+`ultimaCompra`/`primeiraCompra`, `ultimoPreco` (do pedido mais recente), `semanasDesdeUltima`,
+`noSite`, `produto`. `resumo.intervaloMedioDias` = cadência real do cliente. **Devoluções não são
+descontadas** (é agregado de tendência, não de faturamento).
+
+### Pedido por número (v1.6) — `GET /cliente/pedido/:numero?telefone=…&fonte=…`
+
+`telefone` é **obrigatório** (400 sem ele) e o pedido só é devolvido se for **do cliente daquele
+telefone** — número de outro cliente dá `encontrado:false` (o número do pedido não é único no
+sistema; a busca é sempre por cliente, pegando o mais recente). `fonte=FILA` consulta pelo número
+da fila (qualquer status da fila, inclusive convertido/recusado); `fonte=PEDIDO` pelo número do
+pedido real; sem `fonte` tenta o real e depois a fila.
+
+### curls (v1.6)
+
+```bash
+K='x-ia-api-key: SUACHAVE'; J='Content-Type: application/json'; B=https://<dominio>/api/ia-consulta/v1
+curl -H "$K" $B/congelados/catalogo | jq '.dados[0] | {id,nome,nomeCurto,precoTabela,embalagemInfo,tamanho,pesoUnidadeG,preparoTipo,disponivel,promocao}'
+curl -H "$K" $B/congelados/promocoes | jq '.dados.promocoes'
+curl -H "$K" $B/congelados/indisponiveis | jq '.dados.produtos'
+curl -H "$K" -H "$J" -X POST -d '{"telefone":"5547999998888"}' $B/congelados/reconhecer-telefone | jq '.dados | {ultimoPedidoDetalhe,pedidosEmAberto,proximasEntregas,horaCorte,vendedorInfo,condicaoPadrao}'
+curl -H "$K" -H "$J" -X POST -d '{"telefone":"5547999998888","limite":5,"comItens":true}' $B/cliente/historico-pedidos | jq '.dados.pedidos[] | {fonte,numero,numeroFila,dataPrevista,entregueEm,entregador,status,emAberto,origem}'
+curl -H "$K" -H "$J" -X POST -d '{"telefone":"5547999998888"}' $B/cliente/produtos-comprados | jq '.dados.resumo, .dados.produtos[0]'
+curl -H "$K" -H "$J" -X POST -d '{"telefone":"5547999998888","itens":[{"id":"<id do site>","quantidade":3,"promocaoId":"<id da promoção>"}],"observacoes":"sem cebola","observacaoInterna":"aceitou a promo","origem":"WHATSAPP_IA","idempotencyKey":"uuid-1"}' $B/congelados/pedido | jq .dados
+curl -H "$K" "$B/cliente/pedido/12345?telefone=5547999998888" | jq '.dados'
+curl -H "$K" "$B/cliente/pedido/321?telefone=5547999998888&fonte=FILA" | jq '.dados.pedido.status'
+# 🔒 só painel
+curl -H "$K" -H "$J" -X POST -d '{"telefone":"5547999998888"}' $B/cliente/situacao | jq .dados
+```
+
 ## Regra de contrato — NUNCA quebrar o app consumidor sem aviso
 
 Esta API tem consumidor externo fora deste repositório. As regras abaixo são obrigatórias para
@@ -291,6 +506,23 @@ curl -H "x-ia-api-key: SUACHAVE" -X POST -H "Content-Type: application/json" \
   (modo tolerante). Se a cidade não existir na lista oficial, o lead é criado do mesmo jeito, com o
   nome normalizado, e a cidade fica como **pendência** na tela Configurações → Cidades do app para o
   escritório cadastrar ou apontar para a cidade certa. Resposta inalterada: `{ id, numero, etapa }`.
+- **1.6.0** (2026-09-10) — Dados para a Ana tirar o pedido semanal (os 8 itens de
+  `pedido-bot-ana-v1.6.0.md` + extras). **Objeto único de produto** somado a todo lugar que devolve
+  produto (`nomeCurto`, `nomeSite`, `nomeCompleto`, `embalagemInfo`, `tamanho`, `pesoUnidadeG`,
+  `preparoTipo`, `precoTabela`, `precoCliente`, `disponivel`, `previsaoRetorno`, `promocao`…) e
+  **objeto único de pedido** (`fonte` PEDIDO|FILA, `numeroFila`, `dataPrevista`, `entregueEm`,
+  `entregador`, `status`, `emAberto`, `origem`, `nfeNumero`, itens com `id`/`precoTotal`/`promocaoId`/
+  `produto`). `historico-pedidos` passa a incluir a fila de aprovação no topo (`fonte:"FILA"`, aviso em
+  `meta.avisos`). Reconhecimentos ganham `ultimoPedidoDetalhe`, `pedidosEmAberto`, `proximasEntregas`,
+  `horaCorte`, `ultimaCompraEm`/`diasSemComprar`, `vendedorInfo`, `endereco` e a condição com
+  `prazoDias`/`parcelas`/`tipoPagamento`. Novos: `GET /congelados/promocoes`, `GET /congelados/indisponiveis`,
+  `POST /cliente/produtos-comprados`, `POST /cliente/situacao` (🔒 só painel), `GET /cliente/pedido/:numero`.
+  `POST /congelados/pedido` aceita `itens[].promocaoId` + `observacaoInterna` + `origem` (colunas
+  próprias na fila: `origem`, `observacaoInterna`, `promocaoId`/`nomePromocao` por item) e devolve
+  `origem` + `itens[]`; erros com `code`. `horaCorte` via `app_configs.ia_consulta_config` (sem tela;
+  `null` até configurar). **Tudo aditivo** — `ultimoPedido` segue array, `grupo` segue ID,
+  `embalagem` segue string, `preparo` segue rótulo; `dataEntrega` segue sendo a hora real da entrega
+  (a prevista está em `dataPrevista`).
 
 ## Fase 2 — Criação de pedido pela IA (IMPLEMENTADA na v1.4)
 
@@ -342,10 +574,15 @@ já devolve tudo que o bot precisa para montar o carrinho sem novas chamadas —
                       "nome": "...", "quantidade": 2, "unidade": "cx", "precoUnit": 120.00 } ]
   ```
   → é o que fecha o "quero o de sempre" (RF-B2) por telefone, sem armazenar nada do lado do bot.
-- **Geral (qualquer linha) — `POST /cliente/historico-pedidos` (já existe):** hoje devolve
-  `{numero,data,dataEntrega,statusEntrega,tipo,total}` **sem itens**. Passa a aceitar `comItens: true` no
-  corpo, devolvendo em cada pedido `itens: [{ produtoId, nome, quantidade, unidade, precoUnit }]` (adição
-  segura; sem `comItens`, a resposta é idêntica à de hoje).
+  **(v1.6)** `ultimoPedido` continua sendo esse array; o mesmo pedido como **objeto** (número,
+  datas, status, itens com `produto`) está em `ultimoPedidoDetalhe`, e "já tem pedido esta semana"
+  em `pedidosEmAberto[]`.
+- **Geral (qualquer linha) — `POST /cliente/historico-pedidos` (já existe):** devolve
+  `{numero,data,dataEntrega,statusEntrega,tipo,total}` e, com `comItens: true` no corpo, também
+  `itens: [{ produtoId, nome, quantidade, unidade, precoUnit }]` (adição segura). ⚠️ `dataEntrega`
+  aqui é a **hora real em que o motorista entregou** (`null` até lá) — não a data prevista. Desde a
+  **v1.6** a data prevista está em `dataPrevista`, a entrega confirmada em `entregueEm`/`entregador`,
+  e cada pedido traz `fonte`/`status`/`emAberto`/`origem` (ver "Objeto único de pedido").
 
 **ID do produto — em TODOS os catálogos (confirmado):** cada item **já traz o `id`** (o
 `congeladosProdutoId`; no Kit Festa, o `id` = `kitFestaProdutoId`) além do `produtoId`. Vale para o
@@ -459,6 +696,9 @@ evolução natural do "modo assistido".
 - Depois que o bot migrar 100% para esta API (nenhuma função restante em SQL direto), rotacionar
   a senha do banco de produção usada pelo bot — combinar com quem mantém a Antigravity antes de
   fazer isso, para não quebrar nada no meio da migração.
-- Criação de pedido pela IA — desenho já detalhado acima na seção **"Fase 2 — Criação de pedido pela
-  IA"**; falta combinar o formato com o time do WhatsApp e implementar.
+- Tela para a `horaCorte` (hoje só por SQL em `app_configs`, ver seção v1.6.0).
+- Observação interna no **Pedido real** (hoje a `observacaoInterna` da Ana fica só no card da fila;
+  ao aprovar, o Pedido não a carrega — o model `Pedido` não tem esse campo).
+- Callback de mudança de status (aprovado/recusado/entregue → bot): hoje o bot consulta
+  (`GET /cliente/pedido/:numero`); um webhook de saída é assunto de outra tarefa.
 - Programa de fidelidade para cliente B2B comum (hoje só existe indicação/crédito/cupom no Kit Festa).

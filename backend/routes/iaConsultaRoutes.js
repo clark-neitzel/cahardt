@@ -32,10 +32,16 @@ v1.post('/kitfesta/verificar-entrega', kitFestaCtrl.verificarEntrega);
 v1.post('/kitfesta/pedido', kitFestaCtrl.criarPedidoIA);
 
 // Congelados — catálogo, grupos e ficha técnica (preço GENÉRICO, tabela "Site")
-v1.get('/congelados/catalogo', congeladosCtrl.catalogo);
+// v1.6.0: `catalogo` aponta para catalogoIA (mesma URL; resposta antiga + objeto único de
+// produto: nomeCurto/nomeCompleto/embalagemInfo/tamanho/pesoUnidadeG/preparoTipo/precoTabela/
+// disponivel/promocao…). A rota pública do site NÃO recebe esses campos.
+v1.get('/congelados/catalogo', congeladosCtrl.catalogoIA);
 v1.get('/congelados/grupos', congeladosCtrl.grupos);
 v1.get('/congelados/config', congeladosCtrl.config);
 v1.get('/congelados/produto/:id/ficha', congeladosCtrl.ficha);
+// v1.6.0 — promoções vigentes (contexto tabela "Site") e produtos do site sem estoque
+v1.get('/congelados/promocoes', congeladosCtrl.promocoes);
+v1.get('/congelados/indisponiveis', congeladosCtrl.indisponiveis);
 
 // Congelados — reconhecimento automático pelo telefone de quem manda a mensagem (nenhum dado
 // sensível é liberado sem essa checagem bater com o cadastro real do cliente).
@@ -57,7 +63,7 @@ v1.post('/congelados/reset-senha', congeladosCtrl.resetSenha);
 
 // Congelados — dados do cliente já autenticado (por telefone, senha ou código) via
 // Authorization: Bearer <token> retornado por login/criarSenha/criarSenhaPorTelefone/resetSenha.
-v1.get('/congelados/meu-catalogo', exigirClienteCongelados, congeladosCtrl.meuCatalogo);
+v1.get('/congelados/meu-catalogo', exigirClienteCongelados, congeladosCtrl.meuCatalogoIA); // v1.6.0: + objeto único de produto
 v1.get('/congelados/perfil', exigirClienteCongelados, congeladosCtrl.perfil);
 
 // Cliente — GERAL, para qualquer linha (não é específico de Kit Festa/Congelados). Existe pra
@@ -67,12 +73,20 @@ v1.get('/congelados/perfil', exigirClienteCongelados, congeladosCtrl.perfil);
 v1.post('/cliente/reconhecer-telefone', iaClienteCtrl.reconhecerTelefone);
 v1.post('/cliente/historico-pedidos', iaClienteCtrl.historicoPedidos);
 v1.post('/cliente/criar-lead', iaClienteCtrl.criarLead);
+// v1.6.0 — agregado do que o cliente compra (janela 12 meses) e "meu pedido chegou?" (por
+// número, SÓ do cliente do telefone — Pedido.numero não é único no banco).
+v1.post('/cliente/produtos-comprados', iaClienteCtrl.produtosComprados);
+v1.get('/cliente/pedido/:numero', iaClienteCtrl.pedidoPorNumero); // exige ?telefone=
 
 // Cliente — busca/ficha para o PAINEL da equipe do bot (v1.5.0). NÃO entram nas tools da IA:
 // quem chama é o backend do bot a partir da tela logada da equipe, para vincular a conversa ao
 // cadastro. A IA continua identificando cliente só pelo telefone autenticado (regra acima).
 v1.post('/cliente/buscar', iaClienteCtrl.buscar);
 v1.post('/cliente/ficha', iaClienteCtrl.ficha);
+// v1.6.0 — situação financeira (inadimplência). 🔒 SÓ PAINEL, igual a buscar/ficha: a Ana não
+// fala de cobrança; o bot usa isso só para avisar a equipe quando um pedido entra para um
+// cliente inadimplente. NUNCA expor como tool da IA.
+v1.post('/cliente/situacao', iaClienteCtrl.situacao);
 
 router.use('/v1', v1);
 

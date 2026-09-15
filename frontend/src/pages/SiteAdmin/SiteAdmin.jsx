@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
-import { Snowflake, Package, ClipboardList, Settings, Search, Check, X, Link2, Trash2, RefreshCw, Plus, Star, ImageOff, Save, Loader2, Store, Megaphone, Upload, Image as ImageIcon, Tag, Truck, Calendar, MapPin, Phone } from 'lucide-react';
+import { Snowflake, Package, ClipboardList, Settings, Search, Check, X, Link2, Trash2, RefreshCw, Plus, Star, ImageOff, Save, Loader2, Store, Megaphone, Upload, Image as ImageIcon, Tag, Truck, Calendar, MapPin, Phone, MessageCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import congeladosService from '../../services/congeladosService';
 import api, { API_URL } from '../../services/api';
@@ -171,6 +171,15 @@ function PedidosTab() {
 // helpers de exibição do pedido (usados no card e no detalhe)
 const fmtDataPedido = (p) => p.dataEntrega ? String(p.dataEntrega).slice(0, 10).split('-').reverse().join('/') : (p.diaEntrega || '');
 const ehRetirada = (p) => p.modo === 'retirada';
+// Selo de origem: só quando o pedido veio pela Ana (bot de WhatsApp). SITE/null não mostra nada.
+const veioDaIA = (p) => p?.origem === 'WHATSAPP_IA';
+function SeloOrigemIA() {
+  return (
+    <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-700 whitespace-nowrap">
+      <MessageCircle className="h-3 w-3 flex-none" /> WhatsApp IA
+    </span>
+  );
+}
 
 // Linha da lista (desenho da aba de Pedidos): clicável, abre o detalhe completo
 function PedidoLinha({ p, onAbrir }) {
@@ -215,11 +224,13 @@ function PedidoDetalhe({ pedido: p, onClose, onAprovar, onVincular, onRecusar, o
   const cidade = cli?.End_Cidade || '';
   const vendedor = cli?.vendedor?.nome || '';
   const data = fmtDataPedido(p);
+  const obsInterna = p.observacaoInterna ? String(p.observacaoInterna).trim() : '';
   const feitoEm = p.createdAt ? new Date(p.createdAt).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
   return (
     <Modal onClose={onClose} max="max-w-lg" title={`Pedido #${p.numero}`}>
       <div className="flex items-center gap-2 flex-wrap mb-1">
         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${s.cls}`}>{s.label}</span>
+        {veioDaIA(p) && <SeloOrigemIA />}
         {p.encaixe && <span className="text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 font-semibold">Encaixe</span>}
         {p.celularAlterado && <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700">telefone novo</span>}
       </div>
@@ -258,19 +269,39 @@ function PedidoDetalhe({ pedido: p, onClose, onAprovar, onVincular, onRecusar, o
           <span>Itens ({p.totalCaixas} cx)</span><span>valor</span>
         </div>
         <div className="divide-y divide-gray-50 max-h-64 overflow-y-auto">
-          {p.itens.map(it => (
-            <div key={it.id} className="flex justify-between gap-3 px-3 py-1.5 text-sm">
-              <span className="text-gray-700"><b>{it.quantidade}×</b> {it.nomeProduto}</span>
-              <span className="text-gray-500 whitespace-nowrap">{money(it.precoUnitario * it.quantidade)}</span>
-            </div>
-          ))}
+          {(p.itens || []).map(it => {
+            const promo = it.nomePromocao ? String(it.nomePromocao).trim() : '';
+            return (
+              <div key={it.id} className="flex justify-between gap-3 px-3 py-1.5 text-sm">
+                <span className="text-gray-700 min-w-0 flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                  <span><b>{it.quantidade}×</b> {it.nomeProduto}</span>
+                  {promo && (
+                    <span className="inline-block max-w-[180px] truncate px-2 py-0.5 text-[11px] font-semibold rounded-full bg-mint text-primaryDark align-middle" title={`Promoção: ${promo}`}>
+                      Promo: {promo}
+                    </span>
+                  )}
+                </span>
+                <span className="text-gray-500 whitespace-nowrap">{money(it.precoUnitario * it.quantidade)}</span>
+              </div>
+            );
+          })}
         </div>
         <div className="flex justify-between px-3 py-2 bg-gray-50 font-bold text-gray-800">
           <span>Total</span><span>{money(p.total)}</span>
         </div>
       </div>
 
-      {p.observacoes && <p className="text-sm text-gray-600 bg-amber-50 border border-amber-100 rounded-lg p-2.5 mb-3"><b>Obs:</b> {p.observacoes}</p>}
+      {p.observacoes && <p className="text-sm text-gray-600 bg-amber-50 border border-amber-100 rounded-lg p-2.5 mb-3 break-words"><b>Obs:</b> {p.observacoes}</p>}
+
+      {/* Combinado interno registrado pela Ana (bot) — só a equipe vê, o cliente não */}
+      {obsInterna && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-2.5 mb-3">
+          <div className="text-xs font-bold uppercase tracking-widest text-amber-700 flex items-center gap-1.5 mb-1">
+            <MessageCircle className="h-3.5 w-3.5 flex-none" /> Interno · só a equipe vê
+          </div>
+          <p className="text-sm text-amber-900 whitespace-pre-line break-words">{obsInterna}</p>
+        </div>
+      )}
 
       {/* Vínculo com pedido do sistema */}
       {p.status === 'CANCELADO' ? (
