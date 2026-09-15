@@ -170,16 +170,28 @@ const MOTIVOS_SEM_ESTOQUE = [
 const motivoSemEstoqueLabel = (m) => MOTIVOS_SEM_ESTOQUE.find(x => x.value === m)?.label || m || '';
 
 // Toast "Estoque atualizado" após gerar-conta / registrar-entrada.
-// resp.estoque = [{ nome, unidade, quantidade, destino }] — mostra até 3 itens e resume o resto.
+// resp.estoque = [{ nome, unidade, quantidade, destino, semEstoque? }] — item com `semEstoque:
+// true` é produto de categoria que NÃO controla estoque (compra virou só despesa, nada somou);
+// mostra até 3 itens de cada lista e resume o resto.
 const toastEstoque = (estoque) => {
     const lista = Array.isArray(estoque) ? estoque : [];
     if (lista.length === 0) return; // nada somado — sem alarme
+    const somaram = lista.filter(e => !e.semEstoque);
+    const soDespesa = lista.filter(e => e.semEstoque);
     const MAX_ITENS = 3;
-    const partes = lista.slice(0, MAX_ITENS).map(e =>
-        `+${fmtQtd(e.quantidade)} ${e.unidade || 'un'} ${e.nome || 'item'}`
-    );
-    const resto = lista.length - MAX_ITENS;
-    toast(`Estoque atualizado: ${partes.join(' · ')}${resto > 0 ? ` e mais ${resto}` : ''}`, { icon: '📦', duration: 7000 });
+    const resumir = (arr) => {
+        const partes = arr.slice(0, MAX_ITENS).map(e =>
+            `+${fmtQtd(e.quantidade)} ${e.unidade || 'un'} ${e.nome || 'item'}`
+        );
+        const resto = arr.length - MAX_ITENS;
+        return `${partes.join(' · ')}${resto > 0 ? ` e mais ${resto}` : ''}`;
+    };
+    if (somaram.length > 0) {
+        toast(`Estoque atualizado: ${resumir(somaram)}`, { icon: '📦', duration: 7000 });
+    }
+    if (soDespesa.length > 0) {
+        toast(`Registrados só como despesa (categoria não controla estoque): ${resumir(soDespesa)}`, { icon: '🧾', duration: 7000 });
+    }
 };
 
 // Toast "N produto(s) criado(s)" — resp.produtosCriados = [{ id, nome, codigo, categoria, itemPcpId }]
@@ -1375,6 +1387,13 @@ const ModalCriarProdutoNota = ({ aberto, itemNota, valorInicial, onCancelar, onC
             categoria: categoria.trim(),
             categoriaProdutoId: categoriaProdutoId || null,
             controlaEstoque: controle === 'segue' ? null : controle === 'true',
+            // Resolvido só para a PRÉVIA na tela (nunca vai no payload da API — quem decide de
+            // verdade é o backend, na criação do produto). Mesma regra da dica acima: override
+            // explícito da pílula, senão o que a categoria escolhida diz; categoria fora da lista
+            // carregada (digitada/legada) = desconhecido (null), não chuta.
+            controlaEstoqueResolvido: controle !== 'segue'
+                ? controle === 'true'
+                : (categoriaEscolhida ? categoriaEscolhida.controlaEstoque !== false : null),
             unidade: unidade.trim(),
             ean: ean.trim() || null,
             ncm: ncm.trim() || null,
@@ -2596,6 +2615,11 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
         const fator = parseFator(v.fator);
         const entrada = fator > 0 ? Number(it.quantidade || 0) * fator : 0;
         const custo = entrada > 0 ? Number(it.valorTotal || 0) / entrada : 0;
+        // Esse item vai mesmo somar estoque? Para produto NOVO a gente sabe (resolvido no modal,
+        // mesma regra da dica "controla estoque"). Para produto JÁ EXISTENTE vinculado, o combo
+        // de /itens-pcp não devolve controlaEstoque — fica desconhecido (null), então o texto
+        // continua otimista como sempre foi (não dá pra saber sem consultar de novo).
+        const controlaEstoqueItem = v.novo ? (v.novo.controlaEstoqueResolvido ?? null) : null;
         // O que falta neste item para ele ter um DESTINO válido ('' = está resolvido)
         let pendencia = '';
         if (semEstoque) {
@@ -2613,7 +2637,7 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
         } else {
             pendencia = 'Escolha o nosso produto ou marque "Este item não é estoque".';
         }
-        return { it, v, opcao, unidadeNossa, vinculado, semEstoque, fator, entrada, custo, pendencia };
+        return { it, v, opcao, unidadeNossa, vinculado, semEstoque, fator, entrada, custo, pendencia, controlaEstoqueItem };
     };
 
     // Itens sem destino definido (só NF-e de produto — NFS-e não tem vínculo/estoque)
@@ -2930,7 +2954,7 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                         <div className="text-sm text-gray-400 border border-gray-200 rounded-lg p-3">Nenhum item encontrado no XML desta nota.</div>
                     )}
                     {itensNota.map((it, idx) => {
-                        const { v, vinculado, semEstoque, unidadeNossa, fator, entrada, custo, pendencia } = infoItem(idx);
+                        const { v, vinculado, semEstoque, unidadeNossa, fator, entrada, custo, pendencia, controlaEstoqueItem } = infoItem(idx);
                         const lembrado = !!it.vinculo?.lembrado;
                         const apontadoPeloBackend = pendentesBackend.has(it.id);
                         if (ehServico) {
@@ -3128,7 +3152,11 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                                             ) : (
                                                 <>
                                                     <span className="font-semibold text-gray-900">{fmtQtd(entrada)} {unidadeNossa}</span>
-                                                    <span className="text-green-700 font-medium ml-1.5">→ soma no estoque</span>
+                                                    {controlaEstoqueItem === false ? (
+                                                        <span className="text-gray-500 font-medium ml-1.5">→ só despesa, não soma estoque</span>
+                                                    ) : (
+                                                        <span className="text-green-700 font-medium ml-1.5">→ soma no estoque</span>
+                                                    )}
                                                     {/* Entrada sem pagamento NÃO altera o custo — só mostra o custo no fluxo de gerar conta */}
                                                     {!entradaAberta && (
                                                         <span className="text-gray-500 ml-1.5">· custo R$ {fmtCusto(custo)}/{unidadeNossa}</span>

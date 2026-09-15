@@ -222,3 +222,107 @@ tem relação com os arquivos alterados). Nenhum erro de import, variável ou JS
   comportamento real implementado (sem números de teste/ambiente local). `config-categorias-
   produto.md` conferido, sem necessidade de mudança. Tabela `ABAS` de `copilotoService.js` não
   precisou de alteração (rotas e permissões das 4 telas não mudaram).
+
+## Correções pós-QA (15/09/2026)
+
+Correções pontuais em `frontend/src/pages/Financeiro/NotasRecebidasPage.jsx`, a partir dos
+achados do `relatorio-qa.md` (Defeitos 1 e 2) e do `relatorio-revisao.md` (Achado 2). Trabalho
+feito na worktree `~/Projetos/CA-Hardt-entrada-notas`, branch `feat/entrada-notas-produto`
+(já veio rebaseada sobre o `main` atual, árvore limpa). **Nada commitado.**
+
+### 1. Achado 1 do revisor (branch desatualizada) e Achado 2 (texto do toast) — já resolvidos pelo rebase
+
+Antes de mexer em qualquer coisa, conferi se o `main` recente (que removeu o sync do Conta Azul,
+commit `9b184900`) ainda conflitava com esta branch:
+- `git log -3 --stat main` mostra os 3 commits mais recentes são de **outra feature** (busca
+  salva por usuário em PCP → Receitas/Itens), já incorporados nesta branch — `ItensPcp.jsx` já usa
+  `useFiltroSalvo('itens-pcp:search', ...)`, não `useState('')`.
+- `PainelSync.jsx`/`ImportarCaModal.jsx` já não existem em lugar nenhum do repo (`grep` vazio) —
+  não há mais link morto apontando pra lá.
+- O Achado 2 do revisor (toast de erro mandando "desmarcar 'Enviar para a Conta Azul'", um rótulo
+  que não existe na tela) **já está correto** na árvore atual: linha 2744 diz
+  `desmarque "Registrar forma de pagamento e banco"` — bate exatamente com o rótulo do checkbox na
+  linha 3318. Não precisei tocar nisso; só confirmei.
+
+Ou seja: o item 3 do pedido ("verificar se main mudou algo que conflite") já estava coberto pelo
+rebase que trouxe a branch pra cá — nenhuma ação necessária além de conferir.
+
+### 2. Defeito 1 do QA — preview "Entrada convertida" sempre dizia "soma no estoque"
+
+**Onde:** `ConferenciaNota` (componente da tela de conferência), dentro de `infoItem()` e do bloco
+JSX "Entrada convertida" (por volta da linha 3131 antes da correção).
+
+**O que mudou:**
+- `ModalCriarProdutoNota.confirmar()` (~linha 1373) passou a calcular e devolver
+  `controlaEstoqueResolvido` (boolean ou `null`) junto do objeto do produto novo — mesma regra que
+  já alimenta a dica visível no próprio modal ("Esta categoria controla estoque" / "não controla"):
+  override explícito da pílula de controle, senão o `controlaEstoque` da categoria escolhida
+  (`categoriaEscolhida.controlaEstoque !== false`); categoria digitada fora da lista carregada =
+  desconhecido (`null`), sem chutar. Esse campo é só para a prévia — não entra no payload da API
+  (`montarItensBase`/`corrigir` já montam o corpo campo a campo, então o campo extra não vaza).
+- `infoItem()` (ConferenciaNota, ~linha 2589) passou a devolver `controlaEstoqueItem`: para produto
+  **novo**, usa `v.novo.controlaEstoqueResolvido`; para produto **já existente** vinculado
+  (`vinculoValue`), fica `null` (desconhecido) — expliquei o motivo abaixo.
+- O texto (~linha 3131) agora é condicional: `controlaEstoqueItem === false` → **"→ só despesa,
+  não soma estoque"** em cinza; qualquer outro caso (`true` ou `null`) → mantém **"→ soma no
+  estoque"** em verde, como já era.
+
+**Limitação que ficou registrada, não escondida (conforme pedido no plano da tarefa):** para item
+vinculado a um produto **já existente** (não criado agora), a API do combo (`GET
+/api/notas-entrada/itens-pcp`, usada por `notasEntradaService.itensPcp()`) devolve só `{ tipo,
+grupo, id, value, nome, unidade, sub }` — **não devolve `controlaEstoque`**. Não dava pra resolver
+isso sem tocar no backend, e o escopo desta tarefa era só o arquivo do frontend — por isso deixei
+esse caso como `null` (mantém o texto "→ soma no estoque" de sempre, sem regressão, mas também sem
+a correção). Na prática o Defeito 1 do QA foi reproduzido e corrigido **especificamente** no
+cenário testado (criar produto novo com categoria que não controla estoque, ex.: Material de Uso e
+Consumo) — é o caso coberto. Se o dono quiser o mesmo aviso também para item vinculado a produto
+existente que não controla estoque, a rota `/itens-pcp` precisa passar a devolver
+`controlaEstoque` nos dois grupos (`produtos.select` e o resolvido de `ItemPcp`, que teria que
+olhar a `categoriaEstoque` dele) — fica registrado aqui como próximo passo, não fiz sozinho por
+estar fora do arquivo autorizado.
+
+### 3. Defeito 2 do QA — toast final "Estoque atualizado" misturava item sem estoque
+
+**Onde:** função `toastEstoque` (~linha 174), usada nos 3 pontos que recebem `resp.estoque`/
+`resp.depois` da API (`gerar-conta`, `registrar-entrada`, `corrigir-entrada-estoque`).
+
+**O que mudou:** a função agora separa a lista recebida em dois grupos por `item.semEstoque`
+(campo que a API já devolvia, só não era lido: `notaEstoqueService.aplicarEstoqueNota` marca
+`semEstoque: true` nos itens de categoria que não controla estoque — confirmado lendo
+`backend/services/notaEstoqueService.js` linha 165):
+- itens **sem** `semEstoque` → toast de sempre, "📦 Estoque atualizado: +25 KG FARINHA...".
+- itens **com** `semEstoque: true` → toast novo separado, "🧾 Registrados só como despesa
+  (categoria não controla estoque): +2 CX LUVA...".
+- Se só um dos grupos tiver itens, sai só um toast (não aparece toast vazio nem "0 itens").
+- O caminho de `corrigir-entrada-estoque` (`resp.depois`, ~linha 3640) nunca tem itens com
+  `semEstoque: true` porque a leitura de "aplicado" já filtra `semEstoque: false` no banco
+  (`notaEstoqueService.entradaAplicada`) — não há como um item sem estoque aparecer ali; a mudança
+  é inofensiva nesse call site (sempre cai só no primeiro toast, igual a antes).
+
+### Resultado do build
+
+```
+cd frontend && npm run build
+```
+`✓ 2572 modules transformed` / `✓ built in 5.83s` — build passou limpo. Os avisos impressos
+(chunks >500kB, alguns serviços importados de forma mista estática+dinâmica) já existiam antes
+desta mudança e não têm relação com o que foi tocado aqui.
+
+### Mobile (375px)
+
+Não abri o Chrome pra reclicar (não fui instruído a rodar QA de novo, só corrigir o texto); as
+mudanças são só texto condicional dentro de `<span>`s que já existiam no layout (mesma estrutura
+flex/wrap da linha "Entrada convertida") e toasts (mesmo componente `toast()` usado em todo o
+resto da tela, biblioteca `react-hot-toast`, que já é responsiva). Risco de quebra de layout é
+baixo, mas **não foi clicado na tela** — fica para o QA confirmar visualmente em 375px se quiser
+reforçar antes de anunciar a novidade.
+
+### O que ainda falta (fora do que foi pedido agora)
+
+- Estender o Defeito 1 para item vinculado a produto **já existente** exigiria mudar
+  `GET /api/notas-entrada/itens-pcp` (backend) para devolver `controlaEstoque` — não fiz por
+  estar fora do arquivo autorizado nesta tarefa; registrado acima.
+- O mesmo padrão de texto "entram no estoque" aparece também em `PainelCorrigirEntrada`, linha
+  ~3860 (`entram <b>{qtd}</b> {unidade} no estoque de hoje`), fora do que o QA/revisor apontaram
+  desta vez — mencionando aqui para não deixar escondido, mas não toquei (escopo cresceria sem
+  pedido explícito).
