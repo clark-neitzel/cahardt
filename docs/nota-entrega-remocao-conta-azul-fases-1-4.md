@@ -1,6 +1,6 @@
 # Nota de entrega — Saída do Conta Azul, fases 1 a 4
 
-> Conferido pelo gerente de entrega em 15/09/2026. Código ainda **não commitado**.
+> Conferido pelo gerente de entrega em 15/09/2026. Commit `9b184900`, publicado às 16:49.
 > Plano completo: `docs/plano-remocao-conta-azul.md`.
 
 **Veredito: LIBERADO COM PENDÊNCIA** — pode publicar. A pendência é só a conferência
