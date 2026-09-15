@@ -14,7 +14,7 @@ Uma receita sempre produz um item do PCP (PA = Produto Acabado ou SUB = Subprodu
 
 ## O que dá pra fazer aqui
 
-- Listar receitas com filtro por status (ativa / rascunho / inativa) e busca por nome. **Os filtros ficam salvos por usuário**: a busca e o status escolhidos permanecem ao abrir uma receita e voltar, e ao entrar de novo no sistema (no mesmo aparelho). Para ver todas, limpe o campo de busca.
+- Listar receitas com filtro por **tipo do item produzido** (Todos / Subproduto / Produto acabado (montado) / Matéria-prima / Embalagem, cada opção mostra quantas receitas tem), filtro por status (ativa / rascunho / inativa) e busca por nome. Cada receita mostra um selo com o tipo do item que produz. **Os filtros ficam salvos por usuário**: a busca, o tipo e o status escolhidos permanecem ao abrir uma receita e voltar, e ao entrar de novo no sistema (no mesmo aparelho). Para ver todas, limpe o campo de busca.
 - Criar nova receita
 - Ver detalhes de uma receita: composição, versão, rendimento, perda, vigência
 - Editar receita (gera nova versão automática com registro de motivo)

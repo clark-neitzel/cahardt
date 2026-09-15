@@ -13,6 +13,21 @@ const STATUS_CORES = {
     rascunho: 'bg-yellow-100 text-yellow-800',
 };
 
+// Tipo do item produzido pela receita (mesmas siglas do cadastro de Itens PCP)
+const TIPOS_ITEM = [
+    { valor: 'SUB', rotulo: 'Subproduto' },
+    { valor: 'PA', rotulo: 'Produto acabado (montado)' },
+    { valor: 'MP', rotulo: 'Matéria-prima' },
+    { valor: 'EMB', rotulo: 'Embalagem' },
+];
+const TIPO_ROTULO = Object.fromEntries(TIPOS_ITEM.map(t => [t.valor, t.rotulo]));
+const TIPO_CORES = {
+    SUB: 'bg-amber-100 text-amber-700',
+    PA: 'bg-green-100 text-green-800',
+    MP: 'bg-gray-100 text-gray-700',
+    EMB: 'bg-purple-100 text-purple-700',
+};
+
 export default function ReceitasList() {
     const navigate = useNavigate();
     const [receitas, setReceitas] = useState([]);
@@ -21,6 +36,9 @@ export default function ReceitasList() {
     // receita e voltar, a lista reabre filtrada do mesmo jeito.
     const [search, setSearch] = useFiltroSalvo('receitas-list:search', '');
     const [statusFiltro, setStatusFiltro] = useFiltroSalvo('receitas-list:statusFiltro', '');
+    // Tipo do item que a receita PRODUZ (SUB = subproduto, PA = produto acabado/montado).
+    // '' = todos juntos. Também lembrado por usuário.
+    const [tipoFiltro, setTipoFiltro] = useFiltroSalvo('receitas-list:tipoFiltro', '');
 
     const carregar = useCallback(async () => {
         try {
@@ -39,12 +57,20 @@ export default function ReceitasList() {
     useEffect(() => { carregar(); }, [carregar]);
     useAtualizaAoVoltar(carregar); // rebusca ao voltar ao app / a cada 5 min
 
+    const porTipo = tipoFiltro ? receitas.filter(r => r.itemPcp?.tipo === tipoFiltro) : receitas;
     const filtradas = search.trim()
-        ? receitas.filter(r =>
+        ? porTipo.filter(r =>
             r.nome.toLowerCase().includes(search.toLowerCase()) ||
             r.itemPcp?.nome?.toLowerCase().includes(search.toLowerCase())
         )
-        : receitas;
+        : porTipo;
+    // Contagem por tipo sobre a lista COMPLETA carregada (não a filtrada), para a opção
+    // marcada nunca sumir do menu.
+    const contagemTipo = receitas.reduce((acc, r) => {
+        const t = r.itemPcp?.tipo || 'OUTRO';
+        acc[t] = (acc[t] || 0) + 1;
+        return acc;
+    }, {});
 
     return (
         <div className="w-full px-4 py-6">
@@ -74,6 +100,16 @@ export default function ReceitasList() {
                     />
                 </div>
                 <SelectBusca
+                    value={tipoFiltro}
+                    onChange={e => setTipoFiltro(e.target.value)}
+                    className="w-full md:w-56"
+                >
+                    <option value="">Todos os tipos ({receitas.length})</option>
+                    {TIPOS_ITEM.map(t => (
+                        <option key={t.valor} value={t.valor}>{t.rotulo} ({contagemTipo[t.valor] || 0})</option>
+                    ))}
+                </SelectBusca>
+                <SelectBusca
                     value={statusFiltro}
                     onChange={e => setStatusFiltro(e.target.value)}
                 >
@@ -99,16 +135,19 @@ export default function ReceitasList() {
                             onClick={() => navigate(`/pcp/receitas/${receita.id}`)}
                             className="bg-white rounded-lg border border-gray-200 p-4 hover:border-blue-300 hover:shadow-sm cursor-pointer transition-all"
                         >
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
+                            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                                <div className="flex items-center gap-3 min-w-0">
                                     <div>
                                         <h3 className="font-medium text-gray-800">{receita.nome}</h3>
-                                        <p className="text-sm text-gray-500 mt-0.5">
-                                            Produz: {receita.itemPcp?.nome} ({receita.itemPcp?.tipo})
+                                        <p className="text-sm text-gray-500 mt-0.5 flex items-center gap-2 flex-wrap">
+                                            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${TIPO_CORES[receita.itemPcp?.tipo] || 'bg-gray-100 text-gray-700'}`}>
+                                                {TIPO_ROTULO[receita.itemPcp?.tipo] || receita.itemPcp?.tipo || 'Sem item'}
+                                            </span>
+                                            <span>Produz: {receita.itemPcp?.nome}</span>
                                         </p>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-3 flex-wrap">
                                     <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-indigo-100 text-indigo-700">v{receita.versao}</span>
                                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_CORES[receita.status]}`}>
                                         {receita.status}
