@@ -26,6 +26,7 @@ import whatsappClientesService, { numeroWhatsappValido } from '../../services/wh
 import { somAviso } from '../../utils/sons';
 import { normalizarDoc } from '../../utils/documento'; // busca por CPF/CNPJ (inclui alfanumérico)
 import { chaveBusca } from '../../utils/cidade'; // busca sem acento/caixa ("pao" acha "Pão")
+import { temTecladoFisico } from '../../utils/dispositivo'; // só devolve foco à busca em dispositivo com mouse/teclado (toque abre teclado virtual e rola a tela)
 
 const DIA_SEMANA_MAP = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
 
@@ -1636,7 +1637,7 @@ const NovoPedido = () => {
                                     value={qtd}
                                     permiteFracao={!!produto.categoriaProduto?.permiteFracao}
                                     onChange={v => setQuantidade(produto.id, v)}
-                                    onEnterFoco={() => searchInputRef.current?.focus()}
+                                    onEnterFoco={() => { if (temTecladoFisico()) searchInputRef.current?.focus(); }}
                                 />
                             )}
                             <button
@@ -1645,7 +1646,8 @@ const NovoPedido = () => {
                                     const eraNovoNoCarrinho = qtd === 0;
                                     setQuantidade(produto.id, qtd + 1);
                                     // Item novo adicionado: devolve o foco pra busca, pro vendedor já procurar o próximo produto
-                                    if (eraNovoNoCarrinho) searchInputRef.current?.focus();
+                                    // (só em desktop/mouse — no celular/iPad isso abre o teclado e rola a tela pro topo)
+                                    if (eraNovoNoCarrinho && temTecladoFisico()) searchInputRef.current?.focus();
                                 }}
                                 className="w-8 h-8 flex items-center justify-center rounded-md bg-blue-600 text-white active:bg-blue-700 shadow-sm"
                             >
