@@ -43,7 +43,20 @@
 // sistema). GET congelados/indisponiveis ganha `orientacao` (texto fixo, já que não existe
 // previsão de retorno no cadastro). Tudo aditivo — nenhum campo removido/renomeado; `tamanho`
 // continua vindo só do código/nome (a etiqueta não tem esse campo).
-const VERSAO_API = '1.6.1';
+// · 1.6.2 (2026-09-16) POST cliente/buscar e POST cliente/ficha (SÓ PAINEL, nunca tool da IA)
+// passam a incluir FORNECEDORES, não só clientes — o painel do bot não achava empresa que só
+// existe como fornecedor (ex.: "Karville"), porque a busca só olhava a tabela de clientes. Cada
+// item de cliente/buscar ganha o campo novo `tipo` ("CLIENTE" | "FORNECEDOR" — clientes existentes
+// passam a trazer "CLIENTE", nada removido); fornecedor usa o mesmo formato do item de cliente
+// (documento/nome/nomeFantasia/cidade/ativo/telefones[]/whatsapps[], com vendedor sempre null e
+// whatsapps sempre [] — fornecedor não tem essas colunas). Em cliente/ficha, se o documento não é
+// de cliente ela agora procura em Fornecedor antes de devolver "não encontrado": resposta ganha
+// `tipo` e, quando é fornecedor, os campos diasEntrega/diasVenda/condicaoPagamento/whatsapps vêm
+// vazios/null (não existem para fornecedor) e entra um objeto novo `fornecedor` (email/telefone/
+// inscricaoEstadual/uf, só com o que existir no cadastro). Documento cadastrado nos dois ao mesmo
+// tempo: cliente tem prioridade e a resposta ganha `tambemFornecedor: true`. Tudo aditivo —
+// nenhum campo removido/renomeado.
+const VERSAO_API = '1.6.2';
 
 const AVISOS = [
     // AVISO INFORMATIVO (v1.6.0, não é quebra de contrato): nenhum campo removido/renomeado.

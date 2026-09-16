@@ -73,8 +73,8 @@ mencionada na mensagem. Assim a mudança nunca pega o app de surpresa.
 | GET | `/cliente/pedido/:numero` | `?telefone=…&fonte=PEDIDO\|FILA` (**`telefone` obrigatório**) | **(v1.6)** "Meu pedido chegou?": `{ reconhecido, cliente:{nome}, encontrado, pedido }` — só pedido DO cliente do telefone (número de outro cliente → `encontrado:false`). Sem `fonte` tenta o Pedido real e depois a fila |
 | POST | `/cliente/situacao` | `{ telefone }` | **(v1.6, 🔒 só painel da equipe — NUNCA tool da IA)** `{ reconhecido, inadimplente, titulosVencidos, valorVencido, vencidoDesde, diasAtraso, titulosAbertos, valorAberto }` |
 | POST | `/cliente/criar-lead` | `{ nomeEstabelecimento, whatsapp, contato?, cidade?, observacoes? }` | Cria um prospect no CRM interno (mesma tabela que os vendedores veem). Retorna `{ id, numero, etapa }`. `origemLead` é sempre fixado como `"WHATSAPP_IA"`. **(v1.5.1)** a `cidade` é gravada com a grafia oficial (`"JOINVILLE"`/`"joinvile"` → `"Joinville"`, `"ITAPOA"` → `"Itapoá"`) — mande como o cliente escreveu, sem tratar. **(09/2026, cadastro oficial de cidades)** cidade que não existe na lista do CA-Hardt **continua sendo aceita** (modo tolerante): o lead é criado normalmente e a cidade vira uma pendência interna para o escritório cadastrar ou corrigir. Nunca devolve erro por causa da cidade; a resposta não mudou |
-| POST | `/cliente/buscar` | `{ busca, limite? }` (mín. 3 caracteres; padrão 10, máx 20) | **(v1.5, só painel da equipe)** Busca parcial por Razão Social, Nome Fantasia ou CPF/CNPJ (11+ dígitos = documento). Retorna `{ clientes:[{documento,nome,nomeFantasia,cidade,vendedor,ativo,telefones,whatsapps}] }`. Ver seção "Busca e ficha para o painel". |
-| POST | `/cliente/ficha` | `{ documento }` (com ou sem pontuação) | **(v1.5, só painel da equipe)** Ficha de UM cliente pela chave `documento`. Retorna `{ encontrado, cliente:{nome,nomeFantasia,documento,cidade,vendedor,ativo}, diasEntrega, diasVenda, condicaoPagamento, whatsapps, telefones }`. **(v1.6)** + `horaCorte`; `condicaoPagamento` com os mesmos extras do reconhecimento |
+| POST | `/cliente/buscar` | `{ busca, limite? }` (mín. 3 caracteres; padrão 10, máx 20) | **(v1.5, só painel da equipe)** Busca parcial por Razão Social, Nome Fantasia ou CPF/CNPJ (11+ dígitos = documento) em **clientes e fornecedores**. Retorna `{ clientes:[{tipo,documento,nome,nomeFantasia,cidade,vendedor,ativo,telefones,whatsapps}] }` — `tipo` é `"CLIENTE"` ou `"FORNECEDOR"` (v1.6.2). Ver seção "Busca e ficha para o painel". |
+| POST | `/cliente/ficha` | `{ documento }` (com ou sem pontuação) | **(v1.5, só painel da equipe)** Ficha de UM cliente pela chave `documento`. Retorna `{ encontrado, tipo, cliente:{nome,nomeFantasia,documento,cidade,vendedor,ativo}, diasEntrega, diasVenda, condicaoPagamento, whatsapps, telefones }`. **(v1.6)** + `horaCorte`; `condicaoPagamento` com os mesmos extras do reconhecimento. **(v1.6.2)** se o documento não é de cliente, procura em fornecedor (`tipo:"FORNECEDOR"`, `horaCorte:null` + objeto `fornecedor`); documento nos dois cadastros = cliente prioridade + `tambemFornecedor:true` |
 | POST | `/congelados/pedido` | `{ telefone, itens:[{id,quantidade,promocaoId?}], data?, modo?, observacoes?, observacaoInterna?, origem?, idempotencyKey?, visitante?:{nome,telefone,cpf?} }` | **(v1.4)** Cria pedido de Congelados na fila de aprovação (`AGUARDANDO`; `PENDENTE_CADASTRO` se telefone novo). Preço recalculado no servidor. Retorna `{ id, numero, status, total }`. **(v1.6)** aceita `itens[].promocaoId` (validada e recalculada aqui — `precoUnit` no body é ignorado), `observacaoInterna` (só a equipe vê) e `origem` (sempre gravado `WHATSAPP_IA`); a resposta ganha `origem` e `itens[]` (com `produto`), inclusive na repetição por `idempotencyKey`. Erros com `code`: `VISITANTE_SEM_CPF`, `PROMOCAO_INVALIDA`, `PROMOCAO_NAO_LIBERADA`. Ver "Fase 2" e "v1.6.0". |
 | POST | `/kitfesta/pedido` | `{ telefone, itens:[{id,quantidade,opcao?}], modo, data, horario, enderecoEntrega?, cep?, cupomCodigo?, observacoes?, idempotencyKey?, visitante?:{nome,telefone,cpf?} }` | **(v1.4)** Cria pedido de Kit Festa na fila de aprovação. Webhook automático desligado (a Ana confirma). Retorna `{ id, numero, status, total }`. Ver "Fase 2". |
 
@@ -132,7 +132,7 @@ a própria pessoa está fornecendo na conversa), mas ainda exige nome e WhatsApp
 **Se o bot precisar de mais alguma informação de cliente/pedido/preço que não está listada aqui, a
 resposta certa é pedir um endpoint novo nesta API — nunca reintroduzir acesso direto ao banco.**
 
-### Busca e ficha para o PAINEL da equipe (v1.5) — `/cliente/buscar` e `/cliente/ficha`
+### Busca e ficha para o PAINEL da equipe (v1.5, + fornecedores v1.6.2) — `/cliente/buscar` e `/cliente/ficha`
 
 Estes dois endpoints existem para a **tela logada da equipe de atendimento** no painel do bot
 (vincular manualmente uma conversa ao cadastro do CA-Hardt). **Não entram nas tools da IA nem são
@@ -140,18 +140,27 @@ expostos a cliente final** — quem chama é o backend do painel. Por isso podem
 nome/documento; a IA continua identificando cliente SÓ pelo telefone autenticado do WhatsApp.
 A busca não devolve preço/condição negociada — só identificação de cadastro.
 
+**v1.6.2 (2026-09-16):** os dois endpoints passam a buscar também em **Fornecedor** (não só
+Cliente) — antes o painel não achava uma empresa que só existe como fornecedor (ex.: "Karville").
+
 **`POST /cliente/buscar`** — body `{ "busca": "panificadora joao", "limite": 10 }`:
 - `busca` (obrigatório, mín. 3 caracteres): casa com Razão Social, Nome Fantasia ou CPF/CNPJ,
   parcial, sem diferenciar maiúsculas/acentos. Com 11+ dígitos (ignorando pontuação), vira busca
-  por documento (comparada ignorando pontuação — CNPJ alfanumérico incluído).
-- `limite` (opcional): padrão 10, máx. 20. Inativos aparecem (com `ativo:false`), depois dos ativos.
+  por documento (comparada ignorando pontuação — CNPJ alfanumérico incluído). Vale para **clientes
+  e fornecedores** ao mesmo tempo.
+- `limite` (opcional): padrão 10, máx. 20 — **conta o total combinado** (clientes + fornecedores).
+  Inativos aparecem (com `ativo:false`), depois dos ativos, dentro de cada grupo.
+- Ordem da lista: **clientes primeiro, fornecedores depois**. Se o mesmo documento existir nos dois
+  cadastros, os dois itens aparecem (com `tipo` diferente).
 
-Resposta em `dados`:
+Resposta em `dados` — cada item ganha o campo `tipo` (`"CLIENTE"` ou `"FORNECEDOR"`, v1.6.2; itens
+de cliente sempre traziam esse cadastro, o campo é só identificação, nada mudou de valor):
 
 ```json
 {
   "clientes": [
     {
+      "tipo": "CLIENTE",
       "documento": "12345678000190",
       "nome": "Panificadora Joao Ltda",
       "nomeFantasia": "Padaria do Joao",
@@ -160,10 +169,24 @@ Resposta em `dados`:
       "ativo": true,
       "telefones": ["4733331234"],
       "whatsapps": ["47999991234"]
+    },
+    {
+      "tipo": "FORNECEDOR",
+      "documento": "98765432000155",
+      "nome": "Karville Alimentos Ltda",
+      "nomeFantasia": "Karville",
+      "cidade": "Joinville",
+      "vendedor": null,
+      "ativo": true,
+      "telefones": ["4732221111"],
+      "whatsapps": []
     }
   ]
 }
 ```
+
+Fornecedor usa o **mesmo formato** do item de cliente — só que `vendedor` sempre vem `null` e
+`whatsapps` sempre vem `[]` (o cadastro de fornecedor não tem essas colunas).
 
 **`POST /cliente/ficha`** — body `{ "documento": "12345678000190" }` (com ou sem pontuação).
 Resposta em `dados` (mesmo shape do `reconhecer-telefone`, com `encontrado` no lugar de
@@ -172,6 +195,7 @@ Resposta em `dados` (mesmo shape do `reconhecer-telefone`, com `encontrado` no l
 ```json
 {
   "encontrado": true,
+  "tipo": "CLIENTE",
   "cliente": {
     "nome": "Panificadora Joao Ltda",
     "nomeFantasia": "Padaria do Joao",
@@ -188,9 +212,40 @@ Resposta em `dados` (mesmo shape do `reconhecer-telefone`, com `encontrado` no l
 }
 ```
 
-Não achando o documento: `{ "encontrado": false }`. Observações de formato: `documento` vem como
-está gravado no cadastro (normalizado, sem pontuação); `telefones`/`whatsapps` vêm só dígitos, sem
-DDI 55; `nomeFantasia`, `cidade`, `vendedor` e `condicaoPagamento` podem ser `null`.
+**v1.6.2 — ficha de fornecedor:** se o documento não bate com nenhum cliente, a API procura em
+Fornecedor antes de devolver "não encontrado". Mesmo shape, com `diasEntrega`/`diasVenda` vazios,
+`condicaoPagamento`/`vendedor`/`horaCorte` nulos (fornecedor não tem essas informações) e um objeto
+novo `fornecedor` só com o que existir no cadastro (`email`, `telefone`, `inscricaoEstadual`, `uf`):
+
+```json
+{
+  "encontrado": true,
+  "tipo": "FORNECEDOR",
+  "cliente": {
+    "nome": "Karville Alimentos Ltda",
+    "nomeFantasia": "Karville",
+    "documento": "98765432000155",
+    "cidade": "Joinville",
+    "vendedor": null,
+    "ativo": true
+  },
+  "diasEntrega": [],
+  "diasVenda": [],
+  "condicaoPagamento": null,
+  "whatsapps": [],
+  "telefones": ["4732221111"],
+  "horaCorte": null,
+  "fornecedor": { "telefone": "4732221111", "inscricaoEstadual": "1234567", "uf": "SC" }
+}
+```
+
+Se o mesmo documento existir como cliente **e** fornecedor, o **cliente tem prioridade** (é o que
+volta na ficha) e a resposta ganha `"tambemFornecedor": true` para o painel avisar a equipe.
+
+Não achando o documento em nenhum dos dois cadastros: `{ "encontrado": false }`. Observações de
+formato: `documento` vem como está gravado no cadastro (normalizado, sem pontuação);
+`telefones`/`whatsapps` vêm só dígitos, sem DDI 55; `nomeFantasia`, `cidade`, `vendedor` e
+`condicaoPagamento` podem ser `null`.
 
 **WhatsApps no cadastro (v1.5):** o cadastro de cliente do CA-Hardt ganhou uma lista de números de
 WhatsApp (campo "WhatsApps" na tela de cliente, tabela `cliente_whatsapps`). Os dois
@@ -494,6 +549,12 @@ curl -H "x-ia-api-key: SUACHAVE" -X POST -H "Content-Type: application/json" \
 # v1.5 — ficha completa pela chave documento
 curl -H "x-ia-api-key: SUACHAVE" -X POST -H "Content-Type: application/json" \
   -d '{"documento":"12345678000190"}' https://<dominio>/api/ia-consulta/v1/cliente/ficha
+# v1.6.2 — busca de FORNECEDOR (nome parcial) — antes o painel não achava
+curl -H "x-ia-api-key: SUACHAVE" -X POST -H "Content-Type: application/json" \
+  -d '{"busca":"karville","limite":10}' https://<dominio>/api/ia-consulta/v1/cliente/buscar
+# v1.6.2 — ficha de fornecedor pelo documento
+curl -H "x-ia-api-key: SUACHAVE" -X POST -H "Content-Type: application/json" \
+  -d '{"documento":"<cnpj do fornecedor>"}' https://<dominio>/api/ia-consulta/v1/cliente/ficha
 ```
 
 ## Histórico de versões
@@ -571,6 +632,19 @@ curl -H "x-ia-api-key: SUACHAVE" -X POST -H "Content-Type: application/json" \
   responsável, já que não existe previsão de retorno no cadastro). **Tudo aditivo** — nenhum campo
   removido/renomeado; `tamanho` continua vindo só do código/nome do sistema (a etiqueta não tem
   esse campo); `preparo` continua sendo o rótulo livre da categoria quando ela tiver um configurado.
+- **1.6.2** (2026-09-16) — `POST /cliente/buscar` e `POST /cliente/ficha` (🔒 só painel, nunca tool
+  da IA) passam a buscar também em **Fornecedor**, não só Cliente: o painel do bot não achava uma
+  empresa que só existe como fornecedor (ex.: "Karville"). Cada item de `cliente/buscar` ganha o
+  campo novo `tipo` (`"CLIENTE"` | `"FORNECEDOR"` — itens de cliente sempre existiram, só ganharam
+  esse rótulo); fornecedor usa o mesmo formato do item de cliente, com `vendedor` sempre `null` e
+  `whatsapps` sempre `[]`. Ordem: clientes primeiro, fornecedores depois; `limite` conta o total.
+  `cliente/ficha` ganha `tipo`; quando o documento não é de cliente ela procura em fornecedor antes
+  de devolver "não encontrado" (`diasEntrega`/`diasVenda`/`condicaoPagamento`/`horaCorte`
+  vazios/`null` + objeto novo `fornecedor` com `email`/`telefone`/`inscricaoEstadual`/`uf`, só com o
+  que existir — `horaCorte:null` mantido de propósito, para o shape ficar igual ao do cliente, que
+  sempre traz esse campo). Documento
+  em ambos os cadastros: cliente tem prioridade e a resposta ganha `tambemFornecedor:true`. **Tudo
+  aditivo** — nenhum campo removido/renomeado.
 
 ## Fase 2 — Criação de pedido pela IA (IMPLEMENTADA na v1.4)
 

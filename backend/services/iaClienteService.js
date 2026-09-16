@@ -93,6 +93,19 @@ async function _clientePorTelefone(telefoneRaw) {
     ) || null;
 }
 
+// v1.6.2 — Acha o Fornecedor cujo documento bate (normalizado, ignorando pontuação). Usado em
+// buscar()/ficha() quando o painel do bot procura por uma empresa que é fornecedor, não cliente
+// (ex.: "Karville") — antes essas buscas só olhavam a tabela de clientes.
+async function _fornecedorPorDocumento(docAlvo) {
+    if (!docAlvo) return null;
+    let f = await prisma.fornecedor.findFirst({ where: { cnpjCpf: docAlvo } });
+    if (!f) {
+        const todos = await prisma.fornecedor.findMany({ where: { cnpjCpf: { not: null } } });
+        f = todos.find(x => normalizarDoc(x.cnpjCpf) === docAlvo) || null;
+    }
+    return f;
+}
+
 const iaClienteService = {
     // Reconhecimento geral do cliente pelo telefone — nome, cidade, vendedor, dias de
     // entrega/venda e condição de pagamento (nome + pedido mínimo). Não devolve catálogo de
@@ -371,30 +384,53 @@ const iaClienteService = {
             where: { Documento: { not: null } },
             include: { vendedor: { select: { nome: true } }, whatsapp: { select: { numeros: true } } },
         });
+        // v1.6.2: fornecedores entram na mesma busca — o painel não achava empresas que só existem
+        // como fornecedor (ex.: "Karville"), porque a busca só olhava a tabela de clientes.
+        const fornecedores = await prisma.fornecedor.findMany({
+            where: { cnpjCpf: { not: null } },
+        });
 
-        let achados;
+        let achadosClientes, achadosFornecedores;
         if (soDigitos(busca).length >= 11) {
             const docAlvo = normalizarDoc(busca);
-            achados = clientes.filter(c => normalizarDoc(c.Documento).includes(docAlvo));
+            achadosClientes = clientes.filter(c => normalizarDoc(c.Documento).includes(docAlvo));
+            achadosFornecedores = fornecedores.filter(f => normalizarDoc(f.cnpjCpf).includes(docAlvo));
         } else {
             const alvo = semAcento(busca);
-            achados = clientes.filter(c =>
+            achadosClientes = clientes.filter(c =>
                 semAcento(c.Nome).includes(alvo) || semAcento(c.NomeFantasia).includes(alvo));
+            achadosFornecedores = fornecedores.filter(f =>
+                semAcento(f.razaoSocial).includes(alvo) || semAcento(f.nomeFantasia).includes(alvo));
         }
-        achados.sort((a, b) => (b.Ativo - a.Ativo) || String(a.Nome).localeCompare(b.Nome, 'pt-BR'));
+        achadosClientes.sort((a, b) => (b.Ativo - a.Ativo) || String(a.Nome).localeCompare(b.Nome, 'pt-BR'));
+        achadosFornecedores.sort((a, b) => (b.ativo - a.ativo) || String(a.razaoSocial).localeCompare(b.razaoSocial, 'pt-BR'));
 
-        return {
-            clientes: achados.slice(0, limite).map(c => ({
-                documento: c.Documento,
-                nome: c.Nome,
-                nomeFantasia: c.NomeFantasia,
-                cidade: c.End_Cidade,
-                vendedor: c.vendedor?.nome || null,
-                ativo: c.Ativo,
-                telefones: listaTelefones(c),
-                whatsapps: listaWhatsapps(c),
-            })),
-        };
+        // Ordem: clientes primeiro, fornecedores depois; `limite` vale para o total combinado.
+        // Documento existindo nos dois cadastros: aparecem os dois itens (tipos diferentes).
+        const listaClientes = achadosClientes.map(c => ({
+            tipo: 'CLIENTE',
+            documento: c.Documento,
+            nome: c.Nome,
+            nomeFantasia: c.NomeFantasia,
+            cidade: c.End_Cidade,
+            vendedor: c.vendedor?.nome || null,
+            ativo: c.Ativo,
+            telefones: listaTelefones(c),
+            whatsapps: listaWhatsapps(c),
+        }));
+        const listaFornecedores = achadosFornecedores.map(f => ({
+            tipo: 'FORNECEDOR',
+            documento: f.cnpjCpf,
+            nome: f.razaoSocial,
+            nomeFantasia: f.nomeFantasia,
+            cidade: f.cidade,
+            vendedor: null,
+            ativo: f.ativo,
+            telefones: [f.telefone].map(soDigitos).filter(Boolean),
+            whatsapps: [],
+        }));
+
+        return { clientes: [...listaClientes, ...listaFornecedores].slice(0, limite) };
     },
 
     // Ficha completa de UM cliente pela chave documento (vinda da busca acima). Mesmo shape do
@@ -417,28 +453,63 @@ const iaClienteService = {
             });
             cliente = todos.find(c => normalizarDoc(c.Documento) === docAlvo) || null;
         }
-        if (!cliente) return { encontrado: false };
+        if (cliente) {
+            const condicao = cliente.Condicao_de_pagamento
+                ? await prisma.tabelaPreco.findUnique({ where: { id: cliente.Condicao_de_pagamento } })
+                : null;
+            // v1.6.2: mesmo documento também cadastrado como fornecedor? cliente tem prioridade,
+            // mas avisa o painel — senão a equipe acha que é só cliente.
+            const tambemFornecedor = !!(await _fornecedorPorDocumento(docAlvo));
 
-        const condicao = cliente.Condicao_de_pagamento
-            ? await prisma.tabelaPreco.findUnique({ where: { id: cliente.Condicao_de_pagamento } })
-            : null;
+            return {
+                encontrado: true,
+                tipo: 'CLIENTE',
+                ...(tambemFornecedor ? { tambemFornecedor: true } : {}),
+                cliente: {
+                    nome: cliente.Nome,
+                    nomeFantasia: cliente.NomeFantasia,
+                    documento: cliente.Documento,
+                    cidade: cliente.End_Cidade,
+                    vendedor: cliente.vendedor?.nome || null,
+                    ativo: cliente.Ativo,
+                },
+                diasEntrega: diasLabels(cliente.Dia_de_entrega),
+                diasVenda: diasLabels(cliente.Dia_de_venda),
+                condicaoPagamento: condicaoParaIA(condicao),
+                whatsapps: listaWhatsapps(cliente),
+                telefones: listaTelefones(cliente),
+                horaCorte: await iaConsultaConfig.horaCorte(), // v1.6.0 — mesma informação do reconhecimento
+            };
+        }
+
+        // v1.6.2: não é cliente — procura em Fornecedor antes de devolver "não encontrado"
+        // (painel não achava empresas que só existem como fornecedor, ex.: "Karville").
+        const fornecedor = await _fornecedorPorDocumento(docAlvo);
+        if (!fornecedor) return { encontrado: false };
 
         return {
             encontrado: true,
+            tipo: 'FORNECEDOR',
             cliente: {
-                nome: cliente.Nome,
-                nomeFantasia: cliente.NomeFantasia,
-                documento: cliente.Documento,
-                cidade: cliente.End_Cidade,
-                vendedor: cliente.vendedor?.nome || null,
-                ativo: cliente.Ativo,
+                nome: fornecedor.razaoSocial,
+                nomeFantasia: fornecedor.nomeFantasia,
+                documento: fornecedor.cnpjCpf,
+                cidade: fornecedor.cidade,
+                vendedor: null,
+                ativo: fornecedor.ativo,
             },
-            diasEntrega: diasLabels(cliente.Dia_de_entrega),
-            diasVenda: diasLabels(cliente.Dia_de_venda),
-            condicaoPagamento: condicaoParaIA(condicao),
-            whatsapps: listaWhatsapps(cliente),
-            telefones: listaTelefones(cliente),
-            horaCorte: await iaConsultaConfig.horaCorte(), // v1.6.0 — mesma informação do reconhecimento
+            diasEntrega: [],
+            diasVenda: [],
+            condicaoPagamento: null,
+            whatsapps: [],
+            telefones: [fornecedor.telefone].map(soDigitos).filter(Boolean),
+            horaCorte: null, // fornecedor não tem hora de corte — campo mantido p/ o shape ficar igual ao do cliente
+            fornecedor: {
+                ...(fornecedor.email ? { email: fornecedor.email } : {}),
+                ...(fornecedor.telefone ? { telefone: fornecedor.telefone } : {}),
+                ...(fornecedor.inscricaoEstadual ? { inscricaoEstadual: fornecedor.inscricaoEstadual } : {}),
+                ...(fornecedor.uf ? { uf: fornecedor.uf } : {}),
+            },
         };
     },
 
