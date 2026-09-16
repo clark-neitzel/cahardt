@@ -1,0 +1,4089 @@
+{
+  "geradoEm": "2026-09-16T23:06:15.759Z",
+  "fonte": "https://cahardt-github.xrqvlq.easypanel.host/api/congelados-publico/*",
+  "totalProdutos": 51,
+  "baseUrlImagens": "https://cahardt-github.xrqvlq.easypanel.host",
+  "legendaGrupos": [
+    {
+      "id": "337b5e88-b013-4560-9a83-f86dc72ccb78",
+      "nomeAmigavelNoSite": "Assados",
+      "preparoOficial": "Somente Aquecer"
+    },
+    {
+      "id": "0da2c06c-d6a6-446f-b036-058209ee8d3f",
+      "nomeAmigavelNoSite": "Assar",
+      "preparoOficial": "Precisa Assar"
+    },
+    {
+      "id": "8749505b-8b82-455b-b923-d55cc47dd7fd",
+      "nomeAmigavelNoSite": "Aquecer",
+      "preparoOficial": "Somente Aquecer"
+    },
+    {
+      "id": "83936f52-150c-4e99-b803-4014e581da37",
+      "nomeAmigavelNoSite": "Fritos",
+      "preparoOficial": "Somente Aquecer"
+    },
+    {
+      "id": "6b469a55-95c6-41e9-b033-6d3b33f33311",
+      "nomeAmigavelNoSite": "Fritar",
+      "preparoOficial": "Precisa Fritar"
+    },
+    {
+      "id": "8a8477a5-aaf6-4a74-b894-e68d86375715",
+      "nomeAmigavelNoSite": "Mini Fritar",
+      "preparoOficial": "Precisa Fritar"
+    }
+  ],
+  "config": {
+    "loja": {
+      "nome": "Hardt Doces e Salgados",
+      "desde": "desde 2007",
+      "email": "atendimento@hardtsalgados.com.br",
+      "slogan": "# Sabor sem igual",
+      "mapsUrl": "https://maps.app.goo.gl/w5iawJDnjTgw8RML8",
+      "endereco": "Rua XV de Outubro, 170 — Pirabeiraba, Joinville/SC",
+      "facebook": "https://www.facebook.com/hardtsalgados/",
+      "telefone": "(47) 98854-8476",
+      "whatsapp": "5547988548476",
+      "instagram": "hardtsalgados"
+    },
+    "minimoSite": 100,
+    "embalagens": [
+      "caixa",
+      "pacote",
+      "unidade",
+      "bandeja",
+      "saco"
+    ],
+    "categoriasNomes": {
+      "0da2c06c-d6a6-446f-b036-058209ee8d3f": {
+        "nome": "Assar",
+        "preparo": "Precisa Assar"
+      },
+      "337b5e88-b013-4560-9a83-f86dc72ccb78": {
+        "nome": "Assados",
+        "preparo": "Somente Aquecer"
+      },
+      "40ac3d29-172b-407d-8c8a-5856dbb0c59d": {
+        "nome": "Kit-Festa",
+        "preparo": "Pronto quentinho!"
+      },
+      "6b469a55-95c6-41e9-b033-6d3b33f33311": {
+        "nome": "Fritar",
+        "preparo": "Precisa Fritar"
+      },
+      "83936f52-150c-4e99-b803-4014e581da37": {
+        "nome": "Fritos",
+        "preparo": "Somente Aquecer"
+      },
+      "8749505b-8b82-455b-b923-d55cc47dd7fd": {
+        "nome": "Aquecer",
+        "preparo": "Somente Aquecer"
+      },
+      "8a8477a5-aaf6-4a74-b894-e68d86375715": {
+        "nome": "Mini Fritar",
+        "preparo": "Precisa Fritar"
+      },
+      "c1425add-2c91-475f-8915-db706fcb3107": {
+        "oculto": true
+      },
+      "d6ffdc0a-426e-4175-b6c1-a823f35570b8": {
+        "nome": "Mercado",
+        "preparo": "Somente Aquecer"
+      }
+    }
+  },
+  "produtos": [
+    {
+      "id": "1674fedf-69ad-4cf7-9153-fcad1f53fdfe",
+      "produtoId": "e02984f0-7ebe-499a-b741-cb32b1469bb1",
+      "codigo": "H22MI2",
+      "nomeSite": "FESTA-BOLINHA DE QUEIJO 22GR",
+      "nomeEtiqueta": "FESTA-BOLINHA DE QUEIJO 22GR",
+      "grupoIdSistema": "337b5e88-b013-4560-9a83-f86dc72ccb78",
+      "grupoNomeNoProduto_lidoAoVivoDaCategoriaProduto": "H22 Mini Salgados 22 gramas",
+      "grupoNomeAmigavelNoSite": "Assados",
+      "preparoOficialDoGrupo": "Somente Aquecer",
+      "catalogo": {
+        "id": "1674fedf-69ad-4cf7-9153-fcad1f53fdfe",
+        "produtoId": "e02984f0-7ebe-499a-b741-cb32b1469bb1",
+        "codigo": "H22MI2",
+        "nome": "FESTA-BOLINHA DE QUEIJO 22GR",
+        "descricao": "PRODUTO COM 22 GRAMAS APROXIMADAMENTE E PACOTE COM 2KG",
+        "unidade": "PT",
+        "unidades": 90,
+        "embalagem": "pacote",
+        "grupo": "337b5e88-b013-4560-9a83-f86dc72ccb78",
+        "grupoNome": "H22 Mini Salgados 22 gramas",
+        "preco": 60.62,
+        "destaque": false,
+        "ordem": 0,
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/e02984f0-7ebe-499a-b741-cb32b1469bb1/1781900459118-908032807.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/e02984f0-7ebe-499a-b741-cb32b1469bb1/1781900459118-908032807.jpg",
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/e02984f0-7ebe-499a-b741-cb32b1469bb1/1781971406017-72862990.jpg"
+        ],
+        "preparo": "Somente Aquecer",
+        "indisponivel": false
+      },
+      "ficha": {
+        "id": "1674fedf-69ad-4cf7-9153-fcad1f53fdfe",
+        "nome": "FESTA-BOLINHA DE QUEIJO 22GR",
+        "codigo": "H22MI2",
+        "unidade": "PT",
+        "unidades": 90,
+        "embalagem": "pacote",
+        "descricao": "PRODUTO COM 22 GRAMAS APROXIMADAMENTE E PACOTE COM 2KG",
+        "grupoNome": "H22 Mini Salgados 22 gramas",
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/e02984f0-7ebe-499a-b741-cb32b1469bb1/1781900459118-908032807.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/e02984f0-7ebe-499a-b741-cb32b1469bb1/1781900459118-908032807.jpg",
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/e02984f0-7ebe-499a-b741-cb32b1469bb1/1781971406017-72862990.jpg"
+        ],
+        "etiqueta": {
+          "pesoUnitario": 22,
+          "pesoPorcao": 22,
+          "quantidadeEmbalagem": 90,
+          "quantidadeAproximada": true,
+          "pesoPacote": 2000,
+          "nutricional": {
+            "valorEnergetico": "27kcal (1% VD)",
+            "carboidratos": "4,5g (2% VD)",
+            "acucaresTotais": null,
+            "acucaresAdicionados": null,
+            "proteinas": "0,7g (1% VD)",
+            "gordurasTotais": "0,6g (1% VD)",
+            "gordurasSaturadas": "0,2g (1% VD)",
+            "gordurasTrans": "0g (0% VD)",
+            "fibraAlimentar": "0,3g (1% VD)",
+            "sodio": "116mg (6% VD)"
+          },
+          "composicao": "Água, Farinha de Trigo, Queijo mussarela, Fubá, Sal, Margarina, Óleo de soja, Queijo provolone, Leite integral, Orégano, Cebolinha verde, Farinha de rosca.",
+          "modoPreparo": "Colocar o produto ainda congelado, em óleo pré-aquecido em 180ºC, por 3 minutos. Tempo máximo de exposição em estufa: 6 horas a 60ºC. Produto congelado, após aberto manter o pacote bem fechado para não ressecar.",
+          "armazenamento": "Congelar -12ºC. Após descongelado, não recongelar.",
+          "validadeDias": 180,
+          "contemGluten": true,
+          "contemLactose": true,
+          "alergenos": [
+            "Trigo",
+            "Leite"
+          ],
+          "especieCrustaceos": null,
+          "especiePeixes": null,
+          "avisosRotulo": null
+        }
+      }
+    },
+    {
+      "id": "0dddfc1f-d776-4bb7-9a38-45068d8d16e4",
+      "produtoId": "1d3a2cee-435f-4e6a-af50-ac9acca625df",
+      "codigo": "3071",
+      "nomeSite": "CALZONE FRANGO C/ REQUEIJÃO 160gr",
+      "nomeEtiqueta": "CALZONE FRANGO C/ REQUEIJÃO 160gr",
+      "grupoIdSistema": "0da2c06c-d6a6-446f-b036-058209ee8d3f",
+      "grupoNomeNoProduto_lidoAoVivoDaCategoriaProduto": "Produtos para Assar",
+      "grupoNomeAmigavelNoSite": "Assar",
+      "preparoOficialDoGrupo": "Precisa Assar",
+      "catalogo": {
+        "id": "0dddfc1f-d776-4bb7-9a38-45068d8d16e4",
+        "produtoId": "1d3a2cee-435f-4e6a-af50-ac9acca625df",
+        "codigo": "3071",
+        "nome": "CALZONE FRANGO C/ REQUEIJÃO 160gr",
+        "descricao": "",
+        "unidade": "PT",
+        "unidades": 8,
+        "embalagem": "pacote",
+        "grupo": "0da2c06c-d6a6-446f-b036-058209ee8d3f",
+        "grupoNome": "Produtos para Assar",
+        "preco": 53.93,
+        "destaque": false,
+        "ordem": 0,
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/1d3a2cee-435f-4e6a-af50-ac9acca625df/1782090206226-651144644.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/1d3a2cee-435f-4e6a-af50-ac9acca625df/1782090206226-651144644.jpg"
+        ],
+        "preparo": "Precisa Assar",
+        "indisponivel": false
+      },
+      "ficha": {
+        "id": "0dddfc1f-d776-4bb7-9a38-45068d8d16e4",
+        "nome": "CALZONE FRANGO C/ REQUEIJÃO 160gr",
+        "codigo": "3071",
+        "unidade": "PT",
+        "unidades": 8,
+        "embalagem": "pacote",
+        "descricao": "",
+        "grupoNome": "Produtos para Assar",
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/1d3a2cee-435f-4e6a-af50-ac9acca625df/1782090206226-651144644.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/1d3a2cee-435f-4e6a-af50-ac9acca625df/1782090206226-651144644.jpg"
+        ],
+        "etiqueta": {
+          "pesoUnitario": 135,
+          "pesoPorcao": 135,
+          "quantidadeEmbalagem": 8,
+          "quantidadeAproximada": false,
+          "pesoPacote": 1080,
+          "nutricional": {
+            "valorEnergetico": "282kcal (14% VD)",
+            "carboidratos": "40,1g (13% VD)",
+            "acucaresTotais": null,
+            "acucaresAdicionados": null,
+            "proteinas": "11,4g (15% VD)",
+            "gordurasTotais": "8,4g (15% VD)",
+            "gordurasSaturadas": "2,1g (9% VD)",
+            "gordurasTrans": "0g (0% VD)",
+            "fibraAlimentar": "2,7g (11% VD)",
+            "sodio": "571mg (24% VD)"
+          },
+          "composicao": "Farinha de trigo, Margarina, Sal, Açúcar, Fermento Químico, Peito de Frango, Caldo de galinha, Pimenta do reino, Tomate, Cheiro verde, Colorífico, Requeijão culinário Hardt, Creme de leite, Leite, Ovos",
+          "modoPreparo": "Colocar o produto ainda congelado, em forno pré-aquecido em 180ºC, por 17 minutos. Tempo máximo de exposição em estufa: 6 horas a 60ºC. Produto congelado, após aberto manter o pacote bem fechado para não ressecar.",
+          "armazenamento": "Congelar -12ºC. Após descongelado, não recongelar.",
+          "validadeDias": 180,
+          "contemGluten": true,
+          "contemLactose": true,
+          "alergenos": [
+            "Trigo",
+            "Leite",
+            "Ovos"
+          ],
+          "especieCrustaceos": null,
+          "especiePeixes": null,
+          "avisosRotulo": null
+        }
+      }
+    },
+    {
+      "id": "4a8b6bc9-02bc-4702-aea4-3cfabbb0ebe5",
+      "produtoId": "e58de3bf-bef4-4dd7-8959-b913a0d796af",
+      "codigo": "3072",
+      "nomeSite": "CALZONE CALABRESA C/CHEEDAR 160gr",
+      "nomeEtiqueta": "CALZONE CALABRESA C/CHEEDAR 160gr",
+      "grupoIdSistema": "0da2c06c-d6a6-446f-b036-058209ee8d3f",
+      "grupoNomeNoProduto_lidoAoVivoDaCategoriaProduto": "Produtos para Assar",
+      "grupoNomeAmigavelNoSite": "Assar",
+      "preparoOficialDoGrupo": "Precisa Assar",
+      "catalogo": {
+        "id": "4a8b6bc9-02bc-4702-aea4-3cfabbb0ebe5",
+        "produtoId": "e58de3bf-bef4-4dd7-8959-b913a0d796af",
+        "codigo": "3072",
+        "nome": "CALZONE CALABRESA C/CHEEDAR 160gr",
+        "descricao": "Massa levemente crescida um recheio de calabresa picada de excelente qualidade de queijo cheedar Hardt, pacote com 8 unidades, cada produto indentificado com etiqueta comestível",
+        "unidade": "PT",
+        "unidades": 8,
+        "embalagem": "pacote",
+        "grupo": "0da2c06c-d6a6-446f-b036-058209ee8d3f",
+        "grupoNome": "Produtos para Assar",
+        "preco": 53.93,
+        "destaque": false,
+        "ordem": 0,
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/e58de3bf-bef4-4dd7-8959-b913a0d796af/1782090192136-435946856.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/e58de3bf-bef4-4dd7-8959-b913a0d796af/1782090192136-435946856.jpg"
+        ],
+        "preparo": "Precisa Assar",
+        "indisponivel": false
+      },
+      "ficha": {
+        "id": "4a8b6bc9-02bc-4702-aea4-3cfabbb0ebe5",
+        "nome": "CALZONE CALABRESA C/CHEEDAR 160gr",
+        "codigo": "3072",
+        "unidade": "PT",
+        "unidades": 8,
+        "embalagem": "pacote",
+        "descricao": "Massa levemente crescida um recheio de calabresa picada de excelente qualidade de queijo cheedar Hardt, pacote com 8 unidades, cada produto indentificado com etiqueta comestível",
+        "grupoNome": "Produtos para Assar",
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/e58de3bf-bef4-4dd7-8959-b913a0d796af/1782090192136-435946856.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/e58de3bf-bef4-4dd7-8959-b913a0d796af/1782090192136-435946856.jpg"
+        ],
+        "etiqueta": {
+          "pesoUnitario": 135,
+          "pesoPorcao": 135,
+          "quantidadeEmbalagem": 8,
+          "quantidadeAproximada": false,
+          "pesoPacote": 1080,
+          "nutricional": {
+            "valorEnergetico": "282kcal (14% VD)",
+            "carboidratos": "40,1g (13% VD)",
+            "acucaresTotais": null,
+            "acucaresAdicionados": null,
+            "proteinas": "11,4g (15% VD)",
+            "gordurasTotais": "8,4g (15% VD)",
+            "gordurasSaturadas": "2,1g (9% VD)",
+            "gordurasTrans": "0g (0% VD)",
+            "fibraAlimentar": "2,7g (11% VD)",
+            "sodio": "571mg (24% VD)"
+          },
+          "composicao": "Farinha de trigo, Margarina, Sal, Açúcar, Fermento Químico, Calabresa, Requeijão culinário Hardt, Queijo cheedar, Creme de leite, Leite, Ovos",
+          "modoPreparo": "Colocar o produto ainda congelado, em forno pré-aquecido em 180ºC, por 17 minutos. Tempo máximo de exposição em estufa: 6 horas a 60ºC. Produto congelado, após aberto manter o pacote bem fechado para não ressecar.",
+          "armazenamento": "Congelar -12ºC. Após descongelado, não recongelar.",
+          "validadeDias": 180,
+          "contemGluten": true,
+          "contemLactose": true,
+          "alergenos": [
+            "Trigo",
+            "Leite",
+            "Soja",
+            "Ovos"
+          ],
+          "especieCrustaceos": null,
+          "especiePeixes": null,
+          "avisosRotulo": null
+        }
+      }
+    },
+    {
+      "id": "c2f91d0b-3dbd-4961-8fac-79d766c87447",
+      "produtoId": "9a6e52bd-23de-4128-bb26-99b86838d27a",
+      "codigo": "3086",
+      "nomeSite": "DOGUINHO C/ 2 SALSICHA 220gr",
+      "nomeEtiqueta": "DOGUINHO C/ 2 SALSICHA 220gr",
+      "grupoIdSistema": "8749505b-8b82-455b-b923-d55cc47dd7fd",
+      "grupoNomeNoProduto_lidoAoVivoDaCategoriaProduto": "Produtos Assados para Aquecer",
+      "grupoNomeAmigavelNoSite": "Aquecer",
+      "preparoOficialDoGrupo": "Somente Aquecer",
+      "catalogo": {
+        "id": "c2f91d0b-3dbd-4961-8fac-79d766c87447",
+        "produtoId": "9a6e52bd-23de-4128-bb26-99b86838d27a",
+        "codigo": "3086",
+        "nome": "DOGUINHO C/ 2 SALSICHA 220gr",
+        "descricao": "",
+        "unidade": "PT",
+        "unidades": 8,
+        "embalagem": "pacote",
+        "grupo": "8749505b-8b82-455b-b923-d55cc47dd7fd",
+        "grupoNome": "Produtos Assados para Aquecer",
+        "preco": 62.78,
+        "destaque": false,
+        "ordem": 0,
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/9a6e52bd-23de-4128-bb26-99b86838d27a/1781902495058-550757795.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/9a6e52bd-23de-4128-bb26-99b86838d27a/1781902495058-550757795.jpg"
+        ],
+        "preparo": "Somente Aquecer",
+        "indisponivel": false
+      },
+      "ficha": {
+        "id": "c2f91d0b-3dbd-4961-8fac-79d766c87447",
+        "nome": "DOGUINHO C/ 2 SALSICHA 220gr",
+        "codigo": "3086",
+        "unidade": "PT",
+        "unidades": 8,
+        "embalagem": "pacote",
+        "descricao": "",
+        "grupoNome": "Produtos Assados para Aquecer",
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/9a6e52bd-23de-4128-bb26-99b86838d27a/1781902495058-550757795.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/9a6e52bd-23de-4128-bb26-99b86838d27a/1781902495058-550757795.jpg"
+        ],
+        "etiqueta": {
+          "pesoUnitario": 190,
+          "pesoPorcao": 190,
+          "quantidadeEmbalagem": 8,
+          "quantidadeAproximada": false,
+          "pesoPacote": 1520,
+          "nutricional": {
+            "valorEnergetico": "418kcal (21% VD)",
+            "carboidratos": "37g (12% VD)",
+            "acucaresTotais": null,
+            "acucaresAdicionados": null,
+            "proteinas": "22g (29% VD)",
+            "gordurasTotais": "20g (37% VD)",
+            "gordurasSaturadas": "7,2g (33% VD)",
+            "gordurasTrans": "0g (0% VD)",
+            "fibraAlimentar": "1,8g (8% VD)",
+            "sodio": "1974mg (82% VD)"
+          },
+          "composicao": "Farinha de trigo, Margarina, Oleo, Água, Sal, Açúcar, Fermento químico, Requeijão Hardt, Molho de tomate, Salsicha tipo hot dog, Ovos",
+          "modoPreparo": "Colocar o produto ainda congelado, em forno pré-aquecido em 180ºC, por 10 minutos. Tempo máximo de exposição em estufa: 6 horas a 60ºC. Produto congelado, após aberto manter o pacote bem fechado para não ressecar.",
+          "armazenamento": "Congelar -12ºC. Após descongelado, não recongelar.",
+          "validadeDias": 180,
+          "contemGluten": true,
+          "contemLactose": true,
+          "alergenos": [
+            "Trigo",
+            "Soja",
+            "Leite",
+            "Ovos"
+          ],
+          "especieCrustaceos": null,
+          "especiePeixes": null,
+          "avisosRotulo": null
+        }
+      }
+    },
+    {
+      "id": "7a207810-963f-45b1-b812-3869b2a837ab",
+      "produtoId": "5dc931fa-2b99-430f-8ef1-b609773e2940",
+      "codigo": "3088",
+      "nomeSite": "ENROLADINHO DE FRANGO 140gr",
+      "nomeEtiqueta": "ENROLADINHO DE FRANGO 140gr",
+      "grupoIdSistema": "8749505b-8b82-455b-b923-d55cc47dd7fd",
+      "grupoNomeNoProduto_lidoAoVivoDaCategoriaProduto": "Produtos Assados para Aquecer",
+      "grupoNomeAmigavelNoSite": "Aquecer",
+      "preparoOficialDoGrupo": "Somente Aquecer",
+      "catalogo": {
+        "id": "7a207810-963f-45b1-b812-3869b2a837ab",
+        "produtoId": "5dc931fa-2b99-430f-8ef1-b609773e2940",
+        "codigo": "3088",
+        "nome": "ENROLADINHO DE FRANGO 140gr",
+        "descricao": "",
+        "unidade": "PT",
+        "unidades": 8,
+        "embalagem": "pacote",
+        "grupo": "8749505b-8b82-455b-b923-d55cc47dd7fd",
+        "grupoNome": "Produtos Assados para Aquecer",
+        "preco": 48.47,
+        "destaque": false,
+        "ordem": 0,
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/5dc931fa-2b99-430f-8ef1-b609773e2940/1781902516750-956624452.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/5dc931fa-2b99-430f-8ef1-b609773e2940/1781902516750-956624452.jpg"
+        ],
+        "preparo": "Somente Aquecer",
+        "indisponivel": false
+      },
+      "ficha": {
+        "id": "7a207810-963f-45b1-b812-3869b2a837ab",
+        "nome": "ENROLADINHO DE FRANGO 140gr",
+        "codigo": "3088",
+        "unidade": "PT",
+        "unidades": 8,
+        "embalagem": "pacote",
+        "descricao": "",
+        "grupoNome": "Produtos Assados para Aquecer",
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/5dc931fa-2b99-430f-8ef1-b609773e2940/1781902516750-956624452.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/5dc931fa-2b99-430f-8ef1-b609773e2940/1781902516750-956624452.jpg"
+        ],
+        "etiqueta": {
+          "pesoUnitario": 140,
+          "pesoPorcao": 140,
+          "quantidadeEmbalagem": 8,
+          "quantidadeAproximada": false,
+          "pesoPacote": 1120,
+          "nutricional": {
+            "valorEnergetico": "339kcal (17% VD)",
+            "carboidratos": "43,6g (15% VD)",
+            "acucaresTotais": null,
+            "acucaresAdicionados": null,
+            "proteinas": "13,3g (18% VD)",
+            "gordurasTotais": "8g (14% VD)",
+            "gordurasSaturadas": "3,9g (18% VD)",
+            "gordurasTrans": "0,5g (0% VD)",
+            "fibraAlimentar": "3,0g (12% VD)",
+            "sodio": "462mg (19% VD)"
+          },
+          "composicao": "Farinha de trigo, Peito de frango, Cebola, Proteína de soja, Margarina, Óleo de soja, Açúcar, Sal, Caldo de galinha, Colorífico, Fermento químico, Cebolinha verde, Glutamato monossódico, Pimenta do reino e Ovos",
+          "modoPreparo": "Colocar o produto ainda congelado, em forno pré-aquecido em 180ºC, por 10 minutos. Tempo máximo de exposição em estufa: 6 horas a 60ºC. Produto congelado, após aberto manter o pacote bem fechado para não ressecar.",
+          "armazenamento": "Congelar -12ºC. Após descongelado, não recongelar.",
+          "validadeDias": 180,
+          "contemGluten": true,
+          "contemLactose": false,
+          "alergenos": [
+            "Trigo",
+            "Soja",
+            "Leite",
+            "Ovos"
+          ],
+          "especieCrustaceos": null,
+          "especiePeixes": null,
+          "avisosRotulo": null
+        }
+      }
+    },
+    {
+      "id": "a777318b-8d65-40b4-9742-3fd15078525a",
+      "produtoId": "04a69496-752f-4cd7-9630-acc5d3ba7958",
+      "codigo": "5298",
+      "nomeSite": "MÉDIO COXINHA LINGUIÇA BLUMENAU FRITO 65GR",
+      "nomeEtiqueta": "MÉDIO COXINHA LINGUIÇA BLUMENAU FRITO 65GR",
+      "grupoIdSistema": "83936f52-150c-4e99-b803-4014e581da37",
+      "grupoNomeNoProduto_lidoAoVivoDaCategoriaProduto": "Produtos Fritos para Aquecer",
+      "grupoNomeAmigavelNoSite": "Fritos",
+      "preparoOficialDoGrupo": "Somente Aquecer",
+      "catalogo": {
+        "id": "a777318b-8d65-40b4-9742-3fd15078525a",
+        "produtoId": "04a69496-752f-4cd7-9630-acc5d3ba7958",
+        "codigo": "5298",
+        "nome": "MÉDIO COXINHA LINGUIÇA BLUMENAU FRITO 65GR",
+        "descricao": "",
+        "unidade": "PT",
+        "unidades": 30,
+        "embalagem": "pacote",
+        "grupo": "83936f52-150c-4e99-b803-4014e581da37",
+        "grupoNome": "Produtos Fritos para Aquecer",
+        "preco": 63.44,
+        "destaque": false,
+        "ordem": 0,
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/04a69496-752f-4cd7-9630-acc5d3ba7958/1782081236859-998798396.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/04a69496-752f-4cd7-9630-acc5d3ba7958/1782081236859-998798396.jpg",
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/04a69496-752f-4cd7-9630-acc5d3ba7958/1782089925972-502763892.jpg"
+        ],
+        "preparo": "Somente Aquecer",
+        "indisponivel": false
+      },
+      "ficha": {
+        "id": "a777318b-8d65-40b4-9742-3fd15078525a",
+        "nome": "MÉDIO COXINHA LINGUIÇA BLUMENAU FRITO 65GR",
+        "codigo": "5298",
+        "unidade": "PT",
+        "unidades": 30,
+        "embalagem": "pacote",
+        "descricao": "",
+        "grupoNome": "Produtos Fritos para Aquecer",
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/04a69496-752f-4cd7-9630-acc5d3ba7958/1782081236859-998798396.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/04a69496-752f-4cd7-9630-acc5d3ba7958/1782081236859-998798396.jpg",
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/04a69496-752f-4cd7-9630-acc5d3ba7958/1782089925972-502763892.jpg"
+        ],
+        "etiqueta": {
+          "pesoUnitario": 63,
+          "pesoPorcao": 63,
+          "quantidadeEmbalagem": 30,
+          "quantidadeAproximada": false,
+          "pesoPacote": 1890,
+          "nutricional": {
+            "valorEnergetico": "74kcal (4% VD)",
+            "carboidratos": "13,8g (5% VD)",
+            "acucaresTotais": null,
+            "acucaresAdicionados": null,
+            "proteinas": "2,9g (4% VD)",
+            "gordurasTotais": "0,9g (2% VD)",
+            "gordurasSaturadas": "0,2g (1% VD)",
+            "gordurasTrans": "0,1g (0% VD)",
+            "fibraAlimentar": "1,1g (4% VD)",
+            "sodio": "244mg (10% VD)"
+          },
+          "composicao": "Farinha de trigo, Linguiça Blumenau, Aipim cozido, Cebola, Óleo de soja, Margarina, Sal, Requeijão culinário hardt, Cebolinha verde, Glutamato monossódico, Farinha de rosca, Pimenta do reino.",
+          "modoPreparo": "Colocar o produto ainda congelado, em forno pré-aquecido em 180ºC, por 10 minutos. Tempo máximo de exposição em estufa: 6 horas a 60ºC. Produto congelado, após aberto manter o pacote bem fechado para não ressecar a massa.",
+          "armazenamento": "Congelar -12ºC. Após descongelado, não recongelar.",
+          "validadeDias": 180,
+          "contemGluten": true,
+          "contemLactose": false,
+          "alergenos": [
+            "Trigo",
+            "Soja"
+          ],
+          "especieCrustaceos": null,
+          "especiePeixes": null,
+          "avisosRotulo": null
+        }
+      }
+    },
+    {
+      "id": "7143091a-9287-4f6f-87b0-60fa0784fb5e",
+      "produtoId": "f2c7e4ec-b9da-4c97-bfd9-1204946a3d3c",
+      "codigo": "3272",
+      "nomeSite": "ENROLADINHO DE PIZZA 140gr",
+      "nomeEtiqueta": "ENROLADINHO DE PIZZA 140gr",
+      "grupoIdSistema": "8749505b-8b82-455b-b923-d55cc47dd7fd",
+      "grupoNomeNoProduto_lidoAoVivoDaCategoriaProduto": "Produtos Assados para Aquecer",
+      "grupoNomeAmigavelNoSite": "Aquecer",
+      "preparoOficialDoGrupo": "Somente Aquecer",
+      "catalogo": {
+        "id": "7143091a-9287-4f6f-87b0-60fa0784fb5e",
+        "produtoId": "f2c7e4ec-b9da-4c97-bfd9-1204946a3d3c",
+        "codigo": "3272",
+        "nome": "ENROLADINHO DE PIZZA 140gr",
+        "descricao": "",
+        "unidade": "PT",
+        "unidades": 8,
+        "embalagem": "pacote",
+        "grupo": "8749505b-8b82-455b-b923-d55cc47dd7fd",
+        "grupoNome": "Produtos Assados para Aquecer",
+        "preco": 48.47,
+        "destaque": false,
+        "ordem": 0,
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/f2c7e4ec-b9da-4c97-bfd9-1204946a3d3c/1781902526122-840112546.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/f2c7e4ec-b9da-4c97-bfd9-1204946a3d3c/1781902526122-840112546.jpg"
+        ],
+        "preparo": "Somente Aquecer",
+        "indisponivel": false
+      },
+      "ficha": {
+        "id": "7143091a-9287-4f6f-87b0-60fa0784fb5e",
+        "nome": "ENROLADINHO DE PIZZA 140gr",
+        "codigo": "3272",
+        "unidade": "PT",
+        "unidades": 8,
+        "embalagem": "pacote",
+        "descricao": "",
+        "grupoNome": "Produtos Assados para Aquecer",
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/f2c7e4ec-b9da-4c97-bfd9-1204946a3d3c/1781902526122-840112546.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/f2c7e4ec-b9da-4c97-bfd9-1204946a3d3c/1781902526122-840112546.jpg"
+        ],
+        "etiqueta": {
+          "pesoUnitario": 140,
+          "pesoPorcao": 140,
+          "quantidadeEmbalagem": 8,
+          "quantidadeAproximada": false,
+          "pesoPacote": 1120,
+          "nutricional": {
+            "valorEnergetico": "236kcal (12% VD)",
+            "carboidratos": "41,2g (4% VD)",
+            "acucaresTotais": null,
+            "acucaresAdicionados": null,
+            "proteinas": "7,0g (9% VD)",
+            "gordurasTotais": "4,9g (9% VD)",
+            "gordurasSaturadas": "1,7g (8% VD)",
+            "gordurasTrans": "0g (0% VD)",
+            "fibraAlimentar": "3,3g (13% VD)",
+            "sodio": "437mg (18% VD)"
+          },
+          "composicao": "Farinha de trigo, Apresuntado, Proteína de soja, Margarina, Queijo provolone, Leite integral em pó, Sal, Fermento químico, Cebolinha verde, Orégano e Ovos",
+          "modoPreparo": "Colocar o produto ainda congelado, em forno pré-aquecido em 180ºC, por 10 minutos. Tempo máximo de exposição em estufa: 6 horas a 60ºC. Produto congelado, após aberto manter o pacote bem fechado para não ressecar.",
+          "armazenamento": "Congelar -12ºC. Após descongelado, não recongelar.",
+          "validadeDias": 180,
+          "contemGluten": true,
+          "contemLactose": false,
+          "alergenos": [
+            "Leite",
+            "Ovos"
+          ],
+          "especieCrustaceos": null,
+          "especiePeixes": null,
+          "avisosRotulo": "Pode conter traços: Leite, Soja, Ovos"
+        }
+      }
+    },
+    {
+      "id": "bf905062-e543-4feb-833a-c0cbe47514e5",
+      "produtoId": "8f18d611-690c-4c6d-affd-1ed6c972d890",
+      "codigo": "3333",
+      "nomeSite": "ESPETINHO FRANGO C/ BACON 120gr",
+      "nomeEtiqueta": "ESPETINHO FRANGO C/ BACON 120gr",
+      "grupoIdSistema": "83936f52-150c-4e99-b803-4014e581da37",
+      "grupoNomeNoProduto_lidoAoVivoDaCategoriaProduto": "Produtos Fritos para Aquecer",
+      "grupoNomeAmigavelNoSite": "Fritos",
+      "preparoOficialDoGrupo": "Somente Aquecer",
+      "catalogo": {
+        "id": "bf905062-e543-4feb-833a-c0cbe47514e5",
+        "produtoId": "8f18d611-690c-4c6d-affd-1ed6c972d890",
+        "codigo": "3333",
+        "nome": "ESPETINHO FRANGO C/ BACON 120gr",
+        "descricao": "",
+        "unidade": "PT",
+        "unidades": 10,
+        "embalagem": "pacote",
+        "grupo": "83936f52-150c-4e99-b803-4014e581da37",
+        "grupoNome": "Produtos Fritos para Aquecer",
+        "preco": 74.25,
+        "destaque": false,
+        "ordem": 0,
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/8f18d611-690c-4c6d-affd-1ed6c972d890/1781743206682-603974784.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/8f18d611-690c-4c6d-affd-1ed6c972d890/1781743206682-603974784.jpg"
+        ],
+        "preparo": "Somente Aquecer",
+        "indisponivel": false
+      },
+      "ficha": {
+        "id": "bf905062-e543-4feb-833a-c0cbe47514e5",
+        "nome": "ESPETINHO FRANGO C/ BACON 120gr",
+        "codigo": "3333",
+        "unidade": "PT",
+        "unidades": 10,
+        "embalagem": "pacote",
+        "descricao": "",
+        "grupoNome": "Produtos Fritos para Aquecer",
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/8f18d611-690c-4c6d-affd-1ed6c972d890/1781743206682-603974784.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/8f18d611-690c-4c6d-affd-1ed6c972d890/1781743206682-603974784.jpg"
+        ],
+        "etiqueta": {
+          "pesoUnitario": 140,
+          "pesoPorcao": 100,
+          "quantidadeEmbalagem": 10,
+          "quantidadeAproximada": false,
+          "pesoPacote": 1400,
+          "nutricional": {
+            "valorEnergetico": "271kcal (19% VD)",
+            "carboidratos": "22g (10% VD)",
+            "acucaresTotais": null,
+            "acucaresAdicionados": null,
+            "proteinas": "25g (70% VD)",
+            "gordurasTotais": "7,2g (8% VD)",
+            "gordurasSaturadas": "0,5g (4% VD)",
+            "gordurasTrans": "0g (0% VD)",
+            "fibraAlimentar": "1,2g (7% VD)",
+            "sodio": "711,61mg (50% VD)"
+          },
+          "composicao": "Filé de peito de frango, farinha de trigo enriquecida com ferro e ácido fólico, farinha de rosca, sal, bacon, caldo de galinha e ervas finas (cebolinha e salsinha desidratada)",
+          "modoPreparo": "Colocar o produto ainda congelado, em forno pré-aquecido em 180ºC, por 8 minutos. Tempo máximo de exposição em estufa: 6 horas a 60ºC. Produto congelado, após aberto manter a embalagem bem fechada para não ressecar a massa.",
+          "armazenamento": "Congelar -12ºC. Após descongelado, não recongelar.",
+          "validadeDias": 180,
+          "contemGluten": true,
+          "contemLactose": false,
+          "alergenos": [
+            "Trigo",
+            "Soja",
+            "Ovos"
+          ],
+          "especieCrustaceos": null,
+          "especiePeixes": null,
+          "avisosRotulo": null
+        }
+      }
+    },
+    {
+      "id": "83582e10-424c-446f-8264-80c0376aa13a",
+      "produtoId": "f4e059f7-f762-4067-831c-b40580f4e557",
+      "codigo": "3728",
+      "nomeSite": "TORTINHA CAMARÃO 135gr",
+      "nomeEtiqueta": "TORTINHA CAMARÃO 135gr",
+      "grupoIdSistema": "8749505b-8b82-455b-b923-d55cc47dd7fd",
+      "grupoNomeNoProduto_lidoAoVivoDaCategoriaProduto": "Produtos Assados para Aquecer",
+      "grupoNomeAmigavelNoSite": "Aquecer",
+      "preparoOficialDoGrupo": "Somente Aquecer",
+      "catalogo": {
+        "id": "83582e10-424c-446f-8264-80c0376aa13a",
+        "produtoId": "f4e059f7-f762-4067-831c-b40580f4e557",
+        "codigo": "3728",
+        "nome": "TORTINHA CAMARÃO 135gr",
+        "descricao": "",
+        "unidade": "PT",
+        "unidades": 8,
+        "embalagem": "pacote",
+        "grupo": "8749505b-8b82-455b-b923-d55cc47dd7fd",
+        "grupoNome": "Produtos Assados para Aquecer",
+        "preco": 71.54,
+        "destaque": false,
+        "ordem": 0,
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/f4e059f7-f762-4067-831c-b40580f4e557/1781904036590-297027168.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/f4e059f7-f762-4067-831c-b40580f4e557/1781904036590-297027168.jpg"
+        ],
+        "preparo": "Somente Aquecer",
+        "indisponivel": false
+      },
+      "ficha": {
+        "id": "83582e10-424c-446f-8264-80c0376aa13a",
+        "nome": "TORTINHA CAMARÃO 135gr",
+        "codigo": "3728",
+        "unidade": "PT",
+        "unidades": 8,
+        "embalagem": "pacote",
+        "descricao": "",
+        "grupoNome": "Produtos Assados para Aquecer",
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/f4e059f7-f762-4067-831c-b40580f4e557/1781904036590-297027168.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/f4e059f7-f762-4067-831c-b40580f4e557/1781904036590-297027168.jpg"
+        ],
+        "etiqueta": {
+          "pesoUnitario": 110,
+          "pesoPorcao": 110,
+          "quantidadeEmbalagem": 8,
+          "quantidadeAproximada": false,
+          "pesoPacote": 880,
+          "nutricional": {
+            "valorEnergetico": "361kcal (18% VD)",
+            "carboidratos": "35g (12% VD)",
+            "acucaresTotais": null,
+            "acucaresAdicionados": null,
+            "proteinas": "7,7g (10% VD)",
+            "gordurasTotais": "21g (38% VD)",
+            "gordurasSaturadas": "9,8g (45% VD)",
+            "gordurasTrans": "0g (0% VD)",
+            "fibraAlimentar": "1,2g (5% VD)",
+            "sodio": "432mg (22% VD)"
+          },
+          "composicao": "Gordura Animal, Farinha de Trigo, Sal, Açúcar, Ovos, Tomate, Cebola, Pimenta do Reino, Camarão, Cheiro Verde, Amido Milho, Colorífico, Gordura Animal,  Óleo Vegetal, Glutamato, Caldo Frutos do Mar, Requeijão Culinário Hardt",
+          "modoPreparo": "Colocar o produto ainda congelado, em forno pré-aquecido em 180ºC, por 17 minutos. Tempo máximo de exposição em estufa: 6 horas a 60ºC. Produto congelado, após aberto manter o pacote bem fechado para não ressecar a massa.",
+          "armazenamento": "Congelar -12ºC. Após descongelado, não recongelar.",
+          "validadeDias": 180,
+          "contemGluten": true,
+          "contemLactose": true,
+          "alergenos": [
+            "Leite",
+            "Ovos",
+            "Trigo",
+            "Soja",
+            "Crustáceos"
+          ],
+          "especieCrustaceos": "camarão",
+          "especiePeixes": null,
+          "avisosRotulo": null
+        }
+      }
+    },
+    {
+      "id": "2473886d-18b2-4957-9b48-a7f2ff53df84",
+      "produtoId": "8e01d0c2-cc22-421e-90ce-8cbf51591e2b",
+      "codigo": "5200",
+      "nomeSite": "ENROLADINHO DE CALABRESA 140gr",
+      "nomeEtiqueta": "ENROLADINHO DE CALABRESA 140gr",
+      "grupoIdSistema": "8749505b-8b82-455b-b923-d55cc47dd7fd",
+      "grupoNomeNoProduto_lidoAoVivoDaCategoriaProduto": "Produtos Assados para Aquecer",
+      "grupoNomeAmigavelNoSite": "Aquecer",
+      "preparoOficialDoGrupo": "Somente Aquecer",
+      "catalogo": {
+        "id": "2473886d-18b2-4957-9b48-a7f2ff53df84",
+        "produtoId": "8e01d0c2-cc22-421e-90ce-8cbf51591e2b",
+        "codigo": "5200",
+        "nome": "ENROLADINHO DE CALABRESA 140gr",
+        "descricao": "",
+        "unidade": "PT",
+        "unidades": 8,
+        "embalagem": "pacote",
+        "grupo": "8749505b-8b82-455b-b923-d55cc47dd7fd",
+        "grupoNome": "Produtos Assados para Aquecer",
+        "preco": 48.47,
+        "destaque": false,
+        "ordem": 0,
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/8e01d0c2-cc22-421e-90ce-8cbf51591e2b/1781902505736-938980319.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/8e01d0c2-cc22-421e-90ce-8cbf51591e2b/1781902505736-938980319.jpg"
+        ],
+        "preparo": "Somente Aquecer",
+        "indisponivel": false
+      },
+      "ficha": {
+        "id": "2473886d-18b2-4957-9b48-a7f2ff53df84",
+        "nome": "ENROLADINHO DE CALABRESA 140gr",
+        "codigo": "5200",
+        "unidade": "PT",
+        "unidades": 8,
+        "embalagem": "pacote",
+        "descricao": "",
+        "grupoNome": "Produtos Assados para Aquecer",
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/8e01d0c2-cc22-421e-90ce-8cbf51591e2b/1781902505736-938980319.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/8e01d0c2-cc22-421e-90ce-8cbf51591e2b/1781902505736-938980319.jpg"
+        ],
+        "etiqueta": {
+          "pesoUnitario": 140,
+          "pesoPorcao": 140,
+          "quantidadeEmbalagem": 8,
+          "quantidadeAproximada": false,
+          "pesoPacote": 1120,
+          "nutricional": {
+            "valorEnergetico": "236kcal (12% VD)",
+            "carboidratos": "41,2g (4% VD)",
+            "acucaresTotais": null,
+            "acucaresAdicionados": null,
+            "proteinas": "7,0g (9% VD)",
+            "gordurasTotais": "4,9g (9% VD)",
+            "gordurasSaturadas": "1,7g (8% VD)",
+            "gordurasTrans": "0g (0% VD)",
+            "fibraAlimentar": "3,3g (13% VD)",
+            "sodio": "437mg (18% VD)"
+          },
+          "composicao": "Farinha de trigo, Calabresa defumada, Proteína de soja, Margarina, Cebolinha verde, Requeijão cheedar Hardt, Leite integral em pó, Sal, Fermento biológico, Orégano, Ovos.",
+          "modoPreparo": "Colocar o produto ainda congelado, em forno pré-aquecido em 180ºC, por 10 minutos. Tempo máximo de exposição em estufa: 6 horas a 60ºC. Produto congelado, após aberto manter o pacote bem fechado para não ressecar.",
+          "armazenamento": "Congelar -12ºC. Após descongelado, não recongelar.",
+          "validadeDias": 180,
+          "contemGluten": true,
+          "contemLactose": false,
+          "alergenos": [
+            "Trigo",
+            "Soja",
+            "Leite",
+            "Ovos"
+          ],
+          "especieCrustaceos": null,
+          "especiePeixes": null,
+          "avisosRotulo": null
+        }
+      }
+    },
+    {
+      "id": "54cc6c9a-a8ce-4b00-9f96-da4984003435",
+      "produtoId": "5c0cbb79-323c-4d2e-a1ae-3385e59e1b11",
+      "codigo": "3611",
+      "nomeSite": "TORTINHA FRANGO E REQUEIJÃO 130gr",
+      "nomeEtiqueta": "TORTINHA FRANGO E REQUEIJÃO 130gr",
+      "grupoIdSistema": "8749505b-8b82-455b-b923-d55cc47dd7fd",
+      "grupoNomeNoProduto_lidoAoVivoDaCategoriaProduto": "Produtos Assados para Aquecer",
+      "grupoNomeAmigavelNoSite": "Aquecer",
+      "preparoOficialDoGrupo": "Somente Aquecer",
+      "catalogo": {
+        "id": "54cc6c9a-a8ce-4b00-9f96-da4984003435",
+        "produtoId": "5c0cbb79-323c-4d2e-a1ae-3385e59e1b11",
+        "codigo": "3611",
+        "nome": "TORTINHA FRANGO E REQUEIJÃO 130gr",
+        "descricao": "",
+        "unidade": "PT",
+        "unidades": 8,
+        "embalagem": "pacote",
+        "grupo": "8749505b-8b82-455b-b923-d55cc47dd7fd",
+        "grupoNome": "Produtos Assados para Aquecer",
+        "preco": 62.09,
+        "destaque": false,
+        "ordem": 0,
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/5c0cbb79-323c-4d2e-a1ae-3385e59e1b11/1781903796048-100075136.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/5c0cbb79-323c-4d2e-a1ae-3385e59e1b11/1781903796048-100075136.jpg"
+        ],
+        "preparo": "Somente Aquecer",
+        "indisponivel": false
+      },
+      "ficha": {
+        "id": "54cc6c9a-a8ce-4b00-9f96-da4984003435",
+        "nome": "TORTINHA FRANGO E REQUEIJÃO 130gr",
+        "codigo": "3611",
+        "unidade": "PT",
+        "unidades": 8,
+        "embalagem": "pacote",
+        "descricao": "",
+        "grupoNome": "Produtos Assados para Aquecer",
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/5c0cbb79-323c-4d2e-a1ae-3385e59e1b11/1781903796048-100075136.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/5c0cbb79-323c-4d2e-a1ae-3385e59e1b11/1781903796048-100075136.jpg"
+        ],
+        "etiqueta": {
+          "pesoUnitario": 110,
+          "pesoPorcao": 110,
+          "quantidadeEmbalagem": 8,
+          "quantidadeAproximada": false,
+          "pesoPacote": 880,
+          "nutricional": {
+            "valorEnergetico": "340kcal (17% VD)",
+            "carboidratos": "32g (11% VD)",
+            "acucaresTotais": null,
+            "acucaresAdicionados": null,
+            "proteinas": "10g (13% VD)",
+            "gordurasTotais": "19g (34% VD)",
+            "gordurasSaturadas": "9,1g (41% VD)",
+            "gordurasTrans": "0g (0% VD)",
+            "fibraAlimentar": "1,2g (5% VD)",
+            "sodio": "530mg (22% VD)"
+          },
+          "composicao": "Gordura Animal, Farinha de Trigo, Sal, Açúcar, Ovos, Tomate, Cebola, Pimenta do Reino, Frango, Cheiro Verde, Óleo Vegetal, Glutamato, Papel de Arroz, Requeijão Culinário Hardt.",
+          "modoPreparo": "Colocar o produto ainda congelado, em forno pré-aquecido em 180ºC, por 17 minutos. Tempo máximo de exposição em estufa: 6 horas a 60ºC. Produto congelado, após aberto manter a embalagem bem fechada para não ressecar a massa.",
+          "armazenamento": "Congelar -12ºC. Após descongelado, não recongelar.",
+          "validadeDias": 180,
+          "contemGluten": true,
+          "contemLactose": true,
+          "alergenos": [
+            "Trigo",
+            "Soja",
+            "Leite",
+            "Ovos"
+          ],
+          "especieCrustaceos": null,
+          "especiePeixes": null,
+          "avisosRotulo": null
+        }
+      }
+    },
+    {
+      "id": "542fe1ea-8515-4be5-9b2e-ba766f43659d",
+      "produtoId": "a32d295d-049a-480a-bc13-713900de4ff0",
+      "codigo": "4614",
+      "nomeSite": "TORTINHA CARNE 130gr",
+      "nomeEtiqueta": "TORTINHA CARNE 130gr",
+      "grupoIdSistema": "8749505b-8b82-455b-b923-d55cc47dd7fd",
+      "grupoNomeNoProduto_lidoAoVivoDaCategoriaProduto": "Produtos Assados para Aquecer",
+      "grupoNomeAmigavelNoSite": "Aquecer",
+      "preparoOficialDoGrupo": "Somente Aquecer",
+      "catalogo": {
+        "id": "542fe1ea-8515-4be5-9b2e-ba766f43659d",
+        "produtoId": "a32d295d-049a-480a-bc13-713900de4ff0",
+        "codigo": "4614",
+        "nome": "TORTINHA CARNE 130gr",
+        "descricao": "",
+        "unidade": "PT",
+        "unidades": 8,
+        "embalagem": "pacote",
+        "grupo": "8749505b-8b82-455b-b923-d55cc47dd7fd",
+        "grupoNome": "Produtos Assados para Aquecer",
+        "preco": 62.09,
+        "destaque": false,
+        "ordem": 0,
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/a32d295d-049a-480a-bc13-713900de4ff0/1781903785252-986133893.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/a32d295d-049a-480a-bc13-713900de4ff0/1781903785252-986133893.jpg"
+        ],
+        "preparo": "Somente Aquecer",
+        "indisponivel": false
+      },
+      "ficha": {
+        "id": "542fe1ea-8515-4be5-9b2e-ba766f43659d",
+        "nome": "TORTINHA CARNE 130gr",
+        "codigo": "4614",
+        "unidade": "PT",
+        "unidades": 8,
+        "embalagem": "pacote",
+        "descricao": "",
+        "grupoNome": "Produtos Assados para Aquecer",
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/a32d295d-049a-480a-bc13-713900de4ff0/1781903785252-986133893.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/a32d295d-049a-480a-bc13-713900de4ff0/1781903785252-986133893.jpg"
+        ],
+        "etiqueta": {
+          "pesoUnitario": 110,
+          "pesoPorcao": 110,
+          "quantidadeEmbalagem": 8,
+          "quantidadeAproximada": false,
+          "pesoPacote": 880,
+          "nutricional": {
+            "valorEnergetico": "443kcal (22% VD)",
+            "carboidratos": "42g (14% VD)",
+            "acucaresTotais": null,
+            "acucaresAdicionados": null,
+            "proteinas": "13g (18% VD)",
+            "gordurasTotais": "25g (45% VD)",
+            "gordurasSaturadas": "11g (49% VD)",
+            "gordurasTrans": "0g (0% VD)",
+            "fibraAlimentar": "1,4g (6% VD)",
+            "sodio": "880mg (37% VD)"
+          },
+          "composicao": "Farinha de trigo, Gordura Animal, Margarina, Sal, Açúcar, Tomate, Cebola, Alho, Pimenta do reino, Cebolinha verde, Carne bovina, Óleo de soja, Glutamato monossódico, Proteína de soja, Pimentão vermelho, Ovos",
+          "modoPreparo": "Colocar o produto ainda congelado, em forno pré-aquecido em 180ºC, por 17 minutos. Tempo máximo de exposição em estufa: 6 horas a 60ºC. Produto congelado, após aberto manter o pacote bem fechado para não ressecar a massa.",
+          "armazenamento": "Congelar -12ºC. Após descongelado, não recongelar.",
+          "validadeDias": 180,
+          "contemGluten": true,
+          "contemLactose": true,
+          "alergenos": [
+            "Trigo",
+            "Soja",
+            "Leite",
+            "Ovos"
+          ],
+          "especieCrustaceos": null,
+          "especiePeixes": null,
+          "avisosRotulo": null
+        }
+      }
+    },
+    {
+      "id": "ee353b13-9012-40b4-a53f-c7dc836e2759",
+      "produtoId": "e9388657-600f-477e-abee-2057c89747db",
+      "codigo": "3609",
+      "nomeSite": "TORTINHA PALMITO 130gr",
+      "nomeEtiqueta": "TORTINHA PALMITO 130gr",
+      "grupoIdSistema": "8749505b-8b82-455b-b923-d55cc47dd7fd",
+      "grupoNomeNoProduto_lidoAoVivoDaCategoriaProduto": "Produtos Assados para Aquecer",
+      "grupoNomeAmigavelNoSite": "Aquecer",
+      "preparoOficialDoGrupo": "Somente Aquecer",
+      "catalogo": {
+        "id": "ee353b13-9012-40b4-a53f-c7dc836e2759",
+        "produtoId": "e9388657-600f-477e-abee-2057c89747db",
+        "codigo": "3609",
+        "nome": "TORTINHA PALMITO 130gr",
+        "descricao": "",
+        "unidade": "PT",
+        "unidades": 8,
+        "embalagem": "pacote",
+        "grupo": "8749505b-8b82-455b-b923-d55cc47dd7fd",
+        "grupoNome": "Produtos Assados para Aquecer",
+        "preco": 62.09,
+        "destaque": false,
+        "ordem": 0,
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/e9388657-600f-477e-abee-2057c89747db/1781904050049-972445797.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/e9388657-600f-477e-abee-2057c89747db/1781904050049-972445797.jpg"
+        ],
+        "preparo": "Somente Aquecer",
+        "indisponivel": false
+      },
+      "ficha": {
+        "id": "ee353b13-9012-40b4-a53f-c7dc836e2759",
+        "nome": "TORTINHA PALMITO 130gr",
+        "codigo": "3609",
+        "unidade": "PT",
+        "unidades": 8,
+        "embalagem": "pacote",
+        "descricao": "",
+        "grupoNome": "Produtos Assados para Aquecer",
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/e9388657-600f-477e-abee-2057c89747db/1781904050049-972445797.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/e9388657-600f-477e-abee-2057c89747db/1781904050049-972445797.jpg"
+        ],
+        "etiqueta": {
+          "pesoUnitario": 110,
+          "pesoPorcao": 110,
+          "quantidadeEmbalagem": 8,
+          "quantidadeAproximada": false,
+          "pesoPacote": 880,
+          "nutricional": {
+            "valorEnergetico": "385kcal (17% VD)",
+            "carboidratos": "39g (13% VD)",
+            "acucaresTotais": null,
+            "acucaresAdicionados": null,
+            "proteinas": "7,9g (10% VD)",
+            "gordurasTotais": "22g (40% VD)",
+            "gordurasSaturadas": "10g (47% VD)",
+            "gordurasTrans": "0g (0% VD)",
+            "fibraAlimentar": "1,5g (6% VD)",
+            "sodio": "718mg (30% VD)"
+          },
+          "composicao": "Gordura Animal, Farinha de Trigo, Sal, Açúcar, Ovos, Pimenta do Reino, Palmito Pupunha, Cheiro Verde, Azeitona, Óleo vegetal, Glutamato, Papel de Arroz, Ovos, Requeijão Culinário Hardt.",
+          "modoPreparo": "Colocar o produto ainda congelado, em forno pré-aquecido em 180ºC, por 17 minutos. Tempo máximo de exposição em estufa: 6 horas a 60ºC. Produto congelado, após aberto manter a embalagem bem fechada para não ressecar a massa.",
+          "armazenamento": "Congelar -12ºC. Após descongelado, não recongelar.",
+          "validadeDias": 180,
+          "contemGluten": true,
+          "contemLactose": true,
+          "alergenos": [
+            "Trigo",
+            "Soja",
+            "Leite",
+            "Ovos"
+          ],
+          "especieCrustaceos": null,
+          "especiePeixes": null,
+          "avisosRotulo": null
+        }
+      }
+    },
+    {
+      "id": "f0e76d76-46fa-488e-bcce-a2e11309db45",
+      "produtoId": "31b3971d-1278-4051-bb22-a8359df0e6fc",
+      "codigo": "3073",
+      "nomeSite": "CALZONE CARNE C/ REQUEIJÃO 160gr",
+      "nomeEtiqueta": "CALZONE CARNE C/ REQUEIJÃO 160gr",
+      "grupoIdSistema": "0da2c06c-d6a6-446f-b036-058209ee8d3f",
+      "grupoNomeNoProduto_lidoAoVivoDaCategoriaProduto": "Produtos para Assar",
+      "grupoNomeAmigavelNoSite": "Assar",
+      "preparoOficialDoGrupo": "Precisa Assar",
+      "catalogo": {
+        "id": "f0e76d76-46fa-488e-bcce-a2e11309db45",
+        "produtoId": "31b3971d-1278-4051-bb22-a8359df0e6fc",
+        "codigo": "3073",
+        "nome": "CALZONE CARNE C/ REQUEIJÃO 160gr",
+        "descricao": "",
+        "unidade": "PT",
+        "unidades": 8,
+        "embalagem": "pacote",
+        "grupo": "0da2c06c-d6a6-446f-b036-058209ee8d3f",
+        "grupoNome": "Produtos para Assar",
+        "preco": 53.93,
+        "destaque": false,
+        "ordem": 0,
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/31b3971d-1278-4051-bb22-a8359df0e6fc/1782090199228-885447639.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/31b3971d-1278-4051-bb22-a8359df0e6fc/1782090199228-885447639.jpg"
+        ],
+        "preparo": "Precisa Assar",
+        "indisponivel": false
+      },
+      "ficha": {
+        "id": "f0e76d76-46fa-488e-bcce-a2e11309db45",
+        "nome": "CALZONE CARNE C/ REQUEIJÃO 160gr",
+        "codigo": "3073",
+        "unidade": "PT",
+        "unidades": 8,
+        "embalagem": "pacote",
+        "descricao": "",
+        "grupoNome": "Produtos para Assar",
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/31b3971d-1278-4051-bb22-a8359df0e6fc/1782090199228-885447639.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/31b3971d-1278-4051-bb22-a8359df0e6fc/1782090199228-885447639.jpg"
+        ],
+        "etiqueta": {
+          "pesoUnitario": 135,
+          "pesoPorcao": 135,
+          "quantidadeEmbalagem": 8,
+          "quantidadeAproximada": false,
+          "pesoPacote": 1080,
+          "nutricional": {
+            "valorEnergetico": "282kcal (14% VD)",
+            "carboidratos": "40,1g (13% VD)",
+            "acucaresTotais": null,
+            "acucaresAdicionados": null,
+            "proteinas": "11,4g (15% VD)",
+            "gordurasTotais": "8,4g (15% VD)",
+            "gordurasSaturadas": "2,1g (9% VD)",
+            "gordurasTrans": "0g (0% VD)",
+            "fibraAlimentar": "2,7g (11% VD)",
+            "sodio": "571mg (24% VD)"
+          },
+          "composicao": "Farinha de trigo, Margarina, Sal, Açúcar, Fermento Químico, Carne bovina, Caldo de carne, Pimenta do reino, Tomate, Cheiro verde, Colorífico, Requeijão culinário Hardt, Creme de leite, Leite, Ovos",
+          "modoPreparo": "Colocar o produto ainda congelado, em forno pré-aquecido em 180ºC, por 17 minutos. Tempo máximo de exposição em estufa: 6 horas a 60ºC. Produto congelado, após aberto manter o pacote bem fechado para não ressecar.",
+          "armazenamento": "Congelar -12ºC. Após descongelado, não recongelar.",
+          "validadeDias": 180,
+          "contemGluten": true,
+          "contemLactose": true,
+          "alergenos": [
+            "Trigo",
+            "Leite",
+            "Ovos"
+          ],
+          "especieCrustaceos": null,
+          "especiePeixes": null,
+          "avisosRotulo": null
+        }
+      }
+    },
+    {
+      "id": "a296052e-99be-4966-affe-fe60c1dc3832",
+      "produtoId": "014dc012-9657-46ab-9ece-b7b0ea398df8",
+      "codigo": "3079",
+      "nomeSite": "EMPANADO SALSICHA 140gr",
+      "nomeEtiqueta": "EMPANADO SALSICHA 140gr",
+      "grupoIdSistema": "83936f52-150c-4e99-b803-4014e581da37",
+      "grupoNomeNoProduto_lidoAoVivoDaCategoriaProduto": "Produtos Fritos para Aquecer",
+      "grupoNomeAmigavelNoSite": "Fritos",
+      "preparoOficialDoGrupo": "Somente Aquecer",
+      "catalogo": {
+        "id": "a296052e-99be-4966-affe-fe60c1dc3832",
+        "produtoId": "014dc012-9657-46ab-9ece-b7b0ea398df8",
+        "codigo": "3079",
+        "nome": "EMPANADO SALSICHA 140gr",
+        "descricao": "",
+        "unidade": "PT",
+        "unidades": 10,
+        "embalagem": "pacote",
+        "grupo": "83936f52-150c-4e99-b803-4014e581da37",
+        "grupoNome": "Produtos Fritos para Aquecer",
+        "preco": 49.69,
+        "destaque": false,
+        "ordem": 0,
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/014dc012-9657-46ab-9ece-b7b0ea398df8/1782087271114-959925308.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/014dc012-9657-46ab-9ece-b7b0ea398df8/1782087271114-959925308.jpg"
+        ],
+        "preparo": "Somente Aquecer",
+        "indisponivel": true
+      },
+      "ficha": {
+        "id": "a296052e-99be-4966-affe-fe60c1dc3832",
+        "nome": "EMPANADO SALSICHA 140gr",
+        "codigo": "3079",
+        "unidade": "PT",
+        "unidades": 10,
+        "embalagem": "pacote",
+        "descricao": "",
+        "grupoNome": "Produtos Fritos para Aquecer",
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/014dc012-9657-46ab-9ece-b7b0ea398df8/1782087271114-959925308.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/014dc012-9657-46ab-9ece-b7b0ea398df8/1782087271114-959925308.jpg"
+        ],
+        "etiqueta": {
+          "pesoUnitario": 130,
+          "pesoPorcao": 130,
+          "quantidadeEmbalagem": 10,
+          "quantidadeAproximada": false,
+          "pesoPacote": 1300,
+          "nutricional": {
+            "valorEnergetico": "213kcal (11% VD)",
+            "carboidratos": "21,5g (7% VD)",
+            "acucaresTotais": null,
+            "acucaresAdicionados": null,
+            "proteinas": "7,4g (10% VD)",
+            "gordurasTotais": "10,8g (20% VD)",
+            "gordurasSaturadas": "3,4g (20% VD)",
+            "gordurasTrans": "0g (0% VD)",
+            "fibraAlimentar": "1,4g (5% VD)",
+            "sodio": "1018mg (42% VD)"
+          },
+          "composicao": "Farinha de trigo, Salsicha, Margarina, Óleo de soja, Sal, Farinha de rosca.",
+          "modoPreparo": "Colocar o produto ainda congelado, em forno pré-aquecido em 180ºC, por 10 minutos. Tempo máximo de exposição em estufa: 6 horas a 60ºC. Produto congelado, após aberto manter o pacote bem fechado para não ressecar.",
+          "armazenamento": "Congelar -12ºC. Após descongelado, não recongelar.",
+          "validadeDias": 180,
+          "contemGluten": true,
+          "contemLactose": false,
+          "alergenos": [
+            "Trigo",
+            "Soja",
+            "Leite",
+            "Ovos"
+          ],
+          "especieCrustaceos": null,
+          "especiePeixes": null,
+          "avisosRotulo": null
+        }
+      }
+    },
+    {
+      "id": "80187580-1cc8-4e2a-b840-cb1666763bee",
+      "produtoId": "be285dd7-5b76-4850-bc08-5bc9bdba4e95",
+      "codigo": "4765",
+      "nomeSite": "EMPADINHA DE FRANGO 32gr",
+      "nomeEtiqueta": "EMPADINHA DE FRANGO 32gr",
+      "grupoIdSistema": "8749505b-8b82-455b-b923-d55cc47dd7fd",
+      "grupoNomeNoProduto_lidoAoVivoDaCategoriaProduto": "Produtos Assados para Aquecer",
+      "grupoNomeAmigavelNoSite": "Aquecer",
+      "preparoOficialDoGrupo": "Somente Aquecer",
+      "catalogo": {
+        "id": "80187580-1cc8-4e2a-b840-cb1666763bee",
+        "produtoId": "be285dd7-5b76-4850-bc08-5bc9bdba4e95",
+        "codigo": "4765",
+        "nome": "EMPADINHA DE FRANGO 32gr",
+        "descricao": "",
+        "unidade": "PT",
+        "unidades": 50,
+        "embalagem": "pacote",
+        "grupo": "8749505b-8b82-455b-b923-d55cc47dd7fd",
+        "grupoNome": "Produtos Assados para Aquecer",
+        "preco": 62.03,
+        "destaque": false,
+        "ordem": 0,
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/be285dd7-5b76-4850-bc08-5bc9bdba4e95/1781903188571-72921085.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/be285dd7-5b76-4850-bc08-5bc9bdba4e95/1781903188571-72921085.jpg"
+        ],
+        "preparo": "Somente Aquecer",
+        "indisponivel": false
+      },
+      "ficha": {
+        "id": "80187580-1cc8-4e2a-b840-cb1666763bee",
+        "nome": "EMPADINHA DE FRANGO 32gr",
+        "codigo": "4765",
+        "unidade": "PT",
+        "unidades": 50,
+        "embalagem": "pacote",
+        "descricao": "",
+        "grupoNome": "Produtos Assados para Aquecer",
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/be285dd7-5b76-4850-bc08-5bc9bdba4e95/1781903188571-72921085.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/be285dd7-5b76-4850-bc08-5bc9bdba4e95/1781903188571-72921085.jpg"
+        ],
+        "etiqueta": {
+          "pesoUnitario": 30,
+          "pesoPorcao": 30,
+          "quantidadeEmbalagem": 50,
+          "quantidadeAproximada": true,
+          "pesoPacote": 1400,
+          "nutricional": {
+            "valorEnergetico": "155kcal (8% VD)",
+            "carboidratos": "13,5g (4% VD)",
+            "acucaresTotais": null,
+            "acucaresAdicionados": null,
+            "proteinas": "5,8g (8% VD)",
+            "gordurasTotais": "8,7g (16% VD)",
+            "gordurasSaturadas": "2,0g (9% VD)",
+            "gordurasTrans": "0g (0% VD)",
+            "fibraAlimentar": "4,6g (18% VD)",
+            "sodio": "247mg (10% VD)"
+          },
+          "composicao": "Farinha de Trigo, Peito frango, Leite Integral, Banha, Margarina, Cebola, Queijo parmesão, Sal, Óleo de soja, Caldo de galinha, Colorífico, Cheiro verde, Ovos, Pimenta do reino",
+          "modoPreparo": "Colocar o produto ainda congelado, em forno pré-aquecido em 180ºC, por 17 minutos. Tempo máximo de exposição em estufa: 6 horas a 60ºC. Produto congelado, após aberto manter o pacote bem fechado para não ressecar.",
+          "armazenamento": "Congelar -12ºC. Após descongelado, não recongelar.",
+          "validadeDias": 180,
+          "contemGluten": true,
+          "contemLactose": true,
+          "alergenos": [
+            "Trigo",
+            "Soja",
+            "Leite",
+            "Ovos"
+          ],
+          "especieCrustaceos": null,
+          "especiePeixes": null,
+          "avisosRotulo": null
+        }
+      }
+    },
+    {
+      "id": "def53f9e-3f29-4de1-9ec2-f71372831dd2",
+      "produtoId": "34f98ff0-0f98-48c2-81ef-270177cacbb6",
+      "codigo": "5040",
+      "nomeSite": "EMPADINHA DE PALMITO 32gr",
+      "nomeEtiqueta": "EMPADINHA DE PALMITO 32gr",
+      "grupoIdSistema": "8749505b-8b82-455b-b923-d55cc47dd7fd",
+      "grupoNomeNoProduto_lidoAoVivoDaCategoriaProduto": "Produtos Assados para Aquecer",
+      "grupoNomeAmigavelNoSite": "Aquecer",
+      "preparoOficialDoGrupo": "Somente Aquecer",
+      "catalogo": {
+        "id": "def53f9e-3f29-4de1-9ec2-f71372831dd2",
+        "produtoId": "34f98ff0-0f98-48c2-81ef-270177cacbb6",
+        "codigo": "5040",
+        "nome": "EMPADINHA DE PALMITO 32gr",
+        "descricao": "",
+        "unidade": "PT",
+        "unidades": 50,
+        "embalagem": "pacote",
+        "grupo": "8749505b-8b82-455b-b923-d55cc47dd7fd",
+        "grupoNome": "Produtos Assados para Aquecer",
+        "preco": 62.03,
+        "destaque": false,
+        "ordem": 0,
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/34f98ff0-0f98-48c2-81ef-270177cacbb6/1781903198183-643279682.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/34f98ff0-0f98-48c2-81ef-270177cacbb6/1781903198183-643279682.jpg"
+        ],
+        "preparo": "Somente Aquecer",
+        "indisponivel": false
+      },
+      "ficha": {
+        "id": "def53f9e-3f29-4de1-9ec2-f71372831dd2",
+        "nome": "EMPADINHA DE PALMITO 32gr",
+        "codigo": "5040",
+        "unidade": "PT",
+        "unidades": 50,
+        "embalagem": "pacote",
+        "descricao": "",
+        "grupoNome": "Produtos Assados para Aquecer",
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/34f98ff0-0f98-48c2-81ef-270177cacbb6/1781903198183-643279682.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/34f98ff0-0f98-48c2-81ef-270177cacbb6/1781903198183-643279682.jpg"
+        ],
+        "etiqueta": {
+          "pesoUnitario": 30,
+          "pesoPorcao": 30,
+          "quantidadeEmbalagem": 50,
+          "quantidadeAproximada": true,
+          "pesoPacote": 1400,
+          "nutricional": {
+            "valorEnergetico": "138kcal (7% VD)",
+            "carboidratos": "13,4g (4% VD)",
+            "acucaresTotais": null,
+            "acucaresAdicionados": null,
+            "proteinas": "2,7g (4% VD)",
+            "gordurasTotais": "8,2g (15% VD)",
+            "gordurasSaturadas": "2,2g (10% VD)",
+            "gordurasTrans": "0g (0% VD)",
+            "fibraAlimentar": "0,9g (4% VD)",
+            "sodio": "247mg (10% VD)"
+          },
+          "composicao": "Farinha de Trigo, Palmito Pupunha, Leite Integral, Banha suína, Margarina, Cebola, Queijo parmesão, Sal, Óleo de soja, Azeitonas verdes, Vinagre, Ovos, Pimenta do reino",
+          "modoPreparo": "Colocar o produto ainda congelado, em forno pré-aquecido em 180ºC, por 17 minutos. Tempo máximo de exposição em estufa: 6 horas a 60ºC. Produto congelado, após aberto manter o pacote bem fechado para não ressecar.",
+          "armazenamento": "Congelar -12ºC. Após descongelado, não recongelar.",
+          "validadeDias": 180,
+          "contemGluten": true,
+          "contemLactose": false,
+          "alergenos": [
+            "Trigo",
+            "Soja",
+            "Leite",
+            "Ovos"
+          ],
+          "especieCrustaceos": null,
+          "especiePeixes": null,
+          "avisosRotulo": null
+        }
+      }
+    },
+    {
+      "id": "0b4c70cb-25c9-48ff-b26d-5d84c26cb92b",
+      "produtoId": "05b791f0-8993-457d-8c3e-019451e5da66",
+      "codigo": "3051",
+      "nomeSite": "COXINHA FRANGO MASSA AIPIM G FRITO 130gr",
+      "nomeEtiqueta": "COXINHA FRANGO MASSA AIPIM G FRITO 130gr",
+      "grupoIdSistema": "83936f52-150c-4e99-b803-4014e581da37",
+      "grupoNomeNoProduto_lidoAoVivoDaCategoriaProduto": "Produtos Fritos para Aquecer",
+      "grupoNomeAmigavelNoSite": "Fritos",
+      "preparoOficialDoGrupo": "Somente Aquecer",
+      "catalogo": {
+        "id": "0b4c70cb-25c9-48ff-b26d-5d84c26cb92b",
+        "produtoId": "05b791f0-8993-457d-8c3e-019451e5da66",
+        "codigo": "3051",
+        "nome": "COXINHA FRANGO MASSA AIPIM G FRITO 130gr",
+        "descricao": "",
+        "unidade": "PT",
+        "unidades": 20,
+        "embalagem": "pacote",
+        "grupo": "83936f52-150c-4e99-b803-4014e581da37",
+        "grupoNome": "Produtos Fritos para Aquecer",
+        "preco": 66.14,
+        "destaque": false,
+        "ordem": 0,
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/05b791f0-8993-457d-8c3e-019451e5da66/1782081056458-487794543.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/05b791f0-8993-457d-8c3e-019451e5da66/1782081056458-487794543.jpg",
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/05b791f0-8993-457d-8c3e-019451e5da66/1782081067862-46596708.jpg"
+        ],
+        "preparo": "Somente Aquecer",
+        "indisponivel": false
+      },
+      "ficha": {
+        "id": "0b4c70cb-25c9-48ff-b26d-5d84c26cb92b",
+        "nome": "COXINHA FRANGO MASSA AIPIM G FRITO 130gr",
+        "codigo": "3051",
+        "unidade": "PT",
+        "unidades": 20,
+        "embalagem": "pacote",
+        "descricao": "",
+        "grupoNome": "Produtos Fritos para Aquecer",
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/05b791f0-8993-457d-8c3e-019451e5da66/1782081056458-487794543.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/05b791f0-8993-457d-8c3e-019451e5da66/1782081056458-487794543.jpg",
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/05b791f0-8993-457d-8c3e-019451e5da66/1782081067862-46596708.jpg"
+        ],
+        "etiqueta": {
+          "pesoUnitario": 127,
+          "pesoPorcao": 127,
+          "quantidadeEmbalagem": 20,
+          "quantidadeAproximada": false,
+          "pesoPacote": 2540,
+          "nutricional": {
+            "valorEnergetico": "674kcal (8% VD)",
+            "carboidratos": "23g (8% VD)",
+            "acucaresTotais": null,
+            "acucaresAdicionados": null,
+            "proteinas": "6,2g (8% VD)",
+            "gordurasTotais": "4,9g (9% VD)",
+            "gordurasSaturadas": "0,8g (4% VD)",
+            "gordurasTrans": "0,1g (0% VD)",
+            "fibraAlimentar": "1,9g (8% VD)",
+            "sodio": "385mg (16% VD)"
+          },
+          "composicao": "Água, Farinha de trigo, Peito de frango, Mandioca cozida, Cebola, Cebolinha verde, Sal, Margarina, Proteína de soja, Óleo de soja, Pimenta do reino, Farinha de rosca.",
+          "modoPreparo": "Colocar o produto ainda congelado, em forno pré-aquecido em 180ºC, por 10 minutos. Tempo máximo de exposição em estufa: 6 horas a 60ºC. Produto congelado, após aberto manter o pacote bem fechado para não ressecar.",
+          "armazenamento": "Congelar -12ºC. Após descongelado, não recongelar.",
+          "validadeDias": 180,
+          "contemGluten": true,
+          "contemLactose": false,
+          "alergenos": [
+            "Trigo",
+            "Soja"
+          ],
+          "especieCrustaceos": null,
+          "especiePeixes": null,
+          "avisosRotulo": null
+        }
+      }
+    },
+    {
+      "id": "224aedd0-c164-4b9e-91e2-5d00234daaa0",
+      "produtoId": "82aa7e2e-b1b4-4ba9-9f33-34ce5ba8f0f5",
+      "codigo": "4032",
+      "nomeSite": "TORTINHA FRANGO E PALMITO MASSA INTEGRAL 130gr",
+      "nomeEtiqueta": "TORTINHA FRANGO E PALMITO MASSA INTEGRAL 130gr",
+      "grupoIdSistema": "8749505b-8b82-455b-b923-d55cc47dd7fd",
+      "grupoNomeNoProduto_lidoAoVivoDaCategoriaProduto": "Produtos Assados para Aquecer",
+      "grupoNomeAmigavelNoSite": "Aquecer",
+      "preparoOficialDoGrupo": "Somente Aquecer",
+      "catalogo": {
+        "id": "224aedd0-c164-4b9e-91e2-5d00234daaa0",
+        "produtoId": "82aa7e2e-b1b4-4ba9-9f33-34ce5ba8f0f5",
+        "codigo": "4032",
+        "nome": "TORTINHA FRANGO E PALMITO MASSA INTEGRAL 130gr",
+        "descricao": "",
+        "unidade": "PT",
+        "unidades": 8,
+        "embalagem": "pacote",
+        "grupo": "8749505b-8b82-455b-b923-d55cc47dd7fd",
+        "grupoNome": "Produtos Assados para Aquecer",
+        "preco": 62.09,
+        "destaque": false,
+        "ordem": 0,
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/82aa7e2e-b1b4-4ba9-9f33-34ce5ba8f0f5/1781904059738-900579968.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/82aa7e2e-b1b4-4ba9-9f33-34ce5ba8f0f5/1781904059738-900579968.jpg"
+        ],
+        "preparo": "Somente Aquecer",
+        "indisponivel": false
+      },
+      "ficha": {
+        "id": "224aedd0-c164-4b9e-91e2-5d00234daaa0",
+        "nome": "TORTINHA FRANGO E PALMITO MASSA INTEGRAL 130gr",
+        "codigo": "4032",
+        "unidade": "PT",
+        "unidades": 8,
+        "embalagem": "pacote",
+        "descricao": "",
+        "grupoNome": "Produtos Assados para Aquecer",
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/82aa7e2e-b1b4-4ba9-9f33-34ce5ba8f0f5/1781904059738-900579968.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/82aa7e2e-b1b4-4ba9-9f33-34ce5ba8f0f5/1781904059738-900579968.jpg"
+        ],
+        "etiqueta": {
+          "pesoUnitario": 110,
+          "pesoPorcao": 110,
+          "quantidadeEmbalagem": 8,
+          "quantidadeAproximada": false,
+          "pesoPacote": 880,
+          "nutricional": {
+            "valorEnergetico": "340kcal (17% VD)",
+            "carboidratos": "32g (11% VD)",
+            "acucaresTotais": null,
+            "acucaresAdicionados": null,
+            "proteinas": "10g (13% VD)",
+            "gordurasTotais": "19g (34% VD)",
+            "gordurasSaturadas": "9,1g (41% VD)",
+            "gordurasTrans": "0g (0% VD)",
+            "fibraAlimentar": "1,2g (5% VD)",
+            "sodio": "530mg (22% VD)"
+          },
+          "composicao": "Farinha de trigo, Sal, Açúcar, Tomate, Cebola, Alho, Pimenta do reino, Cebolinha verde, Peito de frango, Óleo de soja, Glutamato monossódico, Requeijão Hardt, Palmito pupunha, Papel de arroz e Ovos",
+          "modoPreparo": "Colocar o produto ainda congelado, em forno pré-aquecido em 180ºC, por 17 minutos. Tempo máximo de exposição em estufa: 6 horas a 60ºC. Produto congelado, após aberto manter o pacote bem fechado para não ressecar a massa.",
+          "armazenamento": "Congelar -12ºC. Após descongelado, não recongelar.",
+          "validadeDias": 180,
+          "contemGluten": true,
+          "contemLactose": true,
+          "alergenos": [
+            "Trigo",
+            "Soja",
+            "Leite",
+            "Ovos"
+          ],
+          "especieCrustaceos": null,
+          "especiePeixes": null,
+          "avisosRotulo": null
+        }
+      }
+    },
+    {
+      "id": "7b202b9c-94ca-407e-9108-bbc416285388",
+      "produtoId": "77cacf21-9cf4-4367-a8c4-d2ec3bc36e3c",
+      "codigo": "3065",
+      "nomeSite": "BOLINHO CARNE FRITO 150gr",
+      "nomeEtiqueta": "BOLINHO CARNE FRITO 150gr",
+      "grupoIdSistema": "83936f52-150c-4e99-b803-4014e581da37",
+      "grupoNomeNoProduto_lidoAoVivoDaCategoriaProduto": "Produtos Fritos para Aquecer",
+      "grupoNomeAmigavelNoSite": "Fritos",
+      "preparoOficialDoGrupo": "Somente Aquecer",
+      "catalogo": {
+        "id": "7b202b9c-94ca-407e-9108-bbc416285388",
+        "produtoId": "77cacf21-9cf4-4367-a8c4-d2ec3bc36e3c",
+        "codigo": "3065",
+        "nome": "BOLINHO CARNE FRITO 150gr",
+        "descricao": "",
+        "unidade": "PT",
+        "unidades": 10,
+        "embalagem": "pacote",
+        "grupo": "83936f52-150c-4e99-b803-4014e581da37",
+        "grupoNome": "Produtos Fritos para Aquecer",
+        "preco": 74.25,
+        "destaque": false,
+        "ordem": 0,
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/77cacf21-9cf4-4367-a8c4-d2ec3bc36e3c/1781743112149-393370317.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/77cacf21-9cf4-4367-a8c4-d2ec3bc36e3c/1781743112149-393370317.jpg"
+        ],
+        "preparo": "Somente Aquecer",
+        "indisponivel": false
+      },
+      "ficha": {
+        "id": "7b202b9c-94ca-407e-9108-bbc416285388",
+        "nome": "BOLINHO CARNE FRITO 150gr",
+        "codigo": "3065",
+        "unidade": "PT",
+        "unidades": 10,
+        "embalagem": "pacote",
+        "descricao": "",
+        "grupoNome": "Produtos Fritos para Aquecer",
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/77cacf21-9cf4-4367-a8c4-d2ec3bc36e3c/1781743112149-393370317.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/77cacf21-9cf4-4367-a8c4-d2ec3bc36e3c/1781743112149-393370317.jpg"
+        ],
+        "etiqueta": null
+      }
+    },
+    {
+      "id": "cc666511-7ddc-4f24-930b-7e25b2532fcd",
+      "produtoId": "e39dc979-00e7-4ee1-88d9-8e0b5c8f45d5",
+      "codigo": "5128",
+      "nomeSite": "MÉDIO BOLINHA DE QUEIJO 60GR",
+      "nomeEtiqueta": "MÉDIO BOLINHA DE QUEIJO 60GR",
+      "grupoIdSistema": "6b469a55-95c6-41e9-b033-6d3b33f33311",
+      "grupoNomeNoProduto_lidoAoVivoDaCategoriaProduto": "Produtos para Fritar",
+      "grupoNomeAmigavelNoSite": "Fritar",
+      "preparoOficialDoGrupo": "Precisa Fritar",
+      "catalogo": {
+        "id": "cc666511-7ddc-4f24-930b-7e25b2532fcd",
+        "produtoId": "e39dc979-00e7-4ee1-88d9-8e0b5c8f45d5",
+        "codigo": "5128",
+        "nome": "MÉDIO BOLINHA DE QUEIJO 60GR",
+        "descricao": "",
+        "unidade": "PT",
+        "unidades": 30,
+        "embalagem": "pacote",
+        "grupo": "6b469a55-95c6-41e9-b033-6d3b33f33311",
+        "grupoNome": "Produtos para Fritar",
+        "preco": 51.29,
+        "destaque": false,
+        "ordem": 0,
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/e39dc979-00e7-4ee1-88d9-8e0b5c8f45d5/1781969101504-225559516.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/e39dc979-00e7-4ee1-88d9-8e0b5c8f45d5/1781969101504-225559516.jpg",
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/e39dc979-00e7-4ee1-88d9-8e0b5c8f45d5/1781971397070-727923800.jpg"
+        ],
+        "preparo": "Precisa Fritar",
+        "indisponivel": false
+      },
+      "ficha": {
+        "id": "cc666511-7ddc-4f24-930b-7e25b2532fcd",
+        "nome": "MÉDIO BOLINHA DE QUEIJO 60GR",
+        "codigo": "5128",
+        "unidade": "PT",
+        "unidades": 30,
+        "embalagem": "pacote",
+        "descricao": "",
+        "grupoNome": "Produtos para Fritar",
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/e39dc979-00e7-4ee1-88d9-8e0b5c8f45d5/1781969101504-225559516.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/e39dc979-00e7-4ee1-88d9-8e0b5c8f45d5/1781969101504-225559516.jpg",
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/e39dc979-00e7-4ee1-88d9-8e0b5c8f45d5/1781971397070-727923800.jpg"
+        ],
+        "etiqueta": {
+          "pesoUnitario": 63,
+          "pesoPorcao": 63,
+          "quantidadeEmbalagem": 30,
+          "quantidadeAproximada": false,
+          "pesoPacote": 1890,
+          "nutricional": {
+            "valorEnergetico": "94kcal (5% VD)",
+            "carboidratos": "15g (5% VD)",
+            "acucaresTotais": null,
+            "acucaresAdicionados": null,
+            "proteinas": "3,3g (4% VD)",
+            "gordurasTotais": "1,7g (3% VD)",
+            "gordurasSaturadas": "0,5g (2% VD)",
+            "gordurasTrans": "0g (0% VD)",
+            "fibraAlimentar": "1,1g (4% VD)",
+            "sodio": "355mg (15% VD)"
+          },
+          "composicao": "Água, Farinha de trigo, Sal, Margarina, Óleo de soja, Queijo mussarela, Queijo provolone, Leite integral em pó, Orégano, Cebolinha verde, Farinha de rosca.",
+          "modoPreparo": "Colocar o produto ainda congelado, em óleo pré-aquecido em 180ºC, por 5 minutos. Tempo máximo de exposição em estufa: 6 horas a 60ºC. Produto congelado, após aberto manter o pacote bem fechado para não ressecar.",
+          "armazenamento": "Congelar -12ºC. Após descongelado, não recongelar.",
+          "validadeDias": 180,
+          "contemGluten": true,
+          "contemLactose": true,
+          "alergenos": [
+            "Trigo",
+            "Leite",
+            "Ovos"
+          ],
+          "especieCrustaceos": null,
+          "especiePeixes": null,
+          "avisosRotulo": null
+        }
+      }
+    },
+    {
+      "id": "9cc10f06-b1fa-4bad-a326-9a09bce3dafb",
+      "produtoId": "e116bc1c-be65-407b-836e-de41a9cd81bb",
+      "codigo": "3070",
+      "nomeSite": "RISOLES DE PIZZA FRITO 140GR",
+      "nomeEtiqueta": "RISOLES DE PIZZA FRITO 140GR",
+      "grupoIdSistema": "83936f52-150c-4e99-b803-4014e581da37",
+      "grupoNomeNoProduto_lidoAoVivoDaCategoriaProduto": "Produtos Fritos para Aquecer",
+      "grupoNomeAmigavelNoSite": "Fritos",
+      "preparoOficialDoGrupo": "Somente Aquecer",
+      "catalogo": {
+        "id": "9cc10f06-b1fa-4bad-a326-9a09bce3dafb",
+        "produtoId": "e116bc1c-be65-407b-836e-de41a9cd81bb",
+        "codigo": "3070",
+        "nome": "RISOLES DE PIZZA FRITO 140GR",
+        "descricao": "",
+        "unidade": "PT",
+        "unidades": 10,
+        "embalagem": "pacote",
+        "grupo": "83936f52-150c-4e99-b803-4014e581da37",
+        "grupoNome": "Produtos Fritos para Aquecer",
+        "preco": 44.54,
+        "destaque": false,
+        "ordem": 0,
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/e116bc1c-be65-407b-836e-de41a9cd81bb/1782086301863-943280483.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/e116bc1c-be65-407b-836e-de41a9cd81bb/1782086301863-943280483.jpg"
+        ],
+        "preparo": "Somente Aquecer",
+        "indisponivel": false
+      },
+      "ficha": {
+        "id": "9cc10f06-b1fa-4bad-a326-9a09bce3dafb",
+        "nome": "RISOLES DE PIZZA FRITO 140GR",
+        "codigo": "3070",
+        "unidade": "PT",
+        "unidades": 10,
+        "embalagem": "pacote",
+        "descricao": "",
+        "grupoNome": "Produtos Fritos para Aquecer",
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/e116bc1c-be65-407b-836e-de41a9cd81bb/1782086301863-943280483.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/e116bc1c-be65-407b-836e-de41a9cd81bb/1782086301863-943280483.jpg"
+        ],
+        "etiqueta": {
+          "pesoUnitario": 130,
+          "pesoPorcao": 130,
+          "quantidadeEmbalagem": 10,
+          "quantidadeAproximada": false,
+          "pesoPacote": 1300,
+          "nutricional": {
+            "valorEnergetico": "146kcal (7% VD)",
+            "carboidratos": "25,6g (9% VD)",
+            "acucaresTotais": null,
+            "acucaresAdicionados": null,
+            "proteinas": "5g (7% VD)",
+            "gordurasTotais": "2,6g (5% VD)",
+            "gordurasSaturadas": "1,3g (6% VD)",
+            "gordurasTrans": "0g (0% VD)",
+            "fibraAlimentar": "1,8g (7% VD)",
+            "sodio": "708mg (30% VD)"
+          },
+          "composicao": "Farinha de trigo, Caldo legumes, Apresuntado, Queijo mussarela, Óleo de soja, Leite integral em pó, Cebolinha verde, Orégano, Farinha de rosca.",
+          "modoPreparo": "Colocar o produto ainda congelado, em forno pré-aquecido em 180ºC, por 10 minutos. Tempo máximo de exposição em estufa: 6 horas a 60ºC. Produto congelado, após aberto manter o pacote bem fechado para não ressecar a massa.",
+          "armazenamento": "Congelar -12ºC. Após descongelado, não recongelar.",
+          "validadeDias": 180,
+          "contemGluten": true,
+          "contemLactose": false,
+          "alergenos": [
+            "Trigo",
+            "Soja",
+            "Leite",
+            "Ovos"
+          ],
+          "especieCrustaceos": null,
+          "especiePeixes": null,
+          "avisosRotulo": null
+        }
+      }
+    },
+    {
+      "id": "048b0636-3a85-45e7-bed3-f8969dee873b",
+      "produtoId": "fc8a1c52-5ba6-4f6a-9c8a-d22d39131a36",
+      "codigo": "5023",
+      "nomeSite": "MÉDIO COXINHA FRANGO MASSA AIMPIM FRITO 60GR",
+      "nomeEtiqueta": "MÉDIO COXINHA FRANGO MASSA AIMPIM FRITO 60GR",
+      "grupoIdSistema": "83936f52-150c-4e99-b803-4014e581da37",
+      "grupoNomeNoProduto_lidoAoVivoDaCategoriaProduto": "Produtos Fritos para Aquecer",
+      "grupoNomeAmigavelNoSite": "Fritos",
+      "preparoOficialDoGrupo": "Somente Aquecer",
+      "catalogo": {
+        "id": "048b0636-3a85-45e7-bed3-f8969dee873b",
+        "produtoId": "fc8a1c52-5ba6-4f6a-9c8a-d22d39131a36",
+        "codigo": "5023",
+        "nome": "MÉDIO COXINHA FRANGO MASSA AIMPIM FRITO 60GR",
+        "descricao": "",
+        "unidade": "PT",
+        "unidades": 30,
+        "embalagem": "pacote",
+        "grupo": "83936f52-150c-4e99-b803-4014e581da37",
+        "grupoNome": "Produtos Fritos para Aquecer",
+        "preco": 59.39,
+        "destaque": false,
+        "ordem": 0,
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/fc8a1c52-5ba6-4f6a-9c8a-d22d39131a36/1782081103501-333917412.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/fc8a1c52-5ba6-4f6a-9c8a-d22d39131a36/1782081103501-333917412.jpg",
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/fc8a1c52-5ba6-4f6a-9c8a-d22d39131a36/1782081110695-616644149.jpg"
+        ],
+        "preparo": "Somente Aquecer",
+        "indisponivel": false
+      },
+      "ficha": {
+        "id": "048b0636-3a85-45e7-bed3-f8969dee873b",
+        "nome": "MÉDIO COXINHA FRANGO MASSA AIMPIM FRITO 60GR",
+        "codigo": "5023",
+        "unidade": "PT",
+        "unidades": 30,
+        "embalagem": "pacote",
+        "descricao": "",
+        "grupoNome": "Produtos Fritos para Aquecer",
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/fc8a1c52-5ba6-4f6a-9c8a-d22d39131a36/1782081103501-333917412.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/fc8a1c52-5ba6-4f6a-9c8a-d22d39131a36/1782081103501-333917412.jpg",
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/fc8a1c52-5ba6-4f6a-9c8a-d22d39131a36/1782081110695-616644149.jpg"
+        ],
+        "etiqueta": {
+          "pesoUnitario": 63,
+          "pesoPorcao": 63,
+          "quantidadeEmbalagem": 30,
+          "quantidadeAproximada": false,
+          "pesoPacote": 1890,
+          "nutricional": {
+            "valorEnergetico": "74kcal (4% VD)",
+            "carboidratos": "13,8g (5% VD)",
+            "acucaresTotais": null,
+            "acucaresAdicionados": null,
+            "proteinas": "2,9g (4% VD)",
+            "gordurasTotais": "0,9g (2% VD)",
+            "gordurasSaturadas": "0,2g (1% VD)",
+            "gordurasTrans": "0,1g (0% VD)",
+            "fibraAlimentar": "1,1g (4% VD)",
+            "sodio": "244mg (10% VD)"
+          },
+          "composicao": "Farinha de trigo, Peito de frango, Mandioca desidratada, Cebola, Óleo de soja, Proteína de soja, Caldo de galinha, Margarina, Sal, Colorífico, Cebolinha verde, Glutamato monossódico, Farinha de rosca, Pimenta do reino.",
+          "modoPreparo": "Colocar o produto ainda congelado, em forno pré-aquecido em 180ºC, por 10 minutos. Tempo máximo de exposição em estufa: 6 horas a 60ºC. Produto congelado, após aberto manter o pacote bem fechado para não ressecar a massa.",
+          "armazenamento": "Congelar -12ºC. Após descongelado, não recongelar.",
+          "validadeDias": 180,
+          "contemGluten": true,
+          "contemLactose": false,
+          "alergenos": [
+            "Trigo",
+            "Soja"
+          ],
+          "especieCrustaceos": null,
+          "especiePeixes": null,
+          "avisosRotulo": null
+        }
+      }
+    },
+    {
+      "id": "5fe5bd39-7f63-48fc-8429-a675df9a8bcd",
+      "produtoId": "5c5d7c26-b06f-477a-9887-d64187b752dc",
+      "codigo": "3063",
+      "nomeSite": "RISOLES DE CARNE G 140GR",
+      "nomeEtiqueta": "RISOLES DE CARNE G 140GR",
+      "grupoIdSistema": "6b469a55-95c6-41e9-b033-6d3b33f33311",
+      "grupoNomeNoProduto_lidoAoVivoDaCategoriaProduto": "Produtos para Fritar",
+      "grupoNomeAmigavelNoSite": "Fritar",
+      "preparoOficialDoGrupo": "Precisa Fritar",
+      "catalogo": {
+        "id": "5fe5bd39-7f63-48fc-8429-a675df9a8bcd",
+        "produtoId": "5c5d7c26-b06f-477a-9887-d64187b752dc",
+        "codigo": "3063",
+        "nome": "RISOLES DE CARNE G 140GR",
+        "descricao": "",
+        "unidade": "PT",
+        "unidades": 10,
+        "embalagem": "pacote",
+        "grupo": "6b469a55-95c6-41e9-b033-6d3b33f33311",
+        "grupoNome": "Produtos para Fritar",
+        "preco": 35.09,
+        "destaque": false,
+        "ordem": 0,
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/5c5d7c26-b06f-477a-9887-d64187b752dc/1782081657117-409003739.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/5c5d7c26-b06f-477a-9887-d64187b752dc/1782081657117-409003739.jpg"
+        ],
+        "preparo": "Precisa Fritar",
+        "indisponivel": false
+      },
+      "ficha": {
+        "id": "5fe5bd39-7f63-48fc-8429-a675df9a8bcd",
+        "nome": "RISOLES DE CARNE G 140GR",
+        "codigo": "3063",
+        "unidade": "PT",
+        "unidades": 10,
+        "embalagem": "pacote",
+        "descricao": "",
+        "grupoNome": "Produtos para Fritar",
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/5c5d7c26-b06f-477a-9887-d64187b752dc/1782081657117-409003739.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/5c5d7c26-b06f-477a-9887-d64187b752dc/1782081657117-409003739.jpg"
+        ],
+        "etiqueta": {
+          "pesoUnitario": 130,
+          "pesoPorcao": 130,
+          "quantidadeEmbalagem": 10,
+          "quantidadeAproximada": false,
+          "pesoPacote": 1300,
+          "nutricional": {
+            "valorEnergetico": "160kcal (8% VD)",
+            "carboidratos": "29g (10% VD)",
+            "acucaresTotais": null,
+            "acucaresAdicionados": null,
+            "proteinas": "6,3g (8% VD)",
+            "gordurasTotais": "2,1g (4% VD)",
+            "gordurasSaturadas": "0,7g (3% VD)",
+            "gordurasTrans": "0g (0% VD)",
+            "fibraAlimentar": "1,9g (7% VD)",
+            "sodio": "746mg (31% VD)"
+          },
+          "composicao": "Farinha de trigo, Caldo legumes, Carne bovina, Cebola, Sal, Óleo de soja, Margarina, Caldo de carne, Colorau, Cebolinha verde, Pimenta do reino, Farinha de rosca.",
+          "modoPreparo": "Colocar o produto ainda congelado, em óleo pré-aquecido em 180ºC, por 6 minutos. Tempo máximo de exposição em estufa: 6 horas a 60ºC. Produto congelado, após aberto manter o pacote bem fechado para não ressecar.",
+          "armazenamento": "Congelar -12ºC. Após descongelado, não recongelar.",
+          "validadeDias": 180,
+          "contemGluten": true,
+          "contemLactose": false,
+          "alergenos": [
+            "Trigo",
+            "Soja"
+          ],
+          "especieCrustaceos": null,
+          "especiePeixes": null,
+          "avisosRotulo": null
+        }
+      }
+    },
+    {
+      "id": "044cd1ed-5d29-42e3-91ac-8e49e96dbc76",
+      "produtoId": "ea86c0a6-6d50-4ef4-b672-e83046131119",
+      "codigo": "3069",
+      "nomeSite": "RISOLES DE CARNE FRITO 140GR",
+      "nomeEtiqueta": "RISOLES DE CARNE FRITO 140GR",
+      "grupoIdSistema": "83936f52-150c-4e99-b803-4014e581da37",
+      "grupoNomeNoProduto_lidoAoVivoDaCategoriaProduto": "Produtos Fritos para Aquecer",
+      "grupoNomeAmigavelNoSite": "Fritos",
+      "preparoOficialDoGrupo": "Somente Aquecer",
+      "catalogo": {
+        "id": "044cd1ed-5d29-42e3-91ac-8e49e96dbc76",
+        "produtoId": "ea86c0a6-6d50-4ef4-b672-e83046131119",
+        "codigo": "3069",
+        "nome": "RISOLES DE CARNE FRITO 140GR",
+        "descricao": "",
+        "unidade": "PT",
+        "unidades": 10,
+        "embalagem": "pacote",
+        "grupo": "83936f52-150c-4e99-b803-4014e581da37",
+        "grupoNome": "Produtos Fritos para Aquecer",
+        "preco": 44.54,
+        "destaque": false,
+        "ordem": 0,
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/ea86c0a6-6d50-4ef4-b672-e83046131119/1782081824318-808272434.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/ea86c0a6-6d50-4ef4-b672-e83046131119/1782081824318-808272434.jpg"
+        ],
+        "preparo": "Somente Aquecer",
+        "indisponivel": false
+      },
+      "ficha": {
+        "id": "044cd1ed-5d29-42e3-91ac-8e49e96dbc76",
+        "nome": "RISOLES DE CARNE FRITO 140GR",
+        "codigo": "3069",
+        "unidade": "PT",
+        "unidades": 10,
+        "embalagem": "pacote",
+        "descricao": "",
+        "grupoNome": "Produtos Fritos para Aquecer",
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/ea86c0a6-6d50-4ef4-b672-e83046131119/1782081824318-808272434.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/ea86c0a6-6d50-4ef4-b672-e83046131119/1782081824318-808272434.jpg"
+        ],
+        "etiqueta": {
+          "pesoUnitario": 130,
+          "pesoPorcao": 130,
+          "quantidadeEmbalagem": 10,
+          "quantidadeAproximada": false,
+          "pesoPacote": 1300,
+          "nutricional": {
+            "valorEnergetico": "160kcal (8% VD)",
+            "carboidratos": "29g (10% VD)",
+            "acucaresTotais": null,
+            "acucaresAdicionados": null,
+            "proteinas": "6,3g (8% VD)",
+            "gordurasTotais": "2,1g (4% VD)",
+            "gordurasSaturadas": "0,7g (3% VD)",
+            "gordurasTrans": "0g (0% VD)",
+            "fibraAlimentar": "1,9g (7% VD)",
+            "sodio": "746mg (31% VD)"
+          },
+          "composicao": "Farinha de trigo, Caldo legumes, Carne bovina, Cebola, Sal, Óleo de soja, Margarina, Caldo de carne, Colorau, Cebolinha verde, Pimenta do reino, Farinha de rosca.",
+          "modoPreparo": "Colocar o produto ainda congelado, em forno pré-aquecido em 180ºC, por 10 minutos. Tempo máximo de exposição em estufa: 6 horas a 60ºC. Produto congelado, após aberto manter o pacote bem fechado para não ressecar a massa.",
+          "armazenamento": "Congelar -12ºC. Após descongelado, não recongelar.",
+          "validadeDias": 180,
+          "contemGluten": true,
+          "contemLactose": false,
+          "alergenos": [
+            "Trigo",
+            "Soja",
+            "Leite",
+            "Ovos"
+          ],
+          "especieCrustaceos": null,
+          "especiePeixes": null,
+          "avisosRotulo": null
+        }
+      }
+    },
+    {
+      "id": "9ef88c28-7859-4cec-8b27-3fbb52fb1238",
+      "produtoId": "8a3ea973-c12f-423a-a08a-0e127759a5df",
+      "codigo": "3078",
+      "nomeSite": "EMPANADO SALSICHA G 140GR",
+      "nomeEtiqueta": "EMPANADO SALSICHA G 140GR",
+      "grupoIdSistema": "6b469a55-95c6-41e9-b033-6d3b33f33311",
+      "grupoNomeNoProduto_lidoAoVivoDaCategoriaProduto": "Produtos para Fritar",
+      "grupoNomeAmigavelNoSite": "Fritar",
+      "preparoOficialDoGrupo": "Precisa Fritar",
+      "catalogo": {
+        "id": "9ef88c28-7859-4cec-8b27-3fbb52fb1238",
+        "produtoId": "8a3ea973-c12f-423a-a08a-0e127759a5df",
+        "codigo": "3078",
+        "nome": "EMPANADO SALSICHA G 140GR",
+        "descricao": "",
+        "unidade": "PT",
+        "unidades": 10,
+        "embalagem": "pacote",
+        "grupo": "6b469a55-95c6-41e9-b033-6d3b33f33311",
+        "grupoNome": "Produtos para Fritar",
+        "preco": 47.24,
+        "destaque": false,
+        "ordem": 0,
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/8a3ea973-c12f-423a-a08a-0e127759a5df/1782087261016-845690765.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/8a3ea973-c12f-423a-a08a-0e127759a5df/1782087261016-845690765.jpg"
+        ],
+        "preparo": "Precisa Fritar",
+        "indisponivel": false
+      },
+      "ficha": {
+        "id": "9ef88c28-7859-4cec-8b27-3fbb52fb1238",
+        "nome": "EMPANADO SALSICHA G 140GR",
+        "codigo": "3078",
+        "unidade": "PT",
+        "unidades": 10,
+        "embalagem": "pacote",
+        "descricao": "",
+        "grupoNome": "Produtos para Fritar",
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/8a3ea973-c12f-423a-a08a-0e127759a5df/1782087261016-845690765.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/8a3ea973-c12f-423a-a08a-0e127759a5df/1782087261016-845690765.jpg"
+        ],
+        "etiqueta": {
+          "pesoUnitario": 130,
+          "pesoPorcao": 130,
+          "quantidadeEmbalagem": 10,
+          "quantidadeAproximada": false,
+          "pesoPacote": 1300,
+          "nutricional": {
+            "valorEnergetico": "246kcal (12% VD)",
+            "carboidratos": "21,5g (7% VD)",
+            "acucaresTotais": null,
+            "acucaresAdicionados": null,
+            "proteinas": "7,4g (10% VD)",
+            "gordurasTotais": "10,8g (20% VD)",
+            "gordurasSaturadas": "3,4g (16% VD)",
+            "gordurasTrans": "0,2g (0% VD)",
+            "fibraAlimentar": "1,4g (5% VD)",
+            "sodio": "1018mg (42% VD)"
+          },
+          "composicao": "Farinha de trigo, Sal, Óleo de soja, Cebolinha verde, Salsicha hot dog, Farinha de rosca.",
+          "modoPreparo": "Colocar o produto ainda congelado, em óleo pré-aquecido em 180ºC, por 7 minutos. Tempo máximo de exposição em estufa: 6 horas a 60ºC. Produto congelado, após aberto manter o pacote bem fechado para não ressecar.",
+          "armazenamento": "Congelar -12ºC. Após descongelado, não recongelar.",
+          "validadeDias": 90,
+          "contemGluten": true,
+          "contemLactose": false,
+          "alergenos": [
+            "Trigo",
+            "Soja"
+          ],
+          "especieCrustaceos": null,
+          "especiePeixes": null,
+          "avisosRotulo": null
+        }
+      }
+    },
+    {
+      "id": "f3310e26-b78b-480f-90d7-bd67fbd57bae",
+      "produtoId": "535257b4-9a83-40a8-af2a-05b35e1d90be",
+      "codigo": "5151",
+      "nomeSite": "COXINHA FRANGO C/ REQUEIJÃO GIGANTE 170GR",
+      "nomeEtiqueta": "COXINHA FRANGO C/ REQUEIJÃO GIGANTE 170GR",
+      "grupoIdSistema": "6b469a55-95c6-41e9-b033-6d3b33f33311",
+      "grupoNomeNoProduto_lidoAoVivoDaCategoriaProduto": "Produtos para Fritar",
+      "grupoNomeAmigavelNoSite": "Fritar",
+      "preparoOficialDoGrupo": "Precisa Fritar",
+      "catalogo": {
+        "id": "f3310e26-b78b-480f-90d7-bd67fbd57bae",
+        "produtoId": "535257b4-9a83-40a8-af2a-05b35e1d90be",
+        "codigo": "5151",
+        "nome": "COXINHA FRANGO C/ REQUEIJÃO GIGANTE 170GR",
+        "descricao": "",
+        "unidade": "PT",
+        "unidades": 10,
+        "embalagem": "pacote",
+        "grupo": "6b469a55-95c6-41e9-b033-6d3b33f33311",
+        "grupoNome": "Produtos para Fritar",
+        "preco": 47.24,
+        "destaque": false,
+        "ordem": 0,
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/535257b4-9a83-40a8-af2a-05b35e1d90be/1781968955524-126009085.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/535257b4-9a83-40a8-af2a-05b35e1d90be/1781968955524-126009085.jpg",
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/535257b4-9a83-40a8-af2a-05b35e1d90be/1781971434215-264620190.jpg"
+        ],
+        "preparo": "Precisa Fritar",
+        "indisponivel": false
+      },
+      "ficha": {
+        "id": "f3310e26-b78b-480f-90d7-bd67fbd57bae",
+        "nome": "COXINHA FRANGO C/ REQUEIJÃO GIGANTE 170GR",
+        "codigo": "5151",
+        "unidade": "PT",
+        "unidades": 10,
+        "embalagem": "pacote",
+        "descricao": "",
+        "grupoNome": "Produtos para Fritar",
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/535257b4-9a83-40a8-af2a-05b35e1d90be/1781968955524-126009085.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/535257b4-9a83-40a8-af2a-05b35e1d90be/1781968955524-126009085.jpg",
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/535257b4-9a83-40a8-af2a-05b35e1d90be/1781971434215-264620190.jpg"
+        ],
+        "etiqueta": {
+          "pesoUnitario": 165,
+          "pesoPorcao": 165,
+          "quantidadeEmbalagem": 10,
+          "quantidadeAproximada": false,
+          "pesoPacote": 1650,
+          "nutricional": {
+            "valorEnergetico": "158kcal (8% VD)",
+            "carboidratos": "23g (8% VD)",
+            "acucaresTotais": null,
+            "acucaresAdicionados": null,
+            "proteinas": "7,4g (10% VD)",
+            "gordurasTotais": "4,0g (7% VD)",
+            "gordurasSaturadas": "1,5g (7% VD)",
+            "gordurasTrans": "0g (0% VD)",
+            "fibraAlimentar": "1,8g (7% VD)",
+            "sodio": "788mg (33% VD)"
+          },
+          "composicao": "Água, Farinha de Trigo, Frango cozido, Requeijão Cremoso, Cheiro verde, Sal, Pimenta do reino, Margarina, Fubá, Óleo de soja, Farinha de rosca.",
+          "modoPreparo": "Colocar o produto ainda congelado, em óleo pré-aquecido em 175ºC, por 4:30 minutos. Tempo máximo de exposição em estufa: 6 horas a 60ºC. Produto congelado, após aberto manter o pacote bem fechado para não ressecar.",
+          "armazenamento": "Congelar -12ºC. Após descongelado, não recongelar.",
+          "validadeDias": 180,
+          "contemGluten": true,
+          "contemLactose": true,
+          "alergenos": [
+            "Trigo",
+            "Leite",
+            "Soja"
+          ],
+          "especieCrustaceos": null,
+          "especiePeixes": null,
+          "avisosRotulo": null
+        }
+      }
+    },
+    {
+      "id": "55f2961a-a5f8-4ddb-9c7c-ca5917f93305",
+      "produtoId": "e4247482-a0e0-4d7b-9013-a143fb77c7f3",
+      "codigo": "3062",
+      "nomeSite": "RISOLES DE PIZZA G 140GR",
+      "nomeEtiqueta": "RISOLES DE PIZZA G 140GR",
+      "grupoIdSistema": "6b469a55-95c6-41e9-b033-6d3b33f33311",
+      "grupoNomeNoProduto_lidoAoVivoDaCategoriaProduto": "Produtos para Fritar",
+      "grupoNomeAmigavelNoSite": "Fritar",
+      "preparoOficialDoGrupo": "Precisa Fritar",
+      "catalogo": {
+        "id": "55f2961a-a5f8-4ddb-9c7c-ca5917f93305",
+        "produtoId": "e4247482-a0e0-4d7b-9013-a143fb77c7f3",
+        "codigo": "3062",
+        "nome": "RISOLES DE PIZZA G 140GR",
+        "descricao": "",
+        "unidade": "PT",
+        "unidades": 10,
+        "embalagem": "pacote",
+        "grupo": "6b469a55-95c6-41e9-b033-6d3b33f33311",
+        "grupoNome": "Produtos para Fritar",
+        "preco": 35.09,
+        "destaque": false,
+        "ordem": 0,
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/e4247482-a0e0-4d7b-9013-a143fb77c7f3/1782086314883-758799588.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/e4247482-a0e0-4d7b-9013-a143fb77c7f3/1782086314883-758799588.jpg"
+        ],
+        "preparo": "Precisa Fritar",
+        "indisponivel": false
+      },
+      "ficha": {
+        "id": "55f2961a-a5f8-4ddb-9c7c-ca5917f93305",
+        "nome": "RISOLES DE PIZZA G 140GR",
+        "codigo": "3062",
+        "unidade": "PT",
+        "unidades": 10,
+        "embalagem": "pacote",
+        "descricao": "",
+        "grupoNome": "Produtos para Fritar",
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/e4247482-a0e0-4d7b-9013-a143fb77c7f3/1782086314883-758799588.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/e4247482-a0e0-4d7b-9013-a143fb77c7f3/1782086314883-758799588.jpg"
+        ],
+        "etiqueta": {
+          "pesoUnitario": 130,
+          "pesoPorcao": 130,
+          "quantidadeEmbalagem": 10,
+          "quantidadeAproximada": false,
+          "pesoPacote": 1300,
+          "nutricional": {
+            "valorEnergetico": "146kcal (7% VD)",
+            "carboidratos": "25,6g (9% VD)",
+            "acucaresTotais": null,
+            "acucaresAdicionados": null,
+            "proteinas": "5g (7% VD)",
+            "gordurasTotais": "2,6g (5% VD)",
+            "gordurasSaturadas": "1,3g (6% VD)",
+            "gordurasTrans": "0g (0% VD)",
+            "fibraAlimentar": "1,8g (7% VD)",
+            "sodio": "708mg (30% VD)"
+          },
+          "composicao": "Farinha de trigo, Caldo legumes, Apresuntado, Queijo mussarela, Óleo de soja, Leite integral em pó, Cebolinha verde, Orégano, Farinha de rosca.",
+          "modoPreparo": "Colocar o produto ainda congelado, em óleo pré-aquecido em 180ºC, por 6 minutos. Tempo máximo de exposição em estufa: 6 horas a 60ºC. Produto congelado, após aberto manter o pacote bem fechado para não ressecar.",
+          "armazenamento": "Congelar -12ºC. Após descongelado, não recongelar.",
+          "validadeDias": 180,
+          "contemGluten": true,
+          "contemLactose": false,
+          "alergenos": [
+            "Trigo",
+            "Soja",
+            "Leite"
+          ],
+          "especieCrustaceos": null,
+          "especiePeixes": null,
+          "avisosRotulo": null
+        }
+      }
+    },
+    {
+      "id": "fde9c7f6-6a93-419a-9f0c-e1d750cca519",
+      "produtoId": "df0cbbe6-dbd4-47fd-a50c-9a34e9cc8726",
+      "codigo": "4826",
+      "nomeSite": "MÉDIO COXINHA FRANGO MASSA AIPIM 60GR",
+      "nomeEtiqueta": "MÉDIO COXINHA FRANGO MASSA AIPIM 60GR",
+      "grupoIdSistema": "6b469a55-95c6-41e9-b033-6d3b33f33311",
+      "grupoNomeNoProduto_lidoAoVivoDaCategoriaProduto": "Produtos para Fritar",
+      "grupoNomeAmigavelNoSite": "Fritar",
+      "preparoOficialDoGrupo": "Precisa Fritar",
+      "catalogo": {
+        "id": "fde9c7f6-6a93-419a-9f0c-e1d750cca519",
+        "produtoId": "df0cbbe6-dbd4-47fd-a50c-9a34e9cc8726",
+        "codigo": "4826",
+        "nome": "MÉDIO COXINHA FRANGO MASSA AIPIM 60GR",
+        "descricao": "",
+        "unidade": "PT",
+        "unidades": 30,
+        "embalagem": "pacote",
+        "grupo": "6b469a55-95c6-41e9-b033-6d3b33f33311",
+        "grupoNome": "Produtos para Fritar",
+        "preco": 51.29,
+        "destaque": false,
+        "ordem": 0,
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/df0cbbe6-dbd4-47fd-a50c-9a34e9cc8726/1781968616586-30962377.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/df0cbbe6-dbd4-47fd-a50c-9a34e9cc8726/1781968616586-30962377.jpg",
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/df0cbbe6-dbd4-47fd-a50c-9a34e9cc8726/1781971455581-42771351.jpg"
+        ],
+        "preparo": "Precisa Fritar",
+        "indisponivel": false
+      },
+      "ficha": {
+        "id": "fde9c7f6-6a93-419a-9f0c-e1d750cca519",
+        "nome": "MÉDIO COXINHA FRANGO MASSA AIPIM 60GR",
+        "codigo": "4826",
+        "unidade": "PT",
+        "unidades": 30,
+        "embalagem": "pacote",
+        "descricao": "",
+        "grupoNome": "Produtos para Fritar",
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/df0cbbe6-dbd4-47fd-a50c-9a34e9cc8726/1781968616586-30962377.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/df0cbbe6-dbd4-47fd-a50c-9a34e9cc8726/1781968616586-30962377.jpg",
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/df0cbbe6-dbd4-47fd-a50c-9a34e9cc8726/1781971455581-42771351.jpg"
+        ],
+        "etiqueta": {
+          "pesoUnitario": 63,
+          "pesoPorcao": 63,
+          "quantidadeEmbalagem": 30,
+          "quantidadeAproximada": false,
+          "pesoPacote": 1890,
+          "nutricional": {
+            "valorEnergetico": "74kcal (4% VD)",
+            "carboidratos": "13,8g (5% VD)",
+            "acucaresTotais": null,
+            "acucaresAdicionados": null,
+            "proteinas": "2,9g (4% VD)",
+            "gordurasTotais": "0,9g (2% VD)",
+            "gordurasSaturadas": "0,2g (1% VD)",
+            "gordurasTrans": "0g (0% VD)",
+            "fibraAlimentar": "1,1g (4% VD)",
+            "sodio": "244mg (10% VD)"
+          },
+          "composicao": "Água, Farinha de trigo, Peito de frango, Mandioca cozida, Cebola, Cebolinha verde, Sal, Margarina, Proteína de soja, Óleo de soja, Pimenta do reino, Farinha de rosca.",
+          "modoPreparo": "Colocar o produto ainda congelado, em óleo pré-aquecido em 180ºC, por 5 minutos. Tempo máximo de exposição em estufa: 6 horas a 60ºC. Produto congelado, após aberto manter o pacote bem fechado para não ressecar.",
+          "armazenamento": "Congelar -12ºC. Após descongelado, não recongelar.",
+          "validadeDias": 180,
+          "contemGluten": true,
+          "contemLactose": false,
+          "alergenos": [
+            "Trigo",
+            "Soja"
+          ],
+          "especieCrustaceos": null,
+          "especiePeixes": null,
+          "avisosRotulo": null
+        }
+      }
+    },
+    {
+      "id": "11afe8a5-ef04-4f25-a78b-28d037d17f43",
+      "produtoId": "4db11451-370e-4621-b579-3737e4f246cd",
+      "codigo": "5296",
+      "nomeSite": "MÉDIO COXINHA LINGUIÇA BLUMENAU 65GR",
+      "nomeEtiqueta": "MÉDIO COXINHA LINGUIÇA BLUMENAU 65GR",
+      "grupoIdSistema": "6b469a55-95c6-41e9-b033-6d3b33f33311",
+      "grupoNomeNoProduto_lidoAoVivoDaCategoriaProduto": "Produtos para Fritar",
+      "grupoNomeAmigavelNoSite": "Fritar",
+      "preparoOficialDoGrupo": "Precisa Fritar",
+      "catalogo": {
+        "id": "11afe8a5-ef04-4f25-a78b-28d037d17f43",
+        "produtoId": "4db11451-370e-4621-b579-3737e4f246cd",
+        "codigo": "5296",
+        "nome": "MÉDIO COXINHA LINGUIÇA BLUMENAU 65GR",
+        "descricao": "",
+        "unidade": "PT",
+        "unidades": 30,
+        "embalagem": "pacote",
+        "grupo": "6b469a55-95c6-41e9-b033-6d3b33f33311",
+        "grupoNome": "Produtos para Fritar",
+        "preco": 53.99,
+        "destaque": false,
+        "ordem": 0,
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/4db11451-370e-4621-b579-3737e4f246cd/1782079580184-206844103.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/4db11451-370e-4621-b579-3737e4f246cd/1782079580184-206844103.jpg",
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/4db11451-370e-4621-b579-3737e4f246cd/1782079984043-69121665.jpg"
+        ],
+        "preparo": "Precisa Fritar",
+        "indisponivel": false
+      },
+      "ficha": {
+        "id": "11afe8a5-ef04-4f25-a78b-28d037d17f43",
+        "nome": "MÉDIO COXINHA LINGUIÇA BLUMENAU 65GR",
+        "codigo": "5296",
+        "unidade": "PT",
+        "unidades": 30,
+        "embalagem": "pacote",
+        "descricao": "",
+        "grupoNome": "Produtos para Fritar",
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/4db11451-370e-4621-b579-3737e4f246cd/1782079580184-206844103.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/4db11451-370e-4621-b579-3737e4f246cd/1782079580184-206844103.jpg",
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/4db11451-370e-4621-b579-3737e4f246cd/1782079984043-69121665.jpg"
+        ],
+        "etiqueta": {
+          "pesoUnitario": 63,
+          "pesoPorcao": 63,
+          "quantidadeEmbalagem": 30,
+          "quantidadeAproximada": false,
+          "pesoPacote": 1890,
+          "nutricional": {
+            "valorEnergetico": "74kcal (4% VD)",
+            "carboidratos": "13,8g (5% VD)",
+            "acucaresTotais": null,
+            "acucaresAdicionados": null,
+            "proteinas": "2,9g (4% VD)",
+            "gordurasTotais": "0,9g (2% VD)",
+            "gordurasSaturadas": "0,2g (1% VD)",
+            "gordurasTrans": "0g (0% VD)",
+            "fibraAlimentar": "1,1g (4% VD)",
+            "sodio": "244mg (10% VD)"
+          },
+          "composicao": "Farinha de trigo, Linguiça blumenau defumada, Mandioca cozida, Cebola, Cebolinha verde, Sal, Pimenta do reino, Margarina, Proteína de soja, Farinha de rosca.",
+          "modoPreparo": "Colocar o produto ainda congelado, em óleo pré-aquecido em 180ºC, por 5 minutos. Tempo máximo de exposição em estufa: 6 horas a 60ºC. Produto congelado, após aberto manter o pacote bem fechado para não ressecar.",
+          "armazenamento": "Congelar -12ºC. Após descongelado, não recongelar.",
+          "validadeDias": 180,
+          "contemGluten": true,
+          "contemLactose": false,
+          "alergenos": [
+            "Trigo",
+            "Soja"
+          ],
+          "especieCrustaceos": null,
+          "especiePeixes": null,
+          "avisosRotulo": null
+        }
+      }
+    },
+    {
+      "id": "21d56d8a-98d2-4e6e-9d10-ca8f8f02a2ce",
+      "produtoId": "2fa13e03-2867-421f-9c66-f80e52e72b1a",
+      "codigo": "4809",
+      "nomeSite": "MÉDIO CROQUETE CARNE 60GR",
+      "nomeEtiqueta": "MÉDIO CROQUETE CARNE 60GR",
+      "grupoIdSistema": "6b469a55-95c6-41e9-b033-6d3b33f33311",
+      "grupoNomeNoProduto_lidoAoVivoDaCategoriaProduto": "Produtos para Fritar",
+      "grupoNomeAmigavelNoSite": "Fritar",
+      "preparoOficialDoGrupo": "Precisa Fritar",
+      "catalogo": {
+        "id": "21d56d8a-98d2-4e6e-9d10-ca8f8f02a2ce",
+        "produtoId": "2fa13e03-2867-421f-9c66-f80e52e72b1a",
+        "codigo": "4809",
+        "nome": "MÉDIO CROQUETE CARNE 60GR",
+        "descricao": "",
+        "unidade": "PT",
+        "unidades": 30,
+        "embalagem": "pacote",
+        "grupo": "6b469a55-95c6-41e9-b033-6d3b33f33311",
+        "grupoNome": "Produtos para Fritar",
+        "preco": 51.29,
+        "destaque": false,
+        "ordem": 0,
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/2fa13e03-2867-421f-9c66-f80e52e72b1a/1782077390502-609226499.png",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/2fa13e03-2867-421f-9c66-f80e52e72b1a/1782077390502-609226499.png",
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/2fa13e03-2867-421f-9c66-f80e52e72b1a/1782077398137-243558819.jpg"
+        ],
+        "preparo": "Precisa Fritar",
+        "indisponivel": false
+      },
+      "ficha": {
+        "id": "21d56d8a-98d2-4e6e-9d10-ca8f8f02a2ce",
+        "nome": "MÉDIO CROQUETE CARNE 60GR",
+        "codigo": "4809",
+        "unidade": "PT",
+        "unidades": 30,
+        "embalagem": "pacote",
+        "descricao": "",
+        "grupoNome": "Produtos para Fritar",
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/2fa13e03-2867-421f-9c66-f80e52e72b1a/1782077390502-609226499.png",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/2fa13e03-2867-421f-9c66-f80e52e72b1a/1782077390502-609226499.png",
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/2fa13e03-2867-421f-9c66-f80e52e72b1a/1782077398137-243558819.jpg"
+        ],
+        "etiqueta": {
+          "pesoUnitario": 63,
+          "pesoPorcao": 63,
+          "quantidadeEmbalagem": 30,
+          "quantidadeAproximada": false,
+          "pesoPacote": 1890,
+          "nutricional": {
+            "valorEnergetico": "94kcal (5% VD)",
+            "carboidratos": "15g (5% VD)",
+            "acucaresTotais": null,
+            "acucaresAdicionados": null,
+            "proteinas": "3,3g (4% VD)",
+            "gordurasTotais": "1,7g (3% VD)",
+            "gordurasSaturadas": "0,5g (2% VD)",
+            "gordurasTrans": "0g (0% VD)",
+            "fibraAlimentar": "1,1g (4% VD)",
+            "sodio": "355mg (15% VD)"
+          },
+          "composicao": "Farinha de trigo, Carne bovina, Cebola, Açúcar, Gordura animal, Caldo de carne, Cebolinha verde, Proteína de soja, Glutamato monossódico, Margarina, Sal, Pimenta do reino, Óleo de soja, Leite integral, Farinha de rosca",
+          "modoPreparo": "Colocar o produto ainda congelado, em óleo pré-aquecido em 180ºC, por 5 minutos. Tempo máximo de exposição em estufa: 6 horas a 60ºC. Produto congelado, após aberto manter o pacote bem fechado para não ressecar a massa.",
+          "armazenamento": "Congelar -12ºC. Após descongelado, não recongelar.",
+          "validadeDias": 180,
+          "contemGluten": true,
+          "contemLactose": false,
+          "alergenos": [
+            "Trigo",
+            "Soja"
+          ],
+          "especieCrustaceos": null,
+          "especiePeixes": null,
+          "avisosRotulo": null
+        }
+      }
+    },
+    {
+      "id": "cd4a2f1c-cac7-446e-ae40-a4492b269079",
+      "produtoId": "46ebbfb6-6434-4805-a97e-6948e432228c",
+      "codigo": "4824",
+      "nomeSite": "MÉDIO TRAVESSEIRO PIZZA 60GR",
+      "nomeEtiqueta": "MÉDIO TRAVESSEIRO PIZZA 60GR",
+      "grupoIdSistema": "6b469a55-95c6-41e9-b033-6d3b33f33311",
+      "grupoNomeNoProduto_lidoAoVivoDaCategoriaProduto": "Produtos para Fritar",
+      "grupoNomeAmigavelNoSite": "Fritar",
+      "preparoOficialDoGrupo": "Precisa Fritar",
+      "catalogo": {
+        "id": "cd4a2f1c-cac7-446e-ae40-a4492b269079",
+        "produtoId": "46ebbfb6-6434-4805-a97e-6948e432228c",
+        "codigo": "4824",
+        "nome": "MÉDIO TRAVESSEIRO PIZZA 60GR",
+        "descricao": "",
+        "unidade": "PT",
+        "unidades": 30,
+        "embalagem": "pacote",
+        "grupo": "6b469a55-95c6-41e9-b033-6d3b33f33311",
+        "grupoNome": "Produtos para Fritar",
+        "preco": 51.29,
+        "destaque": false,
+        "ordem": 0,
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/46ebbfb6-6434-4805-a97e-6948e432228c/1782076521525-837163673.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/46ebbfb6-6434-4805-a97e-6948e432228c/1782076521525-837163673.jpg",
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/46ebbfb6-6434-4805-a97e-6948e432228c/1782076534581-458945500.jpg"
+        ],
+        "preparo": "Precisa Fritar",
+        "indisponivel": false
+      },
+      "ficha": {
+        "id": "cd4a2f1c-cac7-446e-ae40-a4492b269079",
+        "nome": "MÉDIO TRAVESSEIRO PIZZA 60GR",
+        "codigo": "4824",
+        "unidade": "PT",
+        "unidades": 30,
+        "embalagem": "pacote",
+        "descricao": "",
+        "grupoNome": "Produtos para Fritar",
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/46ebbfb6-6434-4805-a97e-6948e432228c/1782076521525-837163673.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/46ebbfb6-6434-4805-a97e-6948e432228c/1782076521525-837163673.jpg",
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/46ebbfb6-6434-4805-a97e-6948e432228c/1782076534581-458945500.jpg"
+        ],
+        "etiqueta": {
+          "pesoUnitario": 63,
+          "pesoPorcao": 63,
+          "quantidadeEmbalagem": 30,
+          "quantidadeAproximada": false,
+          "pesoPacote": 1890,
+          "nutricional": {
+            "valorEnergetico": "87kcal (4% VD)",
+            "carboidratos": "12g (4% VD)",
+            "acucaresTotais": null,
+            "acucaresAdicionados": null,
+            "proteinas": "2,9g (4% VD)",
+            "gordurasTotais": "2,1g (4% VD)",
+            "gordurasSaturadas": "0,8g (4% VD)",
+            "gordurasTrans": "0g (0% VD)",
+            "fibraAlimentar": "0,9g (3% VD)",
+            "sodio": "356mg (15% VD)"
+          },
+          "composicao": "Farinha de trigo, Queijo mussarela, Queijo provolone, Orégano, Margarina, Sal, Óleo de soja, Leite integral, Apresuntado, Farinha de rosca",
+          "modoPreparo": "Colocar o produto ainda congelado, em óleo pré-aquecido em 180ºC, por 5 minutos. Tempo máximo de exposição em estufa: 6 horas a 60ºC. Produto congelado, após aberto manter o pacote bem fechado para não ressecar a massa.",
+          "armazenamento": "Congelar -12ºC. Após descongelado, não recongelar.",
+          "validadeDias": 180,
+          "contemGluten": true,
+          "contemLactose": true,
+          "alergenos": [
+            "Leite",
+            "Trigo",
+            "Soja"
+          ],
+          "especieCrustaceos": null,
+          "especiePeixes": null,
+          "avisosRotulo": null
+        }
+      }
+    },
+    {
+      "id": "9fb762df-bf7d-4ed6-8323-c919d484bbfe",
+      "produtoId": "5952e345-d577-456a-b28a-527ad0b2b1a4",
+      "codigo": "H22MI4",
+      "nomeSite": "FESTA-COXINHA DE FRANGO 22GR",
+      "nomeEtiqueta": "FESTA-COXINHA DE FRANGO 22GR",
+      "grupoIdSistema": "337b5e88-b013-4560-9a83-f86dc72ccb78",
+      "grupoNomeNoProduto_lidoAoVivoDaCategoriaProduto": "H22 Mini Salgados 22 gramas",
+      "grupoNomeAmigavelNoSite": "Assados",
+      "preparoOficialDoGrupo": "Somente Aquecer",
+      "catalogo": {
+        "id": "9fb762df-bf7d-4ed6-8323-c919d484bbfe",
+        "produtoId": "5952e345-d577-456a-b28a-527ad0b2b1a4",
+        "codigo": "H22MI4",
+        "nome": "FESTA-COXINHA DE FRANGO 22GR",
+        "descricao": "PRODUTO COM 22 GRAMAS APROXIMADAMENTE E PACOTE COM 2KG",
+        "unidade": "PT",
+        "unidades": 90,
+        "embalagem": "pacote",
+        "grupo": "337b5e88-b013-4560-9a83-f86dc72ccb78",
+        "grupoNome": "H22 Mini Salgados 22 gramas",
+        "preco": 60.62,
+        "destaque": false,
+        "ordem": 0,
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/5952e345-d577-456a-b28a-527ad0b2b1a4/1781900487068-614255.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/5952e345-d577-456a-b28a-527ad0b2b1a4/1781900487068-614255.jpg",
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/5952e345-d577-456a-b28a-527ad0b2b1a4/1781971491412-787455485.jpg"
+        ],
+        "preparo": "Somente Aquecer",
+        "indisponivel": false
+      },
+      "ficha": {
+        "id": "9fb762df-bf7d-4ed6-8323-c919d484bbfe",
+        "nome": "FESTA-COXINHA DE FRANGO 22GR",
+        "codigo": "H22MI4",
+        "unidade": "PT",
+        "unidades": 90,
+        "embalagem": "pacote",
+        "descricao": "PRODUTO COM 22 GRAMAS APROXIMADAMENTE E PACOTE COM 2KG",
+        "grupoNome": "H22 Mini Salgados 22 gramas",
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/5952e345-d577-456a-b28a-527ad0b2b1a4/1781900487068-614255.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/5952e345-d577-456a-b28a-527ad0b2b1a4/1781900487068-614255.jpg",
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/5952e345-d577-456a-b28a-527ad0b2b1a4/1781971491412-787455485.jpg"
+        ],
+        "etiqueta": {
+          "pesoUnitario": 22,
+          "pesoPorcao": 22,
+          "quantidadeEmbalagem": 90,
+          "quantidadeAproximada": true,
+          "pesoPacote": 2000,
+          "nutricional": {
+            "valorEnergetico": "25kcal (1% VD)",
+            "carboidratos": "4,8g (2% VD)",
+            "acucaresTotais": null,
+            "acucaresAdicionados": null,
+            "proteinas": "0,9g (2% VD)",
+            "gordurasTotais": "0,3g (0% VD)",
+            "gordurasSaturadas": "0,0g (0% VD)",
+            "gordurasTrans": "0g (0% VD)",
+            "fibraAlimentar": "0,4g (2% VD)",
+            "sodio": "113mg (6% VD)"
+          },
+          "composicao": "Farinha de trigo, Peito de frango, Óleo de soja, Cebola, Sal, Proteína de soja, Margarina, Caldo de galinha, Colorífico, Cebolinha verde, Glutamato monossódico, Pimenta do reino, Farinha de rosca.",
+          "modoPreparo": "Colocar o produto ainda congelado, em óleo pré-aquecido em 180ºC, por 3 minutos. Tempo máximo de exposição em estufa: 6 horas a 60ºC. Produto congelado, após aberto manter o pacote bem fechado para não ressecar.",
+          "armazenamento": "Congelar -12ºC. Após descongelado, não recongelar.",
+          "validadeDias": 180,
+          "contemGluten": true,
+          "contemLactose": false,
+          "alergenos": [
+            "Trigo",
+            "Soja",
+            "Leite",
+            "Ovos"
+          ],
+          "especieCrustaceos": null,
+          "especiePeixes": null,
+          "avisosRotulo": null
+        }
+      }
+    },
+    {
+      "id": "59470370-2146-4cc0-8a04-ba39679daa36",
+      "produtoId": "1be166a5-878f-437e-9e35-f1d9cba266c4",
+      "codigo": "H22MI5",
+      "nomeSite": "FESTA-COXINHA DE LINGUIÇA BLUMENAU 22GR",
+      "nomeEtiqueta": "FESTA-COXINHA DE LINGUIÇA BLUMENAU 22GR",
+      "grupoIdSistema": "337b5e88-b013-4560-9a83-f86dc72ccb78",
+      "grupoNomeNoProduto_lidoAoVivoDaCategoriaProduto": "H22 Mini Salgados 22 gramas",
+      "grupoNomeAmigavelNoSite": "Assados",
+      "preparoOficialDoGrupo": "Somente Aquecer",
+      "catalogo": {
+        "id": "59470370-2146-4cc0-8a04-ba39679daa36",
+        "produtoId": "1be166a5-878f-437e-9e35-f1d9cba266c4",
+        "codigo": "H22MI5",
+        "nome": "FESTA-COXINHA DE LINGUIÇA BLUMENAU 22GR",
+        "descricao": "PRODUTO COM 22 GRAMAS APROXIMADAMENTE E PACOTE COM 2KG",
+        "unidade": "PT",
+        "unidades": 90,
+        "embalagem": "pacote",
+        "grupo": "337b5e88-b013-4560-9a83-f86dc72ccb78",
+        "grupoNome": "H22 Mini Salgados 22 gramas",
+        "preco": 40.5,
+        "destaque": false,
+        "ordem": 0,
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/1be166a5-878f-437e-9e35-f1d9cba266c4/1781900501789-218030499.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/1be166a5-878f-437e-9e35-f1d9cba266c4/1781900501789-218030499.jpg",
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/1be166a5-878f-437e-9e35-f1d9cba266c4/1782089881746-824302268.jpg"
+        ],
+        "preparo": "Somente Aquecer",
+        "indisponivel": false
+      },
+      "ficha": {
+        "id": "59470370-2146-4cc0-8a04-ba39679daa36",
+        "nome": "FESTA-COXINHA DE LINGUIÇA BLUMENAU 22GR",
+        "codigo": "H22MI5",
+        "unidade": "PT",
+        "unidades": 90,
+        "embalagem": "pacote",
+        "descricao": "PRODUTO COM 22 GRAMAS APROXIMADAMENTE E PACOTE COM 2KG",
+        "grupoNome": "H22 Mini Salgados 22 gramas",
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/1be166a5-878f-437e-9e35-f1d9cba266c4/1781900501789-218030499.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/1be166a5-878f-437e-9e35-f1d9cba266c4/1781900501789-218030499.jpg",
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/1be166a5-878f-437e-9e35-f1d9cba266c4/1782089881746-824302268.jpg"
+        ],
+        "etiqueta": null
+      }
+    },
+    {
+      "id": "99ec739b-25e7-4982-894e-62262ae5bfb5",
+      "produtoId": "6865fd76-c595-40b5-9624-3438a0a2953c",
+      "codigo": "H22MI6",
+      "nomeSite": "FESTA-CROQUETE DE CARNE 22GR",
+      "nomeEtiqueta": "FESTA-CROQUETE DE CARNE 22GR",
+      "grupoIdSistema": "337b5e88-b013-4560-9a83-f86dc72ccb78",
+      "grupoNomeNoProduto_lidoAoVivoDaCategoriaProduto": "H22 Mini Salgados 22 gramas",
+      "grupoNomeAmigavelNoSite": "Assados",
+      "preparoOficialDoGrupo": "Somente Aquecer",
+      "catalogo": {
+        "id": "99ec739b-25e7-4982-894e-62262ae5bfb5",
+        "produtoId": "6865fd76-c595-40b5-9624-3438a0a2953c",
+        "codigo": "H22MI6",
+        "nome": "FESTA-CROQUETE DE CARNE 22GR",
+        "descricao": "PRODUTO COM 22 GRAMAS APROXIMADAMENTE E PACOTE COM 2KG",
+        "unidade": "PT",
+        "unidades": 90,
+        "embalagem": "pacote",
+        "grupo": "337b5e88-b013-4560-9a83-f86dc72ccb78",
+        "grupoNome": "H22 Mini Salgados 22 gramas",
+        "preco": 60.62,
+        "destaque": false,
+        "ordem": 0,
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/6865fd76-c595-40b5-9624-3438a0a2953c/1781900513852-472929991.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/6865fd76-c595-40b5-9624-3438a0a2953c/1781900513852-472929991.jpg",
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/6865fd76-c595-40b5-9624-3438a0a2953c/1782077427887-20555317.jpg"
+        ],
+        "preparo": "Somente Aquecer",
+        "indisponivel": false
+      },
+      "ficha": {
+        "id": "99ec739b-25e7-4982-894e-62262ae5bfb5",
+        "nome": "FESTA-CROQUETE DE CARNE 22GR",
+        "codigo": "H22MI6",
+        "unidade": "PT",
+        "unidades": 90,
+        "embalagem": "pacote",
+        "descricao": "PRODUTO COM 22 GRAMAS APROXIMADAMENTE E PACOTE COM 2KG",
+        "grupoNome": "H22 Mini Salgados 22 gramas",
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/6865fd76-c595-40b5-9624-3438a0a2953c/1781900513852-472929991.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/6865fd76-c595-40b5-9624-3438a0a2953c/1781900513852-472929991.jpg",
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/6865fd76-c595-40b5-9624-3438a0a2953c/1782077427887-20555317.jpg"
+        ],
+        "etiqueta": {
+          "pesoUnitario": 22,
+          "pesoPorcao": 22,
+          "quantidadeEmbalagem": 90,
+          "quantidadeAproximada": true,
+          "pesoPacote": 2000,
+          "nutricional": {
+            "valorEnergetico": "31kcal (2% VD)",
+            "carboidratos": "5,0g (2% VD)",
+            "acucaresTotais": null,
+            "acucaresAdicionados": null,
+            "proteinas": "1,1g (2% VD)",
+            "gordurasTotais": "0,6g (1% VD)",
+            "gordurasSaturadas": "0,2g (1% VD)",
+            "gordurasTrans": "0g (0% VD)",
+            "fibraAlimentar": "0,4g (2% VD)",
+            "sodio": "119mg (6% VD)"
+          },
+          "composicao": "Farinha de trigo, Carne bovina, Cebola, Açúcar, Banha, Caldo de carne, Cebolinha verde, Proteína de soja, Glutamato monossódico, Margarina, Sal, Pimenta do reino, Óleo de soja, Leite integral, Farinha de rosca.",
+          "modoPreparo": "Colocar o produto ainda congelado, em óleo pré-aquecido em 180ºC, por 3 minutos. Tempo máximo de exposição em estufa: 6 horas a 60ºC. Produto congelado, após aberto manter o pacote bem fechado para não ressecar.",
+          "armazenamento": "Congelar -12ºC. Após descongelado, não recongelar.",
+          "validadeDias": 180,
+          "contemGluten": true,
+          "contemLactose": false,
+          "alergenos": [
+            "Trigo",
+            "Soja",
+            "Leite",
+            "Ovos"
+          ],
+          "especieCrustaceos": null,
+          "especiePeixes": null,
+          "avisosRotulo": null
+        }
+      }
+    },
+    {
+      "id": "c49b4453-9ec8-4d67-b909-c003d765107f",
+      "produtoId": "5127553d-f301-4f45-aa43-79d1bc8ad481",
+      "codigo": "H22MI8",
+      "nomeSite": "FESTA-TRAVESSEIRO DE PIZZA 22GR",
+      "nomeEtiqueta": "FESTA-TRAVESSEIRO DE PIZZA 22GR",
+      "grupoIdSistema": "337b5e88-b013-4560-9a83-f86dc72ccb78",
+      "grupoNomeNoProduto_lidoAoVivoDaCategoriaProduto": "H22 Mini Salgados 22 gramas",
+      "grupoNomeAmigavelNoSite": "Assados",
+      "preparoOficialDoGrupo": "Somente Aquecer",
+      "catalogo": {
+        "id": "c49b4453-9ec8-4d67-b909-c003d765107f",
+        "produtoId": "5127553d-f301-4f45-aa43-79d1bc8ad481",
+        "codigo": "H22MI8",
+        "nome": "FESTA-TRAVESSEIRO DE PIZZA 22GR",
+        "descricao": "PRODUTO COM 22 GRAMAS APROXIMADAMENTE E PACOTE COM 2KG",
+        "unidade": "PT",
+        "unidades": 90,
+        "embalagem": "pacote",
+        "grupo": "337b5e88-b013-4560-9a83-f86dc72ccb78",
+        "grupoNome": "H22 Mini Salgados 22 gramas",
+        "preco": 60.62,
+        "destaque": false,
+        "ordem": 0,
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/5127553d-f301-4f45-aa43-79d1bc8ad481/1782076559862-541289177.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/5127553d-f301-4f45-aa43-79d1bc8ad481/1782076559862-541289177.jpg",
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/5127553d-f301-4f45-aa43-79d1bc8ad481/1782076567090-640256925.jpg"
+        ],
+        "preparo": "Somente Aquecer",
+        "indisponivel": false
+      },
+      "ficha": {
+        "id": "c49b4453-9ec8-4d67-b909-c003d765107f",
+        "nome": "FESTA-TRAVESSEIRO DE PIZZA 22GR",
+        "codigo": "H22MI8",
+        "unidade": "PT",
+        "unidades": 90,
+        "embalagem": "pacote",
+        "descricao": "PRODUTO COM 22 GRAMAS APROXIMADAMENTE E PACOTE COM 2KG",
+        "grupoNome": "H22 Mini Salgados 22 gramas",
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/5127553d-f301-4f45-aa43-79d1bc8ad481/1782076559862-541289177.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/5127553d-f301-4f45-aa43-79d1bc8ad481/1782076559862-541289177.jpg",
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/5127553d-f301-4f45-aa43-79d1bc8ad481/1782076567090-640256925.jpg"
+        ],
+        "etiqueta": {
+          "pesoUnitario": 22,
+          "pesoPorcao": 22,
+          "quantidadeEmbalagem": 90,
+          "quantidadeAproximada": true,
+          "pesoPacote": 2000,
+          "nutricional": {
+            "valorEnergetico": "28kcal (1% VD)",
+            "carboidratos": "5,0g (2% VD)",
+            "acucaresTotais": null,
+            "acucaresAdicionados": null,
+            "proteinas": "0,7g (1% VD)",
+            "gordurasTotais": "0,5g (1% VD)",
+            "gordurasSaturadas": "0,2g (1% VD)",
+            "gordurasTrans": "0g (0% VD)",
+            "fibraAlimentar": "0,4g (2% VD)",
+            "sodio": "119mg (6% VD)"
+          },
+          "composicao": "Água, Farinha de Trigo, Caldo legumes, Queijo mussarela, Queijo provolone, Orégano, Margarina, Sal, Óleo de soja, Leite integral, Apresuntado, Farinha de rosca.",
+          "modoPreparo": "Colocar o produto ainda congelado, em óleo pré-aquecido em 180ºC, por 17 minutos. Tempo máximo de exposição em estufa: 6 horas a 60ºC. Produto congelado, após aberto manter o pacote bem fechado para não ressecar.",
+          "armazenamento": "Congelar -12ºC. Após descongelado, não recongelar.",
+          "validadeDias": 180,
+          "contemGluten": true,
+          "contemLactose": true,
+          "alergenos": [
+            "Trigo",
+            "Soja",
+            "Leite",
+            "Ovos"
+          ],
+          "especieCrustaceos": null,
+          "especiePeixes": null,
+          "avisosRotulo": null
+        }
+      }
+    },
+    {
+      "id": "cdbfa103-588b-4f38-a957-a8f74a0a901a",
+      "produtoId": "e6b61f50-b9c3-455e-a305-acfdb6bb3b58",
+      "codigo": "5182",
+      "nomeSite": "COXINHA FRANGO C/ REQUEIJÃO Gigante FRITO 170gr",
+      "nomeEtiqueta": "COXINHA FRANGO C/ REQUEIJÃO Gigante FRITO 170gr",
+      "grupoIdSistema": "83936f52-150c-4e99-b803-4014e581da37",
+      "grupoNomeNoProduto_lidoAoVivoDaCategoriaProduto": "Produtos Fritos para Aquecer",
+      "grupoNomeAmigavelNoSite": "Fritos",
+      "preparoOficialDoGrupo": "Somente Aquecer",
+      "catalogo": {
+        "id": "cdbfa103-588b-4f38-a957-a8f74a0a901a",
+        "produtoId": "e6b61f50-b9c3-455e-a305-acfdb6bb3b58",
+        "codigo": "5182",
+        "nome": "COXINHA FRANGO C/ REQUEIJÃO Gigante FRITO 170gr",
+        "descricao": "",
+        "unidade": "PT",
+        "unidades": 10,
+        "embalagem": "pacote",
+        "grupo": "83936f52-150c-4e99-b803-4014e581da37",
+        "grupoNome": "Produtos Fritos para Aquecer",
+        "preco": 52.64,
+        "destaque": false,
+        "ordem": 0,
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/e6b61f50-b9c3-455e-a305-acfdb6bb3b58/1782081083306-821720916.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/e6b61f50-b9c3-455e-a305-acfdb6bb3b58/1782081083306-821720916.jpg",
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/e6b61f50-b9c3-455e-a305-acfdb6bb3b58/1782081088860-759097351.jpg"
+        ],
+        "preparo": "Somente Aquecer",
+        "indisponivel": false
+      },
+      "ficha": {
+        "id": "cdbfa103-588b-4f38-a957-a8f74a0a901a",
+        "nome": "COXINHA FRANGO C/ REQUEIJÃO Gigante FRITO 170gr",
+        "codigo": "5182",
+        "unidade": "PT",
+        "unidades": 10,
+        "embalagem": "pacote",
+        "descricao": "",
+        "grupoNome": "Produtos Fritos para Aquecer",
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/e6b61f50-b9c3-455e-a305-acfdb6bb3b58/1782081083306-821720916.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/e6b61f50-b9c3-455e-a305-acfdb6bb3b58/1782081083306-821720916.jpg",
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/e6b61f50-b9c3-455e-a305-acfdb6bb3b58/1782081088860-759097351.jpg"
+        ],
+        "etiqueta": {
+          "pesoUnitario": 165,
+          "pesoPorcao": 165,
+          "quantidadeEmbalagem": 10,
+          "quantidadeAproximada": false,
+          "pesoPacote": 1650,
+          "nutricional": {
+            "valorEnergetico": "158kcal (8% VD)",
+            "carboidratos": "23g (8% VD)",
+            "acucaresTotais": null,
+            "acucaresAdicionados": null,
+            "proteinas": "7,0g (10% VD)",
+            "gordurasTotais": "4,0g (7% VD)",
+            "gordurasSaturadas": "1,5g (7% VD)",
+            "gordurasTrans": "0g (0% VD)",
+            "fibraAlimentar": "1,8g (7% VD)",
+            "sodio": "788mg (33% VD)"
+          },
+          "composicao": "Farinha de Trigo, Frango, Requeijão Hardt, Cheiro verde, Sal, Pimenta do reino, Margarina, Fubá, Óleo de soja, Farinha de rosca.",
+          "modoPreparo": "Colocar o produto ainda congelado, em forno pré-aquecido em 180ºC, por 10 minutos. Tempo máximo de exposição em estufa: 6 horas a 60ºC. Produto congelado, após aberto manter o pacote bem fechado para não ressecar.",
+          "armazenamento": "Congelar -12ºC. Após descongelado, não recongelar.",
+          "validadeDias": 180,
+          "contemGluten": true,
+          "contemLactose": false,
+          "alergenos": [
+            "Trigo",
+            "Soja",
+            "Leite",
+            "Ovos"
+          ],
+          "especieCrustaceos": null,
+          "especiePeixes": null,
+          "avisosRotulo": null
+        }
+      }
+    },
+    {
+      "id": "16d324ef-5e45-4b3c-ad16-c1c66f9ee289",
+      "produtoId": "1f2ea683-54fd-49c6-b697-7c4c835516d8",
+      "codigo": "H22MI3",
+      "nomeSite": "FESTA-CHURROS DOCE DE LEITE 22GR",
+      "nomeEtiqueta": "FESTA-CHURROS DOCE DE LEITE 22GR",
+      "grupoIdSistema": "337b5e88-b013-4560-9a83-f86dc72ccb78",
+      "grupoNomeNoProduto_lidoAoVivoDaCategoriaProduto": "H22 Mini Salgados 22 gramas",
+      "grupoNomeAmigavelNoSite": "Assados",
+      "preparoOficialDoGrupo": "Somente Aquecer",
+      "catalogo": {
+        "id": "16d324ef-5e45-4b3c-ad16-c1c66f9ee289",
+        "produtoId": "1f2ea683-54fd-49c6-b697-7c4c835516d8",
+        "codigo": "H22MI3",
+        "nome": "FESTA-CHURROS DOCE DE LEITE 22GR",
+        "descricao": "PRODUTO COM 22 GRAMAS APROXIMADAMENTE E PACOTE COM 2KG",
+        "unidade": "PT",
+        "unidades": 90,
+        "embalagem": "pacote",
+        "grupo": "337b5e88-b013-4560-9a83-f86dc72ccb78",
+        "grupoNome": "H22 Mini Salgados 22 gramas",
+        "preco": 40.5,
+        "destaque": false,
+        "ordem": 0,
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/1f2ea683-54fd-49c6-b697-7c4c835516d8/1781900472010-334490328.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/1f2ea683-54fd-49c6-b697-7c4c835516d8/1781900472010-334490328.jpg",
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/1f2ea683-54fd-49c6-b697-7c4c835516d8/1782089824896-400469613.jpg"
+        ],
+        "preparo": "Somente Aquecer",
+        "indisponivel": false
+      },
+      "ficha": {
+        "id": "16d324ef-5e45-4b3c-ad16-c1c66f9ee289",
+        "nome": "FESTA-CHURROS DOCE DE LEITE 22GR",
+        "codigo": "H22MI3",
+        "unidade": "PT",
+        "unidades": 90,
+        "embalagem": "pacote",
+        "descricao": "PRODUTO COM 22 GRAMAS APROXIMADAMENTE E PACOTE COM 2KG",
+        "grupoNome": "H22 Mini Salgados 22 gramas",
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/1f2ea683-54fd-49c6-b697-7c4c835516d8/1781900472010-334490328.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/1f2ea683-54fd-49c6-b697-7c4c835516d8/1781900472010-334490328.jpg",
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/1f2ea683-54fd-49c6-b697-7c4c835516d8/1782089824896-400469613.jpg"
+        ],
+        "etiqueta": null
+      }
+    },
+    {
+      "id": "8e1793a9-2df1-4b8c-97d2-ba8305dce0a2",
+      "produtoId": "7f5e61d0-0092-418e-8d48-5512f4b41cf7",
+      "codigo": "1",
+      "nomeSite": "COXINHA FRANGO MASSA AIPIM G 130GR",
+      "nomeEtiqueta": "COXINHA FRANGO MASSA AIPIM G 130GR",
+      "grupoIdSistema": "6b469a55-95c6-41e9-b033-6d3b33f33311",
+      "grupoNomeNoProduto_lidoAoVivoDaCategoriaProduto": "Produtos para Fritar",
+      "grupoNomeAmigavelNoSite": "Fritar",
+      "preparoOficialDoGrupo": "Precisa Fritar",
+      "catalogo": {
+        "id": "8e1793a9-2df1-4b8c-97d2-ba8305dce0a2",
+        "produtoId": "7f5e61d0-0092-418e-8d48-5512f4b41cf7",
+        "codigo": "1",
+        "nome": "COXINHA FRANGO MASSA AIPIM G 130GR",
+        "descricao": "",
+        "unidade": "PT",
+        "unidades": 20,
+        "embalagem": "pacote",
+        "grupo": "6b469a55-95c6-41e9-b033-6d3b33f33311",
+        "grupoNome": "Produtos para Fritar",
+        "preco": 63.44,
+        "destaque": false,
+        "ordem": 0,
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/7f5e61d0-0092-418e-8d48-5512f4b41cf7/1781968665160-16318559.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/7f5e61d0-0092-418e-8d48-5512f4b41cf7/1781968665160-16318559.jpg",
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/7f5e61d0-0092-418e-8d48-5512f4b41cf7/1781971418431-87821334.jpg"
+        ],
+        "preparo": "Precisa Fritar",
+        "indisponivel": false
+      },
+      "ficha": {
+        "id": "8e1793a9-2df1-4b8c-97d2-ba8305dce0a2",
+        "nome": "COXINHA FRANGO MASSA AIPIM G 130GR",
+        "codigo": "1",
+        "unidade": "PT",
+        "unidades": 20,
+        "embalagem": "pacote",
+        "descricao": "",
+        "grupoNome": "Produtos para Fritar",
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/7f5e61d0-0092-418e-8d48-5512f4b41cf7/1781968665160-16318559.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/7f5e61d0-0092-418e-8d48-5512f4b41cf7/1781968665160-16318559.jpg",
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/7f5e61d0-0092-418e-8d48-5512f4b41cf7/1781971418431-87821334.jpg"
+        ],
+        "etiqueta": {
+          "pesoUnitario": 127,
+          "pesoPorcao": 127,
+          "quantidadeEmbalagem": 20,
+          "quantidadeAproximada": false,
+          "pesoPacote": 2540,
+          "nutricional": {
+            "valorEnergetico": "159kcal (8% VD)",
+            "carboidratos": "22g (7% VD)",
+            "acucaresTotais": null,
+            "acucaresAdicionados": null,
+            "proteinas": "7,2g (10% VD)",
+            "gordurasTotais": "4,8g (9% VD)",
+            "gordurasSaturadas": "1,9g (9% VD)",
+            "gordurasTrans": "0g (0% VD)",
+            "fibraAlimentar": "1,7g (7% VD)",
+            "sodio": "753mg (31% VD)"
+          },
+          "composicao": "Água, Farinha de trigo, Peito de frango, Mandioca cozida, Cebola, Cebolinha verde, Sal, Margarina, Proteína de soja, Óleo de soja, Pimenta do reino, Farinha de rosca.",
+          "modoPreparo": "Colocar o produto ainda congelado, em óleo pré-aquecido em 180ºC, por 6 minutos. Tempo máximo de exposição em estufa: 6 horas a 60ºC. Produto congelado, após aberto manter o pacote bem fechado para não ressecar.",
+          "armazenamento": "Congelar -12ºC. Após descongelado, não recongelar.",
+          "validadeDias": 180,
+          "contemGluten": true,
+          "contemLactose": false,
+          "alergenos": [
+            "Trigo",
+            "Soja"
+          ],
+          "especieCrustaceos": null,
+          "especiePeixes": null,
+          "avisosRotulo": null
+        }
+      }
+    },
+    {
+      "id": "e284223d-a7ac-40ac-a8bf-9481c1f8e097",
+      "produtoId": "640c37ca-e578-4832-99a3-24c2d6e410b1",
+      "codigo": "3059",
+      "nomeSite": "COXINHA FRANGO TRADICIONAL G 130GR",
+      "nomeEtiqueta": "COXINHA FRANGO TRADICIONAL G 130GR",
+      "grupoIdSistema": "6b469a55-95c6-41e9-b033-6d3b33f33311",
+      "grupoNomeNoProduto_lidoAoVivoDaCategoriaProduto": "Produtos para Fritar",
+      "grupoNomeAmigavelNoSite": "Fritar",
+      "preparoOficialDoGrupo": "Precisa Fritar",
+      "catalogo": {
+        "id": "e284223d-a7ac-40ac-a8bf-9481c1f8e097",
+        "produtoId": "640c37ca-e578-4832-99a3-24c2d6e410b1",
+        "codigo": "3059",
+        "nome": "COXINHA FRANGO TRADICIONAL G 130GR",
+        "descricao": "",
+        "unidade": "PT",
+        "unidades": 20,
+        "embalagem": "pacote",
+        "grupo": "6b469a55-95c6-41e9-b033-6d3b33f33311",
+        "grupoNome": "Produtos para Fritar",
+        "preco": 63.44,
+        "destaque": false,
+        "ordem": 0,
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/640c37ca-e578-4832-99a3-24c2d6e410b1/1781969920405-154362481.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/640c37ca-e578-4832-99a3-24c2d6e410b1/1781969920405-154362481.jpg",
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/640c37ca-e578-4832-99a3-24c2d6e410b1/1781971426206-369839949.jpg"
+        ],
+        "preparo": "Precisa Fritar",
+        "indisponivel": false
+      },
+      "ficha": {
+        "id": "e284223d-a7ac-40ac-a8bf-9481c1f8e097",
+        "nome": "COXINHA FRANGO TRADICIONAL G 130GR",
+        "codigo": "3059",
+        "unidade": "PT",
+        "unidades": 20,
+        "embalagem": "pacote",
+        "descricao": "",
+        "grupoNome": "Produtos para Fritar",
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/640c37ca-e578-4832-99a3-24c2d6e410b1/1781969920405-154362481.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/640c37ca-e578-4832-99a3-24c2d6e410b1/1781969920405-154362481.jpg",
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/640c37ca-e578-4832-99a3-24c2d6e410b1/1781971426206-369839949.jpg"
+        ],
+        "etiqueta": {
+          "pesoUnitario": 127,
+          "pesoPorcao": 127,
+          "quantidadeEmbalagem": 20,
+          "quantidadeAproximada": false,
+          "pesoPacote": 2540,
+          "nutricional": {
+            "valorEnergetico": "158kcal (8% VD)",
+            "carboidratos": "23g (8% VD)",
+            "acucaresTotais": null,
+            "acucaresAdicionados": null,
+            "proteinas": "7,4g (10% VD)",
+            "gordurasTotais": "4,0g (7% VD)",
+            "gordurasSaturadas": "1,5g (7% VD)",
+            "gordurasTrans": "0g (0% VD)",
+            "fibraAlimentar": "1,8g (7% VD)",
+            "sodio": "799mg (33% VD)"
+          },
+          "composicao": "Água, Farinha de trigo, Peito de frango, Cebola, Sal, Margarina, Proteína de soja, Óleo de soja, Pimenta do reino, Farinha de rosca.",
+          "modoPreparo": "Colocar o produto ainda congelado, em óleo pré-aquecido em 180ºC, por 6 minutos. Tempo máximo de exposição em estufa: 6 horas a 60ºC. Produto congelado, após aberto manter o pacote bem fechado para não ressecar.",
+          "armazenamento": "Congelar -12ºC. Após descongelado, não recongelar.",
+          "validadeDias": 180,
+          "contemGluten": true,
+          "contemLactose": false,
+          "alergenos": [
+            "Trigo",
+            "Soja"
+          ],
+          "especieCrustaceos": null,
+          "especiePeixes": null,
+          "avisosRotulo": null
+        }
+      }
+    },
+    {
+      "id": "0b117b1d-099a-49e5-bd77-ae01ff01c195",
+      "produtoId": "7e419638-861c-4ee2-b548-0a49c2e077c3",
+      "codigo": "3087",
+      "nomeSite": "HAMBURGÃO C/ CHEEDAR E CEBOLA 280gr",
+      "nomeEtiqueta": "HAMBURGÃO C/ CHEEDAR E CEBOLA 280gr",
+      "grupoIdSistema": "8749505b-8b82-455b-b923-d55cc47dd7fd",
+      "grupoNomeNoProduto_lidoAoVivoDaCategoriaProduto": "Produtos Assados para Aquecer",
+      "grupoNomeAmigavelNoSite": "Aquecer",
+      "preparoOficialDoGrupo": "Somente Aquecer",
+      "catalogo": {
+        "id": "0b117b1d-099a-49e5-bd77-ae01ff01c195",
+        "produtoId": "7e419638-861c-4ee2-b548-0a49c2e077c3",
+        "codigo": "3087",
+        "nome": "HAMBURGÃO C/ CHEEDAR E CEBOLA 280gr",
+        "descricao": "",
+        "unidade": "PT",
+        "unidades": 5,
+        "embalagem": "pacote",
+        "grupo": "8749505b-8b82-455b-b923-d55cc47dd7fd",
+        "grupoNome": "Produtos Assados para Aquecer",
+        "preco": 46.06,
+        "destaque": false,
+        "ordem": 0,
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/7e419638-861c-4ee2-b548-0a49c2e077c3/1781902536588-625825943.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/7e419638-861c-4ee2-b548-0a49c2e077c3/1781902536588-625825943.jpg"
+        ],
+        "preparo": "Somente Aquecer",
+        "indisponivel": false
+      },
+      "ficha": {
+        "id": "0b117b1d-099a-49e5-bd77-ae01ff01c195",
+        "nome": "HAMBURGÃO C/ CHEEDAR E CEBOLA 280gr",
+        "codigo": "3087",
+        "unidade": "PT",
+        "unidades": 5,
+        "embalagem": "pacote",
+        "descricao": "",
+        "grupoNome": "Produtos Assados para Aquecer",
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/7e419638-861c-4ee2-b548-0a49c2e077c3/1781902536588-625825943.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/7e419638-861c-4ee2-b548-0a49c2e077c3/1781902536588-625825943.jpg"
+        ],
+        "etiqueta": {
+          "pesoUnitario": 280,
+          "pesoPorcao": 280,
+          "quantidadeEmbalagem": 5,
+          "quantidadeAproximada": false,
+          "pesoPacote": 1400,
+          "nutricional": {
+            "valorEnergetico": "432kcal (22% VD)",
+            "carboidratos": "48g (16% VD)",
+            "acucaresTotais": null,
+            "acucaresAdicionados": null,
+            "proteinas": "21g (28% VD)",
+            "gordurasTotais": "17g (31% VD)",
+            "gordurasSaturadas": "7g (35% VD)",
+            "gordurasTrans": "0g (0% VD)",
+            "fibraAlimentar": "1,9g (8% VD)",
+            "sodio": "1046mg (59% VD)"
+          },
+          "composicao": "Farinha de trigo, Margarina, Sal, Açúcar, Fermento químico, Hambúrguer misto, Cebola caramelizada, Requeijão cheedar Hardt, Ovos, Gergelim branco",
+          "modoPreparo": "Colocar o produto ainda congelado, em forno pré-aquecido em 180ºC, por 10 minutos. Tempo máximo de exposição em estufa: 6 horas a 60ºC. Produto congelado, após aberto manter o pacote bem fechado para não ressecar.",
+          "armazenamento": "Congelar -12ºC. Após descongelado, não recongelar.",
+          "validadeDias": 180,
+          "contemGluten": true,
+          "contemLactose": false,
+          "alergenos": [
+            "Trigo",
+            "Soja",
+            "Leite",
+            "Ovos"
+          ],
+          "especieCrustaceos": null,
+          "especiePeixes": null,
+          "avisosRotulo": null
+        }
+      }
+    },
+    {
+      "id": "4efc5fdf-fe4b-4e5f-bb5a-3d6428f00040",
+      "produtoId": "31c3c9fa-fa1a-46cb-8d97-3581221bff2d",
+      "codigo": "H22MI1",
+      "nomeSite": "FESTA-BOCADINHO DE PALMITO 22GR",
+      "nomeEtiqueta": "FESTA-BOCADINHO DE PALMITO 22GR",
+      "grupoIdSistema": "337b5e88-b013-4560-9a83-f86dc72ccb78",
+      "grupoNomeNoProduto_lidoAoVivoDaCategoriaProduto": "H22 Mini Salgados 22 gramas",
+      "grupoNomeAmigavelNoSite": "Assados",
+      "preparoOficialDoGrupo": "Somente Aquecer",
+      "catalogo": {
+        "id": "4efc5fdf-fe4b-4e5f-bb5a-3d6428f00040",
+        "produtoId": "31c3c9fa-fa1a-46cb-8d97-3581221bff2d",
+        "codigo": "H22MI1",
+        "nome": "FESTA-BOCADINHO DE PALMITO 22GR",
+        "descricao": "PRODUTO COM 22 GRAMAS APROXIMADAMENTE E PACOTE COM 2KG",
+        "unidade": "PT",
+        "unidades": 90,
+        "embalagem": "pacote",
+        "grupo": "337b5e88-b013-4560-9a83-f86dc72ccb78",
+        "grupoNome": "H22 Mini Salgados 22 gramas",
+        "preco": 60.62,
+        "destaque": false,
+        "ordem": 0,
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/31c3c9fa-fa1a-46cb-8d97-3581221bff2d/1781900402757-512772177.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/31c3c9fa-fa1a-46cb-8d97-3581221bff2d/1781900402757-512772177.jpg",
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/31c3c9fa-fa1a-46cb-8d97-3581221bff2d/1782086744652-188119986.jpg"
+        ],
+        "preparo": "Somente Aquecer",
+        "indisponivel": false
+      },
+      "ficha": {
+        "id": "4efc5fdf-fe4b-4e5f-bb5a-3d6428f00040",
+        "nome": "FESTA-BOCADINHO DE PALMITO 22GR",
+        "codigo": "H22MI1",
+        "unidade": "PT",
+        "unidades": 90,
+        "embalagem": "pacote",
+        "descricao": "PRODUTO COM 22 GRAMAS APROXIMADAMENTE E PACOTE COM 2KG",
+        "grupoNome": "H22 Mini Salgados 22 gramas",
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/31c3c9fa-fa1a-46cb-8d97-3581221bff2d/1781900402757-512772177.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/31c3c9fa-fa1a-46cb-8d97-3581221bff2d/1781900402757-512772177.jpg",
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/31c3c9fa-fa1a-46cb-8d97-3581221bff2d/1782086744652-188119986.jpg"
+        ],
+        "etiqueta": {
+          "pesoUnitario": 22,
+          "pesoPorcao": 22,
+          "quantidadeEmbalagem": 90,
+          "quantidadeAproximada": true,
+          "pesoPacote": 2000,
+          "nutricional": {
+            "valorEnergetico": "22kcal (1% VD)",
+            "carboidratos": "4,5g (2% VD)",
+            "acucaresTotais": null,
+            "acucaresAdicionados": null,
+            "proteinas": "0,4g (1% VD)",
+            "gordurasTotais": "0,3g (0% VD)",
+            "gordurasSaturadas": "0,0g (0% VD)",
+            "gordurasTrans": "0g (0% VD)",
+            "fibraAlimentar": "0,4g (2% VD)",
+            "sodio": "136mg (7% VD)"
+          },
+          "composicao": "Farinha de trigo, Palmito pupunha, Óleo de soja, Sal, Margarina, Azeitonas verdes, Leite integral em pó, Vinagre, Pimenta do reino, Farinha de rosca.",
+          "modoPreparo": "Colocar o produto ainda congelado, em óleo pré-aquecido em 180ºC, por 3 minutos. Tempo máximo de exposição em estufa: 6 horas a 60ºC. Produto congelado, após aberto manter o pacote bem fechado para não ressecar.",
+          "armazenamento": "Congelar -12ºC. Após descongelado, não recongelar.",
+          "validadeDias": 180,
+          "contemGluten": true,
+          "contemLactose": false,
+          "alergenos": [
+            "Trigo",
+            "Soja",
+            "Leite",
+            "Ovos"
+          ],
+          "especieCrustaceos": null,
+          "especiePeixes": null,
+          "avisosRotulo": null
+        }
+      }
+    },
+    {
+      "id": "70d1da37-b17d-4459-869a-72739efee153",
+      "produtoId": "f1ced129-0179-4e6f-9bf2-dca28c558217",
+      "codigo": "3081",
+      "nomeSite": "Mini Coxinha de Frango 30gr",
+      "nomeEtiqueta": "Mini Coxinha de Frango 30gr",
+      "grupoIdSistema": "8a8477a5-aaf6-4a74-b894-e68d86375715",
+      "grupoNomeNoProduto_lidoAoVivoDaCategoriaProduto": "Mini Salgados para Fritar",
+      "grupoNomeAmigavelNoSite": "Mini Fritar",
+      "preparoOficialDoGrupo": "Precisa Fritar",
+      "catalogo": {
+        "id": "70d1da37-b17d-4459-869a-72739efee153",
+        "produtoId": "f1ced129-0179-4e6f-9bf2-dca28c558217",
+        "codigo": "3081",
+        "nome": "Mini Coxinha de Frango 30gr",
+        "descricao": "",
+        "unidade": "PT",
+        "unidades": 50,
+        "embalagem": "pacote",
+        "grupo": "8a8477a5-aaf6-4a74-b894-e68d86375715",
+        "grupoNome": "Mini Salgados para Fritar",
+        "preco": 40.49,
+        "destaque": false,
+        "ordem": 0,
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/f1ced129-0179-4e6f-9bf2-dca28c558217/1776375917597-709809406.png",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/f1ced129-0179-4e6f-9bf2-dca28c558217/1776375917597-709809406.png",
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/f1ced129-0179-4e6f-9bf2-dca28c558217/1782431136360-448894579.jpg"
+        ],
+        "preparo": "Precisa Fritar",
+        "indisponivel": false
+      },
+      "ficha": {
+        "id": "70d1da37-b17d-4459-869a-72739efee153",
+        "nome": "Mini Coxinha de Frango 30gr",
+        "codigo": "3081",
+        "unidade": "PT",
+        "unidades": 50,
+        "embalagem": "pacote",
+        "descricao": "",
+        "grupoNome": "Mini Salgados para Fritar",
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/f1ced129-0179-4e6f-9bf2-dca28c558217/1776375917597-709809406.png",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/f1ced129-0179-4e6f-9bf2-dca28c558217/1776375917597-709809406.png",
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/f1ced129-0179-4e6f-9bf2-dca28c558217/1782431136360-448894579.jpg"
+        ],
+        "etiqueta": {
+          "pesoUnitario": 28,
+          "pesoPorcao": 28,
+          "quantidadeEmbalagem": 50,
+          "quantidadeAproximada": true,
+          "pesoPacote": 1400,
+          "nutricional": {
+            "valorEnergetico": "32kcal (2% VD)",
+            "carboidratos": "6,1g (2% VD)",
+            "acucaresTotais": null,
+            "acucaresAdicionados": null,
+            "proteinas": "1,1g (1% VD)",
+            "gordurasTotais": "0,4g (1% VD)",
+            "gordurasSaturadas": "0,0g (2% VD)",
+            "gordurasTrans": "0g (0% VD)",
+            "fibraAlimentar": "0,5g (2% VD)",
+            "sodio": "144mg (6% VD)"
+          },
+          "composicao": "Farinha de trigo, Peito de frango, Óleo de soja, Cebola, Sal, Proteína de soja, Margarina, Caldo de galinha, Colorífico, Cebolinha verde, Glutamato monossódico, Pimenta do reino, Farinha de rosca.",
+          "modoPreparo": "Colocar o produto ainda congelado, em óleo pré-aquecido em 180ºC, por 3 minutos. Tempo máximo de exposição em estufa: 6 horas a 60ºC. Produto congelado, após aberto manter o pacote bem fechado para não ressecar.",
+          "armazenamento": "Congelar -12ºC. Após descongelado, não recongelar.",
+          "validadeDias": 180,
+          "contemGluten": true,
+          "contemLactose": false,
+          "alergenos": [
+            "Trigo",
+            "Soja"
+          ],
+          "especieCrustaceos": null,
+          "especiePeixes": null,
+          "avisosRotulo": null
+        }
+      }
+    },
+    {
+      "id": "22230888-209a-4163-9fa4-fc49a6b6bcf4",
+      "produtoId": "260317c9-dcd4-41bb-99d4-8536acd25d5c",
+      "codigo": "5286",
+      "nomeSite": "Mini Coxinha Linguiça Blumenau 30gr",
+      "nomeEtiqueta": "Mini Coxinha Linguiça Blumenau 30gr",
+      "grupoIdSistema": "8a8477a5-aaf6-4a74-b894-e68d86375715",
+      "grupoNomeNoProduto_lidoAoVivoDaCategoriaProduto": "Mini Salgados para Fritar",
+      "grupoNomeAmigavelNoSite": "Mini Fritar",
+      "preparoOficialDoGrupo": "Precisa Fritar",
+      "catalogo": {
+        "id": "22230888-209a-4163-9fa4-fc49a6b6bcf4",
+        "produtoId": "260317c9-dcd4-41bb-99d4-8536acd25d5c",
+        "codigo": "5286",
+        "nome": "Mini Coxinha Linguiça Blumenau 30gr",
+        "descricao": "",
+        "unidade": "PT",
+        "unidades": 50,
+        "embalagem": "pacote",
+        "grupo": "8a8477a5-aaf6-4a74-b894-e68d86375715",
+        "grupoNome": "Mini Salgados para Fritar",
+        "preco": 47.24,
+        "destaque": false,
+        "ordem": 0,
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/260317c9-dcd4-41bb-99d4-8536acd25d5c/1782079625805-692531493.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/260317c9-dcd4-41bb-99d4-8536acd25d5c/1782079625805-692531493.jpg",
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/260317c9-dcd4-41bb-99d4-8536acd25d5c/1782089942552-659422038.jpg"
+        ],
+        "preparo": "Precisa Fritar",
+        "indisponivel": false
+      },
+      "ficha": {
+        "id": "22230888-209a-4163-9fa4-fc49a6b6bcf4",
+        "nome": "Mini Coxinha Linguiça Blumenau 30gr",
+        "codigo": "5286",
+        "unidade": "PT",
+        "unidades": 50,
+        "embalagem": "pacote",
+        "descricao": "",
+        "grupoNome": "Mini Salgados para Fritar",
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/260317c9-dcd4-41bb-99d4-8536acd25d5c/1782079625805-692531493.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/260317c9-dcd4-41bb-99d4-8536acd25d5c/1782079625805-692531493.jpg",
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/260317c9-dcd4-41bb-99d4-8536acd25d5c/1782089942552-659422038.jpg"
+        ],
+        "etiqueta": {
+          "pesoUnitario": 28,
+          "pesoPorcao": 28,
+          "quantidadeEmbalagem": 50,
+          "quantidadeAproximada": true,
+          "pesoPacote": 1400,
+          "nutricional": {
+            "valorEnergetico": "47kcal (2% VD)",
+            "carboidratos": "7g (2% VD)",
+            "acucaresTotais": null,
+            "acucaresAdicionados": null,
+            "proteinas": "1,3g (3% VD)",
+            "gordurasTotais": "1,5g (2% VD)",
+            "gordurasSaturadas": "0,5g (3% VD)",
+            "gordurasTrans": "0g (0% VD)",
+            "fibraAlimentar": "0,3g (1% VD)",
+            "sodio": "145mg (7% VD)"
+          },
+          "composicao": "Farinha de Trigo, Mandioca, Caldo Legumes, Linguiça Blumenau Defumada, Requeijão Cremoso, Óleo de Soja, Margarina, Caldo de Legumes, Sal refinado, cheiro verde, Farinha Rosca",
+          "modoPreparo": "Colocar o produto ainda congelado, em óleo pré-aquecido em 180ºC, por 3 minutos. Tempo máximo de exposição em estufa: 6 horas a 60ºC. Produto congelado, após aberto manter o pacote bem fechado para não ressecar.",
+          "armazenamento": "Congelar -12ºC. Após descongelado, não recongelar.",
+          "validadeDias": 180,
+          "contemGluten": true,
+          "contemLactose": false,
+          "alergenos": [
+            "Trigo",
+            "Soja"
+          ],
+          "especieCrustaceos": null,
+          "especiePeixes": null,
+          "avisosRotulo": null
+        }
+      }
+    },
+    {
+      "id": "f749b33e-70c6-4967-93f8-c5640b3930b0",
+      "produtoId": "0c80d846-d439-42ca-b2d3-5e2b2f946c1d",
+      "codigo": "4091",
+      "nomeSite": "Mini Churros Doce de Leite 30gr",
+      "nomeEtiqueta": "Mini Churros Doce de Leite 30gr",
+      "grupoIdSistema": "8a8477a5-aaf6-4a74-b894-e68d86375715",
+      "grupoNomeNoProduto_lidoAoVivoDaCategoriaProduto": "Mini Salgados para Fritar",
+      "grupoNomeAmigavelNoSite": "Mini Fritar",
+      "preparoOficialDoGrupo": "Precisa Fritar",
+      "catalogo": {
+        "id": "f749b33e-70c6-4967-93f8-c5640b3930b0",
+        "produtoId": "0c80d846-d439-42ca-b2d3-5e2b2f946c1d",
+        "codigo": "4091",
+        "nome": "Mini Churros Doce de Leite 30gr",
+        "descricao": "",
+        "unidade": "PT",
+        "unidades": 50,
+        "embalagem": "pacote",
+        "grupo": "8a8477a5-aaf6-4a74-b894-e68d86375715",
+        "grupoNome": "Mini Salgados para Fritar",
+        "preco": 40.49,
+        "destaque": false,
+        "ordem": 0,
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/0c80d846-d439-42ca-b2d3-5e2b2f946c1d/1782089802200-827409590.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/0c80d846-d439-42ca-b2d3-5e2b2f946c1d/1782089802200-827409590.jpg",
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/0c80d846-d439-42ca-b2d3-5e2b2f946c1d/1782089816133-173874051.jpg"
+        ],
+        "preparo": "Precisa Fritar",
+        "indisponivel": false
+      },
+      "ficha": {
+        "id": "f749b33e-70c6-4967-93f8-c5640b3930b0",
+        "nome": "Mini Churros Doce de Leite 30gr",
+        "codigo": "4091",
+        "unidade": "PT",
+        "unidades": 50,
+        "embalagem": "pacote",
+        "descricao": "",
+        "grupoNome": "Mini Salgados para Fritar",
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/0c80d846-d439-42ca-b2d3-5e2b2f946c1d/1782089802200-827409590.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/0c80d846-d439-42ca-b2d3-5e2b2f946c1d/1782089802200-827409590.jpg",
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/0c80d846-d439-42ca-b2d3-5e2b2f946c1d/1782089816133-173874051.jpg"
+        ],
+        "etiqueta": {
+          "pesoUnitario": 28,
+          "pesoPorcao": 28,
+          "quantidadeEmbalagem": 50,
+          "quantidadeAproximada": true,
+          "pesoPacote": 1400,
+          "nutricional": {
+            "valorEnergetico": "49kcal (2% VD)",
+            "carboidratos": "9,2g (3% VD)",
+            "acucaresTotais": null,
+            "acucaresAdicionados": null,
+            "proteinas": "1,0g (1% VD)",
+            "gordurasTotais": "0,9g (2% VD)",
+            "gordurasSaturadas": "0,4g (2% VD)",
+            "gordurasTrans": "0g (0% VD)",
+            "fibraAlimentar": "0,4g (2% VD)",
+            "sodio": "148mg (6% VD)"
+          },
+          "composicao": "Farinha de trigo, Margarina, Sal, Óleo de soja, Leite em pó, Açúcar, Doce de leite",
+          "modoPreparo": "Colocar o produto ainda congelado, em óleo pré-aquecido em 180ºC, por 3 minutos. Tempo máximo de exposição em estufa: 6 horas a 60ºC. Produto congelado, após aberto manter o pacote bem fechado para não ressecar.",
+          "armazenamento": "Congelar -12ºC. Após descongelado, não recongelar.",
+          "validadeDias": 180,
+          "contemGluten": true,
+          "contemLactose": false,
+          "alergenos": [
+            "Leite",
+            "Trigo",
+            "Soja"
+          ],
+          "especieCrustaceos": null,
+          "especiePeixes": null,
+          "avisosRotulo": null
+        }
+      }
+    },
+    {
+      "id": "f904fcdb-a545-4631-b4b8-d00e494fdc72",
+      "produtoId": "900b7c1e-fd1e-4e69-8a26-d7026e4d69ff",
+      "codigo": "3082",
+      "nomeSite": "Mini Bolinha de Queijo 30gr",
+      "nomeEtiqueta": "Mini Bolinha de Queijo 30gr",
+      "grupoIdSistema": "8a8477a5-aaf6-4a74-b894-e68d86375715",
+      "grupoNomeNoProduto_lidoAoVivoDaCategoriaProduto": "Mini Salgados para Fritar",
+      "grupoNomeAmigavelNoSite": "Mini Fritar",
+      "preparoOficialDoGrupo": "Precisa Fritar",
+      "catalogo": {
+        "id": "f904fcdb-a545-4631-b4b8-d00e494fdc72",
+        "produtoId": "900b7c1e-fd1e-4e69-8a26-d7026e4d69ff",
+        "codigo": "3082",
+        "nome": "Mini Bolinha de Queijo 30gr",
+        "descricao": "",
+        "unidade": "PT",
+        "unidades": 50,
+        "embalagem": "pacote",
+        "grupo": "8a8477a5-aaf6-4a74-b894-e68d86375715",
+        "grupoNome": "Mini Salgados para Fritar",
+        "preco": 40.49,
+        "destaque": false,
+        "ordem": 0,
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/900b7c1e-fd1e-4e69-8a26-d7026e4d69ff/1781970235632-246682738.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/900b7c1e-fd1e-4e69-8a26-d7026e4d69ff/1781970235632-246682738.jpg",
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/900b7c1e-fd1e-4e69-8a26-d7026e4d69ff/1781971387267-653782295.jpg"
+        ],
+        "preparo": "Precisa Fritar",
+        "indisponivel": false
+      },
+      "ficha": {
+        "id": "f904fcdb-a545-4631-b4b8-d00e494fdc72",
+        "nome": "Mini Bolinha de Queijo 30gr",
+        "codigo": "3082",
+        "unidade": "PT",
+        "unidades": 50,
+        "embalagem": "pacote",
+        "descricao": "",
+        "grupoNome": "Mini Salgados para Fritar",
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/900b7c1e-fd1e-4e69-8a26-d7026e4d69ff/1781970235632-246682738.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/900b7c1e-fd1e-4e69-8a26-d7026e4d69ff/1781970235632-246682738.jpg",
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/900b7c1e-fd1e-4e69-8a26-d7026e4d69ff/1781971387267-653782295.jpg"
+        ],
+        "etiqueta": {
+          "pesoUnitario": 28,
+          "pesoPorcao": 28,
+          "quantidadeEmbalagem": 50,
+          "quantidadeAproximada": true,
+          "pesoPacote": 1400,
+          "nutricional": {
+            "valorEnergetico": "34kcal (2% VD)",
+            "carboidratos": "5,7g (2% VD)",
+            "acucaresTotais": null,
+            "acucaresAdicionados": null,
+            "proteinas": "0,9g (1% VD)",
+            "gordurasTotais": "0,8g (1% VD)",
+            "gordurasSaturadas": "0,3g (2% VD)",
+            "gordurasTrans": "0g (0% VD)",
+            "fibraAlimentar": "0,4g (2% VD)",
+            "sodio": "147mg (6% VD)"
+          },
+          "composicao": "Água, Farinha de Trigo, Queijo mussarela, Fubá, Sal, Margarina, Óleo de soja, Queijo provolone, Leite integral, Orégano, Cebolinha verde, Farinha de rosca.",
+          "modoPreparo": "Colocar o produto ainda congelado, em óleo pré-aquecido em 180ºC, por 3 minutos. Tempo máximo de exposição em estufa: 6 horas a 60ºC. Produto congelado, após aberto manter o pacote bem fechado para não ressecar.",
+          "armazenamento": "Congelar -12ºC. Após descongelado, não recongelar.",
+          "validadeDias": 180,
+          "contemGluten": true,
+          "contemLactose": true,
+          "alergenos": [
+            "Leite",
+            "Trigo"
+          ],
+          "especieCrustaceos": null,
+          "especiePeixes": null,
+          "avisosRotulo": null
+        }
+      }
+    },
+    {
+      "id": "71c42437-0b66-4feb-9a32-5553784186c2",
+      "produtoId": "8b037c60-a196-4179-8494-c0fbacf040c1",
+      "codigo": "3084",
+      "nomeSite": "Mini Bocadinho Palmito 30gr",
+      "nomeEtiqueta": "Mini Bocadinho Palmito 30gr",
+      "grupoIdSistema": "8a8477a5-aaf6-4a74-b894-e68d86375715",
+      "grupoNomeNoProduto_lidoAoVivoDaCategoriaProduto": "Mini Salgados para Fritar",
+      "grupoNomeAmigavelNoSite": "Mini Fritar",
+      "preparoOficialDoGrupo": "Precisa Fritar",
+      "catalogo": {
+        "id": "71c42437-0b66-4feb-9a32-5553784186c2",
+        "produtoId": "8b037c60-a196-4179-8494-c0fbacf040c1",
+        "codigo": "3084",
+        "nome": "Mini Bocadinho Palmito 30gr",
+        "descricao": "",
+        "unidade": "PT",
+        "unidades": 50,
+        "embalagem": "pacote",
+        "grupo": "8a8477a5-aaf6-4a74-b894-e68d86375715",
+        "grupoNome": "Mini Salgados para Fritar",
+        "preco": 40.49,
+        "destaque": false,
+        "ordem": 0,
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/8b037c60-a196-4179-8494-c0fbacf040c1/1782086829561-37526239.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/8b037c60-a196-4179-8494-c0fbacf040c1/1782086829561-37526239.jpg",
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/8b037c60-a196-4179-8494-c0fbacf040c1/1782086836769-108852045.jpg"
+        ],
+        "preparo": "Precisa Fritar",
+        "indisponivel": false
+      },
+      "ficha": {
+        "id": "71c42437-0b66-4feb-9a32-5553784186c2",
+        "nome": "Mini Bocadinho Palmito 30gr",
+        "codigo": "3084",
+        "unidade": "PT",
+        "unidades": 50,
+        "embalagem": "pacote",
+        "descricao": "",
+        "grupoNome": "Mini Salgados para Fritar",
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/8b037c60-a196-4179-8494-c0fbacf040c1/1782086829561-37526239.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/8b037c60-a196-4179-8494-c0fbacf040c1/1782086829561-37526239.jpg",
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/8b037c60-a196-4179-8494-c0fbacf040c1/1782086836769-108852045.jpg"
+        ],
+        "etiqueta": {
+          "pesoUnitario": 28,
+          "pesoPorcao": 28,
+          "quantidadeEmbalagem": 50,
+          "quantidadeAproximada": true,
+          "pesoPacote": 1400,
+          "nutricional": {
+            "valorEnergetico": "30kcal (2% VD)",
+            "carboidratos": "6,2g (2% VD)",
+            "acucaresTotais": null,
+            "acucaresAdicionados": null,
+            "proteinas": "0,5g (1% VD)",
+            "gordurasTotais": "0,4g (1% VD)",
+            "gordurasSaturadas": "0,0g (2% VD)",
+            "gordurasTrans": "0g (0% VD)",
+            "fibraAlimentar": "0,5g (2% VD)",
+            "sodio": "186mg (8% VD)"
+          },
+          "composicao": "Farinha de trigo, Palmito pupunha, Óleo de soja, Sal, Margarina, Azeitonas verdes, Leite integral em pó, Vinagre, Pimenta do reino, Farinha de rosca.",
+          "modoPreparo": "Colocar o produto ainda congelado, em óleo pré-aquecido em 180ºC, por 3 minutos. Tempo máximo de exposição em estufa: 6 horas a 60ºC. Produto congelado, após aberto manter o pacote bem fechado para não ressecar.",
+          "armazenamento": "Congelar -12ºC. Após descongelado, não recongelar.",
+          "validadeDias": 180,
+          "contemGluten": true,
+          "contemLactose": false,
+          "alergenos": [
+            "Trigo",
+            "Soja",
+            "Leite"
+          ],
+          "especieCrustaceos": null,
+          "especiePeixes": null,
+          "avisosRotulo": null
+        }
+      }
+    },
+    {
+      "id": "dc3883a0-aba5-4a85-ad0f-4fda23226ea2",
+      "produtoId": "56e03466-9f3d-4eb1-8b13-9afd8a1ebc58",
+      "codigo": "3972",
+      "nomeSite": "Mini Kibe Carne 30gr",
+      "nomeEtiqueta": "Mini Kibe Carne 30gr",
+      "grupoIdSistema": "8a8477a5-aaf6-4a74-b894-e68d86375715",
+      "grupoNomeNoProduto_lidoAoVivoDaCategoriaProduto": "Mini Salgados para Fritar",
+      "grupoNomeAmigavelNoSite": "Mini Fritar",
+      "preparoOficialDoGrupo": "Precisa Fritar",
+      "catalogo": {
+        "id": "dc3883a0-aba5-4a85-ad0f-4fda23226ea2",
+        "produtoId": "56e03466-9f3d-4eb1-8b13-9afd8a1ebc58",
+        "codigo": "3972",
+        "nome": "Mini Kibe Carne 30gr",
+        "descricao": "",
+        "unidade": "PT",
+        "unidades": 50,
+        "embalagem": "pacote",
+        "grupo": "8a8477a5-aaf6-4a74-b894-e68d86375715",
+        "grupoNome": "Mini Salgados para Fritar",
+        "preco": 55.22,
+        "destaque": false,
+        "ordem": 0,
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/56e03466-9f3d-4eb1-8b13-9afd8a1ebc58/1782431627850-803413728.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/56e03466-9f3d-4eb1-8b13-9afd8a1ebc58/1782431627850-803413728.jpg",
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/56e03466-9f3d-4eb1-8b13-9afd8a1ebc58/1782431179026-208931497.jpg"
+        ],
+        "preparo": "Precisa Fritar",
+        "indisponivel": false
+      },
+      "ficha": {
+        "id": "dc3883a0-aba5-4a85-ad0f-4fda23226ea2",
+        "nome": "Mini Kibe Carne 30gr",
+        "codigo": "3972",
+        "unidade": "PT",
+        "unidades": 50,
+        "embalagem": "pacote",
+        "descricao": "",
+        "grupoNome": "Mini Salgados para Fritar",
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/56e03466-9f3d-4eb1-8b13-9afd8a1ebc58/1782431627850-803413728.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/56e03466-9f3d-4eb1-8b13-9afd8a1ebc58/1782431627850-803413728.jpg",
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/56e03466-9f3d-4eb1-8b13-9afd8a1ebc58/1782431179026-208931497.jpg"
+        ],
+        "etiqueta": {
+          "pesoUnitario": 28,
+          "pesoPorcao": 28,
+          "quantidadeEmbalagem": 50,
+          "quantidadeAproximada": true,
+          "pesoPacote": 1400,
+          "nutricional": {
+            "valorEnergetico": "41kcal (2% VD)",
+            "carboidratos": "4,2g (1% VD)",
+            "acucaresTotais": null,
+            "acucaresAdicionados": null,
+            "proteinas": "3,4g (5% VD)",
+            "gordurasTotais": "1,1g (2% VD)",
+            "gordurasSaturadas": "0,4g (2% VD)",
+            "gordurasTrans": "0g (0% VD)",
+            "fibraAlimentar": "0,9g (4% VD)",
+            "sodio": "151mg (6% VD)"
+          },
+          "composicao": "Farinha de kibe, Carne bovina, Cebola, Pimenta do reino, Hortelã, Caldo de carne, Sal",
+          "modoPreparo": "Colocar o produto ainda congelado, em óleo pré-aquecido em 180ºC, por 3 minutos. Tempo máximo de exposição em estufa: 6 horas a 60ºC. Produto congelado, após aberto manter o pacote bem fechado para não ressecar.",
+          "armazenamento": "Congelar -12ºC. Após descongelado, não recongelar.",
+          "validadeDias": 180,
+          "contemGluten": true,
+          "contemLactose": false,
+          "alergenos": [
+            "Trigo",
+            "Soja"
+          ],
+          "especieCrustaceos": null,
+          "especiePeixes": null,
+          "avisosRotulo": null
+        }
+      }
+    },
+    {
+      "id": "522f3824-e324-477b-b3a9-43bedf73c57a",
+      "produtoId": "2f4dddce-1862-4f88-be5b-72fc3eeff7ec",
+      "codigo": "5183",
+      "nomeSite": "Mini Salsicha 30gr",
+      "nomeEtiqueta": "Mini Salsicha 30gr",
+      "grupoIdSistema": "8a8477a5-aaf6-4a74-b894-e68d86375715",
+      "grupoNomeNoProduto_lidoAoVivoDaCategoriaProduto": "Mini Salgados para Fritar",
+      "grupoNomeAmigavelNoSite": "Mini Fritar",
+      "preparoOficialDoGrupo": "Precisa Fritar",
+      "catalogo": {
+        "id": "522f3824-e324-477b-b3a9-43bedf73c57a",
+        "produtoId": "2f4dddce-1862-4f88-be5b-72fc3eeff7ec",
+        "codigo": "5183",
+        "nome": "Mini Salsicha 30gr",
+        "descricao": "",
+        "unidade": "PT",
+        "unidades": 50,
+        "embalagem": "pacote",
+        "grupo": "8a8477a5-aaf6-4a74-b894-e68d86375715",
+        "grupoNome": "Mini Salgados para Fritar",
+        "preco": 40.49,
+        "destaque": false,
+        "ordem": 0,
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/2f4dddce-1862-4f88-be5b-72fc3eeff7ec/1776375976335-198137396.png",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/2f4dddce-1862-4f88-be5b-72fc3eeff7ec/1776375976335-198137396.png"
+        ],
+        "preparo": "Precisa Fritar",
+        "indisponivel": false
+      },
+      "ficha": {
+        "id": "522f3824-e324-477b-b3a9-43bedf73c57a",
+        "nome": "Mini Salsicha 30gr",
+        "codigo": "5183",
+        "unidade": "PT",
+        "unidades": 50,
+        "embalagem": "pacote",
+        "descricao": "",
+        "grupoNome": "Mini Salgados para Fritar",
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/2f4dddce-1862-4f88-be5b-72fc3eeff7ec/1776375976335-198137396.png",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/2f4dddce-1862-4f88-be5b-72fc3eeff7ec/1776375976335-198137396.png"
+        ],
+        "etiqueta": {
+          "pesoUnitario": 25,
+          "pesoPorcao": 25,
+          "quantidadeEmbalagem": 50,
+          "quantidadeAproximada": true,
+          "pesoPacote": 1250,
+          "nutricional": {
+            "valorEnergetico": "34kcal (2% VD)",
+            "carboidratos": "5,7g (2% VD)",
+            "acucaresTotais": null,
+            "acucaresAdicionados": null,
+            "proteinas": "0,9g (1% VD)",
+            "gordurasTotais": "0,8g (1% VD)",
+            "gordurasSaturadas": "0,3g (2% VD)",
+            "gordurasTrans": "0g (0% VD)",
+            "fibraAlimentar": "0,4g (2% VD)",
+            "sodio": "147mg (6% VD)"
+          },
+          "composicao": "Farinha de trigo, Sal, Óleo de soja, Cebolinha verde, Salsicha, Farinha de rosca.",
+          "modoPreparo": "Colocar o produto ainda congelado, em óleo pré-aquecido em 180ºC, por 3 minutos. Tempo máximo de exposição em estufa: 6 horas a 60ºC. Produto congelado, após aberto manter o pacote bem fechado para não ressecar.",
+          "armazenamento": "Congelar -12ºC. Após descongelado, não recongelar.",
+          "validadeDias": 180,
+          "contemGluten": true,
+          "contemLactose": false,
+          "alergenos": [
+            "Trigo",
+            "Soja"
+          ],
+          "especieCrustaceos": null,
+          "especiePeixes": null,
+          "avisosRotulo": null
+        }
+      }
+    },
+    {
+      "id": "466e752b-6572-4117-a59b-ef0a196adc71",
+      "produtoId": "f75cd6cf-0259-411b-864b-45beb7d05130",
+      "codigo": "3083",
+      "nomeSite": "Mini Croquete de Carne 30gr",
+      "nomeEtiqueta": "Mini Croquete de Carne 30gr",
+      "grupoIdSistema": "8a8477a5-aaf6-4a74-b894-e68d86375715",
+      "grupoNomeNoProduto_lidoAoVivoDaCategoriaProduto": "Mini Salgados para Fritar",
+      "grupoNomeAmigavelNoSite": "Mini Fritar",
+      "preparoOficialDoGrupo": "Precisa Fritar",
+      "catalogo": {
+        "id": "466e752b-6572-4117-a59b-ef0a196adc71",
+        "produtoId": "f75cd6cf-0259-411b-864b-45beb7d05130",
+        "codigo": "3083",
+        "nome": "Mini Croquete de Carne 30gr",
+        "descricao": "",
+        "unidade": "PT",
+        "unidades": 50,
+        "embalagem": "pacote",
+        "grupo": "8a8477a5-aaf6-4a74-b894-e68d86375715",
+        "grupoNome": "Mini Salgados para Fritar",
+        "preco": 40.49,
+        "destaque": false,
+        "ordem": 0,
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/f75cd6cf-0259-411b-864b-45beb7d05130/1782427619704-479492583.png",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/f75cd6cf-0259-411b-864b-45beb7d05130/1782427619704-479492583.png",
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/f75cd6cf-0259-411b-864b-45beb7d05130/1782077376371-818473244.jpg"
+        ],
+        "preparo": "Precisa Fritar",
+        "indisponivel": false
+      },
+      "ficha": {
+        "id": "466e752b-6572-4117-a59b-ef0a196adc71",
+        "nome": "Mini Croquete de Carne 30gr",
+        "codigo": "3083",
+        "unidade": "PT",
+        "unidades": 50,
+        "embalagem": "pacote",
+        "descricao": "",
+        "grupoNome": "Mini Salgados para Fritar",
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/f75cd6cf-0259-411b-864b-45beb7d05130/1782427619704-479492583.png",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/f75cd6cf-0259-411b-864b-45beb7d05130/1782427619704-479492583.png",
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/f75cd6cf-0259-411b-864b-45beb7d05130/1782077376371-818473244.jpg"
+        ],
+        "etiqueta": {
+          "pesoUnitario": 28,
+          "pesoPorcao": 28,
+          "quantidadeEmbalagem": 50,
+          "quantidadeAproximada": true,
+          "pesoPacote": 1400,
+          "nutricional": {
+            "valorEnergetico": "40kcal (2% VD)",
+            "carboidratos": "6,4g (2% VD)",
+            "acucaresTotais": null,
+            "acucaresAdicionados": null,
+            "proteinas": "1,4g (2% VD)",
+            "gordurasTotais": "0,7g (1% VD)",
+            "gordurasSaturadas": "0,2g (1% VD)",
+            "gordurasTrans": "0g (0% VD)",
+            "fibraAlimentar": "0,5g (2% VD)",
+            "sodio": "152mg (6% VD)"
+          },
+          "composicao": "Farinha de trigo, Carne bovina, Cebola, Açúcar, Banha, Caldo de carne, Cebolinha verde, Proteína de soja, Glutamato monossódico, Margarina, Sal, Pimenta do reino, Óleo de soja, Leite integral, Farinha de rosca.",
+          "modoPreparo": "Colocar o produto ainda congelado, em óleo pré-aquecido em 180ºC, por 3 minutos. Tempo máximo de exposição em estufa: 6 horas a 60ºC. Produto congelado, após aberto manter o pacote bem fechado para não ressecar.",
+          "armazenamento": "Congelar -12ºC. Após descongelado, não recongelar.",
+          "validadeDias": 180,
+          "contemGluten": true,
+          "contemLactose": false,
+          "alergenos": [
+            "Trigo",
+            "Soja"
+          ],
+          "especieCrustaceos": null,
+          "especiePeixes": null,
+          "avisosRotulo": null
+        }
+      }
+    },
+    {
+      "id": "86e1279c-9767-4250-8d76-6142ffcdeef8",
+      "produtoId": "27e6f73c-4c1a-4c72-9f64-0414b0b214df",
+      "codigo": "3085",
+      "nomeSite": "Mini Travesseiro Pizza 30gr",
+      "nomeEtiqueta": "Mini Travesseiro Pizza 30gr",
+      "grupoIdSistema": "8a8477a5-aaf6-4a74-b894-e68d86375715",
+      "grupoNomeNoProduto_lidoAoVivoDaCategoriaProduto": "Mini Salgados para Fritar",
+      "grupoNomeAmigavelNoSite": "Mini Fritar",
+      "preparoOficialDoGrupo": "Precisa Fritar",
+      "catalogo": {
+        "id": "86e1279c-9767-4250-8d76-6142ffcdeef8",
+        "produtoId": "27e6f73c-4c1a-4c72-9f64-0414b0b214df",
+        "codigo": "3085",
+        "nome": "Mini Travesseiro Pizza 30gr",
+        "descricao": "",
+        "unidade": "PT",
+        "unidades": 50,
+        "embalagem": "pacote",
+        "grupo": "8a8477a5-aaf6-4a74-b894-e68d86375715",
+        "grupoNome": "Mini Salgados para Fritar",
+        "preco": 40.49,
+        "destaque": false,
+        "ordem": 0,
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/27e6f73c-4c1a-4c72-9f64-0414b0b214df/1782427645613-675604197.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/27e6f73c-4c1a-4c72-9f64-0414b0b214df/1782427645613-675604197.jpg",
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/27e6f73c-4c1a-4c72-9f64-0414b0b214df/1782076412302-599254944.jpg"
+        ],
+        "preparo": "Precisa Fritar",
+        "indisponivel": false
+      },
+      "ficha": {
+        "id": "86e1279c-9767-4250-8d76-6142ffcdeef8",
+        "nome": "Mini Travesseiro Pizza 30gr",
+        "codigo": "3085",
+        "unidade": "PT",
+        "unidades": 50,
+        "embalagem": "pacote",
+        "descricao": "",
+        "grupoNome": "Mini Salgados para Fritar",
+        "imagem": "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/27e6f73c-4c1a-4c72-9f64-0414b0b214df/1782427645613-675604197.jpg",
+        "imagens": [
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/27e6f73c-4c1a-4c72-9f64-0414b0b214df/1782427645613-675604197.jpg",
+          "https://cahardt-github.xrqvlq.easypanel.host/uploads/produtos/27e6f73c-4c1a-4c72-9f64-0414b0b214df/1782076412302-599254944.jpg"
+        ],
+        "etiqueta": {
+          "pesoUnitario": 28,
+          "pesoPorcao": 28,
+          "quantidadeEmbalagem": 50,
+          "quantidadeAproximada": true,
+          "pesoPacote": 1400,
+          "nutricional": {
+            "valorEnergetico": "35kcal (2% VD)",
+            "carboidratos": "6,4g (2% VD)",
+            "acucaresTotais": null,
+            "acucaresAdicionados": null,
+            "proteinas": "0,9g (1% VD)",
+            "gordurasTotais": "0,6g (1% VD)",
+            "gordurasSaturadas": "0,2g (1% VD)",
+            "gordurasTrans": "0g (0% VD)",
+            "fibraAlimentar": "0,5g (2% VD)",
+            "sodio": "151mg (6% VD)"
+          },
+          "composicao": "Farinha de Trigo, Caldo legumes, Queijo mussarela, Queijo provolone, Orégano, Margarina, Sal, Óleo de soja, Leite integral, Apresuntado, Farinha de rosca.",
+          "modoPreparo": "Colocar o produto ainda congelado, em óleo pré-aquecido em 180ºC, por 17 minutos. Tempo máximo de exposição em estufa: 6 horas a 60ºC. Produto congelado, após aberto manter o pacote bem fechado para não ressecar.",
+          "armazenamento": "Congelar -12ºC. Após descongelado, não recongelar.",
+          "validadeDias": 180,
+          "contemGluten": true,
+          "contemLactose": true,
+          "alergenos": [
+            "Trigo",
+            "Soja",
+            "Leite"
+          ],
+          "especieCrustaceos": null,
+          "especiePeixes": null,
+          "avisosRotulo": null
+        }
+      }
+    }
+  ]
+}
