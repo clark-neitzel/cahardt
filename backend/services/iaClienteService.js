@@ -10,6 +10,13 @@ const { normalizarCidade } = require('../utils/cidade'); // grafia oficial da ci
 const iaPedidoService = require('./iaPedidoService');
 const iaProduto = require('./iaProdutoSerializer');
 const iaConsultaConfig = require('../config/iaConsultaConfig');
+// v1.6.3 — mesma normalização de WhatsApp da tela de Clientes (clienteController), pro número
+// gravar com a MESMA cara não importa quem grava (app ou este endpoint da API de IA).
+const { soDigitosWhatsapp, whatsappValido } = require('../utils/whatsapp');
+
+// v1.6.3 — origens aceitas em adicionarWhatsapp (quem gravou, pra auditoria). Lista fechada de
+// propósito: não é texto livre vindo de fora.
+const ORIGENS_WHATSAPP_VALIDAS = ['painel-bot', 'ana'];
 
 const soDigitos = (s) => String(s || '').replace(/\D/g, '');
 const dec = (v) => (v == null ? 0 : Number(v));
@@ -511,6 +518,133 @@ const iaClienteService = {
                 ...(fornecedor.uf ? { uf: fornecedor.uf } : {}),
             },
         };
+    },
+
+    // v1.6.3 — 🔒 SÓ PAINEL, nunca tool da IA: o painel do bot vincula manualmente uma conversa a
+    // um cliente (por documento) e grava esse número no cadastro do CA-Hardt, pro reconhecimento
+    // por telefone (aqui e em congeladosService) passar a casar automaticamente dali pra frente —
+    // inclusive pra Ana. Só ACRESCENTA (nunca apaga/substitui número existente) e nunca devolve
+    // dado nenhum do cliente: por isso não fere a regra "nunca liberar dado só com CPF/CNPJ".
+    async adicionarWhatsapp(documentoRaw, whatsappRaw, origemRaw) {
+        // origem: lista fechada (não é texto livre) — vai pra auditoria, então precisa ser algo
+        // que a gente reconheça quem é.
+        const origem = origemRaw == null || origemRaw === '' ? 'painel-bot' : String(origemRaw).trim();
+        if (!ORIGENS_WHATSAPP_VALIDAS.includes(origem)) {
+            const e = new Error(`Origem inválida — use um destes valores: ${ORIGENS_WHATSAPP_VALIDAS.join(', ')}.`);
+            e.status = 400; e.code = 'ORIGEM_INVALIDA';
+            throw e;
+        }
+
+        const docAlvo = normalizarDoc(documentoRaw);
+        if (!docAlvo || docAlvo.length < 11) {
+            const e = new Error('Informe o CPF/CNPJ completo do cliente.');
+            e.status = 400; e.code = 'DOCUMENTO_INVALIDO';
+            throw e;
+        }
+
+        // Mesmo padrão de busca tolerante a pontuação usada em fichaPorDocumento.
+        let cliente = await prisma.cliente.findUnique({
+            where: { Documento: docAlvo },
+            include: { whatsapp: { select: { numeros: true } } },
+        });
+        if (!cliente) {
+            const todos = await prisma.cliente.findMany({
+                where: { Documento: { not: null } },
+                include: { whatsapp: { select: { numeros: true } } },
+            });
+            cliente = todos.find(c => normalizarDoc(c.Documento) === docAlvo) || null;
+        }
+        if (!cliente) {
+            const fornecedor = await _fornecedorPorDocumento(docAlvo);
+            const e = new Error(fornecedor
+                ? 'Este documento é de um fornecedor, não de um cliente — não é possível vincular WhatsApp de cliente aqui.'
+                : 'Cliente não encontrado para este documento.');
+            e.status = fornecedor ? 400 : 404;
+            e.code = fornecedor ? 'NAO_E_CLIENTE' : 'CLIENTE_NAO_ENCONTRADO';
+            throw e;
+        }
+
+        // v1.6.3 (revisor): mesma normalização da tela de Clientes (clienteController /
+        // backend/utils/whatsapp.js) — só dígitos, 10 a 13, SEM tirar o DDI 55. O número grava
+        // com a mesma cara não importa quem gravou (app ou este endpoint).
+        const num = soDigitosWhatsapp(whatsappRaw);
+        if (!whatsappValido(num)) {
+            const e = new Error('WhatsApp inválido — informe DDD + número (10 a 13 dígitos).');
+            e.status = 400; e.code = 'WHATSAPP_INVALIDO';
+            throw e;
+        }
+
+        // Duplicidade: mesma tolerância de sempre (com/sem 9º dígito, com/sem DDI 55) — tanto
+        // contra a lista de WhatsApps quanto contra Telefone/Telefone_Celular/Telefone_Comercial
+        // do próprio cadastro (o pedido explicitamente cobre os dois casos). Essa checagem é a
+        // "de verdade" (tolerante); a leitura aqui pode estar desatualizada sob concorrência —
+        // o INSERT atômico abaixo é a rede final contra duplicata EXATA.
+        const chaveNovo = chaveTelefone(num);
+        const existentes = listaWhatsapps(cliente);
+        const jaExistiaNaLeitura = existentes.some(n => chaveTelefone(n) === chaveNovo)
+            || listaTelefones(cliente).some(n => chaveTelefone(n) === chaveNovo);
+        if (jaExistiaNaLeitura) {
+            return { ok: true, jaExistia: true, tipo: 'CLIENTE', numeroGravado: num };
+        }
+        // Fast-path (evita ida ao banco no caso comum) — o WHERE do INSERT abaixo é quem
+        // decide de verdade, contra concorrência.
+        if (existentes.length >= 10) {
+            const e = new Error('Este cliente já tem 10 WhatsApps vinculados — remova algum na tela de Clientes antes de adicionar outro.');
+            e.status = 400; e.code = 'LIMITE_WHATSAPPS';
+            throw e;
+        }
+
+        // v1.6.3 (revisor): gravação ATÔMICA via SQL parametrizado — ler a lista em JS e fazer
+        // upsert (como era antes) tem corrida: duas chamadas simultâneas pro mesmo cliente podem
+        // ler a mesma lista "antiga" e uma sobrescrever o número que a outra acabou de gravar.
+        // `array_append` dentro do próprio UPDATE (não em JS) resolve isso; o WHERE garante, no
+        // mesmo comando, que não duplica um número exato nem passa de 10 — se a condição falhar,
+        // 0 linhas são afetadas (nem o INSERT nem o UPDATE acontecem).
+        const linhasAfetadas = await prisma.$executeRaw`
+            INSERT INTO cliente_whatsapps (cliente_uuid, numeros)
+            VALUES (${cliente.UUID}, ARRAY[${num}]::text[])
+            ON CONFLICT (cliente_uuid) DO UPDATE
+                SET numeros = array_append(cliente_whatsapps.numeros, ${num})
+                WHERE NOT (${num} = ANY(cliente_whatsapps.numeros))
+                    AND (array_length(cliente_whatsapps.numeros, 1) IS NULL OR array_length(cliente_whatsapps.numeros, 1) < 10)
+        `;
+
+        if (linhasAfetadas === 0) {
+            // Concorrência: entre a leitura tolerante acima e este INSERT, outra chamada pode ter
+            // gravado exatamente esse número (aí é sucesso, só que "de novo") ou o cliente pode ter
+            // batido no limite de 10 nesse meio-tempo. Reconferir o estado real antes de decidir.
+            const atual = await prisma.clienteWhatsapp.findUnique({
+                where: { clienteUuid: cliente.UUID },
+                select: { numeros: true },
+            });
+            const numerosAtuais = atual?.numeros || [];
+            if (numerosAtuais.some(n => chaveTelefone(n) === chaveNovo)) {
+                return { ok: true, jaExistia: true, tipo: 'CLIENTE', numeroGravado: num };
+            }
+            const e = new Error('Este cliente já tem 10 WhatsApps vinculados — remova algum na tela de Clientes antes de adicionar outro.');
+            e.status = 400; e.code = 'LIMITE_WHATSAPPS';
+            throw e;
+        }
+
+        // Auditoria fora da gravação principal — falha de log não desfaz o vínculo já salvo.
+        // AuditLog.usuarioId/usuarioNome são String livres (sem FK) — para ação de sistema/API
+        // gravamos a origem declarada (lista fechada, validada no topo desta função).
+        try {
+            await prisma.auditLog.create({
+                data: {
+                    acao: 'CLIENTE_WHATSAPP_ADICIONADO_API_IA',
+                    entidade: 'Cliente',
+                    entidadeId: cliente.UUID,
+                    usuarioId: origem,
+                    usuarioNome: origem,
+                    detalhes: JSON.stringify({ documento: docAlvo, numero: num }),
+                },
+            });
+        } catch (logErr) {
+            console.error('[IaCliente] falha ao gravar auditoria de WhatsApp adicionado (número já gravado):', logErr.message);
+        }
+
+        return { ok: true, jaExistia: false, tipo: 'CLIENTE', numeroGravado: num };
     },
 
     // Cria um Lead (prospect) reaproveitando o mesmo serviço do CRM interno — aparece igual pros

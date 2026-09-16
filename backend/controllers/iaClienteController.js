@@ -4,7 +4,9 @@ const svc = require('../services/iaClienteService');
 // fechado, v1.6.0 — ex.: PROMOCAO_INVALIDA nos pedidos; aqui hoje nenhum, mas o padrão é o mesmo).
 const erro = (res, e, ctx) => {
     console.error(`[IaCliente] ${ctx}:`, e.message);
-    res.status(400).json(e.code ? { error: e.message, code: e.code } : { error: e.message });
+    // e.status (v1.6.3): erro com código fechado pode declarar o status HTTP certo (ex.: 404
+    // "cliente não encontrado"). Sem e.status, cai no 400 de sempre.
+    res.status(e.status && e.status < 500 ? e.status : 400).json(e.code ? { error: e.message, code: e.code } : { error: e.message });
 };
 
 module.exports = {
@@ -37,6 +39,12 @@ module.exports = {
     situacao: async (req, res) => {
         try { res.json(await svc.situacaoFinanceira(req.body.telefone)); }
         catch (e) { erro(res, e, 'situacao'); }
+    },
+    // v1.6.3 — 🔒 SÓ PAINEL, nunca tool da IA: grava (não libera) um WhatsApp no cadastro do
+    // cliente, a partir da tela logada da equipe que vinculou a conversa manualmente.
+    adicionarWhatsapp: async (req, res) => {
+        try { res.json(await svc.adicionarWhatsapp(req.body.documento, req.body.whatsapp, req.body.origem)); }
+        catch (e) { erro(res, e, 'adicionarWhatsapp'); }
     },
     // GET /cliente/pedido/:numero?telefone=...&fonte=PEDIDO|FILA — exige o telefone (mesma regra).
     pedidoPorNumero: async (req, res) => {

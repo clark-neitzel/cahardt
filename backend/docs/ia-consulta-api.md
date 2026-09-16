@@ -75,6 +75,7 @@ mencionada na mensagem. Assim a mudança nunca pega o app de surpresa.
 | POST | `/cliente/criar-lead` | `{ nomeEstabelecimento, whatsapp, contato?, cidade?, observacoes? }` | Cria um prospect no CRM interno (mesma tabela que os vendedores veem). Retorna `{ id, numero, etapa }`. `origemLead` é sempre fixado como `"WHATSAPP_IA"`. **(v1.5.1)** a `cidade` é gravada com a grafia oficial (`"JOINVILLE"`/`"joinvile"` → `"Joinville"`, `"ITAPOA"` → `"Itapoá"`) — mande como o cliente escreveu, sem tratar. **(09/2026, cadastro oficial de cidades)** cidade que não existe na lista do CA-Hardt **continua sendo aceita** (modo tolerante): o lead é criado normalmente e a cidade vira uma pendência interna para o escritório cadastrar ou corrigir. Nunca devolve erro por causa da cidade; a resposta não mudou |
 | POST | `/cliente/buscar` | `{ busca, limite? }` (mín. 3 caracteres; padrão 10, máx 20) | **(v1.5, só painel da equipe)** Busca parcial por Razão Social, Nome Fantasia ou CPF/CNPJ (11+ dígitos = documento) em **clientes e fornecedores**. Retorna `{ clientes:[{tipo,documento,nome,nomeFantasia,cidade,vendedor,ativo,telefones,whatsapps}] }` — `tipo` é `"CLIENTE"` ou `"FORNECEDOR"` (v1.6.2). Ver seção "Busca e ficha para o painel". |
 | POST | `/cliente/ficha` | `{ documento }` (com ou sem pontuação) | **(v1.5, só painel da equipe)** Ficha de UM cliente pela chave `documento`. Retorna `{ encontrado, tipo, cliente:{nome,nomeFantasia,documento,cidade,vendedor,ativo}, diasEntrega, diasVenda, condicaoPagamento, whatsapps, telefones }`. **(v1.6)** + `horaCorte`; `condicaoPagamento` com os mesmos extras do reconhecimento. **(v1.6.2)** se o documento não é de cliente, procura em fornecedor (`tipo:"FORNECEDOR"`, `horaCorte:null` + objeto `fornecedor`); documento nos dois cadastros = cliente prioridade + `tambemFornecedor:true` |
+| POST | `/cliente/adicionar-whatsapp` | `{ documento, whatsapp, origem? }` (`origem`: `"painel-bot"` padrão ou `"ana"`) | **(v1.6.3, 🔒 só painel da equipe — NUNCA tool da IA)** Grava um WhatsApp no cadastro do cliente (tabela `cliente_whatsapps`), gravação atômica, só ACRESCENTA (nunca apaga/substitui). Retorna `{ ok:true, jaExistia, tipo:"CLIENTE", numeroGravado }`. Erros: `404 CLIENTE_NAO_ENCONTRADO`, `400 NAO_E_CLIENTE` (documento é de fornecedor), `400 WHATSAPP_INVALIDO`, `400 LIMITE_WHATSAPPS` (máx. 10), `400 ORIGEM_INVALIDA`. Ver seção "Busca e ficha para o painel". |
 | POST | `/congelados/pedido` | `{ telefone, itens:[{id,quantidade,promocaoId?}], data?, modo?, observacoes?, observacaoInterna?, origem?, idempotencyKey?, visitante?:{nome,telefone,cpf?} }` | **(v1.4)** Cria pedido de Congelados na fila de aprovação (`AGUARDANDO`; `PENDENTE_CADASTRO` se telefone novo). Preço recalculado no servidor. Retorna `{ id, numero, status, total }`. **(v1.6)** aceita `itens[].promocaoId` (validada e recalculada aqui — `precoUnit` no body é ignorado), `observacaoInterna` (só a equipe vê) e `origem` (sempre gravado `WHATSAPP_IA`); a resposta ganha `origem` e `itens[]` (com `produto`), inclusive na repetição por `idempotencyKey`. Erros com `code`: `VISITANTE_SEM_CPF`, `PROMOCAO_INVALIDA`, `PROMOCAO_NAO_LIBERADA`. Ver "Fase 2" e "v1.6.0". |
 | POST | `/kitfesta/pedido` | `{ telefone, itens:[{id,quantidade,opcao?}], modo, data, horario, enderecoEntrega?, cep?, cupomCodigo?, observacoes?, idempotencyKey?, visitante?:{nome,telefone,cpf?} }` | **(v1.4)** Cria pedido de Kit Festa na fila de aprovação. Webhook automático desligado (a Ana confirma). Retorna `{ id, numero, status, total }`. Ver "Fase 2". |
 
@@ -251,6 +252,51 @@ formato: `documento` vem como está gravado no cadastro (normalizado, sem pontua
 WhatsApp (campo "WhatsApps" na tela de cliente, tabela `cliente_whatsapps`). Os dois
 `reconhecer-telefone` (geral e Congelados) casam também por esses números, com a mesma tolerância
 de sempre (com/sem 9º dígito, com/sem DDI 55, ignorando pontuação).
+
+**`POST /cliente/adicionar-whatsapp` (v1.6.3)** — body `{ "documento": "12345678000190", "whatsapp": "47999991234", "origem": "painel-bot" }`
+(`origem` opcional, padrão `"painel-bot"`).
+
+Existe para o painel gravar, no cadastro do cliente, o número de WhatsApp da conversa que a equipe
+acabou de vincular manualmente — depois disso o reconhecimento automático por telefone (aqui e em
+`congelados/reconhecer-telefone`) passa a casar sozinho da próxima vez, sem precisar vincular de
+novo. **Não libera nenhum dado do cliente** (a resposta não devolve nada do cadastro além do que já
+foi enviado) — por isso, mesmo sendo chamado só com `documento`, não fere a regra "nunca liberar
+dado de cliente só com CPF/CNPJ digitado": aqui não há liberação, só gravação, e quem decide gravar
+é a equipe logada no painel, não a IA.
+
+- **Só ACRESCENTA.** Nunca apaga nem substitui um número já salvo — mesmo padrão de
+  `clienteController.normalizarWhatsapps` (a tela de Clientes é quem remove, se precisar).
+- **`whatsapp` é normalizado com a MESMA função da tela de Clientes** (`backend/utils/whatsapp.js`,
+  compartilhada com `clienteController.normalizarWhatsapps`): só tira o que não é dígito — **não
+  retira o DDI 55** — e precisa sobrar entre 10 e 13 dígitos, senão `400 WHATSAPP_INVALIDO`. Um
+  número grava com a mesma cara não importa se foi pela tela de Clientes ou por este endpoint
+  (ex.: mandar `"5547999991234"` grava exatamente `"5547999991234"`, com o 55).
+- Antes de gravar, compara o número (mesma tolerância de 9º dígito/DDI 55 de sempre) contra a lista
+  `cliente_whatsapps.numeros` **e** contra `Telefone`/`Telefone_Celular`/`Telefone_Comercial` do
+  cadastro — se já bater com qualquer um dos dois, devolve `jaExistia:true` **sem gravar de novo**
+  (idempotente; seguro chamar mais de uma vez com o mesmo número).
+- **Gravação atômica** (SQL parametrizado, `INSERT ... ON CONFLICT DO UPDATE SET numeros =
+  array_append(...)`): duas chamadas simultâneas para o mesmo cliente com números diferentes não se
+  perdem uma à outra (o append acontece dentro do próprio comando SQL, não lendo-modificando-gravando
+  em JS). O mesmo comando garante, atomicamente, que não duplica um número exato e que não passa de
+  10 — se qualquer uma das duas condições falhar, 0 linhas são afetadas e o endpoint reconfere o
+  estado real antes de responder (`jaExistia:true` se alguém gravou o mesmo número entre a checagem
+  e o INSERT; `400 LIMITE_WHATSAPPS` se o limite foi batido nesse meio-tempo).
+- Limite de 10 WhatsApps por cliente — acima disso, `400 LIMITE_WHATSAPPS` (a tela de Clientes
+  resolve manualmente removendo algum).
+- Documento que não existe como cliente: `404 CLIENTE_NAO_ENCONTRADO`. Documento que existe só como
+  **fornecedor**: `400 NAO_E_CLIENTE` (este endpoint é só para o cadastro de cliente).
+- `origem` (opcional, padrão `"painel-bot"`) é uma **lista fechada**: só `"painel-bot"` ou `"ana"` —
+  qualquer outro valor devolve `400 ORIGEM_INVALIDA`. Vai para a auditoria (não é texto livre).
+- Toda gravação é auditada em `AuditLog` (`acao: "CLIENTE_WHATSAPP_ADICIONADO_API_IA"`,
+  `entidade: "Cliente"`, `entidadeId` = UUID do cliente, `usuarioId`/`usuarioNome` = `origem`
+  enviada no body, `detalhes` com `documento`/`numero`) — best-effort, fora da gravação principal;
+  falha no log nunca desfaz o vínculo já salvo.
+- Resposta: `{ "ok": true, "jaExistia": false, "tipo": "CLIENTE", "numeroGravado": "5547999991234" }`.
+
+🔒 **Só painel** — não é tool da IA (não entra em `iaConsultaRoutes.js` como algo que a Ana chama
+para responder cliente). Ver `docs/api-ia-v1.6.3-para-o-bot.md` para a versão desse guia voltada ao
+time do bot.
 
 ## v1.6.0 — dados para a Ana tirar o pedido semanal (2026-09-10)
 
@@ -555,6 +601,10 @@ curl -H "x-ia-api-key: SUACHAVE" -X POST -H "Content-Type: application/json" \
 # v1.6.2 — ficha de fornecedor pelo documento
 curl -H "x-ia-api-key: SUACHAVE" -X POST -H "Content-Type: application/json" \
   -d '{"documento":"<cnpj do fornecedor>"}' https://<dominio>/api/ia-consulta/v1/cliente/ficha
+# v1.6.3 — painel vincula o WhatsApp da conversa ao cadastro do cliente
+curl -H "x-ia-api-key: SUACHAVE" -X POST -H "Content-Type: application/json" \
+  -d '{"documento":"12345678000190","whatsapp":"5547999991234","origem":"painel-bot"}' \
+  https://<dominio>/api/ia-consulta/v1/cliente/adicionar-whatsapp
 ```
 
 ## Histórico de versões
@@ -645,6 +695,26 @@ curl -H "x-ia-api-key: SUACHAVE" -X POST -H "Content-Type: application/json" \
   sempre traz esse campo). Documento
   em ambos os cadastros: cliente tem prioridade e a resposta ganha `tambemFornecedor:true`. **Tudo
   aditivo** — nenhum campo removido/renomeado.
+- **1.6.3** (2026-09-16) — Novo `POST /cliente/adicionar-whatsapp` (🔒 só painel, nunca tool da IA):
+  o painel do bot vincula manualmente uma conversa do WhatsApp a um cliente (por documento) e
+  grava esse número no cadastro do CA-Hardt (`cliente_whatsapps`), para o reconhecimento por
+  telefone passar a casar automaticamente dali pra frente (inclusive para a Ana). Body
+  `{ documento, whatsapp, origem? }`; retorna `{ ok, jaExistia, tipo:"CLIENTE", numeroGravado }`.
+  Só ACRESCENTA (nunca apaga/substitui número existente); compara contra a lista de WhatsApps e
+  contra os telefones do cadastro com a mesma tolerância de sempre (9º dígito/DDI 55) antes de
+  gravar, devolvendo `jaExistia:true` sem duplicar. `whatsapp` normalizado com a MESMA função da
+  tela de Clientes (`backend/utils/whatsapp.js`, compartilhada com
+  `clienteController.normalizarWhatsapps`) — só dígitos, 10 a 13, sem tirar o DDI 55, pro número
+  gravar igual não importa quem grava. Gravação **atômica** por SQL parametrizado (`INSERT ...
+  ON CONFLICT DO UPDATE SET numeros = array_append(...)` com o limite e a checagem de duplicata
+  exata no próprio `WHERE`) — corrigido depois de revisão de código: ler a lista em JS e fazer
+  upsert tinha corrida (duas chamadas simultâneas podiam perder um número). Limite de 10 números
+  por cliente (`400 LIMITE_WHATSAPPS`); documento que não é cliente devolve
+  `404 CLIENTE_NAO_ENCONTRADO` ou, se for fornecedor, `400 NAO_E_CLIENTE`; `origem` é lista fechada
+  (`"painel-bot"` padrão ou `"ana"` — outro valor dá `400 ORIGEM_INVALIDA`). Gravação auditada em
+  `AuditLog`. **Não libera nenhum dado do cliente** — só grava um número a mais — por isso não fere
+  a regra de segurança "nunca liberar dado só com CPF/CNPJ". Endpoint 100% novo — nenhum campo de
+  nenhuma resposta existente mudou.
 
 ## Fase 2 — Criação de pedido pela IA (IMPLEMENTADA na v1.4)
 

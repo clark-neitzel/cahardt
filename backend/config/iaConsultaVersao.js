@@ -56,7 +56,19 @@
 // inscricaoEstadual/uf, só com o que existir no cadastro). Documento cadastrado nos dois ao mesmo
 // tempo: cliente tem prioridade e a resposta ganha `tambemFornecedor: true`. Tudo aditivo —
 // nenhum campo removido/renomeado.
-const VERSAO_API = '1.6.2';
+// · 1.6.3 (2026-09-16) novo POST cliente/adicionar-whatsapp (🔒 SÓ PAINEL, nunca tool da IA):
+// o painel do bot vincula manualmente uma conversa a um cliente (por documento) e grava esse
+// número no cadastro do CA-Hardt (tabela cliente_whatsapps), pro reconhecimento por telefone
+// passar a casar automaticamente dali pra frente (inclusive pra Ana). Body { documento, whatsapp,
+// origem? } (origem: "painel-bot" padrão ou "ana" — lista fechada); devolve { ok, jaExistia,
+// tipo:"CLIENTE", numeroGravado }. Só ACRESCENTA (nunca apaga nem substitui número existente);
+// gravação ATÔMICA por SQL parametrizado (INSERT...ON CONFLICT DO UPDATE array_append, com limite
+// de 10 e checagem de duplicata exata no próprio WHERE — ler/montar lista em JS tinha corrida sob
+// chamadas simultâneas); whatsapp normalizado com a MESMA função da tela de Clientes
+// (backend/utils/whatsapp.js, compartilhada com clienteController), sem tirar o DDI 55. Não libera
+// nenhum dado do cliente — por isso não fere a regra de segurança "nunca liberar dado só com
+// CPF/CNPJ". Endpoint 100% novo — nenhum campo de nenhuma resposta existente foi alterado.
+const VERSAO_API = '1.6.3';
 
 const AVISOS = [
     // AVISO INFORMATIVO (v1.6.0, não é quebra de contrato): nenhum campo removido/renomeado.

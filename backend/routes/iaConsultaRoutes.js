@@ -87,6 +87,11 @@ v1.post('/cliente/ficha', iaClienteCtrl.ficha);
 // fala de cobrança; o bot usa isso só para avisar a equipe quando um pedido entra para um
 // cliente inadimplente. NUNCA expor como tool da IA.
 v1.post('/cliente/situacao', iaClienteCtrl.situacao);
+// v1.6.3 — painel vincula manualmente uma conversa a um cliente (por documento) e grava o
+// WhatsApp no cadastro, pro reconhecimento por telefone passar a ser automático dali pra frente
+// (inclusive pra Ana). 🔒 SÓ PAINEL, igual buscar/ficha/situacao — NUNCA vira tool da IA. Não
+// libera dado nenhum (só acrescenta um número), por isso não fere a regra "nunca só com CPF/CNPJ".
+v1.post('/cliente/adicionar-whatsapp', iaClienteCtrl.adicionarWhatsapp);
 
 router.use('/v1', v1);
 

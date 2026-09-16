@@ -4,15 +4,18 @@ const consultaCnpjService = require('../services/consultaCnpjService');
 const { normalizarDoc, validarDoc, ehCnpj } = require('../utils/documento');
 const { normalizarCidade } = require('../utils/cidade'); // grafia oficial da cidade (Fase 1 — blindagem da escrita)
 const cidadeService = require('../services/cidadeService'); // cadastro oficial de cidades (09/2026): só aceita cidade da lista
+// v1.6.3: normalização compartilhada com iaClienteService.adicionarWhatsapp — um número grava com
+// a mesma cara não importa se foi pela tela de Clientes ou pela API da IA (painel do bot).
+const { soDigitosWhatsapp, whatsappValido } = require('../utils/whatsapp');
 
 // WhatsApps vinculados ao cadastro (tabela lateral cliente_whatsapps — usados pelo painel do
 // bot de WhatsApp para achar o cliente). Normaliza para só dígitos, sem vazios nem repetidos.
 // Devolve null quando o campo não veio no body (= não mexer no que está salvo).
 function normalizarWhatsapps(lista, erros) {
     if (!Array.isArray(lista)) return null;
-    const nums = [...new Set(lista.map(v => String(v ?? '').replace(/\D/g, '')).filter(Boolean))];
+    const nums = [...new Set(lista.map(soDigitosWhatsapp).filter(Boolean))];
     for (const n of nums) {
-        if (n.length < 10 || n.length > 13) {
+        if (!whatsappValido(n)) {
             erros.push(`WhatsApp "${n}" inválido — informe DDD + número (10 a 13 dígitos)`);
         }
     }
