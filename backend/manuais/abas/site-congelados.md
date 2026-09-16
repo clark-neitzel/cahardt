@@ -65,7 +65,7 @@ Status:
 
 Ações por pedido:
 - **Vincular cliente:** procura o cadastro no Conta Azul (por nome/documento/código) e vincula ao pedido. Depois o pedido fica "Aguardando".
-- **Aprovar e gerar pedido:** cria um pedido no sistema a partir do pedido do site. Você escolhe se será **Normal** (com nota, vai ao Conta Azul) ou **Especial** (sem nota). O sistema **respeita a condição de pagamento**: se ela não permitir especial, a conversão é bloqueada. O vendedor do pedido é o vendedor do cadastro do cliente.
+- **Aprovar e gerar pedido:** cria um pedido no sistema a partir do pedido do site. Você escolhe se será **Normal** (com nota, vai ao Conta Azul) ou **Especial** (sem nota). O sistema **respeita a condição de pagamento**: se ela não permitir especial, a conversão é bloqueada. O vendedor do pedido é o vendedor do cadastro do cliente. **A data de entrega do pedido gerado é a mesma que o cliente escolheu no site/WhatsApp** (não a data em que a equipe aprovou) — corrigido em 09/2026, antes a aprovação usava o dia da aprovação como data de entrega. A tela mostra essa data já preenchida (dá para trocar antes de confirmar); se a aprovação atrasou e a data do cliente já passou, o campo fica **em branco de propósito** e o sistema recalcula sozinho para a **próxima data do dia regular do cliente a partir de amanhã** (ou amanhã, se ele não tiver dia regular) — nunca gera entrega com data no passado. Para **retirada** o mesmo dia é aceito; para **entrega** a data mínima é sempre amanhã.
 - **Recusar** (com motivo) e **Excluir** (somente administrador).
 
 ### Produtos no site

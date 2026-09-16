@@ -60,7 +60,7 @@ router.get('/ping', (req, res) => {
         ok: true,
         // Marcador de deploy: bumpar a cada mudança de backend que precise de confirmação
         // em produção (não há outro jeito de saber de fora qual versão está no ar).
-        deployMarker: 'remocao-ca-fases-1-4-2026-09-15',
+        deployMarker: 'fix-data-entrega-aprovacao-site-2026-09-16',
         uptimeSegundos: Math.round(process.uptime()),
         timestamp: new Date().toISOString(),
         openaiConfigurada: !!process.env.OPENAI_API_KEY,
@@ -7484,6 +7484,82 @@ router.get('/diag-pedido-site-condicao', async (req, res) => {
                 valorVendaProduto: i.produto ? Number(i.produto.valorVenda) : null,
                 ultimaCompraAnterior: ultimoAnterior[i.produtoId] || null,
             })),
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// GET /api/admin-exec/diag-pedido-site-data?numero=37 — SOMENTE LEITURA.
+// Investiga a data de entrega do pedido do Site Congelados / WhatsApp IA: a que o cliente
+// escolheu (cp.dataEntrega) vs. a que saiu no Pedido convertido (pedido.dataVenda — no
+// sistema, Pedido.dataVenda É a data de entrega). Bug real corrigido em 09/2026: a
+// aprovação usava `new Date()` (dia da aprovação) em vez da data escolhida pelo cliente.
+// Sem ?numero: lista os últimos 15 CONVERTIDOS com a comparação e a flag `divergente`.
+router.get('/diag-pedido-site-data', async (req, res) => {
+    try {
+        const numeroQS = req.query.numero != null ? parseInt(req.query.numero, 10) : null;
+
+        const toYMD = (d) => d ? new Date(d).toISOString().slice(0, 10) : null;
+
+        if (numeroQS) {
+            const cp = await prisma.congeladosPedido.findFirst({
+                where: { numero: numeroQS },
+                include: {
+                    pedido: { select: { numero: true, dataVenda: true, createdAt: true } },
+                    congeladosCliente: { include: { cliente: { select: { Dia_de_entrega: true } } } },
+                },
+            });
+            if (!cp) return res.status(404).json({ error: 'Pedido do site não encontrado.' });
+
+            const dataEntregaYMD = toYMD(cp.dataEntrega);
+            const dataVendaYMD = toYMD(cp.pedido?.dataVenda);
+            return res.json({
+                numero: cp.numero,
+                dataEntrega: cp.dataEntrega,
+                dataEntregaYMD,
+                diaEntrega: cp.diaEntrega,
+                encaixe: cp.encaixe,
+                modo: cp.modo,
+                origem: cp.origem,
+                observacoes: cp.observacoes,
+                status: cp.status,
+                aprovadoEm: cp.aprovadoEm,
+                clienteDiaEntrega: cp.congeladosCliente?.cliente?.Dia_de_entrega || null,
+                pedido: cp.pedido ? {
+                    numero: cp.pedido.numero,
+                    dataVenda: cp.pedido.dataVenda,
+                    dataVendaYMD,
+                    createdAt: cp.pedido.createdAt,
+                } : null,
+                divergente: !!(dataEntregaYMD && dataVendaYMD && dataEntregaYMD !== dataVendaYMD),
+            });
+        }
+
+        const lista = await prisma.congeladosPedido.findMany({
+            where: { status: 'CONVERTIDO' },
+            orderBy: { aprovadoEm: 'desc' },
+            take: 15,
+            include: { pedido: { select: { numero: true, dataVenda: true, createdAt: true } } },
+        });
+        res.json({
+            itens: lista.map(cp => {
+                const dataEntregaYMD = toYMD(cp.dataEntrega);
+                const dataVendaYMD = toYMD(cp.pedido?.dataVenda);
+                return {
+                    numeroSite: cp.numero,
+                    dataEntrega: cp.dataEntrega,
+                    dataEntregaYMD,
+                    diaEntrega: cp.diaEntrega,
+                    encaixe: cp.encaixe,
+                    modo: cp.modo,
+                    aprovadoEm: cp.aprovadoEm,
+                    pedidoNumero: cp.pedido?.numero || null,
+                    dataVenda: cp.pedido?.dataVenda || null,
+                    dataVendaYMD,
+                    divergente: !!(dataEntregaYMD && dataVendaYMD && dataEntregaYMD !== dataVendaYMD),
+                };
+            }),
         });
     } catch (e) {
         res.status(500).json({ error: e.message });

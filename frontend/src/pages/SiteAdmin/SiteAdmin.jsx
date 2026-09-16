@@ -334,13 +334,49 @@ function PedidoDetalhe({ pedido: p, onClose, onAprovar, onVincular, onRecusar, o
   );
 }
 
+// amanhã em 'YYYY-MM-DD', no fuso local (usado como min do input de data para entrega)
+function amanhaLocal() {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${mm}-${dd}`;
+}
+
+// hoje em 'YYYY-MM-DD', no fuso local (retirada pode ser no mesmo dia)
+function hojeLocal() {
+  const d = new Date();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${mm}-${dd}`;
+}
+
+// "Sexta-feira, 18/09" a partir de 'YYYY-MM-DD' (meio-dia local evita virar o dia por fuso)
+function fmtDiaSemana(dataYMD) {
+  if (!dataYMD) return '';
+  const [y, m, d] = dataYMD.split('-').map(Number);
+  if (!y || !m || !d) return '';
+  const dt = new Date(y, m - 1, d, 12, 0, 0);
+  const semana = dt.toLocaleDateString('pt-BR', { weekday: 'long' });
+  const semanaCap = semana.charAt(0).toUpperCase() + semana.slice(1);
+  return `${semanaCap}, ${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}`;
+}
+
 function AprovarModal({ pedido, onClose, onDone }) {
   const [tipo, setTipo] = useState('NORMAL');
+  const retirada = ehRetirada(pedido);
+  const minData = retirada ? hojeLocal() : amanhaLocal();
+  // Pré-preenche com a data que o cliente escolheu no site — MAS só se ela ainda não
+  // passou. Se a aprovação atrasou e a data do site já ficou no passado, deixa em
+  // branco de propósito: confirmar com o campo vazio aciona o recálculo automático no
+  // backend (próximo dia regular do cliente), em vez de mandar uma data inválida.
+  const dataSite = pedido.dataEntrega ? String(pedido.dataEntrega).slice(0, 10) : '';
+  const [data, setData] = useState(dataSite && dataSite >= minData ? dataSite : '');
   const [busy, setBusy] = useState(false);
   const [erro, setErro] = useState('');
   const confirmar = async () => {
     setErro(''); setBusy(true);
-    try { await congeladosService.aprovarPedido(pedido.id, { tipoConversao: tipo }); onDone(); }
+    try { await congeladosService.aprovarPedido(pedido.id, { tipoConversao: tipo, dataEntrega: data || '' }); onDone(); }
     catch (e) { setErro(e?.response?.data?.error || 'Erro ao aprovar.'); }
     finally { setBusy(false); }
   };
@@ -355,6 +391,28 @@ function AprovarModal({ pedido, onClose, onDone }) {
           </label>
         ))}
       </div>
+
+      <div className="mb-4">
+        <label className="text-sm font-medium text-gray-700 block mb-1">{retirada ? 'Data de retirada' : 'Data de entrega'}</label>
+        <input
+          type="date"
+          value={data}
+          min={minData}
+          onChange={e => setData(e.target.value)}
+          className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+        />
+        {data ? (
+          <p className="text-xs text-gray-500 mt-1">{fmtDiaSemana(data)}</p>
+        ) : (
+          <p className="text-xs text-gray-500 mt-1">Sem data: será usado o próximo dia de entrega regular do cliente (a partir de amanhã).</p>
+        )}
+        {pedido.encaixe && (
+          <p className="text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1 mt-2">
+            Encaixe — fora do dia regular do cliente, confirmar viabilidade
+          </p>
+        )}
+      </div>
+
       {erro && <p className="text-sm text-red-600 mb-3">{erro}</p>}
       <div className="flex gap-2 justify-end">
         <button onClick={onClose} className="px-4 py-2 text-sm text-gray-600">Cancelar</button>

@@ -1318,7 +1318,7 @@ const congeladosService = {
     },
 
     // Aprova e converte em Pedido normal/especial/bonificação
-    async adminAprovarPedido(id, { tipoConversao, dataVenda, aprovadoPorId, clienteUuid }) {
+    async adminAprovarPedido(id, { tipoConversao, dataVenda, dataEntrega, recalcular, aprovadoPorId, clienteUuid }) {
         const cp = await prisma.congeladosPedido.findUnique({
             where: { id },
             include: { itens: { include: { congeladosProduto: true } }, congeladosCliente: true },
@@ -1333,7 +1333,49 @@ const congeladosService = {
         }
         if (!cId) throw new Error('Cliente sem cadastro no app. Cadastre no Conta Azul e vincule antes de aprovar.');
 
-        const cliente = await prisma.cliente.findUnique({ where: { UUID: cId }, select: { idVendedor: true } });
+        const cliente = await prisma.cliente.findUnique({ where: { UUID: cId }, select: { idVendedor: true, Dia_de_entrega: true } });
+
+        // ── Data de entrega do Pedido (Pedido.dataVenda É a data de entrega no sistema) ──
+        // Prioridade: dataEntrega do body (YYYY-MM-DD, não vazia) → recálculo explícito
+        // (body com dataEntrega:'' ou recalcular:true — o operador limpou o campo de
+        // propósito) → cp.dataEntrega (o que o cliente escolheu no site/IA), MAS só se
+        // ainda não passou → próximo dia regular do cliente a partir de amanhã → amanhã.
+        // NUNCA "hoje" por padrão (bug real: aprovar no dia seguinte ao pedido fazia a
+        // entrega sair um dia antes do escolhido) e NUNCA reaproveitar uma data do site
+        // que já ficou no passado (aprovação atrasada não pode gerar entrega retroativa).
+        const modoAtual = cp.modo === 'retirada' ? 'retirada' : 'entrega';
+        const hojeStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+        const amanhaStr = (() => {
+            const [y, m, d] = hojeStr.split('-').map(Number);
+            return new Date(Date.UTC(y, m - 1, d + 1)).toISOString().slice(0, 10);
+        })();
+        const proximoDiaRegular = () => {
+            const proximas = iaPedidoService.proximasEntregas(diasEntregaNums(cliente?.Dia_de_entrega), 1);
+            return proximas[0] || amanhaStr;
+        };
+
+        const recalcularExplicito = recalcular === true || dataEntrega === '';
+        let dataEntregaStr = null;
+        if (dataEntrega != null && dataEntrega !== '') {
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(String(dataEntrega))) throw new Error('Data de entrega inválida.');
+            if (String(dataEntrega) < hojeStr) throw new Error('A data de entrega não pode ser no passado.');
+            // Retirada pode ser hoje; entrega precisa ser a partir de amanhã.
+            if (modoAtual !== 'retirada' && String(dataEntrega) < amanhaStr) throw new Error('A data de entrega deve ser a partir de amanhã.');
+            dataEntregaStr = String(dataEntrega);
+        } else if (recalcularExplicito) {
+            // Campo limpo pelo operador (ou recálculo pedido explicitamente): ignora
+            // cp.dataEntrega de propósito, mesmo que ela ainda seja uma data válida.
+            dataEntregaStr = proximoDiaRegular();
+        } else if (cp.dataEntrega) {
+            const cpStr = cp.dataEntrega.toISOString().slice(0, 10); // gravada com Date.UTC → mesmo dia em UTC
+            dataEntregaStr = cpStr >= hojeStr ? cpStr : proximoDiaRegular(); // já passou: recalcula sozinho, sem erro
+        } else if (dataVenda) {
+            // compatibilidade: quem já mandava dataVenda continua valendo se não vier dataEntrega
+            dataEntregaStr = null; // dataVenda tratado mais abaixo, mantém comportamento antigo
+        } else {
+            dataEntregaStr = proximoDiaRegular();
+        }
+        const dataVendaFinal = dataEntregaStr ? new Date(dataEntregaStr + 'T12:00:00Z') : (dataVenda || new Date());
 
         // Condição de pagamento do pedido (respeita permissão de especial)
         const especial = tipoConversao === 'ESPECIAL';
@@ -1376,7 +1418,7 @@ const congeladosService = {
         const novoPedido = await pedidoService.criar({
             clienteId: cId,
             vendedorId: cliente?.idVendedor || null,
-            dataVenda: dataVenda || new Date(),
+            dataVenda: dataVendaFinal,
             observacoes: `Site Congelados #${cp.numero}${cp.observacoes ? ` · ${cp.observacoes}` : ''}`,
             especial,
             bonificacao,
