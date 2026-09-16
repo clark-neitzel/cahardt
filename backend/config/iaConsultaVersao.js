@@ -68,9 +68,36 @@
 // (backend/utils/whatsapp.js, compartilhada com clienteController), sem tirar o DDI 55. Não libera
 // nenhum dado do cliente — por isso não fere a regra de segurança "nunca liberar dado só com
 // CPF/CNPJ". Endpoint 100% novo — nenhum campo de nenhuma resposta existente foi alterado.
-const VERSAO_API = '1.6.3';
+// · 1.6.4 (2026-09-16) decisão do dono: o campo `preparo` do objeto único de produto passa a vir
+// da ETIQUETA do PCP (`EtiquetaProduto.modoPreparo`, classificado com segurança por verbo —
+// fritar/assar/aquecer/cozinhar — tratando negação por cláusula, ex. "Não fritar, assar em
+// forno..." nunca vira "Para fritar") quando ela permitir classificar; o rótulo por categoria do
+// admin do site vira RESERVA (usado só sem etiqueta ativa ou texto não reconhecido). Antes o
+// contrário: SÓ a categoria, e 25 dos 51 produtos do site mostravam "Somente Aquecer" com a
+// etiqueta mandando fritar/assar. `preparoTipo` ganha o valor `COZIDO` (rótulo "Cozinhar") e
+// continua `null` para rótulo combinado ("Assar ou fritar" — mais de um verbo na etiqueta,
+// ambíguo de propósito). Campo NOVO `preparoOrigem`: "ETIQUETA" | "CATEGORIA" | null. `preparo`
+// continua string (contrato inalterado) e `modoPreparo`/`etiqueta` continuam como na 1.6.1. Tudo
+// aditivo — nenhum campo removido/renomeado; só o VALOR/fonte de `preparo`/`preparoTipo` muda
+// (aviso informativo registrado em AVISOS, já que consumidor que decorou o rótulo antigo por
+// categoria vai ver o texto mudar para muitos produtos).
+const VERSAO_API = '1.6.4';
 
 const AVISOS = [
+    // AVISO INFORMATIVO (v1.6.4, não é quebra de contrato): nenhum campo removido/renomeado —
+    // só a FONTE/VALOR de `preparo` e `preparoTipo` muda (etiqueta passa a mandar, categoria vira
+    // reserva). Quem tinha decorado os rótulos antigos por categoria vai ver texto diferente para
+    // boa parte do catálogo.
+    {
+        desde: '2026-09-16',
+        mensagem: "GET /congelados/catalogo, /congelados/meu-catalogo e o sub-objeto 'produto' em "
+            + "todo lugar que ele aparece: o campo 'preparo' passa a vir da etiqueta do PCP quando ela "
+            + "permitir classificar (verbo fritar/assar/aquecer/cozinhar reconhecido com segurança), com "
+            + "o texto por categoria do admin do site como reserva. Isso muda o VALOR de 'preparo' (e o "
+            + "de 'preparoTipo' correspondente) para boa parte do catálogo — não é mais garantido que ele "
+            + "bata com o que estava configurado por categoria. Campo novo 'preparoOrigem' "
+            + "('ETIQUETA'|'CATEGORIA'|null) informa de onde veio. Nenhum campo foi removido ou renomeado."
+    },
     // AVISO INFORMATIVO (v1.6.0, não é quebra de contrato): nenhum campo removido/renomeado.
     // O histórico passa a INCLUIR entradas novas (fila de aprovação) — um consumidor que lia
     // `pedidos[0].numero` como "último pedido real" precisa olhar `fonte`.

@@ -15,7 +15,7 @@
 const prisma = require('../config/database');
 const { normalizarDoc } = require('../utils/documento');
 const {
-    PRODUTO_INCLUDE_IA, carregarExtrasProdutos, produtoParaIA, round2, dataSP,
+    PRODUTO_INCLUDE_IA, carregarExtrasProdutos, produtoParaIA, preparoLabelDeEtiqueta, round2, dataSP,
 } = require('./iaProdutoSerializer');
 
 const dec = (v) => (v == null ? 0 : Number(v));
@@ -81,14 +81,20 @@ async function preparoPorCategoria() {
 }
 
 // ── serialização ───────────────────────────────────────────────────────────────────────────
+// Preparo: etiqueta manda (mesma prioridade do catálogo, congeladosService.catalogoPublico —
+// decisão do dono 16/09/2026), categoria é reserva.
 function itemProduto(prod, ctx) {
     if (!prod) return null;
+    const etiqueta = ctx.extras.etiquetas.get(prod.id) || null;
+    const preparoCategoria = ctx.preparos[prod.categoriaProduto?.id] || '';
+    const preparoEtiqueta = etiqueta ? preparoLabelDeEtiqueta(etiqueta.modoPreparo) : null;
     return produtoParaIA({
         produto: prod,
         cp: prod.congeladosProduto || null,
-        etiqueta: ctx.extras.etiquetas.get(prod.id) || null,
+        etiqueta,
         promo: ctx.extras.promos.get(prod.id) || null,
-        preparoLabel: ctx.preparos[prod.categoriaProduto?.id] || '',
+        preparoLabel: preparoEtiqueta || preparoCategoria,
+        preparoOrigem: preparoEtiqueta ? 'ETIQUETA' : (preparoCategoria ? 'CATEGORIA' : null),
         acrescimoPct: ctx.acrescimoPct,
         precoCliente: ctx.precoClientePorProduto ? (ctx.precoClientePorProduto[prod.id] ?? null) : null,
         nomePorProdutoId: ctx.extras.nomes,

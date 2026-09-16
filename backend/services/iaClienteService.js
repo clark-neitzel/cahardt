@@ -259,16 +259,26 @@ const iaClienteService = {
                 ultimoPreco: a.ultimoPreco,
                 semanasDesdeUltima: Math.max(0, Math.floor((hoje - Date.parse(a.ultimaCompra)) / (7 * 86400000))),
                 noSite: !!prod?.congeladosProduto && prod.congeladosProduto.ativo !== false,
-                produto: prod ? iaProduto.produtoParaIA({
-                    produto: prod,
-                    cp: prod.congeladosProduto || null,
-                    etiqueta: extras.etiquetas.get(pid) || null,
-                    promo: extras.promos.get(pid) || null,
-                    preparoLabel: (ov && typeof ov === 'object' && ov.preparo) ? String(ov.preparo).trim() : '',
-                    acrescimoPct,
-                    precoCliente: null,
-                    nomePorProdutoId: extras.nomes,
-                }) : null,
+                produto: (() => {
+                    if (!prod) return null;
+                    // Preparo: etiqueta manda, categoria é reserva (mesma prioridade do catálogo —
+                    // decisão do dono 16/09/2026). `extras.etiquetas` já foi carregado em lote logo
+                    // acima (`carregarExtrasProdutos(produtos)`) — nenhuma query extra por item.
+                    const etiqueta = extras.etiquetas.get(pid) || null;
+                    const preparoCategoria = (ov && typeof ov === 'object' && ov.preparo) ? String(ov.preparo).trim() : '';
+                    const preparoEtiqueta = etiqueta ? iaProduto.preparoLabelDeEtiqueta(etiqueta.modoPreparo) : null;
+                    return iaProduto.produtoParaIA({
+                        produto: prod,
+                        cp: prod.congeladosProduto || null,
+                        etiqueta,
+                        promo: extras.promos.get(pid) || null,
+                        preparoLabel: preparoEtiqueta || preparoCategoria,
+                        preparoOrigem: preparoEtiqueta ? 'ETIQUETA' : (preparoCategoria ? 'CATEGORIA' : null),
+                        acrescimoPct,
+                        precoCliente: null,
+                        nomePorProdutoId: extras.nomes,
+                    });
+                })(),
             };
         }).sort((a, b) => (a.ultimaCompra < b.ultimaCompra ? 1 : a.ultimaCompra > b.ultimaCompra ? -1 : 0));
 

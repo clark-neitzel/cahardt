@@ -331,8 +331,9 @@ Aparece **no mesmo nível do item** em `GET /congelados/catalogo`, `POST /congel
 | `pesoUnidadeG` | peso unitário em g: `etiqueta.pesoUnitario` → senão o `<peso>GR` do nome | sem etiqueta e nome sem `GR` |
 | `unidade`, `unidades`, `embalagem` | campos antigos (inalterados) | — |
 | `embalagemInfo` | `{ rotulo, unidade, unidadesPorEmbalagem, pesoG }` — **(v1.6.1)** `unidadesPorEmbalagem` = unidades do site → senão `etiqueta.quantidadeEmbalagem` → senão qtd. por caixa do cadastro → senão `C/<n>` do nome; `pesoG` = `etiqueta.pesoPacote` → senão `unidadesPorEmbalagem × pesoUnidadeG` | os sub-campos vêm `null` quando não há fonte |
-| `preparo` | rótulo livre da categoria (campo antigo) | `""` se a categoria não tem rótulo |
-| `preparoTipo` | `FRITO` / `ASSADO` / `PRONTO` / `CRU`, normalizado **só** do rótulo curado da categoria (campo `preparo` acima) — vocabulário controlado pelo admin. **Nunca** derivado do texto livre de `modoPreparo`: um regex sobre texto livre classificaria errado frases com negativa (ex.: "Não fritar, assar em forno…" contém a palavra "fritar") | categoria sem rótulo configurado ou rótulo não reconhecido. **Quando vier `null`, use `modoPreparo` (se houver) para descrever o preparo em palavras — não tente classificar por conta própria** |
+| `preparo` | **(v1.6.4 — FONTE mudou)** rótulo curto de preparo (campo antigo). Vem da **etiqueta** do PCP (`modoPreparo` classificado com segurança por verbo: `"Para fritar"` / `"Para assar"` / `"Somente aquecer"` / `"Cozinhar"`, ou `"Assar ou fritar"` quando o texto menciona mais de um verbo — ex.: "Fritar em óleo... ou assar em forno...") quando ela permitir classificar; senão cai no rótulo digitado por categoria no admin do site (era a única fonte antes de 16/09/2026 — agora é reserva) | `""` quando nem a etiqueta nem a categoria têm preparo classificável |
+| `preparoOrigem` | **(v1.6.4, campo novo)** de onde veio `preparo`: `"ETIQUETA"` \| `"CATEGORIA"` \| `null` | `null` quando `preparo` é `""` |
+| `preparoTipo` | `FRITO` / `ASSADO` / `PRONTO` / `CRU` / `COZIDO` (**(v1.6.4)** novo), normalizado do rótulo em `preparo` acima — mapeia primeiro os rótulos exatos que `preparo` pode assumir (vocabulário controlado) e cai num fallback por substring só para texto livre digitado à mão na categoria que não bate com nenhum rótulo exato | rótulo vazio, não reconhecido, ou **combinado** (`"Assar ou fritar"` — mais de um verbo detectado na etiqueta; fica `null` de propósito em vez de adivinhar um dos dois). **Quando vier `null`, use `preparo`/`modoPreparo` para descrever o preparo em palavras — não tente classificar por conta própria** |
 | `modoPreparo` | **(v1.6.1)** texto livre do "Modo de Preparo" da etiqueta do PCP, cortado em 300 caracteres — pode ser citado literalmente pela Ana, inclusive como alternativa quando `preparoTipo` vier `null` | sem etiqueta cadastrada para o produto |
 | `etiqueta` | **(v1.6.1)** `{ codigoBarras, alergenos:[], contemGluten, contemLactose, armazenamento }` da etiqueta ativa do PCP — útil para "tem glúten?"/"tem lactose?"/"como guardar?" | `null` sem etiqueta cadastrada |
 | `precoTabela` | preço de tabela do contexto: base × (1 + acréscimo% da condição). No catálogo público = tabela "Site" | — |
@@ -346,10 +347,10 @@ Aparece **no mesmo nível do item** em `GET /congelados/catalogo`, `POST /congel
 | `imagem` / `imagens` | foto principal / todas | sem foto |
 
 > Não derivamos `preparo`/`linha` do prefixo `1-`/`2-`/`FR` do nome: o significado desses códigos
-> não está documentado. `preparoTipo` vem **só** da categoria (vocabulário controlado); se a
-> categoria não tiver rótulo, vem `null` — **não** é derivado do texto livre `modoPreparo` (decisão
-> revista em v1.6.1: um regex sobre texto livre do PCP classificava errado frases com negativa,
-> tipo "Não fritar, assar em forno…"). `tamanho` continua vindo só do código/nome — a etiqueta não
+> não está documentado. **(v1.6.4)** `preparo`/`preparoTipo` vêm da **etiqueta** (`modoPreparo`
+> classificado com segurança, tratando negação por cláusula) quando ela permitir classificar; a
+> categoria (vocabulário controlado) é reserva; sem nenhuma das duas fontes, vem `""`/`null`.
+> `tamanho` continua vindo só do código/nome — a etiqueta não
 > tem campo de tamanho.
 
 ### Regras de promoção (v1.6.1) — `regras` em `GET /congelados/promocoes`
@@ -527,7 +528,7 @@ pedido real; sem `fonte` tenta o real e depois a fila.
 
 ```bash
 K='x-ia-api-key: SUACHAVE'; J='Content-Type: application/json'; B=https://<dominio>/api/ia-consulta/v1
-curl -H "$K" $B/congelados/catalogo | jq '.dados[0] | {id,nome,nomeCurto,precoTabela,embalagemInfo,tamanho,pesoUnidadeG,preparoTipo,modoPreparo,etiqueta,disponivel,promocao}'
+curl -H "$K" $B/congelados/catalogo | jq '.dados[0] | {id,nome,nomeCurto,precoTabela,embalagemInfo,tamanho,pesoUnidadeG,preparo,preparoOrigem,preparoTipo,modoPreparo,etiqueta,disponivel,promocao}'
 curl -H "$K" $B/congelados/promocoes | jq '.dados.promocoes, .dados.regras'
 curl -H "$K" $B/congelados/indisponiveis | jq '.dados.produtos, .dados.orientacao'
 curl -H "$K" -H "$J" -X POST -d '{"telefone":"5547999998888"}' $B/congelados/reconhecer-telefone | jq '.dados | {ultimoPedidoDetalhe,pedidosEmAberto,proximasEntregas,horaCorte,vendedorInfo,condicaoPadrao}'
@@ -715,6 +716,25 @@ curl -H "x-ia-api-key: SUACHAVE" -X POST -H "Content-Type: application/json" \
   `AuditLog`. **Não libera nenhum dado do cliente** — só grava um número a mais — por isso não fere
   a regra de segurança "nunca liberar dado só com CPF/CNPJ". Endpoint 100% novo — nenhum campo de
   nenhuma resposta existente mudou.
+- **1.6.4** (2026-09-16) — Decisão do dono: o rótulo de preparo (`preparo`/`preparoTipo`) passa a
+  vir da **etiqueta** do PCP em vez de só a categoria — 25 dos 51 produtos do site mostravam
+  "Somente Aquecer" enquanto a etiqueta mandava fritar ou assar. Classificação por VERBO com
+  negação tratada **por cláusula** (`iaProdutoSerializer.preparoLabelDeEtiqueta`): separa o texto
+  em cláusulas por `.`/`,`/`;` e, dentro de cada uma, só conta o verbo se não houver "não"/"sem"
+  antes dele na mesma cláusula — então "Não fritar, assar em forno…" continua virando `"Para
+  assar"`, nunca `"Para fritar"` (é o mesmo risco que bloqueou essa fonte na v1.6.1; agora
+  endereçado). Reconhece fritar (óleo/fritadeira/frit-), assar (forno/assa-), aquecer
+  (micro-ondas/"pronto para consumo"/aquec- — ignorando "pré-aquecido" do forno/óleo, que descreve
+  o equipamento, não o produto) e cozinhar (água fervente/cozinh-); se o texto menciona mais de um
+  verbo (ex.: "Fritar... ou assar...") o rótulo vira `"Assar ou fritar"` e `preparoTipo` fica
+  `null` de propósito (ambíguo). Quando a etiqueta não existe ou o texto não bate com nenhum verbo
+  com segurança, cai no rótulo por categoria (comportamento anterior — agora reserva). Campo novo
+  `preparoOrigem` (`"ETIQUETA"` \| `"CATEGORIA"` \| `null`). `preparoTipo` ganha o valor `COZIDO`.
+  Aplicado nos três catálogos (`catalogoPublico`/site, `catalogoVisitante`, `meuCatalogo`) e nos
+  itens de pedido (`historico-pedidos`, `produtos-comprados`, `ultimoPedido*`, `pedidosEmAberto`,
+  resposta de `POST /congelados/pedido`) — mesma prioridade em todo lugar. **Tudo aditivo** —
+  nenhum campo removido/renomeado; só o VALOR/fonte de `preparo`/`preparoTipo` muda (aviso
+  informativo em `meta.avisos`, já que o texto muda para boa parte do catálogo).
 
 ## Fase 2 — Criação de pedido pela IA (IMPLEMENTADA na v1.4)
 

@@ -105,7 +105,7 @@ Gerenciamento do cadastro. Permite criar, editar, ativar/inativar e remover etiq
    - **Validade (dias)**: padrão 90 dias
    - **Vincular ao Produto do Catálogo**: opcional; permite filtrar por categoria na tela de impressão
 3. Preencha a seção **Informação Nutricional**: valor energético, carboidratos, proteínas, gorduras totais, saturadas, trans, fibra e sódio. Preencha no formato "34kcal (2% VD)".
-4. Preencha a seção **Composição e Preparo**: ingredientes, modo de preparo e armazenamento/conservação.
+4. Preencha a seção **Composição e Preparo**: ingredientes, modo de preparo e armazenamento/conservação. **Desde 16/09/2026 o "Modo de Preparo" digitado aqui também vira o rótulo de preparo mostrado no card do site de Congelados** ("Para fritar"/"Para assar"/"Somente aquecer"/"Cozinhar") — o sistema lê o texto e reconhece por palavra-chave (fritar/óleo, assar/forno, aquecer/micro-ondas, cozinhar), inclusive frases com "não" ("Não fritar, assar em forno..." vira só "assar"). Escreva de forma direta (ex.: "Fritar em óleo quente (180°C) por 5 minutos" ou "Assar em forno pré-aquecido a 200°C por 20 minutos") para o site classificar certo; produto sem etiqueta cadastrada usa o texto de reserva definido por categoria no admin do site.
 5. Preencha a seção **Alérgenos**: marque os checkboxes de leite, glúten e ovo; preencha outros alérgenos e o aviso de traços se necessário.
 6. Clique em **Salvar**.
 

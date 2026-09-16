@@ -72,9 +72,22 @@ function pesoDoNome(nomeCompleto) {
     return m ? parseInt(m[1], 10) : null;
 }
 // Rótulo livre da categoria ("Para fritar", "Para assar", "Pronto para servir") → enum.
+// Rótulos exatos que `preparoLabelDeEtiqueta` pode devolver → enum. Checados primeiro (match
+// exato, controlado) antes do fallback por substring (rótulo digitado à mão na categoria).
+// "Assar ou fritar" (ambíguo, mais de um verbo na etiqueta) fica de propósito sem enum — o texto
+// em `preparo` já é claro, forçar FRITO ou ASSADO seria adivinhar.
+const PREPARO_TIPO_CONTROLADO = {
+    'para fritar': 'FRITO',
+    'para assar': 'ASSADO',
+    'somente aquecer': 'PRONTO',
+    'cozinhar': 'COZIDO',
+};
 function preparoTipoDe(rotulo) {
-    const r = String(rotulo || '');
-    if (!r.trim()) return null;
+    const r = String(rotulo || '').trim();
+    if (!r) return null;
+    const controlado = PREPARO_TIPO_CONTROLADO[r.toLowerCase()];
+    if (controlado) return controlado;
+    if (/\bou\b/i.test(r)) return null; // rótulo combinado ("Assar ou fritar") — ambíguo de propósito
     if (/frit/i.test(r)) return 'FRITO';
     if (/assa|forn/i.test(r)) return 'ASSADO';
     if (/pronto|aquec/i.test(r)) return 'PRONTO';
@@ -82,23 +95,107 @@ function preparoTipoDe(rotulo) {
     return null;
 }
 
-// ── Extras em lote (etiquetas + promoções vigentes + nomes p/ condições) ──────────────────
-// 3 a 4 queries para o LOTE inteiro — nunca N+1. `produtos` = array de { id, codigo, nome,
+// ── Preparo a partir do texto livre da ETIQUETA (Dados da Etiqueta do PCP) ─────────────────
+// Decisão do dono (16/09/2026): o rótulo de preparo do card do site/IA passa a vir da etiqueta
+// (fonte técnica, cadastrada pelo PCP) em vez de só o texto livre digitado por categoria no
+// admin do site — 25 dos 51 produtos do catálogo mostravam "Somente Aquecer" enquanto a etiqueta
+// mandava fritar ou assar. Classificação por VERBO com negação por PROXIMIDADE (revisão de código
+// 16/09/2026, 2ª rodada): só anula o verbo se "não"/"sem" estiver nas até 3 palavras IMEDIATAMENTE
+// antes dele na mesma cláusula ("não fritar", "não deve fritar", "sem fritar") — negação mais
+// distante não anula ("não descongelar antes de fritar" classifica FRITAR normalmente, porque quem
+// está negado ali é "descongelar", não "fritar"). Isso corrige o exagero da 1ª versão (qualquer
+// negação em QUALQUER ponto da cláusula anulava o verbo, mesmo negando outra coisa) sem reabrir o
+// risco original da revisão de 2026-09-15 ("Não fritar, assar em forno..." continua nunca virando
+// "Para fritar" — a negação está a 0 palavras do verbo, dentro da janela).
+// PENDENTE (decisão do dono, não implementado): produto já frito de fábrica cujo nome tem "FRITO"
+// mas a etiqueta só manda "aquecer no forno" hoje classifica ASSADO/"Para assar" — o dono pode
+// querer um rótulo próprio tipo "Aquecer no forno" nesse caso. Não mudar sem pedido explícito;
+// se vier, o lugar certo é aqui (teria que olhar o nome do produto também, que hoje esta função
+// não recebe).
+// Não classifica (devolve null) quando não reconhece nenhum verbo com segurança — nesse caso o
+// chamador cai no rótulo por categoria (comportamento antigo), nunca inventa um preparo.
+function semAcento(s) {
+    return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '');
+}
+// "pré-aquecido"/"pre aquecido" descreve o FORNO/ÓLEO sendo preaquecido, não o produto sendo só
+// aquecido — toda etiqueta do PCP fala nisso ("em óleo pré-aquecido a 180°C"), então é removido
+// ANTES de procurar o verbo "aquecer" (senão toda etiqueta bateria falso-positivo em AQUECER).
+// Mesmo problema com "pré-frito"/"pré-cozido" (achado do QA 16/09/2026): são ADJETIVO DE ESTADO
+// do produto ("Produto pré-frito. Assar em forno...") — descrevem como ele chegou congelado, não
+// uma instrução de preparo — e bateriam falso-positivo em FRITAR se não fossem removidos antes.
+function semPreAquecimentoTexto(txt) {
+    return txt
+        .replace(/pre-?\s?aquec\w*/gi, ' ')
+        .replace(/\bpre-?\s?frit\w*/gi, ' ')
+        .replace(/\bpre-?\s?cozid\w*/gi, ' ');
+}
+const PREPARO_VERBOS = [
+    { tag: 'FRITAR', re: /\b(frit\w*|oleo|fritadeira)\b/i },
+    { tag: 'ASSAR', re: /\b(assar|assad\w*|forno)\b/i },
+    { tag: 'AQUECER', re: /\b(aquec\w*|micro-?ondas|pronto para( o)? consumo)\b/i },
+    { tag: 'COZINHAR', re: /\b(cozinh\w*|agua fervente)\b/i },
+];
+const PREPARO_NEGACAO = /^(nao|sem)$/i;
+const PREPARO_JANELA_NEGACAO = 3; // só anula o verbo se "não"/"sem" estiver a ATÉ 3 palavras antes dele
+const PREPARO_LABEL_DE_TAG = { ASSAR: 'assar', FRITAR: 'fritar', COZINHAR: 'cozinhar', AQUECER: 'aquecer' };
+const PREPARO_ORDEM_TAGS = ['ASSAR', 'FRITAR', 'COZINHAR', 'AQUECER'];
+
+function preparoLabelDeEtiqueta(modoPreparo) {
+    const texto = String(modoPreparo || '').trim();
+    if (!texto) return null;
+    const base = semAcento(texto).toLowerCase();
+    const semPreAquec = semPreAquecimentoTexto(base);
+    // Cláusulas separadas por . , ; — mantém "assar ou fritar" numa cláusula só (sem essa
+    // pontuação entre os dois verbos), mas separa "não fritar, assar em forno" em duas, cada
+    // uma julgada por si (a negação da 1ª não contamina a 2ª).
+    const clausulas = semPreAquec.split(/[.,;]+/).map(c => c.trim()).filter(Boolean);
+    const tags = new Set();
+    for (const cl of clausulas) {
+        for (const v of PREPARO_VERBOS) {
+            const m = v.re.exec(cl);
+            if (!m) continue;
+            // Só anula o verbo se "não"/"sem" aparecer nas ATÉ 3 palavras imediatamente antes dele
+            // ("não fritar", "não deve fritar", "sem fritar") — negação mais distante na mesma
+            // cláusula ("não descongelar antes de fritar") não anula: aqui quem está negado é
+            // "descongelar", não "fritar".
+            const palavrasAntes = cl.slice(0, m.index).trim().split(/\s+/).filter(Boolean);
+            const janela = palavrasAntes.slice(-PREPARO_JANELA_NEGACAO);
+            if (janela.some(w => PREPARO_NEGACAO.test(w))) continue;
+            tags.add(v.tag);
+        }
+    }
+    if (!tags.size) return null;
+    const ordenadas = PREPARO_ORDEM_TAGS.filter(t => tags.has(t));
+    if (ordenadas.length === 1) {
+        const t = ordenadas[0];
+        if (t === 'FRITAR') return 'Para fritar';
+        if (t === 'ASSAR') return 'Para assar';
+        if (t === 'AQUECER') return 'Somente aquecer';
+        if (t === 'COZINHAR') return 'Cozinhar';
+    }
+    const txt = ordenadas.map(t => PREPARO_LABEL_DE_TAG[t]).join(' ou ');
+    return txt.charAt(0).toUpperCase() + txt.slice(1);
+}
+
+// ── Só ETIQUETAS (1 query) + nomes ─────────────────────────────────────────────────────────
+// Extraído de `carregarExtrasProdutos` (revisão de código 16/09/2026): o catálogo público do
+// site (`congeladosService.catalogoPublico`, roda em TODA visita) só precisa disto pra derivar
+// `preparo` — não precisa de promoções. `produtos` = array de { id, codigo, nome,
 // congeladosProduto? } (o registro Produto do Prisma serve).
-async function carregarExtrasProdutos(produtos) {
+async function carregarEtiquetasProdutos(produtos) {
     const lista = (produtos || []).filter(Boolean);
     const ids = [...new Set(lista.map(p => p.id).filter(Boolean))];
     const codigos = [...new Set(lista.map(p => p.codigo).filter(Boolean))];
-    const vazio = { etiquetas: new Map(), promos: new Map(), nomes: new Map() };
-    if (!ids.length) return vazio;
+    // Nomes para descrever condições de promoção ("a partir de 5 un de COXINHA…") — montado aqui
+    // (não depende de query) pra `carregarExtrasProdutos` poder reaproveitar sem recalcular.
+    const nomes = new Map();
+    for (const p of lista) nomes.set(p.id, p.congeladosProduto?.nomeSite || p.nome || null);
+    if (!ids.length) return { etiquetas: new Map(), nomes };
 
-    const [etiquetasRaw, promos] = await Promise.all([
-        prisma.etiquetaProduto.findMany({
-            where: { ativo: true, OR: [{ produtoId: { in: ids } }, ...(codigos.length ? [{ codigoProduto: { in: codigos } }] : [])] },
-            orderBy: { updatedAt: 'desc' },
-        }).catch(() => []),
-        promocaoService.listarVigentes({ produtoIds: ids }).catch(() => new Map()),
-    ]);
+    const etiquetasRaw = await prisma.etiquetaProduto.findMany({
+        where: { ativo: true, OR: [{ produtoId: { in: ids } }, ...(codigos.length ? [{ codigoProduto: { in: codigos } }] : [])] },
+        orderBy: { updatedAt: 'desc' },
+    }).catch(() => []);
 
     // Mesma regra do fichaPublico: por produtoId; não achando, por codigoProduto (mais recente).
     const porProdutoId = new Map();
@@ -112,11 +209,27 @@ async function carregarExtrasProdutos(produtos) {
         const et = porProdutoId.get(p.id) || (p.codigo ? porCodigo.get(p.codigo) : null) || null;
         if (et) etiquetas.set(p.id, et);
     }
+    return { etiquetas, nomes };
+}
+
+// ── Extras em lote (etiquetas + promoções vigentes + nomes p/ condições) ──────────────────
+// Só para o caminho da IA (que usa promoção). `produtos` = array de { id, codigo, nome,
+// congeladosProduto? } (o registro Produto do Prisma serve). `etiquetasBase` (opcional): quando
+// o chamador já carregou as etiquetas desse mesmo lote (`congeladosService.catalogoPublico`
+// pendura em `lista._etiquetas`), reaproveita em vez de rebuscar — só a query de promoção roda.
+async function carregarExtrasProdutos(produtos, { etiquetasBase = null } = {}) {
+    const lista = (produtos || []).filter(Boolean);
+    const ids = [...new Set(lista.map(p => p.id).filter(Boolean))];
+    const vazio = { etiquetas: new Map(), promos: new Map(), nomes: new Map() };
+    if (!ids.length) return vazio;
+
+    const [{ etiquetas, nomes }, promos] = await Promise.all([
+        etiquetasBase ? Promise.resolve(etiquetasBase) : carregarEtiquetasProdutos(lista),
+        promocaoService.listarVigentes({ produtoIds: ids }).catch(() => new Map()),
+    ]);
 
     // Nomes para descrever condições ("a partir de 5 un de COXINHA…") — as condições podem
-    // apontar para produtos fora do lote.
-    const nomes = new Map();
-    for (const p of lista) nomes.set(p.id, p.congeladosProduto?.nomeSite || p.nome || null);
+    // apontar para produtos fora do lote (`nomes` acima só cobre o lote recebido).
     const faltando = new Set();
     for (const promo of promos.values()) {
         for (const g of promo.grupos || []) for (const c of g.condicoes || []) {
@@ -177,7 +290,7 @@ function promocaoParaIA(promo, { acrescimoPct = 0, precoTabela = null, nomePorPr
 // preparoLabel = rótulo livre da categoria (config `categoriasNomes[cat].preparo`) ou ''
 // acrescimoPct = acréscimo % da condição do contexto (tabela "Site" no catálogo público)
 // precoCliente = preço já calculado para o cliente reconhecido, ou null (catálogo público)
-function produtoParaIA({ produto, cp = null, etiqueta = null, promo = null, preparoLabel = '', acrescimoPct = 0, precoCliente = null, nomePorProdutoId = null }) {
+function produtoParaIA({ produto, cp = null, etiqueta = null, promo = null, preparoLabel = '', preparoOrigem = null, acrescimoPct = 0, precoCliente = null, nomePorProdutoId = null }) {
     const p = produto || cp?.produto || null;
     const site = cp || p?.congeladosProduto || null;
     const nomeCompleto = p?.nome || site?.nomeSite || '';
@@ -196,12 +309,11 @@ function produtoParaIA({ produto, cp = null, etiqueta = null, promo = null, prep
         ?? ((unidadesPorEmbalagem && pesoUnidadeG) ? unidadesPorEmbalagem * pesoUnidadeG : null);
     const ativo = !!p && p.ativo !== false && (site ? site.ativo !== false : true);
     const disponivel = ativo && Number(p?.estoqueDisponivel || 0) > 0;
-    // preparoTipo SÓ vem do rótulo curado da categoria (vocabulário controlado pelo admin) — NUNCA
-    // do texto livre da etiqueta. `modoPreparo` é texto digitado à mão no PCP para instrução de
-    // preparo ("Fritar...", "Assar...") e frequentemente contém negativas ("Não fritar, assar...",
-    // "Produto cru, não recomendamos fritura") que um regex por substring classificaria errado
-    // (achando "fritar" ou "cru" no meio da frase, inclusive quando a frase nega isso) — a Ana
-    // acabaria afirmando o contrário do rótulo real. Revisão 2026-09-15.
+    // preparoTipo é normalizado do rótulo em `preparoLabel` — que desde 2026-09-16 já vem
+    // classificado com segurança (verbo + cláusula com negação tratada, ver
+    // `preparoLabelDeEtiqueta`) pelo chamador (congeladosService), com fallback pro rótulo da
+    // categoria quando a etiqueta não permite classificar. `preparoTipoDe` aqui só mapeia o
+    // rótulo já pronto pro enum — não lê o texto livre da etiqueta diretamente.
     const modoPreparo = etiqueta?.modoPreparo ? String(etiqueta.modoPreparo).trim().slice(0, 300) : null;
     const preparoTipo = preparoTipoDe(preparoLabel);
 
@@ -232,6 +344,10 @@ function produtoParaIA({ produto, cp = null, etiqueta = null, promo = null, prep
         },
         preparo: preparoLabel ? String(preparoLabel) : '',
         preparoTipo,
+        // (v1.6.4) de onde veio o rótulo de `preparo`: "ETIQUETA" (Dados da Etiqueta do PCP,
+        // fonte preferida desde 16/09/2026) | "CATEGORIA" (texto do admin do site, reserva) | null
+        // (nenhuma das duas fontes tinha preparo pra esse produto).
+        preparoOrigem: preparoOrigem || null,
         // Texto livre do "Modo de Preparo" da etiqueta (cortado em 300 chars) — a Ana pode citar
         // literalmente quando o cliente perguntar "como preparo?".
         modoPreparo,
@@ -269,6 +385,7 @@ function enriquecerItem(item, novos) {
 
 module.exports = {
     PRODUTO_INCLUDE_IA,
+    carregarEtiquetasProdutos,
     carregarExtrasProdutos,
     produtoParaIA,
     promocaoParaIA,
@@ -276,6 +393,7 @@ module.exports = {
     nomeCurtoDe,
     tamanhoDe,
     preparoTipoDe,
+    preparoLabelDeEtiqueta,
     round2,
     dataSP,
 };

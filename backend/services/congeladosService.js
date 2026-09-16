@@ -383,6 +383,13 @@ const congeladosService = {
     },
 
     // ───────── Catálogo / grupos ─────────
+    // Decisão do dono (16/09/2026): o rótulo de preparo do card passa a vir da ETIQUETA (Dados
+    // da Etiqueta do PCP, `EtiquetaProduto.modoPreparo`, classificado com segurança por
+    // `iaProdutoSerializer.preparoLabelDeEtiqueta`) quando ela permitir classificar com
+    // segurança; o texto por categoria (config "categoriasNomes") vira RESERVA — só usado quando
+    // não há etiqueta ativa ou o texto dela não bate com nenhum verbo reconhecido. Antes o rótulo
+    // vinha só da categoria e 25 dos 51 produtos do site mostravam "Somente Aquecer" enquanto a
+    // etiqueta mandava fritar/assar.
     async catalogoPublico() {
         const [produtos, cfgRow] = await Promise.all([
             prisma.congeladosProduto.findMany({
@@ -393,21 +400,37 @@ const congeladosService = {
             prisma.congeladosConfig.findUnique({ where: { chave: 'categoriasNomes' } }).catch(() => null),
         ]);
         const overrides = (cfgRow && cfgRow.valor) || {}; // { [categoriaId]: { nome, ordem, oculto, preparo } }
-        return produtos
-            .filter(p => p.produto && p.produto.ativo !== false)
-            .map(cp => {
-                const o = produtoSitePublico(cp);
-                const ov = overrides[o.grupo];
-                // "preparo": rótulo por categoria que aparece no card (ex.: "Para fritar")
-                o.preparo = (ov && typeof ov === 'object' && ov.preparo) ? String(ov.preparo).trim() : '';
-                // "indisponivel": sem estoque disponível
-                o.indisponivel = produtoIndisponivel(cp.produto);
-                // Registro cru pendurado como propriedade NÃO enumerável: JSON.stringify e
-                // `{...spread}` ignoram — o site público continua recebendo o mesmo JSON. Só o
-                // caminho da IA (_enriquecerCatalogoParaIA) lê isso, sem query extra.
-                Object.defineProperty(o, '_cp', { value: cp, enumerable: false, writable: false });
-                return o;
-            });
+        const produtosAtivos = produtos.filter(p => p.produto && p.produto.ativo !== false);
+        // SÓ etiquetas (1 query) — o site público não usa promoção, então não carrega
+        // (revisão de código 16/09/2026: `carregarExtrasProdutos` completo, com promoções vigentes
+        // e seus grupos/condições, rodava em TODA visita do site só para tirar `preparo`, sem
+        // nenhum uso do resto). `_enriquecerCatalogoParaIA` reaproveita via `lista._etiquetas`
+        // quando o caminho da IA precisar também de promoção.
+        const extrasEtiquetas = await iaProduto.carregarEtiquetasProdutos(produtosAtivos.map(p => p.produto));
+        const lista = produtosAtivos.map(cp => {
+            const o = produtoSitePublico(cp);
+            const ov = overrides[o.grupo];
+            const preparoCategoria = (ov && typeof ov === 'object' && ov.preparo) ? String(ov.preparo).trim() : '';
+            const etiqueta = extrasEtiquetas.etiquetas.get(cp.produtoId) || null;
+            const preparoEtiqueta = etiqueta ? iaProduto.preparoLabelDeEtiqueta(etiqueta.modoPreparo) : null;
+            // "preparo": rótulo que aparece no card (ex.: "Para fritar") — etiqueta manda, categoria
+            // é reserva. "preparoOrigem": de onde veio ("ETIQUETA"/"CATEGORIA"/null — campo NOVO,
+            // aditivo). "modoPreparo": texto completo da etiqueta, até 300 chars (campo NOVO).
+            o.preparo = preparoEtiqueta || preparoCategoria;
+            o.preparoOrigem = preparoEtiqueta ? 'ETIQUETA' : (preparoCategoria ? 'CATEGORIA' : null);
+            o.modoPreparo = etiqueta?.modoPreparo ? String(etiqueta.modoPreparo).trim().slice(0, 300) : null;
+            // "indisponivel": sem estoque disponível
+            o.indisponivel = produtoIndisponivel(cp.produto);
+            // Registro cru pendurado como propriedade NÃO enumerável: JSON.stringify e
+            // `{...spread}` ignoram — o site público continua recebendo o mesmo JSON. Só o
+            // caminho da IA (_enriquecerCatalogoParaIA) lê isso, sem query extra.
+            Object.defineProperty(o, '_cp', { value: cp, enumerable: false, writable: false });
+            return o;
+        });
+        // Etiquetas já carregadas penduradas (não enumerável) na lista — _enriquecerCatalogoParaIA
+        // reaproveita (não rebusca etiqueta; só busca promoção quando `paraIA`).
+        Object.defineProperty(lista, '_etiquetas', { value: extrasEtiquetas, enumerable: false, writable: false });
+        return lista;
     },
 
     // Catálogo do VISITANTE (sem login): aplica a tabela "Site" (acréscimo %) sobre o
@@ -429,10 +452,12 @@ const congeladosService = {
     // Extras (etiquetas, promoções) carregados em LOTE — sem N+1.
     // `extras` (revisor 09/2026): se o chamador já carregou (catalogoPorTelefone monta o union
     // com os produtos dos pedidos do reconhecimento e carrega uma vez só), reaproveita em vez de
-    // buscar de novo — sem o parâmetro, comportamento idêntico ao de antes.
+    // buscar de novo. Sem o parâmetro, reaproveita as etiquetas já penduradas por catalogoPublico()
+    // em `lista._etiquetas` (revisão de código 16/09/2026) — só a query de PROMOÇÃO roda aqui,
+    // nenhuma query de etiqueta duplicada.
     async _enriquecerCatalogoParaIA(lista, { acrescimoPct = 0, comPrecoCliente = false, extras = null } = {}) {
         const cps = lista.map(p => p._cp).filter(Boolean);
-        const extrasFinal = extras || await iaProduto.carregarExtrasProdutos(cps.map(cp => cp.produto));
+        const extrasFinal = extras || await iaProduto.carregarExtrasProdutos(cps.map(cp => cp.produto), { etiquetasBase: lista._etiquetas || null });
         for (const p of lista) {
             const cp = p._cp;
             if (!cp?.produto) continue;
@@ -442,6 +467,7 @@ const congeladosService = {
                 etiqueta: extrasFinal.etiquetas.get(cp.produtoId) || null,
                 promo: extrasFinal.promos.get(cp.produtoId) || null,
                 preparoLabel: p.preparo || '',
+                preparoOrigem: p.preparoOrigem || null,
                 acrescimoPct,
                 precoCliente: comPrecoCliente ? p.preco : null,
                 nomePorProdutoId: extrasFinal.nomes,
@@ -1105,6 +1131,11 @@ const congeladosService = {
                 const prod = it.congeladosProduto?.produto || null;
                 const catId = prod?.categoriaProduto?.id;
                 const ov = catId ? overrides[catId] : null;
+                // Preparo: etiqueta manda, categoria é reserva (mesma prioridade do catálogo —
+                // decisão do dono 16/09/2026).
+                const etiqueta = prod ? (extras.etiquetas.get(prod.id) || null) : null;
+                const preparoCategoria = (ov && typeof ov === 'object' && ov.preparo) ? String(ov.preparo).trim() : '';
+                const preparoEtiqueta = etiqueta ? iaProduto.preparoLabelDeEtiqueta(etiqueta.modoPreparo) : null;
                 return {
                     id: it.congeladosProdutoId,
                     produtoId: it.congeladosProduto?.produtoId || null,
@@ -1118,9 +1149,10 @@ const congeladosService = {
                     produto: prod ? iaProduto.produtoParaIA({
                         produto: prod,
                         cp: it.congeladosProduto,
-                        etiqueta: extras.etiquetas.get(prod.id) || null,
+                        etiqueta,
                         promo: extras.promos.get(prod.id) || null,
-                        preparoLabel: (ov && typeof ov === 'object' && ov.preparo) ? String(ov.preparo).trim() : '',
+                        preparoLabel: preparoEtiqueta || preparoCategoria,
+                        preparoOrigem: preparoEtiqueta ? 'ETIQUETA' : (preparoCategoria ? 'CATEGORIA' : null),
                         acrescimoPct,
                         precoCliente: dec(it.precoUnitario),
                         nomePorProdutoId: extras.nomes,

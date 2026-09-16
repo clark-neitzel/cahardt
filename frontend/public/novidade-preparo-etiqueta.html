@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Preparo do Site vem da Etiqueta — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp -->
+<meta property="og:title" content="🍟 Novidade no Hardt App: o preparo do site agora vem da etiqueta">
+<meta property="og:description" content="O rótulo 'Para fritar / Para assar / Somente aquecer' do site de Congelados deixou de ser texto fixo por categoria e passou a vir do Modo de Preparo da etiqueta — 25 dos 51 produtos estavam errados.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 96px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(26px, 6.6vw, 38px);
+    font-weight: 800;
+    line-height: 1.14;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.75);
+    font-size: 16px;
+    max-width: 48ch;
+    margin: 0 auto;
+    text-wrap: balance;
+  }
+
+  /* mock flutuando sobre o hero: antes × depois */
+  .mock {
+    max-width: 420px;
+    margin: -68px auto 28px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.28);
+    overflow: hidden;
+    text-align: left;
+  }
+  .mock-top {
+    background: var(--house);
+    color: #fff;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .mock-ico { font-size: 24px; }
+  .mock-top small {
+    display: block;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    color: rgba(255,255,255,.55);
+  }
+  .mock-top strong { font-size: 15.5px; line-height: 1.2; }
+  .mock-body { padding: 14px 18px 18px; }
+  .comparo { display: flex; gap: 10px; }
+  .comparo-col { flex: 1; min-width: 0; }
+  .comparo-lab { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; text-align: center; margin-bottom: 6px; }
+  .comparo-lab.mau { color: #b3452f; }
+  .comparo-lab.bom { color: var(--primary-dark); }
+  .comparo-card { border-radius: 12px; padding: 10px 10px 12px; border: 1.5px solid; }
+  .comparo-card.mau { background: #fdf3f0; border-color: #f0c6b8; }
+  .comparo-card.bom { background: var(--mint); border-color: rgba(0,117,74,.3); }
+  .comparo-nome { font-size: 12.5px; font-weight: 700; margin-bottom: 6px; }
+  .comparo-tag {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+    padding: 4px 9px; border-radius: 999px;
+  }
+  .comparo-tag.mau { background: #fff; color: #b3452f; border: 1px solid #f0c6b8; }
+  .comparo-tag.bom { background: #fff; color: var(--primary-dark); border: 1px solid rgba(0,117,74,.25); }
+  .comparo-tag::before { content: ''; width: 5px; height: 5px; border-radius: 999px; }
+  .comparo-tag.mau::before { background: #d9714f; }
+  .comparo-tag.bom::before { background: var(--primary); }
+  .comparo-obs { font-size: 11px; color: var(--ink-soft); margin-top: 8px; }
+  .seta-comparo { display: flex; align-items: center; justify-content: center; font-size: 20px; color: #9aa5a0; padding-top: 26px; }
+
+  /* ── SEÇÕES / ACCORDION ── */
+  .sec-label {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: var(--primary-dark);
+    margin: 34px 4px 12px;
+  }
+  .acc {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .acc-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: none;
+    border: none;
+    font: inherit;
+    text-align: left;
+    padding: 15px 16px;
+    cursor: pointer;
+    min-height: 56px;
+  }
+  .acc-ico {
+    width: 38px; height: 38px;
+    border-radius: 11px;
+    background: var(--mint);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  .tag {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 999px;
+    vertical-align: 1px;
+  }
+  .tag.mint { background: var(--mint); color: var(--primary-dark); }
+  .tag.amb { background: #fdf0e6; color: #935e1f; }
+
+  /* aviso 3 produtos pendentes */
+  .aviso {
+    background: #fdf0e6;
+    border: 1.5px solid #f0d3ae;
+    border-radius: 14px;
+    padding: 14px 16px;
+    font-size: 13.5px;
+    color: #6b4c1f;
+    margin: 4px 0 0;
+  }
+  .aviso b { color: #6b4c1f; }
+  .aviso ul { margin: 8px 0 0; padding-left: 18px; }
+  .aviso li { margin-bottom: 4px; }
+
+  /* passos "como acessar" */
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n {
+    width: 30px; height: 30px; flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 800;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .rodape {
+    text-align: center;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 40px;
+  }
+  .rodape strong { color: var(--primary-dark); }
+
+  /* ── MOCKUPS DAS TELAS DO APP ── */
+  .tela {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .tela-titulo {
+    background: var(--house);
+    color: #fff;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .app-card {
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .app-card-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    border-bottom: 1px solid #f0efe9;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: #6b756f;
+  }
+  .app-card-body { padding: 12px; }
+  .app-input {
+    border: 1px solid #d8d5cc;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 12.5px;
+    color: var(--ink);
+    background: #fff;
+    margin-bottom: 8px;
+  }
+  .app-input small { display: block; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: #9aa5a0; margin-bottom: 2px; }
+  .app-input.ok { background: var(--mint); border-color: rgba(0,117,74,.25); }
+  .app-textarea {
+    border: 1px solid #d8d5cc;
+    border-radius: 8px;
+    padding: 10px 11px;
+    font-size: 12px;
+    color: var(--ink);
+    background: #fff;
+    line-height: 1.5;
+    min-height: 64px;
+  }
+  .app-textarea small { display: block; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: #9aa5a0; margin-bottom: 4px; }
+  .app-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--primary);
+    color: #fff;
+    font-size: 12.5px;
+    font-weight: 700;
+    padding: 9px 16px;
+    border-radius: 999px;
+  }
+  .app-btn.claro { background: #fff; border: 1.5px solid var(--primary); color: var(--primary); }
+  .pin {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    flex-shrink: 0;
+    vertical-align: 2px;
+    margin-left: 6px;
+  }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+
+  /* mock do card do site (produto) */
+  .site-card {
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-radius: 14px;
+    padding: 12px;
+    max-width: 220px;
+    margin: 0 auto;
+  }
+  .site-foto {
+    height: 90px;
+    border-radius: 10px;
+    background: linear-gradient(135deg,#e8dfc8,#cbb98d);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 30px;
+    margin-bottom: 10px;
+  }
+  .site-nome { font-size: 13px; font-weight: 700; margin-bottom: 3px; }
+  .site-cx { font-size: 11px; color: var(--ink-soft); display: block; margin-bottom: 6px; }
+  .site-prep {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+    color: var(--primary-dark);
+    background: rgba(0,117,74,.08);
+    border: 1px solid rgba(0,117,74,.2);
+    padding: 5px 10px; border-radius: 999px;
+    margin-bottom: 8px;
+  }
+  .site-prep::before { content: ''; width: 5px; height: 5px; border-radius: 999px; background: var(--primary); }
+  .site-foot { display: flex; align-items: center; justify-content: space-between; }
+  .site-preco { font-weight: 800; font-size: 14px; }
+  .site-add {
+    width: 26px; height: 26px; border-radius: 999px;
+    background: var(--primary); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 15px;
+  }
+</style>
+</head>
+<body>
+
+<!-- ══════════ HERO ══════════ -->
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>O preparo do site<br>agora vem da etiqueta</h1>
+    <p>O rótulo "Para fritar / Para assar / Somente aquecer" que aparece no card do site de Congelados parou de ser um texto fixo por categoria — agora ele sai direto do "Modo de Preparo" cadastrado na etiqueta do produto, no PCP.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- mock antes × depois -->
+  <div class="mock" aria-hidden="true">
+    <div class="mock-top">
+      <span class="mock-ico">🍗</span>
+      <div>
+        <small>Site · Coxinha de frango</small>
+        <strong>Antes × Depois</strong>
+      </div>
+    </div>
+    <div class="mock-body">
+      <div class="comparo">
+        <div class="comparo-col">
+          <div class="comparo-lab mau">Antes</div>
+          <div class="comparo-card mau">
+            <div class="comparo-nome">Coxinha de frango 80g</div>
+            <span class="comparo-tag mau">Somente aquecer</span>
+            <div class="comparo-obs">Texto fixo da categoria "Salgados Fritos" — errado, essa etiqueta manda fritar.</div>
+          </div>
+        </div>
+        <div class="seta-comparo">→</div>
+        <div class="comparo-col">
+          <div class="comparo-lab bom">Depois</div>
+          <div class="comparo-card bom">
+            <div class="comparo-nome">Coxinha de frango 80g</div>
+            <span class="comparo-tag bom">Para fritar</span>
+            <div class="comparo-obs">Lido direto do Modo de Preparo da etiqueta do produto.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ COMO FUNCIONA ══════════ -->
+  <div class="sec-label">Como funciona — toque para abrir</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🎯</span>
+      <strong>O que mudou de verdade</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>O card de cada produto no site de Congelados mostra um selo pequeno com o jeito de preparar: <b>"Para fritar"</b>, <b>"Para assar"</b>, <b>"Somente aquecer"</b>, <b>"Cozinhar"</b> ou <b>"Assar ou fritar"</b> (quando a etiqueta manda os dois).</p>
+      <p>Antes esse texto era digitado <b>uma vez por categoria</b> no admin do site — todo produto da categoria "Salgados Fritos" saía como "Para fritar", mesmo quando a etiqueta real dizia outra coisa. Conferindo os 51 produtos do catálogo, <b>25 estavam com o rótulo errado</b>.</p>
+      <p>Agora o app lê o <b>Modo de Preparo</b> que o PCP já cadastra na etiqueta de cada produto e classifica sozinho o rótulo certo — produto por produto, sem depender de ninguém repetir a informação em dois lugares.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🧠</span>
+      <strong>Como o app classifica</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>O app lê o texto do Modo de Preparo e procura o verbo principal:</p>
+      <ul>
+        <li><b>fritar / óleo</b> → <span class="tag mint">Para fritar</span></li>
+        <li><b>forno / assar</b> → <span class="tag mint">Para assar</span></li>
+        <li><b>aquecer / micro-ondas / pronto</b> → <span class="tag mint">Somente aquecer</span></li>
+        <li><b>cozinhar / água fervente</b> → <span class="tag mint">Cozinhar</span></li>
+        <li>etiqueta cita os dois modos → <span class="tag mint">Assar ou fritar</span></li>
+      </ul>
+      <p>Se a etiqueta disser <b>"não fritar"</b>, o app entende a negação e <b>não</b> vai mostrar "Para fritar" — ele procura o outro verbo do texto. Escrever de forma direta ajuda a classificação: <i>"Colocar o produto ainda congelado em óleo pré-aquecido a 180ºC por 5 minutos"</i> classifica certinho.</p>
+      <p>O texto completo do Modo de Preparo continua aparecendo por inteiro na <b>ficha do produto</b> no site, do jeito que já era — só o selo curto do card é que agora vem classificado.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">⚠️</span>
+      <strong>3 produtos ainda sem etiqueta</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Enquanto ninguém completar o Modo de Preparo na etiqueta destes produtos, eles continuam mostrando o texto antigo da categoria (reserva, não some do site):</p>
+      <div class="aviso">
+        <b>Pendentes de etiqueta:</b>
+        <ul>
+          <li>Bolinho de carne frito 150g <span class="tag amb">cód. 3065</span></li>
+          <li>Coxinha de linguiça Blumenau 22g <span class="tag amb">H22MI5</span></li>
+          <li>Churros doce de leite 22g <span class="tag amb">H22MI3</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🤖</span>
+      <strong>A Ana também aprendeu</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>O bot de WhatsApp (Ana) responde sobre o preparo dos produtos de Congelados quando o cliente pergunta — a partir de agora ela usa a mesma classificação vinda da etiqueta, então não corre mais o risco de falar "só aquecer" para um produto que precisa fritar.</p>
+    </div>
+  </div>
+
+  <!-- ══════════ TELAS DO APP ══════════ -->
+  <div class="sec-label">As telas do app, sem mistério</div>
+
+  <!-- TELA 1: card do site -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 1 · Card do site — o selo de preparo</div>
+    <div class="tela-corpo">
+      <div class="site-card">
+        <div class="site-foto">🍗</div>
+        <div class="site-nome">Coxinha de frango 80g</div>
+        <span class="site-cx">caixa · 40 un</span>
+        <span class="site-prep">Para fritar<span class="pin">1</span></span>
+        <div class="site-foot">
+          <span class="site-preco">R$ 4,90</span>
+          <span class="site-add">+<span class="pin">2</span></span>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>O selo verde <b>"Para fritar"</b> (ou "Para assar" / "Somente aquecer" / "Cozinhar" / "Assar ou fritar") agora vem da etiqueta desse produto específico — não mais de um texto único da categoria.</span></div>
+      <div><span class="pin">2</span><span>O resto do card — foto, embalagem, preço, botão de adicionar — <b>não mudou nada</b>.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 2: PCP Dados da Etiqueta -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 2 · PCP → Dados da Etiqueta — de onde sai o rótulo</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">🏷️ Dados da Etiqueta · Coxinha de frango 80g</div>
+        <div class="app-card-body">
+          <div class="app-textarea"><small>Modo de Preparo *<span class="pin">1</span></small>Colocar o produto ainda congelado em óleo pré-aquecido a 180ºC por 5 minutos, até dourar.</div>
+          <div style="text-align:right;margin-top:4px;"><span class="app-btn claro">💾 Salvar<span class="pin">2</span></span></div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Este é o mesmo campo <b>"Modo de Preparo"</b> que já existia para imprimir a etiqueta — nenhum campo novo foi criado. É obrigatório para gerar a etiqueta, como sempre foi.</span></div>
+      <div><span class="pin">2</span><span>Ao <b>salvar</b>, o texto passa a valer também para o selo do site (e para a resposta da Ana) — sem precisar repetir a informação em outro lugar.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 3: ficha do produto no site -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 3 · Ficha do produto no site — o texto completo</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">📋 Modo de preparo<span class="pin">1</span></div>
+        <div class="app-card-body" style="font-size:12.5px;color:var(--ink-soft);line-height:1.6;">
+          Colocar o produto ainda congelado em óleo pré-aquecido a 180ºC por 5 minutos, até dourar.
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Na <b>ficha completa</b> do produto (quando o cliente clica no card), o texto integral do Modo de Preparo da etiqueta continua aparecendo do jeito que sempre apareceu — só o <b>selo curto</b> do card (Tela 1) é a novidade.</span></div>
+    </div>
+  </div>
+
+  <!-- ══════════ COMO ACESSAR ══════════ -->
+  <div class="sec-label">O que o PCP precisa fazer</div>
+  <div class="passos">
+    <div class="passo">
+      <span class="passo-n">1</span>
+      <div>Nada muda no dia a dia — <b>continue preenchendo</b> o Modo de Preparo de cada etiqueta como sempre fez.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">2</span>
+      <div>Escreva de forma <b>direta</b>, com o verbo claro (fritar, assar, aquecer, cozinhar) — isso é o que o app usa para classificar o selo certo.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">3</span>
+      <div>Complete a etiqueta dos <b>3 produtos pendentes</b> listados acima assim que possível.</div>
+    </div>
+  </div>
+
+  <p class="rodape">Dúvidas? Pergunte ao <strong>Clippy</strong> dentro do app — ele já conhece a novidade.<br>— Hardt Salgados</p>
+</div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.parentElement;
+    const abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>
