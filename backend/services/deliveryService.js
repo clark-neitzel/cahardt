@@ -126,7 +126,11 @@ const deliveryService = {
 
     // Cláusulas que excluem pedidos cancelados, excluídos ou devolvidos.
     // Aplicado a todas as queries do Kanban e ao trigger garantirStatusParaPedido.
+    // `cancelado` é o campo booleano do cancelamento moderno (pedidoService.cancelarPedido);
+    // `situacaoCA: not CANCELADO` continua aqui por segurança (registros antigos/situação legada),
+    // mas um pedido cancelado hoje mantém situacaoCA=FATURADO — por isso o campo booleano é obrigatório.
     _pedidoAtivoWhere: () => ({
+        cancelado: false,
         situacaoCA: { not: 'CANCELADO' },
         statusEnvio: { not: 'EXCLUIDO' },
         devolucaoFinalizada: false
@@ -141,8 +145,10 @@ const deliveryService = {
         const [elegiveis, comStatus] = await Promise.all([
             prisma.pedido.findMany({
                 where: {
-                    situacaoCA: 'FATURADO',
+                    // situacaoCA fica DEPOIS do spread para não ser sobrescrito pelo
+                    // `not: 'CANCELADO'` de _pedidoAtivoWhere (mesmo padrão de listarPedidos).
                     ...deliveryService._pedidoAtivoWhere(),
+                    situacaoCA: 'FATURADO',
                     itens: { some: { OR: filtros.map(f => ({ produto: f })) } }
                 },
                 select: { id: true }
@@ -180,13 +186,16 @@ const deliveryService = {
 
         const pedidoIds = statusTodos.map(s => s.pedidoId);
 
-        // Lista pedidos com delivery_status, incluindo não-faturados (que aparecem
-        // em cinza no Kanban e não podem ser movimentados). Cancelados, excluídos
-        // e devolvidos são omitidos.
+        // Lista só pedidos FATURADOS com delivery_status. Não-faturados, cancelados,
+        // excluídos e devolvidos são omitidos (pedido do dono em 17/09 — antes os
+        // não-faturados apareciam em cinza no Kanban; agora só entram quando o
+        // backfill os traz, já faturados). situacaoCA fica DEPOIS do spread para
+        // não ser sobrescrito pelo `not: 'CANCELADO'` de _pedidoAtivoWhere.
         const pedidos = await prisma.pedido.findMany({
             where: {
                 id: { in: pedidoIds },
                 ...deliveryService._pedidoAtivoWhere(),
+                situacaoCA: 'FATURADO',
                 itens: { some: { OR: filtros.map(f => ({ produto: f })) } }
             },
             include: {
@@ -291,11 +300,22 @@ const deliveryService = {
         if (!atual) throw new Error('Pedido não está no fluxo de Delivery.');
         if (atual.etapa === novaEtapa) return atual;
 
-        // Pedido precisa estar faturado no Conta Azul antes de mover no Kanban.
+        // Pedido precisa estar faturado no Conta Azul antes de mover no Kanban,
+        // e não pode estar cancelado/excluído/devolvido — mesmo que o card ainda
+        // esteja em cache no navegador de quem clicou (regra de 17/09).
         const pedido = await prisma.pedido.findUnique({
             where: { id: pedidoId },
-            select: { situacaoCA: true }
+            select: { situacaoCA: true, cancelado: true, statusEnvio: true, devolucaoFinalizada: true }
         });
+        if (pedido?.cancelado) {
+            throw new Error('Pedido cancelado não pode ser movimentado no Delivery.');
+        }
+        if (pedido?.statusEnvio === 'EXCLUIDO') {
+            throw new Error('Pedido excluído não pode ser movimentado no Delivery.');
+        }
+        if (pedido?.devolucaoFinalizada) {
+            throw new Error('Pedido com devolução finalizada não pode ser movimentado no Delivery.');
+        }
         if (pedido?.situacaoCA !== 'FATURADO') {
             throw new Error('Pedido ainda não foi faturado no Conta Azul. Fature primeiro para movimentar no Delivery.');
         }
@@ -367,16 +387,25 @@ const deliveryService = {
             return true;
         });
         const temItemElegivel = pedido.itens.some(matchItem);
+        const ativo = !pedido.cancelado && pedido.situacaoCA !== 'CANCELADO'
+            && pedido.statusEnvio !== 'EXCLUIDO' && !pedido.devolucaoFinalizada;
+        const faturado = pedido.situacaoCA === 'FATURADO';
 
         return {
             encontrado: true,
             pedidoId: pedido.id,
             numero: pedido.numero,
+            cancelado: pedido.cancelado,
+            situacaoCA: pedido.situacaoCA,
+            statusEnvio: pedido.statusEnvio,
+            devolucaoFinalizada: pedido.devolucaoFinalizada,
             filtrosAtivos: filtros,
             itensCategorias,
             temItemElegivel,
             deliveryStatus: status,
-            noKanban: !!status && temItemElegivel
+            // Só aparece no Kanban se: tem delivery_status, item elegível, não está
+            // cancelado/excluído/devolvido e está FATURADO (regra de 17/09).
+            noKanban: !!status && temItemElegivel && ativo && faturado
         };
     },
 
@@ -388,10 +417,10 @@ const deliveryService = {
         // Não cria status para pedidos cancelados, excluídos ou já devolvidos.
         const pedido = await prisma.pedido.findUnique({
             where: { id: pedidoId },
-            select: { situacaoCA: true, statusEnvio: true, devolucaoFinalizada: true }
+            select: { cancelado: true, situacaoCA: true, statusEnvio: true, devolucaoFinalizada: true }
         });
         if (!pedido) return null;
-        if (pedido.situacaoCA === 'CANCELADO' || pedido.statusEnvio === 'EXCLUIDO' || pedido.devolucaoFinalizada) return null;
+        if (pedido.cancelado || pedido.situacaoCA === 'CANCELADO' || pedido.statusEnvio === 'EXCLUIDO' || pedido.devolucaoFinalizada) return null;
 
         const tem = await prisma.pedidoItem.findFirst({
             where: {

@@ -10,7 +10,7 @@ permissao: delivery (view + etapas por permissão)
 
 Kanban de acompanhamento de pedidos de entrega (Kit Festa). Os pedidos faturados no Conta Azul são organizados em colunas (etapas) e avançados manualmente conforme o fluxo de produção e entrega. O sistema também envia mensagens automáticas via WhatsApp ao cliente quando o pedido avança de etapa.
 
-> **Atenção:** apenas pedidos já **FATURADOS** no Conta Azul podem ser movidos entre etapas.
+> **Atenção:** apenas pedidos já **FATURADOS** no Conta Azul aparecem no Kanban e podem ser movidos entre etapas. Pedido **cancelado**, **excluído** ou com **devolução finalizada** nunca aparece aqui, mesmo que já tenha entrado no fluxo antes — some assim que qualquer uma dessas situações acontece (regra reforçada em 17/09/2026).
 
 ---
 
