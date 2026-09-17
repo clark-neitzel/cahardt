@@ -338,23 +338,15 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostr
     const [popup, setPopup] = useState(null); // { pendingAction }
     const [analisandoIA, setAnalisandoIA] = useState(false);
     const [orientacaoLocalIA, setOrientacaoLocalIA] = useState(null);
-    // Detalhes do card (cenário, dia, canais, inadimplência, alertas, observação) começam
-    // recolhidos — só nome, 1 badge, selo e os botões Atender/Pedido ficam sempre visíveis
-    // (Linguagem visual v2). Abre sozinho quando chega transferência pendente de ação — via
-    // efeito (não no useState) porque o card tem key estável e pode já estar montado quando
-    // a transferência chega (ex.: alguém transfere um cliente com a Rota aberta na tela).
-    const [detalhesAbertos, setDetalhesAbertos] = useState(!!alerta?.isTransferenciaAtiva);
-    useEffect(() => {
-        if (alerta?.isTransferenciaAtiva) setDetalhesAbertos(true);
-    }, [alerta?.isTransferenciaAtiva]);
 
     // Badge principal da linha sempre visível — mesma prioridade/cores que o card já usava
     // espalhadas em vários lugares, só concentradas numa única badge (nenhuma regra nova).
+    // Inadimplência NÃO entra aqui: o bloco de detalhes abaixo (sempre visível) já mostra a
+    // faixa vermelha "Inadimplente — R$ X em atraso" clicável — duas badges diriam a mesma
+    // coisa uma em cima da outra.
     let badgePrincipal = null;
     if (alerta?.isTransferenciaAtiva) {
         badgePrincipal = { label: 'Transferência p/ você', cls: 'bg-indigo-100 text-indigo-700 border-indigo-200' };
-    } else if (cliente.inadimplente) {
-        badgePrincipal = { label: 'Inadimplente', cls: 'bg-red-100 text-red-700 border-red-200' };
     } else if (alerta?.cor && !alerta.isTransferenciaResolvida) {
         badgePrincipal = { label: alerta.acaoLabel || 'Retorno agendado', style: { backgroundColor: alerta.cor + '15', borderColor: alerta.cor, color: alerta.cor } };
     } else if (insight?.insightPrincipalTipo && !atendHoje) {
@@ -625,19 +617,10 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostr
                     </button>
                 )}
 
-                {/* Alternar detalhes: cenário/motivo, dia de venda/entrega, canais, inadimplência,
-                    alertas, transferência e observação — tudo que hoje concorria de peso igual
-                    com o nome sai daqui, um toque abaixo (Atender e Pedido continuam sempre visíveis). */}
-                <button
-                    className="flex items-center justify-center gap-1 text-[11px] font-semibold text-gray-500 hover:text-gray-700 -mt-1 py-1"
-                    onClick={() => setDetalhesAbertos(v => !v)}
-                >
-                    {detalhesAbertos ? 'Ver menos' : 'Ver mais'}
-                    <ChevronDown className={`h-3 w-3 transition-transform ${detalhesAbertos ? 'rotate-180' : ''}`} />
-                </button>
-
-                {detalhesAbertos && (
-                    <div className="flex flex-col gap-2 -mt-1 pt-2 border-t border-gray-100">
+                {/* Detalhes do card: cenário/motivo, dia de venda/entrega, canais, inadimplência,
+                    alertas, transferência e observação — sempre visíveis (Atender e Pedido também
+                    sempre visíveis, acima). */}
+                <div className="flex flex-col gap-2 pt-2 border-t border-gray-100">
                         {/* Informações de atendimento */}
                         {(cliente.Dia_de_venda || cliente.Dia_de_entrega) && (
                             <div className="flex flex-wrap gap-x-3 gap-y-1">
@@ -814,7 +797,6 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostr
                             );
                         })()}
                     </div>
-                )}
             </div>
         </div>
         </>
