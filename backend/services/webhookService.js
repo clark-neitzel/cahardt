@@ -14,6 +14,10 @@ const bot = require('./botWhatsappService');
 
 const formatPhone = (cliente) => cliente?.Telefone_Celular || null;
 
+// Só para o Delivery: cai no telefone fixo quando não há celular cadastrado
+// (as demais notificações — pedido/amostra — continuam exigindo celular via formatPhone).
+const formatPhoneComFallback = (cliente) => cliente?.Telefone_Celular || cliente?.Telefone || null;
+
 const formatDateMsg = (d) => {
     if (!d) return '-';
     return new Date(d).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
@@ -341,7 +345,7 @@ const webhookService = {
      * (tipo 'interno') e o cliente (tipo 'entrega'). Log em delivery_webhook_logs.
      */
     notificarDelivery: async (pedidoId, novaEtapa, opcoes = {}) => {
-        const { skipWhatsapp = false } = opcoes;
+        const { skipWhatsapp = false, forceManual = false } = opcoes;
         const ETAPAS_LABEL = {
             PEDIDO: 'Pedido Criado',
             PRODUCAO: 'Em Produção',
@@ -416,11 +420,22 @@ const webhookService = {
 
             // ── Cliente ──
             // PRODUCAO: resumo + data de entrega. SAINDO/ENTREGUE: só número + etapa.
+            let resultadoCliente;
             if (skipWhatsapp) {
+                resultadoCliente = { ok: true, enviado: false, motivo: 'Card com WhatsApp silenciado' };
                 await registrarLog('WHATSAPP', 'OK', `Etapa ${novaEtapa} — silenciado por configuração do card`);
-            } else if (novaEtapa !== 'PEDIDO') {
-                const phone = formatPhone(pedido.cliente);
-                if (bot.normalizarTelefone(phone) && pedido.cliente.recebeAvisoPedido !== false) {
+            } else if (novaEtapa === 'PEDIDO') {
+                resultadoCliente = { ok: true, enviado: false, motivo: 'Nesta etapa não há mensagem de WhatsApp para o cliente — a confirmação do pedido já foi enviada na criação' };
+                await registrarLog('WHATSAPP', 'OK', resultadoCliente.motivo);
+            } else {
+                const phone = formatPhoneComFallback(pedido.cliente);
+                if (!bot.normalizarTelefone(phone)) {
+                    resultadoCliente = { ok: true, enviado: false, motivo: 'Cliente sem WhatsApp cadastrado (nem celular nem telefone)' };
+                    await registrarLog('WHATSAPP', 'OK', resultadoCliente.motivo);
+                } else if (pedido.cliente.recebeAvisoPedido === false) {
+                    resultadoCliente = { ok: true, enviado: false, motivo: 'Cliente optou por não receber avisos' };
+                    await registrarLog('WHATSAPP', 'OK', resultadoCliente.motivo);
+                } else {
                     const mensagemCliente = novaEtapa === 'PRODUCAO'
                         ? [
                             `Olá, *${nome}*! 👋`,
@@ -437,18 +452,36 @@ const webhookService = {
                             `Seu pedido *#${numeroPedido}* — *${etapaLabel}* ✨`
                         ].join('\n');
 
+                    const referencia = forceManual
+                        ? bot.referenciaUnica(`entrega-${numeroPedido}-${novaEtapa}-reenvio`)
+                        : `entrega-${numeroPedido}-${novaEtapa}`;
+
                     const r = await bot.enviar({
                         telefone: phone,
                         texto: mensagemCliente,
                         tipo: 'entrega',
                         origem: 'delivery',
-                        referencia: `entrega-${numeroPedido}-${novaEtapa}`,
+                        referencia,
                     });
+
+                    if (r.ok && r.status === 'duplicado' && forceManual) {
+                        // Reenvio manual usa referência nova — se ainda assim veio duplicado,
+                        // o bot recusou por outro motivo (ex.: mesma referência calculada de novo
+                        // por corrida de cliques); tratar como não-enviado para o usuário saber.
+                        resultadoCliente = { ok: true, enviado: false, motivo: 'Bot recusou como duplicada' };
+                    } else if (r.ok) {
+                        resultadoCliente = { ok: true, enviado: true };
+                    } else if (r.reagendado) {
+                        resultadoCliente = { ok: true, enviado: false, reagendado: true, motivo: 'Entrou na fila — será enviada em breve' };
+                    } else {
+                        resultadoCliente = { ok: false, motivo: r.motivo };
+                    }
+
                     await registrarLog('WHATSAPP', (r.ok || r.reagendado) ? 'OK' : 'ERRO', r.motivo || `Etapa ${novaEtapa}`);
                 }
             }
 
-            return { ok: true };
+            return resultadoCliente;
         } catch (error) {
             console.error('[Delivery-Webhook] Erro:', error.message);
             return { ok: false, motivo: error.message };

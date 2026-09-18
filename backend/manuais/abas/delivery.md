@@ -54,7 +54,16 @@ Kanban de acompanhamento de pedidos de entrega (Kit Festa). Os pedidos faturados
 
 ### Reenviar mensagem manualmente
 - Clique no ícone de mensagem no card
-- A mensagem correspondente à etapa atual é reenviada ao cliente
+- Cada clique gera uma mensagem NOVA (referência própria) — não é bloqueado como duplicata do envio automático nem de um reenvio anterior
+- Se o cliente não tem celular cadastrado, o sistema tenta o telefone fixo antes de desistir
+- O sistema avisa exatamente o que aconteceu, sem dar "reenviada" quando nada saiu de fato:
+  - **"Mensagem reenviada"** — o WhatsApp saiu
+  - **"Entrou na fila — será enviada em breve"** — o bot está temporariamente indisponível (limite de envios, instabilidade); a mensagem sai sozinha em minutos/horas
+  - **"Cliente sem WhatsApp cadastrado (nem celular nem telefone)"** — não há para onde mandar
+  - **"Cliente optou por não receber avisos"** — o cadastro do cliente está marcado para não receber
+  - **"Card com WhatsApp silenciado"** — o sino desse pedido está desligado
+  - **"Nesta etapa não há mensagem de WhatsApp para o cliente..."** — na etapa "Pedido Criado" não existe mensagem própria (a confirmação já saiu na criação do pedido); reenviar aqui não faz nada
+  - Qualquer outro erro do bot aparece com o motivo relatado por ele
 
 ### Buscar / filtrar
 - Use a caixa de busca para encontrar por nome do cliente ou número do pedido

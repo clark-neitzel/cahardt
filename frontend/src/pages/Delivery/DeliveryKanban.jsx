@@ -121,8 +121,10 @@ export default function DeliveryKanban() {
         setMoving(card.id);
         try {
             const r = await deliveryService.reenviar(card.id);
-            if (r.ok) toast.success('Mensagem reenviada');
-            else toast.error(r.motivo || 'Falha ao reenviar.');
+            if (!r.ok) toast.error(r.motivo || 'Falha ao reenviar.');
+            else if (r.enviado) toast.success('Mensagem reenviada');
+            else if (r.reagendado) toast(r.motivo || 'Entrou na fila — será enviada em breve', { icon: '⏳' });
+            else toast(r.motivo || 'Nada foi enviado.', { icon: 'ℹ️', duration: 6000 });
         } catch (e) {
             toast.error(e.response?.data?.error || 'Erro ao reenviar.');
         } finally {

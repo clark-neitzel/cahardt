@@ -344,7 +344,7 @@ const deliveryService = {
         const status = await prisma.deliveryStatus.findUnique({ where: { pedidoId } });
         if (!status) throw new Error('Pedido não está no fluxo.');
         const webhookService = require('./webhookService');
-        return await webhookService.notificarDelivery(pedidoId, status.etapa, { skipWhatsapp: !!status.silenciarWhatsapp });
+        return await webhookService.notificarDelivery(pedidoId, status.etapa, { skipWhatsapp: !!status.silenciarWhatsapp, forceManual: true });
     },
 
     // Marca/desmarca o card pra não notificar o cliente via WhatsApp.
