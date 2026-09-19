@@ -10,6 +10,7 @@ const router = express.Router();
 const kitFestaCtrl = require('../controllers/kitFestaController');
 const congeladosCtrl = require('../controllers/congeladosController');
 const iaClienteCtrl = require('../controllers/iaClienteController');
+const iaCatalogoCtrl = require('../controllers/iaCatalogoController');
 const { verificarChaveIA, envelopeVersao, exigirClienteCongelados } = require('../middlewares/iaConsultaMiddleware');
 
 const v1 = express.Router();
@@ -92,6 +93,15 @@ v1.post('/cliente/situacao', iaClienteCtrl.situacao);
 // (inclusive pra Ana). 🔒 SÓ PAINEL, igual buscar/ficha/situacao — NUNCA vira tool da IA. Não
 // libera dado nenhum (só acrescenta um número), por isso não fere a regra "nunca só com CPF/CNPJ".
 v1.post('/cliente/adicionar-whatsapp', iaClienteCtrl.adicionarWhatsapp);
+
+// Catálogo personalizado (v1.6.5) — a Ana monta uma lista de preços pro cliente e manda o link
+// pelo WhatsApp (mesmo snapshot/página pública /lista/:token da tela Produtos → Catálogo). PODE
+// ser tool da IA: é ação transacional provocada por um ato concreto do cliente na conversa
+// (diferente de /cliente/situacao e /cliente/buscar, que são só painel). Identifica por
+// telefone — nunca aceita CPF/CNPJ sozinho.
+v1.post('/catalogo/gerar', iaCatalogoCtrl.gerar);
+v1.get('/catalogo/:token', iaCatalogoCtrl.obter);
+v1.post('/catalogo/listar', iaCatalogoCtrl.listar);
 
 router.use('/v1', v1);
 

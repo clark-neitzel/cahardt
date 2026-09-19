@@ -78,6 +78,9 @@ mencionada na mensagem. Assim a mudança nunca pega o app de surpresa.
 | POST | `/cliente/adicionar-whatsapp` | `{ documento, whatsapp, origem? }` (`origem`: `"painel-bot"` padrão ou `"ana"`) | **(v1.6.3, 🔒 só painel da equipe — NUNCA tool da IA)** Grava um WhatsApp no cadastro do cliente (tabela `cliente_whatsapps`), gravação atômica, só ACRESCENTA (nunca apaga/substitui). Retorna `{ ok:true, jaExistia, tipo:"CLIENTE", numeroGravado }`. Erros: `404 CLIENTE_NAO_ENCONTRADO`, `400 NAO_E_CLIENTE` (documento é de fornecedor), `400 WHATSAPP_INVALIDO`, `400 LIMITE_WHATSAPPS` (máx. 10), `400 ORIGEM_INVALIDA`. Ver seção "Busca e ficha para o painel". |
 | POST | `/congelados/pedido` | `{ telefone, itens:[{id,quantidade,promocaoId?}], data?, modo?, observacoes?, observacaoInterna?, origem?, idempotencyKey?, visitante?:{nome,telefone,cpf?} }` | **(v1.4)** Cria pedido de Congelados na fila de aprovação (`AGUARDANDO`; `PENDENTE_CADASTRO` se telefone novo). Preço recalculado no servidor. Retorna `{ id, numero, status, total }`. **(v1.6)** aceita `itens[].promocaoId` (validada e recalculada aqui — `precoUnit` no body é ignorado), `observacaoInterna` (só a equipe vê) e `origem` (sempre gravado `WHATSAPP_IA`); a resposta ganha `origem` e `itens[]` (com `produto`), inclusive na repetição por `idempotencyKey`. Erros com `code`: `VISITANTE_SEM_CPF`, `PROMOCAO_INVALIDA`, `PROMOCAO_NAO_LIBERADA`. Ver "Fase 2" e "v1.6.0". |
 | POST | `/kitfesta/pedido` | `{ telefone, itens:[{id,quantidade,opcao?}], modo, data, horario, enderecoEntrega?, cep?, cupomCodigo?, observacoes?, idempotencyKey?, visitante?:{nome,telefone,cpf?} }` | **(v1.4)** Cria pedido de Kit Festa na fila de aprovação. Webhook automático desligado (a Ana confirma). Retorna `{ id, numero, status, total }`. Ver "Fase 2". |
+| POST | `/catalogo/gerar` | `{ telefone, produtoIds?:[...], todos?:boolean, titulo?, observacoes?, condicaoId?, idempotencyKey? }` | **(v1.6.5)** A Ana monta uma lista de preços pro cliente reconhecido e manda o link. Ver seção "Catálogo personalizado (v1.6.5)". Sem reconhecimento: `{ reconhecido:false }`. |
+| GET | `/catalogo/:token` | — | **(v1.6.5)** Mesma leitura da página pública `/lista/:token` (sem telefone — o token já é o segredo). `404 CATALOGO_NAO_ENCONTRADO` se removido/inexistente. |
+| POST | `/catalogo/listar` | `{ telefone, limite? }` (padrão 10, máx 50) | **(v1.6.5)** Catálogos ATIVOS do cliente reconhecido, mais recentes primeiro. Sem reconhecimento: `{ reconhecido:false }`. |
 
 ### Imagem de produto — JÁ disponível (não precisa de endpoint novo)
 
@@ -541,6 +544,123 @@ curl -H "$K" "$B/cliente/pedido/321?telefone=5547999998888&fonte=FILA" | jq '.da
 curl -H "$K" -H "$J" -X POST -d '{"telefone":"5547999998888"}' $B/cliente/situacao | jq .dados
 ```
 
+## Catálogo personalizado (v1.6.5)
+
+A Ana pode montar, durante a conversa, uma lista de preços personalizada pro cliente — a mesma
+funcionalidade que o vendedor já usa na tela **Produtos → Catálogo** (`POST /api/catalogo-personalizado`,
+`backend/services/catalogoPersonalizadoService.js`): um **snapshot** de produtos com o preço já
+calculado pela condição do cliente, publicado numa página pública em `/lista/:token`, com validade
+de 7 dias. Esta seção da API de IA é uma camada fina sobre o mesmo serviço — mesmo snapshot, mesmo
+link, mesma tela pública; só a identificação (por telefone) e a montagem da lista de produtos são
+específicas da Ana. Implementação em `backend/services/iaCatalogoService.js`.
+
+### `POST /catalogo/gerar`
+
+Body: `{ telefone, produtoIds?:[...], todos?:boolean, titulo?, observacoes?, condicaoId?, idempotencyKey? }`
+
+- **Identificação:** SEMPRE por `telefone` (mesma regra de segurança do resto desta API — nunca
+  aceita CPF/CNPJ sozinho, porque o link do catálogo mostra preço negociado). Telefone que não bate
+  com nenhum cliente cadastrado → `{ reconhecido:false }` (a Ana não gera catálogo pra desconhecido,
+  já que não existe preço negociado pra calcular).
+- **Produtos** — dois jeitos, um dos dois é obrigatório:
+  - `produtoIds: [...]` — lista de ids de produto. Aceita tanto `Produto.id` (o campo `produtoId`
+    que os objetos de produto desta API já devolvem) quanto o **id do site de Congelados**
+    (`CongeladosProduto.id`, o `id` que aparece em `GET /congelados/catalogo` e no reconhecimento) —
+    o serviço mapeia automaticamente qual dos dois foi enviado. Cada id passa pelo **mesmo filtro**
+    de `todos:true` abaixo (ativo + vendável + `categorias_vendas`) — id que não é produto de
+    venda é **ignorado em silêncio**, não derruba a chamada por si só.
+  - `todos: true` — todo produto **ativo** e "vendável" (mesma trava que o snapshot já aplicava:
+    categorias marcadas como imobilizado/não-venda — freezer, painel, móveis — ficam de fora, tanto
+    na hora de montar quanto na leitura da página pública). É a mesma base (`ativo:true`) que a tela
+    Produtos → Catálogo usa; essa tela some ainda mais produtos por PERMISSÃO do vendedor logado
+    (categorias comerciais liberadas pro usuário) — isso não se aplica aqui, porque a Ana não é um
+    vendedor com permissões de categoria.
+  - Nenhum dos dois (ou `produtoIds` vazio/não resolve nenhum produto disponível) → `400 SEM_PRODUTOS`.
+- **`condicaoId`** (opcional): se não vier, usa a condição de pagamento **padrão do cliente** (a
+  mesma que `POST /cliente/reconhecer-telefone` devolve em `condicaoPagamento.id`). Se vier, é
+  validada exatamente como a tela do vendedor valida (`criar()` do serviço): precisa existir e estar
+  disponível para catálogo (`permiteCatalogoPersonalizado !== false`) — senão `400 CONDICAO_INVALIDA`.
+  Não precisa ser uma condição "aprovada" para aquele cliente: se for uma condição com prazo que o
+  cliente não tem liberada, o catálogo sai igual, só com `condicao.medianteAprovacao: true` (mesmo
+  comportamento da tela do vendedor — quem decide se aprova é o financeiro, não a Ana). Cliente sem
+  condição padrão cadastrada e sem `condicaoId` informado → `400 SEM_CONDICAO`.
+- **Vendedor do snapshot:** o vendedor vinculado ao cliente (`Cliente.idVendedor`), com nome e
+  telefone — o mesmo vendedor que aparece em `vendedorInfo` no reconhecimento. Cliente sem vendedor
+  (ou vendedor inativo) → `vendedorNome: "Hardt Salgados"` na resposta e telefone `null` (a página
+  pública usa o WhatsApp central da loja nesse caso, igual à tela do vendedor).
+- **`titulo`** — se não vier, usa `"Catálogo · Ana · <DD/MM/AAAA>"`.
+- **Auditoria:** cada geração grava um `AuditLog` (`CATALOGO_GERADO_API_IA`), fora da transação
+  principal — falha no log nunca desfaz um catálogo já criado.
+- **Idempotência leve (dedupe, não é a `idempotencyKey`):** o mesmo `telefone` + `condicaoId` (já
+  resolvido) + o mesmo conjunto de `produtoIds` (já resolvidos para `Produto.id`, comparados como
+  conjunto — ordem não importa) nos **últimos 10 minutos** reaproveita o catálogo já existente
+  (`reaproveitado:true`) em vez de criar outro. **Isso NÃO é uma trava atômica** — é uma checagem
+  seguida de um insert, sem lock: uma segunda chamada quase simultânea (ex.: retry disparado antes
+  da primeira resposta voltar) pode, raramente, passar pela checagem antes do primeiro catálogo
+  existir e criar um segundo. Na prática o efeito é só um link a mais (o primeiro continua válido);
+  não é uma corrida que duplica cobrança nem nada financeiro. `idempotencyKey` é **aceito no body
+  mas não é o que decide o reaproveitamento** — não existe coluna na tabela para guardá-lo (a mesma
+  que `POST /congelados/pedido` usa para essa finalidade); o dedupe por telefone+condição+produtos
+  numa janela de 10 min cobre o caso comum (retry) com uma implementação bem mais simples. **Para o
+  app consumidor:** depois de um `gerar` bem-sucedido, guardar o `token`/`link` devolvido e não
+  chamar `gerar` de novo pro mesmo pedido sem necessidade — não depender do dedupe do servidor como
+  garantia de exclusividade.
+
+Resposta (`dados`, sucesso — cliente reconhecido):
+```json
+{
+  "reconhecido": true,
+  "id": "uuid",
+  "token": "AB3K9QZ",
+  "link": "https://hardtsalgados.com.br/lista/AB3K9QZ",
+  "titulo": "Catálogo · Ana · 19/09/2026",
+  "cliente": { "nome": "Padaria Exemplo" },
+  "condicao": { "nome": "30 DIAS BOLETO", "medianteAprovacao": false },
+  "total": 187.40,
+  "qtdItens": 6,
+  "validadeEm": "2026-09-26T00:00:00.000Z",
+  "vendedorNome": "Fulano da Silva",
+  "itens": [
+    { "produtoId": "uuid-produto", "codigo": "COX500", "nome": "Coxinha 500g", "unidade": "PCT", "precoFinal": 24.90 }
+  ],
+  "reaproveitado": false
+}
+```
+Sem reconhecimento: `{ "reconhecido": false }`. Erros (fora do envelope, `{ error, code }`):
+`400 SEM_PRODUTOS`, `400 SEM_CONDICAO`, `400 CONDICAO_INVALIDA`.
+
+**Host do link:** `process.env.PUBLIC_APP_URL` (sem `/` no final), com fallback
+`https://hardtsalgados.com.br` — o **domínio oficial da marca** (o mesmo que a tela do vendedor usa
+no link do WhatsApp), confirmado servindo `/lista/:token`. O link vai pro cliente final — nunca o
+domínio técnico do EasyPanel (`cahardt-github.xrqvlq.easypanel.host`), que é só para uso
+interno/admin. Se precisar trocar, configurar `PUBLIC_APP_URL` no EasyPanel.
+
+### `GET /catalogo/:token`
+
+Sem telefone — o token já é o segredo, igual ao link público (`GET
+/api/catalogo-personalizado-publico/:token`, que é a MESMA função `obterPublico()`). Devolve
+exatamente o que a página pública lê: `{ token, titulo, clienteNome, clienteCidade, condicaoNome,
+valorMinimo, medianteAprovacao, validadeEm, expirado, observacoes, vendedorNome, whatsapp, criadoEm,
+itens:[{codigo,nome,unidade,imagemUrl,precoFinal,categoriaNome,categoriaCor}] }`. Não encontrado ou
+removido → `404 CATALOGO_NAO_ENCONTRADO`.
+
+### `POST /catalogo/listar`
+
+Body: `{ telefone, limite? }` (limite padrão 10, máx 50). Catálogos com `status: "ATIVO"` do cliente
+reconhecido pelo telefone, mais recentes primeiro: `{ reconhecido:true, cliente:{nome},
+catalogos:[{ id, token, link, titulo, condicaoNome, total, qtdItens, validadeEm, visualizacoes,
+criadoEm }] }`. Sem reconhecimento: `{ reconhecido:false }`.
+
+### curls (v1.6.5)
+
+```bash
+K='x-ia-api-key: SUACHAVE'; J='Content-Type: application/json'; B=https://<dominio>/api/ia-consulta/v1
+curl -H "$K" -H "$J" -X POST -d '{"telefone":"5547999998888","todos":true}' $B/catalogo/gerar | jq .dados
+curl -H "$K" -H "$J" -X POST -d '{"telefone":"5547999998888","produtoIds":["<id1>","<id2>"],"titulo":"Sugestão da semana"}' $B/catalogo/gerar | jq .dados
+curl -H "$K" "$B/catalogo/<token>" | jq .dados
+curl -H "$K" -H "$J" -X POST -d '{"telefone":"5547999998888"}' $B/catalogo/listar | jq .dados
+```
+
 ## Regra de contrato — NUNCA quebrar o app consumidor sem aviso
 
 Esta API tem consumidor externo fora deste repositório. As regras abaixo são obrigatórias para
@@ -735,6 +855,14 @@ curl -H "x-ia-api-key: SUACHAVE" -X POST -H "Content-Type: application/json" \
   resposta de `POST /congelados/pedido`) — mesma prioridade em todo lugar. **Tudo aditivo** —
   nenhum campo removido/renomeado; só o VALOR/fonte de `preparo`/`preparoTipo` muda (aviso
   informativo em `meta.avisos`, já que o texto muda para boa parte do catálogo).
+- **1.6.5** (2026-09-19) — Catálogo personalizado pela Ana: novos `POST /catalogo/gerar` (identifica
+  por telefone — nunca CPF/CNPJ sozinho; monta o mesmo snapshot da tela Produtos → Catálogo, com
+  `produtoIds` ou `todos:true`, condição informada ou a padrão do cliente, vendedor vinculado ao
+  cliente no snapshot, dedupe leve de 10 min), `GET /catalogo/:token` (mesma leitura da página
+  pública, sem telefone) e `POST /catalogo/listar` (catálogos ativos do cliente). Ver seção
+  "Catálogo personalizado (v1.6.5)". **PODE ser tool da IA** — ação transacional a pedido do
+  cliente na conversa, diferente de `/cliente/situacao` e `/cliente/buscar` (só painel). Endpoints
+  100% novos — nenhum campo de nenhuma resposta existente foi alterado.
 
 ## Fase 2 — Criação de pedido pela IA (IMPLEMENTADA na v1.4)
 

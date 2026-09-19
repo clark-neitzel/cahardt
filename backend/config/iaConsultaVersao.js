@@ -81,7 +81,20 @@
 // aditivo — nenhum campo removido/renomeado; só o VALOR/fonte de `preparo`/`preparoTipo` muda
 // (aviso informativo registrado em AVISOS, já que consumidor que decorou o rótulo antigo por
 // categoria vai ver o texto mudar para muitos produtos).
-const VERSAO_API = '1.6.4';
+// · 1.6.5 (2026-09-19) Catálogo personalizado pela Ana: novos POST /catalogo/gerar (identifica
+// por telefone — nunca CPF/CNPJ sozinho; body { telefone, produtoIds?, todos?, titulo?,
+// observacoes?, condicaoId?, idempotencyKey? }; sem reconhecimento devolve { reconhecido:false }),
+// GET /catalogo/:token (mesma leitura da página pública, sem telefone — o token já é o segredo) e
+// POST /catalogo/listar (catálogos ATIVOS do cliente reconhecido). Reaproveita o mesmo snapshot/
+// link público /lista/:token que a tela Produtos → Catálogo já usa. `produtoIds` aceita tanto
+// Produto.id quanto o id do site de Congelados (CongeladosProduto.id, mapeado internamente).
+// `todos:true` = todo produto ativo e "vendável" (mesma regra que o snapshot já aplicava).
+// Dedupe leve (10 min) por telefone+condição+produtos evita catálogo duplicado em retry
+// (`idempotencyKey` é aceito no body mas não é o que decide o reaproveitamento — não há coluna
+// para guardá-lo; ver ia-consulta-api.md). PODE ser tool da IA (ação transacional a pedido do
+// cliente), diferente de /cliente/situacao e /cliente/buscar (só painel). Endpoints 100% novos —
+// nenhum campo de nenhuma resposta existente foi alterado.
+const VERSAO_API = '1.6.5';
 
 const AVISOS = [
     // AVISO INFORMATIVO (v1.6.4, não é quebra de contrato): nenhum campo removido/renomeado —

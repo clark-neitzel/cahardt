@@ -268,4 +268,7 @@ async function obterPublico(token) {
     };
 }
 
-module.exports = { criar, listarDoVendedor, remover, obterPublico };
+// nomesNaoVendaveis/filtroVendavel exportados p/ reuso em backend/services/iaCatalogoService.js
+// (v1.6.5 — "todos" produtos do catálogo gerado pela Ana usa a MESMA regra de "vendável" que o
+// snapshot já aplica, em vez de duplicar a lógica).
+module.exports = { criar, listarDoVendedor, remover, obterPublico, nomesNaoVendaveis, filtroVendavel };

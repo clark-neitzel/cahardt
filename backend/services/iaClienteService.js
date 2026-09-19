@@ -114,6 +114,11 @@ async function _fornecedorPorDocumento(docAlvo) {
 }
 
 const iaClienteService = {
+    // Exportado cru p/ reuso em backend/services/iaCatalogoService.js (v1.6.5 — catálogo
+    // personalizado gerado pela Ana usa a MESMA identificação por telefone, sem duplicar a
+    // lógica de casar Telefone/Telefone_Celular/Telefone_Comercial/whatsapp.numeros).
+    clientePorTelefone: _clientePorTelefone,
+
     // Reconhecimento geral do cliente pelo telefone — nome, cidade, vendedor, dias de
     // entrega/venda e condição de pagamento (nome + pedido mínimo). Não devolve catálogo de
     // preços (isso é específico de cada linha — ver congeladosService.catalogoPorTelefone).
