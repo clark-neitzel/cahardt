@@ -95,6 +95,17 @@ module.exports = {
         }
     },
 
+    previaMensagem: async (req, res) => {
+        try {
+            const out = await deliveryService.previaMensagem({ pedidoId: req.params.pedidoId, user: req.user });
+            res.json(out);
+        } catch (err) {
+            const msg = err.message || 'Erro ao montar prévia.';
+            const status = msg === 'Pedido não está no fluxo.' ? 400 : (msg === 'Sem permissão para Delivery.' ? 403 : 400);
+            res.status(status).json({ error: msg });
+        }
+    },
+
     diagnosticar: async (req, res) => {
         try {
             const out = await deliveryService.diagnosticar(req.params.numeroOuId);

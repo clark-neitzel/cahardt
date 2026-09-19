@@ -54,7 +54,10 @@ Kanban de acompanhamento de pedidos de entrega (Kit Festa). Os pedidos faturados
 
 ### Reenviar mensagem manualmente
 - Clique no ícone de mensagem no card
-- Cada clique gera uma mensagem NOVA (referência própria) — não é bloqueado como duplicata do envio automático nem de um reenvio anterior
+- **Antes de mandar, o sistema mostra uma prévia** com exatamente o texto que vai sair, o nome e o telefone do cliente (indicando se é o celular ou o telefone fixo cadastrado) — dá pra conferir antes de confirmar o envio
+  - Etapa **Pedido Criado**: a prévia mostra a mensagem "Recebemos seu pedido ✅" com o resumo do pedido — diferente das demais etapas, aqui dá pra mandar manualmente mesmo sem ter saído nada automático (a confirmação automática de pedido continua sendo a de sempre, fora do Delivery)
+  - Se a prévia indicar que não é possível enviar (ver motivos abaixo), o botão de confirmar fica bloqueado e mostra o motivo
+- Cada clique de confirmação gera uma mensagem NOVA (referência própria) — não é bloqueado como duplicata do envio automático nem de um reenvio anterior
 - Se o cliente não tem celular cadastrado, o sistema tenta o telefone fixo antes de desistir
 - O sistema avisa exatamente o que aconteceu, sem dar "reenviada" quando nada saiu de fato:
   - **"Mensagem reenviada"** — o WhatsApp saiu
@@ -62,8 +65,9 @@ Kanban de acompanhamento de pedidos de entrega (Kit Festa). Os pedidos faturados
   - **"Cliente sem WhatsApp cadastrado (nem celular nem telefone)"** — não há para onde mandar
   - **"Cliente optou por não receber avisos"** — o cadastro do cliente está marcado para não receber
   - **"Card com WhatsApp silenciado"** — o sino desse pedido está desligado
-  - **"Nesta etapa não há mensagem de WhatsApp para o cliente..."** — na etapa "Pedido Criado" não existe mensagem própria (a confirmação já saiu na criação do pedido); reenviar aqui não faz nada
   - Qualquer outro erro do bot aparece com o motivo relatado por ele
+- **Importante:** a mensagem automática (disparada sozinha ao mover o card) continua sem enviar nada ao cliente na etapa "Pedido Criado" — a confirmação do pedido já saiu na criação. Isso só muda quando alguém aperta reenviar manualmente nessa etapa.
+- O texto de "Taxa de entrega" (quando o pedido tem frete) aparece só nas mensagens de Delivery para o cliente — não é a mesma coisa que o "Frete" mostrado em outras telas do sistema.
 
 ### Buscar / filtrar
 - Use a caixa de busca para encontrar por nome do cliente ou número do pedido

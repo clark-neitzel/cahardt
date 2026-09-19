@@ -1,5 +1,11 @@
 [
   {
+    "slug": "previa-whatsapp-delivery",
+    "titulo": "Prévia do WhatsApp no Delivery",
+    "resumo": "O botão de reenviar mensagem no Kanban do Delivery (Kit Festa) não envia mais direto: agora abre uma prévia mostrando o cliente, o telefone (com selo celular/telefone), a etapa e o texto exato que será enviado, formatado como no WhatsApp de verdade (inclui a taxa de entrega quando existir). O envio só sai depois de tocar em \"Enviar WhatsApp\"; se não puder enviar (ex.: sem telefone cadastrado), o botão fica bloqueado com o motivo explicado. Agora também dá para reenviar manualmente pela coluna Pedido.",
+    "data": "2026-09-19"
+  },
+  {
     "slug": "preparo-etiqueta",
     "titulo": "Preparo do site vem da etiqueta",
     "resumo": "O selo de preparo no card do site de Congelados (\"Para fritar\", \"Para assar\", \"Somente aquecer\"...) deixou de ser um texto fixo por categoria — agora sai do campo \"Modo de Preparo\" da etiqueta do produto (PCP → Dados da Etiqueta), classificado automaticamente pelo verbo do texto: fritar/óleo → Para fritar; forno/assar → Para assar; aquecer/micro-ondas/pronto → Somente aquecer; cozinhar/água fervente → Cozinhar; dois modos citados → Assar ou fritar. O texto por categoria virou só reserva para produto sem etiqueta. Motivo da mudança: conferindo os 51 produtos do catálogo, 25 estavam com o rótulo errado (categoria dizia \"Somente aquecer\" em produto que a etiqueta manda fritar ou assar). Ficam pendentes 3 produtos sem etiqueta preenchida: Bolinho de carne frito 150g (3065), Coxinha de linguiça Blumenau 22g (H22MI5), Churros doce de leite 22g (H22MI3). A Ana (bot) também passa a responder o preparo certo.",

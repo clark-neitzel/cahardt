@@ -19,5 +19,6 @@ router.get('/pedidos', ctrl.listarPedidos);
 router.patch('/pedidos/:pedidoId/etapa', ctrl.moverEtapa);
 router.patch('/pedidos/:pedidoId/silenciar-whatsapp', ctrl.setSilenciarWhatsapp);
 router.post('/pedidos/:pedidoId/reenviar', ctrl.reenviar);
+router.get('/pedidos/:pedidoId/previa-mensagem', ctrl.previaMensagem);
 
 module.exports = router;

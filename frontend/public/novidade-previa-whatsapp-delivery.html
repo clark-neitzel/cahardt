@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Prévia do WhatsApp no Delivery — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp -->
+<meta property="og:title" content="💬 Novidade no Hardt App: Prévia do WhatsApp no Delivery">
+<meta property="og:description" content="Antes de reenviar a mensagem no Kanban do Delivery, o app mostra pra quem vai, o telefone e o texto exato — só sai depois de confirmar.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 96px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 7vw, 40px);
+    font-weight: 800;
+    line-height: 1.12;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.75);
+    font-size: 16px;
+    max-width: 46ch;
+    margin: 0 auto;
+    text-wrap: balance;
+  }
+
+  /* mock flutuando sobre o hero */
+  .mock {
+    max-width: 400px;
+    margin: -68px auto 28px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.28);
+    overflow: hidden;
+    text-align: left;
+  }
+  .mock-top {
+    background: var(--house);
+    color: #fff;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .mock-ico { font-size: 22px; }
+  .mock-top small {
+    display: block;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    color: rgba(255,255,255,.55);
+  }
+  .mock-top strong { font-size: 15px; line-height: 1.2; }
+  .mock-sub { padding: 10px 18px 0; font-size: 12px; color: var(--ink-soft); }
+  .mock-sub b { color: var(--ink); }
+  .mock-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: var(--mint);
+    color: var(--primary-dark);
+    margin-left: 6px;
+  }
+  .mock-body { padding: 14px 18px 18px; background: #efeae2; }
+  .balao {
+    background: #d9fdd3;
+    border-radius: 16px 16px 16px 4px;
+    padding: 12px 14px;
+    font-size: 13px;
+    color: var(--ink);
+    max-width: 92%;
+    box-shadow: 0 1px 2px rgba(0,0,0,.06);
+  }
+  .balao b { font-weight: 700; }
+  .mock-botoes { display: flex; gap: 8px; padding: 14px 18px 18px; background: #fff; }
+  .mock-botoes span {
+    flex: 1;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 11px 6px;
+    border-radius: 999px;
+  }
+  .b-cheio { background: var(--primary); color: #fff; }
+  .b-vazio { border: 1.5px solid var(--primary); color: var(--primary); }
+
+  /* ── SEÇÕES / ACCORDION ── */
+  .sec-label {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: var(--primary-dark);
+    margin: 34px 4px 12px;
+  }
+  .acc {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .acc-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: none;
+    border: none;
+    font: inherit;
+    text-align: left;
+    padding: 15px 16px;
+    cursor: pointer;
+    min-height: 56px;
+  }
+  .acc-ico {
+    width: 38px; height: 38px;
+    border-radius: 11px;
+    background: var(--mint);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  /* passos */
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n {
+    width: 30px; height: 30px; flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 800;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .rodape {
+    text-align: center;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 40px;
+  }
+  .rodape strong { color: var(--primary-dark); }
+
+  /* ── MOCKUPS DAS TELAS DO APP ── */
+  .tela {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .tela-titulo {
+    background: var(--house);
+    color: #fff;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .app-card {
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .app-card-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    border-bottom: 1px solid #f0efe9;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: #6b756f;
+  }
+  .app-card-body { padding: 12px; }
+  .app-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--primary);
+    color: #fff;
+    font-size: 12.5px;
+    font-weight: 700;
+    padding: 9px 16px;
+    border-radius: 999px;
+  }
+  .app-btn.claro { background: #fff; border: 1.5px solid var(--primary); color: var(--primary); }
+  .app-balao {
+    background: #d9fdd3;
+    border-radius: 14px 14px 14px 4px;
+    padding: 10px 12px;
+    font-size: 12.5px;
+    color: var(--ink);
+  }
+  .app-fundo-wa { background: #efeae2; border-radius: 10px; padding: 10px; }
+  .app-badge-tel {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 9.5px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--mint);
+    color: var(--primary-dark);
+  }
+  .app-badge-etapa {
+    font-size: 9.5px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: #dbeafe;
+    color: #1e40af;
+  }
+  .app-badge-alerta {
+    display: flex;
+    gap: 6px;
+    background: #fffbeb;
+    border: 1px solid #fcd34d;
+    border-radius: 10px;
+    padding: 8px 10px;
+    font-size: 11.5px;
+    color: #92400e;
+    margin-top: 8px;
+  }
+  .pin {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    flex-shrink: 0;
+    vertical-align: 2px;
+    margin-left: 6px;
+  }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+</style>
+</head>
+<body>
+
+<!-- ══════════ HERO ══════════ -->
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>Delivery: vê antes<br>de mandar no WhatsApp</h1>
+    <p>O botão de reenviar mensagem no Kanban do Delivery não manda mais na hora. Agora abre uma prévia: quem vai receber, o telefone e o texto exato — e só sai depois de você confirmar.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- mock do pop-up de prévia -->
+  <div class="mock" aria-hidden="true">
+    <div class="mock-top">
+      <span class="mock-ico">💬</span>
+      <div>
+        <small>Delivery · Enviar WhatsApp</small>
+        <strong>Confeitaria Doce Lar</strong>
+      </div>
+    </div>
+    <div class="mock-sub">
+      (47) 9 9999-8888 <span class="mock-chip">📱 celular</span> <span class="mock-chip">Saindo Entrega</span>
+    </div>
+    <div class="mock-body">
+      <div class="balao">Oi, <b>Confeitaria Doce Lar</b>! 🚚 Seu pedido <b>#4521</b> já saiu para entrega. Chega em até 40 minutos!</div>
+    </div>
+    <div class="mock-botoes">
+      <span class="b-vazio">Cancelar</span>
+      <span class="b-cheio">Enviar WhatsApp</span>
+    </div>
+  </div>
+
+  <!-- ══════════ O QUE MUDOU ══════════ -->
+  <div class="sec-label">O que mudou</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">👀</span>
+      <strong>Chega de enviar sem ver antes</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>No <b>Kanban do Delivery</b>, o ícone de avião ✈️ (enviar) no card do pedido não manda mais a mensagem direto.</li>
+        <li>Agora ele abre uma <b>prévia</b>: mostra o nome do cliente, o telefone que vai receber e o <b>texto exato</b> que será enviado.</li>
+        <li>Só depois de conferir e tocar em <b>"Enviar WhatsApp"</b> a mensagem realmente sai.</li>
+        <li>Mudou de ideia? É só tocar em <b>Cancelar</b>, no X ou fora da caixa — nada é enviado.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">📞</span>
+      <strong>Cliente, telefone e taxa de entrega aparecem</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>A prévia mostra pra qual <b>cliente</b> vai, com o <b>telefone</b> e um selinho dizendo se é o <b>celular</b> ou o <b>telefone</b> antigo do cadastro.</li>
+        <li>Se o pedido tiver <b>taxa de entrega</b>, ela aparece dentro do próprio texto da mensagem, do jeitinho que o cliente vai ler.</li>
+        <li>O texto vem formatado igual sai no WhatsApp de verdade — negrito, emojis, tudo igual.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🚫</span>
+      <strong>Quando o botão de enviar fica bloqueado</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Se o cliente não tiver telefone cadastrado, ou o pedido não puder receber mensagem naquele momento, a prévia mostra uma <b>faixa amarela</b> explicando o motivo.</li>
+        <li>Nesse caso o botão <b>"Enviar WhatsApp"</b> fica desativado — não dá para forçar o envio.</li>
+        <li>Resolvendo o problema (cadastrando o telefone, por exemplo), é só abrir a prévia de novo.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">📦</span>
+      <strong>Coluna "Pedido" agora também manda mensagem</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Antes, o botão de reenviar só fazia sentido nas colunas mais avançadas do Kanban.</li>
+        <li>Agora, mesmo na coluna <b>Pedido</b>, dá para reenviar manualmente o aviso de "pedido recebido" — útil quando o cliente diz que não recebeu a primeira mensagem.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ══════════ AS TELAS DO APP ══════════ -->
+  <div class="sec-label">As telas do app, sem mistério</div>
+
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela · A prévia antes de enviar</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">💬 Enviar WhatsApp<span class="pin">1</span></div>
+        <div class="app-card-body">
+          <div style="font-weight:700;font-size:13px;margin-bottom:4px;">Confeitaria Doce Lar<span class="pin">2</span></div>
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
+            <span style="font-size:11.5px;color:#6b756f;">(47) 9 9999-8888</span>
+            <span class="app-badge-tel">📱 celular</span>
+            <span class="app-badge-etapa">Saindo Entrega</span>
+            <span class="pin">3</span>
+          </div>
+          <div class="app-fundo-wa">
+            <div class="app-balao">Oi, <b>Confeitaria Doce Lar</b>! 🚚 Seu pedido <b>#4521</b> já saiu para entrega. Taxa de entrega: <b>R$ 8,00</b>. Chega em até 40 minutos!<span class="pin">4</span></div>
+          </div>
+          <div class="app-badge-alerta">🔒 <span>Exemplo de bloqueio: "Cliente sem telefone cadastrado — cadastre para poder enviar."<span class="pin">5</span></span></div>
+          <div style="display:flex;gap:8px;margin-top:12px;">
+            <span class="app-btn claro" style="flex:1;justify-content:center;">Cancelar</span>
+            <span class="app-btn" style="flex:1;justify-content:center;opacity:.5;">Enviar WhatsApp<span class="pin">6</span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Abre ao tocar no ícone de <b>enviar (avião)</b> em qualquer card do Kanban, em qualquer coluna — inclusive "Pedido".</span></div>
+      <div><span class="pin">2</span><span>Nome do <b>cliente</b> que vai receber a mensagem.</span></div>
+      <div><span class="pin">3</span><span><b>Telefone</b> com selo dizendo se é o celular ou o telefone antigo, e a <b>etapa</b> do pedido no Kanban.</span></div>
+      <div><span class="pin">4</span><span>O <b>texto exato</b> da mensagem, no visual do WhatsApp — inclui a taxa de entrega quando existir.</span></div>
+      <div><span class="pin">5</span><span>Se não puder enviar, aparece a <b>faixa amarela</b> explicando o motivo (ex.: sem telefone cadastrado).</span></div>
+      <div><span class="pin">6</span><span>Nesses casos o botão <b>"Enviar WhatsApp"</b> fica desativado — sem bloqueio, ele confirma o envio de verdade.</span></div>
+    </div>
+  </div>
+
+  <!-- ══════════ COMO USAR ══════════ -->
+  <div class="sec-label">Para usar</div>
+  <div class="passos">
+    <div class="passo">
+      <span class="passo-n">1</span>
+      <div><b>Atualize o app:</b> toque no ícone de atualizar ↻ (ou feche e abra o app).</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">2</span>
+      <div>No <b>Kanban do Delivery</b>, toque no ícone de enviar (avião) no card do pedido.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">3</span>
+      <div>Confira cliente, telefone e texto na prévia e toque em <b>"Enviar WhatsApp"</b> para confirmar.</div>
+    </div>
+  </div>
+
+  <p class="rodape">Dúvidas? Pergunte ao <strong>Clippy</strong> dentro do app — ele já conhece a tela nova.<br>— Hardt Salgados</p>
+</div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.parentElement;
+    const abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>

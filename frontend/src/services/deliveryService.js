@@ -28,7 +28,9 @@ const deliveryService = {
     setSilenciarWhatsapp: async (pedidoId, silenciar) =>
         (await api.patch(`/delivery/pedidos/${pedidoId}/silenciar-whatsapp`, { silenciar })).data,
     reenviar: async (pedidoId) =>
-        (await api.post(`/delivery/pedidos/${pedidoId}/reenviar`)).data
+        (await api.post(`/delivery/pedidos/${pedidoId}/reenviar`)).data,
+    previaMensagem: async (pedidoId) =>
+        (await api.get(`/delivery/pedidos/${pedidoId}/previa-mensagem`)).data
 };
 
 export default deliveryService;

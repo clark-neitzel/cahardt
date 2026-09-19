@@ -347,6 +347,74 @@ const deliveryService = {
         return await webhookService.notificarDelivery(pedidoId, status.etapa, { skipWhatsapp: !!status.silenciarWhatsapp, forceManual: true });
     },
 
+    // Formata um telefone normalizado (55DDNNNNNNNNN) para exibição: "(DD) NNNNN-NNNN".
+    _formatarTelefoneExibicao: (telefoneNormalizado) => {
+        const semDDI = telefoneNormalizado.replace(/^55/, '');
+        const ddd = semDDI.slice(0, 2);
+        const resto = semDDI.slice(2);
+        if (resto.length === 9) return `(${ddd}) ${resto.slice(0, 5)}-${resto.slice(5)}`;
+        if (resto.length === 8) return `(${ddd}) ${resto.slice(0, 4)}-${resto.slice(4)}`;
+        return `(${ddd}) ${resto}`;
+    },
+
+    // Prévia da mensagem de WhatsApp que o botão "Reenviar" vai mandar ao cliente
+    // — mesma permissão, mesmo texto (montarMensagemDeliveryCliente é a única
+    // fonte), mesmos motivos de bloqueio do notificarDelivery.
+    previaMensagem: async ({ pedidoId, user }) => {
+        const perm = await deliveryService.permissaoDoUsuario(user);
+        if (!perm.podeVer) throw new Error('Sem permissão para Delivery.');
+
+        const status = await prisma.deliveryStatus.findUnique({ where: { pedidoId } });
+        if (!status) throw new Error('Pedido não está no fluxo.');
+
+        const webhookService = require('./webhookService');
+        const bot = require('./botWhatsappService');
+
+        const pedido = await prisma.pedido.findUnique({
+            where: { id: pedidoId },
+            include: {
+                cliente: true,
+                itens: { include: { produto: { select: { nome: true } } } }
+            }
+        });
+        if (!pedido || !pedido.cliente) throw new Error('Pedido/cliente não encontrado.');
+
+        const { texto, etapaLabel } = webhookService.montarMensagemDeliveryCliente(pedido, status.etapa);
+
+        const phone = webhookService.formatPhoneComFallback(pedido.cliente);
+        const telefoneNormalizado = bot.normalizarTelefone(phone);
+        const telefoneOrigem = telefoneNormalizado
+            ? (pedido.cliente.Telefone_Celular ? 'celular' : 'telefone')
+            : null;
+        const telefoneExibicao = telefoneNormalizado ? deliveryService._formatarTelefoneExibicao(telefoneNormalizado) : null;
+
+        let podeEnviar = true;
+        let motivoBloqueio = null;
+        if (status.silenciarWhatsapp) {
+            podeEnviar = false;
+            motivoBloqueio = webhookService.MOTIVO_DELIVERY_SILENCIADO;
+        } else if (!telefoneNormalizado) {
+            podeEnviar = false;
+            motivoBloqueio = webhookService.MOTIVO_DELIVERY_SEM_TELEFONE;
+        } else if (pedido.cliente.recebeAvisoPedido === false) {
+            podeEnviar = false;
+            motivoBloqueio = webhookService.MOTIVO_DELIVERY_SEM_AVISO;
+        }
+
+        return {
+            cliente: {
+                nome: pedido.cliente.NomeFantasia || pedido.cliente.Nome || null,
+                telefone: telefoneExibicao,
+                telefoneOrigem,
+            },
+            etapa: status.etapa,
+            etapaLabel,
+            texto,
+            podeEnviar,
+            motivoBloqueio,
+        };
+    },
+
     // Marca/desmarca o card pra não notificar o cliente via WhatsApp.
     setSilenciarWhatsapp: async ({ pedidoId, silenciar, user }) => {
         const perm = await deliveryService.permissaoDoUsuario(user);

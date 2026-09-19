@@ -5,6 +5,7 @@ import { MessageCircle, ArrowLeft, Settings, RefreshCw, Send, MessageSquareOff, 
 import deliveryService from '../../services/deliveryService';
 import { useAuth } from '../../contexts/AuthContext';
 import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
+import ModalPreviaWhatsapp from './ModalPreviaWhatsapp';
 
 const { ETAPAS, LABELS } = deliveryService;
 const COL_COLORS = {
@@ -73,6 +74,8 @@ export default function DeliveryKanban() {
 
     // Modal de detalhes
     const [pedidoDetalhe, setPedidoDetalhe] = useState(null);
+    // Modal de prévia do WhatsApp antes de reenviar
+    const [previaCard, setPreviaCard] = useState(null);
 
     const isAdmin = user?.permissoes?.admin;
 
@@ -117,6 +120,8 @@ export default function DeliveryKanban() {
         }
     };
 
+    // Devolve o resultado (r) para quem chamou decidir se fecha o modal de prévia —
+    // sem isso o modal fechava mesmo quando o envio falhava.
     const reenviar = async (card) => {
         setMoving(card.id);
         try {
@@ -125,8 +130,10 @@ export default function DeliveryKanban() {
             else if (r.enviado) toast.success('Mensagem reenviada');
             else if (r.reagendado) toast(r.motivo || 'Entrou na fila — será enviada em breve', { icon: '⏳' });
             else toast(r.motivo || 'Nada foi enviado.', { icon: 'ℹ️', duration: 6000 });
+            return r;
         } catch (e) {
             toast.error(e.response?.data?.error || 'Erro ao reenviar.');
+            return { ok: false };
         } finally {
             setMoving(null);
         }
@@ -239,6 +246,23 @@ export default function DeliveryKanban() {
                 <ModalDetalhes card={pedidoDetalhe} onClose={() => setPedidoDetalhe(null)} />
             )}
 
+            {previaCard && (
+                <ModalPreviaWhatsapp
+                    pedidoId={previaCard.id}
+                    onClose={() => setPreviaCard(null)}
+                    onConfirmar={async () => {
+                        const r = await reenviar(previaCard);
+                        if (r?.ok) {
+                            setPreviaCard(null);
+                        } else {
+                            // envio falhou (toast já mostrado dentro de reenviar) — mantém o modal
+                            // aberto e relança para o ModalPreviaWhatsapp destravar o botão
+                            throw new Error('Falha ao enviar WhatsApp');
+                        }
+                    }}
+                />
+            )}
+
             {perm.podeVer && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
                     {ETAPAS.map(etapa => (
@@ -255,7 +279,7 @@ export default function DeliveryKanban() {
                                         perm={perm}
                                         moving={moving === card.id}
                                         onMover={mover}
-                                        onReenviar={reenviar}
+                                        onReenviar={setPreviaCard}
                                         onToggleSilenciar={toggleSilenciar}
                                         onAbrirDetalhes={() => setPedidoDetalhe(card)}
                                     />

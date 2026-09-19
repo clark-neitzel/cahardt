@@ -33,6 +33,87 @@ const formatDateOnly = (d) => {
     return `${day}/${m}/${y}`;
 };
 
+// ── Motivos de bloqueio do WhatsApp do cliente no Delivery ──
+// Compartilhados entre notificarDelivery e a prévia (GET /api/delivery/pedidos/:id/previa-mensagem)
+// para nunca existirem dois textos diferentes dizendo a mesma coisa.
+const MOTIVO_DELIVERY_SILENCIADO = 'Card com WhatsApp silenciado';
+const MOTIVO_DELIVERY_SEM_TELEFONE = 'Cliente sem WhatsApp cadastrado (nem celular nem telefone)';
+const MOTIVO_DELIVERY_SEM_AVISO = 'Cliente optou por não receber avisos';
+
+const ETAPAS_LABEL_DELIVERY = {
+    PEDIDO: 'Pedido Criado',
+    PRODUCAO: 'Em Produção',
+    SAINDO: 'Saindo para Entrega',
+    ENTREGUE: 'Entregue'
+};
+
+/**
+ * Monta o texto da mensagem de WhatsApp para o CLIENTE no fluxo do Delivery.
+ * Função PURA (sem I/O, sem chamada ao bot) — é a ÚNICA fonte deste texto:
+ * notificarDelivery e a prévia manual (GET .../previa-mensagem) usam ela.
+ * `pedido` já deve vir com `cliente` e `itens.produto` carregados (ex.:
+ * prisma.pedido.findUnique({ include: { cliente: true, itens: { include: {
+ * produto: { select: { nome: true } } } } } })).
+ */
+const montarMensagemDeliveryCliente = (pedido, etapa) => {
+    const nome = pedido.cliente?.NomeFantasia || pedido.cliente?.Nome || 'Cliente';
+    const etapaLabel = ETAPAS_LABEL_DELIVERY[etapa] || etapa;
+    const numeroPedido = pedido.numero || String(pedido.id || '').slice(0, 8);
+
+    const linhasItens = (pedido.itens || []).map(i => {
+        const nomeProd = i.produto?.nome || 'Produto';
+        const qtd = Number(i.quantidade);
+        const valorUn = Number(i.valor || 0).toFixed(2).replace('.', ',');
+        return `\`${nomeProd}\`\n${qtd} un x R$ ${valorUn}`;
+    }).join('\n\n');
+    const total = (pedido.itens || []).reduce((s, i) => s + Number(i.valor || 0) * Number(i.quantidade), 0) + Number(pedido.valorFrete || 0);
+    const totalStr = total.toFixed(2).replace('.', ',');
+
+    const resumoPartes = [
+        `📅 *Entrega:* ${formatDateMsg(pedido.dataVenda)}`,
+        '',
+        '────────────────────',
+        linhasItens,
+    ];
+    if (Number(pedido.valorFrete || 0) > 0) {
+        resumoPartes.push(`\n\`Taxa de entrega\`\nR$ ${Number(pedido.valorFrete).toFixed(2).replace('.', ',')}`);
+    }
+    resumoPartes.push('────────────────────');
+    resumoPartes.push('', `💰 *Total: R$ ${totalStr}*`);
+    const resumo = resumoPartes.join('\n');
+
+    let texto;
+    if (etapa === 'PEDIDO') {
+        texto = [
+            `Olá, *${nome}*! 👋`,
+            '',
+            `Recebemos seu pedido *#${numeroPedido}* ✅`,
+            '',
+            resumo,
+            '',
+            'Obrigado pela preferência! 🙏'
+        ].join('\n');
+    } else if (etapa === 'PRODUCAO') {
+        texto = [
+            `Olá, *${nome}*! 👋`,
+            '',
+            `Seu pedido *#${numeroPedido}* está *${etapaLabel}* ✨`,
+            '',
+            resumo,
+            '',
+            'Obrigado pela preferência! 🙏'
+        ].join('\n');
+    } else {
+        texto = [
+            `Olá, *${nome}*! 👋`,
+            '',
+            `Seu pedido *#${numeroPedido}* — *${etapaLabel}* ✨`
+        ].join('\n');
+    }
+
+    return { texto, etapaLabel };
+};
+
 /** O toggle "Notificação WhatsApp" da tela de Configurações (pausa geral). */
 const whatsappPausado = async () => {
     const cfg = await prisma.appConfig.findUnique({ where: { key: 'whatsapp_ativo' } });
@@ -346,12 +427,7 @@ const webhookService = {
      */
     notificarDelivery: async (pedidoId, novaEtapa, opcoes = {}) => {
         const { skipWhatsapp = false, forceManual = false } = opcoes;
-        const ETAPAS_LABEL = {
-            PEDIDO: 'Pedido Criado',
-            PRODUCAO: 'Em Produção',
-            SAINDO: 'Saindo para Entrega',
-            ENTREGUE: 'Entregue'
-        };
+        const ETAPAS_LABEL = ETAPAS_LABEL_DELIVERY;
 
         const registrarLog = async (destino, status, mensagem) => {
             try {
@@ -419,38 +495,26 @@ const webhookService = {
             }
 
             // ── Cliente ──
-            // PRODUCAO: resumo + data de entrega. SAINDO/ENTREGUE: só número + etapa.
+            // Automático (forceManual=false) em PEDIDO continua sem mandar nada ao
+            // cliente (a confirmação do pedido já saiu na criação). Manual (botão
+            // de reenvio) em PEDIDO manda a variante "pedido recebido".
             let resultadoCliente;
             if (skipWhatsapp) {
-                resultadoCliente = { ok: true, enviado: false, motivo: 'Card com WhatsApp silenciado' };
+                resultadoCliente = { ok: true, enviado: false, motivo: MOTIVO_DELIVERY_SILENCIADO };
                 await registrarLog('WHATSAPP', 'OK', `Etapa ${novaEtapa} — silenciado por configuração do card`);
-            } else if (novaEtapa === 'PEDIDO') {
+            } else if (novaEtapa === 'PEDIDO' && !forceManual) {
                 resultadoCliente = { ok: true, enviado: false, motivo: 'Nesta etapa não há mensagem de WhatsApp para o cliente — a confirmação do pedido já foi enviada na criação' };
                 await registrarLog('WHATSAPP', 'OK', resultadoCliente.motivo);
             } else {
                 const phone = formatPhoneComFallback(pedido.cliente);
                 if (!bot.normalizarTelefone(phone)) {
-                    resultadoCliente = { ok: true, enviado: false, motivo: 'Cliente sem WhatsApp cadastrado (nem celular nem telefone)' };
+                    resultadoCliente = { ok: true, enviado: false, motivo: MOTIVO_DELIVERY_SEM_TELEFONE };
                     await registrarLog('WHATSAPP', 'OK', resultadoCliente.motivo);
                 } else if (pedido.cliente.recebeAvisoPedido === false) {
-                    resultadoCliente = { ok: true, enviado: false, motivo: 'Cliente optou por não receber avisos' };
+                    resultadoCliente = { ok: true, enviado: false, motivo: MOTIVO_DELIVERY_SEM_AVISO };
                     await registrarLog('WHATSAPP', 'OK', resultadoCliente.motivo);
                 } else {
-                    const mensagemCliente = novaEtapa === 'PRODUCAO'
-                        ? [
-                            `Olá, *${nome}*! 👋`,
-                            '',
-                            `Seu pedido *#${numeroPedido}* está *${etapaLabel}* ✨`,
-                            '',
-                            resumo,
-                            '',
-                            'Obrigado pela preferência! 🙏'
-                        ].join('\n')
-                        : [
-                            `Olá, *${nome}*! 👋`,
-                            '',
-                            `Seu pedido *#${numeroPedido}* — *${etapaLabel}* ✨`
-                        ].join('\n');
+                    const { texto: mensagemCliente } = montarMensagemDeliveryCliente(pedido, novaEtapa);
 
                     const referencia = forceManual
                         ? bot.referenciaUnica(`entrega-${numeroPedido}-${novaEtapa}-reenvio`)
@@ -490,3 +554,8 @@ const webhookService = {
 };
 
 module.exports = webhookService;
+module.exports.montarMensagemDeliveryCliente = montarMensagemDeliveryCliente;
+module.exports.formatPhoneComFallback = formatPhoneComFallback;
+module.exports.MOTIVO_DELIVERY_SILENCIADO = MOTIVO_DELIVERY_SILENCIADO;
+module.exports.MOTIVO_DELIVERY_SEM_TELEFONE = MOTIVO_DELIVERY_SEM_TELEFONE;
+module.exports.MOTIVO_DELIVERY_SEM_AVISO = MOTIVO_DELIVERY_SEM_AVISO;
