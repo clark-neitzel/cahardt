@@ -14,17 +14,10 @@
 // Contrato completo: backend/docs/focus-nfe-api.md (seção 9).
 // =====================================================================
 const express = require('express');
-const crypto = require('crypto');
 const router = express.Router();
 const prisma = require('../config/database');
-
-// Comparação em tempo constante (mesmo padrão do admin-exec)
-function segredoConfere(recebido, esperado) {
-    if (typeof recebido !== 'string' || typeof esperado !== 'string') return false;
-    const a = crypto.createHash('sha256').update(recebido).digest();
-    const b = crypto.createHash('sha256').update(esperado).digest();
-    return crypto.timingSafeEqual(a, b);
-}
+// Comparação de segredo/token em tempo constante — padrão único (evita ataque de timing)
+const { segredoConfere } = require('../utils/segredoConfere');
 
 async function segredoEsperado() {
     const env = process.env.FOCUS_NFE_WEBHOOK_SECRET;

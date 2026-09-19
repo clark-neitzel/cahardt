@@ -9,6 +9,8 @@ const prisma = require('../config/database');
 const verificarAuth = require('../middlewares/authMiddleware');
 const asaasService = require('../services/asaasService');
 const botWhatsapp = require('../services/botWhatsappService');
+// Comparação de segredo/token em tempo constante — padrão único (evita ataque de timing)
+const { segredoConfere } = require('../utils/segredoConfere');
 
 const getPerms = async (userId) => {
     const vendedor = await prisma.vendedor.findUnique({
@@ -53,7 +55,8 @@ const mapCobranca = (c) => c && ({
 // ── POST /webhook — chamado pelo Asaas quando o status de uma cobrança muda ──
 router.post('/webhook', async (req, res) => {
     const token = process.env.ASAAS_WEBHOOK_TOKEN;
-    if (!token || req.headers['asaas-access-token'] !== token) {
+    // Fail-closed: sem token configurado, ninguém entra (mesma trava dos demais webhooks).
+    if (!token || !segredoConfere(String(req.headers['asaas-access-token'] || ''), token)) {
         return res.status(401).json({ error: 'Token do webhook inválido.' });
     }
     try {

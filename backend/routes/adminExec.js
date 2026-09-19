@@ -6,7 +6,6 @@
  * Header obrigatório: x-admin-secret: <ADMIN_SECRET>
  */
 const express = require('express');
-const crypto = require('crypto');
 const router = express.Router();
 const prisma = require('../config/database');
 const clienteInsightService = require('../services/clienteInsightService');
@@ -23,19 +22,12 @@ const contaAzulService = require('../services/contaAzulService');
 const { classificarOrigemPagamento, ehDinheiroPagamento } = require('../services/pagamentoOrigemService');
 // Peso do pacote da etiqueta — validação única (mesma do /api/pcp/etiquetas)
 const { pesoPacoteDaPlanilhaKg } = require('../utils/pesoPacote');
+// Comparação de segredo/token em tempo constante — padrão único (evita ataque de timing)
+const { segredoConfere } = require('../utils/segredoConfere');
 
 // Estado do backfill assíncrono da conta financeira em Contas a Receber (varre em segundo plano)
 const _backfillReceber = { rodando: false, progresso: null };
 const _backfillLedger = { rodando: false, progresso: null };
-
-// Comparação em tempo constante (evita ataque de timing). Usa hash SHA-256 para
-// os buffers terem sempre o mesmo tamanho, sem vazar o comprimento do segredo.
-function segredoConfere(recebido, esperado) {
-    if (typeof recebido !== 'string' || typeof esperado !== 'string') return false;
-    const a = crypto.createHash('sha256').update(recebido).digest();
-    const b = crypto.createHash('sha256').update(esperado).digest();
-    return crypto.timingSafeEqual(a, b);
-}
 
 // Middleware: valida ADMIN_SECRET
 router.use((req, res, next) => {
