@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Pegar veículo depois do Home Office — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<meta property="og:title" content="🚗 Novidade no Hardt App: Pegar veículo depois do Home Office">
+<meta property="og:description" content="Começou o dia em Home Office e depois saiu com o carro? Agora tem o botão Pegar veículo no menu: placa, KM e checklist na hora, sem precisar de ninguém apagar o ponto.">
+<meta property="og:type" content="website">
+<style>
+  :root { --primary:#00754A; --primary-dark:#006241; --house:#1E3932; --mint:#d4e9e2; --cream:#f2f0eb; --gold:#cba258; --ink:rgba(0,0,0,.87); --ink-soft:#5f6b66; letter-spacing:-0.01em; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--cream); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; line-height:1.55; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:620px; margin:0 auto; padding:0 16px 56px; }
+  .hero { background:linear-gradient(168deg,var(--house) 0%,#16302a 100%); color:#fff; padding:40px 16px 96px; }
+  .hero-inner { max-width:620px; margin:0 auto; text-align:center; }
+  .eyebrow { display:inline-block; background:var(--gold); color:#2b230f; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.14em; padding:6px 14px; border-radius:999px; margin-bottom:18px; }
+  .hero h1 { font-size:clamp(28px,7vw,40px); font-weight:800; line-height:1.12; margin:0 0 12px; text-wrap:balance; }
+  .hero p { font-size:16px; color:rgba(255,255,255,.78); margin:0 auto; max-width:460px; }
+  .mock { background:#fff; color:var(--ink); border-radius:18px; box-shadow:0 18px 44px rgba(0,0,0,.28); margin:-72px auto 0; max-width:420px; overflow:hidden; border:1px solid rgba(0,0,0,.06); }
+  .mock-top { background:var(--house); color:#fff; padding:12px 16px; display:flex; align-items:center; justify-content:space-between; font-size:14px; font-weight:700; }
+  .mock-btn { display:inline-flex; align-items:center; gap:6px; background:var(--mint); color:var(--primary-dark); border-radius:999px; padding:6px 12px; font-size:12px; font-weight:800; }
+  .mock-body { padding:16px 18px 18px; font-size:13.5px; color:var(--ink-soft); }
+  .mock-body b { color:var(--ink); }
+  .sec-label { font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.16em; color:var(--primary-dark); margin:34px 4px 12px; }
+  .acc { background:#fff; border:1px solid #e3e1da; border-radius:16px; margin-bottom:10px; overflow:hidden; box-shadow:0 1px 2px rgba(30,57,50,.05); }
+  .acc-head { width:100%; display:flex; align-items:center; gap:12px; background:none; border:none; font:inherit; text-align:left; padding:15px 16px; cursor:pointer; min-height:56px; }
+  .acc-head:focus-visible { outline:3px solid var(--gold); outline-offset:2px; }
+  .acc-ico { width:38px; height:38px; border-radius:11px; background:var(--mint); display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
+  .acc-head strong { flex:1; font-size:15.5px; font-weight:700; }
+  .acc-seta { color:#9aa5a0; transition:transform .2s; font-size:13px; }
+  .acc.aberto .acc-seta { transform:rotate(180deg); }
+  .acc-corpo { display:none; padding:0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display:block; }
+  .acc-corpo p, .acc-corpo li { font-size:14px; color:var(--ink-soft); }
+  .acc-corpo p { margin:0 0 10px; }
+  .acc-corpo ul { margin:0; padding-left:18px; }
+  .acc-corpo li { margin-bottom:7px; }
+  .acc-corpo b { color:var(--ink); }
+  @media (max-width:420px) { .acc-corpo { padding-left:16px; } }
+  .passos { background:#fff; border:1px solid #e3e1da; border-radius:16px; padding:18px 16px; }
+  .passo { display:flex; gap:14px; padding:10px 0; }
+  .passo + .passo { border-top:1px dashed #e3e1da; }
+  .passo-n { width:30px; height:30px; flex-shrink:0; border-radius:50%; background:var(--primary); color:#fff; font-weight:800; font-size:14px; display:flex; align-items:center; justify-content:center; }
+  .passo div { font-size:14px; color:var(--ink-soft); }
+  .passo b { color:var(--ink); }
+  .rodape { text-align:center; font-size:13px; color:var(--ink-soft); margin-top:40px; }
+  .rodape strong { color:var(--primary-dark); }
+  .tela { background:#fff; border:1px solid #e3e1da; border-radius:16px; overflow:hidden; margin-bottom:12px; box-shadow:0 1px 2px rgba(30,57,50,.05); }
+  .tela-titulo { background:var(--house); color:#fff; padding:12px 16px; font-size:13px; font-weight:800; display:flex; align-items:center; gap:8px; }
+  .tela-corpo { padding:16px; background:#f7f6f2; }
+  .app-card { background:#fff; border:1px solid #e5e3dc; border-radius:12px; overflow:hidden; margin-bottom:10px; }
+  .app-card-head { display:flex; align-items:center; gap:8px; padding:9px 12px; border-bottom:1px solid #f0efe9; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.12em; color:#6b756f; }
+  .app-card-body { padding:12px; }
+  .app-input { border:1px solid #d8d5cc; border-radius:8px; padding:8px 10px; font-size:12.5px; color:var(--ink); background:#fff; margin-bottom:8px; }
+  .app-input small { display:block; font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:.1em; color:#9aa5a0; margin-bottom:2px; }
+  .app-input.km { text-align:center; font-family:ui-monospace,Menlo,monospace; font-size:22px; font-weight:800; }
+  .app-topbar { background:var(--house); color:#fff; border-radius:10px; padding:10px 12px; display:flex; align-items:center; justify-content:space-between; font-weight:700; font-size:13px; margin-bottom:12px; }
+  .app-topbar .mock-btn { padding:5px 10px; }
+  .app-btn { display:block; width:100%; text-align:center; background:var(--primary); color:#fff; border-radius:12px; padding:12px; font-size:13px; font-weight:800; }
+  .app-btn.vermelho { background:#dc2626; }
+  .app-btn.cinza { background:#e5e7eb; color:#374151; }
+  .check-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:10px; }
+  .check { border:1px solid #d8d5cc; border-radius:8px; padding:7px 8px; font-size:11.5px; display:flex; align-items:center; gap:6px; }
+  .check.ok { background:var(--mint); border-color:rgba(0,117,74,.3); color:var(--primary-dark); font-weight:700; }
+  .box { display:inline-block; width:12px; height:12px; border:1.5px solid #9aa5a0; border-radius:3px; flex-shrink:0; }
+  .check.ok .box { background:var(--primary); border-color:var(--primary); }
+  .modo { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .modo div { border:2px dashed #cfd6d2; border-radius:12px; padding:14px 8px; text-align:center; font-size:12px; font-weight:800; }
+  .modo div small { display:block; font-weight:500; color:var(--ink-soft); font-size:10.5px; }
+  .modo div.sel { border-color:var(--primary); background:#f0f7f4; }
+  .aviso { background:#fff8e6; border:1px solid #f3dd9c; border-radius:10px; padding:10px 12px; font-size:12px; color:#6b5316; margin-bottom:10px; }
+  .pin { display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:50%; background:var(--gold); color:#2b230f; font-size:11px; font-weight:800; flex-shrink:0; vertical-align:2px; margin-left:6px; }
+  .legenda { padding:12px 16px 16px; }
+  .legenda div { display:flex; gap:8px; font-size:13px; color:var(--ink-soft); margin-bottom:7px; align-items:flex-start; }
+  .legenda .pin { margin:1px 0 0; }
+  .legenda b { color:var(--ink); }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">Novidade · Ponto diário</span>
+    <h1>Pegou o carro depois? Agora dá para registrar no app</h1>
+    <p>Quem começa o dia em <b>Home Office</b> e mais tarde sai com o veículo tem um botão novo no menu: <b>Pegar veículo</b>.</p>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="mock">
+    <div class="mock-top"><span>Hardt App</span><span class="mock-btn">🚗 Pegar veículo</span></div>
+    <div class="mock-body">
+      Você abriu o app em casa, escolheu <b>Home Office</b> e agora está na empresa com a chave do carro na mão. <b>Toque em Pegar veículo</b>: placa, KM e checklist, igual ao ponto presencial. Depois disso o botão vira <b>Finalizar</b>, que pede o KM de chegada no fim do dia.
+    </div>
+  </div>
+
+  <div class="sec-label">O que mudou</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🏠</span><strong>Antes: Home Office travava o veículo</strong><span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Quem escolhia Home Office de manhã não conseguia mais registrar o carro naquele dia. Tinha que pedir para um administrador apagar o ponto e começar de novo, ou o KM daquele dia ficava sem registro.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🚗</span><strong>Agora: botão "Pegar veículo" no menu</strong><span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Aparece <b>só para quem está em Home Office</b> naquele dia. No celular fica no topo, ao lado do menu; no computador, na barra lateral.</li>
+        <li>Abre o mesmo formulário do ponto presencial: <b>placa, KM inicial</b> (já sugere o último KM do carro) e <b>checklist de segurança</b> obrigatório.</li>
+        <li>Veículo que outro motorista já pegou hoje aparece <b>bloqueado</b> na lista, com o nome de quem está com ele.</li>
+        <li>Ao confirmar, o seu dia passa a contar como <b>Presencial</b>: o botão <b>Finalizar</b> (KM de chegada) aparece no lugar, e o Caixa e a ficha do veículo enxergam o uso normalmente.</li>
+        <li>O ponto guarda a observação <b>"Começou em Home Office — pegou o veículo às HH:MM"</b>, então a hora fica registrada.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🔒</span><strong>O que continua igual</strong><span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Quem já escolheu <b>Presencial</b> de manhã não vê o botão: só dá para ter <b>um veículo por dia</b>. Para trocar de carro, encerre o expediente antes.</li>
+        <li>O KM inicial <b>não pode ser menor</b> que o último KM registrado daquele carro.</li>
+        <li>O KM final continua obrigatório: sem ele, no dia seguinte o app cobra antes de liberar.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="sec-label">As telas do app</div>
+
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 1 — Ponto diário (de manhã)</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">Como você trabalhará hoje?</div>
+        <div class="app-card-body">
+          <div class="modo">
+            <div class="sel">🏠 HOME OFFICE<span class="pin">1</span><small>Trabalho da Base/Casa</small></div>
+            <div>📍 PRESENCIAL (ROTA)<small>Carro/Visitação</small></div>
+          </div>
+          <div class="aviso" style="margin-top:10px">Sem veículo por enquanto. Se mais tarde você sair com o carro, use o botão <b>Pegar veículo</b> no menu.<span class="pin">2</span></div>
+          <span class="app-btn">CONFIRMAR INÍCIO</span>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Home Office</b> continua igual: escolha e confirme. Nada de placa ou KM nessa hora.</span></div>
+      <div><span class="pin">2</span><span>O aviso novo lembra que dá para <b>pegar o veículo depois</b>, sem apagar o ponto.</span></div>
+    </div>
+  </div>
+
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 2 — O botão novo (dentro do app)</div>
+    <div class="tela-corpo">
+      <div class="app-topbar"><span>Hardt App</span><span><span class="mock-btn">🚗 Pegar veículo</span><span class="pin">1</span> &nbsp;☰</span></div>
+      <div class="app-card">
+        <div class="app-card-head">Minha rota de hoje</div>
+        <div class="app-card-body" style="font-size:12px;color:var(--ink-soft)">0 de 4 entregas feitas · próxima parada: BAR DO NEGÃO</div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>No celular o botão fica <b>no topo, ao lado do menu</b>. No computador, na <b>barra lateral esquerda</b>, acima do seu nome. Só aparece para quem está em Home Office hoje.</span></div>
+    </div>
+  </div>
+
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 3 — Formulário "Pegar veículo"</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">🚗 Pegar veículo</div>
+        <div class="app-card-body">
+          <div class="app-input"><small>Qual veículo vai utilizar? *</small>ABC1D23 - FIORINO<span class="pin">1</span></div>
+          <div class="aviso">📍 Último KM registrado: <b>123.456 km</b> — não pode ser menor<span class="pin">2</span></div>
+          <div class="app-input km">123456</div>
+          <div style="font-size:11px;font-weight:800;margin:4px 0 6px">Checklist de Segurança (Obrigatório)<span class="pin">3</span></div>
+          <div class="check-grid">
+            <div class="check ok"><span class="box"></span>Pneus OK</div>
+            <div class="check ok"><span class="box"></span>Luzes OK</div>
+            <div class="check ok"><span class="box"></span>Óleo e Água OK</div>
+            <div class="check ok"><span class="box"></span>Combustível OK</div>
+            <div class="check ok"><span class="box"></span>CNH/CRLV OK</div>
+            <div class="check ok"><span class="box"></span>Limpo OK</div>
+          </div>
+          <div class="app-input"><small>Observação (opcional)</small>Risco na porta direita já estava</div>
+          <span class="app-btn">✓ CONFIRMAR INÍCIO (TUDO CHECADO)<span class="pin">4</span></span>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Escolha a placa.</b> Carro que outro motorista já pegou hoje aparece bloqueado, com o nome dele.</span></div>
+      <div><span class="pin">2</span><span>O app <b>sugere o último KM</b> do carro. Confira no painel e corrija se precisar; não aceita número menor.</span></div>
+      <div><span class="pin">3</span><span><b>Marque os 6 itens.</b> Sem todos marcados o botão avisa e não salva.</span></div>
+      <div><span class="pin">4</span><span>Ao confirmar, o dia vira <b>Presencial</b> e o botão <b>Finalizar</b> (vermelho) aparece no lugar deste para o KM de chegada.</span></div>
+    </div>
+  </div>
+
+  <div class="sec-label">Para começar a usar</div>
+  <div class="passos">
+    <div class="passo"><span class="passo-n">1</span><div><b>Abra o app em casa</b> e inicie o dia em <b>Home Office</b>, como sempre.</div></div>
+    <div class="passo"><span class="passo-n">2</span><div><b>Chegou na empresa e vai sair com o carro?</b> Toque em <b>Pegar veículo</b> (topo do celular ou barra lateral).</div></div>
+    <div class="passo"><span class="passo-n">3</span><div><b>Placa, KM e checklist</b>, confirme. Pronto: o carro está no seu nome hoje.</div></div>
+    <div class="passo"><span class="passo-n">4</span><div><b>No fim do dia</b>, toque em <b>Finalizar</b> e informe o KM de chegada, como no ponto presencial.</div></div>
+  </div>
+
+  <p class="rodape">Dúvida? Pergunte ao <strong>Clippy</strong> dentro do app: ele já conhece essa novidade.</p>
+</div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.parentElement;
+    const abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>

@@ -104,6 +104,58 @@ const diarioService = {
         });
     },
 
+    // 2b. Pegar o veículo DEPOIS de ter iniciado o dia em Home Office
+    // (motorista abre o app em casa, chega na empresa e só então assume o carro).
+    // Converte o MESMO registro do dia para PRESENCIAL — todos os relatórios que
+    // olham `modo === 'PRESENCIAL' && veiculoId` (Caixa, Veículos) passam a enxergá-lo.
+    assumirVeiculo: async (vendedorId, dados) => {
+        const { veiculoId, kmInicial, checklist, obs } = dados;
+        const hojeDateRef = getDataReferencia();
+
+        const diarioHoje = await prisma.diarioVendedor.findFirst({
+            where: { vendedorId, dataReferencia: hojeDateRef }
+        });
+        if (!diarioHoje) throw new Error('Você ainda não iniciou o dia de hoje.');
+        if (diarioHoje.modo === 'PRESENCIAL' && diarioHoje.veiculoId) {
+            throw new Error('Você já está com um veículo hoje. Encerre o expediente antes de pegar outro.');
+        }
+
+        if (!veiculoId || kmInicial === undefined || kmInicial === null || !checklist) {
+            throw new Error('Informe Veículo, KM Inicial e Checklist.');
+        }
+
+        const veiculoEmUso = await prisma.diarioVendedor.findFirst({
+            where: {
+                veiculoId,
+                dataReferencia: hojeDateRef,
+                vendedorId: { not: vendedorId }
+            },
+            include: { vendedor: { select: { nome: true } } }
+        });
+        if (veiculoEmUso) {
+            throw new Error(`Este veículo já está sendo usado hoje por ${veiculoEmUso.vendedor?.nome || 'outro motorista'}.`);
+        }
+
+        const hora = new Intl.DateTimeFormat('pt-BR', {
+            timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit'
+        }).format(new Date());
+        let novaObs = diarioHoje.obs || '';
+        novaObs += `${novaObs ? '\n' : ''}[Começou em Home Office — pegou o veículo às ${hora}]`;
+        if (obs) novaObs += `\n${obs}`;
+
+        return await prisma.diarioVendedor.update({
+            where: { id: diarioHoje.id },
+            data: {
+                modo: 'PRESENCIAL',
+                veiculoId,
+                kmInicial,
+                checklist,
+                obs: novaObs
+            },
+            include: { veiculo: true }
+        });
+    },
+
     // 3. Finalizar o dia/Pendência
     encerrarDia: async (vendedorId, dados) => {
         const { diarioId, kmFinal, obsFinal } = dados;

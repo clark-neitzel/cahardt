@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { LogOut, MapPin, Home, CheckCircle, AlertTriangle, FileText } from 'lucide-react';
+import { LogOut, MapPin, Home, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useDiario } from '../../contexts/DiarioContext';
 import { toast } from 'react-hot-toast';
 import api from '../../services/api';
-import SelectBusca from '../SelectBusca';
+import FormVeiculoPresencial from './FormVeiculoPresencial';
 
 const DiarioGateway = () => {
     const { logout, user, signed } = useAuth();
@@ -13,7 +13,6 @@ const DiarioGateway = () => {
     // Passos do modal
     // 1: PendenciaOntem -> 2: Escolher Modo -> 3: Form Presencial
     const [step, setStep] = useState(1);
-    const [veiculos, setVeiculos] = useState([]);
 
     // Dados de Encerramento Pendente
     const [pendenciaKm, setPendenciaKm] = useState('');
@@ -21,21 +20,7 @@ const DiarioGateway = () => {
 
     // Dados Novo Checkin Presencial
     const [modo, setModo] = useState(null); // 'HOME_OFFICE' ou 'PRESENCIAL'
-    const [veiculoId, setVeiculoId] = useState('');
-    const [kmInicial, setKmInicial] = useState('');
-    const [ultimoKm, setUltimoKm] = useState(null); // { kmFinal, dataReferencia }
-    const [obs, setObs] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
-
-    // Checklist do Carro
-    const [checklist, setChecklist] = useState({
-        pneusOk: false,
-        luzesOk: false,
-        oleoOk: false,
-        combustivelOk: false,
-        documentoOk: false,
-        limpezaOk: false
-    });
 
     useEffect(() => {
         if (!diarioStatus.pendenciaAnterior) {
@@ -44,37 +29,6 @@ const DiarioGateway = () => {
             setStep(1); // Cobra o fechamento de ontem
         }
     }, [diarioStatus.pendenciaAnterior]);
-
-    const [veiculosEmUso, setVeiculosEmUso] = useState({}); // { veiculoId: nomeMotorista }
-
-    // Carrega a placa dos veiculos e quais estão em uso hoje
-    useEffect(() => {
-        if (modo === 'PRESENCIAL' && veiculos.length === 0) {
-            api.get('/veiculos').then(res => setVeiculos(res.data)).catch(console.error);
-            api.get('/diarios/veiculos-em-uso-hoje').then(res => {
-                const map = {};
-                (res.data || []).forEach(d => { map[d.veiculoId] = d.motorista; });
-                setVeiculosEmUso(map);
-            }).catch(() => {});
-        }
-    }, [modo]);
-
-    // Ao selecionar veículo, busca o último KM final registrado
-    useEffect(() => {
-        if (!veiculoId) { setUltimoKm(null); setKmInicial(''); return; }
-        api.get(`/veiculos/${veiculoId}/ultimo-km`)
-            .then(res => {
-                setUltimoKm(res.data);
-                if (res.data?.kmFinal) setKmInicial(String(res.data.kmFinal));
-            })
-            .catch(() => setUltimoKm(null));
-    }, [veiculoId]);
-
-    const handleChecklist = (field) => {
-        setChecklist(prev => ({ ...prev, [field]: !prev[field] }));
-    };
-
-    const isChecklistCompleto = () => Object.values(checklist).every(v => v === true);
 
     const resolverPendencia = async (e) => {
         e.preventDefault();
@@ -107,26 +61,13 @@ const DiarioGateway = () => {
         }
     };
 
-    const confirmarPresencial = async (e) => {
-        e.preventDefault();
-        if (!isChecklistCompleto()) {
-            return toast.error('Sua segurança importa! Marque todo o checklist do veículo antes de sair.');
-        }
-
+    const confirmarPresencial = async (dados) => {
         try {
-            setIsSubmitting(true);
-            await api.post('/diarios/iniciar', {
-                modo: 'PRESENCIAL',
-                veiculoId,
-                kmInicial: parseInt(kmInicial),
-                checklist,
-                obs
-            });
+            await api.post('/diarios/iniciar', { modo: 'PRESENCIAL', ...dados });
             toast.success('Boa viagem! Registrado com sucesso.');
             setTimeout(() => window.location.reload(), 800);
         } catch (error) {
             toast.error(error.response?.data?.error || 'Erro ao iniciar o dia.');
-            setIsSubmitting(false);
         }
     };
 
@@ -230,7 +171,7 @@ const DiarioGateway = () => {
                     <div className="space-y-6 text-center animate-pulse">
                         <Home className="w-20 h-20 text-blue-500 mx-auto" />
                         <h2 className="text-2xl font-bold text-gray-900">Home Office Selecionado</h2>
-                        <p className="text-gray-600">Nenhum preenchimento de veículo é exibido. Suas telas serão ativadas na nuvem.</p>
+                        <p className="text-gray-600">Sem veículo por enquanto. Se mais tarde você sair com o carro, use o botão <strong>Pegar veículo</strong> no menu para registrar placa, KM e checklist.</p>
                         <div className="flex flex-col sm:flex-row gap-3 pt-6">
                             <button onClick={() => setModo(null)} className="w-full sm:flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-4 rounded-xl transition-colors">
                                 VOLTAR
@@ -248,119 +189,7 @@ const DiarioGateway = () => {
 
                 {/* 3B. PRESENCIAL FORM + CHECKLIST */}
                 {step === 2 && modo === 'PRESENCIAL' && (
-                    <div className="space-y-6 animate-fade-in">
-                        <div className="flex items-center justify-between border-b pb-4">
-                            <h2 className="text-2xl font-bold flex items-center text-green-700">
-                                <MapPin className="mr-2" /> Visitação (Rota)
-                            </h2>
-                            <button onClick={() => setModo(null)} className="text-gray-500 hover:underline text-sm font-medium">Voltar/Mudar</button>
-                        </div>
-
-                        <form onSubmit={confirmarPresencial} className="space-y-5">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div className="sm:col-span-2">
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">Qual veículo vai utilizar? *</label>
-                                    <div className="flex">
-                                        <SelectBusca
-                                            className="w-full"
-                                            value={veiculoId}
-                                            onChange={(e) => setVeiculoId(e.target.value)}
-                                        >
-                                            <option value="">-- Selecione a Placa --</option>
-                                            {veiculos.map(v => {
-                                                const emUso = veiculosEmUso[v.id];
-                                                return (
-                                                    <option key={v.id} value={v.id} disabled={!!emUso}>
-                                                        {v.placa} - {v.modelo}{emUso ? ` (em uso: ${emUso})` : ''}
-                                                    </option>
-                                                );
-                                            })}
-                                        </SelectBusca>
-
-                                        {/* Botão de Documento (se existir URL no veiculo) */}
-                                        {veiculoId && veiculos.find(v => v.id === veiculoId)?.documentoUrl ? (
-                                            <a
-                                                href={veiculos.find(v => v.id === veiculoId).documentoUrl}
-                                                target="_blank" rel="noopener noreferrer"
-                                                className="inline-flex items-center px-4 py-2 border border-l-0 border-gray-300 rounded-r-md bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium text-sm transition-colors"
-                                                title="Visualizar documento em anexo"
-                                            >
-                                                <FileText className="w-5 h-5" />
-                                            </a>
-                                        ) : (
-                                            <div className="inline-flex items-center px-4 py-2 border border-l-0 border-gray-300 rounded-r-md bg-gray-100 text-gray-400 font-medium text-sm" title="Nenhum documento anexado">
-                                                <FileText className="w-5 h-5 opacity-50" />
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-
-                                <div className="sm:col-span-2">
-                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Quilometragem Inicial Certa (KM)*</label>
-                                    {ultimoKm?.kmFinal && (
-                                        <div className="mb-2 flex items-center gap-2 text-xs bg-blue-50 border border-blue-200 rounded-md px-3 py-1.5 text-blue-800">
-                                            <span>📍 Último KM registrado:</span>
-                                            <span className="font-mono font-bold">{ultimoKm.kmFinal.toLocaleString('pt-BR')} km</span>
-                                            <span className="text-blue-500">({ultimoKm.dataReferencia}) — não pode ser menor</span>
-                                        </div>
-                                    )}
-                                    <input
-                                        type="number"
-                                        required
-                                        className="mt-1 flex-1 block w-full bg-gray-50 focus:bg-white rounded-md border-gray-300 flex text-center text-3xl font-mono h-14 font-bold focus:border-green-500 focus:ring-green-500"
-                                        value={kmInicial}
-                                        onChange={(e) => {
-                                            const val = parseInt(e.target.value);
-                                            if (ultimoKm?.kmFinal && val < ultimoKm.kmFinal) return; // bloqueia valor menor
-                                            setKmInicial(e.target.value);
-                                        }}
-                                        min={ultimoKm?.kmFinal || 0}
-                                        placeholder="00000"
-                                    />
-                                    {ultimoKm?.kmFinal && (
-                                        <p className="text-xs text-amber-600 mt-1">⚠️ O odômetro não pode retroceder. Mínimo: {ultimoKm.kmFinal.toLocaleString('pt-BR')} km</p>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* CHECKLIST */}
-                            <div className="pt-2">
-                                <p className="text-sm font-bold text-gray-800 mb-3 border-b pb-2">Checklist de Segurança (Obrigatório)</p>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <label className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${checklist.pneusOk ? 'bg-green-50 border-green-500 text-green-900 font-medium' : 'bg-gray-50 hover:bg-gray-100 text-gray-700'}`}>
-                                        <input type="checkbox" checked={checklist.pneusOk} onChange={() => handleChecklist('pneusOk')} className="mr-3 h-5 w-5 text-green-600 focus:ring-green-500 rounded border-gray-300" /> Calibragem Pneus OK
-                                    </label>
-                                    <label className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${checklist.luzesOk ? 'bg-green-50 border-green-500 text-green-900 font-medium' : 'bg-gray-50 hover:bg-gray-100 text-gray-700'}`}>
-                                        <input type="checkbox" checked={checklist.luzesOk} onChange={() => handleChecklist('luzesOk')} className="mr-3 h-5 w-5 text-green-600 focus:ring-green-500 rounded border-gray-300" /> Luzes/Farol OK
-                                    </label>
-                                    <label className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${checklist.oleoOk ? 'bg-green-50 border-green-500 text-green-900 font-medium' : 'bg-gray-50 hover:bg-gray-100 text-gray-700'}`}>
-                                        <input type="checkbox" checked={checklist.oleoOk} onChange={() => handleChecklist('oleoOk')} className="mr-3 h-5 w-5 text-green-600 focus:ring-green-500 rounded border-gray-300" /> Óleo e Água OK
-                                    </label>
-                                    <label className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${checklist.combustivelOk ? 'bg-green-50 border-green-500 text-green-900 font-medium' : 'bg-gray-50 hover:bg-gray-100 text-gray-700'}`}>
-                                        <input type="checkbox" checked={checklist.combustivelOk} onChange={() => handleChecklist('combustivelOk')} className="mr-3 h-5 w-5 text-green-600 focus:ring-green-500 rounded border-gray-300" /> Combustível OK
-                                    </label>
-                                    <label className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${checklist.documentoOk ? 'bg-green-50 border-green-500 text-green-900 font-medium' : 'bg-gray-50 hover:bg-gray-100 text-gray-700'}`}>
-                                        <input type="checkbox" checked={checklist.documentoOk} onChange={() => handleChecklist('documentoOk')} className="mr-3 h-5 w-5 text-green-600 focus:ring-green-500 rounded border-gray-300" /> Doc. Impresso CNH/CRLV OK
-                                    </label>
-                                    <label className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${checklist.limpezaOk ? 'bg-green-50 border-green-500 text-green-900 font-medium' : 'bg-gray-50 hover:bg-gray-100 text-gray-700'}`}>
-                                        <input type="checkbox" checked={checklist.limpezaOk} onChange={() => handleChecklist('limpezaOk')} className="mr-3 h-5 w-5 text-green-600 focus:ring-green-500 rounded border-gray-300" /> Limpo e Organizado OK
-                                    </label>
-                                </div>
-                            </div>
-
-                            <textarea
-                                className="w-full mt-2 rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 text-sm p-3 bg-gray-50"
-                                rows="2"
-                                placeholder="Alguma observação, avaria percebida ou recado? (Opcional)"
-                                value={obs}
-                                onChange={(e) => setObs(e.target.value)}
-                            />
-
-                            <button type="submit" disabled={isSubmitting} className="w-full h-14 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-bold rounded-xl text-lg flex items-center justify-center shadow-lg transition-transform active:scale-95 space-x-2">
-                                <CheckCircle className="w-6 h-6" /> <span>CONFIRMAR INÍCIO (TUDO CHECADO)</span>
-                            </button>
-                        </form>
-                    </div>
+                    <FormVeiculoPresencial onConfirmar={confirmarPresencial} onVoltar={() => setModo(null)} />
                 )}
             </div>
 

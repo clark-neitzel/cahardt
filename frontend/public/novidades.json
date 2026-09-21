@@ -1,5 +1,11 @@
 [
   {
+    "slug": "pegar-veiculo",
+    "titulo": "Pegar veículo depois do Home Office",
+    "resumo": "Quem inicia o dia em Home Office e mais tarde sai com o carro agora tem o botão \"Pegar veículo\" (topo do celular / barra lateral no computador). Ele abre o mesmo formulário do ponto presencial — placa, KM inicial (sugere o último KM do carro) e checklist de segurança obrigatório — e converte o dia para Presencial: o botão Finalizar (KM de chegada) aparece no lugar, e o Caixa e a ficha do veículo passam a enxergar o uso. Carro já pego por outro motorista aparece bloqueado. Só um veículo por dia: quem já está Presencial não vê o botão. O ponto guarda a hora em que o veículo foi assumido.",
+    "data": "2026-09-21"
+  },
+  {
     "slug": "preco-personalizado-catalogo",
     "titulo": "Preço personalizado no Catálogo",
     "resumo": "No modal \"Gerar catálogo personalizado\" (aba Catálogo), agora dá para ajustar o preço de cada item antes de gerar o link — sempre para cima do piso calculado pela condição de pagamento escolhida (nunca para baixo). Basta tocar no preço (ou no lápis ✎), digitar e apertar Enter; digitar abaixo do piso deixa o campo vermelho e volta ao piso sozinho ao sair. Item ajustado ganha fundo amarelo, selo \"personalizado\" e o preço original riscado, com um × para desfazer; trocar de condição recalcula o piso na hora (item que ficar abaixo do novo piso ganha o aviso \"subiu p/ o piso\"). Abaixo do total aparece um resumo \"N itens com preço personalizado · R$ X a mais\" com botão \"desfazer todos\". O cliente que recebe o link não vê nada disso — a página pública mostra só o preço final normal.",

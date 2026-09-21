@@ -122,6 +122,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DiarioProvider } from './contexts/DiarioContext';
 import DiarioGateway from './components/Diario/DiarioGateway';
 import DiarioCheckout from './components/Diario/DiarioCheckout';
+import DiarioPegarVeiculo from './components/Diario/DiarioPegarVeiculo';
 import PendenciaRotaGateway from './components/PendenciaRotaGateway';
 import AlertaFaturamento from './components/AlertaFaturamento';
 import AlertaPedidoConvertido from './components/AlertaPedidoConvertido';
@@ -131,6 +132,7 @@ import AlertaTarefas from './components/AlertaTarefas';
 import AlertaPedidosSite from './components/AlertaPedidosSite';
 import AlertaAutorizacaoDevolucao from './components/AlertaAutorizacaoDevolucao';
 import AlertaDevolucaoRefItem from './components/AlertaDevolucaoRefItem';
+import AlertaPagamentoAposQuitacao from './components/AlertaPagamentoAposQuitacao';
 import Clippy from './components/Clippy/Clippy';
 import TelaSemConexao from './components/TelaSemConexao';
 import { useVersionCheck } from './hooks/useVersionCheck';
@@ -574,6 +576,7 @@ const Layout = ({ children }) => {
               <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">{menuCompleto ? 'Menu do meu perfil' : 'Ver menu completo'}</span>
             </button>
           )}
+          <DiarioPegarVeiculo />
           <DiarioCheckout />
           <div className="flex items-center gap-2 px-3 py-2">
             <div className="w-7 h-7 bg-white/15 rounded-full flex items-center justify-center shrink-0">
@@ -623,7 +626,8 @@ const Layout = ({ children }) => {
                 <RefreshCw className={`h-5 w-5 ${updateAvailable ? 'animate-spin' : ''}`} style={updateAvailable ? { animationDuration: '3s' } : undefined} />
                 {updateAvailable && <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse" />}
               </button>
-              <DiarioCheckout />
+              <DiarioPegarVeiculo />
+          <DiarioCheckout />
               <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                 className="inline-flex items-center justify-center p-2 rounded-md text-white/60 hover:text-white hover:bg-white/10"
@@ -761,6 +765,10 @@ const Layout = ({ children }) => {
 
         {/* ALERTA DE PEDIDO ESPECIAL CONVERTIDO EM NF (popup a cada 5 min p/ faturamento) */}
         <AlertaPedidoConvertido />
+
+        {/* PAGAMENTO QUE CAIU EM PEDIDO JÁ QUITADO — dinheiro a devolver (popup a cada
+            5 min, SÓ p/ admin, SEM bip). O próprio componente decide se é admin. */}
+        <AlertaPagamentoAposQuitacao />
 
         {/* LEMBRETE DE PEDIDOS SALVOS SEM ENVIAR (popup a cada 30 min p/ o vendedor) */}
         <AlertaPedidosNaoEnviados />

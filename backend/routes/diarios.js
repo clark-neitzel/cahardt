@@ -36,6 +36,8 @@ router.get('/veiculos-em-uso-hoje', async (req, res) => {
 // Checkins
 router.post('/iniciar', diarioController.iniciar);
 router.post('/encerrar', diarioController.encerrar);
+// Home Office → pega o veículo depois (mesmo registro do dia vira PRESENCIAL)
+router.post('/assumir-veiculo', diarioController.assumirVeiculo);
 
 // Admin: editar KM inicial de um diário (sem exigir KM final)
 router.put('/:id/km', async (req, res) => {

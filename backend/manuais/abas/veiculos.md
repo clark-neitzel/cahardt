@@ -42,6 +42,14 @@ Cadastro e controle da frota de veículos da empresa. Permite registrar carros/c
 2. Clique no ícone de check no alerta pendente
 3. O alerta some da lista de pendentes
 
+### Ponto diário do motorista: Presencial ou Home Office (e "Pegar veículo" depois)
+
+Ao abrir o app, todo usuário sem a permissão "Isento de Ponto" (e que não é admin) passa pelo **Ponto Diário** e escolhe como trabalha hoje:
+- **Presencial (Rota)**: escolhe a placa, informa o KM inicial (o app sugere o último KM registrado do carro e não aceita valor menor) e marca o checklist de segurança obrigatório (pneus, luzes, óleo/água, combustível, CNH/CRLV, limpeza). Veículo já escolhido por outro motorista hoje aparece bloqueado com o nome dele.
+- **Home Office**: sem veículo. Se mais tarde a pessoa sair com o carro, usa o botão **"Pegar veículo"** (no celular fica no topo ao lado do menu; no computador, na barra lateral acima do nome). Ele abre o mesmo formulário (placa, KM, checklist) e converte o dia para Presencial — o registro guarda a observação "Começou em Home Office — pegou o veículo às HH:MM". O botão só aparece para quem está em Home Office no dia; só é possível um veículo por dia (para trocar de carro é preciso encerrar o expediente antes).
+- **Finalizar**: quem está Presencial vê o botão vermelho "Finalizar" (mesmo lugar do "Pegar veículo") para informar o KM de chegada. Se não informar, no dia seguinte o app cobra o KM final antes de liberar qualquer tela.
+- Admin pode ajustar o KM inicial ou apagar o ponto do dia (ex.: modo escolhido errado) pela ficha do veículo.
+
 ### Ver ficha do veículo (histórico de KM)
 1. Clique no ícone de ficha (ChevronRight) no veículo
 2. A ficha abre mostrando o histórico de KM por data de uso nas rotas

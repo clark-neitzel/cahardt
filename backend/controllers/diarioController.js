@@ -27,6 +27,19 @@ const diarioController = {
         }
     },
 
+    // Motorista que começou em Home Office assume um veículo no meio do dia
+    assumirVeiculo: async (req, res) => {
+        try {
+            const vendedorId = req.user.id;
+            if (!vendedorId) return res.status(403).json({ error: 'Acesso negado. Usuário sem ID na sessão.' });
+
+            const diario = await diarioService.assumirVeiculo(vendedorId, req.body);
+            res.json(diario);
+        } catch (error) {
+            res.status(400).json({ error: error.message });
+        }
+    },
+
     encerrar: async (req, res) => {
         try {
             const vendedorId = req.user.id;
