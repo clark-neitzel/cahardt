@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Search, X, AlertCircle, Package, ChevronDown, ChevronUp, Printer, CheckSquare, Square, Trash2, Calendar, User, Filter, Pencil, CheckCircle, RotateCcw, MessageCircle, XCircle, Loader2, List, FileEdit, Send, RefreshCw, FileCheck, Receipt, Bell, FileText, ExternalLink, Truck, CircleDollarSign, Zap, MapPin, Clock, Ban } from 'lucide-react';
+import { Search, X, AlertCircle, AlertTriangle, Package, ChevronDown, ChevronUp, Printer, CheckSquare, Square, Trash2, Calendar, User, Filter, Pencil, CheckCircle, RotateCcw, MessageCircle, XCircle, Loader2, List, FileEdit, Send, RefreshCw, FileCheck, Receipt, Bell, FileText, ExternalLink, Truck, CircleDollarSign, Zap, MapPin, Clock, Ban } from 'lucide-react';
 import pedidoService from '../../services/pedidoService';
 import api, { API_URL } from '../../services/api';
 import amostraService from '../../services/amostraService';
@@ -22,6 +22,18 @@ import EstadoVazio from '../../components/EstadoVazio';
 // Pedido recém-criado pode ainda não ter número do CA (rascunho ABERTO) — nunca interpolar
 // null/undefined direto na tela (vira "#null" para o usuário).
 const fmtNumero = (pedido) => pedido.numero == null ? '(rascunho)' : pedido.bonificacao ? `BN#${pedido.numero}` : pedido.especial ? `ZZ#${pedido.numero}` : `#${pedido.numero}`;
+
+// Encaixe de entrega: NÃO é campo do Pedido — o NovoPedido.jsx grava o prefixo "ENCAIXE DE
+// ENTREGA" na 1ª linha de `observacoes` (com ou sem o resto do texto do vendedor embaixo).
+// Aqui separamos o marcador (vira selo) do restante (vira o texto de observação exibido).
+const PREFIXO_ENCAIXE = 'ENCAIXE DE ENTREGA';
+const getEncaixeInfo = (pedido) => {
+    const obs = (pedido.observacoes || '').trim();
+    const ehEncaixe = obs.toUpperCase().startsWith(PREFIXO_ENCAIXE);
+    if (!ehEncaixe) return { encaixe: false, obsExibida: obs };
+    const resto = obs.slice(PREFIXO_ENCAIXE.length).replace(/^\n+/, '').trim();
+    return { encaixe: true, obsExibida: resto };
+};
 
 // Pedido "faturado" = RECEBIDO no app (faturamento local/especial aprovado) ou FATURADO no CA.
 // Enquanto não faturar, a linha leva a pílula dourada NOVO (pedido do dono, 07/2026).
@@ -1300,8 +1312,10 @@ const ListaPedidos = () => {
                             />
                         ) : (
                             /* Filtro de status e busca já aplicados no servidor (paginado) */
-                            pedidos.map((pedido) => (
-                                <div key={pedido.id} id={`pedido-row-${pedido.id}`} className={`px-3 pt-3 pb-2 hover:bg-gray-50 transition-colors border-b border-gray-100 overflow-hidden ${highlightId === pedido.id ? 'ring-2 ring-primary bg-yellow-50 animate-pulse' : ''}`}>
+                            pedidos.map((pedido) => {
+                                const { encaixe, obsExibida } = getEncaixeInfo(pedido);
+                                return (
+                                <div key={pedido.id} id={`pedido-row-${pedido.id}`} className={`px-3 pt-3 pb-2 hover:bg-gray-50 transition-colors border-b border-gray-100 overflow-hidden ${highlightId === pedido.id ? 'ring-2 ring-primary bg-yellow-50 animate-pulse' : encaixe ? 'bg-amber-50 border-l-4 border-l-amber-400' : ''}`}>
                                     {/* Linha 1: checkbox + número + cliente + valor */}
                                     <div className="flex items-start gap-2 mb-1">
                                         {pedido.situacaoCA === 'FATURADO' && (
@@ -1320,6 +1334,11 @@ const ListaPedidos = () => {
                                         <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border shrink-0 shadow-sm mt-0.5 ${pedido.especial ? 'text-purple-700 bg-purple-50 border-purple-200' : 'text-blue-700 bg-blue-50 border-blue-100'}`}>
                                             {fmtNumero(pedido)}
                                         </span>
+                                        {encaixe && (
+                                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 shrink-0 shadow-sm mt-0.5 flex items-center gap-0.5" title="Pedido de encaixe de entrega">
+                                                <AlertTriangle className="h-2.5 w-2.5" /> ENCAIXE
+                                            </span>
+                                        )}
                                         <h3 className="text-[13px] font-bold text-gray-900 truncate flex-1 min-w-0">
                                             {pedido.cliente?.NomeFantasia || pedido.cliente?.Nome || 'Cliente Desconhecido'}
                                         </h3>
@@ -1363,6 +1382,16 @@ const ListaPedidos = () => {
                                             </div>
                                         )}
                                     </div>
+
+                                    {/* Observações do pedido — encaixe já virou o selo acima; aqui só o resto do texto */}
+                                    {obsExibida && (
+                                        <p
+                                            className="text-[11px] italic text-gray-700 mb-2 line-clamp-2 whitespace-pre-line"
+                                            title={obsExibida}
+                                        >
+                                            {obsExibida}
+                                        </p>
+                                    )}
 
                                     {/* Bonificação: escolha do vendedor + estado da NF-e, em LINHA PRÓPRIA.
                                         Na linha 3 os selos disputam espaço com até 5 botões e, a 375px,
@@ -1658,7 +1687,8 @@ const ListaPedidos = () => {
                                         </div>
                                     </div>
                                 </div>
-                            ))
+                                );
+                            })
                         )}
                     </div>
                     {/* Rodapé: contador + Carregar mais (paginação servidor) */}

@@ -317,6 +317,14 @@ O **valor do título** em Contas a Receber sempre acompanha as parcelas: depois 
 | Amostra | `AM#123` | Produto enviado como amostra; sub-aba própria |
 | Devolução | — | Sub-aba própria; visível para quem tem `Pode_Fazer_Devolucao` |
 
+**Selo ENCAIXE no card (09/2026):** encaixe não é um campo do pedido — é detectado pela observação
+começando com "ENCAIXE DE ENTREGA" (gravada pelo `NovoPedido` quando o vendedor marca a opção). Na
+lista, o card desse pedido sai com fundo âmbar e uma faixa à esquerda, mais o selo **⚠ ENCAIXE** ao
+lado do número — para bater o olho e o escritório saber que aquele pedido furou a rota. O restante
+do texto da observação (se houver) aparece embaixo do card, junto com a observação de qualquer
+outro pedido (mesmo sem ser encaixe) — texto em itálico, até 2 linhas, passe o mouse para ver
+completo.
+
 ---
 
 ## Status do pedido

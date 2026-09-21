@@ -1,5 +1,11 @@
 [
   {
+    "slug": "encaixe-no-card",
+    "titulo": "Encaixe e observações no card do pedido",
+    "resumo": "Na aba Pedidos, o card mostra a observação do pedido e destaca em âmbar com o selo ⚠ ENCAIXE os pedidos marcados como encaixe de entrega.",
+    "data": "2026-09-21"
+  },
+  {
     "slug": "pegar-veiculo",
     "titulo": "Pegar veículo depois do Home Office",
     "resumo": "Quem inicia o dia em Home Office e mais tarde sai com o carro agora tem o botão \"Pegar veículo\" (topo do celular / barra lateral no computador). Ele abre o mesmo formulário do ponto presencial — placa, KM inicial (sugere o último KM do carro) e checklist de segurança obrigatório — e converte o dia para Presencial: o botão Finalizar (KM de chegada) aparece no lugar, e o Caixa e a ficha do veículo passam a enxergar o uso. Carro já pego por outro motorista aparece bloqueado. Só um veículo por dia: quem já está Presencial não vê o botão. O ponto guarda a hora em que o veículo foi assumido.",

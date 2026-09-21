@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Encaixe e observações no card do pedido — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp -->
+<meta property="og:title" content="⚠️ Novidade no Hardt App: Encaixe e observações no card do pedido">
+<meta property="og:description" content="Pedido de encaixe agora salta aos olhos na lista, e a observação aparece direto no card — sem precisar abrir o pedido.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --amber-bg: #fffbeb;
+    --amber-border: #fbbf24;
+    --amber-text: #b45309;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 56px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(26px, 6.5vw, 36px);
+    font-weight: 800;
+    line-height: 1.14;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.75);
+    font-size: 16px;
+    max-width: 46ch;
+    margin: 0 auto;
+    text-wrap: balance;
+  }
+
+  /* ── SEÇÕES / ACCORDION ── */
+  .sec-label {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: var(--primary-dark);
+    margin: 34px 4px 12px;
+  }
+  .acc {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .acc-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: none;
+    border: none;
+    font: inherit;
+    text-align: left;
+    padding: 15px 16px;
+    cursor: pointer;
+    min-height: 56px;
+  }
+  .acc-ico {
+    width: 38px; height: 38px;
+    border-radius: 11px;
+    background: var(--mint);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  /* passos "para conferir" */
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n {
+    width: 30px; height: 30px; flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 800;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .rodape {
+    text-align: center;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 40px;
+  }
+  .rodape strong { color: var(--primary-dark); }
+
+  /* ── MOCKUPS DAS TELAS DO APP ── */
+  .tela {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .tela-titulo {
+    background: var(--house);
+    color: #fff;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .app-card {
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 10px;
+    padding: 10px 12px;
+  }
+  .app-card.encaixe {
+    background: var(--amber-bg);
+    border-left: 4px solid var(--amber-border);
+  }
+  .card-linha1 { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; flex-wrap: wrap; }
+  .card-numero {
+    font-size: 10px; font-weight: 800;
+    padding: 2px 6px; border-radius: 5px;
+    background: #eff6ff; color: #1d4ed8; border: 1px solid #dbeafe;
+  }
+  .card-encaixe-selo {
+    display: inline-flex; align-items: center; gap: 3px;
+    font-size: 9px; font-weight: 800;
+    padding: 2px 6px; border-radius: 999px;
+    background: #fef3c7; color: var(--amber-text);
+  }
+  .card-cliente { font-size: 12.5px; font-weight: 700; color: var(--ink); flex: 1; }
+  .card-valor { font-size: 12.5px; font-weight: 800; color: var(--ink); }
+  .card-info { font-size: 10.5px; color: #7a847e; margin-bottom: 6px; }
+  .card-obs {
+    font-size: 11px; font-style: italic; color: #3f4744;
+    margin: 0;
+  }
+  .pin {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    flex-shrink: 0;
+    vertical-align: 2px;
+    margin-left: 6px;
+  }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+</style>
+</head>
+<body>
+
+<!-- ══════════ HERO ══════════ -->
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>Encaixe e observação,<br>direto no card do pedido</h1>
+    <p>Na aba Pedidos, o card de cada pedido agora mostra a observação embaixo — e pedido de encaixe de entrega ganha um destaque que bate o olho, sem precisar abrir o pedido para descobrir.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- ══════════ O QUE MUDOU ══════════ -->
+  <div class="sec-label">O que mudou — toque para abrir</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">⚠️</span>
+      <strong>Encaixe salta aos olhos</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Pedido marcado como <b>encaixe de entrega</b> (aquele que fura a rota já fechada) agora aparece com <b>fundo âmbar</b> e uma <b>faixa colorida na lateral</b> do card.</li>
+        <li>Ao lado do número do pedido entra o selo <b>⚠ ENCAIXE</b>.</li>
+        <li>Vale para a aba Pedidos inteira — no celular, no iPad e no computador.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">📝</span>
+      <strong>Observação aparece no card</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Se o pedido tem observação (do vendedor, do escritório, o que for), ela agora aparece <b>direto no card</b>, em itálico — sem precisar abrir o pedido para ler.</p>
+      <p>Observação longa mostra só as duas primeiras linhas no card; no computador, passe o mouse por cima para ler o texto inteiro. No pedido de encaixe, some da observação só o aviso "ENCAIXE DE ENTREGA" (que já virou o selo) — o resto do texto continua aparecendo normalmente.</p>
+    </div>
+  </div>
+
+  <!-- ══════════ AS TELAS DO APP ══════════ -->
+  <div class="sec-label">As telas do app</div>
+
+  <div class="tela">
+    <div class="tela-titulo">📱 Aba Pedidos — como fica o card</div>
+    <div class="tela-corpo">
+
+      <!-- card de encaixe -->
+      <div class="app-card encaixe">
+        <div class="card-linha1">
+          <span class="card-numero">#4128</span>
+          <span class="card-encaixe-selo">⚠ ENCAIXE<span class="pin">1</span></span>
+          <span class="card-cliente">Padaria Exemplo</span>
+          <span class="card-valor">R$ 312,40</span>
+        </div>
+        <div class="card-info">Entrega: 21/09/2026 | Criação: 21/09/2026 09:14<span class="pin">2</span></div>
+        <p class="card-obs">Cliente ficou sem estoque, entregar antes das 11h se possível<span class="pin">3</span></p>
+      </div>
+
+      <!-- card comum, com observação -->
+      <div class="app-card">
+        <div class="card-linha1">
+          <span class="card-numero">#4129</span>
+          <span class="card-cliente">Mercado Exemplo Ltda</span>
+          <span class="card-valor">R$ 587,00</span>
+        </div>
+        <div class="card-info">Entrega: 22/09/2026 | Criação: 21/09/2026 10:02</div>
+        <p class="card-obs">Deixar na entrada de serviço, não na loja<span class="pin">3</span></p>
+      </div>
+
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>O selo <b>⚠ ENCAIXE</b> só aparece quando o pedido foi marcado como encaixe de entrega ao ser criado (fundo âmbar acompanha o card inteiro).</span></div>
+      <div><span class="pin">2</span><span>As informações de entrega, criação, cidade, vendedor e embarque continuam onde sempre estiveram — nada mudou aqui.</span></div>
+      <div><span class="pin">3</span><span>A <b>observação</b> aparece embaixo, em itálico, até 2 linhas. Texto maior que isso: no computador, passe o mouse para ver completo.</span></div>
+    </div>
+  </div>
+
+  <!-- ══════════ PARA CONFERIR ══════════ -->
+  <div class="sec-label">Para conferir</div>
+  <div class="passos">
+    <div class="passo">
+      <span class="passo-n">1</span>
+      <div><b>Atualize o app:</b> toque no ícone de atualizar ↻ (ou feche e abra o app).</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">2</span>
+      <div>Abra <b>Pedidos</b> e procure um pedido com observação, ou crie um pedido novo marcando <b>encaixe de entrega</b>.</div>
+    </div>
+  </div>
+
+  <p class="rodape">Dúvidas? Pergunte ao <strong>Clippy</strong> dentro do app.<br>— Hardt Salgados</p>
+</div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.parentElement;
+    const abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>
