@@ -80,6 +80,9 @@ const montarMensagemDeliveryCliente = (pedido, etapa) => {
     }
     resumoPartes.push('────────────────────');
     resumoPartes.push('', `💰 *Total: R$ ${totalStr}*`);
+    if (pedido.observacoes) {
+        resumoPartes.push('', `📝 *Obs:* ${pedido.observacoes}`);
+    }
     const resumo = resumoPartes.join('\n');
 
     let texto;
@@ -471,6 +474,9 @@ const webhookService = {
             }
             resumoPartes.push('────────────────────');
             resumoPartes.push('', `💰 *Total: R$ ${totalStr}*`);
+            if (pedido.observacoes) {
+                resumoPartes.push('', `📝 *Obs:* ${pedido.observacoes}`);
+            }
             const resumo = resumoPartes.join('\n');
 
             // ── Número interno da equipe ──
