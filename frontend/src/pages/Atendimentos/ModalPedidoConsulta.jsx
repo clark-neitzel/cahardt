@@ -359,11 +359,18 @@ const ModalPedidoConsulta = ({ pedidoId, resumo, onClose }) => {
                                                 <span className="text-gray-700">Parcela {par.numeroParcela}/{parcelas.length} · venc. {fmtDataCampo(par.dataVencimento)}</span>
                                                 <span className={`px-2 py-0.5 rounded-full font-semibold ${cls}`}>{rot}</span>
                                                 <span className="font-bold text-gray-900 tabular-nums">{fmtMoeda(par.valor)}</span>
-                                                {Number(par.valorPago) > 0 && (
-                                                    <span className="text-gray-600 w-full text-right">
-                                                        ↳ baixado {fmtMoeda(par.valorPago)} no total{par.formaPagamento ? ` · ${par.formaPagamento}` : ''}{par.dataPagamento ? ` · última baixa em ${fmtDataCampo(par.dataPagamento)}` : ''}
-                                                    </span>
-                                                )}
+                                                {Number(par.valorPago) > 0 && (() => {
+                                                    // Baixa via conciliação/Asaas só grava o ledger — o resumo da
+                                                    // parcela fica vazio e mostrava "Forma: -". Usa a efetiva
+                                                    // (derivada do ledger no backend) como fallback.
+                                                    const forma = par.formaPagamentoEfetiva || par.formaPagamento;
+                                                    const conta = par.contaNomeEfetiva || par.contaNome;
+                                                    return (
+                                                        <span className="text-gray-600 w-full text-right">
+                                                            ↳ baixado {fmtMoeda(par.valorPago)} no total{forma ? ` · ${forma}` : ''}{conta ? ` · ${conta}` : ''}{par.dataPagamento ? ` · última baixa em ${fmtDataCampo(par.dataPagamento)}` : ''}
+                                                        </span>
+                                                    );
+                                                })()}
                                             </div>
                                         );
                                     })}

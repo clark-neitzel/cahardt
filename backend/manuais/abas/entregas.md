@@ -47,6 +47,8 @@ Histórico gerencial de todas as entregas realizadas pelo sistema. Mostra cada b
 1. Clique na linha da entrega
 2. O modal de detalhe abre com: cliente, pedido, valor, pagamentos registrados e observações
 
+**PIX (QR Code) da entrega:** ao fechar o QR sem pagamento, o motorista cancela a cobrança no Asaas na hora. Se o celular estava sem sinal e o cancelamento não saiu, o QR continua pagável (QR com vencimento vale por meses) — mas assim que o **Caixa** quitar aquele título na conferência, o sistema **cancela o QR sozinho**. Baixa **parcial** não cancela: o cliente ainda pode pagar o saldo por ele.
+
 ---
 
 ## Permissões necessárias

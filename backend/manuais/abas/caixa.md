@@ -125,6 +125,14 @@ Resumo financeiro diário do motorista/vendedor. Mostra tudo que aconteceu em um
 
 > Onde acompanhar e confirmar: **Financeiro → Contas a Receber** mostra o selo de "aguardando conciliação" no título; **Financeiro → Conciliação Bancária** é onde o Pix/cartão informado é casado com o lançamento do extrato — a partir daí ele vira baixa de verdade e a parcela é atualizada.
 
+**O QR PIX morre quando a conferência fecha o título.** Quando a Baixa CA quita a conta do pedido, o sistema **cancela no Asaas** o QR PIX da entrega (e qualquer boleto ainda aberto daquele pedido). É o que impede o cliente de pagar de novo um QR que continuou vivo — o QR PIX com vencimento fica pagável por até 12 meses, mesmo com o pedido já pago em dinheiro ou por chave PIX. Quando isso acontece, o painel de resultado mostra a linha **"QR PIX cancelado no Asaas"**.
+
+- **Baixa parcial NÃO cancela**: sobrou saldo, então o QR **continua vivo** de propósito — o cliente ainda pode pagar o resto por ele.
+- **SEM BAIXA e ERRO também não cancelam** — nada foi quitado.
+- **JÁ QUITADO cancela**: é assim que um QR esquecido de um pedido antigo é encerrado; basta processar a linha de novo.
+- Se o Asaas recusar (ex.: o pagamento acabou de cair lá), a **baixa não é desfeita** e nada aparece como erro na tela — fica só registrado no servidor, e a faxina/administração encerra depois.
+- **Se mesmo assim o cliente pagar um pedido já quitado**, o dinheiro entra e um **aviso para o administrador** mostra pedido, cliente e valor até alguém dar ciência — é recebimento em dobro, para devolver ou virar crédito.
+
 ### Baixar as cobranças da rota (títulos cobrados na rua)
 O cartão **Cobranças da Rota** aparece quando o motorista/vendedor registrou alguma cobrança de título naquele dia (seção **"Cobranças a fazer"**, na tela **Rota → Entregas**). Cada linha mostra o cliente, a parcela, quanto foi cobrado, a forma de pagamento e a carga de origem.
 

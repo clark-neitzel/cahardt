@@ -255,6 +255,67 @@ const pedidoController = {
         }
     },
 
+    // ── Avisos de PAGAMENTO DEPOIS DA QUITAÇÃO (dinheiro entrou num título já fechado) ──
+    // Gravados por `asaasService.marcarRecebida` quando o cliente paga um QR PIX que
+    // continuou vivo depois de o Caixa quitar a conta por fora. É recebimento em DOBRO:
+    // alguém precisa devolver ou virar crédito. Só ADMIN vê (é acerto de dinheiro);
+    // quem não é admin recebe lista VAZIA, não 403 — mesmo espírito de `avisosConvertidos`.
+    avisosPagamentoAposQuitacao: async (req, res) => {
+        try {
+            if (!req.user?.permissoes?.admin) return res.json({ avisos: [] });
+            const avisos = await prisma.pagamentoAposQuitacaoAviso.findMany({
+                where: { cienteEm: null },
+                orderBy: { createdAt: 'asc' },
+                take: 10,
+                include: {
+                    pedido: {
+                        select: {
+                            id: true, numero: true,
+                            cliente: { select: { Nome: true, NomeFantasia: true } }
+                        }
+                    }
+                }
+            });
+            res.json({
+                avisos: avisos.map(a => ({
+                    id: a.id,
+                    pedidoId: a.pedidoId,
+                    numeroPedido: a.numeroPedido ?? a.pedido?.numero ?? null,
+                    cliente: a.pedido?.cliente?.NomeFantasia || a.pedido?.cliente?.Nome || '—',
+                    valor: a.valor != null ? Number(a.valor) : null, // Decimal vira STRING no JSON: converte aqui
+                    especialNaHora: a.especialNaHora === true,
+                    criadoEm: a.createdAt,
+                    createdAt: a.createdAt, // apelido: a tela aceita os dois nomes
+                    // objeto aninhado, para quem lê `pedido.cliente.NomeFantasia` direto
+                    pedido: a.pedido ? {
+                        id: a.pedido.id,
+                        numero: a.pedido.numero,
+                        cliente: {
+                            Nome: a.pedido.cliente?.Nome || null,
+                            NomeFantasia: a.pedido.cliente?.NomeFantasia || null
+                        }
+                    } : null
+                }))
+            });
+        } catch (e) {
+            console.error('Erro ao listar avisos de pagamento após quitação:', e);
+            res.status(500).json({ error: 'Erro ao listar avisos.' });
+        }
+    },
+
+    avisoPagamentoAposQuitacaoCiente: async (req, res) => {
+        try {
+            if (!req.user?.permissoes?.admin) return res.status(403).json({ error: 'Sem permissão.' });
+            await prisma.pagamentoAposQuitacaoAviso.update({
+                where: { id: req.params.avisoId },
+                data: { cienteEm: new Date(), cientePorId: req.user.id }
+            });
+            res.json({ ok: true });
+        } catch (e) {
+            res.status(500).json({ error: 'Erro ao registrar ciência.' });
+        }
+    },
+
     avisoConvertidoCiente: async (req, res) => {
         try {
             await prisma.pedidoConvertidoAviso.update({

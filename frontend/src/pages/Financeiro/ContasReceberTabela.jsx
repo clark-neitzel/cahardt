@@ -392,6 +392,10 @@ const ContasReceberTabela = () => {
                         dataPagamento: p.dataPagamento,
                         valorPago: p.valorPago,
                         formaPagamento: p.formaPagamento,
+                        // Derivadas do ledger quando a baixa veio por conciliação/Asaas e o
+                        // resumo da parcela ficou vazio (parcelaEfetivaService, back).
+                        formaPagamentoEfetiva: p.formaPagamentoEfetiva,
+                        contaNomeEfetiva: p.contaNomeEfetiva,
                         baixadoPorId: p.baixadoPorId,
                         baixadoPorNome: p.baixadoPorNome
                     });
@@ -1376,7 +1380,9 @@ const ContasReceberTabela = () => {
                                                 </span>
                                                 {l.aguardandoConciliacao && <BadgeAguardandoPix />}
                                                 {l.dataPagamento && <span className="tabular-nums"><span className="text-gray-400">Pgto:</span> {fmtData(l.dataPagamento)}</span>}
-                                                {l.formaPagamento && <span><span className="text-gray-400">Forma:</span> {l.formaPagamento}</span>}
+                                                {(l.formaPagamentoEfetiva || l.formaPagamento) && (
+                                                    <span><span className="text-gray-400">Forma:</span> {l.formaPagamentoEfetiva || l.formaPagamento}{l.contaNomeEfetiva ? ` · ${l.contaNomeEfetiva}` : ''}</span>
+                                                )}
                                                 {l.baixadoPorNome && <span><span className="text-gray-400">Baixado por:</span> {l.baixadoPorNome}</span>}
                                                 {l.statusParcela === 'PARCIAL' && (
                                                     <>

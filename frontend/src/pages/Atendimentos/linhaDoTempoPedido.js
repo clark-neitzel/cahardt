@@ -18,6 +18,10 @@
 // pelo Caixa (`CaixaDiarioPage.jsx:18`). Se a derivação mudar lá, esta popup muda junto —
 // era exatamente isso que uma segunda cópia aqui dentro ia impedir.
 import { ehLinhaResponsavel, rotuloResponsavel } from '../../utils/responsavelCobranca';
+// Mesma ideia para o status da cobrança Asaas: o rótulo sai do ponto único
+// (`utils/statusCobrancaAsaas.js`), senão esta linha volta a escrever "expirado" para
+// uma cobrança que o cliente ainda consegue pagar.
+import { rotuloCobrancaAsaas } from '../../utils/statusCobrancaAsaas';
 
 export const fmtMoeda = (v) => `R$ ${Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -511,7 +515,10 @@ export function montarLinhaDoTempo(p, atendimentosDoPedido) {
         ev.push({
             t: c.createdAt,
             titulo: `${tipo} Asaas gerado · ${fmtMoeda(c.valor)}`,
-            sub: c.status && c.status !== 'RECEBIDO' ? `situação hoje: ${String(c.status).toLowerCase()}` : null,
+            // Rótulo do ponto único: `EXPIRADO` vira "vencido — ainda pagável", não
+            // "expirado". Status desconhecido continua caindo no valor cru minúsculo,
+            // exatamente como era antes (nunca "undefined" na tela).
+            sub: c.status && c.status !== 'RECEBIDO' ? `situação hoje: ${rotuloCobrancaAsaas(c.status).toLowerCase()}` : null,
         });
         if (c.status === 'RECEBIDO' && c.recebidoEm) {
             pagosAsaas.add(c.id);

@@ -2855,6 +2855,11 @@ router.post('/quitar-ca', async (req, res) => {
 
         const dataPgto = dataPagamento || new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
         const resultados = [];
+        // Ramo "normal via Conta Azul" (só roda com CA_SOMENTE_LEITURA=false): ali não
+        // existe ContaReceber local para consultar. Guardamos aqui se a baixa FECHOU a
+        // parcela do CA, para a varredura de cancelamento do QR (no fim da rota) decidir
+        // sem ter que recalcular nada.
+        const fechouTituloSemContaLocal = new Map(); // pedidoId → boolean
 
         // Mapear nome do pagamento real para enum do CA
         const mapMetodoPagamentoCA = (formaNome) => {
@@ -3691,6 +3696,15 @@ router.post('/quitar-ca', async (req, res) => {
                         }
                     });
 
+                    // O título do CA só fechou se o que foi baixado + a devolução (que entra
+                    // como desconto) cobrirem a parcela inteira. Se sobrou saldo, é baixa
+                    // PARCIAL: o QR PIX TEM que continuar vivo (o cliente ainda pode pagar
+                    // o resto). Na dúvida, não cancela — a faxina do admin-exec pega o resto.
+                    fechouTituloSemContaLocal.set(
+                        pedido.id,
+                        (valorBaixado + valorDevolvido) >= valorParcelaTotal - 0.01
+                    );
+
                     resultados.push({
                         pedidoId: pedido.id,
                         numero: pedido.numero,
@@ -3715,6 +3729,66 @@ router.post('/quitar-ca', async (req, res) => {
                     });
                 }
             }
+        }
+
+        // ═══ MATAR O QR PIX DOS TÍTULOS QUE FECHARAM ═══
+        // O PIX de entrega (QR do motorista) nasce SEM parcela (`parcelaId: null`), então
+        // tudo que cancela "por parcela" é cego para ele. Quando o cliente paga por FORA do
+        // QR (chave PIX, dinheiro) e o Caixa quita o título, o QR continua VIVO no Asaas e
+        // segue pagável por até 12 meses — recebimento em dobro (caso real: pedido #2887).
+        // Aqui, UMA passada só, cobrindo os três ramos acima, FORA de qualquer transação
+        // (é chamada de rede) e à prova de falha: a baixa JÁ aconteceu, então erro aqui
+        // vira log e nada mais — nunca muda `resultados` para ERRO nem derruba a resposta.
+        //
+        // Gatilho: a CONTA ficou QUITADA. Não use `pedido.baixaCaRealizada` — ele fica
+        // `true` até em baixa PARCIAL. Em baixa parcial a conta fica PARCIAL e o QR TEM
+        // que continuar vivo (o cliente ainda vai pagar o saldo).
+        try {
+            const asaasService = require('../services/asaasService');
+            // Só quem realmente teve/tem o título fechado: OK e JA_QUITADO.
+            // SEM_BAIXA e ERRO ficam de fora (nada foi baixado).
+            const candidatos = resultados.filter(r => r.pedidoId && (r.status === 'OK' || r.status === 'JA_QUITADO'));
+            for (const r of candidatos) {
+                try {
+                    // Baixa parcial declarada pelo próprio ramo → nem consulta, não cancela.
+                    if (r.parcial === true) continue;
+
+                    const conta = await prisma.contaReceber.findUnique({
+                        where: { pedidoId: r.pedidoId },
+                        select: { status: true }
+                    });
+                    let deveCancelar;
+                    if (conta) {
+                        deveCancelar = conta.status === 'QUITADO';
+                    } else {
+                        // Ramo Conta Azul: sem conta local. Só cancela se a baixa fechou a
+                        // parcela do CA; na dúvida (sem informação), NÃO cancela.
+                        deveCancelar = fechouTituloSemContaLocal.get(r.pedidoId) === true;
+                    }
+                    if (!deveCancelar) continue;
+
+                    // NÃO chamar de `res` aqui: `res` é o objeto da resposta HTTP desta rota.
+                    const rCancel = await asaasService.cancelarCobrancasDoPedido(
+                        r.pedidoId, 'conta quitada na conferência do caixa'
+                    );
+                    // Só avisa DEPOIS de cancelar de verdade — nunca prometer antes.
+                    if (rCancel.canceladas > 0) {
+                        const base = Array.isArray(r.detalhes)
+                            ? r.detalhes
+                            : (typeof r.detalhe === 'string' && r.detalhe ? r.detalhe.split(' | ') : []);
+                        r.detalhes = [...base, 'QR PIX cancelado no Asaas'];
+                        r.detalhe = r.detalhes.join(' | ');
+                    }
+                    if (rCancel.erros?.length) {
+                        console.error(`[Caixa] QR do pedido #${r.numero ?? '?'} não cancelou no Asaas (baixa já efetivada):`,
+                            rCancel.erros.map(x => x.erro).join('; '));
+                    }
+                } catch (e) {
+                    console.error(`[Caixa] Falha ao cancelar QR PIX do pedido #${r.numero ?? '?'} (baixa já efetivada):`, e.message);
+                }
+            }
+        } catch (e) {
+            console.error('[Caixa] Falha na varredura de cancelamento de QR PIX (baixa já efetivada):', e.message);
         }
 
         const ok = resultados.filter(r => r.status === 'OK').length;

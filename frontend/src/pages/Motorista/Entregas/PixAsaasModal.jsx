@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { X, QrCode, Copy, CheckCircle, Loader2, AlertCircle, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import asaasService from '../../../services/asaasService';
+import { cobrancaAindaPagavel } from '../../../utils/statusCobrancaAsaas';
 
 // Modal de cobrança PIX na entrega (Asaas):
 // motorista define o valor → QR Code na tela → cliente paga →
@@ -198,18 +199,33 @@ const PixAsaasModal = ({ pedido, valorSugerido, valorMaximo, onRecebido, onClose
                         </div>
                     )}
 
-                    {/* Problema: cancelado/expirado */}
+                    {/* Problema: cancelado / vencido (ainda pagável) */}
                     {problema && (
                         <div className="text-center space-y-4 py-6">
                             <div className="bg-red-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto">
                                 <AlertCircle className="h-10 w-10 text-red-600" />
                             </div>
-                            <p className="text-sm text-gray-600">
-                                {cobranca.status === 'EXPIRADO' ? 'Este QR Code expirou.' : 'Esta cobrança foi cancelada.'} Gere um novo para cobrar.
+                            {/* Antes dizia "Este QR Code expirou." — era FALSO. `EXPIRADO` é o
+                                `OVERDUE` do Asaas: venceu, mas o cliente ainda consegue pagar
+                                por ele (o QR vale ~12 meses). Falar em "expirou" foi o que fez
+                                todo mundo gerar outro por cima e o cliente pagar em dobro. */}
+                            <p className="text-sm text-gray-600 break-words">
+                                {cobrancaAindaPagavel(cobranca.status)
+                                    ? 'Este QR Code venceu, mas o cliente ainda consegue pagar por ele.'
+                                    : 'Esta cobrança foi cancelada. Gere um novo para cobrar.'}
                             </p>
+                            {cobrancaAindaPagavel(cobranca.status) && (
+                                <div className="flex items-start gap-2 text-left text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                                    <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                                    <span className="break-words">
+                                        Se gerar outro, ficam <b>dois QR Codes vivos</b> e o cliente pode
+                                        pagar em dobro. Confirme com o escritório antes.
+                                    </span>
+                                </div>
+                            )}
                             <button
                                 onClick={() => { setCobranca(null); }}
-                                className="w-full py-3 bg-primary hover:bg-primaryDark text-white rounded-full font-semibold text-sm"
+                                className="w-full py-3 min-h-[44px] bg-primary hover:bg-primaryDark text-white rounded-full font-semibold text-sm"
                             >
                                 Gerar novo PIX
                             </button>

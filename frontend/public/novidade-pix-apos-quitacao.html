@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: PIX cancela ao quitar — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp — SEM og:image de propósito (cartão compacto) -->
+<meta property="og:title" content="💸 Novidade no Hardt App: QR PIX cancela sozinho">
+<meta property="og:description" content="Quitou o título no Caixa? O QR Code da entrega morre sozinho no Asaas. E se cair dinheiro num pedido já pago, o admin recebe um aviso. Veja como funciona.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 96px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 7vw, 40px);
+    font-weight: 800;
+    line-height: 1.12;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.75);
+    font-size: 16px;
+    max-width: 46ch;
+    margin: 0 auto;
+    text-wrap: balance;
+  }
+
+  /* mock do pop-up flutuando sobre o hero */
+  .mock {
+    max-width: 420px;
+    margin: -68px auto 28px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.28);
+    overflow: hidden;
+    text-align: left;
+  }
+  .mock-top {
+    background: #b45309;
+    color: #fff;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .mock-top small {
+    display: block;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    color: rgba(255,255,255,.7);
+  }
+  .mock-top strong { font-size: 15px; line-height: 1.2; }
+  .mock-ico { font-size: 24px; }
+  .mock-body { padding: 14px 18px 18px; }
+  .mock-linha {
+    background: #fdf2e3;
+    border: 1px solid #f2d9ae;
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 12.5px;
+    color: #7a4b12;
+    margin-bottom: 10px;
+  }
+  .mock-linha b { color: #5c3600; }
+  .mock-body p { font-size: 13px; color: var(--ink-soft); margin: 0 0 14px; }
+  .mock-botoes { display: flex; gap: 8px; }
+  .mock-botoes span {
+    flex: 1;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 11px 6px;
+    border-radius: 999px;
+  }
+  .b-cheio { background: var(--primary); color: #fff; }
+  .b-vazio { border: 1.5px solid #d8d5cc; color: var(--ink-soft); }
+
+  /* ── SEÇÕES / ACCORDION ── */
+  .sec-label {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: var(--primary-dark);
+    margin: 34px 4px 12px;
+  }
+  .acc {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .acc-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: none;
+    border: none;
+    font: inherit;
+    text-align: left;
+    padding: 15px 16px;
+    cursor: pointer;
+    min-height: 56px;
+  }
+  .acc-ico {
+    width: 38px; height: 38px;
+    border-radius: 11px;
+    background: var(--mint);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+  .acc-head:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+
+  /* passos "como acessar" */
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n {
+    width: 30px; height: 30px; flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 800;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .rodape {
+    text-align: center;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 40px;
+  }
+  .rodape strong { color: var(--primary-dark); }
+
+  /* ── MOCKUPS DAS TELAS DO APP ── */
+  .tela {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .tela-titulo {
+    background: var(--house);
+    color: #fff;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .app-card {
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .app-card-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    border-bottom: 1px solid #f0efe9;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: #6b756f;
+  }
+  .app-card-body { padding: 12px; }
+  .app-linha {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 12.5px;
+    color: var(--ink);
+    padding: 6px 0;
+  }
+  .app-linha + .app-linha { border-top: 1px dashed #ece9e0; }
+  .app-detalhe {
+    background: #f6f5f1;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 12px;
+    color: var(--ink-soft);
+    margin-top: 6px;
+  }
+  .app-detalhe.mint { background: var(--mint); color: var(--primary-dark); font-weight: 700; }
+  .app-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--primary);
+    color: #fff;
+    font-size: 12.5px;
+    font-weight: 700;
+    padding: 9px 16px;
+    border-radius: 999px;
+  }
+  .app-btn.claro { background: #fff; border: 1.5px solid var(--primary); color: var(--primary); }
+  .app-btn.amber { background: #b45309; }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 999px;
+  }
+  .badge.vermelho { background: #fee2e2; color: #b91c1c; }
+  .badge.verde { background: #dcfce7; color: #166534; }
+  .app-aviso {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    background: #fef3e2;
+    border: 1px solid #f2d9ae;
+    border-radius: 10px;
+    padding: 9px 11px;
+    font-size: 12px;
+    color: #7a4b12;
+    margin-top: 8px;
+  }
+  .pin {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    flex-shrink: 0;
+    vertical-align: 2px;
+    margin-left: 6px;
+  }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+</style>
+</head>
+<body>
+
+<!-- ══════════ HERO ══════════ -->
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>PIX que já foi pago<br>não fica vivo por aí</h1>
+    <p>Quitou o título no Caixa? O QR Code PIX gerado na entrega é cancelado sozinho no Asaas — ninguém escaneia de novo meses depois e paga em dobro.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- mock do aviso ao admin -->
+  <div class="mock" aria-hidden="true">
+    <div class="mock-top">
+      <span class="mock-ico">🪙</span>
+      <div>
+        <small>Aviso · só para o Admin</small>
+        <strong>Dinheiro a devolver ao cliente</strong>
+      </div>
+    </div>
+    <div class="mock-body">
+      <div class="mock-linha"><b>Caiu R$ 480,00</b> no pedido <b>#2887</b>, que já estava quitado.<br>Cliente Exemplo · PIX · 21/09 14:32</div>
+      <p>Provavelmente é dinheiro a devolver. Confira o pedido em Contas a Receber e combine a devolução com o cliente.</p>
+      <div class="mock-botoes">
+        <span class="b-cheio">✓ Ciente, vou tratar</span>
+        <span class="b-vazio">Lembrar depois</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ COMO FUNCIONA ══════════ -->
+  <div class="sec-label">Como funciona — toque para abrir</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🔌</span>
+      <strong>Quitou no Caixa, o QR desliga sozinho</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Todo pedido com entrega gera um QR Code PIX no Asaas, para o motorista mostrar ao cliente.</li>
+        <li>Se o título é quitado por outro caminho (dinheiro, cartão, boleto...) na <b>conferência do Caixa</b>, o app agora <b>cancela esse QR no Asaas na hora</b>.</li>
+        <li>QR cancelado não pode mais ser escaneado e pago — acaba o risco de o cliente achar o link meses depois e pagar de novo.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">➗</span>
+      <strong>Baixa parcial não cancela</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Se o cliente só pagou <b>parte</b> do título, o QR continua vivo — ele ainda serve para cobrar o que falta. O cancelamento só acontece quando o título fica <b>totalmente quitado</b>.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🪙</span>
+      <strong>Mesmo assim caiu dinheiro? O admin é avisado</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Rede de segurança: se, ainda assim, um pagamento cair num pedido que já estava quitado (ex.: cliente pagou por outro QR antigo), um <b>popup avisa o Admin</b> — com o valor, o pedido e a forma de pagamento.</li>
+        <li>É só para o Admin decidir a devolução. O botão <b>"Ciente, vou tratar"</b> marca que alguém já viu e vai cuidar — ele não devolve o dinheiro sozinho.</li>
+        <li>Foi assim que aconteceu no <b>pedido #2887</b>: o caso real que mostrou a falta desse aviso.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">⏳</span>
+      <strong>"Vencido" não quer dizer morto</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Um QR PIX <b>vencido continua pagável</b> por cerca de 12 meses — o app agora deixa isso claro no rótulo, para ninguém gerar um segundo QR por engano e criar dois QR vivos ao mesmo tempo.</p>
+    </div>
+  </div>
+
+  <!-- ══════════ AS TELAS DO APP ══════════ -->
+  <div class="sec-label">As telas do app, sem mistério</div>
+
+  <!-- TELA A: Baixa CA no Caixa -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 1 · Caixa — conferência / Baixa CA</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">💰 Baixa registrada</div>
+        <div class="app-card-body">
+          <div class="app-linha"><span>Pedido #2887 · R$ 480,00</span><span class="badge verde">Quitado</span></div>
+          <div class="app-detalhe mint">✓ QR PIX cancelado no Asaas<span class="pin">1</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Ao quitar o título, o painel da baixa mostra essa linha confirmando que o <b>QR da entrega foi desligado</b> — sem precisar conferir no Asaas.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA B: popup do admin -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 2 · Aviso ao Admin — pagamento em pedido já quitado</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">🪙 Dinheiro a devolver ao cliente</div>
+        <div class="app-card-body">
+          <div class="app-detalhe">Caiu R$ 480,00 no pedido <b>#2887</b>, que já estava quitado.<span class="pin">1</span></div>
+          <div style="text-align:right;margin-top:10px;"><span class="app-btn">✓ Ciente, vou tratar<span class="pin">2</span></span></div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Aparece <b>só para quem é Admin</b>, sem som — não é alarme, é um lembrete para não passar batido.</span></div>
+      <div><span class="pin">2</span><span><b>"Ciente, vou tratar"</b> marca que alguém já viu; a devolução em si é combinada direto com o cliente.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA C: modal boletos/PIX -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 3 · Boletos/PIX — status real da cobrança</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">📄 Cobrança do cliente</div>
+        <div class="app-card-body">
+          <div class="app-linha"><span>QR Code PIX</span><span class="badge vermelho">Vencido (ainda pagável)<span class="pin">1</span></span></div>
+          <div class="app-aviso">⚠️ Se gerar outro, ficam <b>dois QR Codes vivos</b> e o cliente pode pagar em dobro. Confirme com o escritório antes.<span class="pin">2</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>O rótulo agora diz a verdade: <b>vencido não é cancelado</b> — o QR continua valendo por cerca de 12 meses.</span></div>
+      <div><span class="pin">2</span><span>Antes de gerar um QR novo, o app avisa que o antigo ainda está de pé — evita duplicar a cobrança sem querer.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA D: Contas a Receber -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 4 · Contas a Receber — como a parcela foi paga</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">💳 Parcela 1/1</div>
+        <div class="app-card-body">
+          <div class="app-linha"><span>R$ 480,00</span><span class="badge verde">Pago</span></div>
+          <div class="app-detalhe">Forma: PIX · Banco Inter<span class="pin">1</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Baixa que veio pela <b>conciliação bancária ou pelo Asaas</b> agora mostra a <b>forma e o banco</b> certinhos, em vez de ficar em branco.</span></div>
+    </div>
+  </div>
+
+  <!-- ══════════ COMO ACESSAR ══════════ -->
+  <div class="sec-label">Para começar a usar</div>
+  <div class="passos">
+    <div class="passo">
+      <span class="passo-n">1</span>
+      <div><b>Atualize o app:</b> toque no ícone de atualizar ↻ (ou feche e abra o app).</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">2</span>
+      <div>Não precisa fazer nada — o cancelamento do QR e o aviso ao admin acontecem <b>sozinhos</b>, a partir da próxima baixa quitada no Caixa.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">3</span>
+      <div>Se aparecer o aviso <b>"Dinheiro a devolver"</b>, confira o pedido em <b>Contas a Receber</b> e combine a devolução com o cliente.</div>
+    </div>
+  </div>
+
+  <p class="rodape">Dúvidas? Pergunte ao <strong>Clippy</strong> dentro do app — ele já conhece essa novidade.<br>— Hardt Salgados</p>
+</div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.parentElement;
+    const abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>

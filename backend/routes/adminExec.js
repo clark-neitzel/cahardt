@@ -52,7 +52,7 @@ router.get('/ping', (req, res) => {
         ok: true,
         // Marcador de deploy: bumpar a cada mudança de backend que precise de confirmação
         // em produção (não há outro jeito de saber de fora qual versão está no ar).
-        deployMarker: 'fix-data-entrega-aprovacao-site-2026-09-16',
+        deployMarker: 'pix-qr-apos-quitacao-2026-09-21',
         uptimeSegundos: Math.round(process.uptime()),
         timestamp: new Date().toISOString(),
         openaiConfigurada: !!process.env.OPENAI_API_KEY,
@@ -1834,6 +1834,164 @@ router.post('/asaas-cancelar-boletos-quitados', async (req, res) => {
             resultados.push(item);
         }
         res.json({ ok: true, dryRun, total: resultados.length, resultados });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
+// POST /api/admin-exec/asaas-cancelar-qr-pedido-quitado — FAXINA do QR PIX de ENTREGA.
+// A faxina de cima só enxerga cobrança COM parcela; o PIX do motorista nasce com
+// `parcelaId: null` (a baixa dele acontece no Caixa), então ficava de fora: título
+// quitado por fora do QR (chave PIX/dinheiro) e o QR vivo no Asaas por até 12 meses —
+// o cliente ainda pode pagar de novo (caso real: pedido #2887).
+// Body: { dryRun: true } só lista, sem cancelar. Filtra `ambiente` de propósito
+// (sandbox e produção convivem na mesma tabela).
+router.post('/asaas-cancelar-qr-pedido-quitado', async (req, res) => {
+    try {
+        const dryRun = !!req.body?.dryRun;
+        const asaasService = require('../services/asaasService');
+        const abertas = await prisma.cobrancaAsaas.findMany({
+            where: {
+                status: { in: ['PENDENTE', 'EXPIRADO'] }, // EXPIRADO = vencido, ainda pagável no Asaas
+                ambiente: asaasService.AMBIENTE,
+                parcelaId: null,                          // PIX de entrega (sem parcela)
+                pedido: { contaReceber: { status: 'QUITADO' } }
+            },
+            include: {
+                pedido: { select: { id: true, numero: true, especial: true, baixaCaRealizada: true } },
+                cliente: { select: { Nome: true } }
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+
+        // Uma passada POR PEDIDO: cancelarCobrancasDoPedido já varre todas as cobranças
+        // abertas daquele pedido, então chamar por cobrança repetiria trabalho.
+        const porPedido = new Map();
+        for (const cob of abertas) {
+            if (!cob.pedidoId) continue;
+            if (!porPedido.has(cob.pedidoId)) porPedido.set(cob.pedidoId, []);
+            porPedido.get(cob.pedidoId).push(cob);
+        }
+
+        const resultados = [];
+        for (const [pedidoId, cobs] of porPedido) {
+            const item = {
+                pedido: cobs[0].pedido?.numero || null,
+                especial: !!cobs[0].pedido?.especial,
+                cliente: cobs[0].cliente?.Nome || null,
+                cobrancas: cobs.map(c => ({
+                    paymentId: c.asaasPaymentId, tipo: c.tipo, status: c.status,
+                    valor: Number(c.valor), criadaEm: c.createdAt
+                }))
+            };
+            if (!dryRun) {
+                const r = await asaasService.cancelarCobrancasDoPedido(pedidoId, 'faxina: título do pedido já quitado');
+                item.canceladas = r.canceladas;
+                if (r.erros?.length) item.erro = r.erros.map(x => x.erro).join('; ');
+            }
+            resultados.push(item);
+        }
+        res.json({
+            ok: true, dryRun, ambiente: asaasService.AMBIENTE,
+            pedidos: resultados.length, cobrancas: abertas.length, resultados
+        });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
+// GET /api/admin-exec/diag-asaas-qr-vivos?limit=100&conferirAsaas=1 — SOMENTE LEITURA.
+// Lista TODA cobrança Asaas ainda aberta (PENDENTE/EXPIRADO) do ambiente atual, com o
+// estado do pedido e da conta a receber. SEM filtro `especial: false` de propósito: a
+// varredura anterior não enxergava os especiais e era justamente ali que sobrava QR vivo.
+// `deveriaEstarMorta` = a conta do pedido já está QUITADA (mesma regra do cancelamento).
+// Com ?conferirAsaas=1 confere cada uma direto na API do Asaas (teto de linhas).
+router.get('/diag-asaas-qr-vivos', async (req, res) => {
+    try {
+        const asaasService = require('../services/asaasService');
+        const limit = Math.min(parseInt(req.query.limit, 10) || 100, 500);
+        const conferirAsaas = req.query.conferirAsaas === '1';
+        const TETO_CONFERE = 40; // cada linha é uma chamada de rede ao Asaas
+
+        const abertas = await prisma.cobrancaAsaas.findMany({
+            where: { status: { in: ['PENDENTE', 'EXPIRADO'] }, ambiente: asaasService.AMBIENTE },
+            include: {
+                cliente: { select: { Nome: true } },
+                pedido: {
+                    select: {
+                        numero: true, especial: true, baixaCaRealizada: true,
+                        contaReceber: { select: { status: true } }
+                    }
+                },
+                parcela: { select: { numeroParcela: true, status: true } }
+            },
+            orderBy: { createdAt: 'desc' },
+            take: limit
+        });
+
+        const linhas = abertas.map(c => {
+            const statusConta = c.pedido?.contaReceber?.status || null;
+            return {
+                paymentId: c.asaasPaymentId,
+                tipo: c.tipo,
+                statusApp: c.status,
+                valor: Number(c.valor),
+                criadaEm: c.createdAt,
+                vencimento: c.vencimento?.toISOString?.().split('T')[0] || null,
+                cliente: c.cliente?.Nome || null,
+                pedido: c.pedido?.numero || null,
+                especial: c.pedido ? !!c.pedido.especial : null,
+                baixaCaRealizada: c.pedido ? !!c.pedido.baixaCaRealizada : null,
+                parcelaId: c.parcelaId,
+                parcela: c.parcela ? { n: c.parcela.numeroParcela, status: c.parcela.status } : null,
+                statusConta,
+                // Conta quitada + cobrança aberta = dinheiro podendo entrar duas vezes
+                deveriaEstarMorta: statusConta === 'QUITADO'
+            };
+        });
+
+        if (conferirAsaas) {
+            let key = process.env.ASAAS_API_KEY || '';
+            if (key.startsWith('aact_')) key = '$' + key;
+            if (!key) {
+                linhas.forEach(l => { l.erroAsaas = 'ASAAS_API_KEY não configurada neste servidor'; });
+            } else {
+                const axios = require('axios');
+                const asaasHttp = axios.create({
+                    baseURL: key.includes('hmlg') ? 'https://api-sandbox.asaas.com/v3' : 'https://api.asaas.com/v3',
+                    timeout: 20000,
+                    headers: { access_token: key, 'User-Agent': 'CA-Hardt-App' }
+                });
+                // As "deveriam estar mortas" primeiro — são as que interessam no teto
+                const ordem = [...linhas].sort((a, b) => (b.deveriaEstarMorta === true) - (a.deveriaEstarMorta === true));
+                for (const l of ordem.slice(0, TETO_CONFERE)) {
+                    try {
+                        const r = await asaasHttp.get(`/payments/${l.paymentId}`);
+                        l.noAsaas = {
+                            status: r.data?.status, deletado: !!r.data?.deleted,
+                            valor: r.data?.value, vencimento: r.data?.dueDate
+                        };
+                        // Viva de verdade lá = ainda dá para o cliente pagar
+                        l.vivaNoAsaas = !r.data?.deleted && ['PENDING', 'OVERDUE', 'AWAITING_RISK_ANALYSIS'].includes(r.data?.status);
+                    } catch (e) {
+                        l.erroAsaas = e.response?.status === 404
+                            ? 'não existe mais no Asaas (404)'
+                            : (e.response?.data?.errors?.[0]?.description || e.message);
+                    }
+                }
+            }
+        }
+
+        res.json({
+            ok: true,
+            ambiente: asaasService.AMBIENTE,
+            asaasConfigurado: !!process.env.ASAAS_API_KEY,
+            total: linhas.length,
+            limite: limit,
+            conferidasNoAsaas: conferirAsaas ? Math.min(linhas.length, TETO_CONFERE) : 0,
+            deveriamEstarMortas: linhas.filter(l => l.deveriaEstarMorta).length,
+            linhas
+        });
     } catch (e) {
         res.status(500).json({ ok: false, error: e.message });
     }

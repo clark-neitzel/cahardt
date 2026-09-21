@@ -349,6 +349,43 @@ const asaasService = {
         return { canceladas, erros };
     },
 
+    // ── Cancelar as cobranças ABERTAS de um PEDIDO (título quitado por fora) ──
+    // O PIX de ENTREGA (QR do motorista) nasce com `parcelaId: null` de propósito —
+    // a baixa dele acontece no fluxo do Caixa, não na parcela. Por isso
+    // `cancelarCobrancasDaParcela` é CEGA para ele: quando o cliente paga por fora do
+    // QR (chave PIX, dinheiro) e o Caixa dá a baixa, o QR continua VIVO no Asaas e
+    // segue pagável por até 12 meses (caso real: pedido #2887, quitado e conciliado,
+    // com o QR respondendo ATIVA 6 dias depois). Esta função varre por PEDIDO e
+    // fecha tudo que ainda está aberto.
+    // Mesmas garantias da irmã: melhor esforço, NUNCA lança, e se o Asaas recusar
+    // (ex.: acabou de ser pago lá) NÃO marca CANCELADO local — o webhook resolve.
+    // RECEBIDO/ESTORNADO/CANCELADO ficam de fora pelo filtro de status.
+    cancelarCobrancasDoPedido: async (pedidoId, motivo = 'pedido quitado fora do Asaas') => {
+        if (!configurado() || !pedidoId) return { canceladas: 0, erros: [] };
+        const abertas = await prisma.cobrancaAsaas.findMany({
+            where: { pedidoId, status: { in: ['PENDENTE', 'EXPIRADO'] }, ambiente: AMBIENTE }
+        });
+        let canceladas = 0;
+        const erros = [];
+        for (const cob of abertas) {
+            try {
+                try {
+                    await http.delete(`/payments/${cob.asaasPaymentId}`);
+                } catch (e) {
+                    if (e.response?.status !== 404) throw e; // 404 = já não existe lá, cancela local
+                }
+                await prisma.cobrancaAsaas.update({ where: { id: cob.id }, data: { status: 'CANCELADO' } });
+                canceladas++;
+                console.log(`[Asaas] Cobrança ${cob.asaasPaymentId} (${cob.tipo}) do pedido cancelada — ${motivo}.`);
+            } catch (e) {
+                const desc = e.response?.data?.errors?.map(x => x.description).join('; ') || e.message;
+                erros.push({ paymentId: cob.asaasPaymentId, erro: desc });
+                console.error(`[Asaas] Não cancelou ${cob.asaasPaymentId} (${motivo}):`, desc);
+            }
+        }
+        return { canceladas, erros };
+    },
+
     cancelarCobranca: async (cobrancaId) => {
         exigirConfig();
         const cobranca = await prisma.cobrancaAsaas.findUnique({ where: { id: cobrancaId } });
@@ -390,6 +427,35 @@ const asaasService = {
         // Pedido ESPECIAL pago via PIX → converte em pedido normal (regra do dono).
         // Roda ANTES da baixa, para a baixa já enxergar o pedido convertido.
         if (count > 0 && cobranca?.pedidoId) {
+            // ── Aviso: dinheiro entrou num pedido cujo título JÁ estava quitado ──
+            // Acontece quando o cliente paga um QR que continuou vivo depois de o Caixa
+            // fechar o título por fora (chave PIX/dinheiro). Isso é recebimento em DOBRO:
+            // alguém precisa devolver ou gerar crédito. A regra do dono é que o PIX
+            // recebido em especial CONVERTE assim mesmo — por isso o aviso é gravado
+            // ANTES da conversão (guarda o estado real: número e "era especial na hora").
+            // Melhor esforço, fora de transação: NUNCA derruba o recebimento.
+            try {
+                const pedidoAviso = await prisma.pedido.findUnique({
+                    where: { id: cobranca.pedidoId },
+                    select: { id: true, numero: true, especial: true, contaReceber: { select: { status: true } } }
+                });
+                if (pedidoAviso?.contaReceber?.status === 'QUITADO') {
+                    await prisma.pagamentoAposQuitacaoAviso.create({
+                        data: {
+                            cobrancaAsaasId: cobranca.id,
+                            pedidoId: pedidoAviso.id,
+                            numeroPedido: pedidoAviso.numero ?? null,
+                            valor: cobranca.valorRecebido ?? cobranca.valor,
+                            especialNaHora: !!pedidoAviso.especial
+                        }
+                    });
+                    console.warn(`⚠️ [Asaas] Pagamento em pedido JÁ QUITADO — cobrança ${cobranca.asaasPaymentId}, pedido #${pedidoAviso.numero ?? '?'}: R$ ${Number(cobranca.valorRecebido ?? cobranca.valor).toFixed(2)}. Confira duplicidade de recebimento.`);
+                }
+            } catch (e) {
+                // P2002 = aviso já existe para esta cobrança (webhook + poll correndo juntos)
+                if (e.code !== 'P2002') console.error('[Asaas] Falha ao registrar aviso de pagamento após quitação (recebimento segue):', e.message);
+            }
+
             try {
                 const pedidoConversaoService = require('./pedidoConversaoService');
                 await pedidoConversaoService.converterSeEspecial(cobranca);

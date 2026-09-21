@@ -174,6 +174,19 @@ const pedidoService = {
     avisoConvertidoCiente: async (avisoId) => {
         const response = await api.post(`/pedidos/avisos-convertidos/${avisoId}/ciente`);
         return response.data;
+    },
+
+    // ── Avisos de pagamento que caiu em pedido JÁ QUITADO (popup do admin) ──
+    // Espelha o par acima. Backend: tabela `pagamentos_apos_quitacao_avisos`.
+    // O contrato esperado está documentado em
+    // `frontend/src/components/AlertaPagamentoAposQuitacao.jsx` (topo do arquivo).
+    avisosPagamentoAposQuitacao: async () => {
+        const response = await api.get('/pedidos/avisos-pagamento-apos-quitacao');
+        return response.data;
+    },
+    avisoPagamentoAposQuitacaoCiente: async (avisoId) => {
+        const response = await api.post(`/pedidos/avisos-pagamento-apos-quitacao/${avisoId}/ciente`);
+        return response.data;
     }
 };
 

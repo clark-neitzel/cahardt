@@ -551,12 +551,13 @@ model Pedido {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  kitFestaPedido   KitFestaPedido?
-  congeladosPedido CongeladosPedido?
-  cobrancasAsaas   CobrancaAsaas[] // PIX/boleto emitidos pelo app via Asaas
-  avisosConversao  PedidoConvertidoAviso[] // especial convertido em pedido com NF
-  notasFiscaisApp  NotaFiscalApp[] // NF-e emitidas pelo próprio app (Focus NFe)
-  canhotos         CanhotoNota[] // Controle do canhoto assinado de cada NF-e deste pedido
+  kitFestaPedido              KitFestaPedido?
+  congeladosPedido            CongeladosPedido?
+  cobrancasAsaas              CobrancaAsaas[] // PIX/boleto emitidos pelo app via Asaas
+  avisosConversao             PedidoConvertidoAviso[] // especial convertido em pedido com NF
+  avisosPagamentoAposQuitacao PagamentoAposQuitacaoAviso[] // PIX pago depois de o título já estar quitado
+  notasFiscaisApp             NotaFiscalApp[] // NF-e emitidas pelo próprio app (Focus NFe)
+  canhotos                    CanhotoNota[] // Controle do canhoto assinado de cada NF-e deste pedido
 
   @@index([statusEnvio])
   @@index([vendedorId])
@@ -2129,7 +2130,7 @@ model Amostra {
   // `observacao` (acima) é o que o VENDEDOR pediu na solicitação; `observacaoEntrega` é o que
   // quem ENTREGOU anotou na porta. São coisas diferentes: nunca sobrescrever uma com a outra.
   gpsEntrega        String?   @map("gps_entrega")
-  observacaoEntrega String?   @db.Text @map("observacao_entrega")
+  observacaoEntrega String?   @map("observacao_entrega") @db.Text
   entregueEm        DateTime? @map("entregue_em")
 
   // Conferência de carga por bipagem (AM# no recibo) — ver comentário em Pedido.
@@ -4346,6 +4347,29 @@ model PedidoConvertidoAviso {
 
   @@index([cienteEm])
   @@map("pedidos_convertidos_avisos")
+}
+
+// Pagamento que caiu num pedido cujo título JÁ estava QUITADO (o cliente pagou um
+// QR PIX que continuou vivo depois de o Caixa fechar a conta por fora — chave PIX,
+// dinheiro). É recebimento em DOBRO: alguém precisa devolver ou gerar crédito.
+// Tabela PRÓPRIA de propósito: `pedidos_convertidos_avisos` é lida pelo filtro da
+// aba "Convertidos" (pedidoService.js) e reaproveitá-la contaminaria aquela tela.
+// `cobrancaAsaasId` é @unique = idempotência (webhook e poll podem correr juntos).
+model PagamentoAposQuitacaoAviso {
+  id              String    @id @default(uuid())
+  cobrancaAsaasId String    @unique @map("cobranca_asaas_id")
+  pedidoId        String    @map("pedido_id")
+  pedido          Pedido    @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  numeroPedido    Int?      @map("numero_pedido")
+  valor           Decimal   @db.Decimal(12, 2)
+  especialNaHora  Boolean   @default(false) @map("especial_na_hora") // era especial quando o dinheiro entrou
+  cienteEm        DateTime? @map("ciente_em")
+  cientePorId     String?   @map("ciente_por_id")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  @@index([cienteEm])
+  @@index([pedidoId])
+  @@map("pagamentos_apos_quitacao_avisos")
 }
 
 // Log bruto dos webhooks recebidos do Asaas (auditoria + idempotência)

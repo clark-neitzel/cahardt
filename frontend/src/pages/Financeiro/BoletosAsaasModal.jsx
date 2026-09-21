@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, FileText, Copy, Send, Trash2, ExternalLink, CheckCircle, Loader2, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import asaasService from '../../services/asaasService';
+import { rotuloCurtoCobrancaAsaas, badgeCobrancaAsaas } from '../../utils/statusCobrancaAsaas';
 
 // Gestão de boletos Asaas de uma conta a receber:
 // emite boleto por parcela (ou todos), copia linha digitável, abre o PDF,
@@ -96,12 +97,19 @@ const BoletosAsaasModal = ({ conta, onClose, onAtualizado }) => {
 
     const badgeBoleto = (p) => {
         const b = p.boleto;
-        if (b?.status === 'ESTORNADO') {
-            return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-700">Devolvido (estornado)</span>;
+        // ESTORNADO e EXPIRADO saem do mapa único (utils/statusCobrancaAsaas) — as cores
+        // são as MESMAS de antes. "Boleto vencido" virou "Vencido (ainda pagável)": o
+        // boleto vencido continua pagável no banco, e o rótulo antigo dava a entender
+        // que estava morto (o texto de apoio logo abaixo já explicava o certo).
+        if (b?.status === 'ESTORNADO' || b?.status === 'EXPIRADO') {
+            return (
+                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${badgeCobrancaAsaas(b.status)}`}>
+                    {rotuloCurtoCobrancaAsaas(b.status)}
+                </span>
+            );
         }
-        if (b?.status === 'EXPIRADO') {
-            return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-700">Boleto vencido</span>;
-        }
+        // Abaixo o rótulo NÃO é o status cru, é a leitura de negócio desta tela
+        // (boleto cancelado = "sem boleto", porque o que importa aqui é poder emitir).
         if (!b || b.status === 'CANCELADO') {
             return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700">Sem boleto</span>;
         }

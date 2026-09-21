@@ -1,0 +1,828 @@
+<title>PIX pago, QR ainda vivo</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+
+<style>
+  :root {
+    --ground:      #f2f0eb;
+    --surface:     #ffffff;
+    --surface-alt: #faf9f6;
+    --house:       #1e3932;
+    --house-ink:   #eaf1ee;
+    --primary:     #00754a;
+    --primary-dk:  #006241;
+    --mint:        #d4e9e2;
+    --critico:     #a32218;
+    --critico-bg:  #f9e7e4;
+    --atencao:     #8a5b12;
+    --atencao-bg:  #f7eeda;
+    --ok:          #1f6b4a;
+    --ok-bg:       #dcece4;
+    --ink:         #17211d;
+    --ink-2:       #46534e;
+    --ink-3:       #75817c;
+    --linha:       #ddd9d0;
+    --linha-forte: #c6c1b6;
+    --code-bg:     #eef0ec;
+    --sombra:      0 1px 2px rgba(30,57,50,.06), 0 6px 20px -12px rgba(30,57,50,.28);
+    --max:         74ch;
+    --largo:       min(1080px, 100% - 2.5rem);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:      #121a17;
+      --surface:     #1a2421;
+      --surface-alt: #16201c;
+      --house:       #0f1815;
+      --house-ink:   #dbe8e3;
+      --primary:     #45b58a;
+      --primary-dk:  #6bc9a3;
+      --mint:        #22403a;
+      --critico:     #f08d80;
+      --critico-bg:  #3a1e1a;
+      --atencao:     #e0b164;
+      --atencao-bg:  #362a15;
+      --ok:          #6cc79f;
+      --ok-bg:       #1d3a2e;
+      --ink:         #e6ede9;
+      --ink-2:       #a9b5b0;
+      --ink-3:       #7d8a85;
+      --linha:       #2b3a35;
+      --linha-forte: #3d4f49;
+      --code-bg:     #131d1a;
+      --sombra:      0 1px 2px rgba(0,0,0,.4), 0 8px 24px -14px rgba(0,0,0,.7);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground:      #121a17;
+    --surface:     #1a2421;
+    --surface-alt: #16201c;
+    --house:       #0f1815;
+    --house-ink:   #dbe8e3;
+    --primary:     #45b58a;
+    --primary-dk:  #6bc9a3;
+    --mint:        #22403a;
+    --critico:     #f08d80;
+    --critico-bg:  #3a1e1a;
+    --atencao:     #e0b164;
+    --atencao-bg:  #362a15;
+    --ok:          #6cc79f;
+    --ok-bg:       #1d3a2e;
+    --ink:         #e6ede9;
+    --ink-2:       #a9b5b0;
+    --ink-3:       #7d8a85;
+    --linha:       #2b3a35;
+    --linha-forte: #3d4f49;
+    --code-bg:     #131d1a;
+    --sombra:      0 1px 2px rgba(0,0,0,.4), 0 8px 24px -14px rgba(0,0,0,.7);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: Manrope, "SF Pro Text", -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 17px;
+    line-height: 1.62;
+    letter-spacing: -0.01em;
+    font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .env { width: var(--largo); margin-inline: auto; }
+  .prosa { max-width: var(--max); }
+
+  p { margin: 0 0 1.05rem; color: var(--ink-2); }
+  strong { color: var(--ink); font-weight: 700; }
+  code {
+    font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+    font-size: .82em;
+    background: var(--code-bg);
+    color: var(--ink);
+    padding: .12em .38em;
+    border-radius: 4px;
+    letter-spacing: 0;
+    word-break: break-word;
+  }
+
+  /* ── Faixa de topo ───────────────────────────────── */
+  header.capa {
+    background: var(--house);
+    color: var(--house-ink);
+    padding: clamp(2.4rem, 7vw, 4rem) 0 clamp(2rem, 5vw, 2.75rem);
+    border-bottom: 3px solid var(--critico);
+  }
+  .eyebrow {
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--mint);
+    margin: 0 0 1rem;
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    flex-wrap: wrap;
+  }
+  .eyebrow .sep { opacity: .45; }
+  header.capa h1 {
+    font-size: clamp(2.1rem, 6.4vw, 3.4rem);
+    font-weight: 800;
+    line-height: 1.04;
+    letter-spacing: -0.035em;
+    margin: 0 0 1rem;
+    text-wrap: balance;
+    color: #fff;
+  }
+  header.capa .resumo {
+    font-size: clamp(1.02rem, 2.4vw, 1.16rem);
+    color: #c9dbd4;
+    max-width: 60ch;
+    margin: 0;
+  }
+  .ficha {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem 2.25rem;
+    margin-top: 1.9rem;
+    padding-top: 1.35rem;
+    border-top: 1px solid rgba(212,233,226,.2);
+    font-size: .8rem;
+  }
+  .ficha div { display: flex; flex-direction: column; gap: .15rem; }
+  .ficha dt {
+    color: #8fb0a5;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    font-size: .66rem;
+    font-weight: 700;
+  }
+  .ficha dd {
+    margin: 0;
+    color: #e7f1ee;
+    font-weight: 600;
+    font-family: "IBM Plex Mono", monospace;
+    letter-spacing: 0;
+  }
+
+  /* ── Seções ──────────────────────────────────────── */
+  main { padding-bottom: 5rem; }
+  section { padding-top: clamp(2.6rem, 6vw, 4rem); }
+
+  h2 {
+    font-size: clamp(1.35rem, 3.4vw, 1.72rem);
+    font-weight: 800;
+    letter-spacing: -0.028em;
+    line-height: 1.16;
+    margin: 0 0 .55rem;
+    color: var(--ink);
+    text-wrap: balance;
+  }
+  .sub-h2 {
+    font-size: .95rem;
+    color: var(--ink-3);
+    margin: 0 0 1.6rem;
+    max-width: 62ch;
+  }
+  h3 {
+    font-size: 1.02rem;
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    margin: 0 0 .4rem;
+    color: var(--ink);
+  }
+
+  /* ── Veredito ────────────────────────────────────── */
+  .veredito {
+    background: var(--surface);
+    border: 1px solid var(--linha);
+    border-left: 5px solid var(--critico);
+    border-radius: 14px;
+    padding: clamp(1.4rem, 3.5vw, 2rem);
+    box-shadow: var(--sombra);
+    margin-top: clamp(2.2rem, 5vw, 3rem);
+  }
+  .veredito .titulo {
+    font-size: clamp(1.2rem, 3vw, 1.5rem);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    color: var(--critico);
+    margin: 0 0 .7rem;
+    line-height: 1.2;
+  }
+  .veredito p:last-child { margin-bottom: 0; }
+
+  /* ── Chips ───────────────────────────────────────── */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    font-size: .68rem;
+    font-weight: 700;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    padding: .28rem .62rem;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .chip.critico  { background: var(--critico-bg); color: var(--critico); }
+  .chip.atencao  { background: var(--atencao-bg); color: var(--atencao); }
+  .chip.ok       { background: var(--ok-bg);      color: var(--ok); }
+  .chip.neutro   { background: var(--code-bg);    color: var(--ink-2); }
+
+  /* ── Prova / bloco de dados ──────────────────────── */
+  .prova {
+    background: var(--house);
+    border-radius: 14px;
+    padding: 1.35rem 1.5rem;
+    overflow-x: auto;
+    box-shadow: var(--sombra);
+  }
+  .prova .cab {
+    font-size: .68rem;
+    text-transform: uppercase;
+    letter-spacing: .13em;
+    font-weight: 700;
+    color: #8fb0a5;
+    margin-bottom: .85rem;
+  }
+  .prova pre {
+    margin: 0;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .8rem;
+    line-height: 1.75;
+    color: #cfe0d9;
+    letter-spacing: 0;
+  }
+  .prova .destaque { color: #7ee2b0; font-weight: 600; }
+  .prova .alerta   { color: #ffb4a4; font-weight: 600; }
+  .prova .chave    { color: #8fb0a5; }
+
+  /* ── Linha do tempo ──────────────────────────────── */
+  .linha-tempo { list-style: none; margin: 0; padding: 0; }
+  .linha-tempo li {
+    display: grid;
+    grid-template-columns: 5.5rem 1.6rem 1fr;
+    gap: 0 .9rem;
+    padding-bottom: 1.35rem;
+    position: relative;
+  }
+  .linha-tempo li:last-child { padding-bottom: 0; }
+  .lt-quando {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .74rem;
+    font-weight: 600;
+    color: var(--ink-3);
+    letter-spacing: 0;
+    padding-top: .22rem;
+    text-align: right;
+  }
+  .lt-trilho { display: flex; flex-direction: column; align-items: center; }
+  .lt-ponto {
+    width: 11px; height: 11px;
+    border-radius: 50%;
+    background: var(--primary);
+    margin-top: .42rem;
+    flex: none;
+    box-shadow: 0 0 0 3px var(--ground);
+  }
+  .lt-ponto.falha { background: var(--critico); }
+  .lt-ponto.aberto { background: var(--ground); border: 2px solid var(--linha-forte); }
+  .lt-fio { width: 2px; flex: 1; background: var(--linha); margin-top: .25rem; }
+  .linha-tempo li:last-child .lt-fio { display: none; }
+  .lt-texto h3 { margin-bottom: .12rem; font-size: .97rem; }
+  .lt-texto p { margin: 0; font-size: .89rem; line-height: 1.55; }
+  @media (max-width: 560px) {
+    .linha-tempo li { grid-template-columns: 1.6rem 1fr; }
+    .lt-quando { grid-column: 2; text-align: left; padding-top: 0; margin-bottom: .1rem; }
+    .lt-trilho { grid-row: 1 / span 2; grid-column: 1; }
+    .lt-texto { grid-column: 2; }
+  }
+
+  /* ── Cartões de falha ────────────────────────────── */
+  .falhas { display: grid; gap: .9rem; }
+  .falha {
+    background: var(--surface);
+    border: 1px solid var(--linha);
+    border-radius: 12px;
+    padding: 1.15rem 1.3rem;
+    display: grid;
+    gap: .55rem;
+  }
+  .falha .topo {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .8rem;
+    flex-wrap: wrap;
+  }
+  .falha p { margin: 0; font-size: .92rem; }
+  .onde {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .75rem;
+    letter-spacing: 0;
+    color: var(--ink-3);
+    background: var(--surface-alt);
+    border: 1px solid var(--linha);
+    border-radius: 7px;
+    padding: .42rem .6rem;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  /* ── Números da varredura ────────────────────────── */
+  .placar {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: .8rem;
+  }
+  @media (min-width: 720px) { .placar { grid-template-columns: repeat(4, 1fr); } }
+  .tile {
+    background: var(--surface);
+    border: 1px solid var(--linha);
+    border-radius: 12px;
+    padding: 1.1rem 1.2rem;
+  }
+  .tile.destaque { border-color: var(--critico); background: var(--critico-bg); }
+  .tile .num {
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: -0.045em;
+    line-height: 1;
+    color: var(--ink);
+  }
+  .tile.destaque .num { color: var(--critico); }
+  .tile .rot {
+    font-size: .73rem;
+    color: var(--ink-3);
+    margin-top: .45rem;
+    line-height: 1.4;
+  }
+  .tile.destaque .rot { color: var(--critico); opacity: .85; }
+
+  /* ── Correções ───────────────────────────────────── */
+  .grupo-prio {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    margin: 2rem 0 .9rem;
+  }
+  .grupo-prio:first-of-type { margin-top: 0; }
+  .grupo-prio .rotulo {
+    font-size: .72rem;
+    font-weight: 800;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    white-space: nowrap;
+  }
+  .grupo-prio .risca { height: 1px; background: var(--linha); flex: 1; }
+
+  .correcao {
+    background: var(--surface);
+    border: 1px solid var(--linha);
+    border-radius: 12px;
+    padding: 1.2rem 1.35rem;
+    display: grid;
+    gap: .6rem;
+    margin-bottom: .9rem;
+    box-shadow: var(--sombra);
+  }
+  .correcao.chave-mestra { border-left: 5px solid var(--primary); }
+  .correcao .topo {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: .8rem;
+    flex-wrap: wrap;
+  }
+  .correcao p { margin: 0; font-size: .92rem; }
+  .correcao .rotulinho {
+    font-size: .68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--ink-3);
+    margin-bottom: .1rem;
+  }
+  .par {
+    display: grid;
+    gap: .9rem;
+    padding-top: .3rem;
+  }
+  @media (min-width: 640px) { .par { grid-template-columns: 1fr 1fr; } }
+
+  /* ── Decisões ────────────────────────────────────── */
+  .decisoes { list-style: none; margin: 0; padding: 0; display: grid; gap: .75rem; }
+  .decisoes li {
+    background: var(--surface);
+    border: 1px solid var(--linha);
+    border-left: 4px solid var(--primary);
+    border-radius: 10px;
+    padding: 1rem 1.2rem;
+    font-size: .93rem;
+    color: var(--ink-2);
+  }
+  .decisoes li strong { display: block; margin-bottom: .18rem; }
+
+  .nota-rodape {
+    margin-top: 3.2rem;
+    padding-top: 1.3rem;
+    border-top: 1px solid var(--linha);
+    font-size: .82rem;
+    color: var(--ink-3);
+  }
+  .nota-rodape a { color: var(--primary-dk); }
+
+  a:focus-visible, li:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
+</style>
+
+<header class="capa">
+  <div class="env">
+    <p class="eyebrow">
+      <span>Diagnóstico</span><span class="sep">·</span><span>Financeiro · Asaas</span>
+      <span class="sep">·</span><span>03/09/2026</span>
+    </p>
+    <h1>PIX pago, QR ainda vivo</h1>
+    <p class="resumo">
+      O cliente do pedido #2887 pagou por chave PIX, o financeiro conciliou e a conta foi
+      quitada. Seis dias depois, o QR Code que o app gerou continua aceitando pagamento.
+    </p>
+    <dl class="ficha">
+      <div><dt>Pedido</dt><dd>#2887</dd></div>
+      <div><dt>Cliente</dt><dd>Panificadora Rainha</dd></div>
+      <div><dt>Valor em risco</dt><dd>R$ 671,75</dd></div>
+      <div><dt>QR pagável até</dt><dd>28/08/2027</dd></div>
+    </dl>
+  </div>
+</header>
+
+<main class="env">
+
+  <div class="veredito prosa">
+    <p class="titulo">Não, não era para acontecer.</p>
+    <p>
+      Quando a conta é quitada, a cobrança correspondente no Asaas deveria morrer junto.
+      Hoje isso só acontece em alguns caminhos — e o caminho do <strong>PIX da entrega</strong>
+      não é um deles. O QR fica vivo por <strong>12 meses depois do vencimento</strong>.
+    </p>
+    <p>
+      Enquanto ele estiver vivo, qualquer pessoa que reabrir aquele QR (o print no WhatsApp,
+      a foto na galeria do celular, o histórico do app do banco) <strong>paga de novo</strong> —
+      e o app não avisa ninguém.
+    </p>
+  </div>
+
+  <section class="prosa">
+    <h2>A prova, tirada hoje</h2>
+    <p class="sub-h2">
+      Consultei o QR do pedido #2887 do mesmo jeito que o banco do cliente consulta ao ler
+      o código. Esta é a resposta que o Asaas devolveu agora:
+    </p>
+    <div class="prova">
+      <p class="cab">Consulta ao QR do pedido #2887 · 03/09/2026</p>
+<pre><span class="chave">valor</span>          R$ 671,75
+<span class="chave">recebedor</span>      HARDT DOCES E SALGADOS
+<span class="chave">devedor</span>        PANIFICADORA RAINHA LTDA ME
+<span class="chave">vencimento</span>     28/08/2026
+<span class="chave">validade</span>       <span class="alerta">365 dias após o vencimento</span>
+<span class="chave">status</span>         <span class="alerta">ATIVA</span>   <span class="chave">← aceita pagamento agora</span></pre>
+    </div>
+    <p style="margin-top:1.2rem">
+      No app essa cobrança aparece como <strong>“Expirado”</strong>. É aí que mora a armadilha:
+      “expirado” no nosso sistema significa apenas que passou do vencimento —
+      <strong>não significa que morreu no banco</strong>. O código do projeto já sabia disso
+      para boleto; para o PIX de entrega, ninguém tratou.
+    </p>
+  </section>
+
+  <section>
+    <div class="prosa">
+      <h2>O que aconteceu, passo a passo</h2>
+      <p class="sub-h2">Reconstruído a partir dos registros do pedido, da parcela e da cobrança no Asaas.</p>
+    </div>
+    <ol class="linha-tempo prosa">
+      <li>
+        <span class="lt-quando">28/08 11:43</span>
+        <span class="lt-trilho"><span class="lt-ponto"></span><span class="lt-fio"></span></span>
+        <span class="lt-texto">
+          <h3>Motorista gera o PIX no app</h3>
+          <p>QR Code de R$ 671,75 criado para o pedido #2887, com vencimento no mesmo dia.</p>
+        </span>
+      </li>
+      <li>
+        <span class="lt-quando">28/08 11:57</span>
+        <span class="lt-trilho"><span class="lt-ponto"></span><span class="lt-fio"></span></span>
+        <span class="lt-texto">
+          <h3>Entrega concluída — e o cliente paga por fora</h3>
+          <p>Em vez de ler o QR, o cliente fez o PIX pela chave. O motorista registrou como
+             “À vista&nbsp;·&nbsp;Pix” comum, sem vínculo com a cobrança do Asaas — o que está correto,
+             porque o dinheiro realmente não entrou por ela.</p>
+        </span>
+      </li>
+      <li>
+        <span class="lt-quando">28/08</span>
+        <span class="lt-trilho"><span class="lt-ponto falha"></span><span class="lt-fio"></span></span>
+        <span class="lt-texto">
+          <h3>O QR deveria ter sido cancelado aqui — e não foi</h3>
+          <p>O app do motorista só cancela o QR quando ele fecha a tela no “X”, e mesmo assim
+             engole o erro em silêncio. Na rua, com sinal ruim ou fechando o app pelo celular,
+             o cancelamento simplesmente não acontece e ninguém fica sabendo.</p>
+        </span>
+      </li>
+      <li>
+        <span class="lt-quando">31/08</span>
+        <span class="lt-trilho"><span class="lt-ponto falha"></span><span class="lt-fio"></span></span>
+        <span class="lt-texto">
+          <h3>Caixa dá a baixa · conta fica QUITADA</h3>
+          <p>A parcela virou PAGA e a conta, QUITADA. Nenhuma linha do fluxo de baixa do caixa
+             manda cancelar a cobrança no Asaas — essa é a falha de fundo.</p>
+        </span>
+      </li>
+      <li>
+        <span class="lt-quando">31/08 06:10</span>
+        <span class="lt-trilho"><span class="lt-ponto aberto"></span><span class="lt-fio"></span></span>
+        <span class="lt-texto">
+          <h3>O Asaas avisa “venceu” e o app escreve “Expirado”</h3>
+          <p>Parece encerrado na tela. Não está: no Asaas o QR continua ativo por mais um ano.</p>
+        </span>
+      </li>
+      <li>
+        <span class="lt-quando">Hoje</span>
+        <span class="lt-trilho"><span class="lt-ponto falha"></span></span>
+        <span class="lt-texto">
+          <h3>QR segue aceitando pagamento</h3>
+          <p>Pedido entregue, pago, conciliado e quitado — e o código continua cobrável
+             até 28/08/2027.</p>
+        </span>
+      </li>
+    </ol>
+  </section>
+
+  <section>
+    <div class="prosa">
+      <h2>Por que passou batido</h2>
+      <p class="sub-h2">
+        Não foi um descuido isolado: são quatro proteções que deveriam pegar esse caso e
+        nenhuma pega. Cada uma sozinha explicaria o problema.
+      </p>
+    </div>
+    <div class="falhas prosa">
+
+      <div class="falha">
+        <div class="topo">
+          <h3>O cancelamento mora no celular do motorista</h3>
+          <span class="chip critico">Causa direta</span>
+        </div>
+        <p>
+          Quem manda cancelar o QR é a tela do motorista, e só pelo botão “X”. Se ele fecha o
+          app, perde o sinal ou o pedido de cancelamento falha, o erro é descartado sem aviso
+          e a tela fecha do mesmo jeito.
+        </p>
+        <div class="onde">frontend/src/pages/Motorista/Entregas/PixAsaasModal.jsx:71</div>
+      </div>
+
+      <div class="falha">
+        <div class="topo">
+          <h3>A baixa do caixa não cancela nada no Asaas</h3>
+          <span class="chip critico">Falha de fundo</span>
+        </div>
+        <p>
+          Este é o ponto onde o sistema tem certeza de que a conta foi paga — e é justamente
+          aqui que não existe nenhum cancelamento. Vale para os três caminhos da baixa em lote
+          (especiais, normais e Conta Azul). O único lugar do caixa que cancela é a baixa de
+          “cobrança em rota”, um fluxo diferente.
+        </p>
+        <div class="onde">backend/routes/caixa.js · baixa-lote (≈ linhas 3029, 3224, 3474)</div>
+      </div>
+
+      <div class="falha">
+        <div class="topo">
+          <h3>A função de cancelar procura pela parcela — e o PIX de entrega não tem parcela</h3>
+          <span class="chip atencao">Armadilha</span>
+        </div>
+        <p>
+          O sistema cancela cobranças buscando <em>pela parcela</em>. Mas o PIX gerado na entrega
+          nasce sem parcela vinculada, de propósito (a baixa dele acontece no caixa). Ou seja:
+          mesmo que a baixa mandasse cancelar, não acharia nada. A correção precisa buscar
+          <strong>pelo pedido</strong>, não pela parcela.
+        </p>
+        <div class="onde">backend/services/asaasService.js:326 · cancelarCobrancasDaParcela()</div>
+      </div>
+
+      <div class="falha">
+        <div class="topo">
+          <h3>A faxina automática também não enxerga</h3>
+          <span class="chip atencao">Rede furada</span>
+        </div>
+        <p>
+          Existe uma rotina de limpeza que mata cobranças de parcelas já quitadas — nossa rede
+          de segurança. Ela filtra só cobranças <em>que têm parcela</em>, então o PIX de entrega
+          é invisível para ela também.
+        </p>
+        <div class="onde">backend/routes/adminExec.js:1531 · asaas-cancelar-boletos-quitados</div>
+      </div>
+
+    </div>
+  </section>
+
+  <section>
+    <div class="prosa">
+      <h2>Qual o tamanho do problema hoje</h2>
+      <p class="sub-h2">
+        Varri os pedidos de #2400 a #2950 comparando cada cobrança PIX com a situação da conta.
+        O estrago atual é pequeno — mas é sorte, não proteção.
+      </p>
+    </div>
+    <div class="placar">
+      <div class="tile">
+        <div class="num">551</div>
+        <div class="rot">pedidos conferidos</div>
+      </div>
+      <div class="tile">
+        <div class="num">72</div>
+        <div class="rot">tinham PIX de entrega</div>
+      </div>
+      <div class="tile destaque">
+        <div class="num">1</div>
+        <div class="rot">QR vivo com conta já quitada</div>
+      </div>
+      <div class="tile">
+        <div class="num">R$ 671,75</div>
+        <div class="rot">exposto a pagamento em dobro</div>
+      </div>
+    </div>
+    <p class="prosa" style="margin-top:1.4rem">
+      Nos outros 71 casos o cliente pagou pelo próprio QR (a cobrança fecha sozinha) ou o
+      motorista conseguiu cancelar pela tela. O #2887 é o caminho raro: <strong>cliente paga
+      por fora e o cancelamento pela tela não acontece</strong>. Como o pagamento por chave
+      virou rotina justamente esta semana — por causa da pane do Asaas —, esse caminho raro
+      tende a ficar comum.
+    </p>
+    <p class="prosa">
+      <span class="chip neutro">Ressalva</span> a varredura cobre pedidos normais.
+      Pedidos <strong>especiais</strong> ficaram de fora da consulta que usei e precisam de uma
+      checagem própria.
+    </p>
+  </section>
+
+  <section class="prosa">
+    <h2>O que acontece se alguém pagar de novo</h2>
+    <p>
+      Vale saber, porque muda a urgência: se o cliente reapresentar o QR, o dinheiro
+      <strong>entra normalmente</strong> na conta Asaas. Como a cobrança não tem parcela
+      vinculada, o app não dá baixa nenhuma (a conta já está quitada mesmo) e
+      <strong>ninguém é avisado</strong>. O valor só apareceria depois como um crédito
+      solto na conciliação do extrato — se alguém reparar.
+    </p>
+    <p>
+      Ou seja: hoje o pagamento em dobro é silencioso dos dois lados — o cliente não descobre
+      e nós também não.
+    </p>
+  </section>
+
+  <section>
+    <div class="prosa">
+      <h2>Correções propostas</h2>
+      <p class="sub-h2">
+        Nada disso está feito — é o que sugiro fazer, na ordem em que sugiro fazer.
+        Como mexe em financeiro, entra com a equipe completa: arquiteto, dev, QA, revisor
+        e gerente de entrega.
+      </p>
+    </div>
+
+    <div class="prosa">
+
+      <div class="grupo-prio">
+        <span class="rotulo">Agora, sem esperar código</span><span class="risca"></span>
+      </div>
+
+      <div class="correcao">
+        <div class="topo">
+          <h3>Matar o QR do pedido #2887</h3>
+          <span class="chip critico">Precisa da sua autorização</span>
+        </div>
+        <p>
+          Cancelo a cobrança direto no Asaas e o QR para de aceitar pagamento na hora.
+          Não mexe na conta, na baixa nem na conciliação — que já estão certas. É só fechar
+          a porta que ficou aberta.
+        </p>
+      </div>
+
+      <div class="grupo-prio">
+        <span class="rotulo">Nesta entrega</span><span class="risca"></span>
+      </div>
+
+      <div class="correcao chave-mestra">
+        <div class="topo">
+          <h3>A baixa do caixa passa a cancelar a cobrança do pedido</h3>
+          <span class="chip ok">Resolve a causa</span>
+        </div>
+        <p>
+          Quando a conta do pedido fecha como quitada no caixa, o sistema procura as cobranças
+          Asaas <strong>daquele pedido</strong> que ainda estejam abertas e cancela todas.
+          Passa a valer para os três caminhos da baixa em lote.
+        </p>
+        <div class="par">
+          <div>
+            <p class="rotulinho">Cuidado embutido</p>
+            <p>Baixa parcial <strong>não</strong> cancela: se sobrou saldo, o cliente ainda pode
+               pagar pelo QR. Só cancela quando quitou de verdade.</p>
+          </div>
+          <div>
+            <p class="rotulinho">Risco</p>
+            <p>Baixo. Cobrança já paga nunca entra no cancelamento, e a operação roda fora da
+               transação da baixa — se o Asaas estiver fora do ar, a baixa não é afetada.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="correcao chave-mestra">
+        <div class="topo">
+          <h3>A faxina automática passa a enxergar o PIX de entrega</h3>
+          <span class="chip ok">Rede de segurança</span>
+        </div>
+        <p>
+          A rotina de limpeza deixa de exigir parcela vinculada e passa a considerar também as
+          cobranças presas ao pedido cuja conta já está quitada. É ela que limpa o que escapar
+          no futuro — e o que porventura já tenha escapado antes do #2400.
+        </p>
+      </div>
+
+      <div class="correcao chave-mestra">
+        <div class="topo">
+          <h3>Avisar o financeiro se cair dinheiro em pedido já quitado</h3>
+          <span class="chip ok">Impede o silêncio</span>
+        </div>
+        <p>
+          Se algum pagamento entrar numa cobrança de pedido já baixado, o sistema registra e
+          avisa o financeiro na hora, para vocês devolverem o valor antes de o cliente reclamar.
+          Hoje isso passaria despercebido.
+        </p>
+      </div>
+
+      <div class="grupo-prio">
+        <span class="rotulo">Vale a pena, mas pode ficar para depois</span><span class="risca"></span>
+      </div>
+
+      <div class="correcao">
+        <div class="topo">
+          <h3>Trocar o rótulo “Expirado” por “Vencido — ainda pagável”</h3>
+          <span class="chip neutro">Ajuste de texto</span>
+        </div>
+        <p>
+          Enquanto a tela disser “Expirado”, quem olha acredita que a cobrança morreu.
+          O rótulo honesto evita que alguém repita esse raciocínio no futuro.
+        </p>
+      </div>
+
+      <div class="correcao">
+        <div class="topo">
+          <h3>Botão “o cliente pagou por fora” na tela do motorista</h3>
+          <span class="chip neutro">Melhoria de uso</span>
+        </div>
+        <p>
+          Um caminho claro para o motorista encerrar o QR quando o cliente paga por chave,
+          em vez de depender de ele fechar a tela no “X”. Com o cancelamento no servidor
+          já funcionando, isso vira conforto — não mais a única proteção.
+        </p>
+      </div>
+
+    </div>
+  </section>
+
+  <section class="prosa">
+    <h2>O que preciso que você decida</h2>
+    <ul class="decisoes">
+      <li>
+        <strong>Posso cancelar agora o QR do #2887?</strong>
+        É a única ponta solta em aberto. Enquanto não cancelar, o risco de R$ 671,75 continua de pé.
+      </li>
+      <li>
+        <strong>Aprova as três correções “nesta entrega”?</strong>
+        São elas que fecham a causa. Só começo a mexer no código depois do seu ok.
+      </li>
+      <li>
+        <strong>Quem deve receber o aviso de dinheiro em pedido já quitado?</strong>
+        Preciso do destino do alerta — pessoa ou grupo — para configurar.
+      </li>
+      <li>
+        <strong>Quer que eu confira também os pedidos especiais?</strong>
+        Ficaram de fora da varredura e podem ter o mesmo tipo de QR solto.
+      </li>
+    </ul>
+
+    <p class="nota-rodape">
+      Levantamento feito em 03/09/2026 sobre os dados de produção, sem nenhuma alteração no
+      sistema. A validade de 12 meses do QR com vencimento é o comportamento documentado do
+      Asaas — <a href="https://docs.asaas.com/docs/cobrancas-via-pix">Cobranças via Pix / QR Code dinâmico</a>.
+    </p>
+  </section>
+
+</main>

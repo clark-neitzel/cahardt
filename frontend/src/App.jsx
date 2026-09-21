@@ -132,6 +132,7 @@ import AlertaTarefas from './components/AlertaTarefas';
 import AlertaPedidosSite from './components/AlertaPedidosSite';
 import AlertaAutorizacaoDevolucao from './components/AlertaAutorizacaoDevolucao';
 import AlertaDevolucaoRefItem from './components/AlertaDevolucaoRefItem';
+import AlertaPagamentoAposQuitacao from './components/AlertaPagamentoAposQuitacao';
 import Clippy from './components/Clippy/Clippy';
 import TelaSemConexao from './components/TelaSemConexao';
 import { useVersionCheck } from './hooks/useVersionCheck';
@@ -764,6 +765,10 @@ const Layout = ({ children }) => {
 
         {/* ALERTA DE PEDIDO ESPECIAL CONVERTIDO EM NF (popup a cada 5 min p/ faturamento) */}
         <AlertaPedidoConvertido />
+
+        {/* PAGAMENTO QUE CAIU EM PEDIDO JÁ QUITADO — dinheiro a devolver (popup a cada
+            5 min, SÓ p/ admin, SEM bip). O próprio componente decide se é admin. */}
+        <AlertaPagamentoAposQuitacao />
 
         {/* LEMBRETE DE PEDIDOS SALVOS SEM ENVIAR (popup a cada 30 min p/ o vendedor) */}
         <AlertaPedidosNaoEnviados />

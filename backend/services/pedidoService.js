@@ -1,4 +1,5 @@
 const prisma = require('../config/database');
+const { mapaFormaContaEfetiva } = require('./parcelaEfetivaService');
 const promocaoService = require('./promocaoService');
 const clienteInsightService = require('./clienteInsightService');
 const { calcularItensComFlex, calcularDiferencaFlex, gerarParcelasData } = require('./pedidoCalculos');
@@ -877,7 +878,10 @@ const pedidoService = {
                 },
                 contaReceber: {
                     include: {
-                        parcelas: { orderBy: { numeroParcela: 'asc' } }
+                        parcelas: {
+                            orderBy: { numeroParcela: 'asc' },
+                            include: { contaFinanceira: { select: { nomeBanco: true } } }
+                        }
                     }
                 },
                 pagamentosReais: true,
@@ -895,6 +899,13 @@ const pedidoService = {
                 }
             }
         });
+        // Forma/conta EFETIVAS das parcelas: baixa via conciliação/Asaas só grava o
+        // ledger e o popup do pedido mostrava "Forma: -". Derivação na leitura, pelo
+        // mesmo helper do Contas a Receber (não escreve nada na parcela).
+        if (pedido?.contaReceber?.parcelas?.length) {
+            const efetivas = await mapaFormaContaEfetiva(pedido.contaReceber.parcelas);
+            pedido.contaReceber.parcelas = pedido.contaReceber.parcelas.map(p => ({ ...p, ...efetivas(p) }));
+        }
         // Bonificação COM NOTA (09/2026): `nfBonificacaoAutorizada` = resumo da NF-e de
         // bonificação AUTORIZADA no ambiente atual, ou null (também null para nota em
         // PROCESSANDO/ERRO/CANCELADO e para pedido que não é BN#). Só ADIÇÃO de campo —

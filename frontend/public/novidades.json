@@ -1,5 +1,11 @@
 [
   {
+    "slug": "pix-apos-quitacao",
+    "titulo": "QR PIX cancela ao quitar no Caixa",
+    "resumo": "Quitou o título no Caixa? O QR Code PIX da entrega é cancelado sozinho no Asaas; se ainda assim cair dinheiro num pedido já quitado, o Admin recebe um aviso para tratar a devolução.",
+    "data": "2026-09-21"
+  },
+  {
     "slug": "encaixe-no-card",
     "titulo": "Encaixe e observações no card do pedido",
     "resumo": "Na aba Pedidos, o card mostra a observação do pedido e destaca em âmbar com o selo ⚠ ENCAIXE os pedidos marcados como encaixe de entrega.",

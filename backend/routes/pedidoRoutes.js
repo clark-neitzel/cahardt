@@ -41,6 +41,11 @@ router.get('/avisos-convertidos', pedidoController.avisosConvertidos);
 router.get('/meus-nao-enviados', pedidoController.meusNaoEnviados);
 router.post('/avisos-convertidos/:avisoId/ciente', pedidoController.avisoConvertidoCiente);
 
+// Avisos de pagamento que caiu em pedido JÁ QUITADO (QR PIX pago depois da baixa).
+// ⚠️ Precisa ficar ANTES do `router.get('/:id')` abaixo, senão vira "detalhar pedido".
+router.get('/avisos-pagamento-apos-quitacao', pedidoController.avisosPagamentoAposQuitacao);
+router.post('/avisos-pagamento-apos-quitacao/:avisoId/ciente', pedidoController.avisoPagamentoAposQuitacaoCiente);
+
 // Detalhes de um pedido
 router.get('/:id', pedidoController.detalhar);
 

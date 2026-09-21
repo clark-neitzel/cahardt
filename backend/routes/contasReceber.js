@@ -5,6 +5,7 @@ const verificarAuth = require('../middlewares/authMiddleware');
 const contasReceberSyncService = require('../services/contasReceberSyncService');
 // Papel do responsável pela cobrança — ponto ÚNICO de derivação (ver comentário do serviço).
 const { papelResponsavel, PAPEIS_RESPONSAVEL } = require('../services/recebimentoEntregaService');
+const { mapaFormaContaEfetiva } = require('../services/parcelaEfetivaService');
 
 const getPerms = async (userId) => {
     const vendedor = await prisma.vendedor.findUnique({
@@ -858,7 +859,10 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
                 },
                 parcelas: {
                     orderBy: { numeroParcela: 'asc' },
-                    include: { baixadoPor: { select: { id: true, nome: true } } }
+                    include: {
+                        baixadoPor: { select: { id: true, nome: true } },
+                        contaFinanceira: { select: { nomeBanco: true } }
+                    }
                 }
             },
             orderBy: ordenarPor === 'vencimento' ? { createdAt: 'asc' } : { createdAt: 'desc' }
@@ -906,6 +910,11 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
             select: { valorRecebido: true, valorDesconto: true }
         });
         totalQuitadasMes = pagamentosDoMes.reduce((s, p) => s + Number(p.valorRecebido) + Number(p.valorDesconto), 0);
+
+        // Forma/conta EFETIVAS: derivadas do ledger quando o resumo da parcela está
+        // vazio (baixa via conciliação/Asaas) — helper compartilhado com o detalhe do
+        // pedido, uma query extra só para as parcelas incompletas (sem N+1).
+        const efetivasDaParcela = await mapaFormaContaEfetiva(contas.flatMap(c => c.parcelas));
 
         // Formatar resposta
         const contasFormatadas = contas.map(c => {
@@ -967,6 +976,7 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
                     valorPago: p.valorPago ? Number(p.valorPago) : null,
                     valorDescontoTotal: Number(p.valorDescontoTotal || 0),
                     formaPagamento: p.formaPagamento,
+                    ...efetivasDaParcela(p),
                     status: p.status,
                     observacao: p.observacao,
                     baixadoPorId: p.baixadoPor?.id || null,
@@ -1264,11 +1274,14 @@ router.get('/:parcelaId/pagamentos', verificarAuth, checkAcesso, async (req, res
             where: { parcelaId },
             include: {
                 registradoPor: { select: { id: true, nome: true } },
-                estornadoPor: { select: { id: true, nome: true } }
+                estornadoPor: { select: { id: true, nome: true } },
+                contaFinanceira: { select: { nomeBanco: true } }
             },
             orderBy: { dataPagamento: 'asc' }
         });
-        res.json(pagamentos);
+        // `contaFinanceiraCaId` e `origem` são escalares do ledger (já vêm no include);
+        // `contaNome` resolve o nome do banco pela FK para a tela mostrar direto.
+        res.json(pagamentos.map(p => ({ ...p, contaNome: p.contaFinanceira?.nomeBanco || null })));
     } catch (error) {
         console.error('Erro ao buscar histórico de pagamentos:', error);
         res.status(500).json({ error: 'Erro ao buscar histórico de pagamentos.' });
