@@ -23,6 +23,17 @@ const SESSION_KEY = '@CAHardt:CaixaFiltros';
 // 📍❗ concluída longe do ponto cadastrado · 📍➖ sem GPS na hora · 📍❓ cliente sem
 // ponto). Tocar mostra o detalhe com a distância.
 const fmtDistancia = (m) => m == null ? '' : (m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${m} m`);
+// Formata 'YYYY-MM-DD' ou Date em dd/mm sem depender do fuso do navegador
+const fmtDataCurtaSemFuso = (data) => {
+    if (!data) return '';
+    if (typeof data === 'string') {
+        const m = data.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (m) return `${m[3]}/${m[2]}`;
+    }
+    const d = new Date(data);
+    if (isNaN(d.getTime())) return '';
+    return `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+};
 const SeloGps = ({ selo }) => {
     if (!selo?.status) return null;
     const mapa = {
@@ -241,6 +252,9 @@ const CaixaDiarioPage = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
     const isAdmin = user?.permissoes?.admin || user?.permissoes?.Pode_Editar_Caixa;
+    // Editar KM exige admin de verdade — o backend (PUT /diarios/:id/km) só aceita perms.admin,
+    // e isAdmin acima também libera quem só tem Pode_Editar_Caixa (front precisa espelhar o back exatamente).
+    const podeEditarKm = user?.permissoes?.admin === true;
     // Permissão específica para definir adiantamento (admin ou quem tiver a flag)
     const podeDefinirAdiantamento = user?.permissoes?.admin
         || user?.permissoes?.Pode_Editar_Caixa
@@ -289,6 +303,9 @@ const CaixaDiarioPage = () => {
     const [veiculoFichaId, setVeiculoFichaId] = useState(null);
     const [editandoKm, setEditandoKm] = useState(false);
     const [kmInicialEdit, setKmInicialEdit] = useState('');
+    const [kmFinalEdit, setKmFinalEdit] = useState('');
+    const [erroKmEdit, setErroKmEdit] = useState('');
+    const [salvandoKm, setSalvandoKm] = useState(false);
     // Baixa CA
     const podeBaixarCaixa = user?.permissoes?.admin || user?.permissoes?.Pode_Editar_Caixa || user?.permissoes?.Pode_Baixar_Caixa;
     const [selectedBaixa, setSelectedBaixa] = useState(new Set());
@@ -701,28 +718,86 @@ const CaixaDiarioPage = () => {
                                     )}
                                     {resumo.diario.modo === 'PRESENCIAL' && (
                                         <>
-                                            {editandoKm ? (
-                                                <div className="flex items-center gap-2 mt-1" onClick={e => e.stopPropagation()}>
-                                                    <input type="number" className="w-24 border border-gray-300 rounded px-2 py-1 text-xs font-mono"
-                                                        value={kmInicialEdit} onChange={e => setKmInicialEdit(e.target.value)} autoFocus />
-                                                    <button className="text-xs bg-indigo-600 text-white px-2 py-1 rounded hover:bg-indigo-700"
-                                                        onClick={async () => {
-                                                            try {
-                                                                await api.put(`/diarios/${resumo.diario.id}/km`, { kmInicial: parseInt(kmInicialEdit) });
-                                                                toast.success('KM inicial atualizado!');
-                                                                setEditandoKm(false);
-                                                                fetchResumo();
-                                                            } catch (e) { toast.error(e.response?.data?.error || 'Erro ao salvar KM.'); }
-                                                        }}>OK</button>
-                                                    <button className="text-xs text-gray-500 hover:text-gray-700" onClick={() => setEditandoKm(false)}>✕</button>
+                                            {editandoKm && podeEditarKm ? (
+                                                <div className="mt-1" onClick={e => e.stopPropagation()}>
+                                                    <div className="flex flex-wrap items-end gap-2">
+                                                        <label className="flex flex-col text-[11px] text-gray-500 font-medium">
+                                                            Inicial
+                                                            <input type="number" inputMode="numeric"
+                                                                className="w-24 min-h-[44px] border border-gray-300 rounded px-2 py-1 text-sm font-mono focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                                                                value={kmInicialEdit}
+                                                                onChange={e => { setKmInicialEdit(e.target.value); setErroKmEdit(''); }}
+                                                                autoFocus />
+                                                        </label>
+                                                        {resumo.diario.kmFinal != null && (
+                                                            <label className="flex flex-col text-[11px] text-gray-500 font-medium">
+                                                                Final
+                                                                <input type="number" inputMode="numeric"
+                                                                    className="w-24 min-h-[44px] border border-gray-300 rounded px-2 py-1 text-sm font-mono focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                                                                    value={kmFinalEdit}
+                                                                    onChange={e => { setKmFinalEdit(e.target.value); setErroKmEdit(''); }} />
+                                                            </label>
+                                                        )}
+                                                        <button disabled={salvandoKm}
+                                                            className="min-h-[44px] px-3 text-xs font-semibold bg-primary hover:bg-primaryDark disabled:opacity-60 text-white rounded-full"
+                                                            onClick={async () => {
+                                                                const kmIni = parseInt(kmInicialEdit, 10);
+                                                                const temFinal = resumo.diario.kmFinal != null;
+                                                                const kmFim = temFinal ? parseInt(kmFinalEdit, 10) : null;
+                                                                if (!Number.isInteger(kmIni)) {
+                                                                    setErroKmEdit('Informe um KM inicial válido.');
+                                                                    return;
+                                                                }
+                                                                if (temFinal && !Number.isInteger(kmFim)) {
+                                                                    setErroKmEdit('Informe um KM final válido.');
+                                                                    return;
+                                                                }
+                                                                if (temFinal && kmFim <= kmIni) {
+                                                                    setErroKmEdit('O KM final precisa ser maior que o inicial.');
+                                                                    return;
+                                                                }
+                                                                setSalvandoKm(true);
+                                                                try {
+                                                                    const payload = { kmInicial: kmIni };
+                                                                    if (temFinal) payload.kmFinal = kmFim;
+                                                                    const { data } = await api.put(`/diarios/${resumo.diario.id}/km`, payload);
+                                                                    toast.success('KM atualizado!');
+                                                                    if (data?.anteriorCorrigido) {
+                                                                        const ac = data.anteriorCorrigido;
+                                                                        const dataFmt = fmtDataCurtaSemFuso(ac.dataReferencia);
+                                                                        toast(`O KM final de ${dataFmt} também foi corrigido: ${Number(ac.kmFinalAntigo).toLocaleString('pt-BR')} → ${Number(ac.kmFinalNovo).toLocaleString('pt-BR')}`, { duration: 8000 });
+                                                                    } else if (data?.anteriorAmbiguo) {
+                                                                        const aa = data.anteriorAmbiguo;
+                                                                        const dataFmt = fmtDataCurtaSemFuso(aa.dataReferencia);
+                                                                        toast.error(`Havia ${aa.quantidade} usos do veículo em ${dataFmt} — o KM final desse dia não foi alterado. Corrija na Ficha do Veículo.`, { icon: '⚠️', duration: 10000 });
+                                                                    }
+                                                                    setEditandoKm(false);
+                                                                    setErroKmEdit('');
+                                                                    fetchResumo();
+                                                                } catch (e) {
+                                                                    toast.error(e.response?.data?.error || 'Erro ao salvar KM.');
+                                                                } finally {
+                                                                    setSalvandoKm(false);
+                                                                }
+                                                            }}>OK</button>
+                                                        <button className="min-h-[44px] px-2 text-xs text-gray-500 hover:text-gray-700"
+                                                            onClick={() => { setEditandoKm(false); setErroKmEdit(''); }}>✕</button>
+                                                    </div>
+                                                    {erroKmEdit && <p className="text-xs text-red-600 mt-1">{erroKmEdit}</p>}
                                                 </div>
                                             ) : (
                                                 <p className="text-xs mt-1">
                                                     KM: {resumo.diario.kmInicial || '—'} → {resumo.diario.kmFinal || '—'}
                                                     {resumo.diario.totalKm > 0 && <span className="ml-1 font-medium">({resumo.diario.totalKm} km)</span>}
-                                                    {isAdmin && resumo.diario.id && (
-                                                        <button className="ml-2 text-indigo-500 hover:text-indigo-700" title="Editar KM inicial"
-                                                            onClick={(e) => { e.stopPropagation(); setKmInicialEdit(String(resumo.diario.kmInicial || '')); setEditandoKm(true); }}>
+                                                    {podeEditarKm && resumo.diario.id && (
+                                                        <button className="ml-2 text-primary hover:text-primaryDark" title="Editar KM"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setKmInicialEdit(String(resumo.diario.kmInicial ?? ''));
+                                                                setKmFinalEdit(String(resumo.diario.kmFinal ?? ''));
+                                                                setErroKmEdit('');
+                                                                setEditandoKm(true);
+                                                            }}>
                                                             <Edit3 className="h-3 w-3 inline" />
                                                         </button>
                                                     )}

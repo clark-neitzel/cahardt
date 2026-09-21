@@ -22,7 +22,7 @@ Resumo financeiro diário do motorista/vendedor. Mostra tudo que aconteceu em um
 - Registrar uma nova despesa do dia (combustível, pedágio, hotel, manutenção, etc.)
 - Ver amostras entregues no dia
 - Ver atendimentos do dia
-- Ver e editar KM inicial do veículo do dia
+- Ver e editar KM inicial (e final, quando o dia já fechou) do veículo do dia — só administrador, ver detalhe abaixo
 - Ver o VALOR A PRESTAR — só aparece quando o dia está "certo"; senão mostra um checklist do que falta (KM final, entregas pendentes, clientes sem atendimento)
 - Acessar ficha completa do veículo
 - **Conferir o dinheiro do dia** (cartão "Conferência do Dinheiro"): quem recebe o dinheiro conta cédula por cédula na calculadora do app e assina — é o passo que libera o fechamento
@@ -36,6 +36,11 @@ Resumo financeiro diário do motorista/vendedor. Mostra tudo que aconteceu em um
 - **Autorizar desconsiderar falta de devolução** com senha do responsável (ex.: produto que não foi carregado de manhã)
 - **Baixar as cobranças da rota** (cartão "Cobranças da Rota"): títulos que o motorista/vendedor cobrou na rua chegam como "Aberto"; marcar o box e baixar dá a baixa oficial na parcela
 - **Ver os títulos recebidos** (cartão "Títulos Recebidos"): baixas em dinheiro/cheque feitas na tela de Contas a Receber com o seu login, que somam no valor a prestar
+
+**Editar KM (lápis ao lado do KM, só administrador):** corrige o KM inicial do dia e, se o dia já tiver KM final registrado, também o KM final.
+- Ao baixar o KM inicial, o sistema corrige sozinho o KM final do dia anterior do **mesmo veículo** quando ele ficou maior que o novo valor (o odômetro não anda para trás) — aparece um toast avisando qual dia mudou e de quanto para quanto.
+- Se o veículo teve **dois usos fechados no mesmo dia anterior** (ficha do veículo usada manualmente por duas pessoas), o sistema não corrige nenhum dos dois sozinho — avisa para corrigir direto na **Ficha do Veículo**.
+- O **"Último KM"** mostrado no modal de abastecimento de combustível passa a refletir a correção assim que ela é salva.
 
 ---
 
@@ -381,7 +386,7 @@ Quando a falta não é culpa do motorista (ex.: o produto não foi carregado de 
 - **Contas a Receber** — a baixa registra o recebimento na parcela correspondente do app (dinheiro → Caixinha, PIX Asaas → conta Asaas; nada vai mais ao Conta Azul desde 23/07/2026). A baixa das **cobranças da rota** também sai daqui, na parcela que o motorista cobrou na rua
 - **Minhas Entregas (aba Cobranças)** — as cobranças deste cartão vêm do que o motorista/vendedor registrou na rua
 - **Embarque** — o escritório pendura os títulos a cobrar na carga (seção "Cobranças na Carga")
-- **Veículos** — o KM inicial e a ficha do veículo do dia são acessíveis dentro do caixa
+- **Veículos** — o KM inicial/final e a ficha do veículo do dia são acessíveis dentro do caixa; a correção de KM feita aqui pode propagar para o KM final do dia anterior do mesmo veículo (ver "Editar KM" no início deste manual)
 
 ---
 
