@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Preço personalizado no Catálogo — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp -->
+<meta property="og:title" content="💰 Novidade no Hardt App: preço personalizado no Catálogo">
+<meta property="og:description" content="Ao montar o catálogo personalizado, agora dá para aumentar o preço de cada item antes de enviar — sempre acima do piso da condição escolhida. Veja como usar.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero { background: linear-gradient(168deg, var(--house) 0%, #16302a 100%); color: #fff; padding: 40px 16px 56px; }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow { display: inline-block; background: var(--gold); color: #2b230f; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .14em; padding: 6px 14px; border-radius: 999px; margin-bottom: 18px; }
+  .hero h1 { font-size: clamp(26px, 7vw, 38px); font-weight: 800; line-height: 1.14; margin: 0 0 12px; text-wrap: balance; }
+  .hero p { color: rgba(255,255,255,.78); font-size: 16px; max-width: 46ch; margin: 0 auto; text-wrap: balance; }
+
+  .sec-label {
+    font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .16em;
+    color: var(--primary-dark); margin: 34px 4px 12px;
+  }
+  .acc { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; margin-bottom: 10px; overflow: hidden; box-shadow: 0 1px 2px rgba(30,57,50,.05); }
+  .acc-head { width: 100%; display: flex; align-items: center; gap: 12px; background: none; border: none; font: inherit; text-align: left; padding: 15px 16px; cursor: pointer; min-height: 56px; }
+  .acc-ico { width: 38px; height: 38px; border-radius: 11px; background: var(--mint); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  .acc-head:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n { width: 30px; height: 30px; flex-shrink: 0; border-radius: 50%; background: var(--primary); color: #fff; font-weight: 800; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .rodape { text-align: center; font-size: 13px; color: var(--ink-soft); margin-top: 40px; }
+  .rodape strong { color: var(--primary-dark); }
+
+  /* ── MOCKUP DA TELA DO APP ── */
+  .tela { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; overflow: hidden; margin-bottom: 12px; box-shadow: 0 1px 2px rgba(30,57,50,.05); }
+  .tela-titulo { background: var(--house); color: #fff; padding: 12px 16px; font-size: 13px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .app-card { background: #fff; border: 1px solid #e5e3dc; border-radius: 12px; overflow: hidden; }
+  .app-card-head { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-bottom: 1px solid #f0efe9; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .12em; color: #6b756f; }
+  .app-btn { display: inline-flex; align-items: center; gap: 6px; background: var(--primary); color: #fff; font-size: 12.5px; font-weight: 700; padding: 9px 16px; border-radius: 999px; }
+
+  .item-row { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-bottom: 1px solid #f4f3ee; }
+  .item-row:last-child { border-bottom: none; }
+  .item-row.pers { background: rgba(217,119,6,.06); }
+  .item-nome { flex: 1; min-width: 0; }
+  .item-nome p { margin: 0; font-size: 12.5px; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .item-nome small { display: flex; align-items: center; gap: 5px; font-size: 9.5px; color: #9aa5a0; font-family: ui-monospace, Menlo, monospace; flex-wrap: wrap; }
+  .selo-personalizado, .selo-piso {
+    font-size: 8px; font-weight: 800; background: #fde8c8; color: #92400e;
+    padding: 2px 6px; border-radius: 999px; text-transform: uppercase; letter-spacing: .06em; font-family: -apple-system, sans-serif;
+  }
+  .item-preco { text-align: right; }
+  .item-preco-linha { display: flex; align-items: center; justify-content: flex-end; gap: 3px; }
+  .preco-input {
+    width: 62px; text-align: right; font-size: 12.5px; font-weight: 800; color: var(--primary);
+    background: #fff; border: 1.5px solid #e5e3dc; border-radius: 8px; padding: 4px 6px;
+  }
+  .preco-input.pers { color: #92400e; border-color: #fbbf24; }
+  .lapis, .fechar-x { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; color: #9aa5a0; font-size: 12px; }
+  .item-piso { font-size: 9px; color: #c9c6bc; margin-top: 2px; }
+  .item-piso.riscado { color: #b8b4a8; text-decoration: line-through; }
+
+  .resumo-pers {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    background: #fef6e7; border: 1px solid #fbe3ab; border-radius: 10px; padding: 8px 12px; margin-top: 10px; font-size: 11.5px; color: #92400e;
+  }
+  .resumo-pers b { font-weight: 800; }
+  .resumo-pers span.desfazer { font-weight: 800; text-decoration: underline; white-space: nowrap; }
+
+  .pin {
+    display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px;
+    border-radius: 50%; background: var(--gold); color: #2b230f; font-size: 11px; font-weight: 800;
+    flex-shrink: 0; vertical-align: 2px; margin-left: 6px;
+  }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+</style>
+</head>
+<body>
+
+<!-- ══════════ HERO ══════════ -->
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>Catálogo personalizado ganhou<br>preço por item</h1>
+    <p>Na hora de montar a lista de preços por link, agora dá para ajustar o valor de um produto específico para aquele cliente — sempre para cima do preço da condição escolhida.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- ══════════ O QUE MUDOU ══════════ -->
+  <div class="sec-label">O que mudou</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">✏️</span>
+      <strong>Preço editável em cada item</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>No modal <b>"Gerar catálogo personalizado"</b> (aba Catálogo → Montar catálogo), o preço de cada item agora é um campo editável. Toque nele (ou no lápis ✎), digite o novo valor e aperte Enter — ou simplesmente toque fora do campo.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🚧</span>
+      <strong>Só é permitido aumentar</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>O preço calculado pela condição de pagamento escolhida (à vista, 7 dias...) é o <b>piso</b> — nunca dá para descer dele. Se você digitar um valor abaixo do piso, o campo fica vermelho enquanto digita e volta sozinho para o piso quando você sai do campo.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🔄</span>
+      <strong>Trocar de condição recalcula tudo</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Se você mudar a condição de pagamento depois de personalizar um preço, o piso muda junto. Se o valor que você tinha digitado ficar igual ou abaixo do novo piso, o item volta a usar o piso e ganha o aviso <b>"subiu p/ o piso"</b> — sem perder o que você tinha digitado, caso volte para a condição de antes.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🙈</span>
+      <strong>O cliente não vê o ajuste</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>A página pública da lista (<code>/lista/…</code>) mostra só o <b>preço final</b> de cada item, normal — sem selo, sem riscado, sem qualquer sinal de que aquele preço foi ajustado.</li>
+        <li>O selo <b>"personalizado"</b>, o preço riscado do piso e o resumo em amarelo aparecem <b>só na sua tela</b>, enquanto você monta a lista.</li>
+        <li>O backend confere de novo antes de gerar o link — mesmo que algo escape na tela, um preço abaixo do piso é recusado.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ══════════ A TELA DO APP ══════════ -->
+  <div class="sec-label">A tela do app, sem mistério</div>
+
+  <div class="tela">
+    <div class="tela-titulo">📱 Modal "Gerar catálogo personalizado" — itens da lista</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">5 itens · preço em À vista<span class="pin">1</span></div>
+
+        <div class="item-row">
+          <div class="item-nome">
+            <p>Coxinha de frango 25g (cx 100)</p>
+            <small>CX-001</small>
+          </div>
+          <div class="item-preco">
+            <div class="item-preco-linha">
+              <span style="font-size:10px;color:#c9c6bc;">R$</span>
+              <span class="preco-input">62,00</span>
+              <span class="lapis">✎<span class="pin">2</span></span>
+              <span style="width:22px;"></span>
+            </div>
+            <div class="item-piso">piso R$ 62,00</div>
+          </div>
+        </div>
+
+        <div class="item-row pers">
+          <div class="item-nome">
+            <p>Kibe 25g (cx 100)</p>
+            <small>KB-002 <span class="selo-personalizado">personalizado<span class="pin">3</span></span></small>
+          </div>
+          <div class="item-preco">
+            <div class="item-preco-linha">
+              <span style="font-size:10px;color:#c9c6bc;">R$</span>
+              <span class="preco-input pers">65,00</span>
+              <span class="lapis">✎</span>
+              <span class="fechar-x">×<span class="pin">4</span></span>
+            </div>
+            <div class="item-piso riscado">R$ 58,50</div>
+          </div>
+        </div>
+
+        <div class="item-row">
+          <div class="item-nome">
+            <p>Risoles de carne 25g (cx 100)</p>
+            <small>RS-010 <span class="selo-personalizado">subiu p/ o piso<span class="pin">5</span></span></small>
+          </div>
+          <div class="item-preco">
+            <div class="item-preco-linha">
+              <span style="font-size:10px;color:#c9c6bc;">R$</span>
+              <span class="preco-input">64,90</span>
+              <span class="lapis">✎</span>
+              <span style="width:22px;"></span>
+            </div>
+            <div class="item-piso">piso R$ 64,90</div>
+          </div>
+        </div>
+
+        <div style="padding:0 12px 12px;">
+          <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:12.5px;color:#6b756f;font-weight:600;">
+            <span>Total <span style="font-weight:400;color:#9aa5a0;">(só o vendedor vê)</span></span>
+            <span style="color:var(--ink);font-weight:800;">R$ 193,80</span>
+          </div>
+          <div class="resumo-pers">
+            <span><b>1 item</b> com preço personalizado · <b>R$ 6,50</b> a mais<span class="pin">6</span></span>
+            <span class="desfazer">desfazer todos</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>O cabeçalho lembra em qual <b>condição de pagamento</b> os preços estão sendo calculados — trocar a condição recalcula o piso de todos os itens.</span></div>
+      <div><span class="pin">2</span><span>O <b>lápis ✎</b> foca no campo de preço e já seleciona o valor, pronto para digitar por cima.</span></div>
+      <div><span class="pin">3</span><span>Item alterado ganha fundo amarelo claro e o selo <b>"personalizado"</b>.</span></div>
+      <div><span class="pin">4</span><span>O <b>×</b> desfaz só aquele item, voltando para o preço da condição.</span></div>
+      <div><span class="pin">5</span><span>Ao trocar de condição, um item que tinha preço personalizado abaixo do novo piso ganha o aviso <b>"subiu p/ o piso"</b> e usa o piso normalmente.</span></div>
+      <div><span class="pin">6</span><span>Resumo com quantos itens foram alterados e quanto isso soma — com o botão <b>"desfazer todos"</b> para começar de novo.</span></div>
+    </div>
+  </div>
+
+  <!-- ══════════ COMO USAR ══════════ -->
+  <div class="sec-label">Para usar</div>
+  <div class="passos">
+    <div class="passo">
+      <span class="passo-n">1</span>
+      <div>Na aba <b>Catálogo</b>, toque em <b>Montar catálogo</b>, selecione os produtos e escolha cliente/condição como sempre.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">2</span>
+      <div>Na lista de itens, toque no preço do produto que quer ajustar (ou no ✎ ao lado).</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">3</span>
+      <div>Digite o novo valor — sempre acima do piso mostrado embaixo — e aperte <b>Enter</b>.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">4</span>
+      <div>Confira o resumo em amarelo e toque em <b>Gerar link do catálogo</b>, como de costume.</div>
+    </div>
+  </div>
+
+  <p class="rodape">Dúvidas? Pergunte ao <strong>Clippy</strong> dentro do app.<br>— Hardt Salgados</p>
+</div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.parentElement;
+    const abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>

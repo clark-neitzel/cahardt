@@ -66,10 +66,26 @@ function condicaoAprovadaParaCliente(cliente, condicao) {
 }
 
 // ── criar (snapshot) ─────────────────────────────────────────────────────────
-async function criar({ vendedor, clienteUuid, clienteNome, condicaoId, produtoIds, titulo, observacoes }) {
+// `itens`, quando vier, é a fonte de produtos+preço: [{ produtoId, precoPersonalizado? }].
+// Mantém `produtoIds` funcionando IDÊNTICO a antes (usado por backend/services/iaCatalogoService.js) —
+// sem `itens`, o comportamento é exatamente o mesmo de antes desta mudança.
+async function criar({ vendedor, clienteUuid, clienteNome, condicaoId, produtoIds, itens: itensPersonalizados, titulo, observacoes }) {
     if (!condicaoId) throw Object.assign(new Error('Condição de pagamento é obrigatória.'), { status: 400 });
-    if (!Array.isArray(produtoIds) || produtoIds.length === 0)
+    const usaItensPersonalizados = Array.isArray(itensPersonalizados) && itensPersonalizados.length > 0;
+    if (!usaItensPersonalizados && (!Array.isArray(produtoIds) || produtoIds.length === 0))
         throw Object.assign(new Error('Selecione ao menos um produto.'), { status: 400 });
+    // Mapa produtoId → precoPersonalizado bruto (validado item a item mais abaixo, já com o nome do produto).
+    const precoPersonalizadoPorProduto = new Map();
+    if (usaItensPersonalizados) {
+        produtoIds = itensPersonalizados.map(it => it?.produtoId).filter(Boolean);
+        for (const it of itensPersonalizados) {
+            if (it?.produtoId && it.precoPersonalizado != null) {
+                precoPersonalizadoPorProduto.set(it.produtoId, it.precoPersonalizado);
+            }
+        }
+        if (produtoIds.length === 0)
+            throw Object.assign(new Error('Selecione ao menos um produto.'), { status: 400 });
+    }
 
     // Destinatário: cliente cadastrado (clienteUuid) OU nome avulso (não-cliente)
     let cliente = null;
@@ -125,13 +141,39 @@ async function criar({ vendedor, clienteUuid, clienteNome, condicaoId, produtoId
         throw Object.assign(new Error('Nenhum dos produtos selecionados está disponível.'), { status: 400 });
 
     const porId = new Map(produtos.map(p => [p.id, p]));
+    const TOLERANCIA = 0.004; // ver CLAUDE.md: comparação de centavos com folga p/ arredondamento
     const itens = [];
     let total = 0;
     produtoIds.forEach((id, idx) => {
         const p = porId.get(id);
         if (!p) return;
         const valorBase = round2(p.valorVenda);
-        const precoFinal = round2(Number(p.valorVenda) * (1 + acrescimo / 100));
+        const piso = round2(Number(p.valorVenda) * (1 + acrescimo / 100));
+
+        let precoFinal = piso;
+        let precoPersonalizado = null;
+        if (precoPersonalizadoPorProduto.has(id)) {
+            const bruto = precoPersonalizadoPorProduto.get(id);
+            const valor = Number(bruto);
+            if (!Number.isFinite(valor) || valor <= 0) {
+                throw Object.assign(
+                    new Error(`Preço do item "${p.nome}" é inválido.`),
+                    { status: 400 }
+                );
+            }
+            if (valor < piso - TOLERANCIA) {
+                throw Object.assign(
+                    new Error(`Preço do item "${p.nome}" (R$ ${valor.toFixed(2)}) está abaixo do piso da condição "${condicao.nomeCondicao}" (R$ ${piso.toFixed(2)}).`),
+                    { status: 400 }
+                );
+            }
+            if (valor > piso + TOLERANCIA) {
+                precoPersonalizado = round2(valor);
+                precoFinal = precoPersonalizado;
+            }
+            // dentro da tolerância do piso: trata como não personalizado (fica null, precoFinal = piso)
+        }
+
         total += precoFinal;
         itens.push({
             produtoId: p.id,
@@ -141,6 +183,7 @@ async function criar({ vendedor, clienteUuid, clienteNome, condicaoId, produtoId
             imagemUrl: p.imagens?.[0]?.url || null,
             valorBase,
             precoFinal,
+            precoPersonalizado,
             categoriaNome: p.categoriaProduto?.nome || null,
             categoriaCor: p.categoriaProduto?.corTag || null,
             ordem: idx

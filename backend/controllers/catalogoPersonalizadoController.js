@@ -3,9 +3,11 @@ const prisma = require('../config/database');
 
 // POST /api/catalogo-personalizado  (privado)
 // body: { clienteUuid, condicaoId, validadeDias, produtoIds:[], titulo?, observacoes? }
+// body (alternativo, com preço personalizado por item): { ..., itens: [{ produtoId, precoPersonalizado? }] }
+// — itens, quando presente, substitui produtoIds como fonte de produtos; só ACIMA do piso da condição.
 async function gerar(req, res) {
     try {
-        const { clienteUuid, clienteNome, condicaoId, produtoIds, titulo, observacoes } = req.body || {};
+        const { clienteUuid, clienteNome, condicaoId, produtoIds, itens, titulo, observacoes } = req.body || {};
 
         // Dados do vendedor logado (para o snapshot: nome + telefone do WhatsApp)
         let vendedor = { id: req.user?.id, nome: req.user?.nome || null, telefone: null };
@@ -20,8 +22,10 @@ async function gerar(req, res) {
         } catch (_) { /* segue com o que veio do token */ }
 
         const catalogo = await service.criar({
-            vendedor, clienteUuid, clienteNome, condicaoId, produtoIds, titulo, observacoes
+            vendedor, clienteUuid, clienteNome, condicaoId, produtoIds, itens, titulo, observacoes
         });
+
+        const qtdPersonalizados = (catalogo.itens || []).filter(i => i.precoPersonalizado != null).length;
 
         return res.status(201).json({
             ok: true,
@@ -29,7 +33,8 @@ async function gerar(req, res) {
             token: catalogo.token,
             total: Number(catalogo.total) || 0,
             validadeEm: catalogo.validadeEm,
-            qtdItens: catalogo.itens?.length || 0
+            qtdItens: catalogo.itens?.length || 0,
+            qtdPersonalizados
         });
     } catch (err) {
         console.error('[CatalogoPersonalizado] gerar:', err.message);

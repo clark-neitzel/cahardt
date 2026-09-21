@@ -2,7 +2,8 @@ import api from './api';
 
 // Catálogo Personalizado (privado) — vendedor monta lista de preços e gera link público.
 const catalogoPersonalizadoService = {
-    // payload: { clienteUuid, condicaoId, validadeDias, produtoIds:[], titulo?, observacoes? }
+    // payload: { clienteUuid, condicaoId, validadeDias, itens:[{ produtoId, precoPersonalizado? }], titulo?, observacoes? }
+    // (itens substitui produtoIds; precoPersonalizado é opcional e nunca pode ficar abaixo do piso da condição — o backend recusa com 400)
     gerar: async (payload) => {
         const response = await api.post('/catalogo-personalizado', payload);
         return response.data; // { ok, id, token, total, validadeEm, qtdItens }

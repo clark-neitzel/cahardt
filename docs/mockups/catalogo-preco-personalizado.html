@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mock — Preço personalizado no catálogo</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = { theme: { extend: { colors: { primary:'#00754A', primaryDark:'#006241', house:'#1E3932', mint:'#d4e9e2', secondary:'#f2f0eb' },
+  fontFamily: { sans: ['Manrope','SF Pro Text','system-ui','sans-serif'] } } } }
+</script>
+<style>
+  body{font-family:Manrope,system-ui,sans-serif;letter-spacing:-0.01em;font-variant-numeric:tabular-nums;background:#f2f0eb}
+  .pin{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:999px;background:#cba258;color:#1E3932;font-size:11px;font-weight:800;flex-shrink:0}
+  input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
+</style>
+</head>
+<body class="min-h-screen">
+<div class="max-w-5xl mx-auto px-4 py-6">
+  <div class="bg-house text-white rounded-2xl px-5 py-5 mb-6">
+    <p class="text-[11px] font-bold uppercase tracking-widest text-mint/80">Prévia · antes de programar</p>
+    <h1 class="text-xl md:text-2xl font-extrabold mt-1">Catálogo por link — preço personalizado por item</h1>
+    <p class="text-sm text-white/80 mt-2 max-w-2xl">O vendedor escolhe a condição (ex.: À vista) e, se quiser, <b>aumenta</b> o preço de alguns itens antes de gerar o link. Nunca abaixo do preço da condição escolhida. É interativa: clique nos preços para testar.</p>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-6 items-start">
+
+    <!-- ============ TELA 1: modal do vendedor ============ -->
+    <div>
+      <div class="flex items-center gap-2 mb-2"><span class="pin">1</span><span class="text-xs font-bold uppercase tracking-widest text-gray-600">Tela do vendedor — modal "Gerar catálogo personalizado"</span></div>
+      <div class="bg-white rounded-2xl shadow-2xl border border-gray-200 max-w-lg">
+        <div class="flex items-center gap-3 px-5 py-4 border-b border-gray-100">
+          <div class="min-w-0 flex-1">
+            <h3 class="text-base font-bold text-gray-900">Gerar catálogo personalizado</h3>
+            <p class="text-xs text-gray-500">5 produtos selecionados</p>
+          </div>
+          <span class="p-1.5 text-gray-400">✕</span>
+        </div>
+
+        <div class="px-5 py-4">
+          <div class="mb-4">
+            <label class="block text-xs font-bold uppercase tracking-wide text-gray-500 mb-1.5">Enviar para</label>
+            <div class="flex bg-gray-100 rounded-xl p-1 gap-1 mb-2.5">
+              <span class="flex-1 py-2 rounded-lg text-xs font-bold bg-white text-primaryDark shadow-sm text-center">Cliente cadastrado</span>
+              <span class="flex-1 py-2 rounded-lg text-xs font-bold text-gray-500 text-center">Outro destinatário</span>
+            </div>
+            <div class="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-gray-900 flex justify-between">Padaria Pão Quente — Blumenau <span class="text-gray-400">▾</span></div>
+          </div>
+
+          <div class="mb-4">
+            <label class="block text-xs font-bold uppercase tracking-wide text-gray-500 mb-1.5">Condição de pagamento</label>
+            <div class="grid grid-cols-2 gap-2" id="conds"></div>
+          </div>
+
+          <div>
+            <div class="flex items-center justify-between mb-1.5 gap-2">
+              <label class="text-xs font-bold uppercase tracking-wide text-gray-500">5 itens · preço em <span id="condNome">À vista</span></label>
+              <span class="pin">2</span>
+            </div>
+            <div class="border border-gray-100 rounded-xl overflow-hidden" id="itens"></div>
+
+            <div class="flex items-center justify-between mt-3 px-1">
+              <span class="text-sm text-gray-500 font-medium">Total <span class="text-gray-400 font-normal">(só o vendedor vê)</span></span>
+              <span class="text-base font-bold text-gray-900" id="total"></span>
+            </div>
+            <div id="resumoPers" class="hidden flex items-center justify-between mt-2 px-3 py-2 rounded-xl bg-amber-50 border border-amber-200">
+              <span class="text-xs text-amber-800"><b id="qtdPers"></b> com preço personalizado · <b id="somaPers"></b> a mais</span>
+              <button onclick="limparTodos()" class="text-xs font-bold text-amber-800 underline">desfazer todos</button>
+            </div>
+            <p class="text-[11px] text-gray-400 mt-1 px-1">Clique no preço (ou no ✎), digite e aperte Enter. Só é permitido <b>aumentar</b> — o valor da condição é o piso.</p>
+          </div>
+        </div>
+
+        <div class="px-5 py-4 border-t border-gray-100">
+          <button class="w-full inline-flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-primary text-white font-bold text-sm">🔗 Gerar link do catálogo</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ Legendas + TELA 2 ============ -->
+    <div class="space-y-5">
+      <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 space-y-3 text-sm text-gray-600">
+        <p class="text-xs font-bold uppercase tracking-widest text-gray-600">Legenda</p>
+        <p><span class="pin mr-2">1</span>Tudo igual ao modal de hoje. Nada muda para quem não quer mexer no preço.</p>
+        <p><span class="pin mr-2">2</span>Cada preço vira um campo: toque para digitar. Se digitar abaixo do piso, o campo fica vermelho e volta ao piso ao sair. Item alterado ganha o selo <span class="text-[9px] font-extrabold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full uppercase">personalizado</span> e o preço original aparece riscado; o "×" desfaz.</p>
+        <p><span class="pin mr-2">3</span>Trocar de condição <b>recalcula o piso</b>. Preço personalizado que ficar abaixo do piso novo sobe para o piso (aviso amarelo no item).</p>
+        <p><span class="pin mr-2">4</span>O cliente vê só o preço final — sem riscado, sem selo, sem saber que foi ajustado.</p>
+      </div>
+
+      <div>
+        <div class="flex items-center gap-2 mb-2"><span class="pin">4</span><span class="text-xs font-bold uppercase tracking-widest text-gray-600">O que o cliente vê (link /lista/…)</span></div>
+        <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+          <div class="bg-house text-white px-4 py-3">
+            <p class="text-[10px] uppercase tracking-widest text-mint/80 font-bold">Hardt Salgados</p>
+            <p class="font-bold text-sm">Lista para Padaria Pão Quente</p>
+            <p class="text-[11px] text-white/70" id="clienteCond">À vista · válida por 7 dias</p>
+          </div>
+          <div id="itensCliente" class="divide-y divide-gray-100"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mt-8 bg-white rounded-xl border border-gray-200 shadow-sm p-5 text-sm text-gray-600">
+    <p class="text-xs font-bold uppercase tracking-widest text-gray-600 mb-2">O que muda por baixo (resumo p/ aprovação)</p>
+    <ol class="list-decimal ml-5 space-y-1">
+      <li>Tabela <code>catalogos_personalizados_itens</code> ganha <code>preco_personalizado</code> (opcional). <code>preco_final</code> passa a ser o maior entre o da condição e o personalizado.</li>
+      <li>O backend recusa valor abaixo do piso (não confia só na tela).</li>
+      <li>A lista do cliente e o pedido gerado a partir dela usam o <code>preco_final</code> — já é assim hoje, então o resto do fluxo não muda.</li>
+      <li>Na lista de catálogos gerados aparece um selo "N itens personalizados" para o escritório saber.</li>
+    </ol>
+  </div>
+</div>
+
+<script>
+const conds = [
+  { id:'avista', nome:'À vista', acr:0, min:0, padrao:true },
+  { id:'7d', nome:'7 dias', acr:2, min:150 },
+  { id:'14d', nome:'14 dias', acr:4, min:200 },
+  { id:'28d', nome:'28 dias', acr:6, min:300 },
+];
+const produtos = [
+  { id:1, codigo:'CX-001', nome:'Coxinha de frango 25g (cx 100)', base:62.00 },
+  { id:2, codigo:'KB-002', nome:'Kibe 25g (cx 100)', base:58.50 },
+  { id:3, codigo:'RS-010', nome:'Risoles de carne 25g (cx 100)', base:64.90 },
+  { id:4, codigo:'EP-004', nome:'Empada de frango 40g (cx 50)', base:71.00 },
+  { id:5, codigo:'BL-007', nome:'Bolinha de queijo 25g (cx 100)', base:55.00 },
+];
+let condId = 'avista';
+const pers = {}; // id -> valor personalizado
+const money = v => v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const piso = p => Math.round(p.base * (1 + (conds.find(c=>c.id===condId).acr)/100) * 100)/100;
+const precoFinal = p => pers[p.id] != null ? Math.max(pers[p.id], piso(p)) : piso(p);
+
+function renderConds(){
+  document.getElementById('conds').innerHTML = conds.map(c => `
+    <button onclick="setCond('${c.id}')" class="text-left rounded-xl border px-3 py-2 ${c.id===condId?'border-primary bg-mint':'border-gray-200'}">
+      <div class="text-[13px] font-bold text-gray-900 flex items-center gap-1.5 flex-wrap">${c.nome}
+        ${c.padrao?'<span class="text-[8px] font-extrabold bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-full uppercase tracking-wide">padrão</span>':''}</div>
+      <div class="text-[11px] font-semibold mt-0.5 text-gray-500">${c.min>0?'Mín. '+money(c.min):'Sem mínimo'}</div>
+    </button>`).join('');
+  document.getElementById('condNome').textContent = conds.find(c=>c.id===condId).nome;
+  document.getElementById('clienteCond').textContent = conds.find(c=>c.id===condId).nome + ' · válida por 7 dias';
+}
+function setCond(id){ condId = id; render(); }
+function render(){
+  renderConds();
+  let total=0, qtd=0, soma=0;
+  document.getElementById('itens').innerHTML = produtos.map(p => {
+    const pi = piso(p), pf = precoFinal(p), alterado = pers[p.id] != null && pers[p.id] > pi + 0.004;
+    const subiu = pers[p.id] != null && pers[p.id] < pi - 0.004;
+    total += pf; if (alterado){ qtd++; soma += pf - pi; }
+    return `
+    <div class="flex items-center gap-3 px-3 py-2 border-b border-gray-50 last:border-0 ${alterado?'bg-amber-50/40':''}">
+      <div class="flex-1 min-w-0">
+        <p class="text-[13px] font-medium text-gray-900 truncate">${p.nome}</p>
+        <p class="text-[10px] text-gray-400 font-mono flex items-center gap-1.5">${p.codigo}
+          ${alterado?'<span class="text-[8px] font-extrabold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full uppercase tracking-wide font-sans">personalizado</span>':''}
+          ${subiu?'<span class="text-[8px] font-extrabold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full uppercase tracking-wide font-sans">subiu p/ o piso</span>':''}
+        </p>
+      </div>
+      <div class="text-right">
+        <div class="flex items-center justify-end gap-1">
+          <span class="text-[11px] text-gray-400">R$</span>
+          <input type="text" inputmode="decimal" value="${pf.toFixed(2).replace('.',',')}" data-id="${p.id}" data-piso="${pi}"
+            title="Clique e digite o novo preço (só acima de ${money(pi)})"
+            class="w-[80px] text-right text-[13px] font-bold ${alterado?'text-amber-700 border-amber-300':'text-primary border-gray-200'} bg-white border rounded-lg px-1.5 py-1 cursor-text focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none">
+          <button onclick="focar(${p.id})" title="editar preço" class="text-gray-400 hover:text-primary text-xs leading-none px-1">✎</button>
+          ${alterado?`<button onclick="reset(${p.id})" title="voltar ao preço da condição" class="text-gray-400 hover:text-gray-600 text-sm leading-none px-1">×</button>`:'<span class="w-[18px]"></span>'}
+        </div>
+        <p class="text-[9.5px] ${alterado?'text-gray-400 line-through':'text-gray-300'}">${alterado?money(pi):'piso '+money(pi)}</p>
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById('total').textContent = money(total);
+  const r = document.getElementById('resumoPers');
+  r.classList.toggle('hidden', qtd===0); r.classList.toggle('flex', qtd>0);
+  document.getElementById('qtdPers').textContent = qtd + (qtd===1?' item':' itens');
+  document.getElementById('somaPers').textContent = money(soma);
+  document.getElementById('itensCliente').innerHTML = produtos.map(p => `
+    <div class="flex items-center justify-between px-4 py-2.5">
+      <div class="min-w-0"><p class="text-[13px] font-medium text-gray-900 truncate">${p.nome}</p><p class="text-[10px] text-gray-400">cx · ${p.codigo}</p></div>
+      <p class="text-[13px] font-bold text-primary">${money(precoFinal(p))}</p>
+    </div>`).join('');
+}
+const num = s => Number(String(s).replace(/[^\d,.-]/g,'').replace(',','.'));
+function focar(id){ const el=document.querySelector(`input[data-id="${id}"]`); el.focus(); el.select(); }
+function setPreco(id, v, pi){ v = num(v); if (!v || v <= pi + 0.004) delete pers[id]; else pers[id] = Math.round(v*100)/100; render(); }
+// eventos delegados: funcionam com clique do mouse, Enter e Tab
+document.getElementById('itens').addEventListener('focusin', e => { if (e.target.matches('input')) e.target.select(); });
+document.getElementById('itens').addEventListener('input', e => {
+  const el=e.target; if(!el.matches('input')) return; const pi=Number(el.dataset.piso), baixo = num(el.value) < pi - 0.004;
+  el.classList.toggle('border-red-400', baixo); el.classList.toggle('text-red-600', baixo);
+});
+document.getElementById('itens').addEventListener('focusout', e => { if (e.target.matches('input')) setPreco(Number(e.target.dataset.id), e.target.value, Number(e.target.dataset.piso)); });
+document.getElementById('itens').addEventListener('keydown', e => { if (e.target.matches('input') && e.key==='Enter') e.target.blur(); });
+function reset(id){ delete pers[id]; render(); }
+function limparTodos(){ for (const k in pers) delete pers[k]; render(); }
+render();
+</script>
+</body>
+</html>

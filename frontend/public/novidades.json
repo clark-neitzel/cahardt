@@ -1,5 +1,11 @@
 [
   {
+    "slug": "preco-personalizado-catalogo",
+    "titulo": "Preço personalizado no Catálogo",
+    "resumo": "No modal \"Gerar catálogo personalizado\" (aba Catálogo), agora dá para ajustar o preço de cada item antes de gerar o link — sempre para cima do piso calculado pela condição de pagamento escolhida (nunca para baixo). Basta tocar no preço (ou no lápis ✎), digitar e apertar Enter; digitar abaixo do piso deixa o campo vermelho e volta ao piso sozinho ao sair. Item ajustado ganha fundo amarelo, selo \"personalizado\" e o preço original riscado, com um × para desfazer; trocar de condição recalcula o piso na hora (item que ficar abaixo do novo piso ganha o aviso \"subiu p/ o piso\"). Abaixo do total aparece um resumo \"N itens com preço personalizado · R$ X a mais\" com botão \"desfazer todos\". O cliente que recebe o link não vê nada disso — a página pública mostra só o preço final normal.",
+    "data": "2026-09-21"
+  },
+  {
     "slug": "previa-whatsapp-delivery",
     "titulo": "Prévia do WhatsApp no Delivery",
     "resumo": "O botão de reenviar mensagem no Kanban do Delivery (Kit Festa) não envia mais direto: agora abre uma prévia mostrando o cliente, o telefone (com selo celular/telefone), a etapa e o texto exato que será enviado, formatado como no WhatsApp de verdade (inclui a taxa de entrega quando existir). O envio só sai depois de tocar em \"Enviar WhatsApp\"; se não puder enviar (ex.: sem telefone cadastrado), o botão fica bloqueado com o motivo explicado. Agora também dá para reenviar manualmente pela coluna Pedido.",

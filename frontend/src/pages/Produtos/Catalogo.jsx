@@ -10,7 +10,7 @@ import { API_URL } from '../../services/api';
 import StatusBadge from '../../components/StatusBadge';
 import SelectBusca from '../../components/SelectBusca';
 import { useAuth } from '../../contexts/AuthContext';
-import { Search, X, ChevronLeft, ChevronRight, Package, ListPlus, Check, ArrowRight, Link2, Copy, Send, Loader2, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Search, X, ChevronLeft, ChevronRight, Package, ListPlus, Check, ArrowRight, Link2, Copy, Send, Loader2, AlertTriangle, CheckCircle2, Pencil } from 'lucide-react';
 
 /* ------- helpers ------- */
 const money = (n) => 'R$ ' + Number(n || 0).toFixed(2).replace('.', ',');
@@ -322,6 +322,7 @@ function GerarCatalogoModal({ produtos, clientes, condicoes, onClose, onConcluir
     const [erro, setErro] = useState('');
     const [resultado, setResultado] = useState(null);
     const [copiado, setCopiado] = useState(false);
+    const [pers, setPers] = useState({}); // produtoId -> valor digitado (acima do piso)
 
     const cliente = useMemo(() => clientes.find(c => c.UUID === clienteId) || null, [clientes, clienteId]);
     const conds = useMemo(() => condicoesNormais(condicoes), [condicoes]);
@@ -336,12 +337,65 @@ function GerarCatalogoModal({ produtos, clientes, condicoes, onClose, onConcluir
         if (destMode === 'cliente' && cliente)
             padrao = conds.find(c => c.idCondicao === cliente.Condicao_de_pagamento || c.id === cliente.Condicao_de_pagamento);
         setCondId((padrao || conds[0])?.id || '');
+        setPers({}); // trocar de destinatário reinicia os preços personalizados
     }, [clienteId, destMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
+    const round2 = (v) => Math.round(v * 100) / 100;
+    const numDigitado = (s) => {
+        let t = String(s).replace(/[^\d,.-]/g, '').trim();
+        if (!t) return NaN;
+        if (t.includes(',')) {
+            // vírgula presente → ponto é separador de milhar ("1.234,56")
+            t = t.replace(/\./g, '').replace(',', '.');
+        } else {
+            const partes = t.split('.');
+            if (partes.length > 2) {
+                // mais de um ponto sem vírgula → todos menos o último são milhar
+                t = partes.slice(0, -1).join('') + '.' + partes[partes.length - 1];
+            }
+        }
+        return Number(t);
+    };
     const acr = cond ? Number(cond.acrescimoPreco) || 0 : 0;
-    const itens = produtos.map(p => ({ ...p, precoFinal: Number(p.valorVenda) * (1 + acr / 100) }));
+    const itens = produtos.map(p => {
+        const piso = round2(Number(p.valorVenda) * (1 + acr / 100));
+        const val = pers[p.id];
+        const personalizado = val != null && val > piso + 0.004;
+        const subiuAoPiso = val != null && !personalizado;
+        return { ...p, piso, precoFinal: personalizado ? val : piso, personalizado, subiuAoPiso };
+    });
     const subtotal = itens.reduce((s, it) => s + it.precoFinal, 0);
+    const qtdPersonalizados = itens.filter(it => it.personalizado).length;
+    const somaPersonalizados = itens.reduce((s, it) => s + (it.personalizado ? (it.precoFinal - it.piso) : 0), 0);
     const valorMin = cond && cond.valorMinimo != null ? Number(cond.valorMinimo) : 0;
+
+    const commitPreco = (id, raw, piso, el) => {
+        const v = numDigitado(raw);
+        // resultado final da decisão (piso, personalizado válido, ou valor anterior se texto inválido)
+        const resultado = Number.isNaN(v)
+            ? (pers[id] != null ? pers[id] : piso) // texto inválido: mantém o valor anterior
+            : (v <= piso + 0.004 ? piso : round2(v));
+        if (!Number.isNaN(v)) {
+            setPers(prev => {
+                const next = { ...prev };
+                if (v <= piso + 0.004) delete next[id];
+                else next[id] = round2(v);
+                return next;
+            });
+        }
+        // sempre reexibe o valor decidido e limpa o estado visual de erro,
+        // sem depender do key remontar o input (personalizado→piso não muda precoFinal)
+        if (el) {
+            el.value = resultado.toFixed(2).replace('.', ',');
+            el.classList.remove('border-red-400', 'text-red-600');
+        }
+    };
+    const resetItem = (id) => setPers(prev => { const n = { ...prev }; delete n[id]; return n; });
+    const limparTodosPers = () => setPers({});
+    const focarInput = (id) => {
+        const el = document.querySelector(`#modal-catalogo-itens input[data-id="${id}"]`);
+        if (el) { el.focus(); el.select(); }
+    };
     const nomeDestino = destMode === 'cliente' ? (cliente ? (cliente.NomeFantasia || cliente.Nome) : '') : nomeAvulso.trim();
     const destinoOk = destMode === 'cliente' ? !!clienteId : nomeAvulso.trim().length >= 2;
 
@@ -353,9 +407,9 @@ function GerarCatalogoModal({ produtos, clientes, condicoes, onClose, onConcluir
                 clienteUuid: destMode === 'cliente' ? cliente.UUID : undefined,
                 clienteNome: destMode === 'outro' ? nomeAvulso.trim() : undefined,
                 condicaoId: cond.id,
-                produtoIds: produtos.map(p => p.id),
+                itens: itens.map(it => ({ produtoId: it.id, precoPersonalizado: it.personalizado ? round2(it.precoFinal) : undefined })),
             });
-            setResultado({ token: r.token, link: `${window.location.origin}/lista/${r.token}`, aprovacao: precisaAprovacao(cond) });
+            setResultado({ token: r.token, link: `${window.location.origin}/lista/${r.token}`, aprovacao: precisaAprovacao(cond), qtdPersonalizados: r.qtdPersonalizados || 0 });
         } catch (e) {
             setErro(e?.response?.data?.error || 'Não foi possível gerar o link. Tente de novo.');
         } finally {
@@ -398,7 +452,7 @@ function GerarCatalogoModal({ produtos, clientes, condicoes, onClose, onConcluir
                                 </div>
                                 <h4 className="text-lg font-bold text-gray-900">Link gerado!</h4>
                                 <p className="text-sm text-gray-500 max-w-xs">
-                                    Lista de <b className="text-gray-700">{nomeDestino}</b> em <b className="text-gray-700">{cond?.nomeCondicao}</b>{resultado.aprovacao ? ' (mediante aprovação de crédito)' : ''}, válida por 7 dias.
+                                    Lista de <b className="text-gray-700">{nomeDestino}</b> em <b className="text-gray-700">{cond?.nomeCondicao}</b>{resultado.aprovacao ? ' (mediante aprovação de crédito)' : ''}{resultado.qtdPersonalizados > 0 ? `, com ${resultado.qtdPersonalizados} ${resultado.qtdPersonalizados === 1 ? 'preço personalizado' : 'preços personalizados'}` : ''}, válida por 7 dias.
                                 </p>
                             </div>
                             <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 mt-2">
@@ -473,28 +527,72 @@ function GerarCatalogoModal({ produtos, clientes, condicoes, onClose, onConcluir
                             {cond && (
                                 <div>
                                     <label className="block text-xs font-bold uppercase tracking-wide text-gray-500 mb-1.5">{produtos.length} {produtos.length === 1 ? 'item' : 'itens'} · preço em {cond.nomeCondicao}</label>
-                                    <div className="border border-gray-100 rounded-xl overflow-hidden">
-                                        {itens.map(it => {
-                                            const diff = Math.abs(it.precoFinal - Number(it.valorVenda)) > 0.005;
-                                            return (
-                                                <div key={it.id} className="flex items-center gap-3 px-3 py-2 border-b border-gray-50 last:border-0">
-                                                    <div className="flex-1 min-w-0">
-                                                        <p className="text-[13px] font-medium text-gray-900 truncate">{it.nome}</p>
-                                                        <p className="text-[10px] text-gray-400 font-mono">{it.codigo}</p>
-                                                    </div>
-                                                    <div className="text-right">
-                                                        <p className="text-[13px] font-bold text-primary">{money(it.precoFinal)}</p>
-                                                        {diff && <p className="text-[9.5px] text-gray-400 line-through">{money(it.valorVenda)}</p>}
-                                                    </div>
+                                    <div id="modal-catalogo-itens" className="border border-gray-100 rounded-xl overflow-hidden">
+                                        {itens.map(it => (
+                                            <div key={it.id} className={`flex items-center gap-3 px-3 py-2 border-b border-gray-50 last:border-0 ${it.personalizado ? 'bg-amber-50/40' : ''}`}>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-[13px] font-medium text-gray-900 truncate">{it.nome}</p>
+                                                    <p className="text-[10px] text-gray-400 font-mono flex items-center gap-1.5 flex-wrap">
+                                                        <span>{it.codigo}</span>
+                                                        {it.personalizado && (
+                                                            <span className="text-[8px] font-extrabold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full uppercase tracking-wide font-sans">personalizado</span>
+                                                        )}
+                                                        {it.subiuAoPiso && (
+                                                            <span className="text-[8px] font-extrabold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full uppercase tracking-wide font-sans">subiu p/ o piso</span>
+                                                        )}
+                                                    </p>
                                                 </div>
-                                            );
-                                        })}
+                                                <div className="text-right">
+                                                    <div className="flex items-center justify-end gap-1">
+                                                        <span className="text-[11px] text-gray-400">R$</span>
+                                                        <input
+                                                            key={`${it.id}:${it.precoFinal.toFixed(2)}`}
+                                                            type="text"
+                                                            inputMode="decimal"
+                                                            defaultValue={it.precoFinal.toFixed(2).replace('.', ',')}
+                                                            data-id={it.id}
+                                                            title={`Clique e digite o novo preço (só acima de ${money(it.piso)})`}
+                                                            onFocus={e => e.target.select()}
+                                                            onChange={e => {
+                                                                const baixo = numDigitado(e.target.value) < it.piso - 0.004;
+                                                                e.target.classList.toggle('border-red-400', baixo);
+                                                                e.target.classList.toggle('text-red-600', baixo);
+                                                            }}
+                                                            onBlur={e => commitPreco(it.id, e.target.value, it.piso, e.target)}
+                                                            onKeyDown={e => { if (e.key === 'Enter') e.target.blur(); }}
+                                                            className={`w-[80px] min-h-[36px] text-right text-[13px] font-bold border rounded-lg px-1.5 py-1 cursor-text focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none ${it.personalizado ? 'text-amber-700 border-amber-300' : 'text-primary border-gray-200'}`}
+                                                        />
+                                                        <button type="button" onClick={() => focarInput(it.id)} title="editar preço"
+                                                            className="min-w-[36px] min-h-[36px] flex items-center justify-center text-gray-400 hover:text-primary rounded-full hover:bg-gray-100">
+                                                            <Pencil className="h-3.5 w-3.5" />
+                                                        </button>
+                                                        {it.personalizado ? (
+                                                            <button type="button" onClick={() => resetItem(it.id)} title="voltar ao preço da condição"
+                                                                className="min-w-[36px] min-h-[36px] flex items-center justify-center text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100">
+                                                                <X className="h-3.5 w-3.5" />
+                                                            </button>
+                                                        ) : <span className="w-9 h-9" />}
+                                                    </div>
+                                                    <p className={`text-[9.5px] ${it.personalizado ? 'text-gray-400 line-through' : 'text-gray-300'}`}>
+                                                        {it.personalizado ? money(it.piso) : `piso ${money(it.piso)}`}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
                                     <div className="flex items-center justify-between mt-3 px-1">
                                         <span className="text-sm text-gray-500 font-medium">Total <span className="text-gray-400 font-normal">(só o vendedor vê)</span></span>
                                         <span className="text-base font-bold text-gray-900">{money(subtotal)}</span>
                                     </div>
-                                    <p className="text-[11px] text-gray-400 mt-1 px-1">O cliente vê só a lista com o preço de cada item.</p>
+                                    {qtdPersonalizados > 0 && (
+                                        <div className="flex items-center justify-between gap-2 mt-2 px-3 py-2 rounded-xl bg-amber-50 border border-amber-200">
+                                            <span className="text-xs text-amber-800">
+                                                <b>{qtdPersonalizados}</b> {qtdPersonalizados === 1 ? 'item' : 'itens'} com preço personalizado · <b>{money(somaPersonalizados)}</b> a mais
+                                            </span>
+                                            <button type="button" onClick={limparTodosPers} className="text-xs font-bold text-amber-800 underline whitespace-nowrap">desfazer todos</button>
+                                        </div>
+                                    )}
+                                    <p className="text-[11px] text-gray-400 mt-1 px-1">Clique no preço (ou no ✎), digite e aperte Enter. Só é permitido <b>aumentar</b> — o valor da condição é o piso.</p>
                                     {valorMin > 0 && subtotal < valorMin && (
                                         <div className="flex gap-2 items-start bg-amber-50 border border-amber-200 text-amber-800 text-xs rounded-xl px-3 py-2.5 mt-2">
                                             <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />

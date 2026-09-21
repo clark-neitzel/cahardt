@@ -4253,7 +4253,8 @@ model CatalogoPersonalizadoItem {
   unidade       String
   imagemUrl     String? @map("imagem_url")
   valorBase     Decimal @map("valor_base") @db.Decimal(12, 2) // valorVenda no momento da geração
-  precoFinal    Decimal @map("preco_final") @db.Decimal(12, 2) // valorVenda * (1 + acrescimoPreco/100)
+  precoFinal    Decimal @map("preco_final") @db.Decimal(12, 2) // valorVenda * (1 + acrescimoPreco/100), OU precoPersonalizado quando houver
+  precoPersonalizado Decimal? @map("preco_personalizado") @db.Decimal(12, 2) // vendedor pode subir o preço deste item (nunca descer do piso); null = usa o cálculo padrão
   categoriaNome String? @map("categoria_nome")
   categoriaCor  String? @map("categoria_cor")
   ordem         Int     @default(0)
