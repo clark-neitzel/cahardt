@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Aprovar pedido sem estoque — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp -->
+<meta property="og:title" content="🛑 Novidade no Hardt App: pedido sem estoque não aprova mais errado">
+<meta property="og:description" content="A fila de Pedidos Online agora avisa ANTES de abrir quando falta estoque para aprovar — e trava o botão até o estoque ser corrigido. Veja como funciona.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 96px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(26px, 7vw, 38px);
+    font-weight: 800;
+    line-height: 1.15;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.75);
+    font-size: 16px;
+    max-width: 48ch;
+    margin: 0 auto;
+    text-wrap: balance;
+  }
+
+  /* mock flutuando sobre o hero */
+  .mock {
+    max-width: 420px;
+    margin: -68px auto 28px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.28);
+    overflow: hidden;
+    text-align: left;
+  }
+  .mock-top {
+    background: var(--house);
+    color: #fff;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .mock-top small {
+    display: block;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    color: rgba(255,255,255,.55);
+  }
+  .mock-top strong { font-size: 16px; line-height: 1.2; }
+  .mock-ico { font-size: 24px; }
+  .mock-body { padding: 14px 18px 18px; }
+  .mock-linha {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .mock-cliente { font-weight: 700; font-size: 14.5px; color: var(--ink); }
+  .mock-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: #fee2e2;
+    color: #b91c1c;
+    flex-shrink: 0;
+    transition: opacity .3s;
+  }
+  .mock-avisobox {
+    margin-top: 6px;
+    border: 1px solid #fecaca;
+    background: #fef2f2;
+    border-radius: 10px;
+    padding: 9px 11px;
+    font-size: 12px;
+    color: #b91c1c;
+    transition: opacity .3s, max-height .3s;
+    overflow: hidden;
+  }
+  .mock-avisobox b { display: block; font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 5px; }
+  .mock-avisobox.ok {
+    border-color: rgba(0,117,74,.25);
+    background: var(--mint);
+    color: var(--primary-dark);
+  }
+  .mock-btn {
+    display: block;
+    width: 100%;
+    text-align: center;
+    margin-top: 12px;
+    background: #0284c7;
+    color: #fff;
+    font-size: 13.5px;
+    font-weight: 700;
+    padding: 11px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    transition: opacity .3s, background .2s;
+    min-height: 44px;
+  }
+  .mock-btn.travado { opacity: .5; cursor: not-allowed; }
+  .mock-hint { text-align: center; font-size: 11.5px; color: var(--ink-soft); margin: 8px 0 0; min-height: 16px; }
+
+  /* botão de demo */
+  .demo-cta {
+    display: block;
+    width: 100%;
+    max-width: 420px;
+    margin: 0 auto 8px;
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    font: inherit;
+    font-size: 16px;
+    font-weight: 800;
+    padding: 16px;
+    border-radius: 999px;
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(0,117,74,.35);
+  }
+  .demo-cta:hover { background: var(--primary-dark); }
+  .demo-cta:focus-visible, .acc-head:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .demo-hint { text-align: center; font-size: 12px; color: var(--ink-soft); margin: 0 0 34px; }
+
+  /* ── SEÇÕES / ACCORDION ── */
+  .sec-label {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: var(--primary-dark);
+    margin: 34px 4px 12px;
+  }
+  .acc {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .acc-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: none;
+    border: none;
+    font: inherit;
+    text-align: left;
+    padding: 15px 16px;
+    cursor: pointer;
+    min-height: 56px;
+  }
+  .acc-ico {
+    width: 38px; height: 38px;
+    border-radius: 11px;
+    background: var(--mint);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  /* passos */
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n {
+    width: 30px; height: 30px; flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 800;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .rodape {
+    text-align: center;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 40px;
+  }
+  .rodape strong { color: var(--primary-dark); }
+
+  /* ── MOCKUPS DAS TELAS DO APP ── */
+  .tela {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .tela-titulo {
+    background: var(--house);
+    color: #fff;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .app-card {
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .app-card-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    border-bottom: 1px solid #f0efe9;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: #6b756f;
+  }
+  .app-card-body { padding: 12px; }
+  .app-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10.5px;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 999px;
+  }
+  .app-badge.vermelho { background: #fee2e2; color: #b91c1c; }
+  .app-badge.cinza { background: #f1f3f2; color: #55605a; }
+  .app-avisobox {
+    border: 1px solid #fecaca;
+    background: #fef2f2;
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 12px;
+    color: #b91c1c;
+    margin-top: 8px;
+  }
+  .app-avisobox .tit { display: flex; align-items: center; gap: 5px; font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 6px; }
+  .app-avisobox ul { margin: 0 0 6px; padding-left: 16px; }
+  .app-avisobox li { margin-bottom: 2px; }
+  .app-avisobox .rodape-aviso { font-size: 11px; color: #dc2626; margin: 4px 0 0; }
+  .app-item-falta {
+    background: #fef2f2;
+    border-radius: 8px;
+    padding: 7px 9px;
+    margin-bottom: 6px;
+  }
+  .app-item-falta .linha1 { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--ink); }
+  .app-item-falta .linha2 { font-size: 11px; font-weight: 700; color: #b91c1c; margin-top: 3px; display: flex; align-items: center; gap: 4px; }
+  .app-item-ok {
+    font-size: 12.5px;
+    color: var(--ink);
+    padding: 7px 9px 7px 0;
+  }
+  .app-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #0284c7;
+    color: #fff;
+    font-size: 12.5px;
+    font-weight: 700;
+    padding: 9px 16px;
+    border-radius: 8px;
+  }
+  .app-btn.travado { opacity: .5; }
+  .pin {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    flex-shrink: 0;
+    vertical-align: 2px;
+    margin-left: 6px;
+  }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+</style>
+</head>
+<body>
+
+<!-- ══════════ HERO ══════════ -->
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>Pedido sem estoque<br>não aprova mais errado</h1>
+    <p>Na fila de Pedidos Online (Site + Ana), o app agora avisa ANTES de você abrir o pedido quando algum produto pediu mais do que tem em estoque — e trava o botão de aprovar até o estoque ser corrigido.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- mock do card da fila -->
+  <div class="mock" aria-hidden="true">
+    <div class="mock-top">
+      <span class="mock-ico">📋</span>
+      <div>
+        <small>Pedidos Online · Aba Site</small>
+        <strong>Pedido #1042</strong>
+      </div>
+    </div>
+    <div class="mock-body">
+      <div class="mock-linha">
+        <span class="mock-cliente">Padaria Exemplo LTDA</span>
+        <span class="mock-badge" id="mockBadge">⚠ Sem estoque</span>
+      </div>
+      <div class="mock-avisobox" id="mockAviso">
+        <b>⚠ Sem estoque suficiente</b>
+        <span id="mockAvisoTexto">Calzone frango — pediu 10, tem 9</span>
+      </div>
+      <button class="mock-btn travado" id="mockBtn">✓ Aprovar e gerar pedido</button>
+      <p class="mock-hint" id="mockHint">Toque no botão abaixo para ver o antes/depois</p>
+    </div>
+  </div>
+
+  <button class="demo-cta" onclick="alternarDemo()">🔄 Toque aqui e veja o antes/depois do estoque</button>
+  <p class="demo-hint">É uma demonstração com dados fictícios — pode clicar sem medo.</p>
+
+  <!-- ══════════ O QUE MUDOU ══════════ -->
+  <div class="sec-label">O que mudou</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">📋</span>
+      <strong>O aviso já aparece na fila, sem precisar abrir</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Pedido em que algum produto pede mais do que o estoque disponível ganha o selo vermelho <b>"Sem estoque"</b> no card da fila.</li>
+        <li>Logo abaixo do card já aparece uma caixa vermelha <b>"⚠ Sem estoque suficiente"</b> listando cada item, no formato <b>"Nome do produto — pediu 10, tem 9"</b> — dá para saber o que falta sem nem abrir o pedido.</li>
+        <li>Vale tanto para pedido feito pelo cliente no site quanto pelo pedido que a <b>Ana</b> (assistente de WhatsApp) tira.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🔍</span>
+      <strong>Dentro do pedido, o item em falta fica destacado</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Abrindo o pedido, o mesmo aviso vermelho aparece no topo, com a lista completa do que falta.</li>
+        <li>Na lista de itens, a linha do produto em falta fica com fundo vermelho claro e mostra <b>"Sem estoque suficiente — disponível: N"</b>, junto com o preço e a quantidade pedida.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🔒</span>
+      <strong>O botão de aprovar fica bloqueado — não tem "aprovar mesmo assim"</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Enquanto faltar estoque, o botão <b>"Aprovar e gerar pedido"</b> fica acinzentado e travado — não existe opção de forçar a aprovação com estoque negativo.</li>
+        <li>O caminho é sempre o mesmo: ajuste o estoque do produto no app (Ajuste de Estoque, entrada de nota, etc.), <b>atualize a fila</b> e então aprove normalmente.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">➕</span>
+      <strong>Mesmo produto em duas linhas? A quantidade soma</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Se o mesmo produto aparece em mais de uma linha do pedido — por exemplo, uma unidade comprada no preço normal e outra numa promoção — o app <b>soma as quantidades</b> antes de comparar com o estoque disponível.</li>
+        <li>Isso evita o caso de duas linhas pequenas passarem despercebidas mesmo quando, somadas, já estourariam o estoque.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">⏱️</span>
+      <strong>Se o estoque mudar com a tela já aberta</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Pode acontecer de o estoque mudar (outra venda, outro ajuste) enquanto você já está com o pedido aberto, sem falta na hora em que a tela carregou.</li>
+        <li>Se isso acontecer, ao clicar em <b>gerar o pedido</b> o app confere de novo na hora e, se realmente faltar, mostra o aviso na hora e <b>nada é criado</b> — nenhum pedido sai com estoque insuficiente.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ══════════ AS TELAS DO APP ══════════ -->
+  <div class="sec-label">As telas do app, sem mistério</div>
+
+  <!-- TELA 1: fila -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 1 · Fila do Site — antes de abrir o pedido</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-body">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:2px;">
+            <span style="font-weight:700;font-size:13.5px;">Padaria Exemplo LTDA <span style="font-weight:500;color:#9aa5a0;">#1042</span></span>
+            <span class="app-badge vermelho">⚠ Sem estoque<span class="pin">1</span></span>
+          </div>
+          <div style="font-size:11.5px;color:#9aa5a0;margin-bottom:6px;">Entrega: 24/09 · 3 cx · 5 itens</div>
+          <div class="app-avisobox">
+            <div class="tit">⚠ Sem estoque suficiente<span class="pin">2</span></div>
+            <ul>
+              <li>Calzone frango — pediu 10, tem 9</li>
+              <li>Coxinha catupiry — pediu 6, tem 2</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>O selo vermelho <b>"Sem estoque"</b> aparece direto no card, junto com o status normal do pedido — dá para ver na lista inteira, sem abrir nada.</span></div>
+      <div><span class="pin">2</span><span>Logo abaixo do card, a caixa vermelha já mostra <b>o que falta</b>, produto por produto, no formato "pediu X, tem Y".</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 2: detalhe -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 2 · Detalhe do pedido — item destacado e botão travado</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">🧾 Pedido #1042</div>
+        <div class="app-card-body">
+          <div class="app-avisobox" style="margin-top:0;margin-bottom:10px;">
+            <div class="tit">⚠ Sem estoque suficiente para aprovar<span class="pin">1</span></div>
+            <ul>
+              <li>Calzone frango — pediu 10, tem 9</li>
+              <li>Coxinha catupiry — pediu 6, tem 2</li>
+            </ul>
+            <p class="rodape-aviso">Ajuste o estoque do produto e atualize a fila para aprovar.</p>
+          </div>
+          <div class="app-item-falta">
+            <div class="linha1"><span><b>10×</b> Calzone frango</span><span>R$ 89,00</span></div>
+            <div class="linha2">⚠ Sem estoque suficiente — disponível: 9<span class="pin">2</span></div>
+          </div>
+          <div class="app-item-falta">
+            <div class="linha1"><span><b>6×</b> Coxinha catupiry</span><span>R$ 54,00</span></div>
+            <div class="linha2">⚠ Sem estoque suficiente — disponível: 2</div>
+          </div>
+          <div class="app-item-ok">
+            <span style="color:#9aa5a0;">4× Pão de queijo tradicional — R$ 32,00</span>
+          </div>
+          <div style="text-align:right;margin-top:8px;">
+            <span class="app-btn travado">✓ Aprovar e gerar pedido<span class="pin">3</span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>O mesmo aviso aparece no topo do pedido aberto, com a instrução: <b>ajustar o estoque e atualizar a fila</b>.</span></div>
+      <div><span class="pin">2</span><span>Cada item em falta fica com <b>fundo vermelho</b> na lista, mostrando quanto tem disponível. Item sem problema (como o pão de queijo) aparece normal.</span></div>
+      <div><span class="pin">3</span><span>O botão <b>"Aprovar e gerar pedido"</b> fica acinzentado e não clica — não existe "aprovar mesmo assim". Some da tela só depois que o estoque for corrigido e a fila, atualizada.</span></div>
+    </div>
+  </div>
+
+  <!-- ══════════ COMO USAR ══════════ -->
+  <div class="sec-label">Quando um pedido travar por estoque</div>
+  <div class="passos">
+    <div class="passo">
+      <span class="passo-n">1</span>
+      <div>Veja na caixa vermelha <b>quais produtos</b> e quanto falta.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">2</span>
+      <div>Ajuste o estoque do produto no app (entrada, correção, o que fizer sentido).</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">3</span>
+      <div><b>Atualize a fila</b> de Pedidos Online e aprove normalmente. ✅</div>
+    </div>
+  </div>
+
+  <p class="rodape">Dúvidas? Pergunte ao <strong>Clippy</strong> dentro do app — ele já conhece a tela nova.<br>— Hardt Salgados</p>
+</div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.parentElement;
+    const abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+
+  let semEstoqueDemo = true;
+  function alternarDemo() {
+    semEstoqueDemo = !semEstoqueDemo;
+    const badge = document.getElementById('mockBadge');
+    const aviso = document.getElementById('mockAviso');
+    const avisoTexto = document.getElementById('mockAvisoTexto');
+    const btn = document.getElementById('mockBtn');
+    const hint = document.getElementById('mockHint');
+    if (semEstoqueDemo) {
+      badge.style.display = 'inline-flex';
+      badge.textContent = '⚠ Sem estoque';
+      aviso.style.display = 'block';
+      aviso.classList.remove('ok');
+      avisoTexto.textContent = 'Calzone frango — pediu 10, tem 9';
+      btn.classList.add('travado');
+      hint.textContent = 'Faltando estoque: o botão fica travado (toque de novo para ajustar o estoque)';
+    } else {
+      badge.style.display = 'none';
+      aviso.classList.add('ok');
+      avisoTexto.textContent = '✓ Estoque ajustado — fila atualizada';
+      btn.classList.remove('travado');
+      hint.textContent = 'Estoque corrigido: o botão libera sozinho (toque de novo para simular outro pedido)';
+    }
+  }
+</script>
+</body>
+</html>

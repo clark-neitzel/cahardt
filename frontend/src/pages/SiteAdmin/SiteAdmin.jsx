@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
-import { Snowflake, Package, ClipboardList, Settings, Search, Check, X, Link2, Trash2, RefreshCw, Plus, Star, ImageOff, Save, Loader2, Store, Megaphone, Upload, Image as ImageIcon, Tag, Truck, Calendar, MapPin, Phone, MessageCircle } from 'lucide-react';
+import { Snowflake, Package, ClipboardList, Settings, Search, Check, X, Link2, Trash2, RefreshCw, Plus, Star, ImageOff, Save, Loader2, Store, Megaphone, Upload, Image as ImageIcon, Tag, Truck, Calendar, MapPin, Phone, MessageCircle, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import congeladosService from '../../services/congeladosService';
 import api, { API_URL } from '../../services/api';
@@ -162,7 +162,7 @@ function PedidosTab() {
         onVincular={() => { setVincular(detalhe); setDetalhe(null); }}
         onRecusar={() => { const p = detalhe; setDetalhe(null); recusar(p); }}
         onExcluir={() => { const p = detalhe; setDetalhe(null); excluir(p); }} />}
-      {aprovar && <AprovarModal pedido={aprovar} onClose={() => setAprovar(null)} onDone={() => { setAprovar(null); carregar(); }} />}
+      {aprovar && <AprovarModal pedido={aprovar} onClose={() => setAprovar(null)} onDone={() => { setAprovar(null); carregar(); }} onAtualizarFila={() => carregar(true)} />}
       {vincular && <VincularModal pedido={vincular} onClose={() => setVincular(null)} onDone={() => { setVincular(null); carregar(); }} />}
     </div>
   );
@@ -190,29 +190,47 @@ function PedidoLinha({ p, onAbrir }) {
   const cidade = cli?.End_Cidade || '';
   const data = fmtDataPedido(p);
   const criado = p.createdAt ? new Date(p.createdAt).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }).replace(',', '') : '';
+  const semEstoque = p.semEstoque === true; // aditivo: só vem preenchido em AGUARDANDO/PENDENTE_CADASTRO
   return (
-    <LinhaPedidoOnline
-      numero={`#${p.numero}`} novo={atencao} inativo={inativo}
-      nome={p.nomeCliente} valor={money(p.total)}
-      linha2={[
-        `${ehRetirada(p) ? 'Retirada' : 'Entrega'}: ${data || '-'}`,
-        criado ? `Pedido: ${criado}` : '',
-        p.condicaoNome || '',
-      ]}
-      linha3={cidade}
-      extras={[
-        `Doc: ${p.documentoCliente || '-'}${p.telefoneCliente ? ` · Tel: ${p.telefoneCliente}` : ''}`,
-        `${p.totalCaixas} cx · ${p.itens?.length || 0} itens`,
-      ]}
-      selos={[
-        { texto: s.label, cls: s.cls },
-        p?.origem === 'WHATSAPP_IA' ? { texto: 'WhatsApp IA', cls: 'bg-purple-100 text-purple-700', icon: IconeWhatsIA } : null, // pedido tirado pela Ana (bot)
-        p.encaixe ? { texto: 'Encaixe', cls: 'bg-orange-100 text-orange-700' } : null,
-        p.celularAlterado ? { texto: 'telefone novo', cls: 'bg-yellow-100 text-yellow-700' } : null,
-        p.pedido?.numero ? { texto: `→ Pedido #${p.pedido.numero}`, cls: 'bg-green-100 text-green-800' } : null,
-      ]}
-      onAbrir={onAbrir}
-    />
+    <div>
+      <LinhaPedidoOnline
+        numero={`#${p.numero}`} novo={atencao} inativo={inativo}
+        nome={p.nomeCliente} valor={money(p.total)}
+        linha2={[
+          `${ehRetirada(p) ? 'Retirada' : 'Entrega'}: ${data || '-'}`,
+          criado ? `Pedido: ${criado}` : '',
+          p.condicaoNome || '',
+        ]}
+        linha3={cidade}
+        extras={[
+          `Doc: ${p.documentoCliente || '-'}${p.telefoneCliente ? ` · Tel: ${p.telefoneCliente}` : ''}`,
+          `${p.totalCaixas} cx · ${p.itens?.length || 0} itens`,
+        ]}
+        selos={[
+          { texto: s.label, cls: s.cls },
+          semEstoque ? { texto: 'Sem estoque', cls: 'bg-red-100 text-red-700', icon: AlertTriangle, title: 'Falta estoque para aprovar este pedido' } : null,
+          p?.origem === 'WHATSAPP_IA' ? { texto: 'WhatsApp IA', cls: 'bg-purple-100 text-purple-700', icon: IconeWhatsIA } : null, // pedido tirado pela Ana (bot)
+          p.encaixe ? { texto: 'Encaixe', cls: 'bg-orange-100 text-orange-700' } : null,
+          p.celularAlterado ? { texto: 'telefone novo', cls: 'bg-yellow-100 text-yellow-700' } : null,
+          p.pedido?.numero ? { texto: `→ Pedido #${p.pedido.numero}`, cls: 'bg-green-100 text-green-800' } : null,
+        ]}
+        onAbrir={onAbrir}
+      />
+      {semEstoque && (
+        <div className="mx-3 -mt-1 mb-3 rounded-lg border border-red-200 bg-red-50 p-2.5 text-[11px] text-red-700">
+          <div className="font-bold uppercase tracking-wide mb-1 flex items-center gap-1">
+            <AlertTriangle className="h-3 w-3 flex-none" /> Sem estoque suficiente
+          </div>
+          <ul className="space-y-0.5">
+            {(p.itensSemEstoque || []).map((it, i) => (
+              <li key={it.produtoId ?? i}>
+                {it.nome || 'Item'} — pediu {it.quantidadePedida ?? '?'}, tem {Math.max(0, it.disponivel ?? 0)}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -230,11 +248,26 @@ function PedidoDetalhe({ pedido: p, onClose, onAprovar, onVincular, onRecusar, o
     <Modal onClose={onClose} max="max-w-lg" title={`Pedido #${p.numero}`}>
       <div className="flex items-center gap-2 flex-wrap mb-1">
         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${s.cls}`}>{s.label}</span>
+        {p.semEstoque === true && <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-semibold flex items-center gap-1"><AlertTriangle className="h-3 w-3" /> Sem estoque</span>}
         {veioDaIA(p) && <SeloOrigemIA />}
         {p.encaixe && <span className="text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 font-semibold">Encaixe</span>}
         {p.celularAlterado && <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700">telefone novo</span>}
       </div>
       {feitoEm && <p className="text-xs text-gray-400 mb-3">Pedido enviado em <b className="text-gray-600">{feitoEm}</b></p>}
+
+      {p.semEstoque === true && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-3 mb-3">
+          <div className="text-xs font-bold uppercase tracking-widest text-red-700 flex items-center gap-1.5 mb-1.5">
+            <AlertTriangle className="h-3.5 w-3.5 flex-none" /> Sem estoque suficiente para aprovar
+          </div>
+          <ul className="text-sm text-red-800 space-y-0.5">
+            {(p.itensSemEstoque || []).map((it, i) => (
+              <li key={it.produtoId ?? i}>{it.nome || 'Item'} — pediu {it.quantidadePedida ?? '?'}, tem {Math.max(0, it.disponivel ?? 0)}</li>
+            ))}
+          </ul>
+          <p className="text-xs text-red-600 mt-1.5">Ajuste o estoque do produto e atualize a fila para aprovar.</p>
+        </div>
+      )}
 
       {/* Cliente */}
       <div className="rounded-lg bg-gray-50 p-3 text-sm mb-3">
@@ -271,17 +304,25 @@ function PedidoDetalhe({ pedido: p, onClose, onAprovar, onVincular, onRecusar, o
         <div className="divide-y divide-gray-50 max-h-64 overflow-y-auto">
           {(p.itens || []).map(it => {
             const promo = it.nomePromocao ? String(it.nomePromocao).trim() : '';
+            const falta = it.faltaEstoque === true;
             return (
-              <div key={it.id} className="flex justify-between gap-3 px-3 py-1.5 text-sm">
-                <span className="text-gray-700 min-w-0 flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
-                  <span><b>{it.quantidade}×</b> {it.nomeProduto}</span>
-                  {promo && (
-                    <span className="inline-block max-w-[180px] truncate px-2 py-0.5 text-[11px] font-semibold rounded-full bg-mint text-primaryDark align-middle" title={`Promoção: ${promo}`}>
-                      Promo: {promo}
-                    </span>
-                  )}
-                </span>
-                <span className="text-gray-500 whitespace-nowrap">{money(it.precoUnitario * it.quantidade)}</span>
+              <div key={it.id} className={`flex flex-col gap-0.5 px-3 py-1.5 text-sm ${falta ? 'bg-red-50' : ''}`}>
+                <div className="flex justify-between gap-3">
+                  <span className="text-gray-700 min-w-0 flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                    <span><b>{it.quantidade}×</b> {it.nomeProduto}</span>
+                    {promo && (
+                      <span className="inline-block max-w-[180px] truncate px-2 py-0.5 text-[11px] font-semibold rounded-full bg-mint text-primaryDark align-middle" title={`Promoção: ${promo}`}>
+                        Promo: {promo}
+                      </span>
+                    )}
+                  </span>
+                  <span className="text-gray-500 whitespace-nowrap">{money(it.precoUnitario * it.quantidade)}</span>
+                </div>
+                {falta && (
+                  <span className="text-[11px] font-semibold text-red-700 flex items-center gap-1">
+                    <AlertTriangle className="h-3 w-3 flex-none" /> Sem estoque suficiente — disponível: {it.estoqueDisponivel != null ? Math.max(0, it.estoqueDisponivel) : 0}
+                  </span>
+                )}
               </div>
             );
           })}
@@ -316,7 +357,14 @@ function PedidoDetalhe({ pedido: p, onClose, onAprovar, onVincular, onRecusar, o
           <button onClick={onVincular} className="btn-sky"><Link2 size={15} /> Vincular cliente</button>
         )}
         {!p.pedido && p.status === 'AGUARDANDO' && (
-          <button onClick={onAprovar} className="btn-sky"><Check size={15} /> Aprovar e gerar pedido</button>
+          <button
+            onClick={onAprovar}
+            disabled={p.semEstoque === true}
+            title={p.semEstoque === true ? 'Ajuste o estoque do produto e atualize a fila para aprovar.' : undefined}
+            className={`btn-sky ${p.semEstoque === true ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
+            <Check size={15} /> Aprovar e gerar pedido
+          </button>
         )}
         {!p.pedido && (p.status === 'AGUARDANDO' || p.status === 'PENDENTE_CADASTRO') && (
           <button onClick={onRecusar} className="btn-ghost-red"><X size={15} /> Recusar</button>
@@ -362,7 +410,7 @@ function fmtDiaSemana(dataYMD) {
   return `${semanaCap}, ${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}`;
 }
 
-function AprovarModal({ pedido, onClose, onDone }) {
+function AprovarModal({ pedido, onClose, onDone, onAtualizarFila }) {
   const [tipo, setTipo] = useState('NORMAL');
   const retirada = ehRetirada(pedido);
   const minData = retirada ? hojeLocal() : amanhaLocal();
@@ -374,14 +422,50 @@ function AprovarModal({ pedido, onClose, onDone }) {
   const [data, setData] = useState(dataSite && dataSite >= minData ? dataSite : '');
   const [busy, setBusy] = useState(false);
   const [erro, setErro] = useState('');
+  // Itens sem estoque: vêm prontos da fila (`pedido.itensSemEstoque`, bloqueia de cara) ou
+  // chegam só na hora de confirmar, se o estoque mudou entre listar e clicar (código
+  // SEM_ESTOQUE do POST /aprovar) — mesmo formato nos dois casos.
+  // O backend manda `itensSemEstoque: []` (array vazio, truthy!) em TODO pedido AGUARDANDO/
+  // PENDENTE_CADASTRO sem falta — só existe falta real quando o array tem itens dentro.
+  const [itensSemEstoque, setItensSemEstoque] = useState(
+    Array.isArray(pedido.itensSemEstoque) && pedido.itensSemEstoque.length > 0 ? pedido.itensSemEstoque : null
+  );
+  // bloqueioConfirmado: descoberto na hora do clique (SEM_ESTOQUE no POST /aprovar), mesmo que
+  // por algum motivo o array venha vazio — nesse caso ainda assim é um bloqueio real e recente.
+  const [bloqueioConfirmado, setBloqueioConfirmado] = useState(false);
+  const bloqueado = pedido.semEstoque === true || bloqueioConfirmado || (Array.isArray(itensSemEstoque) && itensSemEstoque.length > 0);
   const confirmar = async () => {
     setErro(''); setBusy(true);
-    try { await congeladosService.aprovarPedido(pedido.id, { tipoConversao: tipo, dataEntrega: data || '' }); onDone(); }
-    catch (e) { setErro(e?.response?.data?.error || 'Erro ao aprovar.'); }
-    finally { setBusy(false); }
+    try {
+      await congeladosService.aprovarPedido(pedido.id, { tipoConversao: tipo, dataEntrega: data || '' });
+      onDone();
+    } catch (e) {
+      if (e?.response?.data?.code === 'SEM_ESTOQUE') {
+        // Estoque mudou depois que a fila carregou — trata como o bloqueio normal (rede de
+        // segurança), não como erro genérico, e atualiza a fila por trás para refletir.
+        setItensSemEstoque(e.response.data.itensSemEstoque || []);
+        setBloqueioConfirmado(true);
+        onAtualizarFila?.();
+      } else {
+        setErro(e?.response?.data?.error || 'Erro ao aprovar.');
+      }
+    } finally { setBusy(false); }
   };
   return (
     <Modal onClose={onClose} title={`Aprovar pedido #${pedido.numero}`}>
+      {bloqueado && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-3 mb-3">
+          <div className="text-xs font-bold uppercase tracking-widest text-red-700 flex items-center gap-1.5 mb-1.5">
+            <AlertTriangle className="h-3.5 w-3.5 flex-none" /> Sem estoque suficiente para aprovar
+          </div>
+          <ul className="text-sm text-red-800 space-y-0.5">
+            {(itensSemEstoque || []).map((it, i) => (
+              <li key={it.produtoId ?? i}>{it.nome || 'Item'} — pediu {it.quantidadePedida ?? '?'}, tem {Math.max(0, it.disponivel ?? 0)}</li>
+            ))}
+          </ul>
+          <p className="text-xs text-red-600 mt-1.5">Ajuste o estoque do produto e atualize a fila para aprovar.</p>
+        </div>
+      )}
       <p className="text-sm text-gray-500 mb-3">Gerar um pedido no sistema a partir deste pedido do site.{pedido.condicaoNome ? ` Condição: ${pedido.condicaoNome}.` : ''}</p>
       <div className="space-y-2 mb-4">
         {['NORMAL', 'ESPECIAL'].map(t => (
@@ -416,7 +500,14 @@ function AprovarModal({ pedido, onClose, onDone }) {
       {erro && <p className="text-sm text-red-600 mb-3">{erro}</p>}
       <div className="flex gap-2 justify-end">
         <button onClick={onClose} className="px-4 py-2 text-sm text-gray-600">Cancelar</button>
-        <button onClick={confirmar} disabled={busy} className="px-4 py-2 text-sm font-semibold bg-sky-600 text-white rounded-lg disabled:opacity-50">{busy ? 'Gerando…' : 'Gerar pedido'}</button>
+        <button
+          onClick={confirmar}
+          disabled={busy || bloqueado}
+          title={bloqueado ? 'Ajuste o estoque do produto e atualize a fila para aprovar.' : undefined}
+          className="px-4 py-2 text-sm font-semibold bg-sky-600 text-white rounded-lg disabled:opacity-50"
+        >
+          {busy ? 'Gerando…' : 'Gerar pedido'}
+        </button>
       </div>
     </Modal>
   );

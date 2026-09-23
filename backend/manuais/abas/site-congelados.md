@@ -55,6 +55,17 @@ A lista tem o **mesmo desenho da aba de Pedidos** (desde 14/09/2026): barra de b
 
 Cada linha mostra: número do pedido, nome do cliente e **total** à direita; abaixo, **Entrega** ou **Retirada** com a data, a hora em que o pedido foi feito e a condição de pagamento; a cidade; documento e telefone; caixas e itens; e na última linha os selos (status, **WhatsApp IA** quando veio pela Ana, **Encaixe**, telefone novo, **→ Pedido #N** quando já virou pedido) e o botão **Detalhes**. Pedidos fora do dia regular do cliente trazem a etiqueta **"Encaixe"** (a equipe confirma a viabilidade antes de aprovar). **Clicar na linha (ou em Detalhes) abre o detalhe completo** (modal): a **hora em que o cliente enviou** o pedido, dados do cliente (com o **vendedor responsável** do cadastro), entrega/retirada + data, pagamento, **todos os itens** com valores, observações e os botões de ação (Vincular / Aprovar / Recusar / Excluir).
 
+> **Alerta de estoque insuficiente (desde 09/2026):** se um cliente pediu, por exemplo, 10 caixas de
+> um produto e o app só tem 9 em estoque, a equipe podia aprovar sem perceber. Agora, para todo pedido
+> **ainda não aprovado** (Aguardando/Sem cadastro) em que algum item pede **mais caixas do que o
+> estoque disponível do produto** — somando todas as linhas daquele produto no pedido, inclusive
+> quando ele aparece repetido em linha normal e em linha de promoção —, a fila mostra o aviso
+> **antes** do clique em aprovar — direto na linha/card e no detalhe, item por item. Ao clicar em
+> **Aprovar**, o servidor **recusa** (mensagem explicando qual item e quanto falta) e **nada é
+> criado** — não existe botão "aprovar mesmo assim". Se o
+> estoque do app estiver desatualizado, a equipe corrige o estoque do produto (tela Produtos) e
+> aprova de novo. Produto que não controla estoque (categoria sem essa trava) nunca bloqueia.
+
 **Popup de alerta (a cada 15 min):** para quem tem acesso às abas **Kit Festa** e **Congelados** (permissão `kitFesta` ou admin), enquanto houver **pedido novo do site aguardando** (Kit Festa **ou** Congelados), aparece um **popup com bip** listando os pedidos (origem, cliente, valor, há quanto tempo, encaixe). Ele **incomoda a cada 15 minutos até o pedido ser aprovado** — fechar só adia para o próximo ciclo. Os botões levam direto para **Ver Kit Festa** ou **Ver Congelados**.
 
 Status:

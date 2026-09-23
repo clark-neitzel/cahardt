@@ -82,23 +82,56 @@ async function saldoBaixadoPorProduto(pedidoId, db) {
     return saldo;
 }
 
-// Valida os itens de um pedido contra o estoque disponível (permissão Bloqueio_Venda_Sem_Estoque).
-// Na edição, a quantidade já reservada pelo próprio pedido volta ao disponível antes de comparar —
-// senão salvar o pedido sem mudar nada seria bloqueado. Produtos que não controlam estoque passam direto.
-// Retorna [] quando tudo ok, ou [{ nome, unidade, pedida, disponivel }] por produto estourado.
-async function validarVendaSemEstoque(itens, pedidoIdEdicao) {
+// Agrega itens POR produtoId (soma todas as linhas do mesmo produto no pedido inteiro — ex.:
+// mesmo produto em linha normal + linha de promoção) e compara com o estoque disponível.
+// NÃO faz consulta ao banco: recebe `mapaProdutos` já carregado (Map produtoId -> { nome,
+// unidade, disponivel, controla }), para quem for chamar em lote (várias dezenas de pedidos,
+// como a listagem da fila de Congelados) poder montar esse mapa com uma única query e evitar N+1.
+// `reservaPropria` (opcional) soma de volta ao disponível a quantidade já reservada pelo próprio
+// pedido em edição. Retorna [] quando tudo ok, ou [{ produtoId, nome, unidade, pedida, disponivel }]
+// por produto estourado — é a mesma regra usada tanto na aprovação quanto na listagem/alerta prévio.
+function detectarEstoqueInsuficiente(itens, mapaProdutos, reservaPropria) {
     const porProduto = new Map();
     for (const item of itens || []) {
         if (!item.produtoId) continue;
         const q = parseFloat(item.quantidade || 0);
         if (q > 0) porProduto.set(item.produtoId, (porProduto.get(item.produtoId) || 0) + q);
     }
-    if (porProduto.size === 0) return [];
+
+    const violacoes = [];
+    for (const [produtoId, pedida] of porProduto) {
+        const info = mapaProdutos && mapaProdutos.get(produtoId);
+        if (!info || !info.controla) continue;
+        const disponivel = info.disponivel + ((reservaPropria && reservaPropria.get(produtoId)) || 0);
+        if (pedida > disponivel) {
+            violacoes.push({ produtoId, nome: info.nome, unidade: info.unidade || 'un', pedida, disponivel: Math.max(0, disponivel) });
+        }
+    }
+    return violacoes;
+}
+
+// Valida os itens de um pedido contra o estoque disponível (permissão Bloqueio_Venda_Sem_Estoque).
+// Na edição, a quantidade já reservada pelo próprio pedido volta ao disponível antes de comparar —
+// senão salvar o pedido sem mudar nada seria bloqueado. Produtos que não controlam estoque passam direto.
+// Retorna [] quando tudo ok, ou [{ produtoId, nome, unidade, pedida, disponivel }] por produto estourado.
+async function validarVendaSemEstoque(itens, pedidoIdEdicao) {
+    const produtoIds = new Set();
+    for (const item of itens || []) {
+        if (!item.produtoId) continue;
+        if (parseFloat(item.quantidade || 0) > 0) produtoIds.add(item.produtoId);
+    }
+    if (produtoIds.size === 0) return [];
 
     const produtos = await prisma.produto.findMany({
-        where: { id: { in: [...porProduto.keys()] } },
+        where: { id: { in: [...produtoIds] } },
         select: { id: true, nome: true, unidade: true, estoqueDisponivel: true, categoria: true, controlaEstoque: true }
     });
+
+    const mapaProdutos = new Map();
+    for (const p of produtos) {
+        const controla = await produtoControlaEstoque(p);
+        mapaProdutos.set(p.id, { nome: p.nome, unidade: p.unidade, disponivel: parseFloat(p.estoqueDisponivel || 0), controla });
+    }
 
     const reservaPropria = new Map();
     if (pedidoIdEdicao) {
@@ -111,17 +144,7 @@ async function validarVendaSemEstoque(itens, pedidoIdEdicao) {
         }
     }
 
-    const violacoes = [];
-    for (const p of produtos) {
-        const controla = await produtoControlaEstoque(p);
-        if (!controla) continue;
-        const disponivel = parseFloat(p.estoqueDisponivel || 0) + (reservaPropria.get(p.id) || 0);
-        const pedida = porProduto.get(p.id);
-        if (pedida > disponivel) {
-            violacoes.push({ nome: p.nome, unidade: p.unidade || 'un', pedida, disponivel: Math.max(0, disponivel) });
-        }
-    }
-    return violacoes;
+    return detectarEstoqueInsuficiente(itens, mapaProdutos, reservaPropria);
 }
 
 const estoqueService = {
@@ -130,6 +153,7 @@ const estoqueService = {
     produtoControlaEstoque,
     saldoBaixadoPorProduto,
     validarVendaSemEstoque,
+    detectarEstoqueInsuficiente,
 
     // Ajuste manual de estoque: afeta somente estoqueTotal, depois recalcula disponivel/reservado.
     // tipo: 'ENTRADA' | 'SAIDA'

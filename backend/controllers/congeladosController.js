@@ -3,9 +3,14 @@ const svc = require('../services/congeladosService');
 // `code` (v1.6.0, aditivo): quando a regra de negócio dá um código fechado (VISITANTE_SEM_CPF,
 // PROMOCAO_INVALIDA, PROMOCAO_NAO_LIBERADA) ele vai junto — antes ficava só no `e.code` e o bot
 // nunca recebia.
+// `itensSemEstoque` (09/2026, aditivo): erro SEM_ESTOQUE da aprovação leva a lista de itens
+// em falta junto, para a tela montar o alerta sem precisar de uma segunda chamada.
 const erro = (res, e, ctx) => {
     console.error(`[Congelados] ${ctx}:`, e.message);
-    res.status(400).json(e.code ? { error: e.message, code: e.code } : { error: e.message });
+    const body = { error: e.message };
+    if (e.code) body.code = e.code;
+    if (e.itensSemEstoque) body.itensSemEstoque = e.itensSemEstoque;
+    res.status(400).json(body);
 };
 
 const congeladosController = {

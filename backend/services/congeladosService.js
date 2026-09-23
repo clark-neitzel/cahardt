@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const pedidoService = require('./pedidoService');
+const estoqueService = require('./estoqueService');
 const webhookService = require('./webhookService');
 // v1.6.0 da API da IA: objeto único de produto/pedido, promoções vigentes e hora de corte.
 // Só usados no caminho da IA (parâmetro `paraIA`/`criarPedidoIA`) — o site público não muda.
@@ -1306,16 +1307,84 @@ const congeladosService = {
                 { congeladosCliente: { cliente: { End_Cidade: { contains: busca, mode: 'insensitive' } } } },
             ].filter(Boolean);
         }
-        return prisma.congeladosPedido.findMany({
+        const pedidos = await prisma.congeladosPedido.findMany({
             where,
             orderBy: { createdAt: 'desc' }, // mais recente primeiro
             include: {
-                itens: true,
+                itens: { include: { congeladosProduto: { select: { produtoId: true } } } },
                 congeladosCliente: { include: { cliente: { select: { Nome: true, NomeFantasia: true, End_Cidade: true, vendedor: { select: { nome: true } } } } } },
                 pedido: { select: { id: true, numero: true, especial: true, statusEnvio: true } },
             },
             take: 300,
         });
+
+        // Alerta de estoque ANTES do clique em aprovar — mesma regra da aprovação
+        // (estoqueService.validarVendaSemEstoque/adminAprovarPedido): soma por produtoId o
+        // pedido INTEIRO (ex.: mesmo produto em linha normal + linha de promoção conta junto),
+        // não linha por linha — senão a listagem libera um caso que o servidor recusa.
+        // Reaproveita `estoqueService.detectarEstoqueInsuficiente` (mesma função usada na
+        // aprovação) em vez de manter duas implementações da regra; aqui só o carregamento dos
+        // produtos é feito em lote (uma query para a página inteira, sem N+1) — a aprovação
+        // valida um pedido de cada vez e monta o mapa sozinha.
+        // Só para pedidos ainda não aprovados (aprovado = CONVERTIDO, não muda mais).
+        // Campos aditivos: item ganha estoqueDisponivel/faltaEstoque, pedido ganha
+        // semEstoque/itensSemEstoque (mesmo formato do erro 400 SEM_ESTOQUE da aprovação).
+        const PENDENTES = ['AGUARDANDO', 'PENDENTE_CADASTRO'];
+        const produtoIds = new Set();
+        for (const p of pedidos) {
+            if (!PENDENTES.includes(p.status)) continue;
+            for (const it of p.itens) {
+                const pid = it.congeladosProduto?.produtoId;
+                if (pid) produtoIds.add(pid);
+            }
+        }
+
+        let mapaProdutos = new Map();
+        if (produtoIds.size > 0) {
+            // Uma query para todos os produtos da página (sem N+1) + uma para as categorias
+            // que decidem se cada produto controla estoque.
+            const produtos = await prisma.produto.findMany({
+                where: { id: { in: [...produtoIds] } },
+                select: { id: true, nome: true, unidade: true, estoqueDisponivel: true, controlaEstoque: true, categoria: true },
+            });
+            const nomesCategoria = [...new Set(produtos.map(p => p.categoria).filter(Boolean))];
+            const categorias = nomesCategoria.length
+                ? await prisma.categoriaEstoque.findMany({ where: { nome: { in: nomesCategoria } }, select: { nome: true, controlaEstoque: true } })
+                : [];
+            const catMap = new Map(categorias.map(c => [c.nome, c.controlaEstoque === true]));
+            mapaProdutos = new Map(produtos.map(p => {
+                const controla = p.controlaEstoque === true ? true : (p.controlaEstoque === false ? false : (catMap.get(p.categoria) === true));
+                return [p.id, { nome: p.nome, unidade: p.unidade, disponivel: parseFloat(p.estoqueDisponivel || 0), controla }];
+            }));
+        }
+
+        for (const p of pedidos) {
+            if (!PENDENTES.includes(p.status)) continue;
+            const itensParaAgregar = p.itens
+                .filter(it => it.congeladosProduto?.produtoId)
+                .map(it => ({ produtoId: it.congeladosProduto.produtoId, quantidade: it.quantidade }));
+            const violacoes = estoqueService.detectarEstoqueInsuficiente(itensParaAgregar, mapaProdutos);
+            const produtosEmFalta = new Set(violacoes.map(v => v.produtoId));
+
+            for (const it of p.itens) {
+                const pid = it.congeladosProduto?.produtoId;
+                const info = pid ? mapaProdutos.get(pid) : null;
+                // Exibição sempre com piso 0 (item 2 do revisor); a comparação acima já usou o
+                // valor real (info.disponivel, sem clamp) dentro de detectarEstoqueInsuficiente.
+                it.estoqueDisponivel = info ? Math.max(0, info.disponivel) : null;
+                it.faltaEstoque = pid ? produtosEmFalta.has(pid) : false;
+            }
+
+            p.semEstoque = violacoes.length > 0;
+            p.itensSemEstoque = violacoes.map(v => ({
+                produtoId: v.produtoId,
+                nome: v.nome,
+                quantidadePedida: v.pedida,
+                disponivel: v.disponivel, // já sai com Math.max(0, …) de detectarEstoqueInsuficiente
+            }));
+        }
+
+        return pedidos;
     },
 
     // Pedidos NOVOS do site (Kit Festa + Congelados) aguardando aprovação — para o popup de alerta.
@@ -1442,6 +1511,28 @@ const congeladosService = {
                 valor: dec(it.precoUnitario),
                 valorBase: dec(it.precoUnitario),
             });
+        }
+
+        // Bloqueia a aprovação quando algum item pede mais do que o estoque disponível (pedido do
+        // dono 23/09 — ex.: cliente pediu 10 caixas de um produto com só 9 em estoque e a equipe
+        // aprovou sem perceber). Sem botão "aprovar mesmo assim": se o app estiver desatualizado,
+        // a equipe ajusta o estoque e aprova de novo. Vale para normal/especial/bonificação —
+        // todos baixam estoque ao faturar. Mesma regra e mesma função da listagem (alerta prévio
+        // em adminListarPedidos): soma por produtoId o pedido inteiro, não linha por linha.
+        const violacoesEstoque = await estoqueService.validarVendaSemEstoque(itensData);
+        if (violacoesEstoque.length > 0) {
+            const fmt = (v) => String(parseFloat(Number(v).toFixed(3))).replace('.', ',');
+            // v.disponivel já sai com Math.max(0, …) de dentro de validarVendaSemEstoque.
+            const linhas = violacoesEstoque.map(v => `• ${v.nome}: pedido ${fmt(v.pedida)} ${v.unidade}, disponível ${fmt(v.disponivel)} ${v.unidade}`).join('\n');
+            const err = new Error(`Estoque insuficiente para aprovar — ajuste o estoque no app e aprove novamente:\n${linhas}`);
+            err.code = 'SEM_ESTOQUE';
+            err.itensSemEstoque = violacoesEstoque.map(v => ({
+                produtoId: v.produtoId,
+                nome: v.nome,
+                quantidadePedida: v.pedida,
+                disponivel: v.disponivel,
+            }));
+            throw err;
         }
 
         // Pedido.observacoes vai para a NF-e (infCpl) e para o recibo: só a observação do cliente
