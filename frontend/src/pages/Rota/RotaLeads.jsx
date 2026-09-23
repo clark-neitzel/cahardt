@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { abrirLinkExterno } from '../../utils/linkExterno';
+import { resumoChip, linhaMarcadoPor, linhaConferidoPor } from '../../utils/gpsQuemAtualizou';
 import { useNavigate } from 'react-router-dom';
 import {
     MapPin, Phone, MessageCircle, User, Plus, ChevronRight,
     Clock, Calendar, Tag, CheckCircle, ClipboardList, Star,
     Package, X, Navigation, Loader, Search, Truck, Edit3,
     DollarSign, Trash2, Save, ChevronDown, ChevronUp, Route, Bell,
-    ArrowLeftRight, Check, Sparkles, AlertCircle, QrCode
+    ArrowLeftRight, Check, Sparkles, AlertCircle, QrCode, Info
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import leadService from '../../services/leadService';
@@ -993,10 +994,66 @@ const STATUS_ENTREGA_CORES = {
 // Selo "endereço × ponto GPS" no card da entrega (calculado ao organizar a rota).
 // Distância APROXIMADA (endereço localizado por serviço de mapas) — limites folgados
 // de propósito: o selo aponta divergência grande, não ajuste fino.
+//
+// Ordem de prioridade (nunca muda):
+//  1. seloGps==='SUSPEITO'   → âmbar "ponto suspeito" (entregas acontecem em outro lugar).
+//  2. seloGps==='CONFIRMADO' → verde "confirmado pelas entregas".
+//  3. alguém já conferiu o ponto E o endereço só foi achado pelo CEP (ou nem foi achado)
+//     → verde "ponto conferido", sem alarmar por um endereço de rodovia/CEP.
+//  4. senão, o comportamento de distância de sempre (verde/âmbar/vermelho).
+// `ultimaMudanca`/`seloGps` são OPCIONAIS — undefined até o backend estar no ar, ou
+// null quando ninguém marcou o ponto por um caminho registrado.
 const ChipGpsEndereco = ({ resultado }) => {
-    if (!resultado?.comparavel) return null;
-    const m = resultado.distanciaM;
+    if (!resultado) return null;
+    const um = resultado.ultimaMudanca;
     const porCep = resultado.precisao === 'cep';
+
+    // 1) Suspeito — vale mais que qualquer outro selo, inclusive "conferido"
+    if (resultado.seloGps === 'SUSPEITO') {
+        return (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold rounded-full mt-1 bg-amber-100 text-amber-700">
+                <MapPin className="h-3 w-3" /> 📍⚠️ Ponto suspeito
+            </span>
+        );
+    }
+
+    // 2) Confirmado pelas entregas reais (regra que já existia)
+    if (resultado.seloGps === 'CONFIRMADO') {
+        const conferidoPor = linhaConferidoPor(um);
+        return (
+            <div className="mt-1 space-y-0.5">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-green-100 text-green-800">
+                    <MapPin className="h-3 w-3" /> 📍✅ Ponto confirmado pelas entregas
+                </span>
+                {conferidoPor && <p className="text-[10.5px] text-gray-500">{conferidoPor}</p>}
+            </div>
+        );
+    }
+
+    // 3) Já foi conferido por alguém e o endereço escrito não foi localizado com
+    // precisão (só CEP, ou nem isso) — não faz sentido alarmar em vermelho aqui.
+    if (um?.autorNome && (porCep || resultado.comparavel === false)) {
+        const chip = resumoChip(um);
+        return (
+            <div className="mt-1 space-y-0.5">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-green-100 text-green-800">
+                    <MapPin className="h-3 w-3" /> 📍 Ponto conferido{chip ? ` · ${chip}` : ''}
+                </span>
+                {(porCep || resultado.comparavel === false) && (
+                    <p className="text-[10.5px] text-gray-500 flex items-start gap-1">
+                        <Info className="h-3 w-3 shrink-0 mt-0.5" />
+                        {porCep
+                            ? 'Endereço escrito não localizado no mapa — a entrega segue o ponto GPS'
+                            : 'Endereço sem posição no mapa, a entrega segue o ponto GPS'}
+                    </p>
+                )}
+            </div>
+        );
+    }
+
+    // 4) Comportamento de distância de sempre — só quando dá para comparar de verdade
+    if (!resultado.comparavel) return null;
+    const m = resultado.distanciaM;
     const lim = porCep ? { ok: 800, atencao: 2500 } : { ok: 150, atencao: 500 };
     const dist = m < 1000 ? `${m} m` : `${(m / 1000).toFixed(1).replace('.', ',')} km`;
     const [classes, texto] = m <= lim.ok
@@ -1004,13 +1061,17 @@ const ChipGpsEndereco = ({ resultado }) => {
         : m <= lim.atencao
             ? ['bg-amber-100 text-amber-700', `GPS a ~${dist} do endereço`]
             : ['bg-red-100 text-red-700', `GPS longe do endereço (~${dist})`];
+    const marcadoPor = linhaMarcadoPor(um);
     return (
-        <span
-            className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold rounded-full mt-1 ${classes}`}
-            title={`Distância aproximada entre o ponto GPS cadastrado e o endereço escrito${porCep ? ' (localizado só pelo CEP)' : ''}`}
-        >
-            <MapPin className="h-3 w-3" /> {texto}{porCep ? ' *' : ''}
-        </span>
+        <div className="mt-1 space-y-0.5">
+            <span
+                className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold rounded-full ${classes}`}
+                title={`Distância aproximada entre o ponto GPS cadastrado e o endereço escrito${porCep ? ' (localizado só pelo CEP)' : ''}`}
+            >
+                <MapPin className="h-3 w-3" /> {texto}{porCep ? ' *' : ''}
+            </span>
+            {marcadoPor && <p className="text-[10.5px] text-gray-500">{marcadoPor}</p>}
+        </div>
     );
 };
 
@@ -2895,6 +2956,30 @@ const RotaLeads = () => {
                             c.UUID === updated.UUID ? { ...c, Ponto_GPS: updated.Ponto_GPS } : c
                         ));
                         setClientePopupItem(null);
+                        // O motorista ajustou o ponto pela ficha rápida — o selo do card de
+                        // entrega ("conferido"/"suspeito") só é calculado 1x por cliente (Set
+                        // de já solicitados, abaixo). Sem isso, o selo continuava mostrando o
+                        // estado antigo até fechar e reabrir o app ("atualizei e continua
+                        // pedindo"). Tira do Set e do mapa, e pede de novo na hora.
+                        if (updated.UUID) {
+                            gpsEnderecoSolicitados.current.delete(updated.UUID);
+                            setGpsEnderecoMapa(prev => {
+                                if (!(updated.UUID in prev)) return prev;
+                                const { [updated.UUID]: _removido, ...resto } = prev;
+                                return resto;
+                            });
+                            (async () => {
+                                try {
+                                    const svc = (await import('../../services/gpsClientesService')).default;
+                                    gpsEnderecoSolicitados.current.add(updated.UUID);
+                                    const parte = await svc.enderecoVsGpsLote([updated.UUID]);
+                                    setGpsEnderecoMapa(prev => ({ ...prev, ...parte }));
+                                } catch {
+                                    // serviço de mapas fora do ar: libera para tentar de novo depois
+                                    gpsEnderecoSolicitados.current.delete(updated.UUID);
+                                }
+                            })();
+                        }
                     }}
                 />
             )}

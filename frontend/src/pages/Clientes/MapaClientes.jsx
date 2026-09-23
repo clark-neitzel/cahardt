@@ -23,6 +23,7 @@ import PainelVizinhos from './mapaClientes/PainelVizinhos';
 import PainelParadas from './mapaClientes/PainelParadas';
 import ListaSemGps from './mapaClientes/ListaSemGps';
 import { criarIconeFatias } from './mapaClientes/marcador';
+import { resumoChip } from '../../utils/gpsQuemAtualizou';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Mapa de Clientes (Clientes → Mapa). Plano: docs/mapa-clientes/PLANO.md.
@@ -211,10 +212,15 @@ export default function MapaClientes() {
         if (camada.current) { camada.current.remove(); camada.current = null; }
         const grupo = L.layerGroup();
         for (const { cliente: c, cores } of dm.visiveisNoMapa) {
+            // "Conferido" (quem/quando atualizou o ponto) some do title quando não há
+            // ultimaMudanca — a linha completa fica só no painel (DrawerCliente), que
+            // abre no mesmo toque; aqui é só a dica ao passar o mouse (desktop).
+            const chipConferido = resumoChip(c.ultimaMudanca);
+            const nomeCliente = c.fantasia || c.nome || '';
             const mk = L.marker([c.gps.lat, c.gps.lng], {
                 icon: criarIconeFatias(cores, { selecionado: c.uuid === selecionado, destaque: destaque.has(c.uuid) }),
                 keyboard: false,
-                title: c.fantasia || c.nome || '',
+                title: chipConferido ? `${nomeCliente} · 📍 Conferido · ${chipConferido}` : nomeCliente,
             }).on('click', (e) => {
                 if (marcandoRef.current) { setPontoEscolhido({ uuid: marcandoRef.current, lat: e.latlng.lat, lng: e.latlng.lng }); return; }
                 setSelecionado(c.uuid); setAba('cliente'); setSheetAberta(true);
@@ -266,6 +272,11 @@ export default function MapaClientes() {
         if (!gps) return;
         dm.atualizarLocal(uuid, { gps });
         if (!r?.offline) toast.success('Ponto GPS salvo');
+        // A dica do pino (title) e o painel lateral ficariam mostrando o autor/data
+        // antigos sem isso — mesmo motivo do card de entrega na Rota (RotaLeads.jsx).
+        gpsClientesService.cliente(uuid)
+            .then(res => dm.atualizarLocal(uuid, { ultimaMudanca: res?.ultimaMudanca || null }))
+            .catch(() => { /* title/painel ficam com o dado antigo até recarregar a tela */ });
     };
     const confirmarPonto = async () => {
         if (!pontoEscolhido || salvandoPontoRef.current) return;

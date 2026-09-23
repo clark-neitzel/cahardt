@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Quem atualizou o ponto GPS — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp -->
+<meta property="og:title" content="📍 Novidade no Hardt App: quem atualizou o ponto GPS">
+<meta property="og:description" content="Agora dá para ver quem ajustou o ponto no mapa de cada cliente, quando e de onde — e o alerta vermelho para de aparecer quando o ponto já foi conferido.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 60px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(26px, 7vw, 38px);
+    font-weight: 800;
+    line-height: 1.15;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.75);
+    font-size: 16px;
+    max-width: 48ch;
+    margin: 0 auto;
+    text-wrap: balance;
+  }
+
+  /* ── SEÇÕES / ACCORDION ── */
+  .sec-label {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: var(--primary-dark);
+    margin: 34px 4px 12px;
+  }
+  .acc {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .acc-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: none;
+    border: none;
+    font: inherit;
+    text-align: left;
+    padding: 15px 16px;
+    cursor: pointer;
+    min-height: 56px;
+  }
+  .acc-ico {
+    width: 38px; height: 38px;
+    border-radius: 11px;
+    background: var(--mint);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  .acc-head:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  /* passos */
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n {
+    width: 30px; height: 30px; flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 800;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .rodape {
+    text-align: center;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 40px;
+  }
+  .rodape strong { color: var(--primary-dark); }
+
+  /* ── MOCKUPS DAS TELAS DO APP ── */
+  .tela {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .tela-titulo {
+    background: var(--house);
+    color: #fff;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .app-card {
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .app-card-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    border-bottom: 1px solid #f0efe9;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: #6b756f;
+  }
+  .app-card-body { padding: 12px; }
+  .app-input {
+    border: 1px solid #d8d5cc;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 12.5px;
+    color: var(--ink);
+    background: #fff;
+    margin-bottom: 8px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  .app-input small { display: block; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: #9aa5a0; margin-bottom: 2px; font-family: -apple-system, sans-serif; }
+  .app-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--primary);
+    color: #fff;
+    font-size: 12.5px;
+    font-weight: 700;
+    padding: 9px 16px;
+    border-radius: 999px;
+  }
+  .pin {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    flex-shrink: 0;
+    vertical-align: 2px;
+    margin-left: 6px;
+  }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+
+  /* mock do card de entrega (celular) */
+  .cel { max-width: 340px; margin: 0 auto; }
+  .entrega-card { background: #fff; border: 1px solid #e5e3dc; border-radius: 12px; padding: 12px; position: relative; }
+  .entrega-nome { font-weight: 800; font-size: 14.5px; margin: 0 0 2px; }
+  .entrega-end { font-size: 11.5px; color: #8a938e; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 6px; }
+  .chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 999px; font-size: 10.5px; font-weight: 700; }
+  .chip-red { background: #fee2e2; color: #b91c1c; }
+  .chip-green { background: #dcfce7; color: #166534; }
+  .quem-linha { font-size: 10.5px; color: #8a938e; margin-top: 5px; display: flex; align-items: flex-start; gap: 4px; }
+
+  /* mapa mock */
+  .mapa-mock { height: 100px; border-radius: 10px; background: repeating-linear-gradient(35deg,#e5efe9 0 16px,#dde9e2 16px 18px),#e5efe9; position: relative; margin-bottom: 8px; }
+  .mapa-mock .pino { position: absolute; left: 50%; top: 40%; width: 16px; height: 16px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); background: var(--primary); border: 2px solid #fff; }
+</style>
+</head>
+<body>
+
+<!-- ══════════ HERO ══════════ -->
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>Agora dá para ver quem ajustou o ponto GPS</h1>
+    <p>O app já guardava quem mexeu no pino do mapa de cada cliente. Agora isso aparece na tela — nome, quando e de onde — e o alerta vermelho para de "grudar" quando o ponto já foi conferido.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- ══════════ O QUE MUDOU ══════════ -->
+  <div class="sec-label">O que mudou</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🔴</span>
+      <strong>O alerta vermelho ficava preso</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>O selo do card de entrega compara o <b>ponto GPS</b> com o <b>endereço escrito</b>. Endereço de rodovia (tipo "ROD BR 101, KM 71") o mapa não localiza direito — só acha o centro do CEP, que fica longe do pino de verdade.</li>
+        <li>Resultado: mesmo depois de o motorista corrigir o ponto certinho, o card continuava vermelho — porque o problema nunca foi o ponto, foi o endereço não ser localizável.</li>
+        <li>Agora, quando alguém já conferiu o ponto e o endereço só foi achado pelo CEP (ou nem foi achado), o card fica <b>verde</b> — com um aviso discreto explicando por quê.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🧾</span>
+      <strong>Quem, quando e de onde</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Toda vez que alguém marca ou ajusta o ponto GPS de um cliente, o app já registrava isso por trás dos panos. Agora essa informação <b>aparece na tela</b>.</li>
+        <li>Nome de quem mexeu, a tela usada (cadastro, Rota, tela de entregas...), data e hora, e quanto o ponto se moveu.</li>
+        <li>No cadastro do cliente, dá para ver o <b>histórico completo</b> — as duas últimas mudanças de cara, e "ver todas" para o resto.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">📍</span>
+      <strong>Nas 4 telas onde o GPS aparece</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li><b>Card da entrega</b> (Rota / motorista): selo verde "Ponto conferido" com quem e quando, no lugar do vermelho preso.</li>
+        <li><b>Ficha rápida do cliente</b> (toque no nome, na Rota): caixa "Atualizado por..." com nome, tela e distância.</li>
+        <li><b>Cadastro do cliente</b>, aba Logística: a mesma caixa + histórico completo.</li>
+        <li><b>Mapa de Clientes</b>: uma linha "Conferido · nome · data" no painel do cliente ao tocar no pino (no computador, também na dica ao passar o mouse sobre o pino).</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">⚠️</span>
+      <strong>Ponto suspeito continua alertando</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Essa mudança <b>não mexe</b> no alerta de "ponto suspeito" (quando as entregas de verdade acontecem em outro lugar) — esse selo continua valendo mais que qualquer "conferido".</li>
+        <li>E também não muda nada quando o mapa <b>acha a rua e o número</b> do endereço e o ponto realmente está longe — aí o alerta vermelho continua, do jeito certo, agora mostrando quem marcou o ponto e quando.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ══════════ AS TELAS DO APP ══════════ -->
+  <div class="sec-label">As telas do app, sem mistério</div>
+
+  <!-- TELA 1: card da entrega -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 1 · Card da entrega (Rota / motorista)</div>
+    <div class="tela-corpo">
+      <div class="cel">
+        <div class="entrega-card">
+          <p class="entrega-nome">Sinuelo Supermercado</p>
+          <p class="entrega-end">ROD BR 101, KM 71, Nº9900 · Araquari</p>
+          <span class="chip chip-green">📍 Ponto conferido · Patrik · 22/09<span class="pin">1</span></span>
+          <div class="quem-linha">ⓘ Endereço escrito não localizado no mapa — a entrega segue o ponto GPS<span class="pin">2</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Selo <b>verde "Ponto conferido"</b> com o primeiro nome de quem acertou o ponto e a data. Antes disso ficava vermelho mesmo depois de corrigido.</span></div>
+      <div><span class="pin">2</span><span>Aviso <b>cinza e discreto</b> quando o endereço só foi achado pelo CEP. Explica que vale o ponto GPS — não é um erro.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 2: ficha rápida -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 2 · Ficha rápida do cliente (toque no nome, na Rota)</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">📍 Ponto GPS</div>
+        <div class="app-card-body">
+          <div class="app-input">-26.371204,-48.743118</div>
+          <div style="background:var(--mint);border-radius:10px;padding:9px 11px;font-size:12px;line-height:1.45;position:relative;">
+            <span class="pin" style="position:absolute;right:8px;top:8px;">3</span>
+            ✅ Atualizado por <b style="color:var(--primary-dark)">Patrik Souza</b> <span style="background:#fff;color:var(--primary-dark);font-size:9px;font-weight:800;padding:1px 6px;border-radius:999px;">MOTORISTA</span>
+            <div style="color:#6b756f;font-size:11px;margin-top:2px;">22/09/2026 às 14:32 · pela tela de entregas · moveu 16,2 km</div>
+          </div>
+          <div class="app-btn" style="margin-top:10px;">📍 Ajustar ponto no mapa</div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">3</span><span><b>Quem, quando, de onde e quanto mudou.</b> Nome completo, a tela usada, data/hora e a distância que o ponto andou. Sem nenhuma mudança registrada, aparece "Ponto do cadastro original".</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 3: cadastro -> histórico -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 3 · Cadastro do cliente → Logística</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">🚚 Logística</div>
+        <div class="app-card-body">
+          <div class="app-input">-26.371204,-48.743118</div>
+          <div style="background:var(--mint);border-radius:10px;padding:9px 11px;font-size:12px;line-height:1.45;">
+            ✅ Atualizado por <b style="color:var(--primary-dark)">Patrik Souza</b> <span style="background:#fff;color:var(--primary-dark);font-size:9px;font-weight:800;padding:1px 6px;border-radius:999px;">MOTORISTA</span>
+            <div style="color:#6b756f;font-size:11px;margin-top:2px;">22/09/2026 às 14:32 · pela tela de entregas · moveu 16,2 km</div>
+          </div>
+          <div style="margin-top:12px;border-top:1px dashed #e3e1da;padding-top:10px;position:relative;">
+            <span class="pin" style="position:absolute;right:0;top:8px;">4</span>
+            <div style="font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:#8a938e;margin-bottom:8px;">Histórico do ponto</div>
+            <div style="font-size:12px;padding:5px 0;border-bottom:1px solid #f0efe9;"><b>Patrik Souza</b> moveu o ponto 16,2 km<div style="color:#8a938e;font-size:10.5px;">22/09/2026 14:32 · tela de entregas · estava a 12 m do ponto novo</div></div>
+            <div style="font-size:12px;color:#8a938e;padding-top:6px;">+ 2 alterações mais antigas · <u>ver todas</u></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">4</span><span><b>Histórico</b>: as 2 últimas mudanças à mostra, o resto em "ver todas". "estava a 12 m do ponto novo" mostra que a pessoa <b>estava no local</b> quando mudou o ponto.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 4: mapa de clientes -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 4 · Mapa de Clientes (painel ao tocar no pino)</div>
+    <div class="tela-corpo">
+      <div class="cel">
+        <div class="mapa-mock" style="margin-bottom:14px;">
+          <span class="pino" style="position:relative;"><span class="pin" style="position:absolute;right:-18px;top:-6px;">5</span></span>
+        </div>
+        <div class="app-card">
+          <div class="app-card-body" style="position:relative;">
+            <span class="pin" style="position:absolute;right:8px;top:10px;">6</span>
+            <p style="font-weight:800;font-size:13.5px;margin:0 0 2px;">Sinuelo Supermercado</p>
+            <p style="font-size:11px;color:#8a938e;margin:0 0 4px;">Centro · Araquari</p>
+            <p style="font-size:12px;font-weight:700;color:#166534;margin:0;">📍 Conferido · Patrik · 22/09</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">5</span><span>No <b>computador</b>, passar o mouse sobre o pino já mostra essa informação na dica (title).</span></div>
+      <div><span class="pin">6</span><span>Ao <b>tocar no pino</b>, a linha "Conferido" aparece no topo do painel do cliente — o mesmo painel que já abre com nome, telefone e edição rápida.</span></div>
+    </div>
+  </div>
+
+  <!-- ══════════ COMO USAR ══════════ -->
+  <div class="sec-label">Não precisa fazer nada</div>
+  <div class="passos">
+    <div class="passo">
+      <span class="passo-n">1</span>
+      <div><b>Atualize o app:</b> toque no ícone de atualizar ↻ (ou feche e abra o app).</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">2</span>
+      <div>É só usar as telas normalmente — o selo aparece sozinho onde já existia um ponto conferido.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">3</span>
+      <div>Ajustou um ponto pela ficha rápida na Rota? O card da entrega já atualiza o selo na hora, sem precisar reabrir o app.</div>
+    </div>
+  </div>
+
+  <p class="rodape">Dúvidas? Pergunte ao <strong>Clippy</strong> dentro do app — ele já conhece a tela nova.<br>— Hardt Salgados</p>
+</div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.parentElement;
+    const abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>

@@ -13,7 +13,7 @@ import leadService from '../../services/leadService';
 import devolucaoService from '../../services/devolucaoService';
 import { API_URL } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
-import { ArrowLeft, MapPin, Phone, Mail, Calendar, FileText, Save, X, User, Building, DollarSign, MessageCircle, Clock, ClipboardList, ShoppingCart, Package, Sparkles, RefreshCw, Image, UserPlus, Search, ExternalLink, Truck, CreditCard, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, MapPin, Phone, Mail, Calendar, FileText, Save, X, User, Building, DollarSign, MessageCircle, Clock, ClipboardList, ShoppingCart, Package, Sparkles, RefreshCw, Image, UserPlus, Search, ExternalLink, Truck, CreditCard, AlertTriangle, ShieldCheck, CheckCircle, History, ChevronDown } from 'lucide-react';
 import SelectBusca from '../../components/SelectBusca';
 import CampoCidade from '../../components/CampoCidade';
 import ModalCidadeReceita from '../../components/ModalCidadeReceita';
@@ -27,6 +27,7 @@ import whatsappClientesService, { rotuloMotivo, calcularValidaAte } from '../../
 import QualidadeGps, { avaliarGps } from '../../components/Clientes/QualidadeGps';
 import QualidadeWhatsapp, { avaliarWhatsapp } from '../../components/Clientes/QualidadeWhatsapp';
 import EstadoVazio from '../../components/EstadoVazio';
+import { detalheAtualizacao, formatarDataHora, telaDaOrigem, linhaNoLocal, acaoHistorico, cargoExibicao } from '../../utils/gpsQuemAtualizou';
 
 // Data curta em pt-BR, tolerante a valor nulo/inválido vindo do backend
 const fmtDataBr = (v) => {
@@ -109,6 +110,10 @@ const DetalheCliente = () => {
     // Ponto GPS: mapa + selo + cliente balcão
     const [showMapaGps, setShowMapaGps] = useState(false);
     const [gpsInfo, setGpsInfo] = useState(null); // { balcao, selo, sugestao, balcaoPorNome }
+    // "Quem atualizou o ponto GPS e quando" — caixa + histórico completo (Logística)
+    const [ultimaMudancaGps, setUltimaMudancaGps] = useState(null);
+    const [historicoGps, setHistoricoGps] = useState(null); // null = não carregou/falhou (esconde a seção)
+    const [historicoGpsAberto, setHistoricoGpsAberto] = useState(false);
     // Situação do WhatsApp do cliente vem de `cliente.whatsappStatus` — lido só via
     // `avaliarWhatsapp(cliente)` (situacaoWhatsappAtual), fonte única de verdade.
     // Validade da dispensa — só para completar "dispensado até" quando o registro
@@ -210,8 +215,17 @@ const DetalheCliente = () => {
 
             // Selo/balcão do ponto GPS (tabela lateral) — não pode travar a tela se falhar
             gpsClientesService.cliente(uuid)
-                .then(r => setGpsInfo(r.cliente?.gps || {}))
+                .then(r => {
+                    setGpsInfo(r.cliente?.gps || {});
+                    setUltimaMudancaGps(r?.ultimaMudanca || null);
+                })
                 .catch(() => setGpsInfo({}));
+
+            // Histórico completo do ponto (2 últimas + "ver todas"). Falhar aqui (ex.:
+            // permissão) esconde só esta seção — nunca quebra a tela nem vira erro visível.
+            gpsClientesService.historico(uuid)
+                .then(logs => setHistoricoGps(Array.isArray(logs) ? logs : []))
+                .catch(() => setHistoricoGps(null));
 
             try {
                 const atends = await atendimentoService.listarPorCliente(uuid);
@@ -458,8 +472,12 @@ const DetalheCliente = () => {
         try {
             const r = await gpsClientesService.cliente(uuid);
             setGpsInfo(r?.cliente?.gps || {});
+            setUltimaMudancaGps(r?.ultimaMudanca || null);
             if (r?.cliente?.Ponto_GPS) setFormData(f => ({ ...f, Ponto_GPS: r.cliente.Ponto_GPS }));
         } catch { /* falha silenciosa: o card já mostrou o resultado do próprio salvamento */ }
+        gpsClientesService.historico(uuid)
+            .then(logs => setHistoricoGps(Array.isArray(logs) ? logs : []))
+            .catch(() => { /* mantém o histórico que já tinha */ });
     };
     const atualizarQualidadeWhatsapp = async () => {
         try {
@@ -1115,6 +1133,76 @@ const DetalheCliente = () => {
                             <p className="mt-1.5 text-xs font-semibold text-amber-700">📍⚠️ Ponto suspeito — as entregas estão acontecendo em outro lugar (abra o mapa para corrigir)</p>
                         )}
 
+                        {/* Quem atualizou o ponto GPS e quando (docs/preview-gps-quem-atualizou.html) */}
+                        {(() => {
+                            const info = detalheAtualizacao(ultimaMudancaGps);
+                            if (!info && !formData.Ponto_GPS) return null;
+                            return (
+                                <div className="mt-2 bg-mint/30 border border-mint rounded-lg px-3 py-2 text-xs leading-snug">
+                                    {info ? (
+                                        <>
+                                            <p className="text-gray-700 flex items-start gap-1.5">
+                                                <CheckCircle className="h-3.5 w-3.5 shrink-0 mt-0.5 text-primaryDark" />
+                                                <span>
+                                                    Atualizado por <b className="text-primaryDark">{info.nome}</b>
+                                                    {info.cargo && (
+                                                        <span className="ml-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-mint text-primaryDark align-middle">{info.cargo}</span>
+                                                    )}
+                                                </span>
+                                            </p>
+                                            <p className="text-gray-500 mt-0.5 pl-5">{info.linha}</p>
+                                        </>
+                                    ) : (
+                                        <p className="text-gray-500">Ponto do cadastro original · sem alterações registradas</p>
+                                    )}
+                                </div>
+                            );
+                        })()}
+
+                        {/* Histórico do ponto — 2 últimas + "ver todas". Sem `historicoGps`
+                            (falhou a busca, ex.: 403) a seção some, nunca mostra erro na tela. */}
+                        {historicoGps && historicoGps.length > 0 && (
+                            <div className="mt-3 pt-3 border-t border-dashed border-gray-200">
+                                <p className="text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-2 flex items-center gap-1">
+                                    <History className="h-3.5 w-3.5" /> Histórico do ponto
+                                </p>
+                                <div className="space-y-2">
+                                    {(historicoGpsAberto ? historicoGps : historicoGps.slice(0, 2)).map(h => {
+                                        const dataHora = formatarDataHora(h.criadoEm);
+                                        const tela = telaDaOrigem(h.origem);
+                                        const noLocal = linhaNoLocal(h.autorNoLocalM);
+                                        return (
+                                            <div key={h.id} className="flex gap-2 text-xs">
+                                                <span className="w-2 h-2 rounded-full bg-primary mt-1.5 shrink-0" />
+                                                <div className="min-w-0">
+                                                    <p className="text-gray-800">
+                                                        <b>{h.autor || '—'}</b>
+                                                        {cargoExibicao(h) && (
+                                                            <span className="ml-1 text-[9.5px] font-bold px-1.5 py-0.5 rounded-full bg-mint text-primaryDark align-middle">{cargoExibicao(h)}</span>
+                                                        )}
+                                                        {' '}{acaoHistorico(h)}
+                                                    </p>
+                                                    <p className="text-gray-500 text-[11px]">
+                                                        {[dataHora, tela, noLocal].filter(Boolean).join(' · ')}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                                {historicoGps.length > 2 && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setHistoricoGpsAberto(v => !v)}
+                                        className="mt-2 min-h-[44px] text-[11px] font-semibold text-primary hover:text-primaryDark flex items-center gap-1"
+                                    >
+                                        {historicoGpsAberto ? 'Mostrar menos' : `ver todas (${historicoGps.length})`}
+                                        <ChevronDown className={`h-3 w-3 transition-transform ${historicoGpsAberto ? 'rotate-180' : ''}`} />
+                                    </button>
+                                )}
+                            </div>
+                        )}
+
                         {/* Cliente balcão: ou GPS, ou balcão (com permissão) */}
                         <div className="mt-3 flex items-start gap-2">
                             <input
@@ -1163,6 +1251,9 @@ const DetalheCliente = () => {
                             setFormData(f => ({ ...f, Ponto_GPS: ponto }));
                             if (!r?.offline) toast.success('Ponto GPS salvo!');
                         }
+                        // Selo, caixa "quem atualizou" e histórico ficariam presos no estado
+                        // anterior sem isso — mesmo motivo do card de entrega na Rota.
+                        atualizarQualidadeGps();
                     }}
                 />
 

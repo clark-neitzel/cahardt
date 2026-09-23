@@ -259,6 +259,12 @@ Exibe os leads que foram associados a este cliente — geralmente leads converti
 - Sem internet, a correção de ponto fica guardada no aparelho e é enviada sozinha quando o sinal volta.
 - Visão geral e faxina dos pontos: tela **Saúde dos Pontos GPS** (`/clientes/saude-gps`).
 
+### Quem atualizou o ponto GPS (novo — 09/2026)
+
+No card **Logística**, logo abaixo da Localização GPS, uma caixa verde-clara mostra **quem atualizou o ponto atual e quando**: nome de quem mexeu (cargo ao lado quando dá para saber — hoje só aparece "MOTORISTA" para quem ajustou pela tela de entregas), data e hora, a tela usada (cadastro do cliente, Rota, tela de entregas, Saúde dos pontos ou pedido) e quantos metros/km o ponto se moveu. Se o ponto nunca foi mexido por um caminho registrado, aparece "Ponto do cadastro original · sem alterações registradas".
+
+Logo abaixo, **"Histórico do ponto"** lista as mudanças mais antigas: as 2 últimas já aparecem, e o link **"ver todas (N)"** expande a lista inteira (cada linha mostra quem, a ação — moveu/definiu o primeiro ponto/removeu/marcou balcão —, quando, a tela e, se a pessoa registrou a própria posição a até 150 m do ponto novo, "estava a X m do ponto novo"). Se a busca do histórico falhar (sem permissão, sem rede), a seção simplesmente some — o resto do cadastro continua normal. Essa mesma caixa "Atualizado por..." também aparece na ficha rápida do cliente, na Rota (toque no nome do cliente).
+
 ## WhatsApp do cliente obrigatório (novo — 08/2026)
 
 > **Tudo nesta seção só vale depois que a exigência for LIGADA** no interruptor da tela Pendências de WhatsApp. Ele vem **desligado de fábrica**, e enquanto estiver assim nada muda no dia a dia: cadastro e envio de pedido seguem funcionando como sempre.

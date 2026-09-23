@@ -200,6 +200,9 @@ export default function useDadosMapa(filtros, compras = null) {
                     if (patch.categoriaId !== undefined) { n.categoriaId = patch.categoriaId; n.categoriaNome = patch.categoriaNome ?? null; }
                     if (patch.vendedorId !== undefined) { n.vendedorId = patch.vendedorId; n.vendedorNome = patch.vendedorNome ?? null; n.vendedorAtivo = patch.vendedorAtivo ?? true; }
                     if (patch.gps !== undefined) n.gps = patch.gps; // { lat, lng } | null — pino muda de lugar / entra no mapa
+                    // "Quem atualizou o ponto GPS e quando" (balão do pino / painel lateral) —
+                    // sem isso ficava com o autor/data antigos até recarregar a tela inteira.
+                    if (patch.ultimaMudanca !== undefined) n.ultimaMudanca = patch.ultimaMudanca;
                     if (patch.telefoneCelular !== undefined) {
                         n.telefoneCelular = patch.telefoneCelular;
                         n.whatsapp = { temNumero: !!patch.telefoneCelular, situacao: patch.telefoneCelular ? 'SEM_HISTORICO' : 'SEM_NUMERO' };

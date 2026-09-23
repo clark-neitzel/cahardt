@@ -307,13 +307,17 @@ No popup de detalhes do cliente (abre ao tocar no nome do cliente no card da rot
 
 O botão **Google Maps** que já existia na seção "Localização GPS" continua igual — esse abre pelo ponto GPS cadastrado. São duas coisas diferentes: um vai pelo endereço, o outro pela coordenada.
 
-## Selo GPS × endereço nos cards de entrega (novo — 07/2026)
+## Selo GPS × endereço nos cards de entrega (novo — 07/2026; regras "quem conferiu" — 09/2026)
 
-Ao **organizar a rota** (botão Organizar Rota, ou quando já existe uma rota organizada salva do dia), o sistema compara automaticamente, para cada entrega, o **ponto GPS cadastrado** do cliente com o **endereço escrito** (localizado num serviço de mapas gratuito) e mostra um selo colorido no card, abaixo do endereço:
+Ao **organizar a rota** (botão Organizar Rota, ou quando já existe uma rota organizada salva do dia), o sistema compara automaticamente, para cada entrega, o **ponto GPS cadastrado** do cliente com o **endereço escrito** (localizado num serviço de mapas gratuito) e mostra um selo colorido no card, abaixo do endereço. Desde 09/2026 o selo também leva em conta **quem já conferiu o ponto**, nesta ordem de prioridade:
 
-- 🟢 Verde **"GPS no endereço"** — os dois batem; pode confiar no GPS.
-- 🟡 Âmbar **"GPS a ~X do endereço"** — divergência moderada; vale conferir.
-- 🔴 Vermelho **"GPS longe do endereço (~X)"** — divergência grande: ou o ponto GPS está errado, ou o endereço escrito está desatualizado. O motorista já sai sabendo que precisa confirmar antes de ir.
+1. 🟠 Âmbar **"Ponto suspeito"** — as entregas de verdade estão acontecendo em outro lugar (regra que já existia, agora com prioridade sobre qualquer "conferido").
+2. 🟢 Verde **"Ponto confirmado pelas entregas"** — as entregas reais confirmam o ponto (regra que já existia); se alguém marcou o ponto por um caminho registrado, aparece "Conferido por Fulano em dd/mm" embaixo.
+3. 🟢 Verde **"Ponto conferido · Fulano · dd/mm"** — alguém já marcou/ajustou esse ponto e o endereço escrito **não foi localizado com precisão** (só achou o centro do CEP, ou nem isso — comum em endereço de rodovia). Antes disso o card ficava **vermelho preso**, mesmo com o ponto certo, só porque o endereço de rodovia não é localizável. Junto aparece um aviso cinza "Endereço escrito não localizado no mapa — a entrega segue o ponto GPS".
+4. Sem nenhuma das situações acima, vale a distância de sempre:
+   - 🟢 Verde **"GPS no endereço"** — os dois batem; pode confiar no GPS.
+   - 🟡 Âmbar **"GPS a ~X do endereço"** — divergência moderada; vale conferir.
+   - 🔴 Vermelho **"GPS longe do endereço (~X)"** — divergência grande: ou o ponto GPS está errado, ou o endereço escrito está desatualizado. Se alguém já marcou o ponto antes, aparece "Ponto marcado por Fulano em dd/mm/aaaa" embaixo (só para saber a quem perguntar — o alerta continua valendo, é um endereço real e distante).
 - **Sem GPS** continua como já era: o aviso âmbar "N entregas sem GPS no cadastro" e os cards listados ao final.
 
 Detalhes:
@@ -322,6 +326,7 @@ Detalhes:
 - Se o serviço de mapas estiver fora do ar ou o cliente não tiver endereço, o card simplesmente fica sem selo (não é erro).
 - O selo **não corrige nada sozinho** — para corrigir o ponto, usar "Ajustar ponto no mapa" no popup do cliente (ou a tela Saúde GPS).
 - **Se as entregas já começaram sem organizar a rota** (alguma entrega concluída e nenhuma rota do dia), aparece um aviso azul na aba Entregas pedindo para tocar em **Organizar Rota** — é ele que calcula a sequência e os selos.
+- **Ajustou o ponto pela ficha rápida (popup do cliente) direto da Rota?** O selo do card se atualiza sozinho na hora — não precisa fechar e reabrir o app.
 
 ## Ponto GPS pelo mapa (novo — 07/2026)
 
@@ -335,6 +340,10 @@ No popup do cliente, o botão de GPS mudou: em vez de gravar "onde estou", abre 
 - **Minha posição** — vai até onde a pessoa está agora (bolinha azul).
 
 Assim dá para comparar endereço × ponto salvo × posição atual sem sair do mapa.
+
+### Caixa "Atualizado por..." (novo — 09/2026)
+
+Logo acima do botão "Ajustar ponto no mapa", uma caixa verde-clara mostra **quem atualizou o ponto GPS atual e quando**: nome de quem mexeu (com o cargo ao lado, quando dá para saber — hoje só aparece para quem ajustou pela tela de entregas, rótulo "MOTORISTA"), data e hora, a tela usada (cadastro do cliente, Rota, tela de entregas, Saúde dos pontos ou pedido) e quantos metros/km o ponto se moveu. Se o ponto atual nunca foi mexido por um caminho registrado, aparece "Ponto do cadastro original · sem alterações registradas". Essa mesma caixa também aparece no cadastro do cliente (Clientes → aba Logística).
 
 ### Últimas alterações do ponto (novo — 07/2026)
 

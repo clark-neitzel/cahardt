@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prévia — Selo "quem atualizou o GPS"</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{--primary:#00754A;--primaryDark:#006241;--house:#1E3932;--mint:#d4e9e2;--creme:#f2f0eb;--ouro:#cba258;--txt:rgba(0,0,0,.87)}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Manrope,-apple-system,"SF Pro Text",sans-serif;letter-spacing:-.01em;background:var(--creme);color:var(--txt);font-variant-numeric:tabular-nums}
+  .hero{background:var(--house);color:#fff;padding:28px 18px 24px}
+  .hero h1{margin:0 0 6px;font-size:22px;font-weight:800}
+  .hero p{margin:0;opacity:.85;font-size:14px;line-height:1.5;max-width:720px}
+  .wrap{max-width:1100px;margin:0 auto;padding:18px 16px 60px}
+  h2{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:#555;margin:34px 0 6px}
+  .sub{font-size:14px;color:#555;margin:0 0 14px;line-height:1.5}
+  .dupla{display:grid;grid-template-columns:1fr;gap:16px}
+  @media(min-width:820px){.dupla{grid-template-columns:1fr 1fr}}
+  .tela{background:#e9e6df;border-radius:18px;padding:14px;border:1px solid #d9d5cc}
+  .tela-tit{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;margin:0 0 10px;display:flex;align-items:center;gap:6px}
+  .antes .tela-tit{color:#b91c1c}.depois .tela-tit{color:var(--primary)}
+  .phone{max-width:380px;margin:0 auto}
+  /* card de entrega */
+  .num{display:flex;align-items:center;gap:8px;background:#eef6fb;border-radius:14px 14px 0 0;padding:8px 12px;font-size:12px;color:#0369a1;font-weight:600}
+  .num b{background:#075985;color:#fff;border-radius:999px;width:28px;height:28px;display:grid;place-items:center;font-size:13px}
+  .card{background:#fff;border:1px solid rgba(14,165,233,.45);border-radius:0 0 14px 14px;padding:12px;position:relative}
+  .tags{display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:10.5px;font-weight:700}
+  .t-carga{background:#f0f9ff;color:#0284c7;padding:2px 6px;border-radius:4px}
+  .t-mot{color:#6b7280}.t-vend{background:#faf5ff;color:#9333ea;padding:2px 5px;border-radius:4px}
+  .nome{font-weight:800;font-size:15px;margin:4px 0 1px}
+  .end{font-size:12px;color:#6b7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .chip{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:999px;font-size:10.5px;font-weight:700;margin-top:5px}
+  .c-red{background:#fee2e2;color:#b91c1c}.c-green{background:#dcfce7;color:#166534}.c-gray{background:#f3f4f6;color:#4b5563}.c-amber{background:#fef3c7;color:#b45309}
+  .linha{display:flex;gap:12px;align-items:center;font-size:12px;color:#4b5563;margin-top:8px}
+  .linha b{color:#111}
+  .btn{display:flex;justify-content:center;align-items:center;gap:6px;background:var(--primary);color:#fff;border-radius:999px;padding:10px;font-weight:700;font-size:13px;margin-top:10px}
+  .btn-out{background:#fff;color:var(--primary);border:1px solid var(--primary)}
+  .quem{font-size:10.5px;color:#4b5563;margin-top:3px;display:flex;align-items:center;gap:4px}
+  /* ficha / cadastro */
+  .app-card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;box-shadow:0 1px 2px rgba(0,0,0,.05)}
+  .app-head{display:flex;align-items:center;gap:8px;padding:11px 16px;border-bottom:1px solid #f1f1f1;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:#555}
+  .app-body{padding:14px 16px}
+  .lbl{font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
+  .coord{flex:1;border:1px solid #e5e7eb;background:#f9fafb;border-radius:8px;padding:9px 10px;font-family:ui-monospace,Menlo,monospace;font-size:12.5px;color:#374151}
+  .row{display:flex;gap:8px;align-items:center}
+  .pill{background:var(--primary);color:#fff;border-radius:999px;padding:9px 14px;font-weight:700;font-size:13px;white-space:nowrap}
+  .selo-quem{margin-top:8px;background:#f0faf5;border:1px solid var(--mint);border-radius:10px;padding:9px 11px;font-size:12.5px;line-height:1.45}
+  .selo-quem b{color:var(--primaryDark)}
+  .selo-quem small{display:block;color:#6b7280;font-size:11.5px}
+  .hist{margin-top:12px;border-top:1px dashed #e5e7eb;padding-top:10px}
+  .hist-t{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:#6b7280;margin-bottom:8px}
+  .ev{display:flex;gap:10px;padding:7px 0;font-size:12.5px;border-bottom:1px solid #f5f5f5}
+  .ev:last-child{border:0}
+  .dot{width:9px;height:9px;border-radius:999px;background:var(--primary);margin-top:5px;flex:none}
+  .dot.g{background:#cbd5e1}
+  .ev small{display:block;color:#6b7280;font-size:11.5px}
+  .origem{font-size:10px;font-weight:700;padding:1px 6px;border-radius:999px;background:var(--mint);color:var(--primaryDark);margin-left:4px}
+  /* pins/legendas */
+  .pin{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:999px;background:var(--ouro);color:#fff;font-size:11px;font-weight:800;box-shadow:0 1px 3px rgba(0,0,0,.25);flex:none}
+  .pa{position:absolute}
+  .legenda{background:#fff;border-radius:12px;padding:12px 14px;margin-top:12px;font-size:13px;line-height:1.5}
+  .legenda div{display:flex;gap:9px;align-items:flex-start;margin:6px 0}
+  .regra{background:#fff;border-left:4px solid var(--primary);border-radius:10px;padding:12px 14px;font-size:13.5px;line-height:1.55;margin-top:10px}
+  .regra ul{margin:6px 0 0;padding-left:18px}
+  .mapa{height:120px;border-radius:10px;background:
+      repeating-linear-gradient(35deg,#e5efe9 0 18px,#dde9e2 18px 20px),#e5efe9;position:relative;margin-bottom:10px}
+  .mapa .pino{position:absolute;left:52%;top:38%;width:18px;height:18px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:var(--primary);border:2px solid #fff}
+  .popup{position:absolute;left:calc(52% + 16px);top:12%;background:#fff;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.2);padding:7px 9px;font-size:11px;line-height:1.35;max-width:190px}
+</style>
+</head>
+<body>
+<div class="hero">
+  <h1>📍 Selo "quem atualizou o ponto GPS"</h1>
+  <p>Prévia de como fica em cada tela onde o GPS aparece. O sistema <b>já grava</b> quem mudou o ponto, quando e de qual tela. A mudança é só <b>mostrar</b> isso, e deixar de alarmar em vermelho quando alguém já conferiu o ponto.</p>
+</div>
+
+<div class="wrap">
+
+<h2>Tela 1 — Card da entrega (Rota / motorista)</h2>
+<p class="sub">É aqui que nasceu a dúvida. Hoje o selo vermelho continua mesmo depois de o motorista acertar o ponto, porque ele compara o GPS com o <b>endereço escrito</b>, e o endereço de rodovia não é localizado pelo mapa.</p>
+<div class="dupla">
+  <div class="tela antes">
+    <p class="tela-tit">✗ Hoje</p>
+    <div class="phone">
+      <div class="num"><b>22</b> 🕐 Chegada: 11:39 · ➤ 1.1 km · 3 min</div>
+      <div class="card">
+        <div class="tags"><span class="t-carga">CARGA #330</span><span class="t-mot">🚚 Patrik</span><span class="t-vend">👤 Leticia</span></div>
+        <div class="nome">SINUELO SUPERMERCADO</div>
+        <div class="end">ROD BR 101, KM 71, Nº9900 9900 · Araquari</div>
+        <span class="chip c-red">📍 GPS longe do endereço (~16,4 km) *</span>
+        <div class="linha">📦 3 prod. <b>R$ 682.44</b></div>
+        <div class="btn">✓ Dar Baixa</div>
+      </div>
+    </div>
+  </div>
+  <div class="tela depois">
+    <p class="tela-tit">✓ Proposta</p>
+    <div class="phone">
+      <div class="num"><b>22</b> 🕐 Chegada: 11:39 · ➤ 1.1 km · 3 min</div>
+      <div class="card">
+        <div class="tags"><span class="t-carga">CARGA #330</span><span class="t-mot">🚚 Patrik</span><span class="t-vend">👤 Leticia</span></div>
+        <div class="nome">SINUELO SUPERMERCADO</div>
+        <div class="end">ROD BR 101, KM 71, Nº9900 9900 · Araquari</div>
+        <span class="chip c-green">📍 Ponto conferido · Patrik · 22/09 <span class="pin" style="width:16px;height:16px;font-size:9px">1</span></span>
+        <div class="quem">ⓘ Endereço escrito não localizado no mapa, a entrega segue o ponto GPS <span class="pin" style="width:16px;height:16px;font-size:9px">2</span></div>
+        <div class="linha">📦 3 prod. <b>R$ 682.44</b></div>
+        <div class="btn">✓ Dar Baixa</div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="legenda">
+  <div><span class="pin">1</span><span><b>Selo verde "Ponto conferido"</b> com o primeiro nome de quem acertou o ponto e a data. Aparece quando alguém marcou o ponto no mapa. No lugar do vermelho, o motorista vê que o ponto já foi conferido e por quem.</span></div>
+  <div><span class="pin">2</span><span><b>Aviso cinza e discreto</b> quando o endereço só foi achado pelo CEP (o antigo <code>*</code>). Explica em português que vale o GPS. Não é um erro.</span></div>
+</div>
+
+<h2>Tela 1b — Os outros casos do mesmo card</h2>
+<div class="dupla">
+  <div class="tela depois">
+    <p class="tela-tit">Ponto nunca conferido e endereço achado com rua e número</p>
+    <div class="phone">
+      <div class="card" style="border-radius:14px">
+        <div class="nome">MERCADO EXEMPLO</div>
+        <div class="end">Rua XV de Novembro 1200 · Joinville</div>
+        <span class="chip c-red">📍 GPS longe do endereço (~2,1 km)</span>
+        <div class="quem">Ponto marcado por Ana (vendedora) em 03/02/2025</div>
+      </div>
+    </div>
+    <div class="legenda" style="margin-top:10px">Continua vermelho: aqui o alerta é <b>real</b> (o mapa achou a rua e o ponto está longe). A linha de baixo mostra quem marcou o ponto e quando, para saber a quem perguntar.</div>
+  </div>
+  <div class="tela depois">
+    <p class="tela-tit">Ponto conferido e confirmado pelas entregas</p>
+    <div class="phone">
+      <div class="card" style="border-radius:14px">
+        <div class="nome">RESTAURANTE SINUELO BR 101</div>
+        <div class="end">ROD BR 101, KM 71 NORTE 9900 · Araquari</div>
+        <span class="chip c-green">📍✅ Ponto confirmado pelas entregas</span>
+        <div class="quem">Conferido por Patrik em 22/09</div>
+      </div>
+    </div>
+    <div class="legenda" style="margin-top:10px">Depois de algumas entregas no mesmo lugar, o sistema já confirma o ponto sozinho (isso já existe hoje). O selo fica o mais forte possível.</div>
+  </div>
+</div>
+
+<h2>Tela 2 — Ficha rápida do cliente (toque no nome, na Rota)</h2>
+<div class="dupla">
+  <div class="tela antes">
+    <p class="tela-tit">✗ Hoje</p>
+    <div class="phone app-card">
+      <div class="app-head">📍 Ponto GPS</div>
+      <div class="app-body">
+        <div class="row"><div class="coord" style="border:0;background:none;padding:0">-26.3712, -48.7431</div><span class="chip c-gray" style="margin:0">↗ Google Maps</span></div>
+        <div class="btn">📍 Ajustar ponto no mapa</div>
+      </div>
+    </div>
+  </div>
+  <div class="tela depois">
+    <p class="tela-tit">✓ Proposta</p>
+    <div class="phone app-card" style="position:relative">
+      <div class="app-head">📍 Ponto GPS</div>
+      <div class="app-body">
+        <div class="row"><div class="coord" style="border:0;background:none;padding:0">-26.3712, -48.7431</div><span class="chip c-gray" style="margin:0">↗ Google Maps</span></div>
+        <div class="selo-quem"><span class="pin pa" style="right:8px;margin-top:-4px">3</span>
+          ✅ Atualizado por <b>Patrik Souza</b> <span class="origem">MOTORISTA</span>
+          <small>22/09/2026 às 14:32 · pela tela de entregas · moveu 16,2 km</small>
+        </div>
+        <div class="btn">📍 Ajustar ponto no mapa</div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="legenda">
+  <div><span class="pin">3</span><span><b>Quem, quando, de onde e quanto mudou.</b> Nome completo, função (Motorista / Vendedor / Escritório / Logística), data e hora, a tela usada e a distância que o ponto andou. Se o ponto nunca foi mexido desde o cadastro, aparece "Ponto do cadastro original · sem alterações".</span></div>
+</div>
+
+<h2>Tela 3 — Cadastro do cliente → Logística</h2>
+<p class="sub">Aqui entra o histórico completo, para o escritório tirar dúvida ("quem mudou esse ponto?").</p>
+<div class="tela depois">
+  <p class="tela-tit">✓ Proposta</p>
+  <div class="app-card" style="max-width:640px;margin:0 auto;position:relative">
+    <div class="app-head">🚚 Logística</div>
+    <div class="app-body">
+      <div class="lbl">📍 Localização GPS</div>
+      <div class="row"><div class="coord">-26.371204,-48.743118</div><span class="pill">📍 Mapa</span></div>
+      <div class="selo-quem">✅ Atualizado por <b>Patrik Souza</b> <span class="origem">MOTORISTA</span>
+        <small>22/09/2026 às 14:32 · pela tela de entregas · moveu 16,2 km</small></div>
+      <div class="hist"><span class="pin pa" style="right:14px">4</span>
+        <div class="hist-t">Histórico do ponto</div>
+        <div class="ev"><span class="dot"></span><div><b>Patrik Souza</b> <span class="origem">MOTORISTA</span> moveu 16,2 km<small>22/09/2026 14:32 · tela de entregas · estava a 12 m do ponto novo</small></div></div>
+        <div class="ev"><span class="dot g"></span><div><b>Leticia Ramos</b> <span class="origem" style="background:#faf5ff;color:#7e22ce">VENDEDORA</span> marcou o ponto<small>04/06/2025 09:10 · cadastro do cliente</small></div></div>
+        <div class="ev"><span class="dot g"></span><div style="color:#6b7280">+ 2 alterações mais antigas · <u>ver todas</u></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="legenda">
+  <div><span class="pin">4</span><span><b>Histórico</b>: as 2 últimas mudanças à mostra, o resto em "ver todas". A frase "estava a 12 m do ponto novo" mostra que a pessoa <b>estava no local</b> quando mudou o ponto (o sistema já guarda onde a pessoa estava).</span></div>
+</div>
+
+<h2>Tela 4 — Mapa de Clientes (balão do pino)</h2>
+<div class="tela depois">
+  <p class="tela-tit">✓ Proposta</p>
+  <div class="phone">
+    <div class="mapa"><span class="pino"></span>
+      <div class="popup"><b>SINUELO SUPERMERCADO</b><br><span style="color:#166534;font-weight:700">📍 Conferido · Patrik · 22/09</span></div>
+    </div>
+  </div>
+  <div class="legenda" style="margin-top:0">Mesma informação, em uma linha só, no balão do pino e no painel lateral do Mapa de Clientes.</div>
+</div>
+
+<h2>Como o selo decide a cor</h2>
+<div class="regra">
+  <ul>
+    <li><b>Verde "Ponto conferido"</b>: alguém marcou o ponto no mapa (motorista, vendedor ou escritório) e o endereço escrito <u>não</u> foi achado com rua e número.</li>
+    <li><b>Verde "Confirmado pelas entregas"</b>: as entregas reais acontecem nesse ponto (regra que já existe).</li>
+    <li><b>Vermelho</b>: o mapa achou a rua e o número e o ponto está longe. Continua alertando, com "marcado por X em tal data" embaixo.</li>
+    <li><b>Âmbar "Ponto suspeito"</b>: as entregas estão acontecendo em outro lugar (regra que já existe). Esse alerta vale mais que o "conferido".</li>
+  </ul>
+</div>
+
+</div>
+</body>
+</html>

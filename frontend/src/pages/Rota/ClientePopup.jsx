@@ -11,6 +11,7 @@ import HistoricoModal from './HistoricoModal';
 import ModalPontoGps from '../../components/ModalPontoGps';
 import { formatarDoc, normalizarDoc } from '../../utils/documento'; // inclui CNPJ ALFANUMÉRICO
 import { abrirLinkExterno } from '../../utils/linkExterno';
+import { detalheAtualizacao } from '../../utils/gpsQuemAtualizou';
 
 const formatDoc = (doc) => {
     if (!doc) return null;
@@ -150,6 +151,34 @@ const HistoricoGpsLista = ({ logs, temPonto }) => {
     );
 };
 
+// Caixa "quem atualizou o ponto GPS e quando" — usada na ficha rápida (aqui) e
+// espelhada (mesmo texto) no cadastro do cliente, aba Logística.
+const CaixaQuemAtualizouGps = ({ ultimaMudanca, temPonto, carregando }) => {
+    if (carregando) return null; // evita piscar "cadastro original" e trocar de texto na hora
+    const info = detalheAtualizacao(ultimaMudanca);
+    if (!info && !temPonto) return null;
+    return (
+        <div className="mt-1 bg-mint/30 border border-mint rounded-lg px-3 py-2 text-[11.5px] leading-snug">
+            {info ? (
+                <>
+                    <p className="text-gray-700 flex items-start gap-1">
+                        <CheckCircle className="h-3 w-3 shrink-0 mt-0.5 text-primaryDark" />
+                        <span>
+                            Atualizado por <b className="text-primaryDark">{info.nome}</b>
+                            {info.cargo && (
+                                <span className="ml-1 text-[9.5px] font-bold px-1.5 py-0.5 rounded-full bg-mint text-primaryDark align-middle">{info.cargo}</span>
+                            )}
+                        </span>
+                    </p>
+                    <p className="text-gray-500 mt-0.5 pl-4">{info.linha}</p>
+                </>
+            ) : (
+                <p className="text-gray-500">Ponto do cadastro original · sem alterações registradas</p>
+            )}
+        </div>
+    );
+};
+
 // A ficha em si. NÃO é exportada direta: quem renderiza é o ClientePopup lá embaixo,
 // que a monta com `key` = identidade do cadastro. Ver o comentário de lá — é o que
 // garante que TODO o estado daqui (ponto GPS, cadastro carregado, histórico, avisos)
@@ -223,6 +252,28 @@ const ClientePopupFicha = ({ cliente: clienteProp, onClose, onAtualizado }) => {
             .then(m => m.default.historico(cliente.UUID))
             .then(logs => { if (ativo) setHistoricoGps((logs || []).slice(0, 5)); })
             .catch(() => { if (ativo) setHistoricoGps(null); }); // sem rede/permissão: seção não aparece
+        return () => { ativo = false; };
+    }, [cliente?.UUID, historicoGpsVersao]);
+
+    // "Quem atualizou o ponto GPS e quando" — o objeto de cliente que chega aqui
+    // (resumido da listagem, ou o próprio `clienteCompleto` de clienteService) não
+    // traz `ultimaMudanca`; ela vive no módulo de GPS (GET /gps-clientes/cliente/:uuid).
+    // Recarrega também depois de salvar um ponto novo (historicoGpsVersao).
+    const [ultimaMudancaGps, setUltimaMudancaGps] = useState(null);
+    const [carregandoUltimaMudanca, setCarregandoUltimaMudanca] = useState(true);
+    useEffect(() => {
+        let ativo = true;
+        if (isLead || !cliente?.UUID) {
+            setUltimaMudancaGps(null);
+            setCarregandoUltimaMudanca(false);
+            return;
+        }
+        setCarregandoUltimaMudanca(true);
+        import('../../services/gpsClientesService')
+            .then(m => m.default.cliente(cliente.UUID))
+            .then(r => { if (ativo) setUltimaMudancaGps(r?.ultimaMudanca || null); })
+            .catch(() => { if (ativo) setUltimaMudancaGps(null); }) // sem rede/permissão: caixa some
+            .finally(() => { if (ativo) setCarregandoUltimaMudanca(false); });
         return () => { ativo = false; };
     }, [cliente?.UUID, historicoGpsVersao]);
 
@@ -512,6 +563,7 @@ const ClientePopupFicha = ({ cliente: clienteProp, onClose, onAtualizado }) => {
                                         ) : (
                                             <p className="text-[12px] text-gray-500 italic">Sem ponto GPS cadastrado</p>
                                         )}
+                                        <CaixaQuemAtualizouGps ultimaMudanca={ultimaMudancaGps} temPonto={!!gpsInput} carregando={carregandoUltimaMudanca} />
                                         {/* Só oferece o mapa sabendo o ponto atual: sem ele o
                                             ModalPontoGps trataria como "primeiro ponto". */}
                                         <button
@@ -602,6 +654,7 @@ const ClientePopupFicha = ({ cliente: clienteProp, onClose, onAtualizado }) => {
                                 ) : (
                                     <p className="text-[12px] text-gray-400 italic">Sem GPS cadastrado</p>
                                 )}
+                                <CaixaQuemAtualizouGps ultimaMudanca={ultimaMudancaGps} temPonto={!!gpsInput} carregando={carregandoUltimaMudanca} />
                                 <div className="flex items-center gap-2 p-2.5 bg-amber-50 border border-amber-200 rounded-lg">
                                     <Lock className="h-4 w-4 text-amber-500 shrink-0" />
                                     <p className="text-[11px] text-amber-700">Você não tem permissão para alterar o GPS. Solicite ao administrador.</p>

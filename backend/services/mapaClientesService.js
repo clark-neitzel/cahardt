@@ -15,6 +15,7 @@ const { parseLatLng, haversineMetros } = require('./pontoService');
 const whatsCliente = require('./whatsappClienteService');
 const dayjs = require('dayjs');
 const { WHERE_PEDIDO_RECEITA } = require('./projecaoVendasService');
+const gpsClientesService = require('./gpsClientesService');
 
 const CONFIG_KEY = 'mapa_clientes_config';
 const RAIO_PADRAO_M = 1000;
@@ -113,7 +114,7 @@ const buscarClientes = async ({ reqUser, ativo, select = SELECT_CLIENTE }) => {
     return prisma.cliente.findMany({ where, select, orderBy: { Nome: 'asc' } });
 };
 
-const montarCliente = (c, cfgWhats) => {
+const montarCliente = (c, cfgWhats, ultimaMudanca = null) => {
     const insight = c.clienteInsights?.[0] || null;
     const gps = parseLatLng(c.Ponto_GPS);
     return {
@@ -135,6 +136,8 @@ const montarCliente = (c, cfgWhats) => {
         diaVendaRaw: c.Dia_de_venda ?? '',
         gps,
         balcao: c.gps?.balcao === true,
+        // Quem atualizou o ponto GPS atual e quando (docs/preview-gps-quem-atualizou.html)
+        ultimaMudanca,
         telefone: vazioParaNull(c.Telefone),
         telefoneCelular: vazioParaNull(c.Telefone_Celular),
         whatsapp: whatsCliente.situacaoWhatsapp(c, cfgWhats),
@@ -197,7 +200,17 @@ const carregar = async ({ reqUser, ativo = 'true' }) => {
             .then(({ cidades }) => new Map(cidades.map(c => [c.nome, c.uf])))
             .catch((e) => { console.error('[mapa-clientes] cidades indisponíveis:', e.message); return new Map(); }),
     ]);
-    const clientes = linhas.map(c => montarCliente(c, cfgWhats));
+    // Uma query em lote só para "quem atualizou o ponto e quando" (nada de N+1) —
+    // só vale a pena buscar para quem já tem ponto gravado. `linhas` já tem o
+    // Ponto_GPS de todo mundo em mãos: passa como `pontosAtuais` para o service
+    // não repetir o findMany de cliente (~1150 de uma vez).
+    const comPonto = linhas.filter(c => c.Ponto_GPS);
+    const pontosAtuais = new Map(comPonto.map(c => [c.UUID, c.Ponto_GPS]));
+    const ultimasMudancas = await gpsClientesService.ultimaMudancaPonto(
+        comPonto.map(c => c.UUID),
+        pontosAtuais
+    );
+    const clientes = linhas.map(c => montarCliente(c, cfgWhats, ultimasMudancas[c.UUID] || null));
     const comGps = clientes.filter(c => c.gps).length;
     return {
         geradoEm: new Date().toISOString(),

@@ -79,7 +79,9 @@ router.get('/cliente/:uuid', async (req, res) => {
             orderBy: { createdAt: 'desc' },
             take: 10
         });
-        res.json({ cliente, logs });
+        // Quem atualizou o ponto GPS atual e quando (docs/preview-gps-quem-atualizou.html)
+        const ultimaMudanca = (await gps.ultimaMudancaPonto([req.params.uuid]))[req.params.uuid] || null;
+        res.json({ cliente, logs, ultimaMudanca });
     } catch (e) { trataErro(res, e, 'cliente'); }
 });
 
@@ -225,6 +227,10 @@ router.get('/historico', async (req, res) => {
             tipo: l.tipo, status: l.status,
             pontoAntigo: l.pontoAntigo, pontoNovo: l.pontoNovo, distanciaM: l.distanciaM,
             autor: l.autorNome, posicaoAutor: l.posicaoAutor, origem: l.origem,
+            // Vendedor não tem campo "cargo" no schema hoje — sai null (ver relatório da tarefa)
+            autorCargo: null,
+            // Distância de onde o autor estava até o ponto que ele gravou nesta linha
+            autorNoLocalM: gps.autorNoLocalM(l.posicaoAutor, l.pontoNovo),
             autorizadoPor: l.autorizadoPorNome, decididoPor: l.decididoPorNome,
             criadoEm: l.createdAt
         })));

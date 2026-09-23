@@ -6,6 +6,7 @@ import clienteService from '../../../services/clienteService';
 import SelectBusca from '../../../components/SelectBusca';
 import DayPicker from '../../../components/DayPicker';
 import ModalWhatsappCliente from '../../../components/ModalWhatsappCliente';
+import { resumoChip } from '../../../utils/gpsQuemAtualizou';
 
 // Ficha resumida + EDIÇÃO RÁPIDA (dia de entrega, dia de venda, categoria,
 // vendedor). Salvar manda SÓ os campos alterados + origem:'mapa-clientes' para
@@ -112,6 +113,8 @@ export default function DrawerCliente({ cliente, categorias, vendedoresAtivos, o
     const linhaCompra = cliente.diasSemComprar != null
         ? `${cliente.diasSemComprar}d sem comprar${cliente.cicloDias != null ? ` · ciclo ${cliente.cicloDias}d` : ''}`
         : null;
+    // Mesma linha do balão do pino (MapaClientes.jsx) — "quem atualizou o ponto e quando"
+    const chipConferido = resumoChip(cliente.ultimaMudanca);
 
     return (
         <div className="space-y-3">
@@ -122,6 +125,9 @@ export default function DrawerCliente({ cliente, categorias, vendedoresAtivos, o
                     <p className="text-xs text-gray-500 truncate">
                         {[cliente.bairro, cliente.cidade].filter(Boolean).join(' · ') || 'Sem endereço'}
                     </p>
+                    {chipConferido && (
+                        <p className="text-xs font-semibold text-green-700 truncate">📍 Conferido · {chipConferido}</p>
+                    )}
                 </div>
                 <button type="button" aria-label="Fechar" onClick={onFechar} className="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 shrink-0">
                     <X className="h-4 w-4" />

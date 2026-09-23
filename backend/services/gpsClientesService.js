@@ -34,6 +34,7 @@ const MIN_DIAS = 2;
 const JANELA_LOTE_MIN = 10;    // minutos p/ detectar checkout em lote
 const RAIO_LOTE_M = 30;        // mesmo lugar p/ detectar checkout em lote
 const DIAS_JANELA_SINAIS = 240; // só considera sinais dos últimos N dias
+const TOLERANCIA_MESMO_PONTO_M = 1; // "é o mesmo ponto do cadastro" (comparação numérica, não por string)
 
 const CONFIG_KEY = 'gps_clientes_config';
 
@@ -42,6 +43,15 @@ const diaSP = (d) => new Date(d).toLocaleDateString('en-CA', { timeZone: 'Americ
 const distancia = (a, b) => (a && b) ? haversineMetros(a.lat, a.lng, b.lat, b.lng) : null;
 
 const fmtPonto = (p) => p ? `${p.lat.toFixed(6)},${p.lng.toFixed(6)}` : null;
+
+// Distância (m, arredondada) de onde o autor estava até o ponto que ele gravou.
+// null quando falta uma das duas coordenadas (posicaoAutor nem sempre é enviada).
+const autorNoLocalM = (posicaoAutorStr, pontoStr) => {
+    const posAutor = parseLatLng(posicaoAutorStr);
+    const ponto = parseLatLng(pontoStr);
+    if (!posAutor || !ponto) return null;
+    return Math.round(haversineMetros(posAutor.lat, posAutor.lng, ponto.lat, ponto.lng));
+};
 
 // ── Configuração (interruptor do bloqueio de pedido) ─────────────────────────
 
@@ -382,6 +392,73 @@ const registrarMudanca = async ({ clienteUuid, pontoNovo, autor, origem, posicao
     return { aplicado: true, pendente: false };
 };
 
+// ── "Quem atualizou o ponto GPS e quando" (aprovado em docs/preview-gps-quem-atualizou.html) ─
+
+// Devolve Map<clienteUuid, dadosOuNull> com a última mudança de ponto que
+// realmente corresponde ao Ponto_GPS ATUAL do cliente (compara numericamente
+// com tolerância de ~1 m, não por string — evita mostrar autoria de um ponto
+// que já foi substituído por um caminho sem log, ou desfeito depois).
+//
+// `pontosAtuais` (opcional): Map ou objeto uuid → Ponto_GPS já carregado pelo
+// chamador (ex.: mapaClientesService, que já tem ~1150 clientes em mãos) — evita
+// repetir o `cliente.findMany`. Sem ele, busca no banco como antes.
+//
+// Busca só o log MAIS RECENTE por cliente direto no banco (DISTINCT ON), em vez
+// de trazer todo o histórico MUDANCA/APLICADO — a tabela cresce sem limite e
+// essa função é chamada com listas grandes (mapa de clientes).
+const ultimaMudancaPonto = async (uuids, pontosAtuais) => {
+    const lista = [...new Set((uuids || []).filter(u => typeof u === 'string'))];
+    const resultado = {};
+    for (const uuid of lista) resultado[uuid] = null;
+    if (!lista.length) return resultado;
+
+    let pontoAtualPorCliente;
+    if (pontosAtuais) {
+        const getPonto = pontosAtuais instanceof Map
+            ? (uuid) => pontosAtuais.get(uuid)
+            : (uuid) => pontosAtuais[uuid];
+        pontoAtualPorCliente = new Map(lista.map(uuid => [uuid, parseLatLng(getPonto(uuid))]));
+    } else {
+        const clientes = await prisma.cliente.findMany({ where: { UUID: { in: lista } }, select: { UUID: true, Ponto_GPS: true } });
+        pontoAtualPorCliente = new Map(clientes.map(c => [c.UUID, parseLatLng(c.Ponto_GPS)]));
+    }
+
+    const logs = await prisma.$queryRaw`
+        SELECT DISTINCT ON (cliente_uuid)
+            cliente_uuid AS "clienteUuid", ponto_novo AS "pontoNovo", distancia_m AS "distanciaM",
+            autor_id AS "autorId", autor_nome AS "autorNome", origem, posicao_autor AS "posicaoAutor",
+            created_at AS "createdAt"
+        FROM clientes_gps_log
+        WHERE tipo = 'MUDANCA' AND status = 'APLICADO' AND cliente_uuid = ANY(${lista})
+        ORDER BY cliente_uuid, created_at DESC
+    `;
+
+    const ultimoLogPorCliente = new Map(logs.map(log => [log.clienteUuid, log]));
+
+    for (const uuid of lista) {
+        const log = ultimoLogPorCliente.get(uuid);
+        const pontoAtual = pontoAtualPorCliente.get(uuid);
+        if (!log || !pontoAtual) continue;
+        const pontoDoLog = parseLatLng(log.pontoNovo);
+        if (!pontoDoLog) continue;
+        const d = haversineMetros(pontoAtual.lat, pontoAtual.lng, pontoDoLog.lat, pontoDoLog.lng);
+        if (d > TOLERANCIA_MESMO_PONTO_M) continue; // ponto atual veio de outro caminho sem log (ou log é de uma mudança já substituída/desfeita)
+
+        resultado[uuid] = {
+            autorId: log.autorId || null,
+            autorNome: log.autorNome || null,
+            // Vendedor não tem campo "cargo" no schema (só Funcionario.cargo, cadastro
+            // separado ligado por Funcionario.vendedorId) — sai null até existir o campo.
+            autorCargo: null,
+            origem: log.origem || null,
+            em: log.createdAt.toISOString(),
+            distanciaM: log.distanciaM ?? null,
+            autorNoLocalM: autorNoLocalM(log.posicaoAutor, log.pontoNovo)
+        };
+    }
+    return resultado;
+};
+
 // ── Pendências (aprovação da logística) ──────────────────────────────────────
 
 const decidirPendencia = async (logId, aprovar, decisor, motivo) => {
@@ -719,13 +796,22 @@ const geocodeEnderecoDoCliente = async (uuid) => {
 
 // Lote (máx. 10 por chamada): o frontend manda os clientes da rota em pedaços,
 // e cada pedaço volta assim que geocodificado (na 1ª vez ~1s/endereço não cacheado).
+// Toda entrada (inclusive comparavel:false) leva também `seloGps` e `ultimaMudanca`
+// — quem atualizou o ponto por último e quando (docs/preview-gps-quem-atualizou.html).
 const enderecoVsGpsLote = async (uuids) => {
     const lista = [...new Set((uuids || []).filter(u => typeof u === 'string'))].slice(0, 10);
     if (!lista.length) return {};
-    const clientes = await prisma.cliente.findMany({ where: { UUID: { in: lista } }, select: SELECT_ENDERECO });
+    const [clientes, ultimasMudancas] = await Promise.all([
+        prisma.cliente.findMany({
+            where: { UUID: { in: lista } },
+            select: { ...SELECT_ENDERECO, gps: { select: { selo: true } } }
+        }),
+        ultimaMudancaPonto(lista)
+    ]);
     const resultado = {};
     for (const c of clientes) {
-        resultado[c.UUID] = await enderecoVsGpsCliente(c); // sequencial de propósito (vez do Nominatim)
+        const base = await enderecoVsGpsCliente(c); // sequencial de propósito (vez do Nominatim)
+        resultado[c.UUID] = { ...base, seloGps: c.gps?.selo || null, ultimaMudanca: ultimasMudancas[c.UUID] || null };
     }
     return resultado;
 };
@@ -739,5 +825,6 @@ module.exports = {
     reavaliarCliente, saude, divergenciasDoVendedor,
     enderecoVsGps, enderecoVsGpsLote, geocodeEnderecoDoCliente,
     geocodeEndereco, // reusado pelo mapa de divisão de cargas (posição aproximada por endereço)
-    aplicarPendenciasLegadas
+    aplicarPendenciasLegadas,
+    ultimaMudancaPonto, autorNoLocalM
 };
