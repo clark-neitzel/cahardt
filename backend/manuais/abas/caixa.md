@@ -179,6 +179,8 @@ O valor a prestar de contas fica **escondido** enquanto o dia não estiver compl
 - **Entregas ainda pendentes** — pedidos do embarque do dia que ainda não foram marcados como entregues/devolvidos
 - **Clientes da rota sem atendimento** — clientes com venda marcada para o dia da semana que não tiveram atendimento, pedido nem entrega
 
+> **Caixa retroativo usa a rota de COMO ERA NAQUELE DIA, não a de hoje (corrigido em 09/2026).** Se um cliente entrou na rota de um vendedor (Dia de venda) ou trocou de vendedor **depois** do dia do caixa (ex.: ajuste feito pelo Mapa de Clientes), abrir o caixa retroativo daquele dia **não** cobra esse cliente — ele só passa a contar a partir do dia em que realmente foi incluído. Do mesmo jeito, um cliente que **saiu** da rota depois continua contando no dia em que ainda era dela. Isso vale só para o checklist "clientes sem atendimento" (dashboard do admin tem a mesma regra quando reaberto num dia passado); as demais pendências (KM, entregas, devoluções) não mudam.
+
 Observação: devoluções e baixas de dinheiro **não** entram nesse checklist (são tratadas na parte financeira/fechar caixa, mais abaixo).
 
 ### Conferir o dinheiro (passo antes de fechar)
@@ -416,7 +418,8 @@ Quando a falta não é culpa do motorista (ex.: o produto não foi carregado de 
 | `frontend/src/pages/Pedidos/ModalDevolucao.jsx` | Modal de devolução acessível pelo caixa |
 | `frontend/src/pages/Veiculos/VeiculoFicha.jsx` | Ficha do veículo embutida no caixa |
 | `frontend/src/services/caixaService.js` | Chamadas de API do caixa |
-| `backend/src/routes/caixa.js` | Rotas do backend |
+| `backend/routes/caixa.js` | Rotas do backend |
+| `backend/services/rotaHistoricaService.js` | Reconstrói a rota (Dia de venda/vendedor) como ela era num dia passado, lendo o audit_log — usado no checklist "clientes sem atendimento" do caixa retroativo e no dashboard do admin quando reaberto num dia passado |
 
 ## Selo GPS das entregas (novo — 07/2026)
 

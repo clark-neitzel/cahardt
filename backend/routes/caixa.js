@@ -19,7 +19,10 @@ const {
 } = require('../services/condicaoRecebimentoService');
 const cfgConferencia = require('../config/caixaConferenciaConfig');
 // Caixa só de segunda a sexta: o movimento de sáb/dom é prestado na segunda.
-const { intervaloDoCaixa, ehFimDeSemana, dataCaixaDe } = require('../utils/diasUteisCaixa');
+const { intervaloDoCaixa, ehFimDeSemana, dataCaixaDe, hojeStr } = require('../utils/diasUteisCaixa');
+// Rota "como era no dia" (reconstrói Dia_de_venda/idVendedor pelo audit_log) — usada para
+// não cobrar em caixa retroativo cliente que só entrou na rota depois do dia.
+const rotaHistoricaService = require('../services/rotaHistoricaService');
 
 // ── Helpers ──
 // Status de ContaReceber que NÃO representam dinheiro a prestar no caixa.
@@ -791,32 +794,36 @@ router.get('/resumo', async (req, res) => {
             orderBy: { createdAt: 'asc' }
         });
 
-        // Clientes do dia da rota do vendedor que NÃO foram atendidos/pedidos/entregues
-        const DIAS_SIGLA_BE = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
-        const siglaDoDia = DIAS_SIGLA_BE[new Date(data + 'T12:00:00').getDay()];
-        const clientesDoDia = await prisma.cliente.findMany({
-            where: {
-                idVendedor: targetVendedor,
-                Ativo: true,
-                Dia_de_venda: { contains: siglaDoDia, mode: 'insensitive' }
-            },
-            select: { UUID: true, NomeFantasia: true, Nome: true, Dia_de_venda: true, Ativo: true }
-        });
+        // Clientes do dia da rota do vendedor que NÃO foram atendidos/pedidos/entregues.
+        // Caixa de HOJE: cadastro atual já É a rota do dia (mais rápido, sem tocar audit_logs).
+        // Caixa RETROATIVO: reconstruído como a rota ERA no dia (rotaHistoricaService) — senão
+        // cobra cliente que só entrou na rota (Dia_de_venda/vendedor) depois, pelo Mapa de
+        // Clientes (regra do dono: "como aconteceu depois, não pode envolver no retroativo").
+        let clientesDoDia;
+        if (data === hojeStr()) {
+            const DIAS_SIGLA_BE = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
+            const siglaDoDia = DIAS_SIGLA_BE[new Date(data + 'T12:00:00').getDay()];
+            const clientesHoje = await prisma.cliente.findMany({
+                where: {
+                    idVendedor: targetVendedor,
+                    Ativo: true,
+                    Dia_de_venda: { contains: siglaDoDia, mode: 'insensitive' }
+                },
+                select: { UUID: true, NomeFantasia: true, Nome: true, Dia_de_venda: true }
+            });
+            clientesDoDia = clientesHoje
+                // Dia_de_venda é "SEG,QUA" — validar match exato para evitar falso-positivo (ex: "DOMINGO")
+                .filter(c => (c.Dia_de_venda || '').toUpperCase().split(',').map(s => s.trim()).includes(siglaDoDia))
+                .map(c => ({ clienteId: c.UUID, clienteNome: c.NomeFantasia || c.Nome, diaVenda: c.Dia_de_venda }));
+        } else {
+            clientesDoDia = await rotaHistoricaService.clientesDaRotaNoDia(targetVendedor, data);
+        }
         const atendidosIds = new Set([
             ...atendimentosDia.filter(a => a.clienteId).map(a => a.clienteId),
             ...pedidosDoVendedorDia.map(p => p.clienteId),
             ...entregas.filter(e => e.clienteId).map(e => e.clienteId)
         ]);
-        const clientesNaoAtendidos = clientesDoDia
-            .filter(c => c.Ativo !== false)
-            .filter(c => !atendidosIds.has(c.UUID))
-            // Dia_de_venda é "SEG,QUA" — validar match exato para evitar falso-positivo (ex: "DOMINGO")
-            .filter(c => (c.Dia_de_venda || '').toUpperCase().split(',').map(s => s.trim()).includes(siglaDoDia))
-            .map(c => ({
-                clienteId: c.UUID,
-                clienteNome: c.NomeFantasia || c.Nome,
-                diaVenda: c.Dia_de_venda
-            }));
+        const clientesNaoAtendidos = clientesDoDia.filter(c => !atendidosIds.has(c.clienteId));
 
         // Pendências para "deixar o dia certo" (escondem o VALOR A PRESTAR até serem resolvidas)
         // Só o que faz o dia estar incompleto operacionalmente — NÃO inclui financeiro (baixas/devoluções).

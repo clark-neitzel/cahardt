@@ -817,16 +817,30 @@ router.get('/', verificarAuth, async (req, res) => {
         const totalAtendimentos = atendimentosComPedido + atendimentosSemPedido;
         const transferenciasPendentes = atendimentosHoje.filter(a => a.transferidoParaId && !a.transferenciaFinalizada).length;
 
-        // Clientes ativos com Dia_de_venda hoje que NÃO foram atendidos (atend, pedido ou entrega)
+        // Clientes ativos com Dia_de_venda hoje que NÃO foram atendidos (atend, pedido ou entrega).
+        // Em dashboard HISTÓRICO (?data= de um dia passado), reconstrói a rota como ela ERA
+        // naquele dia (rotaHistoricaService) — senão um cliente que só entrou na rota depois
+        // (Mapa de Clientes) aparece como "não atendido" num dia em que nem era dele ainda.
         const DIAS_SIGLA = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
         const siglaDoDia = DIAS_SIGLA[agora.getDay()];
-        const clientesDoDia = await prisma.cliente.findMany({
-            where: {
-                Ativo: true,
-                Dia_de_venda: { contains: siglaDoDia, mode: 'insensitive' },
-            },
-            select: { UUID: true, Dia_de_venda: true },
-        });
+        let clientesDoDiaIds;
+        if (isHistorico) {
+            const dataHistoricaISO = req.query.data;
+            const rotaHistoricaService = require('../services/rotaHistoricaService');
+            const clientesRotaHistorica = await rotaHistoricaService.clientesDaRotaNoDia(null, dataHistoricaISO);
+            clientesDoDiaIds = clientesRotaHistorica.map(c => c.clienteId);
+        } else {
+            const clientesDoDia = await prisma.cliente.findMany({
+                where: {
+                    Ativo: true,
+                    Dia_de_venda: { contains: siglaDoDia, mode: 'insensitive' },
+                },
+                select: { UUID: true, Dia_de_venda: true },
+            });
+            clientesDoDiaIds = clientesDoDia
+                .filter(c => (c.Dia_de_venda || '').toUpperCase().split(',').map(s => s.trim()).includes(siglaDoDia))
+                .map(c => c.UUID);
+        }
         const entregasHojeClienteIds = await prisma.pedido.findMany({
             where: { dataEntrega: { gte: startOfDay, lte: endOfDay }, statusEntrega: { not: 'PENDENTE' } },
             select: { clienteId: true },
@@ -835,9 +849,8 @@ router.get('/', verificarAuth, async (req, res) => {
             ...atendimentosHoje.map(a => a.clienteId).filter(Boolean),
             ...pedidosCriadosHoje.map(p => p.clienteId),
         ]);
-        const clientesNaoAtendidos = clientesDoDia
-            .filter(c => (c.Dia_de_venda || '').toUpperCase().split(',').map(s => s.trim()).includes(siglaDoDia))
-            .filter(c => !atendidosHojeIds.has(c.UUID))
+        const clientesNaoAtendidos = clientesDoDiaIds
+            .filter(uuid => !atendidosHojeIds.has(uuid))
             .length;
 
         // Distinct clientes atendidos hoje = atendimento real (da rota) OU pedido lançado.

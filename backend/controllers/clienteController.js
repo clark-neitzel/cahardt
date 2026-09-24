@@ -8,6 +8,14 @@ const cidadeService = require('../services/cidadeService'); // cadastro oficial 
 // a mesma cara não importa se foi pela tela de Clientes ou pela API da IA (painel do bot).
 const { soDigitosWhatsapp, whatsappValido } = require('../utils/whatsapp');
 
+// Campos cuja mudança é auditada em audit_logs (CLIENTE_ALTERADO) — reorganizam a carteira
+// (dia de entrega/venda, vendedor, categoria) ou o WhatsApp de contato. É o que
+// rotaHistoricaService lê para reconstruir "como era a rota num dia passado" — qualquer
+// caminho que grave estes campos sem passar por essa auditoria faz o caixa retroativo voltar
+// a cobrar cliente que só entrou na rota depois (ver PATCH /clientes/:uuid e PUT /clientes/lote).
+const CAMPOS_AUDITADOS_CLIENTE = ['Dia_de_entrega', 'Dia_de_venda', 'idVendedor', 'categoriaClienteId', 'Telefone_Celular'];
+const normAuditoria = (v) => (v === undefined || v === null || v === '') ? null : String(v);
+
 // WhatsApps vinculados ao cadastro (tabela lateral cliente_whatsapps — usados pelo painel do
 // bot de WhatsApp para achar o cliente). Normaliza para só dígitos, sem vazios nem repetidos.
 // Devolve null quando o campo não veio no body (= não mexer no que está salvo).
@@ -947,13 +955,11 @@ const clienteController = {
             // entrega/venda, vendedor, categoria e celular. Fora de transação, best-effort:
             // nunca altera a resposta nem desfaz o update já feito.
             try {
-                const CAMPOS_AUDITADOS = ['Dia_de_entrega', 'Dia_de_venda', 'idVendedor', 'categoriaClienteId', 'Telefone_Celular'];
-                const norm = (v) => (v === undefined || v === null || v === '') ? null : String(v);
                 const mudancas = {};
-                for (const campo of CAMPOS_AUDITADOS) {
+                for (const campo of CAMPOS_AUDITADOS_CLIENTE) {
                     if (req.body[campo] === undefined) continue;          // não veio no PATCH
-                    const de = norm(atual[campo]);
-                    const para = norm(cliente[campo]);
+                    const de = normAuditoria(atual[campo]);
+                    const para = normAuditoria(cliente[campo]);
                     if (de !== para) mudancas[campo] = { de, para };
                 }
                 if (Object.keys(mudancas).length) {
@@ -1218,12 +1224,63 @@ const clienteController = {
                 return res.status(400).json({ error: 'Nenhum campo válido para atualização (Vendedor, Entrega, Venda, Atendimento, Cliente/Fornecedor).' });
             }
 
+            // Auditoria (audit_logs) — mesma trilha do PATCH individual (CAMPOS_AUDITADOS_CLIENTE).
+            // O updateMany é único (mesmo "para" pra todo mundo); o "de" varia por cliente, então
+            // lê o valor ANTES de cada um aqui (1 query) para montar o {de, para} por linha depois.
+            const camposParaAuditar = Object.keys(dadosAtualizacao).filter(c => CAMPOS_AUDITADOS_CLIENTE.includes(c));
+            const clientesAntesLote = camposParaAuditar.length > 0
+                ? await prisma.cliente.findMany({
+                    where: { UUID: { in: ids } },
+                    select: {
+                        UUID: true, NomeFantasia: true, Nome: true,
+                        ...Object.fromEntries(camposParaAuditar.map(c => [c, true]))
+                    }
+                })
+                : [];
+
             const resultado = Object.keys(dadosAtualizacao).length > 0
                 ? await prisma.cliente.updateMany({
                     where: { UUID: { in: ids } },
                     data: dadosAtualizacao
                 })
                 : { count: ids.length };
+
+            // Fora da operação principal, best-effort: nunca desfaz nem falha a atualização em
+            // lote já aplicada. Sem isso, rotaHistoricaService não enxerga a mudança e o caixa
+            // retroativo volta a cobrar cliente que só entrou/saiu da rota por aqui.
+            if (clientesAntesLote.length > 0) {
+                try {
+                    const autorLote = await prisma.vendedor.findUnique({ where: { id: req.user.id }, select: { nome: true } });
+                    const registrosAuditoria = [];
+                    for (const c of clientesAntesLote) {
+                        const mudancas = {};
+                        for (const campo of camposParaAuditar) {
+                            const de = normAuditoria(c[campo]);
+                            const para = normAuditoria(dadosAtualizacao[campo]);
+                            if (de !== para) mudancas[campo] = { de, para };
+                        }
+                        if (Object.keys(mudancas).length) {
+                            registrosAuditoria.push({
+                                acao: 'CLIENTE_ALTERADO',
+                                entidade: 'Cliente',
+                                entidadeId: c.UUID,
+                                usuarioId: req.user.id,
+                                usuarioNome: autorLote?.nome || req.user.nome || 'desconhecido',
+                                detalhes: JSON.stringify({
+                                    origem: 'edicao-lote',
+                                    cliente: c.NomeFantasia || c.Nome || null,
+                                    mudancas
+                                })
+                            });
+                        }
+                    }
+                    if (registrosAuditoria.length > 0) {
+                        await prisma.auditLog.createMany({ data: registrosAuditoria });
+                    }
+                } catch (audErrLote) {
+                    console.error('[Clientes] auditoria da edição em lote falhou (clientes já salvos):', audErrLote.message);
+                }
+            }
 
             // Espelho de fornecedor em lote (best-effort por cliente; precisa de documento)
             let semDocumento = 0;
