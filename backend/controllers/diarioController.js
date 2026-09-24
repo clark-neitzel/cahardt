@@ -20,10 +20,10 @@ const diarioController = {
             const vendedorId = req.user.id;
             if (!vendedorId) return res.status(403).json({ error: 'Acesso negado. Usuário sem ID na sessão.' });
 
-            const diario = await diarioService.iniciarDia(vendedorId, req.body);
+            const diario = await diarioService.iniciarDia(vendedorId, req.body, req.user.permissoes);
             res.status(201).json(diario);
         } catch (error) {
-            res.status(400).json({ error: error.message });
+            res.status(400).json({ error: error.message, codigo: error.codigo || undefined });
         }
     },
 

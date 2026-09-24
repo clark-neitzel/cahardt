@@ -1,5 +1,11 @@
 [
   {
+    "slug": "pendencias-rota-trava",
+    "titulo": "Pendência de Rota trava sozinha",
+    "resumo": "Cliente da rota do dia útil anterior sem atendimento registrado trava o início do dia até você resolver (toque Atender e registre, ex.: \"Atendido sem pedido\" ou \"Sem resposta / Ausente\"). Agora o app confere isso sozinho o dia inteiro — ao voltar para o app (a cada poucos minutos) e na hora, sempre que o dia vira, mesmo com o celular ligado dias a fio. Sem internet na 1ª conferência do dia aparece a tela \"Não foi possível conferir suas pendências de rota\" com \"Tentar novamente\" (nunca desloga); quem já foi conferido no dia não trava de novo por um sinal ruim numa checagem em segundo plano.",
+    "data": "2026-09-24"
+  },
+  {
     "slug": "aprovar-sem-estoque",
     "titulo": "Pedido sem estoque não aprova",
     "resumo": "Na fila de Pedidos Online (Site + Ana), um pedido em que algum produto pede mais do que o estoque disponível agora ganha o selo vermelho \"Sem estoque\" e mostra, já na lista, o que falta (\"Nome do produto — pediu 10, tem 9\"). Dentro do pedido o item em falta fica destacado, e o botão \"Aprovar e gerar pedido\" fica travado — não existe \"aprovar mesmo assim\". O caminho é ajustar o estoque, atualizar a fila e aprovar normalmente. Mesmo produto em duas linhas (normal + promoção) soma as quantidades antes de comparar com o estoque.",

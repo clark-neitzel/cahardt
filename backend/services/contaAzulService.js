@@ -1036,7 +1036,38 @@ const contaAzulService = {
         // Não sobrescrever com undefined
         Object.keys(dados).forEach(k => dados[k] === undefined && delete dados[k]);
 
+        // Auditoria do Ativo ANTES do update: esta sincronização pode ativar/desativar o
+        // cliente a partir do CA sem passar por nenhuma tela — sem log aqui, a trava de
+        // Pendências de Rota e o caixa retroativo (rotaHistoricaService, que reconstrói
+        // Ativo pelo audit_log) não enxergam a mudança.
+        let ativoAntes;
+        if (dados.Ativo !== undefined) {
+            const clienteAntes = await prisma.cliente.findUnique({ where: { UUID: uuid }, select: { Ativo: true } });
+            ativoAntes = clienteAntes?.Ativo;
+        }
+
         const atualizado = await prisma.cliente.update({ where: { UUID: uuid }, data: dados });
+
+        if (dados.Ativo !== undefined && ativoAntes !== undefined && ativoAntes !== dados.Ativo) {
+            try {
+                await prisma.auditLog.create({
+                    data: {
+                        acao: 'CLIENTE_ALTERADO',
+                        entidade: 'Cliente',
+                        entidadeId: uuid,
+                        usuarioId: 'conta-azul-sync',
+                        usuarioNome: 'Sincronização Conta Azul',
+                        detalhes: JSON.stringify({
+                            origem: 'sincronizarClienteUnico',
+                            cliente: atualizado.NomeFantasia || atualizado.Nome || null,
+                            mudancas: { Ativo: { de: String(ativoAntes), para: String(dados.Ativo) } }
+                        })
+                    }
+                });
+            } catch (logErr) {
+                console.error('[ContaAzul] auditoria do Ativo (sincronizarClienteUnico) falhou (cliente já salvo):', logErr.message);
+            }
+        }
 
         // Número da IE em tabela separada (só grava quando o CA retornou inscrição)
         if (inscr) {

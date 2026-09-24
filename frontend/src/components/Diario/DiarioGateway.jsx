@@ -49,6 +49,21 @@ const DiarioGateway = () => {
         }
     };
 
+    // Quando /diarios/iniciar recusa por PENDENCIA_ROTA (cliente da rota de dia
+    // anterior sem atendimento), o backend já manda a mensagem pronta ("Você tem N
+    // cliente(s) da rota de DD/MM sem atendimento..."). Além do toast, pede para o
+    // PendenciaRotaGateway rebuscar — assim a tela cheia de pendências aparece na
+    // hora em vez do usuário ficar batendo em "iniciar o dia" sem entender por quê.
+    const tratarErroIniciar = (error) => {
+        const dadosErro = error.response?.data;
+        if (dadosErro?.codigo === 'PENDENCIA_ROTA') {
+            toast.error(dadosErro.error || 'Você tem atendimentos pendentes na rota.', { duration: 6000 });
+            window.dispatchEvent(new Event('pendencias-rota:recarregar'));
+            return;
+        }
+        toast.error(dadosErro?.error || 'Erro ao iniciar o dia.');
+    };
+
     const confirmarHomeOffice = async () => {
         try {
             setIsSubmitting(true);
@@ -56,7 +71,7 @@ const DiarioGateway = () => {
             toast.success('Expediente de Home Office iniciado!');
             setTimeout(() => window.location.reload(), 800);
         } catch (error) {
-            toast.error(error.response?.data?.error || 'Erro ao iniciar o dia.');
+            tratarErroIniciar(error);
             setIsSubmitting(false);
         }
     };
@@ -67,7 +82,7 @@ const DiarioGateway = () => {
             toast.success('Boa viagem! Registrado com sucesso.');
             setTimeout(() => window.location.reload(), 800);
         } catch (error) {
-            toast.error(error.response?.data?.error || 'Erro ao iniciar o dia.');
+            tratarErroIniciar(error);
         }
     };
 

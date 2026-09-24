@@ -4,14 +4,23 @@
 // depois (ex.: Dia_de_venda/idVendedor alterado pelo Mapa de Clientes após o caixa já ter
 // acontecido). Regra do dono: "como aconteceu depois, não pode envolver no retroativo".
 //
-// Como funciona: para cada campo rastreado (Dia_de_venda, idVendedor), pega os logs
+// Como funciona: para cada campo rastreado (Dia_de_venda, idVendedor, Ativo), pega os logs
 // CLIENTE_ALTERADO daquele cliente com createdAt depois do fim do dia (Brasília); o valor do
 // campo NAQUELE DIA é o "de" do log mais antigo depois do dia (se não há log depois, vale o
-// valor atual).
+// valor atual). Ativo entrou em 09/2026: cliente desativado DEPOIS do dia do caixa continua
+// sendo cobrado no retroativo; cliente que só foi ativado depois não é (não estava na rota).
 const prisma = require('../config/database');
 
 const DIAS_SIGLA = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
-const CAMPOS_RECONSTRUIDOS = ['Dia_de_venda', 'idVendedor'];
+const CAMPOS_RECONSTRUIDOS = ['Dia_de_venda', 'idVendedor', 'Ativo'];
+
+// O audit_log grava booleano como STRING (normAuditoria faz `String(v)` em clienteController) —
+// 'true'/'false', não o booleano em si. Converte de volta; undefined/null/outro valor = não sabe.
+function ativoBool(v) {
+    if (v === true || v === 'true') return true;
+    if (v === false || v === 'false') return false;
+    return null;
+}
 
 function siglaDoDia(dataYYYYMMDD) {
     return DIAS_SIGLA[new Date(dataYYYYMMDD + 'T12:00:00').getDay()];
@@ -92,34 +101,47 @@ async function clientesDaRotaNoDia(vendedorId, dataYYYYMMDD) {
     const corte = corteFimDiaBrasilia(dataYYYYMMDD);
     const historico = await mapaHistoricoPosDia(corte);
 
-    // Pool base: todo cliente ativo que HOJE é do vendedor (ou, se vendedorId=null, todo
+    const SELECT_CLIENTE = { UUID: true, NomeFantasia: true, Nome: true, Dia_de_venda: true, idVendedor: true, Data_Criacao: true, Ativo: true };
+
+    // Pool base: todo cliente ativo HOJE que é do vendedor (ou, se vendedorId=null, todo
     // cliente ativo) — cobre o caso normal e os "falsos positivos" que só entraram na
-    // carteira depois do dia (serão removidos abaixo pela reconstrução do idVendedor).
+    // carteira depois do dia (serão removidos abaixo pela reconstrução do idVendedor/Ativo).
     const whereBase = { Ativo: true };
     if (vendedorId) whereBase.idVendedor = vendedorId;
     const poolBase = await prisma.cliente.findMany({
         where: whereBase,
-        select: { UUID: true, NomeFantasia: true, Nome: true, Dia_de_venda: true, idVendedor: true, Data_Criacao: true }
+        select: SELECT_CLIENTE
     });
 
     let pool = poolBase;
 
-    // Quando filtrando por vendedor: também precisamos dos clientes que ERAM do vendedor
-    // no dia mas hoje não são mais (idVendedor mudou depois) — não estão no poolBase porque
-    // o idVendedor ATUAL já é outro. Achamos pelo histórico (de === vendedorId) e buscamos
-    // o cadastro atual deles numa segunda query (ainda não é N+1: uma query por lote).
-    if (vendedorId) {
-        const idsJaNoPool = new Set(poolBase.map(c => c.UUID));
-        const idsQueEramDoVendedor = Object.entries(historico)
-            .filter(([uuid, campos]) => campos.idVendedor && campos.idVendedor.valorNoDia === vendedorId && !idsJaNoPool.has(uuid))
-            .map(([uuid]) => uuid);
-        if (idsQueEramDoVendedor.length > 0) {
-            const extras = await prisma.cliente.findMany({
-                where: { UUID: { in: idsQueEramDoVendedor }, Ativo: true },
-                select: { UUID: true, NomeFantasia: true, Nome: true, Dia_de_venda: true, idVendedor: true, Data_Criacao: true }
-            });
-            pool = pool.concat(extras);
+    // Também precisamos buscar de novo quem HOJE não bate o pool base mas batia no dia:
+    //  - idVendedor mudou depois (só relevante quando filtrando por vendedor) — não está no
+    //    poolBase porque o idVendedor ATUAL já é outro.
+    //  - Ativo mudou depois: cliente foi DESATIVADO depois do dia do caixa — hoje some do
+    //    poolBase (que só pega Ativo:true), mas no dia ele estava ativo e tem que ser cobrado
+    //    (regra do dono: "cliente desativado depois do dia continua sendo cobrado no caixa
+    //    retroativo"). Sem `Ativo: true` no where aqui de propósito — é exatamente o cliente
+    //    inativo hoje que este bloco existe para achar.
+    // Achamos pelo histórico (audit_log) e buscamos o cadastro atual numa segunda query
+    // (ainda não é N+1: uma query por lote, não por cliente).
+    const idsJaNoPool = new Set(poolBase.map(c => c.UUID));
+    const idsExtra = new Set();
+    for (const [uuid, campos] of Object.entries(historico)) {
+        if (idsJaNoPool.has(uuid)) continue;
+        if (vendedorId && campos.idVendedor && campos.idVendedor.valorNoDia === vendedorId) {
+            idsExtra.add(uuid);
         }
+        if (campos.Ativo && ativoBool(campos.Ativo.valorNoDia) === true) {
+            idsExtra.add(uuid);
+        }
+    }
+    if (idsExtra.size > 0) {
+        const extras = await prisma.cliente.findMany({
+            where: { UUID: { in: [...idsExtra] } },
+            select: SELECT_CLIENTE
+        });
+        pool = pool.concat(extras);
     }
 
     const resultado = [];
@@ -129,6 +151,11 @@ async function clientesDaRotaNoDia(vendedorId, dataYYYYMMDD) {
         // idVendedor no dia: se há mudança registrada depois do dia, vale o "de"; senão o atual.
         const idVendedorNoDia = (hist && hist.idVendedor) ? hist.idVendedor.valorNoDia : c.idVendedor;
         if (vendedorId && idVendedorNoDia !== vendedorId) continue; // não era desse vendedor no dia
+
+        // Ativo no dia: idem — cliente que estava INATIVO no dia (ainda que ativo hoje) não
+        // entra; cliente que estava ATIVO no dia (ainda que desativado depois) entra.
+        const ativoNoDia = (hist && hist.Ativo) ? ativoBool(hist.Ativo.valorNoDia) : c.Ativo;
+        if (ativoNoDia === false) continue;
 
         // Cliente criado depois do dia do caixa não entra.
         if (c.Data_Criacao && c.Data_Criacao > corte) continue;

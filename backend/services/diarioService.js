@@ -1,21 +1,8 @@
 const prisma = require('../config/database');
-
 // Função auxiliar para pegar data no formato YYYY-MM-DD baseado no horário de Brasília
-const getDataReferencia = (data) => {
-    const d = data ? new Date(data) : new Date();
-    // Extrai o YYYY, MM, DD usando o timezone seguro de São Paulo (evita erro de virada UTC)
-    const formatter = new Intl.DateTimeFormat('pt-BR', {
-        timeZone: 'America/Sao_Paulo',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit'
-    });
-    const partes = formatter.formatToParts(d);
-    const ano = partes.find(p => p.type === 'year').value;
-    const mes = partes.find(p => p.type === 'month').value;
-    const dia = partes.find(p => p.type === 'day').value;
-    return `${ano}-${mes}-${dia}`;
-};
+// (extraída para backend/utils/dataReferenciaBrasilia.js — reaproveitada por outros
+// services, ex.: atendimentoService.buscarPendenciasRota).
+const { getDataReferencia } = require('../utils/dataReferenciaBrasilia');
 
 const diarioService = {
     // 1. Validar Status Atual do Usuário (Se ele tem que fechar o dia anterior, ou se já abriu hoje)
@@ -52,7 +39,9 @@ const diarioService = {
     },
 
     // 2. Iniciar o dia
-    iniciarDia: async (vendedorId, dados) => {
+    // `permissoes` vem do req.user do controller (objeto já parseado pelo authMiddleware) —
+    // só serve para a isenção admin/Isento_Ponto da trava de pendência de rota abaixo.
+    iniciarDia: async (vendedorId, dados, permissoes) => {
         const { modo, veiculoId, kmInicial, checklist, obs } = dados;
         const hojeDateRef = getDataReferencia();
 
@@ -68,6 +57,32 @@ const diarioService = {
         const status = await diarioService.statusDoDia(vendedorId);
         if (status.pendenciaAnterior) {
             throw new Error('Você precisa informar o KM final do seu último dia de trabalho Presencial antes de iniciar outro!');
+        }
+
+        // Bloqueia início do dia com cliente da rota do dia útil anterior sem atendimento
+        // (antes só o frontend barrava — PendenciaRotaGateway.jsx — dava para contornar
+        // chamando a API direto). Mesma isenção do frontend: admin ou Isento_Ponto.
+        // Require tardio (dentro da função, igual a outros pontos do arquivo) para não
+        // criar dependência circular caso atendimentoService algum dia precise de diarioService.
+        const permsNorm = typeof permissoes === 'string'
+            ? (() => { try { return JSON.parse(permissoes); } catch { return {}; } })()
+            : (permissoes || {});
+        const isento = !!(permsNorm.admin || permsNorm.Isento_Ponto);
+        if (!isento) {
+            const atendimentoService = require('./atendimentoService');
+            const pendencia = await atendimentoService.buscarPendenciasRota(vendedorId);
+            if (pendencia?.pendente && pendencia.diaPendente) {
+                const dia = pendencia.diaPendente;
+                const dataFormatada = new Date(`${dia.data}T12:00:00`).toLocaleDateString('pt-BR', {
+                    day: '2-digit', month: '2-digit'
+                });
+                const erro = new Error(
+                    `Você tem ${dia.pendentes} cliente(s) da rota de ${dataFormatada} sem atendimento. ` +
+                    `Registre o atendimento (ou 'Sem resposta / Ausente') antes de iniciar o dia.`
+                );
+                erro.codigo = 'PENDENCIA_ROTA';
+                throw erro;
+            }
         }
 
         // Valida modo Presencial

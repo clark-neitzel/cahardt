@@ -1,5 +1,7 @@
 const prisma = require('../config/database');
 const clienteInsightService = require('./clienteInsightService');
+const { getDataReferencia } = require('../utils/dataReferenciaBrasilia');
+const { fromStr, toStr, diaSemana } = require('../utils/diasUteisCaixa');
 
 // Teto de segurança do painel: período muito largo não pode varrer a tabela inteira
 // (a mesclagem atendimento + pedido é feita em memória para ordenar pela hora).
@@ -358,32 +360,32 @@ const atendimentoService = {
     // Regra ativa a partir de 2026-04-16
     buscarPendenciasRota: async (vendedorId) => {
         const SIGLAS = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
-        const DATA_INICIO_REGRA = new Date('2026-04-15T00:00:00');
+        const DATA_INICIO_REGRA = '2026-04-15'; // YYYY-MM-DD — comparação lexicográfica é segura no formato ISO
 
-        const hoje = new Date();
-        hoje.setHours(0, 0, 0, 0);
+        // Datas resolvidas em 'YYYY-MM-DD' no fuso de Brasília (nunca no fuso do servidor:
+        // o container roda em UTC, e perto da virada — 21h-23h59 em Brasília — o servidor já
+        // está no dia seguinte em UTC; um `new Date().setHours(0,0,0,0)` puro apontaria pro
+        // dia errado). `fromStr`/`toStr`/`diaSemana` (diasUteisCaixa.js) fazem a aritmética de
+        // dias em cima da string, sempre ao meio-dia — seguro contra qualquer fuso do host.
+        const hojeISO = getDataReferencia();
 
         // Se hoje é antes da data de início da regra, sem pendências
-        if (hoje < DATA_INICIO_REGRA) return { pendente: false };
+        if (hojeISO < DATA_INICIO_REGRA) return { pendente: false };
 
         // Determina o dia útil anterior: ontem, ou sexta se hoje é segunda
         // Se hoje é domingo ou sábado, não cobra (não deveria estar trabalhando)
-        const dow = hoje.getDay(); // 0=dom, 6=sáb
+        const dow = diaSemana(hojeISO); // 0=dom, 6=sáb
         if (dow === 0 || dow === 6) return { pendente: false };
 
-        const diaAnterior = new Date(hoje);
-        if (dow === 1) {
-            // Segunda → verifica sexta (3 dias atrás)
-            diaAnterior.setDate(diaAnterior.getDate() - 3);
-        } else {
-            // Ter-Sex → verifica ontem
-            diaAnterior.setDate(diaAnterior.getDate() - 1);
-        }
+        const diaAnteriorDate = fromStr(hojeISO);
+        // Segunda → verifica sexta (3 dias atrás); Ter-Sex → verifica ontem
+        diaAnteriorDate.setDate(diaAnteriorDate.getDate() - (dow === 1 ? 3 : 1));
+        const diaAnteriorISO = toStr(diaAnteriorDate);
 
         // Se o dia anterior é antes da regra, sem pendências
-        if (diaAnterior < DATA_INICIO_REGRA) return { pendente: false };
+        if (diaAnteriorISO < DATA_INICIO_REGRA) return { pendente: false };
 
-        const sigla = SIGLAS[diaAnterior.getDay()];
+        const sigla = SIGLAS[diaSemana(diaAnteriorISO)];
 
         // Busca clientes do vendedor que têm esse dia na rota
         const clientes = await prisma.cliente.findMany({
@@ -412,11 +414,11 @@ const atendimentoService = {
 
         if (clientesDoDia.length === 0) return { pendente: false };
 
-        // Verifica quais tiveram atendimento ou pedido nesse dia OU hoje (atendimento de compensação)
-        const inicioDia = new Date(diaAnterior);
-        inicioDia.setHours(0, 0, 0, 0);
-        const fimHoje = new Date(hoje);
-        fimHoje.setHours(23, 59, 59, 999);
+        // Verifica quais tiveram atendimento ou pedido nesse dia OU hoje (atendimento de
+        // compensação). Janela em -03:00 explícito (Brasil não tem mais horário de verão) —
+        // não em UTC puro, senão perde ~3h de cada ponta da janela de Brasília.
+        const inicioDia = new Date(`${diaAnteriorISO}T00:00:00.000-03:00`);
+        const fimHoje = new Date(`${hojeISO}T23:59:59.999-03:00`);
 
         const uuids = clientesDoDia.map(c => c.UUID);
 
@@ -451,7 +453,7 @@ const atendimentoService = {
             pendente: true,
             diasPendentes: 1,
             diaPendente: {
-                data: diaAnterior.toISOString().split('T')[0],
+                data: diaAnteriorISO,
                 diaSigla: sigla,
                 clientes: clientesPendentes,
                 totalClientes: clientesDoDia.length,

@@ -13,7 +13,7 @@ const { soDigitosWhatsapp, whatsappValido } = require('../utils/whatsapp');
 // rotaHistoricaService lê para reconstruir "como era a rota num dia passado" — qualquer
 // caminho que grave estes campos sem passar por essa auditoria faz o caixa retroativo voltar
 // a cobrar cliente que só entrou na rota depois (ver PATCH /clientes/:uuid e PUT /clientes/lote).
-const CAMPOS_AUDITADOS_CLIENTE = ['Dia_de_entrega', 'Dia_de_venda', 'idVendedor', 'categoriaClienteId', 'Telefone_Celular'];
+const CAMPOS_AUDITADOS_CLIENTE = ['Dia_de_entrega', 'Dia_de_venda', 'idVendedor', 'categoriaClienteId', 'Telefone_Celular', 'Ativo'];
 const normAuditoria = (v) => (v === undefined || v === null || v === '') ? null : String(v);
 
 // WhatsApps vinculados ao cadastro (tabela lateral cliente_whatsapps — usados pelo painel do
@@ -753,7 +753,7 @@ const clienteController = {
                 select: {
                     Documento: true, End_Estado: true, Telefone_Celular: true, fiscal: { select: { inscricaoEstadual: true } },
                     // usados só pela auditoria (diff de/para) gravada após o update
-                    Dia_de_entrega: true, Dia_de_venda: true, idVendedor: true, categoriaClienteId: true, Nome: true, NomeFantasia: true
+                    Dia_de_entrega: true, Dia_de_venda: true, idVendedor: true, categoriaClienteId: true, Nome: true, NomeFantasia: true, Ativo: true
                 }
             });
             if (!atual) return res.status(404).json({ error: 'Cliente não encontrado' });

@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Pendência de Rota trava sozinha — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp (sem og:image de propósito — cartão compacto) -->
+<meta property="og:title" content="🔒 Novidade no Hardt App: Pendência de Rota trava sozinha">
+<meta property="og:description" content="Cliente de ontem sem atendimento? Agora o app confere sozinho o dia inteiro e não libera até você resolver — mesmo com o app aberto há dias no celular.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 96px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 7vw, 40px);
+    font-weight: 800;
+    line-height: 1.12;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.75);
+    font-size: 16px;
+    max-width: 46ch;
+    margin: 0 auto;
+    text-wrap: balance;
+  }
+
+  /* mock da tela flutuando sobre o hero */
+  .mock {
+    max-width: 420px;
+    margin: -68px auto 28px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.28);
+    overflow: hidden;
+    text-align: left;
+  }
+  .mock-top {
+    background: #fff;
+    color: var(--ink);
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid #f1f0ea;
+  }
+  .mock-ico { font-size: 22px; flex-shrink: 0; }
+  .mock-top small {
+    display: block;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    color: #b91c1c;
+  }
+  .mock-top strong { font-size: 15px; line-height: 1.2; }
+  .mock-sair {
+    margin-left: auto;
+    font-size: 11px;
+    font-weight: 700;
+    color: #dc2626;
+    background: #fef2f2;
+    padding: 5px 10px;
+    border-radius: 999px;
+    flex-shrink: 0;
+  }
+  .mock-body { padding: 16px 18px 18px; background: #fef2f2; }
+  .mock-body p { font-size: 13px; color: #b91c1c; font-weight: 600; margin: 0 0 12px; }
+  .mock-body p b { font-weight: 800; }
+  .mock-progresso-linha { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--ink-soft); font-weight: 700; margin-bottom: 6px; }
+  .mock-progresso-linha b { color: var(--primary-dark); }
+  .mock-barra { background: #e2e0d8; border-radius: 999px; height: 8px; overflow: hidden; margin-bottom: 14px; }
+  .mock-barra i { display: block; background: #22c55e; height: 100%; width: 33%; }
+  .mock-cliente {
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-radius: 12px;
+    padding: 12px;
+  }
+  .mock-cliente-nome { font-size: 13px; font-weight: 700; color: var(--ink); margin-bottom: 8px; }
+  .mock-botoes { display: flex; gap: 8px; }
+  .mock-botoes span {
+    flex: 1;
+    text-align: center;
+    font-size: 12.5px;
+    font-weight: 700;
+    padding: 9px 6px;
+    border-radius: 999px;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .b-atender { background: #2563eb; color: #fff; }
+  .b-pedido { border: 1.5px solid #d1d5db; color: #374151; background: #fff; }
+
+  .demo-hint { text-align: center; font-size: 12px; color: var(--ink-soft); margin: 0 0 34px; }
+
+  /* ── SEÇÕES / ACCORDION ── */
+  .sec-label {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: var(--primary-dark);
+    margin: 34px 4px 12px;
+  }
+  .acc {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .acc-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: none;
+    border: none;
+    font: inherit;
+    text-align: left;
+    padding: 15px 16px;
+    cursor: pointer;
+    min-height: 56px;
+  }
+  .acc-ico {
+    width: 38px; height: 38px;
+    border-radius: 11px;
+    background: var(--mint);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  /* passos */
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n {
+    width: 30px; height: 30px; flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 800;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .rodape {
+    text-align: center;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 40px;
+  }
+  .rodape strong { color: var(--primary-dark); }
+
+  /* ── MOCKUPS DAS TELAS DO APP ── */
+  .tela {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .tela-titulo {
+    background: var(--house);
+    color: #fff;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .app-card {
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .app-card-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    border-bottom: 1px solid #f0efe9;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: #6b756f;
+  }
+  .app-card-body { padding: 12px; }
+  .app-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--primary);
+    color: #fff;
+    font-size: 12.5px;
+    font-weight: 700;
+    padding: 9px 16px;
+    border-radius: 999px;
+  }
+  .app-btn.claro { background: #fff; border: 1.5px solid var(--primary); color: var(--primary); }
+  .app-btn.cinza { background: #fff; border: 1.5px solid #d1d5db; color: #374151; }
+  .pin {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    flex-shrink: 0;
+    vertical-align: 2px;
+    margin-left: 6px;
+  }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+
+  /* elementos específicos das telas 2 e 3 */
+  .tela-erro-card {
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-radius: 14px;
+    padding: 22px 16px;
+    text-align: center;
+  }
+  .tela-erro-ico {
+    width: 40px; height: 40px;
+    border-radius: 999px;
+    background: var(--mint);
+    color: var(--primary);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    margin: 0 auto 12px;
+  }
+  .tela-erro-card h4 { font-size: 14px; font-weight: 800; margin: 0 0 6px; color: var(--ink); }
+  .tela-erro-card p { font-size: 12px; color: var(--ink-soft); margin: 0 0 14px; }
+  .tela-modo-escolha { display: flex; gap: 8px; margin-bottom: 12px; }
+  .tela-modo-opcao {
+    flex: 1;
+    border: 1.5px dashed #d8d5cc;
+    border-radius: 10px;
+    padding: 14px 8px;
+    text-align: center;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #6b756f;
+  }
+  .tela-toast {
+    background: #12241f;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 12px 14px;
+    border-radius: 12px;
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+  }
+</style>
+</head>
+<body>
+
+<!-- ══════════ HERO ══════════ -->
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>Pendência de Rota<br>agora trava o app sozinha</h1>
+    <p>Se sobrou cliente da rota de ontem sem nenhum atendimento registrado, o app avisa e não deixa começar o dia até você resolver — e ele confere isso sozinho, mesmo com o app aberto há dias no celular.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- mock da tela de Pendências de Rota -->
+  <div class="mock" aria-hidden="true">
+    <div class="mock-top">
+      <span class="mock-ico">⚠️</span>
+      <div>
+        <small>Pendências de Rota</small>
+        <strong>Atendimentos Pendentes!</strong>
+      </div>
+      <span class="mock-sair">Sair</span>
+    </div>
+    <div class="mock-body">
+      <p>Você não finalizou os atendimentos da rota de <b>terça-feira, 22/09</b>.</p>
+      <div class="mock-progresso-linha"><span>Terça — 3 clientes na rota</span> <b>1/3 resolvidos</b></div>
+      <div class="mock-barra"><i></i></div>
+      <div class="mock-cliente">
+        <div class="mock-cliente-nome">Padaria Exemplo LTDA</div>
+        <div class="mock-botoes">
+          <span class="b-atender">📋 Atender</span>
+          <span class="b-pedido">📦 Pedido</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="demo-hint">É assim que a tela aparece — dados fictícios, só para ilustrar.</p>
+
+  <!-- ══════════ COMO FUNCIONA ══════════ -->
+  <div class="sec-label">Como funciona — toque para recolher</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🚧</span>
+      <strong>A trava vale sempre</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Se você deixou <b>algum cliente da rota do dia útil anterior</b> (ontem — ou <b>sexta-feira</b>, se hoje é segunda) sem nenhum atendimento registrado e sem pedido feito, o app não deixa iniciar o dia.</li>
+        <li>Aparece a tela <b>"Atendimentos Pendentes!"</b> com a lista de quem faltou — e ela cobre o app inteiro até você resolver.</li>
+        <li>Não conta domingo nem sábado (você não deveria estar trabalhando nesses dias).</li>
+        <li>Quem tem a permissão <b>"Isento de Ponto"</b> (ou é administrador) não passa por essa trava.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🔄</span>
+      <strong>O app confere sozinho, o dia inteiro</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Como o app fica <b>dias abertos</b> no celular, ele não checa só uma vez quando você abre — ele confere de novo <b>ao voltar para o app</b> (troca de tela/aplicativo e retorna), a cada poucos minutos.</li>
+        <li>E confere <b>na hora, sempre que o dia vira</b> — mesmo com o celular ligado e o app aberto a noite inteira, sem precisar fechar e abrir de novo.</li>
+        <li>Se você tentar iniciar o dia e o servidor recusar por causa de uma pendência, a tela de pendências aparece na hora, com a explicação certa.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">📶</span>
+      <strong>Sem internet na 1ª conferência do dia</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Se o celular não conseguir falar com o servidor bem na <b>primeira conferência do dia</b> (ou logo depois da virada do dia), o app tenta de novo sozinho algumas vezes.</li>
+        <li>Continuando sem sinal, aparece a tela <b>"Não foi possível conferir suas pendências de rota"</b>, com o botão <b>"Tentar novamente"</b> — por segurança, o app não libera sem confirmar.</li>
+        <li>Você <b>continua logado</b>: essa tela nunca desconecta a sua conta, só pede sinal para confirmar.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">✅</span>
+      <strong>Já foi conferido hoje? Sinal ruim não trava de novo</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Depois que o app já confirmou sua situação uma vez no dia, uma falha de sinal numa checagem posterior (aquelas que rodam sozinhas em segundo plano) <b>não te bloqueia</b> de novo.</li>
+        <li>É pensado para quem está em campo com sinal fraco: o app tenta de novo mais tarde, sem interromper o que você está fazendo.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">👉</span>
+      <strong>Como resolver</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Na lista, toque <b>Atender</b> no cliente e registre o que aconteceu — ex.: <b>"Atendido sem pedido"</b> ou <b>"Sem resposta / Ausente"</b> se realmente não deu para falar com ele.</li>
+        <li>Se preferir, toque <b>Pedido</b> para abrir um pedido novo direto para aquele cliente (também resolve a pendência dele).</li>
+        <li>Quando todos os clientes da lista forem resolvidos, o app libera sozinho — sem precisar fechar e abrir.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ══════════ AS TELAS DO APP ══════════ -->
+  <div class="sec-label">As telas do app, sem mistério</div>
+
+  <!-- TELA 1: overlay de pendências -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 1 · Pendências de Rota — tela cheia até resolver</div>
+    <div class="tela-corpo">
+      <div class="app-card" style="margin-bottom:12px;">
+        <div class="app-card-body">
+          <div style="font-size:13px;font-weight:700;color:#b91c1c;margin-bottom:8px;">⚠️ Atendimentos Pendentes!<span class="pin">1</span></div>
+          <div style="font-size:12px;color:#6b756f;margin-bottom:10px;">Você não finalizou os atendimentos da rota de <b>segunda-feira, 21/09</b>.</div>
+          <div style="font-size:11px;font-weight:700;color:var(--primary-dark);margin-bottom:12px;">1/3 resolvidos<span class="pin">2</span></div>
+        </div>
+      </div>
+      <div class="app-card">
+        <div class="app-card-head">Padaria Exemplo LTDA · Cidade Exemplo</div>
+        <div class="app-card-body" style="display:flex;gap:8px;">
+          <span class="app-btn">📋 Atender<span class="pin">3</span></span>
+          <span class="app-btn claro">📦 Pedido</span>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>O aviso mostra <b>de qual dia</b> ficou a pendência e por cima de qualquer tela do app — não dá para usar o app sem resolver.</span></div>
+      <div><span class="pin">2</span><span>A barra de progresso mostra <b>quantos clientes já foram resolvidos</b> da lista daquele dia. Terminou todos? A tela some sozinha.</span></div>
+      <div><span class="pin">3</span><span><b>Atender</b> abre o registro de atendimento normal (inclusive "Sem resposta / Ausente"); <b>Pedido</b> abre um pedido novo para aquele cliente. Os dois resolvem a pendência.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 2: erro de rede -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 2 · Sem conseguir confirmar (falha de rede)</div>
+    <div class="tela-corpo">
+      <div class="tela-erro-card">
+        <div class="tela-erro-ico">📶</div>
+        <h4>Não foi possível conferir suas pendências de rota<span class="pin">1</span></h4>
+        <p>Não conseguimos confirmar se há atendimentos pendentes da rota. Verifique sua internet e tente novamente — você continua logado.</p>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <span class="app-btn" style="justify-content:center;">🔄 Tentar novamente<span class="pin">2</span></span>
+          <span class="app-btn cinza" style="justify-content:center;">Sair e entrar com outra conta<span class="pin">3</span></span>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Só aparece quando o app <b>ainda não conseguiu confirmar nada hoje</b> (primeira checagem do dia, ou logo após a virada do dia) — tentou 3 vezes e não conseguiu falar com o servidor.</span></div>
+      <div><span class="pin">2</span><span><b>Tentar novamente</b> refaz a checagem na hora — assim que o sinal voltar, é só tocar aqui.</span></div>
+      <div><span class="pin">3</span><span>Essa tela <b>nunca desconecta sua conta sozinha</b>. "Sair" aqui é uma opção, não o padrão — pense nela só se quiser trocar de usuário.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 3: aviso ao tentar iniciar o dia -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 3 · Aviso ao tentar iniciar o dia com pendência</div>
+    <div class="tela-corpo">
+      <div style="font-size:12px;font-weight:700;color:var(--ink-soft);margin-bottom:10px;">Como você trabalhará hoje?</div>
+      <div class="tela-modo-escolha">
+        <div class="tela-modo-opcao">🏠<br>HOME OFFICE</div>
+        <div class="tela-modo-opcao">📍<br>PRESENCIAL (ROTA)</div>
+      </div>
+      <div class="tela-toast">⚠️ <span>Você tem 2 cliente(s) da rota de 21/09 sem atendimento. Registre o atendimento (ou "Sem resposta / Ausente") antes de iniciar o dia.<span class="pin">1</span></span></div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Se você tentar iniciar o dia (Home Office ou Presencial) com pendência em aberto, o app mostra esse aviso com a mensagem exata do que falta — e, na sequência, a <b>Tela 1</b> assume sozinha com a lista para resolver.</span></div>
+    </div>
+  </div>
+
+  <!-- ══════════ O QUE FAZER SE APARECER A TELA ══════════ -->
+  <div class="sec-label">Se a tela aparecer, é só isso</div>
+  <div class="passos">
+    <div class="passo">
+      <span class="passo-n">1</span>
+      <div>Toque <b>Atender</b> em cada cliente da lista e registre o que aconteceu — ex.: <b>"Atendido sem pedido"</b> ou <b>"Sem resposta / Ausente"</b>.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">2</span>
+      <div>Terminou todos? O app <b>libera sozinho</b>, sem precisar fechar e abrir.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">3</span>
+      <div>Apareceu a tela de <b>sem sinal</b>? Confira a internet e toque <b>"Tentar novamente"</b> — você continua logado.</div>
+    </div>
+  </div>
+
+  <p class="rodape">Dúvidas? Pergunte ao <strong>Clippy</strong> dentro do app — ele já conhece a tela nova.<br>— Hardt Salgados</p>
+</div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.parentElement;
+    const abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>
