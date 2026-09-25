@@ -1,5 +1,11 @@
 [
   {
+    "slug": "ficha-cliente-pedidos",
+    "titulo": "Ficha do cliente nos Pedidos",
+    "resumo": "Em todos os cards da aba Pedidos — Pedidos, Especiais, Bonificação, Amostras e Devoluções — o nome do cliente agora abre, com um toque, a mesma ficha rápida da aba Rota: telefone, endereço, dia de venda/entrega, condição de pagamento e ponto GPS, sem sair da tela. Também abre pelo cabeçalho da janela de detalhes do pedido. Amostra pedida para um lead abre a ficha do lead. O toque no nome não expande nem seleciona o card.",
+    "data": "2026-09-25"
+  },
+  {
     "slug": "pendencias-rota-trava",
     "titulo": "Pendência de Rota trava sozinha",
     "resumo": "Cliente da rota do dia útil anterior sem atendimento registrado trava o início do dia até você resolver (toque Atender e registre, ex.: \"Atendido sem pedido\" ou \"Sem resposta / Ausente\"). Agora o app confere isso sozinho o dia inteiro — ao voltar para o app (a cada poucos minutos) e na hora, sempre que o dia vira, mesmo com o celular ligado dias a fio. Sem internet na 1ª conferência do dia aparece a tela \"Não foi possível conferir suas pendências de rota\" com \"Tentar novamente\" (nunca desloga); quem já foi conferido no dia não trava de novo por um sinal ruim numa checagem em segundo plano.",

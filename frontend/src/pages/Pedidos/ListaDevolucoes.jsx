@@ -4,6 +4,7 @@ import devolucaoService from '../../services/devolucaoService';
 import api, { API_URL } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import toast from 'react-hot-toast';
+import ClientePopup from '../Rota/ClientePopup';
 
 const STATUS_BADGE = {
     ATIVA: 'bg-red-100 text-red-700 border-red-200',
@@ -32,6 +33,14 @@ const ListaDevolucoes = ({ filtros }) => {
     const [emitindoNF, setEmitindoNF] = useState(null);   // devolucaoId em emissão
     const emitindoNFRef = useRef(null);                  // trava síncrona: 2º clique no mesmo tick não dispara request
     const [baixandoDanfe, setBaixandoDanfe] = useState(null);
+    const [clientePopup, setClientePopup] = useState(null); // ficha rápida (mesma da Rota) aberta pelo nome do cliente
+
+    // stopPropagation é obrigatório: o card inteiro já expande/recolhe ao clicar.
+    const abrirFichaCliente = (e, alvo) => {
+        e.stopPropagation();
+        if (!alvo) return;
+        setClientePopup(alvo);
+    };
 
     const emitirNFDevolucao = async (dev) => {
         if (emitindoNFRef.current) return;   // já tem emissão em andamento: ignora o clique repetido
@@ -131,6 +140,7 @@ const ListaDevolucoes = ({ filtros }) => {
     }
 
     return (
+        <>
         <div className="bg-white rounded-xl overflow-hidden border border-gray-200 shadow-sm">
             <div className="divide-y divide-gray-200">
                 {devolucoes.map(dev => {
@@ -170,7 +180,18 @@ const ListaDevolucoes = ({ filtros }) => {
                                             </span>
                                         </div>
                                         <h3 className="text-[14px] font-bold text-gray-900 truncate">
-                                            {dev.cliente?.NomeFantasia || dev.cliente?.Nome || 'Cliente'}
+                                            {dev.cliente ? (
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => abrirFichaCliente(e, dev.cliente)}
+                                                    className="text-left hover:underline hover:text-primaryDark py-1 -my-1"
+                                                    title="Ver ficha do cliente"
+                                                >
+                                                    {dev.cliente?.NomeFantasia || dev.cliente?.Nome || 'Cliente'}
+                                                </button>
+                                            ) : (
+                                                'Cliente'
+                                            )}
                                         </h3>
                                         <p className="text-[11px] text-gray-500">
                                             Pedido {numPedido} · {fmtDate(dev.dataDevolucao)} · Registrado por {dev.registradoPor?.nome || '-'}
@@ -330,6 +351,12 @@ const ListaDevolucoes = ({ filtros }) => {
                 </div>
             )}
         </div>
+
+        {/* Ficha rápida do cliente (reuso do componente da aba Rota) */}
+        {clientePopup && (
+            <ClientePopup cliente={clientePopup} onClose={() => setClientePopup(null)} />
+        )}
+        </>
     );
 };
 

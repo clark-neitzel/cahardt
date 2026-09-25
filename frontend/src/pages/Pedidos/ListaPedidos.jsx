@@ -12,6 +12,7 @@ import { useFiltrosSalvos, useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 import { useAuth } from '../../contexts/AuthContext';
 import toast from 'react-hot-toast';
 import ListaDevolucoes from './ListaDevolucoes';
+import ClientePopup from '../Rota/ClientePopup';
 import asaasService from '../../services/asaasService';
 import BoletosAsaasModal from '../Financeiro/BoletosAsaasModal';
 import PixAvulsoModal from './PixAvulsoModal';
@@ -128,6 +129,7 @@ const ListaPedidos = () => {
     const [loadingMais, setLoadingMais] = useState(false);
     const [loading, setLoading] = useState(true);
     const [selectedPedido, setSelectedPedido] = useState(null);
+    const [clientePopup, setClientePopup] = useState(null); // ficha rápida (mesma da Rota) aberta pelo nome do cliente
     const [abaAtiva, setAbaAtiva] = useState(() => {
         return localStorage.getItem('pedidos_aba_ativa') || 'pedidos';
     }); // 'pedidos' | 'especiais' | 'bonificacao' | 'amostras'
@@ -714,6 +716,15 @@ const ListaPedidos = () => {
         );
     };
 
+    // Abre a ficha rápida do cliente (mesma da aba Rota) a partir do nome no card.
+    // stopPropagation é obrigatório: o card inteiro já tem onClick próprio (expandir/selecionar
+    // pedido) e o clique no nome não pode disparar isso também. Sem cliente/lead, não faz nada.
+    const abrirFichaCliente = (e, alvo) => {
+        e.stopPropagation();
+        if (!alvo) return;
+        setClientePopup(alvo);
+    };
+
     const toggleSelecao = (id) => {
         setSelecionados(prev => {
             const next = new Set(prev);
@@ -1186,6 +1197,7 @@ const ListaPedidos = () => {
                                 const isExpanded = expandedAmostra === amostra.id;
                                 const nomeDestinatario = amostra.cliente?.NomeFantasia || amostra.cliente?.Nome || amostra.lead?.nomeEstabelecimento || 'Destinatário Desconhecido';
                                 const cidadeBairro = amostra.cliente ? `${amostra.cliente.End_Cidade || ''} ${amostra.cliente.End_Bairro ? ' - ' + amostra.cliente.End_Bairro : ''}` : '';
+                                const alvoClienteAmostra = amostra.cliente || amostra.lead || null;
                                 
                                 return (
                                     <div key={amostra.id} className="border-b border-gray-100">
@@ -1209,7 +1221,16 @@ const ListaPedidos = () => {
                                                             AM#{amostra.numero}
                                                         </span>
                                                         <h3 className="text-[14px] font-bold text-gray-900 truncate">
-                                                            {nomeDestinatario}
+                                                            {alvoClienteAmostra ? (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={(e) => abrirFichaCliente(e, alvoClienteAmostra)}
+                                                                    className="text-left hover:underline hover:text-primaryDark py-1 -my-1"
+                                                                    title="Ver ficha do cliente"
+                                                                >
+                                                                    {nomeDestinatario}
+                                                                </button>
+                                                            ) : nomeDestinatario}
                                                         </h3>
                                                     </div>
                                                     <div className="flex flex-col gap-0.5 text-[11px] text-gray-500 mb-1">
@@ -1340,7 +1361,18 @@ const ListaPedidos = () => {
                                             </span>
                                         )}
                                         <h3 className="text-[13px] font-bold text-gray-900 truncate flex-1 min-w-0">
-                                            {pedido.cliente?.NomeFantasia || pedido.cliente?.Nome || 'Cliente Desconhecido'}
+                                            {pedido.cliente ? (
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => abrirFichaCliente(e, pedido.cliente)}
+                                                    className="text-left hover:underline hover:text-primaryDark py-1 -my-1 truncate max-w-full"
+                                                    title="Ver ficha do cliente"
+                                                >
+                                                    {pedido.cliente?.NomeFantasia || pedido.cliente?.Nome || 'Cliente Desconhecido'}
+                                                </button>
+                                            ) : (
+                                                'Cliente Desconhecido'
+                                            )}
                                         </h3>
                                         <span className="text-[13px] font-black text-gray-900 whitespace-nowrap shrink-0 ml-1">
                                             R$ {Number((pedido.itens?.reduce((acc, i) => acc + (Number(i.valor) * Number(i.quantidade)), 0) || 0) + Number(pedido.valorFrete || 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -1721,7 +1753,18 @@ const ListaPedidos = () => {
                                 <h2 className="text-base sm:text-lg font-black text-gray-900 truncate">
                                     Pedido {fmtNumero(selectedPedido)}
                                 </h2>
-                                <p className="text-xs text-gray-500 truncate">{selectedPedido.cliente?.NomeFantasia || selectedPedido.cliente?.Nome}</p>
+                                {selectedPedido.cliente ? (
+                                    <button
+                                        type="button"
+                                        onClick={(e) => abrirFichaCliente(e, selectedPedido.cliente)}
+                                        className="text-xs text-gray-500 truncate hover:underline hover:text-primaryDark text-left py-1 -my-1"
+                                        title="Ver ficha do cliente"
+                                    >
+                                        {selectedPedido.cliente?.NomeFantasia || selectedPedido.cliente?.Nome}
+                                    </button>
+                                ) : (
+                                    <p className="text-xs text-gray-500 truncate">Cliente Desconhecido</p>
+                                )}
                             </div>
                             <button onClick={() => setSelectedPedido(null)} className="p-2 text-gray-400 hover:text-gray-700 shrink-0"><X className="h-6 w-6" /></button>
                         </div>
@@ -2275,6 +2318,11 @@ const ListaPedidos = () => {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Ficha rápida do cliente (reuso do componente da aba Rota) */}
+            {clientePopup && (
+                <ClientePopup cliente={clientePopup} onClose={() => setClientePopup(null)} />
             )}
 
             {/* Modal de impressão em lote */}

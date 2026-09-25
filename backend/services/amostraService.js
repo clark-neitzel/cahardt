@@ -75,7 +75,9 @@ const amostraService = {
             include: {
                 itens: { include: { produto: { select: { nome: true, codigo: true } } } },
                 solicitadoPor: { select: { nome: true } },
-                lead: { select: { nomeEstabelecimento: true, numero: true } },
+                // id: sem ele a ficha rápida do cliente (ClientePopup) não consegue buscar o
+                // cadastro completo do lead ao ser aberta a partir do card da amostra.
+                lead: { select: { id: true, nomeEstabelecimento: true, numero: true } },
                 cliente: { select: { UUID: true, NomeFantasia: true, Nome: true, End_Cidade: true, End_Bairro: true } },
             },
             orderBy: { createdAt: 'desc' }

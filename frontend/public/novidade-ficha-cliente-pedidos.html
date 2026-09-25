@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Ficha do Cliente nos Pedidos — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp -->
+<meta property="og:title" content="🪄 Novidade no Hardt App: Ficha do Cliente nos Pedidos">
+<meta property="og:description" content="Toque no nome do cliente em qualquer card de Pedidos, Especiais, Bonificação, Amostras ou Devoluções e veja telefone, endereço e GPS na hora — mesma ficha rápida da aba Rota.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 64px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(26px, 7vw, 38px);
+    font-weight: 800;
+    line-height: 1.14;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.75);
+    font-size: 16px;
+    max-width: 48ch;
+    margin: 0 auto;
+    text-wrap: balance;
+  }
+
+  /* ── SEÇÕES / ACCORDION ── */
+  .sec-label {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: var(--primary-dark);
+    margin: 34px 4px 12px;
+  }
+  .sec-label.primeira { margin-top: -30px; }
+  .acc {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .acc-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: none;
+    border: none;
+    font: inherit;
+    text-align: left;
+    padding: 15px 16px;
+    cursor: pointer;
+    min-height: 56px;
+  }
+  .acc-ico {
+    width: 38px; height: 38px;
+    border-radius: 11px;
+    background: var(--mint);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  .acc-head:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  /* passos */
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n {
+    width: 30px; height: 30px; flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 800;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .rodape {
+    text-align: center;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 40px;
+  }
+  .rodape strong { color: var(--primary-dark); }
+
+  /* ── MOCKUPS DAS TELAS DO APP ── */
+  .tela {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .tela-titulo {
+    background: var(--house);
+    color: #fff;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .app-card {
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .app-card-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    border-bottom: 1px solid #f0efe9;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: #6b756f;
+  }
+  .app-card-body { padding: 12px; }
+  .badge-pedido {
+    font-size: 10px;
+    font-weight: 800;
+    padding: 2px 6px;
+    border-radius: 6px;
+    border: 1px solid #bfdbfe;
+    background: #eff6ff;
+    color: #1d4ed8;
+  }
+  .nome-cliente {
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--ink);
+    text-decoration: underline;
+    text-decoration-color: rgba(0,117,74,.45);
+    text-underline-offset: 2px;
+  }
+  .linha-card { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .info-card { font-size: 11.5px; color: #8a9089; }
+
+  /* mini-drawer da ficha */
+  .drawer {
+    background: var(--house);
+    color: #fff;
+    border-radius: 12px 12px 0 0;
+    padding: 14px 16px 12px;
+  }
+  .drawer small { display: block; font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .12em; color: rgba(255,255,255,.5); margin-bottom: 3px; }
+  .drawer strong { font-size: 15px; }
+  .drawer-body {
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-top: none;
+    border-radius: 0 0 12px 12px;
+    padding: 12px 16px 16px;
+  }
+  .drawer-row { display: flex; gap: 8px; padding: 7px 0; border-bottom: 1px solid #f5f4ef; font-size: 12.5px; }
+  .drawer-row:last-child { border-bottom: none; }
+  .drawer-row span:first-child { color: #9aa5a0; min-width: 70px; flex-shrink: 0; }
+  .drawer-row span:last-child { color: var(--ink); font-weight: 600; }
+
+  .pin {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    flex-shrink: 0;
+    vertical-align: 2px;
+    margin-left: 6px;
+  }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+</style>
+</head>
+<body>
+
+<!-- ══════════ HERO ══════════ -->
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>Toque no nome do cliente<br>e veja a ficha na hora</h1>
+    <p>Nos cards da aba Pedidos — Pedidos, Especiais, Bonificação, Amostras e Devoluções — o nome do cliente agora abre a mesma ficha rápida da aba Rota: telefone, endereço, GPS e mais, sem sair da tela.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- ══════════ O QUE MUDOU ══════════ -->
+  <div class="sec-label primeira">O que mudou</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">👆</span>
+      <strong>Nome do cliente virou atalho</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Em qualquer card de <b>Pedidos, Especiais, Bonificação, Amostras e Devoluções</b>, o nome do cliente agora fica sublinhado — é um toque só e abre a <b>ficha rápida</b>.</li>
+        <li>A ficha é a <b>mesma janela lateral</b> que já existe na aba <b>Rota</b>: telefone, endereço, dia de venda/entrega, condição de pagamento, ponto GPS e observações do cadastro.</li>
+        <li>Também dá para abrir pelo <b>cabeçalho do pedido</b>, na janela de detalhes.</li>
+        <li>Não precisa mais sair da tela de Pedidos, ir em Clientes e buscar de novo — o dado aparece na hora.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🌱</span>
+      <strong>Amostra para lead também abre a ficha</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Quando a amostra foi pedida para um <b>lead</b> (estabelecimento que ainda não é cliente cadastrado), o toque no nome abre a ficha <b>do lead</b> — mesma ideia, dados do lead.</li>
+        <li>Amostra sem cliente nem lead vinculado continua como texto normal, sem o atalho.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🛡️</span>
+      <strong>Não atrapalha o resto do card</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Tocar no nome <b>não expande</b> nem seleciona o card — só abre a ficha por cima.</li>
+        <li>Basta fechar a ficha (X ou tocar fora) para voltar exatamente de onde parou na lista.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ══════════ AS TELAS DO APP ══════════ -->
+  <div class="sec-label">As telas do app</div>
+
+  <div class="tela">
+    <div class="tela-titulo">📱 Card do pedido — o nome vira atalho</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-body">
+          <div class="linha-card">
+            <span class="badge-pedido">#4821</span>
+            <span class="nome-cliente">Panificadora Exemplo<span class="pin">1</span></span>
+          </div>
+          <div class="info-card">Entrega: 25/09 · Cidade Exemplo/SC</div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>O <b>nome do cliente</b> agora fica sublinhado. Um toque abre a ficha rápida — o resto do card (número, valor, botões) continua funcionando igual.</span></div>
+    </div>
+  </div>
+
+  <div class="tela">
+    <div class="tela-titulo">📱 Ficha rápida — abre por cima, sem sair da tela</div>
+    <div class="tela-corpo">
+      <div class="drawer">
+        <small>Razão Social</small>
+        <strong>Panificadora Exemplo LTDA<span class="pin" style="background:#fff;color:var(--house);">2</span></strong>
+      </div>
+      <div class="drawer-body">
+        <div class="drawer-row"><span>Telefone</span><span>(47) 99999-0000</span></div>
+        <div class="drawer-row"><span>Endereço</span><span>Rua das Flores, 218<span class="pin">3</span></span></div>
+        <div class="drawer-row"><span>GPS</span><span>-26.12,-48.91<span class="pin">4</span></span></div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">2</span><span>Mesma ficha que já existe na aba <b>Rota</b> — mostra o nome (ou razão social) e, se for CNPJ/CPF, ele também aparece aqui.</span></div>
+      <div><span class="pin">3</span><span>Telefone, e-mail, endereço e dias de venda/entrega do cadastro, prontos para conferir ou copiar.</span></div>
+      <div><span class="pin">4</span><span>Ponto <b>GPS</b> do cliente, com atalho para abrir no Google Maps — igual à Rota.</span></div>
+    </div>
+  </div>
+
+  <!-- ══════════ COMO USAR ══════════ -->
+  <div class="sec-label">Para usar</div>
+  <div class="passos">
+    <div class="passo">
+      <span class="passo-n">1</span>
+      <div><b>Atualize o app:</b> toque no ícone de atualizar ↻ (ou feche e abra o app).</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">2</span>
+      <div>Abra a aba <b>Pedidos</b> (em qualquer sub-aba: Pedidos, Especiais, Bonificação, Amostras ou Devoluções).</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">3</span>
+      <div>Toque no <b>nome do cliente</b> em qualquer card. Pronto — a ficha abre na hora. ✅</div>
+    </div>
+  </div>
+
+  <p class="rodape">Dúvidas? Pergunte ao <strong>Clippy</strong> dentro do app — ele já conhece a novidade.<br>— Hardt Salgados</p>
+</div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.parentElement;
+    const abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>

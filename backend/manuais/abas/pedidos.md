@@ -23,6 +23,7 @@ Central de consulta e gerenciamento de todos os pedidos lançados no sistema. Aq
 - Ver de longe o que ainda não faturou: **pílula dourada NOVO** na linha de todo pedido ainda não faturado (some sozinha quando fatura; vale para pedidos, especiais e bonificações)
 - Identificar pedido que nasceu especial: selo âmbar **"⚡ Especial convertido · era ZZ#"** na linha (permanente, mesmo depois de faturar)
 - Clicar no pedido e ver **tudo num lugar só**: recebimento parcela a parcela (pago/em aberto, forma e data), entrega (motorista, data/hora, GPS no mapa, observação) e a linha do tempo completa do pedido — sem precisar abrir Contas a Receber
+- **Clicar no nome do cliente** (em qualquer card — Pedidos, Especiais, Bonificação, Amostras e Devoluções — e também no cabeçalho do modal de detalhes) abre a **ficha rápida do cliente** (mesma janela lateral da aba Rota): telefone, endereço, dias de venda/entrega, condição de pagamento, ponto GPS e observações, sem sair da tela de Pedidos. Na aba Amostras, se o destinatário for um **lead** (ainda não é cliente), abre a ficha do lead. O clique no nome não expande o card
 - **Converter pedido especial em pedido com NF** manualmente (quem aprova especial), em qualquer situação — em aberto, faturado, pago em qualquer forma ou ainda sem pagamento
 - Carregar a lista aos poucos: mostra os 50 primeiros e um botão **Carregar mais** (deixa a tela leve e rápida)
 - Ver pendências de faturamento em tempo real

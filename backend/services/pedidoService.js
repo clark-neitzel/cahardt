@@ -266,7 +266,9 @@ const pedidoService = {
 
         const includePedido = {
             cliente: {
-                select: { Nome: true, NomeFantasia: true, Documento: true, End_Cidade: true, End_Bairro: true }
+                // UUID: sem ele a ficha rápida do cliente (ClientePopup) não consegue completar
+                // o cadastro ao ser aberta a partir do card do pedido.
+                select: { UUID: true, Nome: true, NomeFantasia: true, Documento: true, End_Cidade: true, End_Bairro: true }
             },
             vendedor: {
                 select: { id: true, nome: true }
