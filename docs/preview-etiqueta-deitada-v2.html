@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Etiqueta deitada v2 — mercado (120 × 100 mm)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.5/JsBarcode.all.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Manrope:wght@500;600;700;800&family=Kaushan+Script&display=swap" rel="stylesheet">
+<script>
+tailwind.config = { theme: { extend: { colors: { primary:'#00754A', primaryDark:'#006241', house:'#1E3932', mint:'#d4e9e2', gold:'#cba258', secondary:'#f2f0eb' }, fontFamily:{ sans:['Manrope','system-ui','sans-serif'] } } } }
+</script>
+<style>
+  body{background:#f2f0eb;color:rgba(0,0,0,.87);letter-spacing:-0.01em;font-variant-numeric:tabular-nums}
+  .pin{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:999px;background:#cba258;color:#1E3932;font-weight:800;font-size:12px;flex:none}
+  .legenda li{display:flex;gap:10px;align-items:flex-start;margin-bottom:10px;font-size:14px;line-height:1.5}
+  .tela{background:#fff;border:1px solid #e5e7eb;border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,.05)}
+  .zoom{zoom:1.5}
+  @media (max-width:760px){.zoom{zoom:.8}}
+
+  /* ═══════════════ ETIQUETA 120 × 100 mm — só PRETO e BRANCO (térmica 203 dpi) ═══════════════ */
+  .rot{width:120mm;height:100mm;box-sizing:border-box;background:#fff;color:#000;padding:3mm 3.5mm;
+       display:flex;flex-direction:column;overflow:hidden;font-family:Manrope,Arial,sans-serif;line-height:1.2;
+       font-variant-numeric:tabular-nums;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .rot *{box-sizing:border-box}
+  .osw{font-family:Oswald,'Arial Narrow',sans-serif}
+
+  /* FAIXA PRETA: nome + linha de unidades/código, selo branco do peso à direita */
+  .faixa{flex:0 0 auto;background:#000;color:#fff;border-radius:2mm;min-height:15mm;padding:1.5mm 1.6mm 1.5mm 1.6mm;display:flex;align-items:center;gap:3mm}
+  .faixa .txt{flex:1;min-width:0}
+  .nome{font-size:26pt;font-weight:700;line-height:1.12;text-transform:uppercase;letter-spacing:.005em;color:#fff;text-align:center;padding:0 2mm}
+  .nome.longo{font-size:18.5pt}
+  .faixa.longa .spec{margin-top:1.1mm}
+  .spec{margin-top:1.3mm;font-size:6.6pt;font-weight:700;letter-spacing:.03em;color:#fff;white-space:nowrap}
+  .spec .cod{font-weight:600;opacity:1}
+  .selo-peso{flex:0 0 auto;background:#fff;color:#000;border-radius:1.6mm;padding:1.1mm 2.6mm 1.2mm;text-align:center;min-width:26mm}
+  .selo-peso .l{font-size:5.2pt;font-weight:800;letter-spacing:.16em;text-transform:uppercase;line-height:1}
+  .selo-peso .v{font-size:17pt;font-weight:600;line-height:1;margin-top:.8mm;letter-spacing:-.005em}
+  .selo-peso .u{font-size:5.4pt;font-weight:700;margin-top:.9mm;white-space:nowrap;letter-spacing:.01em}
+
+  /* selo ALTO EM (modelo oficial ANVISA — proporções intocadas) */
+  .selo{display:flex;align-items:stretch;gap:1mm;border:.6mm solid #000;border-radius:2mm;padding:.9mm;font-family:Arial,Helvetica,sans-serif;align-self:flex-start;margin-bottom:2.2mm}
+  .selo .lupa{display:flex;align-items:center;gap:.8mm;border:.45mm solid #000;border-radius:2mm;min-height:7mm;padding:.5mm 1.8mm .5mm 1.1mm;font-size:8pt;font-weight:900;white-space:nowrap}
+  .selo .teor{width:16mm;display:flex;align-items:center;justify-content:center;background:#000;color:#fff;font-weight:800;text-transform:uppercase;text-align:center;border-radius:1.5mm;min-height:7mm;padding:.3mm .5mm;font-size:6.5pt;line-height:1.05}
+
+  /* corpo em duas colunas alinhadas pelo topo, mesma altura */
+  .corpo{flex:1;min-height:0;display:flex;gap:3.5mm;padding-top:2.4mm}
+  .esq{width:58mm;flex:none;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+  .dir{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden}
+  .bloco-t{font-size:5.6pt;font-weight:800;letter-spacing:.16em;text-transform:uppercase;line-height:1}
+  .passo{margin-bottom:1.8mm}
+  .passo .ico{width:7mm;height:7mm;border:.4mm solid #000;border-radius:1.6mm;display:flex;align-items:center;justify-content:center}
+  .passo .ico svg{width:4.8mm;height:4.8mm}
+  .passo .d{font-size:6.8pt;font-weight:600;line-height:1.3;margin-top:.6mm}
+  .ingr{margin-top:.8mm;padding-top:1.6mm;border-top:.3mm solid #000;font-size:6.3pt;line-height:1.32;font-weight:500}
+  .ingr b{font-weight:800}
+
+  /* tabela nutricional (modelo ANVISA) */
+  .tab{border:.4mm solid #000;font-family:Arial,Helvetica,sans-serif}
+  .tab .tit{text-align:center;font-weight:800;font-size:7.2pt;padding:.7mm 0;border-bottom:.4mm solid #000}
+  .tab .porcao{font-size:6.3pt;padding:.6mm 1.3mm;line-height:1.3;font-weight:600}
+  .tab .grossa{height:1.2pt;background:#000;margin:0 1.3mm}
+  .tab table{width:100%;border-collapse:collapse;font-size:6.3pt}
+  .tab thead tr{border-bottom:.25mm solid #000;font-weight:800}
+  .tab tbody tr{border-bottom:.25mm solid #000}
+  .tab td{padding:.42mm .7mm;text-align:center;border-left:.25mm solid #000;white-space:nowrap}
+  .tab td:first-child{text-align:left;border-left:0;padding-left:1.3mm}
+  .tab td.i1{padding-left:3mm}.tab td.i2{padding-left:4.5mm}
+  .tab .nota{font-size:4.9pt;padding:.5mm 1.3mm;border-top:.4mm solid #000;line-height:1.2}
+
+  /* rodapé: datas à esquerda, código de barras à direita, tudo na mesma linha de base */
+  .rodape{flex:0 0 auto;margin-top:2mm;padding-top:2mm;border-top:.5mm solid #000;display:flex;align-items:center;justify-content:space-between;gap:3mm}
+  .datas{display:flex;gap:5mm}
+  .data .l{font-size:5.4pt;font-weight:800;letter-spacing:.16em;text-transform:uppercase;line-height:1}
+  .data .v{font-size:12.5pt;font-weight:600;line-height:1;margin-top:1mm}
+
+  /* ═══ modo de impressão do preview (teste na Zebra) ═══ */
+  @page { size: 120mm 100mm; margin: 0; }
+  @media print {
+    html,body{margin:0!important;padding:0!important;background:#fff!important;width:120mm!important}
+    body>*{display:none!important}
+    #folha{display:block!important;width:119.7mm;height:99.7mm;overflow:hidden}
+    #folha .rot{zoom:1}
+  }
+  #folha{display:none}
+</style>
+</head>
+<body class="font-sans">
+<div class="max-w-6xl mx-auto px-4 py-6 md:py-10">
+
+  <div class="bg-house text-white rounded-2xl p-5 md:p-8 mb-8">
+    <h1 class="text-2xl md:text-3xl font-extrabold leading-tight">Etiqueta deitada v2 — mesmo conteúdo, desenho novo</h1>
+    <p class="mt-3 text-sm md:text-base text-mint/90 max-w-3xl">
+      Exatamente as mesmas informações da etiqueta de hoje, nada a mais: nome do produto grande, peso em destaque, preparo e conservação, tabela, ingredientes, datas e código de barras.
+      Tudo em preto puro, sem cinza nem degradê, porque a Zebra térmica só imprime ponto preto ou nada. Letras: <b>Oswald</b> (nome, peso, datas),
+      e <b>Manrope</b> (textos). As duas já estão carregadas no app.
+    </p>
+  </div>
+
+  <section class="mb-8">
+    <div class="flex items-center justify-between flex-wrap gap-3 mb-3">
+      <h2 class="text-xs font-bold uppercase tracking-widest text-gray-600">Produto 5569 · Coxinha Frango (500 g) · 120 × 100 mm em medidas reais (ampliada 1,5× na tela)</h2>
+      <button onclick="window.print()" class="px-4 py-2 bg-primary hover:bg-primaryDark text-white rounded-full text-sm font-semibold shadow-sm">Imprimir teste na Zebra (papel 120 × 100)</button>
+    </div>
+    <div class="flex flex-wrap gap-2 mb-3" id="nomes"></div>
+    <div class="bg-gray-200 rounded-xl p-4 md:p-8 overflow-x-auto">
+      <div class="flex justify-center"><div class="zoom" style="box-shadow:0 8px 24px rgba(0,0,0,.18)" id="preview"></div></div>
+    </div>
+    <p class="text-xs text-gray-600 mt-3">Regra do nome: até 18 letras sai grande numa linha; de 19 a 30, letra média em até duas linhas; acima disso, letra menor em até duas linhas. A faixa cresce um pouco e as colunas se ajustam. Os nomes abaixo são os mais longos do cadastro real.</p>
+  </section>
+
+  <section class="mb-10 grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div class="tela p-5">
+      <h3 class="text-xs font-bold uppercase tracking-widest text-gray-600 mb-3">O que cada área faz</h3>
+      <ul class="legenda">
+        <li><span class="pin">1</span><span><b>Faixa preta só com o nome</b> em Oswald, letra branca. É o primeiro ponto de leitura na gôndola, como a tarja preta que o Clássico já oferece.</span></li>
+        <li><span class="pin">2</span><span><b>Selo do peso líquido</b> dentro da faixa, branco sobre preto, com os dígitos grandes e, embaixo, "aprox. 22 unidades · 22 g". Destaca o que o cliente de mercado mais procura.</span></li>
+        <li><span class="pin">3</span><span><b>Selo ALTO EM</b> abrindo a coluna da esquerda, modelo oficial da ANVISA, sem alteração de proporção. Sem selo, o preparo sobe.</span></li>
+        <li><span class="pin">4</span><span><b>Preparo e conservação</b> com título curto em caixa alta e o texto do cadastro, sem ícones.</span></li>
+        <li><span class="pin">5</span><span><b>Ingredientes e alérgicos</b> fecham a coluna da esquerda, alinhados com o fim da tabela: as duas colunas terminam na mesma altura.</span></li>
+        <li><span class="pin">6</span><span><b>Tabela nutricional</b> no modelo vertical da ANVISA, em Arial, na coluna da direita inteira.</span></li>
+        <li><span class="pin">7</span><span><b>Rodapé:</b> Fabricação/Lote, Validade e o código interno à esquerda, EAN-13 à direita, na mesma linha. O código sai do topo e fica onde só a equipe procura.</span></li>
+      </ul>
+    </div>
+    <div class="tela p-5">
+      <h3 class="text-xs font-bold uppercase tracking-widest text-gray-600 mb-3">Regras que a etiqueta respeita</h3>
+      <ul class="legenda">
+        <li><span class="pin">▪</span><span><b>Impressora térmica 203 dpi:</b> só preto e branco, linha mais fina de 0,25 mm (2 pontos), letra mínima de 4,9 pt só em texto legal secundário, corpo em 6 pt ou mais. Nada de cinza, sombra ou degradê, que viram chuvisco no papel.</span></li>
+        <li><span class="pin">▪</span><span><b>ANVISA:</b> tabela nutricional no modelo oficial, selo ALTO EM com as proporções do Anexo XVII, alérgicos e glúten em negrito e caixa alta, conservação e preparo visíveis.</span></li>
+        <li><span class="pin">▪</span><span><b>Conteúdo:</b> nenhuma informação foi acrescentada nem retirada em relação à etiqueta em pé de hoje.</span></li>
+        <li><span class="pin">▪</span><span><b>Impressão:</b> mesma folha 120 × 100 paisagem que a Zebra já usa. A etiqueta deitada não é girada. O botão acima manda esta etiqueta para a impressora do jeito que vai sair no app.</span></li>
+      </ul>
+      <p class="text-xs text-gray-500 mt-4">Dados reais do cadastro da etiqueta 5569 (backup de produção de hoje, 25/09, cadastro alterado às 12:35). Valores por 100 g, selo ALTO EM e ingredientes calculados pelas mesmas regras do app.</p>
+    </div>
+  </section>
+
+  <p class="text-xs text-gray-500 text-center">Preview estático · nada foi alterado no app ainda</p>
+</div>
+
+<!-- ═══════════════ A ETIQUETA (template) ═══════════════ -->
+<template id="tpl">
+<div class="rot">
+  <div class="faixa">
+    <div class="txt">
+      <div class="nome osw">Coxinha Frango</div>
+    </div>
+    <div class="selo-peso"><div class="l">Peso líquido</div><div class="v osw">0,500 kg</div><div class="u">aprox. 22 unidades · 22 g</div></div>
+  </div>
+
+  <div class="corpo">
+    <div class="esq">
+      <div class="selo">
+        <div class="lupa"><svg viewBox="0 0 24 24" style="width:4mm;height:4mm"><circle cx="10" cy="9" r="6.2" fill="none" stroke="#000" stroke-width="2.4"/><line x1="5.6" y1="13.4" x2="1.4" y2="19.4" stroke="#000" stroke-width="3.6" stroke-linecap="round"/></svg><b>ALTO EM</b></div>
+        <div class="teor">SÓDIO</div>
+      </div>
+      <div class="passo">
+        <div><div class="bloco-t">Modo de preparo</div><div class="d">Pré-aqueça o forno a 180 ºC. Aqueça o produto congelado por 17 minutos. Não recomendamos aquecer no micro-ondas.</div></div>
+      </div>
+      <div class="passo">
+        <div><div class="bloco-t">Conservação</div><div class="d">Conservar em FREEZER (−12 °C ou mais frio). Descongelado, não recongelar.</div></div>
+      </div>
+      <div class="ingr"><b>INGREDIENTES:</b> farinha de trigo enriquecida com ferro e ácido fólico, peito de frango desfiado, margarina, óleo de soja, cebola, alho, sal, caldo de galinha, colorífico, pimenta-do-reino, tempero ajinomoto, tempero cebola e alho, tempero páprica, farinha de rosca. <b>CONTÉM GLÚTEN · ALÉRGICOS: CONTÉM TRIGO, SOJA.</b></div>
+    </div>
+    <div class="dir">
+      <div class="tab">
+        <div class="tit">INFORMAÇÃO NUTRICIONAL</div>
+        <div class="porcao">Porções por embalagem: 22 porções<br>Porção 22 g (1 unidade)</div>
+        <div class="grossa"></div>
+        <table>
+          <thead><tr><td></td><td>100 g</td><td>22 g</td><td>%VD*</td></tr></thead>
+          <tbody>
+            <tr><td>Valor Energético (kcal)</td><td>618</td><td>136</td><td>7</td></tr>
+            <tr><td>Carboidratos totais (g)</td><td>114,5</td><td>25,2</td><td>8</td></tr>
+            <tr><td class="i1">Açúcares totais (g)</td><td>0</td><td>0</td><td>0</td></tr>
+            <tr><td class="i2">Açúc. adicionados (g)</td><td>0</td><td>0</td><td>0</td></tr>
+            <tr><td>Proteínas (g)</td><td>20,5</td><td>4,5</td><td>6</td></tr>
+            <tr><td>Gorduras totais (g)</td><td>12,7</td><td>2,8</td><td>5</td></tr>
+            <tr><td class="i1">Gorduras saturadas (g)</td><td>1,8</td><td>0,4</td><td>2</td></tr>
+            <tr><td class="i1">Gorduras trans (g)</td><td>0</td><td>0</td><td>0</td></tr>
+            <tr><td>Fibras alimentares (g)</td><td>5,9</td><td>1,3</td><td>5</td></tr>
+            <tr><td>Sódio (mg)</td><td>1577</td><td>347</td><td>15</td></tr>
+          </tbody>
+        </table>
+        <div class="nota">*Percentual de valores diários fornecidos pela porção.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="rodape">
+    <div class="datas">
+      <div class="data"><div class="l">Fabricação/Lote</div><div class="v osw">25/09/2026</div></div>
+      <div class="data"><div class="l">Validade</div><div class="v osw">24/03/2027</div></div>
+      <div class="data"><div class="l">Cód.</div><div class="v osw">5569</div></div>
+    </div>
+    <svg class="bc" style="display:block;flex:0 0 auto"></svg>
+  </div>
+</div>
+</template>
+
+<div id="folha"></div>
+
+<script>
+  function montar(destino){
+    const n = document.getElementById('tpl').content.cloneNode(true);
+    destino.appendChild(n);
+    const s = destino.querySelector('svg.bc');
+    JsBarcode(s,'7898620330439',{format:'EAN13',width:1.2,height:34,displayValue:true,fontSize:11,textMargin:0,margin:6,marginTop:1,marginBottom:1,font:'Arial'});
+    const w=+s.getAttribute('width'),h=+s.getAttribute('height');
+    s.setAttribute('viewBox',`0 0 ${w} ${h}`);
+    s.style.width=(w*25.4/96).toFixed(2)+'mm'; s.style.height=(h*25.4/96).toFixed(2)+'mm';
+  }
+  montar(document.getElementById('preview'));
+  montar(document.getElementById('folha'));
+
+  // ── nomes reais (os mais longos do cadastro) para testar a faixa ──
+  const NOMES = ['Coxinha Frango','Frito Espetinho Frango com Bacon','Tortinha Frango Palmito com Requeijão','Hamburgão c/ Cheedar e Cebola Caramelizada'];
+  // Regra simples e previsível pelo tamanho do nome (o app faz o mesmo por medição):
+  //   até 18 letras → 26 pt em 1 linha · 19–30 → 21 pt (até 2 linhas) · acima → 17,5 pt (até 2 linhas)
+  function ajustarNome(root){
+    const faixa = root.querySelector('.faixa'), nome = root.querySelector('.nome');
+    const n = nome.textContent.length;
+    nome.style.fontSize = n <= 18 ? '26pt' : n <= 30 ? '21pt' : '17.5pt';
+    nome.style.whiteSpace = n <= 18 ? 'nowrap' : 'normal';
+    faixa.classList.toggle('longa', n > 18);
+  }
+  function setNome(n){
+    document.querySelectorAll('#preview .nome, #folha .nome').forEach(el => { el.textContent = n; });
+    ajustarNome(document.getElementById('preview')); ajustarNome(document.getElementById('folha'));
+    document.querySelectorAll('#nomes button').forEach(b => b.className = 'px-3 py-1.5 rounded-full text-xs font-semibold border min-h-[36px] ' + (b.textContent===n ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-300 hover:border-primary hover:text-primary'));
+  }
+  document.getElementById('nomes').innerHTML = NOMES.map(n => `<button type="button">${n}</button>`).join('');
+  document.querySelectorAll('#nomes button').forEach(b => b.onclick = () => setNome(b.textContent));
+  document.fonts.ready.then(() => setNome(NOMES[+(new URLSearchParams(location.search).get('nome') || 0)] || NOMES[0]));
+  window.addEventListener('beforeprint', () => ajustarNome(document.getElementById('folha')));
+</script>
+</body>
+</html>

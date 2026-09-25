@@ -5,7 +5,9 @@ import toast from 'react-hot-toast';
 import etiquetaService from '../../services/etiquetaService';
 import { codExibir, imprimirEtiquetas, validadeDias } from './EtiquetaLabel';
 import { EtiquetaRender } from './EtiquetaLabelNova';
-import { TAMANHOS, TAMANHO_PADRAO, LAYOUTS, LAYOUT_PADRAO, layoutValido, paginaImpressao } from './etiquetaModelos';
+import { TAMANHO_PADRAO, LAYOUTS, LAYOUT_PADRAO, layoutValido, paginaImpressao, ehDeitada, dimensoesEtiqueta } from './etiquetaModelos';
+import { IconeOrientacao, useEscalaPreview } from './OrientacaoEtiqueta';
+import { TAMANHOS } from './etiquetaModelos';
 import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 
 function hojeIso() { return new Date().toISOString().split('T')[0]; }
@@ -45,10 +47,14 @@ export default function EtiquetaImprimir() {
             .finally(() => setLoading(false));
     }, [id, navigate]);
 
+    // Hooks antes de qualquer return condicional (et pode ser null no 1º render)
+    const deitada = ehDeitada(et);
+    const desenho = dimensoesEtiqueta(tamanho, deitada ? 'DEITADA' : 'EM_PE');
+    const [previewRef, escala] = useEscalaPreview(desenho.larguraMM, tamanho === 'g120' ? 1.5 : 1.8);
+
     if (loading) return <div className="p-8 text-center text-gray-400">Carregando...</div>;
     if (!et) return null;
 
-    const dim = TAMANHOS[tamanho] || TAMANHOS[TAMANHO_PADRAO];
     const pagina = paginaImpressao(tamanho);
     const dataFabDisplay = isoParaDisplay(dataFab);
     const dias = validadeDias(et);
@@ -58,12 +64,12 @@ export default function EtiquetaImprimir() {
         const conteudo = printRef.current;
         if (!conteudo) return;
 
-        imprimirEtiquetas(conteudo.innerHTML, parseInt(copies) || 1, tamanho);
+        imprimirEtiquetas(conteudo.innerHTML, parseInt(copies) || 1, tamanho, deitada ? 'DEITADA' : 'EM_PE');
     };
 
     return (
-        <div className="w-full px-4 py-6">
-            <div className="flex items-center gap-3 mb-6">
+        <div className="w-full max-w-full overflow-x-hidden px-3 py-4 md:px-4 md:py-6">
+            <div className="flex items-center gap-3 mb-4 md:mb-6">
                 <button onClick={() => navigate('/pcp/etiquetas')} className="p-2 rounded-lg hover:bg-gray-100">
                     <ChevronLeft className="h-5 w-5 text-gray-600" />
                 </button>
@@ -73,8 +79,8 @@ export default function EtiquetaImprimir() {
                 </div>
             </div>
 
-            <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6">
-                <div className="flex flex-wrap items-end gap-6">
+            <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-5 mb-4 md:mb-6">
+                <div className="grid grid-cols-2 md:flex md:flex-wrap md:items-end gap-3 md:gap-6">
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Tamanho</label>
                         <div className="flex flex-wrap gap-1.5">
@@ -95,6 +101,11 @@ export default function EtiquetaImprimir() {
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Modelo</label>
+                        {deitada ? (
+                            <div className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-semibold bg-mint text-primaryDark min-h-[44px]" title="Etiqueta marcada como deitada em Dados das Etiquetas: usa o layout de mercado">
+                                <IconeOrientacao orientacao="DEITADA" /> Deitada · mercado
+                            </div>
+                        ) : (
                         <div className="flex flex-wrap gap-1.5">
                             {Object.values(LAYOUTS).map(l => (
                                 <button
@@ -110,6 +121,7 @@ export default function EtiquetaImprimir() {
                                 </button>
                             ))}
                         </div>
+                        )}
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Data de Fabricação</label>
@@ -150,7 +162,7 @@ export default function EtiquetaImprimir() {
                             </button>
                         </div>
                     </div>
-                    <button onClick={handlePrint} className="flex items-center gap-2 px-6 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors">
+                    <button onClick={handlePrint} className="col-span-2 md:col-auto flex items-center justify-center gap-2 px-6 py-2 min-h-[44px] bg-primary text-white rounded-full font-semibold hover:bg-primaryDark transition-colors">
                         <Printer className="h-4 w-4" />
                         Imprimir {copies > 1 ? `${copies} cópias` : ''}
                     </button>
@@ -158,16 +170,18 @@ export default function EtiquetaImprimir() {
                 <div className="mt-4 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
                     <Printer className="h-4 w-4 text-amber-700 flex-shrink-0 mt-0.5" />
                     <p className="text-xs text-amber-900 leading-relaxed">
-                        A etiqueta é <b>{pagina.etiquetaTexto}</b>; como ela imprime deitada, na janela de impressão o papel aparece como <b>{pagina.texto}</b> — é esse que você escolhe.
-                        Mantenha a escala em <b>100%</b> (nada de &ldquo;ajustar à página&rdquo;): com papel de outro tamanho o navegador encolhe a etiqueta num canto.
+                        {deitada
+                            ? <>Etiqueta <b>deitada</b> ({desenho.larguraMM} × {desenho.alturaMM} mm): na janela de impressão o papel é o mesmo de sempre, <b>{pagina.texto}</b>.</>
+                            : <>A etiqueta é <b>{pagina.etiquetaTexto}</b>; como ela imprime deitada, na janela de impressão o papel aparece como <b>{pagina.texto}</b> — é esse que você escolhe.</>}
+                        {' '}Mantenha a escala em <b>100%</b> (nada de &ldquo;ajustar à página&rdquo;): com papel de outro tamanho o navegador encolhe a etiqueta num canto.
                     </p>
                 </div>
             </div>
 
-            <div className="bg-gray-100 rounded-xl p-6 flex justify-center">
+            <div ref={previewRef} className="bg-gray-100 rounded-xl p-3 md:p-6 flex justify-center overflow-hidden">
                 <div>
-                    <p className="text-xs text-gray-400 text-center mb-3">Preview — {dim.larguraMM}mm × {dim.alturaMM}mm · {LAYOUTS[layout]?.label}</p>
-                    <div ref={printRef} style={{ transform:`scale(${tamanho === 'g120' ? 1.5 : 1.8})`, transformOrigin:'top center', marginBottom: tamanho === 'g120' ? '250px' : '180px' }}>
+                    <p className="text-xs text-gray-500 text-center mb-3">Preview — {desenho.larguraMM}mm × {desenho.alturaMM}mm · {deitada ? 'Deitada · mercado' : LAYOUTS[layout]?.label}</p>
+                    <div ref={printRef} style={{ transform:`scale(${escala})`, transformOrigin:'top center', marginBottom: `${Math.max(0, desenho.alturaMM * (96 / 25.4) * (escala - 1))}px` }}>
                         <EtiquetaRender layout={layout} tamanho={tamanho} et={et} dataFab={dataFabDisplay} dataVal={dataValDisplay} />
                     </div>
                 </div>

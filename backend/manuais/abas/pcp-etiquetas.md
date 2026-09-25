@@ -24,12 +24,15 @@ Este módulo tem duas telas separadas no menu lateral, com funções distintas:
 Tela usada na produção. Mostra todos os produtos com etiqueta ativa em cards (4 colunas), ordenados alfabeticamente.
 
 **O que dá pra fazer:**
-- Buscar produto por nome ou código (campo em destaque, com foco automático)
+- Buscar produto por nome ou código (campo em destaque, com foco automático) — quando a etiqueta está vinculada a um produto do catálogo, a busca também acha pelo **nome/código do cadastro** (tela de Produtos), não só pelo texto gravado na própria etiqueta
 - Filtrar por categoria de produto (pills clicáveis, salvos no navegador)
 - Escolher o **Tamanho** e o **Modelo** da etiqueta, separadamente (ver abaixo)
+- **(25/09/2026)** Etiqueta marcada como **Deitada** no cadastro (Dados das Etiquetas) abre o modal já no **layout de mercado** (ver "Etiqueta deitada" abaixo): no lugar do seletor Modelo aparece o chip "Deitada · mercado", o card da grade mostra o selo "Deitada", e a impressão sai sem girar. Continua podendo escolher o Tamanho (80 × 100 ou 100 × 120)
+- **(25/09/2026)** No **celular**, o modal de impressão passou a caber na tela: controles em duas colunas e o preview encolhe para a largura disponível (antes a etiqueta ampliada saía cortada dos dois lados)
 - Selecionar um produto e abrir o modal de impressão
 - Imprimir a etiqueta diretamente
 - **(09/2026)** Quando a etiqueta está vinculada a um produto do catálogo com **"Qtd. por caixa"** preenchida no cadastro (tela de Produtos), o card do produto e o topo da janela de imprimir mostram **"· N un/cx"** (quantos pacotes/unidades vêm na caixa fechada) — só informação de tela, para conferir na hora de etiquetar/encaixotar. **A etiqueta impressa não mudou**: nenhuma linha nova sai no papel
+- **(09/2026)** Quando há vínculo com o cadastro, o card e o modal mostram o **nome do cadastro de produtos** como identificação principal, com o nome gravado na etiqueta logo abaixo como "Etiqueta: ...". Sem vínculo, continua mostrando só o nome da etiqueta, como sempre. **Isso é só exibição/busca na tela** — o rótulo impresso continua usando o nome gravado na etiqueta (não muda)
 
 **Tamanho e Modelo são escolhidos SEPARADAMENTE (dois seletores):**
 
@@ -81,7 +84,8 @@ Esse aviso aparece na própria tela, num quadro amarelo, tanto no modal da lista
 Gerenciamento do cadastro. Permite criar, editar, ativar/inativar e remover etiquetas.
 
 **O que dá pra fazer:**
-- Listar etiquetas com busca e filtro ativo/inativo
+- Listar etiquetas com busca e filtro ativo/inativo — **no celular a lista vira cards** (25/09/2026), com o botão de orientação e as ações dentro de cada card; no computador continua a tabela
+- **Trocar a orientação** de cada etiqueta pelo botão da coluna **Orientação** (`▯ Em pé` / `▭ Deitada`): um clique alterna e já salva, sem confirmação, igual ao Ativar/Inativar (25/09/2026)
 - Criar nova etiqueta
 - Editar etiqueta existente
 - Imprimir diretamente da lista (ícone de impressora)
@@ -103,7 +107,8 @@ Gerenciamento do cadastro. Permite criar, editar, ativar/inativar e remover etiq
    - **Código de Barras**: EAN-13 (opcional; se inválido para EAN-13, usa CODE-128)
    - **Tipo de Produto**: texto livre (ex: "Mini - Fritar")
    - **Validade (dias)**: padrão 90 dias
-   - **Vincular ao Produto do Catálogo**: opcional; permite filtrar por categoria na tela de impressão
+   - **Orientação da etiqueta** (25/09/2026): botão duplo **Em pé** (padrão, 100 × 120, a etiqueta de sempre) ou **Deitada** (120 × 100, layout de mercado para pacote pequeno). É o mesmo valor do botão da coluna Orientação na lista: mudar num lugar muda no outro. Todas as etiquetas já cadastradas continuam **Em pé** até alguém trocar
+   - **Vincular ao Produto do Catálogo**: opcional; permite filtrar por categoria e buscar pelo nome do cadastro na tela de impressão, e mostra o "Qtd. por caixa" quando cadastrado. **(corrigido em 09/2026)** o menu ficava vazio (só "— Nenhum —") por um defeito de renderização; já está corrigido
 3. Preencha a seção **Informação Nutricional**: valor energético, carboidratos, proteínas, gorduras totais, saturadas, trans, fibra e sódio. Preencha no formato "34kcal (2% VD)".
 4. Preencha a seção **Composição e Preparo**: ingredientes, modo de preparo e armazenamento/conservação. **Desde 16/09/2026 o "Modo de Preparo" digitado aqui também vira o rótulo de preparo mostrado no card do site de Congelados** ("Para fritar"/"Para assar"/"Somente aquecer"/"Cozinhar") — o sistema lê o texto e reconhece por palavra-chave (fritar/óleo, assar/forno, aquecer/micro-ondas, cozinhar), inclusive frases com "não" ("Não fritar, assar em forno..." vira só "assar"). Escreva de forma direta (ex.: "Fritar em óleo quente (180°C) por 5 minutos" ou "Assar em forno pré-aquecido a 200°C por 20 minutos") para o site classificar certo; produto sem etiqueta cadastrada usa o texto de reserva definido por categoria no admin do site.
 5. Preencha a seção **Alérgenos**: marque os checkboxes de leite, glúten e ovo; preencha outros alérgenos e o aviso de traços se necessário.
@@ -129,6 +134,20 @@ Logo abaixo do nome do produto sai a linha **`Contém N unidades · aprox. X g`*
 Etiqueta organizada por zonas: nome centralizado no topo (com folga para o selo quando houver), selo(s) "ALTO EM" no canto superior direito (a tabela começa sempre abaixo do selo, sem sobreposição), tabela nutricional completa (colunas 100 g / porção / %VD), e na zona inferior os textos de ingredientes/preparo/conservação à esquerda com o **código de barras EAN-13 na vertical** (girado 90°, número acompanhando na lateral, lendo de baixo para cima — como um EAN de embalagem em pé) numa coluna à direita, sem nunca encostar na tabela. No rodapé, sempre visíveis, as datas de Fabricação/Lote e Validade. Tudo em preto puro, pensado para a impressora térmica. Sai no tamanho escolhido — no 80 × 100 as fontes e espaçamentos ficam mais compactos para caber no rolo menor.
 
 Quando o produto tem muito texto (ingredientes e modo de preparo longos), a etiqueta **encolhe as fontes automaticamente** até tudo caber na altura da folha — é um ajuste de layout de verdade (não um "zoom" de tela), então o que aparece no preview é exatamente o que sai impresso, no computador e no iPad. As datas de Fabricação/Validade ficam num rodapé fixo, fora do bloco que encolhe — aparecem sempre inteiras na impressão, nunca cortadas. O código de barras também não encolhe: mantém as proporções e o tamanho corretos de leitura.
+
+### Etiqueta deitada (layout de mercado) — 25/09/2026
+
+Vale para a etiqueta com **Orientação = Deitada** no cadastro. O rótulo é desenhado **deitado** (120 × 100 mm no rolo grande; 100 × 80 mm no rolo pequeno, versão compacta) e **impresso sem girar** — a impressora já recebe a página em paisagem, então **o papel a escolher na janela de impressão é o mesmo de sempre** (120 × 100 ou 100 × 80, paisagem). O quadro amarelo da tela muda o texto para avisar isso.
+
+**Mesmo conteúdo da etiqueta ANVISA em pé — nada a mais, nada a menos** — só a composição muda, pensada para o pacote pequeno de gôndola:
+
+1. **Faixa preta no topo só com o nome do produto** (letra Oswald, branca, centralizada). Nome até 18 letras sai grande numa linha; de 19 a 30 letras, em até duas linhas com letra média; acima disso, em duas linhas com letra menor. A faixa cresce um pouco e o resto se acomoda.
+2. **Selo branco do PESO LÍQUIDO** dentro da faixa, à direita, com os dígitos grandes (ex.: `0,500 kg`) e, embaixo, a linha de unidades (`aprox. 22 unidades · 22 g` — o mesmo texto "Contém…" da etiqueta em pé, sem a palavra "Contém"). Sem peso líquido, o selo não aparece.
+3. Coluna da esquerda: **selo ALTO EM** (modelo oficial ANVISA, só quando o produto ultrapassa os limites — mesma regra de sempre), **MODO DE PREPARO**, **CONSERVAÇÃO** e **INGREDIENTES** com glúten/lactose/alérgicos em negrito e caixa alta. Sem ícones.
+4. Coluna da direita: a **tabela nutricional** inteira, no modelo vertical da ANVISA, em Arial.
+5. Rodapé fixo: **Fabricação/Lote**, **Validade** e **Cód.** em números grandes à esquerda, **código de barras EAN-13** à direita.
+
+Tudo em preto puro (impressora térmica). O corpo (colunas) usa o mesmo auto-ajuste de fonte da etiqueta em pé; faixa, selo do peso e rodapé têm tamanho fixo e nunca são cortados. A deitada tem **um desenho só**: o seletor Modelo (Clássico/ANVISA) não se aplica e some do modal.
 
 ### Modelo Clássico
 
@@ -183,5 +202,8 @@ Admin (`admin: true`) tem acesso sem precisar de `pcp.etiquetas`.
 | `frontend/src/pages/PCP/EtiquetaImprimir.jsx` | Tela dedicada de impressão por ID (`/pcp/etiquetas/:id/imprimir`) |
 | `frontend/src/pages/PCP/EtiquetaLabel.jsx` | Componente do rótulo Clássico (recebe `larguraMM`/`alturaMM`; escala para preencher no 100×120) + função de impressão `imprimirEtiquetas` (recebe o `tamanho`) |
 | `frontend/src/pages/PCP/EtiquetaLabelNova.jsx` | Componente do rótulo ANVISA (recebe o tamanho; versão compacta no 80×100) + despachante `EtiquetaRender` (`layout` + `tamanho`) |
-| `frontend/src/pages/PCP/etiquetaModelos.js` | Fonte única: `TAMANHOS` (p80/g120) e `LAYOUTS` (classico/anvisa) separados, helpers puros e cálculo dos selos ANVISA (`selosAnvisa`) |
+| `frontend/src/pages/PCP/EtiquetaLabelDeitada.jsx` | Componente do rótulo **deitado** (layout de mercado, 120×100 / 100×80) |
+| `frontend/src/pages/PCP/OrientacaoEtiqueta.jsx` | Botão/seletor de orientação (lista e formulário) e escala responsiva do preview |
+| `frontend/src/pages/PCP/etiquetaModelos.js` | Fonte única: `TAMANHOS` (p80/g120), `LAYOUTS` (classico/anvisa) e `ORIENTACOES` (EM_PE/DEITADA) separados, helpers puros e cálculo dos selos ANVISA (`selosAnvisa`) |
+| `backend/routes/pcpEtiquetaRoutes.js` | API das etiquetas; `PATCH /:id/orientacao` alterna em pé ⇄ deitada (campo `orientacao` na tabela `etiquetas_produtos`) |
 | `frontend/src/services/etiquetaService.js` | Chamadas de API para etiquetas |

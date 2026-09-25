@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import JsBarcode from 'jsbarcode';
-import { TAMANHOS, TAMANHO_PADRAO, MODELOS, codExibir, validadeDias, pesoLiquidoStr, parseValor, parseVD, fmtNum } from './etiquetaModelos';
+import { TAMANHOS, TAMANHO_PADRAO, MODELOS, orientacaoValida, codExibir, validadeDias, pesoLiquidoStr, parseValor, parseVD, fmtNum } from './etiquetaModelos';
 
 // Reexporta os helpers puros (a fonte agora é etiquetaModelos.js) para NÃO quebrar
 // os imports existentes de EtiquetasList / EtiquetaImprimir / EtiquetaForm.
@@ -11,9 +11,12 @@ export { codExibir, validadeDias, pesoLiquidoStr, parseValor, parseVD, fmtNum, A
 // @media print para esconder o app; depois limpa tudo. print() deve rodar dentro do clique.
 // `tamanho` define a folha (p80 = 80×100 / g120 = 100×120); default = p80 (rolo atual).
 // Compat: aceita também os ids de modelo antigos ('classico'/'anvisa120') sem quebrar.
-export function imprimirEtiquetas(labelHtml, copies = 1, tamanho = TAMANHO_PADRAO) {
+// `orientacao` (09/2026): 'EM_PE' gira o rótulo 90° (como sempre); 'DEITADA' NÃO gira —
+// o rótulo já é desenhado deitado, do tamanho exato da página paisagem.
+export function imprimirEtiquetas(labelHtml, copies = 1, tamanho = TAMANHO_PADRAO, orientacao = 'EM_PE') {
     const cfg = TAMANHOS[tamanho] || MODELOS[tamanho] || TAMANHOS[TAMANHO_PADRAO];
     const { larguraMM, alturaMM } = cfg;
+    const deitada = orientacaoValida(orientacao) === 'DEITADA';
 
     // A impressora ZDesigner está configurada em LANDSCAPE (a mídia entra deitada), então a
     // PÁGINA é alturaMM × larguraMM e a etiqueta (portrait larguraMM × alturaMM) é girada 90°.
@@ -66,8 +69,9 @@ export function imprimirEtiquetas(labelHtml, copies = 1, tamanho = TAMANHO_PADRA
                page-break-after:always na última é causa conhecida de folha em branco no fim
                do trabalho. Aqui é prevenção: no Chrome o :last-child { avoid } já dava conta. */
             #${ID_AREA} .pg + .pg { break-before: page; page-break-before: always; }
-            /* gira a etiqueta portrait para caber na página landscape */
-            #${ID_AREA} .pg > * { transform: rotate(90deg); flex: 0 0 auto; }
+            /* gira a etiqueta em pé para caber na página paisagem; a deitada já nasce no
+               tamanho da página e sai sem transformação nenhuma */
+            #${ID_AREA} .pg > * { ${deitada ? 'transform: none;' : 'transform: rotate(90deg);'} flex: 0 0 auto; }
         }
     `;
     document.head.appendChild(style);

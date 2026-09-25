@@ -20,6 +20,26 @@ export const LAYOUTS = {
 };
 export const LAYOUT_PADRAO = 'classico';
 
+// ── ORIENTAÇÃO (por etiqueta, gravada no cadastro — 09/2026) ─────────────────
+// EM_PE: rótulo desenhado em pé (100×120) e girado 90° na impressão (como sempre).
+// DEITADA: rótulo de mercado desenhado deitado (120×100), impresso SEM girar —
+// a Zebra já recebe a página em paisagem, então o papel do diálogo não muda.
+export const ORIENTACOES = {
+    EM_PE:   { id: 'EM_PE',   label: 'Em pé',   descricao: '100 × 120 · como sempre' },
+    DEITADA: { id: 'DEITADA', label: 'Deitada', descricao: '120 × 100 · pacote pequeno de mercado' },
+};
+export const ORIENTACAO_PADRAO = 'EM_PE';
+export function orientacaoValida(v) { return ORIENTACOES[v] ? v : ORIENTACAO_PADRAO; }
+export const ehDeitada = (et) => orientacaoValida(et?.orientacao) === 'DEITADA';
+
+// Dimensões do rótulo desenhado, já na orientação certa (deitada = largura × altura trocadas).
+export function dimensoesEtiqueta(tamanho, orientacao) {
+    const cfg = TAMANHOS[tamanho] || TAMANHOS[TAMANHO_PADRAO];
+    return orientacaoValida(orientacao) === 'DEITADA'
+        ? { larguraMM: cfg.alturaMM, alturaMM: cfg.larguraMM }
+        : { larguraMM: cfg.larguraMM, alturaMM: cfg.alturaMM };
+}
+
 // Normaliza um layout salvo/legado para uma chave válida de LAYOUTS.
 // (o localStorage antigo guardava 'classico' | 'anvisa120' na chave 'etiquetas:modelo')
 export function layoutValido(v) {

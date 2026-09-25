@@ -1,9 +1,10 @@
 import { useEffect, useRef } from 'react';
 import JsBarcode from 'jsbarcode';
 import EtiquetaLabel from './EtiquetaLabel';
+import EtiquetaLabelDeitada from './EtiquetaLabelDeitada';
 import { useAutoFit } from './useAutoFit';
 import {
-    TAMANHOS, TAMANHO_PADRAO, LAYOUT_PADRAO, layoutValido,
+    TAMANHOS, TAMANHO_PADRAO, LAYOUT_PADRAO, layoutValido, ehDeitada, dimensoesEtiqueta,
     codExibir, pesoLiquidoStr, pesoTabela, linhasNutricionais, selosAnvisa,
     parseValor, parseVD, fmtNum,
 } from './etiquetaModelos';
@@ -312,6 +313,13 @@ export function EtiquetaRender({ layout, tamanho, modelo, et, dataFab, dataVal }
     }
     lay = layoutValido(lay ?? LAYOUT_PADRAO);
     const dim = TAMANHOS[tam] || TAMANHOS[TAMANHO_PADRAO];
+
+    // Etiqueta marcada como DEITADA no cadastro: layout de mercado, independente do
+    // "Modelo" escolhido na tela (a deitada tem um desenho só). Dimensões trocadas.
+    if (ehDeitada(et)) {
+        const d = dimensoesEtiqueta(tam, 'DEITADA');
+        return <EtiquetaLabelDeitada et={et} dataFab={dataFab} dataVal={dataVal} larguraMM={d.larguraMM} alturaMM={d.alturaMM} />;
+    }
 
     if (lay === 'anvisa') {
         return <EtiquetaLabelNova et={et} dataFab={dataFab} dataVal={dataVal} larguraMM={dim.larguraMM} alturaMM={dim.alturaMM} />;

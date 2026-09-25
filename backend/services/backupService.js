@@ -162,7 +162,21 @@ async function alertarFalha(status, tipo, erro) {
 }
 
 // ── BANCO: pg_dump → Drive (a cada 15 min) ───────────────────────────────────
+// Trava de ambiente (25/09/2026): rodando na máquina de desenvolvimento, o backend
+// lia o gdrive_config copiado de produção e mandava dumps do banco LOCAL
+// (hardt_local, 6 MB) para a pasta de backup de PRODUÇÃO no Drive — misturados
+// com os reais (18 MB). Um restore pegaria o arquivo errado. Banco em localhost
+// nunca é produção: não sobe nada.
+function ambienteLocal() {
+    const url = process.env.DATABASE_URL || '';
+    return /@(localhost|127\.0\.0\.1|host\.docker\.internal)[:/]/i.test(url) || /hardt_local\b/i.test(url);
+}
+
 async function executarBackupBanco() {
+    if (ambienteLocal()) {
+        console.log('[Backup] ambiente local (banco em localhost) — backup do banco NÃO enviado ao Drive.');
+        return { ok: false, pulado: true, motivo: 'ambiente local' };
+    }
     if (_rodandoBanco) return { ok: false, motivo: 'ja_rodando' };
     _rodandoBanco = true;
     const inicio = Date.now();
@@ -225,6 +239,10 @@ async function executarBackupBanco() {
 
 // ── ARQUIVOS: tar.gz de backend/uploads → Drive (1x/dia) ─────────────────────
 async function executarBackupUploads({ forcar = false } = {}) {
+    if (ambienteLocal()) {
+        console.log('[Backup] ambiente local — backup de uploads NÃO enviado ao Drive.');
+        return { ok: false, pulado: true, motivo: 'ambiente local' };
+    }
     if (_rodandoUploads) return { ok: false, motivo: 'ja_rodando' };
     _rodandoUploads = true;
     const inicio = Date.now();

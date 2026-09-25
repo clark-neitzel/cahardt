@@ -5,7 +5,8 @@ import toast from 'react-hot-toast';
 import etiquetaService from '../../services/etiquetaService';
 import { codExibir, imprimirEtiquetas, validadeDias } from './EtiquetaLabel';
 import { EtiquetaRender } from './EtiquetaLabelNova';
-import { TAMANHOS, TAMANHO_PADRAO, LAYOUTS, LAYOUT_PADRAO, layoutValido, paginaImpressao, pesoPacoteStr } from './etiquetaModelos';
+import { TAMANHOS, TAMANHO_PADRAO, LAYOUTS, LAYOUT_PADRAO, layoutValido, paginaImpressao, pesoPacoteStr, ehDeitada, dimensoesEtiqueta } from './etiquetaModelos';
+import { IconeOrientacao, useEscalaPreview } from './OrientacaoEtiqueta';
 import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 
 // ─── Utilidades de data ───────────────────────────────────────────────────────
@@ -16,6 +17,13 @@ function isoParaDisplay(iso) {
 }
 
 function hojeIso() { return new Date().toISOString().split('T')[0]; }
+
+// Nome usado para identificar a etiqueta na lista: quando há vínculo com o cadastro de
+// produtos, prevalece o nome do CADASTRO (et.produto.nome) — é o que a equipe procura.
+// Sem vínculo, cai no nome gravado na própria etiqueta (comportamento de sempre).
+function nomeExibicao(et) {
+    return et.produto?.nome || et.nomeProduto;
+}
 
 function somarDias(isoDate, dias) {
     const d = new Date(isoDate + 'T12:00:00');
@@ -68,26 +76,34 @@ function PrintModal({ et, onClose }) {
     const layout = layoutValido(modeloSalvo); // sanitiza valor legado ('anvisa120' → 'anvisa')
     const labelRef = useRef(null);
 
-    const dim = TAMANHOS[tamanho] || TAMANHOS[TAMANHO_PADRAO];
     const pagina = paginaImpressao(tamanho);
     const dataFabDisplay = isoParaDisplay(dataFab);
     const dias = validadeDias(et);
     const dataValDisplay = somarDias(dataFab, dias);
+    // Orientação vem do CADASTRO da etiqueta (Dados das Etiquetas). Deitada = layout de
+    // mercado (um desenho só, sem escolher Modelo) e impressão sem girar.
+    const deitada = ehDeitada(et);
+    const desenho = dimensoesEtiqueta(tamanho, deitada ? 'DEITADA' : 'EM_PE');
+    // Preview: amplia no desktop, mas no celular encolhe para caber na largura (antes saía cortado)
+    const [previewRef, escala] = useEscalaPreview(desenho.larguraMM, tamanho === 'g120' ? 1.5 : 1.9);
 
     const handlePrint = () => {
         const conteudo = labelRef.current;
         if (!conteudo) return;
 
-        imprimirEtiquetas(conteudo.innerHTML, parseInt(copies) || 1, tamanho);
+        imprimirEtiquetas(conteudo.innerHTML, parseInt(copies) || 1, tamanho, deitada ? 'DEITADA' : 'EM_PE');
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-2 md:p-4" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[96vh] md:max-h-[90vh] flex flex-col overflow-hidden">
                 {/* Header */}
-                <div className="flex items-center justify-between px-6 py-4 border-b">
+                <div className="flex items-center justify-between gap-3 px-4 py-3 md:px-6 md:py-4 border-b">
                     <div>
-                        <h2 className="text-lg font-bold text-gray-800">{et.nomeProduto}</h2>
+                        <h2 className="text-lg font-bold text-gray-800">{nomeExibicao(et)}</h2>
+                        {et.produto?.nome && (
+                            <p className="text-xs text-gray-400">Etiqueta: {et.nomeProduto}</p>
+                        )}
                         <p className="text-sm text-gray-400">
                             Cód. {codExibir(et)} · {et.pesoUnitario}g · {et.quantidadeEmbalagem} un/emb
                             {pesoPacoteStr(et.pesoPacote) && (
@@ -104,7 +120,7 @@ function PrintModal({ et, onClose }) {
                 </div>
 
                 {/* Controles */}
-                <div className="px-6 py-4 bg-gray-50 border-b flex flex-wrap items-end gap-5">
+                <div className="px-4 py-3 md:px-6 md:py-4 bg-gray-50 border-b grid grid-cols-2 md:flex md:flex-wrap md:items-end gap-3 md:gap-5">
                     <div>
                         <label className="block text-xs font-semibold text-gray-600 mb-1">Tamanho</label>
                         <div className="flex flex-wrap gap-1.5">
@@ -125,6 +141,11 @@ function PrintModal({ et, onClose }) {
                     </div>
                     <div>
                         <label className="block text-xs font-semibold text-gray-600 mb-1">Modelo</label>
+                        {deitada ? (
+                            <div className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-semibold bg-mint text-primaryDark min-h-[44px]" title="Etiqueta marcada como deitada em Dados das Etiquetas: usa o layout de mercado">
+                                <IconeOrientacao orientacao="DEITADA" /> Deitada · mercado
+                            </div>
+                        ) : (
                         <div className="flex flex-wrap gap-1.5">
                             {Object.values(LAYOUTS).map(l => (
                                 <button
@@ -140,6 +161,7 @@ function PrintModal({ et, onClose }) {
                                 </button>
                             ))}
                         </div>
+                        )}
                     </div>
                     <div>
                         <label className="block text-xs font-semibold text-gray-600 mb-1">Data de Fabricação</label>
@@ -147,7 +169,7 @@ function PrintModal({ et, onClose }) {
                             type="date"
                             value={dataFab}
                             onChange={e => setDataFab(e.target.value)}
-                            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
+                            className="w-full md:w-auto px-3 py-2 border border-gray-300 rounded-lg text-sm min-h-[44px] focus:ring-2 focus:ring-primary"
                         />
                     </div>
                     <div>
@@ -182,7 +204,7 @@ function PrintModal({ et, onClose }) {
                     </div>
                     <button
                         onClick={handlePrint}
-                        className="ml-auto flex items-center gap-2 px-7 py-2.5 bg-indigo-600 text-white rounded-xl font-semibold text-base hover:bg-indigo-700 transition-colors shadow-sm"
+                        className="col-span-2 md:col-auto md:ml-auto flex items-center justify-center gap-2 px-7 py-2.5 min-h-[44px] bg-primary text-white rounded-full font-semibold text-base hover:bg-primaryDark transition-colors shadow-sm"
                     >
                         <Printer className="h-5 w-5" />
                         Imprimir{copies > 1 ? ` ${copies}×` : ''}
@@ -194,17 +216,19 @@ function PrintModal({ et, onClose }) {
                     <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
                         <Printer className="h-4 w-4 text-amber-700 flex-shrink-0 mt-0.5" />
                         <p className="text-xs text-amber-900 leading-relaxed">
-                            A etiqueta é <b>{pagina.etiquetaTexto}</b>; como ela imprime deitada, na janela de impressão o papel aparece como <b>{pagina.texto}</b> — é esse que você escolhe.
-                            Mantenha a escala em <b>100%</b> (nada de &ldquo;ajustar à página&rdquo;): com papel de outro tamanho o navegador encolhe a etiqueta num canto.
+                            {deitada
+                                ? <>Etiqueta <b>deitada</b> ({desenho.larguraMM} × {desenho.alturaMM} mm): na janela de impressão o papel é o mesmo de sempre, <b>{pagina.texto}</b>.</>
+                                : <>A etiqueta é <b>{pagina.etiquetaTexto}</b>; como ela imprime deitada, na janela de impressão o papel aparece como <b>{pagina.texto}</b> — é esse que você escolhe.</>}
+                            {' '}Mantenha a escala em <b>100%</b> (nada de &ldquo;ajustar à página&rdquo;): com papel de outro tamanho o navegador encolhe a etiqueta num canto.
                         </p>
                     </div>
                 </div>
 
-                {/* Preview */}
-                <div className="flex-1 overflow-auto bg-gray-100 flex justify-center py-6">
+                {/* Preview — escala calculada pela largura disponível (cabe no celular) */}
+                <div ref={previewRef} className="flex-1 overflow-auto bg-gray-100 flex justify-center py-4 md:py-6 px-2">
                     <div>
-                        <p className="text-xs text-gray-400 text-center mb-3">Preview — {dim.larguraMM}mm × {dim.alturaMM}mm · {LAYOUTS[layout]?.label}</p>
-                        <div ref={labelRef} style={{ transform:`scale(${tamanho === 'g120' ? 1.5 : 1.9})`, transformOrigin:'top center', marginBottom: tamanho === 'g120' ? '260px' : '190px' }}>
+                        <p className="text-xs text-gray-500 text-center mb-3">Preview — {desenho.larguraMM}mm × {desenho.alturaMM}mm · {deitada ? 'Deitada · mercado' : LAYOUTS[layout]?.label}</p>
+                        <div ref={labelRef} style={{ transform:`scale(${escala})`, transformOrigin:'top center', marginBottom: `${Math.max(0, desenho.alturaMM * (96 / 25.4) * (escala - 1))}px` }}>
                             <EtiquetaRender layout={layout} tamanho={tamanho} et={et} dataFab={dataFabDisplay} dataVal={dataValDisplay} />
                         </div>
                     </div>
@@ -227,11 +251,19 @@ function EtiquetaCard({ et, onPrint }) {
                     <span className="inline-block text-xs font-mono text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded mb-1">
                         {codExibir(et)}
                     </span>
-                    <h3 className="font-bold text-gray-900 text-sm leading-tight line-clamp-2">{et.nomeProduto}</h3>
+                    <h3 className="font-bold text-gray-900 text-sm leading-tight line-clamp-2">{nomeExibicao(et)}</h3>
+                    {et.produto?.nome && (
+                        <p className="text-xs text-gray-400 truncate">Etiqueta: {et.nomeProduto}</p>
+                    )}
                 </div>
                 <Tag className="h-4 w-4 text-gray-300 group-hover:text-indigo-400 flex-shrink-0 mt-1 transition-colors" />
             </div>
             <div className="flex items-center flex-wrap gap-x-3 gap-y-0.5 text-xs text-gray-500">
+                {ehDeitada(et) && (
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-mint text-primaryDark text-[10px] font-bold" title="Etiqueta deitada (layout de mercado)">
+                        <IconeOrientacao orientacao="DEITADA" className="h-3 w-3" />Deitada
+                    </span>
+                )}
                 <span>{et.pesoUnitario}g/un</span>
                 <span className="text-gray-300">·</span>
                 <span>{et.quantidadeEmbalagem} un/emb</span>
@@ -307,9 +339,16 @@ export default function EtiquetasList() {
             if (categoriaSel && et.produto?.categoriaProduto?.id !== categoriaSel) return false;
             if (!search.trim()) return true;
             const q = search.toLowerCase();
-            return et.nomeProduto.toLowerCase().includes(q) || et.codigoProduto.toLowerCase().includes(q);
+            // Busca tanto pelos dados da própria etiqueta quanto pelo nome/código do CADASTRO
+            // do produto vinculado — é por esse nome que a equipe costuma procurar.
+            return (
+                et.nomeProduto.toLowerCase().includes(q) ||
+                et.codigoProduto.toLowerCase().includes(q) ||
+                (et.produto?.nome || '').toLowerCase().includes(q) ||
+                (et.produto?.codigo || '').toLowerCase().includes(q)
+            );
         })
-        .sort((a, b) => a.nomeProduto.localeCompare(b.nomeProduto, 'pt-BR'));
+        .sort((a, b) => nomeExibicao(a).localeCompare(nomeExibicao(b), 'pt-BR'));
 
     return (
         <div className="w-full px-4 py-6">

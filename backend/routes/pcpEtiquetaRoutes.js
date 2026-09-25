@@ -127,6 +127,30 @@ router.patch('/:id/toggle', async (req, res) => {
     }
 });
 
+// PATCH /api/pcp/etiquetas/:id/orientacao — alterna EM_PE ⇄ DEITADA (ou grava o valor do corpo)
+router.patch('/:id/orientacao', async (req, res) => {
+    try {
+        const perms = await getPerms(req.user.id);
+        if (!temPerm(perms)) return res.status(403).json({ error: 'Sem permissão.' });
+
+        const atual = await prisma.etiquetaProduto.findUnique({ where: { id: req.params.id }, select: { orientacao: true } });
+        if (!atual) return res.status(404).json({ error: 'Etiqueta não encontrada.' });
+
+        const pedida = req.body?.orientacao;
+        const nova = pedida !== undefined
+            ? orientacaoValida(pedida)
+            : (atual.orientacao === 'DEITADA' ? 'EM_PE' : 'DEITADA');
+        const item = await prisma.etiquetaProduto.update({
+            where: { id: req.params.id },
+            data: { orientacao: nova },
+        });
+        return res.json(item);
+    } catch (err) {
+        console.error('[Etiqueta] orientacao:', err.message);
+        return res.status(500).json({ error: err.message });
+    }
+});
+
 // Peso do pacote: validação única, compartilhada com a importação em lote
 // (backend/utils/pesoPacote.js). Valor ilegível ou fora da faixa vira ERRO 400 —
 // nunca null calado (null silencioso já apagou peso que estava gravado).
@@ -186,7 +210,15 @@ function sanitize(body) {
         ativo:                 body.ativo !== undefined ? Boolean(body.ativo) : true,
         tipoProduto:           body.tipoProduto         || null,
         tarjaPreta:            Boolean(body.tarjaPreta),
+        // Orientação do rótulo: só EM_PE | DEITADA. Chave AUSENTE não mexe no valor gravado
+        // (o botão da lista troca por PATCH próprio; um PUT antigo não pode voltar tudo p/ em pé).
+        ...(body.orientacao !== undefined ? { orientacao: orientacaoValida(body.orientacao) } : {}),
     };
+}
+
+const ORIENTACOES = ['EM_PE', 'DEITADA'];
+function orientacaoValida(v) {
+    return ORIENTACOES.includes(v) ? v : 'EM_PE';
 }
 
 module.exports = router;

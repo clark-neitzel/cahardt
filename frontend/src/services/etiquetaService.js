@@ -7,6 +7,8 @@ const etiquetaService = {
     atualizar:  (id, dados) => api.put(`/pcp/etiquetas/${id}`, dados).then(r => r.data),
     remover:    (id)     => api.delete(`/pcp/etiquetas/${id}`).then(r => r.data),
     toggle:     (id)     => api.patch(`/pcp/etiquetas/${id}/toggle`).then(r => r.data),
+    // alterna EM_PE ⇄ DEITADA (sem corpo) ou grava a orientação pedida
+    orientacao: (id, orientacao) => api.patch(`/pcp/etiquetas/${id}/orientacao`, orientacao ? { orientacao } : {}).then(r => r.data),
 };
 
 export default etiquetaService;

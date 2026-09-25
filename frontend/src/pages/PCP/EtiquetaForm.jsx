@@ -3,6 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { ChevronLeft, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
 import etiquetaService from '../../services/etiquetaService';
+import { SeletorOrientacao } from './OrientacaoEtiqueta';
+import { orientacaoValida } from './etiquetaModelos';
 import produtoService from '../../services/produtoService';
 import { ALERGENOS_LISTA } from './EtiquetaLabel';
 import SelectBusca from '../../components/SelectBusca';
@@ -43,6 +45,7 @@ const VAZIO = {
     ativo: true,
     tipoProduto: '',
     tarjaPreta: false,
+    orientacao: 'EM_PE',   // EM_PE (100×120, como sempre) | DEITADA (120×100, layout de mercado)
 };
 
 // Limites do campo (em GRAMAS inteiras, que é como a API guarda).
@@ -148,6 +151,7 @@ export default function EtiquetaForm() {
                 tipoProduto:     et.tipoProduto     ?? '',
                 codigoBarras:    et.codigoBarras    ?? '',
                 pesoPacote:      gramasParaKgTexto(et.pesoPacote),
+                orientacao:      orientacaoValida(et.orientacao),
             });
         }).catch(err => { toast.error(err.message); navigate('/pcp/etiquetas/dados'); });
     }, [id, editando, navigate]);
@@ -260,6 +264,9 @@ export default function EtiquetaForm() {
                         <Campo label="Validade (dias)">
                             <input type="number" min="1" value={form.validadeDias} onChange={e => set('validadeDias', e.target.value)} className={inputCls} />
                         </Campo>
+                        <Campo label="Orientação da etiqueta">
+                            <SeletorOrientacao value={form.orientacao} onChange={v => set('orientacao', v)} />
+                        </Campo>
                         <Campo label="Nome do produto na etiqueta">
                             <label className="flex items-center gap-2 cursor-pointer select-none mt-1">
                                 <input
@@ -291,27 +298,31 @@ export default function EtiquetaForm() {
                                         const comEtiqueta = produtos.filter(p =>
                                             etiquetasExistentes.some(e => e.produtoId === p.id && e.id !== id)
                                         );
-                                        return (
-                                            <>
-                                                {semEtiqueta.length > 0 && (
-                                                    <optgroup label="Sem etiqueta vinculada">
-                                                        {semEtiqueta.map(p => (
-                                                            <option key={p.id} value={p.id}>{p.codigo} — {p.nome}</option>
-                                                        ))}
-                                                    </optgroup>
-                                                )}
-                                                {comEtiqueta.length > 0 && (
-                                                    <optgroup label="Já tem etiqueta (pode adicionar outra)">
-                                                        {comEtiqueta.map(p => {
-                                                            const n = etiquetasExistentes.filter(e => e.produtoId === p.id && e.id !== id).length;
-                                                            return (
-                                                                <option key={p.id} value={p.id}>{p.codigo} — {p.nome} ({n} etiqueta{n > 1 ? 's' : ''})</option>
-                                                            );
-                                                        })}
-                                                    </optgroup>
-                                                )}
-                                            </>
-                                        );
+                                        // SelectBusca lê os filhos com React.Children — NUNCA devolver Fragment aqui
+                                        // (Children.forEach não enxerga dentro de <>…</> e o menu fica vazio).
+                                        const grupos = [];
+                                        if (semEtiqueta.length > 0) {
+                                            grupos.push(
+                                                <optgroup key="sem-etiqueta" label="Sem etiqueta vinculada">
+                                                    {semEtiqueta.map(p => (
+                                                        <option key={p.id} value={p.id}>{p.codigo} — {p.nome}</option>
+                                                    ))}
+                                                </optgroup>
+                                            );
+                                        }
+                                        if (comEtiqueta.length > 0) {
+                                            grupos.push(
+                                                <optgroup key="com-etiqueta" label="Já tem etiqueta (pode adicionar outra)">
+                                                    {comEtiqueta.map(p => {
+                                                        const n = etiquetasExistentes.filter(e => e.produtoId === p.id && e.id !== id).length;
+                                                        return (
+                                                            <option key={p.id} value={p.id}>{p.codigo} — {p.nome} ({n} etiqueta{n > 1 ? 's' : ''})</option>
+                                                        );
+                                                    })}
+                                                </optgroup>
+                                            );
+                                        }
+                                        return grupos;
                                     })()}
                                 </SelectBusca>
                             )}

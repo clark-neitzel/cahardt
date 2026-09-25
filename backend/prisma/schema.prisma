@@ -2907,6 +2907,9 @@ model EtiquetaProduto {
   ativo       Boolean @default(true)
   tipoProduto String? @map("tipo_produto")
   tarjaPreta  Boolean @default(false) @map("tarja_preta")
+  // Orientação do rótulo impresso: EM_PE (100×120, desenhado em pé e girado na impressão — padrão)
+  // ou DEITADA (120×100, layout de mercado, impresso sem girar). Escolhido por etiqueta (09/2026).
+  orientacao  String  @default("EM_PE")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

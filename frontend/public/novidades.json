@@ -1,5 +1,11 @@
 [
   {
+    "slug": "etiqueta-deitada",
+    "titulo": "Etiqueta deitada para mercado",
+    "resumo": "Em Dados das Etiquetas, cada etiqueta ganhou o botão de orientação: Em pé (a de sempre) ou Deitada (120 × 100, layout de mercado para pacote pequeno, com faixa preta no nome e selo do peso). A deitada imprime sem girar, no mesmo papel de sempre. As telas Etiquetas e Dados das Etiquetas agora funcionam no celular.",
+    "data": "2026-09-25"
+  },
+  {
     "slug": "ficha-cliente-pedidos",
     "titulo": "Ficha do cliente nos Pedidos",
     "resumo": "Em todos os cards da aba Pedidos — Pedidos, Especiais, Bonificação, Amostras e Devoluções — o nome do cliente agora abre, com um toque, a mesma ficha rápida da aba Rota: telefone, endereço, dia de venda/entrega, condição de pagamento e ponto GPS, sem sair da tela. Também abre pelo cabeçalho da janela de detalhes do pedido. Amostra pedida para um lead abre a ficha do lead. O toque no nome não expande nem seleciona o card.",
