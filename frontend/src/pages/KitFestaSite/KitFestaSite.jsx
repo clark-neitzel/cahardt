@@ -208,7 +208,7 @@ function Hero({ cfg, onCatalog }) {
             <a className="btn btn-ghost" href={`https://wa.me/${cfg.loja?.whatsapp}`} target="_blank" rel="noreferrer"><MessageCircle size={18} /> WhatsApp</a>
           </div>
           <div className="hero-trust">
-            <div className="t"><b>+18 anos</b><span>fazendo festa em Joinville</span></div>
+            <div className="t"><b>+19 anos</b><span>fazendo festa em Joinville</span></div>
             <div className="t"><b>25un</b><span>por caixa</span></div>
             <div className="t"><b>mín. {cfg.regras?.minCaixas || 4}</b><span>caixas por pedido</span></div>
           </div>
