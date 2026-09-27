@@ -617,18 +617,22 @@ const funcionarioController = {
             const { funcionarioId, data, hora, tipo, obs } = req.body || {};
             if (!funcionarioId || !data || !hora) return res.status(400).json({ erro: 'Informe funcionário, data e hora.' });
             const dataRef = String(data).slice(0, 10);
+            if (!/^\d{2}:\d{2}$/.test(String(hora))) return res.status(400).json({ erro: 'Hora inválida (use HH:MM).' });
             const dt = new Date(`${dataRef}T${hora}:00`);
+            if (isNaN(dt.getTime())) return res.status(400).json({ erro: 'Data ou hora inválida.' });
             const batida = await prisma.pontoRegistro.create({
                 data: {
                     funcionarioId,
                     dataReferencia: dataRef,
-                    tipo: tipo === 'SAIDA' ? 'SAIDA' : 'ENTRADA',
+                    tipo: tipo === 'SAIDA' ? 'SAIDA' : 'ENTRADA', // provisório: realinhado pela ordem logo abaixo
                     hora: dt,
                     origem: 'MANUAL',
                     ajustadoPor: req.user?.id || null,
                     obs: obs || 'Ajuste manual'
                 }
             });
+            // Sem tipo informado (clique na vaga da tabela), o tipo vem da posição no dia
+            await pontoService.realinharTiposDoDia(funcionarioId, dataRef);
             res.status(201).json(batida);
         } catch (error) {
             console.error('[RH] add batida manual:', error);
@@ -645,6 +649,7 @@ const funcionarioController = {
             if (obs !== undefined) data.obs = obs;
             if (hora) data.hora = new Date(`${atual.dataReferencia}T${hora}:00`);
             const batida = await prisma.pontoRegistro.update({ where: { id: req.params.id }, data });
+            await pontoService.realinharTiposDoDia(atual.funcionarioId, atual.dataReferencia);
             res.json(batida);
         } catch (error) {
             console.error('[RH] update batida:', error);
@@ -653,7 +658,10 @@ const funcionarioController = {
     },
     delBatida: async (req, res) => {
         try {
+            const atual = await prisma.pontoRegistro.findUnique({ where: { id: req.params.id } });
+            if (!atual) return res.status(404).json({ erro: 'Batida não encontrada.' });
             await prisma.pontoRegistro.delete({ where: { id: req.params.id } });
+            await pontoService.realinharTiposDoDia(atual.funcionarioId, atual.dataReferencia);
             res.json({ ok: true });
         } catch (error) {
             console.error('[RH] del batida:', error);

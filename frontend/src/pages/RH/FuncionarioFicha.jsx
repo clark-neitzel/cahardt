@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ChevronLeft, Copy, MessageCircle, RefreshCw, Loader2, Upload, Trash2, Plus, Lock, Printer, DollarSign } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -454,14 +454,32 @@ function AbaCartao({ f }) {
   const [modalDia, setModalDia] = useState(null); // linha do dia sendo marcada
   const [selecao, setSelecao] = useState([]);     // datas marcadas para ação em lote
   const [ultimoClique, setUltimoClique] = useState(null); // p/ selecionar intervalo com Shift
+  const [vagaAberta, setVagaAberta] = useState(null);   // { data, idx } — vaga vazia com o campo de hora aberto
+  const [vagaSalvando, setVagaSalvando] = useState(null); // { data, idx, hora } — enquanto grava
 
-  const carregar = useCallback(async () => {
-    setCarregando(true);
+  // silencioso = true recarrega sem trocar a tabela pelo spinner (não perde o foco de quem está digitando)
+  const carregar = useCallback(async (silencioso = false) => {
+    if (!silencioso) setCarregando(true);
     try { setCartao(await funcionarioService.cartao(f.id, { de: periodo.de, ate: periodo.ate })); }
     catch { toast.error('Erro ao carregar cartão.'); }
-    finally { setCarregando(false); }
+    finally { if (!silencioso) setCarregando(false); }
   }, [f.id, periodo.de, periodo.ate]);
   useEffect(() => { carregar(); }, [carregar]);
+
+  // Lança a batida digitada na vaga: sem tipo — o servidor encaixa pela ordem do horário
+  // (1ª batida do dia = entrada, 2ª = saída…), então tanto faz em qual vaga vazia se digita.
+  const salvarVaga = async (linha, idx, hora, irProxima) => {
+    if (vagaSalvando) return; // uma gravação por vez
+    setVagaAberta(null);
+    setVagaSalvando({ data: linha.data, idx, hora });
+    try {
+      await funcionarioService.addBatida({ funcionarioId: f.id, data: linha.data, hora });
+      toast.success(`Batida ${hora} lançada em ${soDia(linha.data)}.`);
+      await carregar(true);
+      if (irProxima && idx + 1 < contarVagas(dias)) setVagaAberta({ data: linha.data, idx: idx + 1 });
+    } catch (e) { toast.error(e?.response?.data?.erro || 'Erro ao salvar batida.'); }
+    finally { setVagaSalvando(null); }
+  };
 
   // Trocou de período? A seleção antiga não vale mais
   useEffect(() => { setSelecao([]); setUltimoClique(null); }, [periodo.de, periodo.ate]);
@@ -469,6 +487,16 @@ function AbaCartao({ f }) {
   const primeiroDia = periodo.de || `${mesAtual()}-01`;
   const dias = cartao?.linhas || [];
   const prestador = cartao?.folha?.modo === 'PRESTADOR';
+  const vagas = contarVagas(dias);
+  const propsVagas = {
+    vagas,
+    vagaAberta,
+    vagaSalvando,
+    onAbrir: (linha, idx) => setVagaAberta({ data: linha.data, idx }),
+    onFechar: () => setVagaAberta(null),
+    onSalvar: salvarVaga,
+    onEditar: (linha, b) => setModal({ ...b, data: linha.data })
+  };
 
   // Clique com Shift pega o intervalo inteiro desde o último dia clicado
   const alternarDia = (data, comShift) => {
@@ -552,7 +580,9 @@ function AbaCartao({ f }) {
                   </label>
                   <button onClick={() => setModalDia(l)} className={`px-2 py-1 text-xs font-semibold rounded-full ${SELO_SITUACAO[l.situacao]}`}>{l.situacaoRotulo}</button>
                 </div>
-                <Batidas linha={l} onEditar={(b) => setModal({ ...b, data: l.data })} />
+                <div className="grid grid-cols-4 gap-1">
+                  <VagasBatida linha={l} {...propsVagas} />
+                </div>
                 <div className="flex gap-4 mt-2 text-xs text-gray-500 tabular-nums">
                   <span>Previsto <b className="text-gray-700">{l.previsto}</b></span>
                   <span>Trabalhado <b className="text-gray-700">{l.trabalhado}</b></span>
@@ -565,34 +595,45 @@ function AbaCartao({ f }) {
           {/* Desktop: tabela */}
           <div className="hidden md:block overflow-x-auto border border-gray-200 rounded-lg">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50"><tr>
-                <th className="pl-3 pr-1 py-3 w-8">
-                  <input
-                    type="checkbox"
-                    checked={dias.length > 0 && selecao.length === dias.length}
-                    onChange={(e) => { setSelecao(e.target.checked ? dias.map(l => l.data) : []); setUltimoClique(null); }}
-                    title="Selecionar todos os dias do período"
-                    className="h-4 w-4"
-                  />
-                </th>
-                <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Dia</th>
-                <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Batidas</th>
-                {prestador ? (
-                  <>
-                    <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Horas</th>
-                    <th className="px-3 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Valor do dia</th>
-                  </>
-                ) : (
-                  <>
-                    <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Previsto</th>
-                    <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Trabalhado</th>
-                    <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Saldo</th>
-                  </>
-                )}
-                <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Situação</th>
-              </tr></thead>
+              <thead className="bg-gray-50">
+                <tr>
+                  <th rowSpan="2" className="pl-3 pr-1 py-3 w-8 align-bottom">
+                    <input
+                      type="checkbox"
+                      checked={dias.length > 0 && selecao.length === dias.length}
+                      onChange={(e) => { setSelecao(e.target.checked ? dias.map(l => l.data) : []); setUltimoClique(null); }}
+                      title="Selecionar todos os dias do período"
+                      className="h-4 w-4"
+                    />
+                  </th>
+                  <th rowSpan="2" className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide align-bottom">Dia</th>
+                  <th colSpan={vagas} className="px-2 pt-2.5 pb-0.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide border-b border-gray-200/70">
+                    Batidas <span className="normal-case font-normal tracking-normal text-gray-400">· clique na vaga vazia e digite a hora</span>
+                  </th>
+                  {prestador ? (
+                    <>
+                      <th rowSpan="2" className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide align-bottom">Horas</th>
+                      <th rowSpan="2" className="px-3 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide align-bottom">Valor do dia</th>
+                    </>
+                  ) : (
+                    <>
+                      <th rowSpan="2" className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide align-bottom">Previsto</th>
+                      <th rowSpan="2" className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide align-bottom">Trabalhado</th>
+                      <th rowSpan="2" className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide align-bottom">Saldo</th>
+                    </>
+                  )}
+                  <th rowSpan="2" className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide align-bottom">Situação</th>
+                </tr>
+                <tr>
+                  {Array.from({ length: vagas }, (_, idx) => (
+                    <th key={idx} className="px-1 pb-2 pt-1 text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap" title={rotuloVaga(idx, true)}>
+                      <span className={`inline-block h-1.5 w-1.5 rounded-full mr-1 align-middle ${idx % 2 ? 'bg-orange-500' : 'bg-green-500'}`} />{rotuloVaga(idx)}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
               <tbody className="bg-white divide-y divide-gray-200 text-sm">
-                {cartao.linhas.length === 0 && <tr><td colSpan="7" className="px-3 py-6 text-center text-gray-400">Nenhum dia no período selecionado.</td></tr>}
+                {cartao.linhas.length === 0 && <tr><td colSpan={vagas + 6} className="px-3 py-6 text-center text-gray-400">Nenhum dia no período selecionado.</td></tr>}
                 {cartao.linhas.map((l) => (
                   <tr key={l.data} className={`hover:bg-gray-50 ${selecao.includes(l.data) ? 'bg-mint/30' : l.situacao === 'FALTA' ? 'bg-red-50/50' : l.folga ? 'bg-gray-50/60' : ''}`}>
                     <td className="pl-3 pr-1 py-2.5">
@@ -605,7 +646,7 @@ function AbaCartao({ f }) {
                       />
                     </td>
                     <td className="px-3 py-2.5 font-medium capitalize whitespace-nowrap">{rotuloDia(l.data)}</td>
-                    <td className="px-3 py-2.5"><Batidas linha={l} onEditar={(b) => setModal({ ...b, data: l.data })} /></td>
+                    <VagasBatida linha={l} {...propsVagas} celula />
                     {prestador ? (
                       <>
                         <td className="px-3 py-2.5 tabular-nums font-semibold">{l.trabalhado}</td>
@@ -724,18 +765,92 @@ function BarraSelecao({ funcionarioId, selecao, dias, onLimparSelecao, onSaved }
   );
 }
 
-function Batidas({ linha, onEditar }) {
-  if (!linha.batidas.length) return <span className="text-gray-400 text-sm">—</span>;
-  return (
-    <div className="flex flex-wrap items-center gap-1.5">
-      {linha.batidas.map((b) => (
-        <span key={b.id} className="inline-flex items-center gap-1 bg-gray-100 hover:bg-gray-200 rounded-full pl-2 pr-1.5 py-0.5">
+// ─── Vagas de batida (Entrada 1 · Saída 1 · Entrada 2 …) ─────────────────────
+// Cada dia mostra as batidas em colunas fixas, na ordem do horário — o que a folha
+// usa para contar as horas (1ª = entrada, 2ª = saída…). Vaga vazia é clicável:
+// digita a hora e ela entra no dia; o servidor reordena e reclassifica sozinho.
+const contarVagas = (linhas) => {
+  const maior = Math.max(0, ...linhas.map(l => l.batidas.length));
+  return Math.max(4, Math.ceil(maior / 2) * 2);
+};
+const rotuloVaga = (idx, longo = false) => {
+  const n = Math.floor(idx / 2) + 1;
+  return idx % 2 ? (longo ? `${n}ª saída` : `Saída ${n}`) : (longo ? `${n}ª entrada` : `Entrada ${n}`);
+};
+const HORA_OK = /^([01]\d|2[0-3]):[0-5]\d$/;
+// Digitação de hora sem frescura: só números, os dois-pontos entram sozinhos (1300 → 13:00)
+const mascaraHora = (v) => {
+  const d = String(v).replace(/\D/g, '').slice(0, 4);
+  return d.length > 2 ? `${d.slice(0, 2)}:${d.slice(2)}` : d;
+};
+
+function VagasBatida({ linha, vagas, vagaAberta, vagaSalvando, onAbrir, onFechar, onSalvar, onEditar, celula = false }) {
+  const itens = Array.from({ length: vagas }, (_, idx) => {
+    const b = linha.batidas[idx];
+    const aberta = vagaAberta && vagaAberta.data === linha.data && vagaAberta.idx === idx;
+    const salvando = vagaSalvando && vagaSalvando.data === linha.data && vagaSalvando.idx === idx;
+    let conteudo;
+    if (b) {
+      conteudo = (
+        <span className="inline-flex items-center gap-1 bg-gray-100 hover:bg-gray-200 rounded-full pl-2 pr-1.5 py-0.5 whitespace-nowrap">
           <span className={`h-1.5 w-1.5 rounded-full ${b.tipo === 'SAIDA' ? 'bg-orange-500' : 'bg-green-500'}`} title={b.tipo === 'SAIDA' ? 'Saída' : 'Entrada'} />
-          <button onClick={() => onEditar(b)} className="tabular-nums text-gray-800 hover:text-primary font-medium" title="Editar / excluir batida">{b.hora}</button>
+          <button onClick={() => onEditar(linha, b)} className="tabular-nums text-gray-800 hover:text-primary font-medium" title="Editar / excluir batida">{b.hora}</button>
           {b.latLng && <a href={`https://www.google.com/maps?q=${b.latLng}`} target="_blank" rel="noreferrer" className="leading-none" title="Ver no mapa">📍</a>}
         </span>
-      ))}
-    </div>
+      );
+    } else if (salvando) {
+      conteudo = (
+        <span className="inline-flex items-center gap-1 bg-mint/60 rounded-full px-2 py-0.5 tabular-nums text-gray-700 font-medium whitespace-nowrap">
+          <Loader2 className="h-3 w-3 animate-spin" />{vagaSalvando.hora}
+        </span>
+      );
+    } else if (aberta) {
+      conteudo = <InputHora onConfirmar={(hora, irProxima) => onSalvar(linha, idx, hora, irProxima)} onCancelar={onFechar} />;
+    } else {
+      conteudo = (
+        <button
+          type="button"
+          onClick={() => onAbrir(linha, idx)}
+          className="w-full min-w-[56px] min-h-[26px] rounded-full border border-dashed border-gray-200 text-gray-300 hover:border-primary hover:text-primary hover:bg-mint/30 text-xs font-semibold leading-none"
+          title={`Lançar ${rotuloVaga(idx, true)} de ${soDia(linha.data)} — digite a hora e dê Enter`}
+        >+</button>
+      );
+    }
+    return celula
+      ? <td key={idx} className="px-1 py-2 align-middle">{conteudo}</td>
+      : <div key={idx} className="min-h-[28px] flex items-center">{conteudo}</div>;
+  });
+  return <>{itens}</>;
+}
+
+// Campo de hora da vaga: Enter salva · Tab salva e abre a próxima vaga · Esc cancela · clicar fora salva se estiver completa
+function InputHora({ onConfirmar, onCancelar }) {
+  const [v, setV] = useState('');
+  const fechado = useRef(false); // Enter/Tab fecham o campo e o blur dispara em seguida — não pode salvar 2x
+  const confirmar = (irProxima) => {
+    if (fechado.current) return;
+    if (!v) { fechado.current = true; return onCancelar(); }
+    if (!HORA_OK.test(v)) { toast.error(`Hora inválida: ${v}. Use HH:MM (ex.: 09:08).`); return; }
+    fechado.current = true;
+    onConfirmar(v, irProxima);
+  };
+  const cancelar = () => { if (fechado.current) return; fechado.current = true; onCancelar(); };
+  return (
+    <input
+      autoFocus
+      value={v}
+      onChange={(e) => setV(mascaraHora(e.target.value))}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') { e.preventDefault(); confirmar(false); }
+        else if (e.key === 'Tab' && !e.shiftKey) { e.preventDefault(); confirmar(true); }
+        else if (e.key === 'Escape') { e.preventDefault(); cancelar(); }
+      }}
+      onBlur={() => { if (!v || HORA_OK.test(v)) confirmar(false); else cancelar(); }}
+      inputMode="numeric"
+      placeholder="hh:mm"
+      maxLength={5}
+      className="w-[64px] border border-primary rounded-full px-2 py-0.5 text-sm tabular-nums text-center focus:outline-none focus:ring-2 focus:ring-primary/30"
+    />
   );
 }
 

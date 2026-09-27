@@ -654,7 +654,26 @@ const montarCartao = async (funcionarioId, filtro) => {
     };
 };
 
+// ─── Tipos do dia pela ORDEM do horário ──────────────────────────────────────
+// O cartão conta as horas em pares pela ordem (1ª batida = entrada, 2ª = saída…).
+// Depois de um ajuste manual (incluir, mover ou excluir uma batida), o tipo
+// guardado em cada batida é realinhado a essa ordem — assim uma saída de café
+// incluída no meio do dia "encaixa" e as demais se reacomodam sozinhas.
+const realinharTiposDoDia = async (funcionarioId, dataReferencia) => {
+    const doDia = await prisma.pontoRegistro.findMany({
+        where: { funcionarioId, dataReferencia },
+        orderBy: { hora: 'asc' }
+    });
+    const ajustes = doDia
+        .map((b, i) => ({ b, tipo: i % 2 === 0 ? 'ENTRADA' : 'SAIDA' }))
+        .filter(({ b, tipo }) => b.tipo !== tipo)
+        .map(({ b, tipo }) => prisma.pontoRegistro.update({ where: { id: b.id }, data: { tipo } }));
+    if (ajustes.length) await Promise.all(ajustes);
+    return doDia.length;
+};
+
 module.exports = {
+    realinharTiposDoDia,
     getDataReferencia,
     horaLocalHM,
     haversineMetros,
