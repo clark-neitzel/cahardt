@@ -15,6 +15,7 @@ Resumo financeiro diário do motorista/vendedor. Mostra tudo que aconteceu em um
 ## O que dá pra fazer aqui
 
 - Ver resumo do dia selecionado: total entregue, total recebido por forma de pagamento, adiantamento
+- Navegar pelos dias com as setas `‹ ›`, o botão **Hoje** ou o calendário, e trocar de vendedor com um toque na **faixa de pílulas** do topo (ver seção própria abaixo)
 - Selecionar data e vendedor (admin pode ver qualquer um; usuário comum vê sempre o próprio)
 - Ver lista de entregas do dia com status de cada uma (PENDENTE, ENTREGUE, ENTREGUE_PARCIAL, DEVOLVIDO)
 - Registrar baixa de pagamento no Conta Azul — seleção individual ou em lote por checkbox
@@ -50,12 +51,21 @@ Resumo financeiro diário do motorista/vendedor. Mostra tudo que aconteceu em um
 |--------|-------------|
 | ABERTO | Em andamento, ainda pode ser editado |
 | A CONFERIR | A folha foi impressa (ou o dia virou) e o dinheiro está esperando alguém contar |
+| DEVOLUÇÃO PENDENTE | O dia tem devolução registrada ainda esperando a **Conferência de Devoluções** (a mercadoria que deveria voltar no caminhão) |
 | A FECHAR | Dinheiro conferido e assinado; falta só o fechamento |
 | FECHADO | Encerrado. **Não aceita mais lançamento nenhum** naquele dia (despesa, baixa, devolução, adiantamento) |
 | CONFERIDO | Status antigo (conferência pós-fechamento). Fica só nos caixas antigos; hoje a conferência é antes de fechar |
 
 > **A CONFERIR** e **A FECHAR** só aparecem com a regra da conferência do dinheiro ligada
 > (Configurações → Caixa — conferência do dinheiro). Com ela desligada, o caixa se comporta como antes.
+
+> **Caixa SEM NENHUM movimento no dia não entra na fila de conferência e fecha sem pedir a
+> conferência do dinheiro (10/2026).** "Sem movimento" quer dizer: nenhuma entrega, nenhuma
+> despesa, nenhum adiantamento lançado, nenhuma **cobrança de rota recebida em dinheiro**
+> (cobrança registrada mas paga em Pix/cartão, ou marcada como "não conseguiu cobrar", **não
+> conta**) e nenhuma baixa de título naquele dia — não há dinheiro nenhum para alguém contar.
+> Esse caixa fica **ABERTO** até ser fechado direto, mesmo com a conferência do dinheiro
+> ligada. Ver detalhe em "Conferir o dinheiro" e "Fechar o caixa", mais abaixo.
 
 ---
 
@@ -67,9 +77,40 @@ Resumo financeiro diário do motorista/vendedor. Mostra tudo que aconteceu em um
 3. O resumo mostra: total a receber, recebido por forma de pagamento, adiantamento e saldo
 
 ### Ver caixa de outro dia ou vendedor
-- **Outro dia:** use o seletor de data (só habilitado para `Pode_Ver_Historico_Caixa` ou `admin`; sem essa permissão, o campo fica bloqueado no dia atual)
-- **Outro vendedor:** só visível para `admin` ou `Pode_Editar_Caixa`; escolha no select de vendedor
-- O seletor mostra **só vendedores ativos**. Um vendedor inativo aparece apenas nos dias em que teve movimento de caixa (marcado como "inativo · teve caixa") — o histórico não se perde
+- **Outro dia:** use as setas `‹ ›`, o botão **Hoje** ou toque na data para abrir o calendário — tudo isso só fica habilitado para `Pode_Ver_Historico_Caixa` ou `admin`/`Pode_Editar_Caixa`; sem nenhuma dessas permissões, a navegação fica travada no dia atual
+- **Outro vendedor:** toque direto na **pílula** da pessoa na faixa do topo, ou abra **"+ outros"** para escolher alguém que não apareceu na faixa — os dois só existem para `admin` ou `Pode_Editar_Caixa`
+- A lista de "+ outros" mostra **só vendedores ativos**. Um vendedor inativo aparece apenas nos dias em que teve movimento de caixa (marcado como "inativo · teve caixa") — o histórico não se perde
+
+### Navegar pelos dias e trocar de caixa pela faixa de pílulas (10/2026)
+
+O topo da tela tem duas partes: a **barra de data** e, logo abaixo, a **faixa de pílulas**.
+
+**Barra de data — `‹ 13/09/2026 · sábado ›` + Hoje**
+- `‹` volta um dia, `›` avança um dia — **`›` fica desabilitada no dia de hoje** (não existe caixa no futuro)
+- Tocar na própria data abre o calendário para pular direto para o dia desejado
+- O botão **Hoje** volta para o dia atual de qualquer ponto do histórico
+- No teclado, as setas `←` `→` do computador fazem a mesma coisa que `‹` `›` (desligado enquanto o foco está num campo de texto/busca ou com algum modal aberto na tela)
+- Sem `Pode_Ver_Historico_Caixa`/`Pode_Editar_Caixa`/`admin`, as setas, o calendário e o teclado ficam **todos desabilitados** — a tela mostra só o dia de hoje
+
+**Faixa de pílulas — "Caixas do dia"**
+Mostra, numa fileira que rola para o lado, cada pessoa que teve caixa relevante naquele dia: avatar com as iniciais, nome, status e o **valor a prestar**. Um toque na pílula troca na hora o caixa exibido embaixo — não precisa mais abrir nenhum seletor. A pílula da pessoa selecionada fica com uma borda verde-escura ao redor.
+
+A cor da pílula conta o status, e um pontinho piscando avisa quando precisa de ação:
+
+| Cor da pílula | Status | O que significa |
+|---|---|---|
+| 🟤 Âmbar, piscando | **A conferir** | O dinheiro está esperando alguém contar |
+| 🔴 Vermelho, piscando | **Devolução p/ conferir** | Tem devolução esperando a Conferência de Devoluções |
+| 🔵 Azul | **Aberto** | Dia ainda em andamento |
+| 🟢 Verde-claro (mint) | **A fechar** | Dinheiro já conferido, falta só fechar |
+| ⚪ Cinza | **Fechado** | Encerrado, aguardando conferência final do admin |
+| 🟩 Verde-escuro, com ✓ | **Conferido** | Tudo certo, finalizado |
+
+A **própria pílula do usuário sempre aparece**, mesmo sem nenhum movimento no dia. As pílulas de **outras pessoas** só aparecem para quem pode ver outros vendedores (`admin`/`Pode_Editar_Caixa`) e só entram na faixa quando tiveram algum movimento naquele dia — quem não teve nada não aparece ali (mas segue acessível pelo **"+ outros"**).
+
+No cabeçalho da faixa fica um resumo contando quantas pílulas há de cada status (ex.: "3 a conferir · 1 aberto"). No celular a faixa rola para o lado com o dedo.
+
+**Aviso de dias anteriores pendentes:** se existir algum caixa de um dia **diferente** do que está na tela ainda esperando conferência (A conferir ou Devolução pendente), aparece uma faixa amarela avisando, com a data e a quantidade — tocar na data pula direto para aquele dia. Sem `admin`/`Pode_Editar_Caixa`, esse aviso conta só os caixas do próprio usuário.
 
 ### Registrar baixa dos recebimentos (individual)
 > Desde 23/07/2026 a baixa é registrada **nas parcelas do próprio app** (o Conta Azul virou somente leitura). O botão continua o mesmo.
@@ -193,7 +234,7 @@ O caixa entra na fila de conferência **ao imprimir a folha** (a folha é a pres
    - **Bate certo** → confirme e pronto
    - **Diferença dentro da sua quebra de caixa** → você mesmo fecha, com **motivo obrigatório**
    - **Diferença acima da sua quebra** → precisa escolher quem autoriza e digitar a **senha** dessa pessoa
-4. Caixa de **R$ 0,00** (dia sem movimento) também precisa de conferência — é um clique só ("Conferi: não havia dinheiro a receber")
+4. Caixa que **teve movimento** mas fechou em **R$ 0,00** (ex.: adiantamento todo gasto em despesa) ainda passa por aqui — é um clique só ("Conferi: não havia dinheiro a receber"). **Caixa que não teve NENHUM movimento no dia** (nem entrega, nem despesa, nem adiantamento, nem cobrança, nem baixa de título) **nem chega a pedir esse passo** — ver "Caixa sem movimento fecha sozinho", logo abaixo
 5. Se houver diferença, o app oferece **criar uma tarefa na agenda** para cobrar a pessoa. O **vale não é lançado automaticamente**: se for descontar, lance à mão no Contas a Pagar
 6. Fica gravado quem conferiu, quanto contou, a hora, a contagem nota a nota, a diferença, o motivo e quem autorizou — e isso sai também na folha impressa
 
@@ -203,9 +244,29 @@ O caixa entra na fila de conferência **ao imprimir a folha** (a folha é a pres
 - Se o valor a prestar mudar depois da conferência (despesa lançada atrasada, baixa nova), a conferência **cai sozinha** e o caixa volta para "A conferir"
 - Quem conferiu (ou o admin) pode **Desfazer conferência** enquanto o caixa não estiver fechado
 
+### Caixa sem movimento fecha sozinho (10/2026)
+
+Antes, **todo** caixa que ficasse aberto virava pendência de conferência na virada do dia (meia-noite) — inclusive o de quem simplesmente não trabalhou naquele dia, não gerou despesa nem recebeu adiantamento. Isso enchia a fila "A conferir" de caixas de R$ 0,00 sem absolutamente nada para alguém contar.
+
+A virada do dia confere, antes de enfileirar, se o caixa teve **algum** destes:
+- entrega (de qualquer status);
+- despesa lançada;
+- adiantamento lançado;
+- **cobrança de rota recebida em dinheiro** — cobrança registrada mas paga em **Pix/cartão** (fica "aguardando conciliação", não é dinheiro na mão do motorista) ou marcada como **"não conseguiu cobrar"** **não conta** como movimento;
+- baixa de título.
+
+**Nenhum dos cinco?** O caixa **não entra na fila de conferência** (continua ABERTO, sem aparecer em "Caixas a conferir" na agenda nem no aviso de atraso do WhatsApp) e **fecha direto quando alguém clicar em Fechar Caixa**, mesmo com a regra da conferência do dinheiro ligada — não existe "contar zero notas" para um dia que não teve nada.
+
+**Teve qualquer um dos cinco, mesmo que o valor final dê R$ 0,00?** Aí o caixa segue a regra normal e passa pela conferência do dinheiro como sempre (ver seção acima).
+
+**A mesma regra vale fora da virada do dia, em qualquer jeito de mandar pra conferência:**
+- **Botão "Enviar para conferência"** (no cartão Conferência do Dinheiro): num caixa sem movimento, o clique não envia nada — aparece um aviso curto *"Caixa sem movimento — não precisa de conferência do dinheiro."* em vez do "Caixa enviado...".
+- **Imprimir a folha**: perguntando "enviar para conferência?" e a pessoa confirmar, um caixa sem movimento também **não é enviado** (mesmo aviso curto) — mas a impressão continua normalmente.
+- **O cartão "Conferência do Dinheiro" nem mostra os botões** nesse caso: em vez do card cheio pedindo pra contar, aparece só uma linha cinza discreta — *"Sem movimento no dia — não precisa conferir dinheiro."*
+
 ### Fechar o caixa
 1. Verifique as pendências — se houver, o botão fica desabilitado e as pendências aparecem listadas
-2. Com a regra ligada, **"Dinheiro ainda não conferido"** é uma das pendências: sem a assinatura de quem contou, não fecha
+2. Com a regra ligada, **"Dinheiro ainda não conferido"** é uma das pendências: sem a assinatura de quem contou, não fecha — **exceto no caixa sem nenhum movimento**, que nunca gera essa pendência (ver acima)
 3. Clique em **Fechar Caixa** — o sistema pode alertar sobre entregas sem conferência de assinatura (mas não bloqueia)
 4. Confirme — o status muda para FECHADO e fica gravado **quem fechou**
 
@@ -405,6 +466,7 @@ Quando a falta não é culpa do motorista (ex.: o produto não foi carregado de 
 | Caminho | Papel |
 |---------|-------|
 | `frontend/src/pages/Caixa/CaixaDiarioPage.jsx` | Tela principal do caixa com todos os fluxos |
+| `frontend/src/pages/Caixa/CaixaPilulasDia.jsx` | Barra `‹ data ›` + faixa de pílulas de status no topo do Caixa (consome `GET /caixa/resumo-dia`) |
 | `frontend/src/pages/Caixa/NovaDespesaModal.jsx` | Modal de nova despesa |
 | `frontend/src/pages/Caixa/ConferenciaDevolucaoCard.jsx` | Cartão de conferência de devoluções + modal de autorização com senha |
 | `frontend/src/pages/Caixa/ConferenciaDinheiroCard.jsx` | Cartão da conferência do dinheiro + calculadora de cédulas e moedas |
@@ -447,3 +509,4 @@ Com a chave **"Caixa só de segunda a sexta"** ligada (Configurações → Caixa
 
 - **Agenda (aba Tarefas):** quem confere vê o bloco **"Caixas a conferir"** — o aviso nasce **no dia seguinte** ao do caixa (conferindo no mesmo dia, nunca vira cobrança). Quem fecha vê **"Caixas a fechar"** assim que o dinheiro é conferido. E **"Conferi hoje"** mostra o que a pessoa já conferiu
 - **WhatsApp:** caixa parado sem conferir por N dias (padrão 2, configurável) gera **uma mensagem por dia** para quem confere, juntando todos os caixas atrasados. Mensagem interna, pelo bot da Ana
+- **Caixa sem nenhum movimento nunca entra nesses avisos** (10/2026) — ele não vira pendência de conferência, então não aparece em "Caixas a conferir" nem no alerta de atraso do WhatsApp

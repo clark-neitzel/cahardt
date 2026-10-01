@@ -330,7 +330,7 @@ const ModalConferir = ({ aberto, onFechar, onOk, vendedorId, vendedorNome, data,
 // ─────────────────────────────────────────────────────────────────────────────
 // Cartão na tela do Caixa
 // ─────────────────────────────────────────────────────────────────────────────
-const ConferenciaDinheiroCard = ({ conferencia, vendedorId, vendedorNome, data, valorAPrestar, caixaStatus, onAtualizar }) => {
+const ConferenciaDinheiroCard = ({ conferencia, vendedorId, vendedorNome, data, valorAPrestar, caixaStatus, temMovimento = true, onAtualizar }) => {
     const [modal, setModal] = useState(false);
     const [ocupado, setOcupado] = useState(false);
 
@@ -345,11 +345,23 @@ const ConferenciaDinheiroCard = ({ conferencia, vendedorId, vendedorNome, data, 
     const fechado = caixaStatus !== 'ABERTO';
     const semMovimento = Math.abs(Number(valorAPrestar || 0)) < 0.009;
 
+    // 10/2026: caixa sem NENHUM movimento no dia (sem entrega, despesa, adiantamento,
+    // cobrança em dinheiro ou baixa de título) não entra mais na fila de conferência —
+    // nem pela virada do dia, nem pelo clique manual em "Enviar"/Imprimir (o backend
+    // devolve enviado:false,motivo:'SEM_MOVIMENTO' e não grava nada). Mostrar o card
+    // cheio pedindo pra "conferir caixa sem dinheiro (R$ 0,00)" nesse caso só confunde
+    // quem olha um dia vazio — uma linha discreta já deixa claro que não há nada a fazer
+    // aqui. Não se aplica quando já existe uma conferência registrada (`conferido`):
+    // aquele R$ 0,00 foi contado de propósito por alguém e o registro continua valendo.
     const enviar = async () => {
         setOcupado(true);
         try {
-            await caixaService.enviarParaConferencia({ vendedorId, data, origem: 'MANUAL' });
-            toast.success('Caixa enviado para conferência do dinheiro.');
+            const res = await caixaService.enviarParaConferencia({ vendedorId, data, origem: 'MANUAL' });
+            if (res?.enviado === false && res?.motivo === 'SEM_MOVIMENTO') {
+                toast('Caixa sem movimento — não precisa de conferência do dinheiro.', { icon: 'ℹ️' });
+            } else {
+                toast.success('Caixa enviado para conferência do dinheiro.');
+            }
             onAtualizar?.();
         } catch (e) {
             toast.error(e.response?.data?.error || 'Erro ao enviar para conferência.');
@@ -399,6 +411,20 @@ const ConferenciaDinheiroCard = ({ conferencia, vendedorId, vendedorNome, data, 
                             <Undo2 className="h-4 w-4" /> Desfazer conferência
                         </button>
                     )}
+                </div>
+            </div>
+        );
+    }
+
+    // Caixa sem nenhum movimento e nunca conferido: nada a fazer aqui (ver nota acima).
+    // Vale tanto ABERTO (dia vazio, ainda rodando) quanto FECHADO (fechou sozinho sem
+    // passar pela fila, pela regra nova) — a mensagem serve pros dois.
+    if (!temMovimento) {
+        return (
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm mb-4">
+                <div className="flex items-center gap-2 px-5 py-3.5 text-gray-500">
+                    <Banknote className="h-4 w-4 text-gray-400 shrink-0" />
+                    <span className="text-sm">Sem movimento no dia — não precisa conferir dinheiro.</span>
                 </div>
             </div>
         );

@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Proposta · Caixa Diário</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --primary:#00754A; --primaryDark:#006241; --house:#1E3932; --mint:#d4e9e2;
+    --bg:#f2f0eb; --gold:#cba258; --txt:rgba(0,0,0,.87); --muted:#6b7280; --line:#e5e7eb;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Manrope,-apple-system,"SF Pro Text",sans-serif;letter-spacing:-.01em;
+       font-variant-numeric:tabular-nums;background:var(--bg);color:var(--txt)}
+  .wrap{max-width:1180px;margin:0 auto;padding:16px}
+  .nota{background:var(--house);color:#fff;border-radius:16px;padding:18px 20px;margin-bottom:18px}
+  .nota h1{margin:0 0 6px;font-size:18px}
+  .nota p{margin:0;font-size:13px;opacity:.85;line-height:1.5}
+  .lbl{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#4b5563;margin:22px 0 8px}
+
+  /* ===== Topbar da página ===== */
+  .topo{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+  .titulo{display:flex;align-items:center;gap:10px}
+  .titulo .ic{background:#fef3c7;color:#b45309;border-radius:8px;padding:7px;display:flex}
+  .titulo h2{margin:0;font-size:24px;font-weight:800}
+  .badge{padding:3px 10px;font-size:12px;font-weight:700;border-radius:999px}
+
+  /* Navegação de data */
+  .nav-data{display:flex;align-items:center;background:#fff;border:1px solid #d1d5db;border-radius:999px;
+            height:44px;box-shadow:0 1px 2px rgba(0,0,0,.05)}
+  .nav-data button{border:0;background:transparent;width:44px;height:44px;border-radius:999px;cursor:pointer;
+            display:flex;align-items:center;justify-content:center;color:#374151}
+  .nav-data button:hover{background:#f3f4f6}
+  .nav-data button:disabled{opacity:.3;cursor:default;background:transparent}
+  .nav-data .dia{padding:0 8px;min-width:170px;text-align:center;font-weight:700;font-size:15px;cursor:pointer;
+            border-left:1px solid var(--line);border-right:1px solid var(--line);height:100%;display:flex;
+            flex-direction:column;justify-content:center;line-height:1.1}
+  .nav-data .dia small{font-size:11px;font-weight:600;color:var(--muted);text-transform:capitalize}
+  .btn-hoje{height:44px;padding:0 16px;border-radius:999px;border:1px solid var(--primary);background:#fff;
+            color:var(--primary);font-weight:700;font-family:inherit;cursor:pointer}
+  .btn-hoje:hover{background:rgba(212,233,226,.5)}
+  .direita{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+
+  /* ===== Faixa de pílulas ===== */
+  .faixa{background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 1px 2px rgba(0,0,0,.05);padding:12px 14px}
+  .faixa-cab{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+  .faixa-cab span{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#4b5563}
+  .resumo{display:flex;gap:6px;flex-wrap:wrap}
+  .resumo b{font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px}
+  .pilulas{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+  .pilulas::-webkit-scrollbar{display:none}
+  .pil{flex:0 0 auto;display:flex;align-items:center;gap:8px;border-radius:999px;padding:6px 14px 6px 6px;
+       min-height:44px;cursor:pointer;border:2px solid transparent;font-family:inherit;font-size:14px;text-align:left;
+       transition:transform .12s}
+  .pil:active{transform:scale(.97)}
+  .pil .av{width:30px;height:30px;border-radius:999px;display:flex;align-items:center;justify-content:center;
+       font-weight:800;font-size:12px;background:rgba(255,255,255,.75)}
+  .pil .nm{font-weight:700;line-height:1.1}
+  .pil .st{font-size:11px;font-weight:600;opacity:.85;display:block}
+  .pil .vl{font-weight:800;font-size:13px;margin-left:4px}
+  .pil.sel{border-color:var(--house);box-shadow:0 0 0 2px #fff inset}
+  .pil .ponto{width:8px;height:8px;border-radius:999px;background:currentColor;animation:pisca 1.4s infinite;will-change:opacity}
+  @keyframes pisca{50%{opacity:.25}}
+
+  /* Cores por status */
+  .s-aberto   {background:#dbeafe;color:#1e40af}
+  .s-conferir {background:#fde68a;color:#78350f}
+  .s-devol    {background:#fee2e2;color:#991b1b}
+  .s-fechar   {background:var(--mint);color:var(--primaryDark)}
+  .s-fechado  {background:#e5e7eb;color:#374151}
+  .s-conferido{background:var(--primary);color:#fff}
+  .s-conferido .av{background:rgba(255,255,255,.2);color:#fff}
+  .s-semmov   {background:#fff;color:#9ca3af;border:1px dashed #d1d5db}
+
+  .atrasados{margin-top:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;
+       background:#fffbeb;border:1px solid #fcd34d;border-radius:10px;padding:8px 12px;color:#78350f}
+  .atrasados a{color:#78350f;font-weight:700;text-decoration:underline;cursor:pointer}
+  .vazio{color:var(--muted);font-size:14px;padding:6px 2px}
+
+  /* Card do caixa selecionado (simplificado) */
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 1px 2px rgba(0,0,0,.05);margin-top:14px}
+  .card .cab{padding:12px 18px;border-bottom:1px solid #f3f4f6;font-size:11px;font-weight:800;letter-spacing:.12em;
+       text-transform:uppercase;color:#4b5563;display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .card .corpo{padding:16px 18px;display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+  @media(min-width:768px){.card .corpo{grid-template-columns:repeat(4,1fr)}}
+  .kpi{background:#f9fafb;border-radius:10px;padding:12px;text-align:center}
+  .kpi b{display:block;font-size:20px}
+  .kpi span{font-size:12px;color:var(--muted)}
+
+  /* Legenda */
+  .leg{display:grid;grid-template-columns:1fr;gap:8px}
+  @media(min-width:768px){.leg{grid-template-columns:repeat(2,1fr)}}
+  .leg div{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:13px}
+  .leg .amostra{flex:0 0 auto;width:96px;text-align:center;padding:5px 0;border-radius:999px;font-weight:700;font-size:12px}
+  .pin{display:inline-flex;width:20px;height:20px;border-radius:999px;background:var(--gold);color:#fff;font-size:11px;
+       font-weight:800;align-items:center;justify-content:center;margin-right:4px;flex:0 0 auto}
+  ul.leg-num{list-style:none;padding:0;margin:0;display:grid;gap:8px}
+  ul.leg-num li{display:flex;gap:8px;font-size:13px;line-height:1.45;background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+
+  .celular{width:375px;max-width:100%;border:10px solid #111;border-radius:36px;background:var(--bg);padding:14px 10px;margin:0 auto;overflow:hidden}
+  @media(max-width:640px){.nav-data .dia{min-width:0;flex:1}.nav-data{flex:1}.direita{width:100%}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="nota">
+    <h1>Proposta — Caixa Diário: setas de data + pílulas de status</h1>
+    <p>É um protótipo clicável com dados de exemplo. Teste: use as setas ‹ › para trocar o dia e clique nas pílulas para escolher o caixa. Nada disso está no sistema ainda.</p>
+  </div>
+
+  <div class="lbl">Como fica no computador</div>
+
+  <!-- TOPO -->
+  <div class="topo">
+    <div class="titulo">
+      <div class="ic"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="14" rx="2"/><path d="M16 13h2M3 10h18"/></svg></div>
+      <h2>Caixa Diário</h2>
+    </div>
+    <div class="direita">
+      <span class="pin">1</span>
+      <div class="nav-data">
+        <button id="ant" title="Dia anterior" aria-label="Dia anterior"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
+        <div class="dia" id="dia" title="Clique para escolher no calendário">—</div>
+        <button id="prox" title="Próximo dia" aria-label="Próximo dia"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></button>
+      </div>
+      <button class="btn-hoje" id="hoje">Hoje</button>
+    </div>
+  </div>
+
+  <!-- FAIXA DE PÍLULAS -->
+  <div class="faixa">
+    <div class="faixa-cab">
+      <span><span class="pin">2</span>Caixas do dia</span>
+      <div class="resumo" id="resumo"></div>
+    </div>
+    <div class="pilulas" id="pilulas"></div>
+    <div id="atrasados"></div>
+  </div>
+
+  <!-- CARD DO CAIXA ESCOLHIDO -->
+  <div class="card">
+    <div class="cab"><span id="cabCaixa">—</span><span class="badge" id="badgeCaixa"></span></div>
+    <div class="corpo">
+      <div class="kpi"><b id="k1">0</b><span>Entregas</span></div>
+      <div class="kpi"><b id="k2">R$ 0,00</b><span>Recebido (Caixa)</span></div>
+      <div class="kpi"><b id="k3">R$ 0,00</b><span>Despesas</span></div>
+      <div class="kpi"><b id="k4">R$ 0,00</b><span>Valor a prestar</span></div>
+    </div>
+    <p style="margin:0;padding:0 18px 16px;font-size:13px;color:var(--muted)">(daqui pra baixo segue a tela atual: Despesas, Entregas, Conferência do dinheiro, Atendimentos…)</p>
+  </div>
+
+  <div class="lbl">O que cada número faz</div>
+  <ul class="leg-num">
+    <li><span class="pin">1</span><div><b>Setas ‹ ›</b> pulam um dia para trás ou para frente. Clicando na data no meio abre o calendário (igual hoje). O botão <b>Hoje</b> volta direto para o dia atual. A seta › desliga quando já está em hoje (não tem caixa no futuro).</div></li>
+    <li><span class="pin">2</span><div><b>Pílulas</b> = todo mundo que teve caixa com movimento nesse dia, já com a cor do status e o valor a prestar. <b>Um clique troca o caixa</b> — não precisa mais abrir o menu de pessoas. Os que precisam de ação aparecem primeiro (a conferir, devolução pendente…); os prontos vão para o fim. No celular a faixa rola para o lado.</div></li>
+    <li><span class="pin">3</span><div><b>Aviso de dias anteriores</b>: se algum caixa de outro dia ainda está esperando conferência, aparece a faixa amarela com um link que pula direto para aquele dia.</div></li>
+  </ul>
+
+  <div class="lbl">Cores das pílulas</div>
+  <div class="leg">
+    <div><span class="amostra s-conferir">● A conferir</span>Folha impressa / enviada — dinheiro esperando ser contado. Ponto piscando = precisa de ação.</div>
+    <div><span class="amostra s-devol">● Devolução</span>Tem devolução esperando conferência no caixa.</div>
+    <div><span class="amostra s-aberto">Aberto</span>Dia em andamento — motorista ainda na rua / lançando.</div>
+    <div><span class="amostra s-fechar">A fechar</span>Dinheiro já conferido, falta só fechar o caixa.</div>
+    <div><span class="amostra s-fechado">Fechado</span>Caixa fechado, aguardando a conferência final do admin.</div>
+    <div><span class="amostra s-conferido">✓ Conferido</span>Tudo certo, finalizado.</div>
+  </div>
+  <p style="font-size:13px;color:var(--muted)">Quem não teve movimento no dia não aparece nas pílulas (dá para escolher pelo botão “+ outros”, que abre a lista completa).</p>
+
+  <div class="lbl">Como fica no celular</div>
+  <div class="celular">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><b style="font-size:17px">Caixa Diário</b></div>
+    <div style="display:flex;gap:6px;margin-bottom:10px">
+      <div class="nav-data" style="flex:1">
+        <button><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
+        <div class="dia" style="min-width:0;flex:1">13/09/2026<small>sábado</small></div>
+        <button><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></button>
+      </div>
+      <button class="btn-hoje">Hoje</button>
+    </div>
+    <div class="faixa" style="padding:10px">
+      <div class="pilulas">
+        <button class="pil s-conferir"><span class="av">JO</span><span><span class="nm">Jociel</span><span class="st">A conferir</span></span><span class="ponto"></span></button>
+        <button class="pil s-aberto"><span class="av">MA</span><span><span class="nm">Marcos</span><span class="st">Aberto</span></span></button>
+        <button class="pil s-conferido"><span class="av">AN</span><span><span class="nm">Ana</span><span class="st">✓ Conferido</span></span></button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ---------- dados de exemplo ----------
+const PESSOAS = ['Jociel','Marcos','Ana Paula','Diego','Rafael','Luana','Cris'];
+const ST = {
+  conferir:{t:'A conferir',c:'s-conferir',ordem:0,acao:true},
+  devol:{t:'Devolução p/ conferir',c:'s-devol',ordem:1,acao:true},
+  aberto:{t:'Aberto',c:'s-aberto',ordem:2},
+  fechar:{t:'A fechar',c:'s-fechar',ordem:3},
+  fechado:{t:'Fechado',c:'s-fechado',ordem:4},
+  conferido:{t:'✓ Conferido',c:'s-conferido',ordem:5},
+};
+const HOJE = new Date(2026,8,13);
+function seed(n){let x=Math.sin(n)*10000;return x-Math.floor(x)}
+function caixasDoDia(d){
+  const k = d.getFullYear()*400 + d.getMonth()*32 + d.getDate();
+  if (d.getDay()===0) return [];               // domingo sem movimento
+  const diasAtras = Math.round((HOJE-d)/864e5);
+  return PESSOAS.filter((_,i)=>seed(k*7+i)>.35).map((nome,i)=>{
+    let st;
+    if (diasAtras===0) st = ['aberto','aberto','conferir','aberto','devol'][i%5];
+    else if (diasAtras===1) st = ['conferir','fechar','fechado','conferido','aberto'][i%5];
+    else if (diasAtras===3 && i===0) st='conferir';
+    else st = seed(k+i)>.25 ? 'conferido' : 'fechado';
+    const v = Math.round(seed(k*3+i)*380000)/100;
+    return {nome, st, valor:v, entregas:Math.round(seed(k+i*11)*18)+2};
+  }).sort((a,b)=>ST[a.st].ordem-ST[b.st].ordem);
+}
+const brl = v => v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const ini = n => n.split(' ').map(p=>p[0]).join('').slice(0,2).toUpperCase();
+
+let data = new Date(HOJE), sel = null;
+
+function render(){
+  const lista = caixasDoDia(data);
+  document.getElementById('dia').innerHTML =
+    data.toLocaleDateString('pt-BR') + '<small>' + data.toLocaleDateString('pt-BR',{weekday:'long'}) + (+data===+HOJE?' · hoje':'') + '</small>';
+  document.getElementById('prox').disabled = +data >= +HOJE;
+
+  if (!lista.find(c=>c.nome===sel)) sel = lista[0]?.nome || null;
+
+  // resumo
+  const cont = {}; lista.forEach(c=>cont[c.st]=(cont[c.st]||0)+1);
+  document.getElementById('resumo').innerHTML = Object.keys(ST).filter(s=>cont[s])
+    .map(s=>`<b class="${ST[s].c}">${cont[s]} ${ST[s].t.replace('✓ ','').toLowerCase()}</b>`).join('');
+
+  // pílulas
+  const box = document.getElementById('pilulas');
+  box.innerHTML = lista.length ? lista.map(c=>`
+    <button class="pil ${ST[c.st].c} ${c.nome===sel?'sel':''}" data-n="${c.nome}">
+      <span class="av">${ini(c.nome)}</span>
+      <span><span class="nm">${c.nome}</span><span class="st">${ST[c.st].t}</span></span>
+      <span class="vl">${brl(c.valor)}</span>
+      ${ST[c.st].acao?'<span class="ponto"></span>':''}
+    </button>`).join('') + `<button class="pil s-semmov"><span class="av" style="background:#f3f4f6">+</span><span class="nm">outros</span></button>`
+    : '<div class="vazio">Nenhum caixa com movimento neste dia.</div>';
+  box.querySelectorAll('.pil[data-n]').forEach(b=>b.onclick=()=>{sel=b.dataset.n;render()});
+
+  // atrasados (dias anteriores com conferência pendente)
+  const pend = [];
+  for (let i=1;i<=7;i++){
+    const d = new Date(HOJE); d.setDate(d.getDate()-i);
+    if (+d===+data) continue;
+    const n = caixasDoDia(d).filter(c=>ST[c.st].acao).length;
+    if (n) pend.push({d,n});
+  }
+  document.getElementById('atrasados').innerHTML = pend.length
+    ? `<div class="atrasados"><span class="pin">3</span>⚠ Caixas de outros dias esperando conferência: ${pend.map(p=>`<a data-t="${+p.d}">${p.d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})} (${p.n})</a>`).join(' · ')}</div>` : '';
+  document.querySelectorAll('#atrasados a').forEach(a=>a.onclick=()=>{data=new Date(+a.dataset.t);render()});
+
+  // card
+  const c = lista.find(x=>x.nome===sel);
+  document.getElementById('cabCaixa').textContent = c ? 'Caixa de ' + c.nome : 'Sem caixa';
+  const b = document.getElementById('badgeCaixa');
+  b.className = 'badge ' + (c?ST[c.st].c:''); b.textContent = c?ST[c.st].t:'';
+  document.getElementById('k1').textContent = c?c.entregas:0;
+  document.getElementById('k2').textContent = brl(c?c.valor*1.1:0);
+  document.getElementById('k3').textContent = brl(c?c.valor*.1:0);
+  document.getElementById('k4').textContent = brl(c?c.valor:0);
+}
+document.getElementById('ant').onclick = ()=>{data.setDate(data.getDate()-1);render()};
+document.getElementById('prox').onclick = ()=>{if(+data<+HOJE){data.setDate(data.getDate()+1);render()}};
+document.getElementById('hoje').onclick = ()=>{data=new Date(HOJE);render()};
+document.addEventListener('keydown',e=>{if(e.key==='ArrowLeft')document.getElementById('ant').click();if(e.key==='ArrowRight')document.getElementById('prox').click();});
+render();
+</script>
+</body>
+</html>

@@ -45,11 +45,19 @@ const enviarCaixasDaVirada = async () => {
     });
 
     let enviados = 0;
+    let pulados = 0; // sem movimento (R$ 0,00) — não entra na fila, fica ABERTO
     for (const c of abertos) {
         // Com "só dias úteis" ligado, caixa de sáb/dom não existe: o movimento é
         // prestado na segunda, então esses registros não entram na fila.
         if (cfg.soDiasUteis && ehFimDeSemana(c.dataReferencia)) continue;
         try {
+            // Caixa sem NENHUM movimento no dia (sem entrega, despesa, adiantamento
+            // ou cobrança) não vira pendência de conferência — não há dinheiro
+            // nenhum para alguém contar. Fica ABERTO, sem enviadoConferenciaEm; o
+            // /fechar (mesmo critério, via temMovimentoNoDia) libera o fechamento
+            // direto mesmo com a conferência do dinheiro ligada.
+            const calc = await confService.calcularValorAPrestar(c.vendedorId, c.dataReferencia, cfg);
+            if (!calc.temMovimento) { pulados++; continue; }
             await prisma.caixaDiario.update({
                 where: { id: c.id },
                 data: {
@@ -63,7 +71,7 @@ const enviarCaixasDaVirada = async () => {
         }
     }
     if (enviados) console.log(`[CaixaConferencia] ${enviados} caixa(s) entraram na fila pela virada do dia.`);
-    return { enviados, total: abertos.length };
+    return { enviados, pulados, total: abertos.length };
 };
 
 /** 2. Aviso de caixa atrasado para quem confere. */

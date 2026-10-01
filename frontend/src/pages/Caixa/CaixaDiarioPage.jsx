@@ -11,7 +11,7 @@ import api from '../../services/api';
 import NovaDespesaModal from './NovaDespesaModal';
 import VeiculoFicha from '../Veiculos/VeiculoFicha';
 import ModalDevolucao from '../Pedidos/ModalDevolucao';
-import SelectBusca from '../../components/SelectBusca';
+import CaixaPilulasDia from './CaixaPilulasDia';
 import ConferenciaDevolucaoCard from './ConferenciaDevolucaoCard';
 import ConferenciaDinheiroCard from './ConferenciaDinheiroCard';
 import CobrancasRotaCard from './CobrancasRotaCard';
@@ -62,7 +62,9 @@ const STATUS_BADGES = {
     CONFERIDO: { label: 'Conferido', class: 'bg-blue-100 text-blue-800' },
     // Passos da conferência do dinheiro (só aparecem com a regra ligada)
     A_CONFERIR: { label: 'A conferir', class: 'bg-amber-100 text-amber-700' },
-    A_FECHAR: { label: 'A fechar', class: 'bg-mint text-primaryDark' }
+    A_FECHAR: { label: 'A fechar', class: 'bg-mint text-primaryDark' },
+    // Devolução registrada no dia ainda esperando conferência no Caixa (estadoDoCaixa)
+    DEVOLUCAO_PENDENTE: { label: 'Devolução pendente', class: 'bg-red-100 text-red-800' }
 };
 
 // Desde 08/2026 a entrega do pedido especial NÃO quita mais o título — ele nasce em
@@ -294,6 +296,17 @@ const CaixaDiarioPage = () => {
     const [vendedores, setVendedores] = useState([]);
     const [resumo, setResumo] = useState(null);
     const [loading, setLoading] = useState(false);
+    // Contador que a faixa de pílulas (CaixaPilulasDia) usa como gatilho de recarga.
+    // NÃO usar o objeto `resumo` para isso: ele é recriado a cada fetchResumo(), inclusive
+    // quando só o vendedor selecionado muda (clique numa pílula) — usar `resumo` como sinal
+    // disparava /resumo-dia à toa a cada clique de pílula e 2x na troca de data. Só incrementa
+    // explicitamente nas ações que de fato mudam o STATUS do caixa (ver `bumpPilulas` abaixo).
+    const [pilulasReload, setPilulasReload] = useState(0);
+    const bumpPilulas = () => setPilulasReload(t => t + 1);
+    // Mesmo refresh de sempre (fetchResumo) + o gatilho da faixa de pílulas, para os cards
+    // cujas ações internas (conferir devolução, enviar/conferir/desfazer dinheiro) mudam o
+    // status do caixa mas chamam um único callback genérico "algo mudou".
+    const aoMudarStatusCaixa = () => { fetchResumo(); bumpPilulas(); };
     const [adiantamento, setAdiantamento] = useState('');
     const [savingAdiantamento, setSavingAdiantamento] = useState(false);
     const [expandedEntregas, setExpandedEntregas] = useState(false);
@@ -395,6 +408,7 @@ const CaixaDiarioPage = () => {
             await caixaService.setAdiantamento({ vendedorId, data, valor: novoValor });
             toast.success('Adiantamento atualizado!');
             fetchResumo();
+            bumpPilulas();
         } catch (error) {
             toast.error(error.response?.data?.error || 'Erro ao salvar adiantamento.', { duration: 7000 });
         } finally {
@@ -430,6 +444,7 @@ const CaixaDiarioPage = () => {
             await caixaService.fecharCaixa({ vendedorId, data });
             toast.success('Caixa fechado!');
             fetchResumo();
+            bumpPilulas();
         } catch (error) {
             const resp = error.response?.data;
             if (resp?.pendencias?.length > 0) {
@@ -455,6 +470,7 @@ const CaixaDiarioPage = () => {
             await caixaService.reverterConferencia(resumo.caixa.id);
             toast.success('Conferência revertida!');
             fetchResumo();
+            bumpPilulas();
         } catch (error) {
             toast.error(error.response?.data?.error || 'Erro ao reverter conferência.');
         }
@@ -478,6 +494,7 @@ const CaixaDiarioPage = () => {
             await caixaService.reabrirCaixa(resumo.caixa.id, motivo);
             toast.success(exigeConf ? 'Caixa reaberto — voltou para conferência do dinheiro.' : 'Caixa reaberto!');
             fetchResumo();
+            bumpPilulas();
         } catch (error) {
             toast.error(error.response?.data?.error || 'Erro ao reabrir caixa.');
         }
@@ -498,8 +515,15 @@ const CaixaDiarioPage = () => {
         );
         if (enviar) {
             try {
-                await caixaService.enviarParaConferencia({ vendedorId: vendedorId || user?.id, data, origem: 'IMPRESSAO' });
-                toast.success('Caixa enviado para conferência do dinheiro.');
+                const res = await caixaService.enviarParaConferencia({ vendedorId: vendedorId || user?.id, data, origem: 'IMPRESSAO' });
+                // 10/2026: caixa sem movimento nenhum não entra na fila — o backend não
+                // grava nada e avisa com enviado:false. Impressão segue normal do mesmo jeito.
+                if (res?.enviado === false && res?.motivo === 'SEM_MOVIMENTO') {
+                    toast('Caixa sem movimento — não precisa de conferência do dinheiro.', { icon: 'ℹ️' });
+                } else {
+                    toast.success('Caixa enviado para conferência do dinheiro.');
+                }
+                bumpPilulas();
             } catch (e) {
                 // Impressão nunca pode ser bloqueada por isso
                 console.error('Falha ao enviar para conferência:', e);
@@ -600,7 +624,7 @@ const CaixaDiarioPage = () => {
             }
 
             setSelectedBaixa(new Set());
-            fetchResumo();
+            aoMudarStatusCaixa();
         } catch (error) {
             toast.error(error.response?.data?.error || 'Erro ao quitar no CA.');
         } finally {
@@ -625,6 +649,10 @@ const CaixaDiarioPage = () => {
             || STATUS_BADGES[caixa.status] || STATUS_BADGES.ABERTO
         : null;
     const isAberto = caixa?.status === 'ABERTO';
+    // Campo de topo do /resumo (fonte única: temMovimentoNoDia no backend). Se vier
+    // undefined (deploy em andamento, backend antigo ainda respondendo), o lado seguro
+    // é tratar como TEM movimento — nunca esconder a conferência do dinheiro à toa.
+    const temMovimentoCaixa = resumo?.temMovimento !== undefined ? !!resumo.temMovimento : true;
     // Dia "pronto" = KM/entregas/atendimentos OK + conferência de devoluções feita.
     // Só então mostramos o VALOR A PRESTAR e liberamos a impressão (senão o pessoal
     // pulava a conferência e imprimia com o valor). A nota de devolução do faturamento
@@ -636,7 +664,7 @@ const CaixaDiarioPage = () => {
     return (
         <div className="w-full px-4 py-6">
             {/* Header */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+            <div className="flex flex-col gap-3 mb-6">
                 <div className="flex items-center space-x-3">
                     <Wallet className="h-7 w-7 text-amber-600" />
                     <h1 className="text-2xl font-bold text-gray-800">Caixa Diário</h1>
@@ -647,31 +675,18 @@ const CaixaDiarioPage = () => {
                     )}
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-                    <input
-                        type="date"
-                        value={data}
-                        onChange={(e) => setData(e.target.value)}
-                        disabled={!podeVerHistorico}
-                        max={!podeVerHistorico ? today : undefined}
-                        className={`border border-gray-300 rounded-md px-3 py-2 text-sm shadow-sm bg-white text-gray-900 ${!podeVerHistorico ? 'opacity-60 cursor-not-allowed' : ''
-                            }`}
-                        title={!podeVerHistorico ? 'Você só pode visualizar o caixa do dia atual.' : ''}
-                    />
-                    {isAdmin && (
-                        <SelectBusca
-                            value={vendedorId}
-                            onChange={(e) => setVendedorId(e.target.value)}
-                        >
-                            <option value="">Selecione vendedor...</option>
-                            {vendedores.map(v => (
-                                <option key={v.id} value={v.id}>
-                                    {v.ativo === false ? `${v.nome} (inativo · teve caixa)` : v.nome}
-                                </option>
-                            ))}
-                        </SelectBusca>
-                    )}
-                </div>
+                {/* Navegação de data + faixa de pílulas (dev-backend: GET /caixa/resumo-dia) */}
+                <CaixaPilulasDia
+                    data={data}
+                    onChangeData={setData}
+                    vendedorId={vendedorId}
+                    onChangeVendedor={setVendedorId}
+                    podeVerHistorico={podeVerHistorico}
+                    podeVerOutros={isAdmin}
+                    today={today}
+                    vendedoresDoDia={vendedores}
+                    refreshSignal={pilulasReload}
+                />
             </div>
 
             {loading ? (
@@ -1276,7 +1291,7 @@ const CaixaDiarioPage = () => {
                         vendedorId={vendedorId}
                         caixaStatus={caixa?.status}
                         podeReverter={podeReverter}
-                        onChanged={fetchResumo}
+                        onChanged={aoMudarStatusCaixa}
                     />
 
                     {/* Card Conferência do DINHEIRO — quem recebe o dinheiro conta e assina.
@@ -1288,14 +1303,15 @@ const CaixaDiarioPage = () => {
                         data={data}
                         valorAPrestar={resumo.valorAPrestar}
                         caixaStatus={caixa?.status}
-                        onAtualizar={fetchResumo}
+                        temMovimento={temMovimentoCaixa}
+                        onAtualizar={aoMudarStatusCaixa}
                     />
 
                     {/* Card Cobranças da Rota (títulos cobrados na rua — baixa pelo box) */}
                     <CobrancasRotaCard
                         cobrancas={resumo.cobrancasRota}
                         podeBaixar={podeBaixarCaixa && isAberto}
-                        onChanged={fetchResumo}
+                        onChanged={aoMudarStatusCaixa}
                     />
 
                     {/* Card Títulos recebidos — baixa manual de Contas a Receber em espécie.
@@ -1745,7 +1761,7 @@ const CaixaDiarioPage = () => {
             {showDespesaModal && (
                 <NovaDespesaModal
                     onClose={() => setShowDespesaModal(false)}
-                    onSaved={() => { setShowDespesaModal(false); toast.success('Despesa criada!'); fetchResumo(); }}
+                    onSaved={() => { setShowDespesaModal(false); toast.success('Despesa criada!'); fetchResumo(); bumpPilulas(); }}
                     vendedorId={vendedorId}
                     dataReferencia={data}
                     veiculoDoDia={resumo?.diario?.veiculoId || null}
@@ -1768,6 +1784,7 @@ const CaixaDiarioPage = () => {
                         setModalDevolucao(null);
                         toast.success('Devolução registrada!');
                         fetchResumo();
+                        bumpPilulas();
                     }}
                 />
             )}

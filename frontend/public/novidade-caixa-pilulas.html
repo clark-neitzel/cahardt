@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Pílulas do Caixa Diário — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp (sem og:image de propósito: cartão compacto) -->
+<meta property="og:title" content="🧭 Novidade no Hardt App: navegue pelo Caixa com um toque">
+<meta property="og:description" content="Setas para trocar de dia, pílulas coloridas para trocar de vendedor com um toque, e caixa sem nenhum movimento não vira mais pendência de conferência à toa.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero { background: linear-gradient(168deg, var(--house) 0%, #16302a 100%); color: #fff; padding: 40px 16px 96px; }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block; background: var(--gold); color: #2b230f;
+    font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .14em;
+    padding: 6px 14px; border-radius: 999px; margin-bottom: 18px;
+  }
+  .hero h1 { font-size: clamp(28px, 7vw, 40px); font-weight: 800; line-height: 1.12; margin: 0 0 12px; text-wrap: balance; }
+  .hero p { color: rgba(255,255,255,.75); font-size: 16px; max-width: 46ch; margin: 0 auto; text-wrap: balance; }
+
+  /* mock flutuando sobre o hero */
+  .mock {
+    max-width: 440px; margin: -68px auto 28px; background: #fff; border-radius: 20px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.28); overflow: hidden; text-align: left;
+  }
+  .mock-top { background: var(--house); color: #fff; padding: 14px 18px; display: flex; align-items: center; gap: 12px; }
+  .mock-top small { display: block; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .14em; color: rgba(255,255,255,.55); }
+  .mock-top strong { font-size: 16px; line-height: 1.2; }
+  .mock-ico { font-size: 24px; }
+  .mock-body { padding: 14px 16px 16px; background: #f7f6f2; }
+
+  .nav-mini { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .nav-pill { display: flex; align-items: center; background: #fff; border: 1px solid #d8d5cc; border-radius: 999px; height: 36px; flex: 1; overflow: hidden; }
+  .nav-pill span.seta { width: 36px; text-align: center; color: #9aa5a0; font-weight: 800; }
+  .nav-pill span.dia { flex: 1; text-align: center; font-size: 12px; font-weight: 700; border-left: 1px solid #eceae3; border-right: 1px solid #eceae3; }
+  .nav-pill span.dia small { display: block; font-size: 9px; font-weight: 700; color: #9aa5a0; text-transform: capitalize; }
+  .btn-hoje-mini { height: 36px; padding: 0 12px; border-radius: 999px; border: 1.5px solid var(--primary); color: var(--primary); font-size: 12px; font-weight: 800; background: #fff; display: flex; align-items: center; }
+
+  .pilulas-mini { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
+  .pil-mini { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; border-radius: 999px; padding: 5px 10px 5px 5px; font-size: 11.5px; }
+  .pil-mini .av { width: 22px; height: 22px; border-radius: 999px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 9px; background: rgba(255,255,255,.75); }
+  .pil-mini b { font-weight: 800; display: block; line-height: 1.1; }
+  .pil-mini .st { font-size: 9.5px; font-weight: 700; opacity: .85; }
+  .pil-mini .ponto { width: 6px; height: 6px; border-radius: 999px; background: currentColor; animation: pisca 1.3s infinite; will-change: opacity; }
+  @keyframes pisca { 50% { opacity: .3; } }
+  @media (prefers-reduced-motion: reduce) { .pil-mini .ponto { animation: none; } }
+  .p-conferir { background: #fde68a; color: #78350f; }
+  .p-devol    { background: #fee2e2; color: #991b1b; }
+  .p-aberto   { background: #dbeafe; color: #1e40af; }
+  .p-fechar   { background: var(--mint); color: var(--primary-dark); }
+  .p-fechado  { background: #e5e7eb; color: #374151; }
+  .p-conferido{ background: var(--primary); color: #fff; }
+  .p-conferido .av { background: rgba(255,255,255,.25); color: #fff; }
+
+  .mock-legenda { font-size: 11.5px; color: var(--ink-soft); margin-top: 10px; text-align: center; }
+
+  /* ── SEÇÕES / ACCORDION ── */
+  .sec-label { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .16em; color: var(--primary-dark); margin: 34px 4px 12px; }
+  .acc { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; margin-bottom: 10px; overflow: hidden; box-shadow: 0 1px 2px rgba(30,57,50,.05); }
+  .acc-head { width: 100%; display: flex; align-items: center; gap: 12px; background: none; border: none; font: inherit; text-align: left; padding: 15px 16px; cursor: pointer; min-height: 56px; }
+  .acc-ico { width: 38px; height: 38px; border-radius: 11px; background: var(--mint); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  .acc-head:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  /* legenda de cores dentro do accordion */
+  .cores-lista { display: grid; gap: 7px; margin: 4px 0 12px; }
+  .cor-linha { display: flex; align-items: center; gap: 10px; }
+  .cor-amostra { flex: 0 0 auto; min-width: 96px; text-align: center; padding: 5px 0; border-radius: 999px; font-weight: 700; font-size: 11.5px; }
+  .cor-linha span.txt { font-size: 13px; color: var(--ink-soft); }
+  .cor-linha b { color: var(--ink); }
+
+  /* ── MOCKUPS DAS TELAS DO APP ── */
+  .tela { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; overflow: hidden; margin-bottom: 12px; box-shadow: 0 1px 2px rgba(30,57,50,.05); }
+  .tela-titulo { background: var(--house); color: #fff; padding: 12px 16px; font-size: 13px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .app-card { background: #fff; border: 1px solid #e5e3dc; border-radius: 12px; overflow: hidden; margin-bottom: 10px; }
+  .app-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 9px 12px; border-bottom: 1px solid #f0efe9; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .12em; color: #6b756f; }
+  .app-card-body { padding: 12px; }
+  .pin { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background: var(--gold); color: #2b230f; font-size: 11px; font-weight: 800; flex-shrink: 0; vertical-align: 2px; margin-left: 6px; }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+
+  .resumo-chip { font-size: 10.5px; font-weight: 800; padding: 3px 9px; border-radius: 999px; }
+  .aviso-amarelo { margin-top: 10px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; background: #fffbeb; border: 1px solid #fcd34d; border-radius: 10px; padding: 8px 12px; color: #78350f; }
+  .aviso-amarelo a { color: #78350f; font-weight: 800; text-decoration: underline; }
+
+  /* passos */
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n { width: 30px; height: 30px; flex-shrink: 0; border-radius: 50%; background: var(--primary); color: #fff; font-weight: 800; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .rodape { text-align: center; font-size: 13px; color: var(--ink-soft); margin-top: 40px; }
+  .rodape strong { color: var(--primary-dark); }
+</style>
+</head>
+<body>
+
+<!-- ══════════ HERO ══════════ -->
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>Caixa Diário:<br>navegue com um toque</h1>
+    <p>Trocar de dia e de vendedor no Caixa ficou mais rápido: setas para pular de dia e uma faixa de pílulas coloridas para trocar de caixa sem abrir seletor nenhum. E quem não teve nenhum movimento no dia nem vira mais pendência de conferência.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- mock da barra de navegação + pílulas -->
+  <div class="mock" aria-hidden="true">
+    <div class="mock-top">
+      <span class="mock-ico">💼</span>
+      <div>
+        <small>Caixa Diário</small>
+        <strong>Navegação por data e pílulas</strong>
+      </div>
+    </div>
+    <div class="mock-body">
+      <div class="nav-mini">
+        <div class="nav-pill">
+          <span class="seta">‹</span>
+          <span class="dia">13/09/2026<small>domingo</small></span>
+          <span class="seta">›</span>
+        </div>
+        <span class="btn-hoje-mini">Hoje</span>
+      </div>
+      <div class="pilulas-mini">
+        <span class="pil-mini p-conferir"><span class="av">AN</span><span><b>Ana</b><span class="st">A conferir</span></span><span class="ponto"></span></span>
+        <span class="pil-mini p-aberto"><span class="av">BE</span><span><b>Beto</b><span class="st">Aberto</span></span></span>
+        <span class="pil-mini p-conferido"><span class="av">CA</span><span><b>Carla</b><span class="st">✓ Conferido</span></span></span>
+      </div>
+      <p class="mock-legenda">Exemplo com nomes fictícios — na sua tela aparecem os nomes reais da equipe.</p>
+    </div>
+  </div>
+
+  <!-- ══════════ O QUE MUDOU ══════════ -->
+  <div class="sec-label">O que mudou</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">↔️</span>
+      <strong>Pule de dia sem abrir calendário toda hora</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>As setas <b>‹ ›</b> no topo da tela pulam um dia para trás ou para frente.</li>
+        <li>Tocar na <b>data</b> no meio abre o calendário, igual antes — para pular direto para um dia específico.</li>
+        <li>O botão <b>Hoje</b> volta para o dia atual de qualquer ponto do histórico.</li>
+        <li>No computador, as setas <b>← →</b> do teclado funcionam também (desligadas enquanto você está digitando em algum campo ou com um modal aberto).</li>
+        <li>A seta <b>›</b> desliga sozinha quando a tela já está em hoje — não existe caixa no futuro.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🎨</span>
+      <strong>Pílulas: um toque troca o caixa</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Logo abaixo da data aparece a faixa <b>"Caixas do dia"</b>, com uma pílula para cada pessoa que teve caixa naquele dia — já com o valor a prestar. <b>Tocar na pílula troca na hora o caixa mostrado embaixo</b>, sem precisar abrir nenhum seletor.</p>
+      <p>A cor conta o status:</p>
+      <div class="cores-lista">
+        <div class="cor-linha"><span class="cor-amostra p-conferir">● A conferir</span><span class="txt">dinheiro esperando ser contado — <b>pisca</b> porque precisa de ação</span></div>
+        <div class="cor-linha"><span class="cor-amostra p-devol">● Devolução</span><span class="txt">tem devolução esperando conferência — também <b>pisca</b></span></div>
+        <div class="cor-linha"><span class="cor-amostra p-aberto">Aberto</span><span class="txt">dia ainda em andamento</span></div>
+        <div class="cor-linha"><span class="cor-amostra p-fechar">A fechar</span><span class="txt">dinheiro já conferido, falta só fechar</span></div>
+        <div class="cor-linha"><span class="cor-amostra p-fechado">Fechado</span><span class="txt">encerrado, esperando a conferência final do admin</span></div>
+        <div class="cor-linha"><span class="cor-amostra p-conferido">✓ Conferido</span><span class="txt">tudo certo, finalizado</span></div>
+      </div>
+      <p>Sua própria pílula sempre aparece, mesmo sem movimento nenhum. A pílula dos outros só aparece para quem pode ver outros caixas, e só quando a pessoa teve algum movimento naquele dia.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">➕</span>
+      <strong>"+ outros" — quando a pessoa não está na faixa</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Quem não teve movimento naquele dia não aparece na faixa (para não poluir com pílula vazia). Se precisar abrir o caixa dessa pessoa mesmo assim, toque em <b>"+ outros"</b>, no fim da faixa — abre a lista completa de vendedores, igual ao seletor de antes.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">⚠️</span>
+      <strong>Aviso de caixa esquecido em outro dia</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Se sobrou algum caixa de um dia <b>diferente</b> do que você está vendo, ainda esperando conferência (ou devolução pendente), aparece uma faixa amarela avisando a data e quantos estão parados lá — tocar nela pula direto para aquele dia.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🔒</span>
+      <strong>Quem vê o quê</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Todo mundo vê a <b>própria</b> pílula e pode navegar pelas setas/calendário se tiver permissão de histórico.</li>
+        <li>Ver <b>outros dias</b> (setas, calendário, teclado) exige a mesma permissão de sempre — sem ela, a tela fica travada no dia de hoje.</li>
+        <li>Ver <b>outras pílulas</b> e o botão <b>"+ outros"</b> só aparecem para <b>admin</b> ou quem edita o Caixa — ninguém ganhou acesso novo, é a mesma regra de antes, só que mais rápida de usar.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🌙</span>
+      <strong>Caixa sem movimento nenhum fecha sozinho</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Antes, <b>todo</b> caixa que ficasse aberto virava pendência de conferência quando o dia virava — mesmo quando a pessoa não teve entrega, despesa, adiantamento, cobrança nem baixa de título naquele dia. Dava caixa de R$ 0,00 entupindo a fila "A conferir" sem ter nada para alguém contar.</p>
+      <p>Agora, se o dia não teve <b>nenhum</b> desses cinco movimentos, o caixa <b>não entra mais na fila de conferência</b> e <b>fecha direto</b>, mesmo com a conferência do dinheiro ligada. Teve algum movimento, mesmo que o valor final dê R$ 0,00? Continua passando pela conferência normalmente, como sempre.</p>
+      <p><b>Atenção com a cobrança de rota:</b> só conta como movimento quando o motorista recebeu em <b>dinheiro</b> de verdade. Cobrança paga em Pix/cartão (fica esperando o banco confirmar) ou marcada como "não conseguiu cobrar" <b>não conta</b> — nem clicando em "Enviar para conferência" nem imprimindo a folha isso muda, e o cartão de conferência do dinheiro já nem aparece pedindo pra contar: vira uma linha simples avisando que não tem nada a fazer ali.</p>
+    </div>
+  </div>
+
+  <!-- ══════════ AS TELAS DO APP ══════════ -->
+  <div class="sec-label">As telas do app</div>
+
+  <div class="tela">
+    <div class="tela-titulo">💻 Tela 1 · Computador — barra de data e faixa de pílulas</div>
+    <div class="tela-corpo" aria-hidden="true">
+      <div class="nav-mini" style="margin-bottom:12px;">
+        <div class="nav-pill" style="height:40px;">
+          <span class="seta">‹</span>
+          <span class="dia" style="font-size:13px;">13/09/2026<small>domingo</small></span>
+          <span class="seta">›</span>
+        </div>
+        <span class="btn-hoje-mini" style="height:40px;">Hoje</span>
+        <span class="pin">1</span>
+      </div>
+      <div class="app-card">
+        <div class="app-card-head">
+          <span>CAIXAS DO DIA</span>
+          <span><span class="resumo-chip p-conferir">2 a conferir</span> <span class="resumo-chip p-aberto">1 aberto</span></span>
+        </div>
+        <div class="app-card-body">
+          <div class="pilulas-mini" style="gap:8px;">
+            <span class="pil-mini p-conferir" style="padding:7px 13px 7px 6px;font-size:13px;"><span class="av" style="width:26px;height:26px;">AN</span><span><b>Ana</b><span class="st">A conferir · R$ 842,10</span></span><span class="ponto"></span></span>
+            <span class="pil-mini p-conferir" style="padding:7px 13px 7px 6px;font-size:13px;"><span class="av" style="width:26px;height:26px;">CA</span><span><b>Carla</b><span class="st">A conferir · R$ 1.238,55</span></span><span class="ponto"></span></span>
+            <span class="pil-mini p-aberto" style="padding:7px 13px 7px 6px;font-size:13px;"><span class="av" style="width:26px;height:26px;">BE</span><span><b>Beto</b><span class="st">Aberto · R$ 0,00</span></span></span>
+            <span class="pil-mini" style="padding:7px 13px 7px 6px;font-size:13px;background:#fff;border:1.5px dashed #d1d5db;color:#9ca3af;">+ outros<span class="pin">2</span></span>
+          </div>
+          <div class="aviso-amarelo">⚠️ Caixas de outros dias esperando conferência: <a href="#">24/08 (1)</a><span class="pin">3</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Setas, data e Hoje:</b> pulam de dia ou voltam para hoje. Clicar na data abre o calendário. No computador, as setas do teclado funcionam igual.</span></div>
+      <div><span class="pin">2</span><span><b>"+ outros":</b> abre a lista completa de vendedores, para quem não apareceu na faixa (não teve movimento naquele dia).</span></div>
+      <div><span class="pin">3</span><span><b>Aviso de pendência:</b> aparece quando algum caixa de outro dia ainda espera conferência — toque na data para pular direto para lá.</span></div>
+    </div>
+  </div>
+
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 2 · Celular — mesma faixa, rolando para o lado</div>
+    <div class="tela-corpo" aria-hidden="true">
+      <div class="nav-mini" style="margin-bottom:10px;">
+        <div class="nav-pill"><span class="seta">‹</span><span class="dia">13/09<small>domingo</small></span><span class="seta">›</span></div>
+        <span class="btn-hoje-mini">Hoje</span>
+      </div>
+      <div class="pilulas-mini" style="overflow-x:auto;">
+        <span class="pil-mini p-conferir"><span class="av">AN</span><span><b>Ana</b><span class="st">A conferir</span></span><span class="ponto"></span></span>
+        <span class="pil-mini p-devol"><span class="av">CA</span><span><b>Carla</b><span class="st">Devolução</span></span><span class="ponto"></span></span>
+        <span class="pil-mini p-fechado"><span class="av">BE</span><span><b>Beto</b><span class="st">Fechado</span></span></span>
+      </div>
+      <span class="pin" style="margin-top:8px;display:inline-flex;">1</span>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>No celular a faixa de pílulas <b>rola para o lado</b> com o dedo — a barra de data cabe inteira numa linha só, mesmo na tela pequena.</span></div>
+    </div>
+  </div>
+
+  <!-- ══════════ PASSOS ══════════ -->
+  <div class="sec-label">Para começar a usar</div>
+  <div class="passos">
+    <div class="passo"><div class="passo-n">1</div><div><b>Atualize o app:</b> toque no ícone de atualizar ↻ (ou feche e abra o app).</div></div>
+    <div class="passo"><div class="passo-n">2</div><div>Abra o <b>Caixa Diário</b> — a barra de data e a faixa de pílulas já aparecem no topo.</div></div>
+    <div class="passo"><div class="passo-n">3</div><div>Use as setas ou toque numa pílula para navegar — sem abrir seletor nenhum.</div></div>
+  </div>
+
+  <p class="rodape">Dúvida em alguma tela? Chame o <strong>Clippy</strong> 📎 no canto da tela — ele já sabe explicar isso.</p>
+</div>
+
+<script>
+  function alternar(botao) {
+    var acc = botao.parentElement;
+    var aberto = acc.classList.toggle('aberto');
+    botao.setAttribute('aria-expanded', aberto ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>

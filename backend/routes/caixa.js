@@ -861,7 +861,7 @@ router.get('/resumo', async (req, res) => {
         const conferenciaDinheiro = {
             exigida: exigeConf,
             ativa: !!cfgConf.ativo,
-            estado: confService.estadoDoCaixa(caixa, valorAPrestar),
+            estado: confService.estadoDoCaixa(caixa, valorAPrestar, { devolucaoPendente: conferenciaDevolucaoPendente }),
             enviadoEm: caixa.enviadoConferenciaEm,
             enviadoPorNome: caixa.enviadoConferenciaPorNome,
             enviadoOrigem: caixa.enviadoConferenciaOrigem,
@@ -885,9 +885,26 @@ router.get('/resumo', async (req, res) => {
             // Quem conferiu não fecha o mesmo caixa
             souQuemConferiu: exigeConf && dinheiroConferidoValido && caixa.dinheiroConferidoPorId === req.user.id && !req._perms.admin
         };
-        const conferenciaDinheiroPendente = exigeConf && !dinheiroConferidoValido;
+        // Caixa sem NENHUM movimento no dia (sem entrega, despesa, adiantamento ou
+        // cobrança) não trava no fechamento esperando conferência — não há dinheiro
+        // nenhum para alguém contar. Mesmo critério (temMovimentoNoDia) usado pela
+        // virada do dia (caixaConferenciaWorker) e pelo POST /fechar, abaixo.
+        const temMovimentoHoje = confService.temMovimentoNoDia({
+            entregasCount: entregas.length,
+            totalDespesas,
+            adiantamento: Number(caixa.adiantamento),
+            // Mesmo critério de calcularValorAPrestar: só cobrança com dinheiro de
+            // verdade recebido conta como movimento (NAO_COBRADA/valor 0 não contam).
+            cobrancasCount: cobrancasRotaDia.filter(confService.cobrancaRotaTemDinheiro).length,
+            recebimentosTitulos: recebimentosTitulosTotal,
+        });
+        const conferenciaDinheiroPendente = exigeConf && !dinheiroConferidoValido && temMovimentoHoje;
 
         res.json({
+            // Mesmo valor de `temMovimentoHoje` (via confService.temMovimentoNoDia,
+            // fonte única) — exposto no topo para quem consome /resumo não precisar
+            // recalcular/duplicar o critério de "este dia teve algum movimento?".
+            temMovimento: temMovimentoHoje,
             caixa: {
                 id: caixa.id,
                 status: caixa.status,
@@ -974,6 +991,27 @@ router.get('/resumo', async (req, res) => {
     } catch (error) {
         console.error('Erro ao buscar resumo do caixa:', error);
         res.status(500).json({ error: 'Erro ao buscar resumo do caixa.' });
+    }
+});
+
+// ── GET /resumo-dia — Barra de pílulas da navegação por data (Caixa Diário) ──
+// Contrato em docs/caixa-pilulas/plano.md. `podeVerOutros` segue o MESMO critério
+// do admin/editor do resto deste arquivo (admin || Pode_Editar_Caixa) — sem
+// ampliar: quem só confere/fecha não ganha a lista de "outros" aqui.
+router.get('/resumo-dia', async (req, res) => {
+    try {
+        const { data } = req.query;
+        if (!data) return res.status(400).json({ error: 'Parâmetro "data" obrigatório.' });
+
+        const podeVerOutros = !!(req._perms.admin || req._perms.Pode_Editar_Caixa);
+        const resultado = await confService.resumoDoDia(data, {
+            usuario: req.user,
+            podeVerOutros,
+        });
+        res.json(resultado);
+    } catch (error) {
+        console.error('Erro ao buscar resumo-dia do caixa:', error);
+        res.status(error.status || 500).json({ error: error.message || 'Erro ao buscar o resumo do dia.' });
     }
 });
 
@@ -1180,13 +1218,10 @@ router.post('/fechar', async (req, res) => {
         }
         const { dias: diasFechar, inicio: inicioDia, fim: fimDia } = intervaloDoCaixa(data, cfgDiasFechar.soDiasUteis);
 
-        // Buscar resumo para snapshot
-        // Reutilizar lógica do resumo internamente
-        const despesas = await prisma.despesa.findMany({
-            where: { vendedorId: targetVendedor, dataReferencia: { in: diasFechar } }
-        });
-        const totalDespesas = despesas.reduce((s, d) => s + Number(d.valor), 0);
-
+        // Entregas do dia — usadas só para as VALIDAÇÕES de pendência abaixo
+        // (devolução/quitação/conferência de devolução). O snapshot financeiro do
+        // fechamento (despesas, recebido, valor a prestar) vem do `calcConf`
+        // (seção 5, mais abaixo) — uma fonte só, sem recalcular na mão.
         const entregas = await prisma.pedido.findMany({
             where: {
                 dataEntrega: { gte: inicioDia, lte: fimDia },
@@ -1242,11 +1277,14 @@ router.post('/fechar', async (req, res) => {
         }
 
         // 5. Conferência do DINHEIRO: alguém tem que ter contado e assinado.
-        //    Vale inclusive para caixa de R$ 0,00. Só é exigido com a chave ligada
-        //    (Configurações → Caixa) — sem isso o fechamento segue como sempre foi.
+        //    Só é exigido com a chave ligada (Configurações → Caixa) — sem isso o
+        //    fechamento segue como sempre foi. E só quando o dia teve ALGUM
+        //    movimento (mesmo critério do /resumo e da virada do dia, via
+        //    temMovimentoNoDia): caixa de R$ 0,00 fecha direto, sem conferência —
+        //    não há dinheiro nenhum para alguém contar.
         const exigeConfDinheiro = await cfgConferencia.exigeConferencia(data);
-        if (exigeConfDinheiro) {
-            const calcConf = await confService.calcularValorAPrestar(targetVendedor, data);
+        const calcConf = await confService.calcularValorAPrestar(targetVendedor, data);
+        if (exigeConfDinheiro && calcConf.temMovimento) {
             const confValida = caixaExistente?.dinheiroConferido
                 && !confService.conferenciaDesatualizada(caixaExistente, calcConf.valorAPrestar);
 
@@ -1275,55 +1313,15 @@ router.post('/fechar', async (req, res) => {
             });
         }
 
-        // Buscar TODAS as condições da TabelaPreco (sem distinct)
-        const todasCondicoesFechar = await prisma.tabelaPreco.findMany({
-            where: { ativo: true },
-            select: { opcaoCondicao: true, nomeCondicao: true, debitaCaixa: true }
-        });
-        const mapaDebitaPorNome = Object.fromEntries(todasCondicoesFechar.map(t => [t.nomeCondicao, t.debitaCaixa]));
-        const mapaDebitaPorOpcao = {};
-        for (const t of todasCondicoesFechar) {
-            if (!mapaDebitaPorOpcao[t.opcaoCondicao]) mapaDebitaPorOpcao[t.opcaoCondicao] = t.debitaCaixa;
-        }
-
-        let totalRecebidoCaixa = 0;
-        let totalRecebidoOutros = 0;
-
-        entregas.forEach(e => {
-            // Devolvido não conta (mercadoria volta, motorista não recebeu)
-            if (e.statusEntrega === 'DEVOLVIDO') return;
-
-            e.pagamentosReais.forEach(p => {
-                const val = Number(p.valor);
-                let debita;
-                // PIX Asaas confirmado pelo banco não passa pela mão do motorista
-                if (p.formaPagamentoNome === 'PIX Asaas' && p.cobrancaAsaasId) debita = false;
-                // responsável (escritório OU vendedor) fica devendo — não presta no dia
-                else if (ehResponsavelPelaCobranca(p)) debita = false;
-                else if (mapaDebitaPorNome[p.formaPagamentoNome] !== undefined) debita = mapaDebitaPorNome[p.formaPagamentoNome];
-                else debita = mapaDebitaPorOpcao[e.opcaoCondicaoPagamento] || false;
-
-                if (debita) totalRecebidoCaixa += val;
-                else totalRecebidoOutros += val;
-            });
-        });
-
-        // Snapshot do valor a prestar — mesma fórmula do /resumo:
-        // adiantamento + recebido em caixa + faltas de devolução + cobranças de rota em dinheiro
-        // + recebimentos de títulos lançados neste caixa − despesas
-        const adiantamentoFechar = Number(caixaExistente?.adiantamento || 0);
-        const faltasDevolucaoFechar = confDevFechar?.status === 'CONFERIDA' ? Number(confDevFechar.totalCobrado) : 0;
-        const cobrancasDinheiroFechar = cobrancasRotaFecharDia
-            .filter(c => ['COBRADA', 'BAIXADA'].includes(c.status) && (c.formaPagamentoNome || '').toLowerCase().includes('dinheiro'))
-            .reduce((s, c) => s + Number(c.valorCobrado || 0), 0);
-        const recebimentosTitulosFechar = caixaExistente
-            ? (await prisma.pagamentoParcela.aggregate({
-                where: { caixaDiarioId: caixaExistente.id, estornado: false },
-                _sum: { valorRecebido: true }
-            }))._sum.valorRecebido || 0
-            : 0;
-        const valorAPrestarFechar = Math.round((adiantamentoFechar + totalRecebidoCaixa + faltasDevolucaoFechar + cobrancasDinheiroFechar + Number(recebimentosTitulosFechar) - totalDespesas) * 100) / 100;
-
+        // Snapshot do valor a prestar — REAPROVEITA `calcConf` (já calculado acima,
+        // na seção 5, com a MESMA fórmula do /resumo: adiantamento + recebido em
+        // caixa + faltas de devolução + cobranças de rota em dinheiro + recebimentos
+        // de títulos lançados neste caixa − despesas). Antes este trecho duplicava
+        // o cálculo na mão (nova query de TabelaPreco + novo forEach nas mesmas
+        // `entregas` já em memória) — sugestão do revisor: sem escrita no banco
+        // entre o calcConf (linha ~1285) e este ponto, os dois cálculos são sobre o
+        // mesmo estado e dão o mesmo número; reaproveitar remove a duplicação sem
+        // mudar o resultado.
         const caixa = await prisma.caixaDiario.upsert({
             where: { vendedorId_dataReferencia: { vendedorId: targetVendedor, dataReferencia: data } },
             update: {
@@ -1331,10 +1329,10 @@ router.post('/fechar', async (req, res) => {
                 fechadoPorId: req.user.id,
                 fechadoPorNome: req.user.nome || null,
                 fechadoEm: new Date(),
-                totalDespesas: Math.round(totalDespesas * 100) / 100,
-                totalRecebidoCaixa: Math.round(totalRecebidoCaixa * 100) / 100,
-                totalRecebidoOutros: Math.round(totalRecebidoOutros * 100) / 100,
-                valorAPrestar: valorAPrestarFechar
+                totalDespesas: calcConf.totalDespesas,
+                totalRecebidoCaixa: calcConf.totalRecebidoCaixa,
+                totalRecebidoOutros: calcConf.totalRecebidoOutros,
+                valorAPrestar: calcConf.valorAPrestar
             },
             create: {
                 vendedorId: targetVendedor,
@@ -1343,10 +1341,10 @@ router.post('/fechar', async (req, res) => {
                 fechadoPorId: req.user.id,
                 fechadoPorNome: req.user.nome || null,
                 fechadoEm: new Date(),
-                totalDespesas: Math.round(totalDespesas * 100) / 100,
-                totalRecebidoCaixa: Math.round(totalRecebidoCaixa * 100) / 100,
-                totalRecebidoOutros: Math.round(totalRecebidoOutros * 100) / 100,
-                valorAPrestar: valorAPrestarFechar
+                totalDespesas: calcConf.totalDespesas,
+                totalRecebidoCaixa: calcConf.totalRecebidoCaixa,
+                totalRecebidoOutros: calcConf.totalRecebidoOutros,
+                valorAPrestar: calcConf.valorAPrestar
             }
         });
 
@@ -1426,7 +1424,7 @@ router.post('/reverter-conferencia', async (req, res) => {
                     usuarioNome: req.user.nome || 'Admin'
                 }
             })
-        ]);
+        ], { timeout: 20000, maxWait: 10000 });
 
         res.json(caixa);
     } catch (error) {
@@ -1509,7 +1507,7 @@ router.post('/reabrir', async (req, res) => {
                     usuarioNome: req.user.nome || 'Admin'
                 }
             })
-        ]);
+        ], { timeout: 20000, maxWait: 10000 });
 
         res.json(caixa);
     } catch (error) {

@@ -8,6 +8,13 @@ const caixaService = {
         return response.data;
     },
 
+    // Faixa de pílulas do dia (navegação ‹ data › + status de cada caixa) — ver contrato
+    // em docs/caixa-pilulas/plano.md.
+    getResumoDia: async (data) => {
+        const response = await api.get('/caixa/resumo-dia', { params: { data } });
+        return response.data;
+    },
+
     setAdiantamento: async (dados) => {
         const response = await api.patch('/caixa/adiantamento', dados);
         return response.data;

@@ -19,7 +19,9 @@
 const bcrypt = require('bcryptjs');
 const prisma = require('../config/database');
 const cfgConferencia = require('../config/caixaConferenciaConfig');
-const { diasDoCaixa, intervaloDoCaixa } = require('../utils/diasUteisCaixa');
+const {
+    diasDoCaixa, intervaloDoCaixa, ehFimDeSemana, dataCaixaDe, fromStr, toStr, hojeStr,
+} = require('../utils/diasUteisCaixa');
 const { ehResponsavelPelaCobranca } = require('./recebimentoEntregaService');
 
 const PERM_CONFERIR = 'Pode_Conferir_Dinheiro_Caixa';
@@ -29,6 +31,31 @@ const PERM_FECHAR = 'Pode_Fechar_Caixa';
 const round2 = (n) => Math.round(Number(n || 0) * 100) / 100;
 
 const erro = (msg, status = 400) => { const e = new Error(msg); e.status = status; return e; };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// "Este dia teve ALGUM movimento?" — função pura, fonte única usada pela virada
+// do dia (não enfileirar caixa de R$ 0,00 para conferência) e pelo /resumo e
+// /fechar (não exigir conferência de dinheiro quando não há dinheiro nenhum).
+// adiantamento > 0 também conta como movimento (é dinheiro entregue ao vendedor).
+// ─────────────────────────────────────────────────────────────────────────────
+const temMovimentoNoDia = ({
+    entregasCount = 0, totalDespesas = 0, adiantamento = 0, cobrancasCount = 0, recebimentosTitulos = 0,
+} = {}) => (
+    Number(entregasCount) > 0
+    || Number(totalDespesas) > 0
+    || Number(adiantamento) > 0
+    || Number(cobrancasCount) > 0
+    || Number(recebimentosTitulos) > 0
+);
+
+// Cobrança em Rota que realmente virou dinheiro no caixa — MESMO critério usado
+// para somar `cobrancasRotaDinheiro` (status cobrado/baixado + forma "dinheiro" +
+// valor > 0). NAO_COBRADA, PENDENTE ou valor 0 não é movimento: ninguém recebeu
+// nada. Fonte única — usada aqui e em routes/caixa.js (GET /resumo) para o mesmo
+// critério de "este dia teve dinheiro de cobrança de rota?".
+const cobrancaRotaTemDinheiro = (c) => ['COBRADA', 'BAIXADA'].includes(c?.status)
+    && (c?.formaPagamentoNome || '').toLowerCase().includes('dinheiro')
+    && Number(c?.valorCobrado || 0) > 0;
 
 const permsDe = (vendedor) => {
     const p = vendedor?.permissoes;
@@ -65,6 +92,7 @@ const calcularValorAPrestar = async (vendedorId, data, cfg = null) => {
             select: {
                 id: true, statusEntrega: true, opcaoCondicaoPagamento: true,
                 pagamentosReais: { where: { valor: { gt: 0 } } },
+                itensDevolvidos: { select: { id: true } },
             },
         }),
         prisma.tabelaPreco.findMany({
@@ -105,9 +133,8 @@ const calcularValorAPrestar = async (vendedorId, data, cfg = null) => {
     const faltasDevolucao = caixa?.conferenciaDevolucao?.status === 'CONFERIDA'
         ? round2(caixa.conferenciaDevolucao.totalCobrado) : 0;
 
-    const cobrancasRotaDinheiro = round2(cobrancas
-        .filter(c => ['COBRADA', 'BAIXADA'].includes(c.status) && (c.formaPagamentoNome || '').toLowerCase().includes('dinheiro'))
-        .reduce((s, c) => s + Number(c.valorCobrado || 0), 0));
+    const cobrancasComDinheiro = cobrancas.filter(cobrancaRotaTemDinheiro);
+    const cobrancasRotaDinheiro = round2(cobrancasComDinheiro.reduce((s, c) => s + Number(c.valorCobrado || 0), 0));
 
     const recebimentosTitulos = caixa
         ? round2((await prisma.pagamentoParcela.aggregate({
@@ -121,6 +148,11 @@ const calcularValorAPrestar = async (vendedorId, data, cfg = null) => {
         adiantamento + round2(totalRecebidoCaixa) + faltasDevolucao + cobrancasRotaDinheiro + recebimentosTitulos - totalDespesas
     );
 
+    // Devolução pendente de conferência (mercadoria voltou e ainda não foi contada
+    // na tela de devolução) — usado pelo estadoDoCaixa para o selo DEVOLUCAO_PENDENTE.
+    const temDevolucoesDia = entregas.some(e => (e.itensDevolvidos?.length || 0) > 0 || e.statusEntrega === 'DEVOLVIDO');
+    const devolucaoPendente = temDevolucoesDia && caixa?.conferenciaDevolucao?.status !== 'CONFERIDA';
+
     return {
         caixa,
         dias,
@@ -133,7 +165,12 @@ const calcularValorAPrestar = async (vendedorId, data, cfg = null) => {
         cobrancasRotaDinheiro,
         recebimentosTitulos,
         entregasCount: entregas.length,
-        temMovimento: entregas.length > 0 || totalDespesas > 0 || adiantamento > 0 || cobrancas.length > 0,
+        temDevolucoesDia,
+        devolucaoPendente,
+        temMovimento: temMovimentoNoDia({
+            entregasCount: entregas.length, totalDespesas, adiantamento,
+            cobrancasCount: cobrancasComDinheiro.length, recebimentosTitulos,
+        }),
     };
 };
 
@@ -146,15 +183,19 @@ const conferenciaDesatualizada = (caixa, valorAtual) => {
 
 /**
  * Estado do caixa para a tela e para as filas.
- * ABERTO → A_CONFERIR → A_FECHAR → FECHADO (+ DESATUALIZADO quando o valor mudou).
+ * ABERTO → DEVOLUCAO_PENDENTE → A_CONFERIR → A_FECHAR → FECHADO/CONFERIDO
+ * (+ DESATUALIZADO quando o valor mudou).
  */
-const estadoDoCaixa = (caixa, valorAtual) => {
+const estadoDoCaixa = (caixa, valorAtual, { devolucaoPendente = false } = {}) => {
     if (!caixa) return 'ABERTO';
-    if (caixa.status === 'FECHADO' || caixa.status === 'CONFERIDO') return 'FECHADO';
+    if (caixa.status === 'CONFERIDO') return 'CONFERIDO';
+    if (caixa.status === 'FECHADO') return 'FECHADO';
     if (caixa.dinheiroConferido) {
         return conferenciaDesatualizada(caixa, valorAtual) ? 'A_CONFERIR' : 'A_FECHAR';
     }
-    return caixa.enviadoConferenciaEm ? 'A_CONFERIR' : 'ABERTO';
+    if (caixa.enviadoConferenciaEm) return 'A_CONFERIR';
+    if (devolucaoPendente) return 'DEVOLUCAO_PENDENTE';
+    return 'ABERTO';
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -169,6 +210,18 @@ const enviarParaConferencia = async ({ vendedorId, data, usuario, origem = 'MANU
 
     if (caixa.status !== 'ABERTO') return { ok: false, motivo: 'caixa_nao_aberto', caixa };
     if (caixa.enviadoConferenciaEm) return { ok: true, jaEnviado: true, caixa }; // idempotente
+
+    // Caixa sem NENHUM movimento no dia (sem entrega, despesa, adiantamento ou
+    // cobrança) não entra na fila de conferência — não há dinheiro nenhum para
+    // alguém contar. Mesmo critério (temMovimentoNoDia, via calcularValorAPrestar)
+    // usado pela virada do dia e pelo /fechar. A impressão/botão seguem normais —
+    // só não enfileira; `enviado:false`+`motivo` avisa o chamador sem ser erro
+    // (formato de resposta antigo preservado; isto só ACRESCENTA o campo nesta
+    // situação nova — front antigo em cache no PWA não lê esses campos e não quebra).
+    const calc = await calcularValorAPrestar(vendedorId, data);
+    if (!calc.temMovimento) {
+        return { ok: true, enviado: false, motivo: 'SEM_MOVIMENTO', caixa };
+    }
 
     const atualizado = await prisma.caixaDiario.update({
         where: { id: caixa.id },
@@ -522,11 +575,151 @@ const minhasConferencias = async ({ usuario, de, ate }) => {
     }));
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Resumo do dia — barra de pílulas (navegação por data) do Caixa Diário.
+// Contrato: GET /api/caixa/resumo-dia?data=YYYY-MM-DD (ver docs/caixa-pilulas/plano.md).
+// ─────────────────────────────────────────────────────────────────────────────
+const ORDEM_STATUS_PILULA = ['A_CONFERIR', 'DEVOLUCAO_PENDENTE', 'ABERTO', 'A_FECHAR', 'FECHADO', 'CONFERIDO'];
+
+const resumoDoDia = async (data, { usuario, podeVerOutros }) => {
+    const cfg = await cfgConferencia.get();
+
+    // Fim de semana com soDiasUteis: mesmo formato do /resumo (não há caixa neste dia).
+    if (cfg.soDiasUteis && ehFimDeSemana(data)) {
+        return {
+            diaSemCaixa: true,
+            dataSugerida: dataCaixaDe(data),
+            mensagem: 'Sábado e domingo não abrem caixa — o movimento do fim de semana entra no caixa da segunda-feira.',
+        };
+    }
+
+    const { dias, inicio, fim } = intervaloDoCaixa(data, cfg.soDiasUteis);
+
+    // Candidatos do dia: quem tem pedido entregue, despesa ou cobrança de rota
+    // nestes dias, ou já tem CaixaDiario aberto nesta data (baixa manual de título
+    // fica coberta pelo caixa — toda baixa em espécie exige um CaixaDiario existente).
+    const [despesasVend, entregasVend, cobrancasVend, caixasVend] = await Promise.all([
+        prisma.despesa.findMany({ where: { dataReferencia: { in: dias } }, select: { vendedorId: true } }),
+        prisma.pedido.findMany({
+            where: {
+                dataEntrega: { gte: inicio, lte: fim },
+                statusEntrega: { in: ['ENTREGUE', 'ENTREGUE_PARCIAL', 'DEVOLVIDO'] },
+            },
+            select: { embarque: { select: { responsavelId: true } } },
+        }),
+        prisma.cobrancaRota.findMany({ where: { dataReferencia: { in: dias } }, select: { cobradoPorId: true } }),
+        prisma.caixaDiario.findMany({ where: { dataReferencia: data }, select: { vendedorId: true } }),
+    ]);
+
+    const candidatos = new Set([
+        ...despesasVend.map(d => d.vendedorId),
+        ...entregasVend.map(e => e.embarque?.responsavelId).filter(Boolean),
+        ...cobrancasVend.map(c => c.cobradoPorId).filter(Boolean),
+        ...caixasVend.map(c => c.vendedorId),
+    ]);
+    candidatos.delete(usuario.id);
+
+    const outrosIds = podeVerOutros ? [...candidatos] : [];
+    const todosIds = [usuario.id, ...outrosIds];
+
+    const vendedoresInfo = await prisma.vendedor.findMany({
+        where: { id: { in: todosIds } },
+        select: { id: true, nome: true, ativo: true },
+    });
+    const infoPorId = Object.fromEntries(vendedoresInfo.map(v => [v.id, v]));
+
+    // Em paralelo: calcularValorAPrestar já é pesado (várias queries por vendedor);
+    // rodar em série aqui multiplicava o tempo da rota pelo número de candidatos.
+    // Promise.all preserva a ordem de `todosIds` no array de resultado (ordem de
+    // RESOLUÇÃO pode variar, a de POSIÇÃO não) — a ordem final de exibição de
+    // qualquer forma vem do `.sort()` abaixo, não da ordem de cálculo.
+    const calculosPorVendedor = await Promise.all(
+        todosIds.map(vendedorId => calcularValorAPrestar(vendedorId, data, cfg))
+    );
+
+    const linhas = [];
+    todosIds.forEach((vendedorId, idx) => {
+        const calc = calculosPorVendedor[idx];
+        const souEu = vendedorId === usuario.id;
+        if (!souEu && !calc.temMovimento) return; // outros só entram com movimento no dia
+        const info = infoPorId[vendedorId];
+        linhas.push({
+            vendedorId,
+            vendedorNome: info?.nome || 'Usuário',
+            ativo: info?.ativo !== false,
+            status: estadoDoCaixa(calc.caixa, calc.valorAPrestar, { devolucaoPendente: calc.devolucaoPendente }),
+            valorAPrestar: calc.valorAPrestar,
+            entregasCount: calc.entregasCount,
+            caixaId: calc.caixa?.id || null,
+            temMovimento: calc.temMovimento,
+        });
+    });
+
+    linhas.sort((a, b) => {
+        const ra = ORDEM_STATUS_PILULA.indexOf(a.status);
+        const rb = ORDEM_STATUS_PILULA.indexOf(b.status);
+        if (ra !== rb) return ra - rb;
+        return a.vendedorNome.localeCompare(b.vendedorNome, 'pt-BR');
+    });
+
+    const resumoContagem = {};
+    for (const l of linhas) resumoContagem[l.status] = (resumoContagem[l.status] || 0) + 1;
+
+    // Pendências anteriores: aviso de caixa parado — os 7 dias ANTES DE HOJE (não
+    // da data em tela), excluindo a própria data exibida, só dias com A_CONFERIR
+    // ou DEVOLUCAO_PENDENTE. Sem podeVerOutros, conta só o próprio caixa.
+    const hoje = hojeStr();
+    const diasAnteriores = [];
+    for (let i = 1; i <= 7; i++) {
+        const d = fromStr(hoje);
+        d.setDate(d.getDate() - i);
+        diasAnteriores.push(toStr(d));
+    }
+    const diasParaChecar = diasAnteriores.filter(d => d !== data);
+
+    const caixasAbertosAntes = diasParaChecar.length
+        ? await prisma.caixaDiario.findMany({
+            where: {
+                status: 'ABERTO',
+                dataReferencia: { in: diasParaChecar },
+                ...(podeVerOutros ? {} : { vendedorId: usuario.id }),
+            },
+            select: { vendedorId: true, dataReferencia: true },
+        })
+        : [];
+
+    // Mesmo motivo do bloco acima: paraleliza o cálculo dos caixas dos 7 dias
+    // anteriores em vez de uma query por vez, em série.
+    const calculosAnteriores = await Promise.all(
+        caixasAbertosAntes.map(c => calcularValorAPrestar(c.vendedorId, c.dataReferencia, cfg))
+    );
+    const porDia = {};
+    caixasAbertosAntes.forEach((c, idx) => {
+        const calcAnt = calculosAnteriores[idx];
+        const statusAnt = estadoDoCaixa(calcAnt.caixa, calcAnt.valorAPrestar, { devolucaoPendente: calcAnt.devolucaoPendente });
+        if (statusAnt === 'A_CONFERIR' || statusAnt === 'DEVOLUCAO_PENDENTE') {
+            porDia[c.dataReferencia] = (porDia[c.dataReferencia] || 0) + 1;
+        }
+    });
+    const pendenciasAnteriores = Object.entries(porDia)
+        .map(([dataAnt, qtd]) => ({ data: dataAnt, qtd }))
+        .sort((a, b) => b.data.localeCompare(a.data));
+
+    return {
+        data,
+        podeVerOutros,
+        caixas: linhas,
+        resumoContagem,
+        pendenciasAnteriores,
+    };
+};
+
 module.exports = {
     PERM_CONFERIR, PERM_AUTORIZAR_DIF, PERM_FECHAR,
     VALORES_CEDULA, VALORES_MOEDA,
     round2, permsDe, podeConferir, podeAutorizarDiferenca, podeFechar,
     calcularValorAPrestar, conferenciaDesatualizada, estadoDoCaixa, somarContagem,
+    temMovimentoNoDia, cobrancaRotaTemDinheiro, resumoDoDia,
     enviarParaConferencia, conferirDinheiro, desfazerConferencia,
     sugerirTarefaDiferenca, bloqueioPorCaixaFechado,
     listarAConferir, listarAFechar, minhasConferencias,

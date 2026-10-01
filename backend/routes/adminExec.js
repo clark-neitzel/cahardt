@@ -52,7 +52,7 @@ router.get('/ping', (req, res) => {
         ok: true,
         // Marcador de deploy: bumpar a cada mudança de backend que precise de confirmação
         // em produção (não há outro jeito de saber de fora qual versão está no ar).
-        deployMarker: 'ponto-vagas-inline-2026-09-27',
+        deployMarker: 'caixa-pilulas-2026-10-01',
         uptimeSegundos: Math.round(process.uptime()),
         timestamp: new Date().toISOString(),
         openaiConfigurada: !!process.env.OPENAI_API_KEY,
@@ -12163,6 +12163,107 @@ router.get('/diag-devolucoes-ref-item-simulacao', async (req, res) => {
         });
     } catch (err) {
         console.error('[diag-devolucoes-ref-item-simulacao]', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Caixa sem movimento presos na fila de conferência (docs/caixa-pilulas/plano.md)
+//
+// Antes da correção de 10/2026, a virada do dia (caixaConferenciaWorker) mandava
+// TODO caixa ABERTO para "A conferir", mesmo caixa de R$ 0,00 (sem entrega,
+// despesa, adiantamento ou cobrança). Essas duas rotas encontram e, se o dono
+// pedir, limpam o que já ficou presos assim ANTES da correção. NÃO rodar a
+// de limpeza sem o dono decidir — só diagnosticar primeiro.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// GET /api/admin-exec/diag-caixa-sem-movimento
+// Lista caixa ABERTO + enviadoConferenciaEm preenchido + dinheiroConferido=false
+// que, recalculado agora, não tem NENHUM movimento no dia. Só leitura.
+router.get('/diag-caixa-sem-movimento', async (req, res) => {
+    try {
+        const cfgConferencia = require('../config/caixaConferenciaConfig');
+        const conf = require('../services/caixaConferenciaService');
+        const cfg = await cfgConferencia.get();
+
+        const candidatos = await prisma.caixaDiario.findMany({
+            where: { status: 'ABERTO', enviadoConferenciaEm: { not: null }, dinheiroConferido: false },
+            include: { vendedor: { select: { nome: true } } },
+            orderBy: { dataReferencia: 'desc' },
+            take: 500,
+        });
+
+        const semMovimento = [];
+        for (const c of candidatos) {
+            let calc;
+            try { calc = await conf.calcularValorAPrestar(c.vendedorId, c.dataReferencia, cfg); }
+            catch (e) { console.error(`[diag-caixa-sem-movimento] falha ao calcular ${c.id}:`, e.message); continue; }
+            if (calc.temMovimento) continue;
+            semMovimento.push({
+                caixaId: c.id,
+                vendedorId: c.vendedorId,
+                vendedorNome: c.vendedor?.nome || 'Usuário',
+                dataReferencia: c.dataReferencia,
+                enviadoConferenciaEm: c.enviadoConferenciaEm,
+                enviadoConferenciaOrigem: c.enviadoConferenciaOrigem,
+                valorAPrestar: calc.valorAPrestar,
+            });
+        }
+
+        res.json({
+            analisados: candidatos.length,
+            semMovimento: semMovimento.length,
+            caixas: semMovimento,
+            proximoPasso: semMovimento.length
+                ? 'POST /api/admin-exec/caixa-limpar-fila-sem-movimento (zera só os 4 campos enviadoConferencia*; não toca status nem valores). Confirmar com o dono antes.'
+                : null,
+        });
+    } catch (err) {
+        console.error('[diag-caixa-sem-movimento]', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// POST /api/admin-exec/caixa-limpar-fila-sem-movimento
+// Recomputa cada caixa ABERTO + enviadoConferenciaEm + dinheiroConferido=false no
+// servidor e, para o que realmente não tem movimento, zera SÓ os 4 campos
+// enviadoConferencia* (volta pra ABERTO comum, fora da fila) — não toca status,
+// valores nem dinheiroConferido. ⚠️ Ação do dono: não rodar sozinho em produção.
+router.post('/caixa-limpar-fila-sem-movimento', async (req, res) => {
+    try {
+        const cfgConferencia = require('../config/caixaConferenciaConfig');
+        const conf = require('../services/caixaConferenciaService');
+        const cfg = await cfgConferencia.get();
+
+        const candidatos = await prisma.caixaDiario.findMany({
+            where: { status: 'ABERTO', enviadoConferenciaEm: { not: null }, dinheiroConferido: false },
+            select: { id: true, vendedorId: true, dataReferencia: true },
+            take: 500,
+        });
+
+        let limpos = 0;
+        const detalhe = [];
+        for (const c of candidatos) {
+            let calc;
+            try { calc = await conf.calcularValorAPrestar(c.vendedorId, c.dataReferencia, cfg); }
+            catch (e) { console.error(`[caixa-limpar-fila-sem-movimento] falha ao calcular ${c.id}:`, e.message); continue; }
+            if (calc.temMovimento) continue;
+            await prisma.caixaDiario.update({
+                where: { id: c.id },
+                data: {
+                    enviadoConferenciaEm: null,
+                    enviadoConferenciaPorId: null,
+                    enviadoConferenciaPorNome: null,
+                    enviadoConferenciaOrigem: null,
+                },
+            });
+            limpos++;
+            detalhe.push({ caixaId: c.id, vendedorId: c.vendedorId, dataReferencia: c.dataReferencia });
+        }
+
+        res.json({ analisados: candidatos.length, limpos, detalhe });
+    } catch (err) {
+        console.error('[caixa-limpar-fila-sem-movimento]', err);
         res.status(500).json({ error: err.message });
     }
 });
