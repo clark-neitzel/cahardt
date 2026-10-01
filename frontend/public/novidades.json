@@ -1,5 +1,11 @@
 [
   {
+    "slug": "conciliacao-filtros",
+    "titulo": "Filtros da Conciliação Bancária",
+    "resumo": "Na Conciliação Bancária, a lista de lançamentos ganhou filtro de Tipo (Todos/Créditos/Débitos), busca por descrição/nome (sem diferenciar acento ou maiúscula) e por valor (330,10, 330.10 ou 330 — todos reconhecidos), faixa de valor em \"Mais filtros\", contador \"Mostrando X de Y\" com a soma das entradas/saídas filtradas, e botão Limpar. \"Selecionar todos\" e as ações em lote passam a valer só sobre o que está visível com o filtro aplicado.",
+    "data": "2026-10-01"
+  },
+  {
     "slug": "etiqueta-deitada",
     "titulo": "Etiqueta deitada para mercado",
     "resumo": "Em Dados das Etiquetas, cada etiqueta ganhou o botão de orientação: Em pé (a de sempre) ou Deitada (120 × 100, layout de mercado para pacote pequeno, com faixa preta no nome e selo do peso). A deitada imprime sem girar, no mesmo papel de sempre. As telas Etiquetas e Dados das Etiquetas agora funcionam no celular.",

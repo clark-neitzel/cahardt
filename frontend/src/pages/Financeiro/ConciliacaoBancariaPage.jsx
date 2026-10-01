@@ -15,6 +15,31 @@ const somaDiasYMD = (ymd, n) => {
     return d.toISOString().slice(0, 10);
 };
 
+// Busca na lista de lançamentos: minúsculo + sem acento, pra achar "joao" em "João".
+const normalizarTexto = (v) => (v == null ? '' : String(v))
+    .normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
+// Reconhece "330,10" / "330.10" / "1.250,00" / "1.250" / "330" como número (padrão BR ou solto).
+// Vírgula sempre decimal; com vírgula presente, pontos são separador de milhar.
+// Sem vírgula: mais de um ponto → todos os pontos são milhar ("1.250.000").
+// Sem vírgula: ponto ÚNICO seguido de exatamente 3 dígitos → milhar ("1.250"→1250, "12.500"→12500).
+// Sem vírgula: ponto único com 1 ou 2 dígitos depois → decimal ("330.10"→330,1, "12.5"→12,5).
+const parseValorBR = (str) => {
+    const s = (str || '').trim();
+    if (!s || !/^[0-9.,]+$/.test(s)) return null;
+    let limpo = s;
+    if (s.includes(',')) {
+        limpo = s.replace(/\./g, '').replace(',', '.');
+    } else {
+        const pontos = (s.match(/\./g) || []).length;
+        if (pontos > 1 || (pontos === 1 && /^\d+\.\d{3}$/.test(s))) {
+            limpo = s.replace(/\./g, '');
+        }
+    }
+    const n = Number(limpo);
+    return Number.isFinite(n) ? n : null;
+};
+
 const STATUS_BADGE = {
     PENDENTE: 'bg-yellow-100 text-yellow-800',
     CONCILIADO: 'bg-green-100 text-green-800',
@@ -1232,6 +1257,13 @@ const ConciliacaoBancariaPage = () => {
     const [contaId, setContaId] = useFiltroSalvo('conciliacao-bancaria:contaId', '');
     const [periodo, periodoCtl] = usePeriodoSalvo('conciliacao-bancaria', '30d');
     const [statusFiltro, setStatusFiltro] = useFiltroSalvo('conciliacao-bancaria:statusFiltro', 'todos');
+    // Tipo (crédito/débito) persiste — mesma lógica do status. Busca de texto e faixa de
+    // valor NÃO persistem (regra do projeto: não guardar busca livre entre visitas).
+    const [tipoFiltro, setTipoFiltro] = useFiltroSalvo('conciliacao-bancaria:tipo', 'todos');
+    const [busca, setBusca] = useState('');
+    const [valorMin, setValorMin] = useState('');
+    const [valorMax, setValorMax] = useState('');
+    const [mostrarMaisFiltros, setMostrarMaisFiltros] = useState(false);
     const [dados, setDados] = useState(null);
     const [loading, setLoading] = useState(false);
     const [agindo, setAgindo] = useState(null); // id do lançamento com ação em andamento
@@ -1279,6 +1311,10 @@ const ConciliacaoBancariaPage = () => {
     }, [contaId, periodo, statusFiltro]);
 
     useEffect(() => { carregar(); }, [carregar]);
+
+    // Filtro da lista (tipo/busca/valor) escondeu uma linha marcada? Zera a seleção —
+    // "selecionar todos" e as ações em lote valem só para o que está visível.
+    useEffect(() => { setSelecionados(new Set()); }, [tipoFiltro, busca, valorMin, valorMax]);
 
     // forcar = true só depois de o usuário confirmar no modal de bloqueio.
     const importar = async (arquivo, forcar = false) => {
@@ -1393,6 +1429,39 @@ const ConciliacaoBancariaPage = () => {
     const soNoApp = dados?.soNoApp || { entradas: [], saidas: [] };
     const totalSoNoApp = (soNoApp.entradas?.length || 0) + (soNoApp.saidas?.length || 0);
 
+    // Filtro da lista (tipo + busca por texto/valor + faixa de valor) — roda sobre o que
+    // já foi carregado, não muda a chamada ao servidor. KPIs, ações em massa do servidor
+    // (conciliar automático, confirmar identificadas, identificar débitos) e a lista
+    // "pendentes" do modal Buscar continuam olhando o período INTEIRO (ver mais abaixo).
+    const buscaNorm = normalizarTexto(busca);
+    const buscaValor = parseValorBR(busca);
+    const valorMinNum = parseValorBR(valorMin);
+    const valorMaxNum = parseValorBR(valorMax);
+    const lancamentosFiltrados = useMemo(() => lancamentos.filter(l => {
+        if (tipoFiltro !== 'todos' && l.tipo !== tipoFiltro) return false;
+        const v = Number(l.valor || 0);
+        if (valorMinNum != null && v < valorMinNum - 0.001) return false;
+        if (valorMaxNum != null && v > valorMaxNum + 0.001) return false;
+        if (buscaNorm) {
+            const camposTexto = [
+                l.descricao, l.detalhes?.nome, l.detalhes?.documento,
+                l.pistas?.fornecedorDoDocumento, l.pistas?.fornecedorProvavel, l.pistas?.documento,
+                l.conciliadoCom, l.obs, ...(l.grupoBaixas || [])
+            ].filter(Boolean).map(normalizarTexto).join(' | ');
+            const bateTexto = camposTexto.includes(buscaNorm);
+            const bateValor = buscaValor != null && Math.abs(v - buscaValor) <= 0.01;
+            if (!bateTexto && !bateValor) return false;
+        }
+        return true;
+    }), [lancamentos, tipoFiltro, buscaNorm, buscaValor, valorMinNum, valorMaxNum]);
+    const somaFiltrados = lancamentosFiltrados.reduce((acc, l) => {
+        const v = Number(l.valor || 0);
+        if (l.tipo === 'CREDITO') acc.entradas += v; else acc.saidas += v;
+        return acc;
+    }, { entradas: 0, saidas: 0 });
+    const filtroListaAtivo = tipoFiltro !== 'todos' || busca.trim() !== '' || valorMin.trim() !== '' || valorMax.trim() !== '';
+    const limparFiltrosLista = () => { setTipoFiltro('todos'); setBusca(''); setValorMin(''); setValorMax(''); };
+
     // Créditos identificados prontos para confirmar em lote (Venda = pedido, valor fechando)
     const identificaveis = lancamentos.filter(l => l.status === 'PENDENTE' && l.identificado?.fecha).length;
     // Débitos "Nome não encontrado" — dá para descobrir no CA de quem são
@@ -1410,7 +1479,7 @@ const ConciliacaoBancariaPage = () => {
     // Seleção em lote: TODO pendente pode ser selecionado (crédito ou débito).
     // Ações por tipo: Ignorar (todos) · Conciliar sugeridas/identificadas (as que têm par)
     // · Lançar despesas e conciliar (só as saídas — tarifas repetidas).
-    const selecionaveis = lancamentos.filter(l => l.status === 'PENDENTE');
+    const selecionaveis = lancamentosFiltrados.filter(l => l.status === 'PENDENTE');
     const idsSelecionaveis = selecionaveis.map(l => l.id);
     const podeSelecionar = (l) => l.status === 'PENDENTE';
     const alternarSelecao = (id) => setSelecionados(prev => {
@@ -1822,6 +1891,67 @@ const ConciliacaoBancariaPage = () => {
                             </div>
                         )}
 
+                        {/* Filtro da lista: tipo (crédito/débito), busca por texto/valor e faixa de valor.
+                            Roda sobre o que já foi carregado — não muda a chamada ao servidor. */}
+                        {lancamentos.length > 0 && (
+                            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-3 md:p-4 space-y-3">
+                                <div className="flex flex-col md:flex-row gap-2 md:items-center">
+                                    <div className="inline-flex rounded-full border border-gray-300 bg-gray-50 p-0.5 shrink-0 self-start">
+                                        {[['todos', 'Todos'], ['CREDITO', 'Créditos'], ['DEBITO', 'Débitos']].map(([v, label]) => (
+                                            <button
+                                                key={v}
+                                                type="button"
+                                                onClick={() => setTipoFiltro(v)}
+                                                className={`px-3 min-h-[44px] md:min-h-[36px] rounded-full text-xs font-semibold transition-colors ${tipoFiltro === v ? 'bg-primary text-white shadow-sm' : 'text-gray-600 hover:bg-gray-100'}`}
+                                            >
+                                                {label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <div className="relative flex-1 min-w-0">
+                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                        <input
+                                            value={busca}
+                                            onChange={e => setBusca(e.target.value)}
+                                            placeholder="Buscar por descrição, nome ou valor (ex.: 330,10)…"
+                                            className="w-full border border-gray-300 rounded pl-9 pr-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                                        />
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setMostrarMaisFiltros(v => !v)}
+                                        className="shrink-0 min-h-[44px] md:min-h-[36px] px-3 py-1.5 bg-white border border-gray-300 text-gray-600 hover:bg-gray-50 rounded-full text-xs font-medium inline-flex items-center justify-center gap-1"
+                                    >
+                                        Mais filtros {mostrarMaisFiltros ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                                    </button>
+                                </div>
+
+                                {mostrarMaisFiltros && (
+                                    <div className="flex flex-col md:flex-row gap-2 md:items-center pt-2 border-t border-gray-100">
+                                        <span className="text-xs font-medium text-gray-600 shrink-0">Faixa de valor:</span>
+                                        <div className="flex items-center gap-2">
+                                            <input inputMode="decimal" value={valorMin} onChange={e => setValorMin(e.target.value)} placeholder="De R$"
+                                                className="w-28 border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
+                                            <span className="text-gray-400 text-sm">—</span>
+                                            <input inputMode="decimal" value={valorMax} onChange={e => setValorMax(e.target.value)} placeholder="Até R$"
+                                                className="w-28 border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-gray-100">
+                                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
+                                        <span>Mostrando <strong className="text-gray-700">{lancamentosFiltrados.length}</strong> de {lancamentos.length} lançamento(s)</span>
+                                        {somaFiltrados.entradas > 0 && <span className="text-green-700 font-medium">+ R$ {fmt(somaFiltrados.entradas)}</span>}
+                                        {somaFiltrados.saidas > 0 && <span className="text-red-700 font-medium">− R$ {fmt(somaFiltrados.saidas)}</span>}
+                                    </div>
+                                    {filtroListaAtivo && (
+                                        <button type="button" onClick={limparFiltrosLista} className="text-xs text-primary font-semibold hover:underline">Limpar</button>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
                         {loading && (
                             <div className="text-center text-gray-500 text-sm py-2 flex items-center justify-center gap-2">
                                 <Loader2 className="h-4 w-4 animate-spin" /> Carregando…
@@ -1836,9 +1966,16 @@ const ConciliacaoBancariaPage = () => {
                             </div>
                         )}
 
-                        {lancamentos.length > 0 && (
+                        {!loading && lancamentos.length > 0 && lancamentosFiltrados.length === 0 && (
+                            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-8 text-center text-sm text-gray-500">
+                                Nenhum lançamento bate com o filtro atual.{' '}
+                                <button type="button" onClick={limparFiltrosLista} className="text-primary font-semibold hover:underline">Limpar filtros</button>
+                            </div>
+                        )}
+
+                        {lancamentosFiltrados.length > 0 && (
                             <>
-                                {/* Selecionar todas as saídas pendentes (tarifas) — lote */}
+                                {/* Selecionar todas as saídas pendentes (tarifas) — lote; só as visíveis */}
                                 {selecionaveis.length > 0 && (
                                     <label className="flex items-center gap-2 px-1 text-xs text-gray-600 cursor-pointer select-none">
                                         <input type="checkbox" checked={todosSelecionados} onChange={alternarTodos} className="accent-[#00754A]" />
@@ -1848,7 +1985,7 @@ const ConciliacaoBancariaPage = () => {
 
                                 {/* Mobile: cards */}
                                 <div className="md:hidden space-y-3">
-                                    {lancamentos.map(l => (
+                                    {lancamentosFiltrados.map(l => (
                                         <div key={l.id} className={`bg-white rounded-xl border shadow-sm p-4 ${selecionados.has(l.id) ? 'border-primary ring-1 ring-primary/30' : 'border-gray-200'}`}>
                                             <div className="flex items-center justify-between mb-1 gap-2">
                                                 <div className="flex items-center gap-2 min-w-0">
@@ -1886,7 +2023,7 @@ const ConciliacaoBancariaPage = () => {
                                             </tr>
                                         </thead>
                                         <tbody className="bg-white divide-y divide-gray-200 text-sm">
-                                            {lancamentos.map(l => (
+                                            {lancamentosFiltrados.map(l => (
                                                 <tr key={l.id} className={`align-top ${selecionados.has(l.id) ? 'bg-mint/30' : 'hover:bg-gray-50'}`}>
                                                     <td className="px-3 py-3 text-center">
                                                         {podeSelecionar(l) && (

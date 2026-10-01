@@ -132,6 +132,12 @@ Acessível pelo rodapé da janela Buscar…. O pop-up vem preenchido com o que o
 
 - **KPIs**: Pendentes (com valor a conferir), Conciliados (valor batido), Ignorados, e **"Só no app"** — baixas registradas nesta conta que não bateram com nenhum lançamento do extrato.
 - **Filtros**: conta (obrigatório), período e status. O período usa o seletor único em pílula padrão do sistema (estilo Conta Azul), com presets **Hoje · Últimos 7 dias · Últimos 30 dias · Este mês · Este ano · Período personalizado** (De/Até dentro do menu) e **setas ‹ ›** que pulam o período inteiro. Aqui **não existe "Todo o período"** (o extrato sempre precisa de um intervalo de datas). Fica lembrado por usuário o **preset** escolhido (recalculado a partir de hoje a cada abertura); padrão: Últimos 30 dias.
+- **Filtro da lista** (desde 10/2026, roda em cima do que já foi carregado — não busca de novo no servidor):
+  - Botões em pílula **Todos / Créditos / Débitos** para separar entrada de saída (fica lembrado por usuário).
+  - **Campo de busca**: procura na descrição do banco, no nome identificado, no documento/CNPJ e no texto da conciliação, **sem diferenciar maiúscula/minúscula nem acento**; também reconhece **valor** digitado em qualquer formato (`330,10`, `330.10`, `1.250,00`, `1.250`, `330`) e acha o lançamento daquele valor exato (tolerância de 1 centavo). Não fica salvo ao reabrir a tela.
+  - **"Mais filtros" → faixa de valor** (De R$ / Até R$), para casos tipo "tudo acima de R$ 500". Também não persiste.
+  - Contador **"Mostrando X de Y lançamentos"**, soma dos valores filtrados (verde = entradas, vermelho = saídas) e botão **Limpar**.
+  - **"Selecionar todos"** e as ações em lote (Conciliar com o par / Lançar despesas / Ignorar) valem só para o que está **visível** com o filtro aplicado — mudar o filtro com algo marcado zera a seleção. Já **"Conciliar automático"**, **"Confirmar identificadas"** e **"Identificar débitos no CA"** continuam agindo sobre **todo o período** (ignoram o filtro da lista), e a janela **Buscar…** de qualquer linha sempre enxerga todos os pendentes do período, filtrados ou não.
 - **Lista do extrato**: data, descrição do banco, valor (verde = entrou, vermelho = saiu), status e a coluna de conciliação. Conciliação automática aparece com 🪄.
 - **"De quem é esse lançamento?"** — abaixo da descrição, tudo o que dá para saber:
   - **Beneficiário e nº do documento**, quando o arquivo do banco traz (nem todo banco traz).

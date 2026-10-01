@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: filtros da Conciliação Bancária — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp (sem imagem: cartão compacto) -->
+<meta property="og:title" content="🔎 Novidade no Hardt App: filtros da Conciliação Bancária">
+<meta property="og:description" content="Agora dá para separar créditos de débitos, buscar por nome ou por valor (330,10 acha o lançamento certo) e filtrar por faixa de valor — tudo na lista que já estava carregada.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 96px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 7vw, 40px);
+    font-weight: 800;
+    line-height: 1.12;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.75);
+    font-size: 16px;
+    max-width: 46ch;
+    margin: 0 auto;
+    text-wrap: balance;
+  }
+
+  /* ── DEMO (mock flutuando sobre o hero) ── */
+  .mock {
+    max-width: 440px;
+    margin: -68px auto 12px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.28);
+    overflow: hidden;
+    text-align: left;
+  }
+  .mock-top {
+    background: var(--house);
+    color: #fff;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .mock-top small {
+    display: block;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    color: rgba(255,255,255,.55);
+  }
+  .mock-top strong { font-size: 16px; line-height: 1.2; }
+  .mock-ico { font-size: 24px; }
+  .mock-body { padding: 16px 18px 18px; }
+
+  .demo-campo { margin-bottom: 12px; }
+  .demo-campo > label {
+    display: block;
+    font-size: 9px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: #9aa5a0;
+    margin-bottom: 4px;
+  }
+  .seg {
+    display: inline-flex;
+    border: 1.5px solid #d8d5cc;
+    border-radius: 999px;
+    overflow: hidden;
+    background: #f7f6f2;
+    padding: 2px;
+  }
+  .seg button {
+    border: 0;
+    background: none;
+    font-family: inherit;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--ink-soft);
+    padding: 7px 13px;
+    border-radius: 999px;
+    cursor: pointer;
+  }
+  .seg button.on { background: var(--primary); color: #fff; }
+
+  .campo-busca {
+    position: relative;
+  }
+  .campo-busca input {
+    width: 100%;
+    border: 1.5px solid #d8d5cc;
+    border-radius: 10px;
+    padding: 9px 12px 9px 32px;
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--ink);
+  }
+  .campo-busca input:focus { outline: none; border-color: var(--primary); }
+  .campo-busca .ico { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #9aa5a0; font-size: 13px; }
+
+  .resultado {
+    margin-top: 4px;
+    background: var(--mint);
+    border-radius: 12px;
+    padding: 11px 14px;
+    font-size: 13px;
+    color: #1b4b3c;
+    font-weight: 600;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 10px;
+    align-items: baseline;
+  }
+  .resultado b { font-size: 16px; }
+  .resultado .cred { color: #16794f; }
+  .resultado .deb { color: #b5433a; }
+  .demo-hint {
+    text-align: center;
+    font-size: 12.5px;
+    color: var(--ink-soft);
+    margin: 0 0 26px;
+  }
+
+  /* ── ANTES x DEPOIS ── */
+  .comparativo { display: grid; gap: 10px; margin-bottom: 6px; }
+  @media (min-width: 560px) { .comparativo { grid-template-columns: 1fr 1fr; } }
+  .comp {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 14px;
+    padding: 14px 16px;
+  }
+  .comp.antes { border-left: 5px solid #d97a6c; }
+  .comp.depois { border-left: 5px solid var(--primary); }
+  .comp h3 {
+    margin: 0 0 8px;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: #9aa5a0;
+  }
+  .comp.antes h3 { color: #b5604f; }
+  .comp.depois h3 { color: var(--primary); }
+  .comp ul { margin: 0; padding-left: 18px; }
+  .comp li { font-size: 13.5px; color: var(--ink-soft); margin-bottom: 6px; }
+  .comp b { color: var(--ink); }
+
+  /* ── SEÇÕES / ACCORDION ── */
+  .sec-label {
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: #9aa5a0;
+    margin: 34px 0 12px;
+  }
+  .acc {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+  }
+  .acc-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 15px 16px;
+    background: none;
+    border: 0;
+    cursor: pointer;
+    text-align: left;
+    font-family: inherit;
+    color: var(--ink);
+  }
+  .acc-ico {
+    width: 38px; height: 38px;
+    flex-shrink: 0;
+    border-radius: 11px;
+    background: var(--mint);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+  }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  /* ── MOCKUPS DAS TELAS ── */
+  .tela {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .tela-titulo {
+    background: var(--house);
+    color: #fff;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .app-card {
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .app-card-body { padding: 12px; }
+  .falso {
+    border: 1px solid #d8d5cc;
+    border-radius: 8px;
+    padding: 7px 10px;
+    font-size: 12px;
+    color: #9aa5a0;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .falso.tem { border-color: var(--primary); color: var(--ink); font-weight: 600; }
+  .mini-card {
+    border: 1px solid #e5e3dc;
+    border-radius: 10px;
+    padding: 9px 11px;
+    margin-top: 8px;
+    font-size: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+  }
+  .mini-card .val.cred { color: #16794f; font-weight: 700; }
+  .mini-card .val.deb { color: #b5433a; font-weight: 700; }
+  .mini-card .desc { color: var(--ink-soft); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pin {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    flex-shrink: 0;
+    vertical-align: 2px;
+    margin-left: 6px;
+  }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+
+  /* ── PASSOS ── */
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 13px; margin-bottom: 15px; }
+  .passo:last-child { margin-bottom: 0; }
+  .num {
+    width: 28px; height: 28px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 800;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .passo p { margin: 0; font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .rodape {
+    text-align: center;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 40px;
+  }
+  .rodape strong { color: var(--primary-dark); }
+</style>
+</head>
+<body>
+
+<!-- ══════════ HERO ══════════ -->
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>Conciliação Bancária<br>com busca de verdade</h1>
+    <p>Separe créditos de débitos, digite um nome ou um valor (330,10 acha o lançamento certo) e veja na hora quantos lançamentos sobraram — sem buscar de novo no servidor.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- DEMO INTERATIVA -->
+  <div class="mock">
+    <div class="mock-top">
+      <span class="mock-ico">🏦</span>
+      <div>
+        <small>Conciliação Bancária · Filtro</small>
+        <strong>Experimente aqui</strong>
+      </div>
+    </div>
+    <div class="mock-body">
+      <div class="demo-campo">
+        <label>Tipo</label>
+        <div class="seg" id="seg">
+          <button class="on" data-v="todos" onclick="trocarTipo('todos')">Todos</button>
+          <button data-v="CREDITO" onclick="trocarTipo('CREDITO')">Créditos</button>
+          <button data-v="DEBITO" onclick="trocarTipo('DEBITO')">Débitos</button>
+        </div>
+      </div>
+      <div class="demo-campo">
+        <label>Buscar por descrição, nome ou valor</label>
+        <div class="campo-busca">
+          <span class="ico">🔎</span>
+          <input id="busca" type="text" placeholder="ex.: fornecedor, 330,10…" oninput="atualizar()">
+        </div>
+      </div>
+      <div class="resultado" id="res">Mostrando <b>6</b> de <b>6</b> lançamentos</div>
+    </div>
+  </div>
+  <p class="demo-hint">Demonstração com lançamentos fictícios — troque o tipo ou digite "330,10" e veja o filtro agir.</p>
+
+  <!-- ══════════ ANTES x DEPOIS ══════════ -->
+  <div class="sec-label">O problema que sumiu</div>
+  <div class="comparativo">
+    <div class="comp antes">
+      <h3>❌ Como era</h3>
+      <ul>
+        <li>Entradas e saídas vinham <b>misturadas</b> na mesma lista — difícil separar o que é crédito do que é débito.</li>
+        <li>Não tinha como <b>buscar por nome</b> nem por <b>valor</b> na lista geral do extrato.</li>
+        <li>Pra achar um lançamento de R$ 330,10, era rolar a lista inteira até achar.</li>
+      </ul>
+    </div>
+    <div class="comp depois">
+      <h3>✅ Como ficou</h3>
+      <ul>
+        <li>Botões <b>Todos / Créditos / Débitos</b> separam entrada de saída com um toque.</li>
+        <li>Um campo só de busca acha por <b>descrição, nome identificado</b> ou <b>valor</b> (330,10, 330.10, 1.250 ou 330 — todos reconhecidos).</li>
+        <li><b>"Mais filtros"</b> traz a faixa de valor (De R$ / Até R$) pra quem quer uma peneira mais fina.</li>
+        <li>Contador <b>"Mostrando X de Y"</b> + soma de entradas e saídas filtradas, sempre à vista.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ══════════ O QUE MUDOU ══════════ -->
+  <div class="sec-label">O que mudou, em detalhe</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">↕️</span>
+      <strong>Créditos e débitos, separados</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Botões em pílula <b>Todos / Créditos / Débitos</b> logo acima da lista de lançamentos.</li>
+        <li>O app <b>lembra</b> qual você deixou marcado da última vez que abriu a tela (fica salvo por pessoa).</li>
+        <li>KPIs do topo (Pendentes, Conciliados…) continuam mostrando o <b>período inteiro</b> — o filtro de tipo só recorta a lista de baixo.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🔎</span>
+      <strong>Um campo só: nome ou valor</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Procura na <b>descrição do banco</b>, no <b>nome identificado</b> (beneficiário, pagador) e no texto da conciliação — <b>sem diferenciar maiúscula de minúscula nem acento</b> ("joao" acha "João").</li>
+        <li>Digitou um número? O app reconhece <b>qualquer formato</b> — <code>330,10</code>, <code>330.10</code>, <code>1.250,00</code>, <code>1.250</code> ou só <code>330</code> — e acha o lançamento daquele valor (tolerância de 1 centavo).</li>
+        <li>A busca <b>não fica salva</b> ao reabrir a tela — sempre começa limpa, como as buscas de texto do resto do sistema.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">📏</span>
+      <strong>"Mais filtros": faixa de valor</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Botão <b>"Mais filtros"</b> abre dois campinhos: <b>De R$</b> e <b>Até R$</b> — útil para "tudo acima de R$ 500", por exemplo.</li>
+        <li>Também não fica salvo entre visitas — evita que uma faixa antiga esconda lançamentos novos sem querer.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🧮</span>
+      <strong>Contador, soma e "selecionar todos"</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li><b>"Mostrando X de Y lançamentos"</b> deixa claro quando o filtro está escondendo alguma coisa — com o botão <b>Limpar</b> sempre à mão.</li>
+        <li>Logo ao lado, a <b>soma dos valores filtrados</b>: entradas em verde, saídas em vermelho.</li>
+        <li><b>"Selecionar todos"</b> e as ações em lote (Conciliar com o par, Lançar despesas, Ignorar) passam a valer só para o que está <b>visível</b> com o filtro aplicado.</li>
+        <li>Já <b>"Conciliar automático"</b>, <b>"Confirmar identificadas"</b> e <b>"Identificar débitos no CA"</b> continuam agindo sobre o <b>período inteiro</b>, do jeito que sempre funcionaram — e a janela <b>Buscar…</b> de qualquer linha sempre enxerga todos os pendentes, filtrados ou não.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ══════════ AS TELAS DO APP ══════════ -->
+  <div class="sec-label">As telas do app, sem mistério</div>
+
+  <!-- TELA 1 -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 1 · A barra de filtro fechada</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-body">
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:9px;">
+            <div class="seg" style="padding:2px;"><button class="on" style="padding:6px 10px;">Todos</button><button style="padding:6px 10px; color:#9aa5a0;">Créditos</button><button style="padding:6px 10px; color:#9aa5a0;">Débitos</button></div>
+            <span class="pin">1</span>
+          </div>
+          <div class="falso" style="margin-bottom:9px;">🔎 Buscar por descrição, nome ou valor (ex.: 330,10)…<span class="pin">2</span></div>
+          <div class="falso" style="max-width:140px; margin-bottom:9px;">Mais filtros ▾<span class="pin">3</span></div>
+          <div class="mini-card" style="background:var(--mint); border:none;">
+            <span class="desc">Mostrando <b>4</b> de <b>18</b> lançamentos<span class="pin">4</span></span>
+            <span><span class="val cred">+R$ 1.240</span> <span class="val deb">−R$ 330</span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Toque em <b>Créditos</b> ou <b>Débitos</b> para ver só entradas ou só saídas. Fica salvo para a próxima vez.</span></div>
+      <div><span class="pin">2</span><span>Digite um <b>nome</b> (fornecedor, cliente) ou um <b>valor</b> — os dois funcionam no mesmo campo.</span></div>
+      <div><span class="pin">3</span><span><b>Mais filtros</b> abre a faixa de valor (De R$ / Até R$) — ver Tela 2.</span></div>
+      <div><span class="pin">4</span><span>O contador mostra quantos lançamentos o filtro deixou visíveis, e a soma de cada lado.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 2 -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 2 · "Mais filtros" aberto + lista filtrada</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-body">
+          <div style="display:flex; align-items:center; gap:8px; font-size:11px; font-weight:700; color:var(--ink-soft); margin-bottom:6px;">Faixa de valor<span class="pin">1</span></div>
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+            <div class="falso" style="max-width:90px;">De R$</div>
+            <span style="color:#9aa5a0;">—</span>
+            <div class="falso" style="max-width:90px;">Até R$</div>
+          </div>
+          <div class="mini-card">
+            <span class="desc">Pagto fornecedor Hortifruti</span>
+            <span class="val deb">−R$ 330,10</span>
+          </div>
+          <div class="mini-card">
+            <span class="desc">PIX recebido · João Pedro<span class="pin">2</span></span>
+            <span class="val cred">+R$ 330,10</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Campinhos pequenos, pensados pra caber bem no celular — ficam escondidos até você clicar em "Mais filtros".</span></div>
+      <div><span class="pin">2</span><span>Buscar <b>"joao"</b> (sem acento) encontra <b>"João Pedro"</b> — a busca ignora acento e maiúscula/minúscula.</span></div>
+    </div>
+  </div>
+
+  <!-- ══════════ COMEÇAR A USAR ══════════ -->
+  <div class="sec-label">Para começar a usar</div>
+  <div class="passos">
+    <div class="passo">
+      <span class="num">1</span>
+      <p>Abra <b>Financeiro → Conciliação Bancária</b> e escolha o banco/caixa, como sempre.</p>
+    </div>
+    <div class="passo">
+      <span class="num">2</span>
+      <p>Logo acima da lista, toque em <b>Créditos</b> ou <b>Débitos</b> pra ver só entradas ou só saídas.</p>
+    </div>
+    <div class="passo">
+      <span class="num">3</span>
+      <p>No campo de busca, digite um <b>nome</b> ou um <b>valor</b> (ex.: <code>330,10</code>) — a lista filtra na hora.</p>
+    </div>
+    <div class="passo">
+      <span class="num">4</span>
+      <p>Quer afinar mais? Clique em <b>Mais filtros</b> e informe uma faixa de valor (De/Até).</p>
+    </div>
+    <div class="passo">
+      <span class="num">5</span>
+      <p>Perdeu-se? O botão <b>Limpar</b>, ao lado do contador, zera tipo, busca e faixa de uma vez.</p>
+    </div>
+  </div>
+
+  <p class="rodape">
+    Dúvida? Chame o <strong>Clippy</strong> dentro do app 📎 — ele já sabe explicar os filtros novos.
+  </p>
+</div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.parentElement;
+    const abriu = acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+
+  // ── demo do filtro (lançamentos fictícios) ──
+  const LANCS = [
+    { desc: 'Pagto fornecedor Hortifruti', tipo: 'DEBITO', valor: 330.10 },
+    { desc: 'PIX recebido · João Pedro', tipo: 'CREDITO', valor: 330.10 },
+    { desc: 'Tarifa de manutenção de conta', tipo: 'DEBITO', valor: 29.90 },
+    { desc: 'Recebimento de cobrança · Maria Silva', tipo: 'CREDITO', valor: 1250.00 },
+    { desc: 'DÉB.TIT.COMPE EFETIVADO', tipo: 'DEBITO', valor: 980.00 },
+    { desc: 'PIX recebido · Fornecedor Açaí Bom', tipo: 'CREDITO', valor: 450.00 }
+  ];
+  let tipo = 'todos';
+
+  const normalizar = (v) => (v || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  const parseValorBR = (str) => {
+    const s = (str || '').trim();
+    if (!s || !/^[0-9.,]+$/.test(s)) return null;
+    let limpo = s;
+    if (s.includes(',')) {
+      limpo = s.replace(/\./g, '').replace(',', '.');
+    } else {
+      const pontos = (s.match(/\./g) || []).length;
+      if (pontos > 1 || (pontos === 1 && /^\d+\.\d{3}$/.test(s))) limpo = s.replace(/\./g, '');
+    }
+    const n = Number(limpo);
+    return Number.isFinite(n) ? n : null;
+  };
+
+  function trocarTipo(v) {
+    tipo = v;
+    document.querySelectorAll('#seg button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
+    atualizar();
+  }
+
+  function atualizar() {
+    const buscaRaw = document.getElementById('busca').value;
+    const buscaNorm = normalizar(buscaRaw);
+    const buscaValor = parseValorBR(buscaRaw);
+    const filtrados = LANCS.filter(l => {
+      if (tipo !== 'todos' && l.tipo !== tipo) return false;
+      if (buscaNorm) {
+        const bateTexto = normalizar(l.desc).includes(buscaNorm);
+        const bateValor = buscaValor != null && Math.abs(l.valor - buscaValor) <= 0.01;
+        if (!bateTexto && !bateValor) return false;
+      }
+      return true;
+    });
+    const entradas = filtrados.filter(l => l.tipo === 'CREDITO').reduce((s, l) => s + l.valor, 0);
+    const saidas = filtrados.filter(l => l.tipo === 'DEBITO').reduce((s, l) => s + l.valor, 0);
+    const fmt = (v) => v.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+    let html = 'Mostrando <b>' + filtrados.length + '</b> de <b>' + LANCS.length + '</b> lançamentos';
+    if (entradas > 0) html += ' <span class="cred">+ R$ ' + fmt(entradas) + '</span>';
+    if (saidas > 0) html += ' <span class="deb">− R$ ' + fmt(saidas) + '</span>';
+    document.getElementById('res').innerHTML = html;
+  }
+
+  atualizar();
+</script>
+</body>
+</html>
