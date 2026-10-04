@@ -77,7 +77,7 @@ Resumo financeiro diário do motorista/vendedor. Mostra tudo que aconteceu em um
 3. O resumo mostra: total a receber, recebido por forma de pagamento, adiantamento e saldo
 
 ### Ver caixa de outro dia ou vendedor
-- **Outro dia:** use as setas `‹ ›`, o botão **Hoje** ou toque na data para abrir o calendário — tudo isso só fica habilitado para `Pode_Ver_Historico_Caixa` ou `admin`/`Pode_Editar_Caixa`; sem nenhuma dessas permissões, a navegação fica travada no dia atual
+- **Outro dia (passado OU futuro):** use as setas `‹ ›`, o botão **Hoje** ou toque na data para abrir o calendário — tudo isso só fica habilitado para `Pode_Ver_Historico_Caixa` ou `admin`/`Pode_Editar_Caixa`; sem nenhuma dessas permissões, a navegação fica travada no dia atual. Quem tem essa permissão navega livremente para o futuro também — por exemplo, para lançar um **adiantamento de amanhã** hoje (o dinheiro foi entregue hoje para o motorista usar no caixa do dia seguinte)
 - **Outro vendedor:** toque direto na **pílula** da pessoa na faixa do topo, ou abra **"+ outros"** para escolher alguém que não apareceu na faixa — os dois só existem para `admin` ou `Pode_Editar_Caixa`
 - A lista de "+ outros" mostra **só vendedores ativos**. Um vendedor inativo aparece apenas nos dias em que teve movimento de caixa (marcado como "inativo · teve caixa") — o histórico não se perde
 
@@ -86,11 +86,11 @@ Resumo financeiro diário do motorista/vendedor. Mostra tudo que aconteceu em um
 O topo da tela tem duas partes: a **barra de data** e, logo abaixo, a **faixa de pílulas**.
 
 **Barra de data — `‹ 13/09/2026 · sábado ›` + Hoje**
-- `‹` volta um dia, `›` avança um dia — **`›` fica desabilitada no dia de hoje** (não existe caixa no futuro)
-- Tocar na própria data abre o calendário para pular direto para o dia desejado
-- O botão **Hoje** volta para o dia atual de qualquer ponto do histórico
+- `‹` volta um dia, `›` avança um dia — quem tem `Pode_Ver_Historico_Caixa`/`Pode_Editar_Caixa`/`admin` pode avançar **também para o futuro** (ex.: lançar adiantamento no caixa de amanhã). O rótulo do dia avisa quando a tela não está em hoje: `· amanhã` ou `· futuro`
+- Tocar na própria data abre o calendário para pular direto para o dia desejado (sem limite de data futura para quem tem a permissão acima)
+- O botão **Hoje** volta para o dia atual de qualquer ponto do histórico ou do futuro
 - No teclado, as setas `←` `→` do computador fazem a mesma coisa que `‹` `›` (desligado enquanto o foco está num campo de texto/busca ou com algum modal aberto na tela)
-- Sem `Pode_Ver_Historico_Caixa`/`Pode_Editar_Caixa`/`admin`, as setas, o calendário e o teclado ficam **todos desabilitados** — a tela mostra só o dia de hoje
+- Sem `Pode_Ver_Historico_Caixa`/`Pode_Editar_Caixa`/`admin`, as setas, o calendário e o teclado ficam **todos desabilitados** — a tela mostra só o dia de hoje (nem passado, nem futuro)
 
 **Faixa de pílulas — "Caixas do dia"**
 Mostra, numa fileira que rola para o lado, cada pessoa que teve caixa relevante naquele dia: avatar com as iniciais, nome, status e o **valor a prestar**. Um toque na pílula troca na hora o caixa exibido embaixo — não precisa mais abrir nenhum seletor. A pílula da pessoa selecionada fica com uma borda verde-escura ao redor.

@@ -101,7 +101,9 @@ const CaixaPilulasDia = ({
             if (['INPUT', 'TEXTAREA', 'SELECT'].includes(tag) || ativo?.isContentEditable) return;
             if (document.querySelector('.fixed.inset-0')) return;
             if (e.key === 'ArrowLeft') { e.preventDefault(); onChangeData(addDias(data, -1)); }
-            else if (data < today) { e.preventDefault(); onChangeData(addDias(data, 1)); }
+            // Quem tem histórico navega livremente para o futuro também (ex.: lançar
+            // adiantamento no caixa de amanhã) — a trava de data já é feita acima.
+            else if (e.key === 'ArrowRight') { e.preventDefault(); onChangeData(addDias(data, 1)); }
         };
         document.addEventListener('keydown', handler);
         return () => document.removeEventListener('keydown', handler);
@@ -122,6 +124,11 @@ const CaixaPilulasDia = ({
     const diaSemana = parseYMD(data).toLocaleDateString('pt-BR', { weekday: 'long' });
     const dataFmt = parseYMD(data).toLocaleDateString('pt-BR');
     const ehHoje = data === today;
+    // Rótulo "· amanhã" / "· futuro" para quem navegou para frente (só quem tem
+    // podeVerHistorico consegue chegar aqui) — sem isso a tela fica ambígua sobre
+    // qual dia está sendo exibido.
+    const ehAmanha = !ehHoje && data === addDias(today, 1);
+    const ehFuturo = !ehHoje && !ehAmanha && data > today;
 
     const pills = pillsData?.caixas || [];
     const resumoContagem = pillsData?.resumoContagem || {};
@@ -151,13 +158,13 @@ const CaixaPilulasDia = ({
                     >
                         <span className="text-[13px] sm:text-sm font-bold text-gray-800 truncate">{dataFmt}</span>
                         <span className="text-[10px] sm:text-[11px] font-semibold text-gray-500 capitalize truncate">
-                            {diaSemana}{ehHoje ? ' · hoje' : ''}
+                            {diaSemana}{ehHoje ? ' · hoje' : ehAmanha ? ' · amanhã' : ehFuturo ? ' · futuro' : ''}
                         </span>
                     </button>
                     <button
                         type="button"
-                        onClick={() => data < today && onChangeData(addDias(data, 1))}
-                        disabled={!podeVerHistorico || data >= today}
+                        onClick={() => onChangeData(addDias(data, 1))}
+                        disabled={!podeVerHistorico}
                         title={tituloBloqueado || 'Próximo dia'}
                         aria-label="Próximo dia"
                         className="w-11 h-11 shrink-0 flex items-center justify-center rounded-full text-gray-600 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
@@ -169,7 +176,7 @@ const CaixaPilulasDia = ({
                         ref={dateInputRef}
                         type="date"
                         value={data}
-                        max={today}
+                        max={!podeVerHistorico ? today : undefined}
                         disabled={!podeVerHistorico}
                         onChange={(e) => e.target.value && onChangeData(e.target.value)}
                         tabIndex={-1}
