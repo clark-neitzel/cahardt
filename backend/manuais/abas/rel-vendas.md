@@ -14,37 +14,40 @@ Relatório analítico de itens vendidos (não de pedidos, mas de linhas de produ
 
 ## O que dá pra fazer aqui
 
-- Filtrar por data de venda, data de criação, vendedor, situação no Conta Azul e tipo de pedido (excluindo bonificações)
+- Filtrar por **período da venda** e **período da criação** com o seletor de período em pílula (Hoje, Últimos 7/30 dias, Este mês, Este ano, Todo o período, Período personalizado; setas ‹ › pulam o período). Padrão: venda = todo o período, criação = este mês. O app lembra o tipo de período escolhido (não a data)
+- Filtros em **múltipla escolha**: Cidade, Condição de pagamento, Categoria comercial e Tipo de pedido (Normal/Especial/Bonificação). Mais Vendedor, Situação e Bonificações (menus de escolha única)
 - O menu de vendedor traz **também os vendedores inativos** (quem saiu da empresa), no fim da lista e marcados "(inativo)" — é assim que se levanta o que um ex-vendedor vendeu
-- **Filtrar por Condição de Pagamento (múltipla escolha)** direto no painel principal — escolha uma ou várias condições e o card "Filtrado" mostra na hora quantos itens e o valor total venderam naquelas condições
-- **Filtrar por Categoria Comercial (múltipla escolha)** direto no painel principal — escolha uma ou várias categorias de produto. As opções dos dois filtros vêm dos dados já carregados (precisa Gerar o relatório primeiro)
+- O relatório **atualiza sozinho** ao mudar qualquer filtro (e ao abrir a tela); o botão **Gerar** serve para recarregar. As opções dos menus já vêm preenchidas, sem precisar gerar antes
+- Um selo **"N filtros ativos"** e o botão **Limpar** ficam no topo da barra de filtros; abaixo dela, **chips** mostram cada filtro aplicado (com X para tirar um por um). Os filtros escolhidos ficam salvos por usuário
+- Cliente, produto, bairro e indicação se filtram pelo **funil no cabeçalho da coluna** (estilo Excel)
+- O cartão **Total geral** mostra o número de pedidos, o valor e o **Ticket médio (por pedido)** (valor ÷ pedidos); o cartão **Média por item** mostra valor ÷ itens
 - Ordenar qualquer coluna clicando no cabeçalho
-- Filtrar por valor de coluna (dropdown estilo Excel) — clicando no ícone de filtro em cada coluna (Condição e Categoria também têm o filtro de coluna, sincronizado com os do painel)
+- Filtrar por valor de coluna (dropdown estilo Excel) — clicando no ícone de filtro em cada coluna (Condição e Categoria também têm funil de coluna, que age só sobre o que já está na tela — separado dos filtros em múltipla escolha da barra de cima)
 - Mostrar/ocultar colunas individualmente
 - Reordenar colunas arrastando-as
 - Agrupamento automático quando colunas de dimensão são ocultadas (ex: ocultar "Produto" soma quantidades)
 - Ver o **preço de custo (Vl Custo)** e o **Custo Total** de cada produto — usa **exatamente o mesmo cálculo da tela da receita no PCP** (o "Custo por unidade"). O custo das matérias-primas vem do **custo médio do Conta Azul** (ou custo manual do produto), os **subprodutos (SUB)** são calculados pela própria receita de forma recursiva, e a **perda %** é aplicada (rendimento líquido = rendimento × (1 − perda%)). No modo agrupado, o **Vl Custo** mostra o custo por unidade do grupo (Custo Total ÷ quantidade). Produtos sem receita no PCP (ou com matérias-primas sem custo cadastrado) aparecem com "-"
 - Ver totais no rodapé: quantidade total, valor total, custo total
-- Imprimir o relatório em formato A4 (fonte monoespaciada, compacto)
+- Imprimir o relatório em formato A4 (fonte monoespaciada, compacto) — imprime direto na própria tela, sem abrir outra janela. A folha sai em **A4 paisagem** para caber todas as colunas (a letra é pequena de propósito)
+- **No celular** o resultado aparece em **cartões** (um por linha) em vez de tabela; ordenar e filtrar por coluna ficam no computador/iPad. Aparecem 100 cartões por vez — toque em **Mostrar mais** para ver +100
 - Exportar para CSV
-- Os filtros aplicados são salvos no navegador (localStorage) e restaurados na próxima visita
 
 ---
 
 ## Como fazer (passo a passo real)
 
 ### Gerar o relatório
-1. Abra a aba Relatório de Vendas
-2. O painel de filtros abre com os últimos filtros usados
-3. Ajuste as datas e demais filtros desejados
-4. Clique em **Gerar**
-5. A tabela aparece com uma linha por item vendido
+1. Abra a aba Relatório de Vendas — ela já carrega com os últimos filtros usados
+2. Ajuste os períodos e os filtros (cidade, condição, categoria, tipo, vendedor, situação)
+3. O relatório atualiza sozinho; se quiser recarregar, toque em **Gerar**
+4. Aparecem os cartões de resumo, as colunas e a tabela (cartões no celular)
 
-### Filtrar por Condição de Pagamento ou Categoria Comercial (painel principal)
-1. Gere o relatório uma vez (os filtros usam os dados carregados)
-2. Abra o painel de filtros (botão **Filtros**)
-3. Em **Condição de Pagamento** ou **Categoria Comercial**, abra a lista e marque uma ou mais opções (há busca e "Selecionar todas")
-4. O resultado é aplicado na hora — o card **Filtrado** mostra quantos itens e o valor total das opções escolhidas
+### Quando não aparece nada
+- A tela mostra "Nenhuma venda encontrada" com o botão **Ver todo o período** (quando o período de criação não é "todo") ou **Limpar filtros**
+- Se der erro ao gerar, a tela esvazia e mostra aviso com **Tentar de novo** — nunca fica mostrando dados antigos junto de filtros novos
+
+### Limpar os filtros
+- Toque em **Limpar** na barra de filtros, ou no X de um chip para tirar só aquele filtro
 
 ### Filtrar por valor de coluna (estilo Excel)
 1. Clique no ícone de funil na coluna desejada (ex: "Cidade")
@@ -53,13 +56,11 @@ Relatório analítico de itens vendidos (não de pedidos, mas de linhas de produ
 4. Clique **OK** para aplicar (ou fora para cancelar sem aplicar)
 
 ### Ocultar uma coluna
-- Clique no botão de colunas (ícone de lista) no topo
-- Desmarque as colunas que não quer ver
+- No cartão **Colunas**, toque na pílula da coluna para ocultar/mostrar (arraste para reordenar no computador)
 - As colunas numéricas (Qtd, Valor) são agregadas automaticamente quando dimensões são ocultadas
 
 ### Imprimir
-- Clique no botão de impressora
-- Uma prévia em fonte monoespaciada é exibida; use Ctrl+P para imprimir
+- Clique no botão **Imprimir** (só aparece com dados) — abre direto a impressão do aparelho
 
 ---
 
@@ -110,3 +111,8 @@ Relatório analítico de itens vendidos (não de pedidos, mas de linhas de produ
 |---------|-------|
 | `frontend/src/pages/Relatorios/RelatorioVendas.jsx` | Componente completo com tabela, filtros por coluna, impressão e CSV |
 | `backend/src/routes/pedidos.js` | Rota `GET /pedidos/relatorio-vendas` |
+
+## Filtros no servidor e menus (atualização)
+- O relatório aceita filtro por **cliente, cidade, tipo (Normal/Especial/Bonificação), condição de pagamento e categoria**, cada um com várias opções ao mesmo tempo. O filtro é aplicado no servidor, então os totais, o ticket médio por pedido e a média por item já refletem a seleção.
+- Cidade ignora maiúsculas/acentos. Filtrar por categoria mostra só os itens daquela categoria (e só os pedidos que têm algum).
+- Os menus de cidade, condição, categoria e tipo podem ser montados antes de gerar o relatório (`GET /pedidos/relatorio-vendas/opcoes`); vendedor sem "ver todos" só vê opções dos próprios pedidos.

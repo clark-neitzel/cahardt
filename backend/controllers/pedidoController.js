@@ -1392,9 +1392,50 @@ const pedidoController = {
         }
     },
 
+    // Menus do Relatório de Vendas (valores distintos, no mesmo escopo de vendedor do relatório)
+    relatorioVendasOpcoes: async (req, res) => {
+        try {
+            const permissoes = req.user?.permissoes || {};
+            const podeVerTodos = permissoes.admin || permissoes.pedidos?.clientes === 'todos';
+            const where = { statusEnvio: { not: 'EXCLUIDO' } };
+            if (!podeVerTodos) where.vendedorId = req.user.id;
+
+            // groupBy: o banco devolve só os valores distintos (nada de trazer todas as linhas)
+            const [condRows, cidRows, catIdRows, tipoRows] = await Promise.all([
+                prisma.pedido.groupBy({ by: ['nomeCondicaoPagamento'], where }),
+                prisma.cliente.groupBy({ by: ['End_Cidade'], where: { pedidos: { some: where } } }),
+                prisma.produto.groupBy({ by: ['categoriaProdutoId'], where: { itens: { some: { pedido: where } } } }),
+                prisma.pedido.groupBy({ by: ['bonificacao', 'especial'], where })
+            ]);
+            const catIds = catIdRows.map(r => r.categoriaProdutoId).filter(Boolean);
+            const cats = catIds.length ? await prisma.categoriaProduto.findMany({ where: { id: { in: catIds } }, select: { nome: true } }) : [];
+            const catNomes = cats.map(c => c.nome || 'Sem categoria');
+            if (catIdRows.some(r => !r.categoriaProdutoId)) catNomes.push('Sem categoria');
+            const ordenar = (arr) => [...new Set(arr)].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+            res.json({
+                cidades: ordenar(cidRows.map(r => r.End_Cidade || 'Não informada')),
+                condicoes: ordenar(condRows.map(r => r.nomeCondicaoPagamento || 'Não informada')),
+                categorias: ordenar(catNomes),
+                tipos: ordenar(tipoRows.map(r => r.bonificacao ? 'Bonificação' : r.especial ? 'Especial' : 'Normal'))
+            });
+        } catch (error) {
+            console.error('Erro ao listar opções do relatório de vendas:', error);
+            res.status(500).json({ error: 'Erro ao listar opções do relatório de vendas.' });
+        }
+    },
+
     relatorioVendas: async (req, res) => {
         try {
             const { dataVendaDe, dataVendaAte, dataCriacaoDe, dataCriacaoAte, vendedorId, situacaoCA, excluirBonificacao } = req.query;
+
+            // Filtros multi-seleção (lista separada por vírgula), aplicados no servidor
+            const lista = (v) => (v ? String(v).split(',').map(x => x.trim()).filter(Boolean) : []);
+            const norm = (t) => String(t ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+            const fClientes = lista(req.query.clienteId);
+            const fCidades = new Set(lista(req.query.cidade).map(norm));
+            const fTipos = new Set(lista(req.query.tipo).map(norm));
+            const fCondicoes = new Set(lista(req.query.condicao).map(norm));
+            const fCategorias = new Set(lista(req.query.categoria).map(norm));
 
             const permissoes = req.user?.permissoes || {};
             const podeVerTodos = permissoes.admin || permissoes.pedidos?.clientes === 'todos';
@@ -1409,6 +1450,7 @@ const pedidoController = {
 
             if (situacaoCA) where.situacaoCA = situacaoCA;
             if (excluirBonificacao === 'true') where.bonificacao = false;
+            if (fClientes.length) where.clienteId = { in: fClientes };
 
             if (dataCriacaoDe || dataCriacaoAte) {
                 where.createdAt = {};
@@ -1422,7 +1464,7 @@ const pedidoController = {
                 if (dataVendaAte) where.dataVenda.lte = new Date(dataVendaAte + 'T23:59:59.999Z');
             }
 
-            const pedidos = await prisma.pedido.findMany({
+            let pedidos = await prisma.pedido.findMany({
                 where,
                 select: {
                     id: true,
@@ -1452,6 +1494,24 @@ const pedidoController = {
                 },
                 orderBy: { dataVenda: 'desc' }
             });
+
+            // Filtros de nível pedido (mesmos rótulos/fallbacks que a resposta devolve por linha)
+            if (fCidades.size || fTipos.size || fCondicoes.size) {
+                pedidos = pedidos.filter(p => {
+                    const tipo = p.bonificacao ? 'Bonificação' : p.especial ? 'Especial' : 'Normal';
+                    if (fTipos.size && !fTipos.has(norm(tipo))) return false;
+                    if (fCidades.size && !fCidades.has(norm(p.cliente?.End_Cidade || 'Não informada'))) return false;
+                    if (fCondicoes.size && !fCondicoes.has(norm(p.nomeCondicaoPagamento || 'Não informada'))) return false;
+                    return true;
+                });
+            }
+            // Categoria é por item: mantém só os itens da categoria e descarta pedidos sem nenhum
+            if (fCategorias.size) {
+                const catItem = (i) => i.produto?.categoriaProduto?.nome || 'Sem categoria';
+                pedidos = pedidos
+                    .map(p => ({ ...p, itens: p.itens.filter(i => fCategorias.has(norm(catItem(i)))) }))
+                    .filter(p => p.itens.length > 0);
+            }
 
             // Custo de produção por produto — usa a MESMA função oficial do PCP
             // (pcpReceitaService.calcularCusto), garantindo que o relatório bate com a tela

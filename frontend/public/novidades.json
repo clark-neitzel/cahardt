@@ -1,5 +1,11 @@
 [
   {
+    "slug": "relatorio-vendas",
+    "titulo": "Relatório de Vendas renovado",
+    "resumo": "O Relatório de Vendas ganhou visual novo e mais filtros: cidade, condição de pagamento, categoria e tipo de pedido (várias opções ao mesmo tempo), períodos de venda e de criação em um toque só, selo de filtros ativos e atualização automática. No celular o resultado vira cartões e a impressão sai direto na própria tela, em folha A4 deitada.",
+    "data": "2026-10-06"
+  },
+  {
     "slug": "editar-produto",
     "titulo": "Editar nome do produto",
     "resumo": "Em Produtos, o nome, o peso (kg) e a descrição agora são editáveis direto no app (quem tem permissão de editar produtos). Nome obrigatório, até 120 caracteres e sem repetir outro produto. O nome novo vale para pedidos, relatórios, catálogo e próximas notas; notas já emitidas, etiqueta e site não mudam. A troca fica no histórico.",

@@ -1,14 +1,25 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../services/api';
-import { BarChart2, Filter, Download, Printer, ChevronUp, ChevronDown, ChevronsUpDown, X, ArrowLeft, ListFilter, Search } from 'lucide-react';
+import { BarChart2, Download, Printer, ChevronUp, ChevronDown, ChevronsUpDown, X, ListFilter, Search, RefreshCw, SlidersHorizontal } from 'lucide-react';
 import toast from 'react-hot-toast';
 import SelectBusca from '../../components/SelectBusca';
+import MultiSelect from '../../components/MultiSelect';
+import FiltroPeriodo, { usePeriodoSalvo } from '../../components/FiltroPeriodo';
+import PageHeader from '../../components/PageHeader';
+import EstadoVazio from '../../components/EstadoVazio';
 import { opcoesVendedorFiltro } from '../../utils/vendedoresFiltro';
-import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
+import { useFiltrosSalvos, useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 
-const fmt = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+const fmt = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtData = (v) => v ? new Date(v + 'T12:00:00').toLocaleDateString('pt-BR') : '-';
+const esc = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+const FILTROS_PADRAO = {
+    vendedorId: '', situacaoCA: 'FATURADO', excluirBonificacao: 'true',
+    cidade: [], condicao: [], categoria: [], tipo: [],
+};
+const TIPOS_PADRAO = ['Normal', 'Especial', 'Bonificação'];
 
 const COLUNAS = [
     { id: 'criacao',  label: 'Criação',   field: 'dataCriacao',           tipo: 'data',   filtravel: false },
@@ -37,15 +48,15 @@ const TIPO_BADGE = {
 };
 
 const SortIcon = ({ col, sortCol, sortDir }) => {
-    if (sortCol !== col.id) return <ChevronsUpDown className="h-3 w-3 text-gray-300 flex-shrink-0" />;
+    if (sortCol !== col.id) return <ChevronsUpDown className="h-3 w-3 text-gray-400 flex-shrink-0" />;
     return sortDir === 'asc'
-        ? <ChevronUp className="h-3 w-3 text-indigo-500 flex-shrink-0" />
-        : <ChevronDown className="h-3 w-3 text-indigo-500 flex-shrink-0" />;
+        ? <ChevronUp className="h-3 w-3 text-primary flex-shrink-0" />
+        : <ChevronDown className="h-3 w-3 text-primary flex-shrink-0" />;
 };
 
 // Dropdown de filtro por coluna (estilo Excel)
 // Usa estado local pendente — só aplica o filtro ao clicar OK (evita salto de layout durante seleção)
-function FilterDropdown({ col, allData, selecao, onChange, onClose }) {
+function FilterDropdown({ col, allData, selecao, onChange, onClose, pos }) {
     const ref = useRef();
     const [busca, setBusca] = useState('');
 
@@ -107,20 +118,21 @@ function FilterDropdown({ col, allData, selecao, onChange, onClose }) {
 
     return (
         <div ref={ref}
-            className="absolute top-full left-0 z-[100] bg-white border border-gray-200 rounded-lg shadow-2xl w-64 mt-1 normal-case tracking-normal font-normal"
+            className="fixed z-[100] bg-white border border-gray-200 rounded-xl shadow-2xl w-64 normal-case tracking-normal font-normal"
+            style={{ top: pos?.top ?? 0, left: pos?.left ?? 0 }}
             onClick={e => e.stopPropagation()}>
 
             {/* Busca */}
             <div className="p-2 border-b">
                 <div className="relative">
-                    <Search className="absolute left-2 top-2 h-3.5 w-3.5 text-gray-400" />
+                    <Search className="absolute left-2 top-2 h-3.5 w-3.5 text-gray-500" />
                     <input
                         autoFocus
                         type="text"
                         value={busca}
                         onChange={e => setBusca(e.target.value)}
                         placeholder="Buscar..."
-                        className="w-full pl-7 pr-2 py-1.5 text-xs border rounded-md bg-gray-50 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                        className="w-full pl-7 pr-2 py-1.5 text-xs border rounded-md bg-gray-50 focus:outline-none focus:ring-1 focus:ring-primary"
                     />
                 </div>
             </div>
@@ -132,25 +144,25 @@ function FilterDropdown({ col, allData, selecao, onChange, onClose }) {
                         type="checkbox"
                         checked={todosMarcados}
                         onChange={toggleTodos}
-                        className="rounded text-indigo-600"
+                        className="rounded text-primary"
                     />
                     <span className="text-xs font-medium text-gray-600">Selecionar todos</span>
                 </label>
-                <span className="text-[10px] text-gray-400">{pendente.size}/{todosValores.length}</span>
+                <span className="text-[10px] text-gray-500">{pendente.size}/{todosValores.length}</span>
             </div>
 
             {/* Lista de valores */}
             <div className="max-h-56 overflow-y-auto py-1">
                 {valoresFiltrados.length === 0 && (
-                    <p className="text-xs text-gray-400 text-center py-4">Nenhum resultado</p>
+                    <p className="text-xs text-gray-500 text-center py-4">Nenhum resultado</p>
                 )}
                 {valoresFiltrados.map(val => (
-                    <label key={val} className="flex items-center gap-2 px-3 py-1.5 hover:bg-indigo-50 cursor-pointer">
+                    <label key={val} className="flex items-center gap-2 px-3 py-1.5 hover:bg-mint/40 cursor-pointer">
                         <input
                             type="checkbox"
                             checked={pendente.has(val.toLowerCase())}
                             onChange={() => toggle(val)}
-                            className="rounded text-indigo-600 flex-shrink-0"
+                            className="rounded text-primary flex-shrink-0"
                         />
                         <span className="text-xs text-gray-700 truncate">{val || '(vazio)'}</span>
                     </label>
@@ -166,7 +178,7 @@ function FilterDropdown({ col, allData, selecao, onChange, onClose }) {
                 </button>
                 <button
                     onClick={aplicar}
-                    className="text-xs bg-indigo-600 text-white px-3 py-1 rounded hover:bg-indigo-700 font-medium">
+                    className="text-xs bg-primary text-white px-3 py-1 rounded-full hover:bg-primaryDark font-medium">
                     OK
                 </button>
             </div>
@@ -174,105 +186,71 @@ function FilterDropdown({ col, allData, selecao, onChange, onClose }) {
     );
 }
 
-// Multi-seleção para o painel principal (Condição de Pagamento, Categoria Comercial).
-// As opções vêm dos dados já carregados — garante que casam exatamente com a tabela.
-// Aplica direto no mesmo estado dos filtros de coluna (instantâneo, sem recarregar).
-function MultiSelectFiltro({ options, selecao, onChange, placeholderVazio }) {
-    const ref = useRef();
-    const [aberto, setAberto] = useState(false);
-    const [busca, setBusca] = useState('');
-
-    useEffect(() => {
-        const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setAberto(false); };
-        document.addEventListener('mousedown', handler);
-        return () => document.removeEventListener('mousedown', handler);
-    }, []);
-
-    const todosMarcados = !selecao || selecao.size >= options.length;
-    const qtdSel = selecao ? selecao.size : options.length;
-
-    const visiveis = busca.trim()
-        ? options.filter(v => v.toLowerCase().includes(busca.toLowerCase()))
-        : options;
-
-    const toggle = (val) => {
-        const base = selecao ? new Set(selecao) : new Set(options.map(v => v.toLowerCase()));
-        const key = val.toLowerCase();
-        base.has(key) ? base.delete(key) : base.add(key);
-        onChange(base.size >= options.length ? undefined : base);
-    };
-
-    const toggleTodos = () => onChange(todosMarcados ? new Set() : undefined);
-
-    const resumo = options.length === 0
-        ? (placeholderVazio || 'Sem opções')
-        : todosMarcados ? 'Todas' : qtdSel === 0 ? 'Nenhuma' : `${qtdSel} de ${options.length}`;
-
-    return (
-        <div className="relative" ref={ref}>
-            <button type="button"
-                onClick={() => options.length && setAberto(a => !a)}
-                disabled={options.length === 0}
-                className={`w-full mt-1 px-3 py-2 text-sm border rounded-md bg-white text-left flex items-center justify-between gap-2 ${options.length === 0 ? 'text-gray-400 cursor-not-allowed' : 'text-gray-900 hover:border-gray-400'}`}>
-                <span className="truncate">{resumo}</span>
-                <ChevronDown className="h-4 w-4 text-gray-400 flex-shrink-0" />
-            </button>
-            {aberto && options.length > 0 && (
-                <div className="absolute top-full left-0 z-[100] bg-white border border-gray-200 rounded-lg shadow-2xl w-full min-w-[14rem] mt-1">
-                    <div className="p-2 border-b">
-                        <div className="relative">
-                            <Search className="absolute left-2 top-2 h-3.5 w-3.5 text-gray-400" />
-                            <input autoFocus type="text" value={busca} onChange={e => setBusca(e.target.value)}
-                                placeholder="Buscar..."
-                                className="w-full pl-7 pr-2 py-1.5 text-xs border rounded-md bg-gray-50 focus:outline-none focus:ring-1 focus:ring-indigo-400" />
-                        </div>
-                    </div>
-                    <div className="px-3 py-1.5 border-b bg-gray-50 flex items-center justify-between">
-                        <label className="flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" checked={todosMarcados} onChange={toggleTodos} className="rounded text-indigo-600" />
-                            <span className="text-xs font-medium text-gray-600">Selecionar todas</span>
-                        </label>
-                        <span className="text-[10px] text-gray-400">{qtdSel}/{options.length}</span>
-                    </div>
-                    <div className="max-h-56 overflow-y-auto py-1">
-                        {visiveis.length === 0 && <p className="text-xs text-gray-400 text-center py-4">Nenhum resultado</p>}
-                        {visiveis.map(val => (
-                            <label key={val} className="flex items-center gap-2 px-3 py-1.5 hover:bg-indigo-50 cursor-pointer">
-                                <input type="checkbox"
-                                    checked={!selecao || selecao.has(val.toLowerCase())}
-                                    onChange={() => toggle(val)}
-                                    className="rounded text-indigo-600 flex-shrink-0" />
-                                <span className="text-xs text-gray-700 truncate">{val || '(vazio)'}</span>
-                            </label>
-                        ))}
-                    </div>
-                </div>
-            )}
-        </div>
-    );
-}
-
+// Estilos da folha impressa (escopados em #area-impressao)
 const PRINT_CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap');
-.rv-print-container, .rv-print-container * { font-family: 'Courier Prime', 'Courier New', Courier, monospace !important; }
-.rv-print-container table { width: 100%; border-collapse: collapse; margin-top: 6px; }
-.rv-print-container th, .rv-print-container td { border: 1px solid #000; padding: 3px 5px; text-align: left; font-size: 9px; line-height: 1.2; color: #000; }
-.rv-print-container th { background-color: #f3f4f6; font-weight: bold; }
-.rv-print-container td.num { text-align: right; }
-.rv-print-container h1 { font-size: 14px; font-weight: bold; margin-bottom: 2px; color: #000; text-transform: uppercase; }
-.rv-print-container .sub { font-size: 9px; color: #444; margin-bottom: 6px; }
-.rv-print-container tfoot td { font-weight: bold; background-color: #f3f4f6; }
-@media print {
-    @page { size: A4 portrait; margin: 8mm 5mm 5mm 5mm; }
-    body * { visibility: hidden; }
-    #rv-print-root, #rv-print-root * { visibility: visible; }
-    #rv-print-root { position: absolute !important; top: 0; left: 0; width: 100% !important; background: white !important; overflow: visible !important; }
-    .rv-print-scroll { padding: 0 !important; display: block !important; }
-    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-    .rv-print-container { transform: scale(1) !important; }
-    .rv-print-container th, .rv-print-container td { font-size: 9px !important; padding: 3px 5px !important; line-height: 1.2 !important; color: #000 !important; border: 1px solid #000 !important; }
-}
+@page { size: A4 landscape; margin: 6mm 5mm 5mm 5mm; }
+#area-impressao, #area-impressao * { font-family: 'Courier New', Courier, monospace !important; color:#000; box-sizing:border-box; }
+#area-impressao table { width: 100%; table-layout: auto; border-collapse: collapse; margin-top: 6px; }
+#area-impressao th, #area-impressao td { border: 1px solid #000; padding: 2px 3px; text-align: left; font-size: 7px; line-height: 1.15; white-space: nowrap; }
+#area-impressao td.txt { white-space: normal; overflow-wrap: break-word; word-break: normal; }
+#area-impressao th { background-color: #f3f4f6; font-weight: bold; }
+#area-impressao td.num { text-align: right; }
+#area-impressao h1 { font-size: 14px; font-weight: bold; margin: 0 0 2px; text-transform: uppercase; }
+#area-impressao .sub { font-size: 9px; color: #444; margin-bottom: 6px; }
+#area-impressao tfoot td { font-weight: bold; background-color: #f3f4f6; }
 `;
+
+// Imprime NA PRÓPRIA PÁGINA (padrão do CLAUDE.md — nunca window.open nem iframe: iPad sai em branco)
+function imprimirConteudo(estilos, corpoHtml, larguraMm = 186) {
+    const MODO = 'modo-impressao';
+    document.getElementById('area-impressao')?.remove();
+    document.getElementById('estilo-impressao')?.remove();
+    document.documentElement.classList.remove(MODO);
+    const style = document.createElement('style');
+    style.id = 'estilo-impressao';
+    const estilosSemPage = (estilos || '').replace(/@page\s*{[^}]*}/g, '');
+    const regraPage = ((estilos || '').match(/@page\s*{[^}]*}/) || ['@page { size: A4 portrait; margin: 12mm; }'])[0];
+    style.textContent = `
+        ${regraPage}
+        html.${MODO}, html.${MODO} body {
+            margin:0!important; padding:0!important; background:#fff!important;
+            width:auto!important; min-width:0!important; max-width:none!important;
+            height:auto!important; min-height:0!important; overflow:visible!important;
+        }
+        html.${MODO} body > *:not(#area-impressao) { display:none!important; }
+        html.${MODO} #area-impressao { display:block; width:${larguraMm}mm; max-width:100%; margin:0 auto; }
+        ${estilosSemPage}
+        @media print {
+            html.${MODO} body > *:not(#area-impressao) { display:none!important; visibility:hidden!important; }
+            html.${MODO} #area-impressao, html.${MODO} #area-impressao * { visibility:visible!important; }
+            #area-impressao * { -webkit-print-color-adjust:exact!important; print-color-adjust:exact!important; }
+        }`;
+    document.head.appendChild(style);
+    const area = document.createElement('div');
+    area.id = 'area-impressao';
+    area.innerHTML = corpoHtml;
+    document.body.appendChild(area);
+    document.documentElement.classList.add(MODO);
+    let momentoPrint = 0, timerFallback = 0;
+    const limpar = () => {
+        area.remove(); style.remove(); document.documentElement.classList.remove(MODO);
+        window.removeEventListener('afterprint', limpar);
+        window.removeEventListener('focus', aoVoltar);
+        window.removeEventListener('pointerdown', aoVoltar);
+        document.removeEventListener('visibilitychange', aoVoltar);
+        clearTimeout(timerFallback);
+    };
+    const aoVoltar = () => { if (momentoPrint && Date.now() - momentoPrint > 1200) limpar(); };
+    window.addEventListener('afterprint', limpar);
+    window.addEventListener('focus', aoVoltar);
+    window.addEventListener('pointerdown', aoVoltar);
+    document.addEventListener('visibilitychange', aoVoltar);
+    timerFallback = setTimeout(limpar, 60000);
+    void area.offsetHeight;
+    momentoPrint = Date.now();
+    try { window.print(); } catch { limpar(); }
+}
+
 
 export default function RelatorioVendas() {
     const { user } = useAuth();
@@ -280,18 +258,17 @@ export default function RelatorioVendas() {
     const [pedidos, setPedidos] = useState([]);
     const [resumo, setResumo] = useState({});
     const [loading, setLoading] = useState(false);
-    const [showFiltros, setShowFiltros] = useState(true);
-    const [showPrint, setShowPrint] = useState(false);
+    const [gerado, setGerado] = useState(false);
     const [vendedores, setVendedores] = useState([]);
+    const [opcoesServ, setOpcoesServ] = useState({ cidades: [], condicoes: [], categorias: [], tipos: [] });
+    const [showFiltros, setShowFiltros] = useFiltroSalvo('relatorio-vendas:painelAberto', true);
 
-    // Filtros persistidos por usuário
-    const [dataVendaDe,        setDataVendaDe]        = useFiltroSalvo('relatorio-vendas:dataVendaDe', '');
-    const [dataVendaAte,       setDataVendaAte]       = useFiltroSalvo('relatorio-vendas:dataVendaAte', '');
-    const [dataCriacaoDe,      setDataCriacaoDe]      = useFiltroSalvo('relatorio-vendas:dataCriacaoDe', '');
-    const [dataCriacaoAte,     setDataCriacaoAte]     = useFiltroSalvo('relatorio-vendas:dataCriacaoAte', '');
-    const [vendedorId,         setVendedorId]         = useFiltroSalvo('relatorio-vendas:vendedorId', '');
-    const [situacaoCA,         setSituacaoCA]         = useFiltroSalvo('relatorio-vendas:situacaoCA', 'FATURADO');
-    const [excluirBonificacao, setExcluirBonificacao] = useFiltroSalvo('relatorio-vendas:excluirBonificacao', 'true');
+    // Filtros persistidos por usuário (objeto) + dois períodos (preset persistido, datas recalculadas)
+    const [filtros, setFiltros] = useFiltrosSalvos('relatorio-vendas', FILTROS_PADRAO);
+    const [periodoVenda, periodoVendaCtl] = usePeriodoSalvo('relatorio-vendas-venda', 'todo');
+    const [periodoCriacao, periodoCriacaoCtl] = usePeriodoSalvo('relatorio-vendas-criacao', 'mes');
+    const setF = (campo, valor) => setFiltros(prev => ({ ...prev, [campo]: valor }));
+    const lista = (campo) => (Array.isArray(filtros[campo]) ? filtros[campo] : []);
 
     const [sortCol, setSortCol] = useFiltroSalvo('relatorio-vendas:sortCol', 'dataVenda');
     const [sortDir, setSortDir] = useFiltroSalvo('relatorio-vendas:sortDir', 'desc');
@@ -308,14 +285,27 @@ export default function RelatorioVendas() {
         }
         return out;
     });
-    const [dropdownAberto, setDropdownAberto] = useState(null);
+    const [dropdownAberto, setDropdownAberto] = useState(null); // { colId, top, left }
     const dragColRef = useRef(null);
+    const reqRef = useRef(0);
+    const [limiteCards, setLimiteCards] = useState(100);
+    const [erroCarga, setErroCarga] = useState(false);
 
     const podeVerTodos = user?.permissoes?.admin || user?.permissoes?.pedidos?.clientes === 'todos';
 
     useEffect(() => {
         if (podeVerTodos) api.get('/vendedores').then(r => setVendedores(r.data || [])).catch(() => {});
     }, [podeVerTodos]);
+
+    // Opções dos menus (cidade/condição/categoria/tipo) — se falhar, menus ficam vazios sem quebrar a tela
+    useEffect(() => {
+        api.get('/pedidos/relatorio-vendas/opcoes')
+            .then(r => setOpcoesServ({
+                cidades: r.data?.cidades || [], condicoes: r.data?.condicoes || [],
+                categorias: r.data?.categorias || [], tipos: r.data?.tipos || [],
+            }))
+            .catch(() => {});
+    }, []);
 
     useEffect(() => {
         const fa = {};
@@ -325,33 +315,65 @@ export default function RelatorioVendas() {
         setFiltrosAtivosSalvos(fa);
     }, [filtrosAtivos]);
 
+    // Fecha o menu de filtro de coluna ao rolar/redimensionar (ele é posicionado em tela)
+    useEffect(() => {
+        if (!dropdownAberto) return undefined;
+        const fechar = () => setDropdownAberto(null);
+        window.addEventListener('resize', fechar);
+        window.addEventListener('scroll', fechar, true);
+        return () => { window.removeEventListener('resize', fechar); window.removeEventListener('scroll', fechar, true); };
+    }, [dropdownAberto]);
+
+    const chaveParams = JSON.stringify([
+        periodoVenda.de, periodoVenda.ate, periodoCriacao.de, periodoCriacao.ate,
+        filtros.vendedorId, filtros.situacaoCA, filtros.excluirBonificacao,
+        lista('cidade'), lista('condicao'), lista('categoria'), lista('tipo'),
+    ]);
+
     const fetchRelatorio = useCallback(async () => {
+        const meu = ++reqRef.current;
         try {
             setLoading(true);
             const params = {};
-            if (dataVendaDe)        params.dataVendaDe        = dataVendaDe;
-            if (dataVendaAte)       params.dataVendaAte       = dataVendaAte;
-            if (dataCriacaoDe)      params.dataCriacaoDe      = dataCriacaoDe;
-            if (dataCriacaoAte)     params.dataCriacaoAte     = dataCriacaoAte;
-            if (vendedorId)         params.vendedorId         = vendedorId;
-            if (situacaoCA)         params.situacaoCA         = situacaoCA;
-            if (excluirBonificacao) params.excluirBonificacao = excluirBonificacao;
+            if (periodoVenda.de)    params.dataVendaDe    = periodoVenda.de;
+            if (periodoVenda.ate)   params.dataVendaAte   = periodoVenda.ate;
+            if (periodoCriacao.de)  params.dataCriacaoDe  = periodoCriacao.de;
+            if (periodoCriacao.ate) params.dataCriacaoAte = periodoCriacao.ate;
+            if (filtros.vendedorId) params.vendedorId = filtros.vendedorId;
+            if (filtros.situacaoCA) params.situacaoCA = filtros.situacaoCA;
+            if (filtros.excluirBonificacao) params.excluirBonificacao = filtros.excluirBonificacao;
+            ['cidade', 'condicao', 'categoria', 'tipo'].forEach(c => {
+                const l = lista(c);
+                if (l.length) params[c] = l.join(',');
+            });
             const { data } = await api.get('/pedidos/relatorio-vendas', { params });
+            if (meu !== reqRef.current) return; // chegou resposta mais nova
             setPedidos(data.pedidos || []);
             setResumo(data.resumo || {});
-            // mantém a seleção de filtros do usuário (não zera ao gerar de novo)
-            setShowFiltros(false);
+            setGerado(true);
+            setErroCarga(false);
         } catch {
-            toast.error('Erro ao gerar relatório de vendas.');
+            if (meu === reqRef.current) {
+                setPedidos([]); setResumo({}); setErroCarga(true);
+                toast.error('Erro ao gerar relatório de vendas.');
+            }
         } finally {
-            setLoading(false);
+            if (meu === reqRef.current) setLoading(false);
         }
-    }, [dataVendaDe, dataVendaAte, dataCriacaoDe, dataCriacaoAte, vendedorId, situacaoCA, excluirBonificacao]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [chaveParams]);
+
+    // Gera sozinho ao abrir e a cada mudança de filtro (com pequena espera p/ não disparar a cada clique)
+    useEffect(() => {
+        reqRef.current += 1; // filtro mudou: respostas em voo ficam obsoletas já
+        const t = setTimeout(fetchRelatorio, 350);
+        return () => clearTimeout(t);
+    }, [fetchRelatorio]);
 
     const limpar = () => {
-        setDataVendaDe(''); setDataVendaAte('');
-        setDataCriacaoDe(''); setDataCriacaoAte('');
-        setVendedorId(''); setSituacaoCA('FATURADO'); setExcluirBonificacao('true');
+        setFiltros(FILTROS_PADRAO);
+        periodoVendaCtl.limpar();
+        periodoCriacaoCtl.limpar();
         setFiltrosAtivos({});
     };
 
@@ -364,11 +386,8 @@ export default function RelatorioVendas() {
     const handleFiltroChange = (colId, novaSelecao) => {
         setFiltrosAtivos(prev => {
             const next = { ...prev };
-            if (novaSelecao === undefined || novaSelecao === null) {
-                delete next[colId];
-            } else {
-                next[colId] = novaSelecao;
-            }
+            if (novaSelecao === undefined || novaSelecao === null) delete next[colId];
+            else next[colId] = novaSelecao;
             return next;
         });
     };
@@ -381,18 +400,20 @@ export default function RelatorioVendas() {
         });
     };
 
-    // Opções dos multi-filtros do painel — derivadas dos dados carregados (casam exatamente com a tabela)
-    const opcoesDe = useCallback((field) => {
-        const map = new Map();
-        pedidos.forEach(r => {
-            const v = String(r[field] ?? '');
-            const k = v.toLowerCase();
-            if (!map.has(k)) map.set(k, v);
-        });
-        return [...map.values()].sort((a, b) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }));
-    }, [pedidos]);
-    const opcoesCondicao = useMemo(() => opcoesDe('nomeCondicaoPagamento'), [opcoesDe]);
-    const opcoesCategoria = useMemo(() => opcoesDe('categoriaComercial'), [opcoesDe]);
+    const abrirFiltroColuna = (colId, e) => {
+        e.stopPropagation();
+        if (dropdownAberto?.colId === colId) { setDropdownAberto(null); return; }
+        const r = e.currentTarget.getBoundingClientRect();
+        setDropdownAberto({ colId, top: r.bottom + 4, left: Math.max(8, Math.min(r.left, window.innerWidth - 272)) });
+    };
+
+    // Opções dos menus: as do servidor; se vierem vazias, cai para o que existe nos dados carregados
+    const derivar = useCallback((field) => [...new Set(pedidos.map(r => String(r[field] ?? '')).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' })), [pedidos]);
+    const opcCidade = useMemo(() => (opcoesServ.cidades.length ? opcoesServ.cidades : derivar('cidade')), [opcoesServ, derivar]);
+    const opcCondicao = useMemo(() => (opcoesServ.condicoes.length ? opcoesServ.condicoes : derivar('nomeCondicaoPagamento')), [opcoesServ, derivar]);
+    const opcCategoria = useMemo(() => (opcoesServ.categorias.length ? opcoesServ.categorias : derivar('categoriaComercial')), [opcoesServ, derivar]);
+    const opcTipo = opcoesServ.tipos.length ? opcoesServ.tipos : TIPOS_PADRAO;
 
     const dadosFiltrados = useMemo(() => {
         let result = [...pedidos];
@@ -411,21 +432,21 @@ export default function RelatorioVendas() {
 
     const dadosAgrupados = useMemo(() => {
         const dimCols = colsAtivas.filter(c => c.tipo !== 'numero');
-        if (todasDimensoesVisiveis) {
-            // Sem agrupamento — ordena e retorna com _count=1
+        const ordenar = (arr) => {
             const col = COLUNAS.find(c => c.id === sortCol);
-            const sorted = [...dadosFiltrados];
-            if (col) {
-                sorted.sort((a, b) => {
-                    let va = a[col.field] ?? '', vb = b[col.field] ?? '';
-                    if (col.tipo === 'numero') { va = Number(va); vb = Number(vb); }
-                    else { va = String(va).toLowerCase(); vb = String(vb).toLowerCase(); }
-                    if (va < vb) return sortDir === 'asc' ? -1 : 1;
-                    if (va > vb) return sortDir === 'asc' ? 1 : -1;
-                    return 0;
-                });
-            }
-            return sorted.map(r => ({ ...r, _count: 1, _key: r.id }));
+            if (!col || !colsVisiveis.has(col.id)) return arr;
+            arr.sort((a, b) => {
+                let va = a[col.field] ?? '', vb = b[col.field] ?? '';
+                if (col.tipo === 'numero') { va = Number(va); vb = Number(vb); }
+                else { va = String(va).toLowerCase(); vb = String(vb).toLowerCase(); }
+                if (va < vb) return sortDir === 'asc' ? -1 : 1;
+                if (va > vb) return sortDir === 'asc' ? 1 : -1;
+                return 0;
+            });
+            return arr;
+        };
+        if (todasDimensoesVisiveis) {
+            return ordenar(dadosFiltrados.map(r => ({ ...r, _count: 1, _key: r.id })));
         }
         // Agrupa por chave das colunas dimensão visíveis
         const map = new Map();
@@ -443,39 +464,48 @@ export default function RelatorioVendas() {
             g._count += 1;
         });
         const result = [...map.values()];
-        // Custo unitário do grupo = custo total / quantidade (constante por produto).
-        // Sem nenhum custo no grupo → mostra "-" em vez de R$ 0,00.
+        // Custo unitário do grupo = custo total / quantidade. Sem custo no grupo → "-".
         result.forEach(g => {
             if (!g._temCusto) { g.custoTotal = null; g.precoCusto = null; }
             else g.precoCusto = g.quantidade > 0 ? g.custoTotal / g.quantidade : null;
         });
-        const col = COLUNAS.find(c => c.id === sortCol);
-        if (col && colsVisiveis.has(col.id)) {
-            result.sort((a, b) => {
-                let va = a[col.field] ?? '', vb = b[col.field] ?? '';
-                if (col.tipo === 'numero') { va = Number(va); vb = Number(vb); }
-                else { va = String(va).toLowerCase(); vb = String(vb).toLowerCase(); }
-                if (va < vb) return sortDir === 'asc' ? -1 : 1;
-                if (va > vb) return sortDir === 'asc' ? 1 : -1;
-                return 0;
-            });
-        }
-        return result;
-    }, [dadosFiltrados, colsAtivas, todasDimensoesVisiveis, sortCol, sortDir]);
+        return ordenar(result);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [dadosFiltrados, colsOrdemChave(colOrdem, colsVisiveis), todasDimensoesVisiveis, sortCol, sortDir]);
 
     const totalFiltrado = useMemo(
         () => dadosFiltrados.reduce((s, r) => s + Number(r.valorTotal || 0), 0),
         [dadosFiltrados]
     );
+    const custoTotalGeral = useMemo(
+        () => dadosAgrupados.reduce((s, r) => s + Number(r.custoTotal || 0), 0),
+        [dadosAgrupados]
+    );
 
-    // Chips: um por coluna com filtro ativo
-    const chips = useMemo(() => Object.entries(filtrosAtivos)
+    // Chips de coluna (filtros estilo Excel)
+    const chipsColuna = useMemo(() => Object.entries(filtrosAtivos)
         .filter(([, sel]) => sel && sel.size > 0)
         .map(([colId, sel]) => {
             const col = COLUNAS.find(c => c.id === colId);
             const total = new Set(pedidos.map(r => String(r[col?.field] ?? '').toLowerCase())).size;
             return { colId, label: col?.label || colId, qtd: sel.size, total };
         }), [filtrosAtivos, pedidos]);
+
+    // Chips dos filtros do painel
+    const chipsPainel = [];
+    if (periodoVenda.preset !== 'todo' && !periodoVenda.padrao) chipsPainel.push({ id: 'pv', texto: `Venda: ${periodoVenda.de ? `${fmtData(periodoVenda.de)} a ${fmtData(periodoVenda.ate)}` : 'todo o período'}`, remover: () => periodoVendaCtl.limpar() });
+    if (!periodoCriacao.padrao) chipsPainel.push({ id: 'pc', texto: `Criação: ${periodoCriacao.de ? `${fmtData(periodoCriacao.de)} a ${fmtData(periodoCriacao.ate)}` : 'todo o período'}`, remover: () => periodoCriacaoCtl.limpar() });
+    if (filtros.vendedorId) {
+        const v = vendedores.find(x => String(x.id) === String(filtros.vendedorId));
+        chipsPainel.push({ id: 'vend', texto: `Vendedor: ${v?.nome || filtros.vendedorId}`, remover: () => setF('vendedorId', '') });
+    }
+    if (filtros.situacaoCA !== FILTROS_PADRAO.situacaoCA) chipsPainel.push({ id: 'sit', texto: `Situação: ${filtros.situacaoCA || 'Todas'}`, remover: () => setF('situacaoCA', FILTROS_PADRAO.situacaoCA) });
+    if (filtros.excluirBonificacao !== FILTROS_PADRAO.excluirBonificacao) chipsPainel.push({ id: 'bon', texto: 'Incluindo bonificações', remover: () => setF('excluirBonificacao', 'true') });
+    [['cidade', 'Cidade'], ['condicao', 'Condição'], ['categoria', 'Categoria'], ['tipo', 'Tipo']].forEach(([campo, rotulo]) => {
+        const l = lista(campo);
+        if (l.length) chipsPainel.push({ id: campo, texto: `${rotulo}: ${l.length <= 2 ? l.join(', ') : `${l.length} selecionados`}`, remover: () => setF(campo, []) });
+    });
+    const nFiltros = chipsPainel.length + chipsColuna.length;
 
     const exportarCSV = () => {
         if (!dadosAgrupados.length) { toast.error('Nenhum dado para exportar.'); return; }
@@ -495,6 +525,32 @@ export default function RelatorioVendas() {
         toast.success('CSV exportado!');
     };
 
+    // Impressão: monta a folha na própria página (síncrono no clique)
+    const imprimir = () => {
+        if (!dadosAgrupados.length) { toast.error('Nenhum dado para imprimir.'); return; }
+        const celula = (col, val, row) => {
+            if (col.id === 'data' || col.id === 'criacao') return fmtData(val);
+            if (col.id === 'valor') return `R$ ${fmt(val)}${row._count > 1 ? ` (${row._count})` : ''}`;
+            if (col.id === 'quantidade') return Number(val || 0).toLocaleString('pt-BR', { maximumFractionDigits: 3 });
+            if (['valorUnit', 'precoCusto', 'custoTotal'].includes(col.id)) return val != null ? `R$ ${fmt(val)}` : '-';
+            return val || '-';
+        };
+        const sub = [
+            periodoVenda.de && `Venda: ${fmtData(periodoVenda.de)} a ${fmtData(periodoVenda.ate || periodoVenda.de)}`,
+            periodoCriacao.de && `Criação: ${fmtData(periodoCriacao.de)} a ${fmtData(periodoCriacao.ate || periodoCriacao.de)}`,
+            filtros.situacaoCA && `Situação: ${filtros.situacaoCA}`,
+            ...chipsPainel.filter(c => ['cidade', 'condicao', 'categoria', 'tipo', 'vend'].includes(c.id)).map(c => c.texto),
+            chipsColuna.length && `Filtros: ${chipsColuna.map(c => `${c.label} (${c.qtd}/${c.total})`).join(', ')}`,
+            `Total: ${dadosFiltrados.length} itens · ${dadosAgrupados.length} linhas · R$ ${fmt(totalFiltrado)}`,
+        ].filter(Boolean).join(' | ');
+        const thead = `<tr>${colsAtivas.map(c => `<th style="text-align:${c.align || 'left'}">${esc(c.label)}</th>`).join('')}</tr>`;
+        const tbody = dadosAgrupados.map(row => `<tr>${colsAtivas.map(col =>
+            `<td class="${col.align === 'right' ? 'num' : ''}${['cliente', 'produto', 'vendedor', 'indicacao', 'bairro'].includes(col.id) ? ' txt' : ''}">${esc(celula(col, row[col.field], row))}</td>`).join('')}</tr>`).join('');
+        const tfoot = `<tr>${colsAtivas.map((col, i) => `<td class="${col.align === 'right' ? 'num' : ''}">${
+            i === 0 ? `${dadosAgrupados.length} linhas` : ''}${col.id === 'valor' ? `R$ ${fmt(totalFiltrado)}` : ''}${col.id === 'custoTotal' ? `R$ ${fmt(custoTotalGeral)}` : ''}</td>`).join('')}</tr>`;
+        imprimirConteudo(PRINT_CSS, `<h1>RELATÓRIO DE VENDAS</h1><div class="sub">${esc(sub)}</div><table><thead>${thead}</thead><tbody>${tbody}</tbody><tfoot>${tfoot}</tfoot></table>`, 287); // A4 paisagem: 297mm - 2×5mm de margem
+    };
+
     const handleDragStart = (colId) => { dragColRef.current = colId; };
     const handleDragOver = (e, colId) => {
         e.preventDefault();
@@ -511,241 +567,274 @@ export default function RelatorioVendas() {
     };
     const handleDragEnd = () => { dragColRef.current = null; };
 
-    const temDados = pedidos.length > 0;
+    useEffect(() => { setLimiteCards(100); }, [pedidos, filtrosAtivos, colsAtivas.length]);
 
-    // Altura do header fixo em px — usada no padding-top do conteúdo e no top do thead
-    const HEADER_H = 57;
+    const temDados = pedidos.length > 0;
+    const labelCls = 'block text-[11px] font-bold uppercase tracking-wider text-gray-600 mb-1';
+    const btnSec = 'inline-flex items-center justify-center gap-1.5 px-4 min-h-[44px] md:min-h-[40px] bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-sm disabled:opacity-50';
+
+    // Valor de uma célula no card mobile
+    const textoCelula = (col, row) => {
+        const val = row[col.field];
+        if (col.id === 'data' || col.id === 'criacao') return fmtData(val);
+        if (col.id === 'quantidade') return Number(val || 0).toLocaleString('pt-BR', { maximumFractionDigits: 3 });
+        if (col.tipo === 'numero') return val != null ? `R$ ${fmt(val)}` : '-';
+        return val || '-';
+    };
 
     return (
-        <>
-            {/*
-              Header FIXO no desktop. Usa position:fixed com left:64px (largura do sidebar md:w-16).
-              No mobile o sidebar não existe e o top-nav já tem z-50, então ocultamos com md:flex.
-            */}
-            <div
-                className="hidden md:flex fixed top-0 left-16 right-0 z-40 bg-white border-b border-gray-100 shadow-sm items-center justify-between px-6 print:hidden"
-                style={{ height: HEADER_H }}>
-                <div className="flex items-center gap-2 min-w-0">
-                    <BarChart2 className="h-6 w-6 text-indigo-600 flex-shrink-0" />
-                    <h1 className="text-2xl font-bold text-gray-800 truncate">Relatório de Vendas</h1>
-                </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                    {temDados && <>
-                        <button onClick={() => setShowPrint(true)}
-                            className="flex items-center gap-1.5 px-3 py-2 text-sm bg-gray-700 text-white rounded-md hover:bg-gray-800 font-medium">
-                            <Printer className="h-4 w-4" /> Imprimir
-                        </button>
-                        <button onClick={exportarCSV}
-                            className="flex items-center gap-1.5 px-3 py-2 text-sm bg-green-600 text-white rounded-md hover:bg-green-700 font-medium">
-                            <Download className="h-4 w-4" /> CSV
-                        </button>
-                    </>}
-                    <button onClick={() => setShowFiltros(!showFiltros)}
-                        className="flex items-center gap-1.5 px-2.5 py-2 text-sm bg-white border rounded-md hover:bg-gray-50">
-                        <Filter className="h-4 w-4" /> Filtros
+        <div className="max-w-full overflow-x-hidden">
+            <PageHeader
+                icon={BarChart2}
+                cor="blue"
+                titulo="Relatório de Vendas"
+                subtitulo="Itens vendidos, linha por linha"
+                acoes={<>
+                    {temDados && (
+                        <>
+                            <button type="button" onClick={imprimir} className={btnSec}><Printer className="h-4 w-4" /> <span className="hidden sm:inline">Imprimir</span></button>
+                            <button type="button" onClick={exportarCSV} className={btnSec}><Download className="h-4 w-4" /> <span className="hidden sm:inline">CSV</span></button>
+                        </>
+                    )}
+                    <button type="button" onClick={fetchRelatorio} disabled={loading}
+                        className="inline-flex items-center justify-center gap-1.5 px-5 min-h-[44px] md:min-h-[40px] bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm disabled:opacity-50">
+                        <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> {loading ? 'Gerando...' : 'Gerar'}
                     </button>
-                </div>
-            </div>
+                </>}
+            />
 
-            {/* Header mobile — fluxo normal (não fixo) */}
-            <div className="md:hidden flex items-center justify-between px-3 py-3 mb-3 border-b border-gray-100 print:hidden">
-                <div className="flex items-center gap-2 min-w-0">
-                    <BarChart2 className="h-5 w-5 text-indigo-600 flex-shrink-0" />
-                    <h1 className="text-lg font-bold text-gray-800 truncate">Relatório de Vendas</h1>
-                </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                    {temDados && <>
-                        <button onClick={() => setShowPrint(true)} className="flex items-center gap-1 px-2.5 py-1.5 text-sm bg-gray-700 text-white rounded-md hover:bg-gray-800">
-                            <Printer className="h-4 w-4" />
+            <div className="px-3 md:px-6 pb-6 space-y-3">
+                {/* Barra de filtros */}
+                <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+                    <div className="flex items-center justify-between gap-2 px-3 md:px-4 py-2.5 border-b border-gray-100">
+                        <button type="button" onClick={() => setShowFiltros(!showFiltros)}
+                            className="flex items-center gap-2 min-h-[44px] md:min-h-[36px] text-xs font-bold uppercase tracking-widest text-gray-600">
+                            <SlidersHorizontal className="h-4 w-4 text-primary" /> Filtros
+                            <ChevronDown className={`h-4 w-4 transition-transform ${showFiltros ? 'rotate-180' : ''}`} />
                         </button>
-                        <button onClick={exportarCSV} className="flex items-center gap-1 px-2.5 py-1.5 text-sm bg-green-600 text-white rounded-md hover:bg-green-700">
-                            <Download className="h-4 w-4" />
-                        </button>
-                    </>}
-                    <button onClick={() => setShowFiltros(!showFiltros)} className="flex items-center gap-1 px-2.5 py-1.5 text-sm bg-white border rounded-md hover:bg-gray-50">
-                        <Filter className="h-4 w-4" />
-                    </button>
-                </div>
-            </div>
-
-            {/* Espaçador no desktop para empurrar conteúdo abaixo do header fixo */}
-            <div className="hidden md:block" style={{ height: HEADER_H }} />
-
-            <div className="container w-full px-3 sm:px-4">
-
-                {/* Painel de filtros */}
-                {showFiltros && (
-                    <div className="bg-white rounded-lg shadow-sm border p-3 sm:p-4 mb-4">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-                            {/* Data Venda */}
-                            <div>
-                                <label className="text-xs text-gray-500 font-medium">Data Venda De</label>
-                                <input type="date" value={dataVendaDe} onChange={e => setDataVendaDe(e.target.value)}
-                                    className="w-full mt-1 px-3 py-2 text-sm border rounded-md bg-white text-gray-900" />
-                            </div>
-                            <div>
-                                <label className="text-xs text-gray-500 font-medium">Data Venda Até</label>
-                                <input type="date" value={dataVendaAte} onChange={e => setDataVendaAte(e.target.value)}
-                                    className="w-full mt-1 px-3 py-2 text-sm border rounded-md bg-white text-gray-900" />
-                            </div>
-                            {/* Data Criação */}
-                            <div>
-                                <label className="text-xs text-gray-500 font-medium">Data Criação De</label>
-                                <input type="date" value={dataCriacaoDe} onChange={e => setDataCriacaoDe(e.target.value)}
-                                    className="w-full mt-1 px-3 py-2 text-sm border rounded-md bg-white text-gray-900" />
-                            </div>
-                            <div>
-                                <label className="text-xs text-gray-500 font-medium">Data Criação Até</label>
-                                <input type="date" value={dataCriacaoAte} onChange={e => setDataCriacaoAte(e.target.value)}
-                                    className="w-full mt-1 px-3 py-2 text-sm border rounded-md bg-white text-gray-900" />
-                            </div>
+                        <div className="flex items-center gap-2">
+                            {nFiltros > 0 && (
+                                <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-mint text-primaryDark">
+                                    {nFiltros} {nFiltros === 1 ? 'filtro ativo' : 'filtros ativos'}
+                                </span>
+                            )}
+                            {nFiltros > 0 && (
+                                <button type="button" onClick={limpar}
+                                    className="px-3 min-h-[44px] md:min-h-[36px] text-xs font-semibold text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full">
+                                    Limpar
+                                </button>
+                            )}
                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                            {podeVerTodos && (
+                    </div>
+
+                    {showFiltros && (
+                        <div className="p-3 md:p-4 space-y-3">
+                            <div className="flex flex-col md:flex-row md:flex-wrap gap-2 md:gap-3">
+                                <FiltroPeriodo periodo={periodoVenda} controle={periodoVendaCtl} rotulo="Venda" className="w-full md:w-auto max-md:!h-[46px] max-md:[&_button]:min-w-[44px]" />
+                                <FiltroPeriodo periodo={periodoCriacao} controle={periodoCriacaoCtl} rotulo="Criação" className="w-full md:w-auto max-md:!h-[46px] max-md:[&_button]:min-w-[44px]" />
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 max-md:[&_.flex-wrap]:min-h-[44px] max-md:[&_.flex-wrap_button]:min-w-[44px] max-md:[&_.flex-wrap_button]:min-h-[44px] max-md:[&_.flex-wrap_button]:inline-flex max-md:[&_.flex-wrap_button]:items-center max-md:[&_.flex-wrap_button]:justify-center max-md:[&_.flex-wrap_button]:-my-3 max-md:[&_.flex-wrap_button]:-mr-2">
                                 <div>
-                                    <label className="text-xs text-gray-500 font-medium">Vendedor</label>
-                                    <SelectBusca value={vendedorId} onChange={e => setVendedorId(e.target.value)}
-                                        className="w-full mt-1">
-                                        <option value="">Todos</option>
-                                        {opcoesVendedorFiltro(vendedores)}
+                                    <label className={labelCls}>Cidade</label>
+                                    <MultiSelect options={opcCidade} selected={lista('cidade')} onChange={v => setF('cidade', v)}
+                                        placeholder="Todas" summary searchable summaryNoun="cidade" />
+                                </div>
+                                <div>
+                                    <label className={labelCls}>Condição de pagamento</label>
+                                    <MultiSelect options={opcCondicao} selected={lista('condicao')} onChange={v => setF('condicao', v)}
+                                        placeholder="Todas" summary searchable summaryNoun="condição" />
+                                </div>
+                                <div>
+                                    <label className={labelCls}>Categoria comercial</label>
+                                    <MultiSelect options={opcCategoria} selected={lista('categoria')} onChange={v => setF('categoria', v)}
+                                        placeholder="Todas" summary searchable summaryNoun="categoria" />
+                                </div>
+                                <div>
+                                    <label className={labelCls}>Tipo de pedido</label>
+                                    <MultiSelect options={opcTipo} selected={lista('tipo')} onChange={v => setF('tipo', v)}
+                                        placeholder="Todos" summary summaryNoun="tipo" />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                {podeVerTodos && (
+                                    <div>
+                                        <label className={labelCls}>Vendedor</label>
+                                        <SelectBusca value={filtros.vendedorId} onChange={e => setF('vendedorId', e.target.value)} className="w-full max-md:h-[44px]">
+                                            <option value="">Todos</option>
+                                            {opcoesVendedorFiltro(vendedores)}
+                                        </SelectBusca>
+                                    </div>
+                                )}
+                                <div>
+                                    <label className={labelCls}>Situação</label>
+                                    <SelectBusca value={filtros.situacaoCA} onChange={e => setF('situacaoCA', e.target.value)} className="w-full max-md:h-[44px]">
+                                        <option value="">Todas</option>
+                                        <option value="FATURADO">Faturado</option>
+                                        <option value="APROVADO">Aprovado</option>
+                                        <option value="EM_ABERTO">Em Aberto</option>
                                     </SelectBusca>
                                 </div>
-                            )}
-                            <div>
-                                <label className="text-xs text-gray-500 font-medium">Situação CA</label>
-                                <SelectBusca value={situacaoCA} onChange={e => setSituacaoCA(e.target.value)}
-                                    className="w-full mt-1">
-                                    <option value="">Todas</option>
-                                    <option value="FATURADO">Faturado</option>
-                                    <option value="APROVADO">Aprovado</option>
-                                    <option value="EM_ABERTO">Em Aberto</option>
-                                </SelectBusca>
+                                <div>
+                                    <label className={labelCls}>Bonificações</label>
+                                    <SelectBusca value={filtros.excluirBonificacao} onChange={e => setF('excluirBonificacao', e.target.value)} className="w-full max-md:h-[44px]">
+                                        <option value="true">Excluir bonificações</option>
+                                        <option value="false">Incluir tudo</option>
+                                    </SelectBusca>
+                                </div>
                             </div>
-                            <div>
-                                <label className="text-xs text-gray-500 font-medium">Bonificações</label>
-                                <SelectBusca value={excluirBonificacao} onChange={e => setExcluirBonificacao(e.target.value)}
-                                    className="w-full mt-1">
-                                    <option value="true">Excluir bonificações</option>
-                                    <option value="false">Incluir tudo</option>
-                                </SelectBusca>
-                            </div>
+                            <p className="text-xs text-gray-500">
+                                O relatório atualiza sozinho ao mudar um filtro. Para filtrar por cliente, produto, bairro ou indicação, use o funil no cabeçalho da coluna.
+                            </p>
                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
-                            <div>
-                                <label className="text-xs text-gray-500 font-medium">Condição de Pagamento</label>
-                                <MultiSelectFiltro
-                                    options={opcoesCondicao}
-                                    selecao={filtrosAtivos.condicao}
-                                    onChange={(sel) => handleFiltroChange('condicao', sel)}
-                                    placeholderVazio="Gere o relatório primeiro"
-                                />
-                            </div>
-                            <div>
-                                <label className="text-xs text-gray-500 font-medium">Categoria Comercial</label>
-                                <MultiSelectFiltro
-                                    options={opcoesCategoria}
-                                    selecao={filtrosAtivos.categoria}
-                                    onChange={(sel) => handleFiltroChange('categoria', sel)}
-                                    placeholderVazio="Gere o relatório primeiro"
-                                />
-                            </div>
-                        </div>
-                        <div className="flex justify-end gap-2 mt-4">
-                            <button onClick={limpar} className="text-xs text-gray-500 hover:text-gray-700 px-3 py-1.5">Limpar</button>
-                            <button onClick={fetchRelatorio} disabled={loading}
-                                className="px-5 py-2 text-sm bg-indigo-600 text-white rounded-md font-medium hover:bg-indigo-700 disabled:opacity-50">
-                                {loading ? 'Gerando...' : 'Gerar Relatório'}
-                            </button>
-                        </div>
+                    )}
+                </div>
+
+                {/* Chips dos filtros aplicados */}
+                {(chipsPainel.length > 0 || chipsColuna.length > 0) && (
+                    <div className="flex flex-wrap items-center gap-1.5">
+                        {chipsPainel.map(chip => (
+                            <span key={chip.id} className="inline-flex items-center gap-1.5 pl-3 pr-1.5 py-1 text-xs bg-mint text-primaryDark rounded-full font-semibold max-w-full">
+                                <span className="truncate">{chip.texto}</span>
+                                <button type="button" onClick={chip.remover} aria-label="Remover filtro"
+                                    className="inline-flex items-center justify-center min-w-[44px] min-h-[44px] md:min-w-[28px] md:min-h-[28px] -my-2 -mr-1.5 rounded-full hover:bg-white/60"><X className="h-3 w-3" /></button>
+                            </span>
+                        ))}
+                        {chipsColuna.map(chip => (
+                            <span key={chip.colId} className="inline-flex items-center gap-1.5 pl-3 pr-1.5 py-1 text-xs bg-mint text-primaryDark rounded-full font-semibold">
+                                <ListFilter className="h-3 w-3" />
+                                {chip.label}: {chip.qtd} de {chip.total}
+                                <button type="button" onClick={() => handleFiltroChange(chip.colId, undefined)} aria-label="Remover filtro"
+                                    className="inline-flex items-center justify-center min-w-[44px] min-h-[44px] md:min-w-[28px] md:min-h-[28px] -my-2 -mr-1.5 rounded-full hover:bg-white/60"><X className="h-3 w-3" /></button>
+                            </span>
+                        ))}
                     </div>
                 )}
 
-                {loading && (
-                    <div className="flex justify-center items-center py-20">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mr-3" />
+                {loading && !temDados && (
+                    <div className="flex justify-center items-center py-20 text-sm text-gray-600">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mr-3" />
                         Gerando relatório...
                     </div>
                 )}
 
                 {!loading && !temDados && (
-                    <div className="text-center text-gray-400 py-20">
-                        Configure os filtros e clique em "Gerar Relatório".
+                    <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+                        <EstadoVazio
+                            icon={BarChart2}
+                            titulo={erroCarga ? 'Não foi possível gerar o relatório' : gerado ? 'Nenhuma venda encontrada' : 'Relatório ainda não gerado'}
+                            descricao={erroCarga ? 'Os dados não correspondem aos filtros escolhidos. Toque em Gerar para tentar de novo.' : gerado ? 'Nenhum item bate com os filtros escolhidos. Tente ampliar o período ou limpar os filtros.' : 'Escolha os filtros e toque em Gerar.'}
+                            acao={erroCarga ? { label: 'Tentar de novo', onClick: fetchRelatorio }
+                                : gerado && periodoCriacao.preset !== 'todo' ? { label: 'Ver todo o período', onClick: () => { periodoCriacaoCtl.escolher('todo'); periodoVendaCtl.escolher('todo'); } }
+                                : gerado && nFiltros > 0 ? { label: 'Limpar filtros', onClick: limpar } : undefined}
+                        />
                     </div>
                 )}
 
-                {!loading && temDados && (
-                    <>
-                        {/* Cards resumo */}
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
-                            <div className="bg-white rounded-lg border p-3">
-                                <p className="text-[10px] sm:text-xs text-gray-500">Total geral</p>
-                                <p className="text-base font-bold text-gray-900">{resumo.totalPedidos} pedidos</p>
-                                <p className="text-xs text-gray-500">R$ {fmt(resumo.valorTotalGeral)}</p>
+                {temDados && (
+                    <div className={loading ? 'opacity-60 transition-opacity' : ''}>
+                        {/* KPIs */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3 mb-3">
+                            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-3">
+                                <p className="text-[11px] font-bold uppercase tracking-wider text-gray-600">Total geral</p>
+                                <p className="text-base md:text-lg font-bold text-gray-900">{resumo.totalPedidos ?? 0} pedidos</p>
+                                <p className="text-xs text-gray-600">R$ {fmt(resumo.valorTotalGeral)}</p>
+                                <p className="text-xs text-gray-600">Ticket médio (por pedido): R$ {fmt(resumo.ticketMedio)}</p>
                             </div>
-                            <div className="bg-white rounded-lg border p-3">
-                                <p className="text-[10px] sm:text-xs text-gray-500">Filtrado</p>
-                                <p className="text-base font-bold text-indigo-700">{dadosFiltrados.length} itens</p>
-                                <p className="text-xs text-indigo-500">R$ {fmt(totalFiltrado)}</p>
+                            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-3">
+                                <p className="text-[11px] font-bold uppercase tracking-wider text-gray-600">Filtrado</p>
+                                <p className="text-base md:text-lg font-bold text-primaryDark">{dadosFiltrados.length} itens</p>
+                                <p className="text-xs text-primary font-semibold">R$ {fmt(totalFiltrado)}</p>
                             </div>
-                            <div className="bg-white rounded-lg border p-3">
-                                <p className="text-[10px] sm:text-xs text-gray-500">Ticket médio</p>
-                                <p className="text-base font-bold text-gray-900">
+                            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-3">
+                                <p className="text-[11px] font-bold uppercase tracking-wider text-gray-600">Média por item</p>
+                                <p className="text-base md:text-lg font-bold text-gray-900">
                                     R$ {fmt(dadosFiltrados.length > 0 ? totalFiltrado / dadosFiltrados.length : 0)}
                                 </p>
                             </div>
-                            <div className="bg-white rounded-lg border p-3">
-                                <p className="text-[10px] sm:text-xs text-gray-500">Linhas · Filtros ativos</p>
-                                <p className="text-base font-bold text-gray-900">{dadosAgrupados.length} linhas · {chips.length} filtros</p>
+                            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-3">
+                                <p className="text-[11px] font-bold uppercase tracking-wider text-gray-600">Linhas na tabela</p>
+                                <p className="text-base md:text-lg font-bold text-gray-900">{dadosAgrupados.length}</p>
+                                <p className="text-xs text-gray-600">{chipsColuna.length} {chipsColuna.length === 1 ? 'filtro de coluna' : 'filtros de coluna'}</p>
                             </div>
                         </div>
 
-                        {/* Toggle de colunas — mostra na ordem atual, arrastar para reordenar */}
-                        <div className="flex flex-wrap gap-1.5 mb-2">
-                            {colOrdem.map(id => {
-                                const c = COLUNAS.find(col => col.id === id);
-                                if (!c) return null;
+                        {/* Colunas visíveis — toque liga/desliga; arraste para reordenar (computador) */}
+                        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-3 mb-3">
+                            <p className="text-[11px] font-bold uppercase tracking-wider text-gray-600 mb-2">Colunas</p>
+                            <div className="flex flex-wrap gap-1.5">
+                                {colOrdem.map(id => {
+                                    const c = COLUNAS.find(col => col.id === id);
+                                    if (!c) return null;
+                                    return (
+                                        <button type="button" key={c.id} onClick={() => toggleCol(c.id)}
+                                            draggable
+                                            onDragStart={() => handleDragStart(c.id)}
+                                            onDragOver={e => handleDragOver(e, c.id)}
+                                            onDragEnd={handleDragEnd}
+                                            className={`px-3 py-1.5 min-h-[44px] md:min-h-[36px] text-xs rounded-full border font-semibold transition-colors md:cursor-grab md:active:cursor-grabbing ${
+                                                colsVisiveis.has(c.id)
+                                                    ? 'bg-primary text-white border-primary'
+                                                    : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400'
+                                            }`}>
+                                            {c.label}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {/* Mobile: cards */}
+                        <div className="md:hidden space-y-3">
+                            {dadosAgrupados.slice(0, limiteCards).map(row => {
+                                const tituloCol = colsAtivas.find(c => c.id === 'cliente') || colsAtivas.find(c => c.id === 'produto') || colsAtivas.find(c => c.tipo === 'texto');
+                                const colValor = colsAtivas.find(c => c.id === 'valor');
+                                const resto = colsAtivas.filter(c => c !== tituloCol && c !== colValor);
                                 return (
-                                    <button key={c.id} onClick={() => toggleCol(c.id)}
-                                        draggable
-                                        onDragStart={() => handleDragStart(c.id)}
-                                        onDragOver={e => handleDragOver(e, c.id)}
-                                        onDragEnd={handleDragEnd}
-                                        className={`px-2.5 py-1 text-xs rounded-full border font-medium transition-colors cursor-grab active:cursor-grabbing ${
-                                            colsVisiveis.has(c.id)
-                                                ? 'bg-indigo-600 text-white border-indigo-600'
-                                                : 'bg-white text-gray-500 border-gray-300 hover:border-gray-400'
-                                        }`}>
-                                        {c.label}
-                                    </button>
+                                    <div key={row._key} className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+                                        <div className="flex items-start justify-between gap-2 mb-2">
+                                            <span className="font-semibold text-gray-900 text-sm break-words min-w-0">{tituloCol ? (row[tituloCol.field] || '-') : `${row._count} itens`}</span>
+                                            {colValor && (
+                                                <span className="font-bold text-primaryDark text-sm whitespace-nowrap">
+                                                    R$ {fmt(row.valorTotal)}{row._count > 1 && <span className="ml-1 text-[11px] text-gray-500 font-normal">({row._count})</span>}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
+                                            {resto.map(col => (
+                                                <div key={col.id} className="min-w-0">
+                                                    <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">{col.label}</p>
+                                                    {col.id === 'tipo' ? (
+                                                        <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold ${TIPO_BADGE[row.tipo] || 'bg-gray-100 text-gray-700'}`}>{row.tipo || '-'}</span>
+                                                    ) : (
+                                                        <p className={`text-xs break-words ${col.id === 'custoTotal' ? 'font-semibold text-red-700' : 'text-gray-800'}`}>{textoCelula(col, row)}</p>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
                                 );
                             })}
+                            {dadosAgrupados.length > limiteCards && (
+                                <button type="button" onClick={() => setLimiteCards(l => l + 100)}
+                                    className="w-full min-h-[44px] bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-semibold text-sm">
+                                    Mostrar mais ({limiteCards} de {dadosAgrupados.length})
+                                </button>
+                            )}
+                            {dadosAgrupados.length > 0 && (
+                                <div className="bg-mint/40 rounded-xl border border-gray-200 p-3 text-sm font-bold text-primaryDark flex items-center justify-between">
+                                    <span>{dadosAgrupados.length} linhas</span>
+                                    <span>R$ {fmt(totalFiltrado)}</span>
+                                </div>
+                            )}
+                            <p className="text-xs text-gray-500 text-center">Para ordenar e filtrar por coluna, use o computador ou o iPad.</p>
                         </div>
 
-                        {/* Chips de filtros ativos por coluna */}
-                        {chips.length > 0 && (
-                            <div className="flex flex-wrap items-center gap-1.5 mb-2">
-                                {chips.map(chip => (
-                                    <span key={chip.colId}
-                                        className="flex items-center gap-1.5 px-2.5 py-1 text-xs bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-full font-medium">
-                                        <ListFilter className="h-3 w-3" />
-                                        {chip.label}: {chip.qtd} de {chip.total}
-                                        <button onClick={() => handleFiltroChange(chip.colId, undefined)}
-                                            className="ml-0.5 hover:text-indigo-900">
-                                            <X className="h-3 w-3" />
-                                        </button>
-                                    </span>
-                                ))}
-                                <button onClick={() => setFiltrosAtivos({})}
-                                    className="px-2 py-0.5 text-xs text-gray-500 hover:text-gray-700 underline">
-                                    Limpar todos
-                                </button>
-                            </div>
-                        )}
-
-                        {/* Tabela */}
-                        <div className="bg-white rounded-lg border shadow-sm">
-                            <table className="w-full text-sm">
-                                <thead className="bg-gray-50 border-b md:sticky md:top-[57px] z-10">
+                        {/* Desktop: tabela */}
+                        <div className="hidden md:block bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto">
+                            <table className="min-w-full divide-y divide-gray-200 text-sm">
+                                <thead className="bg-gray-50">
                                     <tr>
                                         {colsAtivas.map(col => {
                                             const temFiltro = filtrosAtivos[col.id] && filtrosAtivos[col.id].size > 0;
@@ -755,38 +844,28 @@ export default function RelatorioVendas() {
                                                     onDragStart={() => handleDragStart(col.id)}
                                                     onDragOver={e => handleDragOver(e, col.id)}
                                                     onDragEnd={handleDragEnd}
-                                                    className={`px-2 py-2.5 text-xs font-semibold text-gray-600 uppercase tracking-wider select-none relative cursor-grab active:cursor-grabbing ${col.align === 'right' ? 'text-right' : 'text-left'}`}>
+                                                    className={`px-2 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide select-none cursor-grab active:cursor-grabbing whitespace-nowrap ${col.align === 'right' ? 'text-right' : 'text-left'}`}>
                                                     <div className={`flex items-center gap-1 ${col.align === 'right' ? 'justify-end' : ''}`}>
-                                                        <button
-                                                            onClick={(e) => handleSort(col, e)}
-                                                            className="flex items-center gap-1 hover:text-indigo-700">
+                                                        <button type="button" onClick={(e) => handleSort(col, e)}
+                                                            className="flex items-center gap-1 hover:text-primaryDark">
                                                             {col.label}
                                                             <SortIcon col={col} sortCol={sortCol} sortDir={sortDir} />
                                                         </button>
                                                         {col.filtravel && (
-                                                            <button
-                                                                onClick={(e) => { e.stopPropagation(); setDropdownAberto(d => d === col.id ? null : col.id); }}
-                                                                className={`ml-0.5 p-0.5 rounded transition-colors ${temFiltro ? 'text-indigo-600 bg-indigo-100' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}
+                                                            <button type="button"
+                                                                onClick={(e) => abrirFiltroColuna(col.id, e)}
+                                                                className={`ml-0.5 p-1 rounded-full transition-colors ${temFiltro ? 'text-primary bg-mint' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'}`}
                                                                 title={`Filtrar por ${col.label}`}>
                                                                 <ListFilter className="h-3.5 w-3.5" />
                                                             </button>
                                                         )}
                                                     </div>
-                                                    {dropdownAberto === col.id && (
-                                                        <FilterDropdown
-                                                            col={col}
-                                                            allData={pedidos}
-                                                            selecao={filtrosAtivos[col.id]}
-                                                            onChange={handleFiltroChange}
-                                                            onClose={() => setDropdownAberto(null)}
-                                                        />
-                                                    )}
                                                 </th>
                                             );
                                         })}
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-50">
+                                <tbody className="bg-white divide-y divide-gray-200">
                                     {dadosAgrupados.map(row => (
                                         <tr key={row._key} className="hover:bg-gray-50">
                                             {colsAtivas.map(col => {
@@ -798,25 +877,22 @@ export default function RelatorioVendas() {
                                                         {col.id === 'valor' && (
                                                             <span className="font-semibold">
                                                                 R$ {fmt(val)}
-                                                                {row._count > 1 && <span className="ml-1 text-[10px] text-gray-400 font-normal">({row._count})</span>}
+                                                                {row._count > 1 && <span className="ml-1 text-[10px] text-gray-500 font-normal">({row._count})</span>}
                                                             </span>
                                                         )}
                                                         {col.id === 'quantidade' && (
                                                             <span>{Number(val || 0).toLocaleString('pt-BR', { maximumFractionDigits: 3 })}</span>
                                                         )}
-                                                        {col.id === 'valorUnit' && (
-                                                            val != null ? <span>R$ {fmt(val)}</span> : <span className="text-gray-400">-</span>
-                                                        )}
-                                                        {col.id === 'precoCusto' && (
-                                                            val != null ? <span>R$ {fmt(val)}</span> : <span className="text-gray-400">-</span>
+                                                        {(col.id === 'valorUnit' || col.id === 'precoCusto') && (
+                                                            val != null ? <span>R$ {fmt(val)}</span> : <span className="text-gray-500">-</span>
                                                         )}
                                                         {col.id === 'custoTotal' && (
-                                                            val != null ? <span className="font-semibold text-rose-700">R$ {fmt(val)}</span> : <span className="text-gray-400">-</span>
+                                                            val != null ? <span className="font-semibold text-red-700">R$ {fmt(val)}</span> : <span className="text-gray-500">-</span>
                                                         )}
                                                         {col.id === 'tipo' && (
-                                                            <span className={`px-1.5 py-0.5 rounded text-[11px] font-medium ${TIPO_BADGE[val] || 'bg-gray-100 text-gray-700'}`}>{val}</span>
+                                                            <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${TIPO_BADGE[val] || 'bg-gray-100 text-gray-700'}`}>{val}</span>
                                                         )}
-                                                        {!['data','criacao','valor','quantidade','valorUnit','precoCusto','custoTotal','tipo'].includes(col.id) && (val || '-')}
+                                                        {!['data', 'criacao', 'valor', 'quantidade', 'valorUnit', 'precoCusto', 'custoTotal', 'tipo'].includes(col.id) && (val || '-')}
                                                     </td>
                                                 );
                                             })}
@@ -831,7 +907,7 @@ export default function RelatorioVendas() {
                                                     {i === 0 && `${dadosAgrupados.length} linhas`}
                                                     {col.id === 'quantidade' && dadosAgrupados.reduce((s, r) => s + Number(r.quantidade || 0), 0).toLocaleString('pt-BR', { maximumFractionDigits: 3 })}
                                                     {col.id === 'valor' && `R$ ${fmt(totalFiltrado)}`}
-                                                    {col.id === 'custoTotal' && `R$ ${fmt(dadosAgrupados.reduce((s, r) => s + Number(r.custoTotal || 0), 0))}`}
+                                                    {col.id === 'custoTotal' && `R$ ${fmt(custoTotalGeral)}`}
                                                 </td>
                                             ))}
                                         </tr>
@@ -839,84 +915,39 @@ export default function RelatorioVendas() {
                                 )}
                             </table>
                             {dadosAgrupados.length === 0 && (
-                                <p className="text-center text-gray-400 py-10">Nenhum registro com os filtros ativos.</p>
+                                <EstadoVazio icon={ListFilter} titulo="Nenhum registro com os filtros ativos"
+                                    descricao="Os filtros de coluna escondem todas as linhas."
+                                    acao={{ label: 'Limpar filtros de coluna', onClick: () => setFiltrosAtivos({}) }} />
                             )}
                         </div>
 
-                        <p className="text-xs text-gray-400 mt-2 text-center">
+                        <p className="hidden md:block text-xs text-gray-500 mt-2 text-center">
                             Arraste as pílulas ou os cabeçalhos para reordenar · <ListFilter className="h-3 w-3 inline" /> filtra · clique no nome ordena · ocultar coluna agrupa os dados
                         </p>
-                    </>
+                    </div>
                 )}
             </div>
 
-            {/* Overlay de Impressão */}
-            {showPrint && (
-                <div id="rv-print-root" className="fixed inset-0 z-[9999] bg-gray-800 overflow-y-auto flex flex-col print:bg-white print:overflow-visible">
-                    <style>{PRINT_CSS}</style>
-                    <div className="sticky top-0 z-10 bg-gray-900 border-b border-gray-700 px-6 py-3 flex items-center justify-between print:hidden flex-shrink-0">
-                        <div className="flex items-center gap-3">
-                            <button onClick={() => setShowPrint(false)} className="flex items-center gap-1.5 px-4 py-2 border border-gray-600 text-gray-300 hover:bg-gray-700 rounded-md text-sm">
-                                <ArrowLeft className="h-4 w-4" /> Voltar
-                            </button>
-                            <span className="text-white font-semibold text-sm flex items-center gap-2">
-                                <Printer className="h-4 w-4 text-sky-400" /> Pré-visualização — Relatório de Vendas
-                            </span>
-                        </div>
-                        <button onClick={() => window.print()} className="px-5 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700">
-                            Imprimir / Salvar PDF
-                        </button>
-                    </div>
-                    <div className="rv-print-scroll flex-1 flex flex-col items-center py-8 print:py-0 print:block">
-                        <div className="rv-print-container bg-white text-black mx-auto shadow-2xl transform scale-[0.5] sm:scale-75 md:scale-100 origin-top"
-                            style={{ width: '210mm', padding: '4mm 6mm' }}>
-                            <h1>RELATÓRIO DE VENDAS</h1>
-                            <div className="sub">
-                                {[
-                                    dataVendaDe && `Venda: ${fmtData(dataVendaDe)} a ${fmtData(dataVendaAte || dataVendaDe)}`,
-                                    situacaoCA  && `Situação: ${situacaoCA}`,
-                                    chips.length && `Filtros: ${chips.map(c => `${c.label} (${c.qtd}/${c.total})`).join(', ')}`,
-                                    `Total: ${dadosFiltrados.length} pedidos · ${dadosAgrupados.length} linhas · R$ ${fmt(totalFiltrado)}`
-                                ].filter(Boolean).join(' | ')}
-                            </div>
-                            <table>
-                                <thead>
-                                    <tr>{colsAtivas.map(col => <th key={col.id} style={{ textAlign: col.align || 'left' }}>{col.label}</th>)}</tr>
-                                </thead>
-                                <tbody>
-                                    {dadosAgrupados.map(row => (
-                                        <tr key={row._key}>
-                                            {colsAtivas.map(col => {
-                                                const val = row[col.field];
-                                                return (
-                                                    <td key={col.id} className={col.align === 'right' ? 'num' : ''}>
-                                                        {(col.id === 'data' || col.id === 'criacao') ? fmtData(val)
-                                                        : col.id === 'valor' ? `R$ ${fmt(val)}${row._count > 1 ? ` (${row._count})` : ''}`
-                                                        : col.id === 'quantidade' ? Number(val || 0).toLocaleString('pt-BR', { maximumFractionDigits: 3 })
-                                                        : (col.id === 'valorUnit' || col.id === 'precoCusto' || col.id === 'custoTotal') ? (val != null ? `R$ ${fmt(val)}` : '-')
-                                                        : val || '-'}
-                                                    </td>
-                                                );
-                                            })}
-                                        </tr>
-                                    ))}
-                                </tbody>
-                                <tfoot>
-                                    <tr>
-                                        {colsAtivas.map((col, i) => (
-                                            <td key={col.id} className={col.align === 'right' ? 'num' : ''}>
-                                                {i === 0 && `${dadosAgrupados.length} linhas`}
-                                                {col.id === 'valor' && `R$ ${fmt(totalFiltrado)}`}
-                                                {col.id === 'custoTotal' && `R$ ${fmt(dadosAgrupados.reduce((s, r) => s + Number(r.custoTotal || 0), 0))}`}
-                                            </td>
-                                        ))}
-                                    </tr>
-                                </tfoot>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            )}
-        </>
+            {/* Menu do filtro de coluna (posicionado em tela, não é cortado pela rolagem da tabela) */}
+            {dropdownAberto && (() => {
+                const col = COLUNAS.find(c => c.id === dropdownAberto.colId);
+                return col ? (
+                    <FilterDropdown
+                        key={col.id}
+                        col={col}
+                        allData={pedidos}
+                        selecao={filtrosAtivos[col.id]}
+                        onChange={handleFiltroChange}
+                        onClose={() => setDropdownAberto(null)}
+                        pos={dropdownAberto}
+                    />
+                ) : null;
+            })()}
+        </div>
     );
+}
+
+// chave estável p/ memo (ordem + visibilidade das colunas)
+function colsOrdemChave(ordem, visiveis) {
+    return ordem.filter(id => visiveis.has(id)).join(',');
 }

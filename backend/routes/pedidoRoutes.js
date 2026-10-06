@@ -22,6 +22,8 @@ router.get('/relatorio', pedidoController.relatorio);
 
 // Relatório de Vendas (agrupado por vendedor, cliente, condição, cidade, bairro)
 router.get('/relatorio-vendas', pedidoController.relatorioVendas);
+// Valores distintos p/ montar os menus do relatório antes de gerá-lo
+router.get('/relatorio-vendas/opcoes', pedidoController.relatorioVendasOpcoes);
 
 // Análise de Flex (por vendedor, pedidos com flex positivo/negativo)
 router.get('/relatorio-flex', pedidoController.relatorioFlex);
