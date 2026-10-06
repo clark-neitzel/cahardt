@@ -160,47 +160,106 @@ const marcador = (k, n) => `*(${k}/${n})*`;
  *   parte 1      = cabecalho + itens + *(1/N)*
  *   intermediária= `<tituloContinuacao> — continuação *(k/N)*` + itens
  *   última       = continuação + itens + rodape + *(N/N)*
- * `rodapeCurto` (opcional) substitui `rodape` no multi-parte (ex.: Obs limitada).
+ * Nada é perdido: texto > limite SEMPRE vira multi-parte; se o rodapé não cabe junto dos últimos
+ * itens vai em parte própria; se o rodapé sozinho estoura (Obs gigante), `rodapeEstr`
+ * ({ base, obs, rotuloObs, fim }) permite quebrar a Obs entre partes em limites de linha/palavra
+ * (Total/Condição na parte onde o rodapé começa; `fim` = despedida, na última).
  */
-const dividirEmPartes = ({ cabecalho = '', itens = [], rodape = '', rodapeCurto = null, tituloContinuacao = '', limite = LIMITE_PARTE }) => {
+const dividirEmPartes = ({ cabecalho = '', itens = [], rodape = '', rodapeEstr = null, tituloContinuacao = '', limite = LIMITE_PARTE }) => {
     const cab = String(cabecalho);
     const lista = (itens || []).map(String);
     const textoUnico = `${cab}\n${lista.join('\n\n')}\n${rodape}`;
-    if (textoUnico.length <= limite || lista.length === 0) return [textoUnico];
+    if (textoUnico.length <= limite) return [textoUnico];
 
-    const rod = rodapeCurto != null ? rodapeCurto : rodape;
     const prefixoPrimeira = `${cab}\n`;
     const prefixoCont = (k, n) => `${tituloContinuacao ? `${tituloContinuacao} — ` : ''}continuação ${marcador(k, n)}\n\n`;
     const reservaCont = prefixoCont(99, 99).length;
-
-    // O último item vai COLADO ao rodapé (a despedida/total nunca ficam sozinhos).
-    const unidades = lista.slice(0, -1);
-    unidades.push(`${lista[lista.length - 1]}\n${rod}`);
-
-    const grupos = [];
-    let atual = [];
-    let tamAtual = 0;
-    let capacidade = limite - prefixoPrimeira.length - MARCADOR_MAX.length;
-    for (const u of unidades) {
-        const custo = u.length + (atual.length ? 2 : 0);
-        if (atual.length && tamAtual + custo > capacidade) {
-            grupos.push(atual);
-            atual = [];
-            tamAtual = 0;
-            capacidade = limite - reservaCont - MARCADOR_MAX.length;
+    const capDe = (idx) => (idx === 0 ? limite - prefixoPrimeira.length : limite - reservaCont) - MARCADOR_MAX.length;
+    const montar = (corpos) => {
+        const n = corpos.length;
+        return corpos.map((c, idx) => `${idx === 0 ? prefixoPrimeira : prefixoCont(idx + 1, n)}${c}\n\n${marcador(idx + 1, n)}`);
+    };
+    // Empacota unidades (blocos indivisíveis) em partes; devolve array de { itens, tam }.
+    const empacotar = (unidades) => {
+        const grupos = [];
+        let atual = [];
+        let tam = 0;
+        for (const u of unidades) {
+            const custo = u.length + (atual.length ? 2 : 0);
+            if (atual.length && tam + custo > capDe(grupos.length)) {
+                grupos.push({ itens: atual, tam });
+                atual = [];
+                tam = 0;
+            }
+            tam += u.length + (atual.length ? 2 : 0);
+            atual.push(u);
         }
-        tamAtual += u.length + (atual.length ? 2 : 0);
-        atual.push(u);
-    }
-    if (atual.length) grupos.push(atual);
+        if (atual.length) grupos.push({ itens: atual, tam });
+        return grupos;
+    };
 
-    const n = grupos.length;
-    if (n === 1) return [textoUnico];
-    return grupos.map((g, idx) => {
-        const k = idx + 1;
-        const prefixo = k === 1 ? prefixoPrimeira : prefixoCont(k, n);
-        return `${prefixo}${g.join('\n\n')}\n\n${marcador(k, n)}`;
+    // 1ª tentativa: o último item vai COLADO ao rodapé (despedida/total nunca ficam sozinhos).
+    if (lista.length) {
+        const unidades = lista.slice(0, -1);
+        unidades.push(`${lista[lista.length - 1]}\n${rodape}`);
+        const grupos = empacotar(unidades);
+        const partes = montar(grupos.map(g => g.itens.join('\n\n')));
+        if (partes.every(t => t.length <= limite)) return partes;
+    }
+
+    // 2ª tentativa: itens sozinhos; o rodapé vai junto da última parte se couber, senão em parte(s) própria(s).
+    const grupos = empacotar(lista);
+    const corpos = grupos.map(g => g.itens.join('\n\n'));
+    const ultimo = grupos.length - 1;
+    if (ultimo >= 0 && grupos[ultimo].tam + 2 + rodape.length <= capDe(ultimo)) {
+        corpos[ultimo] = `${corpos[ultimo]}\n\n${rodape}`;
+        return montar(corpos);
+    }
+
+    // Rodapé em parte própria. Cabe inteiro numa parte de continuação?
+    const idxRod = corpos.length;
+    if (rodape.length <= capDe(Math.max(idxRod, 0))) {
+        corpos.push(rodape);
+        return montar(corpos);
+    }
+
+    // Rodapé gigante (obs enorme): quebra a Obs em limites de linha/palavra. Total/Condição ficam
+    // na parte em que o rodapé começa; a despedida (fim) no fim da última.
+    const est = rodapeEstr || { base: rodape, obs: '', rotuloObs: '', fim: '' };
+    const obs = String(est.obs || '');
+    const fim = String(est.fim || '');
+    const cabecaObs = est.base + (obs ? `\n\n${est.rotuloObs}` : '');
+    const pedacos = [];
+    let resto = obs.trim();
+    let idx = idxRod;
+    let primeiro = true;
+    while (true) {
+        const reserva = primeiro ? cabecaObs.length : 0;
+        const cap = Math.max(capDe(idx) - reserva, 1);
+        if (resto.length + fim.length <= cap) { pedacos.push({ txt: resto, cabeca: primeiro, ultimo: true }); break; }
+        // Se o resto cabe em `cap` mas não junto da despedida, corta mais cedo (reserva o `fim`
+        // para a próxima parte) — senão a última parte estoura o limite.
+        const lim = Math.max(resto.length <= cap ? cap - fim.length : cap, 1);
+        let corte = lim;
+        const janela = resto.slice(0, lim + 1);
+        const quebra = Math.max(janela.lastIndexOf('\n'), janela.lastIndexOf(' '));
+        if (quebra > 0) corte = quebra;
+        // corte duro nunca parte um par surrogate (emoji): recua 1 se cair entre as duas metades
+        else if (corte > 1) { const c = resto.charCodeAt(corte - 1); if (c >= 0xD800 && c <= 0xDBFF) corte -= 1; }
+        // se o corte cai no meio de uma palavra (não há espaço/linha na janela), corta duro: caso degenerado
+        const txt = resto.slice(0, corte).trimEnd();
+        pedacos.push({ txt, cabeca: primeiro, ultimo: false });
+        resto = resto.slice(corte).trimStart();
+        primeiro = false;
+        idx += 1;
+        if (!resto) { pedacos[pedacos.length - 1].ultimo = true; break; }
+    }
+    pedacos.forEach(pc => {
+        let c = (pc.cabeca ? cabecaObs : '') + pc.txt;
+        if (pc.ultimo) c += fim;
+        corpos.push(c);
     });
+    return montar(corpos);
 };
 
 /** Grava uma parte como PENDENTE sem tentar enviar (espera a anterior sair). */

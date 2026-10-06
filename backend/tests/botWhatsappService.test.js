@@ -228,7 +228,7 @@ test('b) pedido de 60 itens: N>=2 partes <=1900, itens inteiros, cabeçalho só 
     }
 });
 
-test('b2) Obs gigante é limitada a ~500 chars só no multi-parte; no texto único fica inteira', () => {
+test('b2) Obs grande sai INTEIRA (sem truncar) tanto no texto único quanto no multi-parte', () => {
     const { webhook, bot } = carregarWebhookEBot({});
     const obs = 'o'.repeat(900);
     const unica = bot.dividirEmPartes(webhook.montarPartesPedido(pedidoFixture(2, { observacoes: obs })));
@@ -236,9 +236,117 @@ test('b2) Obs gigante é limitada a ~500 chars só no multi-parte; no texto úni
     assert.ok(unica[0].includes(obs));
     const multi = bot.dividirEmPartes(webhook.montarPartesPedido(pedidoFixture(60, { observacoes: obs })));
     assert.ok(multi.length >= 2);
-    const ult = multi[multi.length - 1];
-    assert.ok(ult.includes('o'.repeat(400)) && !ult.includes(obs) && ult.includes('…'));
+    assert.ok(multi[multi.length - 1].includes(obs) && !multi.join('').includes('…'));
     multi.forEach(t => assert.ok(t.length <= 1900));
+});
+
+const frase = (n) => Array.from({ length: n }, (_, i) => `palavra${i % 97}`).join(' ');
+const tamanhos = {};
+
+test('novo-a) 12 itens + obs 1500: >=2 partes <=1900, obs completa, sem reticências', () => {
+    const { webhook, bot } = carregarWebhookEBot({});
+    const obs = frase(250).slice(0, 1500).replace(/\s+\S*$/, '');
+    const ped = pedidoFixture(12, { observacoes: obs });
+    assert.ok(webhook.montarMensagemPedido(ped).length > 1900);
+    const partes = bot.dividirEmPartes(webhook.montarPartesPedido(ped));
+    tamanhos.a = partes.map(t => t.length);
+    assert.ok(partes.length >= 2);
+    partes.forEach(t => assert.ok(t.length <= 1900));
+    const junto = partes.join('\n');
+    assert.ok(junto.includes(obs));
+    assert.ok(!junto.includes('…') && !junto.includes('(mensagem encurtada)'));
+    assert.ok(junto.includes('Total: R$') && junto.includes('Obrigado pela preferência'));
+    assert.ok(partes[partes.length - 1].includes('Obrigado pela preferência'));
+});
+
+test('novo-b) 3 itens + obs 5000: obs quebrada em várias partes sem partir palavra; Total/Condição e despedida no lugar certo', () => {
+    const { webhook, bot } = carregarWebhookEBot({});
+    const obs = frase(900).slice(0, 5000).replace(/\s+\S*$/, '');
+    const partes = bot.dividirEmPartes(webhook.montarPartesPedido(pedidoFixture(3, { observacoes: obs })));
+    tamanhos.b = partes.map(t => t.length);
+    const n = partes.length;
+    assert.ok(n >= 3);
+    partes.forEach((t, i) => { assert.ok(t.length <= 1900); assert.ok(t.endsWith(`*(${i + 1}/${n})*`)); });
+    // reconstrói a obs: tira prefixos/marcadores/cabeçalho de cada parte
+    const idxObs = partes.findIndex(t => t.includes('Obs:*'));
+    assert.ok(idxObs >= 0);
+    const pedacos = partes.slice(idxObs).map((t, j) => {
+        let c = t.replace(/\n\n\*\(\d+\/\d+\)\*$/, '');
+        c = j === 0 ? c.slice(c.indexOf('Obs:* ') + 6) : c.replace(/^[^\n]*continuação \*\(\d+\/\d+\)\*\n\n/, '');
+        return c.replace('\n\nObrigado pela preferência! 🙏', '');
+    });
+    assert.equal(pedacos.join(' ').replace(/\s+/g, ' ').trim(), obs.replace(/\s+/g, ' '));
+    // Total/Condição na parte onde o rodapé começa; despedida só na última
+    assert.ok(partes[idxObs].includes('Total: R$') && partes[idxObs].includes('Condição:'));
+    partes.slice(0, -1).forEach(t => assert.ok(!t.includes('Obrigado')));
+    assert.ok(partes[n - 1].includes('Obrigado pela preferência! 🙏'));
+});
+
+test('novo-c) 60 itens + obs 1500: todos os itens 1x e obs completa', () => {
+    const { webhook, bot } = carregarWebhookEBot({});
+    const obs = frase(250).slice(0, 1500).replace(/\s+\S*$/, '');
+    const p = webhook.montarPartesPedido(pedidoFixture(60, { observacoes: obs }));
+    const partes = bot.dividirEmPartes(p);
+    tamanhos.c = partes.map(t => t.length);
+    partes.forEach(t => assert.ok(t.length <= 1900));
+    const junto = partes.join('\n\n');
+    for (const item of p.itens) assert.equal(junto.split(item).length - 1, 1);
+    assert.ok(junto.includes(obs));
+    assert.ok(partes[partes.length - 1].includes('Obrigado pela preferência'));
+});
+
+test('novo-d) obs sem espaços de 3000 chars (degenerado): não trava e nenhuma parte > 1900', () => {
+    const { webhook, bot } = carregarWebhookEBot({});
+    const obs = 'x'.repeat(3000);
+    const partes = bot.dividirEmPartes(webhook.montarPartesPedido(pedidoFixture(3, { observacoes: obs })));
+    tamanhos.d = partes.map(t => t.length);
+    partes.forEach(t => assert.ok(t.length <= 1900));
+    assert.equal(partes.join('').split('x').length - 1 >= 3000, true);
+    console.log('tamanhos das partes:', JSON.stringify(tamanhos));
+});
+
+/** Reconstrói a obs a partir das partes (tira prefixo/marcador/rótulo/despedida). */
+const obsDasPartes = (partes) => {
+    const idx = partes.findIndex(t => t.includes('Obs:*'));
+    return partes.slice(idx).map((t, j) => {
+        let c = t.replace(/\n\n\*\(\d+\/\d+\)\*$/, '');
+        c = j === 0 ? c.slice(c.indexOf('Obs:* ') + 6) : c.replace(/^[^\n]*continuação \*\(\d+\/\d+\)\*\n\n/, '');
+        return c.replace('\n\nObrigado pela preferência! 🙏', '');
+    }).join('');
+};
+
+test('corte duro: resto cabe mas não com a despedida -> nenhuma parte > 1900 (3650 x + 29 itens)', () => {
+    const { webhook, bot } = carregarWebhookEBot({});
+    const obs = 'x'.repeat(3650);
+    const partes = bot.dividirEmPartes(webhook.montarPartesPedido(pedidoFixture(29, { observacoes: obs })));
+    partes.forEach((t, i) => assert.ok(t.length <= 1900, `parte ${i + 1} tem ${t.length}`));
+    assert.equal(obsDasPartes(partes), obs);
+    assert.ok(partes[partes.length - 1].includes('Obrigado pela preferência'));
+});
+
+test('corte duro: obs só de emoji nunca parte par surrogate', () => {
+    const { webhook, bot } = carregarWebhookEBot({});
+    const obs = '😀'.repeat(2000);
+    const partes = bot.dividirEmPartes(webhook.montarPartesPedido(pedidoFixture(3, { observacoes: obs })));
+    partes.forEach((t, i) => { assert.ok(t.length <= 1900, `parte ${i + 1}`); assert.ok(t.isWellFormed(), `parte ${i + 1} mal formada`); });
+    assert.equal(obsDasPartes(partes), obs);
+});
+
+test('fuzz determinístico: obs sem espaços (1800-4000) x 0-30 itens, e emoji', () => {
+    const { webhook, bot } = carregarWebhookEBot({});
+    for (let tam = 1800; tam <= 4000; tam += 137) {
+        for (let itens = 0; itens <= 30; itens += 3) {
+            for (const ch of ['x', '😀']) {
+                const obs = ch.repeat(ch === 'x' ? tam : Math.ceil(tam / 2));
+                const partes = bot.dividirEmPartes(webhook.montarPartesPedido(pedidoFixture(itens, { observacoes: obs })));
+                partes.forEach((t, i) => {
+                    assert.ok(t.length <= 1900, `tam=${tam} itens=${itens} ch=${ch} parte ${i + 1} = ${t.length}`);
+                    assert.ok(t.isWellFormed(), `mal formada tam=${tam} itens=${itens}`);
+                });
+                assert.equal(obsDasPartes(partes), obs, `obs diferente tam=${tam} itens=${itens} ch=${ch}`);
+            }
+        }
+    }
 });
 
 test('c) referencias -p1..pN em ordem sequencial; reenvio manual usa base única uma vez', async () => {

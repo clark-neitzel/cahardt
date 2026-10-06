@@ -48,7 +48,8 @@ const ETAPAS_LABEL_DELIVERY = {
 };
 
 const LINHA_DIVISORIA = '────────────────────';
-const OBS_MAX_MULTIPARTE = 500;
+const ROTULO_OBS = '📝 *Obs:* ';
+const DESPEDIDA = '\n\nObrigado pela preferência! 🙏';
 
 const moedaBR = (v) => Number(v || 0).toFixed(2).replace('.', ',');
 
@@ -61,10 +62,14 @@ const blocosItens = (pedido) => (pedido.itens || []).map(i => {
 const totalPedido = (pedido) =>
     (pedido.itens || []).reduce((sum, i) => sum + (Number(i.valor || 0) * Number(i.quantidade)), 0) + Number(pedido.valorFrete || 0);
 
-/** Obs longa demais atrapalha o multi-parte: limita em ~500 chars (só quando divide). */
-const obsCurta = (obs) => {
-    const t = String(obs);
-    return t.length > OBS_MAX_MULTIPARTE ? `${t.slice(0, OBS_MAX_MULTIPARTE - 1).trimEnd()}…` : t;
+/**
+ * Rodapé estruturado: `base` (linha, total, condição) + Obs (opcional) + `fim` (despedida, opcional).
+ * `texto` é o rodapé de sempre; `estr` permite ao bot quebrar uma Obs gigante entre partes
+ * SEM perder nada (a Obs sai inteira, nunca truncada).
+ */
+const rodapeEstruturado = (base, obs, fim) => {
+    const o = obs ? String(obs) : '';
+    return { texto: base + (o ? `\n\n${ROTULO_OBS}${o}` : '') + fim, estr: { base, obs: o, rotuloObs: ROTULO_OBS, fim } };
 };
 
 /** Itens + linha da taxa (a taxa é o último "item": separador '\n\n', igual ao texto de sempre). */
@@ -98,23 +103,18 @@ const montarPartesPedido = (pedido) => {
         LINHA_DIVISORIA,
     ].join('\n');
 
-    const montarRodape = (obs) => {
-        const r = [
-            LINHA_DIVISORIA,
-            '',
-            `💰 *Total: R$ ${moedaBR(totalPedido(pedido))}*`,
-            `💳 *Condição:* ${condicao}`,
-        ];
-        if (obs) r.push('', `📝 *Obs:* ${obs}`);
-        r.push('', 'Obrigado pela preferência! 🙏');
-        return r.join('\n');
-    };
+    const rod = rodapeEstruturado([
+        LINHA_DIVISORIA,
+        '',
+        `💰 *Total: R$ ${moedaBR(totalPedido(pedido))}*`,
+        `💳 *Condição:* ${condicao}`,
+    ].join('\n'), pedido.observacoes, DESPEDIDA);
 
     return {
         cabecalho,
         itens: itensComFrete(pedido, 'Taxa de entrega'),
-        rodape: montarRodape(pedido.observacoes),
-        rodapeCurto: montarRodape(pedido.observacoes ? obsCurta(pedido.observacoes) : null),
+        rodape: rod.texto,
+        rodapeEstr: rod.estr,
         tituloContinuacao: `Pedido #${numero}`,
     };
 };
@@ -149,7 +149,7 @@ const montarMensagemDeliveryCliente = (pedido, etapa) => {
 /**
  * Versão ESTRUTURADA do texto do Delivery p/ o cliente. PEDIDO/PRODUCAO trazem o resumo
  * (dividível em partes); SAINDO/ENTREGUE são sempre 1 mensagem curta.
- * Retorna { texto, etapaLabel, cabecalho, itens, rodape, rodapeCurto, tituloContinuacao, temResumo }.
+ * Retorna { texto, etapaLabel, cabecalho, itens, rodape, rodapeEstr, tituloContinuacao, temResumo }.
  * texto inteiro = cabecalho + '\n' + itens.join('\n\n') + '\n' + rodape (quando temResumo).
  */
 const montarPartesDeliveryCliente = (pedido, etapa) => {
@@ -163,7 +163,7 @@ const montarPartesDeliveryCliente = (pedido, etapa) => {
             '',
             `Seu pedido *#${numeroPedido}* — *${etapaLabel}* ✨`
         ].join('\n');
-        return { texto, etapaLabel, cabecalho: texto, itens: [], rodape: '', rodapeCurto: '', tituloContinuacao: `Pedido #${numeroPedido}`, temResumo: false };
+        return { texto, etapaLabel, cabecalho: texto, itens: [], rodape: '', rodapeEstr: null, tituloContinuacao: `Pedido #${numeroPedido}`, temResumo: false };
     }
 
     const abertura = etapa === 'PEDIDO'
@@ -180,19 +180,16 @@ const montarPartesDeliveryCliente = (pedido, etapa) => {
         LINHA_DIVISORIA,
     ].join('\n');
 
-    const montarRodape = (obs) => {
-        const r = [LINHA_DIVISORIA, '', `💰 *Total: R$ ${moedaBR(totalPedido(pedido))}*`];
-        if (obs) r.push('', `📝 *Obs:* ${obs}`);
-        r.push('', 'Obrigado pela preferência! 🙏');
-        return r.join('\n');
-    };
+    const rod = rodapeEstruturado(
+        [LINHA_DIVISORIA, '', `💰 *Total: R$ ${moedaBR(totalPedido(pedido))}*`].join('\n'),
+        pedido.observacoes, DESPEDIDA);
 
     const itens = itensComFrete(pedido, 'Taxa de entrega');
-    const rodape = montarRodape(pedido.observacoes);
+    const rodape = rod.texto;
     return {
         texto: `${cabecalho}\n${itens.join('\n\n')}\n${rodape}`,
         etapaLabel, cabecalho, itens, rodape,
-        rodapeCurto: montarRodape(pedido.observacoes ? obsCurta(pedido.observacoes) : null),
+        rodapeEstr: rod.estr,
         tituloContinuacao: `Pedido #${numeroPedido}`,
         temResumo: true,
     };
@@ -205,16 +202,14 @@ const montarPartesDeliveryCliente = (pedido, etapa) => {
  */
 const montarPartesDeliveryInterno = (pedido, etapaLabel, numeroPedido, nome) => {
     const cabecalho = `🚚 *DELIVERY — ${etapaLabel}*\nPedido #${numeroPedido} — ${nome}\n\n📅 *Entrega:* ${formatDateMsg(pedido.dataVenda)}\n\n${LINHA_DIVISORIA}`;
-    const montarRodape = (obs) => {
-        const r = [LINHA_DIVISORIA, '', `💰 *Total: R$ ${moedaBR(totalPedido(pedido))}*`];
-        if (obs) r.push('', `📝 *Obs:* ${obs}`);
-        return r.join('\n');
-    };
+    const rod = rodapeEstruturado(
+        [LINHA_DIVISORIA, '', `💰 *Total: R$ ${moedaBR(totalPedido(pedido))}*`].join('\n'),
+        pedido.observacoes, '');
     return {
         cabecalho,
         itens: itensComFrete(pedido, 'Frete'),
-        rodape: montarRodape(pedido.observacoes),
-        rodapeCurto: montarRodape(pedido.observacoes ? obsCurta(pedido.observacoes) : null),
+        rodape: rod.texto,
+        rodapeEstr: rod.estr,
         tituloContinuacao: `Delivery #${numeroPedido}`,
     };
 };

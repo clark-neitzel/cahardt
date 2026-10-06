@@ -154,6 +154,7 @@ Condição e Obs. Agora o CA-Hardt **divide** a confirmação (e o resumo do Del
 partes numeradas, sem quebrar item:
 
 - `botWhatsappService.dividirEmPartes` (pura, limite 1900) e `enviarEmPartes`.
+- Texto > 1900 sempre vai multi-parte (mesmo com poucos itens). A Obs **nunca é truncada**: se o rodapé não cabe com os últimos itens, vai em parte própria; se sozinho passa de 1900, a Obs é quebrada em limites de linha/palavra (Total/Condição na parte onde o rodapé começa, despedida na última). Não existe mais o limite de 500 da Obs.
 - Cabe em uma só → **1 mensagem, texto e `referencia` idênticos aos de sempre** (sem sufixo).
 - Não cabe → `<referencia>-p1 … -pN`, **enviadas em sequência** (nunca em paralelo). Cada parte é uma
   chamada normal ao `/api/integracao/enviar`, no mesmo `tipo`/`origem` — o volume sobe só para pedidos grandes.
