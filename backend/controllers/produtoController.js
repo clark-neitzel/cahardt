@@ -322,11 +322,58 @@ const produtoController = {
                 'ativo', 'descricao', 'estoqueMinimo', 'unidade', 'custoManual',
                 'categoria', 'categoriaProdutoId', 'produtoSubstitutoId',
                 'permiteRecomendacao', 'prioridadeRecomendacao', 'controlaEstoque',
-                'validadeDias', 'quantidadePorCaixa', 'valorVenda', 'ncm', 'ean'
+                'validadeDias', 'quantidadePorCaixa', 'valorVenda', 'ncm', 'ean',
+                // 10/2026: nome e peso líquido (kg) passaram a ser do app. 'codigo' continua
+                // TRAVADO de propósito (protege a NF de devolução de notas antigas).
+                'nome', 'pesoLiquido'
             ];
             const data = {};
             for (const campo of CAMPOS_PERMITIDOS) {
                 if (body[campo] !== undefined) data[campo] = body[campo];
+            }
+            // Produto atual (404 se não existe; base para saber se o nome mudou)
+            const produtoAtual = await prisma.produto.findUnique({ where: { id }, select: { id: true, nome: true, valorVenda: true } });
+            if (!produtoAtual) return res.status(404).json({ error: 'Produto não encontrado.' });
+
+            // Nome: trim, obrigatório, máx. 120 (limite da NF-e), único sem diferenciar caixa.
+            // Nunca truncar em silêncio.
+            let nomeAnterior = null;
+            let nomeNovo = null;
+            if (data.nome !== undefined) {
+                const nome = String(data.nome ?? '').trim();
+                if (!nome) return res.status(400).json({ error: 'O nome do produto não pode ficar vazio.' });
+                if (nome.length > 120) return res.status(400).json({ error: 'O nome pode ter no máximo 120 caracteres (limite da nota fiscal).' });
+                if (nome === produtoAtual.nome) {
+                    // Nome inalterado (o front manda em todo salvar): não valida duplicidade
+                    // (já existem nomes duplicados em produção) e não grava de novo.
+                    delete data.nome;
+                } else {
+                    const dup = await prisma.produto.findFirst({
+                        where: { nome: { equals: nome, mode: 'insensitive' }, NOT: { id } },
+                        select: { nome: true }
+                    });
+                    if (dup) return res.status(409).json({ error: `Já existe o produto "${dup.nome}" com esse nome.` });
+                    data.nome = nome;
+                    nomeAnterior = produtoAtual.nome;
+                    nomeNovo = nome;
+                }
+            }
+            // Peso líquido em KG (Decimal 12,3): aceita vírgula; vazio = null
+            if (data.pesoLiquido !== undefined) {
+                const bruto = data.pesoLiquido;
+                if (bruto === null || String(bruto).trim() === '') {
+                    data.pesoLiquido = null;
+                } else {
+                    const txt = String(bruto).trim().replace(',', '.');
+                    const n = /^\d+(\.\d+)?$/.test(txt) ? Number(txt) : NaN;
+                    if (!Number.isFinite(n) || n < 0) return res.status(400).json({ error: 'Peso inválido: informe um número em kg maior ou igual a zero (ex.: 0,5).' });
+                    if (Math.round(n * 1000) / 1000 !== n) return res.status(400).json({ error: 'Peso inválido: use no máximo 3 casas decimais (ex.: 0,125 kg).' });
+                    if (n > 999999999.999) return res.status(400).json({ error: 'Peso inválido: valor muito grande.' });
+                    data.pesoLiquido = n;
+                }
+            }
+            if (data.descricao !== undefined) {
+                data.descricao = String(data.descricao ?? '').trim() || null;
             }
             // Validade em dias: número inteiro >= 1, ou null (vazio = usa a validade da etiqueta)
             if (data.validadeDias !== undefined) {
@@ -404,13 +451,7 @@ const produtoController = {
                     return res.status(400).json({ error: 'Valor de venda inválido: o valor máximo permitido é 99.999.999,99.' });
                 }
 
-                const atualDb = await prisma.produto.findUnique({
-                    where: { id },
-                    select: { id: true, nome: true, valorVenda: true }
-                });
-                if (!atualDb) return res.status(404).json({ error: 'Produto não encontrado.' });
-
-                const anterior = Number(atualDb.valorVenda);
+                const anterior = Number(produtoAtual.valorVenda);
                 data.valorVenda = n;
                 if (n !== anterior) {
                     // Só marca quando o preço realmente mudou (reenviar o mesmo valor não
@@ -425,6 +466,35 @@ const produtoController = {
                 where: { id },
                 data
             });
+
+            // Nome mudou: espelha no item do PCP e registra no histórico.
+            // FORA de transação, cada um em try/catch próprio (o salvar já foi efetivado).
+            if (nomeNovo !== null) {
+                try {
+                    await prisma.itemPcp.updateMany({
+                        where: { produtoId: id, NOT: { nome: data.nome } },
+                        data: { nome: data.nome }
+                    });
+                } catch (e) {
+                    console.error('Falha ao espelhar nome no ItemPcp (alteração já efetivada):', e.message);
+                }
+            }
+            if (nomeNovo !== null) {
+                try {
+                    await prisma.auditLog.create({
+                        data: {
+                            acao: 'ALTERAR_NOME_PRODUTO',
+                            entidade: 'Produto',
+                            entidadeId: id,
+                            detalhes: `Nome do produto alterado de "${nomeAnterior}" para "${nomeNovo}" por ${req.user?.nome || req.user?.login || '-'}.`,
+                            usuarioId: req.user?.id || '-',
+                            usuarioNome: req.user?.nome || req.user?.login || '-'
+                        }
+                    });
+                } catch (logErr) {
+                    console.error('Falha ao registrar auditoria de nome (alteração já efetivada):', logErr.message);
+                }
+            }
 
             // Auditoria da mudança de preço — informação comercial sensível.
             // FORA da operação principal e em try/catch próprio: falha de log nunca pode

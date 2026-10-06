@@ -45,7 +45,8 @@ Gestão completa do cadastro de produtos da empresa. Permite criar, editar, ativ
 ### Editar um produto
 1. Clique no nome ou na linha do produto
 2. A tela de detalhe abre
-3. Campos do cadastro original (nome, código, custo médio, peso, descrição) são **somente leitura**
+3. **Nome**, **peso líquido (kg)** e **descrição** são editáveis por quem tem permissão de editar produtos (`produtos.edit`). O **código** continua travado (protege a NF de devolução de notas antigas). O custo médio segue somente leitura
+   - **Renomear** muda o nome em pedidos antigos, relatórios, catálogo e nas próximas NF-e, mas NÃO nas notas já emitidas, em catálogos personalizados já enviados, nas etiquetas nem no site (que têm nomes próprios). O nome precisa ser único (sem diferenciar maiúsculas) e ter até 120 caracteres (limite da nota fiscal). A troca fica registrada no histórico (quem, de quê, para quê) e o item do PCP vinculado acompanha o nome.
 4. Campos editáveis no app: **valor de venda**, **categoria**, **status (ativo/inativo)**, **unidade de medida**, **custo manual**, **qtd. por caixa**, **EAN**, **NCM** (09/2026), categoria comercial, produto substituto, prioridade de recomendação, permitir sugestão e imagens
 5. Clique em **Salvar** (botão da seção roxa "Inteligência Comercial") para gravar as alterações — exceto o ativar/inativar, que salva na hora ao confirmar
 
@@ -127,7 +128,7 @@ O servidor recusa essas gravações de qualquer forma (erro 403 "Sem permissão 
 
 - **Catálogo** — os produtos ativos aparecem no catálogo de vendas
 - **Pedidos** — produtos cadastrados aqui são usados nos pedidos
-- **Conta Azul** — códigos e dados fiscais vêm da sincronização com o CA
+- **Conta Azul** — o código e os dados fiscais de origem vieram do CA; nome, peso e descrição agora são editados no app e o sync do CA não os sobrescreve mais
 - **Config: Categorias de Produto** — as categorias comerciais usadas para filtrar no catálogo
 - **PCP** — os produtos de tipo PA (produto acabado) são gerenciados nas receitas do PCP
 - **Estoque** — o controle de estoque por categoria afeta quais produtos têm saldo gerenciado

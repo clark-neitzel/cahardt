@@ -1593,7 +1593,7 @@ const NovoPedido = () => {
                                 )}
                                 {/* Peso */}
                                 {produto.pesoLiquido > 0 && (
-                                    <span className="text-[10px] sm:text-xs text-gray-400 font-medium">{Number(produto.pesoLiquido).toFixed(0)}g</span>
+                                    <span className="text-[10px] sm:text-xs text-gray-400 font-medium">{Number(produto.pesoLiquido) < 1 ? `${Math.round(Number(produto.pesoLiquido) * 1000)}g` : `${Number(produto.pesoLiquido).toLocaleString('pt-BR', { maximumFractionDigits: 3 })}kg`}</span>
                                 )}
                                 {/* Estoque */}
                                 <span className={`text-[10px] sm:text-xs font-semibold ${Number(produto.estoqueDisponivel) > 0 ? 'text-green-600' : 'text-red-500'}`}>

@@ -440,11 +440,11 @@ const contaAzulService = {
                     contaAzulUpdatedAt: itemList.ultima_atualizacao ? new Date(itemList.ultima_atualizacao) : null
                 };
 
-                const produtoSalvo = await prisma.produto.upsert({
+                await prisma.produto.upsert({
                     where: { contaAzulId: p.id },
                     update: {
-                        nome: dadosProduto.nome,
-                        codigo: dadosProduto.codigo,
+                        // nome, codigo, descricao e pesoLiquido NÃO são atualizados do CA desde
+                        // 10/2026 — o app é a fonte (editáveis na tela de Produtos); só no create.
                         // Preço gerenciado pelo app (alguém editou o preço na tela de Produtos,
                         // ou o produto nasceu aqui): o CA não manda mais no valorVenda. Sem isto,
                         // o preço digitado voltava sozinho no próximo ciclo do sync, em silêncio.
@@ -454,26 +454,13 @@ const contaAzulService = {
                         ncm: dadosProduto.ncm,
                         // categoria, status e ativo NÃO são atualizados do CA desde 08/2026 —
                         // o cadastro de produtos é do app (categoria e ativar/inativar na tela de Produtos)
-                        descricao: dadosProduto.descricao,
                         // Custo zerado no app: o dono descartou o custo do CA — nunca mais sobrescrever
                         ...(produtoLocal?.custoCaZerado ? {} : { custoMedio: dadosProduto.custoMedio }),
-                        pesoLiquido: dadosProduto.pesoLiquido,
                         contaAzulUpdatedAt: dadosProduto.contaAzulUpdatedAt,
                         updatedAt: new Date()
                     },
                     create: { ...dadosProduto }
                 });
-
-                // Espelha o nome no item do PCP (usado nas receitas), se houver vínculo.
-                // Só roda para produtos que mudaram (este bloco só executa quando needsUpdate).
-                try {
-                    await prisma.itemPcp.updateMany({
-                        where: { produtoId: produtoSalvo.id, nome: { not: dadosProduto.nome } },
-                        data: { nome: dadosProduto.nome }
-                    });
-                } catch (e) {
-                    console.error('   ⚠️ Falha ao espelhar nome no ItemPcp:', e.message);
-                }
 
                 if (isNew) {
                     countNew++;
@@ -1899,8 +1886,7 @@ const contaAzulService = {
                     ? {}
                     : { valorVenda: parseFloat(estoqueObj.valor_venda ?? p.value ?? p.valor_venda ?? 0) || undefined }),
                 // unidade NÃO é sincronizada do CA — é editável no app e não deve ser sobrescrita
-                status: p.status,
-                ativo: p.status === 'ACTIVE' || p.status === 'ativo' || p.status === 'ATIVO',
+                // status e ativo NÃO vêm do CA desde 08/2026 (ativar/inativar é do app)
                 contaAzulUpdatedAt: new Date(),
                 updatedAt: new Date()
             }

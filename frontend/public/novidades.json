@@ -1,5 +1,11 @@
 [
   {
+    "slug": "editar-produto",
+    "titulo": "Editar nome do produto",
+    "resumo": "Em Produtos, o nome, o peso (kg) e a descrição agora são editáveis direto no app (quem tem permissão de editar produtos). Nome obrigatório, até 120 caracteres e sem repetir outro produto. O nome novo vale para pedidos, relatórios, catálogo e próximas notas; notas já emitidas, etiqueta e site não mudam. A troca fica no histórico.",
+    "data": "2026-10-06"
+  },
+  {
     "slug": "caixa-pilulas",
     "titulo": "Pílulas do Caixa Diário",
     "resumo": "No Caixa Diário, a barra do topo ganhou setas ‹ › + Hoje + calendário (e teclado ← → no computador) para pular de dia, e uma faixa de pílulas coloridas com cada vendedor que teve caixa no dia — um toque na pílula troca o caixa mostrado, sem abrir seletor. \"+ outros\" abre a lista completa para quem pode ver outros caixas, e um aviso amarelo avisa quando sobrou caixa de outro dia esperando conferência. Por trás, o caixa que não teve NENHUM movimento no dia (sem entrega, despesa, adiantamento, cobrança ou baixa de título) não entra mais na fila de conferência e fecha direto, mesmo com a conferência do dinheiro ligada.",

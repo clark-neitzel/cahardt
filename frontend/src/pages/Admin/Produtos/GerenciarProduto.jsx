@@ -781,7 +781,7 @@ const GerenciarProduto = () => {
                     categoria: data.categoria || '',
                     ean: data.ean || '',
                     ncm: data.ncm || '',
-                    pesoLiquido: data.pesoLiquido || '',
+                    pesoLiquido: (data.pesoLiquido != null && data.pesoLiquido !== '' && Number.isFinite(Number(data.pesoLiquido))) ? String(Number(data.pesoLiquido)).replace('.', ',') : '',
                     descricao: data.descricao || '',
                     contaAzulUpdatedAt: data.contaAzulUpdatedAt || '',
                     ativo: data.ativo,
@@ -877,7 +877,33 @@ const GerenciarProduto = () => {
                 setSalvandoComercial(false);
                 return;
             }
+            const nomeLimpo = String(formData.nome ?? '').trim();
+            if (!nomeLimpo) {
+                toast.error('Informe o nome do produto.');
+                setSalvandoComercial(false);
+                return;
+            }
+            if (nomeLimpo.length > 120) {
+                toast.error('O nome pode ter no máximo 120 caracteres (limite da nota fiscal).');
+                setSalvandoComercial(false);
+                return;
+            }
+            // Peso em KG (o banco guarda em kg). Vazio = sem peso.
+            const pesoTexto = String(formData.pesoLiquido ?? '').trim().replace(',', '.');
+            let pesoNum = null;
+            if (pesoTexto !== '') {
+                pesoNum = Number(pesoTexto);
+                if (!/^\d+(\.\d+)?$/.test(pesoTexto) || !Number.isFinite(pesoNum) || pesoNum < 0) {
+                    toast.error('Peso inválido. Informe em kg, com número positivo (ex.: 0,5).');
+                    setSalvandoComercial(false);
+                    return;
+                }
+            }
+            const descricaoLimpa = String(formData.descricao ?? '').trim();
             const salvo = await produtoService.atualizar(id, {
+                nome: nomeLimpo,
+                pesoLiquido: pesoNum,
+                descricao: descricaoLimpa === '' ? null : descricaoLimpa,
                 valorVenda: precoNum.toFixed(2),
                 unidade: unidadeLimpa,
                 categoria: (formData.categoria || '').trim() || null,
@@ -1201,21 +1227,38 @@ const GerenciarProduto = () => {
                           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>
                         </span>
                         <span className="font-extrabold" style={{ fontSize: 15, color: '#16192B' }}>Dados do Produto</span>
-                        <span className="ml-auto inline-flex items-center gap-1 font-bold rounded-full" style={{ fontSize: 10.5, color: '#2563EB', background: '#EFF4FF', padding: '4px 9px' }}>
-                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>CONTA AZUL
-                        </span>
                       </div>
-                      {[
-                        { k: 'Nome', v: formData.nome },
-                        { k: 'Código', v: formData.codigo, mono: true },
-                        { k: 'Peso', v: `${formData.pesoLiquido||'0'} kg`, mono: true },
-                        ...(formData.contaAzulUpdatedAt ? [{ k: 'Atualizado', v: new Date(formData.contaAzulUpdatedAt).toLocaleDateString('pt-BR'), mono: true }] : []),
-                      ].map((row, i, arr) => (
-                        <div key={row.k} className="flex items-center justify-between py-2.5 gap-3" style={{ borderBottom: '1px solid #F2F3F8' }}>
-                          <span className="text-sm" style={{ color: '#8A90A2' }}>{row.k}</span>
-                          <span className={`text-sm font-semibold text-right ${row.mono?'font-mono':''}`} style={{ color: '#16192B' }}>{row.v}</span>
-                        </div>
-                      ))}
+                      <div className="py-2.5" style={{ borderBottom: '1px solid #F2F3F8' }}>
+                        <span className="text-sm block mb-1" style={{ color: '#8A90A2' }}>Nome</span>
+                        {podeEditar ? (
+                          <>
+                            <input value={formData.nome} maxLength={120} onChange={e => setFormData(prev => ({ ...prev, nome: e.target.value }))}
+                              placeholder="Nome do produto" className="w-full text-sm font-semibold border border-gray-300 rounded px-2 py-2 min-h-[44px] focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
+                            <div className="flex justify-between gap-2 mt-1 text-xs text-gray-500">
+                              <span>O nome novo vale para pedidos, relatórios, catálogo e próximas notas. Etiqueta e site têm nome próprio.</span><span className="flex-shrink-0">{String(formData.nome || '').length}/120</span>
+                            </div>
+                          </>
+                        ) : <span className="text-sm font-semibold" style={{ color: '#16192B' }}>{formData.nome}</span>}
+                      </div>
+                      <div className="flex items-center justify-between py-2.5 gap-3" style={{ borderBottom: '1px solid #F2F3F8' }}>
+                        <span className="text-sm" style={{ color: '#8A90A2' }}>Código</span>
+                        <span className="text-sm font-semibold text-right font-mono" style={{ color: '#16192B' }}>{formData.codigo}</span>
+                      </div>
+                      <div className="flex items-center justify-between py-2.5 gap-3" style={{ borderBottom: '1px solid #F2F3F8' }}>
+                        <span className="text-sm" style={{ color: '#8A90A2' }}>Peso</span>
+                        {podeEditar ? (
+                          <span className="inline-flex items-center gap-1.5">
+                            <input value={formData.pesoLiquido} inputMode="decimal" onChange={e => setFormData(prev => ({ ...prev, pesoLiquido: e.target.value }))}
+                              placeholder="0,000" className="text-sm font-semibold font-mono text-right border border-gray-300 rounded px-2 py-2 min-h-[44px] w-28 focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
+                            <span className="text-sm text-gray-500">kg</span>
+                          </span>
+                        ) : <span className="text-sm font-semibold font-mono text-right" style={{ color: '#16192B' }}>{formData.pesoLiquido || '0'} kg</span>}
+                      </div>
+                      <div className="py-2.5" style={{ borderBottom: '1px solid #F2F3F8' }}>
+                        <span className="text-sm block mb-1" style={{ color: '#8A90A2' }}>Descrição / Obs.</span>
+                        <textarea value={formData.descricao} rows={3} disabled={!podeEditar} onChange={e => setFormData(prev => ({ ...prev, descricao: e.target.value }))}
+                          placeholder="Descrição ou observações do produto" className="w-full text-sm border border-gray-300 rounded px-2 py-2 disabled:bg-gray-50 disabled:text-gray-600 focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
+                      </div>
                       {/* EAN e NCM — antes travados, agora editáveis (vêm da nota quando o produto nasce da conferência) */}
                       <div className="flex items-center justify-between py-2.5 gap-3" style={{ borderBottom: '1px solid #F2F3F8' }}>
                         <span className="text-sm" style={{ color: '#8A90A2' }}>EAN</span>
@@ -1263,7 +1306,7 @@ const GerenciarProduto = () => {
                         {podeEditar && <div className="mt-1 text-xs" style={{ color: '#9AA0B4' }}>Agrupa estoque, relatórios e flex. Salve para confirmar.</div>}
                       </div>
                       <div className="flex items-center gap-2 mt-3 pt-3" style={{ borderTop: '1px dashed #EEF0F7', color: '#9AA0B4', fontSize: 11.5 }}>
-                        <AlertCircle className="h-3.5 w-3.5 flex-shrink-0"/>Nome, código e peso vêm do cadastro original — somente leitura. EAN e NCM são editáveis.
+                        <AlertCircle className="h-3.5 w-3.5 flex-shrink-0"/>O código é somente leitura. Nome, peso, descrição, EAN e NCM são editáveis.
                       </div>
                     </div>
                   </div>
@@ -1513,15 +1556,19 @@ const GerenciarProduto = () => {
                                                 <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5" /></svg>
                                             </span>
                                             <span className="font-extrabold" style={{ fontSize: 15, color: '#16192B' }}>Dados do Produto</span>
-                                            <span className="ml-auto inline-flex items-center gap-1 font-bold rounded-full" style={{ fontSize: 10.5, color: '#2563EB', background: '#EFF4FF', padding: '4px 9px' }}>
-                                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
-                                                CONTA AZUL
-                                            </span>
                                         </div>
                                         <div className="grid gap-4" style={{ gridTemplateColumns: '1fr 1fr' }}>
                                             <div style={{ gridColumn: 'span 2' }}>
                                                 <div className="font-bold tracking-[.05em] uppercase mb-1" style={{ fontSize: 10.5, color: '#9AA0B4' }}>Nome</div>
-                                                <div className="font-bold" style={{ fontSize: 14, color: '#16192B' }}>{formData.nome}</div>
+                                                {podeEditar ? (
+                                                    <>
+                                                        <input value={formData.nome} maxLength={120} onChange={e => setFormData(prev => ({ ...prev, nome: e.target.value }))}
+                                                            placeholder="Nome do produto" className="w-full font-bold border border-gray-300 rounded px-2 py-1.5 focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" style={{ fontSize: 14, color: '#16192B' }} />
+                                                        <div className="flex justify-between gap-2 mt-1 text-xs text-gray-500">
+                                                            <span>O nome novo vale para pedidos, relatórios, catálogo e próximas notas. Etiqueta e site têm nome próprio.</span><span className="flex-shrink-0">{String(formData.nome || '').length}/120</span>
+                                                        </div>
+                                                    </>
+                                                ) : <div className="font-bold" style={{ fontSize: 14, color: '#16192B' }}>{formData.nome}</div>}
                                             </div>
                                             <div style={{ gridColumn: 'span 2' }}>
                                                 <div className="font-bold tracking-[.05em] uppercase mb-1" style={{ fontSize: 10.5, color: '#9AA0B4' }}>EAN</div>
@@ -1543,7 +1590,13 @@ const GerenciarProduto = () => {
                                             </div>
                                             <div>
                                                 <div className="font-bold tracking-[.05em] uppercase mb-1" style={{ fontSize: 10.5, color: '#9AA0B4' }}>Peso</div>
-                                                <div className="font-semibold font-mono" style={{ fontSize: 14, color: '#16192B' }}>{formData.pesoLiquido || '0'} <span className="font-sans" style={{ fontSize: 11, color: '#9AA0B4' }}>kg</span></div>
+                                                {podeEditar ? (
+                                                    <div className="flex items-center gap-1.5">
+                                                        <input value={formData.pesoLiquido} inputMode="decimal" onChange={e => setFormData(prev => ({ ...prev, pesoLiquido: e.target.value }))}
+                                                            placeholder="0,000" className="w-full min-w-0 font-semibold font-mono border border-gray-300 rounded px-2 py-1.5 focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" style={{ fontSize: 14, color: '#16192B' }} />
+                                                        <span className="text-sm text-gray-500">kg</span>
+                                                    </div>
+                                                ) : <div className="font-semibold font-mono" style={{ fontSize: 14, color: '#16192B' }}>{formData.pesoLiquido || '0'} <span className="font-sans" style={{ fontSize: 11, color: '#9AA0B4' }}>kg</span></div>}
                                             </div>
                                             <div style={{ gridColumn: 'span 2' }}>
                                                 <div className="flex items-center mb-1">
@@ -1564,16 +1617,15 @@ const GerenciarProduto = () => {
                                                 )}
                                                 {podeEditar && <div className="mt-1 text-xs" style={{ color: '#9AA0B4' }}>Agrupa estoque, relatórios e flex. Salve para confirmar.</div>}
                                             </div>
-                                            {formData.contaAzulUpdatedAt && (
-                                                <div style={{ gridColumn: 'span 2' }}>
-                                                    <div className="font-bold tracking-[.05em] uppercase mb-1" style={{ fontSize: 10.5, color: '#9AA0B4' }}>Atualizado</div>
-                                                    <div className="font-semibold font-mono" style={{ fontSize: 14, color: '#16192B' }}>{new Date(formData.contaAzulUpdatedAt).toLocaleDateString('pt-BR')}</div>
-                                                </div>
-                                            )}
+                                            <div style={{ gridColumn: 'span 2' }}>
+                                                <div className="font-bold tracking-[.05em] uppercase mb-1" style={{ fontSize: 10.5, color: '#9AA0B4' }}>Descrição / Obs.</div>
+                                                <textarea value={formData.descricao} rows={3} disabled={!podeEditar} onChange={e => setFormData(prev => ({ ...prev, descricao: e.target.value }))}
+                                                    placeholder="Descrição ou observações do produto" className="w-full border border-gray-300 rounded px-2 py-1.5 disabled:bg-gray-50 disabled:text-gray-600 focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" style={{ fontSize: 14, color: '#16192B' }} />
+                                            </div>
                                         </div>
                                         <div className="flex items-center gap-2 mt-3 pt-3" style={{ borderTop: '1px dashed #EEF0F7', color: '#9AA0B4', fontSize: 11.5 }}>
                                             <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
-                                            Nome, código e peso vêm do cadastro original — somente leitura. EAN e NCM são editáveis.
+                                            O código é somente leitura. Nome, peso, descrição, EAN e NCM são editáveis.
                                         </div>
                                         {(produto?.notaOrigem || produto?.nomeOrigemNota) && (
                                             <div className="flex items-start gap-1.5 mt-2 pt-2 text-xs" style={{ borderTop: '1px dashed #EEF0F7', color: '#6B7280' }}>
