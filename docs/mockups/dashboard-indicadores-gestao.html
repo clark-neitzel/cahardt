@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Indicadores de Gestão — Proposta de Dashboard CA-Hardt</title>
+<meta name="description" content="Proposta de dashboard de indicadores (CPV, CMV, margem, markup, ponto de equilíbrio e custo dos insumos) para o dono e a gerente de produção da Hardt.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --primary:#00754A; --primary-dark:#006241; --house:#1E3932; --mint:#d4e9e2; --cream:#f2f0eb; --gold:#cba258;
+  --ink:rgba(0,0,0,.87); --ink-2:#3d4744; --ink-soft:#5f6b66; --line:#e3e0d8; --line-2:#eceae4; --surface:#fff;
+  --red:#b91c1c; --red-bg:#fee2e2; --amber:#b45309; --amber-bg:#fef3c7; --green:#166534; --green-bg:#dcfce7;
+  --gray:#374151; --gray-bg:#f3f4f6; --blue:#1d4ed8; --blue-bg:#dbeafe; --purple:#6d28d9; --purple-bg:#ede9fe;
+  --s1:#00754A; --s2:#cba258; --s3:#2a78d6; --s4:#e34948; --ded:#b8b2a6;
+  --shadow-sm:0 1px 2px rgba(20,40,34,.06); --shadow:0 8px 24px rgba(20,40,34,.10);
+}
+*{box-sizing:border-box} html{scroll-behavior:smooth}
+body{margin:0;background:var(--cream);color:var(--ink);font-family:Manrope,-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.5;letter-spacing:-.01em;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;overflow-x:hidden}
+h1,h2,h3,h4{margin:0;line-height:1.2} p{margin:0 0 10px} strong{font-weight:700}
+.wrap{max-width:1180px;margin:0 auto;padding:0 16px 80px}
+/* hero */
+.hero{background:linear-gradient(168deg,var(--house) 0%,#16302a 100%);color:#fff;padding:36px 16px 44px}
+.hero-inner{max-width:1180px;margin:0 auto}
+.eyebrow{display:inline-block;background:var(--gold);color:#2b230f;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.14em;padding:6px 14px;border-radius:999px;margin-bottom:14px}
+.hero h1{font-size:clamp(26px,5vw,40px);font-weight:800;margin-bottom:10px}
+.hero p{color:rgba(255,255,255,.78);font-size:16px;max-width:66ch}
+.hero .aviso{display:inline-flex;gap:8px;align-items:center;margin-top:14px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);border-radius:12px;padding:8px 12px;font-size:13px;color:rgba(255,255,255,.85)}
+/* seções */
+.secao{margin-top:36px} .secao>h2{font-size:22px;font-weight:800;color:var(--house);margin-bottom:6px}
+.secao>.sub{color:var(--ink-soft);font-size:15px;margin-bottom:16px;max-width:76ch}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700;background:var(--mint);color:var(--primary-dark);white-space:nowrap}
+.chip.p{background:var(--green-bg);color:var(--green)} .chip.m{background:var(--amber-bg);color:var(--amber)} .chip.g{background:var(--red-bg);color:var(--red)} .chip.cinza{background:var(--gray-bg);color:var(--gray)} .chip.roxo{background:var(--purple-bg);color:var(--purple)} .chip.azul{background:var(--blue-bg);color:var(--blue)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow-sm);padding:18px}
+.card h3{font-size:16px;font-weight:800;margin-bottom:6px}
+.grid-2{display:grid;grid-template-columns:1fr;gap:14px} .grid-3{display:grid;grid-template-columns:1fr;gap:14px}
+@media(min-width:760px){.grid-2{grid-template-columns:1fr 1fr}.grid-3{grid-template-columns:1fr 1fr 1fr}}
+
+/* ===== MOCK DO APP ===== */
+.app{background:var(--cream);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);overflow:hidden;margin-top:14px}
+.app-top{background:#fff;border-bottom:1px solid var(--line);padding:12px 16px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:5}
+.app-top .titulo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:17px;color:var(--ink)}
+.app-top .titulo .ico{background:#fef3c7;color:#b45309;width:34px;height:34px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;font-size:16px}
+.ctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.pill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 12px;font-size:13px;font-weight:700;color:var(--ink-2);min-height:38px}
+.pill .seta{color:var(--ink-soft);padding:0 2px;cursor:default}
+.seg{display:inline-flex;background:var(--gray-bg);border-radius:999px;padding:3px}
+.seg button{border:0;background:transparent;border-radius:999px;padding:6px 14px;font:inherit;font-size:13px;font-weight:700;color:var(--ink-soft);cursor:pointer;min-height:32px}
+.seg button.on{background:var(--primary);color:#fff}
+.app-body{padding:14px}
+@media(min-width:760px){.app-body{padding:18px}}
+.linha{display:grid;gap:12px;margin-bottom:14px}
+.linha.kpis{grid-template-columns:1fr 1fr}
+@media(min-width:900px){.linha.kpis{grid-template-columns:repeat(4,1fr)}}
+.linha.dois{grid-template-columns:1fr} @media(min-width:900px){.linha.dois{grid-template-columns:3fr 2fr}}
+.linha.dois-iguais{grid-template-columns:1fr} @media(min-width:900px){.linha.dois-iguais{grid-template-columns:1fr 1fr}}
+.bloco{background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow-sm);min-width:0;display:flex;flex-direction:column}
+.bloco-h{display:flex;align-items:center;gap:8px;padding:11px 16px;border-bottom:1px solid var(--line-2);flex-wrap:wrap}
+.bloco-h .t{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:var(--ink-soft)}
+.bloco-h .dir{margin-left:auto;display:flex;gap:6px;align-items:center}
+.bloco-c{padding:14px 16px;flex:1}
+/* KPI tile */
+.kpi{padding:14px 16px}
+.kpi .rot{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-soft);display:flex;align-items:center;gap:6px}
+.kpi .val{font-size:26px;font-weight:800;color:var(--ink);margin-top:4px;line-height:1.1}
+.kpi .val small{font-size:14px;font-weight:700;color:var(--ink-soft);margin-left:4px}
+.kpi .delta{font-size:12px;font-weight:700;margin-top:4px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.kpi .delta .vs{color:var(--ink-soft);font-weight:600}
+.kpi svg{display:block;width:100%;height:34px;margin-top:8px}
+.st{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:800;border-radius:999px;padding:2px 8px}
+.st::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.st.ok{background:var(--green-bg);color:var(--green)} .st.at{background:var(--amber-bg);color:var(--amber)} .st.ru{background:var(--red-bg);color:var(--red)} .st.ne{background:var(--gray-bg);color:var(--gray)}
+.up{color:var(--green)} .down{color:var(--red)} .flat{color:var(--ink-soft)}
+/* tabelas */
+.tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{border-collapse:collapse;width:100%;font-size:13px;min-width:640px}
+th{text-align:left;font-size:11px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.06em;padding:8px 10px;border-bottom:1px solid var(--line);background:#fafaf8;white-space:nowrap}
+td{padding:9px 10px;border-bottom:1px solid var(--line-2);vertical-align:middle}
+td.n,th.n{text-align:right} tr:hover td{background:#fbfaf7}
+td .sub{display:block;font-size:11px;color:var(--ink-soft);font-weight:600}
+.bar{height:6px;background:var(--line-2);border-radius:4px;overflow:hidden;min-width:60px}
+.bar i{display:block;height:100%;background:var(--primary);border-radius:4px}
+/* gráficos */
+.graf{position:relative;width:100%}
+.graf svg{display:block;width:100%;height:auto;overflow:visible}
+.legenda{display:flex;flex-wrap:wrap;gap:10px 16px;font-size:12px;font-weight:700;color:var(--ink-2);margin-top:8px}
+.legenda span{display:inline-flex;align-items:center;gap:6px}
+.legenda i{width:14px;height:3px;border-radius:2px;display:inline-block}
+.legenda i.q{width:12px;height:12px;border-radius:3px}
+#tip{position:fixed;z-index:99;pointer-events:none;background:#1E3932;color:#fff;font-size:12px;font-weight:600;border-radius:10px;padding:8px 10px;box-shadow:var(--shadow);display:none;max-width:260px;line-height:1.35}
+#tip b{color:var(--gold)}
+/* alertas */
+.alertas{display:grid;gap:8px}
+.alerta{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:#fff}
+.alerta .ic{flex:0 0 28px;height:28px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-size:14px;font-weight:800}
+.alerta.ru .ic{background:var(--red-bg);color:var(--red)} .alerta.at .ic{background:var(--amber-bg);color:var(--amber)} .alerta.ok .ic{background:var(--green-bg);color:var(--green)} .alerta.ne .ic{background:var(--gray-bg);color:var(--gray)}
+.alerta b{display:block;font-size:13px} .alerta span{font-size:12px;color:var(--ink-soft)}
+.alerta .acao{margin-left:auto;align-self:center;white-space:nowrap;font-size:12px;font-weight:800;color:var(--primary-dark);border:1px solid var(--primary);border-radius:999px;padding:5px 10px}
+/* guia de leitura */
+.guia{display:grid;gap:10px}
+.guia .item{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:grid;grid-template-columns:1fr;gap:4px}
+@media(min-width:760px){.guia .item{grid-template-columns:200px 1fr 1fr}}
+.guia .item b{font-size:14px} .guia .item .como{font-size:13px;color:var(--ink-2)} .guia .item .ler{font-size:13px;color:var(--ink-soft)}
+.guia .item .ler::before{content:"Como ler: ";font-weight:800;color:var(--primary-dark)}
+.guia .item .como::before{content:"Conta: ";font-weight:800;color:var(--ink-soft)}
+/* lista do que falta */
+.falta{list-style:none;padding:0;margin:0;display:grid;gap:8px}
+.falta li{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap}
+.falta li .num{flex:0 0 26px;height:26px;border-radius:999px;background:var(--house);color:#fff;font-weight:800;display:inline-flex;align-items:center;justify-content:center;font-size:12px}
+.falta li .tx{flex:1;min-width:220px} .falta li .tx b{display:block;font-size:14px} .falta li .tx span{font-size:13px;color:var(--ink-soft)}
+.falta li .tags{display:flex;gap:6px;flex-wrap:wrap;align-self:center}
+.visao-nota{font-size:12px;color:var(--ink-soft);background:var(--mint);border-radius:10px;padding:8px 12px;margin-bottom:12px;display:none}
+[data-visao="producao"] .so-dono{display:none} [data-visao="producao"] .visao-nota{display:block}
+.rodape{margin-top:40px;font-size:13px;color:var(--ink-soft);text-align:center}
+</style>
+</head>
+<body>
+<div id="tip"></div>
+
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">Proposta · Dashboard de Indicadores</span>
+    <h1>Os indicadores da Hardt na palma da mão</h1>
+    <p>Uma tela só que responde, num olhar, três perguntas: <strong>estamos ganhando dinheiro?</strong>, <strong>o custo está subindo?</strong> e <strong>onde agir primeiro?</strong>
+      O dono vê o resultado. A gerente de produção vê a mesma tela, com o foco nos custos dos insumos e dos produtos — toda entrada de mercadoria da semana aparece ali, com o efeito no custo de cada produto.</p>
+    <div class="aviso">⚠️ Todos os números abaixo são <strong>&nbsp;exemplo&nbsp;</strong> para mostrar o desenho. Nada vem do banco ainda.</div>
+  </div>
+</header>
+
+<div class="wrap">
+
+<!-- ================= O MOCK DA TELA ================= -->
+<section class="secao" id="tela">
+  <h2>Como ficaria a tela</h2>
+  <p class="sub">Troque entre a visão do <strong>Dono</strong> e a da <strong>Gerente de produção</strong> no botão do topo. Passe o mouse (ou toque) nos gráficos: tudo tem detalhe. O período usa o mesmo filtro em pílula do app.</p>
+
+  <div class="app" id="app" data-visao="dono">
+    <div class="app-top">
+      <div class="titulo"><span class="ico">📊</span> Indicadores de Gestão</div>
+      <div class="ctl">
+        <div class="pill"><span class="seta">‹</span> Setembro · 01/09 – 30/09 ▾ <span class="seta">›</span></div>
+        <div class="pill">Comparar: mês anterior ▾</div>
+        <div class="seg" id="segVisao">
+          <button class="on" data-v="dono">Dono</button>
+          <button data-v="producao">Gerente de produção</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="app-body">
+      <div class="visao-nota">👩‍🏭 Visão da gerente de produção: os blocos de resultado financeiro e clientes ficam escondidos. Ela vê custo dos insumos, custo dos produtos, produção e alertas — tudo que depende dela.</div>
+
+      <!-- LINHA 1: semáforo -->
+      <div class="linha kpis">
+        <div class="bloco kpi so-dono">
+          <div class="rot">Receita líquida <span class="st ok">no alvo</span></div>
+          <div class="val">R$ 379,3 mil</div>
+          <div class="delta"><span class="up">▲ 4,8%</span><span class="vs">vs agosto · R$ 362,0 mil</span></div>
+          <svg data-spark="352,340,358,362,371,379"></svg>
+        </div>
+        <div class="bloco kpi">
+          <div class="rot">Margem de contribuição <span class="st at">atenção</span></div>
+          <div class="val">33,0<small>%</small></div>
+          <div class="delta"><span class="down">▼ 1,6 pt</span><span class="vs">R$ 125,1 mil · agosto 34,6%</span></div>
+          <svg data-spark="35.2,35.0,34.8,34.9,34.6,33.0"></svg>
+        </div>
+        <div class="bloco kpi so-dono">
+          <div class="rot">Resultado operacional <span class="st at">atenção</span></div>
+          <div class="val">8,5<small>%</small></div>
+          <div class="delta"><span class="down">▼ 1,2 pt</span><span class="vs">R$ 32,3 mil · agosto 9,7%</span></div>
+          <svg data-spark="9.1,8.8,9.4,9.9,9.7,8.5"></svg>
+        </div>
+        <div class="bloco kpi">
+          <div class="rot">Custo médio dos insumos <span class="st ru">subindo</span></div>
+          <div class="val">+6,4<small>% em 8 sem.</small></div>
+          <div class="delta"><span class="down">frango +14% · óleo +13%</span></div>
+          <svg data-spark="100,100,101.5,102,103.4,104.6,106.2,106.4"></svg>
+        </div>
+      </div>
+
+      <!-- LINHA 2: cascata + meta -->
+      <div class="linha dois so-dono">
+        <div class="bloco">
+          <div class="bloco-h"><span class="t">Custos e resultado — de onde o dinheiro vem e para onde vai</span><div class="dir"><span class="chip cinza">R$ mil</span></div></div>
+          <div class="bloco-c"><div class="graf" id="cascata"></div>
+            <div class="legenda"><span><i class="q" style="background:var(--s1)"></i>Totais</span><span><i class="q" style="background:var(--ded)"></i>Deduções</span><span><i class="q" style="background:var(--gold)"></i>Resultado</span></div>
+          </div>
+        </div>
+        <div class="bloco">
+          <div class="bloco-h"><span class="t">Meta do mês — outubro até hoje (06/10)</span></div>
+          <div class="bloco-c">
+            <div class="graf" id="equilibrio"></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;font-size:13px">
+              <div><div style="font-size:11px;font-weight:800;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.08em">Ponto de equilíbrio</div><div style="font-size:20px;font-weight:800">R$ 281,2 mil</div><div style="font-size:12px;color:var(--ink-soft)">fixos R$ 92,8 mil ÷ MC 33,0%</div></div>
+              <div><div style="font-size:11px;font-weight:800;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.08em">Margem de segurança</div><div style="font-size:20px;font-weight:800">25,9% <span class="st ok">set/26</span></div><div style="font-size:12px;color:var(--ink-soft)">as vendas podem cair até 25,9% antes do prejuízo</div></div>
+              <div><div style="font-size:11px;font-weight:800;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.08em">Acumulado out.</div><div style="font-size:20px;font-weight:800">R$ 71,4 mil</div><div style="font-size:12px;color:var(--ink-soft)">4 dias úteis</div></div>
+              <div><div style="font-size:11px;font-weight:800;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.08em">Projeção fechamento</div><div style="font-size:20px;font-weight:800">R$ 372 mil <span class="st at">projeção</span></div><div style="font-size:12px;color:var(--ink-soft)">ritmo atual × dias úteis restantes</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- LINHA 3: insumos (gerente) -->
+      <div class="linha dois">
+        <div class="bloco">
+          <div class="bloco-h"><span class="t">Evolução do custo dos insumos — últimas 8 semanas</span><div class="dir"><span class="chip">base 100 = sem. 1</span><span class="chip cinza">R$/kg no detalhe</span></div></div>
+          <div class="bloco-c">
+            <div class="graf" id="insumos"></div>
+            <div class="legenda" id="legInsumos"></div>
+          </div>
+        </div>
+        <div class="bloco">
+          <div class="bloco-h"><span class="t">Entradas desta semana</span><div class="dir"><span class="chip azul">3 notas conferidas</span></div></div>
+          <div class="bloco-c" style="padding:0">
+            <div class="tbl-wrap"><table style="min-width:420px">
+              <thead><tr><th>Insumo</th><th class="n">Pago</th><th class="n">Anterior</th><th class="n">Variação</th></tr></thead>
+              <tbody>
+                <tr><td>Peito de frango<span class="sub">Frigorífico Aurora · 02/10 · 480 kg</span></td><td class="n"><b>11,20</b>/kg</td><td class="n">10,90</td><td class="n down">▲ 2,8%</td></tr>
+                <tr><td>Óleo de soja<span class="sub">Atacadão · 01/10 · 20 lt</span></td><td class="n"><b>8,40</b>/lt</td><td class="n">7,90</td><td class="n down">▲ 6,3%</td></tr>
+                <tr><td>Farinha de trigo<span class="sub">Moinho Sul · 30/09 · 1.000 kg</span></td><td class="n"><b>2,95</b>/kg</td><td class="n">3,00</td><td class="n up">▼ 1,7%</td></tr>
+                <tr><td>Queijo mussarela<span class="sub">Laticínios Vale · 30/09 · 120 kg</span></td><td class="n"><b>34,80</b>/kg</td><td class="n">34,80</td><td class="n flat">= 0,0%</td></tr>
+                <tr><td>Embalagem 500 g<span class="sub">Plastpack · 29/09 · 5.000 un</span></td><td class="n"><b>0,42</b>/un</td><td class="n">0,42</td><td class="n flat">= 0,0%</td></tr>
+              </tbody>
+            </table></div>
+            <div style="padding:10px 16px;font-size:12px;color:var(--ink-soft);border-top:1px solid var(--line-2)">Efeito nas fichas técnicas: <b style="color:var(--red)">+R$ 0,31/un na coxinha</b>, +R$ 0,19 no kibe, +R$ 0,08 no risole. Ver tabela abaixo.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- LINHA 4: produtos -->
+      <div class="linha">
+        <div class="bloco">
+          <div class="bloco-h"><span class="t">Custo e margem por produto</span><div class="dir"><span class="chip cinza">custo-base = ficha técnica (insumos + embalagem)</span><span class="pill" style="min-height:30px;padding:4px 10px;font-size:12px">Ordenar: MC total ▾</span></div></div>
+          <div class="bloco-c" style="padding:0">
+            <div class="tbl-wrap"><table id="tabProdutos">
+              <thead><tr>
+                <th>Produto</th><th class="n">Qtde vendida</th><th class="n">Preço médio</th><th class="n">Custo ficha/un</th><th class="n">Δ custo 4 sem.</th><th class="n">Custo variável/un</th><th class="n">Markup</th><th class="n">MC/un</th><th class="n">MC %</th><th class="n">MC total</th><th>Situação</th>
+              </tr></thead>
+              <tbody></tbody>
+            </table></div>
+            <div style="padding:10px 16px;font-size:12px;color:var(--ink-soft);border-top:1px solid var(--line-2)"><b>MC total</b> diz quem mais paga a empresa; <b>MC %</b> diz a eficiência da venda. Produto com % menor pode ser o que mais contribui no mês porque vende muito. Itens de <span class="chip roxo" style="font-size:11px;padding:1px 8px">revenda</span> usam custo de compra (CMV), não ficha (CPV).</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- LINHA 5: produção + alertas -->
+      <div class="linha dois-iguais">
+        <div class="bloco">
+          <div class="bloco-h"><span class="t">Produção e estoque</span><div class="dir"><span class="chip m">parte a implementar</span></div></div>
+          <div class="bloco-c">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <div class="kpi" style="padding:0"><div class="rot">Perdas do mês</div><div class="val">R$ 4,1 mil<small>1,9% do CPV</small></div><div class="delta"><span class="st at">atenção</span><span class="vs">meta ≤ 1,5%</span></div></div>
+              <div class="kpi" style="padding:0"><div class="rot">Custo real × padrão</div><div class="val">+3,2<small>%</small></div><div class="delta"><span class="st at">atenção</span><span class="vs">ordens de setembro</span></div></div>
+              <div class="kpi" style="padding:0"><div class="rot">Rendimento do lote</div><div class="val">96,8<small>%</small></div><div class="delta"><span class="st ok">no alvo</span><span class="vs">ficha prevê 97%</span></div></div>
+              <div class="kpi" style="padding:0"><div class="rot">Dias de estoque (PA)</div><div class="val">11<small>dias</small></div><div class="delta"><span class="st ok">no alvo</span><span class="vs">insumos: 9 dias</span></div></div>
+            </div>
+            <div class="graf" id="perdas" style="margin-top:14px"></div>
+            <div class="legenda"><span><i style="background:var(--s1);height:10px;width:10px;border-radius:3px"></i>Perda % por semana</span><span><i style="background:var(--amber);height:2px"></i>Meta 1,5%</span></div>
+          </div>
+        </div>
+        <div class="bloco">
+          <div class="bloco-h"><span class="t">Onde agir primeiro</span><div class="dir"><span class="chip g">2 urgentes</span><span class="chip m">3 atenção</span></div></div>
+          <div class="bloco-c alertas">
+            <div class="alerta ru"><span class="ic">!</span><div><b>Coxinha de frango: custo subiu 9,2% em 3 semanas, preço não mudou</b><span>Markup caiu de 2,41× para 2,21×. MC/un de R$ 7,24 para R$ 6,71.</span></div><span class="acao">Revisar preço</span></div>
+            <div class="alerta ru"><span class="ic">!</span><div><b>Frango: 3 altas seguidas (+14% em 8 semanas)</b><span>É o insumo de maior peso no CPV (31%). Cotar com 2º fornecedor.</span></div><span class="acao">Ver compras</span></div>
+            <div class="alerta at"><span class="ic">△</span><div><b>Margem de contribuição abaixo da média dos últimos 3 meses</b><span>33,0% contra 34,9%. Causa: custo de insumos, não desconto.</span></div><span class="acao">Detalhar</span></div>
+            <div class="alerta at"><span class="ic">△</span><div><b>Pedidos do cliente Mercado Boa Vista: R$ 18,2 mil de receita e só 21% de MC</b><span>Desconto de 12% + frete de 3 entregas/semana.</span></div><span class="acao">Ver cliente</span></div>
+            <div class="alerta ne"><span class="ic">i</span><div><b>7 categorias de despesa sem natureza (fixa / variável)</b><span>Enquanto isso a MC e o ponto de equilíbrio ficam incompletos.</span></div><span class="acao">Classificar</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- LINHA 6: clientes -->
+      <div class="linha so-dono">
+        <div class="bloco">
+          <div class="bloco-h"><span class="t">Clientes e pedidos — quem vende muito e deixa pouco</span><div class="dir"><span class="chip cinza">top 6 por receita</span></div></div>
+          <div class="bloco-c" style="padding:0"><div class="tbl-wrap"><table>
+            <thead><tr><th>Cliente</th><th class="n">Receita</th><th class="n">Desconto médio</th><th class="n">Entregas</th><th class="n">Custo entrega</th><th class="n">MC %</th><th style="min-width:120px">MC total</th></tr></thead>
+            <tbody>
+              <tr><td>Supermercado Central</td><td class="n">R$ 41,8 mil</td><td class="n">5%</td><td class="n">8</td><td class="n">R$ 640</td><td class="n">36%</td><td><div class="bar"><i style="width:100%"></i></div><small>R$ 15,0 mil</small></td></tr>
+              <tr><td>Padaria Dona Rosa</td><td class="n">R$ 22,5 mil</td><td class="n">0%</td><td class="n">12</td><td class="n">R$ 960</td><td class="n">38%</td><td><div class="bar"><i style="width:57%"></i></div><small>R$ 8,6 mil</small></td></tr>
+              <tr><td>Mercado Boa Vista</td><td class="n">R$ 18,2 mil</td><td class="n">12%</td><td class="n">13</td><td class="n">R$ 1.040</td><td class="n" style="color:var(--red);font-weight:800">21%</td><td><div class="bar"><i style="width:25%;background:var(--amber)"></i></div><small>R$ 3,8 mil</small></td></tr>
+              <tr><td>Buffet Alegria</td><td class="n">R$ 16,9 mil</td><td class="n">3%</td><td class="n">4</td><td class="n">R$ 320</td><td class="n">40%</td><td><div class="bar"><i style="width:45%"></i></div><small>R$ 6,8 mil</small></td></tr>
+              <tr><td>Conveniência 24h Norte</td><td class="n">R$ 12,4 mil</td><td class="n">8%</td><td class="n">9</td><td class="n">R$ 720</td><td class="n">29%</td><td><div class="bar"><i style="width:24%"></i></div><small>R$ 3,6 mil</small></td></tr>
+              <tr><td>Lanchonete do Pedro</td><td class="n">R$ 9,1 mil</td><td class="n">0%</td><td class="n">5</td><td class="n">R$ 400</td><td class="n">37%</td><td><div class="bar"><i style="width:22%"></i></div><small>R$ 3,4 mil</small></td></tr>
+            </tbody>
+          </table></div></div>
+        </div>
+      </div>
+
+    </div><!-- app-body -->
+  </div><!-- app -->
+</section>
+
+<!-- ================= COMO LER ================= -->
+<section class="secao" id="ler">
+  <h2>Como ler cada número</h2>
+  <p class="sub">O mesmo texto vai para o balãozinho "?" ao lado de cada indicador na tela e para o manual do Clippy. Linguagem para quem não é contador.</p>
+  <div class="guia">
+    <div class="item"><b>Receita líquida</b><span class="como">pedidos faturados (+ especiais) − devoluções ativas − impostos sobre a venda</span><span class="ler">é o dinheiro que de fato sobra da venda para pagar tudo o mais. Toda porcentagem da tela é sobre ela.</span></div>
+    <div class="item"><b>CPV — custo dos produtos vendidos</b><span class="como">quantidade vendida × custo da ficha técnica na data da venda</span><span class="ler">quanto da receita foi "comido" pela fabricação do que vendemos. Produzir não é vender: o que está no estoque não entra.</span></div>
+    <div class="item"><b>CMV — custo das mercadorias vendidas</b><span class="como">quantidade vendida × custo de compra (só itens de revenda)</span><span class="ler">separado do CPV para não misturar o que fabricamos com o que compramos pronto.</span></div>
+    <div class="item"><b>Lucro bruto e margem bruta</b><span class="como">receita líquida − CPV − CMV; ÷ receita líquida</span><span class="ler">o que sobra depois do custo do produto, antes de comissão, frete, aluguel, salários.</span></div>
+    <div class="item"><b>Margem de contribuição (MC)</b><span class="como">receita − custos variáveis − despesas variáveis (comissão, frete, embalagem de entrega, taxa de boleto)</span><span class="ler">o principal número para decidir desconto, pedido, cliente e produto. Cada real de MC paga as despesas fixas; o que passar é lucro.</span></div>
+    <div class="item"><b>Markup praticado</b><span class="como">preço de venda ÷ custo da ficha</span><span class="ler">multiplicador sobre o custo. 2,0× = vende pelo dobro do custo = 50% sobre o preço. Markup e margem não são a mesma coisa.</span></div>
+    <div class="item"><b>Resultado e margem operacional</b><span class="como">MC − despesas fixas; ÷ receita líquida</span><span class="ler">se a operação dá resultado. Antes de juros e imposto sobre lucro.</span></div>
+    <div class="item"><b>Ponto de equilíbrio</b><span class="como">despesas fixas ÷ MC %</span><span class="ler">a receita mínima do mês para zerar. Abaixo disso é prejuízo. Muda sempre que o custo ou a despesa fixa mudam.</span></div>
+    <div class="item"><b>Margem de segurança</b><span class="como">(receita − equilíbrio) ÷ receita</span><span class="ler">quanto as vendas podem cair antes do prejuízo. Negativa = já está no prejuízo.</span></div>
+    <div class="item"><b>Custo real × padrão (produção)</b><span class="como">insumo consumido na ordem × custo ÷ quantidade produzida, comparado à ficha</span><span class="ler">a ficha diz o que deveria custar; a ordem diz o que custou. A diferença é perda, rendimento ou ficha desatualizada.</span></div>
+  </div>
+</section>
+
+<!-- ================= REGRAS ================= -->
+<section class="secao" id="regras">
+  <h2>Quatro regras para o número não enganar</h2>
+  <div class="grid-2">
+    <div class="card"><h3>1. Produzir não é vender</h3><p>O CPV usa a quantidade <strong>vendida</strong>, não a produzida. O custo do que ficou no freezer fica no estoque até sair.</p></div>
+    <div class="card"><h3>2. Não descontar duas vezes</h3><p>Imposto deduzido na receita líquida não aparece de novo como despesa. Comissão entra como despesa variável, uma vez só.</p></div>
+    <div class="card"><h3>3. Custo completo ≠ custo variável</h3><p>A ficha técnica (custo completo) serve para margem bruta e markup. A MC usa só o que varia com a venda. A tela mostra os dois lado a lado e diz qual está usando.</p></div>
+    <div class="card"><h3>4. Lucro não é caixa</h3><p>Parcela de empréstimo e compra de equipamento saem do caixa mas não entram no resultado; os juros entram. Isso continua no Fluxo de Caixa, não aqui.</p></div>
+  </div>
+  <div class="card" style="margin-top:14px"><h3>Metas da Hardt, não "média de mercado"</h3><p>Verde, amarelo e vermelho comparam com a <strong>meta cadastrada</strong> por indicador e com a <strong>média dos últimos 3 meses</strong>. Sem meta cadastrada, o indicador mostra só a tendência (seta), sem cor. Fábrica de congelados, distribuidora e restaurante têm estruturas diferentes; um "CMV ideal" genérico só confunde.</p></div>
+</section>
+
+<!-- ================= O QUE FALTA ================= -->
+<section class="secao" id="falta">
+  <h2>O que o sistema já tem e o que falta para a tela ser verdadeira</h2>
+  <p class="sub">Levantamento feito no código em 06/10/2026. Boa parte da base já existe: DRE com margem de contribuição, custo por produto com histórico, custo da ficha técnica, histórico de preço por insumo em cada compra. Faltam oito peças, em ordem do que destrava mais.</p>
+  <ul class="falta">
+    <li><span class="num">1</span><div class="tx"><b>Gravar o custo no item do pedido na hora da venda</b><span>Hoje o CMV usa o custo <em>atual</em> do produto × quantidade vendida. Com o frango subindo toda semana, setembro seria calculado com o custo de outubro. Sem isso, nenhum CPV/CMV por período é confiável.</span></div><div class="tags"><span class="chip g">essencial</span><span class="chip cinza">backend · médio</span></div></li>
+    <li><span class="num">2</span><div class="tx"><b>Histórico de custo por semana (hoje é 1 ponto por mês)</b><span>A gerente precisa ver a curva a cada entrada de mercadoria. O dado existe nas compras; falta a curva por insumo e a recomposição da ficha a cada entrada conferida.</span></div><div class="tags"><span class="chip g">essencial</span><span class="chip cinza">backend · pequeno</span></div></li>
+    <li><span class="num">3</span><div class="tx"><b>Impostos sobre a venda</b><span>Não existe alíquota no sistema. A receita líquida de hoje é faturado − devoluções. Uma alíquota global do regime (configuração, não por produto) já resolve 95%.</span></div><div class="tags"><span class="chip m">importante</span><span class="chip cinza">config · pequeno</span></div></li>
+    <li><span class="num">4</span><div class="tx"><b>Classificar as categorias de despesa em fixa / variável</b><span>A DRE já calcula MC, mas só com as categorias classificadas. As "a definir" ficam de fora e inflam a margem. Tarefa de cadastro, não de código.</span></div><div class="tags"><span class="chip m">importante</span><span class="chip cinza">cadastro · dono</span></div></li>
+    <li><span class="num">5</span><div class="tx"><b>Separar CPV (fabricado) de CMV (revenda)</b><span>O produto já tem a marca de revenda para a NF-e. Falta usar essa marca para cair na linha certa.</span></div><div class="tags"><span class="chip m">importante</span><span class="chip cinza">backend · pequeno</span></div></li>
+    <li><span class="num">6</span><div class="tx"><b>Perda real e custo realizado por ordem de produção</b><span>A ordem tem quantidade planejada e produzida, mas não registra perda nem custo real. Sem isso o bloco "Produção" só mostra a perda padrão da ficha.</span></div><div class="tags"><span class="chip">depois</span><span class="chip cinza">PCP · médio</span></div></li>
+    <li><span class="num">7</span><div class="tx"><b>Permissão própria para a gerente de produção</b><span>Hoje o Dashboard Geral exige permissão de administrador. Criar <code>Pode_Ver_Indicadores_Custo</code> que libera só a visão de produção desta tela.</span></div><div class="tags"><span class="chip">depois</span><span class="chip cinza">permissão · pequeno</span></div></li>
+    <li><span class="num">8</span><div class="tx"><b>Metas por indicador + ponto de equilíbrio e margem de segurança</b><span>Cálculo simples a partir da DRE que já existe. Tela de metas onde o dono cadastra o alvo de cada indicador.</span></div><div class="tags"><span class="chip">depois</span><span class="chip cinza">front+back · médio</span></div></li>
+  </ul>
+</section>
+
+<section class="secao" id="proximo">
+  <h2>Sugestão de ordem</h2>
+  <div class="grid-3">
+    <div class="card"><h3>Etapa 1 · dado confiável</h3><p>Itens 1, 2, 3 e 4. Sem isso a tela mostra número bonito e errado. Em paralelo o dono classifica as categorias de despesa.</p><span class="chip cinza">~1 semana de dev</span></div>
+    <div class="card"><h3>Etapa 2 · a tela</h3><p>Dashboard com as visões Dono e Gerente, blocos de resultado, insumos, produtos e alertas. Mobile e iPad.</p><span class="chip cinza">~1 semana de dev</span></div>
+    <div class="card"><h3>Etapa 3 · produção e metas</h3><p>Itens 6, 7 e 8. Perda real por ordem, permissão da gerente, metas e semáforo.</p><span class="chip cinza">~1 semana de dev</span></div>
+  </div>
+</section>
+
+<p class="rodape">Proposta · CA-Hardt · 06/10/2026 · números fictícios para desenho da tela</p>
+</div>
+
+<script>
+(function(){
+  const $=s=>document.querySelector(s), tip=$('#tip');
+  const fmtR=v=>'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})+' mil';
+  const fmt2=v=>v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const NS='http://www.w3.org/2000/svg';
+  const el=(n,a={},t)=>{const e=document.createElementNS(NS,n);for(const k in a)e.setAttribute(k,a[k]);if(t!=null)e.textContent=t;return e;};
+  function showTip(html,ev){tip.innerHTML=html;tip.style.display='block';moveTip(ev);}
+  function moveTip(ev){const x=ev.clientX,y=ev.clientY;const w=tip.offsetWidth,h=tip.offsetHeight;tip.style.left=Math.min(x+14,innerWidth-w-8)+'px';tip.style.top=(y-h-12<8?y+16:y-h-12)+'px';}
+  function hideTip(){tip.style.display='none';}
+  const hover=(node,html)=>{node.addEventListener('pointerenter',e=>showTip(html,e));node.addEventListener('pointermove',moveTip);node.addEventListener('pointerleave',hideTip);};
+
+  /* visão */
+  $('#segVisao').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;$('#segVisao').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));$('#app').dataset.visao=b.dataset.v;});
+
+  /* sparklines */
+  document.querySelectorAll('svg[data-spark]').forEach(svg=>{
+    const v=svg.dataset.spark.split(',').map(Number),W=200,H=34,mn=Math.min(...v),mx=Math.max(...v);
+    svg.setAttribute('viewBox',`0 0 ${W} ${H}`);svg.setAttribute('preserveAspectRatio','none');
+    const pts=v.map((y,i)=>[i/(v.length-1)*(W-6)+3, H-4-((y-mn)/((mx-mn)||1))*(H-8)]);
+    svg.appendChild(el('polyline',{points:pts.map(p=>p.join(',')).join(' '),fill:'none',stroke:'#00754A','stroke-width':2,'stroke-linejoin':'round','vector-effect':'non-scaling-stroke'}));
+    const l=pts[pts.length-1];svg.appendChild(el('circle',{cx:l[0],cy:l[1],r:3,fill:'#00754A'}));
+  });
+
+  /* cascata horizontal */
+  (function(){
+    const rows=[
+      ['Receita bruta',418.5,'tot'],['Devoluções',-6.2,'ded'],['Impostos sobre venda',-33.0,'ded'],['Receita líquida',379.3,'tot'],
+      ['CPV (fabricados)',-198.4,'ded'],['CMV (revenda)',-21.7,'ded'],['Lucro bruto · 42,0%',159.2,'tot'],
+      ['Despesas variáveis',-34.1,'ded'],['Margem de contribuição · 33,0%',125.1,'tot'],['Despesas fixas',-92.8,'ded'],['Resultado operacional · 8,5%',32.3,'res']];
+    const W=640,rh=24,padL=190,padR=70,H=rows.length*rh+8,max=420,sx=(W-padL-padR)/max;
+    const svg=el('svg',{viewBox:`0 0 ${W} ${H}`});
+    let run=0;
+    rows.forEach((r,i)=>{
+      const [lab,v,tipo]=r,y=i*rh+4;
+      let x0,x1;
+      if(tipo==='ded'){x1=run;run=run+v;x0=run;}else{run=v;x0=0;x1=v;}
+      const col=tipo==='tot'?'var(--s1)':tipo==='res'?'var(--gold)':'var(--ded)';
+      svg.appendChild(el('text',{x:padL-8,y:y+rh/2+4,'text-anchor':'end','font-size':11,'font-weight':tipo==='ded'?600:800,fill:tipo==='ded'?'#5f6b66':'#1E3932'},lab));
+      const rect=el('rect',{x:padL+x0*sx,y:y+4,width:Math.max(2,(x1-x0)*sx),height:rh-8,rx:4,fill:col});
+      svg.appendChild(rect);
+      if(tipo==='ded'){svg.appendChild(el('line',{x1:padL+x1*sx,x2:padL+x1*sx,y1:y-2,y2:y+4,stroke:'#b8b2a6','stroke-width':1}));}
+      svg.appendChild(el('text',{x:padL+x1*sx+6,y:y+rh/2+4,'font-size':11,'font-weight':700,fill:'#3d4744'},(v<0?'− ':'')+Math.abs(v).toLocaleString('pt-BR',{minimumFractionDigits:1})));
+      const pct=(Math.abs(v)/379.3*100).toFixed(1).replace('.',',');
+      hover(rect,`<b>${lab}</b><br>${fmtR(Math.abs(v))}<br>${pct}% da receita líquida`);
+    });
+    $('#cascata').appendChild(svg);
+  })();
+
+  /* ponto de equilíbrio (bullet) */
+  (function(){
+    const W=420,H=86,pad=10,max=450,sx=(W-2*pad)/max;
+    const svg=el('svg',{viewBox:`0 0 ${W} ${H}`});
+    svg.appendChild(el('rect',{x:pad,y:34,width:W-2*pad,height:18,rx:9,fill:'#eceae4'}));
+    const defs=el('defs');defs.innerHTML='<pattern id="hat" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="#d4e9e2"/><line x1="0" y1="0" x2="0" y2="6" stroke="#00754A" stroke-width="2"/></pattern>';svg.appendChild(defs);
+    const proj=el('rect',{x:pad,y:34,width:372*sx,height:18,rx:9,fill:'url(#hat)'});svg.appendChild(proj);hover(proj,'<b>Projeção de fechamento</b><br>R$ 372 mil · ritmo dos 4 dias úteis × 18 restantes');
+    const acc=el('rect',{x:pad,y:34,width:71.4*sx,height:18,rx:9,fill:'#00754A'});svg.appendChild(acc);hover(acc,'<b>Acumulado em outubro</b><br>R$ 71,4 mil até 06/10');
+    const xe=pad+281.2*sx;
+    svg.appendChild(el('line',{x1:xe,x2:xe,y1:26,y2:60,stroke:'#b45309','stroke-width':2}));
+    svg.appendChild(el('text',{x:xe,y:20,'text-anchor':'middle','font-size':11,'font-weight':800,fill:'#b45309'},'Equilíbrio R$ 281,2 mil'));
+    svg.appendChild(el('text',{x:pad,y:74,'font-size':11,'font-weight':700,fill:'#3d4744'},'Acumulado R$ 71,4 mil'));
+    svg.appendChild(el('text',{x:pad+372*sx,y:74,'text-anchor':'end','font-size':11,'font-weight':700,fill:'#00754A'},'Projeção R$ 372 mil'));
+    $('#equilibrio').appendChild(svg);
+  })();
+
+  /* insumos — linhas indexadas base 100 */
+  (function(){
+    const sem=['10/08','17/08','24/08','31/08','07/09','14/09','21/09','28/09'];
+    const series=[
+      {n:'Peito de frango',un:'kg',c:'var(--s1)',v:[9.80,9.80,10.20,10.20,10.60,10.90,11.20,11.20]},
+      {n:'Óleo de soja',un:'lt',c:'var(--s2)',v:[7.40,7.40,7.40,7.60,7.60,7.90,8.40,8.40]},
+      {n:'Farinha de trigo',un:'kg',c:'var(--s3)',v:[3.10,3.10,3.05,3.05,3.00,3.00,3.00,2.95]},
+      {n:'Queijo mussarela',un:'kg',c:'var(--s4)',v:[33.50,33.50,34.00,34.00,34.80,34.80,34.80,34.80]}];
+    const W=640,H=240,pL=36,pR=110,pT=14,pB=28,yMin=92,yMax=118;
+    const X=i=>pL+i/(sem.length-1)*(W-pL-pR), Y=v=>pT+(1-(v-yMin)/(yMax-yMin))*(H-pT-pB);
+    const svg=el('svg',{viewBox:`0 0 ${W} ${H}`});
+    [95,100,105,110,115].forEach(g=>{svg.appendChild(el('line',{x1:pL,x2:W-pR,y1:Y(g),y2:Y(g),stroke:g===100?'#b8b2a6':'#eceae4','stroke-width':1,'stroke-dasharray':g===100?'0':'0'}));svg.appendChild(el('text',{x:pL-6,y:Y(g)+4,'text-anchor':'end','font-size':10,fill:'#5f6b66'},g));});
+    sem.forEach((s,i)=>svg.appendChild(el('text',{x:X(i),y:H-8,'text-anchor':'middle','font-size':10,fill:'#5f6b66'},s)));
+    const idx=s=>s.v.map(v=>v/s.v[0]*100);
+    const fins=[];
+    series.forEach(s=>{
+      const pts=idx(s).map((v,i)=>[X(i),Y(v)]);
+      svg.appendChild(el('path',{d:'M'+pts.map(p=>p.join(' ')).join(' L'),fill:'none',stroke:s.c,'stroke-width':2,'stroke-linejoin':'round'}));
+      const l=pts[pts.length-1],d=((s.v[7]/s.v[0]-1)*100);
+      svg.appendChild(el('circle',{cx:l[0],cy:l[1],r:4,fill:s.c,stroke:'#fff','stroke-width':2}));
+      fins.push({y:l[1],x:l[0],txt:`${s.n.split(' ')[0]} ${d>0?'+':''}${d.toFixed(1).replace('.',',')}%`});
+    });
+    /* rótulos finais sem colisão: afasta os que ficariam a menos de 13px */
+    fins.sort((a,b)=>a.y-b.y);fins.forEach(f=>f.ly=f.y);
+    for(let k=1;k<fins.length;k++){if(fins[k].ly-fins[k-1].ly<13)fins[k].ly=fins[k-1].ly+13;}
+    fins.forEach(f=>svg.appendChild(el('text',{x:f.x+8,y:f.ly+4,'font-size':11,'font-weight':800,fill:'#1E3932'},f.txt)));
+    /* crosshair + hover */
+    const cross=el('line',{y1:pT,y2:H-pB,stroke:'#1E3932','stroke-width':1,'stroke-dasharray':'3 3',opacity:0});svg.appendChild(cross);
+    const dots=series.map(s=>{const c=el('circle',{r:4,fill:s.c,stroke:'#fff','stroke-width':2,opacity:0});svg.appendChild(c);return c;});
+    const hit=el('rect',{x:pL,y:pT,width:W-pL-pR,height:H-pT-pB,fill:'transparent'});svg.appendChild(hit);
+    hit.addEventListener('pointermove',e=>{
+      const r=svg.getBoundingClientRect(),xs=(e.clientX-r.left)/r.width*W,i=Math.max(0,Math.min(sem.length-1,Math.round((xs-pL)/(W-pL-pR)*(sem.length-1))));
+      cross.setAttribute('x1',X(i));cross.setAttribute('x2',X(i));cross.setAttribute('opacity',1);
+      series.forEach((s,k)=>{dots[k].setAttribute('cx',X(i));dots[k].setAttribute('cy',Y(idx(s)[i]));dots[k].setAttribute('opacity',1);});
+      showTip(`<b>Semana de ${sem[i]}</b><br>`+series.map(s=>`${s.n}: R$ ${fmt2(s.v[i])}/${s.un} <span style="opacity:.7">(${idx(s)[i].toFixed(1).replace('.',',')})</span>`).join('<br>'),e);
+    });
+    hit.addEventListener('pointerleave',()=>{cross.setAttribute('opacity',0);dots.forEach(d=>d.setAttribute('opacity',0));hideTip();});
+    $('#insumos').appendChild(svg);
+    $('#legInsumos').innerHTML=series.map(s=>`<span><i style="background:${s.c}"></i>${s.n}</span>`).join('');
+  })();
+
+  /* perdas semanais (barras) */
+  (function(){
+    const sem=['sem 1','sem 2','sem 3','sem 4','sem 5'],v=[1.4,1.6,2.3,1.8,2.1],W=420,H=120,pL=30,pB=22,pT=10,max=3;
+    const svg=el('svg',{viewBox:`0 0 ${W} ${H}`}),bw=(W-pL-10)/sem.length;
+    const Y=x=>pT+(1-x/max)*(H-pT-pB);
+    svg.appendChild(el('line',{x1:pL,x2:W-10,y1:Y(1.5),y2:Y(1.5),stroke:'#b45309','stroke-width':2}));
+    svg.appendChild(el('text',{x:pL-4,y:Y(1.5)+4,'text-anchor':'end','font-size':10,'font-weight':700,fill:'#b45309'},'1,5%'));
+    v.forEach((p,i)=>{const x=pL+i*bw+bw*0.2,w=bw*0.6;const rc=el('rect',{x,y:Y(p),width:w,height:Y(0)-Y(p),rx:4,fill:p>1.5?'#b45309':'#00754A'});svg.appendChild(rc);
+      svg.appendChild(el('text',{x:x+w/2,y:Y(p)-4,'text-anchor':'middle','font-size':11,'font-weight':700,fill:'#3d4744'},p.toFixed(1).replace('.',',')+'%'));
+      svg.appendChild(el('text',{x:x+w/2,y:H-6,'text-anchor':'middle','font-size':10,fill:'#5f6b66'},sem[i]));
+      hover(rc,`<b>${sem[i]}</b><br>Perda ${p.toFixed(1).replace('.',',')}% do consumo<br>${p>1.5?'acima da meta de 1,5%':'dentro da meta'}`);});
+    $('#perdas').appendChild(svg);
+  })();
+
+  /* tabela de produtos */
+  (function(){
+    const P=[
+      ['Coxinha de frango 500 g',false,4120,13.90,6.28,9.2,0.91,2.21,6.71,48.3,27.6,'ru','custo subiu, preço parado'],
+      ['Kibe 500 g',false,2860,12.50,5.12,4.1,0.82,2.44,6.56,52.5,18.8,'ok','no alvo'],
+      ['Bolinha de queijo 500 g',false,2310,14.20,6.74,2.6,0.93,2.11,6.53,46.0,15.1,'at','markup abaixo de 2,2'],
+      ['Risole de carne 500 g',false,1940,13.40,5.81,1.9,0.88,2.31,6.71,50.1,13.0,'ok','no alvo'],
+      ['Pão de queijo 1 kg',false,1520,18.90,9.40,0.8,1.24,2.01,8.26,43.7,12.6,'at','markup abaixo de 2,2'],
+      ['Pastel pronto 400 g',true,1180,9.80,6.10,0.0,0.64,1.61,3.06,31.2,3.6,'at','revenda · margem fina'],
+      ['Mini churros 300 g',true,640,7.40,4.80,3.2,0.48,1.54,2.12,28.6,1.4,'ru','revenda · MC % mínima']];
+    const tb=$('#tabProdutos tbody'),maxMC=Math.max(...P.map(p=>p[10]));
+    tb.innerHTML=P.map(p=>{const [n,rev,q,pr,cf,dc,cv,mk,mc,mcp,mct,st,lab]=p;
+      const stl={ok:'ok',at:'at',ru:'ru'}[st],stt={ok:'no alvo',at:'atenção',ru:'agir'}[st];
+      return `<tr><td><b>${n}</b>${rev?' <span class="chip roxo" style="font-size:10px;padding:1px 7px">revenda</span>':''}<span class="sub">${lab}</span></td>
+        <td class="n">${q.toLocaleString('pt-BR')}</td><td class="n">${fmt2(pr)}</td><td class="n"><b>${fmt2(cf)}</b></td>
+        <td class="n ${dc>3?'down':dc>0?'flat':'flat'}">${dc>0?'▲ ':''}${dc.toFixed(1).replace('.',',')}%</td>
+        <td class="n">${fmt2(cv)}</td><td class="n"><b>${fmt2(mk)}×</b></td><td class="n">${fmt2(mc)}</td><td class="n">${mcp.toFixed(1).replace('.',',')}%</td>
+        <td class="n"><div style="display:flex;align-items:center;gap:8px;justify-content:flex-end"><div class="bar" style="width:70px"><i style="width:${(mct/maxMC*100).toFixed(0)}%"></i></div><b>${fmtR(mct)}</b></div></td>
+        <td><span class="st ${stl}">${stt}</span></td></tr>`;}).join('');
+  })();
+})();
+</script>
+</body>
+</html>
