@@ -27,6 +27,7 @@ Relatório analítico de itens vendidos (não de pedidos, mas de linhas de produ
 - Reordenar colunas arrastando-as
 - Agrupamento automático quando colunas de dimensão são ocultadas (ex: ocultar "Produto" soma quantidades)
 - Ver o **preço de custo (Vl Custo)** e o **Custo Total** de cada produto — usa **exatamente o mesmo cálculo da tela da receita no PCP** (o "Custo por unidade"). O custo das matérias-primas vem do **custo médio do Conta Azul** (ou custo manual do produto), os **subprodutos (SUB)** são calculados pela própria receita de forma recursiva, e a **perda %** é aplicada (rendimento líquido = rendimento × (1 − perda%)). No modo agrupado, o **Vl Custo** mostra o custo por unidade do grupo (Custo Total ÷ quantidade). Produtos sem receita no PCP (ou com matérias-primas sem custo cadastrado) aparecem com "-"
+- **Vl Unit = valor vendido ÷ quantidade** (no resumo agrupado é a média ponderada); **Vl Custo vem do custo da receita no PCP**. O rodapé da tabela e da impressão mostra o Vl Unit total (total vendido ÷ quantidade total) e o Vl Custo médio.
 - Ver totais no rodapé: quantidade total, valor total, custo total
 - Imprimir o relatório em formato A4 (fonte monoespaciada, compacto) — imprime direto na própria tela, sem abrir outra janela. A folha sai em **A4 paisagem** para caber todas as colunas (a letra é pequena de propósito)
 - **No celular** o resultado aparece em **cartões** (um por linha) em vez de tabela; ordenar e filtrar por coluna ficam no computador/iPad. Aparecem 100 cartões por vez — toque em **Mostrar mais** para ver +100

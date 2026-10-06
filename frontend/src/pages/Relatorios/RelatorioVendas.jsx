@@ -437,7 +437,12 @@ export default function RelatorioVendas() {
             if (!col || !colsVisiveis.has(col.id)) return arr;
             arr.sort((a, b) => {
                 let va = a[col.field] ?? '', vb = b[col.field] ?? '';
-                if (col.tipo === 'numero') { va = Number(va); vb = Number(vb); }
+                if (col.tipo === 'numero') {
+                    // nulos (sem valor/custo) sempre no fim, em asc e desc
+                    const na = a[col.field] == null, nb = b[col.field] == null;
+                    if (na || nb) return na && nb ? 0 : na ? 1 : -1;
+                    va = Number(va); vb = Number(vb);
+                }
                 else { va = String(va).toLowerCase(); vb = String(vb).toLowerCase(); }
                 if (va < vb) return sortDir === 'asc' ? -1 : 1;
                 if (va > vb) return sortDir === 'asc' ? 1 : -1;
@@ -446,7 +451,11 @@ export default function RelatorioVendas() {
             return arr;
         };
         if (todasDimensoesVisiveis) {
-            return ordenar(dadosFiltrados.map(r => ({ ...r, _count: 1, _key: r.id })));
+            // Vl Unit é cálculo: valor vendido ÷ quantidade (quantidade 0 → "-")
+            return ordenar(dadosFiltrados.map(r => {
+                const q = Number(r.quantidade || 0), v = Number(r.valorTotal || 0);
+                return { ...r, valorUnit: q > 0 ? v / q : null, _count: 1, _key: r.id };
+            }));
         }
         // Agrupa por chave das colunas dimensão visíveis
         const map = new Map();
@@ -466,6 +475,8 @@ export default function RelatorioVendas() {
         const result = [...map.values()];
         // Custo unitário do grupo = custo total / quantidade. Sem custo no grupo → "-".
         result.forEach(g => {
+            // Vl Unit do grupo = média ponderada = total vendido ÷ quantidade
+            g.valorUnit = g.quantidade > 0 ? g.valorTotal / g.quantidade : null;
             if (!g._temCusto) { g.custoTotal = null; g.precoCusto = null; }
             else g.precoCusto = g.quantidade > 0 ? g.custoTotal / g.quantidade : null;
         });
@@ -481,6 +492,21 @@ export default function RelatorioVendas() {
         () => dadosAgrupados.reduce((s, r) => s + Number(r.custoTotal || 0), 0),
         [dadosAgrupados]
     );
+
+    // Totais do rodapé: Vl Unit = vendido ÷ qtd; Vl Custo = custo total ÷ qtd das linhas que têm custo
+    const totaisRodape = useMemo(() => {
+        let qtd = 0, qtdComCusto = 0, custo = 0;
+        dadosFiltrados.forEach(r => {
+            const q = Number(r.quantidade || 0);
+            qtd += q;
+            if (r.custoTotal != null) { custo += Number(r.custoTotal); qtdComCusto += q; }
+        });
+        return {
+            qtd,
+            valorUnit: qtd > 0 ? totalFiltrado / qtd : null,
+            precoCusto: qtdComCusto > 0 ? custo / qtdComCusto : null,
+        };
+    }, [dadosFiltrados, totalFiltrado]);
 
     // Chips de coluna (filtros estilo Excel)
     const chipsColuna = useMemo(() => Object.entries(filtrosAtivos)
@@ -512,7 +538,7 @@ export default function RelatorioVendas() {
         const headers = colsAtivas.map(c => c.label);
         const rows = dadosAgrupados.map(r => colsAtivas.map(c => {
             const v = r[c.field];
-            if (c.tipo === 'numero') return Number(v || 0).toFixed(2).replace('.', ',');
+            if (c.tipo === 'numero') return v == null || v === '' ? '' : Number(v).toFixed(2).replace('.', ',');
             if (c.tipo === 'data') return fmtData(v);
             return `"${String(v ?? '').replace(/"/g, '""')}"`;
         }));
@@ -547,7 +573,7 @@ export default function RelatorioVendas() {
         const tbody = dadosAgrupados.map(row => `<tr>${colsAtivas.map(col =>
             `<td class="${col.align === 'right' ? 'num' : ''}${['cliente', 'produto', 'vendedor', 'indicacao', 'bairro'].includes(col.id) ? ' txt' : ''}">${esc(celula(col, row[col.field], row))}</td>`).join('')}</tr>`).join('');
         const tfoot = `<tr>${colsAtivas.map((col, i) => `<td class="${col.align === 'right' ? 'num' : ''}">${
-            i === 0 ? `${dadosAgrupados.length} linhas` : ''}${col.id === 'valor' ? `R$ ${fmt(totalFiltrado)}` : ''}${col.id === 'custoTotal' ? `R$ ${fmt(custoTotalGeral)}` : ''}</td>`).join('')}</tr>`;
+            i === 0 ? `${dadosAgrupados.length} linhas` : ''}${col.id === 'valor' ? `R$ ${fmt(totalFiltrado)}` : ''}${col.id === 'custoTotal' ? `R$ ${fmt(custoTotalGeral)}` : ''}${col.id === 'quantidade' ? totaisRodape.qtd.toLocaleString('pt-BR', { maximumFractionDigits: 3 }) : ''}${col.id === 'valorUnit' && totaisRodape.valorUnit != null ? `R$ ${fmt(totaisRodape.valorUnit)}` : ''}${col.id === 'precoCusto' && totaisRodape.precoCusto != null ? `R$ ${fmt(totaisRodape.precoCusto)}` : ''}</td>`).join('')}</tr>`;
         imprimirConteudo(PRINT_CSS, `<h1>RELATÓRIO DE VENDAS</h1><div class="sub">${esc(sub)}</div><table><thead>${thead}</thead><tbody>${tbody}</tbody><tfoot>${tfoot}</tfoot></table>`, 287); // A4 paisagem: 297mm - 2×5mm de margem
     };
 
@@ -908,6 +934,8 @@ export default function RelatorioVendas() {
                                                     {col.id === 'quantidade' && dadosAgrupados.reduce((s, r) => s + Number(r.quantidade || 0), 0).toLocaleString('pt-BR', { maximumFractionDigits: 3 })}
                                                     {col.id === 'valor' && `R$ ${fmt(totalFiltrado)}`}
                                                     {col.id === 'custoTotal' && `R$ ${fmt(custoTotalGeral)}`}
+                                                    {col.id === 'valorUnit' && totaisRodape.valorUnit != null && `R$ ${fmt(totaisRodape.valorUnit)}`}
+                                                    {col.id === 'precoCusto' && totaisRodape.precoCusto != null && `R$ ${fmt(totaisRodape.precoCusto)}`}
                                                 </td>
                                             ))}
                                         </tr>
