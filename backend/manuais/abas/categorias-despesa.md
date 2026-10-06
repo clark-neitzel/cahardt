@@ -58,6 +58,17 @@ A pergunta-chave: **"se eu vender o dobro, esse gasto dobra?"**
 
 É essa marcação que gera o quadro **Fixo × Variável (Margem de Contribuição)** na DRE.
 
+## Compra de estoque (botão em cada categoria)
+
+Cada linha tem o botão **"Compra de estoque"** (fica âmbar e com ✓ quando ligado). Marque nas categorias que são **compra de mercadoria para estoque**: Matéria-prima, Embalagens, Materiais para revenda e parecidas.
+
+**Por quê:** a tela *Indicadores de Gestão* já desconta da receita o **custo do produto vendido** (CPV/CMV), que é o preço dos insumos e das mercadorias que saíram em cada venda. Se essa mesma compra também ficasse nas despesas variáveis, o custo seria contado **duas vezes** e a margem de contribuição apareceria menor do que é. Marcando "Compra de estoque", a categoria **sai das despesas daquela tela** (ela já está no custo do produto).
+
+- **Só muda os Indicadores de Gestão.** A **DRE** e as demais telas continuam contando essas categorias normalmente — nada nelas muda.
+- Salva junto com o botão **Salvar** do topo; o número novo aparece nos indicadores na hora.
+- Enquanto nenhuma categoria de compra estiver marcada, os Indicadores mostram um aviso de que a matéria-prima pode estar contada duas vezes.
+- Não marque despesas que não são compra de estoque (salário, aluguel, combustível, frete...): elas devem continuar nas despesas.
+
 ## Como usar
 
 1. Cada categoria aparece com o **total já gasto** (para priorizar as maiores). As **pendentes** (sem bloco ou sem fixa/variável — ícone de atenção) vêm no topo.

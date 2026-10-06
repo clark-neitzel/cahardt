@@ -90,6 +90,13 @@ const CategoriasDespesaPage = () => {
         setAlterado(true);
     };
 
+    // F0 (plano dos indicadores): marca "Compra de estoque" — o gasto já está no custo do produto
+    // vendido (CPV/CMV), então sai das despesas dos indicadores para não contar duas vezes.
+    const mudarCompraEstoque = (nome, valor) => {
+        setLinhas((prev) => prev.map((l) => (l.nome === nome ? { ...l, compraDeEstoque: valor } : l)));
+        setAlterado(true);
+    };
+
     const pendentes = useMemo(
         () => linhas.filter((l) => l.classificacao !== 'FORA_DRE' && (!l.grupoDreId || l.natureza === 'A_DEFINIR')).length,
         [linhas]
@@ -99,7 +106,11 @@ const CategoriasDespesaPage = () => {
         setSalvando(true);
         try {
             await financeiroGerencialService.salvarCategoriasDespesa(
-                linhas.map((l) => ({ nome: l.nome, classificacao: l.classificacao, grupoDreId: l.grupoDreId, natureza: l.natureza }))
+                linhas.map((l) => ({
+                    nome: l.nome, classificacao: l.classificacao, grupoDreId: l.grupoDreId, natureza: l.natureza,
+                    // só envia quando o servidor informou o campo (ausente = não muda)
+                    ...(typeof l.compraDeEstoque === 'boolean' ? { compraDeEstoque: l.compraDeEstoque } : {})
+                }))
             );
             toast.success('Classificação salva! A DRE já usa a nova divisão.');
             setAlterado(false);
@@ -247,6 +258,10 @@ const CategoriasDespesaPage = () => {
                             <div className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-1">2 · Fixa ou Variável</div>
                             <p className="text-xs text-gray-600">Pergunte: <b>"se eu vender o dobro, esse gasto dobra?"</b> Sim = <b>Variável</b>. Não = <b>Fixa</b>. É isso que calcula a Margem de Contribuição na DRE.</p>
                         </div>
+                    </div>
+                    <div className="rounded-lg border border-gray-200 p-3 mt-2">
+                        <div className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-1">3 · Compra de estoque (opcional)</div>
+                        <p className="text-xs text-gray-600">Marque <b>Matéria-prima, Embalagens e Mercadoria para revenda</b>: esse gasto já entra no custo do produto vendido nos <b>Indicadores de Gestão</b>. Sem a marca, o custo aparece em dobro e a margem fica errada.</p>
                     </div>
                     {pendentes > 0 && (
                         <div className="flex items-center gap-2 mt-3 text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-sm">
@@ -401,6 +416,17 @@ const CategoriasDespesaPage = () => {
                                         <div className="md:w-[152px]">
                                             {!fora && <SeletorNatureza valor={l.natureza} onChange={(v) => mudarNatureza(l.nome, v)} />}
                                         </div>
+                                        {!fora && (
+                                            <button
+                                                type="button"
+                                                onClick={() => mudarCompraEstoque(l.nome, !l.compraDeEstoque)}
+                                                aria-pressed={!!l.compraDeEstoque}
+                                                title="Marque se esse gasto já está no custo do produto vendido (matéria-prima, embalagem, revenda)."
+                                                className={`px-2.5 py-1 rounded-full text-xs font-semibold border min-h-[44px] md:min-h-[32px] whitespace-nowrap transition-colors ${l.compraDeEstoque ? 'bg-amber-100 text-amber-800 border-amber-400' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}
+                                            >
+                                                {l.compraDeEstoque ? '✓ Compra de estoque' : 'Compra de estoque'}
+                                            </button>
+                                        )}
                                         {/* Apagar só faz sentido em categoria sem gasto — o backend confere de novo */}
                                         {!l.total && l.id && (
                                             <button

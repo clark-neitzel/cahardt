@@ -603,6 +603,13 @@ model PedidoItem {
   nomePromocao String? @map("nome_promocao")
   tipoPromocao String? @map("tipo_promocao") // SIMPLES ou CONDICIONAL
 
+  // Indicadores de Gestão (10/2026): custo congelado na hora da venda
+  custoUnitarioSnapshot Decimal?  @map("custo_unitario_snapshot") @db.Decimal(12, 4) // custo/un na hora da venda
+  fonteCustoSnapshot    String?   @map("fonte_custo_snapshot") // FICHA | COMPRA | CA | HIST_MENSAL | ATUAL | SEM_CUSTO
+  classeCustoSnapshot   String?   @map("classe_custo_snapshot") // FABRICADO | REVENDA | SEM_CLASSE (congela CPV x CMV)
+  custoSnapshotEstimado Boolean   @default(false) @map("custo_snapshot_estimado") // true = backfill retroativo
+  custoSnapshotEm       DateTime? @map("custo_snapshot_em")
+
   @@index([pedidoId])
   @@index([produtoId])
   @@map("pedido_itens")
@@ -3613,6 +3620,7 @@ model CategoriaDespesa {
   classificacao String   @default("A_CLASSIFICAR") // OPERACIONAL | FINANCEIRO | FORA_DRE | A_CLASSIFICAR
   natureza      String   @default("A_DEFINIR") // FIXA | VARIAVEL | A_DEFINIR (fixo × variável na DRE)
   grupoDreId    String?  @map("grupo_dre_id") // bloco da DRE onde a categoria aparece
+  compraDeEstoque Boolean @default(false) @map("compra_de_estoque") // Indicadores: já está no CPV/CMV; fica fora das despesas dos indicadores
   criadoEm      DateTime @default(now()) @map("criado_em")
   atualizadoEm  DateTime @updatedAt @map("atualizado_em")
 

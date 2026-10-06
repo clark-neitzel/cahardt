@@ -33,6 +33,8 @@ const DEFAULT_PERMISSIONS = {
     // Dashboard
     Pode_Ver_Dashboard_Vendas: false,
     Pode_Ver_Dashboard_Admin: false,
+    Pode_Ver_Indicadores_Gestao: false,
+    Pode_Ver_Indicadores_Producao: false,
     // Módulo de Expedição e Logística
     Pode_Acessar_Embarque: false,
     Pode_Editar_Embarque: false,
@@ -243,6 +245,8 @@ const BOOL_INDEX = [
     // Dashboard
     { sec: 'dashboard', path: 'Pode_Ver_Dashboard_Vendas', nome: 'Ver dados de vendas', desc: "Exibe o card 'Vendas (Hoje)' e outros valores financeiros no painel do admin", kw: 'painel vendas hoje valores card' },
     { sec: 'dashboard', path: 'Pode_Ver_Dashboard_Admin', nome: 'Painel Administrativo (master)', desc: 'Painel completo: vendas/projeção/top10/inadimplência/inativos/ruptura. Dado financeiro sensível.', kw: 'gerencial master projecao top10 inadimplencia ruptura' },
+    { sec: 'dashboard', path: 'Pode_Ver_Indicadores_Gestao', nome: 'Indicadores de Gestão (completo)', desc: 'Tela de indicadores com resultado, margem, ponto de equilíbrio, clientes e custos. Dado financeiro sensível.', kw: 'indicadores gestao cpv cmv margem custo insumos producao resultado equilibrio', danger: true },
+    { sec: 'dashboard', path: 'Pode_Ver_Indicadores_Producao', nome: 'Indicadores de Gestão (só produção)', desc: 'Só a visão de produção: custo dos insumos, fichas técnicas e entradas de mercadoria. Sem resultado financeiro nem clientes.', kw: 'indicadores gestao custo insumos producao ficha gerente' },
     // Tarefas
     { sec: 'tarefas', path: 'Pode_Criar_Tarefas_Para_Outros', nome: 'Criar tarefas para outros', desc: 'Sem isso, a pessoa só cria tarefa para si mesma', kw: 'agenda delegar tarefa equipe' },
     { sec: 'tarefas', path: 'Pode_Ver_Agenda_Colegas', nome: 'Ver a agenda dos colegas', desc: "Ver as tarefas dos outros (sem editar) e o filtro 'Toda a equipe'", kw: 'agenda equipe tarefas outros colegas' },
@@ -386,7 +390,7 @@ const PERFIS = {
     },
     producao: {
         rotulo: '🏭 Produção / PCP', hint: 'Telas do PCP (sem cancelar ordens)',
-        chaves: ['pcp.itens', 'pcp.receitas', 'pcp.ordens', 'pcp.agenda', 'pcp.estoque', 'pcp.sugestoes', 'pcp.etiquetas'],
+        chaves: ['pcp.itens', 'pcp.receitas', 'pcp.ordens', 'pcp.agenda', 'pcp.estoque', 'pcp.sugestoes', 'pcp.etiquetas', 'Pode_Ver_Indicadores_Producao'],
     },
 };
 
@@ -813,6 +817,20 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                 onChange={() => toggleBool('Pode_Ver_Dashboard_Admin')}
                 label="Ver Painel Administrativo (master)"
                 sublabel="Libera o painel completo: vendas/projeção/top10/inadimplência/inativos/ruptura. Dado financeiro sensível."
+                colorClass="bg-blue-600"
+            />
+            <Toggle
+                checked={!!permissoes.Pode_Ver_Indicadores_Gestao}
+                onChange={() => toggleBool('Pode_Ver_Indicadores_Gestao')}
+                label="Ver Indicadores de Gestão (completo)"
+                sublabel="Resultado, margem, ponto de equilíbrio, clientes e custos. Também libera a visão de produção. Dado financeiro sensível."
+                danger
+            />
+            <Toggle
+                checked={!!permissoes.Pode_Ver_Indicadores_Producao}
+                onChange={() => toggleBool('Pode_Ver_Indicadores_Producao')}
+                label="Ver Indicadores de Gestão (só produção)"
+                sublabel="Só custo dos insumos, fichas técnicas e entradas de mercadoria. Não vê resultado financeiro nem clientes."
                 colorClass="bg-blue-600"
             />
         </div>

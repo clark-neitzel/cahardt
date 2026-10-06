@@ -1,4 +1,5 @@
 const prisma = require('../config/database');
+const custoSnapshotService = require('./custoSnapshotService');
 
 // Status de pedido que geram reserva de estoque (excluído e recebido/faturado não reservam)
 const STATUS_RESERVA = ['ABERTO', 'ENVIAR', 'SINCRONIZANDO', 'ERRO'];
@@ -287,6 +288,11 @@ const estoqueService = {
             }
         }, { timeout: 20000, maxWait: 10000 });
 
+        // Indicadores de Gestão: congela o custo do dia nos itens. FORA da transação, nunca lança
+        // e nunca bloqueia o faturamento (idempotente: não sobrescreve snapshot existente).
+        try { await custoSnapshotService.gravarSnapshotPedido(pedidoId); }
+        catch (snapErr) { console.error('[CustoSnapshot] (faturarPedido) falha ignorada:', snapErr.message); }
+
         return resultados;
     },
 
@@ -357,6 +363,11 @@ const estoqueService = {
                 await recalcularEstoqueProduto(pid, tx);
             }
         }, { timeout: 20000, maxWait: 10000 });
+
+        // Pedido saiu da receita / aprovação revertida: solta o custo congelado (o próximo
+        // faturarPedido regrava com o custo do dia). Fora da transação, nunca lança.
+        try { await custoSnapshotService.limparSnapshotPedido(pedidoId); }
+        catch (snapErr) { console.error('[CustoSnapshot] (cancelarPedido) falha ignorada:', snapErr.message); }
 
         return resultados;
     },

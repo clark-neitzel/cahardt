@@ -167,13 +167,13 @@ const FiltroPeriodo = ({ periodo, controle, rotulo, className = '', ocultarPrese
     };
 
     return (
-        <div ref={raiz} className={`relative inline-flex items-stretch h-[40px] bg-white border rounded-full ${destacado ? 'border-primary' : 'border-gray-300'} ${className}`}>
+        <div ref={raiz} className={`relative inline-flex items-stretch h-[46px] md:h-[40px] bg-white border rounded-full ${destacado ? 'border-primary' : 'border-gray-300'} ${className}`}>
             <button
                 type="button"
                 onClick={() => controle.navegar(-1)}
                 disabled={setasDesligadas}
                 title="Período anterior"
-                className="w-9 flex items-center justify-center rounded-l-full text-primary hover:bg-mint disabled:text-gray-300 disabled:hover:bg-transparent"
+                className="w-11 md:w-9 flex items-center justify-center rounded-l-full text-primary hover:bg-mint disabled:text-gray-300 disabled:hover:bg-transparent"
             >
                 <ChevronLeft className="h-4 w-4" />
             </button>
@@ -193,7 +193,7 @@ const FiltroPeriodo = ({ periodo, controle, rotulo, className = '', ocultarPrese
                 onClick={() => controle.navegar(1)}
                 disabled={setasDesligadas}
                 title="Próximo período"
-                className="w-9 flex items-center justify-center rounded-r-full text-primary hover:bg-mint disabled:text-gray-300 disabled:hover:bg-transparent"
+                className="w-11 md:w-9 flex items-center justify-center rounded-r-full text-primary hover:bg-mint disabled:text-gray-300 disabled:hover:bg-transparent"
             >
                 <ChevronRight className="h-4 w-4" />
             </button>

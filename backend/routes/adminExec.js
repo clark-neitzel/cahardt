@@ -52,7 +52,7 @@ router.get('/ping', (req, res) => {
         ok: true,
         // Marcador de deploy: bumpar a cada mudança de backend que precise de confirmação
         // em produção (não há outro jeito de saber de fora qual versão está no ar).
-        deployMarker: 'rel-vendas-filtros-2026-10-06',
+        deployMarker: 'indicadores-etapa1-2026-10-06',
         uptimeSegundos: Math.round(process.uptime()),
         timestamp: new Date().toISOString(),
         openaiConfigurada: !!process.env.OPENAI_API_KEY,
@@ -12264,6 +12264,44 @@ router.post('/caixa-limpar-fila-sem-movimento', async (req, res) => {
         res.json({ analisados: candidatos.length, limpos, detalhe });
     } catch (err) {
         console.error('[caixa-limpar-fila-sem-movimento]', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ═════════════════════════════════════════════════════════════════
+// INDICADORES DE GESTÃO — snapshot de custo no item do pedido (10/2026)
+// ═════════════════════════════════════════════════════════════════
+
+// POST /api/admin-exec/indicadores-backfill-snapshot?de=YYYY-MM-DD&ate=YYYY-MM-DD&dry=1&limite=500 (padrão 500; repetir até restantes = 0)
+// Grava snapshot ESTIMADO (custoSnapshotEstimado=true) em itens de pedidos que contam como receita e
+// ainda não têm snapshot. Idempotente. dry=1 (padrão) NÃO grava — é o diagnóstico de cobertura.
+// Para gravar de verdade: dry=0. Rodar fora do horário de pico; repetir até restantes = 0.
+router.post('/indicadores-backfill-snapshot', async (req, res) => {
+    try {
+        const YMD = /^\d{4}-\d{2}-\d{2}$/;
+        const de = req.query.de ? String(req.query.de) : null;
+        const ate = req.query.ate ? String(req.query.ate) : null;
+        if ((de && !YMD.test(de)) || (ate && !YMD.test(ate))) return res.status(400).json({ error: 'de/ate no formato YYYY-MM-DD.' });
+        const dry = String(req.query.dry ?? '1') !== '0';
+        const svc = require('../services/custoSnapshotService');
+        const r = await svc.backfillRetroativo({ de, ate, dry, limite: req.query.limite });
+        res.json(r);
+    } catch (err) {
+        console.error('[indicadores-backfill-snapshot]', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// GET /api/admin-exec/diag-indicadores-snapshot — cobertura do snapshot por mês (real / estimado / sem)
+router.get('/diag-indicadores-snapshot', async (req, res) => {
+    try {
+        const svc = require('../services/custoSnapshotService');
+        const meses = await svc.diagCobertura();
+        const marcadas = await prisma.categoriaDespesa.count({ where: { compraDeEstoque: true } });
+        const cfg = await require('../services/indicadoresConfigService').getAliquota();
+        res.json({ meses, categoriasMarcadasCompraDeEstoque: marcadas, aliquotaImpostoVenda: cfg });
+    } catch (err) {
+        console.error('[diag-indicadores-snapshot]', err);
         res.status(500).json({ error: err.message });
     }
 });

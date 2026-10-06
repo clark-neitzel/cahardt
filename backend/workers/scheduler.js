@@ -263,6 +263,15 @@ function startSchedulers() {
     };
     scheduleSnapshotCusto();
 
+    // === 6.2. REDE DE SEGURANÇA DO SNAPSHOT DE CUSTO NO PEDIDO (Indicadores de Gestão) ===
+    // A cada 30 min completa itens sem custo congelado de pedidos recentes (processo pode ter
+    // caído entre o RECEBIDO e o faturarPedido). Nunca lança; só grava em itens sem snapshot.
+    const custoSnapshotService = require('../services/custoSnapshotService');
+    setInterval(() => {
+        custoSnapshotService.completarSnapshotsPendentes().catch((e) =>
+            console.error('[CustoSnapshot] Falha no job de 30 min:', e.message));
+    }, 30 * 60 * 1000);
+
     // === 7. MENSAGENS AGENDADAS ===
     // Verifica a cada minuto se há mensagens para enviar (horário SP).
     console.log('⏰ Iniciando sistema de Mensagens Agendadas...');

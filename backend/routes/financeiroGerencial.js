@@ -266,6 +266,7 @@ router.get('/categorias-despesa', verificarAuth, checkAcesso, async (req, res) =
             classificacao: l.classificacao,
             natureza: l.natureza,
             grupoDreId: l.grupoDreId,
+            compraDeEstoque: l.compraDeEstoque === true,
             total: totalPorNome.get(l.nome) || 0
         })));
     } catch (error) {
@@ -275,7 +276,7 @@ router.get('/categorias-despesa', verificarAuth, checkAcesso, async (req, res) =
 });
 
 // ── PUT /categorias-despesa — salvar classificação, bloco e natureza ──
-// body: { categorias: [{ nome, classificacao, grupoDreId?, natureza? }] }
+// body: { categorias: [{ nome, classificacao, grupoDreId?, natureza?, compraDeEstoque? }] }
 // grupoDreId/natureza são opcionais (chamadas antigas seguem funcionando).
 router.put('/categorias-despesa', verificarAuth, checkAcesso, async (req, res) => {
     try {
@@ -299,6 +300,8 @@ router.put('/categorias-despesa', verificarAuth, checkAcesso, async (req, res) =
                 const nat = String(item.natureza || '').toUpperCase();
                 dados.natureza = NATUREZAS.includes(nat) ? nat : 'A_DEFINIR';
             }
+            // Indicadores de Gestão: marca "compra de estoque" (ausente = não muda)
+            if ('compraDeEstoque' in (item || {})) dados.compraDeEstoque = item.compraDeEstoque === true;
             // Fora da DRE não pertence a bloco nenhum
             if (classificacao === 'FORA_DRE') dados.grupoDreId = null;
 
@@ -308,6 +311,7 @@ router.put('/categorias-despesa', verificarAuth, checkAcesso, async (req, res) =
                 create: { nome, ...dados }
             });
         }
+        require('../services/indicadoresCustoService').limparCache(); // Indicadores de Gestão: número novo na hora
         res.json({ message: 'Classificação salva!' });
     } catch (error) {
         console.error('Erro ao salvar classificação de categorias:', error);
@@ -354,6 +358,7 @@ router.post('/categorias-despesa', verificarAuth, checkAcesso, async (req, res) 
             classificacao: criada.classificacao,
             natureza: criada.natureza,
             grupoDreId: criada.grupoDreId,
+            compraDeEstoque: criada.compraDeEstoque === true,
             total: 0
         });
     } catch (error) {

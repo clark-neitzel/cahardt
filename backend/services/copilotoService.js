@@ -79,6 +79,7 @@ const ABAS = [
     { slug: 'saldos-por-conta',   nome: 'Saldos por Conta',             rota: '/financeiro/por-conta',               perm: 'Pode_Acessar_Financeiro_Gerencial' },
     { slug: 'dre',                nome: 'DRE — Resultado',              rota: '/financeiro/dre',                     perm: 'Pode_Acessar_Financeiro_Gerencial' },
     { slug: 'margem-produtos',    nome: 'Margem & Custo dos Produtos',  rota: '/financeiro/margem-produtos',         perm: 'Pode_Acessar_Financeiro_Gerencial' },
+    { slug: 'indicadores-gestao', nome: 'Indicadores de Gestão',       rota: '/indicadores-gestao',                 perm: ['Pode_Ver_Indicadores_Gestao', 'Pode_Ver_Indicadores_Producao'] },
     { slug: 'conciliacao-bancaria', nome: 'Conciliação Bancária',       rota: '/financeiro/conciliacao',             perm: 'Pode_Acessar_Financeiro_Gerencial' },
     { slug: 'categorias-despesa', nome: 'Categorias de Despesa',        rota: '/financeiro/categorias-despesa',      perm: 'Pode_Acessar_Financeiro_Gerencial' },
     // ── Admin ────────────────────────────────────

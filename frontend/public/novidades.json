@@ -1,5 +1,11 @@
 [
   {
+    "slug": "indicadores-gestao",
+    "titulo": "Indicadores de Gestão",
+    "resumo": "Nova tela com o resultado e o custo numa só página: receita, margem de contribuição, ponto de equilíbrio, custo dos insumos semana a semana, entradas de mercadoria, custo dos produtos e alertas de onde agir. O dono vê tudo; a gerente de produção vê só produtos fabricados e insumos. Para os números ficarem certos, marque \"Compra de estoque\" em Categorias de Despesa e classifique fixa/variável.",
+    "data": "2026-10-06"
+  },
+  {
     "slug": "relatorio-vendas",
     "titulo": "Relatório de Vendas renovado",
     "resumo": "O Relatório de Vendas ganhou visual novo e mais filtros: cidade, condição de pagamento, categoria e tipo de pedido (várias opções ao mesmo tempo), períodos de venda e de criação em um toque só, selo de filtros ativos e atualização automática. No celular o resultado vira cartões e a impressão sai direto na própria tela, em folha A4 deitada.",

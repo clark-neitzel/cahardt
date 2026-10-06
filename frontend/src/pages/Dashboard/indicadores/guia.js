@@ -1,0 +1,17 @@
+// Textos do "Guia de leitura" — os MESMOS do mock aprovado e do manual do Clippy.
+// escopo: 'dono' = só na visão Dono; 'todos' = também na visão de produção.
+export const GUIA = [
+    { chave: 'receitaLiquida', escopo: 'dono', t: 'Receita líquida', conta: 'pedidos faturados (+ especiais) − devoluções ativas − impostos sobre a venda', ler: 'é o dinheiro que de fato sobra da venda para pagar tudo o mais. Toda porcentagem da tela é sobre ela.' },
+    { chave: 'cpv', escopo: 'dono', t: 'CPV — custo dos produtos vendidos', conta: 'quantidade vendida × custo da ficha técnica na data da venda', ler: 'quanto da receita foi "comido" pela fabricação do que vendemos. Produzir não é vender: o que está no estoque não entra.' },
+    { chave: 'cmv', escopo: 'dono', t: 'CMV — custo das mercadorias vendidas', conta: 'quantidade vendida × custo de compra (só itens de revenda)', ler: 'separado do CPV para não misturar o que fabricamos com o que compramos pronto.' },
+    { chave: 'lucroBruto', escopo: 'dono', t: 'Lucro bruto e margem bruta', conta: 'receita líquida − CPV − CMV; ÷ receita líquida', ler: 'o que sobra depois do custo do produto, antes de comissão, frete, aluguel, salários.' },
+    { chave: 'margemContribuicao', escopo: 'dono', t: 'Margem de contribuição (MC)', conta: 'receita − custos variáveis − despesas variáveis (comissão, frete, embalagem de entrega, taxa de boleto)', ler: 'o principal número para decidir desconto, pedido, cliente e produto. Cada real de MC paga as despesas fixas; o que passar é lucro.' },
+    { chave: 'markup', escopo: 'dono', t: 'Markup praticado', conta: 'preço de venda ÷ custo da ficha', ler: 'multiplicador sobre o custo. 2,0× = vende pelo dobro do custo = 50% sobre o preço. Markup e margem não são a mesma coisa.' },
+    { chave: 'resultadoOperacional', escopo: 'dono', t: 'Resultado e margem operacional', conta: 'MC − despesas fixas; ÷ receita líquida', ler: 'se a operação dá resultado. Antes de juros e imposto sobre lucro.' },
+    { chave: 'equilibrio', escopo: 'dono', t: 'Ponto de equilíbrio', conta: 'despesas fixas ÷ MC %', ler: 'a receita mínima do mês para zerar. Abaixo disso é prejuízo. Muda sempre que o custo ou a despesa fixa mudam.' },
+    { chave: 'seguranca', escopo: 'dono', t: 'Margem de segurança', conta: '(receita − equilíbrio) ÷ receita', ler: 'quanto as vendas podem cair antes do prejuízo. Negativa = já está no prejuízo.' },
+    { chave: 'custoInsumos', escopo: 'todos', t: 'Custo dos insumos', conta: 'último preço pago de cada insumo, semana a semana, comparado com a 1ª semana (base 100)', ler: 'mostra para onde o custo anda. Linha subindo = o insumo está ficando mais caro. É o preço pago nas compras conferidas, não uma média.' },
+    { chave: 'custoFicha', escopo: 'todos', t: 'Custo da ficha técnica', conta: 'soma dos insumos da receita (com perda e rendimento) ÷ unidades produzidas', ler: 'quanto custa fazer uma unidade hoje. "Δ 4 semanas" mostra se esse custo subiu; "ficha desatualizada" avisa que algum insumo está sem preço recente.' },
+    { chave: 'custoRealPadrao', escopo: 'todos', t: 'Custo real × padrão (produção)', conta: 'insumo consumido na ordem × custo ÷ quantidade produzida, comparado à ficha', ler: 'a ficha diz o que deveria custar; a ordem diz o que custou. A diferença é perda, rendimento ou ficha desatualizada.' },
+];
+export const AJUDA = Object.fromEntries(GUIA.map((g) => [g.chave, `${g.t}: ${g.ler.charAt(0).toUpperCase()}${g.ler.slice(1)}`]));

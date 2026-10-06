@@ -77,6 +77,7 @@ const OrdemProducaoForm = lazyComRetry(() => import('./pages/PCP/OrdemProducaoFo
 const PainelOperacional = lazyComRetry(() => import('./pages/PCP/PainelOperacional'));
 const CalendarioProducao = lazyComRetry(() => import('./pages/PCP/CalendarioProducao'));
 const SugestoesProducao = lazyComRetry(() => import('./pages/PCP/SugestoesProducao'));
+const IndicadoresGestao = lazyComRetry(() => import('./pages/Dashboard/IndicadoresGestao'));
 const DashboardPcp = lazyComRetry(() => import('./pages/PCP/DashboardPcp'));
 const EtiquetasList = lazyComRetry(() => import('./pages/PCP/EtiquetasList'));
 const EtiquetasDados = lazyComRetry(() => import('./pages/PCP/EtiquetasDados'));
@@ -112,7 +113,7 @@ import {
   PackageCheck, Truck, Wallet, Receipt, Search,
   Box, UserCog, Car, RefreshCw, FileText, ClipboardCheck,
   Settings, DollarSign, Building2, TrendingUp, FolderOpen, Warehouse,
-  Package, BookOpen as BookOpenIcon, Factory, Play, ClipboardList as ClipboardListIcon, Calendar as CalendarIcon, Lightbulb, BarChart3, BarChart2, History, Sparkles, BellRing, UserCheck, Tag, DatabaseZap, Percent, Clock, Fingerprint, Inbox, Landmark, CalendarCheck, Star, AlertTriangle, ShoppingBag, MapPin
+  Package, BookOpen as BookOpenIcon, Factory, Play, ClipboardList as ClipboardListIcon, Calendar as CalendarIcon, Lightbulb, BarChart3, BarChart2, History, Sparkles, BellRing, UserCheck, Tag, DatabaseZap, Percent, Clock, Fingerprint, Inbox, Landmark, CalendarCheck, Star, AlertTriangle, ShoppingBag, MapPin, Gauge
 } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { useMenuFavoritos } from './hooks/useMenuFavoritos';
@@ -313,7 +314,9 @@ function filtrarSecoesPorPerfil(secoes, perfil) {
       : motoristaPuro ? GRUPOS_POR_PERFIL.motorista
         : GRUPOS_POR_PERFIL.vendedor; // default: vendedor (inclui entregador com meta de venda)
 
-  return secoes.filter((s) => grupos.includes(s.label) || s.items.length >= 2);
+  // Quem tem acesso aos Indicadores (ex.: gerente de produção) vê o item no menu simplificado,
+  // mesmo que o grupo dele fosse escondido por ter 1 item só.
+  return secoes.filter((s) => grupos.includes(s.label) || s.items.length >= 2 || s.items.some((i) => i.to === '/indicadores-gestao'));
 }
 
 // Rotas antigas que viraram aba de "Pedidos Online" (B4) — um favorito salvo
@@ -436,6 +439,7 @@ const Layout = ({ children }) => {
       hasPermission('Pode_Acessar_Financeiro_Gerencial') && { to: '/financeiro/fluxo-caixa', icon: TrendingUp, label: 'Fluxo de Caixa' },
       hasPermission('Pode_Acessar_Financeiro_Gerencial') && { to: '/financeiro/por-conta', icon: Landmark, label: 'Saldos por Conta' },
       hasPermission('Pode_Acessar_Financeiro_Gerencial') && { to: '/financeiro/dre', icon: BarChart3, label: 'DRE' },
+      hasPermission('Pode_Ver_Indicadores_Gestao') && { to: '/indicadores-gestao', icon: Gauge, label: 'Indicadores de Gestão' },
       hasPermission('Pode_Acessar_Financeiro_Gerencial') && { to: '/financeiro/margem-produtos', icon: Percent, label: 'Margem & Custo dos Produtos' },
       hasPermission('Pode_Acessar_Financeiro_Gerencial') && { to: '/financeiro/conciliacao', icon: ClipboardCheck, label: 'Conciliação Bancária' },
       hasPermission('Pode_Acessar_Financeiro_Gerencial') && { to: '/financeiro/categorias-despesa', icon: Tag, label: 'Categorias de Despesa' },
@@ -461,6 +465,8 @@ const Layout = ({ children }) => {
       canPcp('estoque') && { to: '/pcp/estoque', icon: Factory, label: 'Estoque PCP' },
       canPcp('sugestoes') && { to: '/pcp/sugestoes', icon: Lightbulb, label: 'Sugestoes' },
       canPcp('sugestoes') && { to: '/pcp/dashboard', icon: BarChart3, label: 'Dashboard' },
+      // só para quem NÃO tem a chave completa (quem tem vê o item no grupo Financeiro)
+      (hasPermission('Pode_Ver_Indicadores_Producao') && !hasPermission('Pode_Ver_Indicadores_Gestao')) && { to: '/indicadores-gestao', icon: Gauge, label: 'Indicadores' },
       canPcp('etiquetas') && { to: '/pcp/etiquetas', icon: Tag, label: 'Etiquetas' },
       canPcp('etiquetas') && { to: '/pcp/etiquetas/dados', icon: DatabaseZap, label: 'Dados Etiquetas' },
     ].filter(Boolean) },
@@ -921,6 +927,7 @@ function App() {
               <Route path="/pcp/calendario" element={<PrivateRoute><CalendarioProducao /></PrivateRoute>} />
               <Route path="/pcp/estoque" element={<PrivateRoute><EstoquePcp /></PrivateRoute>} />
               <Route path="/pcp/sugestoes" element={<PrivateRoute><SugestoesProducao /></PrivateRoute>} />
+              <Route path="/indicadores-gestao" element={<PrivateRoute tab={['Pode_Ver_Indicadores_Gestao', 'Pode_Ver_Indicadores_Producao']}><IndicadoresGestao /></PrivateRoute>} />
               <Route path="/pcp/dashboard" element={<PrivateRoute><DashboardPcp /></PrivateRoute>} />
               <Route path="/pcp/etiquetas" element={<PrivateRoute><EtiquetasList /></PrivateRoute>} />
               <Route path="/pcp/etiquetas/dados" element={<PrivateRoute><EtiquetasDados /></PrivateRoute>} />

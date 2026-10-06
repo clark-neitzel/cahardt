@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Indicadores de Gestão — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp -->
+<meta property="og:title" content="📊 Novidade no Hardt App: Indicadores de Gestão">
+<meta property="og:description" content="Uma tela só para saber se estamos ganhando dinheiro, se o custo dos insumos está subindo e onde agir primeiro. Visão do dono e visão da gerente de produção.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 96px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 7vw, 40px);
+    font-weight: 800;
+    line-height: 1.12;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.75);
+    font-size: 16px;
+    max-width: 46ch;
+    margin: 0 auto;
+    text-wrap: balance;
+  }
+
+  /* mock da tela flutuando sobre o hero */
+  .mock {
+    max-width: 420px;
+    margin: -68px auto 28px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.28);
+    overflow: hidden;
+    text-align: left;
+  }
+  .mock-top {
+    background: var(--house);
+    color: #fff;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .mock-top small {
+    display: block;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    color: rgba(255,255,255,.55);
+  }
+  .mock-top strong { font-size: 16px; line-height: 1.2; }
+  .mock-ico { font-size: 24px; }
+  .mock-body { padding: 16px 18px 18px; }
+  .mock-label {
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--ink-soft);
+    margin-bottom: 4px;
+  }
+  .mock-input {
+    border: 1.5px solid #d8d5cc;
+    border-radius: 10px;
+    padding: 11px 13px;
+    font-size: 15px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--ink);
+    background: #fff;
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+  }
+  .mock-input.focado { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0,117,74,.14); }
+  .cursor { display: inline-block; width: 2px; height: 18px; background: var(--primary); margin-left: 2px; animation: pisca 1s steps(1) infinite; }
+  @keyframes pisca { 50% { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .cursor { animation: none; } }
+  .mock-campos { margin-top: 14px; display: grid; gap: 9px; }
+  .campo {
+    background: #f6f5f1;
+    border-radius: 9px;
+    padding: 8px 12px;
+    font-size: 13px;
+    color: #b9b5aa;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background .4s, color .4s;
+  }
+  .campo b { font-weight: 700; }
+  .campo.cheio { background: var(--mint); color: var(--primary-dark); }
+  .campo .ck { opacity: 0; transition: opacity .4s; }
+  .campo.cheio .ck { opacity: 1; }
+  .mock-status {
+    margin-top: 12px;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--ink-soft);
+    min-height: 20px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .mock-status.ok { color: var(--primary-dark); }
+
+  /* botão de demo */
+  .demo-cta {
+    display: block;
+    width: 100%;
+    max-width: 420px;
+    margin: 0 auto 8px;
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    font: inherit;
+    font-size: 16px;
+    font-weight: 800;
+    padding: 16px;
+    border-radius: 999px;
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(0,117,74,.35);
+  }
+  .demo-cta:hover { background: var(--primary-dark); }
+  .demo-cta:focus-visible, .acc-head:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .demo-hint { text-align: center; font-size: 12px; color: var(--ink-soft); margin: 0 0 34px; }
+
+  /* ── SEÇÕES / ACCORDION ── */
+  .sec-label {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: var(--primary-dark);
+    margin: 34px 4px 12px;
+  }
+  .acc {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .acc-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: none;
+    border: none;
+    font: inherit;
+    text-align: left;
+    padding: 15px 16px;
+    cursor: pointer;
+    min-height: 56px;
+  }
+  .acc-ico {
+    width: 38px; height: 38px;
+    border-radius: 11px;
+    background: var(--mint);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  /* passos */
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n {
+    width: 30px; height: 30px; flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 800;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .rodape {
+    text-align: center;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 40px;
+  }
+  .rodape strong { color: var(--primary-dark); }
+
+  /* ── MOCKUPS DAS TELAS DO APP ── */
+  .tela {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .tela-titulo {
+    background: var(--house);
+    color: #fff;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .app-card {
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .app-card-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    border-bottom: 1px solid #f0efe9;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: #6b756f;
+  }
+  .app-card-body { padding: 12px; }
+  .app-input {
+    border: 1px solid #d8d5cc;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 12.5px;
+    color: var(--ink);
+    background: #fff;
+    margin-bottom: 8px;
+  }
+  .app-input small { display: block; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: #9aa5a0; margin-bottom: 2px; }
+  .app-input.ok { background: var(--mint); border-color: rgba(0,117,74,.25); }
+  .app-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--primary);
+    color: #fff;
+    font-size: 12.5px;
+    font-weight: 700;
+    padding: 9px 16px;
+    border-radius: 999px;
+  }
+  .app-btn.claro { background: #fff; border: 1.5px solid var(--primary); color: var(--primary); }
+  .app-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+  .app-pill {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 7px 14px;
+    border-radius: 999px;
+    border: 1.5px solid #d8d5cc;
+    color: #6b756f;
+    background: #fff;
+  }
+  .app-pill.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .app-busca {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .app-busca .app-input { flex: 1; margin-bottom: 0; color: #9aa5a0; }
+  .app-toggle-linha {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: #f7f6f2;
+    border: 1px solid #edece6;
+    border-radius: 10px;
+    padding: 9px 12px;
+    font-size: 12.5px;
+  }
+  .app-toggle-linha small { display: block; font-size: 10.5px; color: #9aa5a0; }
+  .app-toggle {
+    width: 38px; height: 22px; flex-shrink: 0;
+    border-radius: 999px;
+    background: var(--primary);
+    position: relative;
+  }
+  .app-toggle::after {
+    content: '';
+    position: absolute;
+    top: 3px; right: 3px;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: #fff;
+  }
+  .pin {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    flex-shrink: 0;
+    vertical-align: 2px;
+    margin-left: 6px;
+  }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+
+  .kpis{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+  .kpi{background:#fff;border:1px solid #e5e3dc;border-radius:12px;padding:9px 11px}
+  .kpi small{display:block;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#6b756f}
+  .kpi strong{display:block;font-size:17px;margin-top:2px}
+  .st{display:inline-block;font-size:10px;font-weight:800;border-radius:999px;padding:1px 8px;margin-top:3px}
+  .st.ok{background:#dcfce7;color:#166534}.st.at{background:#fef3c7;color:#b45309}.st.ru{background:#fee2e2;color:#b91c1c}
+  .barra{height:14px;border-radius:4px;margin:5px 0}
+  .linha-mini{display:flex;align-items:center;gap:8px;font-size:11.5px;color:#3d4744}
+  .linha-mini span:first-child{width:92px;flex-shrink:0}
+  .tab-mini{width:100%;border-collapse:collapse;font-size:11.5px}
+  .tab-mini th{font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:#6b756f;text-align:left;padding:5px 4px;border-bottom:1px solid #eceae4}
+  .tab-mini td{padding:6px 4px;border-bottom:1px solid #f0efe9}
+  .chip-x{display:inline-block;font-size:10px;font-weight:700;border-radius:999px;padding:1px 8px}
+  .roxo{background:#ede9fe;color:#6d28d9}
+  .aviso-ex{font-size:12px;color:var(--ink-soft);text-align:center;margin:0}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>Indicadores de Gestão:<br>o custo e o resultado numa tela só</h1>
+    <p>Estamos ganhando dinheiro? O custo dos insumos está subindo? Onde agir primeiro? Agora o app responde, com uma visão para o dono e outra só de produção para a gerente.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="mock" aria-hidden="true">
+    <div class="mock-top"><span class="mock-ico">📊</span><div><small>Dashboard</small><strong>Indicadores de Gestão</strong></div></div>
+    <div class="mock-body">
+      <div class="kpis">
+        <div class="kpi"><small>Receita líquida</small><strong>R$ —</strong><span class="st ok">no alvo</span></div>
+        <div class="kpi"><small>Margem de contribuição</small><strong>— %</strong><span class="st at">atenção</span></div>
+        <div class="kpi"><small>Resultado operacional</small><strong>— %</strong><span class="st at">atenção</span></div>
+        <div class="kpi"><small>Custo dos insumos</small><strong>— %</strong><span class="st ru">subindo</span></div>
+      </div>
+      <p class="aviso-ex">Desenho de exemplo, sem números reais.</p>
+    </div>
+  </div>
+
+  <div class="sec-label">O que tem na tela</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">📈</span>
+      <strong>Resultado de verdade: da receita ao lucro</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Cartões com <b>receita líquida</b>, <b>margem de contribuição</b> e <b>resultado operacional</b>, cada um com a seta de subiu/desceu e uma <b>palavra</b>: <b>no alvo</b>, <b>atenção</b> ou <b>agir</b> (nunca só cor).</li>
+        <li>O <b>passo a passo do dinheiro</b>: receita, devoluções, impostos, custo do que fabricamos (CPV), custo do que revendemos (CMV), despesas variáveis e fixas, até o resultado.</li>
+        <li><b>Ponto de equilíbrio</b> do mês: quanto precisa vender para não ter prejuízo, quanto já vendeu e a projeção do fechamento.</li>
+        <li>O ícone <b>?</b> em cada número explica, em português simples, como ele é calculado.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🥩</span>
+      <strong>Custo dos insumos semana a semana</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Gráfico das <b>últimas 8 semanas</b> com o preço pago nos insumos (frango, óleo, farinha, queijo…). Passe o mouse ou <b>toque</b> no gráfico para ver o preço de cada semana.</li>
+        <li><b>Entradas da semana</b>: toda nota de compra conferida aparece com o preço pago, o preço anterior e a variação, mais o efeito no custo de cada produto fabricado.</li>
+        <li>Tabela com o <b>custo da ficha técnica</b> de cada produto e se ele subiu nas últimas 4 semanas.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🚨</span>
+      <strong>Onde agir primeiro</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Uma lista de alertas com o que merece atenção: custo subindo com preço parado, insumo com várias altas seguidas, ficha técnica desatualizada, categorias de despesa sem classificar.</li>
+        <li>Cada alerta tem um botão que leva direto para a tela onde se resolve — o botão só aparece se você tem permissão para aquela tela.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">👩‍🏭</span>
+      <strong>Duas visões: Dono e Gerente de produção</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li><b>Dono:</b> vê tudo, inclusive clientes (quem vende muito e deixa pouco), produtos de revenda marcados e resultado financeiro.</li>
+        <li><b>Gerente de produção:</b> vê só o que depende dela — <b>produtos fabricados (com ficha técnica)</b> e os <b>insumos das receitas</b>. Revenda, produto sem ficha e todo o resultado financeiro <b>não aparecem</b>.</li>
+        <li>Quem tem só a permissão de produção abre direto na visão dela. Quem tem a permissão completa alterna pelo botão no topo.</li>
+        <li>No celular, as tabelas viram cartões.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="sec-label">As telas do app, sem mistério</div>
+
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 1 · Indicadores de Gestão — visão do Dono</div>
+    <div class="tela-corpo">
+      <div class="app-pills" style="margin-bottom:10px">
+        <span class="app-pill on" style="padding:5px 12px">Este mês<span class="pin">1</span></span>
+        <span class="app-pill on" style="padding:5px 12px">Dono<span class="pin">2</span></span>
+        <span class="app-pill" style="padding:5px 12px">Gerente de produção</span>
+      </div>
+      <div class="kpis">
+        <div class="kpi"><small>Receita líquida <span class="pin">3</span></small><strong>R$ —</strong><span class="st ok">no alvo</span></div>
+        <div class="kpi"><small>Margem de contrib.</small><strong>— %</strong><span class="st at">atenção</span></div>
+      </div>
+      <div class="app-card">
+        <div class="app-card-head">Custos e resultado<span class="pin">4</span></div>
+        <div class="app-card-body">
+          <div class="linha-mini"><span>Receita bruta</span><div class="barra" style="background:var(--primary);width:78%"></div></div>
+          <div class="linha-mini"><span>Impostos</span><div class="barra" style="background:#b8b2a6;width:12%"></div></div>
+          <div class="linha-mini"><span>Custo (CPV)</span><div class="barra" style="background:#b8b2a6;width:34%"></div></div>
+          <div class="linha-mini"><span>Resultado</span><div class="barra" style="background:var(--gold);width:14%"></div></div>
+        </div>
+      </div>
+      <div class="app-card">
+        <div class="app-card-head">Custo e margem por produto<span class="pin">5</span></div>
+        <div class="app-card-body">
+          <table class="tab-mini"><tr><th>Produto</th><th>Custo ficha</th><th>Situação</th></tr>
+          <tr><td>Produto fabricado</td><td>—</td><td><span class="st ok">no alvo</span></td></tr>
+          <tr><td>Produto de revenda <span class="chip-x roxo">revenda</span></td><td>—</td><td><span class="st at">atenção</span></td></tr></table>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Período</b> no mesmo filtro em pílula das outras telas (Hoje, 7 dias, 30 dias, Este mês, Este ano ou personalizado). A escolha fica salva.</span></div>
+      <div><span class="pin">2</span><span><b>Alternar a visão</b>: Dono ou Gerente de produção (só aparece para quem tem a permissão completa).</span></div>
+      <div><span class="pin">3</span><span><b>Cartões</b> com seta, palavra de status e um <b>?</b> que explica o cálculo.</span></div>
+      <div><span class="pin">4</span><span><b>Passo a passo do dinheiro</b>: passe o mouse (ou toque) em cada barra para ver o valor e o % da receita.</span></div>
+      <div><span class="pin">5</span><span><b>Produtos</b>: itens de revenda ganham o selo roxo; produto sem ficha e sem marca de revenda aparece como "sem ficha".</span></div>
+    </div>
+  </div>
+
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 2 · Visão do Gerente de produção</div>
+    <div class="tela-corpo">
+      <div class="app-card" style="background:#d4e9e2;border-color:transparent"><div class="app-card-body" style="font-size:11.5px;color:#006241;font-weight:700">🏭 Só produtos fabricados e insumos das receitas<span class="pin">1</span></div></div>
+      <div class="kpis">
+        <div class="kpi"><small>Custo dos insumos</small><strong>— %</strong><span class="st ru">subindo</span></div>
+        <div class="kpi"><small>Insumos em alta<span class="pin">2</span></small><strong>—</strong><span class="st at">atenção</span></div>
+      </div>
+      <div class="app-card">
+        <div class="app-card-head">Entradas desta semana<span class="pin">3</span></div>
+        <div class="app-card-body">
+          <table class="tab-mini"><tr><th>Insumo</th><th>Pago</th><th>Variação</th></tr>
+          <tr><td>Insumo exemplo</td><td>—</td><td>▲ —%</td></tr></table>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Aqui <b>não aparece</b> receita, margem, resultado, clientes, revenda nem produto sem ficha.</span></div>
+      <div><span class="pin">2</span><span>Mostra quantos insumos tiveram <b>3 altas de preço seguidas</b>.</span></div>
+      <div><span class="pin">3</span><span>Toda <b>nota de compra conferida</b> entra aqui, com preço pago, preço anterior e variação. "Esta" e "Passada" trocam a semana.</span></div>
+    </div>
+  </div>
+
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 3 · Categorias de Despesa — "Compra de estoque"</div>
+    <div class="tela-corpo">
+      <div class="app-card"><div class="app-card-body">
+        <div class="app-toggle-linha" style="margin-bottom:8px"><span><b>Matéria-prima</b><small>Variável</small></span><span class="app-pill" style="background:#fef3c7;border-color:#f59e0b;color:#92400e">✓ Compra de estoque<span class="pin">1</span></span></div>
+        <div class="app-toggle-linha"><span><b>Aluguel</b><small>Fixa</small></span><span class="app-pill">Compra de estoque</span></div>
+      </div></div>
+      <div style="text-align:right"><span class="app-btn">💾 Salvar<span class="pin">2</span></span></div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Marque <b>Matéria-prima, Embalagens e Mercadoria para revenda</b>. Esse gasto já entra no custo do produto vendido; sem a marca ele contaria <b>duas vezes</b> e a margem ficaria errada.</span></div>
+      <div><span class="pin">2</span><span>Depois de marcar, toque em <b>Salvar</b>. Quem não é compra de estoque (aluguel, salário…) não leva a marca.</span></div>
+    </div>
+  </div>
+
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 4 · Imposto sobre a venda (só administrador)</div>
+    <div class="tela-corpo">
+      <div style="text-align:right;margin-bottom:8px"><span class="app-pill" style="padding:6px 12px">⚙<span class="pin">1</span></span></div>
+      <div class="app-card"><div class="app-card-body">
+        <div class="app-input"><small>Alíquota (%)</small>—<span class="pin">2</span></div>
+        <span class="app-btn">Salvar<span class="pin">3</span></span>
+      </div></div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>A engrenagem fica no topo da tela, <b>só para administrador</b>.</span></div>
+      <div><span class="pin">2</span><span>Digite a <b>alíquota única</b> do imposto sobre a venda (de 0 a 40%). Vazia, a tela usa o imposto realmente pago e avisa "imposto real pago".</span></div>
+      <div><span class="pin">3</span><span>Ao salvar, os números são recalculados e a tela passa a mostrar "imposto por alíquota".</span></div>
+    </div>
+  </div>
+
+  <div class="sec-label">Para começar a usar</div>
+  <div class="passos">
+    <div class="passo"><span class="passo-n">1</span><div><b>Atualize o app:</b> toque no ícone de atualizar ↻ (ou feche e abra o app).</div></div>
+    <div class="passo"><span class="passo-n">2</span><div><b>Dono, cadastre 3 coisas</b> para os números ficarem certos: (a) em <b>Categorias de Despesa</b>, marque <b>Compra de estoque</b> em Matéria-prima, Embalagens e Mercadoria para revenda; (b) classifique cada categoria como <b>Fixa</b> ou <b>Variável</b>; (c) no ⚙ da tela, informe a <b>alíquota de imposto</b>, se quiser usar alíquota.</div></div>
+    <div class="passo"><span class="passo-n">3</span><div><b>Quem usa:</b> abra <b>Indicadores de Gestão</b> no menu (grupo Financeiro para o dono, grupo PCP para a gerente de produção).</div></div>
+    <div class="passo"><span class="passo-n">4</span><div><b>Permissões:</b> o administrador libera em Usuários → Permissões: "Indicadores de Gestão (completo)" ou "(só produção)".</div></div>
+    <div class="passo"><span class="passo-n">5</span><div><b>Custo de vendas antigas:</b> vendas de antes desta novidade usam um custo estimado, e a tela avisa quando uma parte do custo vem de estimativa.</div></div>
+  </div>
+
+  <p class="rodape">Dúvidas? Pergunte ao <strong>Clippy</strong> dentro do app.<br>— Hardt Salgados</p>
+</div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.parentElement;
+    const abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>

@@ -383,6 +383,59 @@ function competenciaConta(conta) {
 // ─────────────────────────────────────────────────────────────
 
 /**
+ * Carrega as despesas (competência + rateio) do intervalo e a classificação das categorias.
+ * Extraída do dre() em 10/2026 SEM mudar comportamento — também usada pelos Indicadores de Gestão.
+ * @returns {{ despesas:Array<{mes,categoria,valor}>, classif:Function, infoCategoria:Function, gruposDb:Array, mapaCat:Map }}
+ */
+async function carregarDespesasClassificadas(gte, lte) {
+    // Despesas: volume pequeno → em JS (competência com fallback + rateio com fallback)
+    // Janela ampliada (competência pode cair no range mesmo com criadoEm fora e vice-versa):
+    const contas = await prisma.contaPagar.findMany({
+        where: {
+            status: { not: 'CANCELADO' },
+            OR: [
+                { competencia: { gte, lte } },
+                { competencia: null, parcelas: { some: { dataVencimento: { gte, lte } } } },
+                { competencia: null, parcelas: { none: {} }, criadoEm: { gte, lte } }
+            ]
+        },
+        select: {
+            categoria: true,
+            valorTotal: true,
+            competencia: true,
+            criadoEm: true,
+            parcelas: { select: { dataVencimento: true } },
+            rateios: { select: { categoria: true, valor: true } }
+        }
+    });
+
+    const despesas = [];
+    for (const c of contas) {
+        const mes = ymSP(competenciaConta(c));
+        if (c.rateios.length > 0) {
+            for (const r of c.rateios) despesas.push({ mes, categoria: r.categoria, valor: num(r.valor) });
+        } else {
+            despesas.push({ mes, categoria: c.categoria, valor: num(c.valorTotal) });
+        }
+    }
+
+    // Classificação das categorias (balde da DRE) + bloco e natureza (fixo/variável).
+    // Chave normalizada p/ tolerar acento/caixa.
+    const [cats, gruposDb] = await Promise.all([
+        prisma.categoriaDespesa.findMany({ select: { id: true, nome: true, classificacao: true, grupoDreId: true, natureza: true, compraDeEstoque: true } }),
+        prisma.grupoDre.findMany({ orderBy: { ordem: 'asc' }, select: { id: true, nome: true, ordem: true } })
+    ]);
+    const mapaCat = new Map(cats.map((c) => [normalizar(c.nome), c]));
+    const classif = (nome) => mapaCat.get(normalizar(nome))?.classificacao || 'A_CLASSIFICAR';
+    const infoCategoria = (nome) => {
+        const c = mapaCat.get(normalizar(nome));
+        return { grupoId: c?.grupoDreId || null, natureza: c?.natureza || 'A_DEFINIR' };
+    };
+
+    return { despesas, classif, infoCategoria, gruposDb, mapaCat };
+}
+
+/**
  * DRE por mês entre de..ate ('YYYY-MM').
  */
 async function dre(deMes, ateMes) {
@@ -418,49 +471,7 @@ async function dre(deMes, ateMes) {
         GROUP BY 1
     `;
 
-    // Despesas: volume pequeno → em JS (competência com fallback + rateio com fallback)
-    // Janela ampliada (competência pode cair no range mesmo com criadoEm fora e vice-versa):
-    const contas = await prisma.contaPagar.findMany({
-        where: {
-            status: { not: 'CANCELADO' },
-            OR: [
-                { competencia: { gte, lte } },
-                { competencia: null, parcelas: { some: { dataVencimento: { gte, lte } } } },
-                { competencia: null, parcelas: { none: {} }, criadoEm: { gte, lte } }
-            ]
-        },
-        select: {
-            categoria: true,
-            valorTotal: true,
-            competencia: true,
-            criadoEm: true,
-            parcelas: { select: { dataVencimento: true } },
-            rateios: { select: { categoria: true, valor: true } }
-        }
-    });
-
-    const despesas = [];
-    for (const c of contas) {
-        const mes = ymSP(competenciaConta(c));
-        if (c.rateios.length > 0) {
-            for (const r of c.rateios) despesas.push({ mes, categoria: r.categoria, valor: num(r.valor) });
-        } else {
-            despesas.push({ mes, categoria: c.categoria, valor: num(c.valorTotal) });
-        }
-    }
-
-    // Classificação das categorias (balde da DRE) + bloco e natureza (fixo/variável).
-    // Chave normalizada p/ tolerar acento/caixa.
-    const [cats, gruposDb] = await Promise.all([
-        prisma.categoriaDespesa.findMany({ select: { nome: true, classificacao: true, grupoDreId: true, natureza: true } }),
-        prisma.grupoDre.findMany({ orderBy: { ordem: 'asc' }, select: { id: true, nome: true, ordem: true } })
-    ]);
-    const mapaCat = new Map(cats.map((c) => [normalizar(c.nome), c]));
-    const classif = (nome) => mapaCat.get(normalizar(nome))?.classificacao || 'A_CLASSIFICAR';
-    const infoCategoria = (nome) => {
-        const c = mapaCat.get(normalizar(nome));
-        return { grupoId: c?.grupoDreId || null, natureza: c?.natureza || 'A_DEFINIR' };
-    };
+    const { despesas, classif, infoCategoria, gruposDb } = await carregarDespesasClassificadas(gte, lte);
 
     return montarDre(
         meses,
@@ -955,6 +966,7 @@ module.exports = {
     agregarFluxo,
     montarDre,
     competenciaConta,
+    carregarDespesasClassificadas,
     montarMargemProdutos,
     montarAging
 };
