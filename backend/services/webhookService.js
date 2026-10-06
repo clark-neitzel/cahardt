@@ -48,6 +48,52 @@ const ETAPAS_LABEL_DELIVERY = {
 };
 
 /**
+ * Texto da confirmação de pedido (notificarPedido). Função pura.
+ * Total = itens + taxa de entrega (valorFrete), igual ao da tela/delivery.
+ * pedido: { cliente, itens[{valor,quantidade,produto:{nome}}], valorFrete, createdAt, dataVenda,
+ *           nomeCondicaoPagamento, tipoPagamento, opcaoCondicaoPagamento, observacoes }
+ */
+const montarMensagemPedido = (pedido) => {
+    const nome = pedido.cliente?.NomeFantasia || pedido.cliente?.Nome;
+    const linhasItens = (pedido.itens || []).map(i => {
+        const nomeProd = i.produto?.nome || 'Produto';
+        const qtd = Number(i.quantidade);
+        const valorUn = Number(i.valor || 0).toFixed(2).replace('.', ',');
+        return `\`${nomeProd}\`\n${qtd} un x R$ ${valorUn}`;
+    }).join('\n\n');
+    const frete = Number(pedido.valorFrete || 0);
+    const total = (pedido.itens || []).reduce((sum, i) => sum + (Number(i.valor || 0) * Number(i.quantidade)), 0) + frete;
+    const totalStr = total.toFixed(2).replace('.', ',');
+    const condicao = pedido.nomeCondicaoPagamento || `${pedido.tipoPagamento || ''} ${pedido.opcaoCondicaoPagamento || ''}`.trim();
+
+    const partes = [
+        `Ola, *${nome}*! 👋`,
+        '',
+        `Segue o resumo do seu pedido 📋`,
+        '',
+        `📅 *Pedido:* ${formatDateMsg(pedido.createdAt)}`,
+        `🚚 *Entrega:* ${formatDateMsg(pedido.dataVenda)}`,
+        '',
+        '────────────────────',
+        linhasItens,
+    ];
+    if (frete > 0) {
+        partes.push(`\n\`Taxa de entrega\`\nR$ ${frete.toFixed(2).replace('.', ',')}`);
+    }
+    partes.push(
+        '────────────────────',
+        '',
+        `💰 *Total: R$ ${totalStr}*`,
+        `💳 *Condição:* ${condicao}`,
+    );
+    if (pedido.observacoes) {
+        partes.push('', `📝 *Obs:* ${pedido.observacoes}`);
+    }
+    partes.push('', 'Obrigado pela preferência! 🙏');
+    return partes.join('\n');
+};
+
+/**
  * Monta o texto da mensagem de WhatsApp para o CLIENTE no fluxo do Delivery.
  * Função PURA (sem I/O, sem chamada ao bot) — é a ÚNICA fonte deste texto:
  * notificarDelivery e a prévia manual (GET .../previa-mensagem) usam ela.
@@ -160,38 +206,7 @@ const webhookService = {
             const phone = formatPhone(pedido.cliente);
             if (!bot.normalizarTelefone(phone)) { await salvarStatus(false, 'Sem celular cadastrado'); return { ok: false, motivo: 'Cliente sem telefone celular válido' }; }
 
-            const nome = pedido.cliente.NomeFantasia || pedido.cliente.Nome;
-
-            const linhasItens = pedido.itens.map(i => {
-                const nomeProd = i.produto?.nome || 'Produto';
-                const qtd = Number(i.quantidade);
-                const valorUn = Number(i.valor || 0).toFixed(2).replace('.', ',');
-                return `\`${nomeProd}\`\n${qtd} un x R$ ${valorUn}`;
-            }).join('\n\n');
-
-            const total = pedido.itens.reduce((sum, i) => sum + (Number(i.valor || 0) * Number(i.quantidade)), 0);
-            const totalStr = total.toFixed(2);
-            const condicao = pedido.nomeCondicaoPagamento || `${pedido.tipoPagamento || ''} ${pedido.opcaoCondicaoPagamento || ''}`.trim();
-
-            const partes = [
-                `Ola, *${nome}*! 👋`,
-                '',
-                `Segue o resumo do seu pedido 📋`,
-                '',
-                `📅 *Pedido:* ${formatDateMsg(pedido.createdAt)}`,
-                `🚚 *Entrega:* ${formatDateMsg(pedido.dataVenda)}`,
-                '',
-                '────────────────────',
-                linhasItens,
-                '────────────────────',
-                '',
-                `💰 *Total: R$ ${totalStr.replace('.', ',')}*`,
-                `💳 *Condição:* ${condicao}`,
-            ];
-            if (pedido.observacoes) {
-                partes.push('', `📝 *Obs:* ${pedido.observacoes}`);
-            }
-            partes.push('', 'Obrigado pela preferência! 🙏');
+            const texto = montarMensagemPedido(pedido);
 
             const numero = pedido.numero || pedidoId.slice(0, 8);
             // Reenvio manual precisa de referência NOVA — com a mesma, o bot
@@ -202,7 +217,7 @@ const webhookService = {
 
             const r = await bot.enviar({
                 telefone: phone,
-                texto: partes.join('\n'),
+                texto,
                 tipo: 'pedido',
                 origem: 'app-vendedor',
                 referencia,
@@ -561,6 +576,7 @@ const webhookService = {
 
 module.exports = webhookService;
 module.exports.montarMensagemDeliveryCliente = montarMensagemDeliveryCliente;
+module.exports.montarMensagemPedido = montarMensagemPedido;
 module.exports.formatPhoneComFallback = formatPhoneComFallback;
 module.exports.MOTIVO_DELIVERY_SILENCIADO = MOTIVO_DELIVERY_SILENCIADO;
 module.exports.MOTIVO_DELIVERY_SEM_TELEFONE = MOTIVO_DELIVERY_SEM_TELEFONE;
