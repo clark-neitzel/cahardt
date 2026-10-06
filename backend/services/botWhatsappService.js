@@ -21,8 +21,9 @@
  *        nunca recebe o segundo código. Ver `referenciaUnica()`.
  *
  * 3. Só texto, 1 destinatário, máx. 2000 caracteres. Acima disso o bot RECUSA
- *    (`texto_longo`) e o cliente não recebe NADA — por isso cortamos aqui antes
- *    de mandar, em vez de deixar a mensagem inteira ser perdida.
+ *    (`texto_longo`) e o cliente não recebe NADA. Mensagem longa (pedido grande) é
+ *    DIVIDIDA em partes numeradas (dividirEmPartes/enviarEmPartes, referencias
+ *    `<base>-p1..pN`); o corte em `cortarTexto` é só rede de segurança.
  *
  * 4. O carimbo "🤖 *Mensagem automática*" é aplicado PELO BOT. Não mandar.
  *
@@ -141,8 +142,81 @@ const postEnviar = async ({ telefone, texto, tipo, origem, referencia }) => {
     }
 };
 
+
+const LIMITE_PARTE = 1900; // margem sob os 2000 do bot (marcadores "(k/N)" + acentos/emoji)
+const MARCADOR_MAX = '\n\n*(99/99)*'; // reserva do pior caso ao empacotar
+
+const marcador = (k, n) => `*(${k}/${n})*`;
+
+/**
+ * Divide uma mensagem LONGA (pedido grande) em partes que cabem no limite do bot,
+ * SEM quebrar um item no meio e SEM perder nada (itens, total, condição, obs).
+ * Função PURA.
+ *
+ *   texto de hoje = cabecalho + '\n' + itens.join('\n\n') + '\n' + rodape
+ *
+ * Se esse texto cabe em `limite`, devolve [texto] — IDÊNTICO ao de hoje, sem marcador.
+ * Senão:
+ *   parte 1      = cabecalho + itens + *(1/N)*
+ *   intermediária= `<tituloContinuacao> — continuação *(k/N)*` + itens
+ *   última       = continuação + itens + rodape + *(N/N)*
+ * `rodapeCurto` (opcional) substitui `rodape` no multi-parte (ex.: Obs limitada).
+ */
+const dividirEmPartes = ({ cabecalho = '', itens = [], rodape = '', rodapeCurto = null, tituloContinuacao = '', limite = LIMITE_PARTE }) => {
+    const cab = String(cabecalho);
+    const lista = (itens || []).map(String);
+    const textoUnico = `${cab}\n${lista.join('\n\n')}\n${rodape}`;
+    if (textoUnico.length <= limite || lista.length === 0) return [textoUnico];
+
+    const rod = rodapeCurto != null ? rodapeCurto : rodape;
+    const prefixoPrimeira = `${cab}\n`;
+    const prefixoCont = (k, n) => `${tituloContinuacao ? `${tituloContinuacao} — ` : ''}continuação ${marcador(k, n)}\n\n`;
+    const reservaCont = prefixoCont(99, 99).length;
+
+    // O último item vai COLADO ao rodapé (a despedida/total nunca ficam sozinhos).
+    const unidades = lista.slice(0, -1);
+    unidades.push(`${lista[lista.length - 1]}\n${rod}`);
+
+    const grupos = [];
+    let atual = [];
+    let tamAtual = 0;
+    let capacidade = limite - prefixoPrimeira.length - MARCADOR_MAX.length;
+    for (const u of unidades) {
+        const custo = u.length + (atual.length ? 2 : 0);
+        if (atual.length && tamAtual + custo > capacidade) {
+            grupos.push(atual);
+            atual = [];
+            tamAtual = 0;
+            capacidade = limite - reservaCont - MARCADOR_MAX.length;
+        }
+        tamAtual += u.length + (atual.length ? 2 : 0);
+        atual.push(u);
+    }
+    if (atual.length) grupos.push(atual);
+
+    const n = grupos.length;
+    if (n === 1) return [textoUnico];
+    return grupos.map((g, idx) => {
+        const k = idx + 1;
+        const prefixo = k === 1 ? prefixoPrimeira : prefixoCont(k, n);
+        return `${prefixo}${g.join('\n\n')}\n\n${marcador(k, n)}`;
+    });
+};
+
+/** Grava uma parte como PENDENTE sem tentar enviar (espera a anterior sair). */
+const enfileirar = async ({ telefone, texto, tipo, origem, referencia, proximaEm }) => registrar({
+    telefone, texto: cortarTexto(texto), tipo: TIPOS.includes(tipo) ? tipo : 'outro', origem, referencia,
+    status: 'PENDENTE', tentativas: 0, proximaEm,
+    codigoErro: 'aguardando_parte_anterior',
+    ultimoErro: 'Parte seguinte de uma mensagem em várias partes — sai depois da anterior',
+});
+
+const RE_PARTE = /^(.*)-p(\d+)$/;
+
 const botWhatsappService = {
     TIPOS,
+    LIMITE_PARTE,
+    dividirEmPartes,
     // Exportado (só adição) para o selo do WhatsApp do cliente saber, a partir de UMA
     // fonte só, quais códigos são falha passageira/nossa — e portanto nunca podem
     // acusar o número do cliente. Uma cópia da lista aqui viraria mentira com o tempo.
@@ -198,6 +272,56 @@ const botWhatsappService = {
     },
 
     /**
+     * Envia uma mensagem que pode vir em VÁRIAS partes (pedido grande), em ordem.
+     * 1 parte  -> igual a `enviar` (referencia = referenciaBase, sem sufixo).
+     * N partes -> referencias `<base>-p1..pN`, sequencial (nunca em paralelo).
+     * Parte reagendada: as seguintes NÃO são postadas — vão PENDENTES pra fila,
+     * que só libera a parte k depois que a k-1 saiu (ver processarFila).
+     * Erro definitivo numa parte: para e devolve ok:false ("parte k/N: ...").
+     * Retorna { ok, reagendado, status, motivo, codigo, partes:[resultado por parte] } — nunca lança.
+     */
+    enviarEmPartes: async ({ telefone, partes, tipo, origem, referenciaBase }) => {
+        const lista = (partes || []).filter(p => p && String(p).trim());
+        if (!lista.length) return { ok: false, codigo: 'texto_vazio', motivo: 'Mensagem vazia', partes: [] };
+
+        if (lista.length === 1) {
+            const r = await botWhatsappService.enviar({ telefone, texto: lista[0], tipo, origem, referencia: referenciaBase });
+            return { ...r, partes: [r] };
+        }
+
+        const n = lista.length;
+        const resultados = [];
+        let reagendado = false;
+        for (let i = 0; i < n; i++) {
+            const k = i + 1;
+            const referencia = `${referenciaBase}-p${k}`;
+            if (reagendado) {
+                // Uma parte anterior ficou na fila: esta espera na fila também (ordem garantida).
+                const phone = normalizarTelefone(telefone);
+                const quando = new Date(Date.now() + BACKOFF_MIN[0] * 60000 + (k - 1) * 1000);
+                await enfileirar({ telefone: phone, texto: lista[i], tipo, origem, referencia, proximaEm: quando });
+                resultados.push({ ok: false, reagendado: true, codigo: 'aguardando_parte_anterior' });
+                continue;
+            }
+            const r = await botWhatsappService.enviar({ telefone, texto: lista[i], tipo, origem, referencia });
+            resultados.push(r);
+            if (r.ok) continue;
+            if (r.reagendado) { reagendado = true; continue; }
+            return {
+                ok: false, reagendado: false, codigo: r.codigo,
+                motivo: `parte ${k}/${n}: ${r.motivo}`, partes: resultados,
+            };
+        }
+
+        const todasDuplicadas = resultados.every(r => r.ok && r.status === 'duplicado');
+        return {
+            ok: true, reagendado,
+            status: todasDuplicadas ? 'duplicado' : 'enviado',
+            partes: resultados,
+        };
+    },
+
+    /**
      * Worker: reprocessa a fila de envios pendentes.
      * Roda em série (o bot já espaça em 5s; rajada daqui não ajudaria e o teto
      * de 200/h é dele). Chamado pelo scheduler.
@@ -215,6 +339,16 @@ const botWhatsappService = {
         let enviados = 0;
 
         for (const item of pendentes) {
+            // Mensagem em várias partes: a parte k só sai depois que a k-1 (mesma base)
+            // deixou de estar PENDENTE. ERRO também libera (a k-1 desistiu; não trava o resto).
+            const mParte = RE_PARTE.exec(item.referencia || '');
+            if (mParte && Number(mParte[2]) > 1) {
+                const anterior = await prisma.botWhatsappEnvio.findFirst({
+                    where: { origem: item.origem, referencia: `${mParte[1]}-p${Number(mParte[2]) - 1}`, status: 'PENDENTE' },
+                    select: { id: true },
+                });
+                if (anterior) continue;
+            }
             // MESMA referencia de propósito: se a 1ª tentativa saiu e a resposta
             // se perdeu, o bot devolve `duplicado` e nada é enviado em dobro.
             const r = await postEnviar({

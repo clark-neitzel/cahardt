@@ -1,0 +1,24 @@
+{
+ "pedido5": "Ola, *Padaria do Zé*! 👋\n\nSegue o resumo do seu pedido 📋\n\n📅 *Pedido:* 05/10/2026\n🚚 *Entrega:* 07/10/2026\n\n────────────────────\n`Salgado Congelado Sabor Numero 1 Especial 500GR`\n11 un x R$ 4,25\n\n`Salgado Congelado Sabor Numero 2 Especial 500GR`\n12 un x R$ 5,00\n\n`Salgado Congelado Sabor Numero 3 Especial 500GR`\n13 un x R$ 5,75\n\n`Salgado Congelado Sabor Numero 4 Especial 500GR`\n14 un x R$ 6,50\n\n`Salgado Congelado Sabor Numero 5 Especial 500GR`\n15 un x R$ 7,25\n\n`Taxa de entrega`\nR$ 15,00\n────────────────────\n\n💰 *Total: R$ 396,25*\n💳 *Condição:* Boleto 14 dias\n\n📝 *Obs:* Entregar pela porta dos fundos, antes das 8h.\n\nObrigado pela preferência! 🙏",
+ "pedido3semFreteSemObs": "Ola, *Padaria do Zé*! 👋\n\nSegue o resumo do seu pedido 📋\n\n📅 *Pedido:* 05/10/2026\n🚚 *Entrega:* 07/10/2026\n\n────────────────────\n`Salgado Congelado Sabor Numero 1 Especial 500GR`\n11 un x R$ 4,25\n\n`Salgado Congelado Sabor Numero 2 Especial 500GR`\n12 un x R$ 5,00\n\n`Salgado Congelado Sabor Numero 3 Especial 500GR`\n13 un x R$ 5,75\n────────────────────\n\n💰 *Total: R$ 181,50*\n💳 *Condição:* Boleto 14 dias\n\nObrigado pela preferência! 🙏",
+ "deliv_PEDIDO": {
+  "texto": "Olá, *Padaria do Zé*! 👋\n\nRecebemos seu pedido *#4321* ✅\n\n📅 *Entrega:* 07/10/2026\n\n────────────────────\n`Salgado Congelado Sabor Numero 1 Especial 500GR`\n11 un x R$ 4,25\n\n`Salgado Congelado Sabor Numero 2 Especial 500GR`\n12 un x R$ 5,00\n\n`Salgado Congelado Sabor Numero 3 Especial 500GR`\n13 un x R$ 5,75\n\n`Salgado Congelado Sabor Numero 4 Especial 500GR`\n14 un x R$ 6,50\n\n`Salgado Congelado Sabor Numero 5 Especial 500GR`\n15 un x R$ 7,25\n\n`Taxa de entrega`\nR$ 15,00\n────────────────────\n\n💰 *Total: R$ 396,25*\n\n📝 *Obs:* Entregar pela porta dos fundos, antes das 8h.\n\nObrigado pela preferência! 🙏",
+  "etapaLabel": "Pedido Criado"
+ },
+ "deliv_PRODUCAO": {
+  "texto": "Olá, *Padaria do Zé*! 👋\n\nSeu pedido *#4321* está *Em Produção* ✨\n\n📅 *Entrega:* 07/10/2026\n\n────────────────────\n`Salgado Congelado Sabor Numero 1 Especial 500GR`\n11 un x R$ 4,25\n\n`Salgado Congelado Sabor Numero 2 Especial 500GR`\n12 un x R$ 5,00\n\n`Salgado Congelado Sabor Numero 3 Especial 500GR`\n13 un x R$ 5,75\n\n`Salgado Congelado Sabor Numero 4 Especial 500GR`\n14 un x R$ 6,50\n\n`Salgado Congelado Sabor Numero 5 Especial 500GR`\n15 un x R$ 7,25\n\n`Taxa de entrega`\nR$ 15,00\n────────────────────\n\n💰 *Total: R$ 396,25*\n\n📝 *Obs:* Entregar pela porta dos fundos, antes das 8h.\n\nObrigado pela preferência! 🙏",
+  "etapaLabel": "Em Produção"
+ },
+ "deliv_SAINDO": {
+  "texto": "Olá, *Padaria do Zé*! 👋\n\nSeu pedido *#4321* — *Saindo para Entrega* ✨",
+  "etapaLabel": "Saindo para Entrega"
+ },
+ "deliv_ENTREGUE": {
+  "texto": "Olá, *Padaria do Zé*! 👋\n\nSeu pedido *#4321* — *Entregue* ✨",
+  "etapaLabel": "Entregue"
+ },
+ "deliv_PRODUCAO_semFrete": {
+  "texto": "Olá, *Padaria do Zé*! 👋\n\nSeu pedido *#4321* está *Em Produção* ✨\n\n📅 *Entrega:* 07/10/2026\n\n────────────────────\n`Salgado Congelado Sabor Numero 1 Especial 500GR`\n11 un x R$ 4,25\n\n`Salgado Congelado Sabor Numero 2 Especial 500GR`\n12 un x R$ 5,00\n────────────────────\n\n💰 *Total: R$ 106,75*\n\nObrigado pela preferência! 🙏",
+  "etapaLabel": "Em Produção"
+ }
+}

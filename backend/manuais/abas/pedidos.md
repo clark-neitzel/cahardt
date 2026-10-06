@@ -407,3 +407,11 @@ Regras:
 - O WhatsApp do cliente é o campo **Celular** do cadastro. É por ele que sai a confirmação do pedido, o boleto/PIX e a cobrança, e é o que permite ao escritório atender a carteira quando o vendedor falta.
 - O **mesmo interruptor** vale para o cadastro de cliente novo: com ele ligado, não dá para cadastrar cliente sem o WhatsApp; com ele desligado, o cadastro continua salvando sem o número, como sempre foi.
 - Acompanhamento por vendedor: tela **Pendências de WhatsApp** (`/clientes/pendencias-whatsapp`).
+
+
+## Confirmação de pedido grande chega em várias mensagens (novo — 10/2026)
+
+A confirmação do pedido que o cliente recebe no WhatsApp traz **todos os itens**. Se o pedido é grande e não cabe numa mensagem só (limite do WhatsApp do bot), ela sai **em partes numeradas** — "*(1/3)*", "*(2/3)*", "*(3/3)*" — em sequência, sem quebrar nenhum item. O total, a condição de pagamento, a observação e a despedida vêm **na última parte**. Pedido pequeno continua saindo numa mensagem só, igual a antes.
+- Se o WhatsApp estiver com fila (limite por hora), as partes saem **na ordem**, uma depois da outra, assim que o bot liberar.
+- Observação muito longa (mais de ~500 letras) aparece resumida com "…" só quando o pedido é dividido.
+- O botão de **reenviar WhatsApp** também manda em partes; pode levar alguns segundos a mais em pedido grande.

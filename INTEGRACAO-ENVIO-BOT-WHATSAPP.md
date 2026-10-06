@@ -144,3 +144,21 @@ Mídia, disparo em massa, campanha, promoção, lembrete de recompra, boas-vinda
 envio pra quem não passou nas travas, mensagem para grupo. Se um dia a Hardt precisar de automação
 proativa de verdade, a saída é a **API oficial (Meta Cloud)** — não é este assunto, e não vamos
 tentar contornar por aqui.
+
+---
+
+## Nota de implementação (10/2026) — pedido grande sai em VÁRIAS PARTES
+
+Antes, mensagem acima de 2000 caracteres era cortada (`cortarTexto`) e o cliente perdia itens, Total,
+Condição e Obs. Agora o CA-Hardt **divide** a confirmação (e o resumo do Delivery em produção) em
+partes numeradas, sem quebrar item:
+
+- `botWhatsappService.dividirEmPartes` (pura, limite 1900) e `enviarEmPartes`.
+- Cabe em uma só → **1 mensagem, texto e `referencia` idênticos aos de sempre** (sem sufixo).
+- Não cabe → `<referencia>-p1 … -pN`, **enviadas em sequência** (nunca em paralelo). Cada parte é uma
+  chamada normal ao `/api/integracao/enviar`, no mesmo `tipo`/`origem` — o volume sobe só para pedidos grandes.
+- Retry/fila usam a **mesma** referência de cada parte. Parte reagendada: as seguintes ficam `PENDENTE`
+  na fila e o worker só libera a parte k depois que a k-1 saiu (ou foi para `ERRO`).
+- Reenvio manual: referência-base nova (`referenciaUnica`) uma vez; sufixos `-pN` depois.
+- `cortarTexto` continua como rede de segurança (ex.: um único item > limite).
+- Convenção: nenhuma referência de outro fluxo pode terminar em `-p<número>`.

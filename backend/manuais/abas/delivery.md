@@ -109,3 +109,8 @@ A tela de configuração (admin) tem duas abas:
 | `frontend/src/pages/Delivery/DeliveryConfig.jsx` | Configurações de categorias e permissões |
 | `frontend/src/services/deliveryService.js` | Chamadas de API do delivery |
 | `backend/src/routes/delivery.js` | Rotas do backend |
+
+
+## Pedido grande: mensagens em várias partes (novo — 10/2026)
+
+Nas etapas **Em Produção** (cliente e número interno da equipe) e no reenvio de **Pedido Criado**, o resumo lista todos os itens. Quando o pedido é grande, a mensagem sai **dividida em partes numeradas** ("*(1/2)*", "*(2/2)*"), com o total e as observações na última. **Saindo para Entrega** e **Entregue** são sempre uma mensagem curta. A prévia da mensagem na tela continua mostrando o texto completo numa só peça. O reenvio manual de pedido grande pode demorar alguns segundos a mais.

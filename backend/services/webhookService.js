@@ -47,26 +47,47 @@ const ETAPAS_LABEL_DELIVERY = {
     ENTREGUE: 'Entregue'
 };
 
+const LINHA_DIVISORIA = '────────────────────';
+const OBS_MAX_MULTIPARTE = 500;
+
+const moedaBR = (v) => Number(v || 0).toFixed(2).replace('.', ',');
+
+/** Um bloco por item do pedido (formato idêntico ao de sempre). */
+const blocosItens = (pedido) => (pedido.itens || []).map(i => {
+    const nomeProd = i.produto?.nome || 'Produto';
+    return `\`${nomeProd}\`\n${Number(i.quantidade)} un x R$ ${moedaBR(i.valor)}`;
+});
+
+const totalPedido = (pedido) =>
+    (pedido.itens || []).reduce((sum, i) => sum + (Number(i.valor || 0) * Number(i.quantidade)), 0) + Number(pedido.valorFrete || 0);
+
+/** Obs longa demais atrapalha o multi-parte: limita em ~500 chars (só quando divide). */
+const obsCurta = (obs) => {
+    const t = String(obs);
+    return t.length > OBS_MAX_MULTIPARTE ? `${t.slice(0, OBS_MAX_MULTIPARTE - 1).trimEnd()}…` : t;
+};
+
+/** Itens + linha da taxa (a taxa é o último "item": separador '\n\n', igual ao texto de sempre). */
+const itensComFrete = (pedido, rotuloFrete) => {
+    const lista = blocosItens(pedido);
+    const frete = Number(pedido.valorFrete || 0);
+    if (frete > 0) lista.push(`\`${rotuloFrete}\`\nR$ ${moedaBR(frete)}`);
+    return lista;
+};
+
 /**
- * Texto da confirmação de pedido (notificarPedido). Função pura.
+ * Confirmação de pedido ESTRUTURADA (notificarPedido). Função pura.
+ * Texto inteiro = cabecalho + '\n' + itens.join('\n\n') + '\n' + rodape.
  * Total = itens + taxa de entrega (valorFrete), igual ao da tela/delivery.
  * pedido: { cliente, itens[{valor,quantidade,produto:{nome}}], valorFrete, createdAt, dataVenda,
  *           nomeCondicaoPagamento, tipoPagamento, opcaoCondicaoPagamento, observacoes }
  */
-const montarMensagemPedido = (pedido) => {
+const montarPartesPedido = (pedido) => {
     const nome = pedido.cliente?.NomeFantasia || pedido.cliente?.Nome;
-    const linhasItens = (pedido.itens || []).map(i => {
-        const nomeProd = i.produto?.nome || 'Produto';
-        const qtd = Number(i.quantidade);
-        const valorUn = Number(i.valor || 0).toFixed(2).replace('.', ',');
-        return `\`${nomeProd}\`\n${qtd} un x R$ ${valorUn}`;
-    }).join('\n\n');
-    const frete = Number(pedido.valorFrete || 0);
-    const total = (pedido.itens || []).reduce((sum, i) => sum + (Number(i.valor || 0) * Number(i.quantidade)), 0) + frete;
-    const totalStr = total.toFixed(2).replace('.', ',');
     const condicao = pedido.nomeCondicaoPagamento || `${pedido.tipoPagamento || ''} ${pedido.opcaoCondicaoPagamento || ''}`.trim();
+    const numero = pedido.numero || String(pedido.id || '').slice(0, 8);
 
-    const partes = [
+    const cabecalho = [
         `Ola, *${nome}*! 👋`,
         '',
         `Segue o resumo do seu pedido 📋`,
@@ -74,24 +95,38 @@ const montarMensagemPedido = (pedido) => {
         `📅 *Pedido:* ${formatDateMsg(pedido.createdAt)}`,
         `🚚 *Entrega:* ${formatDateMsg(pedido.dataVenda)}`,
         '',
-        '────────────────────',
-        linhasItens,
-    ];
-    if (frete > 0) {
-        partes.push(`\n\`Taxa de entrega\`\nR$ ${frete.toFixed(2).replace('.', ',')}`);
-    }
-    partes.push(
-        '────────────────────',
-        '',
-        `💰 *Total: R$ ${totalStr}*`,
-        `💳 *Condição:* ${condicao}`,
-    );
-    if (pedido.observacoes) {
-        partes.push('', `📝 *Obs:* ${pedido.observacoes}`);
-    }
-    partes.push('', 'Obrigado pela preferência! 🙏');
-    return partes.join('\n');
+        LINHA_DIVISORIA,
+    ].join('\n');
+
+    const montarRodape = (obs) => {
+        const r = [
+            LINHA_DIVISORIA,
+            '',
+            `💰 *Total: R$ ${moedaBR(totalPedido(pedido))}*`,
+            `💳 *Condição:* ${condicao}`,
+        ];
+        if (obs) r.push('', `📝 *Obs:* ${obs}`);
+        r.push('', 'Obrigado pela preferência! 🙏');
+        return r.join('\n');
+    };
+
+    return {
+        cabecalho,
+        itens: itensComFrete(pedido, 'Taxa de entrega'),
+        rodape: montarRodape(pedido.observacoes),
+        rodapeCurto: montarRodape(pedido.observacoes ? obsCurta(pedido.observacoes) : null),
+        tituloContinuacao: `Pedido #${numero}`,
+    };
 };
+
+/** Texto da confirmação de pedido numa mensagem só (igual ao de sempre). */
+const montarMensagemPedido = (pedido) => {
+    const p = montarPartesPedido(pedido);
+    return `${p.cabecalho}\n${p.itens.join('\n\n')}\n${p.rodape}`;
+};
+
+/** Lista de textos prontos p/ envio: 1 (pedido pequeno, idêntico ao de sempre) ou N partes numeradas. */
+const montarListaPartes = (p) => bot.dividirEmPartes(p);
 
 /**
  * Monta o texto da mensagem de WhatsApp para o CLIENTE no fluxo do Delivery.
@@ -101,66 +136,87 @@ const montarMensagemPedido = (pedido) => {
  * prisma.pedido.findUnique({ include: { cliente: true, itens: { include: {
  * produto: { select: { nome: true } } } } } })).
  */
+/**
+ * Monta o texto da mensagem de WhatsApp para o CLIENTE no fluxo do Delivery.
+ * Função PURA — é a ÚNICA fonte deste texto: notificarDelivery e a prévia manual
+ * (GET .../previa-mensagem) usam ela. `pedido` já deve vir com `cliente` e `itens.produto`.
+ */
 const montarMensagemDeliveryCliente = (pedido, etapa) => {
+    const { texto, etapaLabel } = montarPartesDeliveryCliente(pedido, etapa);
+    return { texto, etapaLabel };
+};
+
+/**
+ * Versão ESTRUTURADA do texto do Delivery p/ o cliente. PEDIDO/PRODUCAO trazem o resumo
+ * (dividível em partes); SAINDO/ENTREGUE são sempre 1 mensagem curta.
+ * Retorna { texto, etapaLabel, cabecalho, itens, rodape, rodapeCurto, tituloContinuacao, temResumo }.
+ * texto inteiro = cabecalho + '\n' + itens.join('\n\n') + '\n' + rodape (quando temResumo).
+ */
+const montarPartesDeliveryCliente = (pedido, etapa) => {
     const nome = pedido.cliente?.NomeFantasia || pedido.cliente?.Nome || 'Cliente';
     const etapaLabel = ETAPAS_LABEL_DELIVERY[etapa] || etapa;
     const numeroPedido = pedido.numero || String(pedido.id || '').slice(0, 8);
 
-    const linhasItens = (pedido.itens || []).map(i => {
-        const nomeProd = i.produto?.nome || 'Produto';
-        const qtd = Number(i.quantidade);
-        const valorUn = Number(i.valor || 0).toFixed(2).replace('.', ',');
-        return `\`${nomeProd}\`\n${qtd} un x R$ ${valorUn}`;
-    }).join('\n\n');
-    const total = (pedido.itens || []).reduce((s, i) => s + Number(i.valor || 0) * Number(i.quantidade), 0) + Number(pedido.valorFrete || 0);
-    const totalStr = total.toFixed(2).replace('.', ',');
-
-    const resumoPartes = [
-        `📅 *Entrega:* ${formatDateMsg(pedido.dataVenda)}`,
-        '',
-        '────────────────────',
-        linhasItens,
-    ];
-    if (Number(pedido.valorFrete || 0) > 0) {
-        resumoPartes.push(`\n\`Taxa de entrega\`\nR$ ${Number(pedido.valorFrete).toFixed(2).replace('.', ',')}`);
-    }
-    resumoPartes.push('────────────────────');
-    resumoPartes.push('', `💰 *Total: R$ ${totalStr}*`);
-    if (pedido.observacoes) {
-        resumoPartes.push('', `📝 *Obs:* ${pedido.observacoes}`);
-    }
-    const resumo = resumoPartes.join('\n');
-
-    let texto;
-    if (etapa === 'PEDIDO') {
-        texto = [
-            `Olá, *${nome}*! 👋`,
-            '',
-            `Recebemos seu pedido *#${numeroPedido}* ✅`,
-            '',
-            resumo,
-            '',
-            'Obrigado pela preferência! 🙏'
-        ].join('\n');
-    } else if (etapa === 'PRODUCAO') {
-        texto = [
-            `Olá, *${nome}*! 👋`,
-            '',
-            `Seu pedido *#${numeroPedido}* está *${etapaLabel}* ✨`,
-            '',
-            resumo,
-            '',
-            'Obrigado pela preferência! 🙏'
-        ].join('\n');
-    } else {
-        texto = [
+    if (etapa !== 'PEDIDO' && etapa !== 'PRODUCAO') {
+        const texto = [
             `Olá, *${nome}*! 👋`,
             '',
             `Seu pedido *#${numeroPedido}* — *${etapaLabel}* ✨`
         ].join('\n');
+        return { texto, etapaLabel, cabecalho: texto, itens: [], rodape: '', rodapeCurto: '', tituloContinuacao: `Pedido #${numeroPedido}`, temResumo: false };
     }
 
-    return { texto, etapaLabel };
+    const abertura = etapa === 'PEDIDO'
+        ? `Recebemos seu pedido *#${numeroPedido}* ✅`
+        : `Seu pedido *#${numeroPedido}* está *${etapaLabel}* ✨`;
+
+    const cabecalho = [
+        `Olá, *${nome}*! 👋`,
+        '',
+        abertura,
+        '',
+        `📅 *Entrega:* ${formatDateMsg(pedido.dataVenda)}`,
+        '',
+        LINHA_DIVISORIA,
+    ].join('\n');
+
+    const montarRodape = (obs) => {
+        const r = [LINHA_DIVISORIA, '', `💰 *Total: R$ ${moedaBR(totalPedido(pedido))}*`];
+        if (obs) r.push('', `📝 *Obs:* ${obs}`);
+        r.push('', 'Obrigado pela preferência! 🙏');
+        return r.join('\n');
+    };
+
+    const itens = itensComFrete(pedido, 'Taxa de entrega');
+    const rodape = montarRodape(pedido.observacoes);
+    return {
+        texto: `${cabecalho}\n${itens.join('\n\n')}\n${rodape}`,
+        etapaLabel, cabecalho, itens, rodape,
+        rodapeCurto: montarRodape(pedido.observacoes ? obsCurta(pedido.observacoes) : null),
+        tituloContinuacao: `Pedido #${numeroPedido}`,
+        temResumo: true,
+    };
+};
+
+/**
+ * Resumo INTERNO (equipe) da etapa PRODUCAO — estruturado. Rótulo do frete é "Frete"
+ * (diferente do texto do cliente, que diz "Taxa de entrega") — mantido como sempre foi.
+ * texto inteiro = cabecalho + '\n' + itens.join('\n\n') + '\n' + rodape.
+ */
+const montarPartesDeliveryInterno = (pedido, etapaLabel, numeroPedido, nome) => {
+    const cabecalho = `🚚 *DELIVERY — ${etapaLabel}*\nPedido #${numeroPedido} — ${nome}\n\n📅 *Entrega:* ${formatDateMsg(pedido.dataVenda)}\n\n${LINHA_DIVISORIA}`;
+    const montarRodape = (obs) => {
+        const r = [LINHA_DIVISORIA, '', `💰 *Total: R$ ${moedaBR(totalPedido(pedido))}*`];
+        if (obs) r.push('', `📝 *Obs:* ${obs}`);
+        return r.join('\n');
+    };
+    return {
+        cabecalho,
+        itens: itensComFrete(pedido, 'Frete'),
+        rodape: montarRodape(pedido.observacoes),
+        rodapeCurto: montarRodape(pedido.observacoes ? obsCurta(pedido.observacoes) : null),
+        tituloContinuacao: `Delivery #${numeroPedido}`,
+    };
 };
 
 /** O toggle "Notificação WhatsApp" da tela de Configurações (pausa geral). */
@@ -206,7 +262,7 @@ const webhookService = {
             const phone = formatPhone(pedido.cliente);
             if (!bot.normalizarTelefone(phone)) { await salvarStatus(false, 'Sem celular cadastrado'); return { ok: false, motivo: 'Cliente sem telefone celular válido' }; }
 
-            const texto = montarMensagemPedido(pedido);
+            const partes = montarListaPartes(montarPartesPedido(pedido));
 
             const numero = pedido.numero || pedidoId.slice(0, 8);
             // Reenvio manual precisa de referência NOVA — com a mesma, o bot
@@ -215,12 +271,14 @@ const webhookService = {
                 ? bot.referenciaUnica(`pedido-${numero}-reenvio`)
                 : `pedido-${numero}-confirmado`;
 
-            const r = await bot.enviar({
+            // Pedido grande sai em várias partes numeradas (-p1..pN); pequeno = 1 mensagem,
+            // com a MESMA referencia de sempre. Reenvio manual: base única UMA vez só.
+            const r = await bot.enviarEmPartes({
                 telefone: phone,
-                texto,
+                partes,
                 tipo: 'pedido',
                 origem: 'app-vendedor',
-                referencia,
+                referenciaBase: referencia,
             });
 
             // Reagendado = vai sair pelo worker; conta como sucesso pro usuário
@@ -469,31 +527,6 @@ const webhookService = {
             const etapaLabel = ETAPAS_LABEL[novaEtapa] || novaEtapa;
             const numeroPedido = pedido.numero || pedidoId.slice(0, 8);
 
-            const linhasItens = pedido.itens.map(i => {
-                const nomeProd = i.produto?.nome || 'Produto';
-                const qtd = Number(i.quantidade);
-                const valorUn = Number(i.valor || 0).toFixed(2).replace('.', ',');
-                return `\`${nomeProd}\`\n${qtd} un x R$ ${valorUn}`;
-            }).join('\n\n');
-            const total = pedido.itens.reduce((s, i) => s + Number(i.valor || 0) * Number(i.quantidade), 0) + Number(pedido.valorFrete || 0);
-            const totalStr = total.toFixed(2).replace('.', ',');
-
-            const resumoPartes = [
-                `📅 *Entrega:* ${formatDateMsg(pedido.dataVenda)}`,
-                '',
-                '────────────────────',
-                linhasItens,
-            ];
-            if (Number(pedido.valorFrete || 0) > 0) {
-                resumoPartes.push(`\n\`Frete\`\nR$ ${Number(pedido.valorFrete).toFixed(2).replace('.', ',')}`);
-            }
-            resumoPartes.push('────────────────────');
-            resumoPartes.push('', `💰 *Total: R$ ${totalStr}*`);
-            if (pedido.observacoes) {
-                resumoPartes.push('', `📝 *Obs:* ${pedido.observacoes}`);
-            }
-            const resumo = resumoPartes.join('\n');
-
             // ── Número interno da equipe ──
             // Resumo completo em PRODUCAO; só a etapa nas demais.
             const botConfig = await prisma.appConfig.findUnique({ where: { key: 'delivery_bot_phone' } });
@@ -501,16 +534,16 @@ const webhookService = {
             const botPhone = typeof botPhoneRaw === 'string' ? botPhoneRaw : null;
 
             if (bot.normalizarTelefone(botPhone)) {
-                const cabecalhoBot = `🚚 *DELIVERY — ${etapaLabel}*\nPedido #${numeroPedido} — ${nome}`;
-                const mensagemBot = novaEtapa === 'PRODUCAO'
-                    ? `${cabecalhoBot}\n\n${resumo}`
-                    : cabecalhoBot;
-                const r = await bot.enviar({
+                // Resumo completo em PRODUCAO (dividido em partes se grande); só a etapa nas demais.
+                const partesBot = novaEtapa === 'PRODUCAO'
+                    ? montarListaPartes(montarPartesDeliveryInterno(pedido, etapaLabel, numeroPedido, nome))
+                    : [`🚚 *DELIVERY — ${etapaLabel}*\nPedido #${numeroPedido} — ${nome}`];
+                const r = await bot.enviarEmPartes({
                     telefone: botPhone,
-                    texto: mensagemBot,
+                    partes: partesBot,
                     tipo: 'interno',
                     origem: 'delivery',
-                    referencia: `entrega-interno-${numeroPedido}-${novaEtapa}`,
+                    referenciaBase: `entrega-interno-${numeroPedido}-${novaEtapa}`,
                 });
                 await registrarLog('BOT', (r.ok || r.reagendado) ? 'OK' : 'ERRO', r.motivo || `Etapa ${novaEtapa}`);
             }
@@ -535,18 +568,19 @@ const webhookService = {
                     resultadoCliente = { ok: true, enviado: false, motivo: MOTIVO_DELIVERY_SEM_AVISO };
                     await registrarLog('WHATSAPP', 'OK', resultadoCliente.motivo);
                 } else {
-                    const { texto: mensagemCliente } = montarMensagemDeliveryCliente(pedido, novaEtapa);
+                    const estruturado = montarPartesDeliveryCliente(pedido, novaEtapa);
+                    const partesCliente = estruturado.temResumo ? montarListaPartes(estruturado) : [estruturado.texto];
 
                     const referencia = forceManual
                         ? bot.referenciaUnica(`entrega-${numeroPedido}-${novaEtapa}-reenvio`)
                         : `entrega-${numeroPedido}-${novaEtapa}`;
 
-                    const r = await bot.enviar({
+                    const r = await bot.enviarEmPartes({
                         telefone: phone,
-                        texto: mensagemCliente,
+                        partes: partesCliente,
                         tipo: 'entrega',
                         origem: 'delivery',
-                        referencia,
+                        referenciaBase: referencia,
                     });
 
                     if (r.ok && r.status === 'duplicado' && forceManual) {
@@ -577,6 +611,9 @@ const webhookService = {
 module.exports = webhookService;
 module.exports.montarMensagemDeliveryCliente = montarMensagemDeliveryCliente;
 module.exports.montarMensagemPedido = montarMensagemPedido;
+module.exports.montarPartesPedido = montarPartesPedido;
+module.exports.montarPartesDeliveryCliente = montarPartesDeliveryCliente;
+module.exports.montarPartesDeliveryInterno = montarPartesDeliveryInterno;
 module.exports.formatPhoneComFallback = formatPhoneComFallback;
 module.exports.MOTIVO_DELIVERY_SILENCIADO = MOTIVO_DELIVERY_SILENCIADO;
 module.exports.MOTIVO_DELIVERY_SEM_TELEFONE = MOTIVO_DELIVERY_SEM_TELEFONE;
