@@ -798,7 +798,7 @@ const Layout = ({ children }) => {
         <AlertaDevolucaoRefItem />
 
         {/* COPILOTO (CLIPPY) — assistente de negócio com IA, só desktop */}
-        <Clippy />
+        {(isAdmin || user?.permissoes?.Pode_Ver_Clippy !== false) && <Clippy />}
 
         <main className="flex-1 w-full px-4 sm:px-6 lg:px-8 pb-10 overflow-x-clip">
           {children}

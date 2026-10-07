@@ -67,7 +67,8 @@ Gerenciamento de todos os usuários do sistema (chamados de "vendedores", mas in
 6. **Copiar de outro usuário**: botão na barra do topo — escolhe a pessoa e copia todas as permissões dela
 7. Filtros **"Só ativas"** e **"Zona de risco"** ajudam a auditar rapidamente
 8. Na seção **Caixa Diário** também fica o campo **"Tabela para cobrança de faltas de devolução"** — a tabela de preço usada para cobrar o motorista quando falta mercadoria na conferência (padrão automático: "À vista - Funcionário")
-9. O rodapé mostra **quantas alterações estão pendentes**; nada é gravado até clicar em **Salvar** (e fechar com pendências pede confirmação)
+9. **Assistente Clippy** (seção Acesso e Conta): interruptor que mostra ou esconde o balão de ajuda do canto da tela (só no computador). Vem **ligado para todo mundo**; o admin só usa para **desligar individualmente**. Não entra nos perfis rápidos nem em Marcar tudo/Limpar. Administrador sempre vê (o interruptor aparece ligado e travado). Desligado, a pessoa também **não recebe os avisos de novidade** do sistema. O balão some depois que ela recarregar ou entrar de novo
+10. O rodapé mostra **quantas alterações estão pendentes**; nada é gravado até clicar em **Salvar** (e fechar com pendências pede confirmação)
 
 ### Histórico de permissões (auditoria + desfazer)
 1. No painel de permissões, clique em **"Histórico"** na barra do topo

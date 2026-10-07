@@ -155,8 +155,9 @@ export default function Clippy() {
                 historico.slice(-8).map(({ role, content }) => ({ role, content }))
             );
             setMensagens((m) => [...m, { role: 'assistant', content: data.resposta, atalhos: data.atalhos || [] }]);
-        } catch {
-            setMensagens((m) => [...m, { role: 'assistant', content: 'Ops, não consegui responder agora. Tente de novo em instantes.' }]);
+        } catch (err) {
+            const desativado = err?.response?.status === 403;
+            setMensagens((m) => [...m, { role: 'assistant', content: desativado ? 'Assistente desativado para este usuário.' : 'Ops, não consegui responder agora. Tente de novo em instantes.' }]);
         } finally {
             setEnviando(false);
         }

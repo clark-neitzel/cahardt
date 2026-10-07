@@ -147,6 +147,8 @@ const DEFAULT_PERMISSIONS = {
     Pode_Editar_Ponto: false,
     // Tela inicial preferida
     telaInicial: '/',
+    // Assistente Clippy: ausente = true; só false desliga (admin sempre vê)
+    Pode_Ver_Clippy: true,
     // Barra de visitantes online (site ao vivo no topo do admin)
     Pode_Ver_Barra_Online: false,
     // Tarefas da Equipe (agenda com alertas)
@@ -176,13 +178,14 @@ const TELAS_INICIAIS = [
 ];
 
 // ── Toggle switch component ──
-const Toggle = ({ checked, onChange, label, sublabel, colorClass = 'bg-indigo-600', icon: Icon, danger }) => (
-    <label className={`flex items-start gap-3 text-sm cursor-pointer p-2.5 rounded-lg transition-colors ${danger ? 'hover:bg-red-50' : 'hover:bg-gray-50'}`}>
+const Toggle = ({ checked, onChange, label, sublabel, colorClass = 'bg-indigo-600', icon: Icon, danger, disabled, dica }) => (
+    <label title={dica || ''} className={`flex items-start gap-3 text-sm ${disabled ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'} p-2.5 rounded-lg transition-colors ${danger ? 'hover:bg-red-50' : 'hover:bg-gray-50'}`}>
         <button
             type="button"
             role="switch"
             aria-checked={checked}
-            onClick={() => onChange(!checked)}
+            onClick={() => !disabled && onChange(!checked)}
+            disabled={disabled}
             className={`relative inline-flex h-5 w-9 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${checked ? (danger ? 'bg-red-600' : colorClass) : 'bg-gray-200'}`}
         >
             <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${checked ? 'translate-x-4' : 'translate-x-0'}`} />
@@ -241,6 +244,7 @@ const BOOL_INDEX = [
     // Acesso
     { sec: 'acesso', path: 'admin', nome: 'Administrador Global', desc: 'Acesso irrestrito a tudo; pula trava de ponto/veículo', kw: 'total master mestre tudo liberado irrestrito', danger: true, noBulk: true },
     { sec: 'acesso', path: 'Isento_Ponto', nome: 'Isento de Ponto / Diário', desc: 'Pula a trava de check-in diário (veículo/home office) ao fazer login', kw: 'ponto checkin diario trava bater veiculo' },
+    { sec: 'acesso', path: 'Pode_Ver_Clippy', nome: 'Assistente Clippy', desc: 'Mostra o balão de ajuda no canto da tela (só no computador). Desligado, a pessoa também não recebe os avisos de novidade do sistema.', kw: 'clippy ajuda assistente balão novidade', noBulk: true },
     { sec: 'acesso', path: 'Pode_Ver_Barra_Online', nome: 'Barra de Visitantes Online', desc: 'Mostra no topo quantas pessoas estão nos sites públicos (Início, Congelados, Kit Festa)', kw: 'site visitantes online ao vivo topo' },
     // Dashboard
     { sec: 'dashboard', path: 'Pode_Ver_Dashboard_Vendas', nome: 'Ver dados de vendas', desc: "Exibe o card 'Vendas (Hoje)' e outros valores financeiros no painel do admin", kw: 'painel vendas hoje valores card' },
@@ -678,7 +682,9 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
         <div className="flex items-start gap-2">
             <div className="flex-1 min-w-0">
                 <Toggle
-                    checked={getBoolPath(entry.path)}
+                    checked={getBoolPath(entry.path) || (entry.path === 'Pode_Ver_Clippy' && !!permissoes.admin)}
+                    disabled={entry.path === 'Pode_Ver_Clippy' && !!permissoes.admin}
+                    dica={entry.path === 'Pode_Ver_Clippy' && permissoes.admin ? 'Administrador vê tudo automaticamente' : ''}
                     onChange={(v) => setBoolPath(entry.path, v)}
                     label={entry.nome}
                     sublabel={entry.desc}
@@ -797,6 +803,22 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                     title={permissoes.admin ? 'Administrador vê tudo automaticamente' : ''}
                 >
                     <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${(permissoes.admin || permissoes.Pode_Ver_Barra_Online) ? 'translate-x-5' : 'translate-x-0'}`} />
+                </button>
+            </div>
+
+            {/* ── Assistente Clippy (ausente = ligado; só === false desliga) ── */}
+            <div className="flex items-center justify-between gap-3 bg-teal-50 p-4 rounded-lg border border-teal-200">
+                <div className="min-w-0">
+                    <h4 className="font-bold text-teal-900 text-sm">Assistente Clippy</h4>
+                    <p className="text-xs text-teal-700 mt-0.5">Mostra o balão de ajuda no canto da tela (só no computador). Desligado, a pessoa também não recebe os avisos de novidade do sistema.</p>
+                </div>
+                <button
+                    type="button" role="switch" aria-checked={!!permissoes.admin || permissoes.Pode_Ver_Clippy !== false}
+                    onClick={() => !permissoes.admin && toggleBool('Pode_Ver_Clippy')}
+                    className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${(permissoes.admin || permissoes.Pode_Ver_Clippy !== false) ? 'bg-teal-600' : 'bg-gray-200'} ${permissoes.admin ? 'opacity-60 cursor-not-allowed' : ''}`}
+                    title={permissoes.admin ? 'Administrador vê tudo automaticamente' : ''}
+                >
+                    <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${(permissoes.admin || permissoes.Pode_Ver_Clippy !== false) ? 'translate-x-5' : 'translate-x-0'}`} />
                 </button>
             </div>
         </div>
