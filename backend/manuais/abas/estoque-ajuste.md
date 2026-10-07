@@ -22,6 +22,9 @@ Painel de ajuste manual de estoque. Usado para registrar entradas (compras, devo
 - Ver a posição atual do produto selecionado (total, reservado, disponível, mínimo)
 - Registrar entrada de estoque
 - Registrar saída de estoque — **(09/2026) a saída exige o motivo escrito** (mínimo 3 letras); a entrada continua com observação opcional
+- **(10/2026)** **Confirmar antes de lançar:** toda entrada/saída abre uma janela de confirmação (verde = entrada, vermelha = saída)
+- **(10/2026)** **Bipar o código de barras** com leitor USB para escolher o produto (e somar +1 a cada bipe do mesmo produto)
+- **(10/2026)** Vincular um código de barras novo ao produto escolhido, direto do aviso de "código não encontrado"
 - Editar o estoque mínimo do produto (admin)
 - Ir para o histórico de movimentações
 
@@ -31,11 +34,11 @@ Painel de ajuste manual de estoque. Usado para registrar entradas (compras, devo
 
 ### Layout da tela
 
-No **desktop**, a tela tem dois painéis lado a lado:
-- **Esquerda**: lista de cards de produtos (busca + filtros de categoria + cards com estoque)
-- **Direita**: formulário de ajuste (aparece ao selecionar um produto; placeholder cinza se nenhum produto selecionado)
+A partir de **768 px de largura** (computador, iPad e também navegador com zoom 150%/200%), a tela tem dois painéis lado a lado:
+- **Esquerda**: lista de cards de produtos (busca + filtros de categoria + cards com estoque). **Só esta lista rola.**
+- **Direita**: formulário de ajuste (aparece ao selecionar um produto; placeholder cinza se nenhum produto selecionado). **Fica parado** enquanto a lista rola. Se o painel não couber na tela, ele rola **por dentro** e a **Quantidade** e os botões **+ Entrada / − Saída** ficam sempre fixos no pé do painel, visíveis. Os "Últimos lançamentos" rolam embaixo. Entre 768 e 1023 px a lista fica em uma coluna de cards
 
-No **mobile**, a lista de cards aparece primeiro. Ao clicar em "Escolher", a lista some e aparece o formulário. Um botão "Voltar à lista" permite voltar aos cards.
+Abaixo de 768 px (**celular** ou zoom muito grande), a lista de cards aparece primeiro. Ao clicar em "Escolher", a lista some e aparece o formulário; a **Quantidade e os botões + Entrada / − Saída ficam numa barra fixa no rodapé da tela**, sempre à vista. O botão "Voltar à lista" volta aos cards.
 
 ### Registrar uma entrada ou saída
 1. Use a busca ou clique em uma categoria para filtrar os produtos
@@ -46,9 +49,20 @@ No **mobile**, a lista de cards aparece primeiro. Ao clicar em "Escolher", a lis
 5. Escreva a observação (o motivo):
    - **Saída: obrigatório** — mínimo 3 letras. Sem isso o sistema recusa com a mensagem *"Informe o motivo da saída (mínimo 3 caracteres)."* e nada é lançado
    - **Entrada: opcional** — continua como sempre foi
-6. Clique em **+ Entrada** ou **- Saída** (ou pressione **Enter** com o cursor no campo Quantidade — lança Entrada por padrão; se o produto só permitir Saída para o usuário, o Enter lança Saída)
-7. O estoque é atualizado imediatamente; o card na lista reflete o novo saldo
-8. **(09/2026)** Depois de lançar, o cursor volta sozinho para o campo **Quantidade** — dá para digitar o próximo lançamento sem tocar na tela de novo
+6. Clique em **+ Entrada** ou **− Saída** (ou pressione **Enter** com o cursor no campo Quantidade — Enter = **Entrada**; se o produto só permitir Saída para o usuário, o Enter abre a Saída)
+7. **(10/2026)** Abre a **janela de confirmação** — **verde** para entrada, **vermelha** para saída — mostrando o produto, **+N / −N**, o **Disponível de → para** (em vermelho "Vai ficar negativo!" se o saldo cair abaixo de zero) e o motivo. **Enter confirma, Esc cancela** (o foco já vem no botão Confirmar). Nada é lançado antes dessa confirmação. A saída sem motivo continua barrada **antes** da janela: o cursor vai para o campo Motivo
+8. O estoque é atualizado imediatamente; o card na lista reflete o novo saldo
+9. **(09/2026)** Depois de lançar, **Quantidade e Motivo são limpos** e o cursor volta sozinho para o campo **Quantidade** — dá para digitar o próximo lançamento sem tocar na tela de novo
+
+### Leitor de código de barras (10/2026)
+Com um leitor **USB** (que age como teclado), basta **bipar** a etiqueta do pacote, sem clicar em nada:
+- O sistema procura o código na **etiqueta** do produto (a etiqueta de PCP ligada ao produto) e, se não achar, no **EAN** cadastrado no produto.
+- Achou: o produto é **escolhido** (mesmo que esteja fora do filtro de categoria da lista), a Quantidade é zerada e o cursor vai para ela. Aparece o aviso **"Bipado <código>"** por 1,5 segundo.
+- Bipou **o mesmo produto de novo**: soma **+1** na Quantidade (cada bipe = 1 pacote).
+- Bipou **outro produto** com quantidade digitada: troca de produto, zera e avisa "Troquei para …".
+- **Código não cadastrado:** aviso vermelho. Se já houver um produto escolhido, o aviso traz o botão **"Vincular ao <produto>"**, que grava o código nesse produto (passa a ser achado nos próximos bipes). Se o código já pertence a outro produto, o sistema informa qual.
+- Produto de categoria sem permissão de estoque para o usuário: aviso vermelho, nada é escolhido.
+- Os números do leitor **não ficam** digitados na Quantidade nem na Busca. Digitar o código à mão (mesmo rápido) funciona como antes. **Com a janela de confirmação aberta o bipe é ignorado**: o sistema engole o Enter do leitor (a janela não confirma sozinha) e mostra o aviso *"Confirme ou cancele o lançamento antes de bipar"*. Vários bipes seguidos do mesmo produto são contados na ordem (3 bipes = +3). Se você clicar em outro produto enquanto um bipe ainda está sendo processado, vale a sua escolha e o bipe é ignorado com aviso. Quantidade acima de **10.000** não abre a janela de confirmação ("Quantidade muito alta — confira se não foi o leitor"). O botão **Vincular** só aparece para quem pode dar entrada ou saída no produto escolhido; se o produto já tiver outro código cadastrado, o sistema recusa e informa qual (para trocar, edite o cadastro do produto).
 
 ### Produtos de nome parecido — confira o código e a embalagem (09/2026)
 O catálogo tem **11 produtos com "COXINHA FRANGO" no nome**, sendo três a mesma mini coxinha em
@@ -133,6 +147,9 @@ O admin configura as regras em Configurações. Cada regra define:
 | Caminho | Papel |
 |---------|-------|
 | `frontend/src/pages/Estoque/PainelEstoque.jsx` | Painel de ajuste |
-| `frontend/src/services/estoqueService.js` | Chamadas de API |
+| `frontend/src/components/ConfirmarAjusteModal.jsx` | Janela de confirmação verde/vermelha |
+| `frontend/src/hooks/useLeitorCodigoBarras.js` | Detecta o bipe do leitor (pacote rápido terminado em Enter) |
+| `frontend/src/services/estoqueService.js` | Chamadas de API (inclui buscar/vincular código de barras) |
+| `backend/routes/estoqueRoutes.js` (`GET /codigo-barras/:codigo`, `POST /codigo-barras/vincular`) | Procura/vincula o código de barras |
 | `backend/routes/estoqueRoutes.js` | Rota `POST /api/estoque/ajuste` (é aqui que a saída sem motivo é recusada) |
 | `backend/services/estoqueService.js` | Grava a movimentação e recalcula o saldo |

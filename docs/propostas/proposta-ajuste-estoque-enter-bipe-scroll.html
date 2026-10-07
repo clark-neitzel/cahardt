@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Proposta: Ajuste de Estoque mais rápido</title>
+<meta name="description" content="Enter confirma a entrada, leitor de código de barras escolhe o produto e o painel da direita fica parado enquanto a lista rola.">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --primary:#00754A;--primaryDark:#006241;--house:#1E3932;--mint:#d4e9e2;--bg:#f2f0eb;--surface:#fff;
+  --text:rgba(0,0,0,.87);--muted:#6b7280;--border:#e5e7eb;--gold:#cba258;--red:#b45333;--redBg:#fdecea;--greenBg:#e7f4ee;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Manrope,"SF Pro Text",system-ui,sans-serif;letter-spacing:-.01em;font-variant-numeric:tabular-nums;line-height:1.5}
+.wrap{max-width:1100px;margin:0 auto;padding:0 16px 64px}
+.hero{background:var(--house);color:#fff;padding:40px 16px 32px}
+.hero .wrap{padding-bottom:0}
+.hero h1{font-size:28px;margin:0 0 8px;font-weight:800}
+.hero p{margin:0;opacity:.85;max-width:720px}
+.hero .meta{margin-top:14px;font-size:13px;opacity:.7}
+.tag{display:inline-block;background:var(--gold);color:#1a1a1a;font-weight:700;font-size:11px;letter-spacing:.08em;text-transform:uppercase;padding:4px 10px;border-radius:999px;margin-bottom:12px}
+section{margin-top:28px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 1px 2px rgba(0,0,0,.04);overflow:hidden}
+.card .head{display:flex;align-items:center;gap:10px;padding:14px 20px;border-bottom:1px solid #f1f1f1}
+.card .head .n{width:28px;height:28px;border-radius:999px;background:var(--primary);color:#fff;font-weight:800;display:grid;place-items:center;font-size:14px}
+.card .head h2{margin:0;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:#4b5563}
+.card .body{padding:20px}
+h3{font-size:16px;margin:18px 0 6px}
+p{margin:6px 0}
+ul{padding-left:20px;margin:6px 0}
+li{margin:4px 0}
+.muted{color:var(--muted);font-size:14px}
+.kbd{display:inline-block;border:1px solid #cfcfcf;border-bottom-width:2px;border-radius:6px;padding:1px 7px;font-size:12px;font-weight:700;background:#fafafa;color:#333}
+.grid2{display:grid;grid-template-columns:1fr;gap:14px}
+@media(min-width:760px){.grid2{grid-template-columns:1fr 1fr}}
+.box{border:1px solid var(--border);border-radius:10px;padding:14px;background:#fafaf8}
+.box b{display:block;margin-bottom:4px}
+.ok{color:var(--primaryDark);font-weight:700}
+.bad{color:#b91c1c;font-weight:700}
+.pill{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700}
+.pill.g{background:#dcfce7;color:#166534}.pill.r{background:#fee2e2;color:#991b1b}.pill.a{background:#fef3c7;color:#92400e}.pill.m{background:var(--mint);color:var(--house)}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;padding:8px 10px;background:#f9fafb;border-bottom:1px solid var(--border)}
+td{padding:9px 10px;border-bottom:1px solid #f1f1f1;vertical-align:top}
+.btn{border:0;border-radius:999px;padding:10px 18px;font-weight:700;font-size:14px;cursor:pointer;font-family:inherit}
+.btn.p{background:var(--primary);color:#fff}.btn.p:hover{background:var(--primaryDark)}
+.btn.o{background:#fff;border:1px solid var(--primary);color:var(--primary)}
+.btn.sai{background:var(--red);color:#fff}.btn.ent{background:#4e9a5b;color:#fff}
+.btn.ghost{background:transparent;color:var(--primary)}
+
+/* ===== DEMO ===== */
+.demo{border:1px solid var(--border);border-radius:12px;background:var(--bg);padding:12px}
+.demo-top{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--muted);margin-bottom:8px}
+.app{display:grid;grid-template-columns:1fr;gap:12px;height:520px}
+@media(min-width:860px){.app{grid-template-columns:58% 1fr}}
+.col{min-height:0}
+.lista{overflow-y:auto;height:100%;padding-right:4px;display:grid;grid-template-columns:1fr 1fr;gap:10px;align-content:start}
+.lista .busca{grid-column:1/-1;background:#fff;border:1px solid #d1d5db;border-radius:10px;padding:10px 12px;font-size:13px;color:#9ca3af}
+.prod{background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px;font-size:12px;cursor:pointer;transition:transform .1s}
+.prod:hover{transform:translateY(-1px)}
+.prod.sel{outline:2px solid var(--house)}
+.prod .cod{display:inline-block;background:#1f2937;color:#fff;border-radius:6px;padding:1px 7px;font-weight:700;font-size:11px}
+.prod .cx{display:inline-block;background:var(--mint);color:var(--house);border-radius:6px;padding:1px 7px;font-weight:600;font-size:11px;margin-left:4px}
+.prod .nome{font-weight:700;margin:6px 0;font-size:12px;min-height:30px}
+.prod .linha{display:flex;justify-content:space-between;color:var(--muted)}
+.prod .linha b{color:var(--primaryDark)}
+.prod .esc{margin-top:8px;text-align:center;background:var(--mint);border-radius:999px;padding:7px;font-weight:700;color:var(--house);font-size:12px}
+.prod.sel .esc{background:#2e5a44;color:#fff}
+.painel{background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px;height:100%;overflow-y:auto;display:flex;flex-direction:column;gap:12px}
+.painel .fix{position:sticky;top:0;background:#fff;z-index:1}
+.painel label{font-size:13px;font-weight:600;color:#374151;display:block;margin-bottom:4px}
+.painel input{width:100%;border:1px solid #d1d5db;border-radius:10px;padding:10px 12px;font-family:inherit;font-size:14px}
+.painel input.qtd{text-align:center;font-size:26px;font-weight:800;padding:12px}
+.painel input:focus{outline:2px solid var(--primary);border-color:transparent}
+.painel .acoes{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.painel .acoes .btn{padding:14px;font-size:16px}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.kpi{border:1px solid var(--border);border-radius:10px;padding:8px;text-align:center}
+.kpi small{display:block;color:var(--muted);font-size:11px}.kpi b{font-size:20px}
+.hist{font-size:12px}.hist div{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dashed #eee}
+.hist .mais{color:var(--primaryDark);font-weight:700}.hist .menos{color:#b91c1c;font-weight:700}
+.chip-bipe{position:absolute;left:50%;transform:translateX(-50%);top:-14px;background:var(--house);color:#fff;font-size:12px;padding:6px 12px;border-radius:999px;font-weight:700;opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap}
+.chip-bipe.on{opacity:1}
+.vazio{height:100%;display:grid;place-items:center;color:var(--muted);text-align:center;font-size:14px;padding:20px}
+
+/* popup */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;place-items:center;z-index:100;padding:16px}
+.overlay.on{display:grid}
+.pop{background:#fff;border-radius:16px;width:100%;max-width:420px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.pop .topo{padding:18px 20px;color:#fff;font-weight:800;font-size:15px;display:flex;align-items:center;gap:10px}
+.pop.ent .topo{background:var(--primary)}.pop.sai .topo{background:#b43b2b}
+.pop .meio{padding:18px 20px}
+.pop .nome{font-weight:700;font-size:14px}
+.pop .num{font-size:44px;font-weight:800;line-height:1;margin:10px 0 4px}
+.pop.ent .num{color:var(--primaryDark)}.pop.sai .num{color:#b43b2b}
+.pop .de-para{font-size:14px;color:var(--muted)}
+.pop .de-para b{color:var(--text)}
+.pop .mot{margin-top:10px;background:#f9fafb;border-radius:8px;padding:8px 10px;font-size:13px}
+.pop .rodape{display:flex;gap:10px;padding:0 20px 18px}
+.pop .rodape .btn{flex:1;padding:12px}
+.pop .dica{font-size:12px;color:var(--muted);padding:0 20px 14px;text-align:center}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#111;color:#fff;padding:10px 16px;border-radius:999px;font-size:13px;font-weight:600;opacity:0;transition:opacity .2s;z-index:110;pointer-events:none}
+.toast.on{opacity:1}
+.toast.err{background:#b91c1c}
+
+.timeline{display:grid;grid-template-columns:1fr;gap:10px}
+@media(min-width:760px){.timeline{grid-template-columns:repeat(3,1fr)}}
+.step{border:1px solid var(--border);border-radius:10px;padding:12px;background:#fff}
+.step .k{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700}
+.step .t{font-weight:800;margin:4px 0}
+.perg{background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:12px 14px}
+.perg b{color:#92400e}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="wrap">
+    <span class="tag">Proposta · 07/10/2026</span>
+    <h1>Ajuste de Estoque mais rápido: Enter, leitor de código de barras e painel fixo</h1>
+    <p>Três mudanças na tela <b>Produção / Estoque → Ajuste de Estoque</b>. Nada muda no banco nem na regra de permissão. Abaixo tem uma <b>demo clicável</b> de como vai ficar.</p>
+    <div class="meta">Esforço estimado: 1 dia de desenvolvimento + meio dia de teste. O leitor precisa ser testado com o aparelho real da empresa.</div>
+  </div>
+</div>
+
+<div class="wrap">
+
+<!-- ================= DEMO ================= -->
+<section>
+  <div class="card">
+    <div class="head"><span class="n">▶</span><h2>Demo clicável — experimente antes de aprovar</h2></div>
+    <div class="body">
+      <p class="muted">Clique num produto (ou use o botão <b>Simular bipe</b>), digite a quantidade e aperte <span class="kbd">Enter</span>. Para saída, escreva o motivo e clique em <b>− Saída</b>. Repare que a lista da esquerda rola e o painel da direita fica parado.</p>
+      <div class="demo">
+        <div class="demo-top">
+          <span>🖱️ clique · ⌨️ Enter · 📟 bipe</span>
+          <span>
+            <button class="btn o" style="padding:6px 12px;font-size:12px" onclick="simularBipe('7898620330460')">📟 Simular bipe (Coxinha 170GR)</button>
+            <button class="btn o" style="padding:6px 12px;font-size:12px" onclick="simularBipe('7898000000000')">📟 Bipe de código desconhecido</button>
+          </span>
+        </div>
+        <div class="app">
+          <div class="col"><div class="lista" id="lista"><div class="busca">🔍 Buscar por nome ou código… (ou bipar)</div></div></div>
+          <div class="col"><div class="painel" id="painel" style="position:relative"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 1. ENTER ================= -->
+<section>
+  <div class="card">
+    <div class="head"><span class="n">1</span><h2>Enter lança Entrada, com confirmação verde</h2></div>
+    <div class="body">
+      <div class="grid2">
+        <div class="box"><b>Hoje</b>
+          <ul>
+            <li>Enter na Quantidade <b>já lança a Entrada direto</b>, sem perguntar nada.</li>
+            <li>Um Enter a mais (ou um número errado) vira lançamento no estoque.</li>
+            <li>Não existe tela de confirmação para nenhum dos dois botões.</li>
+          </ul>
+        </div>
+        <div class="box"><b>Proposta</b>
+          <ul>
+            <li><span class="kbd">Enter</span> na Quantidade abre a <span class="pill g">janela verde</span> "Confirmar ENTRADA" com produto, <b>+N</b>, e estoque <b>de → para</b>.</li>
+            <li>Na janela, <span class="kbd">Enter</span> de novo confirma; <span class="kbd">Esc</span> cancela. Dois Enters = lançado. Rápido, mas sem lançar sem querer.</li>
+            <li><b>− Saída</b> com motivo preenchido abre a <span class="pill r">janela vermelha</span> "Confirmar SAÍDA", mostrando <b>−N</b> e o motivo. Sem motivo: continua barrando e leva o cursor para o campo Motivo.</li>
+            <li>Os botões <b>+ Entrada</b> e <b>− Saída</b> continuam funcionando, passando pela mesma confirmação.</li>
+            <li>Depois de confirmar: Quantidade e Motivo limpam e o cursor volta para a Quantidade (pronto para o próximo).</li>
+          </ul>
+        </div>
+      </div>
+      <h3>Por que uma confirmação, se a ideia é ser rápido?</h3>
+      <p class="muted">Porque o custo de um erro é alto (estoque errado some sem explicação, e já aconteceu). A janela custa um Enter a mais e mostra o <b>de → para</b>, que é onde o olho pega a quantidade absurda (ex.: 7898620330460 unidades).</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 2. LEITOR ================= -->
+<section>
+  <div class="card">
+    <div class="head"><span class="n">2</span><h2>Leitor de código de barras (bipe) escolhe o produto</h2></div>
+    <div class="body">
+      <h3>O problema que você descreveu</h3>
+      <p class="muted">Um leitor USB/Bluetooth se comporta como <b>teclado</b>: ele "digita" os 13 números muito rápido e manda um Enter. Se o cursor estiver na Quantidade, o código vira a quantidade (e, com a regra atual, o Enter lança a entrada). Se estiver na Busca, até funciona, mas o cursor nunca está lá.</p>
+
+      <h3>A solução: a tela reconhece o bipe, não importa onde o cursor esteja</h3>
+      <p>Um "ouvinte" na tela observa a velocidade da digitação. Pessoa digita 1 número a cada 100–300 ms; o leitor manda os 13 em menos de 100 ms no total. Quando chega um pacote de 8+ caracteres nessa velocidade terminado em Enter, a tela entende que foi bipe:</p>
+      <div class="timeline">
+        <div class="step"><div class="k">Passo 1</div><div class="t">Bipe é capturado</div><p class="muted">Os números <b>não entram</b> na Quantidade nem na Busca. Um chip "📟 Bipado 7898…" aparece por 1,5 s.</p></div>
+        <div class="step"><div class="k">Passo 2</div><div class="t">Produto é selecionado</div><p class="muted">Procura pelo código de barras do <b>produto</b> (campo EAN do cadastro) ou pelo código de barras da <b>etiqueta</b> (PCP → Etiquetas, que já tem o campo e aponta para o produto).</p></div>
+        <div class="step"><div class="k">Passo 3</div><div class="t">Cursor vai para a Quantidade</div><p class="muted">Quantidade vazia, pronta. Digita o número, <span class="kbd">Enter</span>, <span class="kbd">Enter</span>. Pronto.</p></div>
+      </div>
+
+      <h3>Regras de bordas (o que acontece quando…)</h3>
+      <table>
+        <thead><tr><th>Situação</th><th>Comportamento</th></tr></thead>
+        <tbody>
+          <tr><td>Bipe do <b>mesmo produto</b> já selecionado</td><td>Quantidade soma <b>+1</b> a cada bipe (bipou 3 caixas = 3). <span class="pill a">decidir</span> se cada bipe soma 1 PT ou 1 caixa (cx de 12).</td></tr>
+          <tr><td>Bipe de <b>outro produto</b> com quantidade já digitada</td><td>Troca o produto e <b>zera a quantidade</b> (aviso curto "troquei para X"). Nada é lançado sem confirmação.</td></tr>
+          <tr><td>Código <b>não cadastrado</b></td><td>Toast vermelho "Código 7898… não está em nenhum produto". Se já tinha um produto selecionado, oferece <b>"Vincular este código ao produto X"</b> em um clique (grava no cadastro, sem sair da tela). Na segunda vez o bipe já acha.</td></tr>
+          <tr><td>Produto do bipe está <b>fora do filtro</b> de categoria atual</td><td>Seleciona mesmo assim e mostra o card (o filtro não impede o bipe).</td></tr>
+          <tr><td>Bipe enquanto a <b>janela de confirmação</b> está aberta</td><td>Ignorado (não confirma nem cancela). Evita que um bipe no meio confirme lançamento errado.</td></tr>
+          <tr><td>Digitação <b>humana</b> rápida de código na Busca</td><td>Continua funcionando como hoje; o detector só pega pacotes de 8+ caracteres em menos de ~100 ms.</td></tr>
+          <tr><td>Celular / iPad sem leitor físico</td><td>Fase 2 opcional: botão 📷 abre a câmera e lê o código (mesmo fluxo depois). Não entra nesta entrega.</td></tr>
+        </tbody>
+      </table>
+
+      <h3>O que precisa existir no cadastro</h3>
+      <ul>
+        <li>O produto tem campo <b>EAN</b> no cadastro (aba Produtos), herdado do Conta Azul. Muitos devem estar em branco.</li>
+        <li>A <b>etiqueta</b> do PCP tem "Código de barras" e aponta para o produto. Se o pacote sai com a etiqueta do app, o bipe da etiqueta já serve.</li>
+        <li>Por isso o botão <b>"Vincular este código ao produto"</b> é importante: a equipe cadastra os códigos conforme bipa, sem tarefa separada.</li>
+      </ul>
+
+      <div class="perg"><b>Perguntas para você:</b>
+        <ol style="margin:6px 0 0;padding-left:20px">
+          <li>Qual leitor vocês vão usar (USB no computador, Bluetooth no iPad)? Preciso testar com o aparelho real.</li>
+          <li>O código que está na caixa/pacote é o da <b>etiqueta do app</b> ou um EAN próprio do produto?</li>
+          <li>Bipe repetido soma <b>1 pacote</b> ou <b>1 caixa</b>?</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 3. SCROLL ================= -->
+<section>
+  <div class="card">
+    <div class="head"><span class="n">3</span><h2>Painel da direita fixo; só a lista rola (regra geral do app)</h2></div>
+    <div class="body">
+      <div class="grid2">
+        <div class="box"><b>Hoje</b>
+          <p class="muted">O painel da direita tenta "grudar" no topo, mas ele é mais alto que a tela (card + quantidade + motivo + botões + últimos lançamentos). Resultado: a página inteira rola, os botões somem de vista e o painel "anda" junto com a lista.</p>
+        </div>
+        <div class="box"><b>Proposta</b>
+          <p class="muted">A tela passa a ter a <b>altura exata da janela</b>. A coluna da esquerda (lista) rola sozinha, com barra própria. A coluna da direita fica parada; se o conteúdo dela não couber, <b>ela</b> rola por dentro, mas Quantidade e botões ficam sempre visíveis no topo.</p>
+          <p class="muted">No celular nada muda: lista some ao escolher o produto e o botão "Voltar à lista" continua.</p>
+        </div>
+      </div>
+
+      <h3>Vira regra do sistema (entra no CLAUDE.md)</h3>
+      <p><b>Tela "lista + painel de ação" (mestre-detalhe): a lista rola, o painel não.</b> O painel de ação (formulário, totais, botões) tem que ficar inteiro na tela sem rolar a página. Se o painel for maior que a tela, ele rola por dentro, mantendo os botões de ação sempre visíveis.</p>
+      <p class="muted">Outras telas com o mesmo desenho que entram na mesma regra (ajustadas depois, uma a uma, conforme forem tocadas):</p>
+      <table>
+        <thead><tr><th>Tela</th><th>Situação</th></tr></thead>
+        <tbody>
+          <tr><td>Estoque → Ajuste de Estoque</td><td><span class="pill m">nesta entrega</span></td></tr>
+          <tr><td>Pedidos → Novo Pedido (resumo à direita)</td><td><span class="pill g">já respeita</span> (altura limitada, rola por dentro)</td></tr>
+          <tr><td>Estoque → Posição de Estoque</td><td><span class="pill a">conferir</span></td></tr>
+          <tr><td>RH → Ficha do Funcionário</td><td><span class="pill a">conferir</span></td></tr>
+          <tr><td>Produtos → Gerenciar Produto</td><td><span class="pill a">conferir</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ================= PLANO ================= -->
+<section>
+  <div class="card">
+    <div class="head"><span class="n">✓</span><h2>Como seria a entrega</h2></div>
+    <div class="body">
+      <table>
+        <thead><tr><th>Etapa</th><th>O que</th><th>Quem</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>Janela de confirmação (verde/vermelha) + Enter/Esc + foco de volta na Quantidade</td><td>dev-frontend</td></tr>
+          <tr><td>2</td><td>Detector de bipe + busca por EAN/etiqueta + "Vincular código ao produto" (1 rota pequena no backend)</td><td>dev-frontend + dev-backend</td></tr>
+          <tr><td>3</td><td>Layout de altura fixa, lista rola, painel parado; regra no CLAUDE.md</td><td>dev-frontend</td></tr>
+          <tr><td>4</td><td>Teste clicando (desktop, iPad, celular) + revisão de código + portão de entrega</td><td>qa-testador, revisor-codigo, gerente-entrega</td></tr>
+          <tr><td>5</td><td>Teste do bipe <b>com o leitor real</b> e manual da aba + Clippy + novidade para o grupo</td><td>você + equipe</td></tr>
+        </tbody>
+      </table>
+      <p class="muted" style="margin-top:12px">Para aprovar: responda as 3 perguntas do item 2 (ou diga "faz com o padrão": bipe soma 1 pacote, procura EAN do produto e depois etiqueta).</p>
+    </div>
+  </div>
+</section>
+
+</div>
+
+<!-- popup -->
+<div class="overlay" id="ov">
+  <div class="pop" id="pop">
+    <div class="topo" id="popTopo"></div>
+    <div class="meio">
+      <div class="nome" id="popNome"></div>
+      <div class="num" id="popNum"></div>
+      <div class="de-para" id="popDePara"></div>
+      <div class="mot" id="popMot"></div>
+    </div>
+    <div class="rodape">
+      <button class="btn o" onclick="fecharPop()">Cancelar <span class="kbd">Esc</span></button>
+      <button class="btn p" id="popOk" onclick="confirmarPop()">Confirmar <span class="kbd">Enter</span></button>
+    </div>
+    <div class="dica">Enter confirma · Esc cancela</div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const PRODUTOS = [
+  {id:1,cod:'3065',pack:'C/10',nome:'2-FR-BOLINHO DE CARNE C/10',disp:60,cx:12,ean:'7898620330101'},
+  {id:2,cod:'3079',pack:'C/10 · 140GR',nome:'2-FR-EMPANADO SALSICHA C/10 140GR',disp:1,cx:12,ean:'7898620330102'},
+  {id:3,cod:'3333',pack:'C/10',nome:'2-FR-ESPETINHO FRANGO C/BAC. C/10',disp:51,cx:10,ean:'7898620330103'},
+  {id:4,cod:'3051',pack:'C/20 · 130GR',nome:'2-FR-G-COXINHA-AIPIM-FRANGO C/20 130GR',disp:14,cx:8,ean:'7898620330104'},
+  {id:5,cod:'5182',pack:'C/10 · 170GR',nome:'2-FR-GG-COXINHA FRANGO C/10 170GR',disp:126,cx:12,ean:'7898620330460'},
+  {id:6,cod:'5023',pack:'C/30 · 60GR',nome:'2-FR-M-COXINHA FRANGO C/AIPIM C/30 60GR',disp:71,cx:12,ean:'7898620330106'},
+  {id:7,cod:'5298',pack:'C/30 · 65GR',nome:'2-FR-M-COXINHA LING.BLUMEN.C/30 65GR',disp:3,cx:12,ean:'7898620330107'},
+  {id:8,cod:'3069',pack:'C/10',nome:'2-FR-RISOLES DE CARNE C/10',disp:22,cx:12,ean:'7898620330108'},
+  {id:9,cod:'3070',pack:'C/10',nome:'2-FR-RISOLES DE PIZZA C/10',disp:18,cx:12,ean:'7898620330109'},
+  {id:10,cod:'3071',pack:'C/10',nome:'2-FR-RISOLES DE FRANGO C/10',disp:40,cx:12,ean:'7898620330110'},
+  {id:11,cod:'3072',pack:'C/10',nome:'2-FR-KIBE C/10',disp:9,cx:12,ean:'7898620330111'},
+  {id:12,cod:'3073',pack:'C/10',nome:'2-FR-PASTEL DE CARNE C/10',disp:27,cx:12,ean:'7898620330112'},
+  {id:13,cod:'3074',pack:'C/10',nome:'2-FR-ENROLADINHO SALSICHA C/10',disp:33,cx:12,ean:'7898620330113'},
+  {id:14,cod:'3075',pack:'C/10',nome:'2-FR-BOLINHA DE QUEIJO C/10',disp:12,cx:12,ean:'7898620330114'},
+  {id:15,cod:'3076',pack:'C/10',nome:'2-FR-CROQUETE DE CARNE C/10',disp:5,cx:12,ean:'7898620330115'},
+];
+let sel = null, hist = [];
+let pendente = null;
+
+function renderLista(){
+  const el = document.getElementById('lista');
+  el.querySelectorAll('.prod').forEach(n=>n.remove());
+  PRODUTOS.forEach(p=>{
+    const d=document.createElement('div');
+    d.className='prod'+(sel&&sel.id===p.id?' sel':'');
+    d.innerHTML=`<span class="cod">${p.cod}</span><span class="cx">${p.pack}</span>
+      <div class="nome">${p.nome}</div>
+      <div class="linha"><span>Disponível</span><span><b>${p.disp} PT</b> · cx de ${p.cx}</span></div>
+      <div class="esc">${sel&&sel.id===p.id?'Selecionado':'Escolher'}</div>`;
+    d.onclick=()=>selecionar(p);
+    el.appendChild(d);
+  });
+}
+function renderPainel(){
+  const el=document.getElementById('painel');
+  if(!sel){ el.innerHTML='<div class="vazio">Escolha um produto na lista<br>ou <b>bipe o código de barras</b></div>'; return; }
+  const h = hist.filter(x=>x.id===sel.id).map(x=>`<div><span class="${x.q>0?'mais':'menos'}">${x.q>0?'+':''}${x.q}</span><span>${x.d}</span><span>${x.h}</span></div>`).join('')
+    + `<div><span class="menos">-1</span><span>Faturamento Pedido #226</span><span>07/10 16:30</span></div>
+       <div><span class="menos">-2</span><span>Faturamento Pedido #3575</span><span>07/10 15:37</span></div>
+       <div><span class="mais">+56</span><span>Ajuste Manual</span><span>07/10 07:30</span></div>
+       <div><span class="mais">+12</span><span>Ajuste Manual</span><span>07/10 06:48</span></div>
+       <div><span class="mais">+12</span><span>Ajuste Manual</span><span>07/10 06:38</span></div>
+       <div><span class="mais">+22</span><span>Ajuste Manual</span><span>07/10 05:55</span></div>`;
+  el.innerHTML=`
+    <div class="chip-bipe" id="chip"></div>
+    <div class="fix">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div><span class="cod" style="background:#1f2937;color:#fff;border-radius:6px;padding:1px 7px;font-weight:700;font-size:11px">${sel.cod}</span> <span style="font-size:11px;color:var(--muted)">${sel.pack}</span>
+        <div style="font-weight:800;font-size:14px;margin-top:4px">${sel.nome}</div></div>
+        <button class="btn ghost" style="padding:4px 8px" onclick="sel=null;renderLista();renderPainel()">×</button>
+      </div>
+      <div class="kpis" style="margin-top:10px"><div class="kpi"><small>Total</small><b>${sel.disp}</b></div><div class="kpi" style="border-color:var(--gold)"><small>Reservado</small><b>0</b></div><div class="kpi"><small>Disponível</small><b>${sel.disp}</b></div></div>
+      <div style="margin-top:10px"><label>Quantidade</label><input class="qtd" id="qtd" type="number" placeholder="0" inputmode="decimal"></div>
+      <div style="margin-top:8px"><label>Motivo <span style="color:#b91c1c;font-weight:600">* obrigatório para dar Saída</span></label><input id="mot" type="text" placeholder="Ex.: perda, quebra, uso interno"></div>
+      <div class="acoes" style="margin-top:10px"><button class="btn sai" onclick="pedir('SAIDA')">− Saída</button><button class="btn ent" onclick="pedir('ENTRADA')">+ Entrada</button></div>
+      <div class="muted" style="font-size:11px;text-align:center;margin-top:4px">Enter na quantidade = Entrada (pede confirmação)</div>
+    </div>
+    <div><div style="font-size:12px;font-weight:700;margin-bottom:4px">Últimos lançamentos</div><div class="hist">${h}</div></div>`;
+  const q=document.getElementById('qtd');
+  q.addEventListener('keydown',e=>{ if(e.key==='Enter'){e.preventDefault();pedir('ENTRADA');} });
+  q.focus();
+}
+function selecionar(p, viaBipe){
+  const trocou = sel && sel.id!==p.id;
+  sel=p; renderLista(); renderPainel();
+  if(viaBipe && trocou) toast('Troquei para '+p.cod+' e zerei a quantidade');
+}
+function pedir(tipo){
+  if(!sel) return toast('Selecione um produto.',true);
+  const q=parseFloat(document.getElementById('qtd').value);
+  const m=document.getElementById('mot').value.trim();
+  if(!q||q<=0) return toast('Informe uma quantidade válida.',true);
+  if(tipo==='SAIDA'&&m.length<3){ document.getElementById('mot').focus(); return toast('Para dar SAÍDA é obrigatório escrever o motivo (mín. 3 letras).',true); }
+  pendente={tipo,q,m};
+  const pop=document.getElementById('pop'); pop.className='pop '+(tipo==='ENTRADA'?'ent':'sai');
+  document.getElementById('popTopo').textContent=tipo==='ENTRADA'?'✓ Confirmar ENTRADA no estoque':'⚠ Confirmar SAÍDA do estoque';
+  document.getElementById('popNome').textContent=sel.cod+' · '+sel.nome;
+  document.getElementById('popNum').textContent=(tipo==='ENTRADA'?'+':'−')+q+' PT';
+  const novo=tipo==='ENTRADA'?sel.disp+q:sel.disp-q;
+  document.getElementById('popDePara').innerHTML=`Disponível: <b>${sel.disp}</b> → <b>${novo}</b> PT${novo<0?' <span style="color:#b91c1c;font-weight:700">(vai ficar negativo!)</span>':''}`;
+  document.getElementById('popMot').innerHTML=m?('Motivo: <b>'+m+'</b>'):'<span class="muted">Sem motivo (opcional na entrada)</span>';
+  document.getElementById('popOk').className='btn '+(tipo==='ENTRADA'?'p':'sai');
+  document.getElementById('ov').classList.add('on');
+  setTimeout(()=>document.getElementById('popOk').focus(),30);
+}
+function fecharPop(){ pendente=null; document.getElementById('ov').classList.remove('on'); document.getElementById('qtd')?.focus(); }
+function confirmarPop(){
+  if(!pendente) return;
+  const {tipo,q,m}=pendente;
+  sel.disp += tipo==='ENTRADA'?q:-q;
+  const d=new Date(); const h=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+  hist.unshift({id:sel.id,q:tipo==='ENTRADA'?q:-q,d:'Ajuste Manual'+(m?' · '+m:''),h:'07/10 '+h});
+  document.getElementById('ov').classList.remove('on'); pendente=null;
+  renderLista(); renderPainel();
+  toast((tipo==='ENTRADA'?'Entrada':'Saída')+' de '+q+' lançada. Disponível: '+sel.disp);
+}
+document.addEventListener('keydown',e=>{
+  if(!document.getElementById('ov').classList.contains('on')) return;
+  if(e.key==='Enter'){e.preventDefault();confirmarPop();}
+  if(e.key==='Escape'){e.preventDefault();fecharPop();}
+});
+
+/* ===== detector de bipe (igual ao que vai no app) ===== */
+let buf='', t0=0, tUlt=0, campoAntes=null, valorAntes='';
+document.addEventListener('keydown',e=>{
+  if(document.getElementById('ov').classList.contains('on')) return; // popup aberta: ignora bipe
+  const agora=performance.now();
+  if(e.key==='Enter'){
+    if(buf.length>=8 && (agora-t0)<400){ e.preventDefault(); e.stopPropagation(); processarBipe(buf); }
+    buf=''; return;
+  }
+  if(e.key.length!==1){ return; }
+  if(!buf || agora-tUlt>60){ // começo de pacote (ou pessoa digitando devagar)
+    buf=''; t0=agora; campoAntes=document.activeElement; valorAntes=campoAntes&&'value' in campoAntes?campoAntes.value:'';
+  }
+  buf+=e.key; tUlt=agora;
+},true);
+function processarBipe(codigo){
+  // devolve o campo ao valor de antes (os números do leitor não valem como quantidade)
+  if(campoAntes && 'value' in campoAntes) campoAntes.value=valorAntes;
+  const p=PRODUTOS.find(x=>x.ean===codigo);
+  chip('📟 Bipado '+codigo);
+  if(!p){
+    toast('Código '+codigo+' não está em nenhum produto.'+(sel?' Clique aqui para vincular ao '+sel.cod+'.':''),true);
+    return;
+  }
+  if(sel && sel.id===p.id){ const q=document.getElementById('qtd'); q.value=(parseFloat(q.value)||0)+1; q.focus(); toast('Mesmo produto: quantidade +1 → '+q.value); return; }
+  selecionar(p,true);
+}
+function simularBipe(codigo){
+  // dispara as teclas como um leitor de verdade (rápido + Enter) no campo que tiver foco
+  const alvo=document.getElementById('qtd')||document.body; alvo.focus&&alvo.focus();
+  const chars=codigo.split(''); let i=0;
+  (function next(){
+    if(i<chars.length){ const k=chars[i++]; document.dispatchEvent(new KeyboardEvent('keydown',{key:k,bubbles:true})); if(alvo.tagName==='INPUT') alvo.value+=k; setTimeout(next,3); }
+    else document.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}));
+  })();
+}
+function chip(txt){ const c=document.getElementById('chip'); if(!c) return toast(txt); c.textContent=txt; c.classList.add('on'); setTimeout(()=>c.classList.remove('on'),1500); }
+let tt; function toast(txt,err){ const t=document.getElementById('toast'); t.textContent=txt; t.className='toast on'+(err?' err':''); clearTimeout(tt); tt=setTimeout(()=>t.classList.remove('on'),2600); }
+renderLista(); renderPainel();
+</script>
+</body>
+</html>

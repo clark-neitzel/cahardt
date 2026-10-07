@@ -1,5 +1,11 @@
 [
   {
+    "slug": "ajuste-estoque-bipe",
+    "titulo": "Ajuste de Estoque com leitor",
+    "resumo": "No Ajuste de Estoque, Enter na quantidade abre uma janela verde (entrada) ou vermelha (saída) para confirmar com Enter ou cancelar com Esc. Com leitor de código de barras USB, bipe o pacote para escolher o produto (bipar de novo soma +1) e vincule códigos novos. No computador a lista rola e o painel de lançamento fica parado, mesmo com zoom.",
+    "data": "2026-10-07"
+  },
+  {
     "slug": "indicadores-gestao",
     "titulo": "Indicadores de Gestão",
     "resumo": "Nova tela com o resultado e o custo numa só página: receita, margem de contribuição, ponto de equilíbrio, custo dos insumos semana a semana, entradas de mercadoria, custo dos produtos e alertas de onde agir. O dono vê tudo; a gerente de produção vê só produtos fabricados e insumos. Para os números ficarem certos, marque \"Compra de estoque\" em Categorias de Despesa e classifique fixa/variável.",

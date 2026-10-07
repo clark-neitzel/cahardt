@@ -473,6 +473,15 @@ O app é acessado no celular por vendedores e no iPad pela equipe interna. **Tod
 </div>
 ```
 
+### Tela lista + painel de ação (mestre-detalhe) — a lista rola, o painel não
+Telas com uma **lista à esquerda** e um **painel de ação à direita** (ex.: Ajuste de Estoque):
+- A partir de `md` (768 px — cobre iPad e zoom 150%/200%) a raiz da tela tem a **altura da janela**: `md:h-[calc(100vh-2.5rem-var(--topo-extra,0px))] md:supports-[height:100dvh]:h-[calc(100dvh-2.5rem-var(--topo-extra,0px))]` (fallback `100vh`, `100dvh` onde existe), com `md:flex md:flex-col`; a área de colunas é `md:flex-1 md:min-h-0`. O `2.5rem` é o `pb-10` do `<main>`; `--topo-extra` é uma variável CSS definida no wrapper do `App.jsx` (38px enquanto a barra de visitantes está visível, 0 quando fechada) — sem ela a página rola 38 px. Conferir: `document.scrollingElement.scrollHeight` == altura da janela.
+- **Só a lista rola** (`md:h-full md:overflow-y-auto`; em 1 coluna de cards abaixo de `lg`). O painel da direita **fica parado** — nada de `sticky` + altura solta, que corta o painel quando a janela é pequena.
+- **Painel maior que a tela rola POR DENTRO** (`md:overflow-y-auto` na parte de conteúdo) e o **bloco de ação (campo + botões) fica fixo no pé** (`md:shrink-0`), sempre visível.
+- Vale **também com zoom do navegador em 150% e 200%** (a janela "encolhe" em pixels CSS): testar em 960×600 e 720×450 — nada cortado, botões acessíveis, sem scroll horizontal.
+- Abaixo de `md` (celular / zoom extremo): lista e painel em fluxo normal (lista some ao selecionar, "Voltar à lista" com 44 px) e o **bloco de ação vira barra fixa no rodapé** (`fixed bottom-0 left-0 right-0 bg-white border-t md:static`), com `pb-32` no conteúdo para nada ficar escondido atrás dela.
+- Referência: `Estoque/PainelEstoque.jsx`. `Pedidos/NovoPedido.jsx` já respeita. Candidatos a migrar quando forem tocados: `Estoque/PosicaoEstoque.jsx`, `RH/FuncionarioFicha.jsx`, `Admin/Produtos/GerenciarProduto.jsx`.
+
 ### Filtros
 - Em mobile: empilhar verticalmente (`flex flex-col gap-2`) ou usar scroll horizontal (`flex gap-2 overflow-x-auto hide-scrollbar`)
 - Inputs de filtro: `w-full` no mobile, largura fixa no desktop (`md:w-48`)

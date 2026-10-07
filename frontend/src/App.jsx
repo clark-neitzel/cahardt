@@ -616,7 +616,7 @@ const Layout = ({ children }) => {
       {/* ═══════════════════════════════════════════ */}
       {/* MAIN CONTENT AREA                          */}
       {/* ═══════════════════════════════════════════ */}
-      <div className={`flex-1 ${sidebarAberta ? 'md:ml-60' : 'md:ml-16'} flex flex-col min-h-screen min-w-0 transition-[margin] duration-200${visitorBar ? ' md:pt-[38px]' : ''}`}>
+      <div className={`flex-1 ${sidebarAberta ? 'md:ml-60' : 'md:ml-16'} flex flex-col min-h-screen min-w-0 transition-[margin] duration-200${visitorBar ? ' md:pt-[38px]' : ''}`} style={{ '--topo-extra': visitorBar ? '38px' : '0px' }}>
         {/* ── Mobile top bar ── */}
         <nav className="no-print md:hidden bg-house shadow-sm fixed top-0 left-0 right-0 z-50">
           <div className="px-4 flex justify-between h-14 items-center">

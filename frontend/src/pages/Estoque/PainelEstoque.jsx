@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Plus, Minus, Search, Package, AlertCircle, Loader2, History, AlertTriangle, Unlock, X, ChevronLeft } from 'lucide-react';
+import { Plus, Minus, Search, Package, AlertCircle, Loader2, History, AlertTriangle, Unlock, X, ChevronLeft, ScanLine } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import estoqueService from '../../services/estoqueService';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAtualizaAoVoltar } from '../../hooks/useAtualizaAoVoltar';
 import { useFocoInicial } from '../../hooks/useFocoInicial';
+import { useLeitorCodigoBarras } from '../../hooks/useLeitorCodigoBarras';
+import ConfirmarAjusteModal from '../../components/ConfirmarAjusteModal';
 
 // ─── Embalagem / peso do produto ──────────────────────────────────────────────
 // O catálogo tem 11 produtos com "COXINHA FRANGO" no nome. A embalagem ("C/50 30GR",
@@ -46,6 +48,8 @@ function embalagemDoNome(nome) {
 // Motivo obrigatório na SAÍDA — mesma regra do backend (POST /estoque/ajuste
 // devolve 400 se a observação tiver menos de 3 caracteres depois do trim).
 const MOTIVO_MINIMO = 3;
+// Teto de sanidade: acima disso quase certamente foram os dígitos do leitor caindo no campo.
+const QUANTIDADE_MAXIMA = 10000;
 const motivoValido = (texto) => String(texto || '').trim().length >= MOTIVO_MINIMO;
 
 // ─── Card de produto ──────────────────────────────────────────────────────────
@@ -141,10 +145,31 @@ export default function PainelEstoque() {
     const [lancamentosHoje, setLancamentosHoje] = useState({});
 
     // Form de ajuste
-    const [produtoSelecionado, setProdutoSelecionado] = useState(null);
-    const [quantidade, setQuantidade] = useState('');
+    const [produtoSelecionado, setProdutoSelecionadoEstado] = useState(null);
+    const [quantidade, setQuantidadeEstado] = useState('');
+    // Espelhos SÍNCRONOS da seleção e da quantidade: o tratamento do bipe é assíncrono (busca na
+    // API) e, lendo o estado da closure, enxergava o valor de antes. Os refs mudam no mesmo instante.
+    const selecionadoRef = useRef(null);
+    const quantidadeValRef = useRef('');
+    const setProdutoSelecionado = (p) => { selecionadoRef.current = p; setProdutoSelecionadoEstado(p); };
+    const setQuantidade = (v) => {
+        const novo = typeof v === 'function' ? v(quantidadeValRef.current) : v;
+        quantidadeValRef.current = novo;
+        setQuantidadeEstado(novo);
+    };
+    // Fila dos bipes: um de cada vez, na ordem em que o leitor mandou ("3 bipes = 3").
+    const filaBipeRef = useRef(Promise.resolve());
+    // Código do último produto escolhido À MÃO durante um bipe em voo (a resposta não pode atropelar)
+    const escolhaManualRef = useRef(0);
     const [observacao, setObservacao] = useState('');
     const [loadingAjuste, setLoadingAjuste] = useState(false);
+    // Janela de confirmação: { tipo: 'ENTRADA'|'SAIDA', qtd } — null = fechada
+    const [confirmacao, setConfirmacao] = useState(null);
+    const confirmacaoRef = useRef(null);   // espelho síncrono: bipe em voo precisa saber se a janela abriu depois
+    confirmacaoRef.current = confirmacao;
+    // Chip "Bipado …" (1,5 s) mostrado quando o leitor de código de barras lê um código
+    const [chipBipe, setChipBipe] = useState('');
+    const chipTimerRef = useRef(null);
 
     // Histórico do produto selecionado
     const [historicoItem, setHistoricoItem] = useState([]);
@@ -252,39 +277,47 @@ export default function PainelEstoque() {
     };
 
     const selecionarProduto = (produto) => {
+        setConfirmacao(null);
+        escolhaManualRef.current += 1;
         setProdutoSelecionado(produto);
         setQuantidade('');
         setObservacao('');
         setEditandoMinimo(false);
         setEstoqueMinimo(String(produto.estoqueMinimo ?? '0'));
         // Mobile: rola para o formulário
-        setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+        if (window.innerWidth < 768) setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+        // Desktop: "seleciona, digita, Enter" — foco direto na Quantidade (no celular não abre o teclado sozinho)
+        else setTimeout(() => voltarFocoQuantidade(), 80);
     };
 
     const limparSelecao = () => {
+        escolhaManualRef.current += 1;
         setProdutoSelecionado(null);
         setQuantidade('');
         setObservacao('');
         setEditandoMinimo(false);
     };
 
-    const podeFazer = (tipo) => {
+    const podeFazer = (tipo, produto = produtoSelecionado) => {
         if (!permissoes) return false;
         if (permissoes.admin) return true;
         const regras = permissoes.regras || [];
         const acao = tipo === 'ENTRADA' ? 'adicionar' : 'diminuir';
-        if (!produtoSelecionado) return regras.some(r => Array.isArray(r.pode) && r.pode.includes(acao));
+        if (!produto) return regras.some(r => Array.isArray(r.pode) && r.pode.includes(acao));
         return regras.some(r => {
-            const catOk = !r.categoria || r.categoria === produtoSelecionado.categoria;
+            const catOk = !r.categoria || r.categoria === produto.categoria;
             return catOk && Array.isArray(r.pode) && r.pode.includes(acao);
         });
     };
 
-    const handleAjuste = async (tipo) => {
-        if (salvandoRef.current) return; // 2º clique/Enter no mesmo tique — barrado antes da rede
+    // Passo 1: valida e ABRE a janela de confirmação (verde = entrada, vermelha = saída).
+    // Botões e Enter passam todos por aqui; nada é lançado sem o 2º Enter/clique.
+    const handleAjuste = (tipo) => {
+        if (salvandoRef.current || confirmacao) return;
         if (!produtoSelecionado) return toast.error('Selecione um produto.');
         const qtd = parseFloat(quantidade);
         if (!qtd || qtd <= 0) return toast.error('Informe uma quantidade válida.');
+        if (qtd > QUANTIDADE_MAXIMA) return toast.error('Quantidade muito alta — confira se não foi o leitor.');
         if (!podeFazer(tipo)) return toast.error('Você não tem permissão para esta operação.');
         // Saída sem motivo já deixou produto negativo sem ninguém saber explicar depois.
         // Mesma regra do backend (400 'Informe o motivo da saída (mínimo 3 caracteres).').
@@ -292,6 +325,14 @@ export default function PainelEstoque() {
             obsRef.current?.focus();
             return toast.error('Para dar SAÍDA é obrigatório escrever o motivo (mínimo 3 letras). Ex.: perda, quebra, uso interno.');
         }
+        setConfirmacao({ tipo, qtd });
+    };
+
+    // Passo 2: o usuário confirmou na janela — grava de verdade.
+    const executarAjuste = async () => {
+        if (salvandoRef.current) return; // 2º clique/Enter no mesmo tique — barrado antes da rede
+        if (!confirmacao || !produtoSelecionado) return;
+        const { tipo, qtd } = confirmacao;
 
         salvandoRef.current = true;
         setLoadingAjuste(true);
@@ -327,6 +368,7 @@ export default function PainelEstoque() {
 
             setQuantidade('');
             setObservacao('');
+            setConfirmacao(null);
             carregarHistoricoItem(produtoSelecionado.id);
 
             const label = tipo === 'ENTRADA' ? 'Entrada' : 'Saída';
@@ -336,9 +378,12 @@ export default function PainelEstoque() {
             );
             // Pedido do dono: depois de dar entrada/saída, o cursor volta sozinho pro campo
             // Quantidade, pronto pro próximo lançamento (sem precisar clicar de novo).
-            voltarFocoQuantidade();
+            setTimeout(voltarFocoQuantidade, 50);   // depois de a janela sair do DOM
         } catch (err) {
+            // Falhou: fecha a janela e volta ao formulário com os dados intactos para tentar de novo
+            setConfirmacao(null);
             toast.error(err.response?.data?.error || 'Erro ao ajustar estoque.');
+            setTimeout(voltarFocoQuantidade, 50);
         } finally {
             salvandoRef.current = false;
             setLoadingAjuste(false);
@@ -364,6 +409,97 @@ export default function PainelEstoque() {
         }
     };
 
+    // ─── Leitor de código de barras (bipe) ───────────────────────────────────
+    const mostrarChip = (codigo) => {
+        setChipBipe(codigo);
+        clearTimeout(chipTimerRef.current);
+        chipTimerRef.current = setTimeout(() => setChipBipe(''), 1500);
+    };
+    useEffect(() => () => clearTimeout(chipTimerRef.current), []);
+
+    const vincularCodigo = async (produto, codigo, toastId) => {
+        toast.dismiss(toastId);
+        try {
+            await estoqueService.vincularCodigoBarras(produto.id, codigo);
+            toast.success(`Código ${codigo} vinculado ao ${produto.codigo || produto.nome}.`);
+        } catch (err) {
+            toast.error(err.response?.data?.erro || err.response?.data?.error || 'Não foi possível vincular o código.');
+        }
+    };
+
+    const processarBipe = async (codigo) => {
+        mostrarChip(codigo);
+        const geracao = escolhaManualRef.current;   // se mudar durante a busca, o usuário escolheu outro produto à mão
+        let achado;
+        try {
+            const res = await estoqueService.buscarPorCodigoBarras(codigo);
+            achado = res?.produto;
+        } catch (err) {
+            if (err.response?.status !== 404) {
+                return toast.error(err.response?.data?.erro || err.response?.data?.error || 'Falha ao buscar o código');
+            }
+        }
+        if (!achado) {
+            const atual = selecionadoRef.current;
+            const podeVincular = !!atual && (podeFazer('ENTRADA', atual) || podeFazer('SAIDA', atual));
+            return toast.error((t) => (
+                <span className="text-sm">
+                    Código <b>{codigo}</b> não está em nenhum produto.
+                    {podeVincular && (
+                        <button
+                            onClick={() => vincularCodigo(atual, codigo, t.id)}
+                            className="block mt-2 px-3 min-h-[44px] rounded-full bg-primary hover:bg-primaryDark text-white text-xs font-semibold"
+                        >
+                            Vincular ao {atual.codigo || atual.nome}
+                        </button>
+                    )}
+                </span>
+            ), { duration: podeVincular ? 10000 : 4000 });
+        }
+
+        // Se o leitor já está digitando o PRÓXIMO código, espera ele terminar antes de mexer na quantidade
+        // (a restauração do campo ao fim do pacote apagaria o resultado). No máx. ~0,5 s.
+        for (let i = 0; i < 25 && pacoteEmAndamento(); i++) await new Promise(r => setTimeout(r, 20));
+
+        if (confirmacaoRef.current) {
+            // A janela de confirmação abriu enquanto a busca estava em voo: descarta o bipe por inteiro
+            return toast.error('Bipe ignorado: confirme ou cancele o lançamento primeiro');
+        }
+
+        if (escolhaManualRef.current !== geracao) {
+            // O usuário clicou em outro card (ou voltou à lista) enquanto a busca estava em voo:
+            // a escolha manual vale mais que a resposta do bipe.
+            return toast(`Bipe de ${achado.codigo || achado.nome} ignorado: você escolheu outro produto.`);
+        }
+
+        const atual = selecionadoRef.current;
+        if (atual && atual.id === achado.id) {
+            // mesmo produto: cada bipe soma +1
+            setQuantidade(q => String((parseFloat(q) || 0) + 1));
+            setTimeout(() => voltarFocoQuantidade({ selecionar: false }), 0);
+            return;
+        }
+        const tinhaQuantidade = !!atual && parseFloat(quantidadeValRef.current) > 0;
+        selecionarProduto(achado);   // mesmo fora do filtro de categoria; já zera quantidade e motivo
+        if (tinhaQuantidade) toast(`Troquei para ${achado.codigo || achado.nome} e zerei a quantidade.`);
+        setTimeout(() => voltarFocoQuantidade(), 80);   // o campo só existe depois do render do painel
+    };
+
+    // Um bipe de cada vez, na ordem: promessa encadeada (nunca rejeita, para a fila não travar)
+    const aoBipar = (codigo) => {
+        filaBipeRef.current = filaBipeRef.current
+            .then(() => processarBipe(codigo))
+            .catch((err) => console.error('[Bipe] erro:', err));
+    };
+
+    // Escuta SEMPRE (inclusive com a janela aberta e durante o carregamento da lista): com a janela
+    // aberta o hook engole o Enter do leitor e só avisa — o bipe nunca confirma o lançamento.
+    const pacoteEmAndamento = useLeitorCodigoBarras({
+        onCodigo: aoBipar,
+        bloqueado: !!confirmacao,
+        onBloqueado: () => toast.error('Confirme ou cancele o lançamento antes de bipar'),
+    });
+
     const podeEntrada = podeFazer('ENTRADA');
     const podeSaida = podeFazer('SAIDA');
     const embalagemSelecionado = embalagemDoNome(produtoSelecionado?.nome);
@@ -376,14 +512,64 @@ export default function PainelEstoque() {
     const estoqueDisp = parseFloat(produtoSelecionado?.estoqueDisponivel || 0);
     const abaixoMinimo = estoqueMin > 0 && estoqueDisp < estoqueMin;
 
+    const historicoBloco = (
+                <div className="border-t border-gray-100 pt-3">
+                    <p className="text-xs font-semibold text-gray-500 mb-2">Últimos lançamentos</p>
+                    {loadingHistorico ? (
+                        <div className="flex justify-center py-3">
+                            <Loader2 className="h-4 w-4 animate-spin text-gray-300" />
+                        </div>
+                    ) : historicoItem.length === 0 ? (
+                        <p className="text-xs text-gray-400 text-center py-2">Nenhum lançamento registrado.</p>
+                    ) : (
+                        <div className="space-y-1.5">
+                            {historicoItem.map(m => {
+                                const isEntrada = m.tipo === 'ENTRADA';
+                                const dt = new Date(m.createdAt);
+                                const dataStr = `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
+                                const desc = m.observacao || m.motivo?.toLowerCase().replace(/_/g, ' ') || '';
+                                return (
+                                    <div key={m.id} className="flex items-center gap-2 text-xs">
+                                        <span className={`shrink-0 w-10 text-right font-bold ${isEntrada ? 'text-green-600' : 'text-red-500'}`}>
+                                            {isEntrada ? '+' : '-'}{Number(m.quantidade).toFixed(0)}
+                                        </span>
+                                        <span className="text-gray-500 truncate flex-1 capitalize">{desc}</span>
+                                        <span className="text-gray-400 shrink-0 tabular-nums">{dataStr}</span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+    );
+
     return (
-        <div className="w-full px-4 py-6">
+        // A partir de md (768 px): a tela tem a altura da janela (100dvh, com fallback 100vh) menos o pb-10 do
+        // <main> (2.5rem) e a barra de visitantes (--topo-extra, 38px quando visível) — só a lista rola na
+        // esquerda; o painel da direita fica parado e rola POR DENTRO se não couber (zoom).
+        <div className="w-full px-4 py-6 md:h-[calc(100vh-2.5rem-var(--topo-extra,0px))] md:supports-[height:100dvh]:h-[calc(100dvh-2.5rem-var(--topo-extra,0px))] md:flex md:flex-col md:py-4">
+            {confirmacao && produtoSelecionado && (
+                <ConfirmarAjusteModal
+                    tipo={confirmacao.tipo}
+                    produto={produtoSelecionado}
+                    quantidade={confirmacao.qtd}
+                    observacao={observacao}
+                    salvando={loadingAjuste}
+                    onConfirmar={executarAjuste}
+                    onCancelar={() => { if (salvandoRef.current) return; setConfirmacao(null); setTimeout(voltarFocoQuantidade, 50); }}
+                />
+            )}
             {/* Header */}
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-4 md:shrink-0 gap-2">
                 <div>
                     <h1 className="text-xl font-bold text-gray-900">Ajuste de Estoque</h1>
                     <p className="text-sm text-gray-500 mt-0.5">Produção / Estoque</p>
                 </div>
+                {chipBipe && (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-mint text-primaryDark text-xs font-bold truncate max-w-[50%]">
+                        <ScanLine className="h-3.5 w-3.5 shrink-0" /> Bipado {chipBipe}
+                    </span>
+                )}
                 <button
                     onClick={() => navigate('/estoque/historico')}
                     className="flex items-center gap-1.5 px-3 min-h-[44px] rounded-full text-sm text-primary hover:text-primaryDark hover:bg-mint/50 font-medium"
@@ -394,10 +580,10 @@ export default function PainelEstoque() {
             </div>
 
             {/* Layout split: lista à esquerda, formulário à direita */}
-            <div className="flex flex-col lg:flex-row gap-5">
+            <div className="flex flex-col md:flex-row gap-5 md:flex-1 md:min-h-0">
 
-                {/* PAINEL ESQUERDO — lista de produtos */}
-                <div className={`lg:w-[58%] ${produtoSelecionado ? 'hidden lg:block' : ''}`}>
+                {/* PAINEL ESQUERDO — lista de produtos (rola sozinha no desktop) */}
+                <div className={`md:w-[58%] md:h-full md:overflow-y-auto md:pr-1 ${produtoSelecionado ? 'hidden md:block' : ''}`}>
 
                     {/* Busca */}
                     <div className="relative mb-2">
@@ -455,7 +641,7 @@ export default function PainelEstoque() {
 
                     {/* Grid de cards */}
                     {loadingProdutos ? (
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-1 lg:grid-cols-3 gap-3">
                             {Array.from({ length: 9 }).map((_, i) => (
                                 <div key={i} className="bg-gray-100 rounded-xl h-28 animate-pulse" />
                             ))}
@@ -466,7 +652,7 @@ export default function PainelEstoque() {
                             <p className="text-sm">{search ? 'Nenhum produto encontrado' : 'Nenhum produto disponível'}</p>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-1 lg:grid-cols-3 gap-3">
                             {filtrados.map(p => (
                                 <ProdutoCard
                                     key={p.id}
@@ -481,22 +667,24 @@ export default function PainelEstoque() {
                 </div>
 
                 {/* PAINEL DIREITO — formulário de ajuste */}
-                <div ref={formRef} className="lg:w-[42%]">
+                <div ref={formRef} className="scroll-mt-16 md:scroll-mt-0 md:w-[42%] md:h-full md:min-h-0 md:flex md:flex-col">
 
                     {/* Botão voltar (mobile) */}
                     {produtoSelecionado && (
                         <button
                             onClick={limparSelecao}
-                            className="lg:hidden flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 mb-3"
+                            className="md:hidden flex items-center gap-1.5 text-sm text-gray-600 hover:text-gray-800 mb-2 min-h-[44px] px-1"
                         >
                             <ChevronLeft className="h-4 w-4" />
                             Voltar à lista
                         </button>
                     )}
 
-                    <div className="lg:sticky lg:top-4">
+                    <div className="md:flex-1 md:min-h-0 md:flex md:flex-col">
                         {produtoSelecionado ? (
-                            <div className="space-y-4">
+                            <div className="space-y-4 md:space-y-0 md:flex md:flex-col md:h-full md:min-h-0">
+                                {/* Desktop: card + campos + últimos lançamentos rolam aqui dentro; os botões ficam fixos embaixo */}
+                                <div className="space-y-4 md:pb-3 md:flex-1 md:min-h-0 md:overflow-y-auto md:pr-1">
                                 {/* Card do produto selecionado */}
                                 <div className={`border rounded-xl p-4 ${abaixoMinimo ? 'bg-amber-50 border-amber-300' : 'bg-blue-50 border-blue-200'}`}>
                                     <div className="flex items-start justify-between gap-2">
@@ -520,7 +708,7 @@ export default function PainelEstoque() {
                                         </div>
                                         <button
                                             onClick={limparSelecao}
-                                            className="hidden lg:block text-gray-400 hover:text-gray-600 text-xl font-light shrink-0 leading-none mt-0.5"
+                                            className="hidden md:block text-gray-400 hover:text-gray-600 text-xl font-light shrink-0 leading-none mt-0.5"
                                         >×</button>
                                     </div>
 
@@ -593,31 +781,6 @@ export default function PainelEstoque() {
                                     )}
                                 </div>
 
-                                {/* Quantidade */}
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Quantidade</label>
-                                    <input
-                                        ref={quantidadeRef}
-                                        type="number"
-                                        value={quantidade}
-                                        onChange={e => setQuantidade(e.target.value)}
-                                        onKeyDown={e => {
-                                            if (e.key !== 'Enter') return;
-                                            e.preventDefault();
-                                            // Enter lança Entrada por padrão (ação mais comum); se só Saída
-                                            // estiver liberada para o produto, usa Saída.
-                                            if (loadingAjuste) return;
-                                            if (podeEntrada) handleAjuste('ENTRADA');
-                                            else if (podeSaida) handleAjuste('SAIDA');
-                                        }}
-                                        placeholder="0"
-                                        min="0"
-                                        step="0.001"
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-xl text-center text-2xl font-bold focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        inputMode="decimal"
-                                    />
-                                </div>
-
                                 {/* Motivo — obrigatório para SAÍDA, opcional para ENTRADA */}
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1.5">
@@ -653,36 +816,6 @@ export default function PainelEstoque() {
                                     </div>
                                 )}
 
-                                {/* Botões Saída / Entrada */}
-                                <div className="grid grid-cols-2 gap-3 pt-1">
-                                    <button
-                                        onClick={() => handleAjuste('SAIDA')}
-                                        disabled={!podeSaida || loadingAjuste}
-                                        title={!podeSaida ? 'Sem permissão para diminuir estoque nesta categoria' : ''}
-                                        className={`flex items-center justify-center gap-2 py-4 rounded-xl text-base font-bold transition-all ${
-                                            podeSaida && !loadingAjuste
-                                                ? 'bg-red-500 hover:bg-red-600 text-white shadow-sm active:scale-95'
-                                                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                                        }`}
-                                    >
-                                        {loadingAjuste ? <Loader2 className="h-5 w-5 animate-spin" /> : <Minus className="h-5 w-5" />}
-                                        Saída
-                                    </button>
-                                    <button
-                                        onClick={() => handleAjuste('ENTRADA')}
-                                        disabled={!podeEntrada || loadingAjuste}
-                                        title={!podeEntrada ? 'Sem permissão para adicionar estoque nesta categoria' : ''}
-                                        className={`flex items-center justify-center gap-2 py-4 rounded-xl text-base font-bold transition-all ${
-                                            podeEntrada && !loadingAjuste
-                                                ? 'bg-green-500 hover:bg-green-600 text-white shadow-sm active:scale-95'
-                                                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                                        }`}
-                                    >
-                                        {loadingAjuste ? <Loader2 className="h-5 w-5 animate-spin" /> : <Plus className="h-5 w-5" />}
-                                        Entrada
-                                    </button>
-                                </div>
-
                                 {/* Aviso de permissão */}
                                 {!podeEntrada && !podeSaida && (
                                     <div className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5">
@@ -691,7 +824,7 @@ export default function PainelEstoque() {
                                     </div>
                                 )}
                                 {(podeEntrada || podeSaida) && (
-                                    <p className="text-xs text-center text-gray-400">
+                                    <p className="text-xs text-center text-gray-500">
                                         {podeEntrada && podeSaida
                                             ? 'Você pode adicionar e diminuir estoque nesta categoria.'
                                             : podeEntrada
@@ -700,39 +833,75 @@ export default function PainelEstoque() {
                                     </p>
                                 )}
 
-                                {/* Histórico do produto selecionado */}
-                                <div className="border-t border-gray-100 pt-3">
-                                    <p className="text-xs font-semibold text-gray-500 mb-2">Últimos lançamentos</p>
-                                    {loadingHistorico ? (
-                                        <div className="flex justify-center py-3">
-                                            <Loader2 className="h-4 w-4 animate-spin text-gray-300" />
-                                        </div>
-                                    ) : historicoItem.length === 0 ? (
-                                        <p className="text-xs text-gray-400 text-center py-2">Nenhum lançamento registrado.</p>
-                                    ) : (
-                                        <div className="space-y-1.5">
-                                            {historicoItem.map(m => {
-                                                const isEntrada = m.tipo === 'ENTRADA';
-                                                const dt = new Date(m.createdAt);
-                                                const dataStr = `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
-                                                const desc = m.observacao || m.motivo?.toLowerCase().replace(/_/g, ' ') || '';
-                                                return (
-                                                    <div key={m.id} className="flex items-center gap-2 text-xs">
-                                                        <span className={`shrink-0 w-10 text-right font-bold ${isEntrada ? 'text-green-600' : 'text-red-500'}`}>
-                                                            {isEntrada ? '+' : '-'}{Number(m.quantidade).toFixed(0)}
-                                                        </span>
-                                                        <span className="text-gray-500 truncate flex-1 capitalize">{desc}</span>
-                                                        <span className="text-gray-400 shrink-0 tabular-nums">{dataStr}</span>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    )}
+                                {/* Desktop: últimos lançamentos rolam dentro do painel */}
+                                <div className="hidden md:block">{historicoBloco}</div>
                                 </div>
+
+                                {/* BLOCO DE AÇÃO — Quantidade + botões. No celular (< 768 px) é uma barra FIXA no rodapé,
+                                    sempre à vista; a partir de md fica no pé do painel (sempre acessível, mesmo com zoom). */}
+                                <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:static md:z-auto md:px-0 md:pt-3 md:pb-0 md:bg-secondary md:shrink-0">
+                                <div className="flex items-end gap-2 md:block">
+                                    <div className="w-24 shrink-0 md:w-auto md:mb-3">
+                                        <label className="block text-xs md:text-sm font-medium text-gray-700 mb-0.5 md:mb-1.5">Quantidade</label>
+                                        <input
+                                            ref={quantidadeRef}
+                                            type="number"
+                                            value={quantidade}
+                                            onChange={e => setQuantidade(e.target.value)}
+                                            onKeyDown={e => {
+                                                if (e.key !== 'Enter') return;
+                                                e.preventDefault();
+                                                // Enter lança Entrada por padrão (ação mais comum); se só Saída
+                                                // estiver liberada para o produto, usa Saída.
+                                                if (loadingAjuste) return;
+                                                if (podeEntrada) handleAjuste('ENTRADA');
+                                                else if (podeSaida) handleAjuste('SAIDA');
+                                            }}
+                                            placeholder="0"
+                                            min="0"
+                                            step="0.001"
+                                            className="w-full px-2 md:px-4 py-2 md:py-3 border border-gray-300 rounded-xl text-center text-xl md:text-2xl font-bold focus:outline-none focus:ring-2 focus:ring-primary"
+                                            inputMode="decimal"
+                                        />
+                                    </div>
+                                    {/* Botões Saída / Entrada */}
+                                    <div className="grid grid-cols-2 gap-2 md:gap-3 flex-1">
+                                        <button
+                                            onClick={() => handleAjuste('SAIDA')}
+                                            disabled={!podeSaida || loadingAjuste}
+                                            title={!podeSaida ? 'Sem permissão para diminuir estoque nesta categoria' : ''}
+                                            className={`flex items-center justify-center gap-1 md:gap-2 min-h-[52px] py-3 rounded-full text-sm md:text-base font-bold transition-all ${
+                                                podeSaida && !loadingAjuste
+                                                    ? 'bg-red-600 hover:bg-red-700 text-white shadow-sm active:scale-95'
+                                                    : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                            }`}
+                                        >
+                                            {loadingAjuste ? <Loader2 className="h-5 w-5 animate-spin" /> : null}
+                                            − Saída
+                                        </button>
+                                        <button
+                                            onClick={() => handleAjuste('ENTRADA')}
+                                            disabled={!podeEntrada || loadingAjuste}
+                                            title={!podeEntrada ? 'Sem permissão para adicionar estoque nesta categoria' : ''}
+                                            className={`flex items-center justify-center gap-1 md:gap-2 min-h-[52px] py-3 rounded-full text-sm md:text-base font-bold transition-all ${
+                                                podeEntrada && !loadingAjuste
+                                                    ? 'bg-primary hover:bg-primaryDark text-white shadow-sm active:scale-95'
+                                                    : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                            }`}
+                                        >
+                                            {loadingAjuste ? <Loader2 className="h-5 w-5 animate-spin" /> : null}
+                                            + Entrada
+                                        </button>
+                                    </div>
+                                </div>
+                                </div>
+
+                                {/* Mobile: histórico depois dos botões */}
+                                <div className="md:hidden pb-32">{historicoBloco}</div>
                             </div>
                         ) : (
                             // Desktop: placeholder quando nenhum produto está selecionado
-                            <div className="hidden lg:flex flex-col items-center justify-center min-h-[320px] border-2 border-dashed border-gray-200 rounded-2xl text-gray-400">
+                            <div className="hidden md:flex flex-col items-center justify-center min-h-[320px] border-2 border-dashed border-gray-200 rounded-2xl text-gray-400">
                                 <Package className="h-12 w-12 mb-3 opacity-30" />
                                 <p className="text-sm text-center px-6">Selecione um produto na lista ao lado para ajustar o estoque.</p>
                             </div>

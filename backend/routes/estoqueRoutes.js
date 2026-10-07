@@ -101,6 +101,21 @@ function categoriasPermitidasEstoque(permissoes) {
     return [...new Set(regras.map(r => r.categoria).filter(Boolean))];
 }
 
+// Campos de um item da Posição — também usado pela busca por código de barras (mesmo formato)
+const POSICAO_SELECT = {
+        id: true,
+        nome: true,
+        codigo: true,
+        unidade: true,
+        categoria: true,
+        estoqueTotal: true,
+        estoqueReservado: true,
+        estoqueDisponivel: true,
+        estoqueMinimo: true,
+        quantidadePorCaixa: true,
+        categoriaProduto: { select: { id: true, nome: true } }
+    };
+
 // GET /api/estoque/posicao — produtos com saldo de estoque para a tela Posição
 router.get('/posicao', async (req, res) => {
     try {
@@ -145,19 +160,7 @@ router.get('/posicao', async (req, res) => {
 
         const produtos = await prisma.produto.findMany({
             where,
-            select: {
-                id: true,
-                nome: true,
-                codigo: true,
-                unidade: true,
-                categoria: true,
-                estoqueTotal: true,
-                estoqueReservado: true,
-                estoqueDisponivel: true,
-                estoqueMinimo: true,
-                quantidadePorCaixa: true,
-                categoriaProduto: { select: { id: true, nome: true } }
-            },
+            select: POSICAO_SELECT,
             orderBy: [{ categoria: 'asc' }, { nome: 'asc' }]
         });
 
@@ -165,6 +168,89 @@ router.get('/posicao', async (req, res) => {
     } catch (err) {
         console.error('[Estoque] Erro posição:', err.message);
         return res.status(500).json({ error: err.message });
+    }
+});
+
+// ---- Código de barras (leitor USB na tela de Ajuste) ----
+// Normaliza: só letras/dígitos, sem espaços/hífens, maiúsculo.
+function normalizarCodigoBarras(c) {
+    return String(c == null ? '' : c).replace(/[^0-9A-Za-z]/g, '').toUpperCase();
+}
+
+// Acha o produto dono do código: 1º etiqueta (mais recente), 2º Produto.ean.
+async function acharProdutoPorCodigo(norm) {
+    const et = await prisma.$queryRaw`
+        SELECT produto_id AS "produtoId" FROM etiquetas_produtos
+        WHERE produto_id IS NOT NULL AND codigo_barras IS NOT NULL
+          AND UPPER(REGEXP_REPLACE(codigo_barras, '[^0-9A-Za-z]', '', 'g')) = ${norm}
+        ORDER BY updated_at DESC, created_at DESC LIMIT 1`;
+    if (et.length) return { produtoId: et[0].produtoId, origem: 'etiqueta' };
+    const pr = await prisma.$queryRaw`
+        SELECT id AS "produtoId" FROM produtos
+        WHERE ean IS NOT NULL
+          AND UPPER(REGEXP_REPLACE(ean, '[^0-9A-Za-z]', '', 'g')) = ${norm}
+        ORDER BY ativo DESC LIMIT 1`;
+    if (pr.length) return { produtoId: pr[0].produtoId, origem: 'ean' };
+    return null;
+}
+
+// GET /api/estoque/codigo-barras/:codigo — produto (formato da /posicao) pelo código bipado
+router.get('/codigo-barras/:codigo', async (req, res) => {
+    try {
+        const norm = normalizarCodigoBarras(req.params.codigo);
+        if (norm.length < 3) return res.status(404).json({ erro: 'Código de barras não cadastrado' });
+        const achado = await acharProdutoPorCodigo(norm);
+        if (!achado) return res.status(404).json({ erro: 'Código de barras não cadastrado' });
+        const produto = await prisma.produto.findUnique({ where: { id: achado.produtoId }, select: POSICAO_SELECT });
+        if (!produto) return res.status(404).json({ erro: 'Código de barras não cadastrado' });
+        const permissoes = await getPermsFromDB(req.user.id);
+        const cats = categoriasPermitidasEstoque(permissoes);
+        if (cats !== null && !cats.includes(produto.categoria)) {
+            return res.status(403).json({ erro: 'Você não tem permissão de estoque para a categoria deste produto.' });
+        }
+        return res.json({ produto, origem: achado.origem });
+    } catch (err) {
+        console.error('[Estoque] Erro código de barras:', err.message);
+        return res.status(500).json({ erro: 'Não foi possível buscar o código de barras.' });
+    }
+});
+
+// POST /api/estoque/codigo-barras/vincular { produtoId, codigo } — grava Produto.ean
+router.post('/codigo-barras/vincular', async (req, res) => {
+    try {
+        const { produtoId, codigo } = req.body || {};
+        if (typeof produtoId !== 'string' || !produtoId.trim() || codigo == null || typeof codigo !== 'string' && typeof codigo !== 'number') {
+            return res.status(400).json({ erro: 'produtoId e codigo são obrigatórios.' });
+        }
+        const norm = normalizarCodigoBarras(codigo);
+        if (norm.length < 3) return res.status(400).json({ erro: 'Código de barras inválido.' });
+
+        const permissoes = await getPermsFromDB(req.user.id);
+        const alvo = await prisma.produto.findUnique({ where: { id: produtoId }, select: { id: true, categoria: true, ean: true } });
+        if (!alvo) return res.status(404).json({ erro: 'Produto não encontrado.' });
+        const categorias = alvo.categoria ? [alvo.categoria] : [];
+        if (!verificarPermissaoEstoque(permissoes, categorias, 'ENTRADA') && !verificarPermissaoEstoque(permissoes, categorias, 'SAIDA')) {
+            return res.status(403).json({ erro: 'Você não tem permissão de ajuste de estoque nesta categoria.' });
+        }
+
+        const dono = await acharProdutoPorCodigo(norm);
+        if (dono && dono.produtoId !== produtoId) {
+            const outro = await prisma.produto.findUnique({ where: { id: dono.produtoId }, select: { codigo: true, nome: true } });
+            return res.status(409).json({ erro: `Este código já pertence ao produto ${outro?.codigo || ''} ${outro?.nome || ''}`.replace(/\s+$/, '') });
+        }
+
+        // Produto que já tem EAN: não sobrescreve (o ean também casa itens de nota de entrada)
+        const eanAtual = alvo.ean ? normalizarCodigoBarras(alvo.ean) : '';
+        if (eanAtual && eanAtual !== norm) {
+            return res.status(409).json({ erro: `Este produto já tem o código ${alvo.ean} cadastrado. Para trocar, edite o produto no cadastro.` });
+        }
+
+        if (eanAtual !== norm) await prisma.produto.update({ where: { id: produtoId }, data: { ean: norm } });
+        const produto = await prisma.produto.findUnique({ where: { id: produtoId }, select: POSICAO_SELECT });
+        return res.json({ ok: true, produto });
+    } catch (err) {
+        console.error('[Estoque] Erro vincular código de barras:', err.message);
+        return res.status(500).json({ erro: 'Não foi possível vincular o código de barras.' });
     }
 });
 

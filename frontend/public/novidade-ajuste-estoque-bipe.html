@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Ajuste de Estoque com leitor — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp -->
+<meta property="og:title" content="Novidade no Hardt App: Ajuste de Estoque com leitor de código de barras">
+<meta property="og:description" content="Enter confirma a entrada numa janela verde, bipe o pacote para escolher o produto e a tela não pula mais enquanto você lança.">
+<meta property="og:type" content="website">
+<style>
+
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 96px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 7vw, 40px);
+    font-weight: 800;
+    line-height: 1.12;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.75);
+    font-size: 16px;
+    max-width: 46ch;
+    margin: 0 auto;
+    text-wrap: balance;
+  }
+
+  
+
+  .mini-btn{display:inline-block;border-radius:999px;padding:6px 12px;font-size:11px;font-weight:800;color:#fff}
+  .mini-btn.v{background:var(--primary)} .mini-btn.r{background:#dc2626} .mini-btn.c{background:#fff;color:#444;border:1px solid #d8d5cc}
+  .qtd{font-size:26px;font-weight:800;text-align:center;border:1px solid #d8d5cc;border-radius:12px;padding:8px;background:#fff}
+  .pop-v,.pop-r{border-radius:14px;overflow:hidden;background:#fff;border:2px solid var(--primary)}
+  .pop-r{border-color:#dc2626}
+  .pop-top{color:#fff;font-weight:800;font-size:12px;padding:9px 12px}
+  .pop-v .pop-top{background:var(--primary)} .pop-r .pop-top{background:#dc2626}
+  .pop-corpo{padding:12px;font-size:12px;color:#444;text-align:center}
+  .pop-num{font-size:26px;font-weight:800;border-radius:10px;padding:4px;margin:8px 0}
+  .pop-v .pop-num{background:rgba(212,233,226,.6);color:var(--primary-dark)} .pop-r .pop-num{background:#fef2f2;color:#b91c1c}
+  .pop-bot{display:flex;gap:8px;padding:0 12px 12px;justify-content:center}
+  .chip-bipe{display:inline-block;background:var(--mint);color:var(--primary-dark);font-weight:800;font-size:11px;border-radius:999px;padding:5px 10px}
+  .split{display:flex;gap:8px}.split>div{flex:1}
+  .toast-r{background:#fff;border:1px solid #fecaca;border-radius:10px;padding:10px;font-size:12px;color:#444;box-shadow:0 4px 14px rgba(0,0,0,.1)}
+
+  /* ── MOCKUPS DAS TELAS DO APP ── */
+  .tela {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .tela-titulo {
+    background: var(--house);
+    color: #fff;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .app-card {
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .app-card-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    border-bottom: 1px solid #f0efe9;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: #6b756f;
+  }
+  .app-card-body { padding: 12px; }
+  .app-input {
+    border: 1px solid #d8d5cc;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 12.5px;
+    color: var(--ink);
+    background: #fff;
+    margin-bottom: 8px;
+  }
+  .app-input small { display: block; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: #9aa5a0; margin-bottom: 2px; }
+  .app-input.ok { background: var(--mint); border-color: rgba(0,117,74,.25); }
+  .app-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--primary);
+    color: #fff;
+    font-size: 12.5px;
+    font-weight: 700;
+    padding: 9px 16px;
+    border-radius: 999px;
+  }
+  .app-btn.claro { background: #fff; border: 1.5px solid var(--primary); color: var(--primary); }
+  .app-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+  .app-pill {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 7px 14px;
+    border-radius: 999px;
+    border: 1.5px solid #d8d5cc;
+    color: #6b756f;
+    background: #fff;
+  }
+  .app-pill.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .app-busca {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .app-busca .app-input { flex: 1; margin-bottom: 0; color: #9aa5a0; }
+  .app-toggle-linha {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: #f7f6f2;
+    border: 1px solid #edece6;
+    border-radius: 10px;
+    padding: 9px 12px;
+    font-size: 12.5px;
+  }
+  .app-toggle-linha small { display: block; font-size: 10.5px; color: #9aa5a0; }
+  .app-toggle {
+    width: 38px; height: 22px; flex-shrink: 0;
+    border-radius: 999px;
+    background: var(--primary);
+    position: relative;
+  }
+  .app-toggle::after {
+    content: '';
+    position: absolute;
+    top: 3px; right: 3px;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: #fff;
+  }
+  .pin {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    flex-shrink: 0;
+    vertical-align: 2px;
+    margin-left: 6px;
+  }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+
+  .acc {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .acc-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: none;
+    border: none;
+    font: inherit;
+    text-align: left;
+    padding: 15px 16px;
+    cursor: pointer;
+    min-height: 56px;
+  }
+  .acc-ico {
+    width: 38px; height: 38px;
+    border-radius: 11px;
+    background: var(--mint);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>Ajuste de Estoque:<br>confirma com Enter e aceita leitor</h1>
+    <p>Lançou a quantidade, aperta Enter, confere na janela verde e Enter de novo. Com o leitor de código de barras, é só bipar o pacote. E a tela não sai do lugar.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <h2 class="secao" style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.16em;color:var(--primary-dark);margin:28px 4px 12px">O que mudou</h2>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">✅</span><strong>Janela de confirmação antes de lançar</strong><span class="acc-seta">▲</span>
+    </button>
+    <div class="acc-corpo"><p>Toda <b>entrada</b> abre uma janela <b>verde</b>; toda <b>saída</b>, uma <b>vermelha</b>. Ela mostra o produto, o <b>+N</b> ou <b>−N</b> e quanto vai ficar o estoque (se ficar negativo, avisa em vermelho).</p><ul><li><b>Enter</b> confirma, <b>Esc</b> cancela.</li><li>No campo Quantidade, <b>Enter = Entrada</b>.</li><li>A saída continua exigindo o motivo escrito.</li><li>Depois de confirmar, Quantidade e Motivo se limpam e o cursor volta na Quantidade.</li></ul></div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🔍</span><strong>Leitor de código de barras</strong><span class="acc-seta">▲</span>
+    </button>
+    <div class="acc-corpo"><p>Com o leitor USB, <b>bipe o pacote</b>: o produto é escolhido sozinho (mesmo que esteja fora do filtro de categoria) e o cursor vai para a Quantidade.</p><ul><li>Bipou <b>o mesmo produto de novo</b>: soma <b>+1</b> na quantidade.</li><li>Bipou <b>outro produto</b>: troca e avisa.</li><li><b>Código desconhecido:</b> aviso vermelho com o botão <b>Vincular ao produto escolhido</b>.</li><li>Os números do leitor não ficam digitados em nenhum campo.</li><li><b>Com a janela de confirmação aberta, o bipe é ignorado</b>: aparece o aviso &ldquo;Confirme ou cancele o lançamento antes de bipar&rdquo; e nada é lançado. Só o seu Enter (ou clique) confirma.</li><li>Quantidade acima de 10.000 não abre a janela: o sistema avisa para conferir se não foi o leitor.</li></ul></div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🖥️</span><strong>A tela não pula mais</strong><span class="acc-seta">▲</span>
+    </button>
+    <div class="acc-corpo"><p>A partir de <b>768 px de largura</b> (computador, iPad e também com zoom no navegador), <b>só a lista de produtos rola</b>. O painel de lançamento fica parado ao lado e, se não couber, rola por dentro com a <b>Quantidade</b> e os botões <b>+ Entrada</b> e <b>− Saída</b> sempre à vista. No <b>celular</b> (ou zoom bem grande), a lista some ao escolher o produto e a <b>Quantidade com os botões ficam numa barra fixa no rodapé</b>, sempre à vista, sem precisar rolar a tela.</p></div>
+  </div>
+
+
+  <h2 class="secao" style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.16em;color:var(--primary-dark);margin:34px 4px 12px">As telas do app</h2>
+
+  <div class="tela">
+    <div class="tela-titulo">Tela 1 — Lançar uma entrada</div>
+    <div class="tela-corpo">
+      <div style="text-align:right;margin-bottom:8px"><span class="chip-bipe">Bipado 7891234567890</span><span class="pin">1</span></div>
+      <div class="split">
+        <div><div class="app-card"><div class="app-card-head">Lista (rola)</div><div class="app-card-body" style="font-size:11px">3081 · MINI COXINHA 30GR<br>5569 · MINI COXINHA 500GR<br>H22MI4 · MINI COXINHA 2KG<span class="pin">2</span></div></div></div>
+        <div><div class="app-card"><div class="app-card-head">Painel (parado)</div><div class="app-card-body">
+          <div class="qtd">12 <span class="pin">3</span></div>
+          <div class="app-input" style="margin-top:8px"><small>Motivo</small>opcional na entrada</div>
+          <div style="display:flex;gap:6px"><span class="mini-btn r">− Saída</span><span class="mini-btn v">+ Entrada</span><span class="pin">4</span></div>
+        </div></div></div>
+      </div>
+    </div>
+    <div class="legenda"><div><span class="pin">1</span><span>Aviso de que o leitor leu o código (some em 1,5 s).</span></div><div><span class="pin">2</span><span>O produto bipado é escolhido e a lista fica onde está; só ela rola.</span></div><div><span class="pin">3</span><span>Digite a quantidade (ou bipe de novo para somar +1) e aperte <b>Enter</b>.</span></div><div><span class="pin">4</span><span>Os botões ficam sempre visíveis no pé do painel, mesmo com zoom.</span></div></div>
+  </div>
+
+  <div class="tela">
+    <div class="tela-titulo">Tela 2 — Janela de confirmação</div>
+    <div class="tela-corpo">
+      <div class="pop-v"><div class="pop-top">+ Confirmar ENTRADA no estoque <span class="pin">1</span></div>
+        <div class="pop-corpo"><b>3081</b> · MINI COXINHA FRANGO C/50 30GR
+          <div class="pop-num">+12 PT <span class="pin">2</span></div>
+          Disponível: <b>40</b> → <b>52</b> PT <span class="pin">3</span><br>Motivo: <b>produção do dia</b></div>
+        <div class="pop-bot"><span class="mini-btn c">Cancelar (Esc)</span><span class="mini-btn v">Confirmar (Enter) <span class="pin">4</span></span></div>
+      </div>
+      <div class="pop-r" style="margin-top:12px"><div class="pop-top">⚠ Confirmar SAÍDA do estoque <span class="pin">5</span></div>
+        <div class="pop-corpo"><div class="pop-num">−60 PT</div>Disponível: <b>40</b> → <b style="color:#b91c1c">−20</b> PT <b style="color:#b91c1c">(vai ficar negativo!)</b><span class="pin">6</span></div>
+        <div class="pop-bot"><span class="mini-btn c">Cancelar (Esc)</span><span class="mini-btn r">Confirmar (Enter)</span></div>
+      </div>
+    </div>
+    <div class="legenda"><div><span class="pin">1</span><span>Verde = entrada.</span></div><div><span class="pin">2</span><span>Quantidade lançada, bem grande, para conferir.</span></div><div><span class="pin">3</span><span>Estoque de → para.</span></div><div><span class="pin">4</span><span>O cursor já vem no Confirmar: <b>Enter</b> lança, <b>Esc</b> cancela.</span></div><div><span class="pin">5</span><span>Vermelha = saída.</span></div><div><span class="pin">6</span><span>Se o saldo ficar abaixo de zero, o aviso aparece em vermelho.</span></div></div>
+  </div>
+
+  <div class="tela">
+    <div class="tela-titulo">Tela 3 — Código não encontrado</div>
+    <div class="tela-corpo">
+      <div class="toast-r">Código <b>7890000000017</b> não está em nenhum produto.
+        <div style="margin-top:8px"><span class="mini-btn v">Vincular ao 3081</span><span class="pin">1</span></div></div>
+    </div>
+    <div class="legenda"><div><span class="pin">1</span><span>Com um produto escolhido, este botão grava o código nele; nos próximos bipes ele já é achado. Se o código for de outro produto, o app avisa qual.</span></div></div>
+  </div>
+
+  <h2 class="secao" style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.16em;color:var(--primary-dark);margin:34px 4px 12px">Para começar a usar</h2>
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🚀</span><strong>Passo a passo</strong><span class="acc-seta">▲</span>
+    </button>
+    <div class="acc-corpo"><ul><li>Abra <b>Estoque → Ajuste</b>.</li><li>Escolha o produto clicando nele <b>ou bipando</b> o pacote.</li><li>Digite a quantidade e aperte <b>Enter</b>.</li><li>Confira a janela e aperte <b>Enter</b> de novo (ou <b>Esc</b> para desistir).</li></ul></div>
+  </div>
+
+
+  <p style="text-align:center;font-size:13px;color:var(--ink-soft);margin-top:28px">Dúvida? Pergunte ao <b>Clippy</b> dentro do app.</p>
+</div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.parentElement;
+    const abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>
