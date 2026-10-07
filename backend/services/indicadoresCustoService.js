@@ -117,7 +117,37 @@ async function carregarFichasVigentes() {
         }
         for (const it of r.itens) if (it.itemPcp) itemPcpPorId.set(it.itemPcp.id, it.itemPcp); // versão com produto.custoManual
     }
-    return { receitaPorItemPcp, itemPcpPorProduto, itemPcpPorId };
+    // Custo de referencia: produto SEM ficha própria que usa a ficha de outro produto x fator.
+    // Só vale se o referenciado tem ficha vigente e não é ele mesmo (sem circularidade possível:
+    // o referenciado sempre usa a ficha própria).
+    const referenciaPorProduto = new Map();
+    const refs = await prisma.produto.findMany({
+        where: { produtoCustoReferenciaId: { not: null } },
+        select: { id: true, produtoCustoReferenciaId: true, fatorCustoReferencia: true }
+    });
+    for (const r of refs) {
+        if (r.id === r.produtoCustoReferenciaId) continue;
+        if (itemPcpPorProduto.has(r.id)) continue; // ficha própria manda
+        const refIp = itemPcpPorProduto.get(r.produtoCustoReferenciaId);
+        if (!refIp) continue;
+        const fator = Number(r.fatorCustoReferencia);
+        referenciaPorProduto.set(r.id, {
+            refProdutoId: r.produtoCustoReferenciaId, refItemPcpId: refIp, fator: Number.isFinite(fator) && fator > 0 ? fator : 1
+        });
+    }
+    return { receitaPorItemPcp, itemPcpPorProduto, itemPcpPorId, referenciaPorProduto };
+}
+
+/**
+ * Ficha que vale para um produto: a própria ou, na falta, a de referência.
+ * @returns {{ itemPcpId:string, fator:number, ref:boolean, refProdutoId?:string }|null}
+ */
+function fichaEfetiva(ctx, produtoId) {
+    const own = ctx.itemPcpPorProduto.get(produtoId);
+    if (own) return { itemPcpId: own, fator: 1, ref: false };
+    const r = ctx.referenciaPorProduto && ctx.referenciaPorProduto.get(produtoId);
+    if (r) return { itemPcpId: r.refItemPcpId, fator: r.fator, ref: true, refProdutoId: r.refProdutoId };
+    return null;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -213,7 +243,7 @@ async function classificarProdutos(produtoIds, ctx = null) {
     ctx = ctx || await carregarFichasVigentes();
     const produtos = await prisma.produto.findMany({ where: { id: { in: ids } }, select: { id: true, nfeRevenda: true } });
     for (const p of produtos) {
-        if (ctx.itemPcpPorProduto.has(p.id)) mapa.set(p.id, 'FABRICADO');
+        if (fichaEfetiva(ctx, p.id)) mapa.set(p.id, 'FABRICADO');
         else if (p.nfeRevenda === true) mapa.set(p.id, 'REVENDA');
         else mapa.set(p.id, 'SEM_CLASSE');
     }
@@ -235,6 +265,11 @@ async function custoAgora(produtoIds, ctx = null) {
         if (ipId) {
             const c = custoFicha(ctx.receitaPorItemPcp.get(ipId), ctx);
             if (c.custoPorUnidade > 0) { mapa.set(p.id, { custo: c.custoPorUnidade, fonte: 'FICHA', temCustoFaltando: c.temCustoFaltando }); continue; }
+        }
+        const fe = fichaEfetiva(ctx, p.id);
+        if (fe && fe.ref) {
+            const c = custoFicha(ctx.receitaPorItemPcp.get(fe.itemPcpId), ctx);
+            if (c.custoPorUnidade > 0) { mapa.set(p.id, { custo: round4(c.custoPorUnidade * fe.fator), fonte: 'FICHA_REF', temCustoFaltando: c.temCustoFaltando }); continue; }
         }
         const manual = num(p.custoManual);
         const ca = num(p.custoMedio);
@@ -328,9 +363,9 @@ async function custoNaDataLote(pares) {
     // insumos de todas as fichas de fabricados envolvidos + os próprios produtos (compras de revenda)
     const insumoIds = new Set(); const insumoProdIds = new Set();
     for (const pid of produtoIds) {
-        const ipId = ctx.itemPcpPorProduto.get(pid);
-        if (!ipId) continue;
-        const pilha = [ctx.receitaPorItemPcp.get(ipId)]; const vis = new Set();
+        const fe0 = fichaEfetiva(ctx, pid);
+        if (!fe0) continue;
+        const pilha = [ctx.receitaPorItemPcp.get(fe0.itemPcpId)]; const vis = new Set();
         while (pilha.length) {
             const r = pilha.pop();
             if (!r || vis.has(r.id)) continue; vis.add(r.id);
@@ -357,10 +392,10 @@ async function custoNaDataLote(pares) {
         const t = fimDiaSP(ymd).getTime();
         let res = null;
         // (a) ficha recomposta com o preço dos insumos na data
-        const ipId = ctx.itemPcpPorProduto.get(produtoId);
-        if (ipId) {
-            const c = custoFicha(ctx.receitaPorItemPcp.get(ipId), ctx, resolver, new Date(t));
-            if (c.custoPorUnidade > 0) res = { custo: c.custoPorUnidade, fonte: 'FICHA' };
+        const fe = fichaEfetiva(ctx, produtoId);
+        if (fe) {
+            const c = custoFicha(ctx.receitaPorItemPcp.get(fe.itemPcpId), ctx, resolver, new Date(t));
+            if (c.custoPorUnidade > 0) res = { custo: round4(c.custoPorUnidade * fe.fator), fonte: fe.ref ? 'FICHA_REF' : 'FICHA' };
         }
         // (b) último preço de compra do próprio produto
         if (!res) {
@@ -507,6 +542,7 @@ async function serieSemanalFicha(produtoIds, { semanas = 8 } = {}) {
 
 module.exports = {
     carregarFichasVigentes,
+    fichaEfetiva,
     custoFicha,
     explodirFicha,
     resolverAtual,

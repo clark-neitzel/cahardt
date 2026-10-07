@@ -123,7 +123,7 @@ async function completarSnapshotsPendentes({ dias = 7, limite = 500 } = {}) {
  * em lotes de 500, SEM $transaction gigante. dry=true só diagnostica (não grava).
  * @returns {Promise<object>} { dry, itensAnalisados, gravados, porFonte, semCusto:[top 20], restantes }
  */
-async function backfillRetroativo({ de = null, ate = null, dry = true, limite = 500 } = {}) {
+async function backfillRetroativo({ de = null, ate = null, dry = true, limite = 500, reestimar = false, corte = null } = {}) {
     const lim = Math.min(Math.max(parseInt(limite, 10) || 500, 1), 20000);
     const wherePedido = { ...WHERE_PEDIDO_RECEITA };
     if (de || ate) {
@@ -131,12 +131,18 @@ async function backfillRetroativo({ de = null, ate = null, dry = true, limite = 
         if (de) wherePedido.dataVenda.gte = new Date(`${de}T00:00:00-03:00`);
         if (ate) wherePedido.dataVenda.lte = new Date(`${ate}T23:59:59.999-03:00`);
     }
-    const where = { custoSnapshotEm: null, pedido: wherePedido };
+    // reestimar=true: REGRAVA só itens cujo snapshot é ESTIMADO (nunca os reais). `corte` (ISO) marca o início da
+    // rodada: itens já regravados têm custoSnapshotEm >= corte e saem de `restantes` — repetir com o mesmo corte.
+    const corteDt = reestimar ? (corte ? new Date(corte) : new Date()) : null;
+    const where = reestimar
+        ? { custoSnapshotEstimado: true, custoSnapshotEm: { not: null, lt: corteDt }, pedido: wherePedido }
+        : { custoSnapshotEm: null, pedido: wherePedido };
     const itens = await prisma.pedidoItem.findMany({
         where, orderBy: { pedido: { dataVenda: 'asc' } }, take: lim,
-        select: { id: true, produtoId: true, quantidade: true, pedido: { select: { dataVenda: true } } }
+        select: { id: true, produtoId: true, quantidade: true, custoUnitarioSnapshot: true, pedido: { select: { dataVenda: true } } }
     });
-    const porFonte = { FICHA: 0, COMPRA: 0, HIST_MENSAL: 0, ATUAL: 0, CA: 0, SEM_CUSTO: 0 };
+    let custoAntesTotal = 0, custoDepoisTotal = 0, mantidosSemNovoCusto = 0;
+    const porFonte = { FICHA: 0, FICHA_REF: 0, COMPRA: 0, HIST_MENSAL: 0, ATUAL: 0, CA: 0, SEM_CUSTO: 0 };
     const semCustoCont = new Map();
     let gravados = 0;
     const agora = new Date();
@@ -156,13 +162,31 @@ async function backfillRetroativo({ de = null, ate = null, dry = true, limite = 
         for (const [k, lista] of grupos) {
             const c = custos.get(k) || { custo: null, fonte: 'SEM_CUSTO' };
             porFonte[c.fonte] = (porFonte[c.fonte] || 0) + lista.length;
+            for (const l of lista) {
+                custoAntesTotal += Number(l.custoUnitarioSnapshot || 0) * Number(l.quantidade || 0);
+                custoDepoisTotal += ((reestimar && c.fonte === 'SEM_CUSTO' && l.custoUnitarioSnapshot != null) ? Number(l.custoUnitarioSnapshot) : Number(c.custo || 0)) * Number(l.quantidade || 0);
+            }
             if (c.fonte === 'SEM_CUSTO') {
                 const pid = lista[0].produtoId;
                 semCustoCont.set(pid, (semCustoCont.get(pid) || 0) + lista.length);
             }
+            // reestimar: se o novo resultado é SEM_CUSTO e o item já tinha custo estimado, mantém o que havia
+            let lista2 = lista;
+            if (reestimar && c.fonte === 'SEM_CUSTO') {
+                const com = lista.filter((l) => l.custoUnitarioSnapshot != null);
+                mantidosSemNovoCusto += com.length;
+                lista2 = lista.filter((l) => l.custoUnitarioSnapshot == null);
+                if (!dry && com.length) {
+                    // marca como "refeito nesta rodada" sem trocar o custo (sai de `restantes`)
+                    await prisma.pedidoItem.updateMany({ where: { id: { in: com.map((l) => l.id) }, custoSnapshotEstimado: true }, data: { custoSnapshotEm: agora } });
+                }
+                if (!lista2.length) continue;
+            }
             if (dry) continue;
             const r = await prisma.pedidoItem.updateMany({
-                where: { id: { in: lista.map((l) => l.id) }, custoSnapshotEm: null }, // idempotente
+                where: reestimar
+                    ? { id: { in: lista2.map((l) => l.id) }, custoSnapshotEstimado: true } // nunca sobrescreve os reais
+                    : { id: { in: lista.map((l) => l.id) }, custoSnapshotEm: null }, // idempotente
                 data: {
                     custoUnitarioSnapshot: c.custo,
                     fonteCustoSnapshot: c.fonte,
@@ -180,6 +204,10 @@ async function backfillRetroativo({ de = null, ate = null, dry = true, limite = 
     const restantes = await prisma.pedidoItem.count({ where });
     return {
         dry: !!dry, itensAnalisados: itens.length, gravados, porFonte,
+        ...(reestimar ? {
+            reestimar: true, corte: corteDt.toISOString(),
+            mantidosSemNovoCusto, custoAntes: Math.round(custoAntesTotal * 100) / 100, custoDepois: Math.round(custoDepoisTotal * 100) / 100
+        } : {}),
         semCusto: topIds.map(([produtoId, n]) => ({ produtoId, nome: nomeDe.get(produtoId) || '', itens: n })),
         restantes
     };

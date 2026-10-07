@@ -14,8 +14,17 @@ export default function TabelaClientes({ d }) {
     if (!linhas.length) return <EstadoVazio icon={Users} titulo="Sem vendas a clientes no período" />;
     const maxMC = Math.max(1, ...linhas.map((l) => Number(l.mcTotal) || 0));
     const est = d.custoEntregaOrigem === 'ESTIMADO';
+    // backend novo manda `paradas` por linha; antigo só `entregas` (pedidos) — nesse caso nada muda
+    const porParada = linhas.some((l) => temValor(l.paradas));
+    const rotQtd = porParada ? 'Paradas' : 'Entregas';
+    const qtd = (l) => (porParada ? l.paradas : l.entregas);
+    const metodo = d.custoEntregaMetodo === 'POR_PARADA' ? 'por parada (estimado)' : d.custoEntregaMetodo === 'POR_PEDIDO' ? 'por pedido (estimado)' : 'estimado';
+    const dica = d.custoEntregaMetodo === 'POR_PARADA'
+        ? `Custo de veículos e entregas do período ÷ paradas realizadas${temValor(d.custoPorParada) ? ` (${fmtRS(d.custoPorParada, 2)} por parada)` : ''}, sem separar por km. Depende de a entrega ser marcada no app.`
+        : 'Custo de veículos e entregas do período ÷ pedidos entregues, sem separar por km.';
     return (
         <div>
+            {est && <p className="px-4 md:px-5 pt-3 text-xs text-gray-600">{dica}</p>}
             <div className="md:hidden space-y-2.5 p-3">
                 {linhas.map((l) => (
                     <div key={l.clienteId} className="rounded-xl border border-gray-200 p-3">
@@ -23,8 +32,8 @@ export default function TabelaClientes({ d }) {
                         <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 mt-2 text-xs">
                             <div><dt className="text-gray-600">Receita</dt><dd className="font-bold">{fmtRSk(l.receita)}</dd></div>
                             <div><dt className="text-gray-600">Desconto médio</dt><dd className="font-bold">{fmtPct(l.descontoMedioPct, 0)}</dd></div>
-                            <div><dt className="text-gray-600">Entregas</dt><dd className="font-bold">{fmtInt(l.entregas)}</dd></div>
-                            <div><dt className="text-gray-600">Custo entrega{est ? ' (estimado)' : ''}</dt><dd className="font-bold">{fmtRS(l.custoEntrega, 0)}</dd></div>
+                            <div><dt className="text-gray-600">{rotQtd}</dt><dd className="font-bold">{fmtInt(qtd(l))}</dd></div>
+                            <div><dt className="text-gray-600">Custo entrega{est ? ` · ${metodo}` : ''}</dt><dd className="font-bold">{fmtRS(l.custoEntrega, 0)}</dd></div>
                             <div><dt className="text-gray-600">MC %</dt><dd className="font-bold"><Mc v={l.mcPct} /></dd></div>
                             <div><dt className="text-gray-600">MC total</dt><dd className="font-bold">{fmtRSk(l.mcTotal)}</dd></div>
                         </dl>
@@ -36,8 +45,8 @@ export default function TabelaClientes({ d }) {
                     <thead className="bg-gray-50">
                         <tr className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
                             <th className="px-4 py-3 text-left">Cliente</th><th className="px-3 py-3 text-right">Receita</th><th className="px-3 py-3 text-right">Desconto médio</th>
-                            <th className="px-3 py-3 text-right">Entregas</th>
-                            <th className="px-3 py-3 text-right">Custo entrega {est && <Chip cls="bg-gray-100 text-gray-700">estimado</Chip>}</th>
+                            <th className="px-3 py-3 text-right">{rotQtd}</th>
+                            <th className="px-3 py-3 text-right">Custo entrega {est && <span title={dica}><Chip cls="bg-gray-100 text-gray-700">{metodo}</Chip></span>}</th>
                             <th className="px-3 py-3 text-right">MC %</th><th className="px-3 py-3 text-right">MC total</th>
                         </tr>
                     </thead>
@@ -47,7 +56,7 @@ export default function TabelaClientes({ d }) {
                                 <td className="px-4 py-2.5 font-bold text-gray-900">{l.nome}</td>
                                 <td className="px-3 py-2.5 text-right tabular-nums">{fmtRSk(l.receita)}</td>
                                 <td className="px-3 py-2.5 text-right tabular-nums">{fmtPct(l.descontoMedioPct, 0)}</td>
-                                <td className="px-3 py-2.5 text-right tabular-nums">{fmtInt(l.entregas)}</td>
+                                <td className="px-3 py-2.5 text-right tabular-nums">{fmtInt(qtd(l))}</td>
                                 <td className="px-3 py-2.5 text-right tabular-nums">{fmtRS(l.custoEntrega, 0)}</td>
                                 <td className="px-3 py-2.5 text-right tabular-nums"><Mc v={l.mcPct} /></td>
                                 <td className="px-3 py-2.5">

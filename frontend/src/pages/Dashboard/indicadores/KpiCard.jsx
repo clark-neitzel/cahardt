@@ -3,13 +3,27 @@ import { HelpCircle } from 'lucide-react';
 import { Selo } from './Bloco';
 import Sparkline from './Sparkline';
 import { useTooltip } from './useTooltip';
+import { fmtNum, temValor } from './formatos';
 
 // Cartão de KPI: rótulo + selo com PALAVRA + valor + variação + sparkline + "?" com o guia de leitura.
 // `tom` define a cor da variação (bom = verde, ruim = vermelho, neutro = cinza) — sempre acompanhada de seta.
 const BASE_SEMAFORO = { media3m: 'vs média de 3 meses', meta: 'vs meta', faixa: 'pela alta em 8 semanas' };
 
-export default function KpiCard({ rotulo, ajuda, semaforo, valor, unidade, variacao, variacaoRef, tom = 'neutro', detalhe, spark }) {
+// Texto da meta: "35%" (quanto maior melhor), "≤ 1,5%" ou "≤ 20 dias" (quanto menor melhor).
+export function textoMeta(meta) {
+    if (!meta || !temValor(meta.alvo)) return null;
+    const casas = Number.isInteger(Number(meta.alvo)) ? 0 : 1;
+    const num = fmtNum(meta.alvo, casas);
+    const un = meta.unidade === 'dias' ? ' dias' : '%';
+    return `${meta.sentido === 'MENOR_MELHOR' ? '≤ ' : ''}${num}${un}`;
+}
+
+export default function KpiCard({ rotulo, ajuda, semaforo, valor, unidade, variacao, variacaoRef, tom = 'neutro', detalhe, spark, deltaMedia }) {
     const { alvo, Tip } = useTooltip();
+    const comMeta = semaforo?.base === 'meta' ? textoMeta(semaforo.meta) : null;
+    const deltaMeta = comMeta && temValor(semaforo.delta)
+        ? `${Number(semaforo.delta) > 0 ? '+' : Number(semaforo.delta) < 0 ? '−' : ''}${fmtNum(Math.abs(semaforo.delta), 1)} ${semaforo.meta.unidade === 'dias' ? 'dias' : 'pt'}`
+        : null;
     const cor = tom === 'bom' ? 'text-green-700' : tom === 'ruim' ? 'text-red-700' : 'text-gray-600';
     return (
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm px-4 py-3.5 min-w-0">
@@ -24,13 +38,16 @@ export default function KpiCard({ rotulo, ajuda, semaforo, valor, unidade, varia
             {semaforo && (
                 <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5">
                     <Selo status={semaforo.status} palavra={semaforo.palavra} />
-                    {BASE_SEMAFORO[semaforo.base] && <span className="text-[11px] text-gray-500">{BASE_SEMAFORO[semaforo.base]}</span>}
+                    {comMeta
+                        ? <span className="text-[11px] text-gray-500">vs meta {comMeta}{deltaMeta && <> ({deltaMeta})</>}</span>
+                        : BASE_SEMAFORO[semaforo.base] && <span className="text-[11px] text-gray-500">{BASE_SEMAFORO[semaforo.base]}</span>}
                 </div>
             )}
             <div className="text-xl md:text-2xl font-extrabold text-gray-900 mt-1 leading-tight tabular-nums break-words">
                 {valor}{unidade && <small className="text-sm font-bold text-gray-600 ml-1">{unidade}</small>}
             </div>
             {variacao && <div className={`text-xs font-bold mt-1 ${cor}`}>{variacao}{variacaoRef && <span className="font-medium text-gray-500"> {variacaoRef}</span>}</div>}
+            {temValor(deltaMedia) && <div className="text-xs text-gray-600 font-medium mt-0.5">{Number(deltaMedia) > 0 ? '+' : Number(deltaMedia) < 0 ? '−' : ''}{fmtNum(Math.abs(deltaMedia), 1)} pt vs média de 3 meses</div>}
             {detalhe && <div className="text-xs text-gray-600 font-medium mt-0.5">{detalhe}</div>}
             {spark && <Sparkline valores={spark} className="mt-2" />}
             {Tip}

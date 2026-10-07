@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Gauge, Settings, Scale, LineChart, PackageCheck, Factory, Siren, Users, Package, AlertTriangle, Landmark } from 'lucide-react';
+import { Gauge, Settings, Target, Scale, LineChart, PackageCheck, Factory, Siren, Users, Package, AlertTriangle, Landmark } from 'lucide-react';
 import PageHeader from '../../components/PageHeader';
 import FiltroPeriodo, { usePeriodoSalvo } from '../../components/FiltroPeriodo';
 import SelectBusca from '../../components/SelectBusca';
@@ -20,6 +20,7 @@ import Alertas, { contarAlertas } from './indicadores/Alertas';
 import TabelaClientes from './indicadores/TabelaClientes';
 import GuiaLeitura from './indicadores/GuiaLeitura';
 import ConfigImpostoModal from './indicadores/ConfigImpostoModal';
+import MetasModal from './indicadores/MetasModal';
 import { AJUDA } from './indicadores/guia';
 import { fmtNum, fmtPct, fmtPctSinal, fmtRSk, temValor, MESES } from './indicadores/formatos';
 
@@ -34,26 +35,17 @@ const sinal = (v, casas = 1) => (temValor(v) ? `${Number(v) > 0 ? '▲' : Number
 const tomMaisEBom = (v) => (!temValor(v) || Number(v) === 0 ? 'neutro' : Number(v) > 0 ? 'bom' : 'ruim');
 const mesRot = (mes) => (typeof mes === 'string' && /^\d{4}-\d{2}/.test(mes) ? `${MESES[Number(mes.slice(5, 7)) - 1]}/${mes.slice(2, 4)}` : '');
 
-// KPI "custo dos insumos" calculado a partir da curva semanal (quando não há /resumo — visão produção).
-// Faixas = as da decisão D5 do plano (2% atenção, 5% agir) enquanto não existir meta cadastrada.
-function kpiInsumosDerivado(ins) {
+// Curva do cartão "custo dos insumos" (visão produção): média por semana IGNORANDO semanas sem preço
+// (null não vira 0). Só desenho — o número e o semáforo vêm do SERVIDOR (insumos.dados.kpi).
+function sparkInsumos(ins) {
     const l = Array.isArray(ins?.insumos) ? ins.insumos : [];
-    const comVar = l.filter((i) => temValor(i.variacaoPct));
-    if (!comVar.length) return null;
-    const media = comVar.reduce((s, i) => s + Number(i.variacaoPct), 0) / comVar.length;
-    // média por semana IGNORANDO semanas sem preço (null não vira 0)
     const n = Math.max(0, ...l.map((i) => (Array.isArray(i.indice) ? i.indice.length : 0)));
     const spark = [];
     for (let k = 0; k < n; k++) {
         const vs = l.map((i) => i.indice?.[k]).filter((v) => temValor(v)).map(Number);
         if (vs.length) spark.push(vs.reduce((a, b) => a + b, 0) / vs.length);
     }
-    const destaques = [...comVar].sort((a, b) => b.variacaoPct - a.variacaoPct).slice(0, 2).filter((i) => Number(i.variacaoPct) > 0);
-    const status = media >= 5 ? 'agir' : media >= 2 ? 'atencao' : 'ok';
-    return {
-        variacaoPct: media, semanas: n, spark, destaques,
-        semaforo: { status, base: 'faixa', palavra: media >= 2 ? 'subindo' : media <= -2 ? 'caindo' : 'estável' },
-    };
+    return spark;
 }
 
 export default function IndicadoresGestao() {
@@ -66,6 +58,7 @@ export default function IndicadoresGestao() {
     const [filtros, setFiltros] = useFiltrosSalvos('indicadores-gestao', { visao: 'dono', ordemDono: 'mcTotal', ordemProd: 'quantidadeVendida' });
     const [semanaOffset, setSemanaOffset] = useState(0); // navegação pontual, não persiste
     const [modalImposto, setModalImposto] = useState(false);
+    const [modalMetas, setModalMetas] = useState(false);
 
     const visao = completo ? (filtros.visao === 'producao' ? 'producao' : 'dono') : 'producao';
     const dono = visao === 'dono';
@@ -90,7 +83,7 @@ export default function IndicadoresGestao() {
 
     const algumExemplo = [resumo, cascata, equilibrio, clientes, insumos, entradas, produtos, producao, alertas].some((r) => r.exemplo);
     const contagem = useMemo(() => contarAlertas(alertas.dados?.itens), [alertas.dados]);
-    const kpiIns = useMemo(() => kpiInsumosDerivado(insumos.dados), [insumos.dados]);
+    const sparkIns = useMemo(() => sparkInsumos(insumos.dados), [insumos.dados]);
 
     if (!pode) {
         return <EstadoVazio icon={Gauge} titulo="Você não tem acesso aos Indicadores de Gestão" descricao="Peça ao administrador para liberar a permissão." />;
@@ -104,8 +97,8 @@ export default function IndicadoresGestao() {
     const destaquesTxt = (lista) => (Array.isArray(lista) && lista.length ? lista.map((d) => `${d.nome} ${fmtPctSinal(d.variacaoPct, 0)}`).join(' · ') : null);
     const cartaoInsumos = (insResumo && dono)
         ? { variacaoPct: insResumo.variacaoPct, semanas: insResumo.semanas, semaforo: sem(insResumo.semaforo), spark: sp.custoInsumosIdx, destaque: destaquesTxt(insResumo.destaques) }
-        : kpiIns ? { variacaoPct: kpiIns.variacaoPct, semanas: kpiIns.semanas, semaforo: kpiIns.semaforo, spark: kpiIns.spark, destaque: destaquesTxt(kpiIns.destaques) }
-            : { variacaoPct: null, semanas: 8, semaforo: null, spark: null, destaque: null }; // sem compras: cartão com "—", não some do grid
+        : insumos.dados?.kpi ? { variacaoPct: insumos.dados.kpi.variacaoPct, semanas: insumos.dados.kpi.semanas, semaforo: sem(insumos.dados.kpi.semaforo), spark: sparkIns, destaque: destaquesTxt(insumos.dados.kpi.destaques) }
+            : { variacaoPct: null, semanas: 8, semaforo: null, spark: null, destaque: null }; // sem compras (ou servidor antigo): cartão com "—", sem selo
 
     const cardInsumos = cartaoInsumos && (
         <KpiCard
@@ -135,11 +128,11 @@ export default function IndicadoresGestao() {
                 tom={tomMaisEBom(kr.receitaLiquida?.variacaoPct)} variacaoRef="vs período anterior" detalhe={temValor(kr.receitaLiquida?.anterior) ? `antes ${fmtRSk(kr.receitaLiquida.anterior)}` : null} spark={sp.receitaLiquida} />
             <KpiCard rotulo="Margem de contribuição" ajuda={AJUDA.margemContribuicao} semaforo={sem(kr.margemContribuicao?.semaforo)}
                 valor={fmtNum(kr.margemContribuicao?.pct, 1)} unidade="%" variacao={temValor(kr.margemContribuicao?.deltaPt) ? `${sinal(kr.margemContribuicao.deltaPt)} pt` : null}
-                tom={tomMaisEBom(kr.margemContribuicao?.deltaPt)} variacaoRef="vs período anterior"
+                deltaMedia={kr.margemContribuicao?.deltaMedia3mPt} tom={tomMaisEBom(kr.margemContribuicao?.deltaPt)} variacaoRef="vs período anterior"
                 detalhe={[fmtRSk(kr.margemContribuicao?.valor), temValor(kr.margemContribuicao?.pctAnterior) ? `antes ${fmtPct(kr.margemContribuicao.pctAnterior)}` : null].filter((x) => x && x !== '—').join(' · ')} spark={sp.mcPct} />
             <KpiCard rotulo="Resultado operacional" ajuda={AJUDA.resultadoOperacional} semaforo={sem(kr.resultadoOperacional?.semaforo)}
                 valor={fmtNum(kr.resultadoOperacional?.pct, 1)} unidade="%" variacao={temValor(kr.resultadoOperacional?.deltaPt) ? `${sinal(kr.resultadoOperacional.deltaPt)} pt` : null}
-                tom={tomMaisEBom(kr.resultadoOperacional?.deltaPt)} variacaoRef="vs período anterior"
+                deltaMedia={kr.resultadoOperacional?.deltaMedia3mPt} tom={tomMaisEBom(kr.resultadoOperacional?.deltaPt)} variacaoRef="vs período anterior"
                 detalhe={[fmtRSk(kr.resultadoOperacional?.valor), temValor(kr.resultadoOperacional?.pctAnterior) ? `antes ${fmtPct(kr.resultadoOperacional.pctAnterior)}` : null].filter((x) => x && x !== '—').join(' · ')} spark={sp.resultadoPct} />
             {cardInsumos || <div />}
         </div>
@@ -188,6 +181,12 @@ export default function IndicadoresGestao() {
                 subtitulo={dono ? 'Estamos ganhando dinheiro? O custo está subindo? Onde agir primeiro?' : 'Custos de produção: insumos, fichas técnicas e entradas de mercadoria'}
                 acoes={<>
                     {algumExemplo && <Chip cls="bg-gray-100 text-gray-700">dados de exemplo</Chip>}
+                    {ehAdmin && (
+                        <button type="button" onClick={() => setModalMetas(true)} aria-label="Metas dos indicadores" title="Metas dos indicadores"
+                            className="w-11 h-11 flex items-center justify-center rounded-full border border-gray-200 text-gray-600 hover:bg-gray-100">
+                            <Target className="h-4 w-4" />
+                        </button>
+                    )}
                     {ehAdmin && dono && (
                         <button type="button" onClick={() => setModalImposto(true)} aria-label="Configurar imposto sobre a venda" title="Imposto sobre a venda"
                             className="w-11 h-11 flex items-center justify-center rounded-full border border-gray-200 text-gray-600 hover:bg-gray-100">
@@ -291,6 +290,7 @@ export default function IndicadoresGestao() {
                 <GuiaLeitura visao={visao} />
             </div>
 
+            {modalMetas && <MetasModal visaoDono={dono} onFechar={() => setModalMetas(false)} onSalvou={() => { resumo.recarregar(); insumos.recarregar(); producao.recarregar(); alertas.recarregar(); }} />}
             {modalImposto && <ConfigImpostoModal onFechar={() => setModalImposto(false)} onSalvou={() => { resumo.recarregar(); cascata.recarregar(); equilibrio.recarregar(); clientes.recarregar(); }} />}
         </div>
     );

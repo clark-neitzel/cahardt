@@ -67,6 +67,9 @@ Quando o operador finaliza a ordem no Painel:
 1. O estoque de cada ingrediente (MP, SUB, EMB) é **reduzido** pelo consumo real apontado.
 2. O estoque do item produzido (PA ou SUB) é **aumentado** pela quantidade efetivamente produzida.
 3. A ordem passa para status FINALIZADA.
+4. Logo em seguida (em segundo plano, sem atrasar nem travar a finalização) o sistema **calcula e guarda na própria ordem**: o custo dos insumos (previsto × realmente baixado, ao preço pago na data), o custo por unidade, o **rendimento** (produzido ÷ planejado) e a **perda além da ficha** (quanto faltou para o que a ficha técnica já prevê de perda), em quantidade e em R$. Esses números alimentam o bloco "Produção e estoque" dos Indicadores de Gestão. Se o cálculo falhar, a ordem continua finalizada e uma rotina automática (a cada 30 min) refaz.
+
+> **Para a perda ser confiável:** informe a **quantidade produzida real** ao finalizar e **planeje a quantidade que de fato espera produzir** — o rendimento é medido contra a quantidade planejada. Se o consumo real dos ingredientes não for apontado, o sistema assume que foi igual ao previsto.
 
 ## Permissões necessárias
 

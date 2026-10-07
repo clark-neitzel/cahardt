@@ -12,6 +12,7 @@ const INS = [
     { itemPcpId: 'i4', nome: 'Queijo mussarela', unidade: 'kg', tipo: 'MP', pesoCpvPct: 12, v: [33.5, 33.5, 34.0, 34.0, 34.8, 34.8, 34.8, 34.8], altasSeguidas: 0, custoMedioAtual: 34.4 },
 ];
 const insumos = (completo) => ({
+    kpi: { variacaoPct: 6.4, semanas: 8, semaforo: { status: 'agir', palavra: 'subindo', base: 'faixa' }, destaques: [{ itemPcpId: 'i1', nome: 'Peito de frango', variacaoPct: 14.3 }, { itemPcpId: 'i2', nome: 'Óleo de soja', variacaoPct: 13.5 }] },
     semanas: SEMANAS.map((rotulo, i) => ({ inicio: `2026-${i < 3 ? '08' : '09'}-${String(10 + i * 3).padStart(2, '0')}`, rotulo })),
     insumos: INS.map(({ v, pesoCpvPct, ...r }) => ({
         ...r,
@@ -55,8 +56,8 @@ export function mockIndicador(rota, params) {
                 cobertura: { itensTotal: 1840, itensSnapshotReal: 1210, itensSnapshotEstimado: 600, itensSemSnapshot: 30, pctReal: 65.8, avisos: ['34% do custo vem de estimativa (vendas antigas, antes de o sistema gravar o custo no pedido).'] },
                 kpis: {
                     receitaLiquida: { valor: 379300, anterior: 362000, variacaoPct: 4.8, semaforo: sk('no alvo', 'ok') },
-                    margemContribuicao: { valor: 125100, pct: 33.0, anterior: 125200, pctAnterior: 34.6, deltaPt: -1.6, media3mPct: 34.9, semaforo: sk('atenção', 'atencao') },
-                    resultadoOperacional: { valor: 32300, pct: 8.5, anterior: 35100, pctAnterior: 9.7, deltaPt: -1.2, media3mPct: 9.4, semaforo: sk('atenção', 'atencao') },
+                    margemContribuicao: { valor: 125100, pct: 33.0, anterior: 125200, pctAnterior: 34.6, deltaPt: -1.6, media3mPct: 34.9, deltaMedia3mPt: -1.9, meta: { alvo: 35, sentido: 'MAIOR_MELHOR', unidade: 'pct' }, semaforo: { status: 'atencao', palavra: 'atenção', base: 'meta', meta: { alvo: 35, sentido: 'MAIOR_MELHOR', unidade: 'pct' }, delta: -2 } },
+                    resultadoOperacional: { valor: 32300, pct: 8.5, anterior: 35100, pctAnterior: 9.7, deltaPt: -1.2, media3mPct: 9.4, deltaMedia3mPt: -0.9, meta: null, semaforo: sk('atenção', 'atencao') },
                     custoInsumos: { variacaoPct: 6.4, semanas: 8, destaques: [{ itemPcpId: 'i1', nome: 'frango', variacaoPct: 14 }, { itemPcpId: 'i2', nome: 'óleo', variacaoPct: 13 }], semaforo: sk('subindo', 'agir') },
                 },
                 sparks: { receitaLiquida: [352, 340, 358, 362, 371, 379], mcPct: [35.2, 35.0, 34.8, 34.9, 34.6, 33.0], resultadoPct: [9.1, 8.8, 9.4, 9.9, 9.7, 8.5], custoInsumosIdx: [100, 100, 101.5, 102, 103.4, 104.6, 106.2, 106.4] },
@@ -91,7 +92,18 @@ export function mockIndicador(rota, params) {
         case 'produtos':
             return produtos(foco, completo);
         case 'producao':
-            return { periodo: PERIODO, estoque: { diasEstoqueProdutoAcabado: 11, diasEstoqueInsumos: 9 }, perdas: { disponivel: false, valorMes: null, pctCpv: null, metaPct: null, semanal: [] }, custoRealXPadrao: { disponivel: false, desvioPct: null }, rendimentoLote: { disponivel: false, realPct: null, fichaPct: null } };
+            return {
+                periodo: PERIODO, ordensPendentesApuracao: 1,
+                estoque: { diasEstoqueProdutoAcabado: 11, diasEstoqueInsumos: 9, semaforo: { status: 'ok', palavra: 'no alvo', base: 'meta', meta: { alvo: 15, sentido: 'MENOR_MELHOR', unidade: 'dias' }, delta: -4 } },
+                perdas: {
+                    disponivel: true, valorMes: 1840, pctCpv: completo ? 0.9 : null, pctProduzido: 2.3, perdaTotalValor: 6120, metaPct: 1.5,
+                    semaforo: { status: 'atencao', palavra: 'atenção', base: 'meta', meta: { alvo: 1.5, sentido: 'MENOR_MELHOR', unidade: 'pct' }, delta: 0.8 },
+                    ordens: 14, ordensSemPreco: 1, ordensEstimadas: 3,
+                    semanal: [['2026-08-10', 1.1, 380, 3], ['2026-08-17', 1.9, 520, 2], ['2026-08-24', 0.8, 210, 3], ['2026-08-31', 2.6, 700, 4], ['2026-09-07', 1.4, 360, 2], ['2026-09-14', 3.1, 910, 3], ['2026-09-21', 2.2, 640, 4], ['2026-09-28', 2.3, 410, 2]].map(([inicio, pct, valor, ordens]) => ({ inicio, pct, valor, ordens })),
+                },
+                custoRealXPadrao: { disponivel: true, desvioPct: 1.8, valorDesvio: 960, ordens: 14, semaforo: { status: 'ok', palavra: 'no alvo', base: 'media3m' } },
+                rendimentoLote: { disponivel: true, realPct: 94.6, fichaPct: 96, ordens: 14, semaforo: { status: 'atencao', palavra: 'atenção', base: 'meta', meta: { alvo: 97, sentido: 'MAIOR_MELHOR', unidade: 'pct' }, delta: -2.4 } },
+            };
         case 'alertas': {
             const itens = [
                 { id: 'a1', nivel: 'urgente', escopo: 'dono', titulo: 'Coxinha de frango: custo subiu 9,2% em 3 semanas, preço não mudou', texto: 'Markup caiu de 2,41× para 2,21×. MC/un de R$ 7,24 para R$ 6,71.', acao: { rotulo: 'Revisar preço', rota: '/financeiro/margem-produtos' } },
@@ -104,14 +116,30 @@ export function mockIndicador(rota, params) {
         }
         case 'clientes':
             return {
-                periodo: PERIODO, custoEntregaOrigem: 'ESTIMADO',
+                periodo: PERIODO, custoEntregaOrigem: 'ESTIMADO', custoEntregaMetodo: 'POR_PARADA', custoPorParada: 80,
                 linhas: [
                     ['k1', 'Supermercado Central', 41800, 5, 8, 640, 36, 15000], ['k2', 'Padaria Dona Rosa', 22500, 0, 12, 960, 38, 8600], ['k3', 'Mercado Boa Vista', 18200, 12, 13, 1040, 21, 3800],
                     ['k4', 'Buffet Alegria', 16900, 3, 4, 320, 40, 6800], ['k5', 'Conveniência 24h Norte', 12400, 8, 9, 720, 29, 3600], ['k6', 'Lanchonete do Pedro', 9100, 0, 5, 400, 37, 3400],
-                ].map(([clienteId, nome, receita, descontoMedioPct, entregas, custoEntrega, mcPct, mcTotal]) => ({ clienteId, nome, receita, descontoMedioPct, entregas, custoEntrega, mcPct, mcTotal })),
+                ].map(([clienteId, nome, receita, descontoMedioPct, entregas, custoEntrega, mcPct, mcTotal]) => ({ clienteId, nome, receita, descontoMedioPct, entregas, paradas: custoEntrega / 80, custoEntrega, mcPct, mcTotal })),
             };
         case 'categorias-pendentes':
             return { semNatureza: 7, semMarcaCompraEstoque: 3, categorias: [] };
+        case 'metas': {
+            const cat = [
+                ['MC_PCT', 'Margem de contribuição', 'pct', 'completo', 'MAIOR_MELHOR', 35, 0, 5], ['RESULTADO_PCT', 'Resultado operacional', 'pct', 'completo', 'MAIOR_MELHOR', null, 0, 5],
+                ['CUSTO_INSUMOS_VAR_PCT', 'Variação do custo dos insumos (8 sem.)', 'pct', 'producao', 'MENOR_MELHOR', null, 0, 3], ['PERDA_PCT', 'Perda além da ficha (% do consumo)', 'pct', 'producao', 'MENOR_MELHOR', 1.5, 0, 1.5],
+                ['RENDIMENTO_PCT', 'Rendimento do lote', 'pct', 'producao', 'MAIOR_MELHOR', 97, 0, 3], ['DESVIO_CUSTO_PCT', 'Custo real acima do padrão', 'pct', 'producao', 'MENOR_MELHOR', null, 0, 3],
+                ['DIAS_ESTOQUE_PA', 'Dias de estoque (produto acabado)', 'dias', 'producao', 'MENOR_MELHOR', 15, 0, 5],
+            ];
+            return { podeEditar: true, metas: cat.filter((c) => completo || c[3] === 'producao').map(([indicador, rotulo, unidade, escopo, sentido, alvo, ta, tg]) => ({ indicador, rotulo, unidade, escopo, sentido, alvo, toleranciaAtencao: ta, toleranciaAgir: tg, padroes: { sentido, toleranciaAtencao: ta, toleranciaAgir: tg }, vigenciaInicio: alvo != null ? '2026-10-01' : null, atualizadoPorNome: alvo != null ? 'Administrador' : null })) };
+        }
+        case 'metas/sugestao':
+            return { baseMeses: ['2026-07', '2026-08', '2026-09'], sugestoes: [
+                { indicador: 'MC_PCT', alvoSugerido: 34.9, base: 'media3m', observacao: 'média dos 3 meses fechados' }, { indicador: 'RESULTADO_PCT', alvoSugerido: 9.4, base: 'media3m', observacao: 'média dos 3 meses fechados' },
+                { indicador: 'CUSTO_INSUMOS_VAR_PCT', alvoSugerido: null, base: 'sem_base', observacao: 'preencha manualmente' }, { indicador: 'PERDA_PCT', alvoSugerido: 1.9, base: 'media3m', observacao: '14 ordens' },
+                { indicador: 'RENDIMENTO_PCT', alvoSugerido: 95.1, base: 'media3m', observacao: '14 ordens' }, { indicador: 'DESVIO_CUSTO_PCT', alvoSugerido: null, base: 'sem_base', observacao: 'menos de 3 ordens apuradas' },
+                { indicador: 'DIAS_ESTOQUE_PA', alvoSugerido: null, base: 'sem_base', observacao: 'preencha manualmente' },
+            ] };
         case 'config':
             return { aliquotaImpostoVenda: null };
         default:

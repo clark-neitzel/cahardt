@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTooltip } from './useTooltip';
-import { fmtPct, temValor } from './formatos';
+import { fmtPct, fmtRS, temValor } from './formatos';
 
 // Perda % por semana contra a meta. Só é desenhado quando a API manda dados reais.
 export default function BarrasPerda({ semanal, metaPct }) {
@@ -26,7 +26,7 @@ export default function BarrasPerda({ semanal, metaPct }) {
                     const x = pL + i * bw + bw * 0.2, w = bw * 0.6, pct = Number(p.pct) || 0;
                     const acima = meta != null && pct > meta;
                     return (
-                        <g key={p.inicio || i} {...alvo(<><b className="text-[#cba258]">Semana de {dm(p.inicio)}</b><br />Perda {fmtPct(pct)} do consumo<br />{meta == null ? '' : acima ? 'acima da meta' : 'dentro da meta'}</>)}>
+                        <g key={p.inicio || i} {...alvo(<><b className="text-[#cba258]">Semana de {dm(p.inicio)}</b><br />Perda {fmtPct(pct)} do consumo{temValor(p.valor) && <> ({fmtRS(p.valor, 0)})</>}<br />{Number(p.ordens) > 0 && <>{p.ordens} {Number(p.ordens) > 1 ? 'ordens' : 'ordem'}<br /></>}{meta == null ? '' : acima ? 'acima da meta' : 'dentro da meta'}</>)}>
                             <rect x={x} y={Y(pct)} width={w} height={Math.max(1, Y(0) - Y(pct))} rx="4" fill={acima ? '#b45309' : '#00754A'} />
                             <text x={x + w / 2} y={Y(pct) - 4} textAnchor="middle" fontSize="11" fontWeight="700" fill="#3d4744">{fmtPct(pct)}</text>
                             <text x={x + w / 2} y={H - 6} textAnchor="middle" fontSize="11" fill="#5f6b66">{dm(p.inicio)}</text>

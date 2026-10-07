@@ -272,6 +272,16 @@ function startSchedulers() {
             console.error('[CustoSnapshot] Falha no job de 30 min:', e.message));
     }, 30 * 60 * 1000);
 
+    // === 6.3. REDE DE SEGURANÇA DA APURAÇÃO DE CUSTO/PERDA DAS ORDENS DE PRODUÇÃO (Indicadores de Gestão) ===
+    // A cada 30 min apura ordens FINALIZADAS recentes sem custo (processo pode ter caído entre a
+    // finalização e a apuração). Nunca lança; só grava em ordens ainda sem apuração.
+    setInterval(() => {
+        try {
+            require('../services/ordemCustoService').apurarPendentes().catch((e) =>
+                console.error('[OrdemCusto] Falha no job de 30 min:', e.message));
+        } catch (e) { console.error('[OrdemCusto] Job indisponível:', e.message); }
+    }, 30 * 60 * 1000);
+
     // === 7. MENSAGENS AGENDADAS ===
     // Verifica a cada minuto se há mensagens para enviar (horário SP).
     console.log('⏰ Iniciando sistema de Mensagens Agendadas...');

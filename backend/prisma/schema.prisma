@@ -40,6 +40,10 @@ model Produto {
   custoMedio    Decimal? @map("custo_medio") @db.Decimal(12, 2)
   custoManual   Decimal? @map("custo_manual") @db.Decimal(12, 2) // custo digitado no app; usado só quando o CA não tem custoMedio
   custoCaZerado Boolean  @default(false) @map("custo_ca_zerado") // custo do CA zerado no app: sync não traz mais o custoMedio; vale o custoManual (alimentado pelas entradas de compra)
+  // Custo de referencia (Indicadores/Margem): produto SEM ficha usa o custo da ficha de OUTRO produto x fator
+  // (ex.: 2-FR-X usa a ficha do 1-G-X). So vale se o produto referenciado tem ficha vigente. Aditivo.
+  produtoCustoReferenciaId String?  @map("produto_custo_referencia_id")
+  fatorCustoReferencia     Decimal  @default(1) @map("fator_custo_referencia") @db.Decimal(10, 4)
   pesoLiquido   Decimal? @map("peso_liquido") @db.Decimal(12, 3)
 
   // Emissão de NF-e pelo app (Focus NFe): produto de REVENDA sai com CFOP 5102 (+CEST)
@@ -2594,6 +2598,20 @@ model OrdemProducao {
   observacoes         String?   @db.Text
   criadoPorId         String?   @map("criado_por_id")
 
+  // Indicadores de Gestao (Etapa 3): apuracao gravada ao finalizar. Tudo opcional; ordem antiga fica null ate o backfill.
+  custoPadraoTotal     Decimal?  @map("custo_padrao_total") @db.Decimal(12, 2)
+  custoRealizadoTotal  Decimal?  @map("custo_realizado_total") @db.Decimal(12, 2)
+  custoUnitarioPadrao  Decimal?  @map("custo_unitario_padrao") @db.Decimal(12, 4)
+  custoUnitarioReal    Decimal?  @map("custo_unitario_real") @db.Decimal(12, 4)
+  rendimentoRealPct    Decimal?  @map("rendimento_real_pct") @db.Decimal(7, 2)
+  rendimentoFichaPct   Decimal?  @map("rendimento_ficha_pct") @db.Decimal(7, 2)
+  perdaRealPct         Decimal?  @map("perda_real_pct") @db.Decimal(7, 2)
+  quantidadePerdida    Decimal?  @map("quantidade_perdida") @db.Decimal(12, 3)
+  perdaValor           Decimal?  @map("perda_valor") @db.Decimal(12, 2)
+  insumosSemPreco      Int?      @map("insumos_sem_preco")
+  custoApuradoEstimado Boolean   @default(false) @map("custo_apurado_estimado")
+  custoApuradoEm       DateTime? @map("custo_apurado_em")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -2603,6 +2621,7 @@ model OrdemProducao {
 
   @@index([status])
   @@index([dataPlanejada])
+  @@index([dataFim])
   @@map("ordens_producao")
 }
 
@@ -4473,4 +4492,22 @@ model CidadePendente {
   criadoEm    DateTime  @default(now()) @map("criado_em")
 
   @@map("cidades_pendentes")
+}
+
+// Metas dos Indicadores de Gestao. Cada PUT cria uma NOVA linha (a anterior recebe vigenciaFim) => historico gratis.
+model IndicadorMeta {
+  id                String    @id @default(uuid())
+  indicador         String // MC_PCT | RESULTADO_PCT | CUSTO_INSUMOS_VAR_PCT | PERDA_PCT | RENDIMENTO_PCT | DESVIO_CUSTO_PCT | DIAS_ESTOQUE_PA
+  alvo              Decimal   @db.Decimal(12, 2)
+  sentido           String    @default("MAIOR_MELHOR") // MAIOR_MELHOR | MENOR_MELHOR
+  toleranciaAtencao Decimal   @default(0) @map("tolerancia_atencao") @db.Decimal(10, 2)
+  toleranciaAgir    Decimal   @map("tolerancia_agir") @db.Decimal(10, 2)
+  vigenciaInicio    DateTime  @default(now()) @map("vigencia_inicio")
+  vigenciaFim       DateTime? @map("vigencia_fim")
+  atualizadoPorId   String?   @map("atualizado_por_id")
+  atualizadoPorNome String?   @map("atualizado_por_nome")
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  @@index([indicador, vigenciaFim])
+  @@map("indicadores_metas")
 }

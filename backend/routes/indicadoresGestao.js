@@ -14,6 +14,7 @@ const prisma = require('../config/database');
 const verificarAuth = require('../middlewares/authMiddleware');
 const gestao = require('../services/indicadoresGestaoService');
 const configService = require('../services/indicadoresConfigService');
+const metasService = require('../services/indicadoresMetasService');
 
 const lerPerms = async (userId) => {
     const v = await prisma.vendedor.findUnique({ where: { id: userId }, select: { permissoes: true } });
@@ -21,14 +22,14 @@ const lerPerms = async (userId) => {
 };
 
 /** nivel: 'completo' | 'producao' | 'admin' */
-const exigir = (nivel) => async (req, res, next) => {
+const exigir = (nivel, msgAdmin) => async (req, res, next) => {
     try {
         const perms = await lerPerms(req.user.id);
         const admin = !!perms.admin; // mesmo critério do hasPermission do frontend (admin = true)
         const completo = admin || perms.Pode_Ver_Indicadores_Gestao === true;
         const producao = completo || perms.Pode_Ver_Indicadores_Producao === true;
         req._nivelIndicadores = { admin, completo, producao };
-        if (nivel === 'admin' && !admin) return res.status(403).json({ error: 'Só administrador pode alterar esta configuração.' });
+        if (nivel === 'admin' && !admin) return res.status(403).json({ error: msgAdmin || 'Só administrador pode alterar esta configuração.' });
         if (nivel === 'completo' && !completo) return res.status(403).json({ error: 'Sem permissão para ver os indicadores de gestão.' });
         if (nivel === 'producao' && !producao) return res.status(403).json({ error: 'Sem permissão para ver os indicadores de produção.' });
         next();
@@ -64,7 +65,7 @@ router.get('/entradas-semana', verificarAuth, exigir('producao'), rota((req) =>
     gestao.entradasSemana({ semanaOffset: req.query.semanaOffset, reduzido: !completoEfetivo(req) })));
 router.get('/produtos', verificarAuth, exigir('producao'), rota((req) =>
     gestao.produtos({ de: req.query.de, ate: req.query.ate, foco: foco(req), completo: req._nivelIndicadores.completo, ordem: req.query.ordem })));
-router.get('/producao', verificarAuth, exigir('producao'), rota((req) => gestao.producao(req.query)));
+router.get('/producao', verificarAuth, exigir('producao'), rota((req) => gestao.producao({ ...req.query, completo: completoEfetivo(req) })));
 router.get('/alertas', verificarAuth, exigir('producao'), rota((req) =>
     gestao.alertas({ de: req.query.de, ate: req.query.ate, completo: req._nivelIndicadores.completo, foco: foco(req) })));
 
@@ -78,5 +79,16 @@ router.put('/config', verificarAuth, exigir('admin'), async (req, res) => {
         res.status(400).json({ error: e.message });
     }
 });
+
+// ── Metas (Etapa 3): leitura filtrada por escopo; escrita e sugestão só admin ──
+router.get('/metas/sugestao', verificarAuth, exigir('admin', 'Só administrador pode ver a sugestão de metas.'), rota(() => metasService.sugerirPelaMedia()));
+router.get('/metas', verificarAuth, exigir('producao'), rota((req) =>
+    metasService.listar({ completo: req._nivelIndicadores.completo, admin: req._nivelIndicadores.admin })));
+router.put('/metas', verificarAuth, exigir('admin'), rota(async (req) => {
+    const v = await prisma.vendedor.findUnique({ where: { id: req.user.id }, select: { nome: true } });
+    const r = await metasService.salvarLote(req.body?.metas, { userId: req.user.id, userNome: v?.nome || null });
+    require('../services/indicadoresCustoService').limparCache(); // meta nova vale na hora
+    return r;
+}));
 
 module.exports = router;

@@ -17,6 +17,8 @@ const fin = require('./financeiroGerencialService');
 const config = require('./indicadoresConfigService');
 const projecaoVendasService = require('./projecaoVendasService');
 const { normalizar } = require('./importacaoCaService');
+const metasService = require('./indicadoresMetasService');
+const ordemCusto = require('./ordemCustoService');
 
 const TZ = 'America/Sao_Paulo';
 const TTL = 60 * 1000;
@@ -24,6 +26,7 @@ const round1 = (v) => Math.round(Number(v) * 10) / 10;
 const round2 = (v) => Math.round(Number(v) * 100) / 100;
 const round4 = custo.round4;
 const num = (v) => Number(v || 0);
+const pt = (v) => (v == null || !Number.isFinite(Number(v)) ? '' : String(v).replace('.', ',')); // 8.1 -> '8,1' (textos de alerta)
 
 const ymdSP = (d) => new Date(d).toLocaleDateString('en-CA', { timeZone: TZ });
 const inicioDia = (ymd) => new Date(`${ymd}T00:00:00-03:00`);
@@ -285,7 +288,8 @@ async function calcularPeriodo(de, ate) {
 // Semáforo (D5 provisório: pior que 2% da média de 3 meses = atenção; 5% = agir)
 // ─────────────────────────────────────────────────────────────
 
-function semaforo(valor, media, melhorSeMaior = true) {
+function semaforo(valor, media, melhorSeMaior = true, meta = null) {
+    if (meta) return metasService.avaliar(valor, meta); // Etapa 3: meta cadastrada manda
     if (valor == null || media == null || !Number.isFinite(media) || media === 0) {
         return { status: 'sem_dado', palavra: '', base: 'nenhuma' };
     }
@@ -297,6 +301,25 @@ function semaforo(valor, media, melhorSeMaior = true) {
 }
 const media = (arr) => { const v = arr.filter((x) => x != null && Number.isFinite(x)); return v.length >= 2 ? v.reduce((a, b) => a + b, 0) / v.length : null; };
 
+/** KPI do custo dos insumos (servidor decide o semáforo: meta se houver, senão faixas 2/5 sem base). */
+function kpiInsumos(ins, metaVar) {
+    const variacoes = ins.map((i) => i.variacaoPct);
+    const varMedia = variacoes.length ? round1(variacoes.reduce((a, b) => a + b, 0) / variacoes.length) : null;
+    let sem = { status: 'sem_dado', palavra: '', base: 'nenhuma' };
+    if (varMedia != null) {
+        if (metaVar) sem = metasService.avaliar(varMedia, metaVar);
+        else {
+            sem = varMedia >= 5 ? { status: 'agir', palavra: 'subindo', base: 'nenhuma' }
+                : varMedia >= 2 ? { status: 'atencao', palavra: 'subindo', base: 'nenhuma' }
+                    : { status: 'ok', palavra: varMedia <= -2 ? 'caindo' : 'estável', base: 'nenhuma' };
+        }
+    }
+    return {
+        variacaoPct: varMedia, semaforo: sem,
+        destaques: [...ins].slice(0, 3).map((i) => ({ itemPcpId: i.itemPcpId, nome: i.nome, variacaoPct: i.variacaoPct }))
+    };
+}
+
 // ─────────────────────────────────────────────────────────────
 // ENDPOINTS
 // ─────────────────────────────────────────────────────────────
@@ -306,7 +329,7 @@ function cobertura(calc, desp3m) {
     const avisos = [];
     if (calc.semSentido) avisos.push('Neste período as devoluções superam as vendas; margens e percentuais não têm significado. Amplie o período.');
     if (c.itensSnapshotEstimado > 0 && c.itensTotal > 0) {
-        avisos.push(`${round1((c.itensSnapshotEstimado / c.itensTotal) * 100)}% do custo vem de estimativa (venda anterior ao registro do custo).`);
+        avisos.push(`${pt(round1((c.itensSnapshotEstimado / c.itensTotal) * 100))}% do custo vem de estimativa (venda anterior ao registro do custo).`);
     }
     if (c.itensSemSnapshot > 0) avisos.push(`${c.itensSemSnapshot} item(ns) sem custo congelado usam o custo atual do produto.`);
     if (c.itensSemCusto > 0) avisos.push(`${c.itensSemCusto} item(ns) vendidos sem custo conhecido (contam como custo zero).`);
@@ -339,14 +362,8 @@ async function resumo({ de, ate }) {
 
         const serie = await custo.serieSemanalInsumos({ semanas: 8 });
         const ins = serie.insumos;
-        const variacoes = ins.map((i) => i.variacaoPct);
-        const varMedia = variacoes.length ? round1(variacoes.reduce((a, b) => a + b, 0) / variacoes.length) : null;
-        let semCustoIns = { status: 'sem_dado', palavra: '', base: 'nenhuma' };
-        if (varMedia != null) {
-            semCustoIns = varMedia >= 5 ? { status: 'agir', palavra: 'subindo', base: 'nenhuma' }
-                : varMedia >= 2 ? { status: 'atencao', palavra: 'subindo', base: 'nenhuma' }
-                    : { status: 'ok', palavra: varMedia <= -2 ? 'caindo' : 'estável', base: 'nenhuma' };
-        }
+        const metas = await metasService.listarVigentes(); // dentro do cache; PUT /metas limpa o cache
+        const kIns = kpiInsumos(ins, metas.get('CUSTO_INSUMOS_VAR_PCT'));
         const idxSemanal = serie.semanas.map((_, k) => {
             const v = ins.map((i) => i.indice[k]).filter((x) => x != null);
             return v.length ? round1(v.reduce((a, b) => a + b, 0) / v.length) : null;
@@ -354,6 +371,7 @@ async function resumo({ de, ate }) {
 
         const media3Rec = m3('receitaLiquida');
         const mediaMc = m3('mcPct'), mediaRes = m3('resultadoPct');
+        const dPt = (a, b) => (a != null && b != null ? round1(a - b) : null);
         return {
             periodo,
             cobertura: cobertura(atual, cand),
@@ -361,24 +379,32 @@ async function resumo({ de, ate }) {
                 receitaLiquida: {
                     valor: atual.receitaLiquida, anterior: ant.receitaLiquida,
                     variacaoPct: var_(atual.receitaLiquida, ant.receitaLiquida),
+                    media3m: media3Rec != null ? round2(media3Rec) : null,
+                    deltaMedia3mPct: media3Rec > 0 ? round1(((atual.receitaLiquida - media3Rec) / media3Rec) * 100) : null,
+                    meta: null,
                     semaforo: semaforo(atual.receitaLiquida, media3Rec)
                 },
                 margemContribuicao: {
                     valor: atual.margemContribuicao, pct: atual.mcPct, anterior: ant.margemContribuicao, pctAnterior: ant.mcPct,
                     deltaPt: atual.mcPct != null && ant.mcPct != null ? round1(atual.mcPct - ant.mcPct) : null,
                     media3mPct: mediaMc != null ? round1(mediaMc) : null,
-                    semaforo: semaforo(atual.mcPct, mediaMc)
+                    deltaMedia3mPt: dPt(atual.mcPct, mediaMc),
+                    meta: metasService.blocoMeta(metas.get('MC_PCT')),
+                    semaforo: semaforo(atual.mcPct, mediaMc, true, metas.get('MC_PCT'))
                 },
                 resultadoOperacional: {
                     valor: atual.resultado, pct: atual.resultadoPct, anterior: ant.resultado, pctAnterior: ant.resultadoPct,
                     deltaPt: atual.resultadoPct != null && ant.resultadoPct != null ? round1(atual.resultadoPct - ant.resultadoPct) : null,
                     media3mPct: mediaRes != null ? round1(mediaRes) : null,
-                    semaforo: semaforo(atual.resultadoPct, mediaRes)
+                    deltaMedia3mPt: dPt(atual.resultadoPct, mediaRes),
+                    meta: metasService.blocoMeta(metas.get('RESULTADO_PCT')),
+                    semaforo: semaforo(atual.resultadoPct, mediaRes, true, metas.get('RESULTADO_PCT'))
                 },
                 custoInsumos: {
-                    variacaoPct: varMedia, semanas: 8,
-                    destaques: [...ins].slice(0, 3).map((i) => ({ itemPcpId: i.itemPcpId, nome: i.nome, variacaoPct: i.variacaoPct })),
-                    semaforo: semCustoIns
+                    variacaoPct: kIns.variacaoPct, semanas: 8,
+                    destaques: kIns.destaques,
+                    meta: metasService.blocoMeta(metas.get('CUSTO_INSUMOS_VAR_PCT')),
+                    semaforo: kIns.semaforo
                 }
             },
             sparks: {
@@ -516,7 +542,12 @@ async function insumosSemanal({ semanas = 8, de, ate, completo }) {
     });
     const score = (i) => Math.abs(i.variacaoPct) * (i.pesoCpvPct != null ? Math.max(i.pesoCpvPct, 1) : 1);
     lista.sort((a, b) => score(b) - score(a));
-    return { semanas: serie.semanas, insumos: lista.slice(0, 6) };
+    const metas = await metasService.listarVigentes();
+    const kIns = kpiInsumos(serie.insumos, metas.get('CUSTO_INSUMOS_VAR_PCT'));
+    return {
+        semanas: serie.semanas, insumos: lista.slice(0, 6),
+        kpi: { variacaoPct: kIns.variacaoPct, semanas: serie.semanas.length, semaforo: kIns.semaforo, destaques: kIns.destaques }
+    };
 }
 
 async function entradasSemana({ semanaOffset = 0, reduzido }) {
@@ -678,9 +709,10 @@ async function produtos({ de, ate, foco, completo, ordem }) {
     });
 }
 
-async function producao({ de, ate }) {
+async function producao({ de, ate, completo = false }) {
     const periodo = resolverPeriodo(de, ate);
-    return custo.comCache(`producao:${periodo.de}:${periodo.ate}`, TTL, async () => {
+    return custo.comCache(`producao:${periodo.de}:${periodo.ate}:${completo ? 'c' : 'p'}`, TTL, async () => {
+        const metas = await metasService.listarVigentes(); // dentro do cache; PUT /metas limpa o cache
         const hoje = ymdSP(new Date());
         const d30 = somaDias(hoje, -29);
         const [vendas, ctx] = await Promise.all([carregarVendas(d30, hoje), ctxFichas()]);
@@ -704,18 +736,80 @@ async function producao({ de, ate }) {
         const insDb = consumo.size ? await prisma.itemPcp.findMany({ where: { id: { in: [...consumo.keys()] } }, select: { id: true, estoqueAtual: true } }) : [];
         const dias = insDb.map((i) => (Math.max(0, Number(i.estoqueAtual || 0)) / ((consumo.get(i.id) || 0) / 30))).filter((x) => Number.isFinite(x)).sort((a, b) => a - b);
         const mediana = dias.length ? dias[Math.floor(dias.length / 2)] : null;
+        const diasPA = vendaDiaPA > 0 ? round1(estoquePA / vendaDiaPA) : null;
+        const ordensInfo = await producaoDeOrdens(periodo, completo, metas);
         return {
             periodo,
             estoque: {
-                diasEstoqueProdutoAcabado: vendaDiaPA > 0 ? round1(estoquePA / vendaDiaPA) : null,
-                diasEstoqueInsumos: mediana != null ? round1(mediana) : null
+                diasEstoqueProdutoAcabado: diasPA,
+                diasEstoqueInsumos: mediana != null ? round1(mediana) : null,
+                metaDiasPA: metasService.blocoMeta(metas.get('DIAS_ESTOQUE_PA')),
+                semaforoDiasPA: metas.get('DIAS_ESTOQUE_PA') ? metasService.avaliar(diasPA, metas.get('DIAS_ESTOQUE_PA')) : null
             },
-            // Etapa 3 (custo real de produção, perda e rendimento por ordem): ainda não existe dado confiável
-            perdas: { disponivel: false, valorMes: null, pctCpv: null, metaPct: null, semanal: [] },
-            custoRealXPadrao: { disponivel: false, desvioPct: null },
-            rendimentoLote: { disponivel: false, realPct: null, fichaPct: null }
+            perdas: ordensInfo.perdas,
+            custoRealXPadrao: ordensInfo.custoRealXPadrao,
+            rendimentoLote: ordensInfo.rendimentoLote,
+            ordensPendentesApuracao: ordensInfo.pendentes
         };
     });
+}
+
+/** Perda, custo real x padrão e rendimento a partir das ordens finalizadas e apuradas (Etapa 3, bloco B). */
+async function producaoDeOrdens(periodo, completo, metas) {
+    const gte = inicioDia(periodo.de), lte = fimDia(periodo.ate);
+    const iniSemanas = somaDias(custo.segundaDe(periodo.ate), -49); // 8 semanas terminando na semana de `ate`
+    const [rows, rowsSem, pendentes] = await Promise.all([
+        ordemCusto.ordensApuradas(gte, lte),
+        ordemCusto.ordensApuradas(inicioDia(iniSemanas), lte),
+        prisma.ordemProducao.count({ where: { status: 'FINALIZADA', custoApuradoEm: null, dataFim: { gte, lte } } })
+    ]);
+    const agg = ordemCusto.agregarOrdens(rows);
+    const mPerda = metas.get('PERDA_PCT'), mDesvio = metas.get('DESVIO_CUSTO_PCT'), mRend = metas.get('RENDIMENTO_PCT');
+    const disponivel = agg.ordens > 0;
+
+    let perdas;
+    if (!disponivel) {
+        perdas = {
+            disponivel: false, motivo: 'Nenhuma ordem finalizada e apurada no período.',
+            valorMes: null, pctCpv: null, pctProduzido: null, perdaTotalValor: null,
+            metaPct: mPerda ? mPerda.alvo : null,
+            semaforo: { status: 'sem_dado', palavra: '', base: 'nenhuma' },
+            ordens: 0, ordensSemPreco: 0, ordensEstimadas: 0, semanal: []
+        };
+    } else {
+        let pctCpv = null;
+        if (completo) {
+            const calc = await calcularPeriodo(periodo.de, periodo.ate);
+            pctCpv = calc.cpv > 0 && agg.perdaValor != null ? round1((agg.perdaValor / calc.cpv) * 100) : null;
+        }
+        const semanal = [];
+        for (let i = 7; i >= 0; i--) {
+            const ini = somaDias(custo.segundaDe(periodo.ate), -7 * i);
+            const doGrupo = rowsSem.filter((o) => custo.segundaDe(ymdSP(o.dataFim)) === ini);
+            const a = ordemCusto.agregarOrdens(doGrupo);
+            semanal.push({ inicio: ini, pct: a.pctProduzido ?? 0, valor: a.perdaValor ?? 0, ordens: a.ordens });
+        }
+        perdas = {
+            disponivel: true,
+            valorMes: agg.perdaValor, pctCpv, pctProduzido: agg.pctProduzido, perdaTotalValor: agg.perdaTotalValor,
+            metaPct: mPerda ? mPerda.alvo : null,
+            semaforo: mPerda ? metasService.avaliar(agg.pctProduzido, mPerda) : { status: 'sem_dado', palavra: '', base: 'nenhuma' },
+            ordens: agg.ordens, ordensSemPreco: agg.ordensSemPreco, ordensEstimadas: agg.ordensEstimadas, semanal
+        };
+    }
+    const semDado = { status: 'sem_dado', palavra: '', base: 'nenhuma' };
+    return {
+        pendentes,
+        perdas,
+        custoRealXPadrao: {
+            disponivel: disponivel && agg.desvioPct != null, desvioPct: agg.desvioPct, valorDesvio: agg.valorDesvio,
+            semaforo: mDesvio ? metasService.avaliar(agg.desvioPct, mDesvio) : semDado, ordens: agg.ordens
+        },
+        rendimentoLote: {
+            disponivel: disponivel && agg.rendimentoRealPct != null, realPct: agg.rendimentoRealPct, fichaPct: agg.rendimentoFichaPct,
+            semaforo: mRend ? metasService.avaliar(agg.rendimentoRealPct, mRend) : semDado, ordens: agg.ordens
+        }
+    };
 }
 
 /** Linhas por cliente (todas) — base de /clientes e do alerta de MC baixa. */
@@ -733,7 +827,31 @@ async function clientesTodos(de, ate) {
         const entregas = new Map(entregasRows.map((r) => [r.clienteId, r.entregas]));
         const totalEntregas = entregasRows.reduce((s, r) => s + r.entregas, 0);
         const desp = await carregarDespesas(de, ate);
-        const custoPorEntrega = totalEntregas > 0 && desp.entregas > 0 ? desp.entregas / totalEntregas : null;
+        // Etapa 3 (bloco C): rateio por PARADA (cliente x embarque) — pedido sem embarque (retirada/balcão) = 0 paradas.
+        // Cobertura: se menos da metade dos pedidos faturados tem embarque, o método novo não vale (volta por pedido).
+        const paradasRows = await prisma.$queryRaw`
+            SELECT p.cliente_id AS "clienteId", COUNT(DISTINCT p.embarque_id)::int AS paradas
+            FROM pedidos p
+            JOIN embarques e ON e.id = p.embarque_id
+            WHERE p.embarque_id IS NOT NULL AND p.status_entrega <> 'PENDENTE'
+              AND e.data_saida >= ${gte} AND e.data_saida <= ${lte}
+            GROUP BY 1
+        `;
+        const covRows = await prisma.$queryRaw`
+            SELECT COUNT(*)::int AS total, COUNT(p.embarque_id)::int AS "comEmbarque"
+            FROM pedidos p
+            WHERE p.bonificacao = false AND (p.situacao_ca = 'FATURADO' OR p.especial = true)
+              AND p.data_venda >= ${gte} AND p.data_venda <= ${lte}
+        `;
+        const paradasPorCliente = new Map(paradasRows.map((r) => [r.clienteId, r.paradas]));
+        const totalParadas = paradasRows.reduce((s, r) => s + r.paradas, 0);
+        const cov = covRows[0] || { total: 0, comEmbarque: 0 };
+        const coberturaOk = cov.total > 0 && cov.comEmbarque / cov.total >= 0.5;
+        const porParada = coberturaOk && totalParadas > 0;
+        const custoPorParada = porParada && desp.entregas > 0 ? desp.entregas / totalParadas : null;
+        const custoPorPedido = totalEntregas > 0 && desp.entregas > 0 ? desp.entregas / totalEntregas : null;
+        const custoPorEntrega = porParada ? custoPorParada : custoPorPedido;
+        const metodo = custoPorEntrega == null ? 'INDISPONIVEL' : (porParada ? 'POR_PARADA' : 'POR_PEDIDO');
 
         const porCliente = new Map();
         for (const r of vendas) {
@@ -745,17 +863,20 @@ async function clientesTodos(de, ate) {
         const cli = ids.length ? await prisma.cliente.findMany({ where: { UUID: { in: ids } }, select: { UUID: true, Nome: true, NomeFantasia: true } }) : [];
         const nomeDe = new Map(cli.map((c) => [c.UUID, c.NomeFantasia || c.Nome]));
         const linhas = ids.map((id) => {
-            const a = porCliente.get(id), n = entregas.get(id) || 0;
-            const ce = custoPorEntrega != null ? custoPorEntrega * n : null;
+            const a = porCliente.get(id), n = entregas.get(id) || 0, par = paradasPorCliente.get(id) || 0;
+            const ce = custoPorEntrega != null ? custoPorEntrega * (porParada ? par : n) : null;
             const mcTotal = a.receita - a.custo - (ce || 0);
             return {
                 clienteId: id, nome: nomeDe.get(id) || '—', receita: round2(a.receita),
                 descontoMedioPct: a.base > 0 ? round1((1 - a.receita / a.base) * 100) : null,
-                entregas: n, custoEntrega: ce != null ? round2(ce) : null,
+                entregas: n, paradas: par, custoEntrega: ce != null ? round2(ce) : null,
                 mcPct: a.receita > 0 ? round1((mcTotal / a.receita) * 100) : null, mcTotal: round2(mcTotal)
             };
         }).sort((x, y) => y.receita - x.receita);
-        return { linhas, custoEntregaOrigem: custoPorEntrega != null ? 'ESTIMADO' : 'INDISPONIVEL' };
+        return {
+            linhas, custoEntregaOrigem: custoPorEntrega != null ? 'ESTIMADO' : 'INDISPONIVEL',
+            custoEntregaMetodo: metodo, custoPorParada: custoPorParada != null ? round2(custoPorParada) : null
+        };
     });
 }
 
@@ -763,7 +884,10 @@ async function clientes({ de, ate, limite = 6 }) {
     const periodo = resolverPeriodo(de, ate);
     const lim = Math.min(Math.max(parseInt(limite, 10) || 6, 1), 50);
     const r = await clientesTodos(periodo.de, periodo.ate);
-    return { periodo, custoEntregaOrigem: r.custoEntregaOrigem, linhas: r.linhas.slice(0, lim) };
+    return {
+        periodo, custoEntregaOrigem: r.custoEntregaOrigem, custoEntregaMetodo: r.custoEntregaMetodo, custoPorParada: r.custoPorParada,
+        linhas: r.linhas.slice(0, lim)
+    };
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -817,7 +941,7 @@ async function alertas({ de, ate, completo, foco }) {
             itens.push({
                 id: `insumo-alta-${i.itemPcpId}`, nivel: 'atencao', escopo: 'producao',
                 titulo: `${i.nome} subiu ${i.altasSeguidas} semanas seguidas`,
-                texto: `O último preço pago está ${i.variacaoPct > 0 ? '+' : ''}${i.variacaoPct}% acima do de 8 semanas atrás.`,
+                texto: `O último preço pago está ${i.variacaoPct > 0 ? '+' : ''}${pt(i.variacaoPct)}% acima do de 8 semanas atrás.`,
                 acao: { rotulo: 'Ver compras', rota: '/notas-recebidas', permissao: 'Pode_Acessar_Notas_Recebidas' }
             });
         }
@@ -834,20 +958,48 @@ async function alertas({ de, ate, completo, foco }) {
             ]);
             const mc = resumoR.kpis.margemContribuicao;
             if (mc.semaforo.status === 'atencao' || mc.semaforo.status === 'agir') {
-                itens.push({ id: 'mc-abaixo-media', nivel: mc.semaforo.status === 'agir' ? 'urgente' : 'atencao', escopo: 'dono', titulo: 'Margem de contribuição abaixo da média dos 3 meses', texto: `MC de ${mc.pct}% contra média de ${mc.media3mPct}%.`, acao: null });
+                const porMeta = mc.semaforo.base === 'meta' && mc.meta;
+                itens.push({
+                    id: 'mc-abaixo-media', nivel: mc.semaforo.status === 'agir' ? 'urgente' : 'atencao', escopo: 'dono',
+                    titulo: porMeta ? 'Margem de contribuição abaixo da meta' : 'Margem de contribuição abaixo da média dos 3 meses',
+                    texto: porMeta ? `MC de ${pt(mc.pct)}% contra meta de ${pt(mc.meta.alvo)}%.` : `MC de ${pt(mc.pct)}% contra média de ${pt(mc.media3mPct)}%.`,
+                    acao: null
+                });
             }
             for (const p of completoProd.linhas.filter((l) => l.variacaoCusto4sPct != null && l.variacaoCusto4sPct > 5).slice(0, 5)) {
-                itens.push({ id: `custo-sobe-${p.produtoId}`, nivel: 'atencao', escopo: 'dono', titulo: `Custo de ${p.nome} subiu ${p.variacaoCusto4sPct}% em 4 semanas`, texto: 'Confira se o preço de venda acompanhou o aumento do custo.', acao: { rotulo: 'Ver margem e custo', rota: '/financeiro/margem-produtos', permissao: 'Pode_Acessar_Financeiro_Gerencial' } });
+                itens.push({ id: `custo-sobe-${p.produtoId}`, nivel: 'atencao', escopo: 'dono', titulo: `Custo de ${p.nome} subiu ${pt(p.variacaoCusto4sPct)}% em 4 semanas`, texto: 'Confira se o preço de venda acompanhou o aumento do custo.', acao: { rotulo: 'Ver margem e custo', rota: '/financeiro/margem-produtos', permissao: 'Pode_Acessar_Financeiro_Gerencial' } });
             }
             for (const c of cl.linhas.filter((x) => x.mcPct != null && x.mcPct < 25 && x.receita > 0).slice(0, 5)) {
-                itens.push({ id: `cliente-mc-${c.clienteId}`, nivel: 'info', escopo: 'dono', titulo: `${c.nome}: margem de ${c.mcPct}%`, texto: 'Margem do cliente abaixo de 25% no período.', acao: null });
+                itens.push({ id: `cliente-mc-${c.clienteId}`, nivel: 'info', escopo: 'dono', titulo: `${c.nome}: margem de ${pt(c.mcPct)}%`, texto: 'Margem do cliente abaixo de 25% no período.', acao: null });
             }
             if (pend.semNatureza > 0) itens.push({ id: 'cat-sem-natureza', nivel: 'atencao', escopo: 'dono', titulo: `${pend.semNatureza} categoria(s) de despesa sem natureza`, texto: 'Sem definir fixa/variável, a margem de contribuição fica incompleta.', acao: { rotulo: 'Classificar categorias', rota: '/financeiro/categorias-despesa', permissao: 'Pode_Acessar_Financeiro_Gerencial' } });
             if (pend.semMarcaCompraEstoque > 0) itens.push({ id: 'cat-sem-marca-estoque', nivel: 'urgente', escopo: 'dono', titulo: `${pend.semMarcaCompraEstoque} categoria(s) de compra sem a marca "Compra de estoque"`, texto: 'Sem a marca, a matéria-prima é contada duas vezes (no custo do produto e nas despesas).', acao: { rotulo: 'Marcar categorias', rota: '/financeiro/categorias-despesa', permissao: 'Pode_Acessar_Financeiro_Gerencial' } });
-            if (resumoR.cobertura.pctReal < 80 && resumoR.cobertura.itensTotal > 0) itens.push({ id: 'cobertura-baixa', nivel: 'info', escopo: 'dono', titulo: `Só ${resumoR.cobertura.pctReal}% do custo é real`, texto: 'O restante vem de estimativa (vendas anteriores ao registro do custo).', acao: null });
+            if (resumoR.cobertura.pctReal < 80 && resumoR.cobertura.itensTotal > 0) itens.push({ id: 'cobertura-baixa', nivel: 'info', escopo: 'dono', titulo: `Só ${pt(resumoR.cobertura.pctReal)}% do custo é real`, texto: 'O restante vem de estimativa (vendas anteriores ao registro do custo).', acao: null });
             const semClasse = completoProd.linhas.filter((l) => l.classe === 'SEM_CLASSE').length;
             if (semClasse > 0) itens.push({ id: 'sem-classe', nivel: 'atencao', escopo: 'dono', titulo: `${semClasse} produto(s) vendido(s) sem ficha e sem marca de revenda`, texto: 'Entram no CMV marcados "sem classificação". Cadastre a ficha técnica ou marque como revenda.', acao: { rotulo: 'Ver produtos', rota: '/admin/produtos', permissao: 'produtos' } });
         }
+        // Etapa 3: alertas de produção só existem COM meta (sem meta não se inventa limite)
+        try {
+            const pr = await producao({ de: periodo.de, ate: periodo.ate, completo: false });
+            const p = pr.perdas;
+            if (p.disponivel && (p.semaforo.status === 'atencao' || p.semaforo.status === 'agir')) {
+                itens.push({
+                    id: 'perda-acima-meta', nivel: p.semaforo.status === 'agir' ? 'urgente' : 'atencao', escopo: 'producao',
+                    titulo: 'Perda de produção acima da meta',
+                    texto: `Perda de ${pt(p.pctProduzido)}% do consumo contra meta de ${pt(p.metaPct)}% (${p.ordens} ordens no período).`,
+                    acao: { rotulo: 'Ver ordens', rota: '/pcp/ordens', permissao: 'pcp.ordens' }
+                });
+            }
+            const d = pr.custoRealXPadrao;
+            if (d.disponivel && (d.semaforo.status === 'atencao' || d.semaforo.status === 'agir')) {
+                itens.push({
+                    id: 'custo-real-acima-padrao', nivel: d.semaforo.status === 'agir' ? 'urgente' : 'atencao', escopo: 'producao',
+                    titulo: 'Custo real de produção acima do padrão',
+                    texto: `Custo real ${d.desvioPct > 0 ? '+' : ''}${pt(d.desvioPct)}% acima do padrão da ficha (${d.ordens} ordens no período).`,
+                    acao: { rotulo: 'Ver ordens', rota: '/pcp/ordens', permissao: 'pcp.ordens' }
+                });
+            }
+        } catch (e) { console.error('[Indicadores] alerta de produção ignorado:', e.message); }
         const peso = { urgente: 0, atencao: 1, info: 2 };
         itens.sort((a, b) => peso[a.nivel] - peso[b.nivel]);
         return { itens };

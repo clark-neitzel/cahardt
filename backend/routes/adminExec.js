@@ -52,7 +52,7 @@ router.get('/ping', (req, res) => {
         ok: true,
         // Marcador de deploy: bumpar a cada mudança de backend que precise de confirmação
         // em produção (não há outro jeito de saber de fora qual versão está no ar).
-        deployMarker: 'indicadores-etapa1-2026-10-06',
+        deployMarker: 'indicadores-etapa3-2026-10-07',
         uptimeSegundos: Math.round(process.uptime()),
         timestamp: new Date().toISOString(),
         openaiConfigurada: !!process.env.OPENAI_API_KEY,
@@ -12284,7 +12284,7 @@ router.post('/indicadores-backfill-snapshot', async (req, res) => {
         if ((de && !YMD.test(de)) || (ate && !YMD.test(ate))) return res.status(400).json({ error: 'de/ate no formato YYYY-MM-DD.' });
         const dry = String(req.query.dry ?? '1') !== '0';
         const svc = require('../services/custoSnapshotService');
-        const r = await svc.backfillRetroativo({ de, ate, dry, limite: req.query.limite });
+        const r = await svc.backfillRetroativo({ de, ate, dry, limite: req.query.limite, reestimar: String(req.query.reestimar || '0') === '1', corte: req.query.corte || null });
         res.json(r);
     } catch (err) {
         console.error('[indicadores-backfill-snapshot]', err);
@@ -12302,6 +12302,64 @@ router.get('/diag-indicadores-snapshot', async (req, res) => {
         res.json({ meses, categoriasMarcadasCompraDeEstoque: marcadas, aliquotaImpostoVenda: cfg });
     } catch (err) {
         console.error('[diag-indicadores-snapshot]', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// GET /api/admin-exec/diag-indicadores-ordens — apuração de custo/perda das ordens de produção (só leitura)
+router.get('/diag-indicadores-ordens', async (req, res) => {
+    try {
+        const [finalizadas, apuradas, estimadas, semProduzida] = await Promise.all([
+            prisma.ordemProducao.count({ where: { status: 'FINALIZADA' } }),
+            prisma.ordemProducao.count({ where: { status: 'FINALIZADA', custoApuradoEm: { not: null } } }),
+            prisma.ordemProducao.count({ where: { status: 'FINALIZADA', custoApuradoEstimado: true } }),
+            prisma.ordemProducao.count({ where: { status: 'FINALIZADA', quantidadeProduzida: { lte: 0 } } })
+        ]);
+        const ultimas = await prisma.ordemProducao.findMany({
+            where: { status: 'FINALIZADA' }, orderBy: { dataFim: 'desc' }, take: 5,
+            select: {
+                numero: true, dataFim: true, quantidadePlanejada: true, quantidadeProduzida: true,
+                custoPadraoTotal: true, custoRealizadoTotal: true, custoUnitarioPadrao: true, custoUnitarioReal: true,
+                rendimentoRealPct: true, rendimentoFichaPct: true, perdaRealPct: true, quantidadePerdida: true,
+                perdaValor: true, insumosSemPreco: true, custoApuradoEstimado: true, custoApuradoEm: true
+            }
+        });
+        res.json({ finalizadas, apuradas, semApuracao: finalizadas - apuradas, estimadas, finalizadasSemQuantidadeProduzida: semProduzida, ultimas });
+    } catch (err) {
+        console.error('[diag-indicadores-ordens]', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// GET /api/admin-exec/indicadores-backfill-ordens?dry=1&limite=200 — apura ordens antigas (dry=1 é o PADRÃO; dry=0 grava)
+router.get('/indicadores-backfill-ordens', async (req, res) => {
+    try {
+        const dry = String(req.query.dry ?? '1') !== '0';
+        const limite = Math.min(Math.max(parseInt(req.query.limite, 10) || 200, 1), 1000);
+        res.json(await require('../services/ordemCustoService').backfill({ limite, dry }));
+    } catch (err) {
+        console.error('[indicadores-backfill-ordens]', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// POST /api/admin-exec/indicadores-ajustes-dados?dry=1&passos=compra-estoque,agua,milheiro,referencias,reestimar-snapshots
+// Ajustes de DADOS da análise de setembro/2026. dry=1 é o PADRÃO (não grava); dry=0 aplica. Idempotente; cada passo
+// devolve antes/depois. `passos` (query ou body) aplica um por vez; sem `passos` roda todos na ordem segura.
+router.post('/indicadores-ajustes-dados', async (req, res) => {
+    try {
+        const svc = require('../services/indicadoresAjustesService');
+        const dry = String(req.query.dry ?? '1') !== '0';
+        const bruto = req.query.passos ?? req.body?.passos;
+        const lista = Array.isArray(bruto) ? bruto : (bruto ? String(bruto).split(',').map((x) => x.trim()).filter(Boolean) : svc.PASSOS);
+        const invalidos = lista.filter((p) => !svc.PASSOS.includes(p));
+        if (invalidos.length) return res.status(400).json({ error: `Passo(s) desconhecido(s): ${invalidos.join(', ')}. Válidos: ${svc.PASSOS.join(', ')}.` });
+        const YMD = /^\d{4}-\d{2}-\d{2}$/;
+        const de = req.query.de ? String(req.query.de) : null, ate = req.query.ate ? String(req.query.ate) : null;
+        if ((de && !YMD.test(de)) || (ate && !YMD.test(ate))) return res.status(400).json({ error: 'de/ate no formato YYYY-MM-DD.' });
+        res.json(await svc.executar({ passos: lista, dry, de, ate, limite: req.query.limite }));
+    } catch (err) {
+        console.error('[indicadores-ajustes-dados]', err);
         res.status(500).json({ error: err.message });
     }
 });

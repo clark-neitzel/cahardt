@@ -65,6 +65,7 @@ const GraficoPrecoCusto = ({ serie }) => {
 };
 
 const OrigemBadge = ({ origem, fonteCusto }) => {
+    if (fonteCusto === 'FICHA_REF') return <span className="px-2 py-1 text-xs font-bold rounded-full bg-blue-100 text-blue-800 whitespace-nowrap">ficha de referência</span>;
     if (origem === 'propria') return <span className="px-2 py-1 text-xs font-bold rounded-full bg-mint text-primaryDark whitespace-nowrap">🏭 própria</span>;
     if (origem === 'revenda') return <span className="px-2 py-1 text-xs font-bold rounded-full bg-blue-100 text-blue-800 whitespace-nowrap">📦 revenda</span>;
     return <span className="px-2 py-1 text-xs font-bold rounded-full bg-gray-100 text-gray-700 whitespace-nowrap">sem custo</span>;
@@ -102,6 +103,8 @@ const ProdutosMargemCusto = () => {
     const [detalhes, setDetalhes] = useState({});           // cache { produtoId: detalhe } do mês atual
     const [loadingDet, setLoadingDet] = useState(null);
 
+    const [opcoesRef, setOpcoesRef] = useState([]);         // produtos com ficha vigente (candidatos a referência)
+
     const hoje = mesAtualSP();
     const ehAtual = mes === hoje;
     const mesMinimo = dados?.mesMinimo || somaMes(hoje, -11);
@@ -128,9 +131,27 @@ const ProdutosMargemCusto = () => {
     useEffect(() => { carregar(); }, [carregar]);
     useAtualizaAoVoltar(carregar);
 
+    // controle de referência só para produto sem ficha própria (nem custo de compra)
+    const semFicha = (l) => !l.fonteCusto || ['SEM_CUSTO', 'FICHA_REF'].includes(l.fonteCusto);
+    const propsDet = (l) => ({
+        produtoId: l.produtoId, mostrarReferencia: semFicha(l), opcoesRef, mesPassado: !ehAtual,
+        onRefSalvou: (ref) => {
+            // invalida o detalhe em cache: ao reabrir (ou agora) recarrega com o custo novo
+            setDetalhes((d) => { const n = { ...d }; delete n[l.produtoId]; return n; });
+            setExpandido(null);
+            carregar();
+        },
+    });
+
     const abrirDetalhe = async (produtoId) => {
         if (expandido === produtoId) { setExpandido(null); return; }
         setExpandido(produtoId);
+        const linha = (dados?.linhas || []).find((x) => x.produtoId === produtoId);
+        if (linha && semFicha(linha) && !opcoesRef.length) {
+            api.get('/produtos-margem', { params: { origem: 'propria', meses: 3, mes: mesAtualSP() } }) // fichas vigentes HOJE
+                .then((r) => setOpcoesRef((r.data?.linhas || []).filter((x) => x.fonteCusto === 'FICHA').map((x) => ({ produtoId: x.produtoId, nome: x.nome }))))
+                .catch(() => { });
+        }
         if (!detalhes[produtoId]) {
             setLoadingDet(produtoId);
             try {
@@ -266,7 +287,7 @@ const ProdutosMargemCusto = () => {
                                         </tr>
                                         {expandido === l.produtoId && (
                                             <tr className="bg-gray-50"><td colSpan={7} className="p-0">
-                                                <DetalheProduto det={detalhes[l.produtoId]} carregando={loadingDet === l.produtoId} />
+                                                <DetalheProduto det={detalhes[l.produtoId]} carregando={loadingDet === l.produtoId} {...propsDet(l)} />
                                             </td></tr>
                                         )}
                                     </React.Fragment>
@@ -295,7 +316,7 @@ const ProdutosMargemCusto = () => {
                                         <TendenciaCusto pct={l.variacaoCustoPct} spark={l.sparkCusto} />
                                     </div>
                                 </button>
-                                {expandido === l.produtoId && <DetalheProduto det={detalhes[l.produtoId]} carregando={loadingDet === l.produtoId} />}
+                                {expandido === l.produtoId && <DetalheProduto det={detalhes[l.produtoId]} carregando={loadingDet === l.produtoId} {...propsDet(l)} />}
                             </div>
                         ))}
                         {linhas.length === 0 && <div className="p-8 text-center text-gray-500">Nenhum produto encontrado.</div>}
@@ -429,14 +450,75 @@ const ArvoreCusto = ({ arv }) => {
     );
 };
 
+/* ── Custo de referência (produto SEM ficha usa a ficha de outro produto × um fator) ── */
+const normFator = (t) => { const x = String(t ?? '').trim().replace(',', '.'); const n = Number(x); return x !== '' && Number.isFinite(n) ? n : NaN; };
+const ReferenciaCusto = ({ produtoId, atual, opcoes, onSalvou, mesPassado }) => {
+    const [ref, setRef] = useState(atual?.produtoId || '');
+    const [fator, setFator] = useState(atual?.fator != null ? String(atual.fator).replace('.', ',') : '1');
+    const [salvando, setSalvando] = useState(false);
+    const lista = (opcoes || []).filter((o) => o.produtoId !== produtoId);
+    const gravar = async (remover) => {
+        let body = { produtoReferenciaId: null, fator: 1 };
+        if (!remover) {
+            const f = normFator(fator);
+            if (!ref) { toast.error('Escolha o produto cuja ficha será a referência.'); return; }
+            if (!(f > 0)) { toast.error('Informe um fator maior que zero, por exemplo 1 ou 1,33.'); return; }
+            body = { produtoReferenciaId: ref, fator: f };
+        }
+        setSalvando(true);
+        try {
+            const r = await api.put(`/produtos-margem/${produtoId}/referencia-custo`, body);
+            toast.success(remover ? 'Referência removida.' : 'Custo de referência salvo.');
+            if (remover) { setRef(''); setFator('1'); }
+            onSalvou?.(remover ? null : (r.data?.referenciaCusto || { produtoId: ref, nome: lista.find((o) => o.produtoId === ref)?.nome, fator: body.fator }));
+        } catch (e) {
+            toast.error(e?.response?.data?.error || e?.response?.data?.message || 'Não foi possível salvar a referência.');
+        } finally { setSalvando(false); }
+    };
+    return (
+        <div className="lg:col-span-2 bg-white border border-gray-200 rounded-xl p-4">
+            <div className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-1">Custo de referência</div>
+            <p className="text-xs text-gray-600 mb-3">Este produto não tem ficha técnica. Escolha um produto que tenha e o sistema usa o custo dele multiplicado pelo fator.</p>
+            <div className="grid grid-cols-1 md:grid-cols-[1fr_140px_auto] gap-3 items-end">
+                <div>
+                    <label className="text-sm font-medium text-gray-700">Produto com ficha</label>
+                    <SelectBusca value={ref} onChange={(e) => setRef(e.target.value)} className="w-full mt-1">
+                        <option value="">Selecione…</option>
+                        {lista.map((o) => <option key={o.produtoId} value={o.produtoId}>{o.nome}</option>)}
+                    </SelectBusca>
+                </div>
+                <div>
+                    <label htmlFor={`fator-${produtoId}`} className="text-sm font-medium text-gray-700">Fator</label>
+                    <input id={`fator-${produtoId}`} inputMode="decimal" value={fator} onChange={(e) => setFator(e.target.value)}
+                        className="w-full mt-1 border border-gray-300 rounded px-3 py-2.5 min-h-[44px] text-sm tabular-nums focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
+                </div>
+                <div className="flex gap-2 flex-wrap">
+                    <button type="button" onClick={() => gravar(false)} disabled={salvando}
+                        className="inline-flex items-center justify-center gap-1.5 px-4 min-h-[44px] bg-primary hover:bg-primaryDark text-white rounded-full text-sm font-semibold disabled:opacity-50">
+                        {salvando && <Loader2 className="h-4 w-4 animate-spin" />} Salvar
+                    </button>
+                    {atual && (
+                        <button type="button" onClick={() => gravar(true)} disabled={salvando}
+                            className="px-4 min-h-[44px] bg-white border border-red-300 text-red-700 hover:bg-red-50 rounded-full text-sm font-medium disabled:opacity-50">Remover referência</button>
+                    )}
+                </div>
+            </div>
+            {mesPassado && <p className="text-xs font-semibold text-amber-700 mt-2">Você está vendo um mês passado: a referência vale para o custo atual.</p>}
+            <p className="text-xs text-gray-500 mt-2">Ex.: pacote de 2 kg a partir da ficha de 1,5 kg = 1,33.</p>
+            {atual && <p className="text-xs font-semibold text-primaryDark mt-1">Hoje usa a ficha de {atual.nome || 'outro produto'} × {String(atual.fator).replace('.', ',')}.</p>}
+        </div>
+    );
+};
+
 /* ── Detalhe expandido de um produto ── */
-const DetalheProduto = ({ det, carregando }) => {
+const DetalheProduto = ({ det, carregando, produtoId, mostrarReferencia, opcoesRef, onRefSalvou, mesPassado }) => {
     if (carregando || !det) return <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
     const v = det.variacao || {};
     const comp = det.composicao;
     const algumEstimado = (det.serie || []).some((s) => s.estimado);
     return (
         <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-4 p-4 md:p-5">
+            {mostrarReferencia && <ReferenciaCusto key={`${produtoId}-${det.referenciaCusto?.produtoId || ''}`} produtoId={produtoId} atual={det.referenciaCusto || null} opcoes={opcoesRef} onSalvou={onRefSalvou} mesPassado={mesPassado} />}
             {/* Gráfico */}
             <div className="bg-white border border-gray-200 rounded-xl p-4">
                 <div className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-2">Preço × Custo — {det.serie?.length || 0} meses</div>

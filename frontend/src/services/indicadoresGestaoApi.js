@@ -33,3 +33,10 @@ export async function salvarAliquota(aliquotaImpostoVenda) {
     const resp = await api.put(`${BASE}/config`, { aliquotaImpostoVenda });
     return resp.data;
 }
+
+// Metas dos indicadores (só admin grava). `metas` = só as linhas alteradas:
+// [{ indicador, alvo: number|null (null = remover), toleranciaAtencao?, toleranciaAgir? }]
+export async function salvarMetas(metas) {
+    const resp = await api.put(`${BASE}/metas`, { metas });
+    return resp.data;
+}

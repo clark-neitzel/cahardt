@@ -59,7 +59,7 @@ const listaMeses = (ate, qtd) => {
 
 /** Classifica a fonte em "própria" (ficha) x "revenda" (compra/ca) x "sem". */
 const origemDe = (fonteCusto) => {
-    if (fonteCusto === 'FICHA') return 'propria';
+    if (fonteCusto === 'FICHA' || fonteCusto === 'FICHA_REF') return 'propria';
     if (fonteCusto === 'COMPRA' || fonteCusto === 'CA') return 'revenda';
     return 'sem';
 };
@@ -74,43 +74,59 @@ async function custoAtualDeProdutos(ids) {
 
     const produtos = await prisma.produto.findMany({
         where: { id: { in: ids } },
-        select: { id: true, custoManual: true, custoMedio: true }
+        select: { id: true, custoManual: true, custoMedio: true, produtoCustoReferenciaId: true, fatorCustoReferencia: true }
     });
     const produtoById = new Map(produtos.map((p) => [p.id, p]));
 
     // Fichas técnicas ativas dos produtos (produção própria)
-    const itensPcp = await prisma.itemPcp.findMany({
-        where: { produtoId: { in: ids }, ativo: true },
-        select: { id: true, produtoId: true }
-    });
-    const fichaPorProduto = new Map();
-    for (const item of itensPcp) {
-        if (fichaPorProduto.has(item.produtoId)) continue;
-        try {
-            const receita = await prisma.receita.findFirst({
-                where: {
-                    itemPcpId: item.id,
-                    status: 'ativa',
-                    dataInicioVigencia: { lte: new Date() },
-                    OR: [{ dataFimVigencia: null }, { dataFimVigencia: { gte: new Date() } }]
-                },
-                orderBy: { versao: 'desc' },
-                select: { id: true }
-            });
-            if (!receita) continue;
-            const custo = await pcpReceitaService.calcularCusto(receita.id);
-            if (num(custo?.custoPorUnidade) > 0) {
-                fichaPorProduto.set(item.produtoId, { custo: num(custo.custoPorUnidade), receitaId: receita.id });
+    const fichasDe = async (idsProd) => {
+        const itensPcp = await prisma.itemPcp.findMany({
+            where: { produtoId: { in: idsProd }, ativo: true },
+            select: { id: true, produtoId: true }
+        });
+        const fichaPorProduto = new Map();
+        for (const item of itensPcp) {
+            if (fichaPorProduto.has(item.produtoId)) continue;
+            try {
+                const receita = await prisma.receita.findFirst({
+                    where: {
+                        itemPcpId: item.id,
+                        status: 'ativa',
+                        dataInicioVigencia: { lte: new Date() },
+                        OR: [{ dataFimVigencia: null }, { dataFimVigencia: { gte: new Date() } }]
+                    },
+                    orderBy: { versao: 'desc' },
+                    select: { id: true }
+                });
+                if (!receita) continue;
+                const custo = await pcpReceitaService.calcularCusto(receita.id);
+                if (num(custo?.custoPorUnidade) > 0) {
+                    fichaPorProduto.set(item.produtoId, { custo: num(custo.custoPorUnidade), receitaId: receita.id });
+                }
+            } catch (err) {
+                console.error(`[ProdutoMargem] Falha no custo da ficha do produto ${item.produtoId}:`, err.message);
             }
-        } catch (err) {
-            console.error(`[ProdutoMargem] Falha no custo da ficha do produto ${item.produtoId}:`, err.message);
         }
-    }
+        return fichaPorProduto;
+    };
+    const fichaPorProduto = await fichasDe(ids);
+    // Custo de referência: produto sem ficha própria usa a ficha de outro produto x fator (fonte FICHA_REF)
+    const refIds = [...new Set(produtos
+        .filter((p) => !fichaPorProduto.has(p.id) && p.produtoCustoReferenciaId && p.produtoCustoReferenciaId !== p.id)
+        .map((p) => p.produtoCustoReferenciaId))].filter((r) => !fichaPorProduto.has(r));
+    const fichaRef = new Map(fichaPorProduto);
+    if (refIds.length) for (const [k, v] of await fichasDe(refIds)) fichaRef.set(k, v);
 
     for (const id of ids) {
         const p = produtoById.get(id);
         const ficha = fichaPorProduto.get(id);
         if (ficha) { mapa.set(id, { custoUnitario: round4(ficha.custo), fonteCusto: 'FICHA', receitaId: ficha.receitaId }); continue; }
+        const refFicha = p?.produtoCustoReferenciaId && p.produtoCustoReferenciaId !== id ? fichaRef.get(p.produtoCustoReferenciaId) : null;
+        if (refFicha) {
+            const fator = num(p.fatorCustoReferencia) > 0 ? num(p.fatorCustoReferencia) : 1;
+            mapa.set(id, { custoUnitario: round4(refFicha.custo * fator), fonteCusto: 'FICHA_REF' });
+            continue;
+        }
         const compra = num(p?.custoManual);
         const ca = num(p?.custoMedio);
         if (compra > 0) mapa.set(id, { custoUnitario: round4(compra), fonteCusto: 'COMPRA' });
@@ -265,9 +281,14 @@ async function listar({ categoria = null, origem = 'todos', meses = 6, mes = nul
 async function detalhe(produtoId, meses = 6, mes = null) {
     const produto = await prisma.produto.findUnique({
         where: { id: produtoId },
-        select: { id: true, codigo: true, nome: true, unidade: true, valorVenda: true, categoria: true }
+        select: { id: true, codigo: true, nome: true, unidade: true, valorVenda: true, categoria: true, produtoCustoReferenciaId: true, fatorCustoReferencia: true }
     });
     if (!produto) return null;
+    let referenciaCusto = null;
+    if (produto.produtoCustoReferenciaId) {
+        const refP = await prisma.produto.findUnique({ where: { id: produto.produtoCustoReferenciaId }, select: { id: true, nome: true } });
+        if (refP) referenciaCusto = { produtoId: refP.id, nome: refP.nome, fator: num(produto.fatorCustoReferencia) > 0 ? num(produto.fatorCustoReferencia) : 1 };
+    }
 
     const mesAtual = ymNowSP();
     const mesSel = (typeof mes === 'string' && /^\d{4}-\d{2}$/.test(mes) && mes <= mesAtual) ? mes : mesAtual;
@@ -365,6 +386,7 @@ async function detalhe(produtoId, meses = 6, mes = null) {
     return {
         mesSelecionado: mesSel,
         ehAtual,
+        referenciaCusto,
         produto: {
             produtoId: produto.id, codigo: produto.codigo, nome: produto.nome,
             unidade: produto.unidade || null, categoria: produto.categoria || null,

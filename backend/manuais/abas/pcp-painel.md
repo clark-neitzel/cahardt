@@ -47,6 +47,7 @@ Tela de chão de fábrica. É onde o operador trabalha no dia a dia: vê o que p
 5. Clique em **Finalizar Ordem**.
 6. Os estoques são atualizados: ingredientes consumidos são baixados, item produzido é adicionado.
 7. A ordem aparece na seção **Finalizadas Recentes**.
+8. Em segundo plano, o sistema calcula e guarda o custo, o rendimento e a perda da ordem (aparecem em Indicadores de Gestão → Produção e estoque). **Quanto mais fiel a "Quantidade Produzida Real", mais confiável a perda** — ela é medida contra a quantidade planejada da ordem. Se o consumo dos ingredientes não for apontado, o sistema considera que foi igual ao previsto (por isso, hoje, o sinal mais confiável é o rendimento).
 
 ### Cancelar uma ordem
 

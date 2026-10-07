@@ -43,6 +43,7 @@ Abre no lugar, com:
 
 - **Custo unitário**, por prioridade:
   1. **Ficha técnica** (produção própria) — custo por unidade da receita ativa do item no PCP; acompanha as compras de insumo sozinho.
+  1b. **Custo de referência** (produto sem ficha própria) — usa o custo da ficha de **outro produto fabricado** multiplicado por um **fator**. Aparece na tela como fonte "ficha de referência" e conta como produção própria. Veja a seção abaixo.
   2. **Compras** (revenda) — média das notas de entrada do produto.
   3. **Conta Azul** — custo médio sincronizado do CA.
   4. **Sem custo** — nenhuma fonte; fica fora da margem, marcado para cadastrar.
@@ -56,3 +57,12 @@ O sistema grava um **retrato do custo de cada produto todo mês**. Os meses **an
 ## Como melhorar um produto "Sem custo"
 - **Produzido**: criar/ativar a receita dele em **PCP → Receitas** (com os insumos custeados).
 - **Revendido**: dar entrada de nota de compra vinculando o item ao produto, ou preencher o custo no cadastro.
+
+## Custo de referência (produto sem ficha que "herda" a ficha de outro)
+
+Serve para produtos que ainda não têm ficha técnica mas são **o mesmo produto em outra embalagem** — por exemplo o pacote congelado "2-FR-..." (mesmo recheio e massa do "1-G-..."), ou o pacote de 2 kg "H22" (o mesmo mini do pacote "4-MINI" de 1,5 kg). Em vez de ficar "Sem custo" (e contar como custo zero nos Indicadores de Gestão), ele passa a usar o custo da ficha do produto escolhido × o fator.
+
+- **Como definir:** no detalhe do produto, em "Custo de referência", escolha o produto de referência (só aparecem produtos fabricados, com ficha vigente) e o **fator**. Fator 1 = mesmo custo; H22 2 kg contra um pacote de 1,5 kg = 1,333 (2 ÷ 1,5); meio pacote = 0,5. Para voltar ao normal, remova a referência. Exige a permissão de Financeiro Gerencial.
+- **Travas:** o produto de referência precisa ter ficha técnica vigente; um produto não pode referenciar a si mesmo; produto que **já tem ficha própria** não usa referência (a ficha própria manda).
+- **É uma aproximação:** não considera diferença de embalagem, mão de obra ou perda. Quando o produto ganhar ficha própria, ela passa a valer sozinha e a referência deixa de ser usada.
+- O custo de referência também vale nos **Indicadores de Gestão** (custo do produto vendido, margem e cobertura de custo); vendas passadas só mudam quando o custo congelado delas é refeito pela equipe técnica.

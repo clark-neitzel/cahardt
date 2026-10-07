@@ -72,6 +72,7 @@ const pcpOrdemService = {
             versao: receita.versao,
             nome: receita.nome,
             rendimentoBase,
+            perdaPercentual: receita.perdaPercentual != null ? Number(receita.perdaPercentual) : 0,
             itemResultante: {
                 id: receita.itemPcp.id,
                 nome: receita.itemPcp.nome,
@@ -238,6 +239,11 @@ const pcpOrdemService = {
                 // Não falha a finalização por erro no bridge
             }
         }
+
+        // Indicadores de Gestão: apura custo/perda da ordem. Fora da transação, sem await, nunca derruba a finalização.
+        try {
+            require('./ordemCustoService').apurarCustoOrdem(id).catch((e) => console.error('[OrdemCusto] falha ao apurar OP', id, e.message));
+        } catch (e) { console.error('[OrdemCusto] indisponível:', e.message); }
 
         return prisma.ordemProducao.findUnique({
             where: { id },

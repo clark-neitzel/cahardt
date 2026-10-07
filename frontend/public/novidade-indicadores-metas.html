@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Metas e Produção nos Indicadores — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp -->
+<meta property="og:title" content="🎯 Novidade no Hardt App: metas nos Indicadores de Gestão">
+<meta property="og:description" content="Agora você define a meta de cada indicador e o semáforo passa a seguir a meta. Também chegaram a perda e o rendimento da produção, o custo de referência dos produtos sem ficha e o custo de entrega por parada.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 96px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 7vw, 40px);
+    font-weight: 800;
+    line-height: 1.12;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.75);
+    font-size: 16px;
+    max-width: 46ch;
+    margin: 0 auto;
+    text-wrap: balance;
+  }
+
+  /* mock da tela flutuando sobre o hero */
+  .mock {
+    max-width: 420px;
+    margin: -68px auto 28px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.28);
+    overflow: hidden;
+    text-align: left;
+  }
+  .mock-top {
+    background: var(--house);
+    color: #fff;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .mock-top small {
+    display: block;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    color: rgba(255,255,255,.55);
+  }
+  .mock-top strong { font-size: 16px; line-height: 1.2; }
+  .mock-ico { font-size: 24px; }
+  .mock-body { padding: 16px 18px 18px; }
+  .mock-label {
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--ink-soft);
+    margin-bottom: 4px;
+  }
+  .mock-input {
+    border: 1.5px solid #d8d5cc;
+    border-radius: 10px;
+    padding: 11px 13px;
+    font-size: 15px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--ink);
+    background: #fff;
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+  }
+  .mock-input.focado { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0,117,74,.14); }
+  .cursor { display: inline-block; width: 2px; height: 18px; background: var(--primary); margin-left: 2px; animation: pisca 1s steps(1) infinite; }
+  @keyframes pisca { 50% { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .cursor { animation: none; } }
+  .mock-campos { margin-top: 14px; display: grid; gap: 9px; }
+  .campo {
+    background: #f6f5f1;
+    border-radius: 9px;
+    padding: 8px 12px;
+    font-size: 13px;
+    color: #b9b5aa;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background .4s, color .4s;
+  }
+  .campo b { font-weight: 700; }
+  .campo.cheio { background: var(--mint); color: var(--primary-dark); }
+  .campo .ck { opacity: 0; transition: opacity .4s; }
+  .campo.cheio .ck { opacity: 1; }
+  .mock-status {
+    margin-top: 12px;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--ink-soft);
+    min-height: 20px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .mock-status.ok { color: var(--primary-dark); }
+
+  /* botão de demo */
+  .demo-cta {
+    display: block;
+    width: 100%;
+    max-width: 420px;
+    margin: 0 auto 8px;
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    font: inherit;
+    font-size: 16px;
+    font-weight: 800;
+    padding: 16px;
+    border-radius: 999px;
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(0,117,74,.35);
+  }
+  .demo-cta:hover { background: var(--primary-dark); }
+  .demo-cta:focus-visible, .acc-head:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .demo-hint { text-align: center; font-size: 12px; color: var(--ink-soft); margin: 0 0 34px; }
+
+  /* ── SEÇÕES / ACCORDION ── */
+  .sec-label {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: var(--primary-dark);
+    margin: 34px 4px 12px;
+  }
+  .acc {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .acc-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: none;
+    border: none;
+    font: inherit;
+    text-align: left;
+    padding: 15px 16px;
+    cursor: pointer;
+    min-height: 56px;
+  }
+  .acc-ico {
+    width: 38px; height: 38px;
+    border-radius: 11px;
+    background: var(--mint);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  /* passos */
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n {
+    width: 30px; height: 30px; flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 800;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .rodape {
+    text-align: center;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 40px;
+  }
+  .rodape strong { color: var(--primary-dark); }
+
+  /* ── MOCKUPS DAS TELAS DO APP ── */
+  .tela {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .tela-titulo {
+    background: var(--house);
+    color: #fff;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .app-card {
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .app-card-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    border-bottom: 1px solid #f0efe9;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: #6b756f;
+  }
+  .app-card-body { padding: 12px; }
+  .app-input {
+    border: 1px solid #d8d5cc;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 12.5px;
+    color: var(--ink);
+    background: #fff;
+    margin-bottom: 8px;
+  }
+  .app-input small { display: block; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: #9aa5a0; margin-bottom: 2px; }
+  .app-input.ok { background: var(--mint); border-color: rgba(0,117,74,.25); }
+  .app-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--primary);
+    color: #fff;
+    font-size: 12.5px;
+    font-weight: 700;
+    padding: 9px 16px;
+    border-radius: 999px;
+  }
+  .app-btn.claro { background: #fff; border: 1.5px solid var(--primary); color: var(--primary); }
+  .app-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+  .app-pill {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 7px 14px;
+    border-radius: 999px;
+    border: 1.5px solid #d8d5cc;
+    color: #6b756f;
+    background: #fff;
+  }
+  .app-pill.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .app-busca {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .app-busca .app-input { flex: 1; margin-bottom: 0; color: #9aa5a0; }
+  .app-toggle-linha {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: #f7f6f2;
+    border: 1px solid #edece6;
+    border-radius: 10px;
+    padding: 9px 12px;
+    font-size: 12.5px;
+  }
+  .app-toggle-linha small { display: block; font-size: 10.5px; color: #9aa5a0; }
+  .app-toggle {
+    width: 38px; height: 22px; flex-shrink: 0;
+    border-radius: 999px;
+    background: var(--primary);
+    position: relative;
+  }
+  .app-toggle::after {
+    content: '';
+    position: absolute;
+    top: 3px; right: 3px;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: #fff;
+  }
+  .pin {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    flex-shrink: 0;
+    vertical-align: 2px;
+    margin-left: 6px;
+  }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+
+  .kpis{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+  .kpi{background:#fff;border:1px solid #e5e3dc;border-radius:12px;padding:9px 11px}
+  .kpi small{display:block;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#6b756f}
+  .kpi strong{display:block;font-size:17px;margin-top:2px}
+  .st{display:inline-block;font-size:10px;font-weight:800;border-radius:999px;padding:1px 8px;margin-top:3px}
+  .st.ok{background:#dcfce7;color:#166534}.st.at{background:#fef3c7;color:#b45309}.st.ru{background:#fee2e2;color:#b91c1c}
+  .barra{height:14px;border-radius:4px;margin:5px 0}
+  .linha-mini{display:flex;align-items:center;gap:8px;font-size:11.5px;color:#3d4744}
+  .linha-mini span:first-child{width:92px;flex-shrink:0}
+  .tab-mini{width:100%;border-collapse:collapse;font-size:11.5px}
+  .tab-mini th{font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:#6b756f;text-align:left;padding:5px 4px;border-bottom:1px solid #eceae4}
+  .tab-mini td{padding:6px 4px;border-bottom:1px solid #f0efe9}
+  .chip-x{display:inline-block;font-size:10px;font-weight:700;border-radius:999px;padding:1px 8px}
+  .roxo{background:#ede9fe;color:#6d28d9}
+  .aviso-ex{font-size:12px;color:var(--ink-soft);text-align:center;margin:0}
+</style></head>
+<body>
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>Indicadores com meta:<br>o semáforo agora segue o que você quer</h1>
+    <p>Defina a meta de cada indicador, acompanhe a perda e o rendimento de cada ordem de produção, dê custo aos produtos sem ficha e veja o custo de entrega por parada.</p>
+  </div>
+</header>
+<div class="wrap">
+  <div class="mock" aria-hidden="true">
+    <div class="mock-top"><span class="mock-ico">🎯</span><div><small>Indicadores de Gestão</small><strong>Metas dos indicadores</strong></div></div>
+    <div class="mock-body">
+      <div class="kpis">
+        <div class="kpi"><small>Margem de contribuição</small><strong>— %</strong><span class="st at">atenção</span><div style="font-size:10px;color:#6b756f;margin-top:2px">vs meta — %</div></div>
+        <div class="kpi"><small>Perda além da ficha</small><strong>— %</strong><span class="st ru">agir</span><div style="font-size:10px;color:#6b756f;margin-top:2px">vs meta ≤ — %</div></div>
+      </div>
+      <p class="aviso-ex">Desenho de exemplo, sem números reais.</p>
+    </div>
+  </div>
+
+  <div class="sec-label">O que mudou</div>
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🎯</span>
+      <strong>Metas por indicador</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Quem é <b>administrador</b> vê o botão <b>Metas</b> (o alvo) no topo da tela. Lá cada indicador tem a <b>meta</b>, a folga de <b>atenção</b> e o ponto de <b>agir</b>.</li>
+        <li>Exemplo: meta de margem 35%, folga de atenção 0 e agir acima de 5 pontos. Margem de 33% fica em <b>atenção</b>; de 28% fica em <b>agir</b>; de 36% fica <b>no alvo</b>.</li>
+        <li>O botão <b>Sugerir pela média</b> preenche a meta com a média dos últimos 3 meses fechados. Onde ainda não há histórico, aparece "sem base" e você digita à mão. Nada é salvo até clicar em <b>Salvar</b>.</li>
+        <li>Com meta, o cartão mostra <b>"vs meta"</b> e a diferença. <b>Sem meta</b>, tudo continua como antes (comparação com a média de 3 meses). Para tirar uma meta, use <b>Remover meta</b>.</li>
+        <li>A gerente de produção vê as metas de produção, mas só o administrador altera.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🏭</span>
+      <strong>Produção: perda e rendimento por ordem</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Ao <b>finalizar uma ordem de produção</b>, o sistema calcula e guarda o custo dos insumos, o <b>rendimento</b> (quanto saiu em relação ao planejado) e a <b>perda além da ficha</b> (a perda normal da ficha já está no custo, aqui aparece só o excesso).</li>
+        <li>O bloco <b>Produção e estoque</b> mostra a perda no período (em R$ e % do consumo), o custo real contra o padrão, o rendimento do lote e um gráfico da perda por semana com a linha da meta.</li>
+        <li><b>Gerente de produção, dois cuidados:</b> (1) informe a <b>quantidade produzida real</b> ao finalizar e planeje a quantidade que de fato espera produzir; (2) quando o consumo foi diferente do previsto, <b>edite o consumo no painel</b>. Se ficar o previsto, o custo real sai igual ao padrão e a diferença não aparece.</li>
+        <li>Antes de confiar nos números, a gerente deve <b>conferir 3 ordens reais</b> (planejada, produzida e perda calculada) e avisar se algo não bate.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🔗</span>
+      <strong>Custo de referência para produto sem ficha</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Em <b>Margem &amp; Custo dos Produtos</b>, ao abrir um produto que não tem ficha técnica aparece o controle <b>Custo de referência</b>: escolha um produto que tenha ficha e informe o <b>fator</b>.</li>
+        <li>Exemplo: pacote de 2 kg a partir da ficha de 1,5 kg, fator 1,33. O produto passa a ter custo e margem, com o selo azul <b>ficha de referência</b>.</li>
+        <li>Nos Indicadores, esse produto também entra como fabricado, com o mesmo selo. Para desfazer, use <b>Remover referência</b>.</li>
+        <li>Só quem acessa o financeiro gerencial vê e altera.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🚚</span>
+      <strong>Custo de entrega por parada</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Na tabela de clientes, o custo de entrega agora é dividido por <b>paradas</b> e não por pedidos: vários pedidos entregues na mesma carga para o mesmo cliente contam <b>uma parada</b>. Retirada no balcão não recebe custo de entrega.</li>
+        <li>Continua sendo uma <b>estimativa</b> (selo "por parada (estimado)"): custo de veículos e entregas do período dividido pelas paradas, sem separar por km.</li>
+        <li>Para o número ficar certo, o <b>motorista precisa marcar a entrega no app</b>.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="sec-label">As telas do app, sem mistério</div>
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 1 · Metas dos indicadores (só administrador)</div>
+    <div class="tela-corpo">
+      <div style="text-align:right;margin-bottom:8px"><span class="app-pill" style="padding:6px 12px">🎯<span class="pin">1</span></span></div>
+      <div class="app-card">
+        <div class="app-card-head">Metas dos indicadores</div>
+        <div class="app-card-body">
+          <span class="app-btn claro" style="margin-bottom:10px">✨ Sugerir pela média<span class="pin">2</span></span>
+          <div style="font-size:12.5px;font-weight:700;margin-bottom:6px">Margem de contribuição</div>
+          <div class="app-input"><small>Meta (%)</small>—<span class="pin">3</span></div>
+          <div class="app-input"><small>Atenção acima de (pt)</small>0<span class="pin">4</span></div>
+          <div class="app-input"><small>Agir acima de (pt)</small>5</div>
+          <div style="font-size:11.5px;color:#b91c1c;font-weight:700;margin-bottom:8px">Remover meta<span class="pin">5</span></div>
+          <span class="app-btn">Salvar<span class="pin">6</span></span>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>O botão <b>Metas</b> fica no topo da tela, só para administrador.</span></div>
+      <div><span class="pin">2</span><span><b>Sugerir pela média</b> preenche as metas com a média dos 3 últimos meses fechados. Onde não há base, aparece "sem base".</span></div>
+      <div><span class="pin">3</span><span><b>Meta</b>: o valor que você quer atingir. Aceita vírgula (ex.: 1,5).</span></div>
+      <div><span class="pin">4</span><span><b>Atenção</b> e <b>agir</b>: até quantos pontos (ou dias) pior que a meta ainda é "no alvo" (atenção acima disso) e acima de quanto vira "agir".</span></div>
+      <div><span class="pin">5</span><span><b>Remover meta</b> volta o indicador a comparar com a média de 3 meses.</span></div>
+      <div><span class="pin">6</span><span><b>Salvar</b> grava só o que você mudou, e os semáforos já se atualizam.</span></div>
+    </div>
+  </div>
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 2 · Cartão com meta e bloco Produção</div>
+    <div class="tela-corpo">
+      <div class="kpis">
+        <div class="kpi"><small>Margem de contrib.</small><strong>— %</strong><span class="st at">atenção</span><div style="font-size:10px;color:#6b756f;margin-top:2px">vs meta — % (— pt)<span class="pin">1</span></div></div>
+        <div class="kpi"><small>Resultado oper.</small><strong>— %</strong><span class="st ok">no alvo</span></div>
+      </div>
+      <div class="app-card">
+        <div class="app-card-head">Produção e estoque<span class="pin">2</span></div>
+        <div class="app-card-body">
+          <div class="kpis">
+            <div class="kpi"><small>Perdas no período</small><strong>R$ —</strong><span class="st ru">agir</span><div style="font-size:10px;color:#6b756f">meta ≤ — %</div></div>
+            <div class="kpi"><small>Rendimento do lote</small><strong>— %</strong><div style="font-size:10px;color:#6b756f">ficha prevê — %</div></div>
+          </div>
+          <div class="linha-mini"><span>Perda por semana<span class="pin">3</span></span><div class="barra" style="background:var(--primary);width:18%"></div><div class="barra" style="background:#b45309;width:40%"></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Com meta, o selo diz <b>"vs meta"</b> e mostra a diferença em pontos.</span></div>
+      <div><span class="pin">2</span><span>O bloco traz <b>perda</b>, <b>custo real × padrão</b> e <b>rendimento</b> das ordens finalizadas no período. Sem ordens, ele avisa e não inventa número.</span></div>
+      <div><span class="pin">3</span><span>Perda por semana: a barra fica <b>laranja</b> quando passa da meta (a linha).</span></div>
+    </div>
+  </div>
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 3 · Margem &amp; Custo — custo de referência</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">Custo de referência<span class="pin">1</span></div>
+        <div class="app-card-body">
+          <div class="app-input"><small>Produto com ficha</small>Selecione…<span class="pin">2</span></div>
+          <div class="app-input"><small>Fator</small>1<span class="pin">3</span></div>
+          <div class="app-pills"><span class="app-btn">Salvar<span class="pin">4</span></span><span class="app-pill" style="color:#b91c1c;border-color:#fca5a5">Remover referência</span></div>
+          <div style="margin-top:10px"><span class="chip-x" style="background:#dbeafe;color:#1e40af">ficha de referência</span><span class="pin">5</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Aparece ao abrir um produto <b>sem ficha técnica</b>.</span></div>
+      <div><span class="pin">2</span><span>Escolha o produto que <b>tem ficha</b> (digite para buscar).</span></div>
+      <div><span class="pin">3</span><span><b>Fator</b>: multiplica o custo da ficha. Pacote de 2 kg a partir da ficha de 1,5 kg = 1,33.</span></div>
+      <div><span class="pin">4</span><span><b>Salvar</b> e <b>Remover referência</b> valem na hora.</span></div>
+      <div><span class="pin">5</span><span>O produto ganha o selo azul <b>ficha de referência</b> na lista.</span></div>
+    </div>
+  </div>
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 4 · Clientes — custo de entrega por parada</div>
+    <div class="tela-corpo">
+      <div class="app-card"><div class="app-card-body">
+        <table class="tab-mini"><tr><th>Cliente</th><th>Paradas<span class="pin">1</span></th><th>Custo entrega</th></tr>
+        <tr><td>Cliente exemplo</td><td>—</td><td>R$ —</td></tr></table>
+        <div style="margin-top:8px"><span class="chip-x" style="background:#f3f4f6;color:#374151">por parada (estimado)</span><span class="pin">2</span></div>
+      </div></div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Paradas</b>: pedidos do mesmo cliente na mesma carga contam uma vez. Retirada não conta.</span></div>
+      <div><span class="pin">2</span><span>O selo lembra que é <b>estimativa</b> e depende de o motorista marcar a entrega no app.</span></div>
+    </div>
+  </div>
+
+  <div class="sec-label">Para começar a usar</div>
+  <div class="passos">
+    <div class="passo"><span class="passo-n">1</span><div><b>Atualize o app:</b> toque no ícone de atualizar ↻ (ou feche e abra o app).</div></div>
+    <div class="passo"><span class="passo-n">2</span><div><b>Administrador:</b> abra <b>Indicadores de Gestão</b>, toque em <b>Metas</b>, use <b>Sugerir pela média</b>, ajuste e salve.</div></div>
+    <div class="passo"><span class="passo-n">3</span><div><b>Gerente de produção:</b> ao finalizar cada ordem, informe a quantidade produzida real e, se o consumo foi diferente do previsto, edite no painel. Confira 3 ordens reais no bloco Produção.</div></div>
+    <div class="passo"><span class="passo-n">4</span><div><b>Financeiro:</b> em Margem &amp; Custo, dê um custo de referência aos produtos sem ficha.</div></div>
+  </div>
+  <p class="rodape">Dúvidas? Pergunte ao <strong>Clippy</strong> dentro do app.<br>— Hardt Salgados</p>
+</div>
+<script>
+  function alternar(btn) {
+    const acc = btn.parentElement;
+    const abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>

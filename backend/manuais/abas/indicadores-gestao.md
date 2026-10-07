@@ -25,21 +25,37 @@ Quem tem **só** a permissão de produção abre direto nessa visão, sem o bot�
 - **Período** (Hoje, 7 dias, 30 dias, Este mês, Este ano, personalizado, com setas). Fica lembrado por usuário.
 - **Comparação automática:** não há filtro para escolher; tudo é comparado com o período anterior, do mesmo tamanho (mês cheio contra o mês anterior cheio; mês em andamento contra os mesmos dias do mês anterior).
 - **⚙ (engrenagem)** — só **administrador**, só na visão Dono: define a **alíquota de imposto sobre a venda** (veja abaixo).
+- **Metas** — só **administrador**: define a meta de cada indicador (veja a seção **Metas** abaixo).
 
 ## Blocos da tela
 
 1. **Faixa de avisos** (Dono): avisos do próprio cálculo, como "X% do custo vem de estimativa" e o alerta de que a matéria-prima pode estar contada duas vezes quando nenhuma categoria tem a marca **"Compra de estoque"**. Quando o aviso trata de categorias, há o link "Classificar agora" para Categorias de Despesa.
 2. **KPIs** (cartões com seta, variação, mini-gráfico e **palavra do semáforo**): Receita líquida, Margem de contribuição, Resultado operacional e Custo médio dos insumos (Dono). Na visão de produção: Custo dos insumos, Insumos em alta (3+ altas seguidas), Produtos fabricados vendidos e Fichas pedindo atenção. O ícone **?** de cada cartão explica o indicador.
-   - **Palavras do semáforo:** "no alvo", "subindo", "atenção", "agir" (ou só a seta quando não há histórico). Por enquanto, sem metas cadastradas, a régua é a **média dos 3 períodos anteriores**: pior que 2% = atenção; pior que 5% = agir.
+   - **Palavras do semáforo:** "no alvo", "subindo", "atenção", "agir" (ou só a seta quando não há histórico). **Sem meta cadastrada**, a régua é a **média dos 3 períodos anteriores**: pior que 2% = atenção; pior que 5% = agir. **Com meta cadastrada** para aquele indicador, a meta manda (veja **Metas**) e o cartão mostra "meta 35%"; também mostra a diferença para a média dos 3 meses.
 3. **Cascata** (Dono): da receita bruta até o resultado — devoluções, impostos, receita líquida, CPV, CMV, lucro bruto, despesas variáveis, margem de contribuição, despesas fixas, resultado. Passar o mouse (ou tocar) mostra o valor e o % da receita líquida. Selos informam se o imposto é "por alíquota" ou "real pago" e se as despesas foram "proporcionais aos dias" (período que não é mês fechado).
 4. **Meta do mês / Equilíbrio** (Dono): ponto de equilíbrio, quanto já foi vendido no mês, projeção de fechamento e margem de segurança. Se o mês ainda não tem despesa fixa lançada, usa o mês anterior como referência e avisa qual.
 5. **Evolução do custo dos insumos** (ambas): 8 semanas, base 100 = 1ª semana, com o R$ no detalhe. Usa o **último preço pago** nas compras conferidas (entrada estornada não conta). Só mostra insumos de receitas de produtos fabricados.
 6. **Entradas da semana** (ambas): compras conferidas na semana (atual ou passada) com fornecedor, quantidade, preço pago e variação contra a compra anterior; abaixo, o **efeito nas fichas técnicas** (quanto o custo de cada produto mudou por causa dessas entradas).
 7. **Tabela de produtos** (ambas): na visão Dono — custo da ficha, preço médio, markup, MC por unidade, MC %, MC total e situação, com selo "revenda" nos itens comprados prontos e "sem ficha" nos ainda não classificados; ordenável. Na visão produção — produto, quantidade, custo da ficha por unidade, variação de custo em 4 semanas e se a ficha está desatualizada ou com custo faltando. No celular vira cards.
-8. **Produção e estoque** (ambas): dias de estoque de produto acabado e de insumos. **Perda, custo real × padrão e rendimento por lote aparecem como "disponível na próxima fase"** — ainda não há dado confiável, o sistema não inventa número.
-9. **Onde agir primeiro** (alertas): custo subindo com preço parado, insumo com 3 altas seguidas, ficha desatualizada ou sem custo, margem abaixo da média, cliente com margem baixa, categorias pendentes, pouca cobertura de custo real, produto vendido sem ficha e sem marca de revenda. A visão de produção só recebe os alertas de produção.
-10. **Clientes** (Dono): os 6 que mais vendem, com receita, desconto médio, entregas, custo de entrega e margem. O **custo de entrega é estimado** (despesas do bloco "Veículos e entregas" divididas pelas entregas do período) e vem com selo.
+8. **Produção e estoque** (ambas): dias de estoque de produto acabado e de insumos, mais três números que vêm das **ordens de produção finalizadas** no período:
+   - **Perda no período** — só a perda **além do que a ficha técnica já prevê** (a perda normal da ficha já está dentro do custo do produto; contar de novo seria duplicar). Mostra o valor em R$, o % do consumo, um gráfico de 8 semanas e, na visão Dono, quanto isso pesa no custo dos produtos vendidos.
+   - **Custo real × padrão** — quanto o custo por unidade realmente produzida ficou acima (ou abaixo) do custo da ficha. Reflete principalmente o rendimento do lote.
+   - **Rendimento do lote** — quanto saiu do que foi planejado (ponderado pelas ordens), ao lado do que a ficha prevê.
+   Se não houve ordem finalizada no período, aparece "sem ordens finalizadas no período" — o sistema não inventa número. Um selo avisa quando há ordens **estimadas** (antigas, apuradas depois com o custo mais recente) ou ordens com insumo **sem preço** (custo parcial). **Atenção à leitura:** o consumo real dos ingredientes quase sempre é igual ao previsto (a equipe não costuma apontar a diferença); por isso o sinal mais confiável é o **rendimento** (quantidade produzida ÷ planejada). Planeje a quantidade que realmente espera produzir e informe a produzida real ao finalizar.
+9. **Onde agir primeiro** (alertas): custo subindo com preço parado, insumo com 3 altas seguidas, ficha desatualizada ou sem custo, margem abaixo da média, cliente com margem baixa, categorias pendentes, pouca cobertura de custo real, produto vendido sem ficha e sem marca de revenda. A visão de produção só recebe os alertas de produção. Com meta cadastrada, entram também "Perda de produção acima da meta" e "Custo real de produção acima do padrão" (sem meta, esses alertas não existem — o sistema não inventa limite).
+10. **Clientes** (Dono): os 6 que mais vendem, com receita, desconto médio, entregas, custo de entrega e margem. O **custo de entrega é estimado** e vem com selo: as despesas do bloco "Veículos e entregas" são divididas pelas **paradas** do período (uma parada = um cliente numa saída/embarque, mesmo que tenha vários pedidos na mesma carga). Pedido de retirada/balcão (sem embarque) não recebe custo de entrega. Depende de a entrega ser marcada no app. Se o período não tem embarques registrados, volta a dividir por pedido.
 11. **Guia de leitura** (no fim, já aberto): o mesmo texto do "?" dos cartões.
+
+## Metas
+
+O administrador define a **meta** de cada indicador pelo botão **Metas** (no topo). Para cada um: a **meta**, "**atenção a partir de**" e "**agir a partir de**" (quantos pontos percentuais — ou dias — **pior** que a meta ainda é "atenção", e a partir de quanto vira "agir"). Quem tem a permissão completa e a gerente de produção **veem** o selo "meta X" e o semáforo, mas não editam. A gerente só vê as metas de produção.
+
+Indicadores com meta: margem de contribuição, resultado operacional, variação do custo dos insumos, perda além da ficha, rendimento do lote, custo real acima do padrão e dias de estoque de produto acabado. (Receita líquida não tem meta: depende do tamanho do período.)
+
+**Exemplo:** meta de margem de contribuição 35%, agir a partir de 5. Com MC de 36% = "no alvo"; 33% (2 pontos abaixo) = "atenção"; 28% (7 abaixo) = "agir". Remover a meta volta a comparar com a média dos 3 meses.
+
+- **Sugerir pela média:** preenche o formulário com a média dos últimos 3 meses fechados (margem e resultado) ou das ordens de produção dos 3 meses (perda, rendimento, custo real) — só se houver base (no mínimo 2 meses de vendas ou 3 ordens). Não grava nada até clicar em Salvar; indicadores sem histórico confiável pedem preenchimento manual.
+- Cada alteração cria uma **nova versão** da meta (o histórico fica guardado). A meta nova vale na hora.
 
 ## Como ler cada indicador
 
@@ -70,7 +86,7 @@ No momento em que o pedido sai do estoque (faturamento), o sistema **congela o c
 
 - Ver a visão Dono, KPIs financeiros, cascata, equilíbrio, clientes: `Pode_Ver_Indicadores_Gestao` (ou administrador).
 - Ver só produção (fabricados e insumos): `Pode_Ver_Indicadores_Producao`.
-- Mudar a alíquota (⚙): somente administrador.
+- Mudar a alíquota (⚙) e cadastrar/alterar metas: somente administrador.
 
 ## Relacionado
 

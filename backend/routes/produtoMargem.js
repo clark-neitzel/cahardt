@@ -75,6 +75,45 @@ router.get('/:produtoId/arvore', verificarAuth, checkAcesso, async (req, res) =>
     }
 });
 
+// PUT /:produtoId/referencia-custo — body { produtoReferenciaId: string|null, fator: number }
+// Produto SEM ficha passa a usar o custo da ficha de OUTRO produto x fator (fonte FICHA_REF).
+// Trava: o referenciado precisa ter ficha vigente e não pode ser o próprio produto; produto com ficha própria não usa referência.
+router.put('/:produtoId/referencia-custo', verificarAuth, checkAcesso, async (req, res) => {
+    try {
+        const { produtoId } = req.params;
+        const { produtoReferenciaId, fator } = req.body || {};
+        const produto = await prisma.produto.findUnique({ where: { id: produtoId }, select: { id: true, nome: true, nfeRevenda: true } });
+        if (!produto) return res.status(404).json({ error: 'Produto não encontrado.' });
+
+        if (produtoReferenciaId === null || produtoReferenciaId === undefined || produtoReferenciaId === '') {
+            await prisma.produto.update({ where: { id: produtoId }, data: { produtoCustoReferenciaId: null, fatorCustoReferencia: 1 } });
+            require('../services/indicadoresCustoService').limparCache();
+            return res.json({ referenciaCusto: null });
+        }
+        if (produto.nfeRevenda === true) return res.status(400).json({ error: 'Produto de revenda usa custo de compra; não aceita custo de referência.' });
+        if (typeof produtoReferenciaId !== 'string') return res.status(400).json({ error: 'Produto de referência inválido.' });
+        if (produtoReferenciaId === produtoId) return res.status(400).json({ error: 'O produto não pode usar a si mesmo como referência.' });
+        const f = typeof fator === 'string' ? Number(fator.replace(',', '.')) : Number(fator);
+        if (!Number.isFinite(f) || f <= 0 || f > 1000) return res.status(400).json({ error: 'Informe um fator maior que zero (ex.: 1 ou 1,333).' });
+
+        const ref = await prisma.produto.findUnique({ where: { id: produtoReferenciaId }, select: { id: true, nome: true } });
+        if (!ref) return res.status(400).json({ error: 'Produto de referência não encontrado.' });
+        const ctx = await require('../services/indicadoresCustoService').carregarFichasVigentes();
+        if (ctx.itemPcpPorProduto.has(produtoId)) {
+            return res.status(400).json({ error: 'Este produto já tem ficha técnica própria; o custo de referência só vale para produto sem ficha.' });
+        }
+        if (!ctx.itemPcpPorProduto.has(produtoReferenciaId)) {
+            return res.status(400).json({ error: `"${ref.nome}" não tem ficha técnica vigente: escolha um produto fabricado com ficha.` });
+        }
+        await prisma.produto.update({ where: { id: produtoId }, data: { produtoCustoReferenciaId: produtoReferenciaId, fatorCustoReferencia: f } });
+        require('../services/indicadoresCustoService').limparCache();
+        res.json({ referenciaCusto: { produtoId: ref.id, nome: ref.nome, fator: f } });
+    } catch (error) {
+        console.error('[ProdutoMargem] Erro ao salvar referência de custo:', error);
+        res.status(500).json({ error: 'Erro ao salvar o custo de referência.' });
+    }
+});
+
 // GET /:produtoId?meses=6 — detalhe (variação no tempo + composição do custo)
 router.get('/:produtoId', verificarAuth, checkAcesso, async (req, res) => {
     try {

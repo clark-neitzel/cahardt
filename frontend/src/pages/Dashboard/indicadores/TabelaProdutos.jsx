@@ -46,6 +46,7 @@ const Etiquetas = ({ l }) => (
     <>
         {l.classe === 'REVENDA' && <Chip cls="bg-purple-100 text-purple-700" className="ml-1.5">revenda</Chip>}
         {l.classe === 'SEM_CLASSE' && <Chip cls="bg-gray-100 text-gray-700" className="ml-1.5">sem ficha</Chip>}
+        {l.custoFonte === 'FICHA_REF' && <Chip cls="bg-blue-100 text-blue-800" className="ml-1.5">ficha de referência</Chip>}
         {l.temCustoFaltando && <Chip cls="bg-red-100 text-red-700" className="ml-1.5">custo faltando</Chip>}
         {l.fichaDesatualizada && <Chip cls="bg-amber-100 text-amber-700" className="ml-1.5">ficha desatualizada</Chip>}
     </>
