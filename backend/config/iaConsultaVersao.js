@@ -94,7 +94,10 @@
 // para guardá-lo; ver ia-consulta-api.md). PODE ser tool da IA (ação transacional a pedido do
 // cliente), diferente de /cliente/situacao e /cliente/buscar (só painel). Endpoints 100% novos —
 // nenhum campo de nenhuma resposta existente foi alterado.
-const VERSAO_API = '1.6.5';
+// · 1.7.0 (2026-10-08) campo novo `grupoDescricao` (descrição da categoria comercial) no objeto
+// de produto e `descricao` nos itens de GET congelados/grupos — para a Ana saber se o produto
+// vem pronto p/ aquecer ou cru. Só leitura, tudo aditivo.
+const VERSAO_API = '1.7.0';
 
 const AVISOS = [
     // AVISO INFORMATIVO (v1.6.4, não é quebra de contrato): nenhum campo removido/renomeado —

@@ -20,7 +20,7 @@ const dataSP = (d) => (d ? new Date(d).toLocaleDateString('en-CA', { timeZone: '
 // Include padrão de Produto para quem vai chamar produtoParaIA (usar em include/select de itens).
 const PRODUTO_INCLUDE_IA = {
     imagens: true,
-    categoriaProduto: { select: { id: true, nome: true } },
+    categoriaProduto: { select: { id: true, nome: true, descricao: true } },
     congeladosProduto: true,
 };
 
@@ -330,6 +330,7 @@ function produtoParaIA({ produto, cp = null, etiqueta = null, promo = null, prep
         linha: site ? 'CONGELADOS' : null,
         grupo: p?.categoriaProduto?.id || null,      // ID (igual ao catálogo)
         grupoNome: p?.categoriaProduto?.nome || null,
+        grupoDescricao: p?.categoriaProduto?.descricao || null, // v1.7.0: texto da categoria (ex.: já assado/pronto p/ aquecer)
         // tamanho (P/M/G/GG) só é derivável do código/nome do sistema — a etiqueta não tem esse campo.
         tamanho: tamanhoDe(nomeCompleto),
         pesoUnidadeG,

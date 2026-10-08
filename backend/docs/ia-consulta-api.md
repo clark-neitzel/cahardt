@@ -53,7 +53,7 @@ mencionada na mensagem. Assim a mudança nunca pega o app de surpresa.
 | POST | `/kitfesta/validar-cupom` | `{ codigo, totalCaixas }` | Validação do cupom (tipo, valor, mínimo de caixas) |
 | POST | `/kitfesta/verificar-entrega` | `{ cep }` | `{ atende: true\|false\|null, distanciaKm, raioKm, endereco }` |
 | GET | `/congelados/catalogo` | — | Catálogo com preço **genérico** (tabela "Site", visitante sem cadastro). **(v1.6)** cada item traz também o [objeto único de produto](#objeto-único-de-produto-v16) (`nomeCurto`, `nomeCompleto`, `embalagemInfo`, `tamanho`, `pesoUnidadeG`, `preparoTipo`, `precoTabela`, `precoCliente:null`, `disponivel`, `previsaoRetorno`, `promocao`…) somado aos campos antigos |
-| GET | `/congelados/grupos` | — | Categorias/grupos do catálogo de congelados |
+| GET | `/congelados/grupos` | — | Categorias/grupos do catálogo de congelados: `[{ id, nome, descricao, ordem }]`. **(v1.7.0)** + `descricao` (texto da categoria comercial, `null` se vazia). Só lista categorias com produto ativo no catálogo e respeita nome/ordem/ocultação definidos no admin do site. Ex.: `curl -H "x-ia-api-key: $CHAVE" https://<dominio>/api/ia-consulta/v1/congelados/grupos` → `{"meta":{"versaoApi":"1.7.0",…},"dados":[{"id":"…","nome":"Salgados Assados","descricao":"já assados, prontos para aquecimento final","ordem":1}]}` |
 | GET | `/congelados/config` | — | Dados da loja, mínimo padrão, se atende sábado/domingo (`entregas.sabado/domingo`). **(v1.6)** + `horaCorte` (`"HH:MM"` ou `null`) |
 | GET | `/congelados/produto/:id/ficha` | `:id` = id do produto no site | Ficha técnica/nutricional do produto |
 | GET | `/congelados/promocoes` | — | **(v1.6)** Promoções vigentes dos produtos do site, contexto tabela "Site": `{ promocoes:[{ id, nome, tipo:"PRECO"\|"CONDICIONAL", precoPromo, precoNormal, condicao, validoAte, tabelas:["*"], produtoId, id_site, produto }] }`. **(v1.6.1)** ganha também `regras` (como promoção funciona neste sistema) — ver seção v1.6.1 |
@@ -330,6 +330,7 @@ Aparece **no mesmo nível do item** em `GET /congelados/catalogo`, `POST /congel
 | `nomeCurto` | **(v1.6.1)** `etiqueta.nomeProduto` (nome digitado à mão no PCP, sem código/prefixo) quando há etiqueta ativa; senão derivado do nome do sistema: tira o prefixo `<dígito>-[XX-][P/M/G/GG-]`, o ` C/<un>` e o ` <peso>GR` → `COXINHA TRADICIONAL FRANGO` | nunca (cai no `nomeCompleto` se nada casar) |
 | `linha` | `"CONGELADOS"` | `null` se o produto não está no site |
 | `grupo` / `grupoNome` | ID / nome da categoria comercial | sem categoria |
+| `grupoDescricao` | **(v1.7.0, campo novo)** texto da descrição da categoria comercial (ex.: "já assados, prontos para aquecimento final", "preparo por fritura") — só leitura, vem do cadastro da categoria; também no catálogo antigo e na ficha (`/congelados/produto/:id/ficha`) | categoria sem descrição ou produto sem categoria |
 | `tamanho` | `P`/`M`/`G`/`GG` lido do nome do sistema (só se estiver exatamente nessa posição) — a etiqueta não tem esse campo | nome fora do padrão |
 | `pesoUnidadeG` | peso unitário em g: `etiqueta.pesoUnitario` → senão o `<peso>GR` do nome | sem etiqueta e nome sem `GR` |
 | `unidade`, `unidades`, `embalagem` | campos antigos (inalterados) | — |
@@ -863,6 +864,7 @@ curl -H "x-ia-api-key: SUACHAVE" -X POST -H "Content-Type: application/json" \
   "Catálogo personalizado (v1.6.5)". **PODE ser tool da IA** — ação transacional a pedido do
   cliente na conversa, diferente de `/cliente/situacao` e `/cliente/buscar` (só painel). Endpoints
   100% novos — nenhum campo de nenhuma resposta existente foi alterado.
+- **1.7.0** (2026-10-08) — O bot da Ana precisa saber se o produto vem pronto para aquecer ou cru. Campo novo `grupoDescricao` no objeto único de produto (catálogo, reconhecer-telefone, meu-catalogo, itens de pedido, produtos-comprados), no catálogo antigo e na ficha; `descricao` nova nos itens de `GET /congelados/grupos`. Tudo aditivo — nada removido/renomeado.
 
 ## Fase 2 — Criação de pedido pela IA (IMPLEMENTADA na v1.4)
 

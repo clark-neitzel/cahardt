@@ -95,6 +95,7 @@ function produtoSitePublico(cp) {
         embalagem: cp.embalagem || 'caixa',
         grupo: cp.produto?.categoriaProduto?.id || null,
         grupoNome: cp.produto?.categoriaProduto?.nome || null,
+        grupoDescricao: cp.produto?.categoriaProduto?.descricao || null, // v1.7.0
         preco,
         destaque: cp.destaque,
         ordem: cp.ordem,
@@ -494,7 +495,7 @@ const congeladosService = {
             const nome = typeof ov === 'string' ? ov : (ov?.nome || c.nome);
             const ordem = (ov && typeof ov === 'object' && ov.ordem != null) ? ov.ordem : (c.ordemExibicao || 0);
             const oculto = ov && typeof ov === 'object' && !!ov.oculto;
-            if (!oculto) map.set(c.id, { id: c.id, nome, ordem });
+            if (!oculto) map.set(c.id, { id: c.id, nome, descricao: c.descricao || null, ordem }); // v1.7.0: + descricao
         });
         return [...map.values()].sort((a, b) => a.ordem - b.ordem);
     },
@@ -520,6 +521,7 @@ const congeladosService = {
             embalagem: cp.embalagem || 'caixa',
             descricao: cp.descricaoSite || p.descricao || '',
             grupoNome: p.categoriaProduto?.nome || null,
+            grupoDescricao: p.categoriaProduto?.descricao || null, // v1.7.0
             imagem: imagemPrincipal(p),
             imagens: imagensProduto(p),
             etiqueta: et ? {
