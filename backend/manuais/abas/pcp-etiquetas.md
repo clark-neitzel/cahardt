@@ -141,7 +141,7 @@ Vale para a etiqueta com **Orientação = Deitada** no cadastro. O rótulo é de
 
 **Mesmo conteúdo da etiqueta ANVISA em pé — nada a mais, nada a menos** — só a composição muda, pensada para o pacote pequeno de gôndola:
 
-1. **Faixa preta no topo só com o nome do produto** (letra Oswald, branca, centralizada). Nome até 18 letras sai grande numa linha; de 19 a 30 letras, em até duas linhas com letra média; acima disso, em duas linhas com letra menor. A faixa cresce um pouco e o resto se acomoda.
+1. **Faixa preta no topo só com o nome do produto** (letra Oswald, branca, centralizada). O nome é ajustado pela largura real da faixa: sai o maior possível numa linha; se não couber, quebra em até duas linhas entre as palavras e vai diminuindo até caber inteiro — nunca é cortado nem recebe reticências. Palavra única muito longa não quebra no meio, só encolhe. Se a faixa crescer, o resto se acomoda.
 2. **Selo branco do PESO LÍQUIDO** dentro da faixa, à direita, com os dígitos grandes (ex.: `0,500 kg`) e, embaixo, a linha de unidades (`aprox. 22 unidades · 22 g` — o mesmo texto "Contém…" da etiqueta em pé, sem a palavra "Contém"). Sem peso líquido, o selo não aparece.
 3. Coluna da esquerda: **selo ALTO EM** (modelo oficial ANVISA, só quando o produto ultrapassa os limites — mesma regra de sempre), **MODO DE PREPARO**, **CONSERVAÇÃO** e **INGREDIENTES** com glúten/lactose/alérgicos em negrito e caixa alta. Sem ícones.
 4. Coluna da direita: a **tabela nutricional** inteira, no modelo vertical da ANVISA, em Arial.

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import JsBarcode from 'jsbarcode';
 import { useAutoFit } from './useAutoFit';
 import {
@@ -26,12 +26,70 @@ const OSWALD = 'Oswald, "Arial Narrow", Arial, sans-serif';
 const MANROPE = 'Manrope, Arial, Helvetica, sans-serif';
 const ARIAL = 'Arial, Helvetica, sans-serif';
 
-// Nome na faixa: regra por tamanho (previsível, igual ao preview aprovado).
-//   até 18 letras → 26 pt numa linha · 19–30 → 21 pt (até 2 linhas) · acima → 17,5 pt
-function estiloNome(nome, sm) {
-    const n = String(nome || '').length;
-    const pt = n <= 18 ? 26 : n <= 30 ? 21 : 17.5;
-    return { fontSize: `${sm ? pt * 0.82 : pt}pt`, whiteSpace: n <= 18 ? 'nowrap' : 'normal' };
+// Nome na faixa: ajuste MEDIDO no DOM (nunca scale/zoom — mesma filosofia do useAutoFit).
+// Parte do tamanho máximo e desce em passos de 0,5 pt até caber na largura real:
+//   1) tenta 1 linha (nowrap) até o limiar de 19 pt;
+//   2) se não couber, libera quebra entre palavras (até 2 linhas) e continua descendo;
+//   3) palavra única longa nunca quebra no meio — só encolhe. Piso: 13 pt (sm: 11 pt).
+// Nada de reticências: o nome aparece sempre inteiro.
+function useAjusteNome(deps) {
+    const nomeRef = useRef(null);
+    useLayoutEffect(() => {
+        const el = nomeRef.current;
+        const caixa = el && el.parentElement;
+        if (!el || !caixa) return;
+        let raf = 0, morto = false;
+        const medir = () => {
+            if (morto || !caixa.clientWidth) return;
+            const sm = el.dataset.sm === '1';
+            const k = sm ? 0.82 : 1;
+            const MAX = 26 * k, LIMIAR = 19 * k, PISO = Math.max(13 * k, sm ? 11 : 13);
+            const aplica = (pt, quebra) => {
+                el.style.fontSize = `${pt}pt`;
+                el.style.whiteSpace = quebra ? 'normal' : 'nowrap';
+                el.style.overflowWrap = 'normal';
+                el.style.wordBreak = 'normal';
+            };
+            const cabe = (pt, quebra) => {
+                aplica(pt, quebra);
+                // Largura REAL do texto (Range) contra a largura útil (sem padding). Os dois lados
+                // saem de getBoundingClientRect, então dividir pela escala do ancestral (preview
+                // com transform) mantém tudo em px de layout.
+                const cs = getComputedStyle(el);
+                const util = el.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0);
+                const rb = el.getBoundingClientRect();
+                const escala = el.offsetWidth ? rb.width / el.offsetWidth : 1;
+                const range = document.createRange();
+                range.selectNodeContents(el);
+                const largTexto = range.getBoundingClientRect().width / (escala || 1);
+                if (largTexto > util + 0.5) return false;
+                // palavra longa sem quebra no modo normal também estoura o scrollWidth
+                if (el.scrollWidth > el.clientWidth + 0.5) return false;
+                if (!quebra) return true;
+                const linhaPx = pt * (96 / 72) * 1.12;
+                return el.scrollHeight <= linhaPx * 2 + 1;
+            };
+            for (let pt = MAX; pt >= LIMIAR - 1e-6; pt -= 0.5) if (cabe(pt, false)) return;
+            for (let pt = MAX; pt >= PISO - 1e-6; pt -= 0.5) if (cabe(pt, true)) return;
+            aplica(PISO, true);
+        };
+        const agenda = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(medir); };
+        medir();
+        // a fonte Oswald chega depois do 1º layout e muda a largura do texto
+        if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if (!morto) medir(); });
+        // se o ready já estava resolvido, a Oswald ainda pode chegar depois (CSS assíncrono)
+        const fontes = document.fonts;
+        if (fontes && fontes.addEventListener) fontes.addEventListener('loadingdone', agenda);
+        let larg = caixa.clientWidth;
+        const ro = new ResizeObserver(() => { if (caixa.clientWidth !== larg) { larg = caixa.clientWidth; agenda(); } });
+        ro.observe(caixa);
+        return () => {
+            morto = true; cancelAnimationFrame(raf); ro.disconnect();
+            if (fontes && fontes.removeEventListener) fontes.removeEventListener('loadingdone', agenda);
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, deps);
+    return nomeRef;
 }
 
 // Selo oficial "ALTO EM" (Anexo XVII / IN 75/2020) — mesmas medidas do layout em pé.
@@ -77,6 +135,7 @@ function SeloAnvisa({ selos, sm }) {
 export default function EtiquetaLabelDeitada({ et, dataFab, dataVal, larguraMM = 120, alturaMM = 100 }) {
     const svgRef = useRef(null);
     const sm = larguraMM <= 100; // rolo pequeno (100×80 deitado)
+    const nomeRef = useAjusteNome([et.nomeProduto, et.pesoPacote, et.quantidadeEmbalagem, et.pesoUnitario, sm, larguraMM]);
     const { boxRef, innerRef, fator } = useAutoFit([et, larguraMM, alturaMM]);
 
     useEffect(() => {
@@ -139,10 +198,9 @@ export default function EtiquetaLabelDeitada({ et, dataFab, dataVal, larguraMM =
                 display: 'flex', alignItems: 'center', gap: sm ? '2mm' : '3mm',
             }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{
+                    <div ref={nomeRef} data-sm={sm ? '1' : '0'} style={{
                         fontFamily: OSWALD, fontWeight: 700, lineHeight: 1.12, textTransform: 'uppercase',
                         letterSpacing: '0.005em', color: '#fff', textAlign: 'center', padding: '0 2mm',
-                        overflow: 'hidden', ...estiloNome(et.nomeProduto, sm),
                     }}>
                         {et.nomeProduto}
                     </div>

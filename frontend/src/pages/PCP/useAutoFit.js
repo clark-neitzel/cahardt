@@ -97,6 +97,8 @@ export function useAutoFit(deps = []) {
             raf = requestAnimationFrame(ajustar);
         });
         ro.observe(inner);
+        // A altura útil (box) também muda quando algo acima dele cresce (ex.: nome em 2 linhas)
+        ro.observe(box);
 
         return () => { cancelAnimationFrame(raf); ro.disconnect(); };
         // eslint-disable-next-line react-hooks/exhaustive-deps
