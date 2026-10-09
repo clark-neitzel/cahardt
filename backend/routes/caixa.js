@@ -19,7 +19,7 @@ const {
 } = require('../services/condicaoRecebimentoService');
 const cfgConferencia = require('../config/caixaConferenciaConfig');
 // Caixa só de segunda a sexta: o movimento de sáb/dom é prestado na segunda.
-const { intervaloDoCaixa, ehFimDeSemana, dataCaixaDe, hojeStr } = require('../utils/diasUteisCaixa');
+const { intervaloDoCaixa, ehFimDeSemana, dataCaixaDe, hojeStr, diaUtilSeguinte } = require('../utils/diasUteisCaixa');
 // Rota "como era no dia" (reconstrói Dia_de_venda/idVendedor pelo audit_log) — usada para
 // não cobrar em caixa retroativo cliente que só entrou na rota depois do dia.
 const rotaHistoricaService = require('../services/rotaHistoricaService');
@@ -818,8 +818,28 @@ router.get('/resumo', async (req, res) => {
         } else {
             clientesDoDia = await rotaHistoricaService.clientesDaRotaNoDia(targetVendedor, data);
         }
+        // Atendimento de COMPENSAÇÃO: a trava de Pendências de Rota obriga o vendedor a
+        // registrar o atendimento (ou "Sem resposta / Ausente") do cliente de ontem ANTES de
+        // iniciar o dia seguinte — então esse registro nasce com a data de HOJE, não a de ontem.
+        // O caixa de ontem tem que enxergá-lo, senão fica "26 clientes sem atendimento" para
+        // sempre e ninguém imprime/fecha o caixa (caso real: Jociel, 09/10/2026). Mesma janela
+        // da trava (atendimentoService.buscarPendenciasRota): até o fim do dia útil seguinte.
+        let atendimentosCompensacao = [];
+        if (clientesDoDia.length > 0) {
+            const ultimoDiaDoCaixa = diasDoCaixaAtual[diasDoCaixaAtual.length - 1];
+            const fimCompensacao = new Date(`${diaUtilSeguinte(ultimoDiaDoCaixa)}T23:59:59.999Z`);
+            atendimentosCompensacao = await prisma.atendimento.findMany({
+                where: {
+                    clienteId: { in: clientesDoDia.map(c => c.clienteId) },
+                    criadoEm: { gt: fimDia, lte: fimCompensacao },
+                    tipo: { not: 'FINANCEIRO' },
+                },
+                select: { clienteId: true }
+            });
+        }
         const atendidosIds = new Set([
             ...atendimentosDia.filter(a => a.clienteId).map(a => a.clienteId),
+            ...atendimentosCompensacao.map(a => a.clienteId),
             ...pedidosDoVendedorDia.map(p => p.clienteId),
             ...entregas.filter(e => e.clienteId).map(e => e.clienteId)
         ]);
