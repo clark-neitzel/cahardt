@@ -98,6 +98,22 @@ function montarLinhaPedido(p, resolverTipo) {
     };
 }
 
+// Dia útil anterior cobrado pela trava de Pendências de Rota (fonte única da regra).
+// Retorna { hojeISO, diaAnteriorISO, sigla } ou null quando não há o que cobrar.
+const DATA_INICIO_REGRA_PENDENCIA = '2026-04-15';
+const SIGLAS_DIA = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
+function diaUtilAnteriorPendencia() {
+    const hojeISO = getDataReferencia();
+    if (hojeISO < DATA_INICIO_REGRA_PENDENCIA) return null;
+    const dow = diaSemana(hojeISO);
+    if (dow === 0 || dow === 6) return null;
+    const d = fromStr(hojeISO);
+    d.setDate(d.getDate() - (dow === 1 ? 3 : 1));
+    const diaAnteriorISO = toStr(d);
+    if (diaAnteriorISO < DATA_INICIO_REGRA_PENDENCIA) return null;
+    return { hojeISO, diaAnteriorISO, sigla: SIGLAS_DIA[diaSemana(diaAnteriorISO)] };
+}
+
 const atendimentoService = {
 
     // Registra um atendimento (para Lead ou Cliente)
@@ -107,7 +123,32 @@ const atendimentoService = {
             acaoKey, acaoLabel, transferidoParaId,
             assuntoRetorno, dataRetorno,
             alertaVisualAtivo, alertaVisualCor,
-            amostraId, usuarioRegistroId } = data;
+            amostraId, usuarioRegistroId, pendenciaRota, permissoesUsuario } = data;
+
+        // Justificativa obrigatória em atendimento de pendência de rota (09/10/2026).
+        // Vale pela flag do front OU, sem depender dela, se o cliente está na pendência de ontem.
+        if (((observacao || '').trim().length) < 10) {
+            let exige = pendenciaRota === true;
+            // Reforço sem flag: só para o próprio vendedor logado (escritório registrando em nome
+            // de outro não está no fluxo de pendência) e nunca para admin/Isento_Ponto.
+            const pn = typeof permissoesUsuario === 'string'
+                ? (() => { try { return JSON.parse(permissoesUsuario); } catch { return {}; } })()
+                : (permissoesUsuario || {});
+            const isento = !!(pn.admin || pn.Isento_Ponto);
+            if (!exige && !isento && clienteId && idVendedor && usuarioRegistroId === idVendedor) {
+                try {
+                    exige = await atendimentoService.clienteEstaPendenteRota(idVendedor, clienteId);
+                } catch (e) {
+                    console.error('[atendimentoService.registrar] checagem de pendência falhou:', e.message);
+                }
+            }
+            if (exige) {
+                const err = new Error('Justifique este atendimento: explique por que o cliente não foi atendido no dia.');
+                err.status = 400;
+                err.codigo = 'JUSTIFICATIVA_OBRIGATORIA';
+                throw err;
+            }
+        }
 
         // Se for lead, atualizar a etapa e próxima visita
         if (leadId && etapaNova) {
@@ -359,33 +400,10 @@ const atendimentoService = {
     // Retorna clientes sem atendimento/pedido do dia útil anterior (somente ontem, ou sexta se segunda)
     // Regra ativa a partir de 2026-04-16
     buscarPendenciasRota: async (vendedorId) => {
-        const SIGLAS = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
-        const DATA_INICIO_REGRA = '2026-04-15'; // YYYY-MM-DD — comparação lexicográfica é segura no formato ISO
-
-        // Datas resolvidas em 'YYYY-MM-DD' no fuso de Brasília (nunca no fuso do servidor:
-        // o container roda em UTC, e perto da virada — 21h-23h59 em Brasília — o servidor já
-        // está no dia seguinte em UTC; um `new Date().setHours(0,0,0,0)` puro apontaria pro
-        // dia errado). `fromStr`/`toStr`/`diaSemana` (diasUteisCaixa.js) fazem a aritmética de
-        // dias em cima da string, sempre ao meio-dia — seguro contra qualquer fuso do host.
-        const hojeISO = getDataReferencia();
-
-        // Se hoje é antes da data de início da regra, sem pendências
-        if (hojeISO < DATA_INICIO_REGRA) return { pendente: false };
-
-        // Determina o dia útil anterior: ontem, ou sexta se hoje é segunda
-        // Se hoje é domingo ou sábado, não cobra (não deveria estar trabalhando)
-        const dow = diaSemana(hojeISO); // 0=dom, 6=sáb
-        if (dow === 0 || dow === 6) return { pendente: false };
-
-        const diaAnteriorDate = fromStr(hojeISO);
-        // Segunda → verifica sexta (3 dias atrás); Ter-Sex → verifica ontem
-        diaAnteriorDate.setDate(diaAnteriorDate.getDate() - (dow === 1 ? 3 : 1));
-        const diaAnteriorISO = toStr(diaAnteriorDate);
-
-        // Se o dia anterior é antes da regra, sem pendências
-        if (diaAnteriorISO < DATA_INICIO_REGRA) return { pendente: false };
-
-        const sigla = SIGLAS[diaSemana(diaAnteriorISO)];
+        // Datas em 'YYYY-MM-DD' no fuso de Brasília (regra única em diaUtilAnteriorPendencia).
+        const ref = diaUtilAnteriorPendencia();
+        if (!ref) return { pendente: false };
+        const { hojeISO, diaAnteriorISO, sigla } = ref;
 
         // Busca clientes do vendedor que têm esse dia na rota
         const clientes = await prisma.cliente.findMany({
@@ -460,6 +478,26 @@ const atendimentoService = {
                 pendentes: clientesPendentes.length,
             },
         };
+    },
+
+    // Checagem barata: este cliente específico está na pendência de ontem do vendedor?
+    clienteEstaPendenteRota: async (vendedorId, clienteId) => {
+        const ref = diaUtilAnteriorPendencia();
+        if (!ref) return false;
+        const cli = await prisma.cliente.findFirst({
+            where: { UUID: clienteId, idVendedor: vendedorId, Ativo: true, Dia_de_venda: { not: null } },
+            select: { Dia_de_venda: true },
+        });
+        if (!cli) return false;
+        const dias = (cli.Dia_de_venda || '').toUpperCase().split(',').map(d => d.trim());
+        if (!dias.includes(ref.sigla)) return false;
+        const inicioDia = new Date(`${ref.diaAnteriorISO}T00:00:00.000-03:00`);
+        const fimHoje = new Date(`${ref.hojeISO}T23:59:59.999-03:00`);
+        const [nAt, nPed] = await Promise.all([
+            prisma.atendimento.count({ where: { clienteId, criadoEm: { gte: inicioDia, lte: fimHoje }, tipo: { not: 'FINANCEIRO' } } }),
+            prisma.pedido.count({ where: { clienteId, createdAt: { gte: inicioDia, lte: fimHoje } } }),
+        ]);
+        return nAt === 0 && nPed === 0;
     },
 
     excluir: async (id) => {

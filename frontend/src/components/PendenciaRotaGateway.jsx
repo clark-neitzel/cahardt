@@ -361,6 +361,7 @@ const PendenciaRotaGateway = () => {
                     onSalvo={handleAtendimentoSalvo}
                     vendedorId={user?.id}
                     onAbrirAmostra={() => {}}
+                    exigeJustificativa
                 />
             )}
         </div>

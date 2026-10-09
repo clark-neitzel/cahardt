@@ -36,7 +36,7 @@ const ACOES_PADRAO_LEAD = [
 
 const ETAPAS = ['NOVO', 'VISITA', 'PEDIDO', 'FINALIZADO'];
 
-const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId, onAbrirAmostra }) => {
+const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId, onAbrirAmostra, exigeJustificativa = false }) => {
     const { tipo, item } = dados; // tipo: 'lead' | 'cliente'
     const isLead = tipo === 'lead';
 
@@ -237,6 +237,11 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId, onAbrirAmostra 
             toast.error('GPS obrigatório. Aguarde a captura ou tente novamente.');
             return;
         }
+        // Pendência de rota de ontem: justificativa escrita obrigatória (qualquer tipo/ação)
+        if (exigeJustificativa && (form.observacao || '').trim().length < 10) {
+            toast.error('Justifique este atendimento: explique por que o cliente não foi atendido no dia.', { duration: 6000 });
+            return;
+        }
         // Validações dinâmicas por ação
         if (acaoSelecionada?.obrigaObservacao && !form.observacao?.trim()) {
             toast.error('A observação é obrigatória para esta ação.');
@@ -313,11 +318,15 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId, onAbrirAmostra 
                 alertaVisualAtivo: !!acaoSelecionada?.criaAlertaVisual,
                 alertaVisualCor: acaoSelecionada?.criaAlertaVisual ? acaoSelecionada?.cor : null,
                 amostraId: amostraId || null,
+                ...(exigeJustificativa && { pendenciaRota: true }),
             });
             onSalvo();
         } catch (e) {
             console.error(e);
-            toast.error('Erro ao registrar atendimento.', { duration: 5000 });
+            const msg = e?.response?.data?.codigo === 'JUSTIFICATIVA_OBRIGATORIA' && e.response.data.error
+                ? e.response.data.error
+                : 'Erro ao registrar atendimento.';
+            toast.error(msg, { duration: 5000 });
         } finally {
             setSaving(false);
         }
@@ -530,18 +539,23 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId, onAbrirAmostra 
                     <div>
                         <div className="flex items-center justify-between mb-1.5">
                             <label className="block text-[13px] font-semibold text-gray-700">
-                                Observação {acaoSelecionada?.obrigaObservacao ? '*' : ''}
+                                Observação {(acaoSelecionada?.obrigaObservacao || exigeJustificativa) ? '*' : ''}
                             </label>
                             <MicButton field="observacao" />
                         </div>
+                        {exigeJustificativa && (
+                            <div className="mb-2 bg-amber-50 border border-amber-200 text-amber-800 text-[12px] rounded-lg px-3 py-2">
+                                Atendimento de pendência de ontem — a justificativa é obrigatória.
+                            </div>
+                        )}
                         <textarea
                             value={form.observacao}
                             onChange={e => setForm(f => ({ ...f, observacao: e.target.value }))}
                             rows={3}
-                            placeholder={isListening && listeningField === 'observacao' ? 'Fale agora...' : 'O que aconteceu neste atendimento?'}
+                            placeholder={isListening && listeningField === 'observacao' ? 'Fale agora...' : (exigeJustificativa ? 'Justificativa obrigatória (mín. 10 caracteres): por que o cliente não foi atendido no dia?' : 'O que aconteceu neste atendimento?')}
                             className={`block w-full border rounded-lg p-3 text-[14px] resize-none transition-colors ${isListening && listeningField === 'observacao'
                                 ? 'border-red-400 bg-red-50/30 ring-1 ring-red-400'
-                                : acaoSelecionada?.obrigaObservacao && !form.observacao?.trim()
+                                : (acaoSelecionada?.obrigaObservacao && !form.observacao?.trim()) || (exigeJustificativa && (form.observacao || '').trim().length < 10)
                                     ? 'border-red-300 bg-white focus:ring-red-500 focus:border-red-500'
                                     : 'border-gray-300 bg-white focus:ring-blue-500 focus:border-blue-500'
                                 }`}

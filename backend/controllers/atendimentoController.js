@@ -5,10 +5,14 @@ const atendimentoController = {
         try {
             const atendimento = await atendimentoService.registrar({
                 ...req.body,
-                usuarioRegistroId: req.user?.id || null
+                usuarioRegistroId: req.user?.id || null,
+                permissoesUsuario: req.user?.permissoes || null
             });
             res.status(201).json(atendimento);
         } catch (error) {
+            if (error.status === 400) {
+                return res.status(400).json({ error: error.message, codigo: error.codigo });
+            }
             console.error('[atendimentoController.registrar]', error);
             res.status(500).json({ error: 'Erro ao registrar atendimento.' });
         }
