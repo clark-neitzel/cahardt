@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Código de barras vem do cadastro — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp (sem og:image de propósito: cartão compacto) -->
+<meta property="og:title" content="🏷️ Etiqueta: o código de barras agora vem do cadastro de Produtos">
+<meta property="og:description" content="Não dá mais para digitar o código de barras na etiqueta. Ele vem do cadastro de Produtos. Se precisar trocar, troque lá. O leitor do Ajuste de Estoque passa a achar o produto certo.">
+<meta property="og:type" content="website">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --primary: #00754A; --primary-dark: #006241; --house: #1E3932;
+    --mint: #d4e9e2; --cream: #f2f0eb; --gold: #cba258;
+    --ink: rgba(0,0,0,.87); --ink-soft: #5f6b66; letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--cream); color: var(--ink);
+    font-family: Manrope, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55; -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  .hero { background: linear-gradient(168deg, var(--house) 0%, #16302a 100%); color: #fff; padding: 40px 16px 96px; }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow { display: inline-block; background: var(--gold); color: #2b230f; font-size: 11px; font-weight: 800;
+    text-transform: uppercase; letter-spacing: .14em; padding: 6px 14px; border-radius: 999px; margin-bottom: 18px; }
+  .hero h1 { font-size: clamp(26px, 6.6vw, 38px); font-weight: 800; line-height: 1.12; margin: 0 0 12px; text-wrap: balance; }
+  .hero p { color: rgba(255,255,255,.78); font-size: 16px; max-width: 48ch; margin: 0 auto; text-wrap: balance; }
+
+  /* mock da etiqueta flutuando sobre o hero */
+  .mock { max-width: 460px; margin: -70px auto 30px; background: #fff; border-radius: 20px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.28); overflow: hidden; padding: 14px; }
+  .mock .lbl { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .12em; color: var(--ink-soft); margin-bottom: 10px; text-align: center; }
+
+  /* ── a etiqueta deitada em miniatura (proporção 120 × 100) ── */
+  .rot { width: 100%; aspect-ratio: 120 / 100; background: #fff; color: #000; border: 1px solid #ddd; border-radius: 6px;
+    padding: 2.5%; display: flex; flex-direction: column; font-family: Manrope, Arial, sans-serif; font-size: 7px; line-height: 1.25; overflow: hidden; }
+  .faixa { background: #000; color: #fff; border-radius: 6px; padding: 5% 3%; display: flex; align-items: center; gap: 3%; }
+  .faixa .nome { flex: 1; text-align: center; font-family: Oswald, "Arial Narrow", sans-serif; font-weight: 700; font-size: 20px; text-transform: uppercase; letter-spacing: .01em; line-height: 1; }
+  .peso { background: #fff; color: #000; border-radius: 5px; padding: 4px 8px; text-align: center; min-width: 88px; }
+  .peso .l { font-size: 6px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
+  .peso .v { font-family: Oswald, sans-serif; font-size: 15px; font-weight: 600; line-height: 1; margin-top: 2px; }
+  .peso .u { font-size: 6px; font-weight: 700; margin-top: 2px; white-space: nowrap; }
+  .corpo { flex: 1; display: flex; gap: 3%; padding-top: 3%; min-height: 0; }
+  .esq { width: 50%; }
+  .selo { display: inline-flex; gap: 3px; border: 1.5px solid #000; border-radius: 5px; padding: 2px; margin-bottom: 5px; font-family: Arial, sans-serif; }
+  .selo .lupa { border: 1px solid #000; border-radius: 4px; padding: 2px 5px; font-weight: 900; font-size: 7px; }
+  .selo .teor { background: #000; color: #fff; border-radius: 3px; padding: 2px 6px; font-weight: 800; font-size: 6px; display: flex; align-items: center; }
+  .t { font-size: 5.5px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; margin-top: 4px; }
+  .d { font-size: 6.2px; font-weight: 600; }
+  .ingr { border-top: 1px solid #000; margin-top: 5px; padding-top: 4px; font-size: 5.8px; }
+  .dir { flex: 1; }
+  .tab { border: 1.2px solid #000; font-family: Arial, sans-serif; font-size: 5.6px; }
+  .tab .tit { text-align: center; font-weight: 800; font-size: 6.5px; border-bottom: 1.2px solid #000; padding: 2px 0; }
+  .tab .porc { padding: 2px 4px; font-weight: 600; border-bottom: 1.2px solid #000; }
+  .tab table { width: 100%; border-collapse: collapse; }
+  .tab td { border-bottom: .6px solid #000; padding: 1.2px 3px; text-align: center; }
+  .tab td:first-child { text-align: left; }
+  .rodape { border-top: 1.5px solid #000; margin-top: 5px; padding-top: 5px; display: flex; align-items: center; justify-content: space-between; }
+  .data .l { font-size: 5.5px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
+  .data .v { font-family: Oswald, sans-serif; font-size: 11px; font-weight: 600; line-height: 1; margin-top: 2px; }
+  .barras { height: 22px; width: 90px; background: repeating-linear-gradient(90deg, #000 0 1.5px, #fff 1.5px 3px, #000 3px 4px, #fff 4px 6.5px); }
+
+  h2.sec { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: .12em; color: var(--primary-dark); margin: 34px 0 14px; }
+
+  .acc { background: #fff; border: 1px solid #e9e6df; border-radius: 14px; margin-bottom: 12px; overflow: hidden; }
+  .acc-head { width: 100%; display: flex; align-items: center; gap: 12px; padding: 15px 16px; background: none; border: 0; cursor: pointer; text-align: left; font: inherit; color: inherit; }
+  .acc-ico { width: 38px; height: 38px; flex: 0 0 auto; border-radius: 11px; background: var(--mint); display: flex; align-items: center; justify-content: center; font-size: 19px; }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul, .acc-corpo ol { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  /* Telas do app (mockups com pins) */
+  .tela { background: #fff; border: 1px solid #e9e6df; border-radius: 16px; overflow: hidden; margin-bottom: 20px; }
+  .tela-titulo { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid #eee; font-weight: 700; }
+  .tela-num { width: 26px; height: 26px; border-radius: 999px; background: var(--gold); color: #2b230f; font-size: 13px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .app-card { background: #fff; border: 1px solid #e5e2db; border-radius: 12px; overflow: hidden; }
+  .app-card + .app-card { margin-top: 10px; }
+  .app-card-body { padding: 12px 14px; }
+  .linha { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .nome-prod { font-weight: 700; font-size: 14px; }
+  .cod { font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: var(--primary-dark); }
+  .meta { font-size: 12.5px; color: var(--ink-soft); margin-top: 3px; }
+  .badge { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px; background: #dcfce7; color: #166534; }
+  .btn-o { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; border: 1px solid #d3d0c8; background: #fff; color: #56605b; margin-top: 10px; }
+  .btn-o.on { background: var(--mint); color: var(--primary-dark); border-color: var(--primary); }
+  .btn-o svg { width: 14px; height: 14px; }
+  .acoes { display: flex; gap: 10px; color: #8a938f; font-size: 15px; margin-top: 10px; }
+  .seg { display: inline-flex; border: 1px solid #d3d0c8; border-radius: 999px; overflow: hidden; margin-top: 6px; }
+  .seg span { display: inline-flex; align-items: center; gap: 6px; padding: 9px 14px; font-size: 13px; font-weight: 700; color: #56605b; background: #fff; }
+  .seg span + span { border-left: 1px solid #d3d0c8; }
+  .seg span.on { background: var(--primary); color: #fff; }
+  .seg svg { width: 14px; height: 14px; }
+  .campo-lbl { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-soft); margin: 12px 0 4px; display: flex; align-items: center; gap: 7px; }
+  .campo-lbl:first-child { margin-top: 0; }
+  .ajuda { font-size: 12px; color: var(--ink-soft); margin-top: 5px; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 999px; background: var(--mint); color: var(--primary-dark); font-size: 12px; font-weight: 700; }
+  .chip svg { width: 14px; height: 14px; }
+  .pills { display: flex; gap: 8px; flex-wrap: wrap; }
+  .pill { padding: 8px 13px; border-radius: 999px; font-size: 12px; font-weight: 700; border: 1px solid #d3d0c8; background: #fff; color: #56605b; }
+  .pill.on { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .pin { width: 18px; height: 18px; flex: 0 0 auto; border-radius: 999px; background: var(--gold); color: #2b230f; font-size: 11px; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; vertical-align: middle; }
+  .legenda { margin: 12px 0 0; padding: 0; list-style: none; }
+  .legenda li { display: flex; gap: 10px; align-items: flex-start; font-size: 13.5px; color: var(--ink-soft); margin-bottom: 8px; }
+  .legenda b { color: var(--ink); }
+  .passos { counter-reset: p; padding: 0; margin: 0; list-style: none; }
+  .passos li { position: relative; padding-left: 40px; margin-bottom: 14px; font-size: 14.5px; }
+  .passos li::before { counter-increment: p; content: counter(p); position: absolute; left: 0; top: 0; width: 28px; height: 28px; border-radius: 999px; background: var(--primary); color: #fff; font-weight: 800; font-size: 13px; display: flex; align-items: center; justify-content: center; }
+  .rodape-pg { text-align: center; color: #8a938f; font-size: 12px; margin-top: 34px; }
+</style>
+</head>
+<body>
+<div class="hero"><div class="hero-inner">
+  <span class="eyebrow">Novidade · Etiquetas</span>
+  <h1>Código de barras vem do cadastro</h1>
+  <p>Na etiqueta, o código de barras não é mais digitado. Ele vem do cadastro de <b>Produtos</b>, uma fonte só, igual para todo mundo.</p>
+</div></div>
+<div class="wrap">
+  <div class="acc aberto" style="margin-top:24px">
+    <button class="acc-head" type="button"><span class="acc-ico">🔒</span><strong>O que mudou</strong><span class="acc-seta">▼</span></button>
+    <div class="acc-corpo"><ul>
+      <li>Ao escolher o produto na etiqueta, o campo <b>Código de Barras</b> fica bloqueado e já mostra o código do cadastro.</li>
+      <li>Trocou o produto? O código acompanha sozinho.</li>
+      <li>Precisa mudar o código? Abra <b>Produtos</b>, edite o produto e salve. A etiqueta passa a usar o novo.</li>
+    </ul></div>
+  </div>
+  <div class="acc aberto">
+    <button class="acc-head" type="button"><span class="acc-ico">📷</span><strong>Por que fizemos isso</strong><span class="acc-seta">▼</span></button>
+    <div class="acc-corpo">
+      <p>Havia etiquetas com código diferente do cadastro e códigos repetidos. Resultado: o leitor do <b>Ajuste de Estoque</b> às vezes caía no produto errado.</p>
+      <p>Agora o código é um só, e o leitor acha o produto certo.</p>
+    </div>
+  </div>
+  <h2 class="sec">As telas do app</h2>
+  <div class="tela">
+    <div class="tela-titulo"><span class="tela-num">1</span>PCP → Etiquetas → editar etiqueta</div>
+    <div class="tela-corpo"><div class="app-card"><div class="app-card-body">
+      <div class="campo-lbl"><span class="pin">1</span>Produto vinculado</div>
+      <div style="border:1px solid #d3d0c8;border-radius:8px;padding:9px 12px;font-size:13px;background:#fff">COXINHA FRANGO 500GR</div>
+      <div class="campo-lbl"><span class="pin">2</span>Código de Barras (EAN)</div>
+      <div style="border:1px solid #d3d0c8;border-radius:8px;padding:9px 12px;font-size:13px;background:#f1f1ef;color:#4b5550">7898620330460</div>
+      <div class="ajuda"><span class="pin">3</span> Vem do cadastro de Produtos. Para trocar, edite o produto.</div>
+      <div class="campo-lbl"><span class="pin">4</span>Produto sem código no cadastro</div>
+      <div style="border:1px solid #d3d0c8;border-radius:8px;padding:9px 12px;font-size:13px;background:#f1f1ef;color:#9aa5a0">Sem código no cadastro</div>
+      <div class="ajuda" style="color:#b45309">Este produto não tem código de barras no cadastro. A etiqueta sairá sem código até ele ser preenchido em Produtos.</div>
+    </div></div></div>
+    <ul class="legenda" style="padding:0 16px 16px">
+      <li><span class="pin">1</span><span>Escolha o produto como sempre.</span></li>
+      <li><span class="pin">2</span><span><b>Campo bloqueado</b>: mostra o código do cadastro, não aceita digitação.</span></li>
+      <li><span class="pin">3</span><span>Para trocar o código, vá em <b>Produtos</b> e edite o produto.</span></li>
+      <li><span class="pin">4</span><span>Se o produto não tem código, aparece o aviso em laranja e a lista de etiquetas mostra o selo <b>"sem EAN no cadastro"</b>.</span></li>
+    </ul>
+  </div>
+  <p class="rodape-pg">Hardt App · outubro/2026</p>
+</div>
+<script>
+  document.querySelectorAll('.acc-head').forEach(b => b.addEventListener('click', () => b.parentElement.classList.toggle('aberto')));
+</script>
+</body>
+</html>

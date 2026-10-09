@@ -52,7 +52,7 @@ router.get('/ping', (req, res) => {
         ok: true,
         // Marcador de deploy: bumpar a cada mudança de backend que precise de confirmação
         // em produção (não há outro jeito de saber de fora qual versão está no ar).
-        deployMarker: 'pendencia-justificativa-2026-10-09',
+        deployMarker: 'etiqueta-ean-2026-10-09',
         uptimeSegundos: Math.round(process.uptime()),
         timestamp: new Date().toISOString(),
         openaiConfigurada: !!process.env.OPENAI_API_KEY,
@@ -64,6 +64,40 @@ router.get('/ping', (req, res) => {
         botWhatsappConfigurado: !!(process.env.BOT_WHATSAPP_URL && process.env.BOT_WHATSAPP_API_KEY),
         node: process.version,
     });
+});
+
+// POST /api/admin-exec/etiquetas-sincronizar-ean[?aplicar=1]
+// Produto.ean é a fonte única do código de barras. Alinha a coluna etiquetas_produtos.codigo_barras
+// ao EAN do produto vinculado. Sem ?aplicar=1 só SIMULA. `semEan` = etiquetas vinculadas a produto
+// sem EAN (ficam sem código impresso até o cadastro do produto receber o EAN); ao aplicar, a coluna
+// delas é zerada para ficar coerente com o GET.
+router.post('/etiquetas-sincronizar-ean', async (req, res) => {
+    try {
+        const aplicar = req.query.aplicar === '1';
+        const ets = await prisma.etiquetaProduto.findMany({
+            where: { produtoId: { not: null } },
+            select: { id: true, codigoProduto: true, nomeProduto: true, codigoBarras: true, ativo: true, produto: { select: { ean: true } } },
+        });
+        const alteradas = [];
+        const semEan = [];
+        for (const et of ets) {
+            const ean = et.produto?.ean ? String(et.produto.ean).trim() : '';
+            if (!ean) {
+                semEan.push({ etiquetaId: et.id, codigoProduto: et.codigoProduto, nomeProduto: et.nomeProduto, ativo: et.ativo, codigoBarrasGravado: et.codigoBarras || null, zerada: !!(aplicar && et.codigoBarras) });
+                // Coluna coerente com o GET (produto sem EAN => sem código)
+                if (aplicar && et.codigoBarras) await prisma.etiquetaProduto.update({ where: { id: et.id }, data: { codigoBarras: null } });
+                continue;
+            }
+            if ((et.codigoBarras || '') !== ean) {
+                alteradas.push({ etiquetaId: et.id, codigoProduto: et.codigoProduto, nomeProduto: et.nomeProduto, antes: et.codigoBarras || null, depois: ean });
+                if (aplicar) await prisma.etiquetaProduto.update({ where: { id: et.id }, data: { codigoBarras: ean } });
+            }
+        }
+        res.json({ simulacao: !aplicar, total: alteradas.length, alteradas, semEan });
+    } catch (err) {
+        console.error('[AdminExec] etiquetas-sincronizar-ean:', err.message);
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // GET /api/admin-exec/diag-comissao-projecao?mes=YYYY-MM[&vendedorId=xxx]

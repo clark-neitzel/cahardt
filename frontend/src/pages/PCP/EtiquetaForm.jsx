@@ -124,6 +124,15 @@ export default function EtiquetaForm() {
     const [produtos, setProdutos] = useState([]);
     const [etiquetasExistentes, setEtiquetasExistentes] = useState([]);
     const [salvando, setSalvando] = useState(false);
+    // Produto que veio gravado na etiqueta (GET /:id) — vale enquanto o usuário não trocar o produto
+    const [produtoOriginal, setProdutoOriginal] = useState(null);
+    const produtoSel = produtos.find(p => String(p.id) === String(form.produtoId));
+    const usaOriginal = produtoOriginal && String(produtoOriginal.id) === String(form.produtoId);
+    const eanProduto = usaOriginal
+        ? produtoOriginal.ean
+        : (produtoSel?.ean ? String(produtoSel.ean) : '');
+    // só alerta "sem EAN" quando sabemos de fato qual é o produto (original carregado ou achado na lista)
+    const produtoConhecido = usaOriginal || Boolean(produtoSel);
 
     useEffect(() => {
         produtoService.listar({ ativo: true, limit: 2000, page: 1 }).then(r => {
@@ -138,6 +147,10 @@ export default function EtiquetaForm() {
     useEffect(() => {
         if (!editando) return;
         etiquetaService.buscar(id).then(et => {
+            if (et.produtoId) {
+                const eanGet = et.produto?.ean ?? (et.codigoBarrasOrigem === 'produto' ? et.codigoBarras : null);
+                setProdutoOriginal({ id: et.produtoId, ean: eanGet ? String(eanGet) : '' });
+            }
             setForm({
                 ...VAZIO,
                 ...et,
@@ -256,7 +269,17 @@ export default function EtiquetaForm() {
                             )}
                         </Campo>
                         <Campo label="Código de Barras (EAN)">
-                            <input type="text" value={form.codigoBarras} onChange={e => set('codigoBarras', e.target.value)} className={inputCls} placeholder="Ex: 7898620330460" />
+                            {form.produtoId ? (
+                                <>
+                                    <input type="text" readOnly value={eanProduto} className={`${inputCls} bg-gray-100 text-gray-700 cursor-not-allowed`} placeholder="Sem código no cadastro" />
+                                    <p className="mt-1 text-xs text-gray-500">Vem do cadastro de Produtos. Para trocar, edite o produto.</p>
+                                    {!eanProduto && produtoConhecido && (
+                                        <p className="mt-1 text-xs text-amber-700">Este produto não tem código de barras no cadastro. A etiqueta sairá sem código até ele ser preenchido em Produtos.</p>
+                                    )}
+                                </>
+                            ) : (
+                                <input type="text" value={form.codigoBarras} onChange={e => set('codigoBarras', e.target.value)} className={inputCls} placeholder="Ex: 7898620330460" />
+                            )}
                         </Campo>
                         <Campo label="Tipo de Produto">
                             <input type="text" value={form.tipoProduto} onChange={e => set('tipoProduto', e.target.value)} className={inputCls} placeholder="Ex: Mini - Fritar" />

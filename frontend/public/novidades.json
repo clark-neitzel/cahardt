@@ -1,5 +1,11 @@
 [
   {
+    "slug": "etiqueta-ean-cadastro",
+    "titulo": "Código de barras vem do cadastro",
+    "resumo": "O código de barras da etiqueta agora vem sempre do cadastro de Produtos e não pode mais ser digitado na etiqueta. Para trocar, edite o produto. Assim o leitor do Ajuste de Estoque acha o produto certo.",
+    "data": "2026-10-09"
+  },
+  {
     "slug": "ajuste-estoque-bipe",
     "titulo": "Ajuste de Estoque com leitor",
     "resumo": "No Ajuste de Estoque, Enter na quantidade abre uma janela verde (entrada) ou vermelha (saída) para confirmar com Enter ou cancelar com Esc. Com leitor de código de barras USB, bipe o pacote para escolher o produto (bipar de novo soma +1) e vincule códigos novos. No computador a lista rola e o painel de lançamento fica parado, mesmo com zoom.",

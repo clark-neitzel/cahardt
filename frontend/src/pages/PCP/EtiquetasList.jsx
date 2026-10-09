@@ -287,6 +287,11 @@ function EtiquetaCard({ et, onPrint }) {
                     <BarcodeEl value={et.codigoBarras} height={22} />
                 </div>
             )}
+            {!et.codigoBarras && et.produtoId && (
+                <div className="border-t pt-2">
+                    <span className="inline-block px-2 py-0.5 text-xs font-semibold rounded-full bg-amber-100 text-amber-700">sem EAN no cadastro</span>
+                </div>
+            )}
             <button
                 onClick={e => { e.stopPropagation(); onPrint(et); }}
                 className="w-full flex items-center justify-center gap-2 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 transition-colors"

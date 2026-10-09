@@ -355,7 +355,7 @@ function produtoParaIA({ produto, cp = null, etiqueta = null, promo = null, prep
         // Dados da etiqueta ativa úteis para perguntas do tipo "tem glúten?"/"tem lactose?"/
         // "como guardar?". null quando não há etiqueta cadastrada para o produto.
         etiqueta: etiqueta ? {
-            codigoBarras: etiqueta.codigoBarras || null,
+            codigoBarras: String(p?.ean || '').trim() || etiqueta.codigoBarras || null, // EAN do cadastro de Produtos é a fonte única; etiqueta só reserva
             alergenos: Array.isArray(etiqueta.alergenos) ? etiqueta.alergenos : [],
             contemGluten: !!etiqueta.contemGluten,
             contemLactose: !!etiqueta.contemLactose,

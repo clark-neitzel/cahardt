@@ -30,10 +30,10 @@ router.get('/', async (req, res) => {
 
         const lista = await prisma.etiquetaProduto.findMany({
             where,
-            include: { produto: { select: { id: true, nome: true, codigo: true, validadeDias: true, quantidadePorCaixa: true, categoriaProduto: { select: { id: true, nome: true } } } } },
+            include: { produto: { select: { id: true, nome: true, codigo: true, ean: true, validadeDias: true, quantidadePorCaixa: true, categoriaProduto: { select: { id: true, nome: true } } } } },
             orderBy: { nomeProduto: 'asc' },
         });
-        return res.json(lista);
+        return res.json(lista.map(resolverCodigoBarras));
     } catch (err) {
         console.error('[Etiqueta] listar:', err.message);
         return res.status(500).json({ error: err.message });
@@ -48,10 +48,10 @@ router.get('/:id', async (req, res) => {
 
         const item = await prisma.etiquetaProduto.findUnique({
             where: { id: req.params.id },
-            include: { produto: { select: { id: true, nome: true, codigo: true, validadeDias: true, quantidadePorCaixa: true, categoriaProduto: { select: { id: true, nome: true } } } } },
+            include: { produto: { select: { id: true, nome: true, codigo: true, ean: true, validadeDias: true, quantidadePorCaixa: true, categoriaProduto: { select: { id: true, nome: true } } } } },
         });
         if (!item) return res.status(404).json({ error: 'Etiqueta não encontrada.' });
-        return res.json(item);
+        return res.json(resolverCodigoBarras(item));
     } catch (err) {
         console.error('[Etiqueta] detalhe:', err.message);
         return res.status(500).json({ error: err.message });
@@ -64,7 +64,7 @@ router.post('/', async (req, res) => {
         const perms = await getPerms(req.user.id);
         if (!temPerm(perms)) return res.status(403).json({ error: 'Sem permissão.' });
 
-        const data = sanitize(req.body);
+        const data = await sanitize(req.body);
         const item = await prisma.etiquetaProduto.create({ data });
         return res.status(201).json(item);
     } catch (err) {
@@ -81,7 +81,7 @@ router.put('/:id', async (req, res) => {
         const perms = await getPerms(req.user.id);
         if (!temPerm(perms)) return res.status(403).json({ error: 'Sem permissão.' });
 
-        const data = sanitize(req.body);
+        const data = await sanitize(req.body);
         const item = await prisma.etiquetaProduto.update({ where: { id: req.params.id }, data });
         return res.json(item);
     } catch (err) {
@@ -169,7 +169,25 @@ function gramasOuNull(v) {
     return r.gramas;
 }
 
-function sanitize(body) {
+// Fonte ÚNICA do código de barras: Produto.ean. Etiqueta vinculada a produto usa SEMPRE o EAN do
+// cadastro (produto sem EAN => sem código, até preencher em Produtos). O valor gravado na própria
+// etiqueta só vale para etiqueta SEM produto vinculado.
+function resolverCodigoBarras(et) {
+    if (et.produtoId || et.produto) {
+        const ean = String(et.produto?.ean || '').trim();
+        return { ...et, codigoBarras: ean || null, codigoBarrasOrigem: ean ? 'produto' : null };
+    }
+    return { ...et, codigoBarrasOrigem: et.codigoBarras ? 'etiqueta' : null };
+}
+
+async function sanitize(body) {
+    // Produto vinculado: ignora o digitado e grava o EAN do cadastro (a coluna é lida por SQL cru
+    // em estoqueRoutes e pelo iaProdutoSerializer). Produto sem EAN -> null.
+    let codigoBarras = body.codigoBarras || null;
+    if (body.produtoId) {
+        const prod = await prisma.produto.findUnique({ where: { id: body.produtoId }, select: { ean: true } });
+        codigoBarras = prod?.ean && String(prod.ean).trim() ? String(prod.ean).trim() : null;
+    }
     return {
         produtoId:             body.produtoId             || null,
         codigoProduto:         String(body.codigoProduto  || ''),
@@ -195,7 +213,7 @@ function sanitize(body) {
         ...(body.pesoPacote !== undefined ? { pesoPacote: gramasOuNull(body.pesoPacote) } : {}),
         composicao:            String(body.composicao   || ''),
         modoPreparo:           String(body.modoPreparo  || ''),
-        codigoBarras:          body.codigoBarras        || null,
+        codigoBarras,
         contemLeite:           Boolean(body.contemLeite),
         contemGluten:          Boolean(body.contemGluten),
         contemLactose:         Boolean(body.contemLactose),

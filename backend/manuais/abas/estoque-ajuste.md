@@ -56,7 +56,7 @@ Abaixo de 768 px (**celular** ou zoom muito grande), a lista de cards aparece pr
 
 ### Leitor de código de barras (10/2026)
 Com um leitor **USB** (que age como teclado), basta **bipar** a etiqueta do pacote, sem clicar em nada:
-- O sistema procura o código na **etiqueta** do produto (a etiqueta de PCP ligada ao produto) e, se não achar, no **EAN** cadastrado no produto.
+- O sistema procura o código no **EAN do cadastro de Produtos** (fonte única). Desde 10/2026 a etiqueta de PCP não tem código próprio: o código impresso nela é o do cadastro; a etiqueta é só o papel. Para corrigir um código errado, edite o produto em Produtos.
 - Achou: o produto é **escolhido** (mesmo que esteja fora do filtro de categoria da lista), a Quantidade é zerada e o cursor vai para ela. Aparece o aviso **"Bipado <código>"** por 1,5 segundo.
 - Bipou **o mesmo produto de novo**: soma **+1** na Quantidade (cada bipe = 1 pacote).
 - Bipou **outro produto** com quantidade digitada: troca de produto, zera e avisa "Troquei para …".

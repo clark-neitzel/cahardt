@@ -177,14 +177,10 @@ function normalizarCodigoBarras(c) {
     return String(c == null ? '' : c).replace(/[^0-9A-Za-z]/g, '').toUpperCase();
 }
 
-// Acha o produto dono do código: 1º etiqueta (mais recente), 2º Produto.ean.
+// Acha o produto dono do código, SÓ por Produto.ean (fonte única).
 async function acharProdutoPorCodigo(norm) {
-    const et = await prisma.$queryRaw`
-        SELECT produto_id AS "produtoId" FROM etiquetas_produtos
-        WHERE produto_id IS NOT NULL AND codigo_barras IS NOT NULL
-          AND UPPER(REGEXP_REPLACE(codigo_barras, '[^0-9A-Za-z]', '', 'g')) = ${norm}
-        ORDER BY updated_at DESC, created_at DESC LIMIT 1`;
-    if (et.length) return { produtoId: et[0].produtoId, origem: 'etiqueta' };
+    // Produto.ean é a fonte ÚNICA do código de barras. Não há fallback pela etiqueta: a coluna da
+    // etiqueta pode guardar código velho e devolveria o produto errado.
     const pr = await prisma.$queryRaw`
         SELECT id AS "produtoId" FROM produtos
         WHERE ean IS NOT NULL
