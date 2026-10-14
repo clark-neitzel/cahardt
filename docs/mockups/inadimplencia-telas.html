@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Inadimplência: telas</title>
+<meta name="description" content="Mockup para aprovação: como cada tela do app mostra a inadimplência.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap">
+<style>
+  :root{
+    --primary:#00754A; --primary-dark:#006241; --house:#1E3932; --mint:#d4e9e2;
+    --creme:#f2f0eb; --surface:#ffffff; --ink:rgba(0,0,0,.87); --ink-2:#4b5563; --ink-3:#6b7280;
+    --linha:#e5e7eb; --linha-leve:#f3f4f6; --ouro:#cba258;
+    --verm:#dc2626; --verm-bg:#fee2e2; --verm-tx:#b91c1c;
+    --amar-bg:#fef3c7; --amar-tx:#92400e; --lar-bg:#ffedd5; --lar-tx:#9a3412;
+    --azul-bg:#dbeafe; --azul-tx:#1e40af; --verde-bg:#dcfce7; --verde-tx:#166534;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--creme);color:var(--ink);font-family:Manrope,'SF Pro Text',-apple-system,sans-serif;letter-spacing:-.01em;font-variant-numeric:tabular-nums;line-height:1.55}
+  .pagina{max-width:980px;margin:0 auto;padding:0 16px 64px}
+  .hero{background:var(--house);color:#fff;border-radius:0 0 24px 24px;padding:36px 24px 32px;margin:0 -16px 28px}
+  .hero .miolo{max-width:948px;margin:0 auto;padding:0 8px}
+  .selo{display:inline-block;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);color:#fff;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;padding:5px 12px;border-radius:999px;margin-bottom:14px}
+  .hero h1{margin:0 0 10px;font-size:clamp(26px,5vw,38px);font-weight:800;line-height:1.15;text-wrap:balance}
+  .hero p{margin:0;max-width:66ch;color:rgba(255,255,255,.85);font-size:15px}
+  h2{font-size:13px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-2);margin:40px 0 14px;display:flex;align-items:center;gap:10px}
+  h2::after{content:'';flex:1;height:1px;background:var(--linha)}
+  h3{font-size:16px;font-weight:800;margin:0 0 8px;color:var(--ink)}
+  p{max-width:72ch;margin:0 0 10px}
+  .destaque{color:var(--primary-dark);font-weight:700}
+  .cartao{background:var(--surface);border:1px solid var(--linha);border-radius:12px;box-shadow:0 1px 2px rgba(0,0,0,.05);padding:18px 20px;margin-bottom:12px}
+  .resposta{border-left:5px solid var(--verm);background:#fff7f7}
+  .resposta b{color:var(--verm-tx)}
+  .kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:14px 0}
+  @media(min-width:720px){.kpis{grid-template-columns:repeat(4,1fr)}}
+  .kpi{background:#fff;border:1px solid var(--linha);border-radius:12px;padding:14px 16px}
+  .kpi .rot{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+  .kpi .num{font-size:26px;font-weight:800;line-height:1.1;margin:6px 0 2px}
+  .kpi .sub{font-size:12px;color:var(--ink-2)}
+  .kpi.ruim .num{color:var(--verm-tx)} .kpi.bom .num{color:var(--primary-dark)} .kpi.alerta .num{color:var(--amar-tx)}
+  .acc{background:var(--surface);border:1px solid var(--linha);border-radius:12px;margin-bottom:10px;overflow:hidden}
+  .acc > button{all:unset;display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;padding:14px 18px;cursor:pointer;font-weight:800;font-size:15px;box-sizing:border-box}
+  .acc > button::after{content:'−';font-size:20px;color:var(--ink-3)}
+  .acc:not(.aberto) > button::after{content:'+'}
+  .acc .corpo{padding:0 18px 16px;display:block}
+  .acc:not(.aberto) .corpo{display:none}
+  .tabela{width:100%;border-collapse:collapse;font-size:13px}
+  .tabela th{text-align:left;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);padding:8px 10px;border-bottom:1px solid var(--linha);background:#fafaf8}
+  .tabela td{padding:8px 10px;border-bottom:1px solid var(--linha-leve);vertical-align:top}
+  .tabela td.num{text-align:right;white-space:nowrap}
+  .tabela tr:last-child td{border-bottom:0}
+  .scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;white-space:nowrap}
+  .b-verm{background:var(--verm);color:#fff} .b-vermc{background:var(--verm-bg);color:var(--verm-tx)} .b-verde{background:var(--verde-bg);color:var(--verde-tx)}
+  .b-amar{background:var(--amar-bg);color:var(--amar-tx)} .b-cinza{background:#f3f4f6;color:#374151} .b-azul{background:var(--azul-bg);color:var(--azul-tx)} .b-lar{background:var(--lar-bg);color:var(--lar-tx)}
+  .lista{margin:0;padding-left:20px} .lista li{margin-bottom:6px}
+  .lista-check{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+  .lista-check li{display:flex;gap:10px;font-size:14px;color:var(--ink-2)}
+  .lista-check li b{color:var(--ink)}
+  .tique{flex:none;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:800;margin-top:1px}
+  .tem .tique{background:var(--mint);color:var(--primary-dark)} .falta .tique{background:var(--verm-bg);color:var(--verm-tx)}
+  .duas{display:grid;grid-template-columns:1fr;gap:14px} @media(min-width:720px){.duas{grid-template-columns:1fr 1fr}}
+  .etapa{display:flex;gap:14px;align-items:flex-start}
+  .etapa .n{flex:none;width:36px;height:36px;border-radius:50%;background:var(--primary);color:#fff;display:grid;place-items:center;font-weight:800}
+  .etapa .tempo{display:inline-block;background:var(--mint);color:var(--primary-dark);font-size:11px;font-weight:800;padding:3px 10px;border-radius:999px;margin-left:8px;vertical-align:middle}
+  .fluxo{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:13px;font-weight:700}
+  .fluxo span{background:#fff;border:1px solid var(--linha);border-radius:999px;padding:5px 11px}
+  .fluxo i{font-style:normal;color:var(--ink-3)}
+  /* mock de telas */
+  .tela{background:var(--surface);border:1px solid var(--linha);border-radius:16px;box-shadow:0 8px 24px rgba(30,57,50,.10);overflow:hidden;margin:14px 0 8px;position:relative}
+  .tela-barra{background:var(--house);color:#fff;padding:10px 16px;display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700}
+  .tela-barra .bolas{display:flex;gap:5px;margin-right:6px} .tela-barra .bolas i{width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,.35)}
+  .tela-corpo{padding:14px;background:var(--creme)}
+  .app-card{background:#fff;border:1px solid var(--linha);border-radius:12px;box-shadow:0 1px 2px rgba(0,0,0,.04);padding:12px 14px;margin-bottom:10px;position:relative}
+  .app-card.verm{border-color:#fca5a5;background:#fff5f5}
+  .linha{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .nome{font-weight:800;font-size:14px} .meta{font-size:12px;color:var(--ink-3)}
+  .btn{display:inline-block;border-radius:999px;padding:7px 14px;font-size:12px;font-weight:700;border:1px solid transparent}
+  .btn-p{background:var(--primary);color:#fff} .btn-s{background:#fff;border-color:var(--primary);color:var(--primary)} .btn-off{background:#e5e7eb;color:#9ca3af}
+  .faixa{border-radius:10px;padding:10px 12px;font-size:13px;display:flex;gap:10px;align-items:flex-start;margin-bottom:10px}
+  .faixa.verm{background:var(--verm-bg);color:var(--verm-tx);border:1px solid #fca5a5} .faixa.lar{background:var(--lar-bg);color:var(--lar-tx);border:1px solid #fdba74} .faixa.amar{background:var(--amar-bg);color:var(--amar-tx);border:1px solid #fcd34d}
+  .faixa b{display:block}
+  .pin{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--ouro);color:#1E3932;font-size:11px;font-weight:800;vertical-align:middle;margin-left:4px;flex:none}
+  .legenda{margin:8px 0 18px;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--ink-2)}
+  .legenda li{display:flex;gap:8px;align-items:flex-start} .legenda .pin{margin:1px 0 0}
+  .abas{display:flex;gap:4px;border-bottom:1px solid var(--linha);margin-bottom:10px;font-size:12px;font-weight:700}
+  .abas span{padding:8px 12px;color:var(--ink-3)} .abas span.on{color:var(--primary-dark);border-bottom:2px solid var(--primary)}
+  .campo{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--linha-leve);font-size:13px}
+  .campo:last-child{border-bottom:0}
+  .input{border:1px solid #d1d5db;border-radius:6px;padding:5px 10px;font-size:13px;min-width:70px;text-align:right;background:#fff}
+  .toggle{width:36px;height:20px;border-radius:999px;background:var(--primary);position:relative;flex:none}
+  .toggle::after{content:'';position:absolute;top:2px;right:2px;width:16px;height:16px;border-radius:50%;background:#fff}
+  .toggle.off{background:#d1d5db} .toggle.off::after{right:auto;left:2px}
+  .decisao{display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-bottom:1px solid var(--linha-leve)}
+  .decisao:last-child{border-bottom:0}
+  .decisao .q{flex:none;width:28px;height:28px;border-radius:50%;background:var(--ouro);color:#1E3932;display:grid;place-items:center;font-weight:800;font-size:13px}
+  .decisao .sug{font-size:12px;color:var(--primary-dark);font-weight:700}
+  .nota{font-size:12px;color:var(--ink-3)}
+  .rodape{margin-top:40px;font-size:12px;color:var(--ink-3);text-align:center}
+
+  html{scroll-behavior:smooth}
+  img,svg{max-width:100%}
+  .ic{width:12px;height:12px;flex:none;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:-1px}
+  .ic.g{width:16px;height:16px}
+  .sv{display:inline-flex;align-items:center;gap:4px;background:#dc2626;color:#fff;font-size:11px;font-weight:700;padding:2px 9px;border-radius:999px;white-space:nowrap;line-height:1.35}
+  .sv.c{font-size:10px;padding:1px 7px}
+  .sa{display:inline-flex;align-items:center;gap:4px;background:#fef3c7;color:#92400e;font-size:11px;font-weight:700;padding:2px 9px;border-radius:999px;white-space:nowrap;line-height:1.35}
+  .sa.c{font-size:10px;padding:1px 7px}
+  .tag{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;padding:3px 9px;border-radius:999px;margin-left:8px;vertical-align:middle}
+  .tag.novo{background:var(--mint);color:var(--primary-dark)} .tag.igual{background:#e5e7eb;color:#374151}
+  h2.t{font-size:16px;letter-spacing:0;text-transform:none;color:var(--ink);font-weight:800;margin:0}
+  h2.t::after{display:none}
+  .t small{font-weight:600;color:var(--ink-3);font-size:12px;display:block;margin-top:2px}
+  .par{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;align-items:start}
+  @media(min-width:1000px){.par.dois{grid-template-columns:minmax(0,1fr) 380px}}
+  .dk{min-width:0;overflow-x:auto}
+  .dk .tela{margin-top:0}
+  .rot{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin:0 0 6px}
+  .cel{width:100%;max-width:360px;margin:0 auto;border:6px solid #1f2937;border-radius:28px;overflow:hidden;background:var(--creme);box-shadow:0 8px 24px rgba(30,57,50,.18)}
+  .cel .barra{background:var(--house);color:#fff;font-size:12px;font-weight:700;padding:9px 12px;display:flex;justify-content:space-between}
+  .cel .corpo-c{padding:10px;font-size:12px}
+  .mt{width:100%;border-collapse:collapse;font-size:12px;background:#fff}
+  .mt th{text-align:left;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#6b7280;padding:8px 10px;background:#f9fafb;border-bottom:1px solid var(--linha)}
+  .mt td{padding:8px 10px;border-bottom:1px solid var(--linha-leve);vertical-align:top}
+  .mt tr.rv td{background:#fef2f2}
+  .mt.min{min-width:720px}
+  .row{background:#fff;border-bottom:1px solid var(--linha-leve);padding:10px 12px;font-size:12px}
+  .row.rv{background:#fef2f2}
+  .r1{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .num{font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;border:1px solid #bfdbfe;background:#eff6ff;color:#1d4ed8}
+  .nm{font-weight:800;font-size:13px}
+  .val{margin-left:auto;font-weight:800;font-size:13px}
+  .sub{font-size:11px;color:var(--ink-3);margin-top:2px}
+  .pill{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;border:1px solid var(--linha);background:#fff;color:#6b7280}
+  .pill.on{background:#fee2e2;border-color:#fca5a5;color:#991b1b}
+  .pillrow{display:flex;gap:6px;overflow-x:auto;padding:8px 10px;background:var(--creme)}
+  .pillrow .pill{flex:none;padding:4px 10px}
+  .pill.ok{background:#dcfce7;border-color:#86efac;color:#166534}
+  .pill.cz{background:#f3f4f6;color:#374151}
+  .btn-o{background:#ea580c;color:#fff} .btn-r{background:#dc2626;color:#fff}
+  .btn-g{background:#fff;border-color:#d1d5db;color:#374151}
+  .btn.lg{padding:10px 16px;font-size:13px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;text-align:center}
+  .modal{background:#fff;border-radius:16px;box-shadow:0 12px 32px rgba(0,0,0,.22);overflow:hidden;border:1px solid var(--linha)}
+  .modal .cab{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--linha)}
+  .modal .cab.verm{background:#dc2626;color:#fff;border:0}
+  .modal .cab h4{margin:0;font-size:15px;font-weight:800}
+  .modal .cab.verm h4{display:flex;gap:8px;align-items:center;font-size:14px}
+  .modal .corp{padding:12px 14px}
+  .modal .rod{padding:10px 14px;background:#f9fafb;border-top:1px solid var(--linha);display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+  .res3{display:flex;gap:18px;padding:10px 14px;background:#fef2f2;border-bottom:1px solid #fee2e2;flex-wrap:wrap}
+  .res3 .l{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#f87171}
+  .res3 .v{font-size:18px;font-weight:800;color:#b91c1c}
+  .conta{border:1px solid var(--linha);border-radius:12px;overflow:hidden;margin-bottom:8px}
+  .conta .ch{background:#f9fafb;padding:8px 10px;display:flex;justify-content:space-between;gap:8px}
+  .conta .ln{padding:7px 10px;display:flex;justify-content:space-between;gap:8px;border-top:1px solid var(--linha-leve);background:#fef2f2}
+  .conta .ln.nv{background:#fff}
+  .mini{font-size:10px;color:#6b7280}
+  .bdg{display:inline-block;font-size:10px;font-weight:700;padding:1px 6px;border-radius:999px}
+  .bdg.az{background:#dbeafe;color:#1d4ed8} .bdg.vm{background:#fee2e2;color:#b91c1c} .bdg.cz{background:#f3f4f6;color:#4b5563} .bdg.rx{background:#ede9fe;color:#6d28d9} .bdg.vd{background:#dcfce7;color:#166534} .bdg.am{background:#fef3c7;color:#92400e}
+  .ban{margin:6px 0;padding:9px 11px;border-radius:8px;border:1px solid;display:flex;gap:9px;align-items:flex-start;font-size:13px}
+  .ban p{margin:0;max-width:none} .ban .t1{font-weight:700;line-height:1.25} .ban .t2{font-size:11px;opacity:.8;margin-top:2px}
+  .ban.or{background:#fff7ed;border-color:#fdba74;color:#9a3412} .ban.rd{background:#fef2f2;border-color:#fca5a5;color:#991b1b} .ban.ye{background:#fffbeb;border-color:#fcd34d;color:#92400e}
+  .quando{font-size:11px;color:var(--ink-3);margin:8px 0 2px;font-weight:700}
+  .pilulas{display:flex;align-items:center;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:10px}
+  .pilulas span{flex:none;padding:7px 13px;border-radius:999px;font-size:12px;font-weight:700;background:#fff;border:1px solid var(--linha);color:#4b5563}
+  .pilulas span.on{background:var(--house);color:#fff;border-color:var(--house)}
+  .strike{text-decoration:line-through;color:#9ca3af}
+  .toc{columns:2;column-gap:20px;margin:0;padding-left:20px;font-size:14px}
+  @media(max-width:600px){.toc{columns:1}}
+  .toc a{color:var(--primary-dark);font-weight:700;text-decoration:none} .toc a:hover{text-decoration:underline}
+  .mapa{background:#dfe9e4;position:relative;height:200px;border-radius:10px;overflow:hidden;background-image:linear-gradient(#cfdcd5 1px,transparent 1px),linear-gradient(90deg,#cfdcd5 1px,transparent 1px);background-size:32px 32px}
+  .pino{position:absolute;width:16px;height:16px;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+  .cfg{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;border:1px solid var(--linha);border-radius:10px;background:#f9fafb;margin-bottom:10px}
+  .cfg .tt{font-size:13px;font-weight:700;color:#374151} .cfg .ds{font-size:11px;color:#6b7280} .cfg .qm{font-size:10px;color:#9ca3af;margin-top:3px}
+  .toggle.on2{background:var(--primary)} .toggle.fix{opacity:.55}
+  .rodape{margin-top:40px}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="ia" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></symbol>
+<symbol id="ix" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></symbol>
+</defs></svg>
+<div class="pagina">
+
+<div class="hero"><div class="miolo">
+  <span class="selo">Mockup para aprovação · nada implementado</span>
+  <h1>Inadimplência: como fica cada tela</h1>
+  <p>Todas as telas abaixo mostram o mesmo selo de "cliente em atraso" no mesmo formato. Cada mock foi desenhado a partir do código real da tela (colunas, botões, cabeçalho). Onde a tela real tem versão de celular, ela aparece ao lado (ou embaixo, se você estiver no celular). Os números dos pinos dourados explicam o que muda.</p>
+</div></div>
+
+<div class="cartao resposta">
+  <h3>Resumo da regra</h3>
+  <ul class="lista">
+    <li><b>Em atraso</b> = boleto vencido e não pago, depois de <b>3 dias de carência</b> e se passar de <b>R$ 50</b>. O selo vermelho mostra o valor total e os dias da parcela mais antiga.</li>
+    <li><b>Boleto apontado na entrega não é dinheiro recebido.</b> Continua em atraso até o banco ou o Caixa confirmar o pagamento.</li>
+    <li><b>Pix/cartão apontado na entrega</b> há mais de 7 dias sem conciliação vira o selo amarelo "A confirmar". É pendência do escritório, não cobrança do cliente.</li>
+    <li><b>Venda a prazo</b> para cliente em atraso só é liberada por quem tem a permissão <code>Pode_Vender_Inadimplente</code> (ou admin); essa pessoa fica registrada como responsável na observação do pedido. Venda à vista passa com a responsabilidade de quem lançou.</li>
+    <li><b>Clicar em qualquer selo</b> abre o mesmo popup "Contas em aberto" (Tela 0). A Ana (pedidos do site) não muda: o pedido entra normalmente e fica na fila até um responsável liberar.</li>
+  </ul>
+</div>
+
+<div class="cartao">
+  <h3>O selo (igual em todas as telas)</h3>
+  <div class="linha" style="gap:18px;justify-content:flex-start">
+    <div><p class="rot">Vermelho</p><span class="sv"><svg class="ic"><use href="#ia"/></svg>Em atraso R$ 1.247 · 57d</span></div>
+    <div><p class="rot">Vermelho compacto</p><span class="sv c"><svg class="ic"><use href="#ia"/></svg>R$ 1.247 · 57d</span></div>
+    <div><p class="rot">Amarelo</p><span class="sa"><svg class="ic"><use href="#ia"/></svg>A confirmar R$ 322 · Pix 12d</span></div>
+    <div><p class="rot">Amarelo compacto</p><span class="sa c"><svg class="ic"><use href="#ia"/></svg>R$ 322 · Pix 12d</span></div>
+  </div>
+  <p class="nota" style="margin-top:10px">Clientes usados nos exemplos: <b>Gourmet Lanches</b> (3 boletos, R$ 1.247,08, 57 dias), <b>Panificadora Aquarius</b> (A confirmar R$ 322,44 · Pix 12d), <b>Elida Neves de Oliveira</b> (R$ 410,88, 126 dias) e <b>Debora Rosa</b> (R$ 691,28, 48 dias, 3 boletos).</p>
+</div>
+
+<h2>Índice das telas</h2>
+<div class="cartao"><ol class="toc" start="0" style="list-style:decimal">
+  <li><a href="#t0">Popup "Contas em aberto"</a></li>
+  <li><a href="#t1">Pedidos › lista</a></li>
+  <li><a href="#t2">Pedidos › modal / aprovação</a></li>
+  <li><a href="#t3">Pedidos Online › fila do site/Ana</a></li>
+  <li><a href="#t4">Novo Pedido › banner</a></li>
+  <li><a href="#t5">Clientes › lista</a></li>
+  <li><a href="#t6">Clientes › ficha do cliente</a></li>
+  <li><a href="#t7">Rota › card do cliente</a></li>
+  <li><a href="#t8">Atendimentos › painel</a></li>
+  <li><a href="#t9">Financeiro › Contas a Receber</a></li>
+  <li><a href="#t10">Caixa › conferência do dia</a></li>
+  <li><a href="#t11">Expedição › carga (caminhão)</a></li>
+  <li><a href="#t12">Motorista › checkout da entrega</a></li>
+  <li><a href="#t13">Clientes › Mapa</a></li>
+  <li><a href="#t14">Central de Pendências</a></li>
+  <li><a href="#t15">Configurações › Venda a inadimplente</a></li>
+</ol></div>
+
+<!-- ========== TELA 0 ========== -->
+<section id="t0"><div class="acc aberto"><button><span>Tela 0 — Popup "Contas em aberto" <small style="font-weight:600;color:var(--ink-3)">(abre ao clicar em qualquer selo)</small></span></button><div class="corpo">
+<span class="tag novo">2 botões novos</span>
+<div class="par dois" style="margin-top:12px">
+ <div class="dk"><div class="tela"><div class="tela-barra"><span class="bolas"><i></i><i></i><i></i></span>Clientes › Lista (popup aberto sobre a tela)</div>
+ <div class="tela-corpo" style="background:rgba(0,0,0,.45)">
+  <div class="modal" style="max-width:520px;margin:0 auto;min-width:380px">
+   <div class="cab verm"><h4><svg class="ic g"><use href="#ia"/></svg>Contas em Aberto — Gourmet Lanches</h4><svg class="ic g"><use href="#ix"/></svg></div>
+   <div class="res3">
+     <div><div class="l">Total vencido</div><div class="v">R$ 1.247,08</div></div>
+     <div><div class="l">Parcelas vencidas</div><div class="v">3</div></div>
+     <div><div class="l">Notas em aberto</div><div class="v">3</div></div>
+   </div>
+   <div class="corp">
+     <div class="conta"><div class="ch"><div><b>#2542</b> <span class="bdg az">Em aberto</span> <span class="bdg cz">Boleto</span><div class="mini">Venda: 11/08/2026 · 0/1 pagas</div></div><div style="text-align:right"><b>R$ 642,38</b><div class="mini">Próx: 18/08/2026</div></div></div>
+       <div class="ln"><div><b>R$ 642,38</b> <span class="bdg vm">Vencido</span> <b style="color:#dc2626;font-size:10px">57d</b><div class="mini">Venc: 18/08/2026 · Boleto</div></div></div></div>
+     <div class="conta"><div class="ch"><div><b>#2698</b> <span class="bdg az">Em aberto</span> <span class="bdg cz">Boleto</span><div class="mini">Venda: 22/08/2026 · 0/1 pagas</div></div><div style="text-align:right"><b>R$ 110,00</b><div class="mini">Próx: 25/08/2026</div></div></div>
+       <div class="ln"><div><b>R$ 110,00</b> <span class="bdg vm">Vencido</span> <b style="color:#dc2626;font-size:10px">50d</b><div class="mini">Venc: 25/08/2026 · Boleto</div></div></div></div>
+     <div class="conta"><div class="ch"><div><b>#3044</b> <span class="bdg az">Em aberto</span> <span class="bdg cz">Boleto</span><div class="mini">Venda: 08/09/2026 · 0/1 pagas</div></div><div style="text-align:right"><b>R$ 494,70</b><div class="mini">Próx: 15/09/2026</div></div></div>
+       <div class="ln"><div><b>R$ 494,70</b> <span class="bdg vm">Vencido</span> <b style="color:#dc2626;font-size:10px">29d</b><div class="mini">Venc: 15/09/2026 · Boleto</div></div></div></div>
+   </div>
+   <div class="rod" style="justify-content:space-between">
+     <div style="display:flex;gap:8px;flex-wrap:wrap"><span class="btn btn-p lg">Cobrar agora (WhatsApp)</span><span class="btn btn-s lg">Abrir no Contas a Receber</span></div>
+     <span class="btn btn-g lg">Fechar</span>
+   </div>
+  </div>
+ </div></div></div>
+ <div><div class="cel"><div class="barra"><span>Popup no celular</span><span>9:41</span></div><div class="corpo-c" style="background:rgba(0,0,0,.45)">
+  <div class="modal"><div class="cab verm"><h4><svg class="ic g"><use href="#ia"/></svg>Contas em Aberto — Gourmet Lanches</h4><svg class="ic g"><use href="#ix"/></svg></div>
+   <div class="res3" style="gap:12px"><div><div class="l">Total vencido</div><div class="v" style="font-size:15px">R$ 1.247,08</div></div><div><div class="l">Parc. venc.</div><div class="v" style="font-size:15px">3</div></div><div><div class="l">Notas</div><div class="v" style="font-size:15px">3</div></div></div>
+   <div class="corp"><div class="conta"><div class="ch"><div><b>#2542</b> <span class="bdg az">Em aberto</span><div class="mini">Venc: 18/08 · <b style="color:#dc2626">57d</b></div></div><b>R$ 642,38</b></div></div>
+   <div class="conta"><div class="ch"><div><b>#2698</b> <span class="bdg az">Em aberto</span><div class="mini">Venc: 25/08 · <b style="color:#dc2626">50d</b></div></div><b>R$ 110,00</b></div></div>
+   <div class="conta"><div class="ch"><div><b>#3044</b> <span class="bdg az">Em aberto</span><div class="mini">Venc: 15/09 · <b style="color:#dc2626">29d</b></div></div><b>R$ 494,70</b></div></div></div>
+   <div class="rod" style="flex-direction:column"><span class="btn btn-p lg">Cobrar agora (WhatsApp)</span><span class="btn btn-s lg">Abrir no Contas a Receber</span><span class="btn btn-g lg">Fechar</span></div></div>
+ </div></div></div>
+</div>
+<ul class="legenda">
+ <li><span class="pin">1</span><span>Cabeçalho vermelho, três números e a lista por pedido/parcela: <b>já existe hoje</b> em Clientes › Lista, igual ao desenho. Não muda.</span></li>
+ <li><span class="pin">2</span><span><b>Novo:</b> "Cobrar agora (WhatsApp)". Só aparece para quem tem a permissão da Régua de Cobrança; manda a cobrança do cliente pelo fluxo da régua.</span></li>
+ <li><span class="pin">3</span><span><b>Novo:</b> "Abrir no Contas a Receber" leva para a tela do Financeiro já filtrada neste cliente.</span></li>
+ <li><span class="pin">4</span><span>Nas outras telas deste mockup, basta dizer "abre o popup": é este aqui, o mesmo em todo lugar.</span></li>
+</ul>
+</div></div></section>
+
+<!-- ========== TELA 1 ========== -->
+<section id="t1"><div class="acc aberto"><button><span>Tela 1 — Pedidos › lista <small style="font-weight:600;color:var(--ink-3)">(menu Pedidos)</small></span></button><div class="corpo">
+<span class="tag novo">selo + filtro novos</span>
+<p class="nota" style="margin-top:8px">Na tela real a lista de pedidos é uma só (linhas em forma de card, tanto no computador quanto no celular), então o desenho abaixo vale para os dois; o celular só mostra mais estreito.</p>
+<div class="par dois">
+ <div class="dk"><div class="tela"><div class="tela-barra"><span class="bolas"><i></i><i></i><i></i></span>Pedidos</div>
+  <div class="pillrow"><span class="pill cz">Todos</span><span class="pill">Aberto</span><span class="pill">Enviar</span><span class="pill">Aprovado</span><span class="pill">Erro</span><span class="pill">Faturado</span><span class="pill on">Só clientes em atraso <span class="pin" style="margin:0 0 0 4px">1</span></span></div>
+  <div class="row rv"><div class="r1"><span class="num">#3044</span><span class="nm">Gourmet Lanches</span><span class="sv c"><svg class="ic"><use href="#ia"/></svg>R$ 1.247 · 57d</span><span class="pin">2</span><span class="val">R$ 494,70</span></div>
+   <div class="sub">Entrega: 09/09/2026 | Criação: 08/09/2026 | por: <b>Marcos</b></div><div class="sub">Vendedor: Marcos</div>
+   <div class="r1" style="margin-top:6px"><span class="bdg vd">APROVADO</span><span class="bdg vd">CA: FATURADO</span></div></div>
+  <div class="row rv"><div class="r1"><span class="num">#3188</span><span class="nm">Debora Rosa</span><span class="sv c"><svg class="ic"><use href="#ia"/></svg>R$ 691 · 48d</span><span class="val">R$ 230,40</span></div>
+   <div class="sub">Entrega: 10/10/2026 | Criação: 09/10/2026 | por: <b>Marcos</b></div>
+   <div class="r1" style="margin-top:6px"><span class="bdg az">ENVIAR</span></div></div>
+  <div class="row"><div class="r1"><span class="num">#3201</span><span class="nm">Panificadora Aquarius</span><span class="sa c"><svg class="ic"><use href="#ia"/></svg>R$ 322 · Pix 12d</span><span class="pin">3</span><span class="val">R$ 322,44</span></div>
+   <div class="sub">Entrega: 12/10/2026 | Criação: 11/10/2026 | por: <b>Marcos</b></div>
+   <div class="r1" style="margin-top:6px"><span class="bdg vd">APROVADO</span></div></div>
+ </div></div>
+ <div><div class="cel"><div class="barra"><span>Pedidos</span><span>9:41</span></div>
+  <div class="pillrow"><span class="pill cz">Todos</span><span class="pill">Enviar</span><span class="pill">Faturado</span><span class="pill on">Só em atraso</span></div>
+  <div class="row rv"><div class="r1"><span class="num">#3044</span><span class="nm" style="font-size:12px">Gourmet Lanches</span><span class="val" style="font-size:12px">R$ 494,70</span></div><div class="r1" style="margin-top:4px"><span class="sv c"><svg class="ic"><use href="#ia"/></svg>R$ 1.247 · 57d</span></div><div class="sub">Entrega: 09/09/2026 · Vend.: Marcos</div></div>
+  <div class="row"><div class="r1"><span class="num">#3201</span><span class="nm" style="font-size:12px">Panificadora Aquarius</span><span class="val" style="font-size:12px">R$ 322,44</span></div><div class="r1" style="margin-top:4px"><span class="sa c"><svg class="ic"><use href="#ia"/></svg>R$ 322 · Pix 12d</span></div><div class="sub">Entrega: 12/10/2026 · Vend.: Marcos</div></div>
+ </div></div>
+</div>
+<ul class="legenda">
+ <li><span class="pin">1</span><span><b>Novo filtro</b> "Só clientes em atraso": pílula na mesma fila dos filtros de status (Todos, Aberto, Enviar...). Fica lembrado por usuário (mesmo mecanismo dos outros filtros da tela).</span></li>
+ <li><span class="pin">2</span><span><b>Novo:</b> selo compacto vermelho logo depois do nome do cliente. Clicar abre o popup (Tela 0). A linha ganha um fundo vermelho bem claro.</span></li>
+ <li><span class="pin">3</span><span>Pix/cartão há mais de 7 dias sem conciliação: selo amarelo, <b>sem</b> fundo vermelho na linha (não é cobrança).</span></li>
+ <li><span class="pin">4</span><span>O resto da linha (número, valor, datas, status) fica exatamente como é hoje.</span></li>
+</ul>
+</div></div></section>
+
+<!-- ========== TELA 2 ========== -->
+<section id="t2"><div class="acc aberto"><button><span>Tela 2 — Pedidos › modal do pedido / aprovação <small style="font-weight:600;color:var(--ink-3)">(Pedidos › clicar no pedido)</small></span></button><div class="corpo">
+<span class="tag novo">faixa + trava no Aprovar</span>
+<p class="nota" style="margin-top:8px">Hoje o bloco "Pendente de aprovação" do modal tem os botões Editar / Aprovar agora (roxo) / Converter. O mock mostra as duas pessoas diferentes olhando o mesmo pedido.</p>
+<div class="par" style="grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr))">
+ <div><p class="rot">Quem TEM a permissão (ou é admin)</p>
+ <div class="modal"><div class="cab"><div><h4>Pedido #3188</h4><div class="mini">Debora Rosa</div></div><svg class="ic g"><use href="#ix"/></svg></div>
+  <div class="corp">
+   <div class="faixa verm" style="margin-bottom:10px"><svg class="ic g"><use href="#ia"/></svg><div><b>Cliente com R$ 691,28 em atraso <span class="pin">1</span></b>3 boletos, o mais antigo há 48 dias · <u>ver contas</u></div></div>
+   <div style="background:#faf5ff;border:1px solid #d8b4fe;border-radius:8px;padding:10px">
+    <b style="color:#581c87;font-size:13px">Pendente de aprovação</b>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><span class="btn btn-p lg" style="background:#2563eb">Editar</span><span class="btn btn-o lg">Assumir responsabilidade e aprovar <span class="pin">2</span></span></div>
+    <p class="mini" style="margin:8px 0 0">Ao aprovar, seu nome fica na observação do pedido como responsável pela venda a cliente em atraso.</p>
+   </div>
+  </div></div></div>
+ <div><p class="rot">Quem NÃO tem a permissão</p>
+ <div class="modal"><div class="cab"><div><h4>Pedido #3188</h4><div class="mini">Debora Rosa</div></div><svg class="ic g"><use href="#ix"/></svg></div>
+  <div class="corp">
+   <div class="faixa verm" style="margin-bottom:10px"><svg class="ic g"><use href="#ia"/></svg><div><b>Cliente com R$ 691,28 em atraso</b>3 boletos, o mais antigo há 48 dias · <u>ver contas</u></div></div>
+   <div style="background:#faf5ff;border:1px solid #d8b4fe;border-radius:8px;padding:10px">
+    <b style="color:#581c87;font-size:13px">Pendente de aprovação</b>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><span class="btn btn-p lg" style="background:#2563eb">Editar</span><span class="btn btn-off lg">Aprovar <span class="pin">3</span></span></div>
+    <p class="mini" style="margin:8px 0 0;color:#991b1b;font-weight:700">Só um responsável pode liberar este pedido. <span class="pin">4</span></p>
+   </div>
+  </div></div></div>
+</div>
+<ul class="legenda">
+ <li><span class="pin">1</span><span><b>Novo:</b> faixa vermelha no topo do modal, igual em tudo (mesma frase para todo mundo).</span></li>
+ <li><span class="pin">2</span><span><b>Variante A:</b> quem tem <code>Pode_Vender_Inadimplente</code> (ou admin) vê o botão laranja "Assumir responsabilidade e aprovar". É o mesmo laranja do aviso "você será registrado como responsável" do Novo Pedido.</span></li>
+ <li><span class="pin">3</span><span><b>Variante B:</b> quem não tem a permissão vê o botão cinza, desabilitado (hoje o botão roxo "Aprovar agora" some para quem não pode aprovar; aqui ele continua visível mas travado, só por causa do atraso).</span></li>
+ <li><span class="pin">4</span><span>Texto explicando o motivo da trava, em vermelho, logo abaixo do botão.</span></li>
+</ul>
+</div></div></section>
+
+<!-- ========== TELA 3 ========== -->
+<section id="t3"><div class="acc aberto"><button><span>Tela 3 — Pedidos Online › fila do site / Ana <small style="font-weight:600;color:var(--ink-3)">(menu Pedidos Online › aba Site)</small></span></button><div class="corpo">
+<span class="tag novo">selo + trava</span>
+<p class="nota" style="margin-top:8px">A Ana não muda nada: o pedido continua entrando normalmente na fila. A diferença é só para a equipe: o pedido de cliente em atraso fica esperando um responsável liberar.</p>
+<div class="par dois">
+ <div class="dk"><div class="tela"><div class="tela-barra"><span class="bolas"><i></i><i></i><i></i></span>Pedidos Online · Site</div>
+  <div class="pillrow"><span class="pill on" style="background:var(--house);color:#fff;border-color:var(--house)">Site (Congelados)</span><span class="pill">Kit Festa</span></div>
+  <div class="row rv"><div class="r1"><span class="bdg am" style="background:#cba258;color:#fff">NOVO</span><span class="num">#418</span><span class="nm">Debora Rosa</span><span class="sv c"><svg class="ic"><use href="#ia"/></svg>R$ 691 · 48d</span><span class="pin">1</span><span class="val">R$ 230,40</span></div>
+   <div class="sub">Entrega: 16/10/2026 · Pedido: 14/10/2026 09:12</div>
+   <div class="r1" style="margin-top:6px"><span class="bdg am">Aguardando</span><span class="bdg rx">WhatsApp IA</span></div>
+   <div style="margin-top:8px;border:1px solid #fca5a5;background:#fef2f2;border-radius:8px;padding:8px 10px;color:#b91c1c;font-size:11px"><b style="text-transform:uppercase;letter-spacing:.05em"><svg class="ic"><use href="#ia"/></svg> Cliente em atraso</b><br>Aguardando liberação de um responsável <span class="pin">2</span></div></div>
+  <div class="row"><div class="r1"><span class="bdg am" style="background:#cba258;color:#fff">NOVO</span><span class="num">#419</span><span class="nm">Panificadora Aquarius</span><span class="sa c"><svg class="ic"><use href="#ia"/></svg>R$ 322 · Pix 12d</span><span class="pin">3</span><span class="val">R$ 322,44</span></div>
+   <div class="sub">Entrega: 16/10/2026 · Pedido: 14/10/2026 10:40</div>
+   <div class="r1" style="margin-top:6px"><span class="bdg am">Aguardando</span></div></div>
+  <div class="row" style="background:#f9fafb"><p class="rot">Ao abrir o pedido #418: botões de ação</p><div style="display:flex;gap:8px;flex-wrap:wrap"><span class="btn btn-off lg">Aprovar e gerar pedido <span class="pin">4</span></span><span class="btn btn-g lg" style="color:#b91c1c;border-color:#fca5a5">Recusar</span></div><p class="mini" style="color:#991b1b;font-weight:700;margin:6px 0 0">Só um responsável pode liberar este pedido.</p>
+  <p class="rot" style="margin-top:12px">Para quem tem a permissão</p><span class="btn btn-o lg">Assumir responsabilidade e aprovar</span></div>
+ </div></div>
+ <div><div class="cel"><div class="barra"><span>Pedidos Online</span><span>9:41</span></div><div class="corpo-c" style="padding:0">
+  <div class="row rv"><div class="r1"><span class="num">#418</span><span class="nm" style="font-size:12px">Debora Rosa</span><span class="val" style="font-size:12px">R$ 230,40</span></div>
+   <div class="r1" style="margin-top:4px"><span class="sv c"><svg class="ic"><use href="#ia"/></svg>R$ 691 · 48d</span><span class="bdg am">Aguardando</span></div>
+   <div style="margin-top:6px;border:1px solid #fca5a5;background:#fef2f2;border-radius:8px;padding:6px 8px;color:#b91c1c;font-size:11px"><b>Aguardando liberação de um responsável</b></div></div>
+  <div class="row"><div class="r1"><span class="num">#419</span><span class="nm" style="font-size:12px">Panificadora Aquarius</span><span class="val" style="font-size:12px">R$ 322,44</span></div><div class="r1" style="margin-top:4px"><span class="sa c"><svg class="ic"><use href="#ia"/></svg>R$ 322 · Pix 12d</span><span class="bdg am">Aguardando</span></div></div>
+ </div></div></div>
+</div>
+<ul class="legenda">
+ <li><span class="pin">1</span><span><b>Novo:</b> selo compacto ao lado do nome, na linha da fila (mesmo desenho da lista de Pedidos).</span></li>
+ <li><span class="pin">2</span><span><b>Novo:</b> caixa vermelha logo abaixo do card (no mesmo lugar e estilo da caixa "Sem estoque suficiente" que já existe): "Aguardando liberação de um responsável". O pedido <b>continua na fila</b>.</span></li>
+ <li><span class="pin">3</span><span>Amarelo "A confirmar" não trava: o pedido é aprovado normalmente.</span></li>
+ <li><span class="pin">4</span><span>No pedido aberto, o botão "Aprovar e gerar pedido" fica desabilitado para quem não tem a permissão, e vira "Assumir responsabilidade e aprovar" (laranja) para quem tem. É a mesma trava da Tela 2.</span></li>
+</ul>
+</div></div></section>
+
+<!-- ========== TELA 4 ========== -->
+<section id="t4"><div class="acc aberto"><button><span>Tela 4 — Novo Pedido › banner de inadimplência <small style="font-weight:600;color:var(--ink-3)">(Pedidos › Novo pedido)</small></span></button><div class="corpo">
+<span class="tag igual">3 faixas já existem</span><span class="tag novo">1 faixa nova (amarela)</span>
+<p class="nota" style="margin-top:8px">O banner aparece logo depois de escolher o cliente. As versões abaixo mostram quando cada uma aparece. Os textos laranja e vermelhos são os que já estão no sistema, palavra por palavra.</p>
+<div class="par dois">
+ <div class="dk"><div class="tela"><div class="tela-barra"><span class="bolas"><i></i><i></i><i></i></span>Novo Pedido</div><div class="tela-corpo">
+  <div class="app-card"><div class="meta">Cliente</div><div class="nome">Gourmet Lanches</div></div>
+  <p class="quando">1. Cliente em atraso e VOCÊ tem a permissão (ou é admin)</p>
+  <div class="ban or"><svg class="ic g"><use href="#ia"/></svg><div><p class="t1">Cliente com R$ 1.247,08 em atraso — você será registrado como responsável</p><p class="t2">3 parcelas vencidas sem pagamento</p></div></div>
+  <p class="quando">2. Em atraso, você NÃO tem permissão e não existe condição à vista para ele</p>
+  <div class="ban rd"><svg class="ic g"><use href="#ia"/></svg><div><p class="t1">Venda bloqueada — cliente com R$ 1.247,08 em atraso</p><p class="t2">3 parcelas vencidas sem pagamento · Contate um administrador para obter permissão</p></div></div>
+  <p class="quando">3. Em atraso, sem permissão, mas existe condição "à vista" e você ainda não escolheu</p>
+  <div class="ban rd"><svg class="ic g"><use href="#ia"/></svg><div><p class="t1">Venda bloqueada — cliente com R$ 1.247,08 em atraso</p><p class="t2">Selecione a condição "à vista" para prosseguir com sua responsabilidade</p></div></div>
+  <p class="quando">3b. Mesmo caso, depois de escolher "à vista"</p>
+  <div class="ban or"><svg class="ic g"><use href="#ia"/></svg><div><p class="t1">Cliente com R$ 1.247,08 em atraso — você será registrado como responsável</p><p class="t2">Venda à vista autorizada com sua responsabilidade</p></div></div>
+  <p class="quando">4. NOVA — Pix/cartão apontado há mais de 7 dias sem conciliação (Panificadora Aquarius) <span class="pin">1</span></p>
+  <div class="ban ye"><svg class="ic g"><use href="#ia"/></svg><div><p class="t1">Cliente com R$ 322,44 a confirmar — Pix apontado na entrega há 12 dias</p><p class="t2">Não bloqueia a venda · o escritório está conferindo a conciliação</p></div></div>
+ </div></div></div>
+ <div><div class="cel"><div class="barra"><span>Novo Pedido</span><span>9:41</span></div><div class="corpo-c" style="padding:0 0 12px">
+  <div style="padding:10px 12px;background:#fff;border-bottom:1px solid var(--linha)"><div class="mini">Cliente</div><b>Panificadora Aquarius</b></div>
+  <div class="ban ye" style="margin:8px 8px 0"><svg class="ic g"><use href="#ia"/></svg><div><p class="t1" style="font-size:12px">Cliente com R$ 322,44 a confirmar — Pix apontado na entrega há 12 dias</p><p class="t2">Não bloqueia a venda · o escritório está conferindo a conciliação</p></div></div>
+  <div style="padding:10px 12px"><div class="mini">Tipo do pedido · Condição de pagamento ...</div></div>
+ </div></div></div>
+</div>
+<ul class="legenda">
+ <li><span class="pin">1</span><span><b>Único item novo desta tela:</b> faixa amarela. É só informação, não impede o pedido nem exige permissão.</span></li>
+ <li><span class="pin">2</span><span>Regra do pedido (já existe, sem mudança): cliente em atraso → venda a prazo só quem tem <code>Pode_Vender_Inadimplente</code> (ou admin); o nome de quem libera vai para a observação do pedido. Venda à vista passa com a responsabilidade de quem lançou.</span></li>
+ <li><span class="pin">3</span><span>As faixas laranja e vermelhas só voltam a aparecer porque o cálculo de "em atraso" será corrigido (hoje o boleto apontado na entrega faz o cliente sumir do aviso).</span></li>
+</ul>
+</div></div></section>
+
+<!-- ========== TELA 5 ========== -->
+<section id="t5"><div class="acc aberto"><button><span>Tela 5 — Clientes › lista <small style="font-weight:600;color:var(--ink-3)">(menu Clientes)</small></span></button><div class="corpo">
+<span class="tag igual">sem mudança, só volta a aparecer</span><span class="tag novo">variante amarela nova</span>
+<div class="par dois" style="margin-top:12px">
+ <div class="dk"><div class="tela"><div class="tela-barra"><span class="bolas"><i></i><i></i><i></i></span>Clientes</div>
+  <table class="mt min"><thead><tr><th></th><th>Cliente</th><th>Vendedor</th><th>Entrega</th><th>Venda</th><th>Condição Padrão</th><th>CNPJ/CPF</th><th>Status</th></tr></thead><tbody>
+   <tr class="rv"><td>☐</td><td><b>Gourmet Lanches</b></td><td>Marcos</td><td>Qua</td><td>Ter</td><td>Boleto 7 dias</td><td class="mini">12.345.***/****-**</td><td><span class="bdg vd">Ativo</span> <span class="sv c"><svg class="ic"><use href="#ia"/></svg>Inad. R$ 1.247,08</span> <span class="pin">1</span></td></tr>
+   <tr><td>☐</td><td><b>Panificadora Aquarius</b></td><td>Marcos</td><td>Qui</td><td>Qua</td><td>Pix</td><td class="mini">98.765.***/****-**</td><td><span class="bdg vd">Ativo</span> <span class="sa c"><svg class="ic"><use href="#ia"/></svg>A confirmar R$ 322,44 · Pix 12d</span> <span class="pin">2</span></td></tr>
+   <tr class="rv"><td>☐</td><td><b>Debora Rosa</b></td><td>Marcos</td><td>Sex</td><td>Qui</td><td>Boleto 7 dias</td><td class="mini">***.456.789-**</td><td><span class="bdg vd">Ativo</span> <span class="sv c"><svg class="ic"><use href="#ia"/></svg>Inad. R$ 691,28</span></td></tr>
+  </tbody></table></div></div>
+ <div><div class="cel"><div class="barra"><span>Clientes</span><span>9:41</span></div><div class="corpo-c">
+  <div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:10px;margin-bottom:8px"><b style="font-size:13px">Gourmet Lanches</b><div class="mini">12.345.***/****-** · Cidade</div>
+   <div class="r1" style="margin-top:6px"><span class="bdg vd">Ativo</span><span class="sv c" style="margin-left:auto"><svg class="ic"><use href="#ia"/></svg>Inadimplente R$ 1.247,08</span></div></div>
+  <div style="background:#fff;border:1px solid var(--linha);border-radius:8px;padding:10px"><b style="font-size:13px">Panificadora Aquarius</b><div class="mini">98.765.***/****-** · Cidade</div>
+   <div class="r1" style="margin-top:6px"><span class="bdg vd">Ativo</span><span class="sa c" style="margin-left:auto"><svg class="ic"><use href="#ia"/></svg>A confirmar R$ 322,44</span></div></div>
+ </div></div></div>
+</div>
+<ul class="legenda">
+ <li><span class="pin">1</span><span><b>Já existe hoje:</b> na coluna Status do computador, o botão vermelho "Inad. R$ X" (e no celular "Inadimplente R$ X"), com a linha em fundo vermelho claro. Nada muda no desenho; só volta a aparecer para quem o cálculo escondia.</span></li>
+ <li><span class="pin">2</span><span><b>Novo:</b> variante amarela "A confirmar R$ X · Pix Nd". Sem fundo vermelho na linha. Clicar abre o mesmo popup (Tela 0).</span></li>
+</ul>
+</div></div></section>
+
+<!-- ========== TELA 6 ========== -->
+<section id="t6"><div class="acc aberto"><button><span>Tela 6 — Clientes › ficha do cliente <small style="font-weight:600;color:var(--ink-3)">(Clientes › clicar no cliente)</small></span></button><div class="corpo">
+<span class="tag novo">faixa fixa + aba Financeiro</span>
+<div class="par dois" style="margin-top:12px">
+ <div class="dk"><div class="tela"><div class="tela-barra"><span class="bolas"><i></i><i></i><i></i></span>Clientes › Gourmet Lanches</div><div class="tela-corpo">
+  <div class="mini" style="margin-bottom:6px">← Voltar</div>
+  <div class="app-card" style="border-left:4px solid var(--primary)"><div class="linha"><div><div class="mini">Razão Social</div><div style="font-size:18px;font-weight:800">Gourmet Lanches</div><div class="mini">CNPJ: 12.345.***/****-**</div></div><span class="bdg vd" style="font-size:12px">ATIVO</span></div></div>
+  <div class="faixa verm" style="margin-bottom:10px"><svg class="ic g"><use href="#ia"/></svg><div style="flex:1"><b>Em atraso R$ 1.247,08 · 3 boletos · mais antigo há 57 dias <span class="pin">1</span></b>Esta faixa fica fixa abaixo do cabeçalho, em todas as abas.</div><span class="btn btn-r">Ver contas</span></div>
+  <div class="pilulas"><span>✏️ Cadastro</span><span>Qualidade dos dados</span><span>⚙️ Admin</span><span>Histórico (12)</span><span class="on">Financeiro <span class="bdg vm" style="margin-left:4px">3</span> <span class="pin">2</span></span></div>
+  <div class="app-card"><p class="rot">Contas em aberto</p>
+   <div class="conta" style="margin:0 0 8px"><div class="ln"><div><b>#2542</b> · R$ 642,38 <span class="bdg vm">Vencido</span> <b style="color:#dc2626;font-size:10px">57d</b><div class="mini">Venc: 18/08/2026 · Boleto</div></div></div></div>
+   <div class="conta" style="margin:0 0 8px"><div class="ln"><div><b>#2698</b> · R$ 110,00 <span class="bdg vm">Vencido</span> <b style="color:#dc2626;font-size:10px">50d</b><div class="mini">Venc: 25/08/2026 · Boleto</div></div></div></div>
+   <div class="conta" style="margin:0 0 8px"><div class="ln"><div><b>#3044</b> · R$ 494,70 <span class="bdg vm">Vencido</span> <b style="color:#dc2626;font-size:10px">29d</b><div class="mini">Venc: 15/09/2026 · Boleto</div></div></div></div>
+   <div class="conta" style="margin:0 0 8px"><div class="ln nv"><div><b>Próximo pedido a vencer</b> · R$ 188,00 <span class="bdg cz">A vencer</span><div class="mini">Venc: 21/10/2026 · Boleto</div></div></div></div>
+   <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px"><span class="btn btn-p lg">Cobrar agora <span class="pin">3</span></span><span class="btn btn-s lg">Abrir no Contas a Receber <span class="pin">4</span></span></div></div>
+  <div class="app-card"><p class="rot">Como é hoje na aba Cadastro (bloco "Financeiro")</p>
+   <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+     <div class="strike" style="font-size:11px">Atrasos Pag.: 0</div><div class="strike" style="font-size:11px">Atrasos Rec.: 0</div><div style="font-size:11px">Pagamentos Mês</div><div style="font-size:11px">Recebimentos Mês</div></div>
+   <p class="mini" style="margin-top:6px"><span class="pin">5</span> "Atrasos Pag." e "Atrasos Rec." saem (vinham do Conta Azul e mostravam zero ou número velho).</p></div>
+ </div></div></div>
+ <div><div class="cel"><div class="barra"><span>Ficha do cliente</span><span>9:41</span></div><div class="corpo-c">
+  <div class="app-card" style="border-left:4px solid var(--primary);padding:10px"><b style="font-size:15px">Gourmet Lanches</b><div class="mini">CNPJ: 12.345.***/****-**</div></div>
+  <div class="faixa verm" style="flex-wrap:wrap"><svg class="ic g"><use href="#ia"/></svg><div style="flex:1;min-width:0"><b>Em atraso R$ 1.247,08</b>3 boletos · mais antigo há 57 dias</div><span class="btn btn-r" style="min-height:36px">Ver contas</span></div>
+  <div class="pilulas"><span>Cadastro</span><span>Qualidade</span><span>Admin</span><span>Histórico</span><span class="on">Financeiro 3</span></div>
+  <div class="app-card"><div class="linha"><b>#2542 · R$ 642,38</b><span class="bdg vm">Vencido 57d</span></div><div class="mini">Venc: 18/08/2026 · Boleto</div></div>
+  <div class="app-card"><div class="linha"><b>R$ 188,00</b><span class="bdg cz">A vencer</span></div><div class="mini">Venc: 21/10/2026 · Boleto</div></div>
+  <span class="btn btn-p lg" style="display:flex">Cobrar agora</span><span class="btn btn-s lg" style="display:flex;margin-top:8px">Abrir no Contas a Receber</span>
+ </div></div></div>
+</div>
+<ul class="legenda">
+ <li><span class="pin">1</span><span><b>Novo:</b> faixa vermelha entre o cabeçalho e as abas. Fica à vista em todas as abas (Cadastro, Histórico...). Para "A confirmar" (Pix/cartão), a mesma faixa aparece em amarelo.</span></li>
+ <li><span class="pin">2</span><span><b>Nova aba "Financeiro"</b> na fila de abas (o contador vermelho mostra quantas parcelas vencidas). No celular as abas rolam para o lado, como hoje.</span></li>
+ <li><span class="pin">3</span><span><b>Cobrar agora:</b> mesmo botão do popup (só quem tem permissão da régua).</span></li>
+ <li><span class="pin">4</span><span><b>Abrir no Contas a Receber:</b> abre o Financeiro já filtrado neste cliente.</span></li>
+ <li><span class="pin">5</span><span>Vencidas em vermelho, a vencer em cinza. Os dois campos antigos <b>saem</b>; "Pagamentos Mês" e "Recebimentos Mês" ficam.</span></li>
+</ul>
+<p class="nota">A parcela "a vencer" do desenho (R$ 188,00) é só para ilustrar a cor cinza; não é um dado real do cliente.</p>
+</div></div></section>
+
+<!-- ========== TELA 7 ========== -->
+<section id="t7"><div class="acc aberto"><button><span>Tela 7 — Rota › card do cliente <small style="font-weight:600;color:var(--ink-3)">(menu Rota)</small></span></button><div class="corpo">
+<span class="tag igual">sem mudança, só volta a aparecer</span>
+<p class="nota" style="margin-top:8px">O card da Rota é um só (mesmo desenho no computador e no celular).</p>
+<div class="par dois">
+ <div class="dk"><div class="tela"><div class="tela-barra"><span class="bolas"><i></i><i></i><i></i></span>Rota</div><div class="tela-corpo">
+  <div class="app-card" style="background:#fef2f2;padding:14px">
+   <div class="linha" style="align-items:flex-start"><div><div style="font-weight:800;font-size:16px">Gourmet Lanches</div><div class="mini">Cidade</div></div><span class="bdg am" style="font-size:11px;padding:3px 9px">Cenário do dia</span></div>
+   <div style="display:flex;gap:8px;margin:10px 0"><span class="btn btn-p lg" style="flex:1">Atender</span><span class="btn btn-s lg" style="flex:1">Pedido</span></div>
+   <div class="mini" style="margin-bottom:8px">Venda: Ter · Entrega: Qua</div>
+   <div style="display:flex;align-items:center;gap:6px;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:7px 9px;color:#b91c1c;font-size:11px;font-weight:700"><svg class="ic"><use href="#ia"/></svg><span style="flex:1">Inadimplente — R$ 1.247,08 em atraso</span><span>›</span> <span class="pin">1</span></div>
+  </div></div></div></div>
+ <div><div class="cel"><div class="barra"><span>Rota</span><span>9:41</span></div><div class="corpo-c">
+  <div class="app-card" style="background:#fef2f2;padding:12px">
+   <div style="font-weight:800;font-size:15px">Gourmet Lanches</div><div class="mini">Cidade</div>
+   <div style="display:flex;gap:8px;margin:8px 0"><span class="btn btn-p lg" style="flex:1;padding:8px">Atender</span><span class="btn btn-s lg" style="flex:1;padding:8px">Pedido</span></div>
+   <div style="display:flex;align-items:center;gap:6px;background:#fff1f1;border:1px solid #fecaca;border-radius:6px;padding:7px 9px;color:#b91c1c;font-size:11px;font-weight:700"><svg class="ic"><use href="#ia"/></svg><span style="flex:1">Inadimplente — R$ 1.247,08 em atraso</span><span>›</span></div>
+  </div></div></div></div>
+</div>
+<ul class="legenda">
+ <li><span class="pin">1</span><span><b>Já existe hoje:</b> a faixa "Inadimplente — R$ X em atraso" dentro do card (clicável, abre as contas em aberto) e o fundo vermelho claro do card inteiro. Não muda; só volta a aparecer para os clientes que o cálculo atual esconde.</span></li>
+ <li><span class="pin">2</span><span>Para "A confirmar" (Pix/cartão), a mesma faixa aparece em amarelo.</span></li>
+</ul>
+<p class="nota">Aproximação: o topo do card (badge de cenário e selos de WhatsApp/GPS) está só indicado; foi desenhado o que é relevante para a inadimplência.</p>
+</div></div></section>
+
+<!-- ========== TELA 8 ========== -->
+<section id="t8"><div class="acc aberto"><button><span>Tela 8 — Atendimentos › painel <small style="font-weight:600;color:var(--ink-3)">(menu Atendimentos)</small></span></button><div class="corpo">
+<span class="tag novo">selo compacto novo</span>
+<div class="par dois" style="margin-top:12px">
+ <div class="dk"><div class="tela"><div class="tela-barra"><span class="bolas"><i></i><i></i><i></i></span>Atendimentos</div>
+  <table class="mt min"><thead><tr><th>Data/Hora</th><th>Vendedor</th><th>Tipo</th><th>Cliente / Lead</th><th>Cidade</th><th>Ação</th><th>Observação</th><th>Retorno</th></tr></thead><tbody>
+   <tr><td>14/10<br><span class="mini">09:12</span></td><td>Marcos</td><td><span class="bdg az">VISITA</span></td><td><b>Gourmet Lanches</b> <span class="sv c"><svg class="ic"><use href="#ia"/></svg>R$ 1.247 · 57d</span> <span class="pin">1</span></td><td>Cidade</td><td>Cobrança</td><td class="mini">Prometeu pagar sexta</td><td>17/10</td></tr>
+   <tr><td>14/10<br><span class="mini">10:05</span></td><td>Marcos</td><td><span class="bdg az">VISITA</span></td><td><b>Elida Neves de Oliveira</b> <span class="sv c"><svg class="ic"><use href="#ia"/></svg>R$ 411 · 126d</span></td><td>Cidade</td><td>Sem pedido</td><td class="mini">-</td><td>-</td></tr>
+  </tbody></table></div></div>
+ <div><div class="cel"><div class="barra"><span>Atendimentos</span><span>9:41</span></div><div class="corpo-c">
+  <div class="app-card" style="padding:10px"><div class="linha"><span class="bdg rx">Marcos</span><span class="bdg az">VISITA</span><span class="mini">14/10 09:12</span></div>
+   <div style="margin-top:6px;display:flex;align-items:center;gap:6px;flex-wrap:wrap"><b style="font-size:13px">Gourmet Lanches</b><span class="sv c"><svg class="ic"><use href="#ia"/></svg>R$ 1.247 · 57d</span></div>
+   <div class="mini">Cidade</div><div class="mini" style="margin-top:4px">Prometeu pagar sexta</div></div>
+ </div></div></div>
+</div>
+<ul class="legenda">
+ <li><span class="pin">1</span><span><b>Novo:</b> selo compacto logo depois do nome (tabela do computador e card do celular, na mesma linha do nome, junto do selo de WhatsApp que já existe). Clicar abre o popup. Só para cliente (lead ainda não tem conta a receber).</span></li>
+ <li><span class="pin">2</span><span>O resto da linha não muda. Serve para o vendedor lembrar de cobrar durante a visita.</span></li>
+</ul>
+</div></div></section>
+
+<!-- ========== TELA 9 ========== -->
+<section id="t9"><div class="acc aberto"><button><span>Tela 9 — Financeiro › Contas a Receber <small style="font-weight:600;color:var(--ink-3)">(menu Financeiro)</small></span></button><div class="corpo">
+<span class="tag novo">selo compacto novo</span>
+<p class="nota" style="margin-top:8px">A tabela só aparece em telas largas (computador grande); em tablet e celular a tela mostra cards. O selo mostra o total do <b>cliente</b> (todas as parcelas dele), não só o valor da linha.</p>
+<div class="par dois">
+ <div class="dk"><div class="tela"><div class="tela-barra"><span class="bolas"><i></i><i></i><i></i></span>Contas a Receber</div>
+  <table class="mt min"><thead><tr><th></th><th>Pedido</th><th>Cliente</th><th>Vendedor</th><th style="text-align:right">Valor</th><th>Venc.</th><th style="text-align:right">Ações</th></tr></thead><tbody>
+   <tr><td></td><td>#2542</td><td><b style="color:#1d4ed8">Gourmet Lanches</b> <span class="sv c"><svg class="ic"><use href="#ia"/></svg>R$ 1.247 · 57d</span> <span class="pin">1</span></td><td>Marcos</td><td style="text-align:right"><b>R$ 642,38</b></td><td>18/08/2026</td><td style="text-align:right">✓ 👁</td></tr>
+   <tr><td></td><td></td><td colspan="5" class="mini">Cond.: Boleto 7 dias · Conta: <span class="bdg az">ABERTO</span> · Parc.: 1/1 · Status: <span class="bdg vm">VENCIDO</span></td></tr>
+   <tr><td></td><td>#2698</td><td><b style="color:#1d4ed8">Gourmet Lanches</b> <span class="sv c"><svg class="ic"><use href="#ia"/></svg>R$ 1.247 · 57d</span> <span class="pin">2</span></td><td>Marcos</td><td style="text-align:right"><b>R$ 110,00</b></td><td>25/08/2026</td><td style="text-align:right">✓ 👁</td></tr>
+   <tr><td></td><td>#3201</td><td><b style="color:#1d4ed8">Panificadora Aquarius</b> <span class="sa c"><svg class="ic"><use href="#ia"/></svg>R$ 322 · Pix 12d</span></td><td>Marcos</td><td style="text-align:right"><b>R$ 322,44</b></td><td>02/10/2026</td><td style="text-align:right">✓ 👁</td></tr>
+  </tbody></table></div></div>
+ <div><div class="cel"><div class="barra"><span>Contas a Receber</span><span>9:41</span></div><div class="corpo-c">
+  <div class="app-card" style="border-color:#fecaca;padding:10px"><div class="linha" style="flex-wrap:nowrap;align-items:flex-start"><div style="min-width:0"><div style="font-size:13px"><span class="mini">#2542</span> <b style="color:#1d4ed8">Gourmet Lanches</b></div><div style="margin:3px 0"><span class="sv c"><svg class="ic"><use href="#ia"/></svg>R$ 1.247 · 57d</span></div><div class="mini">Boleto 7 dias · Marcos</div></div><div style="text-align:right"><b>R$ 642,38</b><div class="mini">Parc. 1/1</div></div></div>
+   <div style="margin-top:6px"><span class="bdg vm">VENCIDO</span> <span class="bdg az">ABERTO</span> <span class="mini">Venc: 18/08/2026</span></div></div>
+ </div></div></div>
+</div>
+<ul class="legenda">
+ <li><span class="pin">1</span><span><b>Novo:</b> selo compacto depois do nome do cliente. Mostra o total do cliente (R$ 1.247, 57d), mesmo que a linha seja só uma parcela de R$ 642,38.</span></li>
+ <li><span class="pin">2</span><span>O mesmo selo se repete em cada linha do mesmo cliente (sem somar de novo). O status VENCIDO da linha continua sendo o da parcela.</span></li>
+</ul>
+</div></div></section>
+
+<!-- ========== TELA 10 ========== -->
+<section id="t10"><div class="acc aberto"><button><span>Tela 10 — Caixa › conferência do dia <small style="font-weight:600;color:var(--ink-3)">(menu Caixa)</small></span></button><div class="corpo">
+<span class="tag novo">selo novo ao lado do cliente</span>
+<div class="par dois" style="margin-top:12px">
+ <div class="dk"><div class="tela"><div class="tela-barra"><span class="bolas"><i></i><i></i><i></i></span>Caixa do dia · entregas</div>
+  <table class="mt min"><thead><tr><th>Nº</th><th>Cliente</th><th>Cond. Pgto</th><th style="text-align:right">Valor</th><th style="text-align:center">Status</th><th>Pagamentos</th></tr></thead><tbody>
+   <tr><td>3044</td><td><b>Gourmet Lanches</b> <span class="sv c"><svg class="ic"><use href="#ia"/></svg>deve +R$ 752 · 57d</span> <span class="pin">1</span></td><td>Boleto 7 dias</td><td style="text-align:right">R$ 494,70</td><td style="text-align:center"><span class="bdg vd">ENTREGUE</span></td><td class="mini">Boleto (apontado)</td></tr>
+   <tr><td>3201</td><td><b>Panificadora Aquarius</b> <span class="sa c"><svg class="ic"><use href="#ia"/></svg>R$ 322 · Pix 12d</span></td><td>Pix</td><td style="text-align:right">R$ 322,44</td><td style="text-align:center"><span class="bdg vd">ENTREGUE</span></td><td class="mini">Pix (apontado)</td></tr>
+  </tbody></table></div></div>
+ <div><div class="cel"><div class="barra"><span>Caixa do dia</span><span>9:41</span></div><div class="corpo-c">
+  <div class="app-card" style="padding:10px"><div class="linha" style="flex-wrap:nowrap;align-items:flex-start"><div style="min-width:0"><div style="font-size:13px"><span class="mini">#3044</span> <b>Gourmet Lanches</b></div><div style="margin:3px 0"><span class="sv c"><svg class="ic"><use href="#ia"/></svg>deve +R$ 752 · 57d</span></div><div class="mini">Boleto 7 dias</div></div><div style="text-align:right"><b>R$ 494,70</b><div><span class="bdg vd">ENTREGUE</span></div></div></div></div>
+ </div></div></div>
+</div>
+<ul class="legenda">
+ <li><span class="pin">1</span><span><b>Novo:</b> selo ao lado do nome do cliente. Aqui ele diz "<b>deve +</b> R$ 752": o que o cliente deve <b>além deste pedido</b> (R$ 1.247,08 menos os R$ 494,70 desta entrega). Serve para quem confere o caixa saber que este cliente tem mais coisa pendente.</span></li>
+ <li><span class="pin">2</span><span>Clicar abre o popup (Tela 0). Não altera nenhum botão de baixa nem a conferência do dinheiro.</span></li>
+</ul>
+</div></div></section>
+
+<!-- ========== TELA 11 ========== -->
+<section id="t11"><div class="acc aberto"><button><span>Tela 11 — Expedição › carga (caminhão) <small style="font-weight:600;color:var(--ink-3)">(Expedição › Embarques › abrir a carga)</small></span></button><div class="corpo">
+<span class="tag novo">selo antes de carregar</span>
+<p class="nota" style="margin-top:8px">Das três telas da Expedição, a que lista pedido por cliente <b>antes de carregar</b> é a janela da carga (DetalhesCargaModal, tabela "Caminhão"). O Painel de Embarque lista só as cargas (número, motorista, quantidade) e a Lista de Entregas é de depois do fechamento; por isso elas <b>não mudam</b>. A janela da carga é uma tabela só (sem versão de cards no celular).</p>
+<div class="par">
+ <div class="dk"><div class="tela"><div class="tela-barra"><span class="bolas"><i></i><i></i><i></i></span>Carga nº 128 · Caminhão</div>
+  <table class="mt min"><thead><tr><th>Tipo / Nº</th><th>Cliente / Obs</th><th>Cidade</th><th>Endereço</th><th style="text-align:center">Volumes</th><th style="text-align:right">Retirar</th></tr></thead><tbody>
+   <tr class="rv"><td><b style="font-family:monospace">3044</b></td><td><b>Gourmet Lanches</b> <span class="sv c"><svg class="ic"><use href="#ia"/></svg>R$ 1.247 · 57d</span> <span class="pin">1</span><div class="mini" style="color:#92400e;font-style:italic">Entregar no balcão</div></td><td>Cidade</td><td class="mini">Rua exemplo, 100, Centro</td><td style="text-align:center"><b>12 itens</b></td><td style="text-align:right;color:#ef4444">🗑</td></tr>
+   <tr><td><b style="font-family:monospace">3201</b></td><td><b>Panificadora Aquarius</b> <span class="sa c"><svg class="ic"><use href="#ia"/></svg>R$ 322 · Pix 12d</span></td><td>Cidade</td><td class="mini">Av. exemplo, 55, Centro</td><td style="text-align:center"><b>8 itens</b></td><td style="text-align:right;color:#ef4444">🗑</td></tr>
+  </tbody></table></div></div>
+</div>
+<ul class="legenda">
+ <li><span class="pin">1</span><span><b>Novo:</b> selo compacto no nome do cliente, na linha do pedido que vai no caminhão. O dono da expedição enxerga o atraso antes de o caminhão sair e pode combinar com o motorista de receber na porta.</span></li>
+ <li><span class="pin">2</span><span><b>Não bloqueia carregar.</b> É só aviso; a ordem da carga, o bipe da doca e o botão de retirar do caminhão continuam iguais.</span></li>
+</ul>
+</div></div></section>
+
+<!-- ========== TELA 12 ========== -->
+<section id="t12"><div class="acc aberto"><button><span>Tela 12 — Motorista › checkout da entrega <small style="font-weight:600;color:var(--ink-3)">(Motorista › Entregas › cliente)</small></span></button><div class="corpo">
+<span class="tag novo">faixa informativa nova</span><span class="tag igual">só celular</span>
+<div class="par" style="grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),360px));justify-content:center">
+ <div><p class="rot">Etapa 3 — Caixa / pagamentos</p><div class="cel"><div class="barra" style="background:var(--house)"><span>Check-in de Doca</span><span>Ped #3044</span></div>
+  <div style="background:var(--house);color:#fff;padding:10px 14px"><div style="font-size:11px;opacity:.7;text-transform:uppercase;font-weight:700">Check-in de Doca</div><b style="font-size:16px">Gourmet Lanches</b><div style="font-size:11px;opacity:.7">Ped #3044 / Emb: #128</div></div>
+  <div style="background:var(--house);color:#fff;padding:0 14px 12px;border-top:1px solid rgba(255,255,255,.12)"><div style="font-size:10px;opacity:.6;font-weight:700;text-transform:uppercase;margin-top:8px">A Receber Líquido</div><b style="font-size:28px">R$ 494,70</b></div>
+  <div style="padding:12px;background:#f9fafb">
+   <div class="faixa amar"><svg class="ic g"><use href="#ia"/></svg><div><b>Este cliente tem R$ 1.247,08 em atraso (3 boletos). <span class="pin">1</span></b>Ofereça receber agora.</div></div>
+   <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:9px 12px;font-size:12px;color:#1e40af;margin-bottom:8px">Condição prevista: <b>Boleto 7 dias</b></div>
+   <span class="btn btn-s lg" style="display:flex;min-height:44px">+ Adicionar Forma de Pagamento</span>
+  </div></div></div>
+ <div style="align-self:center"><ul class="legenda">
+  <li><span class="pin">1</span><span><b>Novo:</b> faixa amarela informativa. <b>Amarela e não vermelha de propósito:</b> não bloqueia a entrega e não impede finalizar. O motorista só fica sabendo e pode oferecer o recebimento na hora (dinheiro, Pix).</span></li>
+  <li><span class="pin">2</span><span>Fica no topo da etapa de pagamentos, acima de "Condição prevista". Nenhum botão novo, nenhum campo novo.</span></li>
+  <li><span class="pin">3</span><span>O motorista só vê o atraso se a chave "Motorista vê o atraso na entrega" estiver ligada (Tela 15).</span></li>
+ </ul></div>
+</div>
+<p class="nota">A faixa foi posicionada na etapa 3 (pagamentos), que é onde o motorista decide como receber; a posição exata é uma escolha deste mockup.</p>
+</div></div></section>
+
+<!-- ========== TELA 13 ========== -->
+<section id="t13"><div class="acc aberto"><button><span>Tela 13 — Clientes › Mapa <small style="font-weight:600;color:var(--ink-3)">(Clientes › Mapa)</small></span></button><div class="corpo">
+<span class="tag novo">cor do pino + filtro + selo no painel</span>
+<div class="par dois" style="margin-top:12px">
+ <div class="dk"><div class="tela"><div class="tela-barra"><span class="bolas"><i></i><i></i><i></i></span>Mapa de Clientes</div><div class="tela-corpo">
+  <div class="pillrow" style="padding:0 0 8px;background:transparent"><span class="pill on" style="background:var(--mint);border-color:var(--primary);color:var(--primary-dark)">Filtros · 1</span><span class="pill on" style="background:#fff;border-color:#fca5a5;color:#991b1b">Só em atraso <span class="pin" style="margin:0 0 0 4px">1</span></span><span class="pill">|</span><span class="pill cz" style="background:transparent;border:0;font-weight:800">COLORIR POR</span><span class="pill">Dia de entrega</span><span class="pill">Categoria</span><span class="pill">Vendedor</span><span class="pill">WhatsApp</span><span class="pill on" style="background:var(--primary);color:#fff;border-color:var(--primary)">Inadimplência <span class="pin" style="margin:0 0 0 4px">2</span></span></div>
+  <div style="display:grid;grid-template-columns:minmax(0,1fr) 190px;gap:8px">
+   <div class="mapa"><div class="pino" style="left:30%;top:35%;background:#dc2626"></div><div class="pino" style="left:48%;top:55%;background:#dc2626"></div><div class="pino" style="left:68%;top:30%;background:#dc2626"></div><div class="pino" style="left:20%;top:70%;background:#d97706"></div><div class="pino" style="left:75%;top:68%;background:#00754A"></div><div class="pino" style="left:55%;top:20%;background:#00754A"></div><div class="pino" style="left:40%;top:80%;background:#00754A"></div>
+    <div style="position:absolute;right:8px;top:8px;background:rgba(255,255,255,.95);border:1px solid var(--linha);border-radius:10px;padding:6px 9px;font-size:10px"><b>INADIMPLÊNCIA</b><br><span style="color:#dc2626">●</span> Em atraso (3)<br><span style="color:#d97706">●</span> A confirmar (1)<br><span style="color:#00754A">●</span> Em dia (3)</div></div>
+   <div class="app-card" style="margin:0;padding:10px"><b>Gourmet Lanches</b><div style="margin:4px 0"><span class="sv c"><svg class="ic"><use href="#ia"/></svg>Em atraso R$ 1.247 · 57d</span> <span class="pin">3</span></div><div class="mini">Edição rápida: dia de entrega, categoria, vendedor...</div></div>
+  </div></div></div></div>
+ <div><div class="cel"><div class="barra"><span>Mapa de Clientes</span><span>9:41</span></div><div class="corpo-c" style="padding:8px">
+  <div class="pillrow" style="padding:0 0 6px;background:transparent"><span class="pill on" style="background:var(--mint);border-color:var(--primary);color:var(--primary-dark)">Filtros · 1</span><span class="pill on" style="background:#fff">Só em atraso</span><span class="pill">Colorir: Inadimplência</span></div>
+  <div class="mapa" style="height:170px"><div class="pino" style="left:30%;top:35%;background:#dc2626"></div><div class="pino" style="left:55%;top:60%;background:#dc2626"></div><div class="pino" style="left:75%;top:30%;background:#d97706"></div></div>
+  <div style="background:#fff;border-radius:16px 16px 0 0;margin-top:8px;padding:8px 12px;border:1px solid var(--linha)"><div style="width:40px;height:5px;border-radius:3px;background:#d1d5db;margin:0 auto 6px"></div><b style="font-size:13px">Gourmet Lanches</b><div style="margin-top:4px"><span class="sv c"><svg class="ic"><use href="#ia"/></svg>Em atraso R$ 1.247 · 57d</span></div></div>
+ </div></div></div>
+</div>
+<ul class="legenda">
+ <li><span class="pin">1</span><span><b>Novo filtro</b> "Só em atraso" dentro de Filtros (lembrado por usuário, como os outros filtros do mapa).</span></li>
+ <li><span class="pin">2</span><span><b>Nova opção em "Colorir por":</b> Inadimplência. Pino <b>vermelho</b> = em atraso, <b>âmbar</b> = a confirmar, <b>verde</b> = em dia. A legenda do mapa vira esta.</span></li>
+ <li><span class="pin">3</span><span><b>Novo:</b> selo no painel lateral (computador) e na folha que sobe de baixo (celular) ao tocar no pino. Clique abre o popup.</span></li>
+</ul>
+<p class="nota">Aproximação: o mapa em si é desenhado de forma ilustrativa (a base real usa OpenStreetMap); o painel e a barra de filtros seguem a estrutura da tela.</p>
+</div></div></section>
+
+<!-- ========== TELA 14 ========== -->
+<section id="t14"><div class="acc aberto"><button><span>Tela 14 — Central de Pendências <small style="font-weight:600;color:var(--ink-3)">(menu Central de Pendências)</small></span></button><div class="corpo">
+<span class="tag novo">bloco novo</span>
+<div class="par dois" style="margin-top:12px">
+ <div class="dk"><div class="tela"><div class="tela-barra"><span class="bolas"><i></i><i></i><i></i></span>Central de Pendências</div><div class="tela-corpo">
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px">
+   <div class="app-card" style="margin:0;padding:8px 10px"><div class="mini" style="font-weight:700;text-transform:uppercase">Total de pendências</div><b style="font-size:20px">9</b></div>
+   <div class="app-card" style="margin:0;padding:8px 10px"><div class="mini" style="font-weight:700;text-transform:uppercase">Dinheiro parado</div><b style="font-size:20px;color:#b45309">R$ 1.020</b></div>
+   <div class="app-card" style="margin:0;padding:8px 10px"><div class="mini" style="font-weight:700;text-transform:uppercase">Vencidas</div><b style="font-size:20px;color:#b91c1c">2</b></div>
+   <div class="app-card" style="margin:0;padding:8px 10px"><div class="mini" style="font-weight:700;text-transform:uppercase">Avisos</div><b style="font-size:20px;color:#b45309">7</b></div></div>
+  <div class="app-card" style="border-left:4px solid #f87171;padding:0;overflow:hidden">
+   <div class="linha" style="padding:12px 14px;border-bottom:1px solid var(--linha-leve)"><span class="rot" style="margin:0;color:#4b5563">Pedidos aguardando liberação (cliente em atraso) <span class="pin">1</span></span><span class="bdg vm">2</span></div>
+   <div style="padding:2px 14px">
+    <div class="linha" style="padding:9px 0;border-bottom:1px solid var(--linha-leve);flex-wrap:nowrap"><div style="min-width:0"><b style="font-size:13px">#418 · Debora Rosa</b><div class="mini">Pedido do site · em atraso R$ 691 · 48d</div></div><span class="btn btn-p" style="min-height:36px">Abrir</span></div>
+    <div class="linha" style="padding:9px 0;flex-wrap:nowrap"><div style="min-width:0"><b style="font-size:13px">#3188 · Debora Rosa</b><div class="mini">Pedido do vendedor · em atraso R$ 691 · 48d</div></div><span class="btn btn-p" style="min-height:36px">Abrir</span></div></div>
+   <div style="border-top:1px solid var(--linha-leve);padding:9px 14px;font-size:12px;font-weight:700;color:var(--primary)">ver todos (2) → <span class="pin">2</span></div>
+  </div></div></div></div>
+ <div><div class="cel"><div class="barra"><span>Central de Pendências</span><span>9:41</span></div><div class="corpo-c">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px"><div class="app-card" style="margin:0;padding:8px"><div class="mini">TOTAL</div><b style="font-size:18px">9</b></div><div class="app-card" style="margin:0;padding:8px"><div class="mini">VENCIDAS</div><b style="font-size:18px;color:#b91c1c">2</b></div></div>
+  <div class="app-card" style="border-left:4px solid #f87171;padding:10px"><div class="linha" style="flex-wrap:nowrap"><b style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#4b5563">Pedidos aguardando liberação (cliente em atraso)</b><span class="bdg vm">2</span></div>
+   <div class="linha" style="padding-top:8px;flex-wrap:nowrap"><div style="min-width:0"><b>#418 · Debora Rosa</b><div class="mini">em atraso R$ 691 · 48d</div></div><span class="btn btn-p" style="min-height:44px;display:inline-flex;align-items:center">Abrir</span></div></div>
+ </div></div></div>
+</div>
+<ul class="legenda">
+ <li><span class="pin">1</span><span><b>Novo bloco</b> no mesmo formato dos outros da Central (barra vermelha lateral, contador vermelho, linha com botão "Abrir"). O número é o "N" de pedidos esperando liberação.</span></li>
+ <li><span class="pin">2</span><span>"ver todos" e "Abrir" levam para a lista de Pedidos já filtrada por "Só clientes em atraso" e status de aprovação. Soma também os pedidos do site/Ana aguardando.</span></li>
+ <li><span class="pin">3</span><span>Os quatro cartões de cima (Total, Dinheiro parado, Vencidas, Avisos) passam a contar este bloco também.</span></li>
+</ul>
+<p class="nota">O pedido era um "cartão com N que abre a lista"; no desenho ele foi colocado como bloco da Central porque é o padrão real da tela (cada tipo de pendência é um bloco com contador e lista curta).</p>
+</div></div></section>
+
+<!-- ========== TELA 15 ========== -->
+<section id="t15"><div class="acc aberto"><button><span>Tela 15 — Configurações › Venda a inadimplente <small style="font-weight:600;color:var(--ink-3)">(Configurações, só admin)</small></span></button><div class="corpo">
+<span class="tag novo">tela nova</span>
+<p class="nota" style="margin-top:8px">Mesmo padrão do bloco "Notificação WhatsApp" e "Caixa — conferência do dinheiro": cartão branco com cabeçalho verde-claro, linhas cinza com chave liga/desliga.</p>
+<div class="par" style="grid-template-columns:minmax(0,1fr)">
+ <div class="dk"><div class="modal" style="min-width:560px">
+  <div style="padding:16px 20px;border-bottom:1px solid var(--linha);background:rgba(212,233,226,.4)"><h4 style="margin:0;font-size:17px;color:#374151">⚠️ Venda a inadimplente</h4><div class="mini" style="font-size:12px;margin-top:2px">Define quando um cliente conta como "em atraso" e o que a equipe pode fazer com ele.</div></div>
+  <div style="padding:16px 20px">
+   <div class="cfg"><div><div class="tt">Dias de carência <span class="pin">1</span></div><div class="ds">Só conta como atraso depois de quantos dias do vencimento</div><div class="qm">Última mudança: Admin · 14/10/2026 08:30</div></div><span class="input">3</span></div>
+   <div class="cfg"><div><div class="tt">Valor mínimo para bloquear <span class="pin">2</span></div><div class="ds">Atrasos menores que isto aparecem, mas não travam a venda</div><div class="qm">Última mudança: Admin · 14/10/2026 08:30</div></div><span class="input">R$ 50,00</span></div>
+   <div class="cfg"><div><div class="tt">Pix/cartão vira "a confirmar" após <span class="pin">3</span></div><div class="ds">Dias sem conciliação até o selo amarelo aparecer</div><div class="qm">Última mudança: Admin · 14/10/2026 08:30</div></div><span class="input">7 dias</span></div>
+   <div class="cfg"><div><div class="tt">Compra de funcionário nunca é inadimplência <span class="pin">4</span></div><div class="ds">Ligado — funcionário não recebe selo nem trava (desconto em folha)</div><div class="qm">Última mudança: Admin · 14/10/2026 08:30</div></div><span class="toggle"></span></div>
+   <div class="cfg"><div><div class="tt">Motorista vê o atraso na entrega <span class="pin">5</span></div><div class="ds">Ligado — mostra a faixa amarela no checkout (não bloqueia)</div><div class="qm">Última mudança: Admin · 14/10/2026 08:30</div></div><span class="toggle"></span></div>
+   <div class="cfg"><div><div class="tt">Pedido do site/Ana exige responsável para liberar <span class="pin">6</span></div><div class="ds">Sempre ligado — regra do dono, não pode ser desligada</div><div class="qm">Última mudança: Admin · 14/10/2026 08:30 · 🔒 fixa</div></div><span class="toggle fix"></span></div>
+  </div></div></div>
+</div>
+<ul class="legenda">
+ <li><span class="pin">1</span><span><b>Dias de carência (padrão 3):</b> um boleto vencido ontem ainda não vira "em atraso".</span></li>
+ <li><span class="pin">2</span><span><b>Valor mínimo (padrão R$ 50):</b> resto de centavos não trava venda.</span></li>
+ <li><span class="pin">3</span><span><b>Pix/cartão "a confirmar" (padrão 7 dias):</b> controla quando aparece o selo amarelo.</span></li>
+ <li><span class="pin">4</span><span><b>Compra de funcionário (ligado):</b> não aparece como inadimplência em nenhuma tela.</span></li>
+ <li><span class="pin">5</span><span><b>Motorista vê o atraso (ligado):</b> liga/desliga a faixa da Tela 12.</span></li>
+ <li><span class="pin">6</span><span><b>Pedido do site/Ana exige responsável (ligado, travado):</b> aparece, mas a chave não mexe (cadeado). Cada chave mostra "quem mudou / quando"; o histórico completo fica guardado.</span></li>
+</ul>
+</div></div></section>
+
+<h2>Decisões ainda abertas</h2>
+<div class="cartao">
+  <div class="decisao"><div class="q">1</div><div><b>Compra de funcionário</b> deve contar como desconto em folha (e portanto nunca ser inadimplência)?<div class="sug">Sugestão já aplicada no mockup: sim, a chave "Compra de funcionário nunca é inadimplência" vem ligada.</div></div></div>
+  <div class="decisao"><div class="q">2</div><div><b>Prazo do Pix/cartão "a confirmar":</b> 7 dias sem conciliação é um bom número?<div class="sug">Sugestão já aplicada: 7 dias (editável na Tela 15).</div></div></div>
+  <div class="decisao"><div class="q">3</div><div><b>O motorista deve ver o atraso</b> do cliente na hora da entrega?<div class="sug">Sugestão já aplicada: sim, só como aviso amarelo, sem bloquear a entrega (Tela 12).</div></div></div>
+  <div class="decisao"><div class="q">4</div><div><b>Carência de 3 dias e mínimo de R$ 50:</b> são os valores certos?<div class="sug">Sugestão já aplicada: 3 dias e R$ 50 (editáveis na Tela 15).</div></div></div>
+</div>
+
+<p class="rodape">Mockup para aprovação — nenhuma tela do app foi alterada. Gerado em 14/10/2026 a partir do código das telas.</p>
+</div>
+<script>
+document.querySelectorAll('.acc > button').forEach(function(b){b.addEventListener('click',function(){b.parentElement.classList.toggle('aberto')})});
+</script>
+</body>
+</html>

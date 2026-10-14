@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Inadimplência visível</title>
+<meta name="description" content="Diagnóstico de para onde foi a inadimplência no CA-Hardt e proposta de adequação em 3 etapas.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap">
+<style>
+  :root{
+    --primary:#00754A; --primary-dark:#006241; --house:#1E3932; --mint:#d4e9e2;
+    --creme:#f2f0eb; --surface:#ffffff; --ink:rgba(0,0,0,.87); --ink-2:#4b5563; --ink-3:#6b7280;
+    --linha:#e5e7eb; --linha-leve:#f3f4f6; --ouro:#cba258;
+    --verm:#dc2626; --verm-bg:#fee2e2; --verm-tx:#b91c1c;
+    --amar-bg:#fef3c7; --amar-tx:#92400e; --lar-bg:#ffedd5; --lar-tx:#9a3412;
+    --azul-bg:#dbeafe; --azul-tx:#1e40af; --verde-bg:#dcfce7; --verde-tx:#166534;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--creme);color:var(--ink);font-family:Manrope,'SF Pro Text',-apple-system,sans-serif;letter-spacing:-.01em;font-variant-numeric:tabular-nums;line-height:1.55}
+  .pagina{max-width:980px;margin:0 auto;padding:0 16px 64px}
+  .hero{background:var(--house);color:#fff;border-radius:0 0 24px 24px;padding:36px 24px 32px;margin:0 -16px 28px}
+  .hero .miolo{max-width:948px;margin:0 auto;padding:0 8px}
+  .selo{display:inline-block;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);color:#fff;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;padding:5px 12px;border-radius:999px;margin-bottom:14px}
+  .hero h1{margin:0 0 10px;font-size:clamp(26px,5vw,38px);font-weight:800;line-height:1.15;text-wrap:balance}
+  .hero p{margin:0;max-width:66ch;color:rgba(255,255,255,.85);font-size:15px}
+  h2{font-size:13px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-2);margin:40px 0 14px;display:flex;align-items:center;gap:10px}
+  h2::after{content:'';flex:1;height:1px;background:var(--linha)}
+  h3{font-size:16px;font-weight:800;margin:0 0 8px;color:var(--ink)}
+  p{max-width:72ch;margin:0 0 10px}
+  .destaque{color:var(--primary-dark);font-weight:700}
+  .cartao{background:var(--surface);border:1px solid var(--linha);border-radius:12px;box-shadow:0 1px 2px rgba(0,0,0,.05);padding:18px 20px;margin-bottom:12px}
+  .resposta{border-left:5px solid var(--verm);background:#fff7f7}
+  .resposta b{color:var(--verm-tx)}
+  .kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:14px 0}
+  @media(min-width:720px){.kpis{grid-template-columns:repeat(4,1fr)}}
+  .kpi{background:#fff;border:1px solid var(--linha);border-radius:12px;padding:14px 16px}
+  .kpi .rot{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+  .kpi .num{font-size:26px;font-weight:800;line-height:1.1;margin:6px 0 2px}
+  .kpi .sub{font-size:12px;color:var(--ink-2)}
+  .kpi.ruim .num{color:var(--verm-tx)} .kpi.bom .num{color:var(--primary-dark)} .kpi.alerta .num{color:var(--amar-tx)}
+  .acc{background:var(--surface);border:1px solid var(--linha);border-radius:12px;margin-bottom:10px;overflow:hidden}
+  .acc > button{all:unset;display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;padding:14px 18px;cursor:pointer;font-weight:800;font-size:15px;box-sizing:border-box}
+  .acc > button::after{content:'−';font-size:20px;color:var(--ink-3)}
+  .acc:not(.aberto) > button::after{content:'+'}
+  .acc .corpo{padding:0 18px 16px;display:block}
+  .acc:not(.aberto) .corpo{display:none}
+  .tabela{width:100%;border-collapse:collapse;font-size:13px}
+  .tabela th{text-align:left;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);padding:8px 10px;border-bottom:1px solid var(--linha);background:#fafaf8}
+  .tabela td{padding:8px 10px;border-bottom:1px solid var(--linha-leve);vertical-align:top}
+  .tabela td.num{text-align:right;white-space:nowrap}
+  .tabela tr:last-child td{border-bottom:0}
+  .scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;white-space:nowrap}
+  .b-verm{background:var(--verm);color:#fff} .b-vermc{background:var(--verm-bg);color:var(--verm-tx)} .b-verde{background:var(--verde-bg);color:var(--verde-tx)}
+  .b-amar{background:var(--amar-bg);color:var(--amar-tx)} .b-cinza{background:#f3f4f6;color:#374151} .b-azul{background:var(--azul-bg);color:var(--azul-tx)} .b-lar{background:var(--lar-bg);color:var(--lar-tx)}
+  .lista{margin:0;padding-left:20px} .lista li{margin-bottom:6px}
+  .lista-check{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+  .lista-check li{display:flex;gap:10px;font-size:14px;color:var(--ink-2)}
+  .lista-check li b{color:var(--ink)}
+  .tique{flex:none;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:800;margin-top:1px}
+  .tem .tique{background:var(--mint);color:var(--primary-dark)} .falta .tique{background:var(--verm-bg);color:var(--verm-tx)}
+  .duas{display:grid;grid-template-columns:1fr;gap:14px} @media(min-width:720px){.duas{grid-template-columns:1fr 1fr}}
+  .etapa{display:flex;gap:14px;align-items:flex-start}
+  .etapa .n{flex:none;width:36px;height:36px;border-radius:50%;background:var(--primary);color:#fff;display:grid;place-items:center;font-weight:800}
+  .etapa .tempo{display:inline-block;background:var(--mint);color:var(--primary-dark);font-size:11px;font-weight:800;padding:3px 10px;border-radius:999px;margin-left:8px;vertical-align:middle}
+  .fluxo{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:13px;font-weight:700}
+  .fluxo span{background:#fff;border:1px solid var(--linha);border-radius:999px;padding:5px 11px}
+  .fluxo i{font-style:normal;color:var(--ink-3)}
+  /* mock de telas */
+  .tela{background:var(--surface);border:1px solid var(--linha);border-radius:16px;box-shadow:0 8px 24px rgba(30,57,50,.10);overflow:hidden;margin:14px 0 8px;position:relative}
+  .tela-barra{background:var(--house);color:#fff;padding:10px 16px;display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700}
+  .tela-barra .bolas{display:flex;gap:5px;margin-right:6px} .tela-barra .bolas i{width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,.35)}
+  .tela-corpo{padding:14px;background:var(--creme)}
+  .app-card{background:#fff;border:1px solid var(--linha);border-radius:12px;box-shadow:0 1px 2px rgba(0,0,0,.04);padding:12px 14px;margin-bottom:10px;position:relative}
+  .app-card.verm{border-color:#fca5a5;background:#fff5f5}
+  .linha{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .nome{font-weight:800;font-size:14px} .meta{font-size:12px;color:var(--ink-3)}
+  .btn{display:inline-block;border-radius:999px;padding:7px 14px;font-size:12px;font-weight:700;border:1px solid transparent}
+  .btn-p{background:var(--primary);color:#fff} .btn-s{background:#fff;border-color:var(--primary);color:var(--primary)} .btn-off{background:#e5e7eb;color:#9ca3af}
+  .faixa{border-radius:10px;padding:10px 12px;font-size:13px;display:flex;gap:10px;align-items:flex-start;margin-bottom:10px}
+  .faixa.verm{background:var(--verm-bg);color:var(--verm-tx);border:1px solid #fca5a5} .faixa.lar{background:var(--lar-bg);color:var(--lar-tx);border:1px solid #fdba74} .faixa.amar{background:var(--amar-bg);color:var(--amar-tx);border:1px solid #fcd34d}
+  .faixa b{display:block}
+  .pin{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--ouro);color:#1E3932;font-size:11px;font-weight:800;vertical-align:middle;margin-left:4px;flex:none}
+  .legenda{margin:8px 0 18px;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--ink-2)}
+  .legenda li{display:flex;gap:8px;align-items:flex-start} .legenda .pin{margin:1px 0 0}
+  .abas{display:flex;gap:4px;border-bottom:1px solid var(--linha);margin-bottom:10px;font-size:12px;font-weight:700}
+  .abas span{padding:8px 12px;color:var(--ink-3)} .abas span.on{color:var(--primary-dark);border-bottom:2px solid var(--primary)}
+  .campo{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--linha-leve);font-size:13px}
+  .campo:last-child{border-bottom:0}
+  .input{border:1px solid #d1d5db;border-radius:6px;padding:5px 10px;font-size:13px;min-width:70px;text-align:right;background:#fff}
+  .toggle{width:36px;height:20px;border-radius:999px;background:var(--primary);position:relative;flex:none}
+  .toggle::after{content:'';position:absolute;top:2px;right:2px;width:16px;height:16px;border-radius:50%;background:#fff}
+  .toggle.off{background:#d1d5db} .toggle.off::after{right:auto;left:2px}
+  .decisao{display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-bottom:1px solid var(--linha-leve)}
+  .decisao:last-child{border-bottom:0}
+  .decisao .q{flex:none;width:28px;height:28px;border-radius:50%;background:var(--ouro);color:#1E3932;display:grid;place-items:center;font-weight:800;font-size:13px}
+  .decisao .sug{font-size:12px;color:var(--primary-dark);font-weight:700}
+  .nota{font-size:12px;color:var(--ink-3)}
+  .rodape{margin-top:40px;font-size:12px;color:var(--ink-3);text-align:center}
+</style>
+</head>
+<body>
+<div class="pagina">
+
+<div class="hero"><div class="miolo">
+  <span class="selo">Proposta · nada foi implementado ainda</span>
+  <h1>Inadimplência visível em todo o sistema</h1>
+  <p>Para onde foi o aviso de "cliente devendo", por que sumiu, e o que fazer para ele voltar — em todas as telas que lidam com pedido, cliente e contas a receber. Diagnóstico feito sobre os dados de produção de <b>14/10/2026 às 16:06</b> (backup automático).</p>
+</div></div>
+
+<div class="cartao resposta">
+  <h3>Resposta curta</h3>
+  <p><b>A regra não foi apagada.</b> O bloqueio de venda, o selo vermelho em Clientes, a faixa na Rota e a régua de cobrança continuam no código. O que mudou foi uma exceção criada em <b>07/09/2026</b>: "cliente que já pagou na entrega e só espera a conferência do Caixa não é devedor". Essa exceção, que antes valia só para pedido especial, passou a valer para <b>todo pedido</b> — e ela considera o <b>boleto informado na entrega como dinheiro recebido</b>.</p>
+  <p>Resultado: <b>boleto vencido e não pago sumiu da inadimplência</b>. Hoje o sistema esconde <b>R$ 11.149</b> de <b>R$ 15.851</b> vencidos (70%). Como todas as telas bebem da mesma fonte, o cliente some do selo, da Rota, do bloqueio de venda, da régua de WhatsApp e dos painéis ao mesmo tempo — ninguém cobra.</p>
+</div>
+
+<div class="cartao">
+  <h3>Os lugares que você citou</h3>
+  <ul class="lista">
+    <li><b>Card do cliente na Rota / atendimento</b> — a faixa "Inadimplente — R$ X em atraso" continua no card. Ela só aparece quando a lista de clientes vem marcada, e é essa marcação que a exceção do boleto apagou. Conferido ao vivo em produção: <b>Gourmet Lanches</b> tem 3 boletos vencidos (R$ 1.247, desde 18/08) e o card sai limpo.</li>
+    <li><b>Aprovação de pedido</b> — o aviso "Cliente com R$ X em atraso" aparece ao abrir o pedido (botão Editar) e bloqueia a venda a prazo. Mesma fonte, mesmo apagão. O modal de aprovação em si (Pendente de aprovação → Aprovar) nunca teve o aviso — entra na etapa 2.</li>
+    <li><b>Lista de Clientes</b> — selo vermelho, idem.</li>
+  </ul>
+  <p class="nota">Nenhuma dessas telas foi alterada. Os três lugares perguntam ao mesmo cálculo "este cliente deve?", e desde 07/09 o cálculo responde "não" para boleto apontado na entrega. A etapa 1 devolve os três de uma vez, sem mexer em tela.</p>
+</div>
+
+<div class="kpis">
+  <div class="kpi ruim"><div class="rot">Vencido de verdade</div><div class="num">R$ 15.851</div><div class="sub">52 parcelas em aberto, vencidas</div></div>
+  <div class="kpi ruim"><div class="rot">Escondido hoje</div><div class="num">R$ 11.149</div><div class="sub">32 parcelas · 16 clientes invisíveis</div></div>
+  <div class="kpi alerta"><div class="rot">O app mostra</div><div class="num">R$ 4.702</div><div class="sub">18 clientes com selo (parte é falso)</div></div>
+  <div class="kpi bom"><div class="rot">Com a regra corrigida</div><div class="num">R$ 12.443</div><div class="sub">21 clientes de verdade · 32 parcelas</div></div>
+</div>
+
+<h2>1. O que aconteceu</h2>
+
+<div class="acc aberto"><button>A exceção que virou buraco</button><div class="corpo">
+  <p>Quando o motorista entrega e informa a forma de pagamento (dinheiro, Pix, boleto 7 dias…), isso fica gravado como "pagamento apontado na entrega". A exceção criada em setembro diz: <span class="destaque">se o pagamento apontado cobre o saldo do título e o pedido foi entregue, o cliente não é devedor — só falta o banco confirmar</span>. Faz sentido para dinheiro e Pix. <b>Não faz sentido para boleto</b>: boleto apontado na entrega é uma promessa, não um pagamento.</p>
+  <p>Exemplos reais escondidos hoje:</p>
+  <div class="scroll"><table class="tabela">
+    <tr><th>Cliente</th><th>Pedido</th><th>Forma apontada</th><th class="num">Atraso</th><th class="num">Saldo</th></tr>
+    <tr><td>Elida Neves de Oliveira</td><td>#1335</td><td>7 dias - Boleto</td><td class="num"><span class="badge b-verm">126 dias</span></td><td class="num">R$ 410,88</td></tr>
+    <tr><td>Super Economia Barra do Sul</td><td>#1506</td><td>14 dias - Boleto</td><td class="num"><span class="badge b-verm">110 dias</span></td><td class="num">R$ 295,26</td></tr>
+    <tr><td>Thais Correa de Lima</td><td>#1924, #2047</td><td>7 dias - Boleto</td><td class="num"><span class="badge b-verm">92 dias</span></td><td class="num">R$ 381,10</td></tr>
+    <tr><td>Gourmet Lanches</td><td>#2542, #2698, #3044</td><td>7 dias - Boleto</td><td class="num"><span class="badge b-verm">57 dias</span></td><td class="num">R$ 1.247,08</td></tr>
+    <tr><td>Panificadora e Confeitaria M.</td><td>#3386, #3507</td><td>7 dias - Boleto</td><td class="num"><span class="badge b-vermc">8 dias</span></td><td class="num">R$ 3.516,72</td></tr>
+  </table></div>
+  <p class="nota" style="margin-top:8px">Dos R$ 11.149 escondidos: R$ 8.794 são boletos (7, 14 dias), R$ 759 são "7/14 dias", R$ 469 são compras de funcionário, R$ 1.128 são Pix comum ainda não conciliado.</p>
+</div></div>
+
+<div class="acc aberto"><button>Quem usa essa mesma regra (por isso sumiu de tudo)</button><div class="corpo">
+  <p>A exceção é um ponto único, consultado por:</p>
+  <ul class="lista">
+    <li><b>Bloqueio de venda</b> no Novo Pedido (o vendedor consegue vender a prazo para quem deve).</li>
+    <li><b>Selo vermelho</b> na lista de Clientes e <b>faixa</b> no card da Rota.</li>
+    <li><b>Régua de Cobrança</b> automática (o WhatsApp de cobrança <b>não sai</b> para esses clientes) e o painel "Inadimplentes".</li>
+    <li><b>Cobranças por responsável</b>, Dashboard Financeiro (recebíveis por idade) e painel do vendedor.</li>
+    <li><b>API da Ana</b> (a IA do WhatsApp recebe "inadimplente: não").</li>
+  </ul>
+</div></div>
+
+<div class="acc aberto"><button>Três outros desvios encontrados no caminho</button><div class="corpo">
+  <ul class="lista">
+    <li><b>Pedido especial ainda não entregue conta como inadimplente.</b> A parcela vence na data combinada da entrega; se a entrega atrasa, o cliente aparece devendo algo que nem recebeu. Hoje: <b>9 pedidos, R$ 1.811</b> de "inadimplência" falsa (ex.: Gabriela Moraes, Gislaine Souza, Alaide Dumke).</li>
+    <li><b>Pix comum esperando o banco há semanas.</b> 5 casos entre 18 e 63 dias (Panificadora Daiane, Jerry Adriano, Marcos Antonio…). A conciliação não aconteceu e o cliente fica invisível para sempre. Pode ser Pix que não caiu.</li>
+    <li><b>Pedido do site / da Ana não passa pela trava.</b> O cliente que está bloqueado de comprar a prazo pelo vendedor consegue pedir pelo WhatsApp, e a fila de aprovação não avisa.</li>
+  </ul>
+</div></div>
+
+<h2>2. Onde aparece hoje × onde deveria</h2>
+
+<div class="duas">
+  <div class="cartao tem">
+    <h3>✅ Já mostra (continua igual)</h3>
+    <ul class="lista-check">
+      <li><span class="tique">✓</span><span><b>Clientes (lista)</b> — selo "Inad. R$ X" + popup das parcelas</span></li>
+      <li><span class="tique">✓</span><span><b>Rota (card do cliente)</b> — faixa vermelha clicável</span></li>
+      <li><span class="tique">✓</span><span><b>Novo Pedido</b> — banner + bloqueio a prazo / à vista com responsabilidade</span></li>
+      <li><span class="tique">✓</span><span><b>Régua de Cobrança</b> — aba Inadimplentes, "Cobrar agora"</span></li>
+      <li><span class="tique">✓</span><span><b>Dashboard Financeiro</b> e <b>painel do vendedor</b></span></li>
+      <li><span class="tique">✓</span><span><b>Cobranças por responsável</b></span></li>
+    </ul>
+  </div>
+  <div class="cartao falta">
+    <h3>❌ Não mostra (é o que a proposta cria)</h3>
+    <ul class="lista-check">
+      <li><span class="tique">✕</span><span><b>Pedidos (lista)</b> — nome do cliente sem nenhum sinal</span></li>
+      <li><span class="tique">✕</span><span><b>Pedido aberto</b> (painel / impressão)</span></li>
+      <li><span class="tique">✕</span><span><b>Ficha do cliente</b> — só os campos velhos do Conta Azul ("Atrasos Pag.")</span></li>
+      <li><span class="tique">✕</span><span><b>Contas a Receber</b> — o cliente aparece na linha, sem selo</span></li>
+      <li><span class="tique">✕</span><span><b>Caixa</b> (conferência), <b>Expedição</b> (lista de entregas, carga), <b>Motorista</b> (checkout)</span></li>
+      <li><span class="tique">✕</span><span><b>Atendimentos</b>, <b>Mapa de clientes</b>, <b>Central de Pendências</b></span></li>
+      <li><span class="tique">✕</span><span><b>Pedidos Online</b> (fila do site/Ana) — sem selo e sem trava</span></li>
+    </ul>
+  </div>
+</div>
+
+<h2>3. A proposta, em 3 etapas</h2>
+
+<div class="cartao"><div class="etapa"><div class="n">1</div><div>
+  <h3>Corrigir a regra <span class="tempo">1 dia · urgente</span></h3>
+  <p>Uma fonte única de verdade, <b>inadimplenciaService</b>, com estas regras:</p>
+  <ul class="lista">
+    <li><b>"Esperando o banco" só com dinheiro, Pix ou cartão.</b> Boleto, prazo, "responsável" e qualquer outra forma <b>nunca</b> escondem a dívida.</li>
+    <li><b>Espera tem prazo.</b> Pix comum/cartão apontado há mais de <b>7 dias</b> sem conciliar volta a aparecer, em <span class="badge b-amar">amarelo "a confirmar"</span> (não vermelho) — alguém precisa olhar o extrato.</li>
+    <li><b>Especial não entregue não é inadimplência.</b> A parcela só conta depois da entrega.</li>
+    <li><b>Compra de funcionário</b> fica fora da cobrança (desconto em folha) — <i>decisão sua, veja abaixo</i>.</li>
+    <li><b>Tolerância de R$ 1,00</b> (hoje há cliente "devendo" R$ 0,10).</li>
+  </ul>
+  <p><b>Efeito imediato:</b> 16 clientes e R$ 10.021 voltam a aparecer; a régua volta a cobrar; o vendedor volta a ser bloqueado. Testado em produção com os casos acima antes de dizer "pronto".</p>
+</div></div></div>
+
+<div class="cartao"><div class="etapa"><div class="n">2</div><div>
+  <h3>O mesmo selo em todas as telas <span class="tempo">3 dias</span></h3>
+  <p>Um componente só, <b>SeloInadimplencia</b> (vermelho "Em atraso R$ X · N dias", amarelo "a confirmar"), com o mesmo popup de parcelas que já existe em Clientes. Ele entra ao lado do nome do cliente em: Pedidos (lista e pedido aberto), Ficha do cliente (faixa + aba Financeiro), Contas a Receber, Caixa, Expedição, Motorista, Atendimentos, Mapa (pino vermelho), Central de Pendências e Pedidos Online.</p>
+  <p>Por trás: as listas de pedidos passam a vir com o campo <b>inadimplencia</b> calculado em lote (uma consulta só por tela, sem pesar o banco).</p>
+</div></div></div>
+
+<div class="cartao"><div class="etapa"><div class="n">3</div><div>
+  <h3>Regras de venda explícitas e configuráveis <span class="tempo">2 dias</span></h3>
+  <ul class="lista">
+    <li><b>Trava no site/Ana:</b> pedido de cliente em atraso entra na fila com aviso; aprovar exige a mesma permissão <b>Pode_Vender_Inadimplente</b>. A Ana recebe o status para avisar o cliente.</li>
+    <li><b>Tela Configurações → Venda a inadimplente:</b> dias de carência (ex.: 3 dias de atraso não bloqueia), valor mínimo que bloqueia, prazo da espera do Pix, se o motorista vê o atraso.</li>
+    <li><b>Motorista cobra na entrega:</b> aviso no checkout "cliente tem R$ X em atraso — oferecer pagamento agora".</li>
+  </ul>
+  <p class="nota">Complementa a proposta anterior <b>Central de Cobrança</b> (tratativa, promessa, acordo, perda) — aquela trata a dívida; esta faz a dívida aparecer. Podem andar separadas.</p>
+</div></div></div>
+
+<div class="cartao">
+  <h3>Como vai ser feito</h3>
+  <div class="fluxo"><span>arquiteto</span><i>→</i><span>dev-backend</span><span>dev-frontend</span><i>→</i><span>qa-testador</span><span>revisor-codigo</span><i>→</i><span>gerente-entrega</span><i>→</i><span>teste em produção</span><i>→</i><span>nota de entrega + novidade no grupo</span></div>
+  <p class="nota" style="margin-top:10px">Assunto financeiro = porte grande: arquiteto antes, equipe completa depois. A etapa 1 mexe só no backend e sai primeiro.</p>
+</div>
+
+<h2>4. As telas do app (como vai ficar)</h2>
+
+<h3>Tela 1 — Pedidos (lista)</h3>
+<div class="tela">
+  <div class="tela-barra"><div class="bolas"><i></i><i></i><i></i></div>Pedidos</div>
+  <div class="tela-corpo">
+    <div class="linha" style="margin-bottom:10px"><span class="btn btn-s">Filtros ▾</span><span class="badge b-vermc">Só clientes em atraso <span class="pin">3</span></span></div>
+    <div class="app-card verm"><div class="linha">
+      <div><div class="nome">#3523 · Gourmet Lanches <span class="badge b-verm">Em atraso R$ 1.247 · 57d</span><span class="pin">1</span></div><div class="meta">7 dias - Boleto · entrega 15/10 · Vendedor Patrik</div></div>
+      <span class="badge b-azul">Aprovado</span></div></div>
+    <div class="app-card"><div class="linha">
+      <div><div class="nome">#3522 · Panificadora Aquarius <span class="badge b-amar">A confirmar R$ 322 · Pix 12d</span><span class="pin">2</span></div><div class="meta">À vista - Pix · entrega 15/10 · Vendedor Jociel</div></div>
+      <span class="badge b-verde">Faturado</span></div></div>
+    <div class="app-card"><div class="linha">
+      <div><div class="nome">#3521 · Mercado Luz &amp; Amaral</div><div class="meta">14 dias - Boleto · entrega 15/10 · Vendedor Patrik</div></div>
+      <span class="badge b-cinza">Pendente</span></div></div>
+  </div>
+</div>
+<ul class="legenda">
+  <li><span class="pin">1</span>Selo vermelho ao lado do nome: valor em atraso e dias da parcela mais antiga. Clique abre o popup das parcelas (o mesmo de Clientes).</li>
+  <li><span class="pin">2</span>Selo amarelo "a confirmar": Pix/cartão apontado na entrega e ainda não conciliado há mais de 7 dias. Não é cobrança, é pendência do escritório.</li>
+  <li><span class="pin">3</span>Filtro "Só clientes em atraso", lembrado por usuário como todo filtro do sistema.</li>
+</ul>
+
+<h3>Tela 2 — Ficha do cliente</h3>
+<div class="tela">
+  <div class="tela-barra"><div class="bolas"><i></i><i></i><i></i></div>Clientes › Gourmet Lanches</div>
+  <div class="tela-corpo">
+    <div class="faixa verm"><span>⚠</span><div><b>Em atraso: R$ 1.247,08 em 3 boletos — mais antigo há 57 dias <span class="pin">1</span></b>Venda a prazo bloqueada para quem não tem a permissão. Último aviso da régua: ontem.</div></div>
+    <div class="app-card">
+      <div class="abas"><span>Cadastro</span><span>Endereço / GPS</span><span class="on">Financeiro <span class="pin">2</span></span><span>Histórico</span></div>
+      <div class="campo"><span>#2542 · venc. 19/08 · 7 dias - Boleto</span><span class="badge b-verm">R$ 642,38 · 57d</span></div>
+      <div class="campo"><span>#2698 · venc. 25/08 · 7 dias - Boleto</span><span class="badge b-verm">R$ 110,00 · 50d</span></div>
+      <div class="campo"><span>#3044 · venc. 15/09 · 7 dias - Boleto</span><span class="badge b-verm">R$ 494,70 · 29d</span></div>
+      <div class="linha" style="margin-top:10px"><span class="btn btn-p">Cobrar agora (WhatsApp) <span class="pin">3</span></span><span class="btn btn-s">Abrir no Contas a Receber</span></div>
+    </div>
+  </div>
+</div>
+<ul class="legenda">
+  <li><span class="pin">1</span>Faixa no topo da ficha, sempre visível, com o total e a idade da dívida. Substitui os campos velhos "Atrasos Pag." do Conta Azul.</li>
+  <li><span class="pin">2</span>Aba Financeiro nova: parcelas em aberto, vencidas em vermelho, com o número do pedido.</li>
+  <li><span class="pin">3</span>"Cobrar agora" usa a régua que já existe (mensagem transacional, mesma referência, sem duplicar).</li>
+</ul>
+
+<h3>Tela 3 — Pedidos Online (fila do site / Ana)</h3>
+<div class="tela">
+  <div class="tela-barra"><div class="bolas"><i></i><i></i><i></i></div>Pedidos Online › Fila</div>
+  <div class="tela-corpo">
+    <div class="app-card verm">
+      <div class="linha"><div><div class="nome">Pedido do WhatsApp · Debora Rosa <span class="badge b-verm">Em atraso R$ 691 · 48d</span><span class="pin">1</span></div><div class="meta">3 boletos vencidos · 7 dias - Boleto · R$ 412,00 este pedido</div></div></div>
+      <div class="faixa lar" style="margin:10px 0 8px"><span>⚠</span><div><b>Aprovar exige a permissão "Pode vender a inadimplente" <span class="pin">2</span></b>Ou mude a condição para à vista e aprove com sua responsabilidade.</div></div>
+      <div class="linha"><span class="btn btn-off">Aprovar</span><span class="btn btn-s">Mudar para à vista</span><span class="btn btn-s">Avisar cliente pela Ana <span class="pin">3</span></span></div>
+    </div>
+  </div>
+</div>
+<ul class="legenda">
+  <li><span class="pin">1</span>O pedido entra na fila normalmente, mas já com o selo.</li>
+  <li><span class="pin">2</span>Mesma trava do Novo Pedido: a prazo só com permissão; à vista com responsabilidade registrada na observação.</li>
+  <li><span class="pin">3</span>A Ana recebe o status pela API e pode avisar o cliente que há pendência (texto a combinar com o time do bot).</li>
+</ul>
+
+<h3>Tela 4 — Motorista (checkout da entrega)</h3>
+<div class="tela">
+  <div class="tela-barra"><div class="bolas"><i></i><i></i><i></i></div>Minhas Entregas › #3523</div>
+  <div class="tela-corpo">
+    <div class="faixa amar"><span>💬</span><div><b>Este cliente tem R$ 1.247,08 em atraso (3 boletos) <span class="pin">1</span></b>Ofereça receber agora. Se receber, aponte a forma abaixo — vai para a conferência do Caixa como sempre.</div></div>
+    <div class="app-card"><div class="campo"><span>Saldo do pedido</span><b>R$ 412,00</b></div><div class="campo"><span>Boletos em atraso <span class="pin">2</span></span><b>R$ 1.247,08</b></div><div class="campo"><span>Forma apontada</span><span class="input">7 dias - Boleto</span></div></div>
+    <div class="linha"><span class="btn btn-p">Confirmar entrega</span></div>
+  </div>
+</div>
+<ul class="legenda">
+  <li><span class="pin">1</span>Aviso só para informar e oferecer o pagamento. Não bloqueia a entrega (quem decide entregar ou não é a expedição, antes de carregar).</li>
+  <li><span class="pin">2</span>Linha separada: o que receber de boleto antigo não se mistura com o saldo do pedido atual.</li>
+</ul>
+
+<h3>Tela 5 — Configurações › Venda a inadimplente</h3>
+<div class="tela">
+  <div class="tela-barra"><div class="bolas"><i></i><i></i><i></i></div>Configurações › Venda a inadimplente</div>
+  <div class="tela-corpo">
+    <div class="app-card">
+      <div class="campo"><span>Dias de carência (atraso menor não bloqueia) <span class="pin">1</span></span><span class="input">3</span></div>
+      <div class="campo"><span>Valor mínimo em atraso para bloquear</span><span class="input">R$ 50</span></div>
+      <div class="campo"><span>Pix/cartão apontado vira "a confirmar" após <span class="pin">2</span></span><span class="input">7 dias</span></div>
+      <div class="campo"><span>Compra de funcionário nunca é inadimplência</span><span class="toggle"></span></div>
+      <div class="campo"><span>Motorista vê o atraso na entrega <span class="pin">3</span></span><span class="toggle"></span></div>
+      <div class="campo"><span>Pedido do site/Ana passa pela trava</span><span class="toggle"></span></div>
+    </div>
+  </div>
+</div>
+<ul class="legenda">
+  <li><span class="pin">1</span>Regras que hoje são fixas no código passam a ser suas. Mudar aqui vale na hora, em todas as telas.</li>
+  <li><span class="pin">2</span>É o prazo da "espera do banco". Depois dele o cliente aparece em amarelo, nunca some.</li>
+  <li><span class="pin">3</span>Cada chave tem histórico de quem mudou (igual ao painel de permissões).</li>
+</ul>
+
+<h2>5. Decisões que são suas</h2>
+<div class="cartao">
+  <div class="decisao"><div class="q">1</div><div><b>Corrigir a regra já (etapa 1) antes das telas?</b><div class="sug">Sugestão: sim — é 1 dia e destrava a cobrança de R$ 10 mil.</div></div></div>
+  <div class="decisao"><div class="q">2</div><div><b>Compra de funcionário ("À vista - Funcionário") é desconto em folha?</b> São 6 parcelas, R$ 468. <div class="sug">Sugestão: fora da inadimplência, com relatório próprio para o RH.</div></div></div>
+  <div class="decisao"><div class="q">3</div><div><b>Quantos dias o Pix/cartão apontado pode esperar o banco?</b><div class="sug">Sugestão: 7 dias. Hoje há 5 casos com 18 a 63 dias — vale conferir se esses Pix caíram.</div></div></div>
+  <div class="decisao"><div class="q">4</div><div><b>Pedido do site/Ana de cliente em atraso: bloquear a aprovação ou só avisar?</b><div class="sug">Sugestão: mesma trava do vendedor (bloqueia a prazo, libera à vista com responsabilidade).</div></div></div>
+  <div class="decisao"><div class="q">5</div><div><b>O motorista vê que o cliente está devendo?</b><div class="sug">Sugestão: sim, só como aviso para oferecer o pagamento — sem bloquear a entrega.</div></div></div>
+  <div class="decisao"><div class="q">6</div><div><b>Carência e valor mínimo para bloquear a venda?</b> Hoje: qualquer centavo, no dia seguinte ao vencimento. <div class="sug">Sugestão: 3 dias e R$ 50, ajustável na tela.</div></div></div>
+</div>
+
+<h2>Anexo — quem está devendo de verdade hoje (regra corrigida)</h2>
+<div class="cartao">
+  <p class="nota">21 clientes · 32 parcelas · R$ 12.443,21. Sem compras de funcionário, sem especial não entregue, sem Pix em espera. Dados do backup de 14/10/2026 16:06. Nomes abreviados.</p>
+  <div class="scroll"><table class="tabela">
+    <tr><th>Cliente</th><th class="num">Parc.</th><th class="num">Saldo</th><th class="num">Atraso</th><th>Forma apontada</th><th>Hoje</th></tr>
+    <tr><td>Panificadora e Confeitaria M.</td><td class="num">2</td><td class="num">R$ 3.516,72</td><td class="num">8d</td><td>7 dias - Boleto</td><td><span class="badge b-vermc">escondido</span></td></tr>
+    <tr><td>Gourmet Lanches</td><td class="num">3</td><td class="num">R$ 1.247,08</td><td class="num">57d</td><td>7 dias - Boleto</td><td><span class="badge b-vermc">escondido</span></td></tr>
+    <tr><td>Navi-Gator Buffet</td><td class="num">1</td><td class="num">R$ 803,42</td><td class="num">7d</td><td>Escritório responsável</td><td><span class="badge b-verde">aparece</span></td></tr>
+    <tr><td>Roberto de Souza Porto</td><td class="num">2</td><td class="num">R$ 794,97</td><td class="num">12d</td><td>14 dias - Boleto</td><td><span class="badge b-vermc">escondido</span></td></tr>
+    <tr><td>C&amp;C Cozinha Industriais</td><td class="num">3</td><td class="num">R$ 758,56</td><td class="num">8d</td><td>7/14 dias</td><td><span class="badge b-vermc">escondido</span></td></tr>
+    <tr><td>Debora Rosa</td><td class="num">3</td><td class="num">R$ 691,28</td><td class="num">48d</td><td>7 dias - Boleto</td><td><span class="badge b-vermc">escondido</span></td></tr>
+    <tr><td>Sr Jaime Pães e Doces</td><td class="num">1</td><td class="num">R$ 536,49</td><td class="num">20d</td><td>7 dias - Boleto</td><td><span class="badge b-vermc">escondido</span></td></tr>
+    <tr><td>Jeferson Claudio ME</td><td class="num">1</td><td class="num">R$ 513,05</td><td class="num">12d</td><td>7 dias - Boleto</td><td><span class="badge b-vermc">escondido</span></td></tr>
+    <tr><td>Panificadora Aquarius</td><td class="num">1</td><td class="num">R$ 478,66</td><td class="num">5d</td><td>Escritório responsável</td><td><span class="badge b-verde">aparece</span></td></tr>
+    <tr><td>Salty Coffee</td><td class="num">1</td><td class="num">R$ 431,69</td><td class="num">102d</td><td>Escritório responsável</td><td><span class="badge b-verde">aparece</span></td></tr>
+    <tr><td>Elida Neves de Oliveira</td><td class="num">1</td><td class="num">R$ 410,88</td><td class="num">126d</td><td>7 dias - Boleto</td><td><span class="badge b-vermc">escondido</span></td></tr>
+    <tr><td>Thais Correa de Lima</td><td class="num">2</td><td class="num">R$ 381,10</td><td class="num">92d</td><td>7 dias - Boleto</td><td><span class="badge b-vermc">escondido</span></td></tr>
+    <tr><td>Bona Pães e Doces / Alecrim</td><td class="num">2</td><td class="num">R$ 369,74</td><td class="num">48d</td><td>Escritório responsável</td><td><span class="badge b-verde">aparece</span></td></tr>
+    <tr><td>Super Economia Barra do Sul</td><td class="num">1</td><td class="num">R$ 295,26</td><td class="num">110d</td><td>14 dias - Boleto</td><td><span class="badge b-vermc">escondido</span></td></tr>
+    <tr><td>Mercadinho L.M.C.M.</td><td class="num">1</td><td class="num">R$ 272,04</td><td class="num">47d</td><td>(devolvido, saldo aberto)</td><td><span class="badge b-verde">aparece</span></td></tr>
+    <tr><td>Panificadora Edemedi</td><td class="num">1</td><td class="num">R$ 232,12</td><td class="num">28d</td><td>Vendedor responsável</td><td><span class="badge b-verde">aparece</span></td></tr>
+    <tr><td>Jeff Cafeteria e Lanchonete</td><td class="num">1</td><td class="num">R$ 215,40</td><td class="num">2d</td><td>7 dias - Boleto</td><td><span class="badge b-vermc">escondido</span></td></tr>
+    <tr><td>Mercado Luz &amp; Amaral</td><td class="num">1</td><td class="num">R$ 191,76</td><td class="num">20d</td><td>7 dias - Boleto</td><td><span class="badge b-vermc">escondido</span></td></tr>
+    <tr><td>Mercearia Helck</td><td class="num">1</td><td class="num">R$ 155,25</td><td class="num">53d</td><td>Vendedor responsável</td><td><span class="badge b-verde">aparece</span></td></tr>
+    <tr><td>Rosangela dos Santos</td><td class="num">2</td><td class="num">R$ 147,64</td><td class="num">153d</td><td>Escritório responsável</td><td><span class="badge b-verde">aparece</span></td></tr>
+    <tr><td>Lucia Maria Neves Marques</td><td class="num">1</td><td class="num">R$ 0,10</td><td class="num">25d</td><td>Escritório responsável</td><td><span class="badge b-cinza">sai (tolerância)</span></td></tr>
+  </table></div>
+</div>
+
+<div class="rodape">CA-Hardt · proposta de adequação da inadimplência · 14/10/2026 · fonte: código em produção (commit d7ffabc2 de 07/09/2026) e backup do banco de 14/10 16:06</div>
+</div>
+<script>
+document.querySelectorAll('.acc > button').forEach(b => b.addEventListener('click', () => b.parentElement.classList.toggle('aberto')));
+</script>
+</body>
+</html>
