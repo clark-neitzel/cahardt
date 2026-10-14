@@ -26,7 +26,7 @@ const projecaoVendasService = require('../services/projecaoVendasService');
 // PROTEGEM o cliente (bloqueio de venda, selo de inadimplente, painel/"cobrar agora")
 // continuam varrendo tudo, sem recorte.
 const idsEmEsperaConferencia = async () =>
-    [...await require('../services/recebimentoEntregaService').idsContasEmEsperaDeConferencia({ desdeDias: 90 })];
+    [...await require('../services/inadimplenciaService').idsContasForaDaInadimplencia({ desdeDias: 90 })];
 
 const num = (v) => Number(v || 0);
 const round2 = (v) => Math.round(num(v) * 100) / 100;

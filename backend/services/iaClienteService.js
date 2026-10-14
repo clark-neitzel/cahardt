@@ -313,15 +313,19 @@ const iaClienteService = {
     // cadastro de cliente (clienteController): contas ABERTO/PARCIAL com parcela PENDENTE/
     // PARCIAL/VENCIDO vencida antes de hoje (meia-noite em São Paulo), excluindo pedido
     // EXCLUIDO / CA CANCELADO por OR explícito (NUNCA `NOT` — situacaoCA null sumiria) e
-    // descartando as contas de especial já pago em dinheiro esperando a conferência do Caixa.
+    // descartando as contas que a fonte única (services/inadimplenciaService) tira da inadimplência
+    // (Pix/dinheiro apontado dentro do prazo ou 'a confirmar', compra de funcionário, especial não entregue) —
+    // boleto apontado na entrega NÃO é pago e conta.
     async situacaoFinanceira(telefoneRaw) {
         const cliente = await _clientePorTelefone(telefoneRaw);
         if (!cliente) return { reconhecido: false };
 
         const hojeStr = iaPedidoService.hojeSP();
         const hoje = new Date(hojeStr + 'T00:00:00.000Z');
-        const { idsContasEmEsperaDeConferencia } = require('./recebimentoEntregaService');
-        const emEspera = await idsContasEmEsperaDeConferencia({ clienteIds: [cliente.UUID] });
+        // Origem do cálculo (10/2026): fonte única da inadimplência — mesmo número do selo do app.
+        // Só a origem do Set mudou; o laço e TODOS os campos da resposta seguem iguais (contrato /v1).
+        const { idsContasForaDaInadimplencia } = require('./inadimplenciaService');
+        const emEspera = await idsContasForaDaInadimplencia({ clienteIds: [cliente.UUID], incluirForaSemAtraso: true });
         const contas = await prisma.contaReceber.findMany({
             where: {
                 clienteId: cliente.UUID,

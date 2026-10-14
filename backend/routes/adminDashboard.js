@@ -10,7 +10,7 @@ const verificarAuth = require('../middlewares/authMiddleware');
 // PROTEGEM o cliente (bloqueio de venda, selo de inadimplente, painel/"cobrar agora")
 // continuam varrendo tudo, sem recorte.
 const idsEmEsperaConferencia = async () =>
-    [...await require('../services/recebimentoEntregaService').idsContasEmEsperaDeConferencia({ desdeDias: 90 })];
+    [...await require('../services/inadimplenciaService').idsContasForaDaInadimplencia({ desdeDias: 90 })];
 
 const num = (v) => Number(v || 0);
 // Inadimplência = SALDO em aberto (valor − recebido − desconto), nunca o valor cheio da

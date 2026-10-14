@@ -74,3 +74,19 @@ Todos os envios (automáticos, lembretes e manuais) com data, cliente, canal, ti
 O painel de inadimplentes e o botão **"Cobrar agora"** enxergam **todos** os títulos em aberto do cliente — inclusive de **pedido especial**, de propósito, porque é o escritório que cobra o especial na mão. Só o **envio automático** da régua é que nunca cobra especial, bonificação nem amostra.
 
 Até 08/2026 um defeito escondia do painel os títulos de **pedido faturado direto no app** (que ainda não tinha situação registrada no Conta Azul): eles não apareciam na lista de inadimplentes nem entravam na régua. Corrigido — esses títulos voltaram a ser enxergados. Efeito prático: podem aparecer no painel alguns clientes que antes não apareciam, e eles passam a receber **lembrete de vencimento** normalmente.
+
+## Quem é "inadimplente" no painel e no "Cobrar agora" (atualizado em 10/2026)
+
+O painel da aba Inadimplentes, o botão **Cobrar agora** e o envio automático usam a mesma regra do selo do app:
+
+- **Boleto ou venda a prazo (ex.: "7 dias - Boleto", "7/14 dias") apontado na entrega NUNCA esconde a dívida.** Apontar o boleto na entrega não é pagamento: se vencer e ninguém pagar, o cliente aparece **em atraso** (selo vermelho) em todas as telas, com o mesmo valor.
+- **Dinheiro, Pix, cartão e Pix Asaas apontados na entrega** cobrindo o saldo todo ficam **"em espera"** — o cliente já pagou, só falta o Caixa/Conciliação confirmar; não é devedor. Se **passar de 7 dias** sem ninguém confirmar, vira **"a confirmar"** (selo **amarelo**): é uma **pendência do escritório**, **não bloqueia venda**, mas não fica escondida para sempre. Pagou só uma parte? O saldo todo continua como dívida.
+- **Pedido especial** só conta como dívida **depois de entregue**; antes disso não aparece como atraso.
+- **Compra de funcionário** (ex.: "À vista - Funcionário") fica **fora** da inadimplência.
+- **Tolerância de R$ 1,00:** saldo de até R$ 1,00 (por parcela ou somando a conta) não é dívida — "devendo R$ 0,10" não vira selo nem cobrança.
+- **O selo vermelho aparece desde o 1º dia de atraso.** Já a **trava da venda a prazo** só vale com **3 dias de carência** (a partir do 3º dia de atraso) **e** pelo menos **R$ 50,00** em atraso — atraso menor aparece mas não trava. Os 3 dias e os R$ 50 são ajustáveis.
+- **Quem tem a permissão `Pode_Vender_Inadimplente` (ou é admin)** libera a venda e fica registrado como **responsável** na observação do pedido ("se responsabiliza pela venda"). Quem não tem só consegue vender **à vista** (também fica como responsável). Especial e bonificação não são barrados ao criar.
+- **Onde ajustar:** só o administrador ajusta essas regras (carência, valor mínimo, prazo do "a confirmar", funcionário fora, aviso ao motorista), e fica registrado quem mudou e quando. A tela em Configurações chega na próxima entrega; por enquanto o administrador pede a mudança à equipe técnica.
+- A mesma regra alimenta o selo da lista de Clientes, a ficha/popup, a trava de venda, a Régua de Cobrança e a Cobrança em Rota.
+- Os dashboards e o aging usam a mesma regra de classificação, mas somam todos os títulos vencidos (inclusive de pedidos excluídos/cancelados e sem a tolerância de R$ 1), por isso o total deles pode ser maior que a soma dos selos por cliente.
+- Na régua isso significa: **boleto apontado e vencido continua sendo cobrado**; Pix/dinheiro em espera, "a confirmar", funcionário e especial ainda não entregue **não recebem cobrança** (nem lembrete de parcela a vencer). O contador "aguardando conferência" mostra quantos títulos ficaram de fora por isso.

@@ -52,7 +52,7 @@ router.get('/ping', (req, res) => {
         ok: true,
         // Marcador de deploy: bumpar a cada mudança de backend que precise de confirmação
         // em produção (não há outro jeito de saber de fora qual versão está no ar).
-        deployMarker: 'ia-gpt6-luna-2026-10-14',
+        deployMarker: 'inadimplencia-e1-2026-10-14',
         uptimeSegundos: Math.round(process.uptime()),
         timestamp: new Date().toISOString(),
         openaiConfigurada: !!process.env.OPENAI_API_KEY,
@@ -134,6 +134,140 @@ router.get('/diag-comissao-projecao', async (req, res) => {
         });
     } catch (err) {
         res.status(500).json({ error: err.message });
+    }
+});
+
+// GET /api/admin-exec/diag-inadimplencia?clienteId=<uuid>|q=<nome>[&formas=1]
+// Compara o cálculo NOVO (services/inadimplenciaService) com o ANTIGO (idsContasEmEsperaDeConferencia
+// + soma de parcelas vencidas) e lista a classificação de cada pagamento apontado.
+// Sem clienteId/q: resumo global (quantos clientes mudaram de status).
+router.get('/diag-inadimplencia', async (req, res) => {
+    try {
+        const inad = require('../services/inadimplenciaService');
+        const cfgInad = require('../config/inadimplenciaConfig');
+        const { idsContasEmEsperaDeConferencia } = require('../services/recebimentoEntregaService');
+        const cfg = await cfgInad.get({ fresh: true });
+        const hojeSP = inad.hojeSPStr();
+        const hoje = new Date(`${hojeSP}T00:00:00.000Z`);
+        const saldo = (p) => Number(p.valor) - Number(p.valorPago || 0) - Number(p.valorDescontoTotal || 0);
+
+        // Cálculo ANTIGO reimplementado a partir da função legada (mantida só para isto).
+        const antigoDe = (contas, emEspera) => {
+            const porCliente = {};
+            for (const c of contas) {
+                if (emEspera.has(c.id)) continue;
+                for (const p of c.parcelas) {
+                    if (!['PENDENTE', 'PARCIAL', 'VENCIDO'].includes(p.status) || new Date(p.dataVencimento) >= hoje) continue;
+                    const s = saldo(p);
+                    porCliente[c.clienteId] = porCliente[c.clienteId] || { total: 0, parcelas: 0 };
+                    porCliente[c.clienteId].total += s;
+                    if (s > 0.01) porCliente[c.clienteId].parcelas += 1;
+                }
+            }
+            for (const id of Object.keys(porCliente)) if (porCliente[id].total <= 0.01) delete porCliente[id];
+            return porCliente;
+        };
+
+        let { clienteId } = req.query;
+        if (!clienteId && req.query.q) {
+            const achados = await prisma.cliente.findMany({
+                where: { OR: [{ Nome: { contains: String(req.query.q), mode: 'insensitive' } }, { NomeFantasia: { contains: String(req.query.q), mode: 'insensitive' } }] },
+                select: { UUID: true, Nome: true, NomeFantasia: true }, take: 10
+            });
+            if (achados.length !== 1) return res.json({ aviso: 'Informe clienteId (a busca q não achou exatamente 1)', candidatos: achados });
+            clienteId = achados[0].UUID;
+        }
+
+        const resultado = { config: cfg, hojeSP };
+
+        if (clienteId) {
+            const det = await inad.detalheCliente(clienteId, { fresh: true });
+            const emEsperaAntigo = await idsContasEmEsperaDeConferencia({ clienteIds: [clienteId] });
+            const contasAntigo = await inad.carregarContas({ clienteIds: [clienteId], soComAtrasoOuEntregue: false });
+            const ant = antigoDe(contasAntigo, emEsperaAntigo)[clienteId];
+            resultado.cliente = await prisma.cliente.findUnique({ where: { UUID: clienteId }, select: { UUID: true, Nome: true, NomeFantasia: true } });
+            const { cfg: _c, classificadas, ...situacao } = det;
+            resultado.novo = {
+                ...situacao,
+                contas: classificadas.map(({ conta, r }) => ({
+                    contaId: conta.id, pedidoNumero: conta.pedido?.numero ?? null,
+                    situacao: inad.rotuloSituacaoConta(r), destino: r.destino, motivo: r.motivo,
+                    saldoAberto: r.saldoAberto, forma: r.forma, elegivel: r.elegivel, aConfirmar: r.aConfirmar,
+                    parcelasVencidas: r.vencidas.map(v => ({ numero: v.numeroParcela, saldo: v.saldo, diasAtraso: v.diasAtraso })),
+                    pagamentosApontados: (conta.pedido?.pagamentosReais || []).map(pg => ({
+                        forma: pg.formaPagamentoNome, valor: Number(pg.valor),
+                        classe: inad.classificarFormaApontada(pg.formaPagamentoNome),
+                        recebimentoProprio: ehRecebimentoProprio(pg), cobrancaAsaasId: pg.cobrancaAsaasId || null, asaasRecebido: !!pg.asaasRecebido
+                    })),
+                    condicao: conta.pedido?.nomeCondicaoPagamento || null,
+                    especial: conta.pedido?.especial || false, statusEntrega: conta.pedido?.statusEntrega || null,
+                    dataEntrega: conta.pedido?.dataEntrega || null
+                }))
+            };
+            resultado.antigo = {
+                inadimplente: !!ant, totalVencido: ant ? Math.round(ant.total * 100) / 100 : 0,
+                parcelasVencidas: ant ? ant.parcelas : 0, idsEmEspera: [...emEsperaAntigo]
+            };
+            resultado.diferenca = {
+                mudouInadimplente: resultado.antigo.inadimplente !== situacao.inadimplente,
+                deltaTotalVencido: Math.round((situacao.totalVencido - resultado.antigo.totalVencido) * 100) / 100
+            };
+        } else {
+            const t0 = Date.now();
+            const contas = await inad.carregarContas({});
+            const emEsperaAntigo = await idsContasEmEsperaDeConferencia();
+            const ant = antigoDe(contas, emEsperaAntigo);
+            const porCliente = new Map();
+            for (const c of contas) {
+                if (!porCliente.has(c.clienteId)) porCliente.set(c.clienteId, []);
+                porCliente.get(c.clienteId).push({ conta: c, r: inad.classificarConta(c, cfg, hojeSP) });
+            }
+            const novo = {};
+            const contagemDestino = {};
+            for (const [cid, lista] of porCliente) {
+                novo[cid] = inad.agregar(lista, cfg);
+                for (const { r } of lista) contagemDestino[r.destino + (r.motivo ? `/${r.motivo}` : '')] = (contagemDestino[r.destino + (r.motivo ? `/${r.motivo}` : '')] || 0) + 1;
+            }
+            const vermelhosNovo = Object.entries(novo).filter(([, s]) => s.inadimplente);
+            const bloqueiam = vermelhosNovo.filter(([, s]) => s.bloqueiaVenda);
+            const amarelos = Object.entries(novo).filter(([, s]) => s.aConfirmar);
+            const antigosIds = Object.keys(ant);
+            const novosIds = new Set(vermelhosNovo.map(([id]) => id));
+            const apareceram = vermelhosNovo.filter(([id]) => !ant[id]);
+            const sumiram = antigosIds.filter(id => !novosIds.has(id));
+            const soma = (arr) => Math.round(arr.reduce((s, v) => s + v, 0) * 100) / 100;
+            const nomes = await prisma.cliente.findMany({
+                where: { UUID: { in: [...apareceram.map(([id]) => id), ...sumiram, ...amarelos.map(([id]) => id)] } },
+                select: { UUID: true, Nome: true, NomeFantasia: true }
+            });
+            const nome = Object.fromEntries(nomes.map(n => [n.UUID, n.NomeFantasia || n.Nome]));
+            resultado.resumo = {
+                msCalculo: Date.now() - t0,
+                contasAnalisadas: contas.length,
+                contasPorDestino: contagemDestino,
+                antigo: { clientesVermelhos: antigosIds.length, totalVencido: soma(Object.values(ant).map(a => a.total)) },
+                novo: {
+                    clientesVermelhos: vermelhosNovo.length, totalVencido: soma(vermelhosNovo.map(([, s]) => s.totalVencido)),
+                    clientesBloqueiam: bloqueiam.length, totalQueBloqueia: soma(bloqueiam.map(([, s]) => s.totalVencido)),
+                    clientesAConfirmar: amarelos.length, totalAConfirmar: soma(amarelos.map(([, s]) => s.aConfirmar.valor))
+                },
+                apareceram: apareceram.map(([id, s]) => ({ clienteId: id, nome: nome[id], totalVencido: s.totalVencido, dias: s.diasMaisAntiga, bloqueia: s.bloqueiaVenda })),
+                sumiram: sumiram.map(id => ({ clienteId: id, nome: nome[id], totalAntigo: Math.round(ant[id].total * 100) / 100 })),
+                aConfirmar: amarelos.map(([id, s]) => ({ clienteId: id, nome: nome[id], ...s.aConfirmar }))
+            };
+        }
+
+        if (req.query.formas) {
+            const grupos = await prisma.pedidoPagamentoReal.groupBy({ by: ['formaPagamentoNome'], _count: { _all: true }, _sum: { valor: true } });
+            resultado.formas = grupos.map(g => ({
+                nome: g.formaPagamentoNome, classe: inad.classificarFormaApontada(g.formaPagamentoNome),
+                qtd: g._count._all, valor: Number(g._sum.valor || 0)
+            })).sort((a, b) => b.qtd - a.qtd);
+        }
+        res.json(resultado);
+    } catch (e) {
+        console.error('[diag-inadimplencia]', e);
+        res.status(500).json({ error: e.message });
     }
 });
 

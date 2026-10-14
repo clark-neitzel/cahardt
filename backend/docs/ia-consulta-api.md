@@ -508,8 +508,14 @@ Mesma regra de `/cliente/buscar` e `/cliente/ficha`: **não entra nas tools da I
 cobrança nem muda o atendimento; o backend do bot usa isso só para avisar a equipe quando um pedido
 da Ana entra para um cliente inadimplente. Mesma conta do selo "inadimplente" do cadastro no app:
 parcelas em aberto vencidas antes de hoje (meia-noite em São Paulo), descontando o que já foi pago
-ou descontado, ignorando pedido excluído/cancelado no CA e a conta de especial já pago em dinheiro
-que só espera a conferência do Caixa. `titulosAbertos`/`valorAberto` = em aberto ainda **não**
+ou descontado, ignorando pedido excluído/cancelado no CA.
+**Regra de cálculo atualizada em 10/2026 (SEM mudança de formato — nenhum campo novo, removido ou
+renomeado):** a conta agora vem da fonte única `services/inadimplenciaService`, a mesma do selo do app.
+Boleto apontado na entrega **conta como dívida** (antes sumia); Pix/dinheiro/cartão apontado cobrindo o
+saldo fica de fora durante o prazo de espera e, passado o prazo, também (vira "a confirmar" no app, não
+vermelho); compra de funcionário e pedido especial ainda não entregue ficam de fora. Efeito para o
+consumidor: `inadimplente`/`valorVencido` voltam a refletir os boletos vencidos que estavam escondidos.
+`titulosAbertos`/`valorAberto` = em aberto ainda **não**
 vencido. Valores com 2 casas; `vencidoDesde` `YYYY-MM-DD` ou `null`.
 
 ### Produtos comprados (v1.6) — `POST /cliente/produtos-comprados`

@@ -82,12 +82,13 @@ Central de consulta e gerenciamento de todos os pedidos lançados no sistema. Aq
 - "Disponível" = estoque total menos o que os outros pedidos em aberto já reservaram (o mesmo número "Est:" que aparece na tela de pedido).
 
 ### Bloqueio de venda para cliente inadimplente
-- Ao salvar um pedido **normal** (especial e bonificação não entram), o sistema olha se o cliente tem **título vencido em aberto**.
+- Ao salvar um pedido **normal** (especial e bonificação não entram), o sistema olha se o cliente tem **título vencido em aberto**. A venda **a prazo só é travada** quando o atraso passou da **carência de 3 dias** e soma pelo menos **R$ 50,00**; atraso menor aparece no selo mas não trava. Saldo de até R$ 1,00 não conta.
+- **Boleto apontado na entrega nunca esconde a dívida** — se venceu e não foi pago, conta como atraso. Pix/dinheiro/cartão apontado fica "em espera" e, depois de 7 dias sem confirmação, vira "a confirmar" (não trava). Detalhes na seção "Bloqueio de venda a inadimplente — regra atualizada em 10/2026", mais abaixo.
 - Quem **não** tem `admin` nem **Pode_Vender_Inadimplente**: a venda **a prazo é recusada** ("Este cliente possui contas em aberto"). Venda **à vista** passa, mas o pedido sai com um carimbo na observação dizendo quem se responsabilizou e quanto o cliente deve.
-- Quem **tem** a permissão vende normalmente — o carimbo de responsabilidade na observação continua sendo gravado.
+- Quem **tem** a permissão vende normalmente — o carimbo de responsabilidade ("se responsabiliza pela venda") na observação continua sendo gravado.
 - O valor considerado é o **saldo** (parcela paga pela metade conta só o que falta), e o mesmo número aparece no popup de inadimplência da tela Clientes e na ficha do cliente.
-- **Não conta como atraso:** pedido **cancelado/excluído no Conta Azul** e **especial já pago em dinheiro na entrega que ainda aguarda a conferência do Caixa** (o cliente pagou; quem ainda não fechou a conta somos nós).
-- **Corrigido em 08/2026:** os títulos de pedidos **faturados aqui no app** (a maioria, desde que o Conta Azul virou somente leitura) estavam sendo **ignorados** por esse controle — o cliente devia e continuava comprando, sem selo e sem bloqueio. Agora eles contam. Efeito prático: **mais clientes aparecem como inadimplentes e mais vendas a prazo são barradas** — é o comportamento correto, mas é uma mudança perceptível no dia a dia. Se um vendedor for barrado indevidamente, o caminho é dar baixa no título (ou conferir o caixa) — não desligar o controle.
+- **Não conta como atraso:** pedido **cancelado/excluído no Conta Azul**, pagamento em dinheiro/Pix/cartão ainda dentro do prazo de espera, compra de funcionário e especial ainda não entregue.
+- **Corrigido em 08/2026:** os títulos de pedidos **faturados aqui no app** estavam sendo ignorados por esse controle; agora contam. Se um vendedor for barrado indevidamente, o caminho é dar baixa no título (ou conferir o caixa) — não desligar o controle.
 
 ### Lembrete de pedidos salvos sem enviar (popup a cada 30 min)
 - Quem tem pedido **ABERTO** (salvo e ainda não enviado) recebe um **popup com som a cada 30 minutos**, em qualquer tela do app (menos dentro da própria tela de criação de pedido), listando os pedidos e a data de entrega de cada um.
@@ -415,3 +416,18 @@ A confirmação do pedido que o cliente recebe no WhatsApp traz **todos os itens
 - Se o WhatsApp estiver com fila (limite por hora), as partes saem **na ordem**, uma depois da outra, assim que o bot liberar.
 - A observação **sempre sai inteira**, nunca resumida. Se ela for muito longa, o rodapé (total, condição, observação e "Obrigado pela preferência!") ganha mensagem(ns) própria(s) e a observação é repartida entre as partes sem partir nenhuma palavra; o total e a condição ficam na parte onde o rodapé começa e a despedida na última.
 - O botão de **reenviar WhatsApp** também manda em partes; pode levar alguns segundos a mais em pedido grande.
+
+## Bloqueio de venda a inadimplente — regra atualizada em 10/2026
+
+> Esta seção complementa "Bloqueio de venda para cliente inadimplente" (acima) com a regra completa de classificação.
+
+- **Boleto ou venda a prazo (ex.: "7 dias - Boleto", "7/14 dias") apontado na entrega NUNCA esconde a dívida.** Apontar o boleto na entrega não é pagamento: se vencer e ninguém pagar, o cliente aparece **em atraso** (selo vermelho) em todas as telas, com o mesmo valor.
+- **Dinheiro, Pix, cartão e Pix Asaas apontados na entrega** cobrindo o saldo todo ficam **"em espera"** — o cliente já pagou, só falta o Caixa/Conciliação confirmar; não é devedor. Se **passar de 7 dias** sem ninguém confirmar, vira **"a confirmar"** (selo **amarelo**): é uma **pendência do escritório**, **não bloqueia venda**, mas não fica escondida para sempre. Pagou só uma parte? O saldo todo continua como dívida.
+- **Pedido especial** só conta como dívida **depois de entregue**; antes disso não aparece como atraso.
+- **Compra de funcionário** (ex.: "À vista - Funcionário") fica **fora** da inadimplência.
+- **Tolerância de R$ 1,00:** saldo de até R$ 1,00 (por parcela ou somando a conta) não é dívida — "devendo R$ 0,10" não vira selo nem cobrança.
+- **O selo vermelho aparece desde o 1º dia de atraso.** Já a **trava da venda a prazo** só vale com **3 dias de carência** (a partir do 3º dia de atraso) **e** pelo menos **R$ 50,00** em atraso — atraso menor aparece mas não trava. Os 3 dias e os R$ 50 são ajustáveis.
+- **Quem tem a permissão `Pode_Vender_Inadimplente` (ou é admin)** libera a venda e fica registrado como **responsável** na observação do pedido ("se responsabiliza pela venda"). Quem não tem só consegue vender **à vista** (também fica como responsável). Especial e bonificação não são barrados ao criar.
+- **Onde ajustar:** só o administrador ajusta essas regras (carência, valor mínimo, prazo do "a confirmar", funcionário fora, aviso ao motorista), e fica registrado quem mudou e quando. A tela em Configurações chega na próxima entrega; por enquanto o administrador pede a mudança à equipe técnica.
+- A mesma regra alimenta o selo da lista de Clientes, a ficha/popup, a trava de venda, a Régua de Cobrança e a Cobrança em Rota.
+- Os dashboards e o aging usam a mesma regra de classificação, mas somam todos os títulos vencidos (inclusive de pedidos excluídos/cancelados e sem a tolerância de R$ 1), por isso o total deles pode ser maior que a soma dos selos por cliente.

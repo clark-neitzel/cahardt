@@ -178,11 +178,16 @@ router.get('/parcelas-abertas', checkEscritorioOuCobrador, async (req, res) => {
         // NÃO pode ser pendurado na carga para o motorista cobrar de novo. Especial que é
         // fiado de verdade (nada recebido, ou só "escritório/vendedor responsável")
         // CONTINUA aparecendo — é o caminho de cobrança manual que o dono quer preservar.
-        const { contasAguardandoConferencia } = require('../services/recebimentoEntregaService');
-        const emEspera = contasAguardandoConferencia(parcelas.map(p => p.contaReceber));
+        // Fonte única da inadimplência (boleto apontado NÃO é pago; Pix/dinheiro dentro do prazo, funcionário
+        // e especial não entregue ficam de fora). O service carrega os próprios campos.
+        const { idsContasForaDaInadimplencia } = require('../services/inadimplenciaService');
+        const emEspera = await idsContasForaDaInadimplencia({
+            contaIds: [...new Set(parcelas.map(p => p.contaReceber?.id).filter(Boolean))],
+            incluirForaSemAtraso: true
+        });
 
         res.json(parcelas
-            .filter(p => saldoParcela(p) > 0 && !emEspera.has(p.contaReceber?.id))
+            .filter(p => saldoParcela(p) > 1 && !emEspera.has(p.contaReceber?.id))
             .map(p => ({
                 parcelaId: p.id,
                 clienteNome: nomeClienteConta(p.contaReceber),

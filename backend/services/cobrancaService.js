@@ -137,6 +137,8 @@ const diasAtrasoDe = (vencimento) => {
 
 const normalizarForma = (s) => (s || '').trim().toUpperCase();
 
+// Saldo de até R$ 1,00 não é dívida (mesma tolerância do selo/diag — services/inadimplenciaService).
+const TOLERANCIA_COBRANCA = 1.0;
 const valorDevido = (parcela) =>
     Math.max(0, Number(parcela.valor) - Number(parcela.valorPago || 0) - Number(parcela.valorDescontoTotal || 0));
 
@@ -270,11 +272,17 @@ async function montarGrupos({ incluirEspecial = false } = {}) {
     // cobrança no WhatsApp da Ana ANTES da conferência do caixa (mensagem indevida no
     // número que já foi banido uma vez). Ponto único: recebimentoEntregaService.
     // Especial fiado de verdade (nada recebido, ou só "responsável") continua aqui.
+    // Desde 10/2026 o filtro vale SEMPRE (antes só com incluirEspecial) e vem da fonte única
+    // `inadimplenciaService`: Pix/dinheiro apontado dentro do prazo, "a confirmar", compra de
+    // funcionário e especial não entregue não são cobrados; boleto apontado CONTINUA cobrável.
     let emEsperaDeConferencia = 0;
     let parcelasCobraveis = parcelas;
-    if (incluirEspecial) {
-        const { idsContasEmEsperaDeConferencia } = require('./recebimentoEntregaService');
-        const emEspera = await idsContasEmEsperaDeConferencia();
+    {
+        const { idsContasForaDaInadimplencia } = require('./inadimplenciaService');
+        const emEspera = await idsContasForaDaInadimplencia({
+            contaIds: [...new Set(parcelas.map((p) => p.contaReceberId))],
+            incluirForaSemAtraso: true
+        });
         if (emEspera.size) {
             parcelasCobraveis = parcelas.filter((p) => !emEspera.has(p.contaReceberId));
             emEsperaDeConferencia = parcelas.length - parcelasCobraveis.length;
@@ -284,7 +292,7 @@ async function montarGrupos({ incluirEspecial = false } = {}) {
     const grupos = new Map(); // chave: clienteId|configKey
     for (const p of parcelasCobraveis) {
         const devido = valorDevido(p);
-        if (devido < 0.01) continue;
+        if (devido <= TOLERANCIA_COBRANCA) continue;
 
         const cliente = p.contaReceber.cliente;
         const forma = formaDoGrupo(p.contaReceber);
@@ -669,7 +677,7 @@ async function conferirAindaEmAberto(grupo) {
         const p = abertas.get(item.parcelaId);
         if (!p) return false;
         const devido = valorDevido(p);
-        if (devido < 0.01) return false;
+        if (devido <= TOLERANCIA_COBRANCA) return false;
         item.valor = devido; // baixa parcial no CA reduz o valor cobrado
         return true;
     });

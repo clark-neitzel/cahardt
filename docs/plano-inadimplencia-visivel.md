@@ -51,7 +51,7 @@ Regras de `classificarConta` (nesta ordem; tudo sobre contas `ABERTO|PARCIAL`, c
 1. Conta sem pedido (importada/avulsa) -> segue direto para o passo 5.
 2. **Funcionário** (se `cfg.funcionarioFora`): `normalizar(pedido.nomeCondicaoPagamento)` OU qualquer `pagamentosReais.formaPagamentoNome` contém `funcionario` -> FORA/FUNCIONARIO. (Campo exato não confirmado — ver seção 9; o diag mostra qual bateu.)
 3. **Especial não entregue**: `pedido.especial && statusEntrega ∉ {ENTREGUE, ENTREGUE_PARCIAL}` -> FORA/ESPECIAL_NAO_ENTREGUE. (`DEVOLVIDO` continua contando, como hoje.)
-4. **Espera**: pedido ENTREGUE/ENTREGUE_PARCIAL e `elegivel` = Σ `pagamentosReais.valor` de linhas `valor>0`, `ehRecebimentoProprio` (não-responsável — reaproveitar de recebimentoEntregaService) e `classificarFormaRecebimento` ∈ {DINHEIRO, PIX_ASAAS, PIX, CARTAO}; PIX_ASAAS só vale se a `CobrancaAsaas` estiver `RECEBIDO` (mesma regra do caixa.js l.2898, que ignora cobrança estornada). Se `elegivel >= saldoAberto - R$ 1,00` -> EM_ESPERA; se a forma predominante é PIX ou CARTAO e `dias(hoje - dataEntrega, fallback createdAt do pagamento) > cfg.esperaPixDias` -> **A_CONFIRMAR** `{valor: min(saldo, elegivel), dias, forma}`. Pagou só parte: segue como DEVE pelo saldo todo (igual hoje: "só sai da cobrança quem pagou o saldo INTEIRO").
+4. **Espera**: pedido ENTREGUE/ENTREGUE_PARCIAL e `elegivel` = Σ `pagamentosReais.valor` de linhas `valor>0`, `ehRecebimentoProprio` (não-responsável — reaproveitar de recebimentoEntregaService) e `classificarFormaRecebimento` ∈ {DINHEIRO, PIX_ASAAS, PIX, CARTAO}; PIX_ASAAS só vale se a `CobrancaAsaas` estiver `RECEBIDO` (mesma regra do caixa.js l.2898, que ignora cobrança estornada). Se `elegivel >= saldoAberto - R$ 1,00` -> EM_ESPERA; se a forma predominante é PIX ou CARTAO e `dias(hoje - dataEntrega, fallback createdAt do pagamento) > cfg.prazoAConfirmarDias` -> **A_CONFIRMAR** `{valor: min(saldo, elegivel), dias, forma}`. Pagou só parte: segue como DEVE pelo saldo todo (igual hoje: "só sai da cobrança quem pagou o saldo INTEIRO").
 5. **DEVE**: parcelas `PENDENTE|PARCIAL|VENCIDO` com `dataVencimento < hoje(SP 00:00Z)`, saldo = valor - valorPago - valorDescontoTotal; **parcela com saldo <= R$ 1,00 é ignorada** (tolerância; mata o "devendo R$ 0,10").
 
 `bloqueiaVenda` = `inadimplente` E `Σ saldo das parcelas com diasAtraso >= cfg.carenciaDias` >= `cfg.valorMinimoBloqueio`. (Fim de semana: NÃO usar `vencimentoEfetivo` da régua; contagem simples em dias corridos. Decisão simples, documentada.)
@@ -65,7 +65,7 @@ Algoritmo: normalizar (minúsculo, sem acento). Se contém `boleto`, `dias`, `pr
 
 ### 1.3 Config
 - `backend/config/inadimplenciaConfig.js` (NOVO), espelho de `config/caixaConferenciaConfig.js`: `CHAVE='inadimplencia_config'` em `app_configs`, `PADRAO`, cache de 30 s, `get({fresh})`, `salvar(parcial, usuario)`, `limparCache`.
-  `PADRAO = { carenciaDias:3, valorMinimoBloqueio:50, esperaPixDias:7, funcionarioFora:true, motoristaVeAtraso:true, siteExigeResponsavel:true }`. `siteExigeResponsavel` é TRAVADA: o `salvar` ignora tentativa de mudar (cadeado do mockup). Validação: inteiros 0-365, valor 0-100000, booleanos.
+  `PADRAO = { carenciaDias:3, valorMinimoBloqueio:50, prazoAConfirmarDias:7, funcionarioFora:true, motoristaVeAtraso:true, siteExigeResponsavel:true }`. `siteExigeResponsavel` é TRAVADA: o `salvar` ignora tentativa de mudar (cadeado do mockup). Validação: inteiros 0-365, valor 0-100000, booleanos.
   Falha de leitura do banco -> devolve PADRAO (nunca derruba o selo).
   **`bloqueiaVenda` e `exigirResponsavel` chamam `get({ fresh: true })`** (a trava não pode usar cache de 30 s depois de o admin mexer); selo/lista pode usar cache.
 - Rotas (`backend/routes/inadimplenciaRoutes.js`, NOVO, montado em `index.js` como `app.use('/api/inadimplencia', authMiddleware, inadimplenciaRoutes)`):
@@ -121,7 +121,7 @@ Front: **nenhum trabalho** nesta entrega (campos acrescentados são ignorados pe
 
 ### 2.3 Contrato de dados (Entrega 1)
 `GET /api/clientes` (cada item): `inadimplente`, `totalVencido` (existentes) + `diasMaisAntiga:int|null`, `aConfirmar:{valor,dias,forma,parcelas}|null`, `bloqueiaVenda:bool`.
-`GET /api/clientes/:uuid/inadimplencia`: ver 2.1. `GET/PUT /api/inadimplencia/config`: `{carenciaDias, valorMinimoBloqueio, esperaPixDias, funcionarioFora, motoristaVeAtraso, siteExigeResponsavel, ultimaMudanca:{[chave]:{usuarioNome, em}}}`.
+`GET /api/clientes/:uuid/inadimplencia`: ver 2.1. `GET/PUT /api/inadimplencia/config`: `{carenciaDias, valorMinimoBloqueio, prazoAConfirmarDias, funcionarioFora, motoristaVeAtraso, siteExigeResponsavel, ultimaMudanca:{[chave]:{usuarioNome, em}}}`.
 Erro 403 de trava (criar/aprovar): `{ error: '<mensagem>', codigo:'CLIENTE_EM_ATRASO', totalVencido, diasMaisAntiga }` (campos novos aditivos).
 
 ### 2.4 `GET /api/admin-exec/diag-inadimplencia?clienteId=<uuid>|q=<nome>[&formas=1]`
@@ -164,7 +164,7 @@ dev-backend faz tudo. dev-frontend: zero. QA: roda os critérios 1-10 (os de tel
 | clienteController.obterInadimplencia | PopupContasEmAberto, NovoPedido, DetalheCliente (faixa+aba), Checkout motorista | resposta | idem + `contas[].situacao`, `contas[].foraMotivo` |
 | POST /api/inadimplencia/lote | `clienteService.inadimplenciaLote(ids)` + hook `useInadimplenciaLote` | `{data:{[id]:Situacao}}` | `Situacao-resumida` = `{inadimplente,totalVencido,diasMaisAntiga,aConfirmar,bloqueiaVenda}` |
 | pedidoController.listar (paginado) | ListaPedidos | cada pedido | `pedido.inadimplencia` = Situacao-resumida do `pedido.clienteId` (ou `null`) |
-| GET /api/inadimplencia/config | Configuracoes card, checkout motorista | cfg | `carenciaDias,valorMinimoBloqueio,esperaPixDias,funcionarioFora,motoristaVeAtraso,siteExigeResponsavel` |
+| GET /api/inadimplencia/config | Configuracoes card, checkout motorista | cfg | `carenciaDias,valorMinimoBloqueio,prazoAConfirmarDias,funcionarioFora,motoristaVeAtraso,siteExigeResponsavel` |
 | 403 de trava | NovoPedido, ListaPedidos, SiteAdmin, PainelPendencias | `error.response.data.codigo==='CLIENTE_EM_ATRASO'` | mostrar `error` em toast; NUNCA genérico |
 | congeladosService.adminListarPedidos | SiteAdmin | cada pedido | `inadimplencia` (+ `bloqueiaVenda`) |
 | pendenciasService | PainelPendencias | bloco novo `liberacao_inadimplente` | itens com `clienteId` |
@@ -325,3 +325,11 @@ Divisão: dev-frontend (HTML/JSON da novidade) + dev-backend (manuais, docs). QA
 
 ## 10. Portes
 Entrega 1: média-grande (service puro + 8 consumidores + diag + config; só backend). Entrega 2: grande (~15 telas, 2 extrações de código, travas de back em 4 rotas, bloco novo de Pendências). Entrega 3: pequena. Fluxo de cada uma: dev -> qa-testador + revisor-codigo (paralelo) -> gerente-entrega; Entrega 1 exige teste em produção via `diag-inadimplencia` antes de iniciar a 2.
+
+
+## 11. Pendências registradas para a Entrega 2 (achadas na revisão da Entrega 1)
+- Chave de config se chama **`prazoAConfirmarDias`** (nome antigo abandonado) — GET/PUT `/api/inadimplencia/config` já devolvem esse nome; o card da Tela 15 deve usá-lo.
+- `frontend/src/pages/Financeiro/ReguaCobrancaPage.jsx` ~l.200: texto desatualizado sobre "aguardando conferência" (agora inclui "a confirmar", funcionário e especial não entregue; boleto apontado NÃO fica de fora).
+- `NovoPedido.jsx` (bloqueio ~l.1217 e banner ~l.1870): trocar `inadimplente` por `bloqueiaVenda` (o servidor só trava com carência + mínimo).
+- Manuais do Clippy das 7 telas principais já foram atualizados na Entrega 1; a Entrega 2 deve acrescentar o que for de tela nova (selo nas demais telas, card de Configurações, Pendências).
+- KPI "vencido" do dashboard financeiro (R$ 67,6 mil na cópia de 06/10) ainda soma ~R$ 19,0 mil de parcelas de pedido excluído/cancelado no CA, que o selo por cliente ignora; decidir se os agregados passam a ignorá-las também.

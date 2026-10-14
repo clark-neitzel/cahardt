@@ -242,55 +242,17 @@ const clienteController = {
                 }
             });
 
-            // Flag de inadimplência por cliente (parcelas vencidas não pagas)
+            // Inadimplência por cliente — FONTE ÚNICA: services/inadimplenciaService.
+            // Boleto apontado na entrega NÃO é pago (aparece em atraso); Pix/dinheiro dentro do prazo,
+            // compra de funcionário e especial não entregue ficam fora; Pix/dinheiro apontado há mais de
+            // N dias vira "a confirmar" (amarelo). Falha aqui não pode derrubar a lista de clientes.
             const clienteIds = clientes.map(c => c.UUID);
-            let delinqMap = {};
+            let situacaoMap = new Map();
             if (clienteIds.length > 0) {
-                const hojeStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
-                const hoje = new Date(hojeStr + 'T00:00:00.000Z');
-                // Especial entregue e já pago em dinheiro, só esperando a conferência do
-                // Caixa, NÃO é inadimplência — o cliente pagou (regra do dono, 08/2026).
-                const { idsContasEmEsperaDeConferencia } = require('../services/recebimentoEntregaService');
-                const emEspera = await idsContasEmEsperaDeConferencia({ clienteIds });
-                const contasAbertas = await prisma.contaReceber.findMany({
-                    where: {
-                        clienteId: { in: clienteIds },
-                        status: { in: ['ABERTO', 'PARCIAL'] },
-                        // PARCIAL conta como vencida: título pago pela metade continua devendo o saldo
-                        parcelas: { some: { status: { in: ['PENDENTE', 'PARCIAL', 'VENCIDO'] }, dataVencimento: { lt: hoje } } },
-                        // ⚠️ NÃO usar `NOT:`: NOT (situacao_ca = 'CANCELADO') com o campo
-                        // NULL dá NULL em SQL e a linha some — e pedido faturado no app nasce
-                        // com situacaoCA null, então o selo de inadimplente não via o devedor
-                        // de hoje. OR explícito (padrão de routes/contasReceber.js).
-                        OR: [
-                            { pedidoId: null },
-                            {
-                                pedido: {
-                                    statusEnvio: { not: 'EXCLUIDO' },
-                                    OR: [{ situacaoCA: null }, { situacaoCA: { not: 'CANCELADO' } }]
-                                }
-                            }
-                        ]
-                    },
-                    select: {
-                        id: true,
-                        clienteId: true,
-                        parcelas: {
-                            where: { status: { in: ['PENDENTE', 'PARCIAL', 'VENCIDO'] }, dataVencimento: { lt: hoje } },
-                            select: { valor: true, valorPago: true, valorDescontoTotal: true }
-                        }
-                    }
-                });
-                for (const cr of contasAbertas) {
-                    if (emEspera.has(cr.id)) continue;
-                    if (!delinqMap[cr.clienteId]) delinqMap[cr.clienteId] = 0;
-                    // saldo, não valor cheio (parcela parcial deve só o que falta)
-                    for (const p of cr.parcelas) {
-                        delinqMap[cr.clienteId] += Number(p.valor) - Number(p.valorPago || 0) - Number(p.valorDescontoTotal || 0);
-                    }
-                }
-                for (const id of Object.keys(delinqMap)) {
-                    if (delinqMap[id] <= 0.01) delete delinqMap[id];
+                try {
+                    situacaoMap = await require('../services/inadimplenciaService').situacaoPorClientes(clienteIds);
+                } catch (inadErr) {
+                    console.error('[Clientes] Falha ao calcular inadimplência (lista segue sem o selo):', inadErr);
                 }
             }
 
@@ -303,8 +265,12 @@ const clienteController = {
             const { fiscalApto } = require('../utils/cadastroFiscal');
             const clientesComFlag = clientes.map(c => ({
                 ...c,
-                inadimplente: !!delinqMap[c.UUID],
-                totalVencido: delinqMap[c.UUID] || 0,
+                // campos antigos (inadimplente, totalVencido) mantêm nome e tipo; os 3 últimos são aditivos
+                inadimplente: situacaoMap.get(c.UUID)?.inadimplente || false,
+                totalVencido: situacaoMap.get(c.UUID)?.totalVencido || 0,
+                diasMaisAntiga: situacaoMap.get(c.UUID)?.diasMaisAntiga ?? null,
+                aConfirmar: situacaoMap.get(c.UUID)?.aConfirmar || null,
+                bloqueiaVenda: situacaoMap.get(c.UUID)?.bloqueiaVenda || false,
                 fiscalApto: fiscalApto(c)
             }));
 
@@ -1082,8 +1048,6 @@ const clienteController = {
     obterInadimplencia: async (req, res) => {
         try {
             const { uuid } = req.params;
-            const hojeStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
-            const hoje = new Date(hojeStr + 'T00:00:00.000Z');
 
             const contas = await prisma.contaReceber.findMany({
                 where: {
@@ -1119,29 +1083,23 @@ const clienteController = {
                 orderBy: { createdAt: 'desc' }
             });
 
-            // Especial pago e aguardando conferência do Caixa não conta como atraso
-            const { idsContasEmEsperaDeConferencia } = require('../services/recebimentoEntregaService');
-            const emEsperaFicha = await idsContasEmEsperaDeConferencia({ clienteIds: [uuid] });
-
-            let totalVencido = 0;
-            let parcelasVencidas = 0;
+            // FONTE ÚNICA (services/inadimplenciaService): a mesma conta do selo da lista de clientes,
+            // da trava de venda e do painel de cobrança. Cada conta volta classificada.
+            const inadService = require('../services/inadimplenciaService');
+            const det = await inadService.detalheCliente(uuid, { fresh: true });
+            const classPorConta = new Map(det.classificadas.map(({ conta, r }) => [conta.id, r]));
 
             const contasFormatadas = contas.map(c => {
-                const contaEmEspera = emEsperaFicha.has(c.id);
+                const r = classPorConta.get(c.id) || null;
+                const situacaoConta = r ? inadService.rotuloSituacaoConta(r) : 'EM_DIA';
+                // só parcela que a fonte única considera em atraso (conta DEVE) recebe diasAtraso
+                const vencidasPorId = new Map(((r && r.destino === 'DEVE') ? r.vencidas : []).map(v => [v.parcelaId, v]));
                 const valorDevolvido = (c.pedido?.itensDevolvidos || [])
                     .reduce((s, i) => s + Number(i.valorBaseItem) * Number(i.quantidade), 0);
                 const devolucaoAtiva = c.pedido?.devolucoes?.[0] || null;
 
                 const parcelas = c.parcelas.map(p => {
-                    // PARCIAL também vence: o saldo que falta continua em atraso
-                    const vencida = !contaEmEspera
-                        && ['PENDENTE', 'PARCIAL', 'VENCIDO'].includes(p.status)
-                        && new Date(p.dataVencimento) < hoje;
-                    const saldoParcela = Number(p.valor) - Number(p.valorPago || 0) - Number(p.valorDescontoTotal || 0);
-                    const diasAtraso = vencida
-                        ? Math.floor((hoje - new Date(p.dataVencimento)) / (1000 * 60 * 60 * 24))
-                        : 0;
-                    if (vencida && saldoParcela > 0.01) { totalVencido += saldoParcela; parcelasVencidas++; }
+                    const diasAtraso = vencidasPorId.get(p.id)?.diasAtraso || 0;
                     return {
                         id: p.id,
                         numeroParcela: p.numeroParcela,
@@ -1168,6 +1126,9 @@ const clienteController = {
                     dataVenda: c.pedido?.dataVenda || null,
                     condicaoPagamento: c.pedido?.nomeCondicaoPagamento || null,
                     statusEntrega: c.pedido?.statusEntrega || null,
+                    // aditivos (Inadimplência visível): EM_ATRASO | A_CONFIRMAR | EM_ESPERA | FORA | EM_DIA
+                    situacao: situacaoConta,
+                    foraMotivo: r?.motivo || null,
                     parcelasTotal: parcelas.length,
                     parcelasPagas: parcelas.filter(p => p.status === 'PAGO').length,
                     proximoVencimento: parcelas
@@ -1178,9 +1139,13 @@ const clienteController = {
             });
 
             res.json({
-                inadimplente: parcelasVencidas > 0,
-                totalVencido: Math.round(totalVencido * 100) / 100,
-                parcelasVencidas,
+                inadimplente: det.inadimplente,
+                totalVencido: det.totalVencido,
+                parcelasVencidas: det.parcelasVencidas,
+                // aditivos
+                diasMaisAntiga: det.diasMaisAntiga,
+                aConfirmar: det.aConfirmar,
+                bloqueiaVenda: det.bloqueiaVenda,
                 contas: contasFormatadas
             });
         } catch (error) {

@@ -427,6 +427,14 @@ const MSG_TITULO_JA_BAIXADO = 'Este pedido já teve o título baixado no Caixa. 
  * @param contas lista com { id, parcelas[{valor,valorPago,valorDescontoTotal,status}],
  *                           pedido: { especial, statusEntrega, pagamentosReais[] } }
  * @returns Set com os ids das contas na janela
+ *
+ * @deprecated desde 10/2026 — NÃO USE para inadimplência/cobrança/selo. Esta janela trata QUALQUER
+ * recebimento apontado (inclusive boleto) como dinheiro recebido, e por isso escondia cliente com
+ * boleto vencido de todas as telas. A fonte única agora é `services/inadimplenciaService`
+ * (`idsContasForaDaInadimplencia` / `situacaoPorClientes`). Mantida só para o diag-inadimplencia
+ * (comparação "antigo × novo") e para scripts/teste-baixa-especial-ledger.js; remover depois de
+ * validar em produção.
+ *
  */
 function contasAguardandoConferencia(contas) {
     const ids = new Set();
@@ -472,6 +480,14 @@ function contasAguardandoConferencia(contas) {
  *   venda, selo de inadimplente, painel de cobrança e "cobrar agora" — que continuam
  *   varrendo tudo, sem recorte. Pedido sem data de entrega entra sempre (o `gte` do
  *   Prisma exclui linha null; por isso o OR explícito com `{ dataEntrega: null }`).
+ *
+ * @deprecated desde 10/2026 — NÃO USE para inadimplência/cobrança/selo. Esta janela trata QUALQUER
+ * recebimento apontado (inclusive boleto) como dinheiro recebido, e por isso escondia cliente com
+ * boleto vencido de todas as telas. A fonte única agora é `services/inadimplenciaService`
+ * (`idsContasForaDaInadimplencia` / `situacaoPorClientes`). Mantida só para o diag-inadimplencia
+ * (comparação "antigo × novo") e para scripts/teste-baixa-especial-ledger.js; remover depois de
+ * validar em produção.
+ *
  */
 async function idsContasEmEsperaDeConferencia({ clienteIds = null, desdeDias = null, client = prisma } = {}) {
     const recorteEntrega = desdeDias > 0

@@ -877,8 +877,8 @@ function montarAging(parcelas) {
  * (bloqueio de venda, selo de inadimplente, painel de cobrança) consultam sem recorte.
  */
 async function idsEmEsperaConferencia() {
-    const { idsContasEmEsperaDeConferencia } = require('./recebimentoEntregaService');
-    return [...await idsContasEmEsperaDeConferencia({ desdeDias: 90 })];
+    const { idsContasForaDaInadimplencia } = require('./inadimplenciaService');
+    return [...await idsContasForaDaInadimplencia({ desdeDias: 90 })];
 }
 
 /** Aging (inadimplência por idade) das parcelas a receber em aberto. */

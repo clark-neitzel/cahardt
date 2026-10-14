@@ -395,101 +395,33 @@ const pedidoController = {
                 }
             }
 
-            // Verificar inadimplência do cliente (apenas pedidos normais)
+            // Verificar inadimplência do cliente (apenas pedidos normais — especial e bonificação são isentos aqui).
+            // FONTE ÚNICA: services/inadimplenciaService. Só trava quando `bloqueiaVenda` (atraso há >= carência
+            // dias E soma >= valor mínimo, ambos configuráveis); atraso menor aparece como selo mas não trava.
+            // A trava lê a config FRESCA (sem cache) e nunca usa cache de nada.
             if (dadosPedido.clienteId && !dadosPedido.especial && !dadosPedido.bonificacao) {
                 const permissoes = req.user?.permissoes || {};
-                const hojeStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
-                const hoje = new Date(hojeStr + 'T00:00:00.000Z');
-
-                const { contasAguardandoConferencia } = require('../services/recebimentoEntregaService');
-
-                const buscarParcelasVencidas = async () => {
-                    const parcelas = await prisma.parcela.findMany({
-                        where: {
-                            // PARCIAL também está vencida (deve o saldo) — desde 08/2026 a
-                            // baixa parcial virou rotina, então PENDENTE sozinho deixava
-                            // título vencido pago pela metade de fora do bloqueio.
-                            status: { in: ['PENDENTE', 'PARCIAL', 'VENCIDO'] },
-                            dataVencimento: { lt: hoje },
-                            contaReceber: {
-                                clienteId: dadosPedido.clienteId,
-                                status: { in: ['ABERTO', 'PARCIAL'] },
-                                // Esconde só pedido excluído/cancelado no CA.
-                                // ⚠️ NÃO usar `NOT:` aqui: em SQL, NOT (situacao_ca = 'CANCELADO')
-                                // com o campo NULL dá NULL e a linha é DESCARTADA — e todo pedido
-                                // faturado no app (padrão desde que o CA virou somente leitura)
-                                // nasce com situacaoCA null. O `NOT` deixava o devedor de hoje
-                                // invisível para o bloqueio de venda. OR explícito, como em
-                                // routes/contasReceber.js.
-                                OR: [
-                                    { pedidoId: null },
-                                    {
-                                        pedido: {
-                                            statusEnvio: { not: 'EXCLUIDO' },
-                                            OR: [{ situacaoCA: null }, { situacaoCA: { not: 'CANCELADO' } }]
-                                        }
-                                    }
-                                ]
-                            }
-                        },
-                        select: {
-                            valor: true, valorPago: true, valorDescontoTotal: true, status: true,
-                            contaReceber: {
-                                select: {
-                                    id: true,
-                                    parcelas: { select: { valor: true, valorPago: true, valorDescontoTotal: true, status: true } },
-                                    pedido: {
-                                        select: {
-                                            especial: true, statusEntrega: true,
-                                            pagamentosReais: { select: { valor: true, responsavelPapel: true, escritorioResponsavel: true, vendedorResponsavelId: true } }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    });
-                    // Especial ENTREGUE e já pago em dinheiro na rua, só esperando a
-                    // conferência do Caixa, NÃO é inadimplência — o cliente pagou; quem
-                    // ainda não agiu somos nós (regra do dono, 08/2026).
-                    const emEspera = contasAguardandoConferencia(
-                        parcelas.map(p => ({ id: p.contaReceber.id, parcelas: p.contaReceber.parcelas, pedido: p.contaReceber.pedido }))
-                    );
-                    // saldo > 0: parcela parcial só bloqueia pelo que ainda falta
-                    return parcelas.filter(p => !emEspera.has(p.contaReceber.id)
-                        && (Number(p.valor) - Number(p.valorPago || 0) - Number(p.valorDescontoTotal || 0)) > 0.01);
-                };
-
-                let parcelasVencidas = await buscarParcelasVencidas();
-
-                // Se encontrou parcelas vencidas, sincroniza com CA antes de bloquear
-                // — pode ser que o pagamento já foi registrado no CA mas não baixado aqui
-                if (parcelasVencidas.length > 0) {
-                    try {
+                const { exigirResponsavel } = require('../services/inadimplenciaService');
+                const liberacao = await exigirResponsavel({
+                    clienteId: dadosPedido.clienteId,
+                    permissoes,
+                    nomeUsuario: req.user?.nome || 'Vendedor',
+                    aVista: (dadosPedido.nomeCondicaoPagamento || '').toLowerCase().includes('vista'),
+                    // Pode ser que o pagamento já esteja no CA mas não baixado aqui: sincroniza antes de bloquear
+                    sincronizar: async (clienteId) => {
                         const { sincronizarContasCliente } = require('../services/contasReceberSyncService');
-                        await sincronizarContasCliente(dadosPedido.clienteId);
-                        parcelasVencidas = await buscarParcelasVencidas();
-                    } catch (syncErr) {
-                        console.warn('[Inadimplência] Sync CA falhou, usando dados locais:', syncErr.message);
+                        await sincronizarContasCliente(clienteId);
                     }
+                });
+                if (liberacao.bloqueado) {
+                    return res.status(liberacao.status).json({
+                        error: liberacao.mensagem,
+                        codigo: liberacao.codigo,
+                        totalVencido: liberacao.totalVencido,
+                        diasMaisAntiga: liberacao.diasMaisAntiga
+                    });
                 }
-
-                if (parcelasVencidas.length > 0) {
-                    const totalVencido = parcelasVencidas.reduce((acc, p) =>
-                        acc + Number(p.valor) - Number(p.valorPago || 0) - Number(p.valorDescontoTotal || 0), 0);
-                    const nomeVendedor = req.user?.nome || 'Vendedor';
-                    if (!permissoes.admin && !permissoes.Pode_Vender_Inadimplente) {
-                        const isAVista = (dadosPedido.nomeCondicaoPagamento || '').toLowerCase().includes('vista');
-                        if (!isAVista) {
-                            return res.status(403).json({ error: 'Este cliente possui contas em aberto. Você não tem permissão para realizar esta venda.' });
-                        }
-                        // À vista: permite com responsabilidade do lançador
-                        const obsInadimplencia = `\n[${nomeVendedor} responsável — venda à vista para cliente com R$ ${totalVencido.toFixed(2).replace('.', ',')} em atraso]`;
-                        dadosPedido.observacoes = (dadosPedido.observacoes || '') + obsInadimplencia;
-                    } else {
-                        const obsInadimplencia = `\n[${nomeVendedor} se responsabiliza pela venda — cliente com R$ ${totalVencido.toFixed(2).replace('.', ',')} em atraso]`;
-                        dadosPedido.observacoes = (dadosPedido.observacoes || '') + obsInadimplencia;
-                    }
-                }
+                if (liberacao.obs) dadosPedido.observacoes = (dadosPedido.observacoes || '') + liberacao.obs;
             }
 
             const erroCondicao = await validarCondicaoLiberada({
