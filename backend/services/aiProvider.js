@@ -1,6 +1,11 @@
 /**
  * Abstração de provider de IA (LLM)
  *
+ * TROCA DE MODELO (14/10/2026): a OpenAI retira gpt-4o / gpt-4o-mini / gpt-4.1 / gpt-4.1-mini
+ * da API em 14/01/2027. O padrão agora é `gpt-6-luna`, que NÃO aceita `max_tokens` nem
+ * `temperature` (usa `max_completion_tokens` e temperatura fixa). `parametrosOpenAI()` monta
+ * os parâmetros certos por modelo; AI_MODEL=gpt-4o-mini ainda funciona até a data de retirada.
+ *
  * Permite trocar o "cérebro" do copiloto sem mexer no resto do código.
  * Escolha via variável de ambiente AI_PROVIDER:
  *   - 'openai'  (padrão) — usa OPENAI_API_KEY e o pacote `openai` (já instalado)
@@ -20,7 +25,7 @@
 const PROVIDER = (process.env.AI_PROVIDER || 'openai').toLowerCase();
 
 const MODELO_PADRAO = {
-    openai: 'gpt-4o-mini',
+    openai: 'gpt-6-luna',
     gemini: 'gemini-1.5-flash',
 };
 
@@ -29,7 +34,7 @@ function providerAtual() {
 }
 
 function modeloAtual() {
-    return process.env.AI_MODEL || MODELO_PADRAO[PROVIDER] || 'gpt-4o-mini';
+    return process.env.AI_MODEL || MODELO_PADRAO[PROVIDER] || 'gpt-6-luna';
 }
 
 /** Há chave configurada para o provider selecionado? */
@@ -41,6 +46,21 @@ function isConfigured() {
 // ─────────────────────────────────────────────
 // OpenAI
 // ─────────────────────────────────────────────
+
+/** Modelo legado (gpt-4*): aceita max_tokens + temperature. Os demais, não. */
+function ehModeloLegadoOpenAI(modelo) {
+    return /^gpt-4/i.test(modelo || '');
+}
+
+/** Parâmetros de limite/temperatura conforme o modelo. */
+function parametrosOpenAI(modelo, { maxTokens, temperature }) {
+    if (ehModeloLegadoOpenAI(modelo)) {
+        return { temperature: temperature ?? 0.4, max_tokens: maxTokens ?? 600 };
+    }
+    // Modelos novos: sem temperature (só o padrão é aceito); limite em max_completion_tokens.
+    return { max_completion_tokens: maxTokens ?? 600 };
+}
+
 async function gerarTextoOpenAI({ system, mensagens, maxTokens, temperature, json }) {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) throw new Error('OPENAI_API_KEY não configurada.');
@@ -56,13 +76,19 @@ async function gerarTextoOpenAI({ system, mensagens, maxTokens, temperature, jso
     const resp = await openai.chat.completions.create({
         model: modelo,
         messages: msgs,
-        temperature: temperature ?? 0.4,
-        max_tokens: maxTokens ?? 600,
+        ...parametrosOpenAI(modelo, { maxTokens, temperature }),
         ...(json ? { response_format: { type: 'json_object' } } : {}),
     });
 
+    const escolha = resp.choices[0];
+    const conteudo = escolha?.message?.content;
+    if (!conteudo || !conteudo.trim()) {
+        throw new Error(`IA devolveu resposta vazia (finish_reason=${escolha?.finish_reason || '?'}, ` +
+            `raciocinio=${resp.usage?.completion_tokens_details?.reasoning_tokens ?? 0} tokens). Aumente o teto de tokens.`);
+    }
+
     return {
-        texto: resp.choices[0].message.content.trim(),
+        texto: conteudo.trim(),
         usage: {
             prompt: resp.usage?.prompt_tokens ?? null,
             resposta: resp.usage?.completion_tokens ?? null,
@@ -135,4 +161,4 @@ async function gerarTexto(opts) {
     return gerarTextoOpenAI(opts); // openai (padrão)
 }
 
-module.exports = { gerarTexto, isConfigured, providerAtual, modeloAtual };
+module.exports = { gerarTexto, isConfigured, providerAtual, modeloAtual, parametrosOpenAI };

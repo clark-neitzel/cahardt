@@ -320,7 +320,7 @@ Responda SEMPRE em JSON neste formato:
     const { texto, modelo, provider } = await ai.gerarTexto({
         system,
         mensagens: msgs,
-        maxTokens: 750,
+        maxTokens: 1500, // gpt-6-luna gasta parte do teto em raciocínio (max_completion_tokens)
         temperature: 0.2,
         json: true,
     });

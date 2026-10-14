@@ -60,7 +60,7 @@ Esta tela é principalmente para o administrador monitorar o funcionamento e o c
 
 | Informação | Descrição |
 |------------|-----------|
-| Modelo | Nome do modelo de IA usado (ex: gpt-4o-mini) |
+| Modelo | Nome do modelo de IA usado (ex: gpt-6-luna) |
 | Tokens | Tokens de prompt + tokens de resposta = total |
 | Duração | Tempo de resposta em milissegundos ou segundos |
 | Erro | Mensagem de erro caso a análise tenha falhado |

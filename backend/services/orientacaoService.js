@@ -138,9 +138,10 @@ function gerarOrientacao(insight) {
 }
 
 // ─────────────────────────────────────────────
-// 5. Geração de orientação via IA (GPT-4o-mini)
+// 5. Geração de orientação via IA (modelo configurado em aiProvider)
 // ─────────────────────────────────────────────
 const prisma = require('../config/database');
+const ai = require('./aiProvider');
 
 // Monta prompt — recebe historicoStr (já filtrado/tagueado) e orientacaoAnterior
 function montarPromptIA({ nomeCliente, cenario, insight, historicoStr, orientacaoAnterior }) {
@@ -192,8 +193,7 @@ async function gerarOrientacaoIA(clienteId, opcoes = {}) {
         atendimentoId = null,
     } = opcoes;
 
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) throw new Error('OPENAI_API_KEY não configurada.');
+    if (!ai.isConfigured()) throw new Error('Chave da IA não configurada (OPENAI_API_KEY / GEMINI_API_KEY).');
 
     const cliente = await prisma.cliente.findUnique({
         where: { UUID: clienteId },
@@ -249,12 +249,9 @@ async function gerarOrientacaoIA(clienteId, opcoes = {}) {
     const cenario = classificarCenario(insight);
     const nomeCliente = cliente.NomeFantasia || cliente.Nome;
     const prompt = montarPromptIA({ nomeCliente, cenario, insight, historicoStr, orientacaoAnterior });
-    const modelo = 'gpt-4o-mini';
+    let modelo = ai.modeloAtual();
     const inicio = Date.now();
     const dadosEntrada = { insight, timeline };
-
-    const { OpenAI } = require('openai');
-    const openai = new OpenAI({ apiKey });
 
     const salvarLog = async (params) => {
         try {
@@ -285,20 +282,21 @@ async function gerarOrientacaoIA(clienteId, opcoes = {}) {
         }
     };
 
-    let response, orientacaoIaJson, erroMsg = null;
+    let resultadoIA, orientacaoIaJson, erroMsg = null;
     try {
-        response = await openai.chat.completions.create({
-            model: modelo,
-            messages: [{ role: 'user', content: prompt }],
+        resultadoIA = await ai.gerarTexto({
+            mensagens: [{ role: 'user', content: prompt }],
+            maxTokens: 1000, // folga para tokens de raciocínio do gpt-6-luna (contam no teto)
             temperature: 0.3,
-            max_tokens: 400,
+            json: true,
         });
+        modelo = resultadoIA.modelo || modelo;
 
-        const raw = response.choices[0].message.content.trim();
+        const raw = resultadoIA.texto;
         try {
             orientacaoIaJson = JSON.parse(raw);
         } catch {
-            throw new Error(`GPT retornou JSON inválido: ${raw}`);
+            throw new Error(`A IA retornou JSON inválido: ${raw}`);
         }
 
         await prisma.clienteInsight.update({
@@ -316,6 +314,16 @@ async function gerarOrientacaoIA(clienteId, opcoes = {}) {
             duracaoMs: Date.now() - inicio,
             sucesso: false, erroMsg,
         });
+        // Erro vindo da API da IA: tela recebe mensagem em português, sem trecho de chave
+        // (o texto original fica só no erro_msg do log acima).
+        if (typeof err.status === 'number') {
+            const amigavel = err.status === 401 ? 'Chave da IA inválida ou expirada'
+                : err.status === 429 ? 'Limite da IA atingido, tente em instantes'
+                : 'A IA não respondeu agora, tente novamente';
+            const e2 = new Error(amigavel);
+            e2.status = err.status;
+            throw e2;
+        }
         throw err;
     }
 
@@ -324,9 +332,9 @@ async function gerarOrientacaoIA(clienteId, opcoes = {}) {
         disparadoPor, usuarioId, atendimentoId,
         modelo, promptEnviado: prompt, dadosEntrada,
         respostaIa: orientacaoIaJson,
-        tokensPrompt: response.usage?.prompt_tokens ?? null,
-        tokensResposta: response.usage?.completion_tokens ?? null,
-        tokensTotal: response.usage?.total_tokens ?? null,
+        tokensPrompt: resultadoIA.usage?.prompt ?? null,
+        tokensResposta: resultadoIA.usage?.resposta ?? null,
+        tokensTotal: resultadoIA.usage?.total ?? null,
         duracaoMs: Date.now() - inicio,
         sucesso: true, erroMsg: null,
     });
@@ -337,7 +345,12 @@ async function gerarOrientacaoIA(clienteId, opcoes = {}) {
         cenario,
         orientacaoIaJson,
         promptEnviado: prompt,
-        tokensUsados: response.usage,
+        // mantém o formato antigo (OpenAI) que a rota manual devolve à tela
+        tokensUsados: {
+            prompt_tokens: resultadoIA.usage?.prompt ?? null,
+            completion_tokens: resultadoIA.usage?.resposta ?? null,
+            total_tokens: resultadoIA.usage?.total ?? null,
+        },
         dadosAnalise: { insight, timeline }
     };
 }

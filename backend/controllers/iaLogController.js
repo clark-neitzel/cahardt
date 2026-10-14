@@ -34,8 +34,8 @@ const iaLogController = {
             const conditions = [];
             const add = (sql, val) => { whereParams.push(val); conditions.push(sql.replace('?', `$${whereParams.length}`)); };
 
-            add(`l."criado_em" >= ?`, inicio.toISOString());
-            add(`l."criado_em" <= ?`, fim.toISOString());
+            add(`l."criado_em" >= ?::timestamp`, inicio.toISOString());
+            add(`l."criado_em" <= ?::timestamp`, fim.toISOString());
             if (clienteId) add(`l."cliente_id" = ?`, clienteId);
             if (vendedorId) add(`l."vendedor_id" = ?`, vendedorId);
             if (disparadoPor) add(`l."disparado_por" = ?`, disparadoPor);
