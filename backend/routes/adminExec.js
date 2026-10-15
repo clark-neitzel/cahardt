@@ -52,7 +52,7 @@ router.get('/ping', (req, res) => {
         ok: true,
         // Marcador de deploy: bumpar a cada mudança de backend que precise de confirmação
         // em produção (não há outro jeito de saber de fora qual versão está no ar).
-        deployMarker: 'etiquetas-delivery-2026-10-15',
+        deployMarker: 'impressao-direta-e1-2026-10-15',
         uptimeSegundos: Math.round(process.uptime()),
         timestamp: new Date().toISOString(),
         openaiConfigurada: !!process.env.OPENAI_API_KEY,
@@ -139,6 +139,34 @@ router.post('/etiquetas-sincronizar-ean', async (req, res) => {
     } catch (err) {
         console.error('[AdminExec] etiquetas-sincronizar-ean:', err.message);
         res.status(500).json({ error: err.message });
+    }
+});
+
+// GET /api/admin-exec/diag-impressao
+// Impressão direta (Etiquetas da Cozinha): agentes (SEM token/hash), impressoras e últimos trabalhos.
+router.get('/diag-impressao', async (req, res) => {
+    try {
+        const impressaoService = require('../services/impressaoService');
+        const [agentes, impressoras, fila, porStatus] = await Promise.all([
+            prisma.impressaoAgente.findMany({ orderBy: { createdAt: 'asc' } }),
+            prisma.impressora.findMany({ orderBy: { nome: 'asc' } }),
+            prisma.impressaoTrabalho.findMany({
+                orderBy: { pedidoEm: 'desc' }, take: 20,
+                select: { id: true, tipo: true, status: true, tentativas: true, erro: true, pedidoEm: true, expiraEm: true, impressoEm: true, conteudoBytes: true, impressoraId: true },
+            }),
+            prisma.impressaoTrabalho.groupBy({ by: ['status'], _count: { _all: true } }),
+        ]);
+        res.json({
+            ok: true,
+            versaoAgenteNoServidor: impressaoService.VERSAO_SERVIDOR,
+            agentes: agentes.map(impressaoService.agentePublico),
+            impressoras,
+            trabalhosPorStatus: Object.fromEntries(porStatus.map(g => [g.status, g._count._all])),
+            ultimosTrabalhos: fila,
+        });
+    } catch (e) {
+        console.error('[diag-impressao]', e);
+        res.status(500).json({ error: e.message });
     }
 });
 

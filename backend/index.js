@@ -143,6 +143,7 @@ app.use('/api/kitfesta-publico', kitFestaPublicRoutes); // Kit Festa: site públ
 app.use('/api/congelados-publico', congeladosPublicRoutes); // Site Congelados: site público (auth do cliente é interna)
 app.use('/api/catalogo-personalizado-publico', catalogoPersonalizadoPublicRoutes); // Catálogo Personalizado: página pública por token (sem login)
 app.use('/api/visitors', visitorRoutes); // ping público + stats protegida (auth interna na rota)
+app.use('/api/impressao-agente', require('./routes/impressaoAgenteRoutes')); // Impressão direta: agente Windows (auth própria por token x-agente-token, SEM authMiddleware)
 app.use('/api/ponto-publico', pontoPublicRoutes); // RH: bater ponto por link público (token identifica o funcionário)
 app.use('/api/ia-consulta', iaConsultaRoutes); // API de consulta somente-leitura p/ IA externa (própria chave x-ia-api-key, não usa admin-secret)
 app.use('/api/asaas', asaasRoutes); // Integração Asaas: webhook público (token próprio) + PIX na entrega (auth interna)
@@ -209,6 +210,7 @@ app.use('/api/pcp/ordens', authMiddleware, pcpOrdemRoutes);
 app.use('/api/pcp/agenda', authMiddleware, pcpAgendaRoutes);
 app.use('/api/pcp/sugestoes', authMiddleware, pcpSugestaoRoutes);
 app.use('/api/pcp/etiquetas', authMiddleware, pcpEtiquetaRoutes);
+app.use('/api/impressao', authMiddleware, require('./routes/impressaoRoutes')); // Impressão direta: agentes, impressoras, fila, testes (admin)
 // PDF da folha da receita — FORA do authMiddleware de propósito: o link é aberto
 // pelo navegador do aparelho (que não manda header Authorization) e carrega um
 // token curto de 5 min na URL, emitido por POST /api/pcp/receitas/:id/link-impressao.

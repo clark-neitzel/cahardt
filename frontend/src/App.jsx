@@ -25,6 +25,7 @@ const CategoriasProduto = lazyComRetry(() => import('./pages/Configuracoes/Categ
 const CategoriasCliente = lazyComRetry(() => import('./pages/Configuracoes/CategoriasCliente'));
 const CategoriasEstoque = lazyComRetry(() => import('./pages/Configuracoes/CategoriasEstoque'));
 const ConfigCidades = lazyComRetry(() => import('./pages/Configuracoes/Cidades'));
+const ConfigImpressoras = lazyComRetry(() => import('./pages/Configuracoes/Impressoras'));
 const DashboardHome = lazyComRetry(() => import('./pages/Dashboard/DashboardHome'));
 const DashboardVendedorPessoal = lazyComRetry(() => import('./pages/Dashboard/DashboardVendedorPessoal'));
 const ListaPedidos = lazyComRetry(() => import('./pages/Pedidos/ListaPedidos'));
@@ -113,7 +114,7 @@ import {
   PackageCheck, Truck, Wallet, Receipt, Search,
   Box, UserCog, Car, RefreshCw, FileText, ClipboardCheck,
   Settings, DollarSign, Building2, TrendingUp, FolderOpen, Warehouse,
-  Package, BookOpen as BookOpenIcon, Factory, Play, ClipboardList as ClipboardListIcon, Calendar as CalendarIcon, Lightbulb, BarChart3, BarChart2, History, Sparkles, BellRing, UserCheck, Tag, DatabaseZap, Percent, Clock, Fingerprint, Inbox, Landmark, CalendarCheck, Star, AlertTriangle, ShoppingBag, MapPin, Gauge
+  Package, BookOpen as BookOpenIcon, Factory, Play, ClipboardList as ClipboardListIcon, Calendar as CalendarIcon, Lightbulb, BarChart3, BarChart2, History, Sparkles, BellRing, UserCheck, Tag, DatabaseZap, Percent, Clock, Fingerprint, Inbox, Landmark, CalendarCheck, Star, AlertTriangle, ShoppingBag, MapPin, Gauge, Printer
 } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { useMenuFavoritos } from './hooks/useMenuFavoritos';
@@ -486,7 +487,8 @@ const Layout = ({ children }) => {
       { to: '/config/categorias-cliente', icon: FolderOpen, label: 'Cat. Clientes' },
       { to: '/config/categorias-estoque', icon: FolderOpen, label: 'Cat. Estoque' },
       { to: '/config/cidades', icon: MapPin, label: 'Cidades' },
-    ] : []) },
+      isAdmin && { to: '/config/impressoras', icon: Printer, label: 'Impressoras' },
+    ].filter(Boolean) : []) },
   ].filter(s => s.items.length > 0);
 
   // Favoritos válidos: só telas que o usuário ainda tem permissão de ver
@@ -963,6 +965,7 @@ function App() {
               <Route path="/config/categorias-cliente" element={<PrivateRoute tab="configuracoes"><CategoriasCliente /></PrivateRoute>} />
               <Route path="/config/categorias-estoque" element={<PrivateRoute tab="configuracoes"><CategoriasEstoque /></PrivateRoute>} />
               <Route path="/config/cidades" element={<PrivateRoute tab="configuracoes"><ConfigCidades /></PrivateRoute>} />
+              <Route path="/config/impressoras" element={<PrivateRoute tab="configuracoes"><ConfigImpressoras /></PrivateRoute>} />
 
               {/* RH — Currículos */}
               <Route path="/rh/curriculos" element={<PrivateRoute tab="Pode_Ver_RH"><ListaCurriculos /></PrivateRoute>} />

@@ -515,6 +515,22 @@ function startSchedulers() {
         setTimeout(() => { _runCaixaAviso(); scheduleCaixaAviso(); }, target.getTime() - now.getTime());
     };
     scheduleCaixaAviso();
+
+    // === Impressão direta (Etiquetas da Cozinha) ===
+    // A cada 60 s: expira trabalho vencido (etiqueta velha NUNCA sai sozinha horas depois), devolve à fila o que
+    // ficou "ENVIANDO" sem confirmação do agente (respeitando maxTentativas) e, 1x/dia, apaga conteúdo/linhas antigas.
+    let _impressaoRodando = false;
+    setInterval(async () => {
+        if (_impressaoRodando) return;
+        _impressaoRodando = true;
+        try {
+            await require('../services/impressaoService').expirarELimpar();
+        } catch (err) {
+            console.error('⚠️ Impressão (expirar/limpar) Error:', err.message);
+        } finally {
+            _impressaoRodando = false;
+        }
+    }, 60 * 1000);
 }
 
 module.exports = { startSchedulers };

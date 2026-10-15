@@ -144,4 +144,5 @@
 | Config — Cat. Produto | `/config/categorias-produto` | Categorias comerciais de produto — ver é livre; criar/editar/excluir só admin ou `Pode_Editar_Categorias_Produto` | [config-categorias-produto.md](config-categorias-produto.md) |
 | Config — Cat. Cliente | `/configuracoes/categorias-cliente` | Segmentos de cliente com ciclo padrão e regras de desconto | [config-categorias-cliente.md](config-categorias-cliente.md) |
 | Config — Cidades | `/config/cidades` | Cadastro oficial de cidades: todo campo Cidade só aceita da lista; cadastrar nova (com "você quis dizer"), editar, fundir com simulação e snapshot, pendências vindas do Conta Azul/IA | [config-cidades.md](config-cidades.md) |
+| Config — Impressoras | `/config/impressoras` | Impressão direta de etiquetas (só admin): agente do PC da cozinha, impressoras Zebra, testes de impressão e fila | [configuracoes-impressoras.md](configuracoes-impressoras.md) |
 | Config — Cat. Estoque | `/configuracoes/categorias-estoque` | Define quais categorias de produto têm controle de estoque ativo | [config-categorias-estoque.md](config-categorias-estoque.md) |

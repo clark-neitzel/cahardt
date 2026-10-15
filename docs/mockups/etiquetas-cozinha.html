@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Etiquetas da Cozinha — Proposta CA-Hardt</title>
+<meta property="og:title" content="Etiquetas da Cozinha — proposta">
+<meta property="og:description" content="Três toques e a etiqueta sai: nome, fabricação, validade e peso. Para recheios, massas e o que não tem receita.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --primary:#00754A; --primaryDark:#006241; --house:#1E3932; --mint:#d4e9e2; --bg:#f2f0eb;
+  --gold:#cba258; --ink:rgba(0,0,0,.87); --ink-soft:#4b5563; --line:#e5e7eb; --card:#fff;
+  --seg:#2563eb; --ter:#eab308; --qua:#dc2626; --qui:#92400e; --sex:#16a34a; --sab:#ea580c; --dom:#111;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;font-family:Manrope,"SF Pro Text",system-ui,sans-serif;letter-spacing:-.01em;font-variant-numeric:tabular-nums;background:var(--bg);color:var(--ink);line-height:1.5}
+h1,h2,h3{margin:0;line-height:1.15}
+p{margin:0}
+a{color:var(--primary)}
+.wrap{max-width:1100px;margin:0 auto;padding:0 16px}
+/* hero */
+.hero{background:var(--house);color:#fff;padding:40px 0 32px}
+.eyebrow{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin-bottom:12px}
+.hero h1{font-size:30px;font-weight:800;max-width:760px}
+.hero p{margin-top:12px;max-width:720px;color:rgba(255,255,255,.82);font-size:15px}
+.resumo{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:24px}
+.resumo div{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:12px 14px}
+.resumo b{display:block;font-size:26px;font-weight:800;color:var(--gold)}
+.resumo span{font-size:12px;color:rgba(255,255,255,.75)}
+@media(min-width:760px){.hero h1{font-size:40px}.resumo{grid-template-columns:repeat(4,1fr)}}
+/* nav */
+.subnav{position:sticky;top:0;z-index:20;background:rgba(242,240,235,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.subnav .wrap{display:flex;gap:4px;overflow-x:auto;padding:8px 16px;scrollbar-width:none}
+.subnav a{white-space:nowrap;font-size:13px;font-weight:600;color:var(--ink-soft);text-decoration:none;padding:6px 12px;border-radius:999px}
+.subnav a:hover{background:var(--mint);color:var(--primaryDark)}
+/* sections */
+section{padding:40px 0 8px}
+.sec-head{margin-bottom:18px}
+.sec-head .n{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:999px;background:var(--gold);color:#2b230f;font-weight:800;font-size:13px;margin-right:8px;vertical-align:middle}
+.sec-head h2{display:inline;font-size:22px;font-weight:800;vertical-align:middle}
+.sec-head p{margin-top:8px;color:var(--ink-soft);font-size:15px;max-width:760px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.card .ch{display:flex;align-items:center;gap:8px;padding:12px 18px;border-bottom:1px solid #f3f4f6;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft)}
+.card .cb{padding:18px}
+.grid2{display:grid;grid-template-columns:1fr;gap:14px}
+.grid3{display:grid;grid-template-columns:1fr;gap:14px}
+@media(min-width:760px){.grid2{grid-template-columns:1fr 1fr}.grid3{grid-template-columns:repeat(3,1fr)}}
+.tile-info{padding:18px}
+.tile-info .ico{font-size:28px;line-height:1;margin-bottom:10px}
+.tile-info h3{font-size:16px;font-weight:800;margin-bottom:6px}
+.tile-info p{font-size:14px;color:var(--ink-soft)}
+.badge{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:700}
+.b-green{background:#dcfce7;color:#166534}.b-gray{background:#f3f4f6;color:#374151}.b-amber{background:#fef3c7;color:#b45309}.b-purple{background:#f3e8ff;color:#7e22ce}.b-blue{background:#dbeafe;color:#1e40af}
+/* day dots */
+.dias{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.dia{width:44px;height:44px;border-radius:999px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:12px;box-shadow:inset 0 -3px 0 rgba(0,0,0,.18)}
+/* ===== DEMO ===== */
+.demo{display:grid;grid-template-columns:1fr;gap:16px}
+@media(min-width:900px){.demo{grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);align-items:start}}
+.ipad{background:#111;border-radius:26px;padding:12px;box-shadow:0 20px 50px rgba(0,0,0,.25)}
+.screen{background:var(--bg);border-radius:16px;overflow:hidden;position:relative;min-height:560px}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:#fff;border-bottom:1px solid var(--line)}
+.topbar .t{display:flex;align-items:center;gap:8px;font-weight:800;font-size:16px}
+.topbar .t i{display:inline-flex;width:30px;height:30px;border-radius:9px;background:#ccfbf1;align-items:center;justify-content:center;font-style:normal;font-size:16px}
+.topbar .u{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-soft)}
+.avatar{width:26px;height:26px;border-radius:999px;background:var(--primary);color:#fff;font-weight:800;font-size:11px;display:inline-flex;align-items:center;justify-content:center}
+.contador{display:flex;align-items:center;gap:8px;padding:8px 14px;background:#fff;border-bottom:1px solid var(--line);font-size:12px;color:var(--ink-soft)}
+.contador b{color:var(--primaryDark)}
+.contador .hojechip{margin-left:auto;background:var(--mint);color:var(--primaryDark);font-weight:800;padding:2px 10px;border-radius:999px;font-size:11px}
+.abas{display:flex;gap:6px;padding:10px 12px 4px;overflow-x:auto;scrollbar-width:none}
+.aba{flex:0 0 auto;padding:10px 16px;border-radius:999px;background:#fff;border:1px solid var(--line);font-size:14px;font-weight:800;color:var(--ink-soft);cursor:pointer;min-height:46px;font-family:inherit;display:flex;align-items:center;gap:6px}
+.aba i{font-style:normal;background:#f3f4f6;color:#374151;border-radius:999px;padding:0 7px;font-size:11px}
+.aba.on i{background:rgba(255,255,255,.25);color:#fff}
+.aba.on{background:var(--primary);color:#fff;border-color:var(--primary)}
+.busca{margin:6px 12px 0;display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #d1d5db;border-radius:12px;padding:10px 12px;color:#9ca3af;font-size:14px}
+.tiles{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:12px}
+@media(min-width:560px){.tiles{grid-template-columns:repeat(3,1fr)}}
+.tile{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px 12px;cursor:pointer;min-height:96px;display:flex;flex-direction:column;gap:4px;transition:transform .08s,box-shadow .12s;position:relative;user-select:none}
+.tile:hover{box-shadow:0 6px 18px rgba(0,0,0,.08);transform:translateY(-1px)}
+.tile:active{transform:scale(.97)}
+.tile .e{font-size:26px;line-height:1}
+.tile .n{font-weight:800;font-size:14px;line-height:1.2}
+.tile .v{font-size:11px;color:var(--ink-soft)}
+.tile .star{position:absolute;top:8px;right:10px;font-size:11px;color:var(--gold)}
+.tile.digitar{border:2px dashed #c7cdd3;background:transparent;align-items:center;justify-content:center;text-align:center;color:var(--ink-soft)}
+.hoje{margin:4px 12px 12px}
+.hoje h4{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft);margin:10px 0 8px;display:flex;align-items:center;gap:8px}
+.hoje h4 span{background:var(--gold);color:#2b230f;border-radius:999px;padding:0 8px;font-size:10px}
+.lote{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:8px 10px;margin-bottom:6px;font-size:12px;animation:pop .35s ease}
+.lote .dot{width:10px;height:10px;border-radius:999px;flex:0 0 auto}
+.lote b{font-size:13px}
+.lote .meta{color:var(--ink-soft);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lote button{border:1px solid var(--primary);background:#fff;color:var(--primary);border-radius:999px;padding:5px 10px;font-weight:700;font-size:11px;cursor:pointer;font-family:inherit}
+.vazio{font-size:12px;color:#9ca3af;text-align:center;padding:10px;border:1px dashed #d1d5db;border-radius:12px}
+@keyframes pop{from{transform:translateY(-6px);opacity:0}to{transform:none;opacity:1}}
+/* gaveta (bottom sheet) */
+.gaveta{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:22px 22px 0 0;box-shadow:0 -14px 40px rgba(0,0,0,.22);transform:translateY(105%);transition:transform .28s cubic-bezier(.2,.8,.2,1);padding:10px 14px 14px;max-height:92%;overflow:auto;z-index:5}
+.gaveta.aberta{transform:none}
+.gaveta .alca{width:40px;height:4px;border-radius:999px;background:#d1d5db;margin:0 auto 10px}
+.gaveta .cab{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.gaveta .cab .e{font-size:30px}
+.gaveta .cab h3{font-size:18px;font-weight:800}
+.gaveta .cab small{display:block;font-size:12px;color:var(--ink-soft)}
+.gaveta .fechar{margin-left:auto;border:0;background:#f3f4f6;width:34px;height:34px;border-radius:999px;font-size:16px;cursor:pointer}
+.campo{margin-bottom:10px}
+.campo label{display:flex;justify-content:space-between;font-size:12px;font-weight:700;color:#374151;margin-bottom:5px}
+.campo label em{font-style:normal;font-weight:600;color:var(--ink-soft)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid #d1d5db;background:#fff;border-radius:999px;padding:8px 13px;font-size:13px;font-weight:700;cursor:pointer;min-height:40px;font-family:inherit;color:#374151}
+.chip.on{background:var(--mint);border-color:var(--primary);color:var(--primaryDark)}
+.chip.sug{border-style:dashed}
+.linha2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.inp{width:100%;border:1px solid #d1d5db;border-radius:10px;padding:9px 11px;font-size:15px;font-family:inherit;font-weight:700;min-height:44px}
+.stepper{display:flex;align-items:center;border:1px solid #d1d5db;border-radius:999px;overflow:hidden;height:44px}
+.stepper button{flex:0 0 46px;height:100%;border:0;background:#f9fafb;font-size:20px;cursor:pointer;font-family:inherit}
+.stepper span{flex:1;text-align:center;font-weight:800;font-size:16px}
+.tam{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tam button{border:2px solid #e5e7eb;background:#fff;border-radius:14px;padding:10px;cursor:pointer;text-align:left;font-family:inherit;min-height:60px}
+.tam button.on{border-color:var(--primary);background:var(--mint)}
+.tam b{display:block;font-size:14px}.tam small{font-size:11px;color:var(--ink-soft)}
+.imprimir{width:100%;border:0;background:var(--primary);color:#fff;border-radius:999px;padding:15px;font-size:16px;font-weight:800;cursor:pointer;font-family:inherit;margin-top:4px;min-height:52px;box-shadow:0 6px 16px rgba(0,117,74,.3)}
+.imprimir:hover{background:var(--primaryDark)}
+.imprimir:active{transform:scale(.99)}
+/* preview side */
+.previewbox{position:sticky;top:60px}
+.printer{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:12px}
+.printer h4{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft);margin:0 0 10px;display:flex;align-items:center;gap:8px}
+.printer h4 .on{margin-left:auto;background:var(--mint);color:var(--primaryDark);padding:2px 8px;border-radius:999px;font-size:10px}
+.slot{background:#1f2937;border-radius:8px;height:10px;margin:0 20px 0;box-shadow:inset 0 2px 4px rgba(0,0,0,.5)}
+.saida{display:flex;justify-content:center;padding:10px 0 4px;min-height:60px;overflow:hidden}
+.printer.ativa{border-color:var(--primary);box-shadow:0 0 0 3px var(--mint)}
+.et{background:#fff;color:#000;border:1px solid #cfcfcf;box-shadow:0 2px 6px rgba(0,0,0,.15);font-family:Manrope,Arial,sans-serif;position:relative;overflow:hidden;animation:sai .45s ease}
+@keyframes sai{from{transform:translateY(-40px);opacity:0}to{transform:none;opacity:1}}
+/* 40x25 @ 5.6px/mm = 224x140 */
+.et-p{width:224px;height:140px;display:flex}
+.et-p .faixa{width:30px;background:#000;color:#fff;display:flex;align-items:center;justify-content:center;writing-mode:vertical-rl;transform:rotate(180deg);font-weight:800;font-size:16px;letter-spacing:.1em}
+.et-p .corpo{flex:1;padding:7px 8px;display:flex;flex-direction:column;justify-content:space-between}
+.et-p .nome{font-weight:800;font-size:17px;line-height:1.05;text-transform:uppercase}
+.et-p .datas{font-size:12px;font-weight:700;display:flex;justify-content:space-between}
+.et-p .datas b{font-size:13px}
+.et-p .val{font-size:12px;font-weight:800;border:2px solid #000;padding:1px 6px;border-radius:3px}
+.et-p .rod{font-size:9.5px;display:flex;justify-content:space-between;color:#111}
+/* 100x120 @ 2.5px/mm = 250x300 */
+.et-g{width:250px;height:300px;display:flex;flex-direction:column}
+.et-g .faixa{background:#000;color:#fff;padding:8px 12px;display:flex;justify-content:space-between;align-items:center;font-weight:800;font-size:14px}
+.et-g .faixa small{font-weight:700;font-size:10px;letter-spacing:.08em;border:1px solid #fff;padding:1px 6px;border-radius:3px}
+.et-g .nome{font-weight:800;font-size:24px;line-height:1.05;text-transform:uppercase;padding:14px 14px 8px;flex:1}
+.et-g .bloco{margin:0 14px 8px;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.et-g .k{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#333;font-weight:800}
+.et-g .vv{font-size:16px;font-weight:800}
+.et-g .valbox{border:3px solid #000;border-radius:6px;padding:4px 10px;text-align:center}
+.et-g .valbox .vv{font-size:22px}
+.et-g .rod{display:flex;justify-content:space-between;align-items:flex-end;padding:0 14px 12px;font-size:10px}
+.qr{width:38px;height:38px;background:repeating-conic-gradient(#000 0 25%,#fff 0 50%) 0 0/8px 8px;border:2px solid #000}
+/* telas com pins */
+.tela{position:relative;background:var(--bg);border:1px solid var(--line);border-radius:16px;padding:14px;overflow:hidden}
+.pin{display:inline-flex;width:22px;height:22px;border-radius:999px;background:var(--gold);color:#2b230f;font-weight:800;font-size:12px;align-items:center;justify-content:center;flex:0 0 auto;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.pin.abs{position:absolute;z-index:3}
+.legenda{padding:14px 16px}
+.legenda div{display:flex;gap:8px;font-size:13px;color:var(--ink-soft);margin-bottom:8px;align-items:flex-start}
+.legenda b{color:var(--ink)}
+.mock-tile{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px;font-size:12px;font-weight:800}
+.mock-tile span{display:block;font-weight:600;font-size:10px;color:var(--ink-soft)}
+/* plano */
+.fases{display:grid;grid-template-columns:1fr;gap:12px}
+@media(min-width:760px){.fases{grid-template-columns:repeat(3,1fr)}}
+.fase{padding:16px;border-radius:14px;background:#fff;border:1px solid var(--line)}
+.fase .f{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--gold)}
+.fase h3{font-size:15px;margin:4px 0 8px}
+.fase ul{margin:0;padding-left:18px;font-size:13px;color:var(--ink-soft)}
+.fase li{margin-bottom:4px}
+.decisoes{counter-reset:d}
+.dec{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid #f3f4f6;font-size:14px}
+.dec:last-child{border:0}
+.dec::before{counter-increment:d;content:counter(d);flex:0 0 28px;height:28px;border-radius:999px;background:var(--house);color:#fff;font-weight:800;display:inline-flex;align-items:center;justify-content:center;font-size:13px}
+.dec b{display:block}
+.dec span{color:var(--ink-soft);font-size:13px}
+.tec{font-size:13px;color:var(--ink-soft)}
+.tec li{margin-bottom:6px}
+code{background:#eef2f1;padding:1px 6px;border-radius:5px;font-size:12px;color:var(--primaryDark)}
+footer{padding:30px 0 50px;text-align:center;font-size:12px;color:#9ca3af}
+.toast{position:absolute;left:50%;top:14px;transform:translateX(-50%) translateY(-80px);background:var(--house);color:#fff;padding:10px 16px;border-radius:999px;font-weight:700;font-size:13px;transition:transform .3s;z-index:9;white-space:nowrap;box-shadow:0 8px 20px rgba(0,0,0,.25)}
+.toast.show{transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="eyebrow">Proposta · PCP · Etiquetas da Cozinha</span>
+    <h1>Três toques e a etiqueta sai: nome, fabricação, validade.</h1>
+    <p>Uma aba nova no PCP para etiquetar recheio, massa e qualquer coisa que não tem receita. Quem está na cozinha toca no item, confere a validade que o sistema já sugeriu, escolhe a impressora e imprime. O peso é opcional. Tudo o que foi etiquetado fica registrado com lote, pessoa e hora, para o controle de validade deixar de depender de caneta e fita crepe.</p>
+    <div class="resumo">
+      <div><b>3</b><span>toques para a etiqueta mais comum</span></div>
+      <div><b>2</b><span>impressoras: 40×25 e 100×120</span></div>
+      <div><b>0</b><span>digitação para os favoritos</span></div>
+      <div><b>1</b><span>lote rastreável por etiqueta</span></div>
+    </div>
+  </div>
+</header>
+
+<nav class="subnav"><div class="wrap">
+  <a href="#cozinha">Como a cozinha faz</a>
+  <a href="#demo">Experimente</a>
+  <a href="#telas">As telas</a>
+  <a href="#etiquetas">As etiquetas</a>
+  <a href="#organizado">Organizado</a>
+  <a href="#divertido">Divertido</a>
+  <a href="#plano">Plano e decisões</a>
+</div></nav>
+
+<main class="wrap">
+
+<!-- ================= 1. COMO A COZINHA FAZ ================= -->
+<section id="cozinha">
+  <div class="sec-head">
+    <span class="n">1</span><h2>Como uma cozinha profissional faz isso</h2>
+    <p>Restaurante, padaria industrial e cozinha de hospital resolvem o mesmo problema do mesmo jeito há décadas. A proposta copia o que funciona e deixa o sistema preencher o que hoje é escrito à mão.</p>
+  </div>
+  <div class="grid2">
+    <div class="card tile-info">
+      <div class="ico">🏷️</div>
+      <h3>Etiqueta de manipulação</h3>
+      <p>A ANVISA (RDC 216) pede, em tudo que é preparado e guardado: <b>nome</b>, <b>data de preparo</b>, <b>validade</b> e <b>quem fez</b>. É exatamente o que a equipe pediu. O peso entra como extra, útil para o custo e para o inventário.</p>
+    </div>
+    <div class="card tile-info">
+      <div class="ico">🎨</div>
+      <h3>Cor do dia da semana</h3>
+      <p>Cozinhas usam um código de cores fixo por dia ("day dots"): bate o olho na geladeira e sabe o que é de hoje e o que é de segunda. Na tela a cor aparece; na Zebra (preto e branco) sai o dia em uma faixa preta bem grande.</p>
+      <div class="dias">
+        <div class="dia" style="background:var(--seg)">SEG</div><div class="dia" style="background:var(--ter);color:#2b230f">TER</div><div class="dia" style="background:var(--qua)">QUA</div><div class="dia" style="background:var(--qui)">QUI</div><div class="dia" style="background:var(--sex)">SEX</div><div class="dia" style="background:var(--sab)">SÁB</div><div class="dia" style="background:var(--dom)">DOM</div>
+      </div>
+    </div>
+    <div class="card tile-info">
+      <div class="ico">🔁</div>
+      <h3>PVPS: primeiro que vence, primeiro que sai</h3>
+      <p>A validade impressa grande e dentro de uma caixa é o que permite a regra na prática. Quem pega o pote olha um número só. Por isso a validade é o dado mais destacado da etiqueta, maior que o nome.</p>
+    </div>
+    <div class="card tile-info">
+      <div class="ico">🧾</div>
+      <h3>Lote e registro</h3>
+      <p>Cada impressão gera um número de lote (<code>251015-03</code> = dia 15/10/25, 3º lote do dia) e fica gravada: item, peso, quem imprimiu, hora. Se um recheio der problema, sabe-se de qual batelada era e o que mais saiu dela.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 2. DEMO ================= -->
+<section id="demo">
+  <div class="sec-head">
+    <span class="n">2</span><h2>Experimente: toque num item e imprima</h2>
+    <p>Isto é um protótipo clicável da aba, como ela ficaria no iPad da cozinha. Toque num favorito, mexa na validade, no peso e no tamanho; a etiqueta ao lado muda na hora. "Imprimir" simula a saída e registra no "Hoje na cozinha".</p>
+  </div>
+  <div class="demo">
+    <div class="ipad"><div class="screen" id="screen">
+      <div class="toast" id="toast">🖨️ Saiu da impressora</div>
+      <div class="topbar">
+        <div class="t"><i>🏷️</i> Etiquetas da Cozinha</div>
+        <div class="u"><span class="avatar">MA</span> Maria</div>
+      </div>
+      <div class="contador">Hoje: <b id="cHoje">0</b>&nbsp;etiquetas · <b id="cLotes">0</b>&nbsp;lotes <span class="hojechip" id="hojeChip"></span></div>
+      <div class="abas" id="abas">
+        <button class="aba on" data-cat="fav">⭐ Favoritos <i>6</i></button>
+        <button class="aba" data-cat="recheio">🥣 Recheios <i>6</i></button>
+        <button class="aba" data-cat="massa">🫓 Massas <i>5</i></button>
+        <button class="aba" data-cat="outro">🧅 Outros <i>5</i></button>
+        <button class="aba" data-cat="todos">Todos <i>16</i></button>
+      </div>
+      <div class="busca">🔍 <span>Buscar… (ou leia a etiqueta de um produto)</span></div>
+      <div class="tiles" id="tiles"></div>
+      <div class="hoje">
+        <h4>Hoje na cozinha <span id="hojeN">0</span></h4>
+        <div id="hojeLista"><div class="vazio">Nada etiquetado ainda hoje. Toque num item acima.</div></div>
+      </div>
+
+      <!-- gaveta -->
+      <div class="gaveta" id="gaveta">
+        <div class="alca"></div>
+        <div class="cab">
+          <div class="e" id="gE">🥣</div>
+          <div><h3 id="gNome">Recheio de frango</h3><small id="gSub">Subproduto · validade sugerida 3 dias refrigerado</small></div>
+          <button class="fechar" onclick="fecharGaveta()">✕</button>
+        </div>
+        <div class="campo">
+          <label>Fabricação <em id="lFab"></em></label>
+          <div class="chips">
+            <button class="chip on" data-fab="0">Hoje</button>
+            <button class="chip" data-fab="-1">Ontem</button>
+            <button class="chip" data-fab="pick">📅 Outra data</button>
+          </div>
+        </div>
+        <div class="campo">
+          <label>Conservação <em>muda a validade sugerida</em></label>
+          <div class="chips">
+            <button class="chip on" data-cons="REF">❄️ Refrigerado 0–4 °C</button>
+            <button class="chip" data-cons="CONG">🧊 Congelado −18 °C</button>
+          </div>
+        </div>
+        <div class="campo">
+          <label>Validade <em id="lVal"></em></label>
+          <div class="chips" id="chipsVal"></div>
+        </div>
+        <div class="linha2">
+          <div class="campo">
+            <label>Peso <em>opcional</em></label>
+            <div class="chips" style="margin-bottom:6px">
+              <button class="chip" data-peso="1">1 kg</button><button class="chip" data-peso="2">2 kg</button><button class="chip" data-peso="5">5 kg</button>
+            </div>
+            <input class="inp" id="peso" placeholder="kg" inputmode="decimal">
+          </div>
+          <div class="campo">
+            <label>Quantas etiquetas</label>
+            <div class="stepper"><button onclick="qtd(-1)">−</button><span id="qtdV">1</span><button onclick="qtd(1)">+</button></div>
+            <label style="margin-top:10px">Responsável</label>
+            <div class="chips"><button class="chip on">MA Maria</button><button class="chip">+ outra</button></div>
+          </div>
+        </div>
+        <div class="campo">
+          <label>Impressora / tamanho</label>
+          <div class="tam">
+            <button class="on" data-tam="p"><b>🖨️ Pequena · 40 × 25 mm</b><small>Zebra TLP, 2 colunas. Pote, bisnaga, saco.</small></button>
+            <button data-tam="g"><b>🖨️ Grande · 100 × 120 mm</b><small>ZDesigner. Caixa, bombona, monobloco.</small></button>
+          </div>
+        </div>
+        <button class="imprimir" id="btnImprimir" onclick="imprimir()">🖨️ Imprimir 1 etiqueta</button>
+      </div>
+    </div></div>
+
+    <div class="previewbox">
+      <div class="printer ativa" id="prP">
+        <h4>🖨️ Zebra pequena · 40 × 25 <span class="on">selecionada</span></h4>
+        <div class="slot"></div>
+        <div class="saida" id="saidaP"></div>
+      </div>
+      <div class="printer" id="prG">
+        <h4>🖨️ ZDesigner grande · 100 × 120 <span class="on" style="display:none">selecionada</span></h4>
+        <div class="slot"></div>
+        <div class="saida" id="saidaG"></div>
+      </div>
+      <p style="font-size:12px;color:var(--ink-soft);padding:0 4px">A etiqueta muda em tempo real conforme a gaveta. Na pequena, o dia da semana vira a faixa vertical; na grande, a faixa de cima. O texto é preto porque as duas Zebras são térmicas monocromáticas.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 3. TELAS ================= -->
+<section id="telas">
+  <div class="sec-head">
+    <span class="n">3</span><h2>As telas do app</h2>
+    <p>Onde fica cada coisa e o que acontece em cada toque. Entra no menu do PCP como <b>Etiquetas da Cozinha</b>, ao lado de "Etiquetas" (que continua sendo a etiqueta de produto acabado, com tabela nutricional).</p>
+  </div>
+  <div class="grid2">
+    <div class="card">
+      <div class="ch">Tela 1 · A aba</div>
+      <div class="cb">
+        <div class="tela">
+          <span class="pin abs" style="top:10px;left:10px">1</span>
+          <div style="display:flex;gap:6px;margin:0 0 10px 30px"><span class="badge b-green">⭐ Favoritos</span><span class="badge b-gray">🥣 Recheios</span><span class="badge b-gray">🫓 Massas</span><span class="badge b-gray">🧅 Outros</span></div>
+          <span class="pin abs" style="top:46px;left:10px">2</span>
+          <div style="margin-left:30px;background:#fff;border:1px solid #d1d5db;border-radius:10px;padding:8px 10px;font-size:12px;color:#9ca3af;margin-bottom:10px">🔍 Buscar ou ler código…</div>
+          <span class="pin abs" style="top:92px;left:10px">3</span>
+          <div style="margin-left:30px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
+            <div class="mock-tile">🥣 Recheio de frango<span>3 d · refrigerado</span></div>
+            <div class="mock-tile">🫓 Massa de coxinha<span>2 d · refrigerado</span></div>
+            <div class="mock-tile" style="border-style:dashed;text-align:center">✏️ Digitar<span>item sem cadastro</span></div>
+          </div>
+          <span class="pin abs" style="top:170px;left:10px">4</span>
+          <div style="margin-left:30px;font-size:11px;font-weight:800;letter-spacing:.1em;color:#6b7280">HOJE NA COZINHA · 7</div>
+          <div style="margin-left:30px;font-size:12px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:6px 10px;margin-top:6px;display:flex;gap:8px;align-items:center"><span class="dot" style="width:10px;height:10px;border-radius:99px;background:var(--qua);display:inline-block"></span><b>Recheio de frango</b> <span style="color:#6b7280">2 kg · 14:02 · Maria · 251015-03</span><span style="margin-left:auto;color:var(--primary);font-weight:700">Reimprimir</span></div>
+        </div>
+        <div class="legenda">
+          <div><span class="pin">1</span><div><b>Filtros por tipo, sempre à vista:</b> Favoritos · Recheios · Massas · Outros · Todos, com a contagem em cada um. Um toque troca a lista; a escolha fica lembrada no iPad (padrão <code>useFiltrosSalvos</code>). Favoritos se monta sozinho: os itens mais etiquetados por essa pessoa nos últimos 30 dias.</div></div>
+          <div><span class="pin">2</span><div><b>Busca e leitor.</b> Digitar 3 letras acha o item; bipar a etiqueta de um produto acabado também abre a gaveta com ele.</div></div>
+          <div><span class="pin">3</span><div><b>Blocos grandes</b> (dedo molhado, luva). Já mostram a validade sugerida. "Digitar" serve para o que não tem cadastro: o nome fica salvo e aparece em "Outros" da próxima vez.</div></div>
+          <div><span class="pin">4</span><div><b>Hoje na cozinha.</b> Tudo que saiu hoje, com cor do dia, peso, hora, pessoa e lote. "Reimprimir" repete a mesma etiqueta (mesmo lote) se rasgou ou colou errado.</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ch">Tela 2 · A gaveta de imprimir</div>
+      <div class="cb">
+        <div class="tela">
+          <span class="pin abs" style="top:10px;left:10px">1</span>
+          <div style="margin-left:30px;font-weight:800;font-size:15px">🥣 Recheio de frango <span style="font-weight:600;font-size:11px;color:#6b7280;display:block">validade sugerida 3 dias refrigerado</span></div>
+          <span class="pin abs" style="top:58px;left:10px">2</span>
+          <div style="margin:10px 0 0 30px;display:flex;gap:6px"><span class="badge b-green">Hoje</span><span class="badge b-gray">Ontem</span><span class="badge b-gray">📅 Outra</span></div>
+          <span class="pin abs" style="top:92px;left:10px">3</span>
+          <div style="margin:10px 0 0 30px;display:flex;gap:6px"><span class="badge b-green">❄️ Refrigerado</span><span class="badge b-gray">🧊 Congelado</span> <span class="badge b-green" style="margin-left:8px">3 dias → 18/10</span><span class="badge b-gray">7 d</span><span class="badge b-gray">30 d</span></div>
+          <span class="pin abs" style="top:126px;left:10px">4</span>
+          <div style="margin:10px 0 0 30px;display:flex;gap:6px;align-items:center;font-size:12px"><span class="badge b-gray">1 kg</span><span class="badge b-gray">2 kg</span><span class="badge b-gray">5 kg</span> <span style="border:1px solid #d1d5db;border-radius:8px;padding:3px 8px;background:#fff;color:#9ca3af">kg</span> &nbsp; <span style="border:1px solid #d1d5db;border-radius:99px;padding:3px 10px;background:#fff">− <b>2</b> +</span></div>
+          <span class="pin abs" style="top:162px;left:10px">5</span>
+          <div style="margin:10px 0 0 30px;display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px"><div style="border:2px solid var(--primary);background:var(--mint);border-radius:10px;padding:6px 8px"><b>Pequena 40×25</b><br>Zebra TLP</div><div style="border:2px solid #e5e7eb;background:#fff;border-radius:10px;padding:6px 8px"><b>Grande 100×120</b><br>ZDesigner</div></div>
+          <span class="pin abs" style="top:222px;left:10px">6</span>
+          <div style="margin:10px 0 0 30px;background:var(--primary);color:#fff;border-radius:99px;padding:9px;text-align:center;font-weight:800;font-size:13px">🖨️ Imprimir 2 etiquetas</div>
+        </div>
+        <div class="legenda">
+          <div><span class="pin">1</span><div><b>Cabeçalho</b> com o item e a validade padrão que está no cadastro dele (Itens PCP).</div></div>
+          <div><span class="pin">2</span><div><b>Fabricação</b> já vem "Hoje". "Ontem" cobre o que foi feito no fim do turno e etiquetado de manhã.</div></div>
+          <div><span class="pin">3</span><div><b>Conservação e validade.</b> Trocar de refrigerado para congelado troca a sugestão (ex.: 3 dias → 90 dias). A data final aparece por extenso no chip. Dá para escolher outro prazo, mas o sistema registra que foi alterado.</div></div>
+          <div><span class="pin">4</span><div><b>Peso opcional</b> em chips ou digitado, e <b>quantidade de etiquetas</b> (5 potes do mesmo lote = 5 etiquetas, 1 lote).</div></div>
+          <div><span class="pin">5</span><div><b>Tamanho = impressora.</b> O app lembra a última escolha por item (bisnaga sempre pequena, bombona sempre grande).</div></div>
+          <div><span class="pin">6</span><div><b>Imprimir</b> na própria página (regra do iPad), gera o lote e volta para a lista com a nova linha no topo.</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 4. ETIQUETAS ================= -->
+<section id="etiquetas">
+  <div class="sec-head">
+    <span class="n">4</span><h2>As duas etiquetas</h2>
+    <p>Mesma informação, prioridade diferente. Na pequena cabe o essencial; na grande, tudo, com espaço para ler de longe. Em ambas a validade é o maior número e está dentro de uma caixa.</p>
+  </div>
+  <div class="grid2">
+    <div class="card">
+      <div class="ch">Pequena · 40 × 25 mm · Zebra TLP 2844</div>
+      <div class="cb" style="display:flex;flex-direction:column;align-items:center;gap:6px;position:relative">
+        <div style="position:relative">
+          <div class="et et-p" style="animation:none">
+            <div class="faixa">QUA 15/10</div>
+            <div class="corpo">
+              <div class="nome">Recheio de frango</div>
+              <div class="datas"><span>FAB <b>15/10</b></span><span class="val">VAL 18/10</span></div>
+              <div class="rod"><span>2,0 kg · ❄️ 0–4 °C</span><span>L 251015-03 · MA</span></div>
+            </div>
+          </div>
+          <span class="pin abs" style="top:-8px;left:-8px">1</span>
+          <span class="pin abs" style="top:28px;right:-8px">2</span>
+          <span class="pin abs" style="top:70px;right:-8px">3</span>
+          <span class="pin abs" style="bottom:-8px;right:40px">4</span>
+        </div>
+        <div class="legenda" style="padding-top:18px">
+          <div><span class="pin">1</span><div><b>Faixa do dia</b> em preto com o dia da semana e a data de fabricação. É o que se enxerga com o pote dentro da geladeira.</div></div>
+          <div><span class="pin">2</span><div><b>Nome</b> em caixa alta, até 2 linhas; a fonte encolhe sozinha em nome comprido (mesmo mecanismo da etiqueta de produto).</div></div>
+          <div><span class="pin">3</span><div><b>Validade em caixa.</b> Dia/mês bastam na pequena.</div></div>
+          <div><span class="pin">4</span><div><b>Rodapé:</b> peso e conservação à esquerda; lote e iniciais de quem fez à direita. Sai em 2 colunas (84 × 25 no driver), igual às caixas do Kit Festa.</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ch">Grande · 100 × 120 mm · ZDesigner</div>
+      <div class="cb" style="display:flex;flex-direction:column;align-items:center;gap:6px">
+        <div style="position:relative">
+          <div class="et et-g" style="animation:none">
+            <div class="faixa"><span>QUARTA · 15/10</span><small>REFRIGERADO 0–4 °C</small></div>
+            <div class="nome">Recheio de frango com catupiry</div>
+            <div class="bloco">
+              <div><div class="k">Fabricação</div><div class="vv">15/10/2026</div></div>
+              <div class="valbox"><div class="k">Validade</div><div class="vv">18/10/2026</div></div>
+            </div>
+            <div class="bloco">
+              <div><div class="k">Peso</div><div class="vv">2,0 kg</div></div>
+              <div><div class="k">Lote</div><div class="vv">251015-03</div></div>
+            </div>
+            <div class="rod"><div>Resp.: <b>Maria A.</b><br>Hardt Salgados · PCP</div><div class="qr"></div></div>
+          </div>
+          <span class="pin abs" style="top:-8px;left:-8px">1</span>
+          <span class="pin abs" style="top:58px;right:-8px">2</span>
+          <span class="pin abs" style="top:150px;right:-8px">3</span>
+          <span class="pin abs" style="bottom:-8px;right:-8px">4</span>
+        </div>
+        <div class="legenda" style="padding-top:18px">
+          <div><span class="pin">1</span><div><b>Faixa do dia</b> com o dia por extenso e a conservação (refrigerado ou congelado) em destaque.</div></div>
+          <div><span class="pin">2</span><div><b>Nome grande</b>, lido a 2 metros, em pé na prateleira da câmara fria.</div></div>
+          <div><span class="pin">3</span><div><b>Validade na caixa</b> com ano, ao lado da fabricação. Abaixo, peso e lote.</div></div>
+          <div><span class="pin">4</span><div><b>QR do lote</b> (fase 3): ler no Ajuste de Estoque dá entrada do subproduto ou abre o histórico daquele lote.</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 5. ORGANIZADO ================= -->
+<section id="organizado">
+  <div class="sec-head">
+    <span class="n">5</span><h2>O que deixa isso organizado</h2>
+    <p>Imprimir é a parte fácil. O ganho de verdade é o que fica registrado sem ninguém precisar anotar.</p>
+  </div>
+  <div class="grid3">
+    <div class="card tile-info"><div class="ico">🔢</div><h3>Lote automático</h3><p>Formato <code>AAMMDD-NN</code>, reiniciando a cada dia. 5 potes do mesmo recheio = 5 etiquetas com o mesmo lote. Reimpressão repete o lote; impressão nova cria outro.</p></div>
+    <div class="card tile-info"><div class="ico">📒</div><h3>Histórico</h3><p>Quem, quando, o quê, quanto, em qual impressora. Filtro por dia e por item, igual às outras listas do app. Serve de registro para a vigilância sanitária.</p></div>
+    <div class="card tile-info"><div class="ico">⏰</div><h3>Vence hoje / amanhã</h3><p>Como cada lote tem validade gravada, a aba mostra um chip "3 lotes vencem hoje". Toque abre a lista para conferir a geladeira. <span class="badge b-amber">fase 2</span></p></div>
+    <div class="card tile-info"><div class="ico">📋</div><h3>Vem da Ordem de Produção</h3><p>Ao concluir uma OP no Painel, botão "Etiquetar lote" abre a gaveta já com o item, o rendimento como peso e a validade. Zero digitação. <span class="badge b-amber">fase 2</span></p></div>
+    <div class="card tile-info"><div class="ico">⚙️</div><h3>Validade mora no cadastro</h3><p>Cada item em Itens PCP ganha dois prazos: refrigerado e congelado. A cozinha não decide validade na hora; só confirma. Quem muda o prazo é quem tem permissão de editar o item.</p></div>
+    <div class="card tile-info"><div class="ico">🔎</div><h3>Achar em 1 toque</h3><p>Filtro por tipo (recheio, massa, outros) em chips grandes no topo, busca que acha por pedaço do nome ("fran" acha Recheio de frango) e os favoritos da pessoa primeiro. Lista nunca passa de uma tela sem rolar muito.</p></div>
+    <div class="card tile-info"><div class="ico">🔐</div><h3>Permissão existente</h3><p>Usa <code>pcp.etiquetas</code>, que a equipe de produção já tem. Nada novo para configurar no painel de permissões.</p></div>
+  </div>
+</section>
+
+<!-- ================= 6. DIVERTIDO ================= -->
+<section id="divertido">
+  <div class="sec-head">
+    <span class="n">6</span><h2>O que deixa isso divertido (sem virar brinquedo)</h2>
+    <p>Pequenas coisas que fazem a equipe gostar de usar em vez de voltar para a caneta.</p>
+  </div>
+  <div class="grid3">
+    <div class="card tile-info"><div class="ico">🌈</div><h3>Cor do dia na tela</h3><p>A tela inteira adota a cor do dia (barra de cima, bolinhas da lista). Quarta é vermelha, sexta é verde. Em uma semana ninguém mais lê a data: vê a cor.</p></div>
+    <div class="card tile-info"><div class="ico">🎉</div><h3>Contador do dia</h3><p>"Hoje: 48 etiquetas · 12 lotes". Na 50ª, um confete discreto e um "boa!" por 1 segundo. Ninguém ganha nada, mas todo mundo olha.</p></div>
+    <div class="card tile-info"><div class="ico">🔊</div><h3>Bip de saída</h3><p>Um "tec" curto quando a etiqueta sai (desligável). Na cozinha barulhenta é o sinal de que deu certo sem olhar para o iPad.</p></div>
+    <div class="card tile-info"><div class="ico">⭐</div><h3>Favoritos que aprendem</h3><p>Nada de configurar. Os 6 blocos de cima são os mais usados por essa pessoa. Quem faz massa vê massa; quem faz recheio vê recheio.</p></div>
+    <div class="card tile-info"><div class="ico">🧤</div><h3>Modo luva</h3><p>Botões de 52 px, chips de 40 px, nada de menu escondido. Dá para operar com luva de nitrilo e mão molhada. Funciona no celular também.</p></div>
+    <div class="card tile-info"><div class="ico">🖨️</div><h3>Animação da etiqueta saindo</h3><p>O preview "sai" da impressora desenhada na tela, como no protótipo acima. Feedback imediato; se nada saiu da Zebra, a pessoa sabe que o problema é a impressora, não o app.</p></div>
+  </div>
+</section>
+
+<!-- ================= 7. PLANO ================= -->
+<section id="plano">
+  <div class="sec-head">
+    <span class="n">7</span><h2>Plano em fases e decisões suas</h2>
+    <p>A fase 1 já resolve o pedido inteiro (nome, fabricação, validade, peso, dois tamanhos). As outras são ganhos em cima.</p>
+  </div>
+  <div class="fases">
+    <div class="fase"><div class="f">Fase 1 · entrega única · porte M</div><h3>A aba e as duas etiquetas</h3>
+      <ul><li>Rota <code>/pcp/etiquetas/cozinha</code> + item no menu</li><li>Blocos por tipo, busca, "Digitar"</li><li>Gaveta: fabricação, conservação, validade, peso, qtd, tamanho</li><li>Impressão 40×25 (2 col.) e 100×120 na própria página</li><li>Lote, histórico, "Hoje na cozinha", reimprimir</li><li>Validade por item (2 prazos) em Itens PCP</li></ul></div>
+    <div class="fase"><div class="f">Fase 2 · porte P</div><h3>Ligado ao resto do PCP</h3>
+      <ul><li>Botão "Etiquetar lote" ao concluir OP no Painel</li><li>Chip "vence hoje / amanhã" com lista</li><li>Favoritos por uso (30 dias, por pessoa)</li><li>Cor do dia, contador, bip</li></ul></div>
+    <div class="fase"><div class="f">Fase 3 · porte P</div><h3>QR do lote</h3>
+      <ul><li>QR na etiqueta grande (e opcional na pequena)</li><li>Ler no Ajuste de Estoque: entrada do subproduto no estoque PCP</li><li>Ler na busca da aba: abre o histórico do lote</li></ul></div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <div class="ch">O que preciso que você decida</div>
+    <div class="cb decisoes">
+      <div class="dec"><div><b>Responsável na etiqueta: pessoa logada ou escolhida num toque?</b><span>No iPad compartilhado da cozinha, uma pessoa fica logada o dia todo. Sugiro mostrar a logada e permitir trocar com um toque (chips com as iniciais da equipe de produção).</span></div></div>
+      <div class="dec"><div><b>Validade padrão: dois prazos por item (refrigerado e congelado)?</b><span>Recomendo sim. Alternativa é um prazo só e a cozinha ajustar na hora, o que volta a depender de memória.</span></div></div>
+      <div class="dec"><div><b>"Digitar" liberado para todos?</b><span>Sugiro liberar: nome livre vira item em "Outros" e quem edita Itens PCP arruma ou funde depois. Travar faz a equipe voltar para a caneta no primeiro item que faltar.</span></div></div>
+      <div class="dec"><div><b>Na pequena, 2 colunas: quantidade ímpar deixa uma vazia. Pode?</b><span>É como já sai nas caixas do Kit Festa. Alternativa: sempre arredondar para par e mandar colar a sobra no próximo pote.</span></div></div>
+      <div class="dec"><div><b>Peso: só informativo ou dá entrada no estoque PCP?</b><span>Na fase 1, só na etiqueta e no histórico. Dar entrada automática fica para a fase 3 com o QR, para não gerar estoque em dobro com a conclusão da OP.</span></div></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <div class="ch">Notas técnicas (para quem vai construir)</div>
+    <div class="cb"><ul class="tec" style="margin:0;padding-left:18px">
+      <li>Impressão na própria página via <code>utils/imprimirNaPagina</code>, nunca <code>window.open</code> nem iframe (regra do iPad).</li>
+      <li>40×25: mesmo driver e mesma grade de 2 colunas (84×25 mm) de <code>KitFesta/etiquetasCaixas.js</code>. 100×120: mesmo <code>paginaImpressao('g120')</code> e orientação de <code>PCP/etiquetaModelos.js</code> (papel 120×100 paisagem).</li>
+      <li>Fonte dos itens: <code>ItemPcp</code> (tipo SUB para recheio e massa, demais tipos em "Outros") + nomes livres gravados como ItemPcp com marcação de origem "cozinha".</li>
+      <li>Tabela nova <code>etiquetas_cozinha_lotes</code>: item, nome impresso, fabricação, validade, conservação, peso (g), qtd, tamanho, usuário, lote, criadoEm. Campos novos em ItemPcp: <code>validadeRefrigeradoDias</code>, <code>validadeCongeladoDias</code>.</li>
+      <li>Nome com auto-ajuste de fonte pelo <code>useAutoFit</code> já existente. Fuso local nas datas (mesmo cuidado do módulo Tarefas).</li>
+      <li>Filtros da aba com <code>useFiltrosSalvos</code>; menus com <code>SelectBusca</code>; manual <code>backend/manuais/abas/pcp-etiquetas-cozinha.md</code> + entrada no Clippy; página de novidade ao publicar.</li>
+    </ul></div>
+  </div>
+</section>
+
+</main>
+<footer>Proposta · Etiquetas da Cozinha · CA-Hardt · 15/10/2026</footer>
+
+<script>
+// ---------- dados do protótipo ----------
+const ITENS = [
+  {id:1,nome:'Recheio de frango',cat:'recheio',e:'🥣',ref:3,cong:90,fav:1},
+  {id:2,nome:'Massa de coxinha',cat:'massa',e:'🫓',ref:2,cong:60,fav:1},
+  {id:3,nome:'Recheio de carne',cat:'recheio',e:'🥣',ref:3,cong:90,fav:1},
+  {id:4,nome:'Massa de pastel',cat:'massa',e:'🫓',ref:3,cong:60,fav:1},
+  {id:5,nome:'Recheio de calabresa',cat:'recheio',e:'🥣',ref:3,cong:90,fav:1},
+  {id:6,nome:'Frango desfiado cozido',cat:'outro',e:'🍗',ref:2,cong:90,fav:1},
+  {id:7,nome:'Recheio de palmito',cat:'recheio',e:'🥣',ref:3,cong:90},
+  {id:8,nome:'Recheio de queijo',cat:'recheio',e:'🧀',ref:5,cong:90},
+  {id:9,nome:'Recheio de camarão',cat:'recheio',e:'🦐',ref:2,cong:60},
+  {id:10,nome:'Massa de kibe',cat:'massa',e:'🫓',ref:2,cong:60},
+  {id:11,nome:'Massa de pão de queijo',cat:'massa',e:'🫓',ref:3,cong:90},
+  {id:12,nome:'Massa de bolinha de queijo',cat:'massa',e:'🫓',ref:2,cong:60},
+  {id:13,nome:'Caldo de frango',cat:'outro',e:'🍲',ref:2,cong:60},
+  {id:14,nome:'Cebola picada',cat:'outro',e:'🧅',ref:2,cong:30},
+  {id:15,nome:'Molho de tomate',cat:'outro',e:'🍅',ref:4,cong:90},
+  {id:16,nome:'Ovo cozido picado',cat:'outro',e:'🥚',ref:1,cong:0},
+];
+const DIAS=['DOM','SEG','TER','QUA','QUI','SEX','SÁB'];
+const DIAS_EXT=['DOMINGO','SEGUNDA','TERÇA','QUARTA','QUINTA','SEXTA','SÁBADO'];
+const CORES=['var(--dom)','var(--seg)','var(--ter)','var(--qua)','var(--qui)','var(--sex)','var(--sab)'];
+const pad=n=>String(n).padStart(2,'0');
+const dm=d=>`${pad(d.getDate())}/${pad(d.getMonth()+1)}`;
+const dmy=d=>`${dm(d)}/${d.getFullYear()}`;
+const addDias=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x;};
+const hoje=new Date();
+document.getElementById('hojeChip').textContent=`${DIAS_EXT[hoje.getDay()]} · ${dm(hoje)}`;
+document.getElementById('hojeChip').style.background=CORES[hoje.getDay()];
+document.getElementById('hojeChip').style.color='#fff';
+
+// ---------- estado ----------
+let cat='fav', item=null, fabOff=0, cons='REF', valDias=3, peso='', qtdN=1, tam='p', seqLote=0, totalEt=0, lotes=[];
+
+// ---------- blocos ----------
+function renderTiles(){
+  const box=document.getElementById('tiles'); box.innerHTML='';
+  let lista = cat==='fav'? ITENS.filter(i=>i.fav) : cat==='todos'? ITENS : ITENS.filter(i=>i.cat===cat);
+  lista.forEach(i=>{
+    const d=document.createElement('div'); d.className='tile';
+    d.innerHTML=`${i.fav?'<span class="star">★</span>':''}<div class="e">${i.e}</div><div class="n">${i.nome}</div><div class="v">${i.ref} d refrigerado · ${i.cong?i.cong+' d congelado':'não congela'}</div>`;
+    d.onclick=()=>abrirGaveta(i); box.appendChild(d);
+  });
+  const dig=document.createElement('div'); dig.className='tile digitar';
+  dig.innerHTML='<div class="e">✏️</div><div class="n">Digitar</div><div class="v">item sem cadastro</div>';
+  dig.onclick=()=>{const n=prompt('Nome do item (vai ficar salvo em "Outros"):','Cebola caramelizada'); if(n) abrirGaveta({id:Date.now(),nome:n,cat:'outro',e:'🆕',ref:2,cong:30,novo:true});};
+  box.appendChild(dig);
+}
+document.getElementById('abas').addEventListener('click',e=>{
+  const b=e.target.closest('.aba'); if(!b) return;
+  document.querySelectorAll('.aba').forEach(x=>x.classList.remove('on')); b.classList.add('on'); cat=b.dataset.cat; renderTiles();
+});
+
+// ---------- gaveta ----------
+function abrirGaveta(i){
+  item=i; fabOff=0; cons='REF'; valDias=i.ref; peso=''; qtdN=1;
+  document.getElementById('gE').textContent=i.e;
+  document.getElementById('gNome').textContent=i.nome;
+  document.getElementById('gSub').textContent=(i.novo?'Item novo · será salvo em Outros · ':'Subproduto · ')+`validade sugerida ${i.ref} dias refrigerado`;
+  document.getElementById('peso').value='';
+  document.querySelectorAll('[data-fab]').forEach(b=>b.classList.toggle('on',b.dataset.fab==='0'));
+  document.querySelectorAll('[data-cons]').forEach(b=>b.classList.toggle('on',b.dataset.cons==='REF'));
+  document.querySelectorAll('[data-peso]').forEach(b=>b.classList.remove('on'));
+  document.getElementById('gaveta').classList.add('aberta');
+  atualizar();
+}
+function fecharGaveta(){document.getElementById('gaveta').classList.remove('aberta');}
+function fab(){return addDias(hoje,fabOff);}
+function val(){return addDias(fab(),valDias);}
+function sugestao(){return cons==='REF'? item.ref : (item.cong||item.ref);}
+function atualizar(){
+  if(!item) return;
+  document.getElementById('lFab').textContent=`${DIAS_EXT[fab().getDay()].toLowerCase()} · ${dmy(fab())}`;
+  const sug=sugestao();
+  const opts=[...new Set([sug,1,2,3,7,30,90])].filter(n=>n>0).sort((a,b)=>a-b);
+  const cv=document.getElementById('chipsVal'); cv.innerHTML='';
+  opts.forEach(n=>{const b=document.createElement('button');b.className='chip'+(n===valDias?' on':'')+(n===sug?' sug':'');b.textContent=n===sug?`${n} d · sugerida`:`${n} d`;b.onclick=()=>{valDias=n;atualizar();};cv.appendChild(b);});
+  document.getElementById('lVal').textContent=`vence ${dmy(val())}`+(valDias!==sug?' · alterada':'');
+  document.getElementById('qtdV').textContent=qtdN;
+  document.getElementById('btnImprimir').textContent=`🖨️ Imprimir ${qtdN} etiqueta${qtdN>1?'s':''}`;
+  document.querySelectorAll('[data-tam]').forEach(b=>b.classList.toggle('on',b.dataset.tam===tam));
+  document.getElementById('prP').classList.toggle('ativa',tam==='p');
+  document.getElementById('prG').classList.toggle('ativa',tam==='g');
+  document.querySelector('#prP .on').style.display=tam==='p'?'':'none';
+  document.querySelector('#prG .on').style.display=tam==='g'?'':'none';
+  renderPreview(false);
+}
+document.querySelectorAll('[data-fab]').forEach(b=>b.onclick=()=>{
+  if(b.dataset.fab==='pick'){const s=prompt('Data de fabricação (dd/mm):',dm(hoje)); if(!s) return; const [d,m]=s.split('/').map(Number); const x=new Date(hoje.getFullYear(),m-1,d); fabOff=Math.round((x-new Date(hoje.getFullYear(),hoje.getMonth(),hoje.getDate()))/864e5);} else fabOff=Number(b.dataset.fab);
+  document.querySelectorAll('[data-fab]').forEach(x=>x.classList.toggle('on',x===b)); atualizar();
+});
+document.querySelectorAll('[data-cons]').forEach(b=>b.onclick=()=>{cons=b.dataset.cons; valDias=sugestao(); document.querySelectorAll('[data-cons]').forEach(x=>x.classList.toggle('on',x===b)); atualizar();});
+document.querySelectorAll('[data-peso]').forEach(b=>b.onclick=()=>{peso=b.dataset.peso; document.getElementById('peso').value=peso; document.querySelectorAll('[data-peso]').forEach(x=>x.classList.toggle('on',x===b)); atualizar();});
+document.getElementById('peso').addEventListener('input',e=>{peso=e.target.value; document.querySelectorAll('[data-peso]').forEach(x=>x.classList.toggle('on',x.dataset.peso===peso)); atualizar();});
+document.querySelectorAll('[data-tam]').forEach(b=>b.onclick=()=>{tam=b.dataset.tam; atualizar();});
+function qtd(n){qtdN=Math.max(1,Math.min(50,qtdN+n)); atualizar();}
+
+// ---------- preview ----------
+function pesoTxt(){const p=parseFloat(String(peso).replace(',','.')); return p>0? `${p.toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:2})} kg` : '';}
+function loteTxt(n){return `${String(hoje.getFullYear()).slice(2)}${pad(hoje.getMonth()+1)}${pad(hoje.getDate())}-${pad(n)}`;}
+function htmlP(lote){
+  const f=fab(), v=val(); const nome=item.nome; const fs=nome.length>22?13:nome.length>16?15:17;
+  return `<div class="et et-p"><div class="faixa">${DIAS[f.getDay()]} ${dm(f)}</div><div class="corpo">
+    <div class="nome" style="font-size:${fs}px">${nome}</div>
+    <div class="datas"><span>FAB <b>${dm(f)}</b></span><span class="val">VAL ${dm(v)}</span></div>
+    <div class="rod"><span>${[pesoTxt(),cons==='REF'?'❄️ 0–4 °C':'🧊 −18 °C'].filter(Boolean).join(' · ')}</span><span>L ${lote} · MA</span></div></div></div>`;
+}
+function htmlG(lote){
+  const f=fab(), v=val(); const nome=item.nome; const fs=nome.length>26?19:nome.length>18?22:24;
+  return `<div class="et et-g"><div class="faixa"><span>${DIAS_EXT[f.getDay()]} · ${dm(f)}</span><small>${cons==='REF'?'REFRIGERADO 0–4 °C':'CONGELADO −18 °C'}</small></div>
+    <div class="nome" style="font-size:${fs}px">${nome}</div>
+    <div class="bloco"><div><div class="k">Fabricação</div><div class="vv">${dmy(f)}</div></div><div class="valbox"><div class="k">Validade</div><div class="vv">${dmy(v)}</div></div></div>
+    <div class="bloco"><div><div class="k">Peso</div><div class="vv">${pesoTxt()||'—'}</div></div><div><div class="k">Lote</div><div class="vv">${lote}</div></div></div>
+    <div class="rod"><div>Resp.: <b>Maria A.</b><br>Hardt Salgados · PCP</div><div class="qr"></div></div></div>`;
+}
+function renderPreview(anim){
+  const lote=loteTxt(seqLote+1);
+  const sp=document.getElementById('saidaP'), sg=document.getElementById('saidaG');
+  if(tam==='p'){sp.innerHTML=htmlP(lote); sg.innerHTML='';} else {sg.innerHTML=htmlG(lote); sp.innerHTML='';}
+  if(!anim){sp.querySelectorAll('.et').forEach(e=>e.style.animation='none'); sg.querySelectorAll('.et').forEach(e=>e.style.animation='none');}
+}
+
+// ---------- imprimir ----------
+function imprimir(){
+  seqLote++; totalEt+=qtdN;
+  const lote=loteTxt(seqLote);
+  const f=fab();
+  lotes.unshift({item,lote,qtd:qtdN,peso:pesoTxt(),hora:`${pad(new Date().getHours())}:${pad(new Date().getMinutes())}`,dia:f.getDay(),tam,val:dm(val())});
+  renderPreview(true);
+  try{const a=new (window.AudioContext||window.webkitAudioContext)();const o=a.createOscillator();const g=a.createGain();o.frequency.value=880;g.gain.value=.06;o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+.08);}catch(e){}
+  document.getElementById('cHoje').textContent=totalEt; document.getElementById('cLotes').textContent=seqLote;
+  const t=document.getElementById('toast'); t.textContent=totalEt>=10?`🎉 ${totalEt} etiquetas hoje. Boa!`:`🖨️ ${qtdN} etiqueta${qtdN>1?'s':''} · lote ${lote}`; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),1600);
+  fecharGaveta(); renderHoje();
+}
+function renderHoje(){
+  const box=document.getElementById('hojeLista'); document.getElementById('hojeN').textContent=lotes.length;
+  if(!lotes.length){box.innerHTML='<div class="vazio">Nada etiquetado ainda hoje. Toque num item acima.</div>';return;}
+  box.innerHTML=lotes.map((l,i)=>`<div class="lote"><span class="dot" style="background:${CORES[l.dia]}"></span><b>${l.item.e} ${l.item.nome}</b><span class="meta">${l.qtd}× ${l.tam==='p'?'40×25':'100×120'}${l.peso?' · '+l.peso:''} · val ${l.val} · ${l.hora} · Maria · ${l.lote}</span><button onclick="reimprimir(${i})">Reimprimir</button></div>`).join('');
+}
+function reimprimir(i){const l=lotes[i]; item=l.item; tam=l.tam; totalEt+=l.qtd; document.getElementById('cHoje').textContent=totalEt; renderPreview(true);
+  const t=document.getElementById('toast'); t.textContent=`🖨️ Reimpresso · mesmo lote ${l.lote}`; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),1600);}
+
+renderTiles();
+</script>
+</body>
+</html>

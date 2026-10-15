@@ -37,14 +37,14 @@ model Produto {
   ativo     Boolean @default(true) // Controle local do App
 
   // Custos e Pesos
-  custoMedio    Decimal? @map("custo_medio") @db.Decimal(12, 2)
-  custoManual   Decimal? @map("custo_manual") @db.Decimal(12, 2) // custo digitado no app; usado só quando o CA não tem custoMedio
-  custoCaZerado Boolean  @default(false) @map("custo_ca_zerado") // custo do CA zerado no app: sync não traz mais o custoMedio; vale o custoManual (alimentado pelas entradas de compra)
+  custoMedio               Decimal? @map("custo_medio") @db.Decimal(12, 2)
+  custoManual              Decimal? @map("custo_manual") @db.Decimal(12, 2) // custo digitado no app; usado só quando o CA não tem custoMedio
+  custoCaZerado            Boolean  @default(false) @map("custo_ca_zerado") // custo do CA zerado no app: sync não traz mais o custoMedio; vale o custoManual (alimentado pelas entradas de compra)
   // Custo de referencia (Indicadores/Margem): produto SEM ficha usa o custo da ficha de OUTRO produto x fator
   // (ex.: 2-FR-X usa a ficha do 1-G-X). So vale se o produto referenciado tem ficha vigente. Aditivo.
   produtoCustoReferenciaId String?  @map("produto_custo_referencia_id")
   fatorCustoReferencia     Decimal  @default(1) @map("fator_custo_referencia") @db.Decimal(10, 4)
-  pesoLiquido   Decimal? @map("peso_liquido") @db.Decimal(12, 3)
+  pesoLiquido              Decimal? @map("peso_liquido") @db.Decimal(12, 3)
 
   // Emissão de NF-e pelo app (Focus NFe): produto de REVENDA sai com CFOP 5102 (+CEST)
   nfeRevenda Boolean @default(false) @map("nfe_revenda")
@@ -2521,8 +2521,15 @@ model ItemPcp {
   compras               CompraItem[] // Fase 6: histórico de compras (entradas por nota)
   notaEstoqueMovs       NotaEntradaEstoqueMov[] // ledger das entradas de estoque por nota recebida
 
+  // Etiquetas da Cozinha (E1 só cria as colunas; a tela de edição vem no E2)
+  validadeRefrigeradoDias Int?    @map("validade_refrigerado_dias")
+  validadeCongeladoDias   Int?    @map("validade_congelado_dias")
+  grupoCozinha            String? @map("grupo_cozinha") // RECHEIO | MASSA | OUTRO
+  origem                  String  @default("CADASTRO") // CADASTRO | COZINHA (item criado por "Digitar")
+
   @@index([tipo])
   @@index([produtoId])
+  @@index([grupoCozinha])
   @@map("itens_pcp")
 }
 
@@ -3634,14 +3641,14 @@ model PagamentoParcelaPagar {
 // DRE em linha à parte), FORA_DRE (retirada de lucros, empréstimos, imobilizado — não é
 // resultado) ou A_CLASSIFICAR (recém-vista; ainda conta na DRE, mas fica sinalizada).
 model CategoriaDespesa {
-  id            String   @id @default(uuid())
-  nome          String   @unique // nome da categoria como vem do CA/CSV
-  classificacao String   @default("A_CLASSIFICAR") // OPERACIONAL | FINANCEIRO | FORA_DRE | A_CLASSIFICAR
-  natureza      String   @default("A_DEFINIR") // FIXA | VARIAVEL | A_DEFINIR (fixo × variável na DRE)
-  grupoDreId    String?  @map("grupo_dre_id") // bloco da DRE onde a categoria aparece
-  compraDeEstoque Boolean @default(false) @map("compra_de_estoque") // Indicadores: já está no CPV/CMV; fica fora das despesas dos indicadores
-  criadoEm      DateTime @default(now()) @map("criado_em")
-  atualizadoEm  DateTime @updatedAt @map("atualizado_em")
+  id              String   @id @default(uuid())
+  nome            String   @unique // nome da categoria como vem do CA/CSV
+  classificacao   String   @default("A_CLASSIFICAR") // OPERACIONAL | FINANCEIRO | FORA_DRE | A_CLASSIFICAR
+  natureza        String   @default("A_DEFINIR") // FIXA | VARIAVEL | A_DEFINIR (fixo × variável na DRE)
+  grupoDreId      String?  @map("grupo_dre_id") // bloco da DRE onde a categoria aparece
+  compraDeEstoque Boolean  @default(false) @map("compra_de_estoque") // Indicadores: já está no CPV/CMV; fica fora das despesas dos indicadores
+  criadoEm        DateTime @default(now()) @map("criado_em")
+  atualizadoEm    DateTime @updatedAt @map("atualizado_em")
 
   grupoDre GrupoDre? @relation(fields: [grupoDreId], references: [id], onDelete: SetNull)
 
@@ -4276,19 +4283,19 @@ model CatalogoPersonalizado {
 }
 
 model CatalogoPersonalizadoItem {
-  id            String  @id @default(uuid())
-  catalogoId    String  @map("catalogo_id")
-  produtoId     String  @map("produto_id") // sem FK (snapshot)
-  codigo        String
-  nome          String
-  unidade       String
-  imagemUrl     String? @map("imagem_url")
-  valorBase     Decimal @map("valor_base") @db.Decimal(12, 2) // valorVenda no momento da geração
-  precoFinal    Decimal @map("preco_final") @db.Decimal(12, 2) // valorVenda * (1 + acrescimoPreco/100), OU precoPersonalizado quando houver
+  id                 String   @id @default(uuid())
+  catalogoId         String   @map("catalogo_id")
+  produtoId          String   @map("produto_id") // sem FK (snapshot)
+  codigo             String
+  nome               String
+  unidade            String
+  imagemUrl          String?  @map("imagem_url")
+  valorBase          Decimal  @map("valor_base") @db.Decimal(12, 2) // valorVenda no momento da geração
+  precoFinal         Decimal  @map("preco_final") @db.Decimal(12, 2) // valorVenda * (1 + acrescimoPreco/100), OU precoPersonalizado quando houver
   precoPersonalizado Decimal? @map("preco_personalizado") @db.Decimal(12, 2) // vendedor pode subir o preço deste item (nunca descer do piso); null = usa o cálculo padrão
-  categoriaNome String? @map("categoria_nome")
-  categoriaCor  String? @map("categoria_cor")
-  ordem         Int     @default(0)
+  categoriaNome      String?  @map("categoria_nome")
+  categoriaCor       String?  @map("categoria_cor")
+  ordem              Int      @default(0)
 
   catalogo CatalogoPersonalizado @relation(fields: [catalogoId], references: [id], onDelete: Cascade)
 
@@ -4461,16 +4468,16 @@ model CaReceberImportado {
 // chave normalizada (`chaveCidade(nome)` — sem acento, minúscula).
 // ============================================================================
 model Cidade {
-  id           String    @id @default(uuid())
+  id           String   @id @default(uuid())
   nome         String // nome oficial: "Itapoá", "Jaraguá do Sul" (== normalizarCidade(nome))
-  uf           String?   @db.VarChar(2) // "SC"; null só quando o nome é ambíguo e o dono ainda não escolheu
-  chave        String    @unique // chaveCidade(nome): "itapoa" — é o que impede a repetição
+  uf           String?  @db.VarChar(2) // "SC"; null só quando o nome é ambíguo e o dono ainda não escolheu
+  chave        String   @unique // chaveCidade(nome): "itapoa" — é o que impede a repetição
   ibge         String? // código IBGE, opcional
-  ativo        Boolean   @default(true)
-  fundidaEmId  String?   @map("fundida_em_id") // preenchido quando esta cidade foi fundida em outra (histórico)
-  criadoEm     DateTime  @default(now()) @map("criado_em")
-  criadoPor    String?   @map("criado_por") // id do usuário; null = semente/automático
-  atualizadoEm DateTime  @updatedAt @map("atualizado_em")
+  ativo        Boolean  @default(true)
+  fundidaEmId  String?  @map("fundida_em_id") // preenchido quando esta cidade foi fundida em outra (histórico)
+  criadoEm     DateTime @default(now()) @map("criado_em")
+  criadoPor    String?  @map("criado_por") // id do usuário; null = semente/automático
+  atualizadoEm DateTime @updatedAt @map("atualizado_em")
 
   @@index([ativo])
   @@map("cidades")
@@ -4510,4 +4517,82 @@ model IndicadorMeta {
 
   @@index([indicador, vigenciaFim])
   @@map("indicadores_metas")
+}
+
+// ===== Impressão direta (fila + agente Windows) — Etiquetas da Cozinha =====
+
+model ImpressaoAgente {
+  id                       String    @id @default(uuid())
+  nome                     String
+  tokenHash                String    @unique @map("token_hash") // SHA-256 do token (o token em si nunca é guardado)
+  tokenPrefixo             String    @map("token_prefixo")
+  ativo                    Boolean   @default(true)
+  hostname                 String?
+  versaoAgente             String?   @map("versao_agente")
+  ultimoContato            DateTime? @map("ultimo_contato")
+  ultimoIp                 String?   @map("ultimo_ip")
+  impressorasWindows       Json?     @map("impressoras_windows")
+  impressorasAtualizadasEm DateTime? @map("impressoras_atualizadas_em")
+  pedirImpressoras         Boolean   @default(false) @map("pedir_impressoras")
+  criadoPor                String?   @map("criado_por")
+  createdAt                DateTime  @default(now()) @map("created_at")
+  updatedAt                DateTime  @updatedAt @map("updated_at")
+
+  impressoras Impressora[]
+
+  @@map("impressao_agentes")
+}
+
+model Impressora {
+  id             String          @id @default(uuid())
+  nome           String
+  agenteId       String          @map("agente_id")
+  agente         ImpressaoAgente @relation(fields: [agenteId], references: [id])
+  nomeWindows    String          @map("nome_windows")
+  linguagem      String // EPL2 | ZPL
+  dpi            Int             @default(203)
+  tamanho        String // 40x25 | 100x120
+  colunas        Int             @default(1)
+  larguraRoloMm  Int?            @map("largura_rolo_mm")
+  gapDots        Int             @default(24) @map("gap_dots")
+  rotacao        Int             @default(0)
+  removerAcentos Boolean         @default(true) @map("remover_acentos")
+  ajustes        Json?
+  ativa          Boolean         @default(true)
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+
+  trabalhos ImpressaoTrabalho[]
+
+  @@index([agenteId])
+  @@index([tamanho, ativa])
+  @@map("impressoras")
+}
+
+model ImpressaoTrabalho {
+  id                String     @id @default(uuid())
+  impressoraId      String     @map("impressora_id")
+  impressora        Impressora @relation(fields: [impressoraId], references: [id])
+  tipo              String // TESTE | ETIQUETA_COZINHA | OUTRO
+  chaveIdempotencia String?    @unique @map("chave_idempotencia")
+  status            String // PENDENTE | ENVIANDO | IMPRESSO | ERRO | EXPIRADO | CANCELADO
+  conteudo          Bytes?
+  conteudoBytes     Int        @map("conteudo_bytes")
+  copias            Int        @default(1)
+  tentativas        Int        @default(0)
+  maxTentativas     Int        @default(3) @map("max_tentativas")
+  erro              String?    @db.Text
+  loteId            String?    @map("lote_id") // E2: relação com etiquetas_cozinha_lotes entra junto da tabela
+  solicitadoPorId   String?    @map("solicitado_por_id")
+  solicitadoPorNome String?    @map("solicitado_por_nome")
+  pedidoEm          DateTime   @default(now()) @map("pedido_em")
+  expiraEm          DateTime   @map("expira_em")
+  enviadoAoAgenteEm DateTime?  @map("enviado_ao_agente_em")
+  impressoEm        DateTime?  @map("impresso_em")
+  agenteId          String?    @map("agente_id")
+
+  @@index([status, pedidoEm])
+  @@index([impressoraId, status])
+  @@index([loteId])
+  @@map("impressao_fila")
 }
