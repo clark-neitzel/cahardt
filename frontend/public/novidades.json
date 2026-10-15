@@ -1,5 +1,11 @@
 [
   {
+    "slug": "inadimplencia",
+    "titulo": "Inadimplência visível em todas as telas",
+    "resumo": "Selo vermelho mostra quem está em atraso e o amarelo quem está \"a confirmar\", em todas as telas; venda a prazo para cliente em atraso agora tem regra clara (à vista ou um responsável libera).",
+    "data": "2026-10-14"
+  },
+  {
     "slug": "etiqueta-ean-cadastro",
     "titulo": "Código de barras vem do cadastro",
     "resumo": "O código de barras da etiqueta agora vem sempre do cadastro de Produtos e não pode mais ser digitado na etiqueta. Para trocar, edite o produto. Assim o leitor do Ajuste de Estoque acha o produto certo.",

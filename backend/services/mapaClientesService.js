@@ -210,7 +210,30 @@ const carregar = async ({ reqUser, ativo = 'true' }) => {
         comPonto.map(c => c.UUID),
         pontosAtuais
     );
-    const clientes = linhas.map(c => montarCliente(c, cfgWhats, ultimasMudancas[c.UUID] || null));
+    // Inadimplência (Entrega 2): UMA consulta em lote (fonte única). Só quem deve / tem "a confirmar"
+    // leva os campos de valor — cliente em dia sai só com `inadimplente:false, bloqueiaVenda:false`
+    // (payload do mapa é grande). Falha aqui não derruba o mapa: segue sem os campos.
+    let situacoes = new Map();
+    try {
+        situacoes = await require('./inadimplenciaService').situacaoPorClientes(linhas.map(c => c.UUID));
+    } catch (e) {
+        console.error('[mapa-clientes] inadimplência indisponível (mapa segue sem o selo):', e.message);
+    }
+    const clientes = linhas.map(c => {
+        const base = montarCliente(c, cfgWhats, ultimasMudancas[c.UUID] || null);
+        const sit = situacoes.get(c.UUID);
+        if (!sit) return base;
+        if (!sit.inadimplente && !sit.aConfirmar) return { ...base, inadimplente: false, bloqueiaVenda: false };
+        return {
+            ...base,
+            inadimplente: sit.inadimplente,
+            totalVencido: sit.totalVencido,
+            parcelasVencidas: sit.parcelasVencidas,
+            diasMaisAntiga: sit.diasMaisAntiga,
+            aConfirmar: sit.aConfirmar,
+            bloqueiaVenda: sit.bloqueiaVenda,
+        };
+    });
     const comGps = clientes.filter(c => c.gps).length;
     return {
         geradoEm: new Date().toISOString(),

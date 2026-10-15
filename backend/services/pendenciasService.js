@@ -52,19 +52,32 @@ function agoraBrasil() {
 // Fonte: mesmo critério da aba de aprovação em ListaPedidos.jsx / pedidoController
 // (aprovarEspecial/aprovarBonificacao) — especial ou bonificação com statusEnvio
 // ABERTO/ERRO e ainda não aprovado (situacaoCA fora de APROVADO/FATURADO/EM_ABERTO).
-async function blocoPedidosAprovar(limite) {
+async function blocoPedidosAprovar(limite, ctx) {
+    // Especial de cliente em atraso (bloqueaVenda) vai para o bloco `liberacao_inadimplente` —
+    // sai daqui para não contar em dobro. Bonificação nunca é travada, então fica sempre aqui.
+    // Se o cálculo de inadimplência falhar, este bloco NÃO pode cair junto (antes não dependia dela):
+    // segue com a lista completa, sem excluir ninguém. O bloco `liberacao_inadimplente` mostra o erro.
+    let idsBloqueados = [];
+    try {
+        idsBloqueados = (await carregarLiberacao(ctx)).pedidoIdsBloqueados;
+    } catch (e) {
+        console.error('[Pendências] inadimplência indisponível — pedidos_aprovar segue sem excluir:', e.message);
+    }
     const where = {
         cancelado: false,
         statusEnvio: { in: ['ABERTO', 'ERRO'] },
         OR: [{ especial: true }, { bonificacao: true }],
-        AND: [{ OR: [{ situacaoCA: null }, { situacaoCA: { notIn: ['APROVADO', 'FATURADO', 'EM_ABERTO'] } }] }],
+        AND: [
+            { OR: [{ situacaoCA: null }, { situacaoCA: { notIn: ['APROVADO', 'FATURADO', 'EM_ABERTO'] } }] },
+            ...(idsBloqueados.length ? [{ id: { notIn: idsBloqueados } }] : []),
+        ],
     };
     const [contador, pedidos] = await Promise.all([
         prisma.pedido.count({ where }),
         prisma.pedido.findMany({
             where,
             select: {
-                id: true, numero: true, especial: true, bonificacao: true, dataVenda: true, createdAt: true,
+                id: true, numero: true, especial: true, bonificacao: true, dataVenda: true, createdAt: true, clienteId: true,
                 cliente: { select: { Nome: true } },
                 itens: { select: { quantidade: true, valor: true } },
             },
@@ -77,6 +90,7 @@ async function blocoPedidosAprovar(limite) {
         const tipo = p.bonificacao ? 'BONIFICACAO' : 'ESPECIAL';
         return {
             id: p.id,
+            clienteId: p.clienteId || null,
             titulo: `${p.bonificacao ? 'BN#' : 'ZZ#'}${p.numero ?? '—'} · ${p.cliente?.Nome || 'Cliente'}`,
             subtitulo: p.bonificacao ? 'Bonificação aguardando aprovação' : 'Pedido especial aguardando aprovação',
             valor,
@@ -96,6 +110,99 @@ async function blocoPedidosAprovar(limite) {
         severidade: 'ambar',
         contador,
         itens,
+        rotaVerTodos: '/pedidos',
+    };
+}
+
+// ── Bloco: liberacao_inadimplente ───────────────────────────────────────────────
+// Pedidos que esperam a decisão de um RESPONSÁVEL porque o cliente está em atraso
+// (bloqueiaVenda): (a) especial pendente de aprovação, (b) fila do site/Ana
+// (CongeladosPedido AGUARDANDO/PENDENTE_CADASTRO com cliente vinculado). Itens SEM `acao`:
+// o botão de 1 clique "Aprovar" daria 403 para quase todos — o front mostra "Abrir".
+// A mesma fonte única (inadimplenciaService) e o mesmo critério `bloqueiaVenda` da trava.
+// Calculado uma vez por chamada (ctx) e compartilhado com o bloco `pedidos_aprovar`.
+function carregarLiberacao(ctx) {
+    if (ctx.liberacao) return ctx.liberacao;
+    ctx.liberacao = (async () => {
+        const inad = require('./inadimplenciaService');
+        const [especiais, site] = await Promise.all([
+            prisma.pedido.findMany({
+                where: {
+                    cancelado: false,
+                    statusEnvio: { in: ['ABERTO', 'ERRO'] },
+                    especial: true,
+                    OR: [{ situacaoCA: null }, { situacaoCA: { notIn: ['APROVADO', 'FATURADO', 'EM_ABERTO'] } }],
+                },
+                select: {
+                    id: true, numero: true, clienteId: true, dataVenda: true, createdAt: true,
+                    cliente: { select: { Nome: true } },
+                    itens: { select: { quantidade: true, valor: true } },
+                },
+                orderBy: { createdAt: 'asc' },
+            }),
+            prisma.congeladosPedido.findMany({
+                where: { status: { in: ['AGUARDANDO', 'PENDENTE_CADASTRO'] }, congeladosCliente: { clienteUuid: { not: null } } },
+                select: {
+                    id: true, numero: true, nomeCliente: true, total: true, origem: true, createdAt: true,
+                    congeladosCliente: { select: { clienteUuid: true, cliente: { select: { Nome: true } } } },
+                },
+                orderBy: { createdAt: 'asc' },
+            }),
+        ]);
+        const cids = [...new Set([
+            ...especiais.map(p => p.clienteId),
+            ...site.map(p => p.congeladosCliente?.clienteUuid),
+        ].filter(Boolean))];
+        const mapa = cids.length ? await inad.situacaoPorClientes(cids, { fresh: true }) : new Map();
+        const bloqueia = (cid) => !!(cid && mapa.get(cid)?.bloqueiaVenda);
+        const itens = [];
+        for (const p of especiais) {
+            if (!bloqueia(p.clienteId)) continue;
+            const sit = mapa.get(p.clienteId);
+            itens.push({
+                id: p.id, pedidoId: p.id, numero: p.numero, clienteId: p.clienteId,
+                cliente: p.cliente?.Nome || 'Cliente',
+                origem: 'ESPECIAL',
+                totalVencido: sit.totalVencido, dias: sit.diasMaisAntiga,
+                titulo: `ZZ#${p.numero ?? '—'} · ${p.cliente?.Nome || 'Cliente'}`,
+                subtitulo: `Cliente em atraso: R$ ${require('./inadimplenciaService').fmtBRL(sit.totalVencido)}${sit.diasMaisAntiga != null ? ` · ${sit.diasMaisAntiga}d` : ''} — precisa de um responsável`,
+                valor: round2(p.itens.reduce((s2, i) => s2 + Number(i.quantidade) * Number(i.valor), 0)),
+                dataRef: p.dataVenda,
+                rota: '/pedidos',
+            });
+        }
+        for (const p of site) {
+            const cid = p.congeladosCliente?.clienteUuid;
+            if (!bloqueia(cid)) continue;
+            const sit = mapa.get(cid);
+            itens.push({
+                id: p.id, pedidoId: p.id, numero: p.numero, clienteId: cid,
+                cliente: p.congeladosCliente?.cliente?.Nome || p.nomeCliente || 'Cliente',
+                origem: p.origem === 'WHATSAPP_IA' ? 'WHATSAPP_IA' : 'SITE',
+                totalVencido: sit.totalVencido, dias: sit.diasMaisAntiga,
+                titulo: `Site #${p.numero} · ${p.congeladosCliente?.cliente?.Nome || p.nomeCliente || 'Cliente'}`,
+                subtitulo: `Cliente em atraso: R$ ${require('./inadimplenciaService').fmtBRL(sit.totalVencido)}${sit.diasMaisAntiga != null ? ` · ${sit.diasMaisAntiga}d` : ''} — precisa de um responsável`,
+                valor: round2(Number(p.total)),
+                dataRef: p.createdAt,
+                rota: '/pedidos-online?aba=site',
+            });
+        }
+        return {
+            itens,
+            pedidoIdsBloqueados: itens.filter(i => i.origem === 'ESPECIAL').map(i => i.pedidoId),
+        };
+    })();
+    return ctx.liberacao;
+}
+
+async function blocoLiberacaoInadimplente(limite, ctx) {
+    const { itens } = await carregarLiberacao(ctx);
+    return {
+        chave: 'liberacao_inadimplente',
+        titulo: 'Pedidos aguardando liberação (cliente em atraso)',
+        severidade: 'vermelho',
+        contador: itens.length,
+        itens: itens.slice(0, limite),
         rotaVerTodos: '/pedidos',
     };
 }
@@ -147,7 +254,7 @@ async function blocoNfeEmitir(limite) {
         prisma.pedido.findMany({
             where,
             select: {
-                id: true, numero: true, bonificacao: true, dataVenda: true,
+                id: true, numero: true, bonificacao: true, dataVenda: true, clienteId: true,
                 cliente: { select: { Nome: true } },
                 itens: { select: { quantidade: true, valor: true } },
             },
@@ -157,6 +264,7 @@ async function blocoNfeEmitir(limite) {
     ]);
     const itens = pedidos.map(p => ({
         id: p.id,
+        clienteId: p.clienteId || null,
         titulo: `${p.bonificacao ? 'BN#' : '#'}${p.numero} · ${p.cliente?.Nome || 'Cliente'}`,
         subtitulo: 'Sem NF-e emitida',
         valor: round2(p.itens.reduce((s, i) => s + Number(i.quantidade) * Number(i.valor), 0)),
@@ -185,7 +293,7 @@ async function blocoNfeRejeitada(limite) {
             where,
             select: {
                 id: true, mensagemSefaz: true, atualizadoEm: true,
-                pedido: { select: { id: true, numero: true, bonificacao: true, cliente: { select: { Nome: true } } } },
+                pedido: { select: { id: true, numero: true, bonificacao: true, clienteId: true, cliente: { select: { Nome: true } } } },
             },
             orderBy: { atualizadoEm: 'desc' },
             take: limite,
@@ -193,6 +301,7 @@ async function blocoNfeRejeitada(limite) {
     ]);
     const itens = notas.map(n => ({
         id: n.pedido?.id || n.id,
+        clienteId: n.pedido?.clienteId || null,
         titulo: `${n.pedido?.bonificacao ? 'BN#' : '#'}${n.pedido?.numero ?? '—'} · ${n.pedido?.cliente?.Nome || 'Cliente'}`,
         subtitulo: (n.mensagemSefaz || 'Rejeitada pela SEFAZ').slice(0, 140),
         dataRef: n.atualizadoEm,
@@ -303,7 +412,7 @@ async function blocoBoletosNaoEnviados(limite) {
         prisma.pedido.findMany({
             where,
             select: {
-                id: true, numero: true, createdAt: true,
+                id: true, numero: true, createdAt: true, clienteId: true,
                 cliente: { select: { Nome: true } },
                 itens: { select: { quantidade: true, valor: true } },
             },
@@ -314,6 +423,7 @@ async function blocoBoletosNaoEnviados(limite) {
     const valorTotal = round2(pedidos.reduce((s, p) => s + p.itens.reduce((s2, i) => s2 + Number(i.quantidade) * Number(i.valor), 0), 0));
     const itens = pedidos.slice(0, limite).map(p => ({
         id: p.id,
+        clienteId: p.clienteId || null,
         titulo: `#${p.numero} · ${p.cliente?.Nome || 'Cliente'}`,
         subtitulo: 'Faturado a prazo, sem boleto/PIX gerado',
         valor: round2(p.itens.reduce((s, i) => s + Number(i.quantidade) * Number(i.valor), 0)),
@@ -405,7 +515,8 @@ async function blocoTarefasAtrasadas(limite, usuario) {
 
 // ── Agregador ─────────────────────────────────────────────────────────────────
 const DEFINICOES = [
-    { chave: 'pedidos_aprovar', fn: (l, u) => blocoPedidosAprovar(l) },
+    { chave: 'pedidos_aprovar', fn: (l, u, c) => blocoPedidosAprovar(l, c) },
+    { chave: 'liberacao_inadimplente', fn: (l, u, c) => blocoLiberacaoInadimplente(l, c) },
     { chave: 'nfe_emitir', fn: (l, u) => blocoNfeEmitir(l) },
     { chave: 'nfe_rejeitada', fn: (l, u) => blocoNfeRejeitada(l) },
     { chave: 'caixas_conferir', fn: (l, u) => blocoCaixasConferir(l, u) },
@@ -417,6 +528,7 @@ const DEFINICOES = [
 
 const TITULOS = {
     pedidos_aprovar: 'Pedidos aguardando aprovação',
+    liberacao_inadimplente: 'Pedidos aguardando liberação (cliente em atraso)',
     nfe_emitir: 'NF-e a emitir',
     nfe_rejeitada: 'NF-e rejeitada pela SEFAZ',
     caixas_conferir: 'Caixas para conferir',
@@ -428,6 +540,7 @@ const TITULOS = {
 
 const ROTAS_VER_TODOS = {
     pedidos_aprovar: '/pedidos',
+    liberacao_inadimplente: '/pedidos',
     nfe_emitir: '/notas-fiscais',
     nfe_rejeitada: '/notas-fiscais',
     caixas_conferir: '/caixa',
@@ -440,9 +553,10 @@ const ROTAS_VER_TODOS = {
 const listarPendencias = async ({ usuario, limitePorBloco = 5 } = {}) => {
     const limite = Math.max(1, Math.min(20, Number(limitePorBloco) || 5));
 
+    const ctx = {}; // compartilhado entre blocos (liberacao_inadimplente × pedidos_aprovar)
     const resultados = await Promise.all(DEFINICOES.map(async (def) => {
         try {
-            return await def.fn(limite, usuario);
+            return await def.fn(limite, usuario, ctx);
         } catch (e) {
             console.error(`[Pendências] Falha no bloco ${def.chave}:`, e.message);
             return {
@@ -468,6 +582,7 @@ const listarPendencias = async ({ usuario, limitePorBloco = 5 } = {}) => {
     const vencidas = (resultados.find(b => b.chave === 'tarefas_atrasadas')?.contador || 0)
         + (resultados.find(b => b.chave === 'notas_sem_conta')?.contador || 0);
     const avisos = (resultados.find(b => b.chave === 'nfe_rejeitada')?.contador || 0)
+        + (resultados.find(b => b.chave === 'liberacao_inadimplente')?.contador || 0)
         + (resultados.find(b => b.chave === 'boletos_nao_enviados')?.contador || 0)
         + (resultados.find(b => b.chave === 'producao_sugerida')?.contador || 0);
 

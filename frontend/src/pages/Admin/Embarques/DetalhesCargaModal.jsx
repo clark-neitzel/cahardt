@@ -8,6 +8,9 @@ import CobrancasCargaSection from './CobrancasCargaSection';
 import ConferenciaCargaPanel from './ConferenciaCargaPanel';
 import { useAuth } from '../../../contexts/AuthContext';
 import SelectBusca from '../../../components/SelectBusca';
+import SeloInadimplencia from '../../../components/SeloInadimplencia';
+import PopupContasEmAberto from '../../../components/PopupContasEmAberto';
+import useInadimplenciaLote from '../../../hooks/useInadimplenciaLote';
 
 // Rótulos das ações do histórico de versões da carga
 const ACAO_VERSAO_LABELS = {
@@ -79,6 +82,13 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
     // bipe — assim a tabela acompanha sem refazer o GET da carga a cada volume.
     const [conferenciaAberta, setConferenciaAberta] = useState(false);
     const [conferencia, setConferencia] = useState({});
+    // Selo de cliente em atraso na linha do pedido (só aviso — não bloqueia carregar)
+    const idsClientesCarga = React.useMemo(
+        () => [...new Set((embarque?.pedidos || []).map(p => p.cliente?.UUID || p.clienteId).filter(Boolean))],
+        [embarque]
+    );
+    const inadMapCarga = useInadimplenciaLote(idsClientesCarga);
+    const [popupInad, setPopupInad] = useState(null); // { id, nome }
 
     const aoAtualizarConferencia = useCallback((d) => {
         const mapa = {};
@@ -791,7 +801,11 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                                                     )}
                                                 </td>
                                                 <td className="px-4 py-3 text-sm">
-                                                    <div className="font-bold text-gray-900">{nomeCliente}</div>
+                                                    <div className="font-bold text-gray-900 flex flex-wrap items-center gap-1.5">
+                                                        <span>{nomeCliente}</span>
+                                                        <SeloInadimplencia situacao={inadMapCarga[p.cliente?.UUID || p.clienteId]} compacto
+                                                            onClick={() => setPopupInad({ id: p.cliente?.UUID || p.clienteId, nome: nomeCliente })} />
+                                                    </div>
                                                     {p.observacoes && (
                                                         <div className="text-xs text-amber-700 italic mt-0.5 leading-snug">{p.observacoes}</div>
                                                     )}
@@ -948,6 +962,10 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                         if (onUpdated) onUpdated();
                     }}
                 />
+            )}
+
+            {popupInad && (
+                <PopupContasEmAberto clienteId={popupInad.id} clienteNome={popupInad.nome} onClose={() => setPopupInad(null)} />
             )}
         </div>
     );

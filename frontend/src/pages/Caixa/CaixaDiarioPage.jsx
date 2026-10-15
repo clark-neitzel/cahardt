@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import caixaService from '../../services/caixaService';
 import { Link, useNavigate } from 'react-router-dom';
@@ -16,6 +16,9 @@ import ConferenciaDevolucaoCard from './ConferenciaDevolucaoCard';
 import ConferenciaDinheiroCard from './ConferenciaDinheiroCard';
 import CobrancasRotaCard from './CobrancasRotaCard';
 import { ehLinhaResponsavel as ehLinhaResponsavelUtil } from '../../utils/responsavelCobranca';
+import SeloInadimplencia from '../../components/SeloInadimplencia';
+import PopupContasEmAberto from '../../components/PopupContasEmAberto';
+import useInadimplenciaLote from '../../hooks/useInadimplenciaLote';
 
 const SESSION_KEY = '@CAHardt:CaixaFiltros';
 
@@ -333,6 +336,13 @@ const CaixaDiarioPage = () => {
     const podeFazerDevolucao = user?.permissoes?.admin || user?.permissoes?.Pode_Fazer_Devolucao;
     const [modalDevolucao, setModalDevolucao] = useState(null); // { pedidoId, ... }
     const [baixandoDanfeDev, setBaixandoDanfeDev] = useState(null); // notaId da DANFE sendo aberta
+    // Selo de inadimplência por cliente (hooks ficam ANTES de qualquer return antecipado)
+    const idsClientesCaixa = useMemo(
+        () => [...new Set((resumo?.entregas || []).map(e => e.clienteId).filter(Boolean))],
+        [resumo]
+    );
+    const inadMapCaixa = useInadimplenciaLote(idsClientesCaixa);
+    const [popupInad, setPopupInad] = useState(null); // { id, nome }
 
     // DANFE da NF de devolução (emitida pelo app) — abre o PDF para imprimir e arquivar.
     // Mesmo padrão da aba Pedidos → Devoluções (PDF em blob).
@@ -652,6 +662,13 @@ const CaixaDiarioPage = () => {
     // Campo de topo do /resumo (fonte única: temMovimentoNoDia no backend). Se vier
     // undefined (deploy em andamento, backend antigo ainda respondendo), o lado seguro
     // é tratar como TEM movimento — nunca esconder a conferência do dinheiro à toa.
+    // Selo "deve +R$ X": o que o cliente deve ALÉM da entrega que está sendo conferida.
+    // `saldoVencidoPedido` (quando o servidor informa) é a parte do atraso que é desta própria entrega.
+    const seloDeve = (e) => (
+        <SeloInadimplencia situacao={inadMapCaixa[e.clienteId]} compacto deve descontar={Number(e.saldoVencidoPedido || 0)}
+            onClick={() => setPopupInad({ id: e.clienteId, nome: e.clienteNome })} />
+    );
+
     const temMovimentoCaixa = resumo?.temMovimento !== undefined ? !!resumo.temMovimento : true;
     // Dia "pronto" = KM/entregas/atendimentos OK + conferência de devoluções feita.
     // Só então mostramos o VALOR A PRESTAR e liberamos a impressão (senão o pessoal
@@ -1068,6 +1085,7 @@ const CaixaDiarioPage = () => {
                                                         <div className="flex flex-wrap items-center gap-1">
                                                             <SeloGps selo={e.seloGps} />
                                                             <span className="truncate max-w-[180px] lg:max-w-[280px]" title={e.clienteNome}>{e.clienteNome}</span>
+                                                            {e.clienteId && seloDeve(e)}
                                                             {e.especial && <span className="text-[10px] font-bold text-violet-700 bg-violet-100 px-1.5 py-0.5 rounded">ESP.</span>}
                                                             {aguardaConferencia(e) && (
                                                                 <span
@@ -1168,6 +1186,7 @@ const CaixaDiarioPage = () => {
                                                         <span className="text-gray-400 font-mono">#{e.numero}</span>
                                                         <SeloGps selo={e.seloGps} />
                                                         <span className="font-medium text-gray-900 truncate" title={e.clienteNome}>{e.clienteNome}</span>
+                                                        {e.clienteId && seloDeve(e)}
                                                     </div>
                                                     <p className="text-xs text-gray-500 mt-0.5 truncate">{e.condicaoPagamento}</p>
                                                 </div>
@@ -1787,6 +1806,10 @@ const CaixaDiarioPage = () => {
                         bumpPilulas();
                     }}
                 />
+            )}
+
+            {popupInad && (
+                <PopupContasEmAberto clienteId={popupInad.id} clienteNome={popupInad.nome} onClose={() => setPopupInad(null)} />
             )}
         </div>
     );

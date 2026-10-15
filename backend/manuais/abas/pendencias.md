@@ -52,6 +52,12 @@ não derruba a tela toda).
    pedidos) que ainda não foram aceitas nem rejeitadas. Botão "Aceitar" vira ordem de produção.
 8. **Tarefas atrasadas (minhas)** — só as tarefas do próprio usuário logado que já passaram do horário
    hoje e não foram concluídas. Sem ação de 1 clique — precisa abrir Tarefas e concluir de lá.
+9. **Pedidos aguardando liberação (cliente em atraso)** — pedidos Especial (ZZ#) pendentes de aprovação e
+   pedidos da fila do site/WhatsApp (Ana) cujo cliente está com a venda travada por atraso. Cada linha
+   mostra o cliente, quanto ele deve e há quantos dias. **Não tem botão de aprovar de 1 clique**: só quem
+   tem `Pode_Vender_Inadimplente` (ou é admin) pode liberar, e isso é feito abrindo o pedido (em Pedidos
+   para o especial, em Pedidos Online → Site para os da fila). Esses pedidos **saem** do bloco "Pedidos
+   aguardando aprovação" (não contam em dobro) e o contador do topo soma este bloco.
 
 ## Como os números são calculados
 
@@ -65,7 +71,7 @@ Os totais do topo:
   sem cobrança.
 - **Vencidas** — tarefas atrasadas + notas recebidas paradas há mais de 2 dias (pendências com prazo
   já estourado).
-- **Avisos** — NF-e rejeitada + faturados sem cobrança + sugestões de produção (precisa de atenção,
+- **Avisos** — NF-e rejeitada + pedidos aguardando liberação (cliente em atraso) + faturados sem cobrança + sugestões de produção (precisa de atenção,
   mas sem um prazo específico estourado).
 
 ## Limitações conhecidas (ver contrato completo em `backend/docs/pendencias-api.md`)

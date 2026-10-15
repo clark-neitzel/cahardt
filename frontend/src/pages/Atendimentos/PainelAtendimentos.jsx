@@ -8,6 +8,9 @@ import SeloWhatsappCliente, { LegendaSeloWhatsapp } from '../../components/SeloW
 import whatsappClientesService from '../../services/whatsappClientesService';
 import { useFiltrosSalvos } from '../../hooks/useFiltrosSalvos';
 import ClientePopup from '../Rota/ClientePopup';
+import SeloInadimplencia from '../../components/SeloInadimplencia';
+import PopupContasEmAberto from '../../components/PopupContasEmAberto';
+import useInadimplenciaLote from '../../hooks/useInadimplenciaLote';
 // Popup SÓ DE CONSULTA do pedido (leitura + fechar). A popup COMPLETA, com as ações do
 // pedido, continua sendo a da aba Pedidos — ver o cabeçalho de ModalPedidoConsulta.jsx.
 import ModalPedidoConsulta from './ModalPedidoConsulta';
@@ -255,6 +258,14 @@ const PainelAtendimentos = () => {
         if (filtros.filtroEspecial === 'lead') lista = lista.filter(a => !!a.leadId);
         return lista;
     }, [data, filtros.busca, filtros.cidade, filtros.acao, filtros.filtroEspecial, clientesComPedido]);
+
+    // Selo de inadimplência (só cliente — lead ainda não tem conta a receber)
+    const idsClientesAtend = useMemo(
+        () => [...new Set(dataFiltrada.map(a => a.cliente ? (a.clienteId || a.cliente.UUID) : null).filter(Boolean))],
+        [dataFiltrada]
+    );
+    const inadMap = useInadimplenciaLote(idsClientesAtend);
+    const [popupInad, setPopupInad] = useState(null); // { id, nome }
 
     const handleDelete = async (id) => {
         try {
@@ -563,6 +574,12 @@ const PainelAtendimentos = () => {
                                                 </button>
                                                 {/* Linha de LEAD não tem cliente: o selo devolve null */}
                                                 <SeloWhatsappCliente cliente={a.cliente} mostrar={mostrarSeloWhats} className="mt-0.5" />
+                                                {a.cliente && (
+                                                    <div className="mt-0.5">
+                                                        <SeloInadimplencia situacao={inadMap[a.clienteId || a.cliente.UUID]} compacto
+                                                            onClick={() => setPopupInad({ id: a.clienteId || a.cliente.UUID, nome: nomeItem })} />
+                                                    </div>
+                                                )}
                                             </div>
                                         </td>
                                         <td className="px-3 py-2.5 text-xs text-gray-500 truncate">
@@ -769,6 +786,10 @@ const PainelAtendimentos = () => {
                                 <div className="flex items-center gap-1.5 min-w-0">
                                     <p className="text-sm font-bold text-gray-900 truncate">{nomeItem}</p>
                                     <SeloWhatsappCliente cliente={a.cliente} mostrar={mostrarSeloWhats} />
+                                    {a.cliente && (
+                                        <SeloInadimplencia situacao={inadMap[a.clienteId || a.cliente.UUID]} compacto className="shrink-0"
+                                            onClick={() => setPopupInad({ id: a.clienteId || a.cliente.UUID, nome: nomeItem })} />
+                                    )}
                                 </div>
                                 {a.cliente?.End_Cidade && <p className="text-[11px] text-gray-500">{a.cliente.End_Cidade}</p>}
                                 <div className="flex items-center gap-2 flex-wrap">
@@ -923,6 +944,10 @@ const PainelAtendimentos = () => {
                     resumo={pedidoPopup}
                     onClose={() => setPedidoPopup(null)}
                 />
+            )}
+
+            {popupInad && (
+                <PopupContasEmAberto clienteId={popupInad.id} clienteNome={popupInad.nome} onClose={() => setPopupInad(null)} />
             )}
 
             {/* Popup de Cliente */}

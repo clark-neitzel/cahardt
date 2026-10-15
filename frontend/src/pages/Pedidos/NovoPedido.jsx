@@ -24,6 +24,7 @@ import ModalWhatsappCliente from '../../components/ModalWhatsappCliente';
 import AvisoWhatsappFaltante from '../../components/AvisoWhatsappFaltante';
 import whatsappClientesService, { numeroWhatsappValido } from '../../services/whatsappClientesService';
 import { somAviso } from '../../utils/sons';
+import { rotuloFormaAConfirmar } from '../../components/SeloInadimplencia';
 import { normalizarDoc } from '../../utils/documento'; // busca por CPF/CNPJ (inclui alfanumérico)
 import { chaveBusca } from '../../utils/cidade'; // busca sem acento/caixa ("pao" acha "Pão")
 import { temTecladoFisico } from '../../utils/dispositivo'; // só devolve foco à busca em dispositivo com mouse/teclado (toque abre teclado virtual e rola a tela)
@@ -1214,8 +1215,10 @@ const NovoPedido = () => {
             return;
         }
 
-        // Bloquear venda para cliente inadimplente sem permissão
-        if (inadimplenciaCliente?.inadimplente) {
+        // Bloquear venda para cliente em atraso sem permissão. Usa o MESMO campo do servidor
+        // (bloqueiaVenda = carência + valor mínimo) e a mesma isenção: especial/bonificação não travam aqui
+        // (a trava deles é na aprovação).
+        if (inadimplenciaCliente?.bloqueiaVenda && !especial && !bonificacao) {
             const perms = user?.permissoes || {};
             if (!perms.admin && !perms.Pode_Vender_Inadimplente) {
                 const selecionouAVista = condicaoSelecionada?.nomeCondicao?.toLowerCase().includes('vista');
@@ -1867,8 +1870,47 @@ const NovoPedido = () => {
                     </button>
                 </div>
 
-                {/* Banner de inadimplência */}
-                {clienteId && inadimplenciaCliente?.inadimplente && (() => {
+                {clienteId && inadimplenciaCliente?.bloqueiaVenda && (especial || bonificacao) && (
+                    <div className="mx-3 mt-1 mb-1 px-3 py-2.5 rounded-lg border flex items-start gap-2.5 text-sm bg-amber-50 border-amber-300 text-amber-900">
+                        <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                        <div>
+                            <p className="font-semibold leading-tight">
+                                Cliente com {Number(inadimplenciaCliente.totalVencido).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} em atraso
+                            </p>
+                            <p className="text-xs mt-0.5 opacity-80">O pedido pode ser lançado, mas só um responsável consegue aprová-lo</p>
+                        </div>
+                    </div>
+                )}
+
+                {/* Em atraso, mas dentro da carência / abaixo do mínimo: só informa (não trava) */}
+                {clienteId && inadimplenciaCliente?.inadimplente && !inadimplenciaCliente?.bloqueiaVenda && (
+                    <div className="mx-3 mt-1 mb-1 px-3 py-2.5 rounded-lg border flex items-start gap-2.5 text-sm bg-amber-50 border-amber-300 text-amber-900">
+                        <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                        <div>
+                            <p className="font-semibold leading-tight">
+                                Cliente com {Number(inadimplenciaCliente.totalVencido).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} em atraso
+                            </p>
+                            <p className="text-xs mt-0.5 opacity-80">Dentro da carência ou abaixo do valor mínimo · Não bloqueia a venda</p>
+                        </div>
+                    </div>
+                )}
+
+                {/* A confirmar: Pix/cartão apontado na entrega, escritório conferindo (não bloqueia) */}
+                {clienteId && inadimplenciaCliente?.aConfirmar && (
+                    <div className="mx-3 mt-1 mb-1 px-3 py-2.5 rounded-lg border flex items-start gap-2.5 text-sm bg-amber-50 border-amber-300 text-amber-900">
+                        <Clock className="h-4 w-4 shrink-0 mt-0.5" />
+                        <div>
+                            <p className="font-semibold leading-tight">
+                                Cliente com {Number(inadimplenciaCliente.aConfirmar.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} a confirmar
+                                {' '}— {rotuloFormaAConfirmar(inadimplenciaCliente.aConfirmar.forma) || 'Pagamento'} apontado na entrega{inadimplenciaCliente.aConfirmar.dias != null ? ` há ${inadimplenciaCliente.aConfirmar.dias} dias` : ''}
+                            </p>
+                            <p className="text-xs mt-0.5 opacity-80">Não bloqueia a venda · o escritório está conferindo a conciliação</p>
+                        </div>
+                    </div>
+                )}
+
+                {/* Banner de inadimplência (venda bloqueada para quem não tem permissão) */}
+                {clienteId && inadimplenciaCliente?.bloqueiaVenda && !especial && !bonificacao && (() => {
                     const perms = user?.permissoes || {};
                     const podeVender = perms.admin || perms.Pode_Vender_Inadimplente;
                     const totalFormatado = Number(inadimplenciaCliente.totalVencido).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });

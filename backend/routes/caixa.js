@@ -552,6 +552,7 @@ router.get('/resumo', async (req, res) => {
                 numero: e.numero,
                 especial: e.especial || false,
                 seloGps,
+                clienteId: e.clienteId || null,
                 clienteNome: e.cliente?.NomeFantasia || e.cliente?.Nome || 'N/A',
                 vendedorNome: e.vendedor?.nome,
                 embarqueNumero: e.embarque?.numero,
@@ -701,6 +702,8 @@ router.get('/resumo', async (req, res) => {
             return {
                 id: c.id,
                 status: c.status,
+                clienteId: c.parcela?.contaReceber?.clienteId || null,
+                pedidoId: c.parcela?.contaReceber?.pedidoId || null,
                 clienteNome: c.parcela?.contaReceber?.cliente?.NomeFantasia || c.parcela?.contaReceber?.cliente?.Nome || 'Cliente',
                 pedidoNumero: c.parcela?.contaReceber?.pedido?.numero || null,
                 numeroParcela: c.parcela?.numeroParcela,
@@ -736,6 +739,8 @@ router.get('/resumo', async (req, res) => {
                         numeroParcela: true,
                         contaReceber: {
                             select: {
+                                clienteId: true,
+                                pedidoId: true,
                                 cliente: { select: { NomeFantasia: true, Nome: true } },
                                 pedido: { select: { numero: true } }
                             }
@@ -747,6 +752,8 @@ router.get('/resumo', async (req, res) => {
         });
         const recebimentosTitulosFormatados = recebimentosTitulosDia.map(r => ({
             id: r.id,
+            clienteId: r.parcela?.contaReceber?.clienteId || null,
+            pedidoId: r.parcela?.contaReceber?.pedidoId || null,
             clienteNome: r.parcela?.contaReceber?.cliente?.NomeFantasia || r.parcela?.contaReceber?.cliente?.Nome || 'Cliente',
             pedidoNumero: r.parcela?.contaReceber?.pedido?.numero || null,
             numeroParcela: r.parcela?.numeroParcela || null,
@@ -920,7 +927,7 @@ router.get('/resumo', async (req, res) => {
         });
         const conferenciaDinheiroPendente = exigeConf && !dinheiroConferidoValido && temMovimentoHoje;
 
-        res.json({
+        const payloadResumo = {
             // Mesmo valor de `temMovimentoHoje` (via confService.temMovimentoNoDia,
             // fonte única) — exposto no topo para quem consome /resumo não precisar
             // recalcular/duplicar o critério de "este dia teve algum movimento?".
@@ -960,6 +967,7 @@ router.get('/resumo', async (req, res) => {
             amostrasCount: amostrasFormatadas.length,
             atendimentos: atendimentosDia.map(a => ({
                 tipo: a.tipo,
+                clienteId: a.clienteId || null,
                 clienteNome: a.clienteId ? (mapaClientesAtend[a.clienteId] || 'Cliente') : (a.lead?.nomeEstabelecimento || 'Lead'),
                 leadNome: a.lead?.nomeEstabelecimento || null,
                 canal: a.lead?.origemLead || null,
@@ -971,10 +979,12 @@ router.get('/resumo', async (req, res) => {
             })),
             clientesNaoAtendidos,
             pedidosVendedor: pedidosDoVendedorDia.map(p => ({
+                pedidoId: p.id,
                 numero: p.numero,
                 especial: p.especial || false,
                 bonificacao: p.bonificacao || false,
                 cancelado: p.statusEnvio === 'EXCLUIDO',
+                clienteId: p.clienteId || null,
                 clienteNome: p.cliente?.NomeFantasia || p.cliente?.Nome || 'N/A',
                 createdAt: p.createdAt,
                 observacao: p.observacoes || null
@@ -1007,7 +1017,20 @@ router.get('/resumo', async (req, res) => {
                     && cobrancasRotaSemBaixa === 0 && !conferenciaDinheiroPendente
             },
             finalizacaoDia
-        });
+        };
+
+        // "deve + R$ X" (Tela 10): saldo VENCIDO da conta de cada pedido da tela, para o front descontar
+        // do total do cliente. Aditivo, uma consulta só; falha segue sem o campo.
+        try {
+            const listas = [payloadResumo.entregas, payloadResumo.pedidosVendedor,
+                payloadResumo.cobrancasRota?.itens, payloadResumo.recebimentosTitulos?.itens].filter(Array.isArray);
+            const saldos = await require('../services/inadimplenciaService')
+                .saldoVencidoPorPedidos(listas.flatMap(l => l.map(x => x.pedidoId)));
+            for (const l of listas) for (const x of l) x.saldoVencidoPedido = x.pedidoId ? (saldos.get(x.pedidoId) || 0) : 0;
+        } catch (eSaldo) {
+            console.error('[Caixa] Falha ao anexar saldoVencidoPedido (segue sem):', eSaldo.message);
+        }
+        res.json(payloadResumo);
     } catch (error) {
         console.error('Erro ao buscar resumo do caixa:', error);
         res.status(500).json({ error: 'Erro ao buscar resumo do caixa.' });
@@ -2527,6 +2550,7 @@ router.get('/relatorio', async (req, res) => {
                 return {
                     numero: e.numero,
                     especial: e.especial || false,
+                    clienteId: e.clienteId || null,
                     clienteNome: e.cliente?.NomeFantasia || e.cliente?.Nome || 'N/A',
                     condicao: e.nomeCondicaoPagamento || condicaoInfo?.nome || e.opcaoCondicaoPagamento || '-',
                     valorPedido: Math.round(valorPedido * 100) / 100,
@@ -2546,6 +2570,7 @@ router.get('/relatorio', async (req, res) => {
             }),
             atendimentos: atendimentos.map(a => ({
                 tipo: a.tipo,
+                clienteId: a.clienteId || null,
                 clienteNome: a.clienteId ? mapaClientes[a.clienteId] || 'Cliente' : a.lead?.nomeEstabelecimento || 'Lead',
                 leadNome: a.lead?.nomeEstabelecimento || null,
                 canal: a.lead?.canalOrigem || null,
@@ -2556,6 +2581,7 @@ router.get('/relatorio', async (req, res) => {
             pedidosVendedor: pedidosDoVendedor.map(p => ({
                 numero: p.numero,
                 especial: p.especial || false,
+                clienteId: p.clienteId || null,
                 clienteNome: p.cliente?.NomeFantasia || p.cliente?.Nome || 'N/A',
                 createdAt: p.createdAt,
                 observacao: p.observacoes || null

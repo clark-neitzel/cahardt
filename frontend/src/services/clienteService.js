@@ -21,6 +21,12 @@ const clienteService = {
         return response.data;
     },
 
+    // Situação de inadimplência de vários clientes de uma vez (selo das listas).
+    inadimplenciaLote: async (ids) => {
+        const response = await api.post('/inadimplencia/lote', { clienteIds: ids });
+        return response.data;
+    },
+
     atualizar: async (uuid, dados) => {
         const response = await api.patch(`/clientes/${uuid}`, dados);
         return response.data;

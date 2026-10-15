@@ -7,6 +7,8 @@ import SelectBusca from '../../../components/SelectBusca';
 import DayPicker from '../../../components/DayPicker';
 import ModalWhatsappCliente from '../../../components/ModalWhatsappCliente';
 import { resumoChip } from '../../../utils/gpsQuemAtualizou';
+import SeloInadimplencia from '../../../components/SeloInadimplencia';
+import PopupContasEmAberto from '../../../components/PopupContasEmAberto';
 
 // Ficha resumida + EDIÇÃO RÁPIDA (dia de entrega, dia de venda, categoria,
 // vendedor). Salvar manda SÓ os campos alterados + origem:'mapa-clientes' para
@@ -38,6 +40,7 @@ export default function DrawerCliente({ cliente, categorias, vendedoresAtivos, o
     // ainda false e gravariam 2 PATCH (+ 2 audit_logs).
     const salvandoRef = useRef(false);
     const [modalWpp, setModalWpp] = useState(false);
+    const [popupInad, setPopupInad] = useState(false);
 
     // Reinicia o formulário quando muda o cliente (ou quando ele é recarregado)
     useEffect(() => {
@@ -139,7 +142,9 @@ export default function DrawerCliente({ cliente, categorias, vendedoresAtivos, o
                 {cliente.balcao && <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700 inline-flex items-center gap-1"><Store className="h-3 w-3" /> Cliente balcão</span>}
                 {!cliente.gps && <span className="px-2 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-700">Sem ponto GPS</span>}
                 <span className={`px-2 py-1 text-xs font-semibold rounded-full ${sit.classe}`}>{sit.rotulo}</span>
+                <SeloInadimplencia situacao={cliente} onClick={() => setPopupInad(true)} className="!py-1" />
             </div>
+            {popupInad && <PopupContasEmAberto clienteId={cliente.uuid} clienteNome={nomeExibicao} onClose={() => setPopupInad(false)} />}
 
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-3 text-sm space-y-1.5">
                 <div className="flex items-center gap-2 text-gray-700">

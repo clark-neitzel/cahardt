@@ -10,6 +10,13 @@ const erro = (res, e, ctx) => {
     const body = { error: e.message };
     if (e.code) body.code = e.code;
     if (e.itensSemEstoque) body.itensSemEstoque = e.itensSemEstoque;
+    // Trava de inadimplência na aprovação (Entrega 2): 403 com o mesmo formato das outras rotas.
+    if (e.codigoInadimplencia) {
+        body.codigo = e.codigoInadimplencia;
+        body.totalVencido = e.totalVencido;
+        body.diasMaisAntiga = e.diasMaisAntiga;
+        return res.status(403).json(body);
+    }
     res.status(400).json(body);
 };
 
@@ -155,7 +162,12 @@ const congeladosController = {
         catch (e) { erro(res, e, 'pedidosNovosSite'); }
     },
     adminAprovarPedido: async (req, res) => {
-        try { res.json(await svc.adminAprovarPedido(req.params.id, { ...req.body, aprovadoPorId: req.user?.id })); }
+        try { res.json(await svc.adminAprovarPedido(req.params.id, {
+            ...req.body,
+            aprovadoPorId: req.user?.id,
+            permissoes: req.user?.permissoes || {},
+            aprovadoPorNome: req.user?.nome || req.user?.login || 'Usuário',
+        })); }
         catch (e) { erro(res, e, 'adminAprovarPedido'); }
     },
     adminRecusarPedido: async (req, res) => {

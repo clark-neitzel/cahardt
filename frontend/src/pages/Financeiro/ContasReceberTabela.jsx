@@ -17,7 +17,10 @@ import asaasService from '../../services/asaasService';
 import BoletosAsaasModal from './BoletosAsaasModal';
 import BaixaParcelaModal, { FORMAS_BAIXA_MANUAL } from './BaixaParcelaModal';
 import toast from 'react-hot-toast';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
+import SeloInadimplencia from '../../components/SeloInadimplencia';
+import PopupContasEmAberto from '../../components/PopupContasEmAberto';
+import useInadimplenciaLote from '../../hooks/useInadimplenciaLote';
 import { useFiltrosSalvos, useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 import FiltroPeriodo, { usePeriodoSalvo } from '../../components/FiltroPeriodo';
 import { opcoesVendedorMulti } from '../../utils/vendedoresFiltro';
@@ -208,6 +211,14 @@ const ContasReceberTabela = () => {
     // Baixa digitada aqui é a exceção (o normal é conciliação ou caixa) — permissão própria
     const podeBaixaManual = user?.permissoes?.admin || user?.permissoes?.Pode_Baixar_Contas_Receber_Manual;
 
+    // Filtro TRANSITÓRIO vindo do link "Abrir no Contas a Receber" (?clienteId=): não é salvo
+    // em useFiltrosSalvos — senão o usuário ficaria preso nele ao reabrir a tela.
+    const [searchParams, setSearchParams] = useSearchParams();
+    const clienteIdUrl = searchParams.get('clienteId') || '';
+    const clienteNomeUrl = searchParams.get('clienteNome') || '';
+    const limparClienteUrl = () => setSearchParams({}, { replace: true });
+    const [popupInad, setPopupInad] = useState(null); // { id, nome }
+
     const [linhas, setLinhas] = useState([]);
     // Mensagem do servidor quando a busca é recusada (ex.: 400 de filtro inválido).
     // Sem isso a tela ficaria vazia sem explicar por quê.
@@ -356,6 +367,7 @@ const ContasReceberTabela = () => {
             if (vencAte) params.vencimentoAte = vencAte;
             if (pagDe) params.pagamentoDe = pagDe;
             if (pagAte) params.pagamentoAte = pagAte;
+            if (clienteIdUrl) params.clienteId = clienteIdUrl;
 
             const data = await contasReceberService.listar(params);
             // Flatten: uma linha por parcela
@@ -445,7 +457,7 @@ const ContasReceberTabela = () => {
         } finally {
             setLoading(false);
         }
-    }, [filtros, busca, vencDe, vencAte, pagDe, pagAte]);
+    }, [filtros, busca, vencDe, vencAte, pagDe, pagAte, clienteIdUrl]);
 
     useEffect(() => { fetchData(); }, []); // eslint-disable-line
 
@@ -474,7 +486,7 @@ const ContasReceberTabela = () => {
     // Auto-refresh quando qualquer filtro muda (exceto "busca", que usa Enter/botão).
     // Stringifica arrays/strings pra evitar trigger por nova ref a cada render.
     const didMount = useRef(false);
-    const filtrosKey = JSON.stringify({ ...filtros, vencDe, vencAte, pagDe, pagAte });
+    const filtrosKey = JSON.stringify({ ...filtros, vencDe, vencAte, pagDe, pagAte, clienteIdUrl });
     useEffect(() => {
         if (!didMount.current) { didMount.current = true; return; }
         fetchData();
@@ -483,6 +495,7 @@ const ContasReceberTabela = () => {
     const aplicarFiltros = () => fetchData();
     const limparFiltros = () => {
         setBusca('');
+        if (clienteIdUrl) limparClienteUrl();
         setFiltros({
             status: [], statusParcela: [], origem: [], vendedorId: [], categoriaClienteId: [],
             condicaoPagamento: [], tipoCobranca: [], formaPagamentoEntrega: [], formaPagamento: [],
@@ -494,6 +507,9 @@ const ContasReceberTabela = () => {
     };
 
     // Ordenação
+    // Selo "cliente em atraso": total do CLIENTE (não só da parcela), repetido em cada linha dele
+    const idsClientesLinhas = useMemo(() => [...new Set(linhas.map(l => l.clienteId).filter(Boolean))], [linhas]);
+    const inadMap = useInadimplenciaLote(idsClientesLinhas);
     const linhasOrdenadas = useMemo(() => {
         const copy = [...linhas];
         const k = sort.col;
@@ -887,7 +903,8 @@ const ContasReceberTabela = () => {
         + Object.values(filtros).filter(v => Array.isArray(v) ? v.length > 0 : Boolean(v)).length
         + (periodoVenc.padrao ? 0 : 1)
         + (periodoPag.padrao ? 0 : 1)
-    , [filtros, busca, periodoVenc.padrao, periodoPag.padrao]);
+        + (clienteIdUrl ? 1 : 0)
+    , [filtros, busca, periodoVenc.padrao, periodoPag.padrao, clienteIdUrl]);
 
     const abrirPedido = async (pedidoId) => {
         if (!pedidoId) return;
@@ -1004,6 +1021,16 @@ const ContasReceberTabela = () => {
                     <div className="text-lg font-bold text-green-700">R$ {fmt(indicadores.totalQuitadasMes)}</div>
                 </div>
             </div>
+
+            {clienteIdUrl && (
+                <div className="mb-3">
+                    <span className="inline-flex items-center gap-1 pl-3 pr-1 py-1 rounded-full bg-mint text-primaryDark text-xs font-semibold max-w-full">
+                        <span className="truncate">Cliente: {clienteNomeUrl || 'selecionado'}</span>
+                        <button type="button" onClick={limparClienteUrl} aria-label="Tirar filtro de cliente"
+                            className="p-2 -my-1 rounded-full hover:bg-white/60"><X className="w-3.5 h-3.5" /></button>
+                    </span>
+                </div>
+            )}
 
             {/* Filtros */}
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm mb-4">
@@ -1224,6 +1251,8 @@ const ContasReceberTabela = () => {
                                                     title={l.clienteNome}
                                                     onClick={(e) => { e.stopPropagation(); e.preventDefault(); abrirCliente(l.clienteId); }}
                                                 >{l.clienteNome}</span>
+                                                <SeloInadimplencia situacao={inadMap[l.clienteId]} compacto className="ml-1 shrink-0"
+                                                    onClick={() => setPopupInad({ id: l.clienteId, nome: l.clienteNome })} />
                                             </div>
                                             <div className="text-xs text-gray-500 mt-0.5 truncate">
                                                 {l.condicaoPagamento || '-'}{l.vendedorNome ? ` · ${l.vendedorNome}` : ''}
@@ -1319,6 +1348,8 @@ const ContasReceberTabela = () => {
                                                 className="text-blue-700 hover:underline text-left"
                                                 title="Ver cliente"
                                             >{l.clienteNome}</button>
+                                            <SeloInadimplencia situacao={inadMap[l.clienteId]} compacto className="ml-1.5"
+                                                onClick={() => setPopupInad({ id: l.clienteId, nome: l.clienteNome })} />
                                         </td>
                                         <td className="px-2 pt-2 pb-0.5 text-gray-700">{l.vendedorNome || '-'}</td>
                                         <td className="px-2 pt-2 pb-0.5 text-right font-bold tabular-nums whitespace-nowrap">R$ {fmt(l.valor)}</td>
@@ -2022,6 +2053,9 @@ const ContasReceberTabela = () => {
                         })()}
                     </div>
                 </div>
+            )}
+            {popupInad && (
+                <PopupContasEmAberto clienteId={popupInad.id} clienteNome={popupInad.nome} onClose={() => setPopupInad(null)} />
             )}
         </div>
     );

@@ -381,7 +381,8 @@ async function clienteIdsEmAtraso({ somenteBloqueio = false } = {}) {
     return ids;
 }
 
-const fmtBRL = (v) => Number(v).toFixed(2).replace('.', ',');
+// Valor em reais com milhar, igual à UI: 1247.08 -> "1.247,08" (sem o "R$ "). ÚNICO formatador dos textos gerados aqui.
+const fmtBRL = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 /**
  * Trava de venda/aprovação. SEMPRE lê a config FRESCA (a trava não pode usar cache de 30 s
@@ -427,6 +428,43 @@ async function exigirResponsavel({ clienteId, permissoes = {}, nomeUsuario = 'Ve
     };
 }
 
+/** Situação-resumida (contrato do selo nas listas): só os campos que o front mostra. */
+function resumir(sit) {
+    const s = sit || situacaoVazia();
+    return {
+        inadimplente: !!s.inadimplente,
+        totalVencido: s.totalVencido || 0,
+        parcelasVencidas: s.parcelasVencidas || 0,
+        diasMaisAntiga: s.diasMaisAntiga ?? null,
+        aConfirmar: s.aConfirmar || null,
+        bloqueiaVenda: !!s.bloqueiaVenda,
+    };
+}
+
+/**
+ * Saldo VENCIDO (parcelas em aberto com vencimento antes de hoje, valor - pago - desconto) da conta de
+ * CADA pedido. Uma consulta só. Pedido sem conta / sem parcela vencida -> 0. Usado pelo Caixa
+ * ("deve R$ X" = total do cliente menos o que o próprio pedido conferido já deve).
+ * Não aplica as regras de espera/funcionário/especial: é o saldo bruto vencido do pedido.
+ */
+async function saldoVencidoPorPedidos(pedidoIds) {
+    const ids = [...new Set((pedidoIds || []).filter(Boolean))];
+    const mapa = new Map(ids.map((id) => [id, 0]));
+    if (!ids.length) return mapa;
+    const hoje = new Date(`${hojeSPStr()}T00:00:00.000Z`);
+    const parcelas = await prisma.parcela.findMany({
+        where: { status: { in: STATUS_ABERTO_PARCELA }, dataVencimento: { lt: hoje }, contaReceber: { pedidoId: { in: ids } } },
+        select: { valor: true, valorPago: true, valorDescontoTotal: true, contaReceber: { select: { pedidoId: true } } },
+    });
+    for (const pc of parcelas) {
+        const saldo = round2(Number(pc.valor) - Number(pc.valorPago || 0) - Number(pc.valorDescontoTotal || 0));
+        if (saldo <= TOLERANCIA) continue;
+        const pid = pc.contaReceber.pedidoId;
+        mapa.set(pid, round2((mapa.get(pid) || 0) + saldo));
+    }
+    return mapa;
+}
+
 function limparCache() { _cacheSet.clear(); }
 
 module.exports = {
@@ -439,6 +477,9 @@ module.exports = {
     clienteIdsEmAtraso,
     exigirResponsavel,
     rotuloSituacaoConta,
+    resumir,
+    fmtBRL,
+    saldoVencidoPorPedidos,
     limparCache,
     // internos úteis ao diag/testes
     carregarContas,

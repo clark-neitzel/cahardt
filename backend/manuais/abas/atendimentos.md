@@ -327,3 +327,6 @@ computador) ou um toque no **fundo escuro** ao redor da janela.
 | `frontend/src/services/atendimentoService.js` | Chamadas de API |
 | `backend/routes/atendimentoRoutes.js` + `controllers/atendimentoController.js` | Rotas do backend |
 | `backend/services/atendimentoService.js` (`listarComFiltros`) | Junta atendimentos + pedidos na mesma lista |
+
+## Selo de inadimplência
+Ao lado do nome do cliente (não aparece em lead) fica o selo compacto de atraso/a confirmar; clicar abre o popup Contas em aberto. Serve para lembrar de cobrar durante a visita.

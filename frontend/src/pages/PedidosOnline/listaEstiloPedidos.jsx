@@ -126,7 +126,7 @@ export function ListaLinhasPedidos({ loading, vazio, children }) {
  * - selos: array de { texto, cls, icon?, title? }
  * - acoes: nós React à direita (botões); Detalhes é adicionado sempre
  */
-export function LinhaPedidoOnline({ numero, novo, inativo, nome, valor, linha2 = [], linha3, extras = [], selos = [], acoes, onAbrir, textoBotao = 'Detalhes' }) {
+export function LinhaPedidoOnline({ numero, novo, inativo, nome, seloNome, valor, linha2 = [], linha3, extras = [], selos = [], acoes, onAbrir, textoBotao = 'Detalhes' }) {
     return (
         <div
             onClick={onAbrir}
@@ -142,7 +142,14 @@ export function LinhaPedidoOnline({ numero, novo, inativo, nome, valor, linha2 =
                 <span className="text-[10px] font-bold px-1.5 py-0.5 rounded border shrink-0 shadow-sm mt-0.5 text-blue-700 bg-blue-50 border-blue-100">
                     {numero}
                 </span>
-                <h3 className="text-[13px] font-bold text-gray-900 truncate flex-1 min-w-0">{nome}</h3>
+                {seloNome ? (
+                    <h3 className="text-[13px] font-bold text-gray-900 flex-1 min-w-0 flex items-center gap-1.5">
+                        <span className="truncate min-w-0">{nome}</span>
+                        <span className="shrink-0" onClick={(e) => e.stopPropagation()}>{seloNome}</span>
+                    </h3>
+                ) : (
+                    <h3 className="text-[13px] font-bold text-gray-900 truncate flex-1 min-w-0">{nome}</h3>
+                )}
                 <span className="text-[13px] font-black text-gray-900 whitespace-nowrap shrink-0 ml-1">{valor}</span>
             </div>
 

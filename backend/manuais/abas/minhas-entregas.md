@@ -243,3 +243,6 @@ Ao concluir uma entrega **longe do ponto GPS cadastrado** do cliente (ou de clie
 - **Sim** → o app pede uma **foto da fachada** do cliente (obrigatória). A confirmação vira um sinal de correção do cadastro; se o cliente não tinha ponto nenhum, o lugar já vira o primeiro ponto dele. A foto fica no cadastro para o próximo entregador reconhecer a loja.
 
 Quem conclui a entrega no lugar certo nunca vê essa pergunta. Sem internet, a confirmação fica guardada e sobe quando o sinal voltar.
+
+## Aviso de cliente em atraso na entrega
+Na etapa de pagamentos do checkout aparece uma faixa amarela "Este cliente tem R$ X em atraso... Ofereça receber agora". É só informativa, não bloqueia a entrega, e só aparece se o administrador deixar ligada a chave "Motorista vê o atraso na entrega" (Configurações › Venda a inadimplente).

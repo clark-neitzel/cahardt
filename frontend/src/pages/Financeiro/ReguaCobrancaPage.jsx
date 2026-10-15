@@ -191,16 +191,18 @@ function AbaInadimplentes({ podeEditar }) {
                 </div>
             </div>
 
-            {/* Quem pagou o especial em dinheiro e só espera o caixa ser conferido NÃO é
-                devedor — sai da lista. Sem este aviso o escritório via a lista encolher
-                sem entender por quê. Só aparece quando há algo em espera. */}
+            {/* Parcelas que NÃO entram na lista de inadimplentes por ainda não serem cobrança do cliente:
+                dinheiro/Pix/cartão já apontado na entrega esperando conferência do caixa ou conciliação
+                ("a confirmar"), compra de funcionário e especial ainda não entregue. Boleto apontado na
+                entrega NÃO fica de fora — continua em atraso até o banco ou o caixa confirmar. Sem este aviso
+                o escritório via a lista encolher sem entender por quê. Só aparece quando há algo de fora. */}
             {Number(totais.aguardandoConferencia || 0) > 0 && (
                 <div
-                    className="inline-flex items-center gap-2 rounded-full bg-mint/60 border border-primary/20 px-3 py-1.5 text-xs font-medium text-primaryDark"
-                    title="Títulos de clientes que já pagaram (pedido especial recebido em dinheiro na entrega) e por isso ficam fora da lista de inadimplentes. O valor entra na cobrança quando o caixa do dia for conferido."
+                    className="flex items-start gap-2 rounded-lg bg-mint/60 border border-primary/20 px-3 py-2 text-xs font-medium text-primaryDark"
+                    title="Parcelas fora da lista de cobrança por ainda não serem dívida do cliente: pagamento em dinheiro/Pix/cartão apontado na entrega esperando o caixa ou a conciliação do banco (inclui o que está 'a confirmar'), compra de funcionário e pedido especial ainda não entregue. Boleto apontado na entrega NÃO fica de fora: continua em atraso até o banco ou o caixa confirmar."
                 >
-                    <ClipboardCheck className="h-4 w-4 shrink-0" />
-                    <span>{totais.aguardandoConferencia} {Number(totais.aguardandoConferencia) === 1 ? 'parcela' : 'parcelas'} aguardando conferência do caixa</span>
+                    <ClipboardCheck className="h-4 w-4 shrink-0 mt-0.5" />
+                    <span>{totais.aguardandoConferencia} {Number(totais.aguardandoConferencia) === 1 ? 'parcela fora' : 'parcelas fora'} da cobrança (conferência do caixa, a confirmar, funcionário ou especial não entregue)</span>
                 </div>
             )}
 

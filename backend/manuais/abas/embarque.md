@@ -178,3 +178,6 @@ Apenas usuários com a permissão `Pode_Executar_Entregas` ou `admin` e com stat
 | `backend/routes/embarques.js` | Rotas do backend (inclui a conferência por bipagem) |
 | `backend/services/conferenciaCargaService.js` | Regra da conferência por bipagem (o que cada código significa, contador, idempotência) |
 | `backend/utils/codigoCarga.js` | Leitura do código bipado (chave da NF-e, `ZZ`/`BN`/`AM`, número solto) |
+
+## Cliente em atraso na carga
+Na janela da carga (tabela Caminhão), um selo ao lado do nome do cliente avisa se ele está em atraso ou com valor a confirmar. É só aviso: não impede carregar.

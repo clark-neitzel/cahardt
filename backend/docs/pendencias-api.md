@@ -85,7 +85,7 @@ Authorization: Bearer <token>
 | `blocos[].rotaVerTodos` | string | Rota do app para "ver todos" desse bloco. |
 | `blocos[].erro` | bool? | Só aparece quando o bloco falhou ao consultar — os outros blocos continuam normais. |
 
-## Os 8 blocos desta leva
+## Os 9 blocos (o 9º, `liberacao_inadimplente`, entrou na Entrega 2 da Inadimplência visível — 10/2026)
 
 ### `pedidos_aprovar` — Pedidos aguardando aprovação
 - **Fonte:** mesmo critério de `ListaPedidos.jsx` (aba de aprovação) / `pedidoController.aprovarEspecial`
@@ -96,6 +96,17 @@ Authorization: Bearer <token>
 - **Ação de 1 clique:** `PUT /api/pedidos/:id/aprovar-especial` ou `.../aprovar-bonificacao` (mesmo
   endpoint que o botão "Aprovar" da tela Pedidos chama).
 - Contagem local conferida por SQL direto: bate (13 = 13).
+
+### `liberacao_inadimplente` — Pedidos aguardando liberação (cliente em atraso)
+- **Fonte:** (a) pedidos ESPECIAL pendentes de aprovação (mesmo `where` de `pedidos_aprovar`, só `especial`) e
+  (b) `CongeladosPedido` em `AGUARDANDO|PENDENTE_CADASTRO` com cliente vinculado — em ambos, só os de cliente
+  com `bloqueiaVenda` (`services/inadimplenciaService`, mesma fonte da trava). Bonificação não entra (não é travada).
+- **Sem `acao`:** o botão de 1 clique daria 403 para quem não tem `Pode_Vender_Inadimplente`; o front mostra "Abrir".
+- **Item:** `{ id, pedidoId, numero, clienteId, cliente, origem: 'ESPECIAL'|'SITE'|'WHATSAPP_IA', totalVencido, dias,
+  titulo, subtitulo, valor, dataRef, rota }` (`rota`: `/pedidos` ou `/pedidos-online?aba=site`).
+- `severidade: 'vermelho'`, `rotaVerTodos: '/pedidos'`. Os especiais de cliente bloqueado **saem** de `pedidos_aprovar`
+  (não conta em dobro); `totais.total` soma o bloco e `totais.avisos` também.
+- Todos os itens dos demais blocos que têm cliente ganharam `clienteId` (aditivo).
 
 ### `nfe_emitir` — NF-e a emitir
 - **Fonte:** MESMO critério e MESMA lógica do chip "Sem nota" de

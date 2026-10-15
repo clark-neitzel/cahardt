@@ -5,6 +5,9 @@ import congeladosService from '../../services/congeladosService';
 import api, { API_URL } from '../../services/api';
 import SelectBusca from '../../components/SelectBusca';
 import { List, Hourglass, UserX, CheckCircle, XCircle, Ban, MessageCircle as IconeWhatsIA } from 'lucide-react';
+import SeloInadimplencia from '../../components/SeloInadimplencia';
+import PopupContasEmAberto from '../../components/PopupContasEmAberto';
+import { useAuth } from '../../contexts/AuthContext';
 import { BarraBuscaPedidos, ChipsStatusPedidos, PendentesPedidos, ListaLinhasPedidos, LinhaPedidoOnline } from '../PedidosOnline/listaEstiloPedidos';
 
 const money = (n) => 'R$ ' + Number(n || 0).toFixed(2).replace('.', ',');
@@ -100,6 +103,7 @@ function PedidosTab() {
   const [aprovar, setAprovar] = useState(null);
   const [vincular, setVincular] = useState(null);
   const [detalhe, setDetalhe] = useState(null);
+  const [popupInad, setPopupInad] = useState(null); // { id, nome }
 
   const carregar = useCallback((silent) => {
     if (!silent) setLoading(true);
@@ -154,10 +158,11 @@ function PedidosTab() {
       <ChipsStatusPedidos chips={CHIPS} valor={status} onChange={setStatus} contagens={counts} />
 
       <ListaLinhasPedidos loading={loading} vazio={lista.length === 0 ? `Nenhum pedido ${status ? 'neste status' : 'do site'} ainda.` : null}>
-        {lista.map(p => <PedidoLinha key={p.id} p={p} onAbrir={() => setDetalhe(p)} />)}
+        {lista.map(p => <PedidoLinha key={p.id} p={p} onAbrir={() => setDetalhe(p)} onInad={setPopupInad} />)}
       </ListaLinhasPedidos>
 
-      {detalhe && <PedidoDetalhe pedido={detalhe} onClose={() => setDetalhe(null)}
+      {popupInad && <PopupContasEmAberto clienteId={popupInad.id} clienteNome={popupInad.nome} onClose={() => setPopupInad(null)} />}
+      {detalhe && <PedidoDetalhe pedido={detalhe} onClose={() => setDetalhe(null)} onInad={setPopupInad}
         onAprovar={() => { setAprovar(detalhe); setDetalhe(null); }}
         onVincular={() => { setVincular(detalhe); setDetalhe(null); }}
         onRecusar={() => { const p = detalhe; setDetalhe(null); recusar(p); }}
@@ -181,8 +186,15 @@ function SeloOrigemIA() {
   );
 }
 
+// Cliente em atraso: o pedido fica na fila até um responsável liberar (Ana não muda nada).
+// `aguardandoResponsavel` vem do servidor; sem ele, cai no bloqueiaVenda do selo.
+// Obs.: o servidor não trava tipoConversao 'BONIFICACAO', mas esta tela só oferece NORMAL/ESPECIAL
+// (o tipo é escolhido depois, no AprovarModal) — então aqui a trava vale para toda aprovação.
+const aguardaResponsavel = (p) => (p.aguardandoResponsavel != null ? p.aguardandoResponsavel === true : !!p.inadimplencia?.bloqueiaVenda);
+const clienteIdDoPedido = (p) => p.congeladosCliente?.clienteUuid || p.congeladosCliente?.cliente?.UUID || p.clienteId || null;
+
 // Linha da lista (desenho da aba de Pedidos): clicável, abre o detalhe completo
-function PedidoLinha({ p, onAbrir }) {
+function PedidoLinha({ p, onAbrir, onInad }) {
   const s = STATUS_INFO[p.status] || { label: p.status, cls: 'bg-gray-100 text-gray-600' };
   const atencao = p.status === 'AGUARDANDO' || p.status === 'PENDENTE_CADASTRO';
   const inativo = p.status === 'CANCELADO' || p.status === 'RECUSADO';
@@ -196,6 +208,8 @@ function PedidoLinha({ p, onAbrir }) {
       <LinhaPedidoOnline
         numero={`#${p.numero}`} novo={atencao} inativo={inativo}
         nome={p.nomeCliente} valor={money(p.total)}
+        seloNome={<SeloInadimplencia situacao={p.inadimplencia} compacto
+          onClick={clienteIdDoPedido(p) ? () => onInad?.({ id: clienteIdDoPedido(p), nome: p.nomeCliente }) : undefined} />}
         linha2={[
           `${ehRetirada(p) ? 'Retirada' : 'Entrega'}: ${data || '-'}`,
           criado ? `Pedido: ${criado}` : '',
@@ -216,6 +230,11 @@ function PedidoLinha({ p, onAbrir }) {
         ]}
         onAbrir={onAbrir}
       />
+      {atencao && aguardaResponsavel(p) && (
+        <div data-aguardando-responsavel className="mx-3 -mt-1 mb-3 rounded-lg border border-red-200 bg-red-50 p-2.5 text-[11px] text-red-700 font-bold uppercase tracking-wide flex items-center gap-1">
+          <AlertTriangle className="h-3 w-3 flex-none" /> Aguardando liberação de um responsável
+        </div>
+      )}
       {semEstoque && (
         <div className="mx-3 -mt-1 mb-3 rounded-lg border border-red-200 bg-red-50 p-2.5 text-[11px] text-red-700">
           <div className="font-bold uppercase tracking-wide mb-1 flex items-center gap-1">
@@ -235,7 +254,13 @@ function PedidoLinha({ p, onAbrir }) {
 }
 
 // Detalhe completo do pedido (modal) + ações
-function PedidoDetalhe({ pedido: p, onClose, onAprovar, onVincular, onRecusar, onExcluir }) {
+function PedidoDetalhe({ pedido: p, onClose, onAprovar, onVincular, onRecusar, onExcluir, onInad }) {
+  const { user } = useAuth();
+  // Espelha o servidor: admin || Pode_Vender_Inadimplente libera cliente em atraso
+  const podeLiberarInad = !!(user?.permissoes?.admin || user?.permissoes?.Pode_Vender_Inadimplente);
+  const travaInad = aguardaResponsavel(p);
+  const travadoParaMim = travaInad && !podeLiberarInad;
+  const assumirResp = travaInad && podeLiberarInad;
   const s = STATUS_INFO[p.status] || { label: p.status, cls: 'bg-gray-100 text-gray-600' };
   const cli = p.congeladosCliente?.cliente;
   const fantasia = cli?.NomeFantasia && cli.NomeFantasia !== p.nomeCliente ? cli.NomeFantasia : '';
@@ -266,6 +291,20 @@ function PedidoDetalhe({ pedido: p, onClose, onAprovar, onVincular, onRecusar, o
             ))}
           </ul>
           <p className="text-xs text-red-600 mt-1.5">Ajuste o estoque do produto e atualize a fila para aprovar.</p>
+        </div>
+      )}
+
+      {travaInad && !p.pedido && (
+        <div data-aguardando-responsavel className="rounded-lg border border-red-200 bg-red-50 p-3 mb-3">
+          <div className="text-xs font-bold uppercase tracking-widest text-red-700 flex items-center gap-1.5">
+            <AlertTriangle className="h-3.5 w-3.5 flex-none" /> Aguardando liberação de um responsável
+          </div>
+          <p className="text-xs text-red-700 mt-1">
+            Cliente em atraso{p.inadimplencia?.totalVencido != null ? ` (${money(p.inadimplencia.totalVencido)})` : ''}. O pedido continua na fila até alguém com permissão assumir a responsabilidade.
+          </p>
+          {onInad && clienteIdDoPedido(p) && (
+            <button type="button" className="text-xs underline font-semibold text-red-700 py-2 -my-1" onClick={() => onInad({ id: clienteIdDoPedido(p), nome: p.nomeCliente })}>ver contas</button>
+          )}
         </div>
       )}
 
@@ -357,14 +396,19 @@ function PedidoDetalhe({ pedido: p, onClose, onAprovar, onVincular, onRecusar, o
           <button onClick={onVincular} className="btn-sky"><Link2 size={15} /> Vincular cliente</button>
         )}
         {!p.pedido && p.status === 'AGUARDANDO' && (
-          <button
-            onClick={onAprovar}
-            disabled={p.semEstoque === true}
-            title={p.semEstoque === true ? 'Ajuste o estoque do produto e atualize a fila para aprovar.' : undefined}
-            className={`btn-sky ${p.semEstoque === true ? 'opacity-50 cursor-not-allowed' : ''}`}
-          >
-            <Check size={15} /> Aprovar e gerar pedido
-          </button>
+          <>
+            <button
+              onClick={onAprovar}
+              disabled={p.semEstoque === true || travadoParaMim}
+              title={p.semEstoque === true ? 'Ajuste o estoque do produto e atualize a fila para aprovar.' : undefined}
+              className={`btn-sky ${p.semEstoque === true || travadoParaMim ? 'opacity-50 cursor-not-allowed' : ''}`}
+              style={assumirResp ? { background: '#f97316' } : undefined}
+            >
+              <Check size={15} /> {assumirResp ? 'Assumir responsabilidade e aprovar' : 'Aprovar e gerar pedido'}
+            </button>
+            {travadoParaMim && <p data-aviso-trava-inad className="w-full text-xs font-semibold text-red-600">Só um responsável pode liberar este pedido.</p>}
+            {assumirResp && <p className="w-full text-xs text-orange-700">Ao aprovar, seu nome fica na observação do pedido como responsável pela venda a cliente em atraso.</p>}
+          </>
         )}
         {!p.pedido && (p.status === 'AGUARDANDO' || p.status === 'PENDENTE_CADASTRO') && (
           <button onClick={onRecusar} className="btn-ghost-red"><X size={15} /> Recusar</button>

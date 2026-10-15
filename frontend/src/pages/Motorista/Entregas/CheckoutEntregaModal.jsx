@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { X, CheckCircle, Package, ArrowRight, Save, Navigation, DollarSign, AlertCircle, Trash2, Plus, Mic, MicOff, MessageSquare, QrCode } from 'lucide-react';
 import toast from 'react-hot-toast';
 import entregasService from '../../../services/entregasService';
@@ -13,6 +13,8 @@ import NaPortaGpsModal from './NaPortaGpsModal';
 import SelectBusca from '../../../components/SelectBusca';
 import vendedorService from '../../../services/vendedorService';
 import { somenteAtivos } from '../../../utils/vendedoresFiltro';
+import inadimplenciaService from '../../../services/inadimplenciaService';
+import useInadimplenciaLote from '../../../hooks/useInadimplenciaLote';
 
 const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
     const { user } = useAuth();
@@ -21,6 +23,18 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
     const [alertaGpsDismissed, setAlertaGpsDismissed] = useState(false);
     const [naPortaInfo, setNaPortaInfo] = useState(null); // pergunta "está na porta?" pós-conclusão
     const [showClientePopupGps, setShowClientePopupGps] = useState(false);
+
+    // Faixa informativa de cliente em atraso (só se a chave "motorista vê o atraso" estiver ligada).
+    // NÃO bloqueia a entrega: o motorista só fica sabendo e pode oferecer o recebimento na hora.
+    const clienteIdInad = pedido.clienteId || pedido.cliente?.UUID || null;
+    const inadMotorista = useInadimplenciaLote(useMemo(() => (clienteIdInad ? [clienteIdInad] : []), [clienteIdInad]));
+    const [motoristaVeAtraso, setMotoristaVeAtraso] = useState(false);
+    useEffect(() => {
+        let vivo = true;
+        inadimplenciaService.getConfig().then(c => { if (vivo) setMotoristaVeAtraso(c?.motoristaVeAtraso === true); }).catch(() => {});
+        return () => { vivo = false; };
+    }, []);
+    const situacaoInad = clienteIdInad ? inadMotorista[clienteIdInad] : null;
 
     // Carrinho Reverso
     const [itensDevolvidos, setItensDevolvidos] = useState([]);
@@ -630,6 +644,19 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
                     <div className={`flex-1 h-1 ${step >= 4 ? 'bg-primary' : 'bg-gray-200'}`}></div>
                 </div>
 
+                {/* Cliente em atraso: aviso amarelo, informativo, em TODAS as etapas
+                    (a etapa de pagamentos é pulada em condição fixa, ex.: Boleto 7 dias) */}
+                {motoristaVeAtraso && situacaoInad?.inadimplente && (
+                    <div data-faixa-motorista-atraso className="bg-amber-50 border-b border-amber-300 px-4 py-2.5 flex items-start gap-2 text-amber-900">
+                        <AlertCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                        <p className="text-sm font-medium leading-snug">
+                            Este cliente tem {Number(situacaoInad.totalVencido).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} em atraso
+                            {situacaoInad.parcelasVencidas != null ? ` (${situacaoInad.parcelasVencidas} ${Number(situacaoInad.parcelasVencidas) === 1 ? 'parcela' : 'parcelas'})` : ''}.
+                            {' '}Ofereça receber agora.
+                        </p>
+                    </div>
+                )}
+
                 <div className="flex-1 overflow-y-auto bg-gray-50 flex flex-col relative">
 
                     {/* =========== STEP 1: STATUS DA ENTREGA =========== */}
@@ -755,6 +782,7 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
                             </div>
 
                             <div className="flex-1 overflow-y-auto p-4 space-y-4">
+
                                 {/* Condição prevista no pedido */}
                                 {descricaoCondicao && (
                                     <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-2.5 flex items-center gap-2">

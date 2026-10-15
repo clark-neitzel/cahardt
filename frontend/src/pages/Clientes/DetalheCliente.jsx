@@ -27,6 +27,8 @@ import whatsappClientesService, { rotuloMotivo, calcularValidaAte } from '../../
 import QualidadeGps, { avaliarGps } from '../../components/Clientes/QualidadeGps';
 import QualidadeWhatsapp, { avaliarWhatsapp } from '../../components/Clientes/QualidadeWhatsapp';
 import EstadoVazio from '../../components/EstadoVazio';
+import { rotuloFormaAConfirmar } from '../../components/SeloInadimplencia';
+import { ContasEmAbertoLista, AcoesContasEmAberto } from '../../components/PopupContasEmAberto';
 import { detalheAtualizacao, formatarDataHora, telaDaOrigem, linhaNoLocal, acaoHistorico, cargoExibicao } from '../../utils/gpsQuemAtualizou';
 
 // Data curta em pt-BR, tolerante a valor nulo/inválido vindo do backend
@@ -190,6 +192,15 @@ const DetalheCliente = () => {
 
     useEffect(() => {
         fetchData();
+    }, [uuid]);
+
+    // Situação financeira (faixa fixa + aba Financeiro) — fonte única do servidor
+    const [inad, setInad] = useState(null);
+    useEffect(() => {
+        let vivo = true;
+        setInad(null);
+        clienteService.obterInadimplencia(uuid).then(d => { if (vivo) setInad(d); }).catch(() => {});
+        return () => { vivo = false; };
     }, [uuid]);
 
     const fetchData = async () => {
@@ -531,6 +542,38 @@ const DetalheCliente = () => {
                 </div>
             </div>
 
+            {/* Faixa fixa de inadimplência — fica à vista em todas as abas */}
+            {inad && (inad.inadimplente || inad.aConfirmar) && (
+                <div data-faixa-inad={inad.inadimplente ? 'vermelha' : 'amarela'}
+                    className={`mb-4 rounded-xl border px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 ${inad.inadimplente ? 'bg-red-50 border-red-300 text-red-800' : 'bg-amber-50 border-amber-300 text-amber-900'}`}>
+                    <div className="flex items-start gap-2 flex-1 min-w-0">
+                        {inad.inadimplente ? <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" /> : <Clock className="h-4 w-4 shrink-0 mt-0.5" />}
+                        <div className="text-sm min-w-0">
+                            {inad.inadimplente ? (
+                                <>
+                                    <p className="font-bold">Em atraso {Number(inad.totalVencido).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                                    <p className="text-xs opacity-90">
+                                        {inad.parcelasVencidas} {Number(inad.parcelasVencidas) === 1 ? 'parcela' : 'parcelas'}
+                                        {inad.diasMaisAntiga != null ? ` · mais antiga há ${inad.diasMaisAntiga} dias` : ''}
+                                    </p>
+                                </>
+                            ) : (
+                                <>
+                                    <p className="font-bold">A confirmar {Number(inad.aConfirmar.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                                    <p className="text-xs opacity-90">
+                                        {rotuloFormaAConfirmar(inad.aConfirmar.forma) || 'Pagamento'} apontado na entrega{inad.aConfirmar.dias != null ? ` há ${inad.aConfirmar.dias} dias` : ''} · o escritório está conferindo
+                                    </p>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                    <button type="button" onClick={() => setAbaAtiva('financeiro')}
+                        className="min-h-[44px] sm:min-h-0 px-4 py-2 rounded-full bg-white border border-current text-sm font-semibold shrink-0">
+                        Ver contas
+                    </button>
+                </div>
+            )}
+
             {/* Abas — pílula (Linguagem visual v2, CLAUDE.md), scroll horizontal no mobile */}
             <div className="flex items-center gap-1.5 mb-5 overflow-x-auto hide-scrollbar pb-0.5">
                 <button
@@ -546,6 +589,15 @@ const DetalheCliente = () => {
                     <ShieldCheck className="h-3.5 w-3.5" /> Qualidade dos dados
                     {pendenciasQualidade > 0 && (
                         <span className={`rounded-full px-1.5 text-[11px] ${abaAtiva === 'qualidade' ? 'bg-white/20' : 'bg-black/[.08]'}`}>{pendenciasQualidade}</span>
+                    )}
+                </button>
+                <button
+                    onClick={() => setAbaAtiva('financeiro')}
+                    className={`shrink-0 whitespace-nowrap px-3.5 py-2 rounded-full text-sm font-bold min-h-[44px] md:min-h-[36px] flex items-center gap-1.5 transition-colors ${abaAtiva === 'financeiro' ? 'bg-house text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+                >
+                    <DollarSign className="h-3.5 w-3.5" /> Financeiro
+                    {inad?.parcelasVencidas > 0 && (
+                        <span className="rounded-full px-1.5 text-[11px] bg-red-600 text-white">{inad.parcelasVencidas}</span>
                     )}
                 </button>
                 <button
@@ -569,6 +621,26 @@ const DetalheCliente = () => {
                     </button>
                 )}
             </div>
+
+            {/* ============================= ABA: FINANCEIRO ============================= */}
+            {abaAtiva === 'financeiro' && (
+                <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-6">
+                    <div className="flex items-center gap-2 px-5 py-3.5 border-b border-gray-100">
+                        <DollarSign className="h-4 w-4 text-primary" />
+                        <span className="text-xs font-bold uppercase tracking-widest text-gray-600">Contas em aberto</span>
+                    </div>
+                    {!inad ? (
+                        <p className="text-sm text-gray-500 text-center py-8">Carregando...</p>
+                    ) : (inad.contas || []).length === 0 && !inad.inadimplente ? (
+                        <p className="text-sm text-gray-600 text-center py-8">Nenhuma conta em aberto para este cliente.</p>
+                    ) : (
+                        <>
+                            <ContasEmAbertoLista detalhe={inad} />
+                            <AcoesContasEmAberto clienteId={uuid} clienteNome={cliente.NomeFantasia || cliente.Nome} detalhe={inad} className="px-4 py-3 border-t border-gray-100" />
+                        </>
+                    )}
+                </div>
+            )}
 
             {/* ============================= ABA: QUALIDADE DOS DADOS ============================= */}
             {abaAtiva === 'qualidade' && (
@@ -1657,10 +1729,8 @@ const DetalheCliente = () => {
                         {/* Financeiro */}
                         <div className="col-span-2 sm:col-span-3 lg:col-span-4 pt-4 border-t border-gray-100">
                             <span className="block text-xs text-gray-400 uppercase tracking-wide mb-2 flex items-center gap-1"><DollarSign className="h-3 w-3" /> Financeiro</span>
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                            <div className="grid grid-cols-2 gap-3">
                                 {[
-                                    { label: 'Atrasos Pag.', value: cliente.Atrasos_Pagamentos, alert: true },
-                                    { label: 'Atrasos Rec.', value: cliente.Atrasos_Recebimentos, alert: false },
                                     { label: 'Pagamentos Mês', value: cliente.Pagamentos_Mes_Atual, alert: false },
                                     { label: 'Recebimentos Mês', value: cliente.Recebimentos_Mes_Atual, alert: false },
                                 ].map(({ label, value, alert }) => {

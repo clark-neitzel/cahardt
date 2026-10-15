@@ -21,6 +21,10 @@ export const CORES_ROTATIVAS = ['#2563eb', '#d97706', '#7c3aed', '#db2777', '#08
 
 export const COR_SEM_VALOR = '#6b7280';
 export const COR_OCULTO = '#d1d5db'; // fatia de valor desligado na legenda (esmaecida)
+// Inadimplência: vermelho = em atraso, âmbar = a confirmar (Pix/cartão), verde = em dia
+export const COR_INADIMPLENCIA = { atraso: '#dc2626', confirmar: '#d97706', emdia: '#16a34a' };
+export const ROTULO_INADIMPLENCIA = { atraso: 'Em atraso', confirmar: 'A confirmar', emdia: 'Em dia' };
+export const ORDEM_INADIMPLENCIA = ['atraso', 'confirmar', 'emdia'];
 export const COR_WHATSAPP = { sim: '#16a34a', nao: '#dc2626' };
 export const COR_SELECAO = '#cba258'; // dourado — só destaque
 
@@ -33,6 +37,7 @@ export const OPCOES_COLORIR = [
     { valor: 'vendedor', label: 'Vendedor' },
     { valor: 'whatsapp', label: 'WhatsApp' },
     { valor: 'cidade', label: 'Cidade' },
+    { valor: 'inadimplencia', label: 'Inadimplência' },
 ];
 
 export const ROTULO_SEM_VALOR = {
@@ -58,6 +63,7 @@ export function chavesDoCliente(c, colorirPor) {
         case 'vendedor': return [c.vendedorId || SEM_VALOR];
         case 'whatsapp': return [c.whatsapp?.temNumero ? 'sim' : 'nao'];
         case 'cidade': return [c.cidade || SEM_VALOR];
+        case 'inadimplencia': return [c.inadimplente ? 'atraso' : (c.aConfirmar ? 'confirmar' : 'emdia')];
         default: return [SEM_VALOR];
     }
 }
@@ -69,6 +75,7 @@ export function rotuloDaChave(chave, colorirPor, c) {
         case 'categoria': return c?.categoriaNome || 'Categoria';
         case 'vendedor': return c?.vendedorNome ? `${c.vendedorNome}${c.vendedorAtivo === false ? ' (inativo)' : ''}` : 'Vendedor';
         case 'whatsapp': return chave === 'sim' ? 'Tem WhatsApp' : 'Sem WhatsApp';
+        case 'inadimplencia': return ROTULO_INADIMPLENCIA[chave] || String(chave);
         default: return String(chave);
     }
 }
@@ -77,6 +84,7 @@ export function rotuloDaChave(chave, colorirPor, c) {
 export function corDaChave(chave, colorirPor, indice = 0) {
     if (chave === SEM_VALOR) return COR_SEM_VALOR;
     if (colorirPor === 'diaEntrega' || colorirPor === 'diaVenda') return COR_DIA[chave] || COR_SEM_VALOR;
+    if (colorirPor === 'inadimplencia') return COR_INADIMPLENCIA[chave] || COR_SEM_VALOR;
     if (colorirPor === 'whatsapp') return chave === 'sim' ? COR_WHATSAPP.sim : COR_WHATSAPP.nao;
     return CORES_ROTATIVAS[indice % CORES_ROTATIVAS.length];
 }

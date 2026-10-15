@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import mapaClientesService from '../../../services/mapaClientesService';
 import { parseDias } from '../../../components/DayPicker';
-import { chavesDoCliente, rotuloDaChave, corDaChave, diasReais, SEM_VALOR, COR_OCULTO } from './coresMapa';
+import { chavesDoCliente, rotuloDaChave, corDaChave, diasReais, SEM_VALOR, COR_OCULTO, ORDEM_INADIMPLENCIA } from './coresMapa';
 
 // Padrão dos filtros da tela (persistidos por useFiltrosSalvos em MapaClientes.jsx).
 export const FILTROS_PADRAO = {
@@ -12,6 +12,7 @@ export const FILTROS_PADRAO = {
     ativo: 'ativos',     // ativos | inativos | todos
     perfis: ['CLIENTE'], // perfil do cadastro (CLIENTE / FORNECEDOR…) — fornecedor some por padrão
     compras: 'qualquer', // qualquer | comprou | naoComprou (junto com o FiltroPeriodo 'mapa-clientes')
+    soAtraso: false,     // só clientes em atraso (vermelho) — fonte única do servidor
     colorirPor: 'diaEntrega',
 };
 
@@ -82,6 +83,7 @@ export default function useDadosMapa(filtros, compras = null) {
             if (dV.size && !(c.diasVenda || []).some(d => dV.has(d))) return false;
             if (f.whatsapp === 'com' && !c.whatsapp?.temNumero) return false;
             if (f.whatsapp === 'sem' && c.whatsapp?.temNumero) return false;
+            if (f.soAtraso && !c.inadimplente) return false;
             if (f.gps === 'com' && !c.gps) return false;
             if (f.gps === 'sem' && c.gps) return false;
             return true;
@@ -121,6 +123,7 @@ export default function useDadosMapa(filtros, compras = null) {
             if (b.chave === SEM_VALOR) return -1;
             if (por === 'diaEntrega' || por === 'diaVenda') return ordem.indexOf(a.chave) - ordem.indexOf(b.chave);
             if (por === 'whatsapp') return a.chave === 'sim' ? -1 : 1;
+            if (por === 'inadimplencia') return ORDEM_INADIMPLENCIA.indexOf(a.chave) - ORDEM_INADIMPLENCIA.indexOf(b.chave);
             return a.rotulo.localeCompare(b.rotulo, 'pt-BR');
         });
         // índice alfabético só entre os que têm valor (paleta rotativa estável)

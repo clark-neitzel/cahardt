@@ -52,7 +52,7 @@ export default function FiltrosMapa({ filtros, setFiltros, opcoes, vendedores, c
     const ativos = useMemo(() => {
         let n = 0;
         ['cidades', 'bairros', 'categorias', 'vendedores', 'diasEntrega', 'diasVenda'].forEach(k => { if ((filtros[k] || []).length) n++; });
-        ['whatsapp', 'gps', 'ativo', 'compras'].forEach(k => { if (filtros[k] !== FILTROS_PADRAO[k]) n++; });
+        ['whatsapp', 'gps', 'ativo', 'compras', 'soAtraso'].forEach(k => { if (filtros[k] !== FILTROS_PADRAO[k]) n++; });
         if (!mesmoConjunto(filtros.perfis || [], FILTROS_PADRAO.perfis)) n++;
         // O período só pesa quando o filtro de compras está ligado (sozinho ele não filtra nada)
         if (filtros.compras !== 'qualquer' && periodo && !periodo.padrao) n++;
@@ -81,6 +81,14 @@ export default function FiltrosMapa({ filtros, setFiltros, opcoes, vendedores, c
                         <X className="h-4 w-4" /> Limpar
                     </button>
                 )}
+                <button
+                    type="button"
+                    aria-pressed={!!filtros.soAtraso}
+                    onClick={() => set('soAtraso', !filtros.soAtraso)}
+                    className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-2 min-h-[40px] rounded-full border text-sm font-medium ${filtros.soAtraso ? 'bg-red-600 border-red-600 text-white' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'}`}
+                >
+                    Só em atraso
+                </button>
                 <span className="shrink-0 h-6 w-px bg-gray-200 mx-1" aria-hidden="true" />
                 <span className="shrink-0 text-[11px] font-bold uppercase tracking-widest text-gray-600">Colorir por</span>
                 {OPCOES_COLORIR.map(o => (

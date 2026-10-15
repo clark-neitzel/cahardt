@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Inadimplência visível — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp (cartão compacto, sem imagem) -->
+<meta property="og:title" content="⚠️ Novidade no Hardt App: Inadimplência visível">
+<meta property="og:description" content="Agora dá para ver na hora quem está em atraso em todas as telas — e o que fazer quando a venda trava.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 96px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 7vw, 40px);
+    font-weight: 800;
+    line-height: 1.12;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.75);
+    font-size: 16px;
+    max-width: 46ch;
+    margin: 0 auto;
+    text-wrap: balance;
+  }
+
+  /* mock da tela flutuando sobre o hero */
+  .mock {
+    max-width: 420px;
+    margin: -68px auto 28px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.28);
+    overflow: hidden;
+    text-align: left;
+  }
+  .mock-top {
+    background: var(--house);
+    color: #fff;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .mock-top small {
+    display: block;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    color: rgba(255,255,255,.55);
+  }
+  .mock-top strong { font-size: 16px; line-height: 1.2; }
+  .mock-ico { font-size: 24px; }
+  .mock-body { padding: 16px 18px 18px; }
+  .mock-label {
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--ink-soft);
+    margin-bottom: 4px;
+  }
+  .mock-input {
+    border: 1.5px solid #d8d5cc;
+    border-radius: 10px;
+    padding: 11px 13px;
+    font-size: 15px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--ink);
+    background: #fff;
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+  }
+  .mock-input.focado { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0,117,74,.14); }
+  .cursor { display: inline-block; width: 2px; height: 18px; background: var(--primary); margin-left: 2px; animation: pisca 1s steps(1) infinite; }
+  @keyframes pisca { 50% { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .cursor { animation: none; } }
+  .mock-campos { margin-top: 14px; display: grid; gap: 9px; }
+  .campo {
+    background: #f6f5f1;
+    border-radius: 9px;
+    padding: 8px 12px;
+    font-size: 13px;
+    color: #b9b5aa;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background .4s, color .4s;
+  }
+  .campo b { font-weight: 700; }
+  .campo.cheio { background: var(--mint); color: var(--primary-dark); }
+  .campo .ck { opacity: 0; transition: opacity .4s; }
+  .campo.cheio .ck { opacity: 1; }
+  .mock-status {
+    margin-top: 12px;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--ink-soft);
+    min-height: 20px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .mock-status.ok { color: var(--primary-dark); }
+
+  /* botão de demo */
+  .demo-cta {
+    display: block;
+    width: 100%;
+    max-width: 420px;
+    margin: 0 auto 8px;
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    font: inherit;
+    font-size: 16px;
+    font-weight: 800;
+    padding: 16px;
+    border-radius: 999px;
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(0,117,74,.35);
+  }
+  .demo-cta:hover { background: var(--primary-dark); }
+  .demo-cta:focus-visible, .acc-head:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .demo-hint { text-align: center; font-size: 12px; color: var(--ink-soft); margin: 0 0 34px; }
+
+  /* ── SEÇÕES / ACCORDION ── */
+  .sec-label {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: var(--primary-dark);
+    margin: 34px 4px 12px;
+  }
+  .acc {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .acc-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: none;
+    border: none;
+    font: inherit;
+    text-align: left;
+    padding: 15px 16px;
+    cursor: pointer;
+    min-height: 56px;
+  }
+  .acc-ico {
+    width: 38px; height: 38px;
+    border-radius: 11px;
+    background: var(--mint);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  /* passos */
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n {
+    width: 30px; height: 30px; flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 800;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .rodape {
+    text-align: center;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 40px;
+  }
+  .rodape strong { color: var(--primary-dark); }
+
+  /* ── MOCKUPS DAS TELAS DO APP ── */
+  .tela {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .tela-titulo {
+    background: var(--house);
+    color: #fff;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .app-card {
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .app-card-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    border-bottom: 1px solid #f0efe9;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: #6b756f;
+  }
+  .app-card-body { padding: 12px; }
+  .app-input {
+    border: 1px solid #d8d5cc;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 12.5px;
+    color: var(--ink);
+    background: #fff;
+    margin-bottom: 8px;
+  }
+  .app-input small { display: block; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: #9aa5a0; margin-bottom: 2px; }
+  .app-input.ok { background: var(--mint); border-color: rgba(0,117,74,.25); }
+  .app-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--primary);
+    color: #fff;
+    font-size: 12.5px;
+    font-weight: 700;
+    padding: 9px 16px;
+    border-radius: 999px;
+  }
+  .app-btn.claro { background: #fff; border: 1.5px solid var(--primary); color: var(--primary); }
+  .app-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+  .app-pill {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 7px 14px;
+    border-radius: 999px;
+    border: 1.5px solid #d8d5cc;
+    color: #6b756f;
+    background: #fff;
+  }
+  .app-pill.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .app-busca {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .app-busca .app-input { flex: 1; margin-bottom: 0; color: #9aa5a0; }
+  .app-toggle-linha {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: #f7f6f2;
+    border: 1px solid #edece6;
+    border-radius: 10px;
+    padding: 9px 12px;
+    font-size: 12.5px;
+  }
+  .app-toggle-linha small { display: block; font-size: 10.5px; color: #9aa5a0; }
+  .app-toggle {
+    width: 38px; height: 22px; flex-shrink: 0;
+    border-radius: 999px;
+    background: var(--primary);
+    position: relative;
+  }
+  .app-toggle::after {
+    content: '';
+    position: absolute;
+    top: 3px; right: 3px;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: #fff;
+  }
+  .pin {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    flex-shrink: 0;
+    vertical-align: 2px;
+    margin-left: 6px;
+  }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+
+  /* ── extras desta página: selos e faixas do app ── */
+  .tag { display:inline-block; font-size:11px; font-weight:700; padding:3px 9px; border-radius:999px; vertical-align:1px; }
+  .tag.mint { background: var(--mint); color: var(--primary-dark); }
+  .selo { display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:700; padding:3px 9px; border-radius:999px; white-space:nowrap; }
+  .selo.v { background:#dc2626; color:#fff; }
+  .selo.a { background:#fef3c7; color:#92400e; }
+  .linha { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:6px 8px; padding:10px 12px; border-bottom:1px solid #f0efe9; font-size:12.5px; }
+  .linha:last-child { border-bottom:none; }
+  .linha.red { background:#fef2f2; }
+  .linha .nome { flex:1 1 130px; font-weight:700; display:flex; flex-wrap:wrap; align-items:center; gap:6px; min-width:0; }
+  .linha small { display:block; color:#9aa5a0; font-weight:400; font-size:11px; }
+  .faixa { border-radius:10px; padding:9px 12px; font-size:12.5px; margin-bottom:8px; border:1px solid; }
+  .faixa b { display:block; }
+  .faixa small { display:block; font-size:11px; opacity:.85; }
+  .faixa.vm { background:#fef2f2; border-color:#fca5a5; color:#991b1b; }
+  .faixa.lj { background:#fff7ed; border-color:#fdba74; color:#9a3412; }
+  .faixa.am { background:#fffbeb; border-color:#fcd34d; color:#78350f; }
+  .app-btn.laranja { background:#f97316; }
+  .app-btn.cinza { background:#d1d5db; color:#6b7280; }
+  .hero-mock { max-width:400px; margin:-68px auto 28px; background:#fff; border-radius:20px; box-shadow:0 18px 44px rgba(20,40,34,.28); overflow:hidden; text-align:left; }
+  .hero-mock .topo { background:var(--house); color:#fff; padding:12px 16px; font-size:13px; font-weight:800; }
+  .exemplo { font-size:12px; color:var(--ink-soft); text-align:center; margin:-4px 0 14px; }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>Cliente em atraso,<br>visível em todas as telas</h1>
+    <p>Um selo vermelho mostra quem está devendo e há quantos dias. Um selo amarelo avisa o que está só esperando conferência. E a venda a prazo para cliente em atraso passa a ter regra clara.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="hero-mock" aria-hidden="true">
+    <div class="topo">Clientes</div>
+    <div class="linha red"><div class="nome">Gourmet Lanches</div><span class="selo v">⚠ Em atraso R$ 1.247 · 57d</span></div>
+    <div class="linha"><div class="nome">Panificadora Aquarius</div><span class="selo a">🕒 A confirmar R$ 322 · Pix 12d</span></div>
+    <div class="linha"><div class="nome">Elida Neves de Oliveira</div><span class="selo v">⚠ Em atraso R$ 411 · 126d</span></div>
+  </div>
+  <p class="exemplo">Exemplos ilustrativos.</p>
+
+  <div class="sec-label">Como funciona</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🔴</span>
+      <strong>O selo vermelho: cliente em atraso</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Aparece quando o cliente tem título vencido e não pago, <b>desde o 1º dia</b>. Mostra o valor e os dias da parcela mais antiga (ex.: <b>R$ 1.247 · 57d</b>).</li>
+        <li><b>Boleto apontado na entrega não esconde mais a dívida.</b> Antes, o cliente sumia do aviso; agora continua em atraso até o banco ou o Caixa confirmar o pagamento.</li>
+        <li>Saldo de até R$ 1,00 não conta. Compra de funcionário e pedido especial ainda não entregue também não entram.</li>
+        <li>O selo aparece em Clientes, ficha, Pedidos, Novo Pedido, Rota, Atendimentos, Contas a Receber, Caixa, Carga, Mapa e Pendências. <b>Tocar em qualquer um abre o mesmo popup</b> com as contas.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🟡</span>
+      <strong>O selo amarelo: "a confirmar"</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>É o Pix, cartão ou dinheiro apontado na entrega que, depois de <b>7 dias</b>, ainda não foi conferido pelo Caixa ou pela conciliação.</li>
+        <li>É <b>pendência do escritório</b>, não cobrança do cliente: não trava venda e não vai para a cobrança.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">⛔</span>
+      <strong>Quando a venda trava e o que fazer</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>A venda a prazo só trava quando o atraso passa de <b>3 dias</b> e soma pelo menos <b>R$ 50,00</b>. Atraso menor só mostra o selo.</li>
+        <li>Travou? Tem dois caminhos: vender <b>à vista</b> (você assume a responsabilidade) ou pedir a alguém com a permissão <b>"Vender para inadimplente"</b>, que assume a responsabilidade — o nome dela fica na observação do pedido.</li>
+        <li>Aprovar, faturar ou converter um <b>pedido especial</b> de cliente em atraso também precisa dessa permissão. Bonificação não trava.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🤖</span>
+      <strong>A Ana continua igual</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Pedido que a Ana (ou o site) recebe continua entrando normalmente na fila de <b>Pedidos Online</b>.</li>
+        <li>Se o cliente estiver em atraso, o pedido <b>espera</b> um responsável liberar. Nada muda para o cliente que está conversando com a Ana.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="sec-label">Para começar a usar</div>
+
+  <div class="passos">
+    <div class="passo"><span class="passo-n">1</span><div><b>Atualize o app:</b> toque no ícone de atualizar ↻ (ou feche e abra o app).</div></div>
+    <div class="passo"><span class="passo-n">2</span><div>Abra <b>Clientes</b> ou <b>Pedidos</b>: quem está em atraso já aparece com o selo. Toque nele para ver as contas.</div></div>
+    <div class="passo"><span class="passo-n">3</span><div>Em <b>Pedidos</b>, use o filtro <b>"Só clientes em atraso"</b> para ver todos de uma vez.</div></div>
+    <div class="passo"><span class="passo-n">4</span><div>Na hora de vender para quem está em atraso, siga a faixa que aparecer no <b>Novo Pedido</b>.</div></div>
+  </div>
+
+  <div class="sec-label">As telas do app, sem mistério</div>
+  <p class="exemplo">Valores e nomes são só de exemplo.</p>
+
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 1 · Clientes — o selo e o popup "Contas em aberto"</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="linha red"><div class="nome">Gourmet Lanches<small style="width:100%">Marcos · Boleto 7 dias</small></div><span class="selo v">⚠ Inad. R$ 1.247,08<span class="pin">1</span></span></div>
+        <div class="linha"><div class="nome">Panificadora Aquarius</div><span class="selo a">🕒 A confirmar R$ 322,44 · Pix 12d<span class="pin">2</span></span></div>
+      </div>
+      <div class="app-card">
+        <div class="app-card-head" style="background:#dc2626;color:#fff;">⚠ Contas em aberto — Gourmet Lanches</div>
+        <div class="app-card-body">
+          <div style="display:flex;gap:16px;font-size:11px;color:#991b1b;margin-bottom:8px;"><div>TOTAL VENCIDO<br><b style="font-size:16px;">R$ 1.247,08</b></div><div>PARCELAS<br><b style="font-size:16px;">3</b></div></div>
+          <div style="font-size:12px;margin-bottom:10px;"><b>#2542</b> · R$ 642,38 · <span style="color:#991b1b;font-weight:700;">Vencido 57d</span><br><b>#2698</b> · R$ 110,00 · <span style="color:#991b1b;font-weight:700;">Vencido 50d</span><br><b>#3044</b> · R$ 494,70 · <span style="color:#991b1b;font-weight:700;">Vencido 29d</span></div>
+          <span class="app-btn">💬 Cobrar agora (WhatsApp)<span class="pin">3</span></span> <span class="app-btn claro" style="margin-top:6px;">Abrir no Contas a Receber<span class="pin">4</span></span>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Selo vermelho</b> = cliente com título vencido e não pago, desde o 1º dia. Mostra o valor total e quantos dias tem a parcela mais antiga.</span></div>
+      <div><span class="pin">2</span><span><b>Selo amarelo "A confirmar"</b> = o cliente disse que pagou (Pix/cartão/dinheiro apontado na entrega) mas o dinheiro ainda não foi conferido. É pendência do escritório — <b>não</b> é cobrança do cliente.</span></div>
+      <div><span class="pin">3</span><span><b>"Cobrar agora"</b> manda a cobrança pelo WhatsApp. Só aparece para quem tem a permissão da Régua de Cobrança.</span></div>
+      <div><span class="pin">4</span><span><b>"Abrir no Contas a Receber"</b> leva para o Financeiro já filtrado neste cliente. Só aparece para quem acessa o Contas a Receber.</span></div>
+      <div><span class="pin">5</span><span>Esse mesmo popup abre ao tocar em <b>qualquer selo</b>, em qualquer tela.</span></div>
+    </div>
+  </div>
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 2 · Pedidos — selo na lista e filtro novo</div>
+    <div class="tela-corpo">
+      <div class="app-pills" style="margin-bottom:10px;"><span class="app-pill on">Todos</span><span class="app-pill">Enviar</span><span class="app-pill">Faturado</span><span class="app-pill on" style="background:#fee2e2;border-color:#fca5a5;color:#991b1b;">⚠ Só clientes em atraso<span class="pin">1</span></span></div>
+      <div class="app-card">
+        <div class="linha red"><div class="nome">#3044 Gourmet Lanches <span class="selo v">⚠ R$ 1.247 · 57d</span><span class="pin">2</span><small style="width:100%">Entrega: 09/09/2026 · Vend.: Marcos</small></div><b>R$ 494,70</b></div>
+        <div class="linha"><div class="nome">#3201 Panificadora Aquarius <span class="selo a">🕒 R$ 322 · Pix 12d</span><span class="pin">3</span><small style="width:100%">Entrega: 12/10/2026 · Vend.: Marcos</small></div><b>R$ 322,44</b></div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Novo filtro <b>"Só clientes em atraso"</b>: fica lembrado, então volta do jeito que você deixou.</span></div>
+      <div><span class="pin">2</span><span>O selo vermelho aparece logo depois do nome do cliente e a linha ganha um fundinho vermelho claro. Tocar abre o popup.</span></div>
+      <div><span class="pin">3</span><span>Selo amarelo: <b>sem</b> fundo vermelho, porque não é cobrança.</span></div>
+    </div>
+  </div>
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 3 · Aprovar pedido especial de cliente em atraso</div>
+    <div class="tela-corpo">
+      <div class="faixa vm"><b>Cliente com R$ 691,28 em atraso<span class="pin">1</span></b><small>3 parcelas, a mais antiga há 48 dias · ver contas</small></div>
+      <div class="app-card"><div class="app-card-body">
+        <div style="font-size:12px;font-weight:800;color:#6b21a8;margin-bottom:8px;">Pendente de aprovação</div>
+        <div style="margin-bottom:6px;"><b style="font-size:10px;color:#9aa5a0;">QUEM TEM A PERMISSÃO</b></div>
+        <span class="app-btn laranja">Assumir responsabilidade e aprovar<span class="pin">2</span></span>
+        <div style="font-size:11px;color:#c2410c;margin:6px 0 12px;">Ao aprovar, seu nome fica na observação do pedido.</div>
+        <div style="margin-bottom:6px;"><b style="font-size:10px;color:#9aa5a0;">QUEM NÃO TEM</b></div>
+        <span class="app-btn cinza">Aprovar agora<span class="pin">3</span></span>
+        <div style="font-size:11px;color:#dc2626;font-weight:700;margin-top:6px;">Só um responsável pode liberar este pedido.</div>
+      </div></div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>A <b>faixa vermelha</b> aparece no topo do pedido de qualquer cliente em atraso.</span></div>
+      <div><span class="pin">2</span><span>Quem tem a permissão <b>"Vender para inadimplente"</b> (ou é admin) vê o botão laranja. Ao aprovar, o nome dessa pessoa fica na observação do pedido como responsável.</span></div>
+      <div><span class="pin">3</span><span>Quem não tem a permissão vê o botão cinza, travado, com o aviso em vermelho. O sistema também recusa se tentarem pelo outro caminho. Isso vale para aprovar, faturar e converter pedido <b>especial</b>; bonificação não trava.</span></div>
+    </div>
+  </div>
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 4 · Novo Pedido — as faixas depois de escolher o cliente</div>
+    <div class="tela-corpo">
+      <div class="faixa lj"><b>Cliente com R$ 1.247,08 em atraso — você será registrado como responsável<span class="pin">1</span></b><small>3 parcelas vencidas sem pagamento</small></div>
+      <div class="faixa vm"><b>Venda bloqueada — cliente com R$ 1.247,08 em atraso<span class="pin">2</span></b><small>Selecione a condição "à vista" para prosseguir com sua responsabilidade</small></div>
+      <div class="faixa am"><b>Cliente com R$ 322,44 a confirmar — Pix apontado na entrega há 12 dias<span class="pin">3</span></b><small>Não bloqueia a venda · o escritório está conferindo a conciliação</small></div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Laranja:</b> o cliente deve, mas você tem a permissão — pode vender a prazo e fica registrado como responsável.</span></div>
+      <div><span class="pin">2</span><span><b>Vermelha:</b> venda a prazo bloqueada. Saída: escolher a condição <b>"à vista"</b> (você assume a responsabilidade) ou pedir a um responsável com a permissão.</span></div>
+      <div><span class="pin">3</span><span><b>Amarela:</b> só informação. Não bloqueia nada.</span></div>
+    </div>
+  </div>
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 5 · Rota — a faixa no cartão do cliente</div>
+    <div class="tela-corpo">
+      <div class="app-card"><div class="app-card-body">
+        <div style="font-weight:800;font-size:14px;margin-bottom:8px;">Gourmet Lanches</div>
+        <div class="faixa vm" style="margin-bottom:6px;"><b>Inadimplente — R$ 1.247,08 em atraso ›<span class="pin">1</span></b></div>
+        <div class="faixa am"><b>A confirmar — R$ 322,44 · Pix 12d ›<span class="pin">2</span></b></div>
+      </div></div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Faixa vermelha dentro do cartão: tocar abre as contas em aberto. Dá para lembrar o cliente na visita (e já abrir a cobrança, se tiver permissão).</span></div>
+      <div><span class="pin">2</span><span>Faixa amarela para o "a confirmar" — avise o escritório se o cliente disser que já pagou.</span></div>
+    </div>
+  </div>
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 6 · Pedidos Online — a fila do site e da Ana</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="linha"><div class="nome">#418 Debora Rosa <span class="selo v">⚠ R$ 1.247 · 57d</span><span class="pin">1</span><small style="width:100%">Aguardando · WhatsApp IA</small></div><b>R$ 230,40</b></div>
+        <div style="padding:0 12px 12px;"><div class="faixa vm" style="margin:0;font-weight:800;font-size:11px;text-transform:uppercase;">⚠ Aguardando liberação de um responsável<span class="pin">2</span></div></div>
+      </div>
+      <span class="app-btn laranja">Assumir responsabilidade e aprovar<span class="pin">3</span></span>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Selo ao lado do nome do cliente, igual ao da lista de Pedidos.</span></div>
+      <div><span class="pin">2</span><span>O pedido <b>continua na fila</b> — a Ana não muda nada. Ele só espera alguém com permissão liberar.</span></div>
+      <div><span class="pin">3</span><span>Quem tem a permissão vê o botão laranja; quem não tem vê "Aprovar e gerar pedido" travado. "A confirmar" (amarelo) não trava.</span></div>
+    </div>
+  </div>
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 7 · Motorista — aviso na entrega</div>
+    <div class="tela-corpo">
+      <div class="faixa am"><b>Este cliente tem R$ 1.247,08 em atraso (3 parcelas). Ofereça receber agora.<span class="pin">1</span></b></div>
+      <div class="app-card"><div class="app-card-body" style="font-size:12.5px;">Condição prevista: <b>Boleto 7 dias</b></div></div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Faixa amarela (de propósito, não vermelha): é só um aviso para o motorista oferecer o recebimento na hora — <b>não impede finalizar a entrega</b>. Aparece em todas as etapas do check-in, se o administrador deixar essa opção ligada.</span></div>
+    </div>
+  </div>
+  <div class="tela">
+    <div class="tela-titulo">⚙️ Tela 8 · Configurações › Venda a inadimplente (só admin)</div>
+    <div class="tela-corpo">
+      <div class="app-card"><div class="app-card-head">⚠ Venda a inadimplente</div><div class="app-card-body">
+        <div class="app-toggle-linha" style="margin-bottom:8px;"><div>Dias de carência<small>Só bloqueia a venda depois de quantos dias do vencimento</small></div><b>3 dias<span class="pin">1</span></b></div>
+        <div class="app-toggle-linha" style="margin-bottom:8px;"><div>Valor mínimo para bloquear<small>Atrasos menores aparecem, mas não travam</small></div><b>R$ 50,00<span class="pin">2</span></b></div>
+        <div class="app-toggle-linha" style="margin-bottom:8px;"><div>Compra de funcionário nunca é inadimplência</div><span class="app-toggle"></span></div>
+        <div class="app-toggle-linha" style="margin-bottom:8px;"><div>Motorista vê o atraso na entrega</div><span class="app-toggle"></span></div>
+        <div class="app-toggle-linha"><div>Pedido do site/Ana exige responsável<small>Sempre ligado</small></div><b>🔒 Fixa<span class="pin">3</span></b></div>
+      </div></div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>O selo aparece desde o 1º dia de atraso, mas a venda só <b>trava</b> depois de 3 dias de atraso <b>e</b> pelo menos R$ 50,00 devidos. Os dois números podem ser mudados aqui.</span></div>
+      <div><span class="pin">2</span><span>Atraso pequeno (menos que o mínimo) aparece com o selo, mas não trava.</span></div>
+      <div><span class="pin">3</span><span>A regra do site/Ana é fixa e não pode ser desligada. Cada linha mostra quem mudou e quando.</span></div>
+    </div>
+  </div>
+
+  <p class="rodape"><strong>Hardt App</strong> · qualquer dúvida, pergunte ao Clippy ou fale com o escritório.</p>
+
+</div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.parentElement;
+    const abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>

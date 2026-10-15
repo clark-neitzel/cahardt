@@ -1386,6 +1386,23 @@ const congeladosService = {
             }));
         }
 
+        // Selo de inadimplência da fila (Entrega 2): uma consulta em lote pelos clientes vinculados dos
+        // pedidos ainda não aprovados. `aguardandoResponsavel` = a aprovação vai exigir um responsável
+        // (mesmo critério `bloqueiaVenda` que a trava usa). Aditivo; falha segue sem o campo.
+        try {
+            const inad = require('./inadimplenciaService');
+            const uuidDe = (p) => p.congeladosCliente?.clienteUuid || null;
+            const cids = [...new Set(pedidos.filter(p => PENDENTES.includes(p.status)).map(uuidDe).filter(Boolean))];
+            const mapaInad = cids.length ? await inad.situacaoPorClientes(cids) : new Map();
+            for (const p of pedidos) {
+                const cid = PENDENTES.includes(p.status) ? uuidDe(p) : null;
+                p.inadimplencia = cid ? inad.resumir(mapaInad.get(cid)) : null;
+                p.aguardandoResponsavel = !!(p.inadimplencia && p.inadimplencia.bloqueiaVenda);
+            }
+        } catch (e) {
+            console.error('[Congelados] Falha ao anexar inadimplência na fila (segue sem):', e.message);
+        }
+
         return pedidos;
     },
 
@@ -1421,7 +1438,7 @@ const congeladosService = {
     },
 
     // Aprova e converte em Pedido normal/especial/bonificação
-    async adminAprovarPedido(id, { tipoConversao, dataVenda, dataEntrega, recalcular, aprovadoPorId, clienteUuid }) {
+    async adminAprovarPedido(id, { tipoConversao, dataVenda, dataEntrega, recalcular, aprovadoPorId, clienteUuid, permissoes = {}, aprovadoPorNome = 'Usuário' }) {
         const cp = await prisma.congeladosPedido.findUnique({
             where: { id },
             include: { itens: { include: { congeladosProduto: true } }, congeladosCliente: true },
@@ -1437,6 +1454,29 @@ const congeladosService = {
         if (!cId) throw new Error('Cliente sem cadastro no app. Cadastre no Conta Azul e vincule antes de aprovar.');
 
         const cliente = await prisma.cliente.findUnique({ where: { UUID: cId }, select: { idVendedor: true, Dia_de_entrega: true } });
+
+        // ── Trava de inadimplência (Entrega 2) ──
+        // Cliente em atraso: só quem tem `Pode_Vender_Inadimplente`/admin aprova, e o nome entra na
+        // observação do pedido gerado. Sem escape "à vista" no site. Bonificação não trava (decisão do dono).
+        // `criarPedidoSite` e a API da IA NÃO passam por aqui — o pedido entra na fila normalmente.
+        let obsResponsavel = '';
+        if (tipoConversao !== 'BONIFICACAO') {
+            const inad = require('./inadimplenciaService');
+            const trava = await inad.exigirResponsavel({
+                clienteId: cId,
+                permissoes,
+                nomeUsuario: aprovadoPorNome,
+                acao: 'aprovacao',
+            });
+            if (trava.bloqueado) {
+                const err = new Error('Este cliente está com contas em atraso. Só um responsável (permissão "Vender para inadimplente") pode liberar este pedido.');
+                err.codigoInadimplencia = trava.codigo;
+                err.totalVencido = trava.totalVencido;
+                err.diasMaisAntiga = trava.diasMaisAntiga;
+                throw err;
+            }
+            obsResponsavel = trava.obs || '';
+        }
 
         // ── Data de entrega do Pedido (Pedido.dataVenda É a data de entrega no sistema) ──
         // Prioridade: dataEntrega do body (YYYY-MM-DD, não vazia) → recálculo explícito
@@ -1544,7 +1584,7 @@ const congeladosService = {
             clienteId: cId,
             vendedorId: cliente?.idVendedor || null,
             dataVenda: dataVendaFinal,
-            observacoes: `Site Congelados #${cp.numero}${cp.observacoes ? ` · ${cp.observacoes}` : ''}`,
+            observacoes: `Site Congelados #${cp.numero}${cp.observacoes ? ` · ${cp.observacoes}` : ''}${obsResponsavel}`,
             especial,
             bonificacao,
             itens: itensData,

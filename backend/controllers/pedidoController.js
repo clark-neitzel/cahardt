@@ -53,6 +53,36 @@ function dataSP(d) {
     catch { return null; }
 }
 
+// Trava de aprovação por inadimplência (Entrega 2). Usa a fonte única; lê config FRESCA; nunca cacheia.
+// `ignorarPedidoId`: a parcela do especial nasce vencida — sem isso o pedido se bloquearia sozinho.
+// Devolve { resposta } (já enviada, 403) ou { obs } (linha "se responsabiliza" p/ gravar nas observações).
+async function travaInadimplenciaAprovacao(req, res, pedido) {
+    try {
+        const inad = require('../services/inadimplenciaService');
+        const r = await inad.exigirResponsavel({
+            clienteId: pedido.clienteId,
+            permissoes: req.user?.permissoes || {},
+            nomeUsuario: req.user?.nome || req.user?.login || 'Usuário',
+            ignorarPedidoId: pedido.id,
+            acao: 'aprovacao',
+        });
+        if (r.bloqueado) {
+            res.status(403).json({
+                error: 'Este cliente está com contas em atraso. Só um responsável (permissão "Vender para inadimplente") pode liberar este pedido.',
+                codigo: r.codigo,
+                totalVencido: r.totalVencido,
+                diasMaisAntiga: r.diasMaisAntiga,
+            });
+            return { resposta: true };
+        }
+        return { obs: r.obs || '' };
+    } catch (e) {
+        // Falha ao calcular NÃO libera nem derruba: mesma postura do criar() — segue sem trava, registra no log.
+        console.error('[Inadimplência] Falha ao checar trava de aprovação (segue sem):', e.message);
+        return { obs: '' };
+    }
+}
+
 const pedidoController = {
     resumoPendencias: async (req, res) => {
         try {
@@ -113,6 +143,19 @@ const pedidoController = {
                 }
             } catch (e) {
                 console.error('Falha ao anexar situação Asaas na listagem (segue sem):', e.message);
+            }
+
+            // Selo de inadimplência por pedido (Entrega 2): UMA consulta em lote pelos clientes da página.
+            // Só no modo paginado (tela de Pedidos). Falha segue sem o campo.
+            try {
+                if (!Array.isArray(pedidos) && Array.isArray(pedidos?.items)) {
+                    const inad = require('../services/inadimplenciaService');
+                    const cids = [...new Set(pedidos.items.map(p => p.clienteId).filter(Boolean))];
+                    const mapaInad = await inad.situacaoPorClientes(cids);
+                    pedidos.items.forEach(p => { p.inadimplencia = p.clienteId ? inad.resumir(mapaInad.get(p.clienteId)) : null; });
+                }
+            } catch (e) {
+                console.error('Falha ao anexar inadimplência na listagem (segue sem):', e.message);
             }
 
             res.json(pedidos);
@@ -675,13 +718,18 @@ const pedidoController = {
             if (!pedido.especial) return res.status(400).json({ error: 'Este pedido não é especial.' });
             if (pedido.statusEnvio === 'RECEBIDO') return res.status(400).json({ error: 'Este pedido já foi aprovado.' });
 
+            // Trava de inadimplência (back de verdade): vendedor sem Pode_Vender_Inadimplente leva 403.
+            const trava = await travaInadimplenciaAprovacao(req, res, pedido);
+            if (trava.resposta) return;
+
             const pedidoAprovado = await prisma.$transaction(async (tx) => {
                 const updated = await tx.pedido.update({
                     where: { id },
                     data: {
                         statusEnvio: 'RECEBIDO',
                         situacaoCA: 'FATURADO',
-                        enviadoEm: new Date()
+                        enviadoEm: new Date(),
+                        ...(trava.obs ? { observacoes: `${pedido.observacoes || ''}${trava.obs}`.trim() } : {})
                     }
                 });
 
@@ -843,8 +891,28 @@ const pedidoController = {
                 return res.status(403).json({ error: 'Você não tem permissão para converter pedidos especiais.' });
             }
 
+            // Trava de inadimplência: só a conversão HUMANA (a automática por PIX não passa por aqui).
+            // Ignora a conta do próprio especial (já faturado, a parcela nasce vencida).
+            const alvo = await prisma.pedido.findUnique({ where: { id: req.params.id }, select: { id: true, clienteId: true, observacoes: true, especial: true } });
+            let obsResp = '';
+            if (alvo?.especial) {
+                const trava = await travaInadimplenciaAprovacao(req, res, alvo);
+                if (trava.resposta) return;
+                obsResp = trava.obs;
+            }
+
             const pedidoConversaoService = require('../services/pedidoConversaoService');
             const resultado = await pedidoConversaoService.converterManual(req.params.id, req.user?.id || null);
+
+            // Quem assumiu a responsabilidade fica registrado nas observações (fora da conversão).
+            if (obsResp) {
+                try {
+                    const atual = await prisma.pedido.findUnique({ where: { id: req.params.id }, select: { observacoes: true } });
+                    await prisma.pedido.update({ where: { id: req.params.id }, data: { observacoes: `${atual?.observacoes || ''}${obsResp}`.trim() } });
+                } catch (eObs) {
+                    console.error('[Conversão] Falha ao gravar a observação de responsabilidade (conversão já efetivada):', eObs.message);
+                }
+            }
 
             // Auditoria fora da conversão (falha aqui não desfaz nada)
             try {

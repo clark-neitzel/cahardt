@@ -37,3 +37,6 @@ certa dentro de Pedidos Online.
    "Copiar link do cliente" no cabeçalho passam a valer para o canal escolhido.
 3. A última aba escolhida fica lembrada (por usuário) na próxima vez que a tela for aberta, a não ser
    que o link usado já traga `?aba=...` explícito (caso dos redirects acima).
+
+## Cliente em atraso na fila do site
+Pedido de cliente em atraso mostra o selo ao lado do nome. Se o atraso trava a venda, aparece a caixa "Aguardando liberação de um responsável" e o botão **Aprovar e gerar pedido** fica desabilitado para quem não tem a permissão "Vender para inadimplente" (ou admin); quem tem vê **Assumir responsabilidade e aprovar** e o nome entra na observação do pedido. O pedido continua na fila. Selo amarelo (a confirmar) não trava.

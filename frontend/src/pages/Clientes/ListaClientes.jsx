@@ -7,6 +7,8 @@ import tabelaPrecoService from '../../services/tabelaPrecoService';
 import fornecedorService from '../../services/fornecedorService';
 import { Search, MapPin, Phone, User, Filter, Settings, X, Save, AlertTriangle, MessageCircle, AlertCircle, UserPlus, Building2, ArrowRight } from 'lucide-react';
 import SelectBusca from '../../components/SelectBusca';
+import SeloInadimplencia from '../../components/SeloInadimplencia';
+import PopupContasEmAberto from '../../components/PopupContasEmAberto';
 import SeloWhatsappCliente, { LegendaSeloWhatsapp } from '../../components/SeloWhatsappCliente';
 import whatsappClientesService from '../../services/whatsappClientesService';
 import { opcoesVendedorFiltro, somenteAtivos } from '../../utils/vendedoresFiltro';
@@ -166,8 +168,6 @@ const ListaClientes = () => {
 
     // Modal de Inadimplência
     const [clienteInadimplente, setClienteInadimplente] = useState(null); // { nome, uuid }
-    const [inadimplenciaDetalhe, setInadimplenciaDetalhe] = useState(null);
-    const [loadingInadimplencia, setLoadingInadimplencia] = useState(false);
 
     // Carregar dados de apoio
     useEffect(() => {
@@ -366,19 +366,9 @@ const ListaClientes = () => {
     const formatarMoeda = (valor) =>
         Number(valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-    const abrirModalInadimplencia = async (e, cliente) => {
+    const abrirModalInadimplencia = (e, cliente) => {
         e.stopPropagation();
         setClienteInadimplente({ nome: cliente.NomeFantasia || cliente.Nome, uuid: cliente.UUID });
-        setInadimplenciaDetalhe(null);
-        setLoadingInadimplencia(true);
-        try {
-            const data = await clienteService.obterInadimplencia(cliente.UUID);
-            setInadimplenciaDetalhe(data);
-        } catch {
-            setInadimplenciaDetalhe({ erro: true });
-        } finally {
-            setLoadingInadimplencia(false);
-        }
     };
 
     // Ação do estado vazio: se tem filtro/busca ativo, oferece limpar; senão,
@@ -788,16 +778,7 @@ const ListaClientes = () => {
                                                     {cliente.clienteInsights[0].diasSemComprar}d sem comprar
                                                 </span>
                                             )}
-                                            {cliente.inadimplente && (
-                                                <button
-                                                    onClick={(e) => abrirModalInadimplencia(e, cliente)}
-                                                    className="px-1.5 py-0.5 inline-flex items-center gap-0.5 text-[11px] leading-4 font-semibold rounded-full bg-red-600 text-white hover:bg-red-700 transition-colors"
-                                                    title={`Inadimplente — ${formatarMoeda(cliente.totalVencido)} em atraso`}
-                                                >
-                                                    <AlertCircle className="h-2.5 w-2.5" />
-                                                    Inad. {formatarMoeda(cliente.totalVencido)}
-                                                </button>
-                                            )}
+                                            <SeloInadimplencia situacao={cliente} compacto formato="lista" onClick={(e) => abrirModalInadimplencia(e, cliente)} />
                                         </div>
                                     </td>
                                 </tr>
@@ -925,15 +906,7 @@ const ListaClientes = () => {
                                         {cliente.clienteInsights[0].diasSemComprar}d sem comprar
                                     </span>
                                 )}
-                                {cliente.inadimplente && (
-                                    <button
-                                        onClick={(e) => abrirModalInadimplencia(e, cliente)}
-                                        className="ml-auto px-1.5 py-0.5 inline-flex items-center gap-0.5 text-[10px] font-semibold rounded-full bg-red-600 text-white hover:bg-red-700 transition-colors"
-                                    >
-                                        <AlertCircle className="h-2.5 w-2.5" />
-                                        Inadimplente {formatarMoeda(cliente.totalVencido)}
-                                    </button>
-                                )}
+                                <SeloInadimplencia situacao={cliente} compacto formato="listaMobile" className="ml-auto" onClick={(e) => abrirModalInadimplencia(e, cliente)} />
                             </div>
                         </div>
                     </div>
@@ -1151,113 +1124,9 @@ const ListaClientes = () => {
                 </div>
             )}
 
-            {/* Modal Inadimplência */}
+            {/* Popup "Contas em aberto" (componente único do app) */}
             {clienteInadimplente && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-                    <div className="bg-white rounded-lg shadow-xl w-full max-w-lg overflow-hidden">
-                        <div className="bg-red-600 px-5 py-4 flex justify-between items-center">
-                            <h3 className="text-base font-semibold text-white flex items-center gap-2">
-                                <AlertCircle className="h-5 w-5" />
-                                Contas em Aberto — {clienteInadimplente.nome}
-                            </h3>
-                            <button onClick={() => setClienteInadimplente(null)} className="text-red-100 hover:text-white">
-                                <X className="h-5 w-5" />
-                            </button>
-                        </div>
-
-                        <div className="flex flex-col max-h-[75vh] overflow-hidden">
-                            {loadingInadimplencia ? (
-                                <p className="text-sm text-gray-500 text-center py-8">Carregando...</p>
-                            ) : inadimplenciaDetalhe?.erro ? (
-                                <p className="text-sm text-red-600 text-center py-8">Erro ao carregar dados.</p>
-                            ) : inadimplenciaDetalhe ? (
-                                <>
-                                    <div className="flex gap-6 px-5 py-3 bg-red-50 border-b border-red-100 shrink-0">
-                                        <div>
-                                            <p className="text-[10px] font-semibold text-red-400 uppercase tracking-wide">Total vencido</p>
-                                            <p className="text-lg font-bold text-red-700">{formatarMoeda(inadimplenciaDetalhe.totalVencido)}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-[10px] font-semibold text-red-400 uppercase tracking-wide">Parcelas vencidas</p>
-                                            <p className="text-lg font-bold text-red-700">{inadimplenciaDetalhe.parcelasVencidas}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-[10px] font-semibold text-red-400 uppercase tracking-wide">Notas em aberto</p>
-                                            <p className="text-lg font-bold text-red-700">{inadimplenciaDetalhe.contas?.length || 0}</p>
-                                        </div>
-                                    </div>
-                                    <div className="overflow-y-auto flex-1 p-4 space-y-3">
-                                        {(inadimplenciaDetalhe.contas || []).map(conta => (
-                                            <div key={conta.id} className="border border-gray-200 rounded-xl overflow-hidden">
-                                                <div className="bg-gray-50 px-3 py-2.5 flex items-start justify-between gap-2">
-                                                    <div className="flex-1 min-w-0">
-                                                        <div className="flex items-center gap-1.5 flex-wrap">
-                                                            {conta.pedidoNumero && (
-                                                                <span className="text-xs font-bold text-gray-800">{conta.pedidoEspecial ? 'ZZ' : ''}#{conta.pedidoNumero}</span>
-                                                            )}
-                                                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${conta.status === 'PARCIAL' ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-100 text-blue-700'}`}>
-                                                                {conta.status === 'PARCIAL' ? 'Parcial' : 'Em aberto'}
-                                                            </span>
-                                                            {conta.condicaoPagamento && (
-                                                                <span className="text-[10px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">{conta.condicaoPagamento}</span>
-                                                            )}
-                                                        </div>
-                                                        <div className="flex gap-3 mt-0.5 text-[10px] text-gray-500">
-                                                            {conta.dataVenda && <span>Venda: {new Date(conta.dataVenda).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</span>}
-                                                            <span>{conta.parcelasPagas}/{conta.parcelasTotal} pagas</span>
-                                                            {conta.valorDevolvido > 0 && <span className="text-red-600 font-medium">Dev: {formatarMoeda(conta.valorDevolvido)}</span>}
-                                                        </div>
-                                                    </div>
-                                                    <div className="text-right shrink-0">
-                                                        <p className="text-xs font-bold text-gray-800">{formatarMoeda(conta.valorTotal)}</p>
-                                                        {conta.proximoVencimento && <p className="text-[10px] text-gray-400">Próx: {new Date(conta.proximoVencimento).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</p>}
-                                                    </div>
-                                                </div>
-                                                <div className="divide-y divide-gray-100">
-                                                    {conta.parcelas.map(p => {
-                                                        const vencida = p.status === 'PENDENTE' && p.diasAtraso > 0;
-                                                        const pago = p.status === 'PAGO';
-                                                        return (
-                                                            <div key={p.id} className={`px-3 py-2 flex items-center justify-between gap-2 ${vencida ? 'bg-red-50/60' : pago ? 'bg-green-50/40' : ''}`}>
-                                                                <div className="flex items-center gap-2 flex-1 min-w-0">
-                                                                    <span className="text-[11px] font-bold text-gray-400 shrink-0 w-4 text-center">{p.numeroParcela}</span>
-                                                                    <div className="min-w-0">
-                                                                        <div className="flex items-center gap-1.5 flex-wrap">
-                                                                            <span className="text-xs font-semibold text-gray-800">{formatarMoeda(p.valor)}</span>
-                                                                            <span className={`text-[10px] px-1 py-0.5 rounded font-medium ${pago ? 'bg-green-100 text-green-700' : vencida ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'}`}>
-                                                                                {pago ? 'Pago' : vencida ? 'Vencido' : 'Pendente'}
-                                                                            </span>
-                                                                            {vencida && <span className="text-[10px] font-bold text-red-600">{p.diasAtraso}d</span>}
-                                                                        </div>
-                                                                        <div className="text-[10px] text-gray-400 mt-0.5 flex flex-wrap gap-x-2">
-                                                                            <span>Venc: {new Date(p.dataVencimento).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</span>
-                                                                            {p.dataPagamento && <span className="text-green-600">Pago: {new Date(p.dataPagamento).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</span>}
-                                                                            {p.valorPago && p.valorPago !== p.valor && <span className="text-green-600">({formatarMoeda(p.valorPago)} recebido)</span>}
-                                                                            {p.formaPagamento && <span>{p.formaPagamento}</span>}
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </>
-                            ) : null}
-                        </div>
-
-                        <div className="bg-gray-50 px-5 py-3 border-t border-gray-200 flex justify-end">
-                            <button
-                                onClick={() => setClienteInadimplente(null)}
-                                className="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
-                            >
-                                Fechar
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                <PopupContasEmAberto clienteId={clienteInadimplente.uuid} clienteNome={clienteInadimplente.nome} onClose={() => setClienteInadimplente(null)} />
             )}
         </div>
     );

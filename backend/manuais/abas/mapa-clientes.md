@@ -81,3 +81,8 @@ Cidade (mostra "Cidade · UF", com a UF do cadastro oficial de cidades) · Bairr
 
 - Backend: `backend/routes/mapaClientesRoutes.js` (`GET /api/mapa-clientes`, `GET /compras`, `GET /vizinhos`, `GET/PUT /config`), `backend/services/mapaClientesService.js`, helper `situacaoWhatsapp` em `backend/services/whatsappClienteService.js`, auditoria em `backend/controllers/clienteController.js` (`atualizar`).
 - Frontend: `frontend/src/pages/Clientes/MapaClientes.jsx` e `frontend/src/pages/Clientes/mapaClientes/`, `frontend/src/components/DayPicker.jsx`, `frontend/src/components/ModalPontoGps.jsx` (ponto GPS) e `frontend/src/components/FiltroPeriodo.jsx` (período das compras).
+
+## Inadimplência no mapa
+- Botão **Só em atraso** na barra de filtros: mostra só clientes em atraso (fica lembrado por usuário).
+- Opção **Colorir por: Inadimplência**: vermelho = em atraso, âmbar = a confirmar, verde = em dia (a legenda acompanha).
+- No painel/folha do cliente aparece o selo; clicar abre o popup Contas em aberto.

@@ -54,6 +54,9 @@ const SkeletonBloco = () => (
 
 // Uma linha (item) de um bloco: título/subtítulo/valor + botão de ação (1 clique
 // quando o item traz `acao`, senão "Abrir" leva para a tela original).
+// Pedido de cliente em atraso (especial) abre a lista de Pedidos já filtrada: "Só clientes em atraso".
+const rotaDoItem = (item) => (item.rota === '/pedidos' && item.origem === 'ESPECIAL' ? '/pedidos?soEmAtraso=1&aba=especiais' : item.rota);
+
 const LinhaPendencia = ({ item, onExecutarAcao, executando, navigate }) => {
     const valor = item.valor != null ? fmtMoeda(item.valor) : null;
     const data = fmtData(item.dataRef);
@@ -80,7 +83,7 @@ const LinhaPendencia = ({ item, onExecutarAcao, executando, navigate }) => {
             ) : (
                 <button
                     type="button"
-                    onClick={() => item.rota && navigate(item.rota)}
+                    onClick={() => item.rota && navigate(rotaDoItem(item))}
                     className="px-3 py-2 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full text-xs font-medium whitespace-nowrap min-h-[44px]"
                 >
                     Abrir
@@ -123,7 +126,7 @@ const BlocoPendencia = ({ bloco, onExecutarAcao, executandoId, navigate }) => {
             {bloco.contador > (bloco.itens || []).length && bloco.rotaVerTodos && (
                 <button
                     type="button"
-                    onClick={() => navigate(bloco.rotaVerTodos)}
+                    onClick={() => navigate(bloco.chave === 'liberacao_inadimplente' && bloco.rotaVerTodos === '/pedidos' ? '/pedidos?soEmAtraso=1&aba=especiais' : bloco.rotaVerTodos)}
                     className="w-full text-left px-4 md:px-5 py-2.5 text-xs font-semibold text-primary hover:text-primaryDark border-t border-gray-100 flex items-center gap-1"
                 >
                     ver todos ({bloco.contador}) <ArrowRight className="h-3 w-3" />

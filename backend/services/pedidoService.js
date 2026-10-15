@@ -243,6 +243,16 @@ const pedidoService = {
             const condNota = condicaoNotaBonificacao(filtros.notaBonificacao);
             if (condNota) where.AND = [...(where.AND || []), condNota];
         }
+        // Filtro "Só clientes em atraso" (Entrega 2). Também fica FORA do `whereBase`: os chips de
+        // contagem não podem sair filtrados por ele. Tolera cache (é filtro de lista, não trava).
+        if (filtros.soEmAtraso === '1' || filtros.soEmAtraso === 1 || filtros.soEmAtraso === true || filtros.soEmAtraso === 'true') {
+            const { clienteIdsEmAtraso } = require('./inadimplenciaService');
+            const emAtraso = await clienteIdsEmAtraso();
+            // Se a tela já filtra por um cliente, o filtro novo só confirma/esvazia (não sobrescreve).
+            where.clienteId = typeof where.clienteId === 'string'
+                ? { in: emAtraso.filter(id => id === where.clienteId) }
+                : { in: emAtraso };
+        }
         if (statusRapido && statusRapido !== 'TODOS') {
             if (statusRapido === 'FATURADO') {
                 where.situacaoCA = 'FATURADO';

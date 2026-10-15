@@ -19,6 +19,8 @@ import PixAvulsoModal from './PixAvulsoModal';
 import ImprimirLoteModal from './ImprimirLoteModal';
 import PageHeader from '../../components/PageHeader';
 import EstadoVazio from '../../components/EstadoVazio';
+import SeloInadimplencia from '../../components/SeloInadimplencia';
+import PopupContasEmAberto from '../../components/PopupContasEmAberto';
 
 // Pedido recém-criado pode ainda não ter número do CA (rascunho ABERTO) — nunca interpolar
 // null/undefined direto na tela (vira "#null" para o usuário).
@@ -99,6 +101,10 @@ const ListaPedidos = () => {
         vendedorId: ''
     });
 
+    // "Só clientes em atraso": filtrado no SERVIDOR (soEmAtraso=1) — a lista é paginada
+    const [soEmAtraso, setSoEmAtraso] = useFiltroSalvo('lista-pedidos:soEmAtraso', false);
+    const [popupInad, setPopupInad] = useState(null); // { id, nome }
+
     // Datas em FiltroPeriodo (persistem o PRESET por usuário). Padrão: sem limite.
     const [perEntrega, ctlEntrega] = usePeriodoSalvo('lista-pedidos:entrega', 'todo');
     const [perCriacao, ctlCriacao] = usePeriodoSalvo('lista-pedidos:criacao', 'todo');
@@ -115,7 +121,8 @@ const ListaPedidos = () => {
         dataCriacaoAte: perCriacao.ate,
         vencimentoDe: perVencimento.de,
         vencimentoAte: perVencimento.ate,
-    }), [filtros, perEntrega, perCriacao, perVencimento]);
+        soEmAtraso: !!soEmAtraso,
+    }), [filtros, perEntrega, perCriacao, perVencimento, soEmAtraso]);
     const [busca, setBusca] = useState('');
     const [buscaServer, setBuscaServer] = useState('');
     const debounceRef = useRef(null);
@@ -148,6 +155,18 @@ const ListaPedidos = () => {
         setHighlightId(st.highlightId);
         navigate(location.pathname, { replace: true, state: null });
     }, [location, navigate]);
+
+    // Vindo da Central de Pendências ("ver todos"/"Abrir" do bloco de cliente em atraso):
+    // /pedidos?soEmAtraso=1&aba=especiais liga o filtro "Só clientes em atraso" e abre a aba certa.
+    useEffect(() => {
+        const q = new URLSearchParams(location.search);
+        if (q.get('soEmAtraso') !== '1') return;
+        const aba = q.get('aba');
+        if (['pedidos', 'especiais', 'bonificacao'].includes(aba)) setAbaAtiva(aba);
+        setSoEmAtraso(true);
+        setFiltroStatus('TODOS');
+        navigate(location.pathname, { replace: true, state: location.state });
+    }, [location.search]); // eslint-disable-line
 
     useEffect(() => {
         if (!highlightId || loading) return;
@@ -291,12 +310,16 @@ const ListaPedidos = () => {
         if (f.embarqueNumero) params.embarqueNumero = f.embarqueNumero;
         if (f.motorista) params.motorista = f.motorista;
         if (f.vendedorId) params.vendedorId = f.vendedorId;
+        if (f.soEmAtraso) params.soEmAtraso = '1';
         return params;
     }, []);
 
     // Carrega uma página. pg === 1 reinicia a lista; pg > 1 acrescenta (Carregar mais).
+    // Resposta velha não pode sobrescrever a nova (aba/filtro trocado no meio da busca)
+    const seqCarga = useRef(0);
     const carregar = useCallback(async (pg, aba, f, status, buscaSrv, notaBon) => {
         const primeira = pg === 1;
+        const minhaCarga = ++seqCarga.current;
         if (primeira) setLoading(true); else setLoadingMais(true);
         try {
             const params = { ...montarParamsFiltro(f) };
@@ -334,6 +357,7 @@ const ListaPedidos = () => {
             }
 
             const data = await pedidoService.listar(params);
+            if (minhaCarga !== seqCarga.current) return; // chegou depois de uma busca mais nova
             const items = data.items || [];
             setTotal(data.total || 0);
             if (primeira) {
@@ -363,8 +387,10 @@ const ListaPedidos = () => {
             console.error("Erro ao carregar dados", error);
             toast.error("Erro ao carregar lista.");
         } finally {
-            setLoading(false);
-            setLoadingMais(false);
+            if (minhaCarga === seqCarga.current) {
+                setLoading(false);
+                setLoadingMais(false);
+            }
         }
     }, [montarParamsFiltro]);
 
@@ -429,8 +455,35 @@ const ListaPedidos = () => {
         }
     };
 
+    // Trava de "cliente em atraso" na APROVAÇÃO (espelha o servidor: bloqueiaVenda + admin/Pode_Vender_Inadimplente).
+    // Bonificação não trava. Permissão de aprovar continua necessária — a de inadimplente é ADICIONAL.
+    const inadSel = selectedPedido?.inadimplencia || null;
+    const podeLiberarInad = !!(user?.permissoes?.admin || user?.permissoes?.Pode_Vender_Inadimplente);
+    const travaInad = !!inadSel?.bloqueiaVenda && !selectedPedido?.bonificacao;
+    const travadoParaMim = travaInad && !podeLiberarInad;
+    const assumirResp = travaInad && podeLiberarInad;
+    const classeBtnInad = (corNormal) => travadoParaMim
+        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+        : assumirResp ? 'bg-orange-500 hover:bg-orange-600 text-white w-full sm:w-auto justify-center' : corNormal;
+    const rotuloInad = (normal, verbo) => assumirResp ? `Assumir responsabilidade e ${verbo}` : normal;
+    const confirmarResponsabilidade = () => !assumirResp || window.confirm(
+        `Este cliente tem ${Number(inadSel?.totalVencido || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} em atraso.\n\nSe continuar, o seu nome fica registrado na observação do pedido como responsável por esta venda. Continuar?`
+    );
+    const avisoTravaInad = travadoParaMim ? (
+        <p data-aviso-trava-inad className="w-full text-xs font-semibold text-red-600">Só um responsável pode liberar este pedido.</p>
+    ) : assumirResp ? (
+        <p className="w-full text-xs text-orange-700">Ao aprovar, seu nome fica na observação do pedido como responsável pela venda a cliente em atraso.</p>
+    ) : null;
+    const msgErroAcao = (error, padrao) => {
+        const d = error?.response?.data;
+        if (d?.codigo === 'CLIENTE_EM_ATRASO') toast.error(d.error || 'Cliente em atraso: só um responsável pode liberar este pedido.', { duration: 9000, style: { maxWidth: '600px' } });
+        else toast.error(d?.error || padrao);
+    };
+
     const handleAprovarEspecial = async (pedidoId) => {
         if (!podeAprovar) return;
+        if (travadoParaMim) return;
+        if (!confirmarResponsabilidade()) return;
         try {
             setAprovando(pedidoId);
             await pedidoService.aprovarEspecial(pedidoId);
@@ -442,7 +495,7 @@ const ListaPedidos = () => {
                 setSelectedPedido(prev => ({ ...prev, statusEnvio: 'RECEBIDO', situacaoCA: 'FATURADO' }));
             }
         } catch (error) {
-            toast.error(error.response?.data?.error || 'Erro ao aprovar pedido.');
+            msgErroAcao(error, 'Erro ao aprovar pedido.');
         } finally {
             setAprovando(null);
         }
@@ -472,6 +525,8 @@ const ListaPedidos = () => {
     // Mesmo motor da conversão automática por PIX — o registro só muda de aba.
     const handleConverterEspecial = async (pedido) => {
         if (!podeAprovar) return;
+        if (travadoParaMim) return;
+        if (!confirmarResponsabilidade()) return;
         if (!window.confirm(`Converter o especial ZZ#${pedido.numero ?? '?'} em pedido com NF?\n\nEle ganha número novo na sequência oficial, vai para a fila de faturamento/NF-e e leva junto entrega, carga e tudo que já foi recebido (dinheiro, PIX, boleto).\n\nNão dá para desfazer.`)) return;
         try {
             setConvertendo(pedido.id);
@@ -481,7 +536,7 @@ const ListaPedidos = () => {
             setPedidos(prev => prev.filter(p => p.id !== pedido.id));
             setSelectedPedido(null);
         } catch (error) {
-            toast.error(error.response?.data?.error || 'Erro ao converter o pedido.');
+            msgErroAcao(error, 'Erro ao converter o pedido.');
         } finally {
             setConvertendo(null);
         }
@@ -500,7 +555,7 @@ const ListaPedidos = () => {
                 setSelectedPedido(prev => ({ ...prev, statusEnvio: 'RECEBIDO', situacaoCA: 'FATURADO' }));
             }
         } catch (error) {
-            toast.error(error.response?.data?.error || 'Erro ao aprovar bonificação.');
+            msgErroAcao(error, 'Erro ao aprovar bonificação.');
         } finally {
             setAprovando(null);
         }
@@ -833,8 +888,9 @@ const ListaPedidos = () => {
         if (filtros.vendedorId) return true;
         if (!perEntrega.padrao || !perCriacao.padrao || !perVencimento.padrao) return true;
         if (filtros.embarqueNumero || filtros.motorista) return true;
+        if (soEmAtraso) return true;
         return false;
-    }, [filtros, perEntrega, perCriacao, perVencimento]);
+    }, [filtros, perEntrega, perCriacao, perVencimento, soEmAtraso]);
 
     const limparFiltros = () => {
         setFiltros({ ...filtrosPadrao });
@@ -844,6 +900,7 @@ const ListaPedidos = () => {
         setBusca('');
         setBuscaServer('');
         setFiltroStatus('TODOS');
+        setSoEmAtraso(false);
     };
 
     // Ação do estado vazio: se tem filtro/busca/status ativo, oferece limpar;
@@ -1152,6 +1209,19 @@ const ListaPedidos = () => {
                             </button>
                         );
                     })}
+                    {/* Só clientes em atraso — lembrado por usuário; filtra no servidor */}
+                    <button
+                        type="button"
+                        data-filtro-so-atraso
+                        onClick={() => setSoEmAtraso(v => !v)}
+                        aria-pressed={!!soEmAtraso}
+                        title="Só clientes em atraso"
+                        className={`flex items-center gap-1 px-2.5 py-1.5 min-h-[32px] text-[11px] font-bold rounded-full border transition-colors shrink-0 ${soEmAtraso ? 'bg-red-100 text-red-800 border-red-300' : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'}`}
+                    >
+                        <AlertCircle className="h-3.5 w-3.5" />
+                        <span className="sm:hidden">Só em atraso</span>
+                        <span className="hidden sm:inline">Só clientes em atraso</span>
+                    </button>
                 </div>
             )}
 
@@ -1336,7 +1406,7 @@ const ListaPedidos = () => {
                             pedidos.map((pedido) => {
                                 const { encaixe, obsExibida } = getEncaixeInfo(pedido);
                                 return (
-                                <div key={pedido.id} id={`pedido-row-${pedido.id}`} className={`px-3 pt-3 pb-2 hover:bg-gray-50 transition-colors border-b border-gray-100 overflow-hidden ${highlightId === pedido.id ? 'ring-2 ring-primary bg-yellow-50 animate-pulse' : encaixe ? 'bg-amber-50 border-l-4 border-l-amber-400' : ''}`}>
+                                <div key={pedido.id} id={`pedido-row-${pedido.id}`} className={`px-3 pt-3 pb-2 hover:bg-gray-50 transition-colors border-b border-gray-100 overflow-hidden ${highlightId === pedido.id ? 'ring-2 ring-primary bg-yellow-50 animate-pulse' : encaixe ? 'bg-amber-50 border-l-4 border-l-amber-400' : pedido.inadimplencia?.inadimplente ? 'bg-red-50/70' : ''}`}>
                                     {/* Linha 1: checkbox + número + cliente + valor */}
                                     <div className="flex items-start gap-2 mb-1">
                                         {pedido.situacaoCA === 'FATURADO' && (
@@ -1360,19 +1430,21 @@ const ListaPedidos = () => {
                                                 <AlertTriangle className="h-2.5 w-2.5" /> ENCAIXE
                                             </span>
                                         )}
-                                        <h3 className="text-[13px] font-bold text-gray-900 truncate flex-1 min-w-0">
+                                        <h3 className="text-[13px] font-bold text-gray-900 flex-1 min-w-0 flex items-center gap-1.5">
                                             {pedido.cliente ? (
                                                 <button
                                                     type="button"
                                                     onClick={(e) => abrirFichaCliente(e, pedido.cliente)}
-                                                    className="text-left hover:underline hover:text-primaryDark py-1 -my-1 truncate max-w-full"
+                                                    className="text-left hover:underline hover:text-primaryDark py-1 -my-1 truncate min-w-0"
                                                     title="Ver ficha do cliente"
                                                 >
                                                     {pedido.cliente?.NomeFantasia || pedido.cliente?.Nome || 'Cliente Desconhecido'}
                                                 </button>
                                             ) : (
-                                                'Cliente Desconhecido'
+                                                <span className="truncate">Cliente Desconhecido</span>
                                             )}
+                                            <SeloInadimplencia situacao={pedido.inadimplencia} compacto className="shrink-0"
+                                                onClick={() => setPopupInad({ id: pedido.clienteId || pedido.cliente?.UUID, nome: pedido.cliente?.NomeFantasia || pedido.cliente?.Nome })} />
                                         </h3>
                                         <span className="text-[13px] font-black text-gray-900 whitespace-nowrap shrink-0 ml-1">
                                             R$ {Number((pedido.itens?.reduce((acc, i) => acc + (Number(i.valor) * Number(i.quantidade)), 0) || 0) + Number(pedido.valorFrete || 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -1744,6 +1816,10 @@ const ListaPedidos = () => {
                 </div>
             )}
 
+            {popupInad && popupInad.id && (
+                <PopupContasEmAberto clienteId={popupInad.id} clienteNome={popupInad.nome} onClose={() => setPopupInad(null)} />
+            )}
+
             {/* Modal de Detalhes */}
             {selectedPedido && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 z-50 animate-in fade-in">
@@ -1769,6 +1845,24 @@ const ListaPedidos = () => {
                             <button onClick={() => setSelectedPedido(null)} className="p-2 text-gray-400 hover:text-gray-700 shrink-0"><X className="h-6 w-6" /></button>
                         </div>
                         <div className="p-3 sm:p-4 overflow-y-auto flex-1 space-y-3 sm:space-y-4">
+                            {/* Faixa de cliente em atraso (qualquer pedido do cliente) */}
+                            {inadSel?.inadimplente && (
+                                <div data-faixa-inad-pedido className="bg-red-50 border border-red-300 text-red-800 rounded-lg px-3 py-2.5 flex items-start gap-2 text-sm">
+                                    <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                                    <div className="min-w-0 flex-1">
+                                        <p className="font-bold leading-tight">Cliente com {Number(inadSel.totalVencido).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} em atraso</p>
+                                        <p className="text-xs mt-0.5">
+                                            {inadSel.parcelasVencidas != null ? `${inadSel.parcelasVencidas} ${Number(inadSel.parcelasVencidas) === 1 ? 'parcela' : 'parcelas'}` : ''}
+                                            {inadSel.diasMaisAntiga != null ? `${inadSel.parcelasVencidas != null ? ', a ' : 'A '}mais antiga há ${inadSel.diasMaisAntiga}d` : ''}
+                                            {' · '}
+                                            <button type="button" className="underline font-semibold py-2 -my-2"
+                                                onClick={() => setPopupInad({ id: selectedPedido.clienteId || selectedPedido.cliente?.UUID, nome: selectedPedido.cliente?.NomeFantasia || selectedPedido.cliente?.Nome })}>
+                                                ver contas
+                                            </button>
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
                             {/* Pedido cancelado — some da fila de faturamento e não emite NF-e */}
                             {selectedPedido.cancelado && (
                                 <div className="bg-red-50 p-3 rounded border border-red-200">
@@ -1805,26 +1899,27 @@ const ListaPedidos = () => {
                             {selectedPedido.especial && selectedPedido.statusEnvio === 'ENVIAR' && (
                                 <div className="bg-purple-50 p-3 rounded border border-purple-200 flex flex-wrap justify-between items-center gap-2">
                                     <span className="text-sm font-bold text-purple-900">Pendente de aprovação</span>
-                                    <div className="flex gap-2">
+                                    <div className="flex flex-wrap gap-2 w-full sm:w-auto">
                                         <button onClick={() => { setSelectedPedido(null); navigate(`/pedidos/editar/${selectedPedido.id}`); }} className="px-4 py-2 bg-blue-600 text-white rounded font-bold text-sm shadow-sm flex items-center gap-1">
                                             <Pencil className="h-4 w-4" /> Editar
                                         </button>
                                         {podeAprovar && (
-                                            <button onClick={() => handleAprovarEspecial(selectedPedido.id)} className="px-4 py-2 bg-purple-600 text-white rounded font-bold text-sm shadow-sm">Aprovar agora</button>
+                                            <button onClick={() => handleAprovarEspecial(selectedPedido.id)} disabled={travadoParaMim || aprovando === selectedPedido.id} className={`px-4 py-2 rounded font-bold text-sm shadow-sm ${classeBtnInad('bg-purple-600 text-white')}`}>{rotuloInad('Aprovar agora', 'aprovar')}</button>
                                         )}
                                         {podeAprovar && (
-                                            <button onClick={() => handleConverterEspecial(selectedPedido)} disabled={convertendo === selectedPedido.id}
-                                                className="px-4 py-2 bg-primary hover:bg-primaryDark text-white rounded font-bold text-sm shadow-sm flex items-center gap-1 disabled:opacity-50">
-                                                <Zap className="h-4 w-4" /> {convertendo === selectedPedido.id ? 'Convertendo…' : 'Converter em pedido c/ NF'}
+                                            <button onClick={() => handleConverterEspecial(selectedPedido)} disabled={convertendo === selectedPedido.id || travadoParaMim}
+                                                className={`px-4 py-2 rounded font-bold text-sm shadow-sm flex items-center gap-1 disabled:opacity-50 ${classeBtnInad('bg-primary hover:bg-primaryDark text-white')}`}>
+                                                <Zap className="h-4 w-4" /> {convertendo === selectedPedido.id ? 'Convertendo…' : rotuloInad('Converter em pedido c/ NF', 'converter')}
                                             </button>
                                         )}
                                     </div>
+                                    {avisoTravaInad}
                                 </div>
                             )}
                             {selectedPedido.especial && selectedPedido.statusEnvio === 'RECEBIDO' && (podeReverter || podeAprovar) && (
                                 <div className="bg-orange-50 p-3 rounded border border-orange-200 flex flex-wrap justify-between items-center gap-2">
                                     <span className="text-sm font-bold text-orange-900">Pedido faturado</span>
-                                    <div className="flex gap-2 flex-wrap">
+                                    <div className="flex gap-2 flex-wrap w-full sm:w-auto">
                                         {podeReverter && (
                                             <button
                                                 onClick={() => handleReverterEspecial(selectedPedido.id)}
@@ -1835,33 +1930,35 @@ const ListaPedidos = () => {
                                             </button>
                                         )}
                                         {podeAprovar && (
-                                            <button onClick={() => handleConverterEspecial(selectedPedido)} disabled={convertendo === selectedPedido.id}
-                                                className="px-4 py-2 bg-primary hover:bg-primaryDark text-white rounded font-bold text-sm shadow-sm flex items-center gap-1 disabled:opacity-50">
-                                                <Zap className="h-4 w-4" /> {convertendo === selectedPedido.id ? 'Convertendo…' : 'Converter em pedido c/ NF'}
+                                            <button onClick={() => handleConverterEspecial(selectedPedido)} disabled={convertendo === selectedPedido.id || travadoParaMim}
+                                                className={`px-4 py-2 rounded font-bold text-sm shadow-sm flex items-center gap-1 disabled:opacity-50 ${classeBtnInad('bg-primary hover:bg-primaryDark text-white')}`}>
+                                                <Zap className="h-4 w-4" /> {convertendo === selectedPedido.id ? 'Convertendo…' : rotuloInad('Converter em pedido c/ NF', 'converter')}
                                             </button>
                                         )}
                                     </div>
+                                    {avisoTravaInad}
                                 </div>
                             )}
                             {selectedPedido.especial && ['ABERTO', 'ERRO'].includes(selectedPedido.statusEnvio) && !(['APROVADO', 'FATURADO', 'EM_ABERTO'].includes(selectedPedido.situacaoCA)) && (
                                 <div className="bg-blue-50 p-3 rounded border border-blue-200 flex flex-wrap justify-between items-center gap-2">
                                     <span className="text-sm font-bold text-blue-900">Pedido em aberto</span>
-                                    <div className="flex gap-2">
+                                    <div className="flex flex-wrap gap-2 w-full sm:w-auto">
                                         <button onClick={() => { setSelectedPedido(null); navigate(`/pedidos/editar/${selectedPedido.id}`); }} className="px-4 py-2 bg-blue-600 text-white rounded font-bold text-sm shadow-sm flex items-center gap-1">
                                             <Pencil className="h-4 w-4" /> Editar
                                         </button>
                                         {podeAprovar && (
-                                            <button onClick={() => handleAprovarEspecial(selectedPedido.id)} className="px-4 py-2 bg-green-600 text-white rounded font-bold text-sm shadow-sm flex items-center gap-1">
-                                                <CheckCircle className="h-4 w-4" /> Faturar
+                                            <button onClick={() => handleAprovarEspecial(selectedPedido.id)} disabled={travadoParaMim || aprovando === selectedPedido.id} className={`px-4 py-2 rounded font-bold text-sm shadow-sm flex items-center gap-1 ${classeBtnInad('bg-green-600 text-white')}`}>
+                                                <CheckCircle className="h-4 w-4" /> {rotuloInad('Faturar', 'faturar')}
                                             </button>
                                         )}
                                         {podeAprovar && (
-                                            <button onClick={() => handleConverterEspecial(selectedPedido)} disabled={convertendo === selectedPedido.id}
-                                                className="px-4 py-2 bg-primary hover:bg-primaryDark text-white rounded font-bold text-sm shadow-sm flex items-center gap-1 disabled:opacity-50">
-                                                <Zap className="h-4 w-4" /> {convertendo === selectedPedido.id ? 'Convertendo…' : 'Converter em pedido c/ NF'}
+                                            <button onClick={() => handleConverterEspecial(selectedPedido)} disabled={convertendo === selectedPedido.id || travadoParaMim}
+                                                className={`px-4 py-2 rounded font-bold text-sm shadow-sm flex items-center gap-1 disabled:opacity-50 ${classeBtnInad('bg-primary hover:bg-primaryDark text-white')}`}>
+                                                <Zap className="h-4 w-4" /> {convertendo === selectedPedido.id ? 'Convertendo…' : rotuloInad('Converter em pedido c/ NF', 'converter')}
                                             </button>
                                         )}
                                     </div>
+                                    {avisoTravaInad}
                                 </div>
                             )}
 

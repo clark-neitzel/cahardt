@@ -201,7 +201,7 @@ router.get('/:id', verificarAuth, checkAcessoEmbarque, async (req, res) => {
                 responsavel: { select: { nome: true } },
                 pedidos: {
                     include: {
-                        cliente: { select: { NomeFantasia: true, Nome: true, End_Cidade: true, End_Logradouro: true, End_Numero: true, End_Bairro: true } },
+                        cliente: { select: { UUID: true, NomeFantasia: true, Nome: true, End_Cidade: true, End_Logradouro: true, End_Numero: true, End_Bairro: true } },
                         itens: {
                             include: { produto: { select: { nome: true, unidade: true } } }
                         }

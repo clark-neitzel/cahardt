@@ -34,3 +34,4 @@ backend/backups/
 *.gdoc
 *.gsheet
 *.gslides
+docs/qa/

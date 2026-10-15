@@ -164,6 +164,16 @@ O sistema faz backup sozinho para o **Google Drive** (a mesma conta conectada pa
 | `configuracoes.edit` | Também pode instalar/consultar o certificado digital, ligar/desligar as capturas de NF-e e NFS-e e alterar a **referência por item da NF-e de devolução** |
 | *(qualquer usuário logado)* | A rota que informa o estado da referência por item (`GET /config-notas/devolucao-ref-item`) responde a qualquer usuário logado — é ela que alimenta o lembrete na tela. Hoje a **seção** só aparece dentro do bloco "Notas & Certificado", que é de `admin`/`configuracoes.edit` |
 
+### Venda a inadimplente (card só para admin)
+
+Card em **Configurações** que ajusta a regra do selo "em atraso" e da trava de venda a cliente devedor. Só o **administrador** vê e salva (o servidor também recusa quem não é admin). Cada linha mostra **"Última mudança: quem · quando"**, e o histórico completo das mudanças fica registrado.
+
+- **Dias de carência para travar** (padrão 3) e **Valor mínimo para travar** (padrão R$ 50): valem **só para TRAVAR a venda**. O selo vermelho "em atraso" aparece desde o 1º dia de atraso, sem carência.
+- **Prazo para "a confirmar"** (padrão 7 dias): Pix/cartão/dinheiro apontado na entrega e ainda não conferido pelo Caixa fica "em espera"; passado esse prazo vira selo amarelo "a confirmar" (não trava a venda).
+- **Compra de funcionário fora da inadimplência** (padrão ligado) e **Motorista vê o aviso de atraso no checkout** (padrão ligado).
+- **Site/Ana exige responsável** (cadeado): travada ligada, não dá para desligar. Aprovar na fila do site um pedido de cliente em atraso exige quem tem `Pode_Vender_Inadimplente` ou é admin.
+- Bonificação não é travada pela inadimplência.
+
 ---
 
 ## Depende de / Interfere em
@@ -185,6 +195,7 @@ O sistema faz backup sozinho para o **Google Drive** (a mesma conta conectada pa
 | `frontend/src/pages/Admin/Configuracoes/RotasAtivasPreview.jsx` | Preview das rotas configuradas |
 | `frontend/src/services/configService.js` | Chamadas de API de configurações |
 | `backend/src/routes/configuracoes.js` | Rotas do backend |
+| `backend/routes/inadimplenciaRoutes.js` + `backend/config/inadimplenciaConfig.js` | Configuração da regra de inadimplência (`GET`/`PUT /api/inadimplencia/config`, histórico em `/config/historico`) e consulta em lote do selo (`POST /api/inadimplencia/lote`) |
 | `backend/routes/configNotas.js` | Certificado digital (instalar/consultar) + liga/desliga das capturas de NF-e e NFS-e + configuração fiscal da emissão (`GET`/`PUT /emissao`) + interruptor da referência por item da NF-e de devolução (`GET`/`PUT /devolucao-ref-item`; o `GET` é aberto a qualquer usuário logado porque o lembrete periódico roda em qualquer tela do app, fora do bloco de Configurações) |
 | `backend/services/focusNfeEmissaoService.js` | Lê a configuração fiscal (`getConfig`) e aplica em cada NF-e emitida |
 | `backend/services/certificadoService.js` | Validação do .pfx e criptografia AES-256-GCM |
