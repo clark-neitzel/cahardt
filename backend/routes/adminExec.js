@@ -52,7 +52,7 @@ router.get('/ping', (req, res) => {
         ok: true,
         // Marcador de deploy: bumpar a cada mudança de backend que precise de confirmação
         // em produção (não há outro jeito de saber de fora qual versão está no ar).
-        deployMarker: 'inadimplencia-e2-2026-10-14',
+        deployMarker: 'delivery-permissao-2026-10-15',
         uptimeSegundos: Math.round(process.uptime()),
         timestamp: new Date().toISOString(),
         openaiConfigurada: !!process.env.OPENAI_API_KEY,
@@ -64,6 +64,48 @@ router.get('/ping', (req, res) => {
         botWhatsappConfigurado: !!(process.env.BOT_WHATSAPP_URL && process.env.BOT_WHATSAPP_API_KEY),
         node: process.version,
     });
+});
+
+// GET  /api/admin-exec/delivery-permissoes
+// POST /api/admin-exec/delivery-permissao  { login|vendedorId, podeVer, etapasPermitidas: ['PRODUCAO','SAINDO','ENTREGUE'] }
+// Libera (ou revoga) a tela Delivery para um usuário sem precisar achar a aba Permissões
+// (Delivery → Config → Permissões). Passa pelo deliveryService.salvarPermissao, que também
+// propaga vendedor.permissoes.delivery (é o que faz o item aparecer no menu lateral).
+router.get('/delivery-permissoes', async (req, res) => {
+    try {
+        const deliveryService = require('../services/deliveryService');
+        const lista = await deliveryService.listarPermissoes();
+        res.json({ etapas: deliveryService.ETAPAS, usuarios: lista.filter(u => req.query.todos === '1' || u.podeVer) });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.post('/delivery-permissao', async (req, res) => {
+    try {
+        const deliveryService = require('../services/deliveryService');
+        const { login, vendedorId, podeVer = true, etapasPermitidas = [] } = req.body || {};
+        if (!login && !vendedorId) return res.status(400).json({ error: 'Informe login ou vendedorId.' });
+        const vendedor = await prisma.vendedor.findFirst({
+            where: vendedorId ? { id: String(vendedorId) } : { login: { equals: String(login), mode: 'insensitive' } },
+            select: { id: true, nome: true, login: true, ativo: true, permissoes: true }
+        });
+        if (!vendedor) return res.status(404).json({ error: 'Usuário não encontrado.' });
+        const invalidas = (Array.isArray(etapasPermitidas) ? etapasPermitidas : []).filter(e => !deliveryService.ETAPAS.includes(e));
+        if (invalidas.length) return res.status(400).json({ error: `Etapas inválidas: ${invalidas.join(', ')}. Válidas: ${deliveryService.ETAPAS.join(', ')}` });
+        const salvo = await deliveryService.salvarPermissao(vendedor.id, { podeVer: !!podeVer, etapasPermitidas });
+        const depois = await prisma.vendedor.findUnique({ where: { id: vendedor.id }, select: { permissoes: true } });
+        res.json({
+            ok: true,
+            usuario: { id: vendedor.id, nome: vendedor.nome, login: vendedor.login, ativo: vendedor.ativo },
+            podeVer: salvo.podeVer,
+            etapasPermitidas: salvo.etapasPermitidas,
+            menuDelivery: depois?.permissoes?.delivery === true
+        });
+    } catch (err) {
+        console.error('[admin-exec] delivery-permissao:', err.message);
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // POST /api/admin-exec/etiquetas-sincronizar-ean[?aplicar=1]
