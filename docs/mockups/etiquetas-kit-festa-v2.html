@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Etiquetas Kit Festa v2</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;800&family=Fredoka:wght@500;600;700&family=Caveat:wght@600;700&family=Lora:ital,wght@0,600;1,600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  :root{--primary:#00754A;--house:#1E3932;--mint:#d4e9e2;--bg:#f2f0eb;--gold:#cba258}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);font-family:Manrope,-apple-system,sans-serif;color:rgba(0,0,0,.87)}
+  .hero{background:var(--house);color:#fff;padding:24px 20px}
+  .hero h1{margin:0 0 6px;font-size:22px}.hero p{margin:0;opacity:.85;font-size:14px;max-width:760px}
+  .wrap{max-width:1100px;margin:0 auto;padding:16px}
+  .card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;box-shadow:0 1px 2px rgba(0,0,0,.05);margin-bottom:16px;overflow:hidden}
+  .card-h{padding:12px 20px;border-bottom:1px solid #f3f4f6;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#4b5563;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+  .card-b{padding:20px}
+  .btn{border:0;border-radius:999px;padding:9px 16px;font:inherit;font-weight:700;font-size:14px;cursor:pointer;background:var(--primary);color:#fff}
+  .btn.sec{background:#fff;color:var(--primary);border:1px solid var(--primary)}
+  label.ctl{display:inline-flex;align-items:center;gap:6px;font-size:13px;margin-right:14px}
+  select{font:inherit;font-size:13px;border:1px solid #d1d5db;border-radius:6px;padding:6px 8px}
+  .muted{color:#6b7280;font-size:13px}
+  .row{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-start}
+  .quadro{display:flex;flex-direction:column;gap:4px}
+  .rot{font-size:11px;color:#6b7280}
+  .zoom{width:calc(40mm*2.8);height:calc(25mm*2.8)}
+  .zoom .etq{transform:scale(2.8);transform-origin:top left;outline:1px dashed #c4c4c4;outline-offset:-0.3mm}
+
+  /* ===== ETIQUETA 40×25mm ===== */
+  .etq{width:40mm;height:25mm;background:#fff;color:#000;overflow:hidden;position:relative}
+  .qr{flex:none}.qr img,.qr canvas{display:block;width:100%!important;height:100%!important}
+
+  /* A · Caseira (Fredoka arredondada + frase manuscrita) */
+  .A{font-family:Fredoka,Manrope,sans-serif;padding:1.3mm 1.6mm 1mm;display:flex;flex-direction:column}
+  .A .nome{font-weight:700;font-size:9pt;line-height:1;white-space:nowrap;overflow:hidden;letter-spacing:-.01em}
+  .A .linha{display:flex;gap:1.5mm;flex:1;margin-top:.8mm;min-height:0}
+  .A .qr{width:13mm;height:13mm}
+  .A .txt{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:space-between}
+  .A .ped{font-weight:600;font-size:7pt;line-height:1}
+  .A .ped b{font-size:10.5pt;font-weight:700;display:block;line-height:1;margin-top:.4mm}
+  .A .un{font-size:6.5pt;font-weight:600}
+  .A .frase{font-family:Caveat,cursive;font-weight:700;font-size:8.8pt;line-height:1;margin-top:.8mm;white-space:nowrap;overflow:hidden;text-align:center}
+
+  /* B · Clássica quente (serif Lora + filete ornamental) */
+  .B{font-family:Lora,Georgia,serif;padding:1.2mm 1.6mm 1mm;display:flex;flex-direction:column;text-align:center}
+  .B .nome{font-weight:600;font-size:8.6pt;line-height:1;white-space:nowrap;overflow:hidden;letter-spacing:.01em}
+  .B .orn{font-size:5.5pt;line-height:1;margin:.5mm 0;letter-spacing:.3em}
+  .B .linha{display:flex;gap:1.5mm;flex:1;min-height:0;text-align:left}
+  .B .qr{width:12.5mm;height:12.5mm}
+  .B .txt{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:.6mm}
+  .B .ped{font-size:6.5pt;font-style:italic}
+  .B .ped b{font-style:normal;font-size:11pt;display:block;line-height:1}
+  .B .un{font-size:6.3pt}
+  .B .frase{font-family:Caveat,cursive;font-weight:700;font-size:8.5pt;line-height:1;margin-top:.6mm;white-space:nowrap;overflow:hidden}
+
+  /* C · Minimal gentil (Manrope, sem ornamento, frase manuscrita grande) */
+  .C{font-family:Manrope,sans-serif;padding:1.3mm 1.6mm 1mm;display:flex;flex-direction:column}
+  .C .linha{display:flex;gap:1.6mm;flex:1;min-height:0}
+  .C .qr{width:13.5mm;height:13.5mm;margin-top:.5mm}
+  .C .txt{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:space-between}
+  .C .nome{font-weight:800;font-size:8pt;line-height:1.05;text-transform:uppercase;letter-spacing:-.01em;max-height:2.2em;overflow:hidden}
+  .C .frase{font-family:Caveat,cursive;font-weight:700;line-height:1;white-space:nowrap;overflow:hidden;text-align:center;margin-top:.6mm}
+  .C .rod{display:flex;justify-content:space-between;align-items:baseline;font-size:6.5pt;font-weight:700}
+  .C .rod b{font-size:9pt;font-weight:800}
+
+  /* ===== ETIQUETA DO PEDIDO (sem borda) ===== */
+  .P1{font-family:Fredoka,Manrope,sans-serif;padding:1.6mm 2mm 1.2mm;display:flex;flex-direction:column;justify-content:space-between}
+  .P1 .ola{font-family:Caveat,cursive;font-weight:700;font-size:11pt;line-height:1;white-space:nowrap;overflow:hidden}
+  .P1 .ent{font-weight:700;font-size:9.5pt;line-height:1.1}
+  .P1 .ent small{display:block;font-weight:500;font-size:7pt}
+  .P1 .rod{display:flex;justify-content:space-between;font-size:6.5pt;font-weight:600}
+  .P1 .rod b{font-size:8pt}
+
+  .P2{font-family:Lora,Georgia,serif;padding:1.4mm 2mm 1.2mm;display:flex;flex-direction:column;justify-content:space-between;text-align:center}
+  .P2 .ola{font-family:Caveat,cursive;font-weight:700;font-size:11.5pt;line-height:1;white-space:nowrap;overflow:hidden}
+  .P2 .orn{font-size:5.5pt;letter-spacing:.3em;line-height:1}
+  .P2 .ent{font-weight:600;font-size:9pt;line-height:1.1}
+  .P2 .ent small{display:block;font-style:italic;font-weight:600;font-size:6.5pt}
+  .P2 .rod{font-size:6.3pt}
+
+  .P3{font-family:Manrope,sans-serif;padding:1.6mm 2mm 1.2mm;display:flex;flex-direction:column;justify-content:space-between}
+  .P3 .cli{font-weight:800;font-size:10pt;line-height:1;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .P3 .ent{font-weight:800;font-size:8.5pt;line-height:1.1}
+  .P3 .frase{font-family:Caveat,cursive;font-weight:700;font-size:10pt;line-height:1;white-space:nowrap;overflow:hidden}
+  .P3 .rod{display:flex;justify-content:space-between;font-size:6.5pt;font-weight:700}
+
+  /* impressão de teste */
+  #folhas{display:none}
+  @media print{ body{background:#fff} body>*:not(#folhas){display:none!important} #folhas{display:block}
+    @page{size:84mm 25mm;margin:0} .pag{width:84mm;height:25mm;display:flex;padding-left:2mm;gap:2mm;page-break-after:always} .pag .etq{outline:0} }
+</style>
+</head>
+<body>
+<div class="hero">
+  <h1>Etiquetas do Kit Festa · versão acolhedora</h1>
+  <p>Três estilos para a caixa e três para a etiqueta do pedido (agora sem borda). Cada caixa recebe uma frase diferente, em sequência. Só preto, como a Zebra imprime. Escolha um estilo de cada e eu aplico no app.</p>
+</div>
+<div class="wrap">
+
+  <div class="card">
+    <div class="card-h"><span>Frases que giram caixa a caixa</span>
+      <label class="ctl">Conjunto <select id="setFrases">
+        <option value="carinho">Carinho (padrão)</option>
+        <option value="festa">Clima de festa</option>
+        <option value="casa">Casa e família</option>
+      </select></label></div>
+    <div class="card-b"><div id="listaFrases" class="muted" style="line-height:1.8"></div>
+      <p class="muted" style="margin:10px 0 0">Nomes e frases com ~28 caracteres cabem em uma linha a 40 mm. A fonte manuscrita (Caveat) sai bem na térmica porque está em peso forte.</p></div>
+  </div>
+
+  <div class="card">
+    <div class="card-h"><span>Etiqueta da caixa · 3 estilos</span><span class="muted">pedido #1017 · Coxinha Frango / Coxinha Ling.Blumenau</span></div>
+    <div class="card-b"><div class="row" id="caixas"></div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-h"><span>Etiqueta do pedido · 3 estilos (sem borda)</span><span class="muted">Aline Simões Pires · entrega 15/10 às 15:30 · caixas 1–4 de 14</span></div>
+    <div class="card-b"><div class="row" id="pedidos"></div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-h"><span>Imprimir teste na Zebra</span></div>
+    <div class="card-b">
+      <label class="ctl">Caixa <select id="selA"><option value="A">A · Caseira</option><option value="B">B · Clássica quente</option><option value="C">C · Minimal gentil</option></select></label>
+      <label class="ctl">Pedido <select id="selP"><option value="P1">1 · Olá, Aline!</option><option value="P2">2 · Clássica</option><option value="P3">3 · Direta</option></select></label>
+      <button class="btn" onclick="imprimir()">🖨️ Imprimir 2 linhas de teste (84 × 25)</button>
+      <div class="muted" style="margin-top:8px">Sai uma linha com duas caixas e uma linha com a etiqueta do pedido + uma caixa, no estilo escolhido.</div>
+    </div>
+  </div>
+</div>
+<div id="folhas"></div>
+
+<script>
+const SITE='https://hardtsalgados.com.br/kit-festa';
+const FRASES={
+  carinho:['Feito com carinho pra você','Obrigado por escolher a Hardt','Que a sua festa seja linda!','Preparado hoje, com amor','Bom apetite, e boa festa!','Sabor de casa na sua mesa','A gente ama fazer parte','Compartilhe, é feito pra isso'],
+  festa:['Hora da festa!','Salgadinho bom junta gente','Parabéns pra quem faz a festa','Serve quente, que fica melhor','Guarde um pra você','Que venham os convidados!','Feito pra alegrar a mesa','Brinde, sorria, aproveite'],
+  casa:['Receita da família Hardt','Feito à mão, como em casa','Com o cuidado de sempre','Da nossa cozinha pra sua festa','Massa fininha, recheio farto','Tradição desde o primeiro lote','Obrigado pela confiança','Sabor que a gente conhece']
+};
+const PED={numero:1017,cliente:'Aline Simões Pires',primeiro:'Aline',data:'15/10',hora:'15:30',total:14};
+const CX=[['COXINHA FRANGO',25],['COXINHA LING.BLUMENAU',25],['MINI PASTEL CARNE',25]];
+const $=s=>document.querySelector(s);
+function qr(el){ new QRCode(el,{text:SITE,width:160,height:160,correctLevel:QRCode.CorrectLevel.M}); }
+function fs(t,base){ const n=(t||'').length; const k=n<=14?1:n<=19?.86:n<=24?.74:n<=29?.63:.55; return `style="font-size:${(base*k).toFixed(1)}pt"`; }
+function frase(i){ const f=FRASES[$('#setFrases').value]; return f[i%f.length]; }
+
+function caixa(estilo,nome,un,i){
+  const d=document.createElement('div'); d.className='etq '+estilo;
+  if(estilo==='A') d.innerHTML=`<div class="nome" ${fs(nome,9.5)}>${nome}</div><div class="linha"><div class="qr"></div><div class="txt"><div class="ped">Pedido <b>#${PED.numero}</b></div><div class="un">${un} unidades</div></div></div><div class="frase" ${fs(frase(i),10)}>${frase(i)}</div>`;
+  if(estilo==='B') d.innerHTML=`<div class="nome" ${fs(nome,9)}>${nome}</div><div class="orn">✿ ❧ ✿</div><div class="linha"><div class="qr"></div><div class="txt"><div class="ped">pedido <b>#${PED.numero}</b></div><div class="un">${un} unidades</div></div></div><div class="frase" ${fs(frase(i),9.5)}>${frase(i)}</div>`;
+  if(estilo==='C') d.innerHTML=`<div class="linha"><div class="qr"></div><div class="txt"><div class="nome">${nome}</div><div class="rod"><span>${un} un</span><b>#${PED.numero}</b></div></div></div><div class="frase" ${fs(frase(i),11)}>${frase(i)}</div>`;
+  qr(d.querySelector('.qr')); return d;
+}
+function pedido(estilo,de,ate){
+  const d=document.createElement('div'); d.className='etq '+estilo;
+  if(estilo==='P1') d.innerHTML=`<div class="ola">Olá, ${PED.primeiro}! Boa festa :)</div><div class="ent">Entrega ${PED.data} às ${PED.hora}<small>${PED.cliente}</small></div><div class="rod"><span>Caixas ${de}–${ate} de ${PED.total}</span><b>Pedido #${PED.numero}</b></div>`;
+  if(estilo==='P2') d.innerHTML=`<div class="ola">Feito com carinho para</div><div class="ent">${PED.cliente}<small>entrega ${PED.data} às ${PED.hora}</small></div><div class="orn">✿ ❧ ✿</div><div class="rod">Pedido #${PED.numero} · caixas ${de}–${ate} de ${PED.total}</div>`;
+  if(estilo==='P3') d.innerHTML=`<div class="cli">${PED.cliente}</div><div class="ent">ENTREGA ${PED.data} · ${PED.hora}</div><div class="frase" ${fs('Obrigado por escolher a Hardt ♥',11.5)}>Obrigado por escolher a Hardt ♥</div><div class="rod"><span>Pedido #${PED.numero}</span><span>Caixas ${de}–${ate} de ${PED.total}</span></div>`;
+  return d;
+}
+function quadro(el,rot){ const w=document.createElement('div'); w.className='quadro'; const z=document.createElement('div'); z.className='zoom'; z.appendChild(el); w.appendChild(z); const r=document.createElement('div'); r.className='rot'; r.textContent=rot; w.appendChild(r); return w; }
+function montar(){
+  $('#listaFrases').innerHTML=FRASES[$('#setFrases').value].map((f,i)=>`<b>${i+1}.</b> ${f}`).join('<br>');
+  const c=$('#caixas'); c.innerHTML='';
+  [['A','A · Caseira'],['B','B · Clássica quente'],['C','C · Minimal gentil']].forEach(([e,r],k)=>{ c.appendChild(quadro(caixa(e,CX[0][0],CX[0][1],0),r+' · caixa 1')); c.appendChild(quadro(caixa(e,CX[1][0],CX[1][1],1),r+' · caixa 2 (nome longo)')); });
+  const p=$('#pedidos'); p.innerHTML='';
+  [['P1','1 · Olá, Aline!'],['P2','2 · Clássica'],['P3','3 · Direta']].forEach(([e,r])=>p.appendChild(quadro(pedido(e,1,4),r)));
+}
+function imprimir(){
+  const a=$('#selA').value,p=$('#selP').value,f=$('#folhas'); f.innerHTML='';
+  const l1=document.createElement('div'); l1.className='pag'; l1.appendChild(caixa(a,CX[0][0],25,0)); l1.appendChild(caixa(a,CX[1][0],25,1));
+  const l2=document.createElement('div'); l2.className='pag'; l2.appendChild(pedido(p,1,4)); l2.appendChild(caixa(a,CX[2][0],25,2));
+  f.appendChild(l1); f.appendChild(l2); setTimeout(()=>window.print(),300);
+}
+$('#setFrases').addEventListener('change',montar); montar();
+</script>
+</body>
+</html>

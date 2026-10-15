@@ -6,7 +6,7 @@ import deliveryService from '../../services/deliveryService';
 import { useAuth } from '../../contexts/AuthContext';
 import { useFiltroSalvo, useFiltrosSalvos } from '../../hooks/useFiltrosSalvos';
 import { imprimirNaPagina } from '../../utils/imprimirNaPagina';
-import { montarEtiquetas, pedidoDoDelivery, LINK_KIT_FESTA, OPCOES_PADRAO as ETQ_PADRAO } from '../KitFesta/etiquetasCaixas';
+import { montarEtiquetas, pedidoDoDelivery, LINK_KIT_FESTA, OPCOES_PADRAO as ETQ_PADRAO, precarregarFontesEtiqueta } from '../KitFesta/etiquetasCaixas';
 import ModalPreviaWhatsapp from './ModalPreviaWhatsapp';
 
 const { ETAPAS, LABELS } = deliveryService;
@@ -147,6 +147,7 @@ export default function DeliveryKanban() {
     const [qrSvg, setQrSvg] = useState('');
     useEffect(() => {
         let ativo = true;
+        precarregarFontesEtiqueta();
         import('qrcode')
             .then(QRCode => QRCode.toString(LINK_KIT_FESTA, { type: 'svg', margin: 0, errorCorrectionLevel: 'M' }))
             .then(svg => { if (ativo) setQrSvg(svg); })

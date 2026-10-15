@@ -9,7 +9,7 @@ import SelectBusca from '../../components/SelectBusca';
 import { normalizarDoc } from '../../utils/documento'; // inclui CNPJ ALFANUMÉRICO
 import { useFiltrosSalvos } from '../../hooks/useFiltrosSalvos';
 import { imprimirNaPagina } from '../../utils/imprimirNaPagina';
-import { montarEtiquetas, LINK_KIT_FESTA, OPCOES_PADRAO as ETQ_PADRAO } from './etiquetasCaixas';
+import { montarEtiquetas, LINK_KIT_FESTA, OPCOES_PADRAO as ETQ_PADRAO, precarregarFontesEtiqueta } from './etiquetasCaixas';
 import { BarraBuscaPedidos, ChipsStatusPedidos, PendentesPedidos, ListaLinhasPedidos, LinhaPedidoOnline } from '../PedidosOnline/listaEstiloPedidos';
 import { List, Hourglass, UserX, CheckCircle, XCircle, Ban, MessageCircle } from 'lucide-react';
 
@@ -156,6 +156,7 @@ function ModalPedido({ pedido, isAdmin, onClose, onChanged }) {
   const [qrSvg, setQrSvg] = useState('');
   useEffect(() => {
     let ativo = true;
+    precarregarFontesEtiqueta();
     import('qrcode')
       .then(QRCode => QRCode.toString(LINK_KIT_FESTA, { type: 'svg', margin: 0, errorCorrectionLevel: 'M' }))
       .then(svg => { if (ativo) setQrSvg(svg); })

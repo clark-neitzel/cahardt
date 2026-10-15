@@ -8,6 +8,32 @@
 import { escaparHtml } from '../../utils/imprimirNaPagina';
 
 export const LINK_KIT_FESTA = 'https://hardtsalgados.com.br/kit-festa';
+
+// Frase de agradecimento: gira caixa a caixa (caixa 1 → frase 1, caixa 2 → frase 2…).
+export const FRASES_CAIXA = [
+    'Feito com carinho pra você',
+    'Obrigado por escolher a Hardt',
+    'Que a sua festa seja linda!',
+    'Preparado hoje, com amor',
+    'Bom apetite, e boa festa!',
+    'Sabor de casa na sua mesa',
+    'A gente ama fazer parte',
+    'Compartilhe, é feito pra isso',
+];
+
+// Fontes das etiquetas (declaradas no index.html). Pré-carregar ao abrir a tela: o print()
+// é síncrono no clique e uma fonte ainda não baixada sairia no fallback.
+export const FONTES_ETIQUETA = ['700 12pt Fredoka', '600 12pt Fredoka', '700 12pt Caveat', '600 12pt Lora', 'italic 600 12pt Lora'];
+export function precarregarFontesEtiqueta() {
+    try { FONTES_ETIQUETA.forEach((f) => document.fonts?.load(f).catch(() => {})); } catch { /* sem Font Loading API */ }
+}
+
+// Fonte que encolhe para o texto caber em UMA linha (40mm úteis ≈ 26 caracteres a 7pt).
+function tamanhoPt(texto, base) {
+    const n = String(texto || '').length;
+    const k = n <= 14 ? 1 : n <= 19 ? 0.86 : n <= 24 ? 0.74 : n <= 29 ? 0.63 : 0.55;
+    return (base * k).toFixed(1) + 'pt';
+}
 export const OPCOES_PADRAO = { cada: 4, nomeLimpo: true, colunas: 2 };
 
 // "COXINHA FRANGO C/25-HF" → "COXINHA FRANGO" (sufixo do cadastro; a quantidade sai na linha de baixo)
@@ -63,28 +89,31 @@ export function montarEtiquetas(pedido, { qrSvg, cada, nomeLimpo, colunas } = {}
     const seq = sequenciaEtiquetas(pedido, op);
     const entrega = pedido.modo === 'entrega';
 
+    let nCaixa = 0;
     const etq = (e) => {
         if (e.tipo === 'pedido') {
-            return `<div class="etq pedido ${entrega ? '' : 'retirada'}">
-                <div class="num">PEDIDO #${escaparHtml(pedido.numero)}</div>
-                <div class="cli">${escaparHtml(pedido.nomeCliente)}</div>
-                <div><span class="ent">${entrega ? 'ENTREGA' : 'RETIRADA'} ${dataBr(pedido.data)}${pedido.horario ? ` · ${escaparHtml(pedido.horario)}` : ''}</span></div>
-                <div class="cx">Caixas ${e.de}–${e.ate} de ${e.total} · Kit Festa Hardt</div>
+            // "Clássica": serifa, centralizada, sem borda
+            return `<div class="etq pedido">
+                <div class="ola">Feito com carinho para</div>
+                <div class="cli" style="font-size:${tamanhoPt(pedido.nomeCliente, 10.5)}">${escaparHtml(pedido.nomeCliente)}</div>
+                <div class="ent">${entrega ? 'entrega' : 'retirada'} ${dataBr(pedido.data)}${pedido.horario ? ` às ${escaparHtml(pedido.horario)}` : ''}</div>
+                <div class="orn">✿ ❧ ✿</div>
+                <div class="rod">Pedido #${escaparHtml(pedido.numero)} · caixas ${e.de}–${e.ate} de ${e.total}</div>
             </div>`;
         }
+        // "Caseira": fonte arredondada, QR, pedido e frase manuscrita que muda a cada caixa
         const nome = nomeDaEtiqueta(e.nome, op.nomeLimpo);
-        // nome em UMA linha: a fonte encolhe conforme o tamanho (40mm úteis ≈ 26 caracteres a 7pt)
-        const tam = nome.length <= 14 ? '9.5pt' : nome.length <= 19 ? '8.2pt' : nome.length <= 24 ? '7pt' : nome.length <= 29 ? '6pt' : '5.2pt';
+        const frase = FRASES_CAIXA[nCaixa++ % FRASES_CAIXA.length];
         return `<div class="etq sabor">
-            <div class="nome" style="font-size:${tam}">${escaparHtml(nome)}</div>
+            <div class="nome" style="font-size:${tamanhoPt(nome, 9.5)}">${escaparHtml(nome)}</div>
             <div class="linha">
                 ${qrSvg ? `<div class="qr">${qrSvg}</div>` : ''}
                 <div class="txt">
-                    <div class="ped">PEDIDO</div>
-                    <div class="num">#${escaparHtml(pedido.numero)}</div>
-                    ${e.un ? `<div class="un">${escaparHtml(e.un)} - UN</div>` : ''}
+                    <div class="ped">Pedido<b>#${escaparHtml(pedido.numero)}</b></div>
+                    ${e.un ? `<div class="un">${escaparHtml(e.un)} unidades</div>` : ''}
                 </div>
             </div>
+            <div class="frase" style="font-size:${tamanhoPt(frase, 10)}">${escaparHtml(frase)}</div>
         </div>`;
     };
 
@@ -97,25 +126,28 @@ export function montarEtiquetas(pedido, { qrSvg, cada, nomeLimpo, colunas } = {}
     const estilos = `
         @page { size: ${largPag} 25mm; margin: 0; }
         html.modo-impressao #area-impressao { width: ${largPag} !important; max-width: none !important; margin: 0 !important; }
-        #area-impressao { font-family: Manrope, Arial, Helvetica, sans-serif; color: #000; }
+        #area-impressao { color: #000; }
         #area-impressao .pag { width: ${largPag}; height: 25mm; display: flex; overflow: hidden;
             ${cols === 2 ? 'padding-left: 2mm; gap: 2mm;' : ''} page-break-after: always; break-after: page; }
-        #area-impressao .etq { width: 40mm; height: 25mm; flex: none; overflow: hidden; background: #fff; }
-        #area-impressao .etq.sabor { display: flex; flex-direction: column; padding: 1.4mm 1.6mm 1.2mm; gap: 0.8mm; }
-        #area-impressao .nome { font-weight: 800; line-height: 1.1; text-transform: uppercase; white-space: nowrap; overflow: hidden; }
-        #area-impressao .linha { display: flex; gap: 1.5mm; flex: 1; min-height: 0; }
-        #area-impressao .qr { width: 15mm; height: 15mm; flex: none; }
-        #area-impressao .qr svg { width: 15mm; height: 15mm; display: block; }
-        #area-impressao .txt { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 0.8mm; }
-        #area-impressao .ped { font-weight: 800; font-size: 7.5pt; line-height: 1; letter-spacing: .04em; white-space: nowrap; }
-        #area-impressao .txt .num { font-weight: 800; font-size: 13pt; line-height: 1; white-space: nowrap; }
-        #area-impressao .un { font-weight: 800; font-size: 8pt; line-height: 1; white-space: nowrap; }
-        #area-impressao .etq.pedido { padding: 1.6mm 2mm; display: flex; flex-direction: column; justify-content: space-between; border: 0.5mm solid #000; box-sizing: border-box; }
-        #area-impressao .etq.pedido .num { font-weight: 800; font-size: 12pt; line-height: 1; }
-        #area-impressao .etq.pedido .cli { font-weight: 800; font-size: 8pt; line-height: 1.1; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        #area-impressao .etq.pedido .ent { font-weight: 800; font-size: 8pt; white-space: nowrap; background: #000; color: #fff; padding: 0.6mm 1.2mm; border-radius: 0.8mm; display: inline-block; }
-        #area-impressao .etq.pedido.retirada .ent { background: #fff; color: #000; border: 0.4mm solid #000; }
-        #area-impressao .etq.pedido .cx { font-size: 6.2pt; font-weight: 700; }
+        #area-impressao .etq { width: 40mm; height: 25mm; flex: none; overflow: hidden; background: #fff; box-sizing: border-box; }
+        /* caixa — "Caseira" */
+        #area-impressao .etq.sabor { font-family: Fredoka, Manrope, Arial, sans-serif; padding: 1.3mm 1.6mm 1mm; display: flex; flex-direction: column; }
+        #area-impressao .nome { font-weight: 700; line-height: 1; white-space: nowrap; overflow: hidden; letter-spacing: -.01em; }
+        #area-impressao .linha { display: flex; gap: 1.5mm; flex: 1; min-height: 0; margin-top: 0.8mm; }
+        #area-impressao .qr { width: 13mm; height: 13mm; flex: none; }
+        #area-impressao .qr svg { width: 13mm; height: 13mm; display: block; }
+        #area-impressao .txt { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: space-between; }
+        #area-impressao .ped { font-weight: 600; font-size: 7pt; line-height: 1; }
+        #area-impressao .ped b { display: block; font-weight: 700; font-size: 10.5pt; line-height: 1; margin-top: 0.4mm; white-space: nowrap; }
+        #area-impressao .un { font-weight: 600; font-size: 6.5pt; white-space: nowrap; }
+        #area-impressao .frase { font-family: Caveat, 'Segoe Script', cursive; font-weight: 700; line-height: 1; margin-top: 0.8mm; white-space: nowrap; overflow: hidden; text-align: center; }
+        /* pedido — "Clássica", sem borda */
+        #area-impressao .etq.pedido { font-family: Lora, Georgia, 'Times New Roman', serif; padding: 1.4mm 2mm 1.2mm; display: flex; flex-direction: column; justify-content: space-between; text-align: center; }
+        #area-impressao .etq.pedido .ola { font-family: Caveat, 'Segoe Script', cursive; font-weight: 700; font-size: 11.5pt; line-height: 1; white-space: nowrap; overflow: hidden; }
+        #area-impressao .etq.pedido .cli { font-weight: 600; line-height: 1.1; white-space: nowrap; overflow: hidden; }
+        #area-impressao .etq.pedido .ent { font-style: italic; font-weight: 600; font-size: 7pt; line-height: 1.1; white-space: nowrap; }
+        #area-impressao .etq.pedido .orn { font-size: 5.5pt; letter-spacing: .3em; line-height: 1; }
+        #area-impressao .etq.pedido .rod { font-size: 6.3pt; white-space: nowrap; }
     `;
     return { estilos, corpo: paginas.join(''), total: seq.length, caixas: seq.filter((e) => e.tipo === 'sabor').length };
 }
