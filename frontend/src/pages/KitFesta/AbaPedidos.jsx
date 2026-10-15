@@ -9,7 +9,7 @@ import SelectBusca from '../../components/SelectBusca';
 import { normalizarDoc } from '../../utils/documento'; // inclui CNPJ ALFANUMÉRICO
 import { useFiltrosSalvos } from '../../hooks/useFiltrosSalvos';
 import { imprimirNaPagina } from '../../utils/imprimirNaPagina';
-import { montarEtiquetas, LINK_KIT_FESTA, OPCOES_PADRAO as ETQ_PADRAO, precarregarFontesEtiqueta } from './etiquetasCaixas';
+import { montarEtiquetas, LINK_KIT_FESTA, OPCOES_PADRAO as ETQ_PADRAO, CONJUNTOS_FRASES, precarregarFontesEtiqueta } from './etiquetasCaixas';
 import { BarraBuscaPedidos, ChipsStatusPedidos, PendentesPedidos, ListaLinhasPedidos, LinhaPedidoOnline } from '../PedidosOnline/listaEstiloPedidos';
 import { List, Hourglass, UserX, CheckCircle, XCircle, Ban, MessageCircle } from 'lucide-react';
 
@@ -280,6 +280,11 @@ function ModalPedido({ pedido, isAdmin, onClose, onChanged }) {
                 {' '}Total: <b>{montarEtiquetas(pedido, { ...etqOpcoes, qrSvg }).total}</b> etiquetas ({montarEtiquetas(pedido, etqOpcoes).caixas} caixas).
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                <label className="flex items-center gap-2 sm:col-span-3">Frase nas caixas
+                  <SelectBusca value={etqOpcoes.frases || ETQ_PADRAO.frases} onChange={e => setEtqOpcoes({ ...etqOpcoes, frases: e.target.value })} className="flex-1 max-w-[220px]">
+                    {Object.entries(CONJUNTOS_FRASES).map(([k, c]) => <option key={k} value={k}>{c.nome}{c.frases[0] ? ` · "${c.frases[0]}"…` : ''}</option>)}
+                  </SelectBusca>
+                </label>
                 <label className="flex items-center gap-2">Pedido a cada
                   <input type="number" min="1" max="12" value={etqOpcoes.cada}
                     onChange={e => setEtqOpcoes({ ...etqOpcoes, cada: Math.max(1, Number(e.target.value) || 1) })}

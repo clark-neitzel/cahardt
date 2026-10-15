@@ -10,16 +10,23 @@ import { escaparHtml } from '../../utils/imprimirNaPagina';
 export const LINK_KIT_FESTA = 'https://hardtsalgados.com.br/kit-festa';
 
 // Frase de agradecimento: gira caixa a caixa (caixa 1 → frase 1, caixa 2 → frase 2…).
-export const FRASES_CAIXA = [
-    'Feito com carinho pra você',
-    'Obrigado por escolher a Hardt',
-    'Que a sua festa seja linda!',
-    'Preparado hoje, com amor',
-    'Bom apetite, e boa festa!',
-    'Sabor de casa na sua mesa',
-    'A gente ama fazer parte',
-    'Compartilhe, é feito pra isso',
-];
+// O conjunto é escolhido no painel de etiquetas (opção `frases`, lembrada por usuário).
+export const CONJUNTOS_FRASES = {
+    carinho: { nome: 'Carinho', frases: [
+        'Feito com carinho pra você', 'Obrigado por escolher a Hardt', 'Que a sua festa seja linda!', 'Preparado hoje, com amor',
+        'Bom apetite, e boa festa!', 'Sabor de casa na sua mesa', 'A gente ama fazer parte', 'Compartilhe, é feito pra isso',
+    ] },
+    festa: { nome: 'Clima de festa', frases: [
+        'Hora da festa!', 'Salgadinho bom junta gente', 'Parabéns pra quem faz a festa', 'Serve quente, que fica melhor',
+        'Guarde um pra você', 'Que venham os convidados!', 'Feito pra alegrar a mesa', 'Brinde, sorria, aproveite',
+    ] },
+    casa: { nome: 'Casa e família', frases: [
+        'Receita da família Hardt', 'Feito à mão, como em casa', 'Com o cuidado de sempre', 'Da nossa cozinha pra sua festa',
+        'Massa fininha, recheio farto', 'Tradição desde o primeiro lote', 'Obrigado pela confiança', 'Sabor que a gente conhece',
+    ] },
+    nenhuma: { nome: 'Sem frase', frases: [] },
+};
+export const FRASES_CAIXA = CONJUNTOS_FRASES.carinho.frases;
 
 // Fontes das etiquetas (declaradas no index.html). Pré-carregar ao abrir a tela: o print()
 // é síncrono no clique e uma fonte ainda não baixada sairia no fallback.
@@ -34,7 +41,7 @@ function tamanhoPt(texto, base) {
     const k = n <= 14 ? 1 : n <= 19 ? 0.86 : n <= 24 ? 0.74 : n <= 29 ? 0.63 : 0.55;
     return (base * k).toFixed(1) + 'pt';
 }
-export const OPCOES_PADRAO = { cada: 4, nomeLimpo: true, colunas: 2 };
+export const OPCOES_PADRAO = { cada: 4, nomeLimpo: true, colunas: 2, frases: 'carinho' };
 
 // "COXINHA FRANGO C/25-HF" → "COXINHA FRANGO" (sufixo do cadastro; a quantidade sai na linha de baixo)
 export function nomeDaEtiqueta(nome, limpo) {
@@ -81,8 +88,9 @@ export function pedidoDoDelivery(card) {
 }
 
 /** Monta { estilos, corpo } prontos para imprimirNaPagina(estilos, corpo). */
-export function montarEtiquetas(pedido, { qrSvg, cada, nomeLimpo, colunas } = {}) {
-    const op = { ...OPCOES_PADRAO, cada, nomeLimpo, colunas };
+export function montarEtiquetas(pedido, { qrSvg, cada, nomeLimpo, colunas, frases } = {}) {
+    const op = { ...OPCOES_PADRAO, cada, nomeLimpo, colunas, frases };
+    const listaFrases = (CONJUNTOS_FRASES[op.frases] || CONJUNTOS_FRASES.carinho).frases;
     if (op.cada == null) op.cada = OPCOES_PADRAO.cada;
     if (op.nomeLimpo == null) op.nomeLimpo = OPCOES_PADRAO.nomeLimpo;
     const cols = Number(op.colunas) === 1 ? 1 : 2;
@@ -103,7 +111,7 @@ export function montarEtiquetas(pedido, { qrSvg, cada, nomeLimpo, colunas } = {}
         }
         // "Caseira": fonte arredondada, QR, pedido e frase manuscrita que muda a cada caixa
         const nome = nomeDaEtiqueta(e.nome, op.nomeLimpo);
-        const frase = FRASES_CAIXA[nCaixa++ % FRASES_CAIXA.length];
+        const frase = listaFrases.length ? listaFrases[nCaixa++ % listaFrases.length] : '';
         return `<div class="etq sabor">
             <div class="nome" style="font-size:${tamanhoPt(nome, 9.5)}">${escaparHtml(nome)}</div>
             <div class="linha">
@@ -113,7 +121,7 @@ export function montarEtiquetas(pedido, { qrSvg, cada, nomeLimpo, colunas } = {}
                     ${e.un ? `<div class="un">${escaparHtml(e.un)} unidades</div>` : ''}
                 </div>
             </div>
-            <div class="frase" style="font-size:${tamanhoPt(frase, 10)}">${escaparHtml(frase)}</div>
+            ${frase ? `<div class="frase" style="font-size:${tamanhoPt(frase, 10)}">${escaparHtml(frase)}</div>` : ''}
         </div>`;
     };
 
