@@ -91,6 +91,21 @@ A tela de configuração (admin) tem duas abas:
 - **Categorias**: define quais categorias de produto (ou categorias comerciais) aparecem no Kanban. Apenas pedidos com itens dessas categorias entram no Delivery.
 - **Permissões**: define quais usuários podem mover pedidos em quais etapas.
 
+### Como liberar o Delivery para um usuário (passo a passo)
+
+A liberação do Delivery **não fica no painel de permissões de Usuários** (Admin → Usuários). Ela é feita dentro do próprio Delivery, e só um administrador consegue:
+
+1. Abrir **Delivery** no menu lateral.
+2. Clicar no botão **Configurar** (ícone de engrenagem, no topo do Kanban — só aparece para administrador).
+3. Abrir a aba **Permissões**. Aparece uma linha para cada usuário interno ativo.
+4. Marcar **Pode ver** na linha do usuário → o Delivery passa a aparecer no menu dele.
+5. Marcar as colunas das etapas que ele pode movimentar (**Pedido**, **Produção**, **Saindo**, **Entregue**). Sem nenhuma marcada, ele só vê os cards.
+6. Clicar em **Salvar** na linha (o botão aparece quando há alteração).
+
+O usuário liberado precisa **sair e entrar de novo** (ou atualizar a página) para o item Delivery aparecer no menu. Para tirar o acesso, desmarcar **Pode ver** e salvar.
+
+Exemplo em uso: o usuário **Produção** foi liberado em 15/10/2026 para ver a tela e mover para Produção, Saindo e Entregue (não devolve card para Pedido).
+
 ---
 
 ## Depende de / Interfere em
