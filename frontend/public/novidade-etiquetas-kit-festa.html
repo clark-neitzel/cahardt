@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Novidade: Etiquetas das caixas do Kit Festa</title>
+<meta property="og:title" content="Etiquetas das caixas do Kit Festa">
+<meta property="og:description" content="Botão novo no pedido do Kit Festa imprime na Zebra uma etiqueta por caixa com o sabor e o QR do site, e a cada 4 caixas uma etiqueta com pedido, cliente e horário.">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{--primary:#00754A;--dark:#006241;--house:#1E3932;--mint:#d4e9e2;--bg:#f2f0eb;--gold:#cba258}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);font-family:Manrope,-apple-system,sans-serif;color:rgba(0,0,0,.87);letter-spacing:-.01em}
+  .hero{background:var(--house);color:#fff;padding:32px 20px 28px}
+  .hero .tag{display:inline-block;background:var(--gold);color:#1E3932;font-weight:800;font-size:11px;letter-spacing:.12em;padding:4px 10px;border-radius:999px;margin-bottom:12px}
+  .hero h1{margin:0 0 8px;font-size:24px;line-height:1.15}
+  .hero p{margin:0;opacity:.88;font-size:15px;max-width:640px}
+  .wrap{max-width:720px;margin:0 auto;padding:16px}
+  .acc{background:#fff;border:1px solid #e5e7eb;border-radius:12px;box-shadow:0 1px 2px rgba(0,0,0,.05);margin-bottom:12px;overflow:hidden}
+  .acc>button{all:unset;display:flex;width:100%;justify-content:space-between;align-items:center;padding:14px 18px;font-weight:800;font-size:14px;color:var(--house);cursor:pointer}
+  .acc>button::after{content:"▾";transition:transform .2s}
+  .acc:not(.aberto)>button::after{transform:rotate(-90deg)}
+  .acc .b{display:none;padding:0 18px 18px;font-size:14px;line-height:1.55}
+  .acc.aberto .b{display:block}
+  .tela{background:var(--bg);border:1px solid #e5e7eb;border-radius:12px;padding:12px;margin:10px 0}
+  .app-card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:14px;position:relative}
+  .pin{display:inline-flex;width:20px;height:20px;border-radius:50%;background:var(--gold);color:#fff;font-size:11px;font-weight:800;align-items:center;justify-content:center;vertical-align:middle;flex:none}
+  .legenda{margin:10px 0 0;padding:0;list-style:none}
+  .legenda li{display:flex;gap:8px;margin:6px 0}
+  .btn{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:7px 14px;font-weight:700;font-size:13px;background:var(--primary);color:#fff}
+  .btn.sec{background:var(--mint);color:var(--house)}
+  .chip{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;background:#fef3c7;color:#92400e}
+  .muted{color:#6b7280;font-size:13px}
+  .painel{background:rgba(212,233,226,.4);border:1px solid var(--mint);border-radius:12px;padding:12px;margin-top:10px;font-size:13px}
+  .opts{display:flex;flex-wrap:wrap;gap:10px;margin:8px 0;font-size:12px}
+  /* etiquetas (ampliadas) */
+  .rolo{display:flex;flex-wrap:wrap;gap:12px;margin:10px 0}
+  .etq{width:200px;height:125px;background:#fff;border:1px dashed #9ca3af;border-radius:6px;color:#000;font-family:Manrope,Arial,sans-serif;overflow:hidden}
+  .etq.sabor{display:flex;gap:6px;padding:7px 8px 6px 7px}
+  .etq .qr{width:85px;height:85px;flex:none;margin-top:6px;background:
+    repeating-linear-gradient(90deg,#000 0 6px,transparent 6px 12px),repeating-linear-gradient(0deg,#000 0 6px,transparent 6px 12px);background-blend-mode:multiply;border:5px solid #000;outline:5px solid #fff;outline-offset:-10px}
+  .etq .txt{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:space-between}
+  .etq .nome{font-weight:800;font-size:15px;line-height:1.05;text-transform:uppercase}
+  .etq .un{font-weight:700;font-size:12px}
+  .etq .marca{font-size:9.5px;font-weight:700;letter-spacing:.06em}
+  .etq.pedido{padding:8px 10px;display:flex;flex-direction:column;justify-content:space-between;border:2.5px solid #000}
+  .etq.pedido .num{font-weight:800;font-size:23px;line-height:1}
+  .etq.pedido .cli{font-weight:800;font-size:15px;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .etq.pedido .ent{font-weight:800;font-size:15px;background:#000;color:#fff;padding:3px 6px;border-radius:4px;display:inline-block}
+  .etq.pedido .cx{font-size:11.5px;font-weight:700}
+  ol{padding-left:20px}
+</style>
+</head>
+<body>
+<div class="hero">
+  <span class="tag">NOVIDADE · 15/10/2026</span>
+  <h1>Etiquetas das caixas do Kit Festa</h1>
+  <p>Botão novo dentro do pedido do Kit Festa. Imprime na Zebra (rolo de 40 × 25 mm) uma etiqueta por caixa com o sabor e o QR do site, e a cada 4 caixas uma etiqueta com pedido, cliente e horário de entrega.</p>
+</div>
+<div class="wrap">
+
+  <div class="acc aberto"><button>Como ficam as etiquetas</button><div class="b">
+    <div class="rolo">
+      <div class="etq sabor"><div class="qr"></div><div class="txt"><div class="nome">Coxinha Frango</div><div><div class="un">25 un · Kit Festa</div><div class="marca">HARDT SALGADOS</div></div></div></div>
+      <div class="etq pedido"><div class="num">PEDIDO #1042</div><div class="cli">Juliana Mendes</div><div><span class="ent">ENTREGA 17/10 · 15:30</span></div><div class="cx">Caixas 1–4 de 6 · Kit Festa Hardt</div></div>
+    </div>
+    <ul class="legenda">
+      <li><span class="pin">1</span><span><b>Etiqueta do sabor</b> (uma por caixa): nome do sabor igual ao do site, quantidade de unidades e o <b>QR code</b> que abre a página do Kit Festa no celular do cliente.</span></li>
+      <li><span class="pin">2</span><span><b>Etiqueta do pedido</b> (uma a cada 4 caixas): número do pedido, nome do cliente e <b>ENTREGA ou RETIRADA com data e horário</b> em destaque. Tem borda para achar rápido na pilha.</span></li>
+    </ul>
+    <p class="muted">Exemplo: pedido com 6 caixas → 6 etiquetas de sabor + 2 do pedido (caixas 1–4 e 5–6).</p>
+  </div></div>
+
+  <div class="acc aberto"><button>As telas do app</button><div class="b">
+    <div class="tela">
+      <div class="app-card">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div><b style="font-size:15px">Pedido #1042</b> <span class="chip">Aguardando</span></div>
+          <div><span class="pin">1</span> <span class="btn sec">🖨 Etiquetas</span> ✕</div>
+        </div>
+        <div class="muted" style="margin-top:8px">Juliana Mendes · (47) 9 9999-0000<br>🚚 Entrega · 17/10/2026 às 15:30</div>
+        <div class="painel">
+          <b>🖨 Etiquetas das caixas</b>
+          <div class="muted" style="margin:4px 0">1 etiqueta por caixa com o sabor e o QR do site · a cada 4 caixas, 1 etiqueta com pedido, cliente e horário. Total: <b>8</b> etiquetas (6 caixas).</div>
+          <div class="opts"><span><span class="pin">2</span> Pedido a cada [ 4 ] caixas</span><span><span class="pin">3</span> ☑ Tirar o "C/25-HF" do nome</span><span><span class="pin">4</span> ☑ Rolo de 2 colunas</span></div>
+          <span class="pin">5</span> <span class="btn">🖨 Imprimir etiquetas</span> <span class="muted">Na impressão escolha a TLP 2844, margem 0, escala 100%.</span>
+        </div>
+        <div class="muted" style="margin-top:10px">ITENS · 2× Coxinha Frango · 1× Mini Pastel Carne · 1× Bolinha Queijo · 2× Churros D. Leite</div>
+      </div>
+    </div>
+    <ul class="legenda">
+      <li><span class="pin">1</span><span>Botão <b>Etiquetas</b> no topo do pedido (Pedidos Online → aba Kit Festa → Detalhes). Abre e fecha o painel.</span></li>
+      <li><span class="pin">2</span><span><b>A cada quantas caixas</b> sai a etiqueta do pedido. Padrão 4.</span></li>
+      <li><span class="pin">3</span><span>Tira o <b>"C/25-HF"</b> do nome do sabor na etiqueta (a quantidade já sai na linha de baixo).</span></li>
+      <li><span class="pin">4</span><span><b>Rolo de 2 colunas</b>: deixe ligado para o rolo da foto. Só desligue se a impressora estiver configurada com 1 etiqueta por página.</span></li>
+      <li><span class="pin">5</span><span><b>Imprimir etiquetas</b>: abre a impressão. Escolha a <b>Zebra TLP 2844</b>, margem 0 e escala 100%. As escolhas ficam lembradas para a próxima vez.</span></li>
+    </ul>
+  </div></div>
+
+  <div class="acc aberto"><button>Para começar a usar</button><div class="b">
+    <ol>
+      <li>Abra <b>Pedidos Online</b> → aba <b>Kit Festa</b> → <b>Detalhes</b> do pedido.</li>
+      <li>Clique em <b>Etiquetas</b> no topo e confira o total de etiquetas.</li>
+      <li>Clique em <b>Imprimir etiquetas</b> e escolha a TLP 2844 (margem 0, escala 100%).</li>
+      <li>Cole a etiqueta do sabor em cada caixa e a do pedido na pilha de 4.</li>
+    </ol>
+    <p class="muted">Na primeira impressão confira se a etiqueta saiu alinhada no rolo. Se cortar, veja na impressora o tamanho de papel configurado (2 colunas = 84 × 25 mm).</p>
+  </div></div>
+</div>
+<script>document.querySelectorAll('.acc>button').forEach(b=>b.addEventListener('click',()=>b.parentElement.classList.toggle('aberto')));</script>
+</body>
+</html>

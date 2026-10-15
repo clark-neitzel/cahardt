@@ -1,5 +1,11 @@
 [
   {
+    "slug": "etiquetas-kit-festa",
+    "titulo": "Etiquetas das caixas do Kit Festa",
+    "resumo": "Botão novo no pedido do Kit Festa imprime na Zebra uma etiqueta por caixa com o sabor e o QR do site, e a cada 4 caixas uma etiqueta com pedido, cliente e horário.",
+    "data": "2026-10-15"
+  },
+  {
     "slug": "inadimplencia",
     "titulo": "Inadimplência visível em todas as telas",
     "resumo": "Selo vermelho mostra quem está em atraso e o amarelo quem está \"a confirmar\", em todas as telas; venda a prazo para cliente em atraso agora tem regra clara (à vista ou um responsável libera).",

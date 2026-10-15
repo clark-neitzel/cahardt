@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Etiquetas Kit Festa</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  :root { --primary:#00754A; --dark:#006241; --house:#1E3932; --mint:#d4e9e2; --bg:#f2f0eb; --gold:#cba258; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); font-family:Manrope,-apple-system,"SF Pro Text",sans-serif; color:rgba(0,0,0,.87); letter-spacing:-.01em; }
+  .hero { background:var(--house); color:#fff; padding:28px 20px; }
+  .hero h1 { margin:0 0 6px; font-size:22px; }
+  .hero p { margin:0; opacity:.85; font-size:14px; max-width:720px; }
+  .wrap { max-width:960px; margin:0 auto; padding:16px; }
+  .card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; box-shadow:0 1px 2px rgba(0,0,0,.05); margin-bottom:16px; overflow:hidden; }
+  .card-h { display:flex; align-items:center; gap:8px; padding:12px 20px; border-bottom:1px solid #f3f4f6; font-size:11px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; color:#4b5563; }
+  .card-b { padding:20px; }
+  .btn { border:0; border-radius:999px; padding:9px 16px; font:inherit; font-weight:700; font-size:14px; cursor:pointer; background:var(--primary); color:#fff; }
+  .btn:hover { background:var(--dark); }
+  .btn.sec { background:#fff; color:var(--primary); border:1px solid var(--primary); }
+  .btn.sm { padding:6px 12px; font-size:12px; }
+  label.ctl { display:inline-flex; align-items:center; gap:6px; font-size:13px; margin-right:14px; }
+  select, input[type=number] { font:inherit; font-size:13px; border:1px solid #d1d5db; border-radius:6px; padding:6px 8px; }
+  .pin { display:inline-flex; width:20px; height:20px; border-radius:50%; background:var(--gold); color:#fff; font-size:11px; font-weight:800; align-items:center; justify-content:center; vertical-align:middle; flex:none; }
+  .legenda { margin:10px 0 0; padding:0; list-style:none; font-size:13px; color:#374151; }
+  .legenda li { display:flex; gap:8px; margin:6px 0; }
+  .muted { color:#6b7280; font-size:13px; }
+
+  /* mock da tela do app */
+  .tela { border:1px solid #e5e7eb; border-radius:12px; background:var(--bg); padding:12px; }
+  .app-card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:14px; }
+  .app-card h3 { margin:0; font-size:15px; }
+  .chip { display:inline-block; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:700; }
+  .chip.g { background:#dcfce7; color:#166534; }
+  .chip.b { background:var(--mint); color:var(--house); }
+  .linha { display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; }
+  .sep { border-top:1px solid #f3f4f6; margin:10px 0; }
+  .abas { display:flex; gap:6px; margin-bottom:10px; }
+  .aba { padding:6px 14px; border-radius:10px 10px 0 0; background:#e5e7eb; font-size:13px; font-weight:700; color:#6b7280; }
+  .aba.on { background:#fff; color:var(--house); }
+
+  /* ===== ETIQUETA (medidas reais em mm) ===== */
+  .etq { width:40mm; height:25mm; background:#fff; color:#000; overflow:hidden; position:relative; font-family:Manrope,Arial,sans-serif; }
+  .etq.sabor { display:flex; gap:1.2mm; padding:1.4mm 1.6mm 1.2mm 1.4mm; }
+  .etq .qr { width:17mm; height:17mm; flex:none; margin-top:1.3mm; }
+  .etq .qr img, .etq .qr canvas { width:17mm !important; height:17mm !important; display:block; }
+  .etq .txt { flex:1; min-width:0; display:flex; flex-direction:column; justify-content:space-between; }
+  .etq .nome { font-weight:800; font-size:7.8pt; line-height:1.05; text-transform:uppercase; word-break:break-word; }
+  .etq .nome.longo { font-size:6.6pt; }
+  .etq .un { font-weight:700; font-size:6.2pt; white-space:nowrap; }
+  .etq .marca { font-size:5pt; font-weight:700; letter-spacing:.06em; white-space:nowrap; }
+  .etq .marca small { display:block; font-weight:500; font-size:4.6pt; letter-spacing:0; }
+  .etq.pedido { padding:1.6mm 2mm; display:flex; flex-direction:column; justify-content:space-between; border:0.5mm solid #000; }
+  .etq.pedido .num { font-weight:800; font-size:12pt; line-height:1; }
+  .etq.pedido .cli { font-weight:800; font-size:8pt; line-height:1.1; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .etq.pedido .ent { font-weight:800; font-size:8pt; white-space:nowrap; background:#000; color:#fff; padding:0.6mm 1.2mm; border-radius:0.8mm; display:inline-block; }
+  .etq.pedido .cx { font-size:6.2pt; font-weight:700; }
+  .etq.pedido.retirada .ent { background:#fff; color:#000; border:0.4mm solid #000; }
+
+  /* preview na tela: ampliado 3x, lado a lado como no rolo */
+  #preview { display:flex; flex-wrap:wrap; gap:16px; }
+  .zoom { width:calc(40mm * 2.5); height:calc(25mm * 2.5); flex:none; }
+  .zoom .etq { transform:scale(2.5); transform-origin:top left; border:1px dashed #9ca3af; border-radius:1.2mm; }
+  .zoom .etq.pedido { border-style:solid; }
+  .rotulo { font-size:11px; color:#6b7280; margin-top:4px; }
+  .quadro { display:flex; flex-direction:column; }
+
+  /* ===== IMPRESSÃO: só as etiquetas, em páginas do tamanho da etiqueta ===== */
+  #folhas { display:none; }
+  @media print {
+    body { background:#fff; }
+    body > *:not(#folhas) { display:none !important; }
+    #folhas { display:block; }
+    .pag { page-break-after:always; break-after:page; display:flex; }
+    .pag .etq { border:0; }
+  }
+</style>
+</head>
+<body>
+<div class="hero">
+  <h1>Etiquetas das caixas do Kit Festa</h1>
+  <p>Mock para você aprovar: como ficam as etiquetas de 40 × 25 mm na Zebra TLP 2844 e onde fica o botão no app. Os sabores abaixo são os 11 do site hoje, o QR aponta para <b>hardtsalgados.com.br/kit-festa</b>.</p>
+</div>
+
+<div class="wrap">
+
+  <div class="card">
+    <div class="card-h">1 · Onde você imprime (proposta)</div>
+    <div class="card-b">
+      <div class="tela">
+        <div class="abas"><div class="aba">Site (Congelados)</div><div class="aba on">Kit Festa</div></div>
+        <div class="app-card">
+          <div class="linha">
+            <h3>Pedido #1042 <span class="chip g">Confirmado</span></h3>
+            <div style="display:flex;gap:6px;align-items:center">
+              <span class="pin">1</span><button class="btn sm">🏷️ Etiquetas das caixas</button>
+              <button class="btn sm sec">Converter em pedido</button>
+            </div>
+          </div>
+          <div class="sep"></div>
+          <div class="muted">Juliana Mendes · (47) 9 9999-0000</div>
+          <div class="muted">🚚 Entrega · 17/10/2026 às 15:30 · Centro</div>
+          <div class="sep"></div>
+          <div style="font-size:13px"><b>2×</b> COXINHA FRANGO C/25-HF · <b>1×</b> MINI PASTEL CARNE C/25-HF · <b>1×</b> BOLINHA QUEIJO C/25-HF · <b>2×</b> CHURROS D. LEITE C/25-HF</div>
+          <div class="muted" style="margin-top:4px">6 caixas → 6 etiquetas de sabor + 2 etiquetas do pedido</div>
+        </div>
+        <div class="app-card" style="margin-top:10px">
+          <div class="linha">
+            <div><b style="font-size:14px">Pedidos · 17/10/2026</b> <span class="chip b">4 pedidos · 23 caixas</span></div>
+            <div><span class="pin">2</span> <button class="btn sm sec">🏷️ Etiquetas do dia</button></div>
+          </div>
+        </div>
+      </div>
+      <ul class="legenda">
+        <li><span class="pin">1</span><span><b>Dentro do pedido</b> (Pedidos Online → aba Kit Festa → abrir o pedido): botão <b>Etiquetas das caixas</b>. Imprime na própria página, no padrão do app (funciona no iPad). Sai: 1 etiqueta por caixa com o sabor, e a cada 4 caixas 1 etiqueta do pedido.</span></li>
+        <li><span class="pin">2</span><span><b>Opcional:</b> na lista filtrada pela data de entrega, botão <b>Etiquetas do dia</b> imprime todos os pedidos daquele dia de uma vez, na ordem do horário. Bom para a cozinha montar as caixas em lote.</span></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-h">2 · Monte o exemplo</div>
+    <div class="card-b">
+      <label class="ctl">Pedido
+        <select id="selPedido"></select>
+      </label>
+      <label class="ctl">Etiqueta do pedido a cada <input id="cada" type="number" min="1" max="12" value="4" style="width:56px"> caixas</label>
+      <label class="ctl"><input id="qrOn" type="checkbox" checked> QR code na caixa</label>
+      <label class="ctl"><input id="nomeLimpo" type="checkbox"> Tirar o "C/25-HF" do nome</label>
+      <label class="ctl">Tamanho da página na impressora
+        <select id="pagina">
+          <option value="2">2 colunas (rolo da foto, 84 × 25 mm)</option>
+          <option value="1">1 etiqueta por página (40 × 25 mm)</option>
+        </select>
+      </label>
+      <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <button class="btn" onclick="window.print()">🖨️ Imprimir teste na TLP 2844</button>
+        <span class="muted">Na janela de impressão escolha a Zebra, margem 0, escala 100%.</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-h">3 · Como fica (ampliado 2,5×, tamanho real 40 × 25 mm)</div>
+    <div class="card-b">
+      <div id="preview"></div>
+      <p class="muted" style="margin-top:14px">Impressão térmica só tem preto, então o desenho é propositalmente simples: nome grande, QR legível (17 mm) e a etiqueta do pedido com borda e horário em destaque para o motorista achar rápido.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-h">4 · O que eu faria no app, se você aprovar</div>
+    <div class="card-b" style="font-size:14px;line-height:1.5">
+      <ol style="margin:0;padding-left:20px">
+        <li>Botão <b>Etiquetas das caixas</b> no detalhe do pedido do Kit Festa (e o opcional "do dia" na lista).</li>
+        <li>Monta as etiquetas com os itens do pedido: quantidade = caixas, nome = o mesmo que aparece no site, QR da página do Kit Festa (lib <code>qrcode</code> já instalada no app).</li>
+        <li>Imprime na própria página, no padrão de impressão do app (sem janela nova, serve para o iPad), com a página do tamanho da etiqueta.</li>
+        <li>Você confirma na Zebra o tamanho de papel configurado no driver (2 colunas ou 1) e eu deixo esse como padrão.</li>
+      </ol>
+      <p class="muted" style="margin-bottom:0">Estimativa: uma manhã de trabalho com o time (dev + QA + revisor), mais o teste físico na impressora com você.</p>
+    </div>
+  </div>
+</div>
+
+<div id="folhas"></div>
+
+<script>
+const SITE = 'https://hardtsalgados.com.br/kit-festa';
+const PEDIDOS = [
+  { numero:1042, cliente:'Juliana Mendes', modo:'entrega', data:'17/10', hora:'15:30', itens:[
+      ['COXINHA FRANGO C/25-HF',2,25],['MINI PASTEL CARNE C/25-HF',1,25],['BOLINHA QUEIJO C/25-HF',1,25],['CHURROS D. LEITE C/25-HF',2,25]] },
+  { numero:1043, cliente:'Carlos Eduardo Hoffmann', modo:'retirada', data:'17/10', hora:'10:00', itens:[
+      ['EMPADINHA FRANGO C/24-HF',1,24],['CROQUETE CARNE C/25-HF',1,25],['MINI KIBE CARNE C/25-HF',1,25],['TRAVESSEIRO PIZZA C/25-HF',1,25]] },
+  { numero:1044, cliente:'Buffet Dona Rosa Eventos', modo:'entrega', data:'18/10', hora:'09:00', itens:[
+      ['COXINHA LING.BLUMENAU C/25-HF',4,25],['MINI SALSICHA C/25-HF',3,25],['BOCADINHO PALMITO C/25-HF',2,25],['CHURROS D. LEITE C/25-HF',1,25]] },
+];
+const $ = s => document.querySelector(s);
+const sel = $('#selPedido');
+PEDIDOS.forEach((p,i) => sel.add(new Option(`#${p.numero} · ${p.cliente} · ${p.modo==='entrega'?'Entrega':'Retirada'} ${p.data} ${p.hora}`, i)));
+
+function nomeEtq(n){ return $('#nomeLimpo').checked ? n.replace(/\s*C\/\d+-HF\s*$/i,'').trim() : n; }
+
+function etqSabor(nome, un){
+  const d = document.createElement('div'); d.className='etq sabor';
+  const nm = nomeEtq(nome);
+  d.innerHTML = `${$('#qrOn').checked ? '<div class="qr"></div>' : ''}
+    <div class="txt">
+      <div class="nome ${nm.length>20?'longo':''}">${nm}</div>
+      <div><div class="un">${un} un · Kit Festa</div>
+      <div class="marca">HARDT SALGADOS</div></div>
+    </div>`;
+  const q = d.querySelector('.qr');
+  if (q) new QRCode(q, { text:SITE, width:200, height:200, correctLevel:QRCode.CorrectLevel.M });
+  return d;
+}
+function etqPedido(p, de, ate, total){
+  const d = document.createElement('div'); d.className='etq pedido '+p.modo;
+  d.innerHTML = `<div class="num">PEDIDO #${p.numero}</div>
+    <div class="cli">${p.cliente}</div>
+    <div><span class="ent">${p.modo==='entrega'?'ENTREGA':'RETIRADA'} ${p.data} · ${p.hora}</span></div>
+    <div class="cx">Caixas ${de}–${ate} de ${total} · Kit Festa Hardt</div>`;
+  return d;
+}
+
+function montar(){
+  const p = PEDIDOS[sel.value]; const cada = Math.max(1, +$('#cada').value||4);
+  const caixas = []; p.itens.forEach(([n,q,u]) => { for(let i=0;i<q;i++) caixas.push([n,u]); });
+  const seq = []; // [elemento, rótulo]
+  caixas.forEach(([n,u],i) => {
+    seq.push([etqSabor(n,u), `Caixa ${i+1} de ${caixas.length}`]);
+    const fim = (i+1)%cada===0 || i===caixas.length-1;
+    if (fim) seq.push([etqPedido(p, i+1-((i)%cada), i+1, caixas.length), 'Etiqueta do pedido']);
+  });
+  const pv = $('#preview'); pv.innerHTML='';
+  seq.forEach(([el,rot]) => { const w=document.createElement('div'); w.className='quadro';
+    const z=document.createElement('div'); z.className='zoom'; z.appendChild(el); w.appendChild(z);
+    const r=document.createElement('div'); r.className='rotulo'; r.textContent=rot; w.appendChild(r); pv.appendChild(w); });
+  // páginas de impressão
+  const cols = +$('#pagina').value; const f = $('#folhas'); f.innerHTML='';
+  for (let i=0;i<seq.length;i+=cols){ const pg=document.createElement('div'); pg.className='pag';
+    for (let k=0;k<cols;k++){ if(seq[i+k]) pg.appendChild(seq[i+k][0].cloneNode(true)); }
+    f.appendChild(pg); }
+  let st = $('#stPage'); if(!st){ st=document.createElement('style'); st.id='stPage'; document.head.appendChild(st); }
+  st.textContent = cols===2
+    ? '@page{size:84mm 25mm;margin:0} .pag{width:84mm;height:25mm;padding-left:2mm;gap:2mm}'
+    : '@page{size:40mm 25mm;margin:0} .pag{width:40mm;height:25mm}';
+}
+['#selPedido','#cada','#qrOn','#nomeLimpo','#pagina'].forEach(s => $(s).addEventListener('change', montar));
+montar();
+</script>
+</body>
+</html>

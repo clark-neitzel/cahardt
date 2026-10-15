@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
-import { Search, Loader2, Check, X, AlertTriangle, UserPlus, Package, Calendar, Clock, MapPin, Truck, ExternalLink, Trash2, Phone, RefreshCw, Megaphone } from 'lucide-react';
+import { Search, Loader2, Check, X, AlertTriangle, UserPlus, Package, Calendar, Clock, MapPin, Truck, ExternalLink, Trash2, Phone, RefreshCw, Megaphone, Printer } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { kitFestaService } from '../../services/kitFestaService';
 import clienteService from '../../services/clienteService';
@@ -7,6 +7,9 @@ import vendedorService from '../../services/vendedorService';
 import { useAuth } from '../../contexts/AuthContext';
 import SelectBusca from '../../components/SelectBusca';
 import { normalizarDoc } from '../../utils/documento'; // inclui CNPJ ALFANUMÉRICO
+import { useFiltrosSalvos } from '../../hooks/useFiltrosSalvos';
+import { imprimirNaPagina } from '../../utils/imprimirNaPagina';
+import { montarEtiquetas, LINK_KIT_FESTA, OPCOES_PADRAO as ETQ_PADRAO } from './etiquetasCaixas';
 import { BarraBuscaPedidos, ChipsStatusPedidos, PendentesPedidos, ListaLinhasPedidos, LinhaPedidoOnline } from '../PedidosOnline/listaEstiloPedidos';
 import { List, Hourglass, UserX, CheckCircle, XCircle, Ban, MessageCircle } from 'lucide-react';
 
@@ -146,6 +149,25 @@ function ModalPedido({ pedido, isAdmin, onClose, onChanged }) {
   const [resultados, setResultados] = useState([]);
   const [clienteVinc, setClienteVinc] = useState(null);
 
+  // Etiquetas das caixas (rolo 40×25 mm da TLP 2844): opções lembradas por usuário.
+  // O QR é gerado ao abrir o modal porque print() precisa ser síncrono no clique (iOS).
+  const [etqOpcoes, setEtqOpcoes] = useFiltrosSalvos('kit-festa:etiquetas', ETQ_PADRAO);
+  const [etqAberto, setEtqAberto] = useState(false);
+  const [qrDataUrl, setQrDataUrl] = useState('');
+  useEffect(() => {
+    let ativo = true;
+    import('qrcode')
+      .then(QRCode => QRCode.toDataURL(LINK_KIT_FESTA, { margin: 0, width: 200, errorCorrectionLevel: 'M' }))
+      .then(url => { if (ativo) setQrDataUrl(url); })
+      .catch(() => { /* sem QR a etiqueta sai só com o texto */ });
+    return () => { ativo = false; };
+  }, []);
+  const imprimirEtiquetas = () => {
+    const { estilos, corpo, total } = montarEtiquetas(pedido, { ...etqOpcoes, qrDataUrl });
+    if (!total) { toast.error('Pedido sem caixas para etiquetar'); return; }
+    imprimirNaPagina(estilos, corpo);
+  };
+
   const precisaVinculo = pedido.status === 'PENDENTE_CADASTRO' && !pedido.kitFestaCliente?.clienteUuid;
   // Cadastro do app vinculado ao pedido (define nome/CPF exibidos) — vínculo recém-feito nesta sessão tem prioridade
   const cliVinc = clienteVinc || pedido.kitFestaCliente?.cliente || null;
@@ -206,6 +228,10 @@ function ModalPedido({ pedido, isAdmin, onClose, onChanged }) {
             <span className={`text-xs px-2 py-0.5 rounded-full ${BADGE[pedido.status]}`}>{STATUS_LABEL[pedido.status]}</span>
           </div>
           <div className="flex items-center gap-1">
+            <button onClick={() => setEtqAberto(v => !v)} title="Etiquetas das caixas (impressora de etiquetas)"
+              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-semibold ${etqAberto ? 'bg-mint text-house' : 'text-primary hover:bg-mint/40'}`}>
+              <Printer className="h-4 w-4" /><span className="hidden sm:inline">Etiquetas</span>
+            </button>
             {isAdmin && (
               <button onClick={excluir} disabled={processando} title="Excluir pedido"
                 className="p-1.5 rounded-lg text-gray-300 hover:text-red-600 hover:bg-red-50">
@@ -243,6 +269,38 @@ function ModalPedido({ pedido, isAdmin, onClose, onChanged }) {
             {pedido.enderecoEntrega && <div className="text-xs text-gray-500 pl-6">{pedido.enderecoEntrega}</div>}
             {pedido.modo === 'entrega' && !pedido.bairro && <div className="flex items-center gap-2 text-amber-600 text-xs"><MapPin className="h-4 w-4" />Taxa de entrega a combinar (conforme endereço)</div>}
           </div>
+
+          {/* Etiquetas das caixas — rolo 40×25 mm (TLP 2844) */}
+          {etqAberto && (
+            <div className="bg-mint/40 border border-mint rounded-xl p-3 text-sm space-y-2">
+              <div className="flex items-center gap-2 font-semibold text-house"><Printer className="h-4 w-4" /> Etiquetas das caixas</div>
+              <div className="text-xs text-gray-600">
+                1 etiqueta por caixa com o sabor e o QR do site · a cada {Number(etqOpcoes.cada) || ETQ_PADRAO.cada} caixas, 1 etiqueta com pedido, cliente e horário.
+                {' '}Total: <b>{montarEtiquetas(pedido, { ...etqOpcoes, qrDataUrl }).total}</b> etiquetas ({montarEtiquetas(pedido, etqOpcoes).caixas} caixas).
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                <label className="flex items-center gap-2">Pedido a cada
+                  <input type="number" min="1" max="12" value={etqOpcoes.cada}
+                    onChange={e => setEtqOpcoes({ ...etqOpcoes, cada: Math.max(1, Number(e.target.value) || 1) })}
+                    className="w-14 border border-gray-300 rounded px-2 py-1 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" /> caixas
+                </label>
+                <label className="flex items-center gap-2">
+                  <input type="checkbox" checked={!!etqOpcoes.nomeLimpo} onChange={e => setEtqOpcoes({ ...etqOpcoes, nomeLimpo: e.target.checked })} />
+                  Tirar o "C/25-HF" do nome
+                </label>
+                <label className="flex items-center gap-2">
+                  <input type="checkbox" checked={Number(etqOpcoes.colunas) !== 1} onChange={e => setEtqOpcoes({ ...etqOpcoes, colunas: e.target.checked ? 2 : 1 })} />
+                  Rolo de 2 colunas
+                </label>
+              </div>
+              <div className="flex items-center gap-3 pt-1">
+                <button onClick={imprimirEtiquetas} className="px-4 py-2 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm flex items-center gap-2 min-h-[44px] sm:min-h-0">
+                  <Printer className="h-4 w-4" /> Imprimir etiquetas
+                </button>
+                <span className="text-xs text-gray-500">Na impressão escolha a TLP 2844, margem 0, escala 100%.</span>
+              </div>
+            </div>
+          )}
 
           {/* Itens */}
           <div>
