@@ -153,17 +153,17 @@ function ModalPedido({ pedido, isAdmin, onClose, onChanged }) {
   // O QR é gerado ao abrir o modal porque print() precisa ser síncrono no clique (iOS).
   const [etqOpcoes, setEtqOpcoes] = useFiltrosSalvos('kit-festa:etiquetas', ETQ_PADRAO);
   const [etqAberto, setEtqAberto] = useState(false);
-  const [qrDataUrl, setQrDataUrl] = useState('');
+  const [qrSvg, setQrSvg] = useState('');
   useEffect(() => {
     let ativo = true;
     import('qrcode')
-      .then(QRCode => QRCode.toDataURL(LINK_KIT_FESTA, { margin: 0, width: 200, errorCorrectionLevel: 'M' }))
-      .then(url => { if (ativo) setQrDataUrl(url); })
+      .then(QRCode => QRCode.toString(LINK_KIT_FESTA, { type: 'svg', margin: 0, errorCorrectionLevel: 'M' }))
+      .then(svg => { if (ativo) setQrSvg(svg); })
       .catch(() => { /* sem QR a etiqueta sai só com o texto */ });
     return () => { ativo = false; };
   }, []);
   const imprimirEtiquetas = () => {
-    const { estilos, corpo, total } = montarEtiquetas(pedido, { ...etqOpcoes, qrDataUrl });
+    const { estilos, corpo, total } = montarEtiquetas(pedido, { ...etqOpcoes, qrSvg });
     if (!total) { toast.error('Pedido sem caixas para etiquetar'); return; }
     imprimirNaPagina(estilos, corpo);
   };
@@ -275,8 +275,8 @@ function ModalPedido({ pedido, isAdmin, onClose, onChanged }) {
             <div className="bg-mint/40 border border-mint rounded-xl p-3 text-sm space-y-2">
               <div className="flex items-center gap-2 font-semibold text-house"><Printer className="h-4 w-4" /> Etiquetas das caixas</div>
               <div className="text-xs text-gray-600">
-                1 etiqueta por caixa com o sabor e o QR do site · a cada {Number(etqOpcoes.cada) || ETQ_PADRAO.cada} caixas, 1 etiqueta com pedido, cliente e horário.
-                {' '}Total: <b>{montarEtiquetas(pedido, { ...etqOpcoes, qrDataUrl }).total}</b> etiquetas ({montarEtiquetas(pedido, etqOpcoes).caixas} caixas).
+                1 etiqueta por caixa com o sabor, o nº do pedido e o QR do site · a cada {Number(etqOpcoes.cada) || ETQ_PADRAO.cada} caixas, 1 etiqueta com pedido, cliente e horário.
+                {' '}Total: <b>{montarEtiquetas(pedido, { ...etqOpcoes, qrSvg }).total}</b> etiquetas ({montarEtiquetas(pedido, etqOpcoes).caixas} caixas).
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
                 <label className="flex items-center gap-2">Pedido a cada

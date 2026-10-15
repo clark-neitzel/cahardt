@@ -1,7 +1,8 @@
 // Etiquetas das caixas do Kit Festa — rolo 40 × 25 mm (Zebra TLP 2844, 2 colunas).
 //
-// Para cada caixa do pedido sai 1 etiqueta com o nome do sabor (o mesmo do site) e o
-// QR da página do Kit Festa; a cada N caixas (padrão 4) sai 1 etiqueta do pedido com
+// Para cada caixa do pedido sai 1 etiqueta com o nome do sabor (o mesmo do site, em uma
+// linha), o número do pedido e o QR da página do Kit Festa (SVG inline: imagem data: não
+// dava tempo de decodificar antes do print() síncrono e saía um quadrado vazio); a cada N caixas (padrão 4) sai 1 etiqueta do pedido com
 // número, cliente e data/horário da entrega. Impressão na própria página
 // (utils/imprimirNaPagina) — nunca window.open nem iframe (regra do iPad).
 import { escaparHtml } from '../../utils/imprimirNaPagina';
@@ -38,8 +39,23 @@ export function sequenciaEtiquetas(pedido, opcoes = {}) {
     return seq;
 }
 
+/**
+ * Card do kanban do Delivery → objeto no formato que montarEtiquetas espera.
+ * Pedido vindo do site do Kit Festa usa horário e caixas do site; os demais usam os itens
+ * do próprio pedido (quantidade = caixas) e a data de entrega, sem horário.
+ */
+export function pedidoDoDelivery(card) {
+    const kf = card?.kitFesta;
+    const nomeCliente = card?.cliente?.NomeFantasia || card?.cliente?.Nome || kf?.nomeCliente || '';
+    if (kf) return { numero: card.numero, nomeCliente, modo: kf.modo, data: kf.data, horario: kf.horario, itens: kf.itens || [] };
+    return {
+        numero: card?.numero, nomeCliente, modo: 'entrega', data: card?.dataVenda, horario: '',
+        itens: (card?.itens || []).map((i) => ({ nomeProduto: i.produto?.nome, quantidade: i.quantidade, unidadesPorCaixa: null })),
+    };
+}
+
 /** Monta { estilos, corpo } prontos para imprimirNaPagina(estilos, corpo). */
-export function montarEtiquetas(pedido, { qrDataUrl, cada, nomeLimpo, colunas } = {}) {
+export function montarEtiquetas(pedido, { qrSvg, cada, nomeLimpo, colunas } = {}) {
     const op = { ...OPCOES_PADRAO, cada, nomeLimpo, colunas };
     if (op.cada == null) op.cada = OPCOES_PADRAO.cada;
     if (op.nomeLimpo == null) op.nomeLimpo = OPCOES_PADRAO.nomeLimpo;
@@ -52,16 +68,22 @@ export function montarEtiquetas(pedido, { qrDataUrl, cada, nomeLimpo, colunas } 
             return `<div class="etq pedido ${entrega ? '' : 'retirada'}">
                 <div class="num">PEDIDO #${escaparHtml(pedido.numero)}</div>
                 <div class="cli">${escaparHtml(pedido.nomeCliente)}</div>
-                <div><span class="ent">${entrega ? 'ENTREGA' : 'RETIRADA'} ${dataBr(pedido.data)} · ${escaparHtml(pedido.horario)}</span></div>
+                <div><span class="ent">${entrega ? 'ENTREGA' : 'RETIRADA'} ${dataBr(pedido.data)}${pedido.horario ? ` · ${escaparHtml(pedido.horario)}` : ''}</span></div>
                 <div class="cx">Caixas ${e.de}–${e.ate} de ${e.total} · Kit Festa Hardt</div>
             </div>`;
         }
         const nome = nomeDaEtiqueta(e.nome, op.nomeLimpo);
+        // nome em UMA linha: a fonte encolhe conforme o tamanho (40mm úteis ≈ 26 caracteres a 7pt)
+        const tam = nome.length <= 14 ? '9.5pt' : nome.length <= 19 ? '8.2pt' : nome.length <= 24 ? '7pt' : nome.length <= 29 ? '6pt' : '5.2pt';
         return `<div class="etq sabor">
-            ${qrDataUrl ? `<img class="qr" src="${qrDataUrl}" alt="">` : ''}
-            <div class="txt">
-                <div class="nome ${nome.length > 20 ? 'longo' : ''}">${escaparHtml(nome)}</div>
-                <div><div class="un">${escaparHtml(e.un)} un · Kit Festa</div><div class="marca">HARDT SALGADOS</div></div>
+            <div class="nome" style="font-size:${tam}">${escaparHtml(nome)}</div>
+            <div class="linha">
+                ${qrSvg ? `<div class="qr">${qrSvg}</div>` : ''}
+                <div class="txt">
+                    <div class="ped">PEDIDO</div>
+                    <div class="num">#${escaparHtml(pedido.numero)}</div>
+                    ${e.un ? `<div class="un">${escaparHtml(e.un)} - UN</div>` : ''}
+                </div>
             </div>
         </div>`;
     };
@@ -79,13 +101,15 @@ export function montarEtiquetas(pedido, { qrDataUrl, cada, nomeLimpo, colunas } 
         #area-impressao .pag { width: ${largPag}; height: 25mm; display: flex; overflow: hidden;
             ${cols === 2 ? 'padding-left: 2mm; gap: 2mm;' : ''} page-break-after: always; break-after: page; }
         #area-impressao .etq { width: 40mm; height: 25mm; flex: none; overflow: hidden; background: #fff; }
-        #area-impressao .etq.sabor { display: flex; gap: 1.2mm; padding: 1.4mm 1.6mm 1.2mm 1.4mm; }
-        #area-impressao .qr { width: 17mm; height: 17mm; flex: none; margin-top: 1.3mm; display: block; }
-        #area-impressao .txt { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: space-between; }
-        #area-impressao .nome { font-weight: 800; font-size: 7.8pt; line-height: 1.05; text-transform: uppercase; word-break: break-word; }
-        #area-impressao .nome.longo { font-size: 6.6pt; }
-        #area-impressao .un { font-weight: 700; font-size: 6.2pt; white-space: nowrap; }
-        #area-impressao .marca { font-size: 5pt; font-weight: 700; letter-spacing: .06em; white-space: nowrap; }
+        #area-impressao .etq.sabor { display: flex; flex-direction: column; padding: 1.4mm 1.6mm 1.2mm; gap: 0.8mm; }
+        #area-impressao .nome { font-weight: 800; line-height: 1.1; text-transform: uppercase; white-space: nowrap; overflow: hidden; }
+        #area-impressao .linha { display: flex; gap: 1.5mm; flex: 1; min-height: 0; }
+        #area-impressao .qr { width: 15mm; height: 15mm; flex: none; }
+        #area-impressao .qr svg { width: 15mm; height: 15mm; display: block; }
+        #area-impressao .txt { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 0.8mm; }
+        #area-impressao .ped { font-weight: 800; font-size: 7.5pt; line-height: 1; letter-spacing: .04em; white-space: nowrap; }
+        #area-impressao .txt .num { font-weight: 800; font-size: 13pt; line-height: 1; white-space: nowrap; }
+        #area-impressao .un { font-weight: 800; font-size: 8pt; line-height: 1; white-space: nowrap; }
         #area-impressao .etq.pedido { padding: 1.6mm 2mm; display: flex; flex-direction: column; justify-content: space-between; border: 0.5mm solid #000; box-sizing: border-box; }
         #area-impressao .etq.pedido .num { font-weight: 800; font-size: 12pt; line-height: 1; }
         #area-impressao .etq.pedido .cli { font-weight: 800; font-size: 8pt; line-height: 1.1; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

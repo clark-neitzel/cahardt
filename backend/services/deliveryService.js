@@ -216,6 +216,13 @@ const deliveryService = {
                 },
                 contaReceber: {
                     include: { parcelas: true }
+                },
+                // Pedido que nasceu no site do Kit Festa: horário e caixas para as etiquetas
+                kitFestaPedido: {
+                    select: {
+                        numero: true, modo: true, data: true, horario: true, nomeCliente: true,
+                        itens: { select: { nomeProduto: true, opcao: true, quantidade: true, unidadesPorCaixa: true } }
+                    }
                 }
             }
         });
@@ -260,7 +267,8 @@ const deliveryService = {
                 totalPago,
                 aberto,
                 statusPagamento,
-                observacoes: p.observacoes
+                observacoes: p.observacoes,
+                kitFesta: p.kitFestaPedido || null
             };
         });
 

@@ -1,10 +1,12 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { MessageCircle, ArrowLeft, Settings, RefreshCw, Send, MessageSquareOff, MessageSquare, Search, ChevronDown, Move, X, AlertCircle, Calendar } from 'lucide-react';
+import { MessageCircle, ArrowLeft, Settings, RefreshCw, Send, MessageSquareOff, MessageSquare, Search, ChevronDown, Move, X, AlertCircle, Calendar, Printer } from 'lucide-react';
 import deliveryService from '../../services/deliveryService';
 import { useAuth } from '../../contexts/AuthContext';
-import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
+import { useFiltroSalvo, useFiltrosSalvos } from '../../hooks/useFiltrosSalvos';
+import { imprimirNaPagina } from '../../utils/imprimirNaPagina';
+import { montarEtiquetas, pedidoDoDelivery, LINK_KIT_FESTA, OPCOES_PADRAO as ETQ_PADRAO } from '../KitFesta/etiquetasCaixas';
 import ModalPreviaWhatsapp from './ModalPreviaWhatsapp';
 
 const { ETAPAS, LABELS } = deliveryService;
@@ -137,6 +139,25 @@ export default function DeliveryKanban() {
         } finally {
             setMoving(null);
         }
+    };
+
+    // Etiquetas das caixas (rolo 40×25 mm da TLP 2844) — mesmas opções da aba Kit Festa.
+    // O QR nasce ao abrir a tela porque print() precisa ser síncrono no clique (iOS).
+    const [etqOpcoes] = useFiltrosSalvos('kit-festa:etiquetas', ETQ_PADRAO);
+    const [qrSvg, setQrSvg] = useState('');
+    useEffect(() => {
+        let ativo = true;
+        import('qrcode')
+            .then(QRCode => QRCode.toString(LINK_KIT_FESTA, { type: 'svg', margin: 0, errorCorrectionLevel: 'M' }))
+            .then(svg => { if (ativo) setQrSvg(svg); })
+            .catch(() => { /* sem QR a etiqueta sai só com o texto */ });
+        return () => { ativo = false; };
+    }, []);
+    const imprimirEtiquetas = (card) => {
+        const { estilos, corpo, total, caixas } = montarEtiquetas(pedidoDoDelivery(card), { ...etqOpcoes, qrSvg });
+        if (!total) { toast.error('Pedido sem caixas para etiquetar.'); return; }
+        imprimirNaPagina(estilos, corpo);
+        toast.success(`${total} etiquetas (${caixas} caixas) — escolha a TLP 2844 na impressão.`);
     };
 
     const toggleSilenciar = async (card) => {
@@ -281,6 +302,7 @@ export default function DeliveryKanban() {
                                         onMover={mover}
                                         onReenviar={setPreviaCard}
                                         onToggleSilenciar={toggleSilenciar}
+                                        onEtiquetas={imprimirEtiquetas}
                                         onAbrirDetalhes={() => setPedidoDetalhe(card)}
                                     />
                                 ))}
@@ -298,7 +320,7 @@ export default function DeliveryKanban() {
     );
 }
 
-function Card({ card, perm, moving, onMover, onReenviar, onToggleSilenciar, onAbrirDetalhes }) {
+function Card({ card, perm, moving, onMover, onReenviar, onToggleSilenciar, onAbrirDetalhes, onEtiquetas }) {
     const tel = card.cliente?.Telefone_Celular || card.cliente?.Telefone;
     const wa = whatsappLink(tel);
     const end = [
@@ -384,6 +406,13 @@ function Card({ card, perm, moving, onMover, onReenviar, onToggleSilenciar, onAb
                     )}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onEtiquetas(card); }}
+                        title="Imprimir etiquetas das caixas (impressora de etiquetas)"
+                        className="text-gray-500 hover:text-primary"
+                    >
+                        <Printer className="h-4 w-4" />
+                    </button>
                     <button
                         onClick={() => onToggleSilenciar(card)}
                         title={silenciado ? 'WhatsApp silenciado — clique para reativar' : 'Clique para NÃO enviar WhatsApp neste pedido'}
