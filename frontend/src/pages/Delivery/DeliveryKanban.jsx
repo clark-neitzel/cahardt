@@ -4,9 +4,9 @@ import { toast } from 'react-hot-toast';
 import { MessageCircle, ArrowLeft, Settings, RefreshCw, Send, MessageSquareOff, MessageSquare, Search, ChevronDown, Move, X, AlertCircle, Calendar, Printer } from 'lucide-react';
 import deliveryService from '../../services/deliveryService';
 import { useAuth } from '../../contexts/AuthContext';
-import { useFiltroSalvo, useFiltrosSalvos } from '../../hooks/useFiltrosSalvos';
-import { imprimirNaPagina } from '../../utils/imprimirNaPagina';
-import { montarEtiquetas, pedidoDoDelivery, LINK_KIT_FESTA, OPCOES_PADRAO as ETQ_PADRAO, precarregarFontesEtiqueta } from '../KitFesta/etiquetasCaixas';
+import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
+import { pedidoDoDelivery, LINK_KIT_FESTA, precarregarFontesEtiqueta } from '../KitFesta/etiquetasCaixas';
+import PainelEtiquetas from '../KitFesta/PainelEtiquetas';
 import ModalPreviaWhatsapp from './ModalPreviaWhatsapp';
 
 const { ETAPAS, LABELS } = deliveryService;
@@ -141,9 +141,9 @@ export default function DeliveryKanban() {
         }
     };
 
-    // Etiquetas das caixas (rolo 40×25 mm da TLP 2844) — mesmas opções da aba Kit Festa.
+    // Etiquetas das caixas (rolo 40×25 mm da TLP 2844) — mesmo painel/opções da aba Kit Festa.
     // O QR nasce ao abrir a tela porque print() precisa ser síncrono no clique (iOS).
-    const [etqOpcoes] = useFiltrosSalvos('kit-festa:etiquetas', ETQ_PADRAO);
+    const [etqCard, setEtqCard] = useState(null);
     const [qrSvg, setQrSvg] = useState('');
     useEffect(() => {
         let ativo = true;
@@ -154,12 +154,7 @@ export default function DeliveryKanban() {
             .catch(() => { /* sem QR a etiqueta sai só com o texto */ });
         return () => { ativo = false; };
     }, []);
-    const imprimirEtiquetas = (card) => {
-        const { estilos, corpo, total, caixas } = montarEtiquetas(pedidoDoDelivery(card), { ...etqOpcoes, qrSvg });
-        if (!total) { toast.error('Pedido sem caixas para etiquetar.'); return; }
-        imprimirNaPagina(estilos, corpo);
-        toast.success(`${total} etiquetas (${caixas} caixas) — escolha a TLP 2844 na impressão.`);
-    };
+    const imprimirEtiquetas = (card) => setEtqCard(card);
 
     const toggleSilenciar = async (card) => {
         const novoEstado = !card.silenciarWhatsapp;
@@ -266,6 +261,11 @@ export default function DeliveryKanban() {
 
             {pedidoDetalhe && (
                 <ModalDetalhes card={pedidoDetalhe} onClose={() => setPedidoDetalhe(null)} />
+            )}
+            {etqCard && (
+                <PainelEtiquetas pedido={pedidoDoDelivery(etqCard)} qrSvg={qrSvg}
+                    titulo={`#${etqCard.numero} ${etqCard.cliente?.NomeFantasia || etqCard.cliente?.Nome || ''}`}
+                    onClose={() => setEtqCard(null)} />
             )}
 
             {previaCard && (

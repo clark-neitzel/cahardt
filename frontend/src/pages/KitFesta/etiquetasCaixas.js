@@ -41,12 +41,20 @@ function tamanhoPt(texto, base) {
     const k = n <= 14 ? 1 : n <= 19 ? 0.86 : n <= 24 ? 0.74 : n <= 29 ? 0.63 : 0.55;
     return (base * k).toFixed(1) + 'pt';
 }
+// Caveat (manuscrita): medido na térmica, ~0,122 mm por caractere por pt. Em 37 mm úteis,
+// cabe pt = 303/n; com 10% de folga, 273/n — teto 13pt (frases curtas).
+function tamanhoFrasePt(texto, teto = 13) {
+    const n = Math.max(1, String(texto || '').length);
+    return Math.min(teto, 273 / n).toFixed(1) + 'pt';
+}
+
 export const OPCOES_PADRAO = { cada: 4, nomeLimpo: true, colunas: 2, frases: 'carinho' };
 
-// "COXINHA FRANGO C/25-HF" → "COXINHA FRANGO" (sufixo do cadastro; a quantidade sai na linha de baixo)
+// "COXINHA FRANGO C/25-HF" ou "COXINHA FRANGO C/25 - KIT FESTA" → "COXINHA FRANGO"
+// (sufixos do cadastro; a quantidade sai na linha de baixo)
 export function nomeDaEtiqueta(nome, limpo) {
     const n = String(nome || '').trim();
-    return limpo ? n.replace(/\s*C\/\d+\s*-\s*HF\s*$/i, '').trim() || n : n;
+    return limpo ? n.replace(/\s*C\/\d+\s*-\s*(HF|KIT\s*FESTA)\s*$/i, '').trim() || n : n;
 }
 
 function dataBr(d) {
@@ -121,7 +129,7 @@ export function montarEtiquetas(pedido, { qrSvg, cada, nomeLimpo, colunas, frase
                     ${e.un ? `<div class="un">${escaparHtml(e.un)} unidades</div>` : ''}
                 </div>
             </div>
-            ${frase ? `<div class="frase" style="font-size:${tamanhoPt(frase, 10)}">${escaparHtml(frase)}</div>` : ''}
+            ${frase ? `<div class="frase" style="font-size:${tamanhoFrasePt(frase)}">${escaparHtml(frase)}</div>` : ''}
         </div>`;
     };
 
@@ -139,16 +147,16 @@ export function montarEtiquetas(pedido, { qrSvg, cada, nomeLimpo, colunas, frase
             ${cols === 2 ? 'padding-left: 2mm; gap: 2mm;' : ''} page-break-after: always; break-after: page; }
         #area-impressao .etq { width: 40mm; height: 25mm; flex: none; overflow: hidden; background: #fff; box-sizing: border-box; }
         /* caixa — "Caseira" */
-        #area-impressao .etq.sabor { font-family: Fredoka, Manrope, Arial, sans-serif; padding: 1.3mm 1.6mm 1mm; display: flex; flex-direction: column; }
+        #area-impressao .etq.sabor { font-family: Fredoka, Manrope, Arial, sans-serif; padding: 1.2mm 1.6mm 0.8mm; display: flex; flex-direction: column; }
         #area-impressao .nome { font-weight: 700; line-height: 1; white-space: nowrap; overflow: hidden; letter-spacing: -.01em; }
         #area-impressao .linha { display: flex; gap: 1.5mm; flex: 1; min-height: 0; margin-top: 0.8mm; }
-        #area-impressao .qr { width: 13mm; height: 13mm; flex: none; }
-        #area-impressao .qr svg { width: 13mm; height: 13mm; display: block; }
+        #area-impressao .qr { width: 12.5mm; height: 12.5mm; flex: none; }
+        #area-impressao .qr svg { width: 12.5mm; height: 12.5mm; display: block; }
         #area-impressao .txt { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: space-between; }
         #area-impressao .ped { font-weight: 600; font-size: 7pt; line-height: 1; }
         #area-impressao .ped b { display: block; font-weight: 700; font-size: 10.5pt; line-height: 1; margin-top: 0.4mm; white-space: nowrap; }
         #area-impressao .un { font-weight: 600; font-size: 6.5pt; white-space: nowrap; }
-        #area-impressao .frase { font-family: Caveat, 'Segoe Script', cursive; font-weight: 700; line-height: 1; margin-top: 0.8mm; white-space: nowrap; overflow: hidden; text-align: center; }
+        #area-impressao .frase { font-family: Caveat, 'Segoe Script', cursive; font-weight: 700; line-height: 1; margin-top: 0.6mm; white-space: nowrap; overflow: hidden; text-align: center; }
         /* pedido — "Clássica", sem borda */
         #area-impressao .etq.pedido { font-family: Lora, Georgia, 'Times New Roman', serif; padding: 1.4mm 2mm 1.2mm; display: flex; flex-direction: column; justify-content: space-between; text-align: center; }
         #area-impressao .etq.pedido .ola { font-family: Caveat, 'Segoe Script', cursive; font-weight: 700; font-size: 11.5pt; line-height: 1; white-space: nowrap; overflow: hidden; }
