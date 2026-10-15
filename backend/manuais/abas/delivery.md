@@ -69,6 +69,9 @@ Kanban de acompanhamento de pedidos de entrega (Kit Festa). Os pedidos faturados
 - **Importante:** a mensagem automática (disparada sozinha ao mover o card) continua sem enviar nada ao cliente na etapa "Pedido Criado" — a confirmação do pedido já saiu na criação. Isso só muda quando alguém aperta reenviar manualmente nessa etapa.
 - O texto de "Taxa de entrega" (quando o pedido tem frete) aparece só nas mensagens de Delivery para o cliente — não é a mesma coisa que o "Frete" mostrado em outras telas do sistema.
 
+### Imprimir etiquetas das caixas (Kit Festa)
+Cada card tem um **ícone de impressora** (ao lado do ícone de WhatsApp). Clicar imprime, na impressora de etiquetas **Zebra TLP 2844** (rolo de 40 × 25 mm, 2 colunas), **1 etiqueta por caixa** com o nome do sabor em uma linha, o QR code da página do Kit Festa e, ao lado do QR, **PEDIDO / #número / quantidade de unidades**; e **a cada 4 caixas, 1 etiqueta do pedido** com número, cliente e ENTREGA/RETIRADA data · horário em destaque. As opções (a cada quantas caixas, tirar o "C/25-HF", rolo de 2 colunas) são as mesmas salvas na aba **Kit Festa** do Pedidos Online. Pedido que nasceu no site do Kit Festa sai com o horário e as unidades por caixa do site; pedido que não nasceu no site sai com a data de entrega, sem horário, e com a quantidade de cada item como número de caixas. Na janela de impressão: escolher a TLP 2844, margem 0, escala 100% (tamanho de papel do driver: 84 × 25 mm).
+
 ### Buscar / filtrar
 - Use a caixa de busca para encontrar por nome do cliente ou número do pedido
 - Use o campo de data para filtrar pedidos com entrega em um dia específico

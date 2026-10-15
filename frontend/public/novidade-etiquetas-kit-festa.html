@@ -61,11 +61,11 @@
 
   <div class="acc aberto"><button>Como ficam as etiquetas</button><div class="b">
     <div class="rolo">
-      <div class="etq sabor"><div class="qr"></div><div class="txt"><div class="nome">Coxinha Frango</div><div><div class="un">25 un · Kit Festa</div><div class="marca">HARDT SALGADOS</div></div></div></div>
+      <div class="etq sabor" style="flex-direction:column;gap:3px"><div class="nome" style="white-space:nowrap">COXINHA FRANGO</div><div style="display:flex;gap:7px;flex:1"><div class="qr" style="width:75px;height:75px;margin:0"></div><div class="txt" style="justify-content:center;gap:4px"><div style="font-weight:800;font-size:12px;letter-spacing:.04em">PEDIDO</div><div style="font-weight:800;font-size:22px;line-height:1">#1042</div><div style="font-weight:800;font-size:13px">25 - UN</div></div></div></div>
       <div class="etq pedido"><div class="num">PEDIDO #1042</div><div class="cli">Juliana Mendes</div><div><span class="ent">ENTREGA 17/10 · 15:30</span></div><div class="cx">Caixas 1–4 de 6 · Kit Festa Hardt</div></div>
     </div>
     <ul class="legenda">
-      <li><span class="pin">1</span><span><b>Etiqueta do sabor</b> (uma por caixa): nome do sabor igual ao do site, quantidade de unidades e o <b>QR code</b> que abre a página do Kit Festa no celular do cliente.</span></li>
+      <li><span class="pin">1</span><span><b>Etiqueta do sabor</b> (uma por caixa): nome do sabor igual ao do site em uma linha, o <b>QR code</b> que abre a página do Kit Festa no celular do cliente e, ao lado, <b>PEDIDO / #número / 25 - UN</b>.</span></li>
       <li><span class="pin">2</span><span><b>Etiqueta do pedido</b> (uma a cada 4 caixas): número do pedido, nome do cliente e <b>ENTREGA ou RETIRADA com data e horário</b> em destaque. Tem borda para achar rápido na pilha.</span></li>
     </ul>
     <p class="muted">Exemplo: pedido com 6 caixas → 6 etiquetas de sabor + 2 do pedido (caixas 1–4 e 5–6).</p>
@@ -97,14 +97,25 @@
     </ul>
   </div></div>
 
+  <div class="acc aberto"><button>Também na tela Delivery</button><div class="b">
+    <div class="tela"><div class="app-card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div><b style="font-size:14px">Juliana Mendes</b><div class="muted" style="font-size:11px">Pedido #2231</div><span class="chip" style="background:#dcfce7;color:#166534">📅 Entrega hoje</span></div>
+        <div style="display:flex;gap:10px;align-items:center"><span class="pin">1</span> 🖨 &nbsp;💬 &nbsp;📤</div>
+      </div>
+      <div class="muted" style="margin-top:8px;font-size:12px">2× COXINHA FRANGO C/25-HF · 1× MINI PASTEL CARNE C/25-HF</div>
+    </div></div>
+    <ul class="legenda"><li><span class="pin">1</span><span>Em cada card do Delivery, o <b>ícone de impressora</b> imprime as etiquetas daquele pedido na hora, com as mesmas opções da aba Kit Festa. Não precisa abrir o Pedidos Online.</span></li></ul>
+  </div></div>
+
   <div class="acc aberto"><button>Para começar a usar</button><div class="b">
     <ol>
       <li>Abra <b>Pedidos Online</b> → aba <b>Kit Festa</b> → <b>Detalhes</b> do pedido.</li>
       <li>Clique em <b>Etiquetas</b> no topo e confira o total de etiquetas.</li>
-      <li>Clique em <b>Imprimir etiquetas</b> e escolha a TLP 2844 (margem 0, escala 100%).</li>
+      <li>Clique em <b>Imprimir etiquetas</b> e escolha a TLP 2844 (margem 0, escala 100%). Ou, no <b>Delivery</b>, clique no ícone de impressora do card.</li>
       <li>Cole a etiqueta do sabor em cada caixa e a do pedido na pilha de 4.</li>
     </ol>
-    <p class="muted">Na primeira impressão confira se a etiqueta saiu alinhada no rolo. Se cortar, veja na impressora o tamanho de papel configurado (2 colunas = 84 × 25 mm).</p>
+    <p class="muted">Na primeira impressão confira se a etiqueta saiu alinhada no rolo. Se cortar ou sair grande, configure nas Preferências de impressão da ZDesigner TLP 2844 o tamanho do papel em <b>84 × 25 mm</b> (2 colunas).</p>
   </div></div>
 </div>
 <script>document.querySelectorAll('.acc>button').forEach(b=>b.addEventListener('click',()=>b.parentElement.classList.toggle('aberto')));</script>
