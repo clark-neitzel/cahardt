@@ -2,6 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Fontes das etiquetas do Kit Festa (self-host, OFL) - a impressão não depende de internet */
+@font-face { font-family: 'Fredoka'; font-style: normal; font-weight: 500 700; font-display: swap; src: url('/fonts/etiquetas/fredoka.woff2') format('woff2'); }
+@font-face { font-family: 'Caveat'; font-style: normal; font-weight: 700; font-display: swap; src: url('/fonts/etiquetas/caveat-700.woff2') format('woff2'); }
+@font-face { font-family: 'Lora'; font-style: normal; font-weight: 600; font-display: swap; src: url('/fonts/etiquetas/lora-600.woff2') format('woff2'); }
+@font-face { font-family: 'Lora'; font-style: italic; font-weight: 600; font-display: swap; src: url('/fonts/etiquetas/lora-600-italic.woff2') format('woff2'); }
+
+
 :root {
   /* Tema Starbucks: Manrope (substituta aberta da SoDoSans) + espaçamento apertado */
   font-family: "Manrope", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;

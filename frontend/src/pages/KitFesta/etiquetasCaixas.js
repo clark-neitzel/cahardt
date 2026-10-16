@@ -28,7 +28,7 @@ export const CONJUNTOS_FRASES = {
 };
 export const FRASES_CAIXA = CONJUNTOS_FRASES.carinho.frases;
 
-// Fontes das etiquetas (declaradas no index.html). Pré-carregar ao abrir a tela: o print()
+// Fontes das etiquetas (self-host: @font-face em index.css, arquivos em public/fonts/etiquetas). Pré-carregar ao abrir a tela: o print()
 // é síncrono no clique e uma fonte ainda não baixada sairia no fallback.
 export const FONTES_ETIQUETA = ['700 12pt Fredoka', '600 12pt Fredoka', '700 12pt Caveat', '600 12pt Lora', 'italic 600 12pt Lora'];
 export function precarregarFontesEtiqueta() {
@@ -41,11 +41,51 @@ function tamanhoPt(texto, base) {
     const k = n <= 14 ? 1 : n <= 19 ? 0.86 : n <= 24 ? 0.74 : n <= 29 ? 0.63 : 0.55;
     return (base * k).toFixed(1) + 'pt';
 }
-// Caveat (manuscrita): medido na térmica, ~0,122 mm por caractere por pt. Em 37 mm úteis,
-// cabe pt = 303/n; com 10% de folga, 273/n — teto 13pt (frases curtas).
-function tamanhoFrasePt(texto, teto = 13) {
+// Pilhas de fonte (as mesmas do CSS da etiqueta): se a Caveat/Fredoka não carregar, o navegador
+// cai na próxima da lista — e a medição abaixo usa a MESMA pilha, então o texto sempre cabe.
+const PILHA_CURSIVA = "Caveat, 'Segoe Script', 'Bradley Hand', cursive";
+const PILHA_NOME = "Fredoka, Manrope, Arial, sans-serif";
+const MM_PX = 96 / 25.4; // 1 mm = 3,7795 px (96 dpi)
+
+// Fórmula antiga (calibrada só p/ Caveat) — usada apenas se não houver canvas (teste em node).
+function tamanhoFrasePtFormula(texto, teto) {
     const n = Math.max(1, String(texto || '').length);
-    return Math.min(teto, 273 / n).toFixed(1) + 'pt';
+    return Math.min(teto, 273 / n);
+}
+
+/**
+ * Maior tamanho (pt) em que o texto cabe em `larguraMm`, medido de verdade com canvas
+ * (síncrono — o print() do clique não pode esperar nada). Teto e mínimo em pt.
+ */
+let _ctx;
+function medirPt(texto, { pilha, peso, teto, minimo = 6, larguraMm = 37, folga = 0.96 }) {
+    const t = String(texto || '');
+    if (!t) return teto;
+    try {
+        if (_ctx === undefined) _ctx = (typeof document !== 'undefined' && document.createElement('canvas').getContext('2d')) || null;
+        if (!_ctx) throw new Error('sem canvas');
+        _ctx.font = `${peso} 100px ${pilha}`;
+        const w100 = _ctx.measureText(t).width; // largura em px a 100px de fonte
+        if (!(w100 > 0)) throw new Error('largura zero');
+        const px = (larguraMm * MM_PX * folga) / (w100 / 100);
+        return Math.max(minimo, Math.min(teto, px * 0.75));
+    } catch {
+        return Math.max(minimo, pilha === PILHA_CURSIVA ? tamanhoFrasePtFormula(t, teto) : Number(tamanhoPt(t, teto).replace('pt', '')));
+    }
+}
+function tamanhoFrasePt(texto, teto = 13) {
+    // document.fonts.check só informa; a pilha com fallback cursivo cobre o caso "não carregou"
+    return medirPt(texto, { pilha: PILHA_CURSIVA, peso: 700, teto }).toFixed(1) + 'pt';
+}
+const PILHA_SERIFA = "Lora, Georgia, 'Times New Roman', serif";
+function tamanhoOlaPt(texto) {
+    return medirPt(texto, { pilha: PILHA_CURSIVA, peso: 700, teto: 11.5, minimo: 7, larguraMm: 36 }).toFixed(1) + 'pt';
+}
+function tamanhoClientePt(texto) {
+    return medirPt(texto, { pilha: PILHA_SERIFA, peso: 600, teto: 10.5, minimo: 6.5, larguraMm: 36 }).toFixed(1) + 'pt';
+}
+function tamanhoNomePt(texto, teto = 9.5) {
+    return medirPt(texto, { pilha: PILHA_NOME, peso: 700, teto, larguraMm: 36.8, folga: 0.98 }).toFixed(1) + 'pt';
 }
 
 export const OPCOES_PADRAO = { cada: 4, nomeLimpo: true, colunas: 2, frases: 'carinho' };
@@ -57,6 +97,7 @@ export function nomeDaEtiqueta(nome, limpo) {
     return limpo ? n.replace(/\s*C\/\d+\s*-\s*(HF|KIT\s*FESTA)\s*$/i, '').trim() || n : n;
 }
 
+// dataVenda do Delivery vem como yyyy-mm-ddT00:00:00Z: o slice(0,10) dá o mesmo dia que o kanban mostra (toLocaleDateString em UTC).
 function dataBr(d) {
     const s = String(d || '').slice(0, 10).split('-');
     return s.length === 3 ? `${s[2]}/${s[1]}` : '';
@@ -67,9 +108,10 @@ export function sequenciaEtiquetas(pedido, opcoes = {}) {
     const cada = Math.max(1, Number(opcoes.cada) || OPCOES_PADRAO.cada);
     const caixas = [];
     (pedido?.itens || []).forEach((it) => {
-        const q = Math.max(0, Number(it.quantidade) || 0);
+        // fração (2,5) ou unidades (100) viram caixas inteiras: arredonda para cima (o painel avisa se passar de 60)
+        const q = Math.ceil(Math.max(0, Number(it.quantidade) || 0));
         const nome = `${it.nomeProduto || ''}${it.opcao ? ` (${it.opcao})` : ''}`;
-        for (let i = 0; i < q; i++) caixas.push({ tipo: 'sabor', nome, un: it.unidadesPorCaixa });
+        for (let i = 0; i < q && caixas.length < 500; i++) caixas.push({ tipo: 'sabor', nome, un: it.unidadesPorCaixa });
     });
     const seq = [];
     caixas.forEach((c, i) => {
@@ -110,8 +152,8 @@ export function montarEtiquetas(pedido, { qrSvg, cada, nomeLimpo, colunas, frase
         if (e.tipo === 'pedido') {
             // "Clássica": serifa, centralizada, sem borda
             return `<div class="etq pedido">
-                <div class="ola">Feito com carinho para</div>
-                <div class="cli" style="font-size:${tamanhoPt(pedido.nomeCliente, 10.5)}">${escaparHtml(pedido.nomeCliente)}</div>
+                <div class="ola" style="font-size:${tamanhoOlaPt('Feito com carinho para')}">Feito com carinho para</div>
+                <div class="cli" style="font-size:${tamanhoClientePt(pedido.nomeCliente)}">${escaparHtml(pedido.nomeCliente)}</div>
                 <div class="ent">${entrega ? 'entrega' : 'retirada'} ${dataBr(pedido.data)}${pedido.horario ? ` às ${escaparHtml(pedido.horario)}` : ''}</div>
                 <div class="orn">✿ ❧ ✿</div>
                 <div class="rod">Pedido #${escaparHtml(pedido.numero)} · caixas ${e.de}–${e.ate} de ${e.total}</div>
@@ -121,7 +163,7 @@ export function montarEtiquetas(pedido, { qrSvg, cada, nomeLimpo, colunas, frase
         const nome = nomeDaEtiqueta(e.nome, op.nomeLimpo);
         const frase = listaFrases.length ? listaFrases[nCaixa++ % listaFrases.length] : '';
         return `<div class="etq sabor">
-            <div class="nome" style="font-size:${tamanhoPt(nome, 9.5)}">${escaparHtml(nome)}</div>
+            <div class="nome" style="font-size:${tamanhoNomePt(nome)}">${escaparHtml(nome)}</div>
             <div class="linha">
                 ${qrSvg ? `<div class="qr">${qrSvg}</div>` : ''}
                 <div class="txt">
@@ -146,6 +188,7 @@ export function montarEtiquetas(pedido, { qrSvg, cada, nomeLimpo, colunas, frase
         #area-impressao .pag { width: ${largPag}; height: 25mm; display: flex; overflow: hidden;
             ${cols === 2 ? 'padding-left: 2mm; gap: 2mm;' : ''} page-break-after: always; break-after: page; }
         #area-impressao .etq { width: 40mm; height: 25mm; flex: none; overflow: hidden; background: #fff; box-sizing: border-box; }
+        #area-impressao .pag:last-child { page-break-after: auto; break-after: auto; }
         /* caixa — "Caseira" */
         #area-impressao .etq.sabor { font-family: Fredoka, Manrope, Arial, sans-serif; padding: 1.2mm 1.6mm 0.8mm; display: flex; flex-direction: column; }
         #area-impressao .nome { font-weight: 700; line-height: 1; white-space: nowrap; overflow: hidden; letter-spacing: -.01em; }
@@ -156,10 +199,10 @@ export function montarEtiquetas(pedido, { qrSvg, cada, nomeLimpo, colunas, frase
         #area-impressao .ped { font-weight: 600; font-size: 7pt; line-height: 1; }
         #area-impressao .ped b { display: block; font-weight: 700; font-size: 10.5pt; line-height: 1; margin-top: 0.4mm; white-space: nowrap; }
         #area-impressao .un { font-weight: 600; font-size: 6.5pt; white-space: nowrap; }
-        #area-impressao .frase { font-family: Caveat, 'Segoe Script', cursive; font-weight: 700; line-height: 1; margin-top: 0.6mm; white-space: nowrap; overflow: hidden; text-align: center; }
+        #area-impressao .frase { font-family: ${PILHA_CURSIVA}; font-weight: 700; line-height: 1; margin-top: 0.6mm; white-space: nowrap; overflow: hidden; text-align: center; }
         /* pedido — "Clássica", sem borda */
         #area-impressao .etq.pedido { font-family: Lora, Georgia, 'Times New Roman', serif; padding: 1.4mm 2mm 1.2mm; display: flex; flex-direction: column; justify-content: space-between; text-align: center; }
-        #area-impressao .etq.pedido .ola { font-family: Caveat, 'Segoe Script', cursive; font-weight: 700; font-size: 11.5pt; line-height: 1; white-space: nowrap; overflow: hidden; }
+        #area-impressao .etq.pedido .ola { font-family: ${PILHA_CURSIVA}; font-weight: 700; line-height: 1; white-space: nowrap; overflow: hidden; }
         #area-impressao .etq.pedido .cli { font-weight: 600; line-height: 1.1; white-space: nowrap; overflow: hidden; }
         #area-impressao .etq.pedido .ent { font-style: italic; font-weight: 600; font-size: 7pt; line-height: 1.1; white-space: nowrap; }
         #area-impressao .etq.pedido .orn { font-size: 5.5pt; letter-spacing: .3em; line-height: 1; }

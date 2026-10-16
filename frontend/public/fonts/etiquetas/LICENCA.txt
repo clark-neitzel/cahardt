@@ -1,0 +1,6 @@
+Fontes das etiquetas do Kit Festa (self-host), subset latin, obtidas do Google Fonts.
+Todas sob a SIL Open Font License 1.1 (OFL) - uso, redistribuicao e embutir livres.
+- Fredoka (Milena Brandao, Hafontia) - fredoka.woff2 (variavel 300-700)
+- Caveat (Impallari Type) - caveat-700.woff2
+- Lora (Cyreal) - lora-600.woff2, lora-600-italic.woff2
+Licenca: https://openfontlicense.org

@@ -2,7 +2,7 @@
   {
     "slug": "etiquetas-kit-festa",
     "titulo": "Etiquetas das caixas do Kit Festa",
-    "resumo": "Botão novo no pedido do Kit Festa imprime na Zebra uma etiqueta por caixa com o sabor e o QR do site, e a cada 4 caixas uma etiqueta com pedido, cliente e horário.",
+    "resumo": "Botão novo no pedido do Kit Festa e nos cards do Delivery imprime na Zebra uma etiqueta por caixa com sabor, QR do site e uma frase de agradecimento, e a cada 4 caixas uma com pedido, cliente e horário.",
     "data": "2026-10-15"
   },
   {

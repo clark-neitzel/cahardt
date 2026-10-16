@@ -410,7 +410,7 @@ function Card({ card, perm, moving, onMover, onReenviar, onToggleSilenciar, onAb
                     <button
                         onClick={(e) => { e.stopPropagation(); onEtiquetas(card); }}
                         title="Imprimir etiquetas das caixas (impressora de etiquetas)"
-                        className="text-gray-500 hover:text-primary"
+                        className="text-gray-500 hover:text-primary p-2 -m-1.5 rounded-full hover:bg-gray-100"
                     >
                         <Printer className="h-4 w-4" />
                     </button>

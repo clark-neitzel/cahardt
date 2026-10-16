@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Printer, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import SelectBusca from '../../components/SelectBusca';
@@ -18,10 +18,15 @@ import { montarEtiquetas, OPCOES_PADRAO, CONJUNTOS_FRASES } from './etiquetasCai
  */
 export default function PainelEtiquetas({ pedido, qrSvg, titulo, onClose }) {
   const [op, setOp] = useFiltrosSalvos('kit-festa:etiquetas', OPCOES_PADRAO);
+  const [cadaTxt, setCadaTxt] = useState(null); // texto digitado (null = espelha o valor salvo)
+  const [, setFontesOk] = useState(0); // re-render quando as fontes terminam de carregar (medição fiel)
+  useEffect(() => { document.fonts?.ready?.then(() => setFontesOk(1)).catch(() => {}); }, []);
   const previa = montarEtiquetas(pedido, { ...op, qrSvg });
 
   const imprimir = () => {
     if (!previa.total) { toast.error('Pedido sem caixas para etiquetar.'); return; }
+    // confirm é síncrono: o print() segue no mesmo gesto do clique
+    if (previa.total > 60 && !window.confirm(`Isto vai imprimir ${previa.total} etiquetas. Confirma?`)) return;
     imprimirNaPagina(previa.estilos, previa.corpo);
     onClose?.();
   };
@@ -43,8 +48,17 @@ export default function PainelEtiquetas({ pedido, qrSvg, titulo, onClose }) {
           </SelectBusca>
         </label>
         <label className="flex items-center gap-2">Pedido a cada
-          <input type="number" min="1" max="12" value={op.cada}
-            onChange={e => setOp({ ...op, cada: Math.max(1, Number(e.target.value) || 1) })}
+          <input type="number" min="1" max="12" value={cadaTxt ?? op.cada}
+            onChange={e => {
+              const t = e.target.value;
+              setCadaTxt(t);
+              const n = Math.round(Number(t));
+              if (t !== '' && n >= 1) { if (n > 12) setCadaTxt('12'); setOp({ ...op, cada: Math.min(12, n) }); }
+            }}
+            onBlur={() => {
+              if (cadaTxt !== null && (cadaTxt === '' || !(Number(cadaTxt) >= 1))) setOp({ ...op, cada: OPCOES_PADRAO.cada });
+              setCadaTxt(null);
+            }}
             className="w-14 border border-gray-300 rounded px-2 py-1 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" /> caixas
         </label>
         <label className="flex items-center gap-2">
