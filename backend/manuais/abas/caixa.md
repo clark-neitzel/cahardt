@@ -229,8 +229,8 @@ Observação: devoluções e baixas de dinheiro **não** entram nesse checklist 
 
 O caixa entra na fila de conferência **ao imprimir a folha** (a folha é a prestação de contas: ao clicar em Imprimir o app pergunta se é para enviar; "2ª via" não reenvia). Quem não imprimir entra sozinho **na virada do dia**, à meia-noite.
 
-1. Quem tem `Pode_Conferir_Dinheiro_Caixa` abre o caixa daquela pessoa (pela agenda ou pelo seletor) e clica em **Conferir o dinheiro**
-2. Abre a **calculadora**: digite quantas notas de R$ 200, 100, 50, 20, 10, 5 e 2 e quantas moedas de R$ 1,00 / 0,50 / 0,25 / 0,10 / 0,05. O total sai da contagem (não é digitado à mão). Cheque ou vale entram em "+ outro valor"
+1. Quem tem `Pode_Conferir_Dinheiro_Caixa` abre o caixa daquela pessoa (pela agenda ou pelo seletor) e clica em **Conferir e fechar — R$ X** (no cartão Conferência do dinheiro)
+2. Abre a **calculadora** (tela larga com 3 colunas no computador e no iPad deitado: cédulas, moedas + outros valores e o resumo com total e diferença; no iPad em pé são 2 colunas; no celular são abas Cédulas · Moedas · Outros, com o total e o botão sempre visíveis embaixo): digite quantas notas de R$ 200, 100, 50, 20, 10, 5 e 2 e quantas moedas de R$ 1,00 / 0,50 / 0,25 / 0,10 / 0,05. O total sai da contagem (não é digitado à mão). Cheque ou vale entram em "+ outro valor". Cada nota tem botões **−** e **+** ao lado do campo; **Enter** pula para a próxima nota (na última vai para o botão de confirmar) e o scroll do mouse não altera nenhum número
 3. O app compara com o valor a prestar na hora:
    - **Bate certo** → confirme e pronto
    - **Diferença dentro da sua quebra de caixa** → você mesmo fecha, com **motivo obrigatório**
@@ -244,6 +244,18 @@ O caixa entra na fila de conferência **ao imprimir a folha** (a folha é a pres
 - **Quem conferiu não fecha** o mesmo caixa (o botão Fechar some para essa pessoa)
 - Se o valor a prestar mudar depois da conferência (despesa lançada atrasada, baixa nova), a conferência **cai sozinha** e o caixa volta para "A conferir"
 - Quem conferiu (ou o admin) pode **Desfazer conferência** enquanto o caixa não estiver fechado
+
+### Contar o dinheiro sem fechar (novo — 10/2026)
+- **Contar** só anota quanto há de dinheiro (cédulas, moedas e outros) com o nome de quem contou e a hora. **Não confere, não fecha, não pede motivo nem senha** e não mexe no caixa: o caixa continua com a mesma situação. Pode contar várias vezes no dia; as anteriores ficam como histórico (nada é apagado, nem ao reabrir o caixa).
+- Quem pode: quem tem acesso ao Caixa (administrador, "Acessar Caixa" ou "Editar Caixa"). Não precisa da permissão "Conferir Dinheiro do Caixa" e **não depende da chave de conferência** (funciona ligada ou desligada). Contar o caixa de OUTRA pessoa segue a mesma regra de abrir o caixa dela (administrador, Editar Caixa, conferir ou fechar); o próprio dono pode contar o seu.
+- O total e a quantidade de peças são sempre calculados pelo servidor a partir das notas e moedas (nunca digitados). O sistema recusa: contagem vazia, nota/moeda que não existe, quantidade inválida, caixa já fechado e caixa já conferido. Clicar duas vezes não duplica (cada contagem tem um identificador próprio).
+- As contagens do dia chegam junto do resumo do caixa (`conferenciaDinheiro.contagens`, mais recente primeiro) e também em `GET /api/caixa/contagem-dinheiro?vendedorId&data`. Gravar: `POST /api/caixa/contagem-dinheiro`.
+- **Na tela:** o cartão "Conferência do dinheiro" tem o botão **Contar o dinheiro** (contorno verde, ao lado de "Conferir e fechar — R$ X"). Ele aparece para quem vê o cartão, inclusive o dono do caixa, e some com o caixa fechado, já conferido ou sem movimento. Abre a mesma calculadora em modo contagem (sem valor a prestar, sem motivo, sem senha; observação opcional; botão **Salvar contagem**, que fica bloqueado enquanto grava). Depois de contar, o cartão mostra a última contagem ("R$ X · N peças · Contado por Fulano às HH:MM") com **Usar na conferência** (só para quem pode conferir e não é o dono: abre a conferência já preenchida e editável) e **Contar de novo**; as contagens anteriores do dia ficam em "Contagens anteriores do dia (N)".
+- **Conferir e fechar** continua separado e igual: só quem tem "Conferir Dinheiro do Caixa", nunca o dono do próprio caixa.
+
+### Motivo "Quebra de caixa" na conferência (novo — 10/2026)
+- Na tela, com diferença aparecem dois botões acima do campo do motivo: **Quebra de caixa** (preenche o texto sozinho e trava o campo; se a diferença trocar de falta para sobra, o texto acompanha) e **Outro motivo…** (libera o campo para digitar). É preciso escolher um dos dois; com a diferença zerada os botões somem.
+- Ao conferir com diferença, o motivo pode ser **Quebra de caixa** (o texto "Quebra de caixa (falta)" ou "(sobra)" é montado pelo servidor conforme o sinal da diferença) ou **Outro motivo** (texto livre, obrigatório). Fica gravado o tipo (`motivoTipo`: QUEBRA_DE_CAIXA ou OUTRO) para filtrar depois; conferências antigas ficam sem tipo. O tipo é limpo ao desfazer a conferência e ao reabrir o caixa. A regra do limite de quebra do conferente e da senha do autorizador não mudou.
 
 ### Caixa sem movimento fecha sozinho (10/2026)
 

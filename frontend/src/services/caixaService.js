@@ -56,6 +56,17 @@ const caixaService = {
         return response.data;
     },
 
+    // Contagem avulsa do dinheiro (não fecha nem confere o caixa). `id` vem do cliente (idempotência).
+    registrarContagemDinheiro: async (dados) => {
+        const response = await api.post('/caixa/contagem-dinheiro', dados);
+        return response.data;
+    },
+
+    getContagensDinheiro: async (vendedorId, data) => {
+        const response = await api.get('/caixa/contagem-dinheiro', { params: { vendedorId, data } });
+        return response.data;
+    },
+
     desfazerConferenciaDinheiro: async (dados) => {
         const response = await api.post('/caixa/conferencia-dinheiro/desfazer', dados);
         return response.data;

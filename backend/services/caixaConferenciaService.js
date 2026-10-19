@@ -263,7 +263,7 @@ const somarContagem = (contagem) => {
 const conferirDinheiro = async ({
     vendedorId, data, usuario, perms,
     contagem, valorContadoManual, observacao,
-    motivoDiferenca, autorizadorId, autorizadorSenha,
+    motivoDiferenca, motivoTipo, autorizadorId, autorizadorSenha,
 }) => {
     if (!podeConferir(perms)) throw erro('Sem permissão para conferir o dinheiro do caixa.', 403);
     if (vendedorId === usuario.id && !perms.admin) {
@@ -293,8 +293,18 @@ const conferirDinheiro = async ({
     });
     const quebra = round2(conferente?.quebraCaixa || 0);
 
+    // Tipo do motivo: ausente (cliente antigo) = OUTRO. Em QUEBRA_DE_CAIXA o texto é montado AQUI.
+    const temDiferenca = Math.abs(diferenca) > 0.009;
+    const tipoMotivo = String(motivoTipo || 'OUTRO').toUpperCase();
+    if (!['QUEBRA_DE_CAIXA', 'OUTRO'].includes(tipoMotivo)) {
+        throw erro('Tipo de motivo inválido (use QUEBRA_DE_CAIXA ou OUTRO).', 400);
+    }
+    if (temDiferenca && tipoMotivo === 'QUEBRA_DE_CAIXA') {
+        motivoDiferenca = `Quebra de caixa (${diferenca < 0 ? 'falta' : 'sobra'})`;
+    }
+
     let autorizador = null;
-    if (Math.abs(diferenca) > 0.009) {
+    if (temDiferenca) {
         if (!motivoDiferenca || !String(motivoDiferenca).trim()) {
             throw erro('Explique a diferença: o motivo é obrigatório quando o dinheiro não bate.', 400);
         }
@@ -335,7 +345,8 @@ const conferirDinheiro = async ({
             contagemDinheiro: contagem || null,
             obsConferenciaDinheiro: observacao || null,
             diferencaConferencia: diferenca,
-            motivoDiferenca: Math.abs(diferenca) > 0.009 ? String(motivoDiferenca).trim() : null,
+            motivoDiferenca: temDiferenca ? String(motivoDiferenca).trim() : null,
+            motivoTipo: temDiferenca ? tipoMotivo : null,
             autorizadorDiferencaId: autorizador?.id || null,
             autorizadorDiferencaNome: autorizador?.nome || null,
             quebraAplicada: quebra,
@@ -378,6 +389,7 @@ const desfazerConferencia = async ({ vendedorId, data, usuario, perms, motivo = 
             contagemDinheiro: null,
             diferencaConferencia: null,
             motivoDiferenca: motivo || null,
+            motivoTipo: null,
             autorizadorDiferencaId: null,
             autorizadorDiferencaNome: null,
         },
@@ -568,11 +580,107 @@ const minhasConferencias = async ({ usuario, de, ate }) => {
         valorEsperado: c.valorEsperadoConferencia != null ? round2(c.valorEsperadoConferencia) : null,
         diferenca: c.diferencaConferencia != null ? round2(c.diferencaConferencia) : 0,
         motivoDiferenca: c.motivoDiferenca,
+        motivoTipo: c.motivoTipo,
         autorizadoPor: c.autorizadorDiferencaNome,
         statusCaixa: c.status,
         fechadoPor: c.fechadoPorNome,
         fechadoEm: c.fechadoEm,
     }));
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Contagem avulsa do dinheiro ("Contar"): só anota; NUNCA grava dinheiroConferido
+// nem mexe em caixa_diario. Independe da chave caixa_conferencia.
+// ─────────────────────────────────────────────────────────────────────────────
+const validarContagemAvulsa = (contagem) => {
+    if (!contagem || typeof contagem !== 'object') throw erro('Conte pelo menos uma nota ou moeda.', 400);
+    const limpo = { cedulas: {}, moedas: {}, outros: [] };
+    const lerGrupo = (origem, validos, destino, nome) => {
+        for (const [k, v] of Object.entries(origem || {})) {
+            if (!validos.includes(Number(k)) || !/^\d+(\.\d+)?$/.test(String(k))) {
+                throw erro(`Denominação inválida em ${nome}: ${k}.`, 400);
+            }
+            const q = Number(v || 0);
+            if (!Number.isInteger(q) || q < 0 || q > 99999) throw erro(`Quantidade inválida para ${nome} ${k}.`, 400);
+            if (q > 0) destino[String(Number(k))] = q;
+        }
+    };
+    lerGrupo(contagem.cedulas, VALORES_CEDULA, limpo.cedulas, 'cédulas');
+    lerGrupo(contagem.moedas, VALORES_MOEDA, limpo.moedas, 'moedas');
+    if (contagem.outros != null && !Array.isArray(contagem.outros)) throw erro('Formato de "outros" inválido.', 400);
+    for (const o of (contagem.outros || [])) {
+        const valor = Number(o?.valor);
+        if (!Number.isFinite(valor) || valor <= 0) throw erro('Cada item de "outros" precisa de valor maior que zero.', 400);
+        limpo.outros.push({ descricao: String(o?.descricao || '').slice(0, 120), valor: round2(valor) });
+    }
+    const { total, pecas } = somarContagem(limpo);
+    if (!(total > 0)) throw erro('Conte pelo menos uma nota ou moeda.', 400);
+    return { limpo, total, pecas };
+};
+
+const formatarContagem = (c) => ({
+    id: c.id,
+    vendedorId: c.vendedorId,
+    data: c.dataReferencia,
+    total: Number(c.total),
+    pecas: c.pecas,
+    detalhe: c.detalhe,
+    observacao: c.observacao,
+    contadoPorId: c.contadoPorId,
+    contadoPorNome: c.contadoPorNome,
+    criadoEm: c.criadoEm,
+});
+
+const listarContagensDoDia = async (vendedorId, data, take = 20) => {
+    const rows = await prisma.caixaContagem.findMany({
+        where: { vendedorId, dataReferencia: data },
+        orderBy: { criadoEm: 'desc' },
+        take,
+    });
+    return rows.map(formatarContagem);
+};
+
+const registrarContagem = async ({ id, vendedorId, data, contagem, observacao, usuario }) => {
+    if (!vendedorId || !data) throw erro('Informe o caixa (vendedor e data).', 400);
+    if (!id || typeof id !== 'string' || id.length > 64) throw erro('Identificador da contagem ausente.', 400);
+
+    // Idempotência: mesmo id já gravado devolve a existente (duplo clique/retry)
+    const existente = await prisma.caixaContagem.findUnique({ where: { id } });
+    if (existente) return { ok: true, duplicado: true, contagem: formatarContagem(existente) };
+
+    const { limpo, total, pecas } = validarContagemAvulsa(contagem);
+
+    const caixa = await prisma.caixaDiario.findUnique({
+        where: { vendedorId_dataReferencia: { vendedorId, dataReferencia: data } },
+    });
+    if (caixa) {
+        if (caixa.status !== 'ABERTO') throw erro('Caixa já fechado: não dá para contar.', 400);
+        if (caixa.dinheiroConferido) {
+            const calc = await calcularValorAPrestar(vendedorId, data);
+            if (!conferenciaDesatualizada(caixa, calc.valorAPrestar)) {
+                throw erro('Este caixa já foi conferido: não dá para contar.', 400);
+            }
+        }
+    }
+
+    const nomeUsuario = (await prisma.vendedor.findUnique({ where: { id: usuario.id }, select: { nome: true } }))?.nome
+        || usuario.nome || null;
+    try {
+        const criada = await prisma.caixaContagem.create({
+            data: {
+                id, vendedorId, dataReferencia: data, total, pecas, detalhe: limpo,
+                observacao: observacao ? String(observacao).slice(0, 1000) : null,
+                contadoPorId: usuario.id, contadoPorNome: nomeUsuario,
+            },
+        });
+        return { ok: true, duplicado: false, contagem: formatarContagem(criada) };
+    } catch (e) {
+        if (e.code === 'P2002') {
+            const ja = await prisma.caixaContagem.findUnique({ where: { id } });
+            if (ja) return { ok: true, duplicado: true, contagem: formatarContagem(ja) };
+        }
+        throw e;
+    }
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -723,4 +831,5 @@ module.exports = {
     enviarParaConferencia, conferirDinheiro, desfazerConferencia,
     sugerirTarefaDiferenca, bloqueioPorCaixaFechado,
     listarAConferir, listarAFechar, minhasConferencias,
+    registrarContagem, listarContagensDoDia,
 };

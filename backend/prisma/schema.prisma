@@ -1788,6 +1788,24 @@ model Despesa {
   @@map("despesas")
 }
 
+// Contagem avulsa do dinheiro ("Contar"): só anota quanto há de dinheiro, não fecha nem confere o caixa.
+model CaixaContagem {
+  id             String   @id @default(uuid()) // gerado no cliente (idempotência)
+  vendedorId     String   @map("vendedor_id") // dono do caixa contado
+  dataReferencia String   @map("data_referencia") // YYYY-MM-DD
+  total          Decimal  @db.Decimal(12, 2)
+  pecas          Int
+  detalhe        Json // { cedulas:{"200":2}, moedas:{"0.5":3}, outros:[{descricao,valor}] }
+  observacao     String?  @db.Text
+  contadoPorId   String   @map("contado_por_id")
+  contadoPorNome String?  @map("contado_por_nome")
+  criadoEm       DateTime @default(now()) @map("criado_em")
+
+  @@index([vendedorId, dataReferencia])
+  @@index([contadoPorId])
+  @@map("caixa_contagens")
+}
+
 model CaixaDiario {
   id             String @id @default(uuid())
   vendedorId     String @map("vendedor_id")
@@ -1837,6 +1855,7 @@ model CaixaDiario {
   // acima, exige senha de quem tem Pode_Autorizar_Diferenca_Caixa.
   diferencaConferencia     Decimal? @map("diferenca_conferencia") @db.Decimal(12, 2)
   motivoDiferenca          String?  @map("motivo_diferenca") @db.Text
+  motivoTipo               String?  @map("motivo_tipo") // QUEBRA_DE_CAIXA | OUTRO; null = registro anterior ao recurso
   autorizadorDiferencaId   String?  @map("autorizador_diferenca_id")
   autorizadorDiferencaNome String?  @map("autorizador_diferenca_nome")
   quebraAplicada           Decimal? @map("quebra_aplicada") @db.Decimal(12, 2) // limite do conferente no momento

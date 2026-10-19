@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contagem do dinheiro — proposta de melhorias</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --primary:#00754A; --primary-dark:#006241; --house:#1E3932; --mint:#d4e9e2;
+    --bg:#f2f0eb; --gold:#cba258; --ink:rgba(0,0,0,.87);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Manrope',-apple-system,sans-serif;letter-spacing:-0.01em;font-variant-numeric:tabular-nums;background:var(--bg);color:var(--ink);line-height:1.55}
+  .wrap{max-width:1040px;margin:0 auto;padding:0 16px 60px}
+
+  .hero{background:var(--house);color:#fff;padding:36px 16px 30px;text-align:center}
+  .hero .tag{display:inline-block;background:var(--gold);color:#1E3932;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;padding:4px 14px;border-radius:999px;margin-bottom:14px}
+  .hero h1{font-size:26px;font-weight:800;line-height:1.2}
+  .hero p{margin-top:10px;font-size:14px;opacity:.85;max-width:620px;margin-left:auto;margin-right:auto}
+
+  .intro{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:18px 20px;margin:22px 0;font-size:14px;color:#444}
+  .intro b{color:var(--primary-dark)}
+  .intro ol{margin:10px 0 0 20px}
+  .intro li{margin:4px 0}
+
+  .sec{margin-top:40px}
+  .sec-num{display:inline-flex;align-items:center;gap:10px;margin-bottom:6px}
+  .sec-num .n{width:30px;height:30px;border-radius:999px;background:var(--primary);color:#fff;font-weight:800;font-size:15px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .sec-num h2{font-size:19px;font-weight:800;color:var(--house)}
+  .sec > p.desc{font-size:14px;color:#555;margin:4px 0 14px;max-width:760px}
+  .sec p.desc b{color:var(--primary-dark)}
+
+  .app{background:#fff;border:1px solid #d1d5db;border-radius:16px;overflow:hidden;box-shadow:0 6px 24px rgba(0,0,0,.07)}
+  .app-bar{background:var(--house);color:#fff;padding:12px 18px;display:flex;align-items:center;gap:12px}
+  .app-bar .sub{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.14em;opacity:.6}
+  .app-bar .tit{font-size:15px;font-weight:800;line-height:1.2}
+  .app-bar .x{margin-left:auto;opacity:.7;font-size:18px}
+  .app-body{padding:16px;background:#f8f7f4}
+
+  .card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden}
+  .card-h{display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid #f3f4f6;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.14em;color:#6b7280}
+  .card-b{padding:14px 16px}
+
+  .pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:9px 18px;font-size:13px;font-weight:700;border:1px solid transparent;cursor:pointer;font-family:inherit}
+  .pill.p{background:var(--primary);color:#fff}
+  .pill.o{background:#fff;border-color:var(--primary);color:var(--primary)}
+  .pill.g{background:#e5e7eb;color:#9ca3af;cursor:not-allowed}
+  .pill.lg{padding:12px 22px;font-size:14px;width:100%;justify-content:center}
+
+  .pin{display:inline-flex;width:20px;height:20px;border-radius:999px;background:var(--gold);color:#1E3932;font-size:11px;font-weight:800;align-items:center;justify-content:center;vertical-align:middle;margin-right:6px;flex-shrink:0}
+  .legenda{margin-top:14px;background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:12px 16px;font-size:13.5px;color:#444}
+  .legenda div{display:flex;gap:8px;padding:5px 0;border-bottom:1px dashed #eee}
+  .legenda div:last-child{border-bottom:0}
+  .legenda b{color:#222}
+
+  /* contagem */
+  .cont-grid{display:grid;grid-template-columns:1.1fr 1fr 1.25fr;gap:12px}
+  @media(max-width:780px){.cont-grid{grid-template-columns:1fr}}
+  table.cont{width:100%;border-collapse:collapse;table-layout:fixed}
+  table.cont col:nth-child(1){width:32%} table.cont col:nth-child(2){width:36%} table.cont col:nth-child(3){width:32%}
+  table.cont th{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#9ca3af;font-weight:800;padding-bottom:4px}
+  table.cont td{padding:4px 2px;border-bottom:1px solid #f3f4f6;font-size:14px}
+  table.cont tr:last-child td{border-bottom:0}
+  table.cont td.nota{font-weight:700;white-space:nowrap}
+  table.cont td.sub{text-align:right;color:#d1d5db}
+  table.cont td.sub.on{color:#222;font-weight:600}
+  .qtd{display:flex;align-items:center;justify-content:center;gap:4px}
+  .qtd input{width:56px;height:36px;border:1px solid #d1d5db;border-radius:8px;text-align:center;font:inherit;font-weight:800;font-size:15px;outline:none}
+  .qtd input:focus{border-color:var(--primary);box-shadow:0 0 0 1px var(--primary)}
+  .qtd button{width:28px;height:36px;border:1px solid #e5e7eb;background:#fff;border-radius:8px;font-size:16px;color:#6b7280;cursor:pointer;font-family:inherit}
+  .qtd button:hover{background:#f3f4f6;color:#111}
+  .outro{display:flex;gap:6px;margin-top:6px}
+  .outro input{border:1px solid #d1d5db;border-radius:8px;padding:7px 10px;font:inherit;font-size:13px;outline:none;min-width:0}
+  .outro input.d{flex:1} .outro input.v{width:84px;text-align:right;font-weight:700}
+  .outro input:focus{border-color:var(--primary)}
+  .link{background:none;border:0;color:var(--primary);font-weight:700;font-size:12px;cursor:pointer;font-family:inherit;margin-top:8px}
+
+  .resumo{display:flex;flex-direction:column;gap:10px}
+  .linha-kv{display:flex;justify-content:space-between;align-items:center;background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:10px 14px;font-size:13px;color:#555}
+  .linha-kv b{font-size:15px;color:#111}
+  .total{background:var(--house);color:#fff;border-radius:12px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center}
+  .total .l{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.14em;opacity:.6}
+  .total .s{font-size:11px;opacity:.7}
+  .total .v{font-size:26px;font-weight:800}
+  .dif{border-radius:10px;padding:10px 14px;font-size:13px;line-height:1.45}
+  .dif.ok{background:#ecfdf5;border:1px solid #a7f3d0;color:#065f46}
+  .dif.falta{background:#fef2f2;border:1px solid #fecaca;color:#991b1b}
+  .dif.sobra{background:#fffbeb;border:1px solid #fde68a;color:#92400e}
+  .dif.neutro{background:#f3f4f6;border:1px solid #e5e7eb;color:#4b5563}
+  .campo label{display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:4px}
+  .campo .inp{border:1px solid #d1d5db;border-radius:8px;padding:8px 10px;font-size:13px;background:#fff;color:#9ca3af}
+  .auth{border:1px solid #fecaca;background:#fff7f7;border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+
+  /* seletor de modo */
+  .modo{display:inline-flex;background:#e9eee9;border-radius:999px;padding:3px;gap:2px;margin-left:auto}
+  .modo button{border:0;background:transparent;border-radius:999px;padding:6px 14px;font:inherit;font-size:12px;font-weight:800;color:#5b6b63;cursor:pointer}
+  .modo button.on{background:#fff;color:var(--house);box-shadow:0 1px 3px rgba(0,0,0,.15)}
+
+  /* demo campo numérico */
+  .demo2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:600px){.demo2{grid-template-columns:1fr}}
+  .demo-box{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:14px 16px}
+  .demo-box h4{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px}
+  .demo-box.ruim h4{color:#b91c1c} .demo-box.bom h4{color:var(--primary-dark)}
+  .demo-box input{width:100%;border:1px solid #d1d5db;border-radius:8px;padding:10px 12px;font:inherit;font-size:16px;font-weight:700;text-align:center;outline:none}
+  .demo-box input:focus{border-color:var(--primary);box-shadow:0 0 0 1px var(--primary)}
+  .demo-box small{display:block;margin-top:8px;color:#666;font-size:12.5px;line-height:1.45}
+  .demo-box .aviso{margin-top:8px;font-size:12px;font-weight:700;color:#b91c1c;min-height:16px}
+
+  /* card do caixa (fluxo) */
+  .fluxo{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:700px){.fluxo{grid-template-columns:1fr}}
+  .aviso-caixa{background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:10px 14px;font-size:13px;color:#78350f}
+  .aviso-caixa b{color:#78350f}
+  .chip-cont{display:flex;align-items:center;gap:10px;background:var(--mint);border:1px solid #b9dccf;border-radius:10px;padding:10px 12px;font-size:13px;color:#1E3932;margin-top:10px}
+  .chip-cont .ic{width:30px;height:30px;border-radius:999px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+  .chip-cont b{display:block}
+  .chip-cont small{display:block;color:#3b5b4e;font-size:12px}
+  .chip-cont .pill{margin-left:auto;padding:6px 12px;font-size:12px}
+  .botoes{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .nota-sm{font-size:12px;color:#6b7280;margin-top:8px}
+
+  /* mobile mock */
+  .fone{width:300px;margin:0 auto;background:#fff;border:8px solid #1f2937;border-radius:28px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.2)}
+  .fone .app-bar{padding:10px 14px}
+  .fone .app-body{padding:10px}
+  .fone table.cont td{padding:3px 2px;font-size:13px}
+  .fone .qtd input{width:48px;height:34px}
+  .fone .qtd button{width:26px;height:34px}
+  .fone .total .v{font-size:20px}
+  .fone .tabs{display:flex;background:#e9eee9;border-radius:999px;padding:3px;margin-bottom:8px}
+  .fone .tabs span{flex:1;text-align:center;font-size:11px;font-weight:800;padding:6px;border-radius:999px;color:#5b6b63}
+  .fone .tabs span.on{background:#fff;color:var(--house);box-shadow:0 1px 3px rgba(0,0,0,.15)}
+  .fone .barra{position:sticky;bottom:0;background:#fff;border-top:1px solid #e5e7eb;padding:8px;margin:8px -10px -10px}
+
+  /* decisões / tamanho */
+  .dec{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:16px 20px}
+  .dec .q{display:flex;gap:10px;padding:10px 0;border-bottom:1px dashed #e5e7eb;font-size:14px}
+  .dec .q:last-child{border-bottom:0}
+  .dec .q .n{width:24px;height:24px;border-radius:999px;background:var(--gold);color:#1E3932;font-weight:800;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .dec .q b{display:block;color:#222}
+  .dec .q span{color:#555;font-size:13.5px}
+  .dec .q i{color:var(--primary-dark);font-style:normal;font-weight:700}
+  table.tam{width:100%;border-collapse:collapse;font-size:13.5px;background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden}
+  table.tam th{background:#f9fafb;text-align:left;padding:10px 14px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#6b7280}
+  table.tam td{padding:10px 14px;border-top:1px solid #f3f4f6;vertical-align:top}
+  table.tam td:last-child{white-space:nowrap;font-weight:700;color:var(--primary-dark)}
+  .novo{display:inline-block;background:var(--gold);color:#1E3932;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;padding:2px 7px;border-radius:999px;vertical-align:middle;margin-left:6px}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <span class="tag">Proposta · Caixa</span>
+  <h1>Contar dinheiro sem sofrer</h1>
+  <p>Quatro ajustes na conferência do dinheiro: campo numérico que só aceita número, tela larga sem rolagem no computador, e um modo <b>Contar</b> separado do <b>Conferir</b>.</p>
+</div>
+
+<div class="wrap">
+
+  <div class="intro">
+    <b>O que você pediu (19/10):</b>
+    <ol>
+      <li>O scroll do mouse não pode mudar o valor dos campos.</li>
+      <li>Campo de número não pode aceitar letra, em todo o sistema.</li>
+      <li>Uma forma de só <b>contar</b> o dinheiro quando a secretária recebe o caixa do motorista, sem ser a conferência que fecha o dia.</li>
+      <li>No computador, a contagem cabe numa tela mais larga, sem barra de rolagem.</li>
+    </ol>
+    Abaixo, cada ponto virou um desenho. Os mocks funcionam: digite, role o mouse, troque o modo.
+  </div>
+
+  <!-- ───────────── 1 + 2: campo numérico ───────────── -->
+  <div class="sec">
+    <div class="sec-num"><span class="n">1</span><h2>Campo de número que só aceita número</h2></div>
+    <p class="desc">Hoje o app tem <b>127 campos</b> do tipo "número" do navegador. Esse tipo tem dois defeitos: o <b>scroll do mouse</b> em cima do campo soma ou subtrai, e ele <b>aceita a letra "e"</b>, sinal de mais e de menos. Proposta: um componente único <b>CampoNumero</b> que substitui todos — teste os dois abaixo.</p>
+
+    <div class="demo2">
+      <div class="demo-box ruim">
+        <h4>Hoje — campo "number" do navegador</h4>
+        <input type="number" value="10" id="demoRuim">
+        <small>Clique no campo e role o mouse: o valor muda sozinho. Tente digitar a letra <b>e</b>: ela entra.</small>
+        <div class="aviso" id="avisoRuim"></div>
+      </div>
+      <div class="demo-box bom">
+        <h4>Proposta — CampoNumero</h4>
+        <input type="text" inputmode="numeric" value="10" id="demoBom" autocomplete="off">
+        <small>Role o mouse à vontade: não muda. Letra não entra. No celular abre o <b>teclado numérico</b>. Aceita vírgula só quando o campo é de valor (R$, kg).</small>
+        <div class="aviso" id="avisoBom" style="color:var(--primary-dark)"></div>
+      </div>
+    </div>
+
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Dois tipos:</b> <i>inteiro</i> (quantidade, dias, parcelas) aceita só dígitos; <i>decimal</i> (R$, kg, %) aceita dígitos e uma vírgula.</span></div>
+      <div><span class="pin">2</span><span><b>Scroll ignorado:</b> rolar a página com o mouse em cima do campo só rola a página.</span></div>
+      <div><span class="pin">3</span><span><b>Sem setinhas</b> dentro do campo. Onde fizer sentido (contagem de notas) entram botões <b>− / +</b> visíveis, clicados de propósito.</span></div>
+      <div><span class="pin">4</span><span><b>Troca em todo o sistema:</b> os 127 campos passam a usar o componente. O comportamento de salvar não muda, só o que o campo deixa digitar.</span></div>
+    </div>
+  </div>
+
+  <!-- ───────────── 2: tela larga desktop ───────────── -->
+  <div class="sec">
+    <div class="sec-num"><span class="n">2</span><h2>No computador: tudo numa tela só, sem rolagem</h2></div>
+    <p class="desc">O modal fica largo (<b>3 colunas</b>): cédulas, moedas + outros valores, e o resumo com total e diferença. A tecla <b>Enter</b> pula para a próxima nota. Use o seletor <b>Contar / Conferir</b> no topo para ver os dois modos do ponto 3.</p>
+
+    <div class="app" id="mockDesk">
+      <div class="app-bar">
+        <span style="font-size:20px">🧮</span>
+        <div>
+          <div class="sub">Jociel · 16/10/2026</div>
+          <div class="tit" id="titModal">Contagem do dinheiro</div>
+        </div>
+        <div class="modo" id="selModo">
+          <button class="on" data-modo="contar">Contar</button>
+          <button data-modo="conferir">Conferir e fechar</button>
+        </div>
+        <span class="x">✕</span>
+      </div>
+      <div class="app-body">
+        <div class="cont-grid">
+
+          <div class="card">
+            <div class="card-h"><span class="pin">1</span>Cédulas</div>
+            <div class="card-b">
+              <table class="cont" id="tabCed">
+                <colgroup><col><col><col></colgroup>
+                <thead><tr><th style="text-align:left">Nota</th><th>Quantas</th><th style="text-align:right">Subtotal</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-h"><span class="pin">2</span>Moedas e outros</div>
+            <div class="card-b">
+              <table class="cont" id="tabMoe">
+                <colgroup><col><col><col></colgroup>
+                <tbody></tbody>
+              </table>
+              <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:#b45309;margin-top:12px">Outros valores</div>
+              <div id="outros"></div>
+              <button class="link" id="addOutro">+ outro valor (cheque, vale…)</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-h"><span class="pin">3</span>Resumo</div>
+            <div class="card-b resumo">
+              <div class="total">
+                <div><div class="l">Total contado</div><div class="s" id="pecas">0 peça(s) de dinheiro</div></div>
+                <div class="v" id="totalV">R$ 0,00</div>
+              </div>
+
+              <!-- modo CONTAR -->
+              <div id="blocoContar">
+                <div class="dif neutro"><span class="pin">4</span>É só uma <b>contagem</b>. Não fecha o caixa, não pede motivo nem senha. Fica anotada no dia do motorista com seu nome e a hora.</div>
+                <div class="campo" style="margin-top:10px"><label>Observação (opcional)</label><div class="inp">Ex.: recebi do Jociel às 14h, faltou conferir cheque</div></div>
+                <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px">
+                  <button class="pill p lg" id="btnSalvarCont">Salvar contagem</button>
+                  <button class="pill o lg">Cancelar</button>
+                </div>
+              </div>
+
+              <!-- modo CONFERIR -->
+              <div id="blocoConferir" style="display:none">
+                <div class="linha-kv"><span>Valor a prestar segundo o sistema</span><b>R$ 1.166,48</b></div>
+                <div class="dif ok" id="difBox" style="margin-top:10px">Bate com o sistema.</div>
+                <div id="blocoMotivo" style="display:none;margin-top:10px">
+                  <div class="campo"><label>Motivo da diferença *</label>
+                    <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap">
+                      <button class="pill o" style="padding:6px 12px;font-size:12px" id="chipQuebra"><span class="pin" style="margin:0 2px 0 0">5</span>Quebra de caixa</button>
+                      <button class="pill o" style="padding:6px 12px;font-size:12px;border-color:#d1d5db;color:#6b7280" id="chipOutro">Outro motivo…</button>
+                    </div>
+                    <input class="inp" id="motivoInp" placeholder="Ex.: pagou peça do carro e não lançou a despesa" style="width:100%;font:inherit;font-size:13px;color:#111;outline:none"></div>
+                  <div class="auth" id="blocoAuth" style="display:none;margin-top:10px">
+                    <div class="campo"><label>Quem autoriza</label><div class="inp">Selecione…</div></div>
+                    <div class="campo"><label>Senha do autorizador</label><div class="inp">••••••</div></div>
+                  </div>
+                </div>
+                <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px">
+                  <button class="pill p lg" id="btnConf">Confirmar</button>
+                  <button class="pill o lg">Cancelar</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Cédulas</b> na primeira coluna, sempre visíveis. Campo com botões <b>− / +</b> para quem prefere o mouse; digitar continua sendo o caminho principal.</span></div>
+      <div><span class="pin">2</span><span><b>Moedas e outros</b> (cheque, vale) na coluna do meio. Nada fica escondido abaixo.</span></div>
+      <div><span class="pin">3</span><span><b>Resumo</b> fixo na direita: o total muda enquanto digita. No modo Conferir aparece o valor do sistema e a diferença (falta, sobra ou bate).</span></div>
+      <div><span class="pin">4</span><span><b>Modo Contar</b>: salva só o total e as peças. <b>Modo Conferir</b>: igual ao de hoje (motivo, quebra de caixa, senha do autorizador).</span></div>
+      <div><span class="pin">5</span><span><b>Botão "Quebra de caixa":</b> um clique preenche o motivo (sobra ou falta é o sistema que sabe, pelo sinal da diferença). Outro motivo: clique em "Outro motivo…" e digite. Vai gravado como motivo <i>QUEBRA_DE_CAIXA</i>, dá para filtrar no histórico.</span></div>
+      <div><span class="pin">⌨</span><span><b>Enter</b> pula para a próxima nota; na última, vai para o botão. Scroll do mouse não altera nada.</span></div>
+    </div>
+  </div>
+
+  <!-- ───────────── 3: contar × conferir ───────────── -->
+  <div class="sec">
+    <div class="sec-num"><span class="n">3</span><h2>Contar não é conferir</h2></div>
+    <p class="desc">Hoje só existe um botão: <b>Conferir o dinheiro</b>, que já é o fechamento (pede motivo e senha). A secretária que recebe o envelope do motorista só quer <b>saber quanto tem</b>. Proposta: dois botões no card do Caixa, e a contagem fica guardada para quem for fechar.</p>
+
+    <div class="fluxo">
+      <div>
+        <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:#6b7280;margin-bottom:6px">Card do Caixa — antes de alguém contar</div>
+        <div class="card">
+          <div class="card-h">💵 Conferência do dinheiro</div>
+          <div class="card-b">
+            <div class="aviso-caixa"><b>Aguardando alguém contar o dinheiro.</b> ⏱ enviado ao imprimir a folha por Letícia<br><span style="font-weight:400">Enquanto o dinheiro não for conferido, o caixa não pode ser fechado.</span></div>
+            <div class="botoes">
+              <button class="pill o"><span class="pin" style="margin:0 2px 0 0">1</span>🧮 Contar o dinheiro</button>
+              <button class="pill p"><span class="pin" style="margin:0 2px 0 0">2</span>✅ Conferir e fechar — R$ 1.166,48</button>
+            </div>
+            <p class="nota-sm">Quem só recebe o envelope usa <b>Contar</b>. Quem fecha o dia usa <b>Conferir</b>.</p>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:#6b7280;margin-bottom:6px">Card do Caixa — depois da contagem</div>
+        <div class="card">
+          <div class="card-h">💵 Conferência do dinheiro</div>
+          <div class="card-b">
+            <div class="aviso-caixa"><b>Dinheiro contado, falta conferir.</b><br><span style="font-weight:400">O caixa só fecha depois da conferência.</span></div>
+            <div class="chip-cont">
+              <span class="ic">🧮</span>
+              <div><b>R$ 1.320,00 · 41 peças</b><small>Contado por Letícia às 14:32 <span class="pin" style="margin-left:4px">3</span></small></div>
+              <button class="pill p">Usar na conferência</button>
+            </div>
+            <div class="botoes">
+              <button class="pill o">🧮 Contar de novo</button>
+              <button class="pill p">✅ Conferir e fechar — R$ 1.166,48</button>
+            </div>
+            <p class="nota-sm"><span class="pin" style="margin:0 2px 0 0">4</span>"Usar na conferência" abre o modo Conferir já com as notas preenchidas. Quem confere pode mexer antes de confirmar.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Contar o dinheiro:</b> abre a calculadora no modo Contar. Qualquer pessoa com acesso ao Caixa pode usar, quantas vezes quiser. Não pede senha.</span></div>
+      <div><span class="pin">2</span><span><b>Conferir e fechar:</b> o botão de hoje, com o mesmo nome do valor esperado. Continua exigindo motivo e senha quando passa da quebra.</span></div>
+      <div><span class="pin">3</span><span><b>Registro da contagem:</b> valor, peças, quem contou e a hora. Fica no histórico do dia. Se contar de novo, a anterior fica guardada como histórico.</span></div>
+      <div><span class="pin">4</span><span><b>Aproveitar:</b> a conferência pode partir da contagem (não precisa contar duas vezes). Se o valor contado for diferente do esperado, a diferença já aparece na hora.</span></div>
+      <div><span class="pin">!</span><span><b>Contagem não fecha nada.</b> A regra "caixa não fecha sem conferir" continua igual.</span></div>
+    </div>
+  </div>
+
+  <!-- ───────────── 4: mobile ───────────── -->
+  <div class="sec">
+    <div class="sec-num"><span class="n">4</span><h2>No celular e no iPad</h2></div>
+    <p class="desc">No celular as 3 colunas viram <b>abas</b> (Cédulas · Moedas · Resumo), com o total sempre fixo no rodapé. No iPad em pé cabe em 2 colunas; deitado, as 3 do computador.</p>
+
+    <div class="fone">
+      <div class="app-bar">
+        <span>🧮</span>
+        <div><div class="sub">Jociel · 16/10</div><div class="tit">Contagem</div></div>
+        <span class="x">✕</span>
+      </div>
+      <div class="app-body">
+        <div class="tabs"><span class="on">Cédulas</span><span>Moedas</span><span>Outros</span></div>
+        <div class="card"><div class="card-b" style="padding:8px 10px">
+          <table class="cont"><colgroup><col><col><col></colgroup><tbody>
+            <tr><td class="nota">R$ 200</td><td><div class="qtd"><button>−</button><input type="text" inputmode="numeric" value="2"><button>+</button></div></td><td class="sub on">R$ 400,00</td></tr>
+            <tr><td class="nota">R$ 100</td><td><div class="qtd"><button>−</button><input type="text" inputmode="numeric" value="5"><button>+</button></div></td><td class="sub on">R$ 500,00</td></tr>
+            <tr><td class="nota">R$ 50</td><td><div class="qtd"><button>−</button><input type="text" inputmode="numeric" value="4"><button>+</button></div></td><td class="sub on">R$ 200,00</td></tr>
+            <tr><td class="nota">R$ 20</td><td><div class="qtd"><button>−</button><input type="text" inputmode="numeric" value="6"><button>+</button></div></td><td class="sub on">R$ 120,00</td></tr>
+            <tr><td class="nota">R$ 10</td><td><div class="qtd"><button>−</button><input type="text" inputmode="numeric" placeholder="0"><button>+</button></div></td><td class="sub">—</td></tr>
+            <tr><td class="nota">R$ 5</td><td><div class="qtd"><button>−</button><input type="text" inputmode="numeric" placeholder="0"><button>+</button></div></td><td class="sub">—</td></tr>
+            <tr><td class="nota">R$ 2</td><td><div class="qtd"><button>−</button><input type="text" inputmode="numeric" placeholder="0"><button>+</button></div></td><td class="sub">—</td></tr>
+          </tbody></table>
+        </div></div>
+        <div class="barra">
+          <div class="total"><div><div class="l">Total contado</div><div class="s">17 peças</div></div><div class="v">R$ 1.220,00</div></div>
+          <button class="pill p lg" style="margin-top:8px">Salvar contagem</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Abas</b> no lugar das 3 colunas: a lista nunca fica mais longa que a tela.</span></div>
+      <div><span class="pin">2</span><span><b>Total fixo embaixo</b>, com o botão. Não precisa rolar até o fim para salvar.</span></div>
+      <div><span class="pin">3</span><span><b>Teclado numérico</b> do celular abre sozinho (inputmode="numeric"); botões − / + com 44px para o dedo.</span></div>
+    </div>
+  </div>
+
+  <!-- ───────────── decisões ───────────── -->
+  <div class="sec">
+    <div class="sec-num"><span class="n">5</span><h2>O que precisa da sua decisão</h2></div>
+    <div class="dec">
+      <div class="q"><span class="n">A</span><div><b>Quem pode usar o "Contar"?</b><span>Sugestão: <i>qualquer pessoa com acesso ao Caixa</i>. Alternativa: só quem tem a permissão de conferir.</span></div></div>
+      <div class="q"><span class="n">B</span><div><b>Guardar o histórico de contagens?</b><span>Sugestão: <i>sim</i>, cada contagem com nome e hora (se o valor mudar entre a secretária e quem fecha, dá para ver).</span></div></div>
+      <div class="q"><span class="n">C</span><div><b>Botões − / + nas linhas?</b><span>Sugestão: <i>sim</i>, pequenos, ao lado do campo. Se preferir só digitar, tiramos.</span></div></div>
+      <div class="q"><span class="n">D</span><div><b>Trocar os 127 campos numéricos de uma vez ou por módulo?</b><span>Sugestão: <i>de uma vez</i>, por ser troca mecânica (mesmo componente, mesma função). O revisor confere tela por tela.</span></div></div>
+      <div class="q"><span class="n">E</span><div><b>A função Contar fica atrás da chave <code>caixa_conferencia</code>?</b><span>Hoje a conferência está desligada por essa chave. Sugestão: Contar <i>sempre ligado</i> (é só uma calculadora); Conferir continua atrás da chave.</span></div></div>
+    </div>
+  </div>
+
+  <!-- ───────────── tamanho ───────────── -->
+  <div class="sec">
+    <div class="sec-num"><span class="n">6</span><h2>Tamanho do serviço</h2></div>
+    <table class="tam">
+      <tr><th>Peça</th><th>O que muda</th><th>Tempo</th></tr>
+      <tr><td>CampoNumero</td><td>Componente novo + troca dos 127 campos. Build, revisor confere tela por tela.</td><td>meio dia</td></tr>
+      <tr><td>Modal largo</td><td>Conferência em 3 colunas no computador, abas no celular, Enter pula de campo.</td><td>meio dia</td></tr>
+      <tr><td>Modo Contar</td><td>Botão novo no card, tabela de contagens no banco, "usar na conferência", histórico.</td><td>1 dia</td></tr>
+      <tr><td>Equipe</td><td>QA clicando (desktop + celular), revisor, gerente de entrega, manual do Clippy, página de novidade.</td><td>meio dia</td></tr>
+      <tr><td colspan="2"><b>Total</b></td><td>2 a 3 dias</td></tr>
+    </table>
+    <p class="nota-sm" style="margin-top:10px">Pode sair em duas entregas: primeiro os pontos 1 e 2 (campo numérico + tela larga), depois o modo Contar.</p>
+  </div>
+
+</div>
+
+<script>
+  // ── demo 1: campo numérico ──
+  const ruim = document.getElementById('demoRuim'), avR = document.getElementById('avisoRuim');
+  const bom = document.getElementById('demoBom'), avB = document.getElementById('avisoBom');
+  ruim.addEventListener('wheel', () => { avR.textContent = 'O scroll mudou o valor: ' + ruim.value; }, {passive:true});
+  ruim.addEventListener('input', () => { if (/[eE+\-]/.test(ruim.value) || ruim.value === '') avR.textContent = 'Aceitou letra ou sinal — o campo fica inválido sem avisar.'; });
+  bom.addEventListener('wheel', () => { avB.textContent = 'Scroll ignorado. Valor continua ' + bom.value; }, {passive:true});
+  bom.addEventListener('beforeinput', e => { if (e.data && /\D/.test(e.data)) { e.preventDefault(); avB.textContent = '"' + e.data + '" bloqueado — só dígitos.'; } });
+  bom.addEventListener('input', () => { bom.value = bom.value.replace(/\D/g, ''); });
+
+  // ── mock desktop ──
+  const CED = [200,100,50,20,10,5,2], MOE = [1,0.5,0.25,0.1,0.05];
+  const brl = v => v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+  const rot = v => v >= 2 ? 'R$ ' + v : 'R$ ' + v.toFixed(2).replace('.', ',');
+  const ESPERADO = 1166.48, QUEBRA = 100;
+  let modo = 'contar';
+
+  function linha(v){
+    return `<tr data-v="${v}"><td class="nota">${rot(v)}</td>
+      <td><div class="qtd"><button type="button" data-d="-1">−</button><input type="text" inputmode="numeric" placeholder="0" autocomplete="off"><button type="button" data-d="1">+</button></div></td>
+      <td class="sub">—</td></tr>`;
+  }
+  document.querySelector('#tabCed tbody').innerHTML = CED.map(linha).join('');
+  document.querySelector('#tabMoe tbody').innerHTML = MOE.map(linha).join('');
+
+  const mock = document.getElementById('mockDesk');
+  const inputs = () => [...mock.querySelectorAll('table.cont input')];
+
+  mock.addEventListener('beforeinput', e => {
+    if (e.target.matches('table.cont input') && e.data && /\D/.test(e.data)) e.preventDefault();
+    if (e.target.matches('.outro input.v') && e.data && /[^\d,]/.test(e.data)) e.preventDefault();
+  });
+  mock.addEventListener('input', e => {
+    if (e.target.matches('table.cont input')) e.target.value = e.target.value.replace(/\D/g,'');
+    recalc();
+  });
+  mock.addEventListener('click', e => {
+    const b = e.target.closest('.qtd button'); if (!b) return;
+    const inp = b.parentElement.querySelector('input');
+    inp.value = Math.max(0, (parseInt(inp.value,10)||0) + Number(b.dataset.d)) || '';
+    recalc(); inp.focus();
+  });
+  mock.addEventListener('keydown', e => {
+    if (e.key !== 'Enter' || !e.target.matches('table.cont input')) return;
+    e.preventDefault();
+    const l = inputs(), i = l.indexOf(e.target);
+    if (i < l.length - 1) { l[i+1].focus(); l[i+1].select(); }
+    else (modo === 'contar' ? document.getElementById('btnSalvarCont') : document.getElementById('btnConf')).focus();
+  });
+  // scroll em cima do campo: nada acontece (type=text já garante; só reforça)
+  mock.addEventListener('wheel', () => {}, {passive:true});
+
+  const outrosEl = document.getElementById('outros');
+  document.getElementById('addOutro').onclick = () => {
+    const d = document.createElement('div'); d.className = 'outro';
+    d.innerHTML = `<input class="d" placeholder="Cheque, vale…"><input class="v" inputmode="decimal" placeholder="0,00"><button class="link" style="margin:0" title="remover">✕</button>`;
+    d.querySelector('button').onclick = () => { d.remove(); recalc(); };
+    outrosEl.appendChild(d); d.querySelector('input').focus();
+  };
+
+  function recalc(){
+    let total = 0, pecas = 0;
+    mock.querySelectorAll('table.cont tr[data-v]').forEach(tr => {
+      const v = Number(tr.dataset.v), q = parseInt(tr.querySelector('input').value,10)||0;
+      const sub = Math.round(q*v*100)/100; total += sub; pecas += q;
+      const td = tr.querySelector('.sub'); td.textContent = sub>0 ? brl(sub) : '—'; td.classList.toggle('on', sub>0);
+    });
+    outrosEl.querySelectorAll('input.v').forEach(i => { total += Number(String(i.value).replace(',','.'))||0; });
+    total = Math.round(total*100)/100;
+    document.getElementById('totalV').textContent = brl(total);
+    document.getElementById('pecas').textContent = pecas + ' peça(s) de dinheiro';
+
+    const dif = Math.round((total - ESPERADO)*100)/100, box = document.getElementById('difBox');
+    const bm = document.getElementById('blocoMotivo'), ba = document.getElementById('blocoAuth'), btn = document.getElementById('btnConf');
+    if (Math.abs(dif) < 0.005) { box.className='dif ok'; box.textContent='Bate com o sistema.'; bm.style.display='none'; btn.textContent='Confirmar'; }
+    else {
+      const falta = dif < 0, passou = Math.abs(dif) > QUEBRA;
+      box.className = 'dif ' + (falta ? 'falta' : 'sobra');
+      box.innerHTML = `<b>${falta?'Faltam':'Sobram'} ${brl(Math.abs(dif))}.</b> ` + (passou
+        ? `Passa da sua quebra de caixa (${brl(QUEBRA)}) — precisa da senha de quem autoriza.`
+        : `Dentro da sua quebra de caixa (${brl(QUEBRA)}) — você pode fechar a conferência.`);
+      bm.style.display='block'; ba.style.display = passou ? 'flex' : 'none';
+      btn.textContent = `Confirmar com ${falta?'falta':'sobra'} de ${brl(Math.abs(dif))}`;
+    }
+  }
+
+  const motivoInp = document.getElementById('motivoInp');
+  document.getElementById('chipQuebra').onclick = () => {
+    const falta = parseFloat(document.getElementById('totalV').textContent.replace(/[^\d,]/g,'').replace(',','.')) < ESPERADO;
+    motivoInp.value = 'Quebra de caixa (' + (falta ? 'falta' : 'sobra') + ')'; motivoInp.readOnly = true; motivoInp.style.background = '#ecfdf5';
+  };
+  document.getElementById('chipOutro').onclick = () => { motivoInp.value = ''; motivoInp.readOnly = false; motivoInp.style.background = '#fff'; motivoInp.focus(); };
+
+  document.getElementById('selModo').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    modo = b.dataset.modo;
+    document.querySelectorAll('#selModo button').forEach(x => x.classList.toggle('on', x === b));
+    document.getElementById('blocoContar').style.display = modo==='contar' ? 'block' : 'none';
+    document.getElementById('blocoConferir').style.display = modo==='conferir' ? 'block' : 'none';
+    document.getElementById('titModal').textContent = modo==='contar' ? 'Contagem do dinheiro' : 'Conferência do dinheiro';
+    recalc();
+  });
+  recalc();
+</script>
+</body>
+</html>

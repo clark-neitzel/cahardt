@@ -900,6 +900,8 @@ router.get('/resumo', async (req, res) => {
             contagem: dinheiroConferidoValido ? caixa.contagemDinheiro : null,
             diferenca: dinheiroConferidoValido && caixa.diferencaConferencia != null ? Number(caixa.diferencaConferencia) : null,
             motivoDiferenca: dinheiroConferidoValido ? caixa.motivoDiferenca : null,
+            motivoTipo: dinheiroConferidoValido ? caixa.motivoTipo : null,
+            contagens: await confService.listarContagensDoDia(targetVendedor, data, 20),
             autorizadoPorNome: dinheiroConferidoValido ? caixa.autorizadorDiferencaNome : null,
             observacao: dinheiroConferidoValido ? caixa.obsConferenciaDinheiro : null,
             // Conferência caiu porque o valor mudou depois de assinada
@@ -1191,7 +1193,7 @@ router.post('/conferencia-dinheiro/enviar', async (req, res) => {
 router.post('/conferencia-dinheiro/conferir', async (req, res) => {
     try {
         const { vendedorId, data, contagem, valorContado, observacao,
-            motivoDiferenca, autorizadorId, autorizadorSenha } = req.body;
+            motivoDiferenca, motivoTipo, autorizadorId, autorizadorSenha } = req.body;
         if (!vendedorId || !data) return res.status(400).json({ error: 'Informe o caixa (vendedor e data).' });
 
         const r = await confService.conferirDinheiro({
@@ -1200,7 +1202,7 @@ router.post('/conferencia-dinheiro/conferir', async (req, res) => {
             perms: req._perms || await getPerms(req.user.id),
             contagem: contagem || null,
             valorContadoManual: valorContado,
-            observacao, motivoDiferenca, autorizadorId, autorizadorSenha,
+            observacao, motivoDiferenca, motivoTipo, autorizadorId, autorizadorSenha,
         });
 
         // Diferença vira aviso na agenda — o VALE em si é lançado à mão no
@@ -1219,6 +1221,44 @@ router.post('/conferencia-dinheiro/conferir', async (req, res) => {
     } catch (e) {
         if (!e.status) console.error('Erro ao conferir o dinheiro:', e);
         res.status(e.status || 500).json({ error: e.message || 'Erro ao conferir o dinheiro.' });
+    }
+});
+
+// ── Contagem avulsa do dinheiro ("Contar") — só anota, não confere nem fecha.
+// Independe da chave caixa_conferencia. Mesma regra do /resumo p/ caixa de outra pessoa.
+const podeVerCaixaDe = (req, alvo) => alvo === req.user.id || req._perms.admin || req._perms.Pode_Editar_Caixa
+    || confService.podeConferir(req._perms) || confService.podeFechar(req._perms);
+
+router.post('/contagem-dinheiro', async (req, res) => {
+    try {
+        const { id, vendedorId, data, contagem, observacao } = req.body || {};
+        if (!vendedorId || !data) return res.status(400).json({ error: 'Informe o caixa (vendedor e data).' });
+        if (!podeVerCaixaDe(req, vendedorId)) {
+            return res.status(403).json({ error: 'Sem permissão para contar o caixa de outro usuário.' });
+        }
+        const r = await confService.registrarContagem({
+            id, vendedorId, data, contagem, observacao,
+            usuario: { id: req.user.id, nome: req.user.nome },
+        });
+        res.status(r.duplicado ? 200 : 201).json(r);
+    } catch (e) {
+        if (!e.status) console.error('Erro ao salvar contagem do dinheiro:', e);
+        res.status(e.status || 500).json({ error: e.message || 'Erro ao salvar a contagem.' });
+    }
+});
+
+router.get('/contagem-dinheiro', async (req, res) => {
+    try {
+        const { vendedorId, data } = req.query;
+        if (!data) return res.status(400).json({ error: 'Parâmetro "data" obrigatório.' });
+        const alvo = vendedorId || req.user.id;
+        if (!podeVerCaixaDe(req, alvo)) {
+            return res.status(403).json({ error: 'Sem permissão para ver caixa de outro usuário.' });
+        }
+        res.json({ contagens: await confService.listarContagensDoDia(alvo, data, 100) });
+    } catch (e) {
+        console.error('Erro ao listar contagens do dinheiro:', e);
+        res.status(500).json({ error: 'Erro ao listar as contagens.' });
     }
 });
 
@@ -1526,6 +1566,7 @@ router.post('/reabrir', async (req, res) => {
                         valorContado: null,
                         contagemDinheiro: null,
                         diferencaConferencia: null,
+                        motivoTipo: null,
                         autorizadorDiferencaId: null,
                         autorizadorDiferencaNome: null,
                     } : {})
