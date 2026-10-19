@@ -131,12 +131,14 @@ const CampoNumero = forwardRef(function CampoNumero(props, refExterno) {
         if (value === undefined) return; // não controlado (defaultValue): o texto é do próprio campo
         const pai = value === null || value === undefined ? '' : String(value);
         const atual = textoParaValor(texto);
+        // Zero é zero: o que entregamos foi 0 (ou ""), a tela mostra 0 (ou vazio) e o pai devolveu 0 ou ''
+        // (`Number(v) || 0` com `value={x || ''}`) — não mexe ("0," não pode virar vazio, nem vazio virar "0").
+        if (emitido.current !== null && Number(emitido.current) === 0 && Number(atual) === 0
+            && (pai === '' || Number(pai) === 0)) return;
         if (pai === '') {
             if (atual !== '') setTexto('');
             return;
         }
-        // usuário esvaziou o campo e o pai devolveu 0 (`Number('')`/`|| 0`): mantém vazio, como o type=number antigo
-        if (atual === '' && emitido.current === '' && Number(pai) === 0) return;
         if (atual === '' || Number(atual) !== Number(pai)) setTexto(paraTexto(pai));
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [value]);
@@ -148,7 +150,7 @@ const CampoNumero = forwardRef(function CampoNumero(props, refExterno) {
         const pai = value === null ? '' : String(value);
         if (pai !== '' && Number.isNaN(Number(pai))) return;
         const eco = emitido.current;
-        if (eco === '' && Number(pai) === 0) return; // campo esvaziado e pai devolveu 0: não ressincroniza para "0"
+        if (Number(eco) === 0 && (pai === '' || Number(pai) === 0)) return; // zero é zero (vazio, "0" ou "0,"): não ressincroniza
         const diverge = pai === '' ? eco !== '' : (eco === '' || Number(pai) !== Number(eco));
         if (diverge && paraTexto(pai) !== texto) setTexto(paraTexto(pai));
         // eslint-disable-next-line react-hooks/exhaustive-deps
