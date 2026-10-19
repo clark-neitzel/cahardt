@@ -1,0 +1,10 @@
+### nomeLivre batendo com SUB INATIVO -> reativa (mesmo código, sem duplicata)
+['"itemCriado":{"id":"96f1703e-24d4-4acb-b9fb-28d193fb093b","codigo":"ZZ-INA","nome":"Tempero Inativo QA","itemReativado":true}'] }}
+HTTP 201
+[ { codigo: 'ZZ-INA', ativo: true } ]
+### requisicaoId repetido com CORPO DIFERENTE (outro item/qtd) -> devolve o lote antigo
+Tempero Inativo QA 1 REFRIGERADO True
+### equipe com admin (Atendimento deve aparecer)
+[('Josiane', True), ('Atendimento', False), ('Clarkson Neitzel', False), ('laudenor da Silva', False), ('QA E3B Admin', False), ('QA Peso Pacote (descartável)', False)]
+### reimprimir segue OK
+HTTP 201

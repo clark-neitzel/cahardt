@@ -2539,6 +2539,7 @@ model ItemPcp {
   fornecedorVinculos    FornecedorProdutoVinculo[] // Fase 2: de-para produto do fornecedor (NF-e) → item PCP
   compras               CompraItem[] // Fase 6: histórico de compras (entradas por nota)
   notaEstoqueMovs       NotaEntradaEstoqueMov[] // ledger das entradas de estoque por nota recebida
+  lotesCozinha          EtiquetaCozinhaLote[] // Etiquetas da Cozinha (E2)
 
   // Etiquetas da Cozinha (E1 só cria as colunas; a tela de edição vem no E2)
   validadeRefrigeradoDias Int?    @map("validade_refrigerado_dias")
@@ -4589,29 +4590,65 @@ model Impressora {
 }
 
 model ImpressaoTrabalho {
-  id                String     @id @default(uuid())
-  impressoraId      String     @map("impressora_id")
-  impressora        Impressora @relation(fields: [impressoraId], references: [id])
+  id                String               @id @default(uuid())
+  impressoraId      String               @map("impressora_id")
+  impressora        Impressora           @relation(fields: [impressoraId], references: [id])
   tipo              String // TESTE | ETIQUETA_COZINHA | OUTRO
-  chaveIdempotencia String?    @unique @map("chave_idempotencia")
+  chaveIdempotencia String?              @unique @map("chave_idempotencia")
   status            String // PENDENTE | ENVIANDO | IMPRESSO | ERRO | EXPIRADO | CANCELADO
   conteudo          Bytes?
-  conteudoBytes     Int        @map("conteudo_bytes")
-  copias            Int        @default(1)
-  tentativas        Int        @default(0)
-  maxTentativas     Int        @default(3) @map("max_tentativas")
-  erro              String?    @db.Text
-  loteId            String?    @map("lote_id") // E2: relação com etiquetas_cozinha_lotes entra junto da tabela
-  solicitadoPorId   String?    @map("solicitado_por_id")
-  solicitadoPorNome String?    @map("solicitado_por_nome")
-  pedidoEm          DateTime   @default(now()) @map("pedido_em")
-  expiraEm          DateTime   @map("expira_em")
-  enviadoAoAgenteEm DateTime?  @map("enviado_ao_agente_em")
-  impressoEm        DateTime?  @map("impresso_em")
-  agenteId          String?    @map("agente_id")
+  conteudoBytes     Int                  @map("conteudo_bytes")
+  copias            Int                  @default(1)
+  tentativas        Int                  @default(0)
+  maxTentativas     Int                  @default(3) @map("max_tentativas")
+  erro              String?              @db.Text
+  loteId            String?              @map("lote_id")
+  lote              EtiquetaCozinhaLote? @relation(fields: [loteId], references: [id])
+  solicitadoPorId   String?              @map("solicitado_por_id")
+  solicitadoPorNome String?              @map("solicitado_por_nome")
+  pedidoEm          DateTime             @default(now()) @map("pedido_em")
+  expiraEm          DateTime             @map("expira_em")
+  enviadoAoAgenteEm DateTime?            @map("enviado_ao_agente_em")
+  impressoEm        DateTime?            @map("impresso_em")
+  agenteId          String?              @map("agente_id")
 
   @@index([status, pedidoEm])
   @@index([impressoraId, status])
   @@index([loteId])
   @@map("impressao_fila")
+}
+
+// Etiquetas da Cozinha (E2): um registro por impressão de etiqueta (lote AAMMDD-NN). Datas como TEXTO YYYY-MM-DD.
+model EtiquetaCozinhaLote {
+  id               String   @id @default(uuid())
+  requisicaoId     String   @unique @map("requisicao_id")
+  lote             String
+  loteData         String   @map("lote_data")
+  loteSeq          Int      @map("lote_seq")
+  itemPcpId        String   @map("item_pcp_id")
+  itemPcp          ItemPcp  @relation(fields: [itemPcpId], references: [id])
+  nomeImpresso     String   @map("nome_impresso")
+  fabricacao       String
+  validade         String
+  validadeDias     Int      @map("validade_dias")
+  validadeAlterada Boolean  @default(false) @map("validade_alterada")
+  conservacao      String // REFRIGERADO | CONGELADO
+  pesoGramas       Int?     @map("peso_gramas")
+  quantidade       Int
+  tamanho          String // 40x25 | 100x120
+  impressoraId     String?  @map("impressora_id")
+  responsavelId    String   @map("responsavel_id")
+  responsavelNome  String   @map("responsavel_nome")
+  criadoPorId      String   @map("criado_por_id")
+  criadoPorNome    String   @map("criado_por_nome")
+  reimpressoes     Int      @default(0)
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  trabalhos ImpressaoTrabalho[]
+
+  @@unique([loteData, loteSeq])
+  @@index([itemPcpId])
+  @@index([loteData])
+  @@index([criadoPorId, createdAt])
+  @@map("etiquetas_cozinha_lotes")
 }

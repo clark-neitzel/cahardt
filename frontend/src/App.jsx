@@ -82,6 +82,7 @@ const IndicadoresGestao = lazyComRetry(() => import('./pages/Dashboard/Indicador
 const DashboardPcp = lazyComRetry(() => import('./pages/PCP/DashboardPcp'));
 const EtiquetasList = lazyComRetry(() => import('./pages/PCP/EtiquetasList'));
 const EtiquetasDados = lazyComRetry(() => import('./pages/PCP/EtiquetasDados'));
+const EtiquetasCozinha = lazyComRetry(() => import('./pages/PCP/EtiquetasCozinha'));
 const EtiquetaForm = lazyComRetry(() => import('./pages/PCP/EtiquetaForm'));
 const EtiquetaImprimir = lazyComRetry(() => import('./pages/PCP/EtiquetaImprimir'));
 const DeliveryKanban = lazyComRetry(() => import('./pages/Delivery/DeliveryKanban'));
@@ -114,7 +115,7 @@ import {
   PackageCheck, Truck, Wallet, Receipt, Search,
   Box, UserCog, Car, RefreshCw, FileText, ClipboardCheck,
   Settings, DollarSign, Building2, TrendingUp, FolderOpen, Warehouse,
-  Package, BookOpen as BookOpenIcon, Factory, Play, ClipboardList as ClipboardListIcon, Calendar as CalendarIcon, Lightbulb, BarChart3, BarChart2, History, Sparkles, BellRing, UserCheck, Tag, DatabaseZap, Percent, Clock, Fingerprint, Inbox, Landmark, CalendarCheck, Star, AlertTriangle, ShoppingBag, MapPin, Gauge, Printer
+  Package, BookOpen as BookOpenIcon, Factory, Play, ClipboardList as ClipboardListIcon, Calendar as CalendarIcon, Lightbulb, BarChart3, BarChart2, History, Sparkles, BellRing, UserCheck, Tag, DatabaseZap, Percent, Clock, Fingerprint, Inbox, Landmark, CalendarCheck, Star, AlertTriangle, ShoppingBag, MapPin, Gauge, Printer, ChefHat
 } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { useMenuFavoritos } from './hooks/useMenuFavoritos';
@@ -469,6 +470,7 @@ const Layout = ({ children }) => {
       // só para quem NÃO tem a chave completa (quem tem vê o item no grupo Financeiro)
       (hasPermission('Pode_Ver_Indicadores_Producao') && !hasPermission('Pode_Ver_Indicadores_Gestao')) && { to: '/indicadores-gestao', icon: Gauge, label: 'Indicadores' },
       canPcp('etiquetas') && { to: '/pcp/etiquetas', icon: Tag, label: 'Etiquetas' },
+      canPcp('etiquetas') && { to: '/pcp/etiquetas/cozinha', icon: ChefHat, label: 'Etiq. Cozinha' },
       canPcp('etiquetas') && { to: '/pcp/etiquetas/dados', icon: DatabaseZap, label: 'Dados Etiquetas' },
     ].filter(Boolean) },
     { label: 'Produção / Estoque', icon: Warehouse, items: (showEstoque ? [
@@ -932,6 +934,7 @@ function App() {
               <Route path="/indicadores-gestao" element={<PrivateRoute tab={['Pode_Ver_Indicadores_Gestao', 'Pode_Ver_Indicadores_Producao']}><IndicadoresGestao /></PrivateRoute>} />
               <Route path="/pcp/dashboard" element={<PrivateRoute><DashboardPcp /></PrivateRoute>} />
               <Route path="/pcp/etiquetas" element={<PrivateRoute><EtiquetasList /></PrivateRoute>} />
+              <Route path="/pcp/etiquetas/cozinha" element={<PrivateRoute><EtiquetasCozinha /></PrivateRoute>} />
               <Route path="/pcp/etiquetas/dados" element={<PrivateRoute><EtiquetasDados /></PrivateRoute>} />
               <Route path="/pcp/etiquetas/nova" element={<PrivateRoute><EtiquetaForm /></PrivateRoute>} />
               <Route path="/pcp/etiquetas/:id/editar" element={<PrivateRoute><EtiquetaForm /></PrivateRoute>} />

@@ -1,0 +1,47 @@
+### PUT item IMPORTADO (ramo produtoId) com os 3 campos
+{'nome': 'ETIQUETA ADESIVA BOPP CONGELADO 100X80', 'validadeRefrigeradoDias': 7, 'validadeCongeladoDias': 120, 'grupoCozinha': 'OUTRO', 'origem': 'CADASTRO', 'error': None}
+### PUT item ÓRFÃO (ramo órfão)
+{'nome': 'QA E3 item', 'validadeRefrigeradoDias': 4, 'validadeCongeladoDias': 60, 'grupoCozinha': 'MASSA', 'origem': 'CADASTRO', 'error': None}
+### PUT limpar prazo (null) e grupo vazio
+{'nome': 'QA E3 item', 'validadeRefrigeradoDias': 4, 'validadeCongeladoDias': None, 'grupoCozinha': None, 'origem': 'CADASTRO', 'error': None}
+
+### PUT prazo 0 -> 400
+{"error":"Prazo de validade deve ser um número inteiro de 1 a 730 dias."}
+HTTP 400
+
+### PUT prazo 731 -> 400
+{"error":"Prazo de validade deve ser um número inteiro de 1 a 730 dias."}
+HTTP 400
+
+### PUT grupo inválido -> 400
+{"error":"grupoCozinha deve ser: RECHEIO, MASSA ou OUTRO."}
+HTTP 400
+### POST item novo SUB com campos
+{'nome': 'Massa QA E2', 'validadeRefrigeradoDias': 2, 'validadeCongeladoDias': 45, 'grupoCozinha': 'MASSA', 'origem': 'CADASTRO', 'error': None}
+
+### POST item grupo inválido
+{"error":"grupoCozinha deve ser: RECHEIO, MASSA ou OUTRO."}
+HTTP 400
+### GET itens da cozinha: contadores e Massa
+['Massa QA E2'] {'FAVORITOS': 1, 'RECHEIO': 8, 'MASSA': 1, 'OUTRO': 5, 'TODOS': 14}
+### ESTOQUE PCP não lista origem=COZINHA (Açúcar Mascavo QA)
+Traceback (most recent call last):
+  File "<string>", line 2, in <module>
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+### Itens PCP (tela de cadastro) AINDA lista o item da cozinha
+[('Açúcar Mascavo QA', 'COZINHA')]
+
+### admin classificar DRY-RUN (padrão)
+{"simulacao":true,"total":0,"alteradas":[],"semPadraoTotal":3,"semPadrao":[{"id":"26ee2bce-57da-4bbd-9279-dda1ecefedc0","codigo":"SUB-0002","nome":"Cheddar Culinário Hardt"},{"id":"305da99c-9c11-40e2-8ee3-24a7228a6059","codigo":"SUB-0010","nome":"QA E3 item"},{"id":"86f4b00a-0a74-4b87-8ef4-31601494ff04","codigo":"SUB-0001","nome":"Requeijão Culinário Hardt"}]}
+HTTP 200
+
+### ping deployMarker
+{"ok":true,"deployMarker":"etiquetas-cozinha-e2-2026-10-19","uptimeSegundos":27,"timestamp":"2026-10-19T17:41:34.186Z","openaiConfigurada":true,"jwtConfigurada":true,"certEncKey

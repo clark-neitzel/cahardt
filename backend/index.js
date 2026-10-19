@@ -209,6 +209,7 @@ app.use('/api/pcp/estoque', authMiddleware, pcpEstoqueRoutes);
 app.use('/api/pcp/ordens', authMiddleware, pcpOrdemRoutes);
 app.use('/api/pcp/agenda', authMiddleware, pcpAgendaRoutes);
 app.use('/api/pcp/sugestoes', authMiddleware, pcpSugestaoRoutes);
+app.use('/api/pcp/etiquetas-cozinha', authMiddleware, require('./routes/pcpEtiquetaCozinhaRoutes')); // Etiquetas da Cozinha (E2)
 app.use('/api/pcp/etiquetas', authMiddleware, pcpEtiquetaRoutes);
 app.use('/api/impressao', authMiddleware, require('./routes/impressaoRoutes')); // Impressão direta: agentes, impressoras, fila, testes (admin)
 // PDF da folha da receita — FORA do authMiddleware de propósito: o link é aberto

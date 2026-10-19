@@ -102,6 +102,7 @@ const ABAS = [
     { slug: 'pcp-sugestoes',      nome: 'PCP — Sugestões',              rota: '/pcp/sugestoes',                      perm: 'pcp.sugestoes' },
     { slug: 'pcp-dashboard',      nome: 'PCP — Dashboard',              rota: '/pcp/dashboard',                      perm: 'pcp.sugestoes' },
     { slug: 'pcp-etiquetas',      nome: 'PCP — Etiquetas',              rota: '/pcp/etiquetas',                      perm: 'pcp.etiquetas' },
+    { slug: 'pcp-etiquetas-cozinha',nome: 'PCP — Etiquetas da Cozinha',    rota: '/pcp/etiquetas/cozinha',              perm: 'pcp.etiquetas' },
     { slug: 'pcp-etiquetas-dados',nome: 'PCP — Dados de Etiquetas',     rota: '/pcp/etiquetas/dados',                perm: 'pcp.etiquetas' },
     // ── Estoque ──────────────────────────────────
     { slug: 'estoque-posicao',    nome: 'Estoque — Posição',            rota: '/estoque/posicao',                    perm: 'estoque' },

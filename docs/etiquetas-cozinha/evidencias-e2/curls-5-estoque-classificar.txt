@@ -1,0 +1,13 @@
+### ESTOQUE PCP /posicao (tipo SUB) — item COZINHA fora, itens normais dentro
+total 15 | Açúcar Mascavo QA (COZINHA) aparece: False | Recheio Frango Coxinha aparece: True
+### admin classificar DRY-RUN com 3 itens de teste
+True 2 [{'id': '2e95c195-d47b-4223-9dbf-089786887d46', 'codigo': 'ZZ-T2', 'nome': 'Massa  Teste Classificar', 'grupoCozinha': 'MASSA'}, {'id': '2cac5e67-a8e5-4f2e-b672-c0eb3758d678', 'codigo': 'ZZ-T1', 'nome': 'Recheio Teste Classificar', 'grupoCozinha': 'RECHEIO'}]
+### depois do dry-run nada gravado:
+APLICAR=1 False 2 [('Massa  Teste Classificar', 'MASSA'), ('Recheio Teste Classificar', 'RECHEIO')]
+### estado final dos itens de teste (e remoção):
+[
+  { codigo: 'ZZ-T3', grupoCozinha: null },
+  { codigo: 'ZZ-T2', grupoCozinha: 'MASSA' },
+  { codigo: 'ZZ-T1', grupoCozinha: 'RECHEIO' }
+]
+admin sem segredo: HTTP 401

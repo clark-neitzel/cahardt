@@ -1,0 +1,55 @@
+### 6 impressões SIMULTÂNEAS (lotes não podem repetir)
+261019-07 None PENDENTE
+261019-08 None PENDENTE
+261019-09 None PENDENTE
+261019-10 None PENDENTE
+261019-11 None PENDENTE
+261019-12 None PENDENTE
+### CLIQUE DUPLO simultâneo (mesmo requisicaoId x4)
+201 200 200 200 
+
+### REIMPRIMIR lote 1 (mesmo lote, qtd 2)
+{"lote":{"id":"74243c31-3a8a-47bd-95c3-2385151bafbe","lote":"261019-01","loteData":"2026-10-19","itemPcpId":"e794145a-d259-4a72-b008-b46eae318dd5","nomeImpresso":"Recheio Frango Coxinha","fabricacao":"2026-10-19","validade":"2026-10-22","validadeDias":3,"validadeAlterada":false,"conservacao":"REFRIGERADO","pesoGramas":2000,"quantidade":3,"tamanho":"40x25","impressoraId":"677a71d8-03f4-4b2d-818a-b67eb5ac27b4","responsavelId":"8818c4b9-d832-4bc0-8b64-ebec1ad43be5","responsavelNome":"Josiane","criadoPorNome":"Josiane","reimpressoes":1,"createdAt":"2026-10-19T17:39:51.133Z","statusImpressao":"PENDENTE","erroImpressao":null},"trabalho":{"id":"ca48aa50-a19a-4ba5-a7d9-05e7607ffce9","status":"PENDENTE"},"agente":{"estado":"OFFLINE"},"aviso":"O computador da cozinha parece desligado. A etiqueta fica na fila por 15 minutos."}
+HTTP 201
+
+### REIMPRIMIR repetido mesma requisicao (não conta 2x)
+{"lote":{"id":"74243c31-3a8a-47bd-95c3-2385151bafbe","lote":"261019-01","loteData":"2026-10-19","itemPcpId":"e794145a-d259-4a72-b008-b46eae318dd5","nomeImpresso":"Recheio Frango Coxinha","fabricacao":"2026-10-19","validade":"2026-10-22","validadeDias":3,"validadeAlterada":false,"conservacao":"REFRIGERADO","pesoGramas":2000,"quantidade":3,"tamanho":"40x25","impressoraId":"677a71d8-03f4-4b2d-818a-b67eb5ac27b4","responsavelId":"8818c4b9-d832-4bc0-8b64-ebec1ad43be5","responsavelNome":"Josiane","criadoPorNome":"Josiane","reimpressoes":1,"createdAt":"2026-10-19T17:39:51.133Z","statusImpressao":"PENDENTE","erroImpressao":null},"trabalho":{"id":"ca48aa50-a19a-4ba5-a7d9-05e7607ffce9","status":"PENDENTE"},"agente":{"estado":"OFFLINE"},"aviso":"O computador da cozinha parece desligado. A etiqueta fica na fila por 15 minutos."}
+HTTP 200
+
+### REIMPRIMIR sem body
+{"lote":{"id":"74243c31-3a8a-47bd-95c3-2385151bafbe","lote":"261019-01","loteData":"2026-10-19","itemPcpId":"e794145a-d259-4a72-b008-b46eae318dd5","nomeImpresso":"Recheio Frango Coxinha","fabricacao":"2026-10-19","validade":"2026-10-22","validadeDias":3,"validadeAlterada":false,"conservacao":"REFRIGERADO","pesoGramas":2000,"quantidade":3,"tamanho":"40x25","impressoraId":"677a71d8-03f4-4b2d-818a-b67eb5ac27b4","responsavelId":"8818c4b9-d832-4bc0-8b64-ebec1ad43be5","responsavelNome":"Josiane","criadoPorNome":"Josiane","reimpressoes":2,"createdAt":"2026-10-19T17:39:51.133Z","statusImpressao":"PENDENTE","erroImpressao":null},"trabalho":{"id":"84a88c43-87c1-4944-889a-28d9b36a9151","status":"PENDENTE"},"agente":{"estado":"OFFLINE"},"aviso":"O computador da cozinha parece desligado. A etiqueta fica na fila por 15 minutos."}
+HTTP 201
+
+### REIMPRIMIR lote inexistente
+{"error":"Lote não encontrado."}
+HTTP 404
+
+### REIMPRIMIR qtd inválida
+{"error":"quantidade deve ser um número inteiro de 1 a 200."}
+HTTP 400
+
+### REIMPRIMIR 403
+{"error":"Sem permissão."}
+HTTP 403
+
+### GET lotes/:id
+{"lote":{"id":"74243c31-3a8a-47bd-95c3-2385151bafbe","lote":"261019-01","loteData":"2026-10-19","itemPcpId":"e794145a-d259-4a72-b008-b46eae318dd5","nomeImpresso":"Recheio Frango Coxinha","fabricacao":"2026-10-19","validade":"2026-10-22","validadeDias":3,"validadeAlterada":false,"conservacao":"REFRIGERADO","pesoGramas":2000,"quantidade":3,"tamanho":"40x25","impressoraId":"677a71d8-03f4-4b2d-818a-b67eb5ac27b4","responsavelId":"8818c4b9-d832-4bc0-8b64-ebec1ad43be5","responsavelNome":"Josiane","criadoPorNome":"Josiane","reimpressoes":2,"createdAt":"2026-10-19T17:39:51.133Z","statusImpressao":"PENDENTE","erroImpressao":null},"trabalhos":[{"id":"84a88c43-87c1-4944-889a-28d9b36a9151","tipo":"ETIQUETA_COZINHA","status":"PENDENTE","copias":3,"tentativas":0,"erro":null,"pedidoEm":"2026-10-19T17:40:33.047Z","impressoEm":null,"solicitadoPorNome":"Josiane"},{"id":"ca48aa50-a19a-4ba5-a7d9-05e7607ffce9","tipo":"ETIQUETA_COZINHA","status":"PENDENTE","copias":2,"tentativas":0,"erro":null,"pedidoEm":"2026-10-19T17:40:33.008Z","impressoEm":null,"solicitadoPorNome":"Josiane"},{"id":"98d28e1c-587f-4acf-9050-c9355a9eb219","tipo":"ETIQUETA_COZINHA","status":"PENDENTE","copias":3,"tentativas":0,"erro":null,"pedidoEm":"2026-10-19T17:39:51.143Z","impressoEm":null,"solicitadoPorNome":"Josiane"}]}
+HTTP 200
+
+### GET hoje (totais)
+{"data":"2026-10-19","lotes":[{"id":"54d8ca71-8c80-44e5-820f-21ed1fc14e4f","lote":"261019-13","loteData":"2026-10-19","itemPcpI
+data 2026-10-19 totais {'lotes': 13, 'etiquetas': 22} primeiro 261019-01 2 PENDENTE
+
+### GET hoje data inválida
+{"error":"data deve ser uma data no formato AAAA-MM-DD."}
+HTTP 400
+
+### GET hoje histórico por item
+{"data":null,"lotes":[{"id":"54d8ca71-8c80-44e5-820f-21ed1fc14e4f","lote":"261019-13","loteData":"2026-10-19","itemPcpId":"e794145a-d259-4a72-b008-b46eae318dd5","nome
+### GET favoritos (usuário Josiane, top)
+{"itens":[{"id":"e794145a-d259-4a72-b008-b46eae318dd5","codigo":"1","nome":"Recheio Frango Coxinha","tipo":"SUB","unidade":"KG","grupoCozinha":"RECHEIO","origem":"CADASTRO","validadeRefrigeradoDias":3,"validadeCongeladoDias":90,"ultimoTamanho":"40x25","ultimaConservacao":"REFRIGERADO"}],"fonte":"USUARIO"}
+HTTP 200
+
+### GET itens FAVORITOS + ultimoTamanho
+{"itens":[{"id":"e794145a-d259-4a72-b008-b46eae318dd5","codigo":"1","nome":"Recheio Frango Coxinha","tipo":"SUB","unidade":"KG","grupoCozinha":"RECHEIO","origem":"CADASTRO","validadeRefrigeradoDias":3,"validadeCongeladoDias":90,"ultimoTamanho":"40x25","ultimaConservacao":"REFRIGERADO"}],"contadores":{"FAVORITOS":1,"RECHEIO":8,"MASSA":0,"OUTRO":4,"TODOS":12}}
+HTTP 200

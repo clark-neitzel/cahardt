@@ -18,6 +18,7 @@ Matérias-primas (MP), Produtos Acabados (PA) e Embalagens (EMB) **não são cri
 - Buscar por nome ou código
 - Filtrar por status (ativos, inativos ou todos) e por **tipo** (09/2026 — antes a tela só listava SUB; agora dá para ver MP/PA/EMB também, o que inclui os itens **órfãos** — sem produto por trás — de qualquer tipo)
 - Criar novo subproduto
+- **(10/2026) Dados para a Etiqueta da Cozinha** no formulário do item (vale para qualquer item, inclusive os importados do cadastro de Produtos): **Validade refrigerado (dias)**, **Validade congelado (dias)** (de 1 a 730; vazio = sem prazo definido) e **Grupo na cozinha** (Recheio, Massa ou Outro). É isso que a tela **PCP → Etiquetas da Cozinha** usa para sugerir a data de validade e separar os itens nas abas Recheios/Massas/Outros. Itens criados digitando o nome direto na cozinha aparecem aqui com o selo **"Criado na cozinha"**, grupo Outro, e **não** entram no Estoque PCP
 - Editar um subproduto existente
 - Ativar ou desativar um subproduto
 - **(Fase 6) Histórico de compras** no formulário do item: compras vindas das Notas Recebidas (fornecedor, nota, quantidade convertida, custo). O **custo unitário** do insumo é atualizado por média ponderada a cada compra conferida — é ele que alimenta o custo das receitas

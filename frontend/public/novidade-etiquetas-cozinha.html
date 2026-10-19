@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Etiquetas da Cozinha — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp (sem imagem: o cartão sai compacto) -->
+<meta property="og:title" content="🏷️ Novidade no Hardt App: Etiquetas da Cozinha">
+<meta property="og:description" content="Toque no item, confira a validade e a etiqueta sai na impressora da cozinha, direto do iPad ou do celular. Sem tela de impressão, com lote e quem fez.">
+<meta property="og:type" content="website">
+<style>
+  :root { --primary:#00754A; --primary-dark:#006241; --house:#1E3932; --mint:#d4e9e2; --cream:#f2f0eb; --gold:#cba258; --ink:rgba(0,0,0,.87); --ink-soft:#5f6b66; letter-spacing:-0.01em; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--cream); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; line-height:1.55; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:620px; margin:0 auto; padding:0 16px 56px; }
+  .hero { background:linear-gradient(168deg,var(--house) 0%,#16302a 100%); color:#fff; padding:40px 16px 90px; }
+  .hero-inner { max-width:620px; margin:0 auto; text-align:center; }
+  .eyebrow { display:inline-block; background:var(--gold); color:#2b230f; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.14em; padding:6px 14px; border-radius:999px; margin-bottom:18px; }
+  .hero h1 { font-size:clamp(28px,7vw,40px); font-weight:800; line-height:1.12; margin:0 0 12px; }
+  .hero p { margin:0 auto; max-width:480px; color:rgba(255,255,255,.85); font-size:16px; }
+  .cards { margin-top:-56px; display:grid; gap:12px; }
+  .card { background:#fff; border:1px solid #e3e1da; border-radius:16px; box-shadow:0 1px 3px rgba(0,0,0,.05); }
+  h2.sec { font-size:12px; font-weight:800; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-soft); margin:30px 0 12px; }
+  .acc { background:#fff; border:1px solid #e3e1da; border-radius:16px; margin-bottom:10px; overflow:hidden; }
+  .acc-head { width:100%; display:flex; align-items:center; gap:12px; padding:14px 16px; background:none; border:0; cursor:pointer; text-align:left; font:inherit; color:inherit; min-height:52px; }
+  .acc-ico { width:38px; height:38px; border-radius:12px; background:var(--mint); display:flex; align-items:center; justify-content:center; font-size:19px; flex:0 0 auto; }
+  .acc-head strong { flex:1; font-size:15.5px; font-weight:700; }
+  .acc-seta { color:#9aa5a0; transition:transform .2s; font-size:13px; }
+  .acc.aberto .acc-seta { transform:rotate(180deg); }
+  .acc-corpo { display:none; padding:0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display:block; }
+  .acc-corpo p, .acc-corpo li { font-size:14px; color:var(--ink-soft); }
+  .acc-corpo p { margin:0 0 10px; } .acc-corpo ul { margin:0; padding-left:18px; } .acc-corpo li { margin-bottom:7px; } .acc-corpo b { color:var(--ink); }
+  @media (max-width:420px) { .acc-corpo { padding-left:16px; } }
+  .passos { background:#fff; border:1px solid #e3e1da; border-radius:16px; padding:18px 16px; }
+  .passo { display:flex; gap:14px; padding:10px 0; } .passo + .passo { border-top:1px dashed #e3e1da; }
+  .passo-n { flex:0 0 30px; height:30px; border-radius:999px; background:var(--house); color:#fff; font-weight:800; display:flex; align-items:center; justify-content:center; font-size:14px; }
+  .passo div { font-size:14px; color:var(--ink-soft); } .passo b { color:var(--ink); }
+  /* mockups */
+  .tela { background:#fff; border:1px solid #e3e1da; border-radius:16px; overflow:hidden; margin-bottom:16px; }
+  .tela-titulo { background:var(--house); color:#fff; font-size:12px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; padding:10px 16px; }
+  .tela-corpo { padding:14px; background:#f7f6f2; position:relative; }
+  .pin { display:inline-flex; width:22px; height:22px; border-radius:999px; background:var(--gold); color:#2b230f; font-weight:800; font-size:12px; align-items:center; justify-content:center; flex:0 0 auto; box-shadow:0 1px 3px rgba(0,0,0,.3); }
+  .pin.abs { position:absolute; z-index:3; }
+  .legenda { padding:12px 16px 16px; }
+  .legenda div { display:flex; gap:8px; font-size:13px; color:var(--ink-soft); margin-bottom:7px; align-items:flex-start; }
+  .legenda .pin { margin:1px 0 0; } .legenda b { color:var(--ink); }
+  .m-top { display:flex; align-items:center; justify-content:space-between; gap:8px; background:#fff; border:1px solid #e3e1da; border-radius:12px; padding:8px 10px; font-weight:800; font-size:14px; }
+  .m-dia { background:#2563eb; color:#fff; font-size:11px; font-weight:800; padding:3px 10px; border-radius:999px; }
+  .m-abas { display:flex; gap:6px; margin:10px 0; overflow:hidden; }
+  .m-aba { flex:0 0 auto; padding:8px 12px; border-radius:999px; background:#fff; border:1px solid #d8d6cf; font-size:12px; font-weight:800; color:#4b5563; }
+  .m-aba.on { background:var(--primary); border-color:var(--primary); color:#fff; }
+  .m-tiles { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .m-tile { background:#fff; border:1px solid #e3e1da; border-radius:14px; padding:10px; font-size:12px; font-weight:800; min-height:78px; position:relative; }
+  .m-tile span { display:block; font-weight:600; font-size:10.5px; color:var(--ink-soft); margin-top:2px; }
+  .m-tile.dig { border:2px dashed #c7cdd3; background:transparent; text-align:center; color:var(--ink-soft); }
+  .m-lote { display:flex; align-items:center; gap:8px; background:#fff; border:1px solid #e3e1da; border-radius:12px; padding:8px 10px; margin-top:8px; font-size:12px; }
+  .m-dot { width:10px; height:10px; border-radius:999px; flex:0 0 auto; }
+  .m-btn-out { border:1px solid var(--primary); color:var(--primary); border-radius:999px; padding:5px 10px; font-weight:800; font-size:11px; margin-left:auto; background:#fff; }
+  .m-badge { font-size:10px; font-weight:700; padding:1px 8px; border-radius:999px; background:#dcfce7; color:#166534; }
+  .m-gaveta { background:#fff; border-radius:18px; border:1px solid #e3e1da; padding:12px; }
+  .m-campo { margin-bottom:10px; } .m-campo label { display:flex; justify-content:space-between; font-size:11.5px; font-weight:700; color:#374151; margin-bottom:5px; } .m-campo label em { font-style:normal; font-weight:600; color:var(--ink-soft); }
+  .m-chips { display:flex; flex-wrap:wrap; gap:6px; }
+  .m-chip { border:1px solid #d1d5db; border-radius:999px; padding:7px 12px; font-size:12px; font-weight:700; color:#374151; background:#fff; }
+  .m-chip.on { background:var(--mint); border-color:var(--primary); color:var(--primary-dark); }
+  .m-chip.sug { border-style:dashed; }
+  .m-imprimir { background:var(--primary); color:#fff; border-radius:999px; padding:13px; text-align:center; font-weight:800; font-size:14px; margin-top:6px; }
+  .m-aviso { background:#fffbeb; border:1px solid #fde68a; color:#92400e; border-radius:12px; padding:9px 11px; font-size:12px; font-weight:600; margin-bottom:8px; }
+  .m-et { background:#fff; border:1px solid #cfcfcf; width:200px; height:125px; display:flex; margin:8px auto 0; color:#000; }
+  .m-et .f { width:26px; background:#000; color:#fff; writing-mode:vertical-rl; transform:rotate(180deg); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:12px; }
+  .m-et .c { flex:1; padding:6px 7px; display:flex; flex-direction:column; justify-content:space-between; font-size:10px; font-weight:700; }
+  .m-et .n { font-size:14px; font-weight:800; text-transform:uppercase; line-height:1.05; }
+  .m-et .v { border:2px solid #000; padding:0 4px; border-radius:3px; font-weight:800; }
+  .m-form { background:#fff; border:1px solid #e3e1da; border-radius:14px; padding:12px; }
+  .m-input { border:1px solid #d1d5db; border-radius:8px; padding:8px 10px; font-size:12px; color:#4b5563; background:#fff; }
+  .m-grid3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
+  .foot { text-align:center; font-size:12px; color:#8a948f; margin-top:28px; }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">Novidade · PCP</span>
+    <h1>Etiquetas da Cozinha direto do iPad</h1>
+    <p>Toque no item, confira a validade e a etiqueta sai na impressora da cozinha. Sem tela de impressão, sem digitar data, com lote e o nome de quem fez.</p>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="cards">
+    <div class="card" style="padding:16px">
+      <b style="font-size:15px">O que mudou, em uma frase</b>
+      <p style="margin:6px 0 0;font-size:14px;color:var(--ink-soft)">No menu <b>PCP</b> apareceu <b>Etiq. Cozinha</b>: uma tela só para etiquetar recheio, massa e qualquer outra coisa da cozinha, para o iPad, o celular ou o computador.</p>
+    </div>
+  </div>
+
+  <h2 class="sec">Como funciona</h2>
+
+  <div class="acc aberto">
+    <button class="acc-head" type="button"><span class="acc-ico">👆</span><strong>Três toques para etiquetar</strong><span class="acc-seta">▲</span></button>
+    <div class="acc-corpo"><p>Escolha o <b>item</b>, confira a <b>validade</b> (o sistema já sugere) e toque em <b>Imprimir</b>. A data de fabricação já vem como hoje. Se for outro dia, toque em Ontem ou Outra data.</p></div>
+  </div>
+  <div class="acc aberto">
+    <button class="acc-head" type="button"><span class="acc-ico">⭐</span><strong>Favoritos que aprendem</strong><span class="acc-seta">▲</span></button>
+    <div class="acc-corpo"><p>Os itens que você mais etiqueta aparecem sozinhos na aba <b>Favoritos</b>. Também há as abas <b>Recheios</b>, <b>Massas</b>, <b>Outros</b> e <b>Todos</b>, com a busca por pedaço do nome. O app lembra a última aba que você usou.</p></div>
+  </div>
+  <div class="acc aberto">
+    <button class="acc-head" type="button"><span class="acc-ico">❄️</span><strong>Refrigerado ou congelado</strong><span class="acc-seta">▲</span></button>
+    <div class="acc-corpo"><p>Cada item tem dois prazos cadastrados. Ao trocar entre refrigerado e congelado, a validade sugerida muda e o app mostra a <b>data final por extenso</b> (por exemplo, “vence quinta, dd/mm/aaaa”). Dá para escolher outro prazo nos botões ou digitar os dias.</p><p>Se o item <b>não tem prazo cadastrado</b>, o app avisa “defina a validade” e você escolhe na hora. Ele nunca inventa uma validade.</p></div>
+  </div>
+  <div class="acc aberto">
+    <button class="acc-head" type="button"><span class="acc-ico">🖨️</span><strong>Duas impressoras, dois tamanhos</strong><span class="acc-seta">▲</span></button>
+    <div class="acc-corpo"><p><b>Pequena (40 × 25 mm)</b> para pote, bisnaga e saco. <b>Grande (100 × 120 mm)</b> para caixa, bombona e monobloco. O app lembra o último tamanho que você usou em cada item.</p></div>
+  </div>
+  <div class="acc aberto">
+    <button class="acc-head" type="button"><span class="acc-ico">📒</span><strong>Hoje na cozinha</strong><span class="acc-seta">▲</span></button>
+    <div class="acc-corpo"><p>Embaixo da tela fica a lista do que já foi etiquetado hoje: lote, quantidade, validade, hora, quem fez e se <b>saiu</b> ou está <b>na fila</b>. O botão <b>Reimprimir</b> repete a etiqueta com o <b>mesmo lote</b>.</p></div>
+  </div>
+  <div class="acc aberto">
+    <button class="acc-head" type="button"><span class="acc-ico">✏️</span><strong>Item que não está na lista</strong><span class="acc-seta">▲</span></button>
+    <div class="acc-corpo"><p>Toque em <b>Digitar</b>, escreva o nome e etiquete. O item fica salvo em <b>Outros</b> para a próxima vez, e se alguém digitar o mesmo nome (com outra letra maiúscula ou sem acento) o app usa o que já existe.</p></div>
+  </div>
+  <div class="acc aberto">
+    <button class="acc-head" type="button"><span class="acc-ico">🔌</span><strong>Se o computador da cozinha estiver desligado</strong><span class="acc-seta">▲</span></button>
+    <div class="acc-corpo"><p>O app avisa que o computador da cozinha não responde. A etiqueta <b>fica na fila por 15 minutos</b> e sai sozinha quando ele voltar. Se a impressora der erro (sem etiqueta, por exemplo), aparece a mensagem e o botão <b>Tentar de novo</b>.</p></div>
+  </div>
+  <div class="acc aberto">
+    <button class="acc-head" type="button"><span class="acc-ico">⚙️</span><strong>Itens PCP: prazos e grupo</strong><span class="acc-seta">▲</span></button>
+    <div class="acc-corpo"><p>Em <b>PCP → Itens</b>, ao editar um item, há os campos <b>Validade refrigerado (dias)</b>, <b>Validade congelado (dias)</b> e <b>Grupo na cozinha</b> (Recheio, Massa ou Outro). Itens criados pelo “Digitar” ganham o selo <b>Criado na cozinha</b>, e a lista tem um filtro por grupo.</p></div>
+  </div>
+
+  <h2 class="sec">As telas do app</h2>
+
+  <div class="tela">
+    <div class="tela-titulo">Tela 1 · Etiq. Cozinha (a lista)</div>
+    <div class="tela-corpo">
+      <span class="pin abs" style="top:6px;right:6px">1</span>
+      <div class="m-top"><span>🏷️ Etiquetas da Cozinha</span><span class="m-dia">Segunda · dd/mm</span></div>
+      <div class="m-abas"><span class="pin" style="margin:auto 2px auto 0">2</span><span class="m-aba on">⭐ Favoritos</span><span class="m-aba">🥣 Recheios</span><span class="m-aba">🫓 Massas</span><span class="m-aba">Todos</span></div>
+      <div class="m-input" style="margin-bottom:8px">🔍 Buscar item pelo nome…</div>
+      <div class="m-tiles">
+        <div class="m-tile"><span class="pin" style="position:absolute;top:6px;right:6px">3</span>🥣<br>Recheio de frango<span>3 d refrigerado · 90 d congelado</span></div>
+        <div class="m-tile">🫓<br>Massa de coxinha<span>2 d refrigerado · 60 d congelado</span></div>
+        <div class="m-tile">🍅<br>Molho de tomate<span style="color:#b45309">defina a validade</span></div>
+        <div class="m-tile dig"><span class="pin" style="position:absolute;top:6px;right:6px">4</span>✏️<br>Digitar<span>item sem cadastro</span></div>
+      </div>
+      <div class="m-lote"><span class="m-dot" style="background:#2563eb"></span><b>Recheio de frango</b><span class="m-badge">saiu</span><span class="m-btn-out">Reimprimir</span><span class="pin">5</span></div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><div><b>Cor do dia</b> no canto: cada dia da semana tem a sua cor, a mesma da faixa da etiqueta.</div></div>
+      <div><span class="pin">2</span><div><b>Abas grandes</b> com a contagem de itens; a escolha fica lembrada.</div></div>
+      <div><span class="pin">3</span><div><b>Blocos grandes</b>: toque no item para abrir a gaveta. “Defina a validade” avisa que o item ainda não tem prazo.</div></div>
+      <div><span class="pin">4</span><div><b>Digitar</b> cria um item novo para o que não está na lista.</div></div>
+      <div><span class="pin">5</span><div><b>Hoje na cozinha</b> mostra o que já foi etiquetado e o botão Reimprimir.</div></div>
+    </div>
+  </div>
+
+  <div class="tela">
+    <div class="tela-titulo">Tela 2 · A gaveta de impressão</div>
+    <div class="tela-corpo">
+      <div class="m-gaveta">
+        <div style="font-weight:800;font-size:15px;margin-bottom:8px"><span class="pin" style="margin-right:6px">1</span>🥣 Recheio de frango</div>
+        <div class="m-campo"><label><span><span class="pin" style="margin-right:4px">2</span>Fabricação</span><em>dia da semana · data</em></label><div class="m-chips"><span class="m-chip on">Hoje</span><span class="m-chip">Ontem</span><span class="m-chip">Outra data</span></div></div>
+        <div class="m-campo"><label><span><span class="pin" style="margin-right:4px">3</span>Conservação</span><em>muda a validade</em></label><div class="m-chips"><span class="m-chip on">❄️ Refrigerado</span><span class="m-chip">🧊 Congelado</span></div></div>
+        <div class="m-campo"><label><span><span class="pin" style="margin-right:4px">4</span>Validade</span><em>vence quinta, dd/mm/aaaa</em></label><div class="m-chips"><span class="m-chip">1 d</span><span class="m-chip on sug">3 d · sugerida</span><span class="m-chip">7 d</span><span class="m-chip">30 d</span></div></div>
+        <div class="m-grid3">
+          <div class="m-campo"><label><span><span class="pin" style="margin-right:4px">5</span>Peso</span><em>opcional</em></label><div class="m-input">2,5 kg</div></div>
+          <div class="m-campo"><label><span><span class="pin" style="margin-right:4px">6</span>Quantas</span></label><div class="m-input">− 3 +</div></div>
+          <div class="m-campo"><label><span><span class="pin" style="margin-right:4px">7</span>Quem fez</span></label><div class="m-chips"><span class="m-chip on">Maria</span></div></div>
+        </div>
+        <div class="m-campo"><label><span><span class="pin" style="margin-right:4px">8</span>Impressora / tamanho</span></label><div class="m-chips"><span class="m-chip on">Pequena 40 × 25</span><span class="m-chip">Grande 100 × 120</span></div></div>
+        <div class="m-et"><div class="f">QUA dd/mm</div><div class="c"><div class="n">Recheio de frango</div><div style="display:flex;justify-content:space-between;align-items:center"><span>FAB dd/mm</span><span class="v">VAL dd/mm</span></div><div style="font-size:8px;display:flex;justify-content:space-between"><span>2,5 kg · ❄️ 0–4 °C</span><span>L AAMMDD-NN</span></div></div></div>
+        <div style="text-align:center;font-size:11px;color:var(--ink-soft);margin:4px 0 8px"><span class="pin" style="margin-right:4px">9</span>Prévia (só o visual)</div>
+        <div class="m-imprimir"><span class="pin" style="margin-right:6px">10</span>🖨️ Imprimir 3 etiquetas</div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><div>O <b>item</b> escolhido. No “Digitar”, aqui você escreve o nome.</div></div>
+      <div><span class="pin">2</span><div><b>Fabricação</b>: hoje, ontem ou outra data (até 7 dias atrás).</div></div>
+      <div><span class="pin">3</span><div><b>Conservação</b>: trocar muda a validade sugerida.</div></div>
+      <div><span class="pin">4</span><div><b>Validade</b>: a sugerida vem marcada; a data final aparece por extenso.</div></div>
+      <div><span class="pin">5</span><div><b>Peso</b> é opcional, em kg, e só aparece na etiqueta. Não mexe no estoque.</div></div>
+      <div><span class="pin">6</span><div><b>Quantas etiquetas</b>, de 1 a 200. Na pequena saem 2 por linha; se for número ímpar, a última sai sozinha.</div></div>
+      <div><span class="pin">7</span><div><b>Quem fez</b>: você já vem marcado; toque em outro nome se foi outra pessoa.</div></div>
+      <div><span class="pin">8</span><div><b>Tamanho/impressora</b>: o app lembra o último usado nesse item.</div></div>
+      <div><span class="pin">9</span><div>A <b>prévia</b> é só uma ideia do visual; o lote é definido quando imprime.</div></div>
+      <div><span class="pin">10</span><div><b>Imprimir</b>: um toque só. O botão trava, mostra “Enviando… Imprimindo…” e depois “Saiu”. Se o computador da cozinha estiver desligado, avisa e deixa na fila.</div></div>
+    </div>
+  </div>
+
+  <div class="tela">
+    <div class="tela-titulo">Tela 3 · Itens PCP (editar item)</div>
+    <div class="tela-corpo">
+      <div class="m-form">
+        <div style="font-weight:800;font-size:14px;margin-bottom:8px">Editar Item <span class="m-badge" style="background:#f3e8ff;color:#7e22ce;margin-left:6px">Criado na cozinha</span> <span class="pin" style="margin-left:4px">1</span></div>
+        <div style="font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:8px">Etiquetas da Cozinha</div>
+        <div class="m-grid3">
+          <div class="m-campo"><label><span><span class="pin" style="margin-right:4px">2</span>Refrigerado (dias)</span></label><div class="m-input">3</div></div>
+          <div class="m-campo"><label><span><span class="pin" style="margin-right:4px">3</span>Congelado (dias)</span></label><div class="m-input">90</div></div>
+          <div class="m-campo"><label><span><span class="pin" style="margin-right:4px">4</span>Grupo</span></label><div class="m-input">Recheio ▾</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><div>Selo <b>Criado na cozinha</b> nos itens feitos pelo “Digitar”.</div></div>
+      <div><span class="pin">2</span><div><b>Validade refrigerado</b> em dias (de 1 a 730). Vazio = sem prazo cadastrado.</div></div>
+      <div><span class="pin">3</span><div><b>Validade congelado</b> em dias. É a que a gaveta sugere quando você escolhe Congelado.</div></div>
+      <div><span class="pin">4</span><div><b>Grupo na cozinha</b>: Recheio, Massa, Outro ou nenhum. Define em qual aba o item aparece.</div></div>
+    </div>
+  </div>
+
+  <h2 class="sec">Para começar a usar</h2>
+  <div class="passos">
+    <div class="passo"><div class="passo-n">1</div><div>No menu <b>PCP</b>, abra <b>Etiq. Cozinha</b> (aparece para quem já tem a permissão de Etiquetas).</div></div>
+    <div class="passo"><div class="passo-n">2</div><div>Em <b>PCP → Itens</b>, preencha os <b>dois prazos</b> e o <b>grupo</b> dos itens que a cozinha mais usa. Assim a validade já vem sugerida.</div></div>
+    <div class="passo"><div class="passo-n">3</div><div>Toque no item, confira tudo e toque em <b>Imprimir</b>. Veja o aviso “Saiu” e pegue a etiqueta.</div></div>
+    <div class="passo"><div class="passo-n">4</div><div>Se errou ou precisa de mais, use <b>Reimprimir</b> em “Hoje na cozinha”: sai com o mesmo lote.</div></div>
+  </div>
+
+  <p class="foot">Hardt App · dúvida? Pergunte ao Clippy, o assistente do app.</p>
+</main>
+
+<script>
+  document.querySelectorAll('.acc-head').forEach(function (b) {
+    b.addEventListener('click', function () { b.parentElement.classList.toggle('aberto'); });
+  });
+</script>
+</body>
+</html>

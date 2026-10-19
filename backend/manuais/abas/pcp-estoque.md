@@ -89,3 +89,5 @@ Admin (`admin: true`) tem acesso sem precisar de `pcp.estoque`.
 |---------|-------|
 | `frontend/src/pages/PCP/EstoquePcp.jsx` | Tela principal com tabela, filtros e modal de ajuste |
 | `frontend/src/services/pcpEstoqueService.js` | Chamadas de API para posição e ajuste de estoque |
+
+> **Itens criados na cozinha (10/2026):** itens que a cozinha cria digitando o nome na tela Etiquetas da Cozinha não têm estoque controlado e **não aparecem** nesta tela (continuam na tela Itens PCP, com o selo "Criado na cozinha").

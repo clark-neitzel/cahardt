@@ -25,7 +25,19 @@ export default function ItemPcpForm() {
         descricao: '',
         custoUnitario: '',
         estoqueMinimo: '0',
+        // Etiquetas da Cozinha: prazos (texto vazio = sem prazo cadastrado) e grupo
+        validadeRefrigeradoDias: '',
+        validadeCongeladoDias: '',
+        grupoCozinha: '',
     });
+    const [origem, setOrigem] = useState('');
+
+    const GRUPOS_COZINHA = [
+        { value: '', label: 'Nenhum (não aparece na cozinha)' },
+        { value: 'RECHEIO', label: 'Recheio' },
+        { value: 'MASSA', label: 'Massa' },
+        { value: 'OUTRO', label: 'Outro' },
+    ];
 
     useEffect(() => {
         if (isEdicao) {
@@ -41,7 +53,11 @@ export default function ItemPcpForm() {
                         descricao: item.descricao || '',
                         custoUnitario: item.custoUnitario ? String(item.custoUnitario) : '',
                         estoqueMinimo: item.estoqueMinimo ? String(item.estoqueMinimo) : '0',
+                        validadeRefrigeradoDias: item.validadeRefrigeradoDias ? String(item.validadeRefrigeradoDias) : '',
+                        validadeCongeladoDias: item.validadeCongeladoDias ? String(item.validadeCongeladoDias) : '',
+                        grupoCozinha: item.grupoCozinha || '',
                     });
+                    setOrigem(item.origem || '');
                 })
                 .catch(() => toast.error('Erro ao carregar item'))
                 .finally(() => setLoading(false));
@@ -63,8 +79,26 @@ export default function ItemPcpForm() {
         setForm(prev => ({ ...prev, [field]: value }));
     };
 
+    const diasOuNulo = (v) => {
+        const n = parseInt(String(v).replace(/\D/g, ''), 10);
+        return Number.isFinite(n) && n > 0 ? n : null;
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        for (const [campo, rotulo] of [['validadeRefrigeradoDias', 'refrigerado'], ['validadeCongeladoDias', 'congelado']]) {
+            const n = diasOuNulo(form[campo]);
+            if (String(form[campo]).trim() !== '' && (n == null || n > 730)) {
+                toast.error(`Validade ${rotulo}: informe de 1 a 730 dias (ou deixe vazio).`);
+                return;
+            }
+        }
+        const cozinha = {
+            validadeRefrigeradoDias: diasOuNulo(form.validadeRefrigeradoDias),
+            validadeCongeladoDias: diasOuNulo(form.validadeCongeladoDias),
+            grupoCozinha: form.grupoCozinha || null,
+        };
 
         if (!isEdicao && (!form.codigo || !form.nome)) {
             toast.error('Codigo e nome sao obrigatorios');
@@ -75,13 +109,14 @@ export default function ItemPcpForm() {
         try {
             if (isEdicao) {
                 const dados = isImportado
-                    ? { estoqueMinimo: parseFloat(form.estoqueMinimo || 0), custoUnitario: form.custoUnitario ? parseFloat(form.custoUnitario) : null, descricao: form.descricao }
-                    : { ...form, custoUnitario: form.custoUnitario ? parseFloat(form.custoUnitario) : null, estoqueMinimo: parseFloat(form.estoqueMinimo || 0) };
+                    ? { estoqueMinimo: parseFloat(form.estoqueMinimo || 0), custoUnitario: form.custoUnitario ? parseFloat(form.custoUnitario) : null, descricao: form.descricao, ...cozinha }
+                    : { ...form, ...cozinha, custoUnitario: form.custoUnitario ? parseFloat(form.custoUnitario) : null, estoqueMinimo: parseFloat(form.estoqueMinimo || 0) };
                 await pcpItemService.atualizar(id, dados);
                 toast.success('Item atualizado');
             } else {
                 await pcpItemService.criar({
                     ...form,
+                    ...cozinha,
                     tipo: 'SUB',
                     custoUnitario: form.custoUnitario ? parseFloat(form.custoUnitario) : null,
                     estoqueMinimo: parseFloat(form.estoqueMinimo || 0),
@@ -107,6 +142,9 @@ export default function ItemPcpForm() {
             <h1 className="text-2xl font-bold text-gray-800 mb-2">
                 {isEdicao ? 'Editar Item' : 'Novo Subproduto'}
             </h1>
+            {isEdicao && origem === 'COZINHA' && (
+                <p className="mb-4"><span className="px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-700">Criado na cozinha</span></p>
+            )}
             {isEdicao && isImportado && (
                 <p className="text-sm text-green-600 mb-4">
                     Item importado do cadastro de Produtos. Codigo, nome e unidade nao podem ser alterados aqui.
@@ -194,6 +232,43 @@ export default function ItemPcpForm() {
                             placeholder="0.000"
                         />
                     </div>
+                </div>
+
+                <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+                    <div className="px-4 py-3 border-b border-gray-100">
+                        <span className="text-xs font-bold uppercase tracking-widest text-gray-600">Etiquetas da Cozinha</span>
+                    </div>
+                    <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Validade refrigerado (dias)</label>
+                            <input
+                                type="text"
+                                inputMode="numeric"
+                                value={form.validadeRefrigeradoDias}
+                                onChange={e => handleChange('validadeRefrigeradoDias', e.target.value.replace(/\D/g, '').slice(0, 3))}
+                                className="w-full min-h-[44px] px-3 py-2 border border-gray-300 rounded text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                                placeholder="ex.: 3"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Validade congelado (dias)</label>
+                            <input
+                                type="text"
+                                inputMode="numeric"
+                                value={form.validadeCongeladoDias}
+                                onChange={e => handleChange('validadeCongeladoDias', e.target.value.replace(/\D/g, '').slice(0, 3))}
+                                className="w-full min-h-[44px] px-3 py-2 border border-gray-300 rounded text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                                placeholder="ex.: 90"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Grupo na cozinha</label>
+                            <SelectBusca value={form.grupoCozinha} onChange={e => handleChange('grupoCozinha', e.target.value)} className="w-full">
+                                {GRUPOS_COZINHA.map(g => <option key={g.value || 'nenhum'} value={g.value}>{g.label}</option>)}
+                            </SelectBusca>
+                        </div>
+                    </div>
+                    <p className="px-4 pb-4 text-xs text-gray-600">A cozinha usa estes prazos para sugerir a validade na etiqueta. Sem prazo, a cozinha precisa escolher a validade na hora.</p>
                 </div>
 
                 <div>

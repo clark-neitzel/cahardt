@@ -155,6 +155,7 @@ export default function ItensPcp() {
     const [ativoFiltro, setAtivoFiltro] = useFiltroSalvo('itens-pcp:ativoFiltro', 'true');
     // Tipo agora é filtro (não mais travado em SUB) — órfãos de MP/PA/EMB também moram aqui.
     const [tipoFiltro, setTipoFiltro] = useFiltroSalvo('itens-pcp:tipoFiltro', 'SUB');
+    const [grupoFiltro, setGrupoFiltro] = useFiltroSalvo('itens-pcp:grupoCozinha', '');
     const [modalPromover, setModalPromover] = useState(null); // item ou null
     const [modalTipo, setModalTipo] = useState(null); // item ou null
     const [novoTipo, setNovoTipo] = useState('');
@@ -168,13 +169,17 @@ export default function ItensPcp() {
             if (search.trim()) params.search = search.trim();
             if (ativoFiltro) params.ativo = ativoFiltro;
             const data = await pcpItemService.listar(params);
-            setItens(Array.isArray(data) ? data : []);
+            let lista = Array.isArray(data) ? data : [];
+            // Filtro por grupo na cozinha (aplicado aqui: o campo já vem em cada item)
+            if (grupoFiltro === 'NENHUM') lista = lista.filter(i => !i.grupoCozinha);
+            else if (grupoFiltro) lista = lista.filter(i => i.grupoCozinha === grupoFiltro);
+            setItens(lista);
         } catch (err) {
             toast.error('Erro ao carregar itens: ' + err.message);
         } finally {
             setLoading(false);
         }
-    }, [search, ativoFiltro, tipoFiltro]);
+    }, [search, ativoFiltro, tipoFiltro, grupoFiltro]);
 
     useEffect(() => { carregar(); }, [carregar]);
     useAtualizaAoVoltar(carregar); // rebusca ao voltar ao app / a cada 5 min (tela deixada aberta)
@@ -249,6 +254,13 @@ export default function ItensPcp() {
                     <option value="">Todos os tipos</option>
                     {TIPOS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                 </SelectBusca>
+                <SelectBusca value={grupoFiltro} onChange={e => setGrupoFiltro(e.target.value)} className="w-full md:w-52">
+                    <option value="">Grupo na cozinha: todos</option>
+                    <option value="RECHEIO">Recheio</option>
+                    <option value="MASSA">Massa</option>
+                    <option value="OUTRO">Outro</option>
+                    <option value="NENHUM">Sem grupo</option>
+                </SelectBusca>
                 <SelectBusca value={ativoFiltro} onChange={e => setAtivoFiltro(e.target.value)} className="w-full md:w-40">
                     <option value="true">Ativos</option>
                     <option value="false">Inativos</option>
@@ -279,6 +291,9 @@ export default function ItensPcp() {
                                 <div className="text-xs text-gray-500">{item.codigo} · {parseFloat(item.estoqueAtual || 0).toFixed(3)} {item.unidade}</div>
                                 {orfao && (
                                     <div className="mt-2 px-2 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-700 inline-block">sem produto (órfão)</div>
+                                )}
+                                {item.origem === 'COZINHA' && (
+                                    <div className="mt-2 ml-1 px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-700 inline-block">Criado na cozinha</div>
                                 )}
                                 <div className="mt-3 flex flex-wrap gap-2">
                                     <button onClick={() => navigate(`/pcp/itens/${item.id}`)} className="px-3 py-2 min-h-[44px] bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-full font-medium text-xs inline-flex items-center gap-1.5"><Pencil className="h-3.5 w-3.5" /> Editar</button>
@@ -329,6 +344,9 @@ export default function ItensPcp() {
                                         <td className="px-4 py-3 font-mono text-xs text-gray-500">{item.codigo}</td>
                                         <td className="px-4 py-3">
                                             <span className="font-medium text-gray-800">{item.nome}</span>
+                                            {item.origem === 'COZINHA' && (
+                                                <span className="ml-2 px-2 py-0.5 text-xs font-semibold rounded-full bg-purple-100 text-purple-700">Criado na cozinha</span>
+                                            )}
                                         </td>
                                         <td className="px-4 py-3 text-center">
                                             <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${TIPO_CORES[item.tipo] || 'bg-gray-100 text-gray-700'}`}>{item.tipo}</span>

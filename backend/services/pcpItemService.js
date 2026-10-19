@@ -7,6 +7,32 @@ const erroComStatus = (status, mensagem) => {
     return e;
 };
 
+const GRUPOS_COZINHA = ['RECHEIO', 'MASSA', 'OUTRO'];
+
+// Valida/normaliza os 3 campos da Etiqueta da Cozinha. Devolve só os campos presentes em `data`.
+// Prazo: inteiro 1..730 (ou vazio/null = sem prazo). Grupo: RECHEIO|MASSA|OUTRO (ou vazio/null).
+function camposCozinha(data) {
+    const out = {};
+    for (const campo of ['validadeRefrigeradoDias', 'validadeCongeladoDias']) {
+        if (data[campo] === undefined) continue;
+        if (data[campo] === null || data[campo] === '') { out[campo] = null; continue; }
+        const n = Number(data[campo]);
+        if (!Number.isInteger(n) || n < 1 || n > 730) throw erroComStatus(400, 'Prazo de validade deve ser um número inteiro de 1 a 730 dias.');
+        out[campo] = n;
+    }
+    if (data.grupoCozinha !== undefined) {
+        if (data.grupoCozinha === null || data.grupoCozinha === '') out.grupoCozinha = null;
+        else if (GRUPOS_COZINHA.includes(data.grupoCozinha)) out.grupoCozinha = data.grupoCozinha;
+        else throw erroComStatus(400, 'grupoCozinha deve ser: RECHEIO, MASSA ou OUTRO.');
+    }
+    return out;
+}
+
+// "Açúcar  Mascavo " -> "acucar mascavo" (comparação de nome digitado na cozinha)
+function normalizarNome(s) {
+    return String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
 const pcpItemService = {
 
     listar: async ({ tipo, search, ativo }) => {
@@ -100,9 +126,39 @@ const pcpItemService = {
                 descricao: data.descricao || null,
                 produtoId: null,
                 custoUnitario: data.custoUnitario ? parseFloat(data.custoUnitario) : null,
-                estoqueMinimo: data.estoqueMinimo ? parseFloat(data.estoqueMinimo) : 0
+                estoqueMinimo: data.estoqueMinimo ? parseFloat(data.estoqueMinimo) : 0,
+                ...camposCozinha(data)
             }
         });
+    },
+
+    // Etiquetas da Cozinha: acha (por nome, sem caixa/acento) ou cria o item digitado na cozinha.
+    // Item novo: SUB, origem COZINHA, grupo OUTRO, unidade KG. Não mexe em estoque.
+    criarDaCozinha: async (nomeLivre) => {
+        const nome = String(nomeLivre ?? '').replace(/\s+/g, ' ').trim();
+        if (!nome) throw erroComStatus(400, 'Informe o nome do item.');
+        if (nome.length > 80) throw erroComStatus(400, 'Nome muito longo (máximo 80 caracteres).');
+        const chave = normalizarNome(nome);
+        const todos = await prisma.itemPcp.findMany({ where: { tipo: 'SUB' }, select: { id: true, nome: true, ativo: true } });
+        const iguais = todos.filter(c => normalizarNome(c.nome) === chave);
+        const achado = iguais.find(c => c.ativo) || iguais[0]; // prefere o ativo
+        if (achado) {
+            if (achado.ativo) return prisma.itemPcp.findUnique({ where: { id: achado.id } });
+            // só existe inativo com esse nome: reativa (mantém histórico e evita duplicata com outro código)
+            const reativado = await prisma.itemPcp.update({ where: { id: achado.id }, data: { ativo: true } });
+            return Object.assign(reativado, { reativado: true });
+        }
+        for (let tentativa = 0; tentativa < 3; tentativa++) {
+            const codigo = await pcpItemService.proximoCodigoSub();
+            try {
+                return await prisma.itemPcp.create({
+                    data: { codigo, nome, tipo: 'SUB', unidade: 'KG', origem: 'COZINHA', grupoCozinha: 'OUTRO', estoqueMinimo: 0 }
+                });
+            } catch (e) {
+                if (e.code !== 'P2002') throw e;
+            }
+        }
+        throw erroComStatus(500, 'Não foi possível criar o item. Tente de novo.');
     },
 
     // Garantir que existe ItemPcp para um Produto do cadastro (find or create).
@@ -160,7 +216,7 @@ const pcpItemService = {
         const item = await prisma.itemPcp.findUnique({ where: { id }, select: { tipo: true, produtoId: true } });
         if (!item) throw new Error('Item não encontrado');
 
-        const updateData = {};
+        const updateData = { ...camposCozinha(data) }; // valem para os DOIS ramos (importado e órfão)
         // Itens importados (MP/PA/EMB com produtoId): só permite editar campos PCP
         if (item.produtoId) {
             if (data.estoqueMinimo !== undefined) updateData.estoqueMinimo = parseFloat(data.estoqueMinimo);
@@ -318,3 +374,5 @@ const pcpItemService = {
 };
 
 module.exports = pcpItemService;
+module.exports.normalizarNome = normalizarNome;
+module.exports.camposCozinha = camposCozinha;

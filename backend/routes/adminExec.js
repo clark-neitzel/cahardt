@@ -52,7 +52,7 @@ router.get('/ping', (req, res) => {
         ok: true,
         // Marcador de deploy: bumpar a cada mudança de backend que precise de confirmação
         // em produção (não há outro jeito de saber de fora qual versão está no ar).
-        deployMarker: 'contagem-dinheiro-2026-10-19',
+        deployMarker: 'etiquetas-cozinha-e2-2026-10-19',
         uptimeSegundos: Math.round(process.uptime()),
         timestamp: new Date().toISOString(),
         openaiConfigurada: !!process.env.OPENAI_API_KEY,
@@ -12598,6 +12598,34 @@ router.post('/indicadores-ajustes-dados', async (req, res) => {
         res.json(await svc.executar({ passos: lista, dry, de, ate, limite: req.query.limite }));
     } catch (err) {
         console.error('[indicadores-ajustes-dados]', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// POST /api/admin-exec/etiquetas-cozinha-classificar[?aplicar=1]
+// Etiquetas da Cozinha (E2): sugere o grupo (RECHEIO/MASSA) dos itens SUB ativos sem grupo, pelo começo do nome
+// ("Recheio de frango" -> RECHEIO, "Massa de coxinha" -> MASSA). Sem ?aplicar=1 só SIMULA (dono confirma antes).
+// Nunca sobrescreve grupo já definido. Itens sem padrão ficam como estão (aparecem em "Outros").
+router.post('/etiquetas-cozinha-classificar', async (req, res) => {
+    try {
+        const aplicar = req.query.aplicar === '1';
+        const norm = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+        const itens = await prisma.itemPcp.findMany({
+            where: { tipo: 'SUB', ativo: true, grupoCozinha: null },
+            select: { id: true, codigo: true, nome: true },
+            orderBy: { nome: 'asc' },
+        });
+        const alteradas = [], semPadrao = [];
+        for (const it of itens) {
+            const n = norm(it.nome);
+            const grupo = /^recheios?\b/.test(n) ? 'RECHEIO' : /^massas?\b/.test(n) ? 'MASSA' : null;
+            if (!grupo) { semPadrao.push({ id: it.id, codigo: it.codigo, nome: it.nome }); continue; }
+            if (aplicar) await prisma.itemPcp.update({ where: { id: it.id }, data: { grupoCozinha: grupo } });
+            alteradas.push({ id: it.id, codigo: it.codigo, nome: it.nome, grupoCozinha: grupo });
+        }
+        res.json({ simulacao: !aplicar, total: alteradas.length, alteradas, semPadraoTotal: semPadrao.length, semPadrao: semPadrao.slice(0, 200) });
+    } catch (err) {
+        console.error('[etiquetas-cozinha-classificar]', err);
         res.status(500).json({ error: err.message });
     }
 });

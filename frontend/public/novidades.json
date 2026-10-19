@@ -1,5 +1,11 @@
 [
   {
+    "slug": "etiquetas-cozinha",
+    "titulo": "Etiquetas da Cozinha no iPad",
+    "resumo": "Nova tela no PCP (Etiq. Cozinha): toque no item, confira a validade sugerida e a etiqueta sai na impressora da cozinha, com lote e quem fez. Tem favoritos, Reimprimir e aviso quando o computador da cozinha está desligado.",
+    "data": "2026-10-19"
+  },
+  {
     "slug": "contagem-dinheiro",
     "titulo": "Contar o dinheiro no Caixa",
     "resumo": "Quem recebe o envelope do motorista agora conta o dinheiro no app: o botão Contar o dinheiro salva a contagem com o nome de quem contou e a hora, sem fechar o caixa. A conferência pode partir dela. Campos de número ficaram mais seguros.",

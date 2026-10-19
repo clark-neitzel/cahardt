@@ -1,0 +1,40 @@
+
+### IMPRIMIR item cadastrado 40x25 qtd 3 (refrigerado, validade sugerida 3d)
+{"lote":{"id":"74243c31-3a8a-47bd-95c3-2385151bafbe","lote":"261019-01","loteData":"2026-10-19","itemPcpId":"e794145a-d259-4a72-b008-b46eae318dd5","nomeImpresso":"Recheio Frango Coxinha","fabricacao":"2026-10-19","validade":"2026-10-22","validadeDias":3,"validadeAlterada":false,"conservacao":"REFRIGERADO","pesoGramas":2000,"quantidade":3,"tamanho":"40x25","impressoraId":"677a71d8-03f4-4b2d-818a-b67eb5ac27b4","responsavelId":"8818c4b9-d832-4bc0-8b64-ebec1ad43be5","responsavelNome":"Josiane","criadoPorNome":"Josiane","reimpressoes":0,"createdAt":"2026-10-19T17:39:51.133Z","statusImpressao":null,"erroImpressao":null},"trabalho":{"id":"98d28e1c-587f-4acf-9050-c9355a9eb219","status":"PENDENTE"},"agente":{"estado":"OFFLINE"},"aviso":"O computador da cozinha parece desligado. A etiqueta fica na fila por 15 minutos."}
+HTTP 201
+
+### MESMO requisicaoId (idempotente, não cria 2o lote)
+{"lote":{"id":"74243c31-3a8a-47bd-95c3-2385151bafbe","lote":"261019-01","loteData":"2026-10-19","itemPcpId":"e794145a-d259-4a72-b008-b46eae318dd5","nomeImpresso":"Recheio Frango Coxinha","fabricacao":"2026-10-19","validade":"2026-10-22","validadeDias":3,"validadeAlterada":false,"conservacao":"REFRIGERADO","pesoGramas":2000,"quantidade":3,"tamanho":"40x25","impressoraId":"677a71d8-03f4-4b2d-818a-b67eb5ac27b4","responsavelId":"8818c4b9-d832-4bc0-8b64-ebec1ad43be5","responsavelNome":"Josiane","criadoPorNome":"Josiane","reimpressoes":0,"createdAt":"2026-10-19T17:39:51.133Z","statusImpressao":null,"erroImpressao":null},"trabalho":{"id":"98d28e1c-587f-4acf-9050-c9355a9eb219","status":"PENDENTE"},"agente":{"estado":"OFFLINE"},"aviso":"O computador da cozinha parece desligado. A etiqueta fica na fila por 15 minutos.","repetido":true}
+HTTP 200
+
+### validade ALTERADA (5d vs sugerida 3d), congelado 90 = nao alterada, 100x120
+{"lote":{"id":"7785f109-4da1-4a6f-ae7b-197fa45689c6","lote":"261019-02","loteData":"2026-10-19","itemPcpId":"e794145a-d259-4a72-b008-b46eae318dd5","nomeImpresso":"Recheio Frango Coxinha","fabricacao":"2026-10-19","validade":"2026-10-24","validadeDias":5,"validadeAlterada":true,"conservacao":"REFRIGERADO","pesoGramas":null,"quantidade":1,"tamanho":"100x120","impressoraId":"d479e93a-667f-43a8-91d4-f7344580269d","responsavelId":"8818c4b9-d832-4bc0-8b64-ebec1ad43be5","responsavelNome":"Josiane","criadoPorNome":"Josiane","reimpressoes":0,"createdAt":"2026-10-19T17:39:51.174Z","statusImpressao":null,"erroImpressao":null},"trabalho":{"id":"6ed04a7b-240d-4eff-84bf-8926adae547f","status":"PENDENTE"},"agente":{"estado":"OFFLINE"},"aviso":"O computador da cozinha parece desligado. A etiqueta fica na fila por 15 minutos."}
+HTTP 201
+
+### congelado 90d (igual a sugerida) -> validadeAlterada false
+{"lote":{"id":"974600a4-742e-4389-8966-edd90f40b1b5","lote":"261019-03","loteData":"2026-10-19","itemPcpId":"e794145a-d259-4a72-b008-b46eae318dd5","nomeImpresso":"Recheio Frango Coxinha","fabricacao":"2026-10-19","validade":"2027-01-17","validadeDias":90,"validadeAlterada":false,"conservacao":"CONGELADO","pesoGramas":null,"quantidade":2,"tamanho":"40x25","impressoraId":"677a71d8-03f4-4b2d-818a-b67eb5ac27b4","responsavelId":"8818c4b9-d832-4bc0-8b64-ebec1ad43be5","responsavelNome":"Josiane","criadoPorNome":"Josiane","reimpressoes":0,"createdAt":"2026-10-19T17:39:51.192Z","statusImpressao":null,"erroImpressao":null},"trabalho":{"id":"804cee44-22f1-4530-a438-eef118bb6cd3","status":"PENDENTE"},"agente":{"estado":"OFFLINE"},"aviso":"O computador da cozinha parece desligado. A etiqueta fica na fila por 15 minutos."}
+HTTP 201
+
+### nomeLivre NOVO (cria item COZINHA)
+{"lote":{"id":"096fc509-53bd-443b-b4fa-694961534265","lote":"261019-04","loteData":"2026-10-19","itemPcpId":"40d14515-7906-4bba-8953-f235fb435066","nomeImpresso":"Açúcar Mascavo QA","fabricacao":"2026-10-19","validade":"2026-11-18","validadeDias":30,"validadeAlterada":false,"conservacao":"REFRIGERADO","pesoGramas":null,"quantidade":1,"tamanho":"40x25","impressoraId":"677a71d8-03f4-4b2d-818a-b67eb5ac27b4","responsavelId":"8818c4b9-d832-4bc0-8b64-ebec1ad43be5","responsavelNome":"Josiane","criadoPorNome":"Atendimento","reimpressoes":0,"createdAt":"2026-10-19T17:39:51.213Z","statusImpressao":null,"erroImpressao":null},"trabalho":{"id":"f95c5f55-7357-410f-88b3-7161f0ebc12f","status":"PENDENTE"},"agente":{"estado":"OFFLINE"},"aviso":"O computador da cozinha parece desligado. A etiqueta fica na fila por 15 minutos.","itemCriado":{"id":"40d14515-7906-4bba-8953-f235fb435066","codigo":"SUB-0011","nome":"Açúcar Mascavo QA"}}
+HTTP 201
+
+### nomeLivre REPETIDO c/ outra caixa/acento (reaproveita, não duplica)
+{"lote":{"id":"40780cbd-1ddb-4e9a-b714-445e1c726ae9","lote":"261019-05","loteData":"2026-10-19","itemPcpId":"40d14515-7906-4bba-8953-f235fb435066","nomeImpresso":"Açúcar Mascavo QA","fabricacao":"2026-10-19","validade":"2026-11-18","validadeDias":30,"validadeAlterada":false,"conservacao":"REFRIGERADO","pesoGramas":null,"quantidade":1,"tamanho":"40x25","impressoraId":"677a71d8-03f4-4b2d-818a-b67eb5ac27b4","responsavelId":"8818c4b9-d832-4bc0-8b64-ebec1ad43be5","responsavelNome":"Josiane","criadoPorNome":"Atendimento","reimpressoes":0,"createdAt":"2026-10-19T17:39:51.231Z","statusImpressao":null,"erroImpressao":null},"trabalho":{"id":"89b6b10c-5e0d-4b9a-a9c1-f4440e4fd907","status":"PENDENTE"},"agente":{"estado":"OFFLINE"},"aviso":"O computador da cozinha parece desligado. A etiqueta fica na fila por 15 minutos.","itemCriado":{"id":"40d14515-7906-4bba-8953-f235fb435066","codigo":"SUB-0011","nome":"Açúcar Mascavo QA"}}
+HTTP 201
+
+### quantidade ÍMPAR na 40x25 (7)
+{"lote":{"id":"df47eaec-2279-4002-9c87-3c5e53b5b8d8","lote":"261019-06","loteData":"2026-10-19","itemPcpId":"e794145a-d259-4a72-b008-b46eae318dd5","nomeImpresso":"Recheio Frango Coxinha","fabricacao":"2026-10-19","validade":"2026-10-22","validadeDias":3,"validadeAlterada":false,"conservacao":"REFRIGERADO","pesoGramas":null,"quantidade":7,"tamanho":"40x25","impressoraId":"677a71d8-03f4-4b2d-818a-b67eb5ac27b4","responsavelId":"8818c4b9-d832-4bc0-8b64-ebec1ad43be5","responsavelNome":"Josiane","criadoPorNome":"Josiane","reimpressoes":0,"createdAt":"2026-10-19T17:39:51.248Z","statusImpressao":null,"erroImpressao":null},"trabalho":{"id":"098ce460-db83-4ada-b131-98764134e9f9","status":"PENDENTE"},"agente":{"estado":"OFFLINE"},"aviso":"O computador da cozinha parece desligado. A etiqueta fica na fila por 15 minutos."}
+HTTP 201
+
+### 400 fabricação futura
+{"error":"A data de fabricação não pode ser no futuro."}
+HTTP 400
+
+### 400 responsável inexistente
+{"error":"O responsável escolhido não existe ou está inativo."}
+HTTP 400
+
+### 403 imprimir sem permissão
+{"error":"Sem permissão."}
+HTTP 403

@@ -3,7 +3,7 @@ const prisma = require('../config/database');
 const pcpEstoqueService = {
 
     posicao: async ({ tipo, search, apenasAbaixoMinimo }) => {
-        const where = { ativo: true };
+        const where = { ativo: true, origem: { not: 'COZINHA' } }; // itens digitados na cozinha (etiqueta) não têm estoque; origem nunca é null (default CADASTRO)
         if (tipo) where.tipo = tipo;
         if (search?.trim()) {
             where.OR = [

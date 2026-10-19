@@ -1,0 +1,7 @@
+### falha ao enfileirar (impressora configurada errada): lote FICA, vem aviso, trabalho=null
+{"lote":{"id":"356fb8f9-0be8-448b-9003-8f4511357387","lote":"261019-01","loteData":"2026-10-19","itemPcpId":"i1","nomeImpresso":"Recheio X","fabricacao":"2026-10-19","validade":"2026-10-22","validadeDias":3,"validadeAlterada":false,"conservacao":"REFRIGERADO","pesoGramas":null,"quantidade":1,"tamanho":"40x25","impressoraId":"c219106e-4efb-49dc-84b7-b5a7b8d813b5","responsavelId":"u1","responsavelNome":"Cozinheira Teste","criadoPorNome":"Coz","reimpressoes":0,"createdAt":"2026-10-19T17:42:58.058Z","statusImpressao":null,"erroImpressao":null},"trabalho":null,"agente":{"estado":"OFFLINE"},"aviso":"O lote 261019-01 foi registrado, mas a etiqueta não entrou na fila de impressão (A impressora 40×25 precisa estar configurada como EPL2.). Use Reimprimir."}
+HTTP 201
+### admin corrige a impressora e o MESMO requisicaoId reenfileira (sem 2o lote)
+{"lote":{"id":"356fb8f9-0be8-448b-9003-8f4511357387","lote":"261019-01","loteData":"2026-10-19","itemPcpId":"i1","nomeImome":"Cozinheira Teste","criadoPorNome":"Coz","reimpressoes":0,"createdAt":"2026-10-19T17:42:58.058Z","statusImpressao":"PENDENTE","erroImpressao":null},"trabalho":{"id":"8c497e58-6d5b-4e12-ad44-8865bf956669","status":"PENDENTE"},"agente":{"estado":"OFFLINE"},"aviso":"O computador da cozinha parece desligado. A etiqueta fica na fila por 15 minutos.","repetido":true}
+HTTP 200
+{'lotes': 1, 'etiquetas': 1} [('261019-01', 'PENDENTE')]

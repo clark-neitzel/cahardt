@@ -1,0 +1,66 @@
+
+### GET itens TODOS (Josiane)
+{"itens":[{"id":"26ee2bce-57da-4bbd-9279-dda1ecefedc0","codigo":"SUB-0002","nome":"Cheddar Culinário Hardt","tipo":"SUB","unidade":"KG","grupoCozinha":"OUTRO","origem":"CADASTRO","validadeRefrigeradoDias":5,"validadeCongeladoDias":null,"ultimoTamanho":null,"ultimaConservacao":null},{"id":"305da99c-9c11-40e2-8ee3-24a7228a6059","codigo":"SUB-0010","nome":"QA E3 item","tipo":"SUB","unidade":"KG","grupoCozinha":"OUTRO","origem":"CADASTRO","validadeRefrigeradoDias":null,"validadeCongeladoDias":null,"ultimoTamanho":null,"ultimaConservacao":null},{"id":"e794145a-d259-4a72-b008-b46eae318dd5","codigo":"1","nome":"Recheio Frango Coxinha","tipo":"SUB","unidade":"KG","grupoCozinha":"RECHEIO","origem":"CADASTRO","validadeRefrigeradoDias":3,"validadeCongeladoDias":90,"ultimoTamanho":null,"ultimaConservacao":null},{"id":"18d6a6f9-d659-47b6-83e0-81207d60ab83","codigo":"SUB-0009","nome":"Recheio Palmito Mini Empada","tipo":"SUB","unidade":"KG","grupoCozinha":"RECHEIO","origem":"CADASTRO","validadeRefrigeradoDias":3,"validadeCongeladoDias":90,"ultimoTamanho":null,"ultimaConservacao":null},{"id":"43579ffb-dbc8-4e2a-afae-1ca25addba6a","codigo":"SUB-0008","nome":"Recheio Palmito Risoles","tipo":"SUB","unidade":"KG","grupoCozinha":"RECHEIO","origem":"CADASTRO","validadeRefrigeradoDias":3,"validadeCongeladoDias":90,"ultimoTamanho":null,"ultimaConservacao":null},{"id":"b0b18723-3385-4954-8420-dd2cfb311e66","codigo":"SUB-0007","nome":"Recheio Palmito Tortinha","tipo":"
+### GET itens busca 'frango' acento-insensível
+{"itens":[{"id":"e794145a-d259-4a72-b008-b46eae318dd5","codigo":"1","nome":"Recheio Frango Coxinha","tipo":"SUB","unidade":"KG","grupoCozinha":"RECHEIO","origem":"CADASTRO","validadeRefrigeradoDias":3,"validadeCongeladoDias":90,"ultimoTamanho":null,"ultimaConservacao":null}],"contadores":{"FAVORITOS":0,"RECHEIO":8,"MASSA":0,"OUTRO":3,"TODOS":11}}
+HTTP 200
+
+### GET itens grupo inválido
+{"error":"grupo deve ser: RECHEIO, MASSA, OUTRO, FAVORITOS ou TODOS."}
+HTTP 400
+
+### GET favoritos (vazio)
+{"itens":[],"fonte":"GERAL"}
+HTTP 200
+
+### GET equipe
+{"equipe":[{"id":"8818c4b9-d832-4bc0-8b64-ebec1ad43be5","nome":"Josiane","iniciais":"J","eu":true},{"id":"cd3dff75-91e1-4284-8d20-f933b7ae31e3","nome":"Clarkson Neitzel","iniciais":"CN","eu":false},{"id":"qa-peso-pacote-tester","nome":"QA Peso Pacote (descartável)","iniciais":"Q(","eu":false}]}
+HTTP 200
+
+### 403 sem permissão (Producao)
+{"error":"Sem permissão."}
+HTTP 403
+
+### 401 sem token
+{"error":"Token não fornecido ou inválido."}
+HTTP 401
+
+### IMPRIMIR item cadastrado 40x25 qtd 3 (refrigerado, validade sugerida 3d)
+{"error":"Há mais de uma impressora ativa para 40×25: escolha qual usar (impressoraId)."}
+HTTP 400
+
+### MESMO requisicaoId (idempotente, não cria 2o lote)
+{"error":"Há mais de uma impressora ativa para 40×25: escolha qual usar (impressoraId)."}
+HTTP 400
+
+### validade ALTERADA (5d vs sugerida 3d), congelado 90 = nao alterada, 100x120
+{"error":"Há mais de uma impressora ativa para 100×120: escolha qual usar (impressoraId)."}
+HTTP 400
+
+### congelado 90d (igual a sugerida) -> validadeAlterada false
+{"error":"Há mais de uma impressora ativa para 40×25: escolha qual usar (impressoraId)."}
+HTTP 400
+
+### nomeLivre NOVO (cria item COZINHA)
+{"error":"Há mais de uma impressora ativa para 40×25: escolha qual usar (impressoraId)."}
+HTTP 400
+
+### nomeLivre REPETIDO c/ outra caixa/acento (reaproveita, não duplica)
+{"error":"Há mais de uma impressora ativa para 40×25: escolha qual usar (impressoraId)."}
+HTTP 400
+
+### quantidade ÍMPAR na 40x25 (7)
+{"error":"Há mais de uma impressora ativa para 40×25: escolha qual usar (impressoraId)."}
+HTTP 400
+
+### 400 fabricação futura
+{"error":"A data de fabricação não pode ser no futuro."}
+HTTP 400
+
+### 400 responsável inexistente
+{"error":"O responsável escolhido não existe ou está inativo."}
+HTTP 400
+
+### 403 imprimir sem permissão
+{"error":"Sem permissão."}
+HTTP 403

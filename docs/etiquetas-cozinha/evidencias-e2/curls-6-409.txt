@@ -1,0 +1,11 @@
+### 409: sem impressora ativa 40x25 (existe só uma INATIVA)
+{"error":"Nenhuma impressora ativa configurada para 40×25. Peça a um administrador em Configurações → Impressoras."}
+HTTP 409
+### 409: nenhuma impressora 100x120
+{"error":"Nenhuma impressora ativa configurada para 100×120. Peça a um administrador em Configurações → Impressoras."}
+HTTP 409
+### nenhum lote nem item criado nessas tentativas:
+{"data":"2026-10-19","lotes":[],"totais":{"lotes":0,"etiquetas":0}}
+### nomeLivre com 409 NÃO cria item novo:
+HTTP 409
+{"itens":[],"contadores":{"FAVORITOS":0,"RECHEIO":0,"MASSA":0,"OUTRO":1,"TODOS":1}}
