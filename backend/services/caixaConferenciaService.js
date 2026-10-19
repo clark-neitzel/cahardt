@@ -328,7 +328,7 @@ const conferirDinheiro = async ({
                 throw erro(`${autz.nome} não tem permissão para autorizar diferença de caixa.`, 403);
             }
             const senhaOk = autz.senha ? await bcrypt.compare(String(autorizadorSenha), autz.senha) : false;
-            if (!senhaOk) throw erro('Senha do autorizador incorreta.', 401);
+            if (!senhaOk) throw erro('Senha do autorizador incorreta.', 403);
             autorizador = autz;
         }
     }
@@ -595,6 +595,7 @@ const minhasConferencias = async ({ usuario, de, ate }) => {
 const validarContagemAvulsa = (contagem) => {
     if (!contagem || typeof contagem !== 'object') throw erro('Conte pelo menos uma nota ou moeda.', 400);
     const limpo = { cedulas: {}, moedas: {}, outros: [] };
+    const LIMITE_VALOR = 999999.99;
     const lerGrupo = (origem, validos, destino, nome) => {
         for (const [k, v] of Object.entries(origem || {})) {
             if (!validos.includes(Number(k)) || !/^\d+(\.\d+)?$/.test(String(k))) {
@@ -602,19 +603,26 @@ const validarContagemAvulsa = (contagem) => {
             }
             const q = Number(v || 0);
             if (!Number.isInteger(q) || q < 0 || q > 99999) throw erro(`Quantidade inválida para ${nome} ${k}.`, 400);
-            if (q > 0) destino[String(Number(k))] = q;
+            if (q > 0) {
+                const chave = String(Number(k)); // "0.5" e "0.50" viram a mesma chave: soma, não sobrescreve
+                destino[chave] = (destino[chave] || 0) + q;
+                if (destino[chave] > 99999) throw erro(`Quantidade inválida para ${nome} ${k}.`, 400);
+            }
         }
     };
     lerGrupo(contagem.cedulas, VALORES_CEDULA, limpo.cedulas, 'cédulas');
     lerGrupo(contagem.moedas, VALORES_MOEDA, limpo.moedas, 'moedas');
     if (contagem.outros != null && !Array.isArray(contagem.outros)) throw erro('Formato de "outros" inválido.', 400);
+    if ((contagem.outros || []).length > 20) throw erro('Máximo de 20 itens em "outros".', 400);
     for (const o of (contagem.outros || [])) {
         const valor = Number(o?.valor);
         if (!Number.isFinite(valor) || valor <= 0) throw erro('Cada item de "outros" precisa de valor maior que zero.', 400);
+        if (valor > LIMITE_VALOR) throw erro('Valor de "outros" acima do limite (R$ 999.999,99).', 400);
         limpo.outros.push({ descricao: String(o?.descricao || '').slice(0, 120), valor: round2(valor) });
     }
     const { total, pecas } = somarContagem(limpo);
     if (!(total > 0)) throw erro('Conte pelo menos uma nota ou moeda.', 400);
+    if (total > LIMITE_VALOR) throw erro('Total da contagem acima do limite (R$ 999.999,99).', 400);
     return { limpo, total, pecas };
 };
 
@@ -644,8 +652,17 @@ const registrarContagem = async ({ id, vendedorId, data, contagem, observacao, u
     if (!vendedorId || !data) throw erro('Informe o caixa (vendedor e data).', 400);
     if (!id || typeof id !== 'string' || id.length > 64) throw erro('Identificador da contagem ausente.', 400);
 
-    // Idempotência: mesmo id já gravado devolve a existente (duplo clique/retry)
+    if (typeof vendedorId !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(String(data))
+        || Number.isNaN(Date.parse(`${data}T12:00:00Z`))) {
+        throw erro('Data inválida (use AAAA-MM-DD).', 400);
+    }
+    const vend = await prisma.vendedor.findUnique({ where: { id: vendedorId }, select: { id: true } });
+    if (!vend) throw erro('Vendedor não encontrado.', 400);
+
+    // Idempotência: mesmo id já gravado devolve a existente (duplo clique/retry).
+    // Só vale se for do MESMO caixa; id de outro vendedor = tratado como inexistente (não vaza detalhe).
     const existente = await prisma.caixaContagem.findUnique({ where: { id } });
+    if (existente && existente.vendedorId !== vendedorId) throw erro('Identificador da contagem já utilizado.', 409);
     if (existente) return { ok: true, duplicado: true, contagem: formatarContagem(existente) };
 
     const { limpo, total, pecas } = validarContagemAvulsa(contagem);
@@ -677,6 +694,7 @@ const registrarContagem = async ({ id, vendedorId, data, contagem, observacao, u
     } catch (e) {
         if (e.code === 'P2002') {
             const ja = await prisma.caixaContagem.findUnique({ where: { id } });
+            if (ja && ja.vendedorId !== vendedorId) throw erro('Identificador da contagem já utilizado.', 409);
             if (ja) return { ok: true, duplicado: true, contagem: formatarContagem(ja) };
         }
         throw e;

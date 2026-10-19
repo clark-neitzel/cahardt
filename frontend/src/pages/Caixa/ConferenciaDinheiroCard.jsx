@@ -84,6 +84,8 @@ const ModalConferir = ({
     const [salvando, setSalvando] = useState(false);
     const [aba, setAba] = useState('cedulas');
     const idContagem = useRef(novoId());
+    const assinaturaEnviada = useRef(null); // conteúdo da última tentativa; se mudar, o id renova
+    const refSenha = useRef(null);
     const raiz = useRef(null);
     const corpo = useRef(null);
     useEffect(() => { corpo.current?.scrollTo?.({ top: 0 }); }, [aba]);
@@ -97,7 +99,7 @@ const ModalConferir = ({
         setOutros((inicial?.outros || []).map(o => ({ descricao: o.descricao || '', valor: String(o.valor ?? '') })));
         setObservacao(inicial?.observacao || ''); setMotivo(''); setMotivoTipo('');
         setAutorizadorId(''); setSenha(''); setAba('cedulas');
-        idContagem.current = novoId();
+        idContagem.current = novoId(); assinaturaEnviada.current = null;
         if (!contar) {
             caixaService.getAutorizadoresDiferenca().then(setAutorizadores).catch(() => setAutorizadores([]));
         }
@@ -161,10 +163,16 @@ const ModalConferir = ({
         setSalvando(true);
         try {
             if (contar) {
+                const contagemAtual = montarContagem();
+                const obs = observacao.trim() || null;
+                // Mesmo id só no retry SEM edição (idempotência); se editou, é outra contagem -> id novo.
+                const assinatura = JSON.stringify([contagemAtual, obs]);
+                if (assinaturaEnviada.current !== null && assinaturaEnviada.current !== assinatura) idContagem.current = novoId();
+                assinaturaEnviada.current = assinatura;
                 const r = await caixaService.registrarContagemDinheiro({
                     id: idContagem.current, vendedorId, data,
-                    contagem: montarContagem(),
-                    observacao: observacao.trim() || null,
+                    contagem: contagemAtual,
+                    observacao: obs,
                 });
                 toast.success(r?.duplicado ? 'Contagem já estava salva.' : `Contagem salva: ${brl(totais.total)}.`);
                 onOk?.(r);
@@ -192,6 +200,11 @@ const ModalConferir = ({
             onFechar();
         } catch (e) {
             toast.error(e.response?.data?.error || (contar ? 'Erro ao salvar a contagem.' : 'Erro ao conferir o dinheiro.'));
+            // Senha do autorizador errada (403): mantém modal e contagem, limpa só a senha e foca nela.
+            if (!contar && e.response?.status === 403 && passouQuebra) {
+                setSenha('');
+                setTimeout(() => refSenha.current?.focus?.(), 50);
+            }
         } finally {
             setSalvando(false);
         }
@@ -432,6 +445,7 @@ const ModalConferir = ({
                                                 <div>
                                                     <label className="block text-sm font-medium text-gray-700 mb-1">Senha do autorizador</label>
                                                     <input
+                                                        ref={refSenha}
                                                         type="password" value={senha} onChange={e => setSenha(e.target.value)}
                                                         autoComplete="new-password"
                                                         className={`w-full px-3 py-2 ${CLASSE_INPUT}`}
@@ -620,7 +634,7 @@ const ConferenciaDinheiroCard = ({ conferencia, vendedorId, vendedorNome, data, 
                         <b>Este caixa foi fechado sem a conferência do dinheiro.</b>
                         <div className="text-xs mt-1">
                             A contagem é feita <b>antes</b> de fechar, no botão “Conferir o dinheiro” deste cartão.
-                            Para contar agora, é preciso <b>reabrir o caixa</b> (botão abaixo, para quem tem permissão).
+                            Para contar agora, é preciso <b>reabrir o caixa</b> (botão “Reabrir Caixa” na barra de ações do caixa, para quem tem permissão).
                         </div>
                     </div>
                 </div>

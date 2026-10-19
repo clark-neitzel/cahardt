@@ -1,5 +1,11 @@
 [
   {
+    "slug": "contagem-dinheiro",
+    "titulo": "Contar o dinheiro no Caixa",
+    "resumo": "Quem recebe o envelope do motorista agora conta o dinheiro no app: o botão Contar o dinheiro salva a contagem com o nome de quem contou e a hora, sem fechar o caixa. A conferência pode partir dela. Campos de número ficaram mais seguros.",
+    "data": "2026-10-19"
+  },
+  {
     "slug": "etiquetas-kit-festa",
     "titulo": "Etiquetas das caixas do Kit Festa",
     "resumo": "Botão novo no pedido do Kit Festa e nos cards do Delivery imprime na Zebra uma etiqueta por caixa com sabor, QR do site e uma frase de agradecimento, e a cada 4 caixas uma com pedido, cliente e horário.",

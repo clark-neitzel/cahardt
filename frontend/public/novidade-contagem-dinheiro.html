@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Contar o Dinheiro no Caixa — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp (sem imagem de propósito) -->
+<meta property="og:title" content="💵 Novidade no Hardt App: Contar o dinheiro no Caixa">
+<meta property="og:description" content="Quem recebe o envelope do motorista agora conta o dinheiro nota por nota, salva e fica registrado quem contou e a hora. Campos de número também ficaram mais seguros.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 96px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 7vw, 40px);
+    font-weight: 800;
+    line-height: 1.12;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.75);
+    font-size: 16px;
+    max-width: 46ch;
+    margin: 0 auto;
+    text-wrap: balance;
+  }
+
+  /* mock da tela flutuando sobre o hero */
+  .mock {
+    max-width: 420px;
+    margin: -68px auto 28px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.28);
+    overflow: hidden;
+    text-align: left;
+  }
+  .mock-top {
+    background: var(--house);
+    color: #fff;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .mock-top small {
+    display: block;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    color: rgba(255,255,255,.55);
+  }
+  .mock-top strong { font-size: 16px; line-height: 1.2; }
+  .mock-ico { font-size: 24px; }
+  .mock-body { padding: 16px 18px 18px; }
+  .mock-label {
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--ink-soft);
+    margin-bottom: 4px;
+  }
+  .mock-input {
+    border: 1.5px solid #d8d5cc;
+    border-radius: 10px;
+    padding: 11px 13px;
+    font-size: 15px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--ink);
+    background: #fff;
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+  }
+  .mock-input.focado { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0,117,74,.14); }
+  .cursor { display: inline-block; width: 2px; height: 18px; background: var(--primary); margin-left: 2px; animation: pisca 1s steps(1) infinite; }
+  @keyframes pisca { 50% { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .cursor { animation: none; } }
+  .mock-campos { margin-top: 14px; display: grid; gap: 9px; }
+  .campo {
+    background: #f6f5f1;
+    border-radius: 9px;
+    padding: 8px 12px;
+    font-size: 13px;
+    color: #b9b5aa;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background .4s, color .4s;
+  }
+  .campo b { font-weight: 700; }
+  .campo.cheio { background: var(--mint); color: var(--primary-dark); }
+  .campo .ck { opacity: 0; transition: opacity .4s; }
+  .campo.cheio .ck { opacity: 1; }
+  .mock-status {
+    margin-top: 12px;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--ink-soft);
+    min-height: 20px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .mock-status.ok { color: var(--primary-dark); }
+
+  /* botão de demo */
+  .demo-cta {
+    display: block;
+    width: 100%;
+    max-width: 420px;
+    margin: 0 auto 8px;
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    font: inherit;
+    font-size: 16px;
+    font-weight: 800;
+    padding: 16px;
+    border-radius: 999px;
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(0,117,74,.35);
+  }
+  .demo-cta:hover { background: var(--primary-dark); }
+  .demo-cta:focus-visible, .acc-head:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .demo-hint { text-align: center; font-size: 12px; color: var(--ink-soft); margin: 0 0 34px; }
+
+  /* ── SEÇÕES / ACCORDION ── */
+  .sec-label {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: var(--primary-dark);
+    margin: 34px 4px 12px;
+  }
+  .acc {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .acc-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: none;
+    border: none;
+    font: inherit;
+    text-align: left;
+    padding: 15px 16px;
+    cursor: pointer;
+    min-height: 56px;
+  }
+  .acc-ico {
+    width: 38px; height: 38px;
+    border-radius: 11px;
+    background: var(--mint);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  /* passos */
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n {
+    width: 30px; height: 30px; flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 800;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .rodape {
+    text-align: center;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 40px;
+  }
+  .rodape strong { color: var(--primary-dark); }
+
+  /* ── MOCKUPS DAS TELAS DO APP ── */
+  .tela {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .tela-titulo {
+    background: var(--house);
+    color: #fff;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .app-card {
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .app-card-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    border-bottom: 1px solid #f0efe9;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: #6b756f;
+  }
+  .app-card-body { padding: 12px; }
+  .app-input {
+    border: 1px solid #d8d5cc;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 12.5px;
+    color: var(--ink);
+    background: #fff;
+    margin-bottom: 8px;
+  }
+  .app-input small { display: block; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: #9aa5a0; margin-bottom: 2px; }
+  .app-input.ok { background: var(--mint); border-color: rgba(0,117,74,.25); }
+  .app-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--primary);
+    color: #fff;
+    font-size: 12.5px;
+    font-weight: 700;
+    padding: 9px 16px;
+    border-radius: 999px;
+  }
+  .app-btn.claro { background: #fff; border: 1.5px solid var(--primary); color: var(--primary); }
+  .app-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+  .app-pill {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 7px 14px;
+    border-radius: 999px;
+    border: 1.5px solid #d8d5cc;
+    color: #6b756f;
+    background: #fff;
+  }
+  .app-pill.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .app-busca {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .app-busca .app-input { flex: 1; margin-bottom: 0; color: #9aa5a0; }
+  .app-toggle-linha {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: #f7f6f2;
+    border: 1px solid #edece6;
+    border-radius: 10px;
+    padding: 9px 12px;
+    font-size: 12.5px;
+  }
+  .app-toggle-linha small { display: block; font-size: 10.5px; color: #9aa5a0; }
+  .app-toggle {
+    width: 38px; height: 22px; flex-shrink: 0;
+    border-radius: 999px;
+    background: var(--primary);
+    position: relative;
+  }
+  .app-toggle::after {
+    content: '';
+    position: absolute;
+    top: 3px; right: 3px;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: #fff;
+  }
+  .pin {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    flex-shrink: 0;
+    vertical-align: 2px;
+    margin-left: 6px;
+  }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+  /* extras desta página */
+  .hero { padding-bottom: 40px; }
+  .tela-corpo { padding: 14px; }
+  .cont-grid { display: grid; grid-template-columns: 1fr; gap: 8px; }
+  @media (min-width: 560px) { .cont-grid { grid-template-columns: repeat(3, 1fr); } }
+  .nota { display: grid; grid-template-columns: 3.4rem 1fr 4.6rem; gap: 4px; align-items: center; font-size: 12px; padding: 4px 0; border-bottom: 1px solid #f0efe9; }
+  .nota:last-child { border-bottom: 0; }
+  .nota .qtd { display: flex; align-items: center; justify-content: center; gap: 4px; }
+  .nota .qtd i { font-style: normal; width: 22px; height: 22px; border-radius: 50%; border: 1px solid #d8d5cc; text-align: center; line-height: 20px; font-weight: 800; color: var(--primary); }
+  .nota .qtd span { border: 1px solid #d8d5cc; border-radius: 6px; padding: 2px 8px; min-width: 34px; text-align: center; font-weight: 700; }
+  .nota .sub { text-align: right; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+  .total-barra { background: var(--house); color: #fff; border-radius: 12px; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; font-size: 13px; margin-top: 10px; }
+  .total-barra b { font-size: 18px; }
+  .abas-mock { display: flex; background: #ece9e1; border-radius: 999px; padding: 3px; margin-bottom: 10px; max-width: 280px; }
+  .abas-mock span { flex: 1; text-align: center; font-size: 11.5px; font-weight: 700; padding: 6px 4px; border-radius: 999px; color: #6b756f; }
+  .abas-mock span.on { background: #fff; color: var(--house); }
+  .chip-ultima { background: var(--mint); color: var(--primary-dark); border-radius: 10px; padding: 9px 12px; font-size: 12.5px; font-weight: 600; margin-bottom: 10px; }
+  .campo-num { display: inline-block; border: 1px solid #d8d5cc; border-radius: 8px; padding: 6px 12px; font-size: 13px; background: #fff; font-weight: 700; }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>Contar o dinheiro<br>do envelope, no Caixa</h1>
+    <p>Quem recebe o dinheiro do motorista agora conta nota por nota no próprio app. A contagem fica salva com o nome de quem contou e a hora — e o caixa continua aberto até a conferência.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="sec-label">O que mudou</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">💵</span><strong>Botão "Contar o dinheiro"</strong><span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>No cartão <b>Conferência do dinheiro</b>, do Caixa, apareceu o botão <b>Contar o dinheiro</b> (contorno verde).</li>
+        <li>Você conta as cédulas, as moedas e outros valores (cheque, vale…) e toca em <b>Salvar contagem</b>.</li>
+        <li>Fica registrado <b>quem contou</b> e a <b>hora</b>. Pode contar mais de uma vez no dia; as contagens antigas continuam guardadas.</li>
+        <li><b>Contar não fecha o caixa</b>, não pede motivo nem senha. É só uma anotação do que tem no envelope.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">✅</span><strong>"Conferir e fechar" continua como antes</strong><span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>A conferência oficial é a mesma de sempre: o app compara o que foi contado com o que era para ter, e a diferença pede motivo (e senha, se passar da quebra de caixa).</li>
+        <li>Se alguém já contou, quem confere toca em <b>Usar na conferência</b> e a calculadora abre <b>já preenchida</b> com aquela contagem — dá para ajustar antes de confirmar.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🖥️</span><strong>Calculadora mais fácil de usar</strong><span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li><b>No computador:</b> tela larga com 3 colunas (cédulas, moedas e outros), tudo à vista.</li>
+        <li><b>No celular:</b> abas <b>Cédulas · Moedas · Outros</b>, com o total sempre visível embaixo.</li>
+        <li>Digite a quantidade e aperte <b>Enter</b> para pular para a próxima nota. Os botões <b>−</b> e <b>+</b> ajustam de um em um.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">📝</span><strong>Motivo da diferença em dois toques</strong><span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Quando o dinheiro não bate, aparecem dois botões: <b>Quebra de caixa</b> (o texto se preenche sozinho: "falta" ou "sobra") e <b>Outro motivo…</b> (você escreve).</li>
+        <li>Se não houver diferença, os botões nem aparecem.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🔢</span><strong>Campos de número em todo o sistema</strong><span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Os campos de número agora <b>só aceitam número</b> — letra e símbolo estranho não entram mais.</li>
+        <li>A <b>rodinha do mouse não muda mais o valor</b> sem querer quando você rola a tela com o campo selecionado.</li>
+        <li>No <b>celular</b>, ao tocar no campo abre direto o <b>teclado numérico</b>.</li>
+        <li>Vale para os campos do app inteiro (pedidos, produtos, financeiro, caixa…).</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ══════════ TELAS ══════════ -->
+  <div class="sec-label">As telas do app</div>
+
+  <div class="tela">
+    <div class="tela-titulo">Tela 1 · Caixa → cartão "Conferência do dinheiro"</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">💵 Conferência do dinheiro</div>
+        <div class="app-card-body">
+          <div class="chip-ultima">R$ 1.280,00 · 38 peças · Contado por Maria às 16:42 <span class="pin">3</span></div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;">
+            <span class="app-btn claro">💵 Contar o dinheiro<span class="pin">1</span></span>
+            <span class="app-btn">Conferir e fechar — R$ 1.280,00<span class="pin">2</span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Contar o dinheiro</b>: abre a calculadora só para contar e salvar. Não fecha o caixa.</span></div>
+      <div><span class="pin">2</span><span><b>Conferir e fechar</b>: a conferência oficial, igual a antes.</span></div>
+      <div><span class="pin">3</span><span>Depois de contar, o cartão mostra a última contagem, <b>quem contou</b> e a hora. Ali também ficam <b>Usar na conferência</b> e <b>Contar de novo</b>.</span></div>
+    </div>
+  </div>
+
+  <div class="tela">
+    <div class="tela-titulo">Tela 2 · A calculadora no computador (3 colunas)</div>
+    <div class="tela-corpo">
+      <div class="cont-grid">
+        <div class="app-card"><div class="app-card-head">Cédulas</div><div class="app-card-body">
+          <div class="nota"><b>R$ 200</b><span class="qtd"><i>−</i><span>2</span><i>+</i></span><span class="sub">400,00</span></div>
+          <div class="nota"><b>R$ 100</b><span class="qtd"><i>−</i><span>3</span><i>+</i></span><span class="sub">300,00</span></div>
+          <div class="nota"><b>R$ 50</b><span class="qtd"><i>−</i><span>4</span><i>+</i></span><span class="sub">200,00</span></div>
+          <div style="margin-top:6px"><span class="pin" style="margin:0">1</span> <span class="pin">2</span></div>
+        </div></div>
+        <div class="app-card"><div class="app-card-head">Moedas</div><div class="app-card-body">
+          <div class="nota"><b>R$ 1</b><span class="qtd"><i>−</i><span>10</span><i>+</i></span><span class="sub">10,00</span></div>
+          <div class="nota"><b>R$ 0,50</b><span class="qtd"><i>−</i><span>6</span><i>+</i></span><span class="sub">3,00</span></div>
+        </div></div>
+        <div class="app-card"><div class="app-card-head">Outros valores</div><div class="app-card-body">
+          <div class="app-input"><small>Descrição</small>Cheque nº 123</div>
+          <div class="app-input"><small>Valor</small>R$ 367,00</div>
+        </div></div>
+      </div>
+      <div class="total-barra"><span>Total contado <span class="pin">3</span></span><b>R$ 1.280,00</b></div>
+      <div style="text-align:right;margin-top:10px;"><span class="app-btn">Salvar contagem<span class="pin">4</span></span></div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Digite a <b>quantidade</b> de cada nota e aperte <b>Enter</b> para ir para a próxima.</span></div>
+      <div><span class="pin">2</span><span>Os botões <b>−</b> e <b>+</b> mudam a quantidade de um em um.</span></div>
+      <div><span class="pin">3</span><span>O <b>total</b> vai somando enquanto você conta.</span></div>
+      <div><span class="pin">4</span><span><b>Salvar contagem</b> grava com seu nome e a hora.</span></div>
+    </div>
+  </div>
+
+  <div class="tela">
+    <div class="tela-titulo">Tela 3 · A calculadora no celular (abas)</div>
+    <div class="tela-corpo">
+      <div class="abas-mock"><span class="on">Cédulas</span><span>Moedas</span><span>Outros</span></div>
+      <div class="app-card"><div class="app-card-body">
+        <div class="nota"><b>R$ 200</b><span class="qtd"><i>−</i><span>2</span><i>+</i></span><span class="sub">400,00</span></div>
+        <div class="nota"><b>R$ 100</b><span class="qtd"><i>−</i><span>3</span><i>+</i></span><span class="sub">300,00</span></div>
+        <div class="nota"><b>R$ 50</b><span class="qtd"><i>−</i><span>4</span><i>+</i></span><span class="sub">200,00</span></div>
+      </div></div>
+      <div class="total-barra"><span>Total <span class="pin">2</span></span><b>R$ 1.280,00</b></div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>As <b>abas</b> separam cédulas, moedas e outros valores — nada de rolar a tela sem fim.</span></div>
+      <div><span class="pin">2</span><span>O total fica sempre visível embaixo. O campo abre o <b>teclado numérico</b> do celular.</span></div>
+    </div>
+  </div>
+
+  <div class="tela">
+    <div class="tela-titulo">Tela 4 · Conferência com diferença</div>
+    <div class="tela-corpo">
+      <div class="app-card"><div class="app-card-head">Diferença: falta de R$ 20,00</div><div class="app-card-body">
+        <div class="app-pills" style="margin-bottom:10px;">
+          <span class="app-pill on">Quebra de caixa</span><span class="app-pill">Outro motivo…</span><span class="pin">1</span>
+        </div>
+        <div class="app-input"><small>Motivo</small>Quebra de caixa (falta) <span class="pin">2</span></div>
+        <div class="app-input"><small>Senha do autorizador</small>••••••••<span class="pin">3</span></div>
+      </div></div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Quebra de caixa</b> ou <b>Outro motivo…</b>: escolha um dos dois.</span></div>
+      <div><span class="pin">2</span><span>Em "Quebra de caixa" o texto se preenche sozinho (falta ou sobra). Em "Outro motivo" você escreve.</span></div>
+      <div><span class="pin">3</span><span>Só pede senha se a diferença passar da sua quebra de caixa. <b>Senha errada?</b> O app avisa, mantém tudo que você contou e limpa só a senha para digitar de novo.</span></div>
+    </div>
+  </div>
+
+  <div class="tela">
+    <div class="tela-titulo">Tela 5 · Campos de número (todo o sistema)</div>
+    <div class="tela-corpo">
+      <div class="app-card"><div class="app-card-body">
+        <div class="app-input"><small>Quantidade</small><span class="campo-num">12</span><span class="pin">1</span></div>
+        <div style="font-size:12.5px;color:var(--ink-soft);">⌨️ Teclado numérico no celular <span class="pin">2</span></div>
+      </div></div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Só entram números. Girar a rodinha do mouse sobre o campo <b>não altera</b> o valor.</span></div>
+      <div><span class="pin">2</span><span>No celular, tocar no campo abre o teclado de números.</span></div>
+    </div>
+  </div>
+
+  <div class="sec-label">Para contar o dinheiro</div>
+  <div class="passos">
+    <div class="passo"><span class="passo-n">1</span><div><b>Atualize o app:</b> toque no ícone de atualizar ↻ (ou feche e abra o app).</div></div>
+    <div class="passo"><span class="passo-n">2</span><div>Abra o <b>Caixa</b> do motorista e toque em <b>Contar o dinheiro</b>.</div></div>
+    <div class="passo"><span class="passo-n">3</span><div>Digite a quantidade de cada nota e moeda (Enter pula para a próxima).</div></div>
+    <div class="passo"><span class="passo-n">4</span><div>Toque em <b>Salvar contagem</b>. Quem for conferir usa <b>Usar na conferência</b>.</div></div>
+  </div>
+
+  <p class="rodape">Dúvidas? Pergunte ao <strong>Clippy</strong> dentro do app — ele já conhece a novidade.<br>— Hardt Salgados</p>
+</div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.parentElement;
+    const abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>

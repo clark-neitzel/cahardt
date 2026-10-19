@@ -181,7 +181,7 @@ router.post('/autorizacoes-devolucao/:id/responder', async (req, res) => {
             if (!senha) return res.status(400).json({ error: 'Digite sua senha para autorizar.' });
             if (!usuario.senha) return res.status(403).json({ error: 'Sem senha configurada no app.' });
             const senhaValida = await bcrypt.compare(senha, usuario.senha);
-            if (!senhaValida) return res.status(401).json({ error: 'Senha incorreta.' });
+            if (!senhaValida) return res.status(403).json({ error: 'Senha incorreta.' });
 
             try {
                 await aplicarDesconsideracao({
@@ -2008,7 +2008,7 @@ router.post('/conferencia-devolucao/autorizar', async (req, res) => {
             return res.status(403).json({ error: 'Sem senha configurada no app.' });
         }
         const senhaValida = await bcrypt.compare(senha, autorizador.senha);
-        if (!senhaValida) return res.status(401).json({ error: 'Senha incorreta.' });
+        if (!senhaValida) return res.status(403).json({ error: 'Senha incorreta.' });
 
         const { qtdFinal } = await aplicarDesconsideracao({
             targetVendedor, data, produtoId, quantidade: qtd, motivo,
