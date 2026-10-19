@@ -106,7 +106,7 @@ A cor da pílula conta o status, e um pontinho piscando avisa quando precisa de 
 | ⚪ Cinza | **Fechado** | Encerrado, aguardando conferência final do admin |
 | 🟩 Verde-escuro, com ✓ | **Conferido** | Tudo certo, finalizado |
 
-A **própria pílula do usuário sempre aparece**, mesmo sem nenhum movimento no dia. As pílulas de **outras pessoas** só aparecem para quem pode ver outros vendedores (`admin`/`Pode_Editar_Caixa`) e só entram na faixa quando tiveram algum movimento naquele dia — quem não teve nada não aparece ali (mas segue acessível pelo **"+ outros"**).
+A **própria pílula do usuário sempre aparece**, mesmo sem nenhum movimento no dia. As pílulas de **outras pessoas** só aparecem para quem pode ver outros vendedores (`admin`/`Pode_Editar_Caixa`) e entram na faixa quando a pessoa **usou qualquer coisa que aparece no caixa** naquele dia: dinheiro (entrega, despesa, adiantamento, cobrança em rota, baixa de título) **ou** atividade sem dinheiro — **Diário do Dia** (KM do veículo / ponto presencial ou home office) e **atendimento registrado** (feito pela pessoa ou em nome dela). Quem só teve KM aparece como "Aberto · R$ 0,00" — é o caixa da pessoa, mesmo sem dinheiro. Quem não teve nada mesmo não aparece ali (mas segue acessível pelo **"+ outros"**).
 
 No cabeçalho da faixa fica um resumo contando quantas pílulas há de cada status (ex.: "3 a conferir · 1 aberto"). No celular a faixa rola para o lado com o dedo.
 

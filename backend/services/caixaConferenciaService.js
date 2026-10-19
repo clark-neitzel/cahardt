@@ -724,7 +724,11 @@ const resumoDoDia = async (data, { usuario, podeVerOutros }) => {
     // Candidatos do dia: quem tem pedido entregue, despesa ou cobrança de rota
     // nestes dias, ou já tem CaixaDiario aberto nesta data (baixa manual de título
     // fica coberta pelo caixa — toda baixa em espécie exige um CaixaDiario existente).
-    const [despesasVend, entregasVend, cobrancasVend, caixasVend] = await Promise.all([
+    // Além disso (pedido do dono, 19/10/2026): quem usou QUALQUER coisa que aparece
+    // na tela do caixa — Diário do Dia (KM do veículo) ou atendimento registrado —
+    // também ganha pílula, mesmo sem dinheiro nenhum (caso do Jociel: só tinha KM e
+    // a faixa dizia que ele não tinha caixa).
+    const [despesasVend, entregasVend, cobrancasVend, caixasVend, diariosVend, atendimentosVend] = await Promise.all([
         prisma.despesa.findMany({ where: { dataReferencia: { in: dias } }, select: { vendedorId: true } }),
         prisma.pedido.findMany({
             where: {
@@ -735,13 +739,26 @@ const resumoDoDia = async (data, { usuario, podeVerOutros }) => {
         }),
         prisma.cobrancaRota.findMany({ where: { dataReferencia: { in: dias } }, select: { cobradoPorId: true } }),
         prisma.caixaDiario.findMany({ where: { dataReferencia: data }, select: { vendedorId: true } }),
+        prisma.diarioVendedor.findMany({ where: { dataReferencia: { in: dias } }, select: { vendedorId: true } }),
+        prisma.atendimento.findMany({
+            where: { criadoEm: { gte: inicio, lte: fim } },
+            select: { idVendedor: true, usuarioRegistroId: true },
+        }),
     ]);
+
+    // Atividade "sem dinheiro" que mesmo assim mostra que a pessoa usou o caixa no dia.
+    const comAtividade = new Set([
+        ...diariosVend.map(d => d.vendedorId),
+        ...atendimentosVend.map(a => a.idVendedor),
+        ...atendimentosVend.map(a => a.usuarioRegistroId),
+    ].filter(Boolean));
 
     const candidatos = new Set([
         ...despesasVend.map(d => d.vendedorId),
         ...entregasVend.map(e => e.embarque?.responsavelId).filter(Boolean),
         ...cobrancasVend.map(c => c.cobradoPorId).filter(Boolean),
         ...caixasVend.map(c => c.vendedorId),
+        ...comAtividade,
     ]);
     candidatos.delete(usuario.id);
 
@@ -767,7 +784,9 @@ const resumoDoDia = async (data, { usuario, podeVerOutros }) => {
     todosIds.forEach((vendedorId, idx) => {
         const calc = calculosPorVendedor[idx];
         const souEu = vendedorId === usuario.id;
-        if (!souEu && !calc.temMovimento) return; // outros só entram com movimento no dia
+        const temAtividade = comAtividade.has(vendedorId);
+        // outros só entram com movimento (dinheiro) OU atividade (KM/atendimento) no dia
+        if (!souEu && !calc.temMovimento && !temAtividade) return;
         const info = infoPorId[vendedorId];
         linhas.push({
             vendedorId,
@@ -778,6 +797,7 @@ const resumoDoDia = async (data, { usuario, podeVerOutros }) => {
             entregasCount: calc.entregasCount,
             caixaId: calc.caixa?.id || null,
             temMovimento: calc.temMovimento,
+            temAtividade,
         });
     });
 
