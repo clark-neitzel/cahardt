@@ -9,6 +9,7 @@ import cobrancaService from '../../services/cobrancaService';
 import SelectBusca from '../../components/SelectBusca';
 import { useAuth } from '../../contexts/AuthContext';
 import { useFiltrosSalvos } from '../../hooks/useFiltrosSalvos';
+import CampoNumero from '../../components/CampoNumero';
 
 const fmtMoeda = (v) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const fmtData = (d) => d ? new Date(d).toLocaleDateString('pt-BR') : '-';
@@ -459,17 +460,17 @@ function CardConfig({ config, formas, equipe, modelos = [], onSalvar, onExcluir,
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div>
                             <label className="text-sm font-medium text-gray-700 block mb-1">1º aviso (dias após vencer)</label>
-                            <input type="number" min="0" value={dados.diasPrimeiroAviso} onChange={e => set('diasPrimeiroAviso', e.target.value)}
+                            <CampoNumero min="0" value={dados.diasPrimeiroAviso} onChange={e => set('diasPrimeiroAviso', e.target.value)}
                                 className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
                         </div>
                         <div>
                             <label className="text-sm font-medium text-gray-700 block mb-1">Repetir a cada (dias)</label>
-                            <input type="number" min="1" value={dados.repetirCadaDias} onChange={e => set('repetirCadaDias', e.target.value)}
+                            <CampoNumero min="1" value={dados.repetirCadaDias} onChange={e => set('repetirCadaDias', e.target.value)}
                                 className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
                         </div>
                         <div>
                             <label className="text-sm font-medium text-gray-700 block mb-1">Máximo de avisos</label>
-                            <input type="number" min="1" value={dados.maxAvisos} onChange={e => set('maxAvisos', e.target.value)}
+                            <CampoNumero min="1" value={dados.maxAvisos} onChange={e => set('maxAvisos', e.target.value)}
                                 className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
                         </div>
                         <div>
@@ -492,7 +493,7 @@ function CardConfig({ config, formas, equipe, modelos = [], onSalvar, onExcluir,
                             </label>
                             {dados.lembreteAntes && (
                                 <span className="flex items-center gap-1 text-sm text-gray-700">
-                                    <input type="number" min="1" value={dados.diasLembrete} onChange={e => set('diasLembrete', e.target.value)}
+                                    <CampoNumero min="1" value={dados.diasLembrete} onChange={e => set('diasLembrete', e.target.value)}
                                         className="w-16 border border-gray-300 rounded px-2 py-1 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
                                     dia(s) antes
                                 </span>
@@ -555,10 +556,10 @@ function CardConfig({ config, formas, equipe, modelos = [], onSalvar, onExcluir,
                                         <span className="text-xs font-bold uppercase tracking-widest text-gray-600 flex-1 truncate">{t.nome || `Mensagem ${i + 1}`}</span>
                                         <div className="flex items-center gap-1.5 text-xs text-gray-700">
                                             <span>De</span>
-                                            <input type="number" min="0" value={t.deDias ?? ''} onChange={e => setTemplate(i, 'deDias', e.target.value)}
+                                            <CampoNumero min="0" value={t.deDias ?? ''} onChange={e => setTemplate(i, 'deDias', e.target.value)}
                                                 className="w-16 border border-gray-300 rounded px-2 py-1 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
                                             <span>a</span>
-                                            <input type="number" min="0" value={t.ateDias ?? ''} onChange={e => setTemplate(i, 'ateDias', e.target.value)} placeholder="∞"
+                                            <CampoNumero min="0" value={t.ateDias ?? ''} onChange={e => setTemplate(i, 'ateDias', e.target.value)} placeholder="∞"
                                                 className="w-16 border border-gray-300 rounded px-2 py-1 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
                                             <span>dias de atraso</span>
                                         </div>
@@ -802,7 +803,7 @@ function AbaCanais({ podeEditar }) {
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <label className="text-sm font-medium text-gray-700 block mb-1">Porta</label>
-                                <input className={inputCls} type="number" value={canais.email.port} onChange={e => setEmail('port', e.target.value)} />
+                                <CampoNumero className={inputCls} value={canais.email.port} onChange={e => setEmail('port', e.target.value)} />
                             </div>
                             <label className="flex items-end gap-2 text-sm text-gray-700 pb-2.5">
                                 <input type="checkbox" checked={canais.email.secure} onChange={e => setEmail('secure', e.target.checked)} className="h-4 w-4 accent-[#00754A]" />

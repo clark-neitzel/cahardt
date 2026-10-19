@@ -8,6 +8,7 @@ import api, { API_URL } from '../../services/api';
 import vendedorService from '../../services/vendedorService';
 import { useAuth } from '../../contexts/AuthContext';
 import SelectBusca from '../../components/SelectBusca';
+import CampoNumero from '../../components/CampoNumero';
 
 const TABS = [
     { id: 'resumo', label: 'Resumo', icon: Car },
@@ -626,7 +627,7 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate, readOnly = false, allowedT
                                 <div className="grid grid-cols-2 gap-3">
                                     <div>
                                         <label className="block text-xs text-gray-600 mb-1">Alerta por KM</label>
-                                        <input type="number" placeholder="Ex: 150000" value={novoAlerta.kmAlerta}
+                                        <CampoNumero placeholder="Ex: 150000" value={novoAlerta.kmAlerta}
                                             onChange={e => setNovoAlerta(p => ({ ...p, kmAlerta: e.target.value }))}
                                             className="w-full border border-gray-300 rounded-md p-2 text-sm" />
                                     </div>
@@ -718,7 +719,7 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate, readOnly = false, allowedT
                                 {editando ? (
                                     <div>
                                         <label className="block text-xs text-gray-500 mb-1">KM por dia (estimativa)</label>
-                                        <input type="number" value={form.kmMedioSugerido}
+                                        <CampoNumero value={form.kmMedioSugerido}
                                             onChange={e => setForm(p => ({ ...p, kmMedioSugerido: e.target.value }))}
                                             placeholder="Ex: 150"
                                             className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm" />
@@ -740,7 +741,7 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate, readOnly = false, allowedT
                                     <div>
                                         <label className="block text-xs text-gray-500 mb-1">Capacidade do Tanque</label>
                                         {editando ? (
-                                            <input type="number" step="0.5" value={form.capacidadeTanque}
+                                            <CampoNumero step="0.5" value={form.capacidadeTanque}
                                                 onChange={e => setForm(p => ({ ...p, capacidadeTanque: e.target.value }))}
                                                 placeholder="Ex: 50"
                                                 className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm" />
@@ -794,14 +795,14 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate, readOnly = false, allowedT
                                     <div className="grid grid-cols-2 gap-3">
                                         <div>
                                             <label className="block text-xs text-gray-600 mb-1">Litros</label>
-                                            <input type="number" step="0.01" value={abastForm.litros}
+                                            <CampoNumero step="0.01" value={abastForm.litros}
                                                 onChange={e => setAbastForm(p => ({ ...p, litros: e.target.value }))}
                                                 placeholder="Ex: 45.5"
                                                 className="w-full border border-gray-300 rounded-md p-2 text-sm" />
                                         </div>
                                         <div>
                                             <label className="block text-xs text-gray-600 mb-1">Valor (R$) *</label>
-                                            <input type="number" step="0.01" required value={abastForm.valor}
+                                            <CampoNumero step="0.01" required value={abastForm.valor}
                                                 onChange={e => setAbastForm(p => ({ ...p, valor: e.target.value }))}
                                                 placeholder="Ex: 250.00"
                                                 className="w-full border border-gray-300 rounded-md p-2 text-sm" />
@@ -810,7 +811,7 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate, readOnly = false, allowedT
 
                                     <div>
                                         <label className="block text-xs text-gray-600 mb-1">KM no Hodômetro *</label>
-                                        <input type="number" required value={abastForm.kmNoAbastecimento}
+                                        <CampoNumero required value={abastForm.kmNoAbastecimento}
                                             onChange={e => setAbastForm(p => ({ ...p, kmNoAbastecimento: e.target.value }))}
                                             placeholder={ultimoKmAbast ? `Maior que ${ultimoKmAbast.toLocaleString('pt-BR')}` : 'Ex: 145000'}
                                             min={!isAdmin && ultimoKmAbast ? ultimoKmAbast + 1 : undefined}
@@ -879,20 +880,20 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate, readOnly = false, allowedT
                                                             <div className="grid grid-cols-2 gap-2">
                                                                 <div>
                                                                     <label className="block text-[10px] text-gray-500 mb-0.5">Litros</label>
-                                                                    <input type="number" step="0.01" value={editAbastForm.litros}
+                                                                    <CampoNumero step="0.01" value={editAbastForm.litros}
                                                                         onChange={e => setEditAbastForm(p => ({ ...p, litros: e.target.value }))}
                                                                         className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm" />
                                                                 </div>
                                                                 <div>
                                                                     <label className="block text-[10px] text-gray-500 mb-0.5">Valor (R$)</label>
-                                                                    <input type="number" step="0.01" value={editAbastForm.valor}
+                                                                    <CampoNumero step="0.01" value={editAbastForm.valor}
                                                                         onChange={e => setEditAbastForm(p => ({ ...p, valor: e.target.value }))}
                                                                         className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm" />
                                                                 </div>
                                                             </div>
                                                             <div>
                                                                 <label className="block text-[10px] text-gray-500 mb-0.5">KM Hodômetro</label>
-                                                                <input type="number" value={editAbastForm.kmNoAbastecimento}
+                                                                <CampoNumero value={editAbastForm.kmNoAbastecimento}
                                                                     onChange={e => setEditAbastForm(p => ({ ...p, kmNoAbastecimento: e.target.value }))}
                                                                     className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm" />
                                                             </div>
@@ -1024,14 +1025,14 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate, readOnly = false, allowedT
                                     <div className="grid grid-cols-2 gap-3">
                                         <div>
                                             <label className="block text-xs text-gray-600 mb-1">KM Inicial *</label>
-                                            <input type="number" required value={usoForm.kmInicial}
+                                            <CampoNumero required value={usoForm.kmInicial}
                                                 onChange={e => setUsoForm(p => ({ ...p, kmInicial: e.target.value }))}
                                                 placeholder="Ex: 140000"
                                                 className="w-full border border-gray-300 rounded-md p-2 text-sm" />
                                         </div>
                                         <div>
                                             <label className="block text-xs text-gray-600 mb-1">KM Final *</label>
-                                            <input type="number" required value={usoForm.kmFinal}
+                                            <CampoNumero required value={usoForm.kmFinal}
                                                 onChange={e => setUsoForm(p => ({ ...p, kmFinal: e.target.value }))}
                                                 placeholder="Ex: 140150"
                                                 className="w-full border border-gray-300 rounded-md p-2 text-sm" />
@@ -1105,13 +1106,13 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate, readOnly = false, allowedT
                                             <div className="grid grid-cols-2 gap-2">
                                                 <div>
                                                     <label className="block text-[10px] text-gray-500 mb-0.5">KM Inicial</label>
-                                                    <input type="number" value={editUsoForm.kmInicial}
+                                                    <CampoNumero value={editUsoForm.kmInicial}
                                                         onChange={e => setEditUsoForm(p => ({ ...p, kmInicial: e.target.value }))}
                                                         className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm" />
                                                 </div>
                                                 <div>
                                                     <label className="block text-[10px] text-gray-500 mb-0.5">KM Final {isAdmin && <span className="text-blue-500">(opcional)</span>}</label>
-                                                    <input type="number" value={editUsoForm.kmFinal}
+                                                    <CampoNumero value={editUsoForm.kmFinal}
                                                         onChange={e => setEditUsoForm(p => ({ ...p, kmFinal: e.target.value }))}
                                                         placeholder={isAdmin ? 'Opcional para admin' : ''}
                                                         className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm" />

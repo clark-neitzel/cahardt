@@ -39,6 +39,7 @@ import PageHeader from '../../components/PageHeader';
 import PopupContasEmAberto from '../../components/PopupContasEmAberto';
 import { tipoSelo, rotuloFormaAConfirmar } from '../../components/SeloInadimplencia';
 import { PEDIDO_ENVIO, rotuloStatus } from '../../constants/statusLabels';
+import CampoNumero from '../../components/CampoNumero';
 
 const DIAS_SIGLA = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'N/D'];
 
@@ -1439,7 +1440,7 @@ const EditarEntregaModal = ({ pedido, onClose, onSuccess }) => {
                                 </SelectBusca>
                                 <div className="relative w-28">
                                     <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[11px] text-gray-400">R$</span>
-                                    <input type="number" step="0.01" value={p.valor || ''} onChange={e => updatePagamento(i, 'valor', e.target.value)}
+                                    <CampoNumero step="0.01" value={p.valor || ''} onChange={e => updatePagamento(i, 'valor', e.target.value)}
                                         className="w-full pl-7 pr-2 py-1.5 border border-gray-200 rounded text-[12px] outline-none focus:border-sky-400 text-right" />
                                 </div>
                                 <button onClick={() => removePagamento(i)} className="text-red-400 hover:text-red-600 p-1">
@@ -1461,7 +1462,7 @@ const EditarEntregaModal = ({ pedido, onClose, onSuccess }) => {
                         {devolvidos.map((d, i) => (
                             <div key={i} className="flex items-center gap-2 mb-1.5">
                                 <span className="flex-1 text-[12px] text-gray-700 truncate">{d.produtoNome}</span>
-                                <input type="number" min="1" value={d.quantidade} onChange={e => updateDevolvido(i, 'quantidade', e.target.value)}
+                                <CampoNumero decimal casas={3} min="1" value={d.quantidade} onChange={e => updateDevolvido(i, 'quantidade', e.target.value)}
                                     className="w-16 border border-gray-200 rounded px-2 py-1.5 text-[12px] text-center outline-none focus:border-sky-400" />
                                 <span className="text-[10px] text-gray-400 w-16 text-right">R$ {d.valorBaseItem.toFixed(2)}</span>
                                 <button onClick={() => removeDevolvido(i)} className="text-red-400 hover:text-red-600 p-1">
@@ -2514,8 +2515,7 @@ const RotaLeads = () => {
                                                 </div>
                                                 <div>
                                                     <label className="text-[10px] font-semibold text-gray-500 uppercase mb-1 block">Tempo por Entrega (min)</label>
-                                                    <input
-                                                        type="number"
+                                                    <CampoNumero
                                                         min="1" max="120"
                                                         value={rotaConfig.tempoParadaMin}
                                                         onChange={e => setRotaConfig(c => ({ ...c, tempoParadaMin: Number(e.target.value) }))}

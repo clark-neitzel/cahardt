@@ -8,6 +8,7 @@ import { EtiquetaRender } from './EtiquetaLabelNova';
 import { TAMANHOS, TAMANHO_PADRAO, LAYOUTS, LAYOUT_PADRAO, layoutValido, paginaImpressao, pesoPacoteStr, ehDeitada, dimensoesEtiqueta } from './etiquetaModelos';
 import { IconeOrientacao, useEscalaPreview } from './OrientacaoEtiqueta';
 import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
+import CampoNumero from '../../components/CampoNumero';
 
 // ─── Utilidades de data ───────────────────────────────────────────────────────
 
@@ -184,8 +185,7 @@ function PrintModal({ et, onClose }) {
                             <button onClick={() => setCopies(c => Math.max(1, c-1))} className="w-8 h-8 flex items-center justify-center border border-gray-300 rounded-lg hover:bg-gray-50">
                                 <Minus className="h-3.5 w-3.5" />
                             </button>
-                            <input
-                                type="number"
+                            <CampoNumero
                                 min="1"
                                 max="999"
                                 value={copies}

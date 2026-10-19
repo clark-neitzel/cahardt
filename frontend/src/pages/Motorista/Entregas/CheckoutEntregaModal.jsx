@@ -15,6 +15,7 @@ import vendedorService from '../../../services/vendedorService';
 import { somenteAtivos } from '../../../utils/vendedoresFiltro';
 import inadimplenciaService from '../../../services/inadimplenciaService';
 import useInadimplenciaLote from '../../../hooks/useInadimplenciaLote';
+import CampoNumero from '../../../components/CampoNumero';
 
 const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
     const { user } = useAuth();
@@ -860,8 +861,7 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
 
                                             <div>
                                                 <label className="text-[10px] uppercase font-bold text-gray-500 tracking-wide">Valor Recebido (R$)</label>
-                                                <input
-                                                    type="number"
+                                                <CampoNumero
                                                     step="0.01"
                                                     min="0.01"
                                                     className="w-full mt-1 border-b-2 border-mint focus:border-primary bg-mint/40 font-mono text-xl py-2 px-2 text-primaryDark rounded font-bold outline-none"

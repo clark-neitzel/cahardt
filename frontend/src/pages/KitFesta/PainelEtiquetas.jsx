@@ -5,6 +5,7 @@ import SelectBusca from '../../components/SelectBusca';
 import { useFiltrosSalvos } from '../../hooks/useFiltrosSalvos';
 import { imprimirNaPagina } from '../../utils/imprimirNaPagina';
 import { montarEtiquetas, OPCOES_PADRAO, CONJUNTOS_FRASES } from './etiquetasCaixas';
+import CampoNumero from '../../components/CampoNumero';
 
 /**
  * Painel de opções + botão de imprimir as etiquetas das caixas (rolo 40×25 mm, TLP 2844).
@@ -48,7 +49,7 @@ export default function PainelEtiquetas({ pedido, qrSvg, titulo, onClose }) {
           </SelectBusca>
         </label>
         <label className="flex items-center gap-2">Pedido a cada
-          <input type="number" min="1" max="12" value={cadaTxt ?? op.cada}
+          <CampoNumero min="1" max="12" value={cadaTxt ?? op.cada}
             onChange={e => {
               const t = e.target.value;
               setCadaTxt(t);

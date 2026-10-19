@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { AlertTriangle, Loader2, Lock } from 'lucide-react';
 import toast from 'react-hot-toast';
 import inadimplenciaService from '../../../services/inadimplenciaService';
+import CampoNumero from '../../../components/CampoNumero';
 
 /**
  * Regras da "Venda a inadimplente" (só admin — o servidor também exige admin no PUT).
@@ -74,8 +75,8 @@ const VendaInadimplenteConfigCard = () => {
         const atual = cfg[chave];
         return (
             <>
-                <input
-                    type="number" inputMode="decimal" min="0" max={max} step={passo}
+                <CampoNumero
+ min="0" max={max} step={passo}
                     value={digitado[chave] ?? String(atual ?? '')}
                     disabled={salvando}
                     onChange={(e) => setDigitado(d => ({ ...d, [chave]: e.target.value }))}

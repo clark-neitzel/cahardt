@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, Loader2, Clock, Plus, Trash2, Calendar, CalendarRange, Package, Truck, Check, X, CalendarX } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { kitFestaService } from '../../services/kitFestaService';
+import CampoNumero from '../../components/CampoNumero';
 
 const MES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 const DOW = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
@@ -68,7 +69,7 @@ function AntecedenciaConfig() {
         <div className="flex flex-col sm:flex-row sm:items-end gap-3">
           <div>
             <label className="text-sm font-medium text-gray-700 block mb-1">Antecedência mínima (horas)</label>
-            <input type="number" min="0" step="1" inputMode="numeric" disabled={carregando}
+            <CampoNumero min="0" step="1" disabled={carregando}
               className="w-32 border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
               value={horas} onChange={e => setHoras(e.target.value)} />
           </div>
@@ -170,7 +171,7 @@ function LoteConfig({ onAplicado }) {
           </div>
           <div>
             <label className="text-xs text-gray-500">Pedidos por horário (capacidade)</label>
-            <input type="number" min="1" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value={cap} onChange={e => setCap(Math.max(1, parseInt(e.target.value) || 1))} />
+            <CampoNumero min="1" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value={cap} onChange={e => setCap(Math.max(1, parseInt(e.target.value) || 1))} />
           </div>
         </div>
 
@@ -372,7 +373,7 @@ function ModoSlots({ titulo, icon: Icon, slots, onSalvar, busy }) {
           <div key={s.hora} className="flex items-center gap-2 bg-gray-50 rounded-md px-2 py-1">
             <span className="font-mono text-sm text-gray-700 w-12">{s.hora}</span>
             <span className="text-[11px] text-gray-400">cap.</span>
-            <input type="number" min="1" value={s.capacidade} onChange={e => setCap(i, e.target.value)} className="w-14 border border-gray-200 rounded px-2 py-0.5 text-sm" />
+            <CampoNumero min="1" value={s.capacidade} onChange={e => setCap(i, e.target.value)} className="w-14 border border-gray-200 rounded px-2 py-0.5 text-sm" />
             {s.usado > 0 && <span className="text-[11px] text-amber-600">{s.usado} usado(s)</span>}
             <button onClick={() => remover(i)} className="ml-auto text-gray-300 hover:text-red-500"><Trash2 className="h-4 w-4" /></button>
           </div>
@@ -380,7 +381,7 @@ function ModoSlots({ titulo, icon: Icon, slots, onSalvar, busy }) {
       </div>
       <div className="flex gap-1.5 mt-2 pt-2 border-t border-gray-100">
         <input type="time" value={novoH} onChange={e => setNovoH(e.target.value)} className="border border-gray-300 rounded-lg px-2 py-1.5 text-sm flex-1" />
-        <input type="number" min="1" value={novoC} onChange={e => setNovoC(e.target.value)} className="w-14 border border-gray-300 rounded-lg px-2 py-1.5 text-sm" />
+        <CampoNumero min="1" value={novoC} onChange={e => setNovoC(e.target.value)} className="w-14 border border-gray-300 rounded-lg px-2 py-1.5 text-sm" />
         <button onClick={add} className="bg-gray-800 text-white rounded-lg px-2.5"><Plus className="h-4 w-4" /></button>
       </div>
     </div>

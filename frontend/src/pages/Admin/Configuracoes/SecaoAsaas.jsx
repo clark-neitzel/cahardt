@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Landmark, Save, Loader2, CheckCircle, XCircle, Info } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../../services/api';
+import CampoNumero from '../../../components/CampoNumero';
 
 // ── Configurações → Asaas (boleto e PIX) ─────────────────────────────────────
 // Multa/juros do boleto, mensagens das cobranças, validade padrão do PIX e
@@ -129,8 +130,8 @@ const SecaoAsaas = () => {
                                     <p className="text-xs text-gray-500">Cobrada uma vez, no dia seguinte ao vencimento. O banco calcula e cobra sozinho. Máximo por lei: 2%.</p>
                                 </div>
                                 <div className="flex items-center gap-2 flex-shrink-0">
-                                    <input
-                                        type="number" step="0.25" min="0" max="2"
+                                    <CampoNumero
+ step="0.25" min="0" max="2"
                                         value={config.multaPercent}
                                         onChange={e => set('multaPercent', e.target.value)}
                                         disabled={!config.multaAtiva}
@@ -150,8 +151,8 @@ const SecaoAsaas = () => {
                                     )}
                                 </div>
                                 <div className="flex items-center gap-2 flex-shrink-0">
-                                    <input
-                                        type="number" step="0.25" min="0" max="10"
+                                    <CampoNumero
+ step="0.25" min="0" max="10"
                                         value={config.jurosMesPercent}
                                         onChange={e => set('jurosMesPercent', e.target.value)}
                                         disabled={!config.jurosAtivo}

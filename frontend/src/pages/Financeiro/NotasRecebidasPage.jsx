@@ -13,6 +13,7 @@ import { useFiltrosSalvos } from '../../hooks/useFiltrosSalvos';
 import FiltroPeriodo, { usePeriodoSalvo } from '../../components/FiltroPeriodo';
 // CPF/CNPJ (inclui CNPJ ALFANUMÉRICO) — módulo único do projeto.
 import { mascaraDoc, formatarDoc, normalizarDoc } from '../../utils/documento';
+import CampoNumero from '../../components/CampoNumero';
 
 // ── Helpers ──
 const fmt = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
@@ -3233,8 +3234,7 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                         {!temDuplicatasXml && parcelas.length > 1 && (
                             <div className="flex items-center gap-1.5 text-xs text-gray-600" title="Dias entre uma parcela e a próxima (sequencia as datas)">
                                 <span>a cada</span>
-                                <input
-                                    type="number"
+                                <CampoNumero
                                     min="0"
                                     value={intervaloDias}
                                     onChange={e => aplicarIntervalo(e.target.value)}

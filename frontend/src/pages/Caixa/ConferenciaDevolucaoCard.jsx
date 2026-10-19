@@ -5,6 +5,7 @@ import caixaService from '../../services/caixaService';
 import produtoService from '../../services/produtoService';
 import configService from '../../services/configService';
 import SelectBusca from '../../components/SelectBusca';
+import CampoNumero from '../../components/CampoNumero';
 
 const fmt = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 const fmtQtd = (v) => Number(v || 0).toLocaleString('pt-BR', { maximumFractionDigits: 3 });
@@ -89,8 +90,8 @@ const ModalPedirAutorizacao = ({ item, falta, data, vendedorId, autorizadores, p
                     <div>
                         <label className="text-sm font-medium text-gray-700 block mb-1">Quantas unidades desconsiderar?</label>
                         <div className="flex items-center gap-2">
-                            <input
-                                type="number" min="0" max={falta} step="any"
+                            <CampoNumero
+ min="0" max={falta} step="any"
                                 value={quantidade}
                                 onChange={(e) => setQuantidade(e.target.value)}
                                 className="w-24 border border-gray-300 rounded px-3 py-2 text-sm text-center focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
@@ -489,8 +490,8 @@ const ConferenciaDevolucaoCard = ({ data, vendedorId, caixaStatus, podeReverter,
                                         <td className="px-4 py-3 text-center tabular-nums">{fmtQtd(item.qtdEsperada)}</td>
                                         <td className="px-4 py-3 text-center">
                                             {podeEditar && !item.sobra ? (
-                                                <input
-                                                    type="number" min="0" step="any"
+                                                <CampoNumero
+ min="0" step="any"
                                                     value={recebidas[item.produtoId] ?? ''}
                                                     onChange={(e) => setRecebidas(prev => ({ ...prev, [item.produtoId]: e.target.value }))}
                                                     placeholder="0"
@@ -553,8 +554,8 @@ const ConferenciaDevolucaoCard = ({ data, vendedorId, caixaStatus, podeReverter,
                                     <div className="text-center">
                                         <div className="text-xs text-gray-500">Voltou</div>
                                         {podeEditar && !item.sobra ? (
-                                            <input
-                                                type="number" min="0" step="any"
+                                            <CampoNumero
+ min="0" step="any"
                                                 value={recebidas[item.produtoId] ?? ''}
                                                 onChange={(e) => setRecebidas(prev => ({ ...prev, [item.produtoId]: e.target.value }))}
                                                 placeholder="0"
@@ -602,8 +603,8 @@ const ConferenciaDevolucaoCard = ({ data, vendedorId, caixaStatus, podeReverter,
                                     <option value="">Escolha o produto que voltou...</option>
                                     {produtos.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
                                 </SelectBusca>
-                                <input
-                                    type="number" min="0" step="any"
+                                <CampoNumero
+ min="0" step="any"
                                     value={sobraQtd}
                                     onChange={(e) => setSobraQtd(e.target.value)}
                                     className="w-full md:w-24 border border-gray-300 rounded px-3 py-2 text-sm text-center focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"

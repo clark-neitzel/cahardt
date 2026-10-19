@@ -15,6 +15,7 @@ import tabelaPrecoService from '../../../services/tabelaPrecoService';
 import categoriaProdutoService from '../../../services/categoriaProdutoService';
 import toast from 'react-hot-toast';
 import SelectBusca from '../../../components/SelectBusca';
+import CampoNumero from '../../../components/CampoNumero';
 
 // ══════════════════════════════════════════════════════════════════════════
 // ATENÇÃO: as chaves abaixo são o CONTRATO com o backend — não renomear,
@@ -1273,8 +1274,8 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                             <label className="text-sm font-medium text-gray-700 block mb-1">Quebra de caixa desta pessoa</label>
                             <div className="flex items-center gap-2">
                                 <span className="text-sm text-gray-500">R$</span>
-                                <input
-                                    type="number" min="0" step="0.01" inputMode="decimal"
+                                <CampoNumero
+ min="0" step="0.01"
                                     value={quebraCaixa}
                                     onChange={(e) => setQuebraCaixa(e.target.value)}
                                     className="w-32 border border-gray-300 rounded px-3 py-2 text-sm text-right font-semibold focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"

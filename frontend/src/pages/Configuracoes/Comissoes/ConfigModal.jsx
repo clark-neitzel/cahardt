@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
+import CampoNumero from '../../../components/CampoNumero';
 
 const ConfigModal = ({ dados, onClose, onSalvar }) => {
     const [form, setForm] = useState({
@@ -266,8 +267,7 @@ const FieldRow = ({ label, hint, value, onChange }) => (
         <label className="block text-xs font-medium text-gray-700 mb-0.5">{label}</label>
         {hint && <p className="text-[10px] text-gray-400 mb-1 leading-tight">{hint}</p>}
         <div className="flex items-center border border-gray-300 rounded overflow-hidden focus-within:border-primary focus-within:ring-1 focus-within:ring-primary bg-white">
-            <input
-                type="number"
+            <CampoNumero
                 step="0.01"
                 min="0"
                 max="100"

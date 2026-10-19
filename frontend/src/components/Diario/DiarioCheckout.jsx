@@ -3,6 +3,7 @@ import { LogOut, X, AlertTriangle } from 'lucide-react';
 import { useDiario } from '../../contexts/DiarioContext';
 import { toast } from 'react-hot-toast';
 import api from '../../services/api';
+import CampoNumero from '../CampoNumero';
 
 const DiarioCheckout = () => {
     const { diarioStatus, carregarStatus } = useDiario();
@@ -101,8 +102,7 @@ const DiarioCheckout = () => {
                                 <label className="block text-sm font-bold text-gray-700 uppercase tracking-wide">
                                     Odômetro / KM Final *
                                 </label>
-                                <input
-                                    type="number"
+                                <CampoNumero
                                     required
                                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 text-center text-3xl font-mono h-14 font-bold bg-gray-50 uppercase"
                                     value={kmFinal}

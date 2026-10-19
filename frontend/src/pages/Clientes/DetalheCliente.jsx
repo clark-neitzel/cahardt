@@ -30,6 +30,7 @@ import EstadoVazio from '../../components/EstadoVazio';
 import { rotuloFormaAConfirmar } from '../../components/SeloInadimplencia';
 import { ContasEmAbertoLista, AcoesContasEmAberto } from '../../components/PopupContasEmAberto';
 import { detalheAtualizacao, formatarDataHora, telaDaOrigem, linhaNoLocal, acaoHistorico, cargoExibicao } from '../../utils/gpsQuemAtualizou';
+import CampoNumero from '../../components/CampoNumero';
 
 // Data curta em pt-BR, tolerante a valor nulo/inválido vindo do backend
 const fmtDataBr = (v) => {
@@ -1424,7 +1425,7 @@ const DetalheCliente = () => {
                         </div>
                         <div>
                             <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Sobrescrever Ciclo (Dias)</label>
-                            <input type="number"
+                            <CampoNumero
                                 className="block w-full border border-gray-200 rounded-lg p-2.5 bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                                 placeholder="Ex: 5"
                                 value={formData.cicloCompraPersonalizadoDias}

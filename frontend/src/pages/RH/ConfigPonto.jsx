@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { MapPin, Loader2, ChevronLeft, Crosshair, CalendarDays, Plus, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import configService from '../../services/configService';
+import CampoNumero from '../../components/CampoNumero';
 
 export default function ConfigPonto() {
   const navigate = useNavigate();
@@ -122,7 +123,7 @@ export default function ConfigPonto() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <label className="block"><span className="text-sm font-medium text-gray-700">Latitude</span><input value={form.lat} onChange={set('lat')} placeholder="-26.9056" className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" /></label>
               <label className="block"><span className="text-sm font-medium text-gray-700">Longitude</span><input value={form.lng} onChange={set('lng')} placeholder="-48.6580" className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" /></label>
-              <label className="block"><span className="text-sm font-medium text-gray-700">Raio (metros)</span><input type="number" min="1" value={form.raioMetros} onChange={set('raioMetros')} className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" /></label>
+              <label className="block"><span className="text-sm font-medium text-gray-700">Raio (metros)</span><CampoNumero min="1" value={form.raioMetros} onChange={set('raioMetros')} className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" /></label>
             </div>
 
             <button onClick={usarMinhaLocalizacao} disabled={localizando} className="px-4 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-md font-medium text-sm inline-flex items-center gap-2 disabled:opacity-60">

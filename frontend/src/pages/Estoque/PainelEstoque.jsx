@@ -8,6 +8,7 @@ import { useAtualizaAoVoltar } from '../../hooks/useAtualizaAoVoltar';
 import { useFocoInicial } from '../../hooks/useFocoInicial';
 import { useLeitorCodigoBarras } from '../../hooks/useLeitorCodigoBarras';
 import ConfirmarAjusteModal from '../../components/ConfirmarAjusteModal';
+import CampoNumero from '../../components/CampoNumero';
 
 // ─── Embalagem / peso do produto ──────────────────────────────────────────────
 // O catálogo tem 11 produtos com "COXINHA FRANGO" no nome. A embalagem ("C/50 30GR",
@@ -747,14 +748,12 @@ export default function PainelEstoque() {
                                             <span className="text-xs text-gray-500">Mínimo:</span>
                                             {editandoMinimo ? (
                                                 <>
-                                                    <input
-                                                        type="number"
+                                                    <CampoNumero decimal casas={3}
                                                         value={estoqueMinimo}
                                                         onChange={e => setEstoqueMinimo(e.target.value)}
                                                         className="w-20 px-2 py-1 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400"
                                                         min="0"
                                                         step="1"
-                                                        inputMode="decimal"
                                                     />
                                                     <button
                                                         onClick={handleSalvarMinimo}
@@ -843,9 +842,8 @@ export default function PainelEstoque() {
                                 <div className="flex items-end gap-2 md:block">
                                     <div className="w-24 shrink-0 md:w-auto md:mb-3">
                                         <label className="block text-xs md:text-sm font-medium text-gray-700 mb-0.5 md:mb-1.5">Quantidade</label>
-                                        <input
+                                        <CampoNumero decimal casas={3}
                                             ref={quantidadeRef}
-                                            type="number"
                                             value={quantidade}
                                             onChange={e => setQuantidade(e.target.value)}
                                             onKeyDown={e => {
@@ -861,7 +859,6 @@ export default function PainelEstoque() {
                                             min="0"
                                             step="0.001"
                                             className="w-full px-2 md:px-4 py-2 md:py-3 border border-gray-300 rounded-xl text-center text-xl md:text-2xl font-bold focus:outline-none focus:ring-2 focus:ring-primary"
-                                            inputMode="decimal"
                                         />
                                     </div>
                                     {/* Botões Saída / Entrada */}

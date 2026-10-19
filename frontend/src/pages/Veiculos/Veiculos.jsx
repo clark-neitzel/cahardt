@@ -5,6 +5,7 @@ import api, { API_URL } from '../../services/api';
 import VeiculoFicha from './VeiculoFicha';
 import { useAuth } from '../../contexts/AuthContext';
 import SelectBusca from '../../components/SelectBusca';
+import CampoNumero from '../../components/CampoNumero';
 
 const Veiculos = () => {
     const { user } = useAuth();
@@ -376,8 +377,7 @@ const Veiculos = () => {
                                             <div className="grid grid-cols-2 gap-3">
                                                 <div>
                                                     <label className="block text-xs text-gray-600 mb-1">Alerta por KM</label>
-                                                    <input
-                                                        type="number"
+                                                    <CampoNumero
                                                         placeholder="Ex: 150000"
                                                         value={novoAlerta.kmAlerta}
                                                         onChange={(e) => setNovoAlerta(prev => ({ ...prev, kmAlerta: e.target.value }))}

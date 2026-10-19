@@ -3,6 +3,7 @@ import { MapPin, CheckCircle, FileText } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import api from '../../services/api';
 import SelectBusca from '../SelectBusca';
+import CampoNumero from '../CampoNumero';
 
 const CHECKLIST_ITENS = [
     ['pneusOk', 'Calibragem Pneus OK'],
@@ -133,8 +134,7 @@ const FormVeiculoPresencial = ({ titulo = 'Visitação (Rota)', onConfirmar, onV
                                 <span className="text-blue-500">({ultimoKm.dataReferencia}) — não pode ser menor</span>
                             </div>
                         )}
-                        <input
-                            type="number"
+                        <CampoNumero
                             required
                             className="mt-1 flex-1 block w-full bg-gray-50 focus:bg-white rounded-md border-gray-300 flex text-center text-3xl font-mono h-14 font-bold focus:border-green-500 focus:ring-green-500"
                             value={kmInicial}

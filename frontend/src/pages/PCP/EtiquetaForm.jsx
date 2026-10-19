@@ -8,6 +8,7 @@ import { orientacaoValida } from './etiquetaModelos';
 import produtoService from '../../services/produtoService';
 import { ALERGENOS_LISTA } from './EtiquetaLabel';
 import SelectBusca from '../../components/SelectBusca';
+import CampoNumero from '../../components/CampoNumero';
 
 const VAZIO = {
     produtoId: '',
@@ -230,14 +231,14 @@ export default function EtiquetaForm() {
                             <input type="text" value={form.nomeProduto} onChange={e => set('nomeProduto', e.target.value)} className={inputCls} placeholder="Ex: MINI BOLINHA QUEIJO" />
                         </Campo>
                         <Campo label="Peso Unitário (g)" required>
-                            <input type="number" min="1" value={form.pesoUnitario} onChange={e => set('pesoUnitario', e.target.value)} className={inputCls} placeholder="Ex: 28" />
+                            <CampoNumero min="1" value={form.pesoUnitario} onChange={e => set('pesoUnitario', e.target.value)} className={inputCls} placeholder="Ex: 28" />
                         </Campo>
                         <Campo label="Peso Tabela Nutricional / Porção (g)" required>
-                            <input type="number" min="1" value={form.pesoTabelaNutricional} onChange={e => set('pesoTabelaNutricional', e.target.value)} className={inputCls} placeholder="Ex: 28" />
+                            <CampoNumero min="1" value={form.pesoTabelaNutricional} onChange={e => set('pesoTabelaNutricional', e.target.value)} className={inputCls} placeholder="Ex: 28" />
                         </Campo>
                         <Campo label="Quantidade por Embalagem" required>
                             <div className="flex items-center gap-3">
-                                <input type="number" min="1" value={form.quantidadeEmbalagem} onChange={e => set('quantidadeEmbalagem', e.target.value)} className={inputCls} placeholder="Ex: 50" />
+                                <CampoNumero min="1" value={form.quantidadeEmbalagem} onChange={e => set('quantidadeEmbalagem', e.target.value)} className={inputCls} placeholder="Ex: 50" />
                                 <label className="flex items-center gap-1.5 whitespace-nowrap cursor-pointer text-sm text-gray-700 select-none">
                                     <input
                                         type="checkbox"
@@ -285,7 +286,7 @@ export default function EtiquetaForm() {
                             <input type="text" value={form.tipoProduto} onChange={e => set('tipoProduto', e.target.value)} className={inputCls} placeholder="Ex: Mini - Fritar" />
                         </Campo>
                         <Campo label="Validade (dias)">
-                            <input type="number" min="1" value={form.validadeDias} onChange={e => set('validadeDias', e.target.value)} className={inputCls} />
+                            <CampoNumero min="1" value={form.validadeDias} onChange={e => set('validadeDias', e.target.value)} className={inputCls} />
                         </Campo>
                         <Campo label="Orientação da etiqueta">
                             <SeletorOrientacao value={form.orientacao} onChange={v => set('orientacao', v)} />

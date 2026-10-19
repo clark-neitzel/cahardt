@@ -6,6 +6,7 @@ import api from '../../services/api';
 import { BadgeDollarSign, Landmark, X, Save, Plus, Wallet, Trash2, Truck } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import SelectBusca from '../../components/SelectBusca';
+import CampoNumero from '../../components/CampoNumero';
 
 const TabelaPrecos = () => {
     const [condicoes, setCondicoes] = useState([]);
@@ -498,8 +499,7 @@ const TabelaPrecos = () => {
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-1.5">Qtd. Parcelas</label>
-                                    <input
-                                        type="number"
+                                    <CampoNumero
                                         min="1"
                                         className="w-full border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500 py-2.5 px-3 bg-white text-gray-900 font-medium"
                                         value={editForm.qtdParcelas}
@@ -508,8 +508,7 @@ const TabelaPrecos = () => {
                                 </div>
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-1.5">Intervalo (Dias)</label>
-                                    <input
-                                        type="number"
+                                    <CampoNumero
                                         min="0"
                                         className="w-full border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500 py-2.5 px-3 bg-white text-gray-900 font-medium"
                                         value={editForm.parcelasDias}
@@ -524,8 +523,7 @@ const TabelaPrecos = () => {
                                         Acréscimo (%)
                                     </label>
                                     <div className="relative">
-                                        <input
-                                            type="number"
+                                        <CampoNumero permiteNegativo
                                             step="0.01"
                                             className="w-full border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500 py-2.5 pl-3 pr-8 bg-white text-gray-900 font-medium"
                                             placeholder="0,00"
@@ -547,8 +545,7 @@ const TabelaPrecos = () => {
                                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                             <span className="text-gray-500 font-medium sm:text-sm">R$</span>
                                         </div>
-                                        <input
-                                            type="number"
+                                        <CampoNumero
                                             step="0.01"
                                             className="w-full border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500 py-2.5 pl-9 pr-3 bg-white text-gray-900 font-medium"
                                             placeholder="0,00"
@@ -866,14 +863,13 @@ const TabelaPrecos = () => {
                                                     <option value="custoMedio">Custo</option>
                                                 </SelectBusca>
                                                 <div className="relative w-20">
-                                                    <input
-                                                        type="number"
+                                                    <CampoNumero permiteNegativo
                                                         step="0.01"
                                                         className="w-full text-xs border-gray-300 rounded py-1.5 pl-2 pr-5 bg-white text-gray-900"
                                                         value={regra.acrescimo}
                                                         onChange={(e) => {
                                                             const regras = [...editForm.regrasCategoria];
-                                                            regras[idx] = { ...regras[idx], acrescimo: Number(e.target.value) };
+                                                            regras[idx] = { ...regras[idx], acrescimo: e.target.value === '' ? '' : Number(e.target.value) };
                                                             setEditForm({ ...editForm, regrasCategoria: regras });
                                                         }}
                                                         placeholder="0"

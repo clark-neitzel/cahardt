@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { Pencil, Trash2, Plus, Save, X } from 'lucide-react';
 import categoriaClienteService from '../../services/categoriaClienteService';
+import CampoNumero from '../../components/CampoNumero';
 
 const CategoriasCliente = () => {
     const [categorias, setCategorias] = useState([]);
@@ -125,8 +126,7 @@ const CategoriasCliente = () => {
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Ciclo Padrão (Dias)</label>
-                                <input
-                                    type="number"
+                                <CampoNumero
                                     value={form.cicloPadraoDias}
                                     onChange={(e) => setForm({ ...form, cicloPadraoDias: parseInt(e.target.value) || 0 })}
                                     className="w-full border border-gray-300 rounded-md p-2 bg-white text-gray-900 focus:ring-primary focus:border-primary"

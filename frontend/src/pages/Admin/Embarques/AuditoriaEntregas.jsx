@@ -9,6 +9,7 @@ import SelectBusca from '../../../components/SelectBusca';
 import { useFiltroSalvo } from '../../../hooks/useFiltrosSalvos';
 import { somenteAtivos, rotuloVendedor } from '../../../utils/vendedoresFiltro';
 import { papelResponsavel, ROTULO_PAPEL_CURTO, papelExigePessoa } from '../../../utils/responsavelCobranca';
+import CampoNumero from '../../../components/CampoNumero';
 
 const hojeISO = new Date().toISOString().slice(0, 10);
 
@@ -541,8 +542,7 @@ const AuditoriaEntregas = () => {
                                                 <option key={f._selectId} value={f._selectId}>{f.nome}</option>
                                             ))}
                                         </SelectBusca>
-                                        <input
-                                            type="number"
+                                        <CampoNumero
                                             step="0.01"
                                             min="0"
                                             placeholder="Valor (R$)"

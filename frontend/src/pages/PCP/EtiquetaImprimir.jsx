@@ -9,6 +9,7 @@ import { TAMANHO_PADRAO, LAYOUTS, LAYOUT_PADRAO, layoutValido, paginaImpressao, 
 import { IconeOrientacao, useEscalaPreview } from './OrientacaoEtiqueta';
 import { TAMANHOS } from './etiquetaModelos';
 import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
+import CampoNumero from '../../components/CampoNumero';
 
 function hojeIso() { return new Date().toISOString().split('T')[0]; }
 
@@ -144,8 +145,7 @@ export default function EtiquetaImprimir() {
                             <button onClick={() => setCopies(c => Math.max(1, (parseInt(c)||1)-1))} className="p-1.5 rounded border border-gray-300 hover:bg-gray-50">
                                 <Minus className="h-4 w-4" />
                             </button>
-                            <input
-                                type="number"
+                            <CampoNumero
                                 min="1"
                                 max="999"
                                 value={copies}

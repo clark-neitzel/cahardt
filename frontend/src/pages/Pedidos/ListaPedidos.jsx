@@ -21,6 +21,7 @@ import PageHeader from '../../components/PageHeader';
 import EstadoVazio from '../../components/EstadoVazio';
 import SeloInadimplencia from '../../components/SeloInadimplencia';
 import PopupContasEmAberto from '../../components/PopupContasEmAberto';
+import CampoNumero from '../../components/CampoNumero';
 
 // Pedido recém-criado pode ainda não ter número do CA (rascunho ABERTO) — nunca interpolar
 // null/undefined direto na tela (vira "#null" para o usuário).
@@ -982,8 +983,7 @@ const ListaPedidos = () => {
                             <label className="text-[10px] font-bold text-gray-500 uppercase flex items-center gap-1 mb-0.5">
                                 <Truck className="h-3 w-3" /> Embarque
                             </label>
-                            <input
-                                type="number"
+                            <CampoNumero
                                 placeholder="Nº"
                                 value={filtros.embarqueNumero}
                                 onChange={e => setFiltros(prev => ({ ...prev, embarqueNumero: e.target.value }))}

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { X, QrCode, Copy, Send, CheckCircle, Loader2, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import asaasService from '../../services/asaasService';
+import CampoNumero from '../../components/CampoNumero';
 
 // PIX gerado pelo escritório/faturamento a partir do pedido:
 // escolhe a validade, mostra o QR + copia-e-cola e envia o link por WhatsApp.
@@ -161,8 +162,8 @@ const PixAvulsoModal = ({ pedido, onClose }) => {
                         <>
                             <div>
                                 <label className="text-sm font-medium text-gray-700">Valor do PIX (R$)</label>
-                                <input
-                                    type="number" inputMode="decimal" step="0.01" min="0.01"
+                                <CampoNumero
+ step="0.01" min="0.01"
                                     className="w-full mt-1 border border-gray-300 rounded px-3 py-3 text-2xl font-bold font-mono text-primaryDark focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
                                     value={valor} onChange={(e) => setValor(e.target.value)}
                                 />

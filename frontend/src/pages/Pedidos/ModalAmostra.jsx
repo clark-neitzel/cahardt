@@ -4,6 +4,7 @@ import produtoService from '../../services/produtoService';
 import amostraService from '../../services/amostraService';
 import configService from '../../services/configService';
 import toast from 'react-hot-toast';
+import CampoNumero from '../../components/CampoNumero';
 
 const ModalAmostra = ({ dados, onClose, onCriada }) => {
     // dados: { leadId?, clienteId?, nomeDestinatario, vendedorId }
@@ -166,8 +167,8 @@ const ModalAmostra = ({ dados, onClose, onCriada }) => {
                                             >
                                                 <Minus className="h-3.5 w-3.5" />
                                             </button>
-                                            <input
-                                                type="number" min="1"
+                                            <CampoNumero
+ min="1"
                                                 className="w-10 text-center border border-gray-300 rounded bg-white text-gray-900 text-sm font-bold py-0.5"
                                                 value={item.quantidade}
                                                 onFocus={e => e.target.select()}
@@ -233,8 +234,8 @@ const ModalAmostra = ({ dados, onClose, onCriada }) => {
                                                     </button>
                                                 )}
                                                 {qtd > 0 && (
-                                                    <input
-                                                        type="number" min="1"
+                                                    <CampoNumero
+ min="1"
                                                         className="w-10 text-center border border-gray-300 rounded bg-white text-gray-900 text-sm font-bold py-0.5"
                                                         value={qtd}
                                                         onFocus={e => e.target.select()}

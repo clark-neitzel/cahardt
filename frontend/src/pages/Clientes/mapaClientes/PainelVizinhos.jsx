@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Users, Loader2, ArrowLeftRight } from 'lucide-react';
 import EstadoVazio from '../../../components/EstadoVazio';
+import CampoNumero from '../../../components/CampoNumero';
 
 // Vizinhos atendidos em dias de entrega DIFERENTES (pares a menos de R metros
 // sem dia em comum). A lista vem do backend sobre o conjunto visível ao usuário;
@@ -29,8 +30,8 @@ export default function PainelVizinhos({
                 <p className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-2">Raio de vizinhança</p>
                 <div className="flex items-center gap-2">
                     <div className="relative flex-1">
-                        <input
-                            type="number" inputMode="numeric" min={100} max={20000} step={50}
+                        <CampoNumero
+ min={100} max={20000} step={50}
                             value={raio}
                             onChange={e => setRaio(e.target.value)}
                             onKeyDown={e => { if (e.key === 'Enter') aplicar(); }}

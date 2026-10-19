@@ -9,6 +9,7 @@ import mapaExpedicaoService from '../../../services/mapaExpedicaoService';
 import SelectBusca from '../../../components/SelectBusca';
 import { useFiltrosSalvos, useFiltroSalvo } from '../../../hooks/useFiltrosSalvos';
 import FiltroPeriodo, { usePeriodoSalvo } from '../../../components/FiltroPeriodo';
+import CampoNumero from '../../../components/CampoNumero';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Mapa de divisão de cargas: a expedição vê TUDO que vai para a rua no dia —
@@ -1671,8 +1672,7 @@ export default function MapaExpedicao() {
                                 </label>
                                 <label className="text-sm font-medium text-gray-700">
                                     Min por parada
-                                    <input
-                                        type="number"
+                                    <CampoNumero
                                         min="0"
                                         step="1"
                                         value={params.tempoParadaMin}

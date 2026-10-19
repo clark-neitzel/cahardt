@@ -19,6 +19,7 @@ import { ehLinhaResponsavel as ehLinhaResponsavelUtil } from '../../utils/respon
 import SeloInadimplencia from '../../components/SeloInadimplencia';
 import PopupContasEmAberto from '../../components/PopupContasEmAberto';
 import useInadimplenciaLote from '../../hooks/useInadimplenciaLote';
+import CampoNumero from '../../components/CampoNumero';
 
 const SESSION_KEY = '@CAHardt:CaixaFiltros';
 
@@ -755,7 +756,7 @@ const CaixaDiarioPage = () => {
                                                     <div className="flex flex-wrap items-end gap-2">
                                                         <label className="flex flex-col text-[11px] text-gray-500 font-medium">
                                                             Inicial
-                                                            <input type="number" inputMode="numeric"
+                                                            <CampoNumero
                                                                 className="w-24 min-h-[44px] border border-gray-300 rounded px-2 py-1 text-sm font-mono focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
                                                                 value={kmInicialEdit}
                                                                 onChange={e => { setKmInicialEdit(e.target.value); setErroKmEdit(''); }}
@@ -764,7 +765,7 @@ const CaixaDiarioPage = () => {
                                                         {resumo.diario.kmFinal != null && (
                                                             <label className="flex flex-col text-[11px] text-gray-500 font-medium">
                                                                 Final
-                                                                <input type="number" inputMode="numeric"
+                                                                <CampoNumero
                                                                     className="w-24 min-h-[44px] border border-gray-300 rounded px-2 py-1 text-sm font-mono focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
                                                                     value={kmFinalEdit}
                                                                     onChange={e => { setKmFinalEdit(e.target.value); setErroKmEdit(''); }} />
@@ -871,8 +872,7 @@ const CaixaDiarioPage = () => {
                             {podeDefinirAdiantamento ? (
                                 <>
                                 <div className="flex items-center space-x-2">
-                                    <input
-                                        type="number"
+                                    <CampoNumero
                                         step="0.01"
                                         value={adiantamento}
                                         onChange={(e) => setAdiantamento(e.target.value)}

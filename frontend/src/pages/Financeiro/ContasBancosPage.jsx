@@ -3,6 +3,7 @@ import financeiroGerencialService from '../../services/financeiroGerencialServic
 import { Landmark, Loader2, RefreshCw, ArrowDownLeft, ArrowUpRight, X, ChevronRight, ArrowLeftRight, Trash2, SlidersHorizontal } from 'lucide-react';
 import SelectBusca from '../../components/SelectBusca';
 import toast from 'react-hot-toast';
+import CampoNumero from '../../components/CampoNumero';
 
 // ── Helpers ──
 const fmt = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -365,8 +366,8 @@ const ContasBancosPage = () => {
                                             className={`flex-1 px-2 py-2 min-h-[40px] ${ajuste.tipo === 'SAIDA' ? 'bg-red-600 text-white' : 'text-gray-600'}`}
                                         >− Saída</button>
                                     </div>
-                                    <input
-                                        type="number" inputMode="decimal" min="0.01" step="0.01" placeholder="Valor (R$)"
+                                    <CampoNumero
+ min="0.01" step="0.01" placeholder="Valor (R$)"
                                         value={ajuste.valor}
                                         onChange={e => setAjuste(a => ({ ...a, valor: e.target.value }))}
                                         className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"

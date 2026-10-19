@@ -6,6 +6,7 @@ import pcpReceitaService from '../../services/pcpReceitaService';
 import pcpItemService from '../../services/pcpItemService';
 import api from '../../services/api';
 import SelectBusca from '../../components/SelectBusca';
+import CampoNumero from '../../components/CampoNumero';
 
 const TIPOS_CONSUMO = ['MP', 'SUB', 'EMB'];
 const ETAPAS = ['', 'preparo', 'modelagem', 'fritura', 'cozimento', 'montagem', 'embalagem'];
@@ -482,8 +483,7 @@ export default function ReceitaForm() {
                     <div className="grid grid-cols-3 gap-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Rendimento Base *</label>
-                            <input
-                                type="number"
+                            <CampoNumero
                                 step="0.001"
                                 value={form.rendimentoBase}
                                 onChange={e => handleChange('rendimentoBase', e.target.value)}
@@ -494,8 +494,7 @@ export default function ReceitaForm() {
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Perda Padrao (%)</label>
-                            <input
-                                type="number"
+                            <CampoNumero
                                 step="0.01"
                                 value={form.perdaPercentual}
                                 onChange={e => handleChange('perdaPercentual', e.target.value)}
@@ -573,8 +572,7 @@ export default function ReceitaForm() {
                                                 />
                                             </div>
                                             <div className="col-span-2">
-                                                <input
-                                                    type="number"
+                                                <CampoNumero
                                                     step="0.001"
                                                     value={item.quantidade}
                                                     onChange={e => updateItem(idx, 'quantidade', e.target.value)}

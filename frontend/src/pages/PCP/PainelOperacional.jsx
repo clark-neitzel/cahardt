@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import pcpOrdemService from '../../services/pcpOrdemService';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAtualizaAoVoltar } from '../../hooks/useAtualizaAoVoltar';
+import CampoNumero from '../../components/CampoNumero';
 
 const STATUS_CORES = {
     PLANEJADA: 'border-blue-300 bg-blue-50',
@@ -269,8 +270,7 @@ export default function PainelOperacional() {
 
                         <div className="mb-4">
                             <label className="block text-sm font-medium text-gray-700 mb-1">Quantidade Produzida Real</label>
-                            <input
-                                type="number"
+                            <CampoNumero
                                 step="0.001"
                                 value={qtdProduzida}
                                 onChange={e => setQtdProduzida(e.target.value)}
@@ -344,8 +344,7 @@ function OrdemCard({ ordem, expandido, consumosEdit, setConsumoEdit, onToggleExp
                                     <span className="text-gray-700 flex-1">{c.itemPcp?.nome}</span>
                                     <span className="text-xs text-gray-400">prev: {parseFloat(c.quantidadePrevista).toFixed(3)}</span>
                                     {ordem.status === 'EM_PRODUCAO' && (
-                                        <input
-                                            type="number"
+                                        <CampoNumero
                                             step="0.001"
                                             value={consumosEdit?.[c.id] || ''}
                                             onChange={e => setConsumoEdit(c.id, e.target.value)}

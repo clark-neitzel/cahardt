@@ -10,7 +10,8 @@ import ComboBusca from '../../components/ComboBusca';
 import SelectBusca from '../../components/SelectBusca';
 import FiltroPeriodo, { usePeriodoSalvo } from '../../components/FiltroPeriodo';
 import { useFiltrosSalvos } from '../../hooks/useFiltrosSalvos';
-import { formatarDoc } from '../../utils/documento'; // CNPJ/CPF (inclui alfanumérico)
+import { formatarDoc } from '../../utils/documento';
+import CampoNumero from '../../components/CampoNumero'; // CNPJ/CPF (inclui alfanumérico)
 
 const mesAtual = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }).slice(0, 7);
 // Período por DATA (YYYY-MM-DD). Default: do 1º ao último dia do mês corrente.
@@ -1735,7 +1736,7 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                                     <div>
                                         <label className="block text-xs font-medium text-gray-600 mb-1">Nº de parcelas</label>
-                                        <input type="number" min="1" max="360" value={gerN} onChange={e => setGerN(e.target.value)} className="w-full border border-gray-300 rounded px-2 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
+                                        <CampoNumero min="1" max="360" value={gerN} onChange={e => setGerN(e.target.value)} className="w-full border border-gray-300 rounded px-2 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
                                     </div>
                                     <div>
                                         <label className="block text-xs font-medium text-gray-600 mb-1">Valor de cada</label>
@@ -1761,7 +1762,7 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
                                         {gerModo === 'dias' && (
                                             <label className="text-xs text-gray-600 flex items-center gap-1.5">
                                                 Intervalo:
-                                                <input type="number" min="1" value={gerDias} onChange={e => setGerDias(e.target.value)} className="w-16 border border-gray-300 rounded px-2 py-1.5 text-sm text-right focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
+                                                <CampoNumero min="1" value={gerDias} onChange={e => setGerDias(e.target.value)} className="w-16 border border-gray-300 rounded px-2 py-1.5 text-sm text-right focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
                                                 dias
                                             </label>
                                         )}

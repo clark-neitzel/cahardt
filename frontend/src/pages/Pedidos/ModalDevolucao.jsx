@@ -4,6 +4,7 @@ import devolucaoService from '../../services/devolucaoService';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 import WizardProcessarCA from './WizardProcessarCA';
+import CampoNumero from '../../components/CampoNumero';
 
 const ModalDevolucao = ({ entrega, onClose, onSalvo }) => {
     // entrega: { pedidoId, clienteNome, numero, especial, statusEntrega, valorPedido, itensDevolvidos, idVendaContaAzul }
@@ -233,8 +234,7 @@ const ModalDevolucao = ({ entrega, onClose, onSalvo }) => {
                                                 </p>
                                             </div>
                                             <div className="flex items-center gap-2">
-                                                <input
-                                                    type="number"
+                                                <CampoNumero
                                                     min={0}
                                                     max={max}
                                                     step="any"

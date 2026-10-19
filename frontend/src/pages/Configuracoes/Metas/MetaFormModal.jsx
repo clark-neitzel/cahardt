@@ -8,6 +8,7 @@ import promocaoService from '../../../services/promocaoService';
 import CampoCidade from '../../../components/CampoCidade';
 import { erroCidadeNaoCadastrada } from '../../../services/cidadeService';
 import { chaveBusca } from '../../../utils/cidade';
+import CampoNumero from '../../../components/CampoNumero';
 
 const STORAGE_KEY_FATOR = 'meta_fator_crescimento';
 const DIAS_SEMANA = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'DOM'];
@@ -385,8 +386,7 @@ const MetaFormModal = ({ isOpen, onClose, metaData, vendedores, mesAtualStr }) =
 
                             <div>
                                 <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Meta Financeira Total (R$) *</label>
-                                <input
-                                    type="number"
+                                <CampoNumero
                                     name="valorMensal"
                                     step="0.01"
                                     value={formData.valorMensal}
@@ -398,8 +398,7 @@ const MetaFormModal = ({ isOpen, onClose, metaData, vendedores, mesAtualStr }) =
 
                             <div>
                                 <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Limite de Flex no Mês (R$)</label>
-                                <input
-                                    type="number"
+                                <CampoNumero
                                     name="flexMensal"
                                     step="0.01"
                                     value={formData.flexMensal}
@@ -427,8 +426,7 @@ const MetaFormModal = ({ isOpen, onClose, metaData, vendedores, mesAtualStr }) =
                                     <div className="flex gap-2 items-center">
                                         <div className="flex-1">
                                             <label className="block text-xs text-amber-700 mb-1">Fator de crescimento</label>
-                                            <input
-                                                type="number"
+                                            <CampoNumero
                                                 step="0.01"
                                                 value={fatorCrescimento}
                                                 onChange={(e) => setFatorCrescimento(e.target.value)}
@@ -677,8 +675,7 @@ const MetaFormModal = ({ isOpen, onClose, metaData, vendedores, mesAtualStr }) =
                                                         <span className="text-xs text-gray-500">{mp._codigo}</span>
                                                         <span className="text-sm font-medium text-gray-800 ml-2 truncate">{mp._nome}</span>
                                                     </div>
-                                                    <input
-                                                        type="number"
+                                                    <CampoNumero
                                                         step="0.001"
                                                         value={mp.quantidade}
                                                         onChange={(e) => atualizarQtdProduto(idx, e.target.value)}
@@ -722,8 +719,7 @@ const MetaFormModal = ({ isOpen, onClose, metaData, vendedores, mesAtualStr }) =
                                                 className="flex-1 min-w-0"
                                                 abrirCadastroCom={abrirCadastroCidade}
                                             />
-                                            <input
-                                                type="number"
+                                            <CampoNumero decimal
                                                 value={novaCidadeValor}
                                                 onChange={(e) => setNovaCidadeValor(e.target.value)}
                                                 placeholder="R$ Meta mensal"
@@ -775,8 +771,7 @@ const MetaFormModal = ({ isOpen, onClose, metaData, vendedores, mesAtualStr }) =
                                                             {info?.vezesSemanais > 0 && (
                                                                 <span className="text-xs text-orange-600 font-semibold shrink-0">{info.vezesSemanais}x/sem</span>
                                                             )}
-                                                            <input
-                                                                type="number"
+                                                            <CampoNumero
                                                                 step="0.01"
                                                                 value={mc.valor}
                                                                 onChange={(e) => atualizarValorCidade(idx, e.target.value)}
@@ -870,8 +865,7 @@ const MetaFormModal = ({ isOpen, onClose, metaData, vendedores, mesAtualStr }) =
                                                         <span className="text-sm font-medium text-gray-800 truncate block">{mp._nome}</span>
                                                     </div>
                                                     <div className="flex items-center gap-2 shrink-0">
-                                                        <input
-                                                            type="number"
+                                                        <CampoNumero
                                                             value={mp.quantidadePedidos}
                                                             onChange={(e) => atualizarQtdPromocao(idx, e.target.value)}
                                                             placeholder="Qtd"

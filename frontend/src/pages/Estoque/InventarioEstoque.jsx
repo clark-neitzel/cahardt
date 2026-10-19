@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { ClipboardCheck, Search, WifiOff, Wifi, ChevronLeft, Loader2, CheckCircle2, Package, AlertTriangle, X, PauseCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import estoqueService from '../../services/estoqueService';
+import CampoNumero from '../../components/CampoNumero';
 
 // Contagem física de estoque feita para a câmara fria: a lista de produtos é baixada
 // com internet, a contagem funciona 100% offline (cada toque salvo em localStorage)
@@ -73,9 +74,7 @@ function LinhaProduto({ item, valor, caixas, onMudar, onCaixa }) {
                     className="h-14 w-14 shrink-0 rounded-2xl bg-gray-100 active:bg-gray-200 text-gray-800 text-3xl font-extrabold leading-none"
                     aria-label="Diminuir 1"
                 >−</button>
-                <input
-                    type="number"
-                    inputMode="decimal"
+                <CampoNumero
                     min="0"
                     step="any"
                     value={contado ? valor : ''}

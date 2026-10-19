@@ -3,6 +3,7 @@ import toast from 'react-hot-toast';
 import { Pencil, Trash2, Plus, Save, X, Lock, AlertTriangle } from 'lucide-react';
 import categoriaProdutoService from '../../services/categoriaProdutoService';
 import { useAuth } from '../../contexts/AuthContext';
+import CampoNumero from '../../components/CampoNumero';
 
 // ---------------------------------------------------------------------------
 // Permissão de ESCRITA desta tela — espelha EXATAMENTE o backend
@@ -191,8 +192,7 @@ const CategoriasProduto = () => {
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Ordem de Exibição</label>
-                                <input
-                                    type="number"
+                                <CampoNumero
                                     value={form.ordemExibicao}
                                     onChange={(e) => setForm({ ...form, ordemExibicao: parseInt(e.target.value) || 0 })}
                                     className="w-full border border-gray-300 rounded-md p-2 bg-white text-gray-900 focus:ring-primary focus:border-primary"

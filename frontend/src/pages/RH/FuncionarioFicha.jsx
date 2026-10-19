@@ -8,6 +8,7 @@ import SelectBusca from '../../components/SelectBusca';
 import FiltroPeriodo, { usePeriodoSalvo } from '../../components/FiltroPeriodo';
 import { imprimirCartaoPonto, imprimirReciboPrestador } from './imprimirCartaoPonto';
 import { API_URL } from '../../services/api';
+import CampoNumero from '../../components/CampoNumero';
 
 const DIAS = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
 const CATS_DOC = ['RG', 'CPF', 'CTPS', 'RESIDENCIA', 'CONTRATO', 'OUTRO'];
@@ -194,11 +195,11 @@ function AbaDados({ f, onSaved }) {
         </div>
         <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
           <label className="block"><span className="text-sm font-medium text-gray-700">Adicional de hora extra (%)</span>
-            <input type="number" min="0" max="300" step="5" value={form.percentualHoraExtra} onChange={set('percentualHoraExtra')} className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
+            <CampoNumero min="0" max="300" step="5" value={form.percentualHoraExtra} onChange={set('percentualHoraExtra')} className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
             <span className="text-xs text-gray-500">50% é o padrão da CLT.</span>
           </label>
           <label className="block"><span className="text-sm font-medium text-gray-700">Divisor de horas do mês</span>
-            <input type="number" min="1" max="300" value={form.divisorHoras} onChange={set('divisorHoras')} className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
+            <CampoNumero min="1" max="300" value={form.divisorHoras} onChange={set('divisorHoras')} className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
             <span className="text-xs text-gray-500">220 para 44h semanais; 180 para 36h.</span>
           </label>
           <label className="flex items-start gap-2 text-sm text-gray-700 md:pt-6">
@@ -397,7 +398,7 @@ function AbaAtestados({ f, onSaved }) {
     <div>
       <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-3">
         <input type="date" value={form.dataInicio} onChange={set('dataInicio')} className="border border-gray-300 rounded px-2 py-2 text-sm" />
-        <input type="number" min="1" value={form.dias} onChange={set('dias')} placeholder="dias" className="border border-gray-300 rounded px-2 py-2 text-sm" />
+        <CampoNumero min="1" value={form.dias} onChange={set('dias')} placeholder="dias" className="border border-gray-300 rounded px-2 py-2 text-sm" />
         <input value={form.cid} onChange={set('cid')} placeholder="CID (opcional)" className="border border-gray-300 rounded px-2 py-2 text-sm" />
         <input value={form.obs} onChange={set('obs')} placeholder="Obs" className="border border-gray-300 rounded px-2 py-2 text-sm" />
         <label className="border border-gray-300 rounded px-2 py-2 text-sm text-gray-600 cursor-pointer truncate">{file ? file.name : 'Anexo'}<input type="file" accept="image/*,application/pdf" hidden onChange={(e) => setFile(e.target.files?.[0])} /></label>
@@ -1123,7 +1124,7 @@ function AbaDesempenho({ f, onSaved }) {
       </div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
         <input type="month" value={form.periodo} onChange={set('periodo')} className="border border-gray-300 rounded px-2 py-2 text-sm" />
-        <input type="number" min="0" max="10" step="0.5" value={form.nota} onChange={set('nota')} placeholder="Nota 0–10" className="border border-gray-300 rounded px-2 py-2 text-sm" />
+        <CampoNumero min="0" max="10" step="0.5" value={form.nota} onChange={set('nota')} placeholder="Nota 0–10" className="border border-gray-300 rounded px-2 py-2 text-sm" />
         <input value={form.obs} onChange={set('obs')} placeholder="Observação" className="border border-gray-300 rounded px-2 py-2 text-sm md:col-span-2" />
       </div>
       <button onClick={salvar} disabled={salvando} className="px-3 py-2 bg-primary hover:bg-blue-700 text-white rounded-md text-sm font-semibold mb-4 inline-flex items-center gap-1">{salvando && <Loader2 className="h-4 w-4 animate-spin" />}<Plus className="h-4 w-4" /> Adicionar avaliação</button>

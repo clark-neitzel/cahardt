@@ -4,6 +4,7 @@ import { ArrowLeft, Save, Loader2, ShoppingCart } from 'lucide-react';
 import toast from 'react-hot-toast';
 import pcpItemService from '../../services/pcpItemService';
 import SelectBusca from '../../components/SelectBusca';
+import CampoNumero from '../../components/CampoNumero';
 
 const UNIDADES = ['KG', 'UN', 'L', 'PCT', 'CX', 'G', 'ML'];
 
@@ -175,8 +176,7 @@ export default function ItemPcpForm() {
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Custo Unitario</label>
-                        <input
-                            type="number"
+                        <CampoNumero
                             step="0.0001"
                             value={form.custoUnitario}
                             onChange={e => handleChange('custoUnitario', e.target.value)}
@@ -186,8 +186,7 @@ export default function ItemPcpForm() {
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Estoque Minimo</label>
-                        <input
-                            type="number"
+                        <CampoNumero
                             step="0.001"
                             value={form.estoqueMinimo}
                             onChange={e => handleChange('estoqueMinimo', e.target.value)}

@@ -3,6 +3,7 @@ import { Calculator, AlertTriangle, CheckCircle, ChevronDown, ChevronRight } fro
 import toast from 'react-hot-toast';
 import pcpReceitaService from '../../services/pcpReceitaService';
 import SelectBusca from '../../components/SelectBusca';
+import CampoNumero from '../../components/CampoNumero';
 
 function BomTree({ itens, nivel = 0 }) {
     const [expandidos, setExpandidos] = useState({});
@@ -123,8 +124,7 @@ export default function SimuladorEscalonamento({ receitaId, itensReceita }) {
                 {modo === 'por_quantidade' ? (
                     <div className="flex items-center gap-2">
                         <label className="text-sm text-gray-600">Quero produzir:</label>
-                        <input
-                            type="number"
+                        <CampoNumero
                             step="0.001"
                             value={quantidade}
                             onChange={e => setQuantidade(e.target.value)}
@@ -135,8 +135,7 @@ export default function SimuladorEscalonamento({ receitaId, itensReceita }) {
                 ) : (
                     <div className="flex items-center gap-2">
                         <label className="text-sm text-gray-600">Tenho</label>
-                        <input
-                            type="number"
+                        <CampoNumero
                             step="0.001"
                             value={qtdDisponivel}
                             onChange={e => setQtdDisponivel(e.target.value)}

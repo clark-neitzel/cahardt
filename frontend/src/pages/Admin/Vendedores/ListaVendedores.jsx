@@ -5,6 +5,7 @@ import PermissoesModal from './PermissoesModal';
 import NovoUsuarioModal from './NovoUsuarioModal';
 import { useAuth } from '../../../contexts/AuthContext';
 import toast from 'react-hot-toast';
+import CampoNumero from '../../../components/CampoNumero';
 
 const FORMAS_OPTIONS = [
     { value: 'PRESENCIAL', label: 'Presencial', icon: User },
@@ -291,8 +292,8 @@ const ListaVendedores = () => {
                                         </td>
                                         <td className="px-4 py-3"><input className={inputEditCls} value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })} type="email" /></td>
                                         <td className="px-4 py-3"><input className={inputEditCls} value={editForm.telefone} onChange={e => setEditForm({ ...editForm, telefone: e.target.value })} type="tel" placeholder="(xx) xxxxx-xxxx" /></td>
-                                        <td className="px-4 py-3"><input className={`${inputEditCls} text-right`} value={editForm.percentualFlex} onChange={e => setEditForm({ ...editForm, percentualFlex: e.target.value })} type="number" step="0.1" min="0" max="100" /></td>
-                                        <td className="px-4 py-3"><input className={`${inputEditCls} text-right`} value={editForm.maxDescontoFlex} onChange={e => setEditForm({ ...editForm, maxDescontoFlex: e.target.value })} type="number" step="0.01" min="0" max="100" /></td>
+                                        <td className="px-4 py-3"><CampoNumero className={`${inputEditCls} text-right`} value={editForm.percentualFlex} onChange={e => setEditForm({ ...editForm, percentualFlex: e.target.value })} step="0.1" min="0" max="100" /></td>
+                                        <td className="px-4 py-3"><CampoNumero className={`${inputEditCls} text-right`} value={editForm.maxDescontoFlex} onChange={e => setEditForm({ ...editForm, maxDescontoFlex: e.target.value })} step="0.01" min="0" max="100" /></td>
                                         <td className="px-4 py-3 text-right text-xs text-gray-400 italic">calculado</td>
                                         <td className="px-4 py-3 text-center"><FormasSegmento vendedor={vendedor} /></td>
                                         <td className="px-4 py-3 text-right">
@@ -387,11 +388,11 @@ const ListaVendedores = () => {
                                         <div className="grid grid-cols-2 gap-2">
                                             <div>
                                                 <label className="text-[10px] text-gray-500 block mb-0.5">% Flex (sobre vendas 30d)</label>
-                                                <input className={inputEditCls} value={editForm.percentualFlex} onChange={e => setEditForm({ ...editForm, percentualFlex: e.target.value })} type="number" step="0.1" min="0" max="100" />
+                                                <CampoNumero className={inputEditCls} value={editForm.percentualFlex} onChange={e => setEditForm({ ...editForm, percentualFlex: e.target.value })} step="0.1" min="0" max="100" />
                                             </div>
                                             <div>
                                                 <label className="text-[10px] text-gray-500 block mb-0.5">% Máx Desc. (por item)</label>
-                                                <input className={inputEditCls} value={editForm.maxDescontoFlex} onChange={e => setEditForm({ ...editForm, maxDescontoFlex: e.target.value })} type="number" />
+                                                <CampoNumero decimal className={inputEditCls} value={editForm.maxDescontoFlex} onChange={e => setEditForm({ ...editForm, maxDescontoFlex: e.target.value })} />
                                             </div>
                                         </div>
                                         <div className="flex gap-2 pt-1">

@@ -3,6 +3,7 @@ import { X, Save, AlertTriangle } from 'lucide-react';
 import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import SelectBusca from '../../components/SelectBusca';
+import CampoNumero from '../../components/CampoNumero';
 
 const CATEGORIAS = [
     { value: 'MERCADORIA_EMPRESA', label: 'Mercadoria da Empresa' },
@@ -243,8 +244,7 @@ const NovaDespesaModal = ({ onClose, onSaved, vendedorId, dataReferencia, despes
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Litros *</label>
-                                    <input
-                                        type="number"
+                                    <CampoNumero
                                         step="0.001"
                                         min="0.1"
                                         required
@@ -256,8 +256,7 @@ const NovaDespesaModal = ({ onClose, onSaved, vendedorId, dataReferencia, despes
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">KM Hodômetro *</label>
-                                    <input
-                                        type="number"
+                                    <CampoNumero
                                         required
                                         value={kmNoAbastecimento}
                                         onChange={handleKmChange}
@@ -324,8 +323,7 @@ const NovaDespesaModal = ({ onClose, onSaved, vendedorId, dataReferencia, despes
                     {/* Valor */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Valor (R$) *</label>
-                        <input
-                            type="number"
+                        <CampoNumero
                             step="0.01"
                             min="0.01"
                             value={valor}

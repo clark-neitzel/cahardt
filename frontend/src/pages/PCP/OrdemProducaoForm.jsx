@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import pcpOrdemService from '../../services/pcpOrdemService';
 import pcpReceitaService from '../../services/pcpReceitaService';
 import SelectBusca from '../../components/SelectBusca';
+import CampoNumero from '../../components/CampoNumero';
 
 export default function OrdemProducaoForm() {
     const navigate = useNavigate();
@@ -127,8 +128,7 @@ export default function OrdemProducaoForm() {
                                     </span>
                                 )}
                             </label>
-                            <input
-                                type="number"
+                            <CampoNumero
                                 step="0.001"
                                 value={form.quantidadePlanejada}
                                 onChange={e => handleQuantidadeChange(e.target.value)}

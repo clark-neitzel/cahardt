@@ -5,6 +5,7 @@ import { useDiario } from '../../contexts/DiarioContext';
 import { toast } from 'react-hot-toast';
 import api from '../../services/api';
 import FormVeiculoPresencial from './FormVeiculoPresencial';
+import CampoNumero from '../CampoNumero';
 
 const DiarioGateway = () => {
     const { logout, user, signed } = useAuth();
@@ -131,8 +132,7 @@ const DiarioGateway = () => {
                         <form onSubmit={resolverPendencia} className="space-y-4 pt-4 border-t border-gray-100">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 uppercase tracking-wider">KM FINAL DO VEÍCULO (Sua Chegada) *</label>
-                                <input
-                                    type="number"
+                                <CampoNumero
                                     required
                                     className="mt-1 flex-1 block w-full bg-gray-50 focus:bg-white rounded-md border-gray-300 text-center text-3xl h-16 font-mono font-bold focus:border-red-500 focus:ring-red-500"
                                     value={pendenciaKm}

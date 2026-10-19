@@ -68,6 +68,11 @@ const normalizarColado = (bruto, opts) => {
     if (qtdSep > 1 && !temOutro) return (neg ? '-' : '') + s.replace(/[.,]/g, '');
     const inteira = s.slice(0, ultimo).replace(/[.,]/g, '');
     const frac = s.slice(ultimo + 1);
+    // um único separador seguido de exatamente 3 dígitos (e parte inteira não-zero) = milhar pt-BR
+    // ("1.234" -> 1234, "R$ 1.500" -> 1500); com 1-2 dígitos é decimal ("12.5" -> 12,5).
+    if (qtdSep === 1 && !temOutro && frac.length === 3 && /^\d+$/.test(inteira) && Number(inteira) > 0) {
+        return (neg ? '-' : '') + inteira + frac;
+    }
     return (neg ? '-' : '') + inteira + ',' + frac;
 };
 
@@ -82,25 +87,40 @@ const IGNORADAS = ['type', 'inputMode', 'step', 'min', 'max', 'decimal', 'casas'
 const CampoNumero = forwardRef(function CampoNumero(props, refExterno) {
     const {
         value, onChange, min, max, step, decimal: decimalProp, casas: casasProp,
-        permiteNegativo = false, name, id, onKeyDown, onPaste, ...resto
+        permiteNegativo: permiteNegativoProp, defaultValue, name, id, onKeyDown, onPaste, ...resto
     } = props;
+    const permiteNegativo = permiteNegativoProp !== undefined
+        ? !!permiteNegativoProp
+        : (min !== undefined && min !== '' && Number(min) < 0);
     IGNORADAS.forEach(k => { delete resto[k]; });
 
     const decimal = decimalProp !== undefined
         ? !!decimalProp
         : (String(step) === 'any' || casasDoStep(step) > 0);
-    const casas = !decimal ? 0 : (casasProp ?? (casasDoStep(step) || 2));
+    // nunca menos de 2 casas no decimal (step="0.5" não pode truncar 12,75); step="any" => 4
+    const casas = !decimal ? 0 : (casasProp ?? Math.max(casasDoStep(step), 2));
     const opts = { decimal, casas, permiteNegativo };
 
     const inputRef = useRef(null);
     useImperativeHandle(refExterno, () => inputRef.current);
 
-    const paraTexto = (v) => (v === null || v === undefined ? '' : String(v).replace('.', ','));
-    const [texto, setTexto] = useState(() => paraTexto(value));
+    const paraTexto = (v) => {
+        if (v === null || v === undefined || v === '') return '';
+        let str = String(v);
+        const num = Number(str);
+        // arredonda para as casas do campo (0.1+0.2 não pode aparecer com 17 casas)
+        if (decimal && casas > 0 && Number.isFinite(num) && /\.\d/.test(str) && str.split('.')[1].length > casas) {
+            str = String(Number(num.toFixed(casas)));
+        }
+        return str.replace('.', ',');
+    };
+    const [texto, setTexto] = useState(() => paraTexto(value !== undefined ? value : defaultValue));
+    const emitido = useRef(null); // último valor entregue ao pai (null = nunca digitou)
 
     // Sincroniza do pai só quando o NÚMERO difere do que está na tela (preserva "12," enquanto
     // o pai guarda "12"; e esvazia quando o pai limpa o campo).
     useEffect(() => {
+        if (value === undefined) return; // não controlado (defaultValue): o texto é do próprio campo
         const pai = value === null || value === undefined ? '' : String(value);
         const atual = textoParaValor(texto);
         if (pai === '') {
@@ -111,13 +131,27 @@ const CampoNumero = forwardRef(function CampoNumero(props, refExterno) {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [value]);
 
+    // D1: se o pai RECUSOU/ajustou o valor que acabamos de entregar (ex.: `if (v > limite) return;`),
+    // o `value` não muda e o efeito acima não dispara — então conferimos aqui, depois de cada digitação.
+    useEffect(() => {
+        if (value === undefined || emitido.current === null) return;
+        const pai = value === null ? '' : String(value);
+        if (pai !== '' && Number.isNaN(Number(pai))) return;
+        const eco = emitido.current;
+        const diverge = pai === '' ? eco !== '' : (eco === '' || Number(pai) !== Number(eco));
+        if (diverge && paraTexto(pai) !== texto) setTexto(paraTexto(pai));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [texto]);
+
     // min/max: não bloqueia a digitação, mas mantém a validação do <form> (required/min/max)
     useEffect(() => {
         const el = inputRef.current;
         if (!el || !el.setCustomValidity) return;
         const v = textoParaValor(texto);
         let msg = '';
-        if (v !== '' && !Number.isNaN(Number(v))) {
+        // D5: sobrou só "," ou "-" => o pai recebeu "" e o `required` nativo passaria
+        if (v === '' && texto !== '') msg = 'Informe um número válido.';
+        else if (v !== '' && !Number.isNaN(Number(v))) {
             if (min !== undefined && min !== '' && Number(v) < Number(min)) msg = `O valor mínimo é ${min}.`;
             else if (max !== undefined && max !== '' && Number(v) > Number(max)) msg = `O valor máximo é ${max}.`;
         }
@@ -125,11 +159,32 @@ const CampoNumero = forwardRef(function CampoNumero(props, refExterno) {
     }, [texto, min, max]);
 
     const aplicar = (novoTexto) => {
+        // max: trava na tela (digitando ou colando) — o pai recebe o valor já limitado
+        if (max !== undefined && max !== null && max !== '' && Number.isFinite(Number(max))) {
+            const n = Number(textoParaValor(novoTexto));
+            if (!Number.isNaN(n) && textoParaValor(novoTexto) !== '' && n > Number(max)) novoTexto = paraTexto(String(max));
+        }
         setTexto(novoTexto);
+        emitido.current = textoParaValor(novoTexto);
         onChange?.(pseudoEvento(textoParaValor(novoTexto), name, id));
     };
 
-    const handleChange = (e) => aplicar(filtrarDigitado(e.target.value, opts));
+    const handleChange = (e) => {
+        const bruto = e.target.value;
+        // Inserção de vários caracteres de uma vez que NÃO passou pelo onPaste (autopreenchimento, arrastar,
+        // sendCharacter, correção do teclado): extrai o trecho inserido e aplica a mesma normalização da colagem.
+        let i = 0;
+        const lim = Math.min(texto.length, bruto.length);
+        while (i < lim && texto[i] === bruto[i]) i++;
+        let f = 0;
+        while (f < lim - i && texto[texto.length - 1 - f] === bruto[bruto.length - 1 - f]) f++;
+        const inserido = bruto.slice(i, bruto.length - f);
+        if (inserido.length > 1) {
+            aplicar(filtrarDigitado(bruto.slice(0, i) + normalizarColado(inserido, opts) + bruto.slice(bruto.length - f), opts));
+            return;
+        }
+        aplicar(filtrarDigitado(bruto, opts));
+    };
 
     const handleKeyDown = (e) => {
         onKeyDown?.(e);

@@ -16,6 +16,7 @@ import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 import { useAuth } from '../../contexts/AuthContext';
 import PageHeader from '../../components/PageHeader';
 import EstadoVazio from '../../components/EstadoVazio';
+import CampoNumero from '../../components/CampoNumero';
 
 const DIAS_SEMANA = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'DOM', 'N/D'];
 
@@ -576,15 +577,15 @@ const ListaClientes = () => {
                         </SelectBusca>
                         {semVenda === 'faixa' && (
                             <div className="flex items-center gap-1.5 mt-1.5">
-                                <input
-                                    type="number" min="1" inputMode="numeric" placeholder="De (dias)"
+                                <CampoNumero
+ min="1" placeholder="De (dias)"
                                     className="w-full min-w-0 border border-gray-300 rounded px-2 py-1.5 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
                                     value={semVendaDe}
                                     onChange={(e) => { setSemVendaDe(e.target.value); setPage(1); }}
                                 />
                                 <span className="text-xs text-gray-400 shrink-0">até</span>
-                                <input
-                                    type="number" min="1" inputMode="numeric" placeholder="Até (dias)"
+                                <CampoNumero
+ min="1" placeholder="Até (dias)"
                                     className="w-full min-w-0 border border-gray-300 rounded px-2 py-1.5 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
                                     value={semVendaAte}
                                     onChange={(e) => { setSemVendaAte(e.target.value); setPage(1); }}

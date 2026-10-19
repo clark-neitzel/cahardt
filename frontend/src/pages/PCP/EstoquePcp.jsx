@@ -5,6 +5,7 @@ import pcpEstoqueService from '../../services/pcpEstoqueService';
 import SelectBusca from '../../components/SelectBusca';
 import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 import { useAtualizaAoVoltar } from '../../hooks/useAtualizaAoVoltar';
+import CampoNumero from '../../components/CampoNumero';
 
 const TIPO_CORES = {
     MP: 'bg-amber-100 text-amber-800',
@@ -205,8 +206,7 @@ export default function EstoquePcp() {
                         <div className="space-y-3">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Quantidade ({modalAjuste.unidade})</label>
-                                <input
-                                    type="number"
+                                <CampoNumero
                                     step="0.001"
                                     value={ajusteForm.quantidade}
                                     onChange={e => setAjusteForm(prev => ({ ...prev, quantidade: e.target.value }))}

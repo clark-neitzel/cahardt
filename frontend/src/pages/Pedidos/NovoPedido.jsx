@@ -27,7 +27,8 @@ import { somAviso } from '../../utils/sons';
 import { rotuloFormaAConfirmar } from '../../components/SeloInadimplencia';
 import { normalizarDoc } from '../../utils/documento'; // busca por CPF/CNPJ (inclui alfanumérico)
 import { chaveBusca } from '../../utils/cidade'; // busca sem acento/caixa ("pao" acha "Pão")
-import { temTecladoFisico } from '../../utils/dispositivo'; // só devolve foco à busca em dispositivo com mouse/teclado (toque abre teclado virtual e rola a tela)
+import { temTecladoFisico } from '../../utils/dispositivo';
+import CampoNumero from '../../components/CampoNumero'; // só devolve foco à busca em dispositivo com mouse/teclado (toque abre teclado virtual e rola a tela)
 
 const DIA_SEMANA_MAP = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
 
@@ -74,8 +75,8 @@ const QuantidadeInput = ({ value, permiteFracao, onChange, onEnterFoco }) => {
 
     // Inteiro: input numérico simples
     return (
-        <input
-            type="number" min="1" inputMode="numeric"
+        <CampoNumero
+ min="1"
             className="w-12 text-center border border-gray-300 rounded bg-white text-gray-900 text-sm font-bold py-0.5"
             value={value}
             onFocus={e => e.target.select()}
@@ -1551,8 +1552,7 @@ const NovoPedido = () => {
                                             </span>
                                         )}
                                         <span className="text-xs font-bold text-blue-700" onClick={e => e.stopPropagation()}>
-                                            <input
-                                                type="number"
+                                            <CampoNumero
                                                 min="0" step="any"
                                                 className="w-[60px] sm:w-[72px] border border-blue-300 bg-white text-blue-800 rounded px-1.5 py-0.5 text-xs font-bold text-center"
                                                 value={valor}
@@ -2231,8 +2231,7 @@ const NovoPedido = () => {
                                             <label className="text-xs text-gray-500 font-medium">Frete <span className="text-gray-400">(opcional)</span></label>
                                             <div className="relative mt-0.5">
                                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">R$</span>
-                                                <input
-                                                    type="number"
+                                                <CampoNumero
                                                     step="0.01"
                                                     min="0"
                                                     placeholder="0,00"

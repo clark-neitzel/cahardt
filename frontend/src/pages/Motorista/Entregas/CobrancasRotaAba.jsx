@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { X, Search, HandCoins, CheckCircle, Undo2, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import cobrancasRotaService from '../../../services/cobrancasRotaService';
+import CampoNumero from '../../../components/CampoNumero';
 
 const fmtMoeda = (v) => `R$ ${Number(v || 0).toFixed(2).replace('.', ',')}`;
 const fmtData = (d) => d ? new Date(d).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '—';
@@ -92,9 +93,7 @@ const CobrarTituloModal = ({ alvo, onClose, onSuccess }) => {
                                     </button>
                                 </div>
                                 {tipoValor === 'parcial' && (
-                                    <input
-                                        type="number"
-                                        inputMode="decimal"
+                                    <CampoNumero
                                         step="0.01"
                                         min="0"
                                         autoFocus

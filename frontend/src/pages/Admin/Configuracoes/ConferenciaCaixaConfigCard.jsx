@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Wallet, Loader2, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import caixaService from '../../../services/caixaService';
+import CampoNumero from '../../../components/CampoNumero';
 
 /**
  * Liga/desliga a CONFERÊNCIA DO DINHEIRO do caixa.
@@ -23,6 +24,7 @@ const dataBR = (s) => (s ? String(s).split('-').reverse().join('/') : '');
 const ConferenciaCaixaConfigCard = () => {
     const [cfg, setCfg] = useState(null);
     const [salvando, setSalvando] = useState(false);
+    const [atrasoTxt, setAtrasoTxt] = useState(null); // texto digitado (null = mostra o valor salvo)
 
     useEffect(() => {
         caixaService.getConfigConferencia().then(setCfg).catch(() => setCfg(null));
@@ -136,11 +138,14 @@ const ConferenciaCaixaConfigCard = () => {
                         </p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                        <input
-                            type="number" min="0" max="30"
-                            defaultValue={cfg.whatsappAtrasoDias}
-                            onBlur={(e) => {
-                                const v = Math.max(0, Number(e.target.value) || 0);
+                        <CampoNumero
+ min="0" max="30"
+                            value={atrasoTxt ?? String(cfg.whatsappAtrasoDias ?? '')}
+                            onChange={(e) => setAtrasoTxt(e.target.value)}
+                            onBlur={() => {
+                                if (atrasoTxt === null) return;
+                                const v = Math.max(0, Number(atrasoTxt) || 0);
+                                setAtrasoTxt(null);
                                 if (v !== cfg.whatsappAtrasoDias) salvar({ whatsappAtrasoDias: v });
                             }}
                             className="w-20 border border-gray-300 rounded px-3 py-2 text-sm text-right font-semibold focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"

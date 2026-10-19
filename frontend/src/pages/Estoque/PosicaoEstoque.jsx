@@ -6,6 +6,7 @@ import categoriaProdutoService from '../../services/categoriaProdutoService';
 import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAtualizaAoVoltar } from '../../hooks/useAtualizaAoVoltar';
+import CampoNumero from '../../components/CampoNumero';
 
 const STORAGE_KEY = 'posicao_estoque_filtros';
 
@@ -160,8 +161,7 @@ function ProdutoRow({ produto, isAdmin, onMinimoSalvo }) {
             <td className="px-3 py-3 text-right">
                 {editando ? (
                     <div className="flex items-center justify-end gap-1">
-                        <input
-                            type="number"
+                        <CampoNumero decimal casas={3}
                             value={minimo}
                             onChange={e => setMinimo(e.target.value)}
                             onKeyDown={e => { if (e.key === 'Enter') handleSalvar(); if (e.key === 'Escape') handleCancel(); }}
@@ -169,7 +169,6 @@ function ProdutoRow({ produto, isAdmin, onMinimoSalvo }) {
                             className="w-20 px-2 py-1 text-sm border border-blue-400 rounded-lg text-right focus:outline-none"
                             min="0"
                             step="1"
-                            inputMode="decimal"
                             disabled={salvando}
                         />
                         <button onClick={handleSalvar} disabled={salvando} className="text-green-600 hover:text-green-700 p-0.5">
@@ -256,14 +255,13 @@ function ProdutoCard({ produto, isAdmin, onMinimoSalvo }) {
                 <span className="text-xs text-gray-500">Mínimo:</span>
                 {editando ? (
                     <div className="flex items-center gap-1">
-                        <input
-                            type="number"
+                        <CampoNumero decimal casas={3}
                             value={minimo}
                             onChange={e => setMinimo(e.target.value)}
                             onKeyDown={e => { if (e.key === 'Enter') handleSalvar(); if (e.key === 'Escape') setEditando(false); }}
                             autoFocus
                             className="w-20 px-2 py-1 text-sm border border-blue-400 rounded-lg text-right focus:outline-none"
-                            min="0" step="1" inputMode="decimal" disabled={salvando}
+                            min="0" step="1" disabled={salvando}
                         />
                         <button onClick={handleSalvar} disabled={salvando} className="text-green-600 p-0.5">
                             {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
@@ -415,14 +413,13 @@ function DemandaRow({ item, isAdmin, onMinimoSalvo }) {
             <td className="px-3 py-2.5 text-right">
                 {editando ? (
                     <div className="flex items-center justify-end gap-1">
-                        <input
-                            type="number"
+                        <CampoNumero decimal casas={3}
                             value={minimo}
                             onChange={e => setMinimo(e.target.value)}
                             onKeyDown={e => { if (e.key === 'Enter') handleSalvar(); if (e.key === 'Escape') handleCancel(); }}
                             autoFocus
                             className="w-20 px-2 py-1 text-sm border border-blue-400 rounded-lg text-right focus:outline-none"
-                            min="0" step="1" inputMode="decimal" disabled={salvando}
+                            min="0" step="1" disabled={salvando}
                         />
                         <button onClick={handleSalvar} disabled={salvando} className="text-green-600 hover:text-green-700 p-0.5">
                             {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
@@ -536,14 +533,13 @@ function DemandaCard({ item, isAdmin, onMinimoSalvo }) {
                     <span className="text-xs text-gray-500">Mínimo atual</span>
                     {editando ? (
                         <div className="flex items-center gap-1">
-                            <input
-                                type="number"
+                            <CampoNumero decimal casas={3}
                                 value={minimo}
                                 onChange={e => setMinimo(e.target.value)}
                                 onKeyDown={e => { if (e.key === 'Enter') handleSalvar(); if (e.key === 'Escape') setEditando(false); }}
                                 autoFocus
                                 className="w-20 px-2 py-1 text-sm border border-blue-400 rounded-lg text-right focus:outline-none"
-                                min="0" step="1" inputMode="decimal" disabled={salvando}
+                                min="0" step="1" disabled={salvando}
                             />
                             <button onClick={() => handleSalvar()} disabled={salvando} className="text-green-600 p-0.5">
                                 {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
