@@ -256,6 +256,7 @@ O caixa entra na fila de conferência **ao imprimir a folha** (a folha é a pres
 ### Motivo "Quebra de caixa" na conferência (novo — 10/2026)
 - Na tela, com diferença aparecem dois botões acima do campo do motivo: **Quebra de caixa** (preenche o texto sozinho e trava o campo; se a diferença trocar de falta para sobra, o texto acompanha) e **Outro motivo…** (libera o campo para digitar). É preciso escolher um dos dois; com a diferença zerada os botões somem.
 - Ao conferir com diferença, o motivo pode ser **Quebra de caixa** (o texto "Quebra de caixa (falta)" ou "(sobra)" é montado pelo servidor conforme o sinal da diferença) ou **Outro motivo** (texto livre, obrigatório). Fica gravado o tipo (`motivoTipo`: QUEBRA_DE_CAIXA ou OUTRO) para filtrar depois; conferências antigas ficam sem tipo. O tipo é limpo ao desfazer a conferência e ao reabrir o caixa. A regra do limite de quebra do conferente e da senha do autorizador não mudou.
+- **Senha do autorizador errada:** o app mostra o aviso do servidor, **mantém a janela aberta e toda a contagem preenchida**, limpa só o campo da senha e já coloca o cursor nele para digitar de novo. Nada é perdido nem gravado até a senha certa.
 
 ### Caixa sem movimento fecha sozinho (10/2026)
 

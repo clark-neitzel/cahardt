@@ -160,7 +160,7 @@ const validarAutorizador = async ({ vendedorId, senha }, permissaoNecessaria) =>
     const ok = await bcrypt.compare(senha, usuario.senha);
     if (!ok) {
         const err = new Error('Senha do autorizador incorreta.');
-        err.status = 401; throw err;
+        err.status = 403; throw err; // 403: 401 faria o front deslogar o usuário
     }
     return { id: usuario.id, nome: usuario.nome };
 };
