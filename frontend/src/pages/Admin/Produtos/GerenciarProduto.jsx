@@ -619,7 +619,7 @@ const SecaoPromocoes = ({ produtoId, valorVendaBase, podeEditar = false }) => {
                                                         todosOsProdutos={todosOsProdutos}
                                                     />
                                                     <span className="text-xs text-gray-500 shrink-0">≥</span>
-                                                    <CampoNumero min="0" step="1" value={cond.quantidadeMinima} placeholder="Qtd"
+                                                    <CampoNumero decimal casas={3} min="0" step="1" value={cond.quantidadeMinima} placeholder="Qtd"
                                                         onChange={e => atualizarCondicao(grupo.id, cond.id, 'quantidadeMinima', e.target.value)}
                                                         className="w-20 text-xs border border-gray-300 rounded px-2 py-1 bg-white text-gray-900" />
                                                     <span className="text-xs text-gray-500">un</span>

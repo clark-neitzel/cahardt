@@ -7,7 +7,7 @@ import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } f
 // scroll não faz nada e só entra o que faz sentido.
 //
 // Regra de ouro: o onChange entrega um pseudo-evento cujo `target.value` JÁ VEM COM
-// PONTO e sem separador pendente ("12,5" -> "12.5", "12," -> "12", "," -> ""). Assim
+// PONTO e sem separador pendente ("12,5" -> "12.5", "12," -> "12", "," -> "0," na tela e "0" no valor). Assim
 // qualquer consumidor que fazia Number(e.target.value) continua igual. O texto
 // mostrado na tela usa vírgula.
 
@@ -24,6 +24,8 @@ const textoParaValor = (t) => {
     let v = String(t ?? '').replace(',', '.');
     if (v === '' || v === '-' || v === '.' || v === '-.') return '';
     if (v.endsWith('.')) v = v.slice(0, -1);
+    if (v.startsWith('.')) v = '0' + v;          // ",5" -> "0.5"
+    else if (v.startsWith('-.')) v = '-0' + v.slice(1); // "-,5" -> "-0.5"
     return v;
 };
 
@@ -42,6 +44,9 @@ const filtrarDigitado = (bruto, { decimal, casas, permiteNegativo }) => {
             s = casas > 0 ? `${inteira},${frac}` : inteira;
         }
     }
+    // sem zeros à esquerda ("05" -> "5"; "0,5" e "0" ficam) e vírgula sozinha no começo vira "0,"
+    s = s.replace(/^0+(?=\d)/, '');
+    if (decimal && s.startsWith(',')) s = '0' + s;
     return (neg ? '-' : '') + s;
 };
 
@@ -68,9 +73,12 @@ const normalizarColado = (bruto, opts) => {
     if (qtdSep > 1 && !temOutro) return (neg ? '-' : '') + s.replace(/[.,]/g, '');
     const inteira = s.slice(0, ultimo).replace(/[.,]/g, '');
     const frac = s.slice(ultimo + 1);
-    // um único separador seguido de exatamente 3 dígitos (e parte inteira não-zero) = milhar pt-BR
-    // ("1.234" -> 1234, "R$ 1.500" -> 1500); com 1-2 dígitos é decimal ("12.5" -> 12,5).
-    if (qtdSep === 1 && !temOutro && frac.length === 3 && /^\d+$/.test(inteira) && Number(inteira) > 0) {
+    // PONTO único seguido de exatamente 3 dígitos (e parte inteira não-zero) = milhar pt-BR
+    // ("1.234" -> 1234, "R$ 1.500" -> 1500) — só quando o campo tem menos de 3 casas (num campo de 3
+    // casas, "45.500" e "1.234" são decimais) e NUNCA com vírgula ("1,234" em pt-BR é decimal).
+    // Com 1-2 dígitos é decimal ("12.5" -> 12,5).
+    if (sep === '.' && opts.casas < 3 && qtdSep === 1 && !temOutro && frac.length === 3
+        && /^\d+$/.test(inteira) && Number(inteira) > 0) {
         return (neg ? '-' : '') + inteira + frac;
     }
     return (neg ? '-' : '') + inteira + ',' + frac;
@@ -127,6 +135,8 @@ const CampoNumero = forwardRef(function CampoNumero(props, refExterno) {
             if (atual !== '') setTexto('');
             return;
         }
+        // usuário esvaziou o campo e o pai devolveu 0 (`Number('')`/`|| 0`): mantém vazio, como o type=number antigo
+        if (atual === '' && emitido.current === '' && Number(pai) === 0) return;
         if (atual === '' || Number(atual) !== Number(pai)) setTexto(paraTexto(pai));
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [value]);
@@ -138,6 +148,7 @@ const CampoNumero = forwardRef(function CampoNumero(props, refExterno) {
         const pai = value === null ? '' : String(value);
         if (pai !== '' && Number.isNaN(Number(pai))) return;
         const eco = emitido.current;
+        if (eco === '' && Number(pai) === 0) return; // campo esvaziado e pai devolveu 0: não ressincroniza para "0"
         const diverge = pai === '' ? eco !== '' : (eco === '' || Number(pai) !== Number(eco));
         if (diverge && paraTexto(pai) !== texto) setTexto(paraTexto(pai));
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -215,7 +226,7 @@ const CampoNumero = forwardRef(function CampoNumero(props, refExterno) {
             {...resto}
             ref={inputRef}
             type="text"
-            inputMode={decimal ? 'decimal' : 'numeric'}
+            inputMode={permiteNegativo ? 'text' : (decimal ? 'decimal' : 'numeric')}
             autoComplete="off"
             name={name}
             id={id}

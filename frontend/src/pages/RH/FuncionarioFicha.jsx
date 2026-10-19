@@ -195,7 +195,7 @@ function AbaDados({ f, onSaved }) {
         </div>
         <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
           <label className="block"><span className="text-sm font-medium text-gray-700">Adicional de hora extra (%)</span>
-            <CampoNumero min="0" max="300" step="5" value={form.percentualHoraExtra} onChange={set('percentualHoraExtra')} className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
+            <CampoNumero decimal min="0" max="300" step="5" value={form.percentualHoraExtra} onChange={set('percentualHoraExtra')} className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
             <span className="text-xs text-gray-500">50% é o padrão da CLT.</span>
           </label>
           <label className="block"><span className="text-sm font-medium text-gray-700">Divisor de horas do mês</span>
