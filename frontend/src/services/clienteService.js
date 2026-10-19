@@ -32,6 +32,24 @@ const clienteService = {
         return response.data;
     },
 
+    // Histórico do endereço (texto + ponto): quem/quando/versões antigas
+    enderecoHistorico: async (uuid, limite = 50) => {
+        const response = await api.get(`/clientes/${uuid}/endereco-historico`, { params: { limite } });
+        return response.data;
+    },
+
+    // Posição estimada pelo endereço escrito de uma versão (lado: 'antes' | 'depois')
+    enderecoHistoricoGeocode: async (uuid, eventoId, lado = 'antes') => {
+        const response = await api.get(`/clientes/${uuid}/endereco-historico/${encodeURIComponent(eventoId)}/geocode`, { params: { lado } });
+        return response.data;
+    },
+
+    // body: { lado, partes: 'tudo'|'texto'|'ponto', autorizacao?, posicaoAutor? }
+    enderecoRestaurar: async (uuid, eventoId, body) => {
+        const response = await api.post(`/clientes/${uuid}/endereco-historico/${encodeURIComponent(eventoId)}/restaurar`, body);
+        return response.data;
+    },
+
     criar: async (dados) => {
         const response = await api.post('/clientes', dados);
         return response.data;

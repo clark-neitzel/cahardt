@@ -3,6 +3,7 @@ const prisma = require('../config/database');
 const consultaCnpjService = require('../services/consultaCnpjService');
 const { normalizarDoc, validarDoc, ehCnpj } = require('../utils/documento');
 const { normalizarCidade } = require('../utils/cidade'); // grafia oficial da cidade (Fase 1 — blindagem da escrita)
+const enderecoHistorico = require('../services/clienteEnderecoHistoricoService'); // trilha do endereço (quem/quando/restaurar)
 const cidadeService = require('../services/cidadeService'); // cadastro oficial de cidades (09/2026): só aceita cidade da lista
 // v1.6.3: normalização compartilhada com iaClienteService.adicionarWhatsapp — um número grava com
 // a mesma cara não importa se foi pela tela de Clientes ou pela API da IA (painel do bot).
@@ -405,6 +406,60 @@ const clienteController = {
         }
     },
 
+    // ── Histórico do endereço (texto + ponto): lista, geocode de uma versão, restaurar ──
+    enderecoHistorico: async (req, res) => {
+        try {
+            res.json(await enderecoHistorico.listar(req.params.uuid, { limite: req.query.limite }));
+        } catch (error) {
+            if (error.status) return res.status(error.status).json({ error: error.message });
+            console.error('Erro ao listar histórico do endereço:', error);
+            res.status(500).json({ error: 'Erro ao carregar o histórico do endereço' });
+        }
+    },
+
+    enderecoHistoricoGeocode: async (req, res) => {
+        try {
+            const lado = req.query.lado === 'depois' ? 'depois' : 'antes';
+            res.json(await enderecoHistorico.geocodeVersao(req.params.uuid, req.params.eventoId, lado));
+        } catch (error) {
+            if (error.status) return res.status(error.status).json({ error: error.message, codigo: error.codigo || undefined });
+            console.error('Erro no geocode da versão do endereço:', error);
+            res.status(500).json({ error: 'Erro ao estimar a posição deste endereço' });
+        }
+    },
+
+    enderecoHistoricoRestaurar: async (req, res) => {
+        try {
+            const perms = typeof req.user.permissoes === 'string'
+                ? JSON.parse(req.user.permissoes)
+                : (req.user.permissoes || {});
+            const b = req.body || {};
+            const autorRow = await prisma.vendedor.findUnique({ where: { id: req.user.id }, select: { nome: true } });
+            const r = await enderecoHistorico.restaurar(req.params.uuid, req.params.eventoId, {
+                lado: b.lado || 'antes',
+                partes: b.partes || 'tudo',
+                autor: { id: req.user.id, nome: autorRow?.nome || req.user.nome || null },
+                perms,
+                autorizacao: b.autorizacao || null,
+                posicaoAutor: b.posicaoAutor || null
+            });
+            res.json(r);
+        } catch (error) {
+            if (error.status) {
+                return res.status(error.status).json({
+                    error: error.message,
+                    codigo: error.codigo || undefined,
+                    clienteConflito: error.clienteConflito || undefined,
+                    cidade: error.cidade || undefined,
+                    sugestoes: error.sugestoes || undefined,
+                    cidadeInativa: error.cidadeInativa || undefined
+                });
+            }
+            console.error('Erro ao restaurar endereço do histórico:', error);
+            res.status(500).json({ error: 'Erro ao restaurar o endereço' });
+        }
+    },
+
     // Consulta dados públicos de um CNPJ (Receita) + IE (SEFAZ, via certificado A1)
     // para pré-preencher o cadastro. Não grava nada.
     consultarCnpj: async (req, res) => {
@@ -600,16 +655,20 @@ const clienteController = {
             });
 
             // Auditoria do GPS / cliente balcão (best-effort — o cadastro já foi criado)
+            let autorGpsNomeCriacao = null;
+            let gpsLogCriacaoId = null;
             try {
                 const autorGpsNome = (await prisma.vendedor.findUnique({ where: { id: req.user.id }, select: { nome: true } }))?.nome || null;
+                autorGpsNomeCriacao = autorGpsNome;
                 if (pontoGpsNovo) {
-                    await prisma.clienteGpsLog.create({
+                    const logGps = await prisma.clienteGpsLog.create({
                         data: {
                             clienteUuid: cliente.UUID, tipo: 'MUDANCA', status: 'APLICADO',
                             pontoAntigo: null, pontoNovo: pontoGpsNovo,
                             autorId: req.user.id, autorNome: autorGpsNome, origem: 'CADASTRO'
                         }
                     });
+                    gpsLogCriacaoId = logGps.id;
                 }
                 if (marcarBalcao) {
                     const gpsClientesService = require('../services/gpsClientesService');
@@ -617,6 +676,13 @@ const clienteController = {
                     cliente.clienteBalcao = true;
                 }
             } catch (gpsLogErr) { console.error('Cadastro criado; falhou log de GPS/balcão:', gpsLogErr.message); }
+
+            // Trilha do endereço: evento CRIACAO (registrar nunca lança — cadastro já criado)
+            await enderecoHistorico.registrar({
+                clienteUuid: cliente.UUID, antes: null, depois: enderecoHistorico.snapshotDe(cliente),
+                tipo: 'CRIACAO', origem: 'CADASTRO_NOVO',
+                autor: { id: req.user.id, nome: autorGpsNomeCriacao }, gpsLogId: gpsLogCriacaoId
+            });
 
             // Carimbo da consulta ao bot (best-effort — o cadastro já está criado)
             if (verifResultado) {
@@ -718,6 +784,8 @@ const clienteController = {
                 where: { UUID: uuid },
                 select: {
                     Documento: true, End_Estado: true, Telefone_Celular: true, fiscal: { select: { inscricaoEstadual: true } },
+                    // foto "antes" da trilha do endereço (clientes_endereco_log)
+                    End_Logradouro: true, End_Numero: true, End_Complemento: true, End_Bairro: true, End_Cidade: true, End_CEP: true, Ponto_GPS: true,
                     // usados só pela auditoria (diff de/para) gravada após o update
                     Dia_de_entrega: true, Dia_de_venda: true, idVendedor: true, categoriaClienteId: true, Nome: true, NomeFantasia: true, Ativo: true
                 }
@@ -852,6 +920,8 @@ const clienteController = {
             // próximo) e auditoria do módulo de GPS. Mudança grande de ponto confirmado
             // vira pendência para a logística — os demais campos salvam normalmente.
             let gpsResultado = null;
+            let pontoLimpoLogId = null;   // log do "limpar ponto" (vira gpsLogId da trilha)
+            let pontoFoiAlterado = false; // ponto já gravado → trilha tem que sair mesmo se o update seguinte falhar
             if (podeEditarGPS && Ponto_GPS !== undefined) {
                 const atualGpsCli = await prisma.cliente.findUnique({ where: { UUID: uuid }, select: { Ponto_GPS: true } });
                 const mudou = String(Ponto_GPS || '').trim() !== String(atualGpsCli?.Ponto_GPS || '').trim();
@@ -865,8 +935,10 @@ const clienteController = {
                             autor: { id: req.user.id, nome: autorGps?.nome || null },
                             origem: req.body.gpsOrigem || 'CADASTRO',
                             posicaoAutor: req.body.gpsPosicaoAutor || null,
-                            autorizacao: req.body.gpsAutorizacao || null
+                            autorizacao: req.body.gpsAutorizacao || null,
+                            trilha: false // a linha da trilha sai UMA vez só, no fim do PATCH (texto + ponto)
                         });
+                        pontoFoiAlterado = !!gpsResultado?.aplicado;
                     } catch (gpsErr) {
                         return res.status(gpsErr.status || 422).json({
                             error: gpsErr.message,
@@ -877,20 +949,46 @@ const clienteController = {
                 } else if (mudou && !Ponto_GPS) {
                     // Limpar o ponto: permitido, mas fica no histórico
                     await prisma.cliente.update({ where: { UUID: uuid }, data: { Ponto_GPS: null } });
+                    pontoFoiAlterado = true;
                     try {
                         const autorGps = await prisma.vendedor.findUnique({ where: { id: req.user.id }, select: { nome: true } });
-                        await prisma.clienteGpsLog.create({
+                        const logLimpa = await prisma.clienteGpsLog.create({
                             data: {
                                 clienteUuid: uuid, tipo: 'MUDANCA', status: 'APLICADO',
                                 pontoAntigo: atualGpsCli?.Ponto_GPS || null, pontoNovo: null,
                                 autorId: req.user.id, autorNome: autorGps?.nome || null, origem: 'CADASTRO'
                             }
                         });
+                        pontoLimpoLogId = logLimpa.id;
                     } catch (logErr) { console.error('Log de limpeza de GPS (já aplicada):', logErr.message); }
                 }
             }
 
-            const cliente = await prisma.cliente.update({
+            // Trilha do endereço: UMA linha por salvar (texto + ponto juntos). Fora de qualquer
+            // transação e best-effort (registrar nunca lança). Origem só entra se for conhecida.
+            const ORIGENS_TRILHA = ['CADASTRO', 'ROTA', 'MOTORISTA', 'SAUDE', 'PEDIDO'];
+            const origemTrilha = [req.body.gpsOrigem, req.body.origem].find(o => ORIGENS_TRILHA.includes(o)) || 'CADASTRO';
+            const gravarTrilhaEndereco = async (depoisSnap) => {
+                try {
+                    if (!depoisSnap) return;
+                    const h = enderecoHistorico;
+                    const autorTrilha = await prisma.vendedor.findUnique({ where: { id: req.user.id }, select: { nome: true } });
+                    await h.registrar({
+                        clienteUuid: uuid, antes: h.snapshotDe(atual), depois: depoisSnap,
+                        tipo: 'ALTERACAO', origem: origemTrilha,
+                        autor: { id: req.user.id, nome: autorTrilha?.nome || req.user.nome || null },
+                        posicaoAutor: req.body.gpsPosicaoAutor || null,
+                        gpsLogId: gpsResultado?.logId || pontoLimpoLogId || null,
+                        autorizadoPorNome: gpsResultado?.autorizadoPorNome || null
+                    });
+                } catch (trilhaErr) {
+                    console.error('[Clientes] trilha do endereço falhou (cliente já salvo):', trilhaErr.message);
+                }
+            };
+
+            let cliente;
+            try {
+                cliente = await prisma.cliente.update({
                 where: { UUID: uuid },
                 data: {
                     Dia_de_entrega,
@@ -915,7 +1013,13 @@ const clienteController = {
                     ...cadastro,
                     ...cadastroWhatsapp
                 }
-            });
+                });
+            } catch (updErr) {
+                // O ponto pode já ter sido gravado antes deste update: não deixar movimento sem trilha
+                if (pontoFoiAlterado) await gravarTrilhaEndereco(await enderecoHistorico.foto(uuid).catch(() => null));
+                throw updErr;
+            }
+            await gravarTrilhaEndereco(enderecoHistorico.snapshotDe(cliente));
 
             // Auditoria (audit_logs) das mudanças que reorganizam a carteira: dia de
             // entrega/venda, vendedor, categoria e celular. Fora de transação, best-effort:

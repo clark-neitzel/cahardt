@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Histórico do endereço do cliente — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<meta property="og:title" content="🗺️ Novidade no Hardt App: histórico do endereço do cliente">
+<meta property="og:description" content="Agora dá para ver quem mudou o endereço do cliente, quando, ver a versão antiga no mapa e restaurar com um toque.">
+<meta property="og:type" content="website">
+<style>
+  :root { --primary:#00754A; --primary-dark:#006241; --house:#1E3932; --mint:#d4e9e2; --cream:#f2f0eb; --gold:#cba258; --ink:rgba(0,0,0,.87); --soft:#5f6b66; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--cream); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; line-height:1.55; letter-spacing:-0.01em; }
+  .hero { background:linear-gradient(168deg,var(--house),#16302a); color:#fff; padding:40px 16px 70px; text-align:center; }
+  .hero-in { max-width:620px; margin:0 auto; }
+  .eyebrow { display:inline-block; background:var(--gold); color:#2b230f; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.14em; padding:6px 14px; border-radius:999px; margin-bottom:16px; }
+  h1 { font-size:clamp(26px,7vw,38px); line-height:1.12; margin:0 0 10px; }
+  .hero p { margin:0; color:#cfe3da; }
+  .wrap { max-width:620px; margin:-40px auto 0; padding:0 16px 56px; }
+  .acc { background:#fff; border:1px solid #e5e2da; border-radius:14px; margin-bottom:12px; overflow:hidden; }
+  .acc > button { width:100%; text-align:left; background:none; border:0; padding:16px; font-size:16px; font-weight:800; color:var(--house); cursor:pointer; min-height:48px; }
+  .acc .corpo { display:none; padding:0 16px 16px; }
+  .acc.aberto .corpo { display:block; }
+  .acc p, .acc li { font-size:15px; color:#333; }
+  ol, ul { padding-left:20px; }
+  .tela { border:1px solid #e5e2da; border-radius:12px; background:var(--cream); padding:10px; margin:10px 0; }
+  .app-card { background:#fff; border:1px solid #e5e2da; border-radius:12px; padding:10px; margin-bottom:8px; font-size:13px; position:relative; }
+  .app-h { font-size:11px; font-weight:800; letter-spacing:.14em; text-transform:uppercase; color:#555; margin-bottom:6px; }
+  .mapa { height:90px; border-radius:8px; background:linear-gradient(135deg,#dfeee6,#c9dfd3); position:relative; overflow:hidden; }
+  .dot { position:absolute; width:14px; height:14px; border-radius:50%; }
+  .dot.g { background:#9CA3AF; border:2px solid #6B7280; left:30%; top:62%; }
+  .dot.v { background:var(--primary); border:2px solid var(--primary); left:68%; top:24%; }
+  .lin { position:absolute; left:34%; top:40%; width:38%; border-top:2px dashed #6B7280; transform:rotate(-30deg); transform-origin:left; }
+  .tag { position:absolute; left:38%; top:36%; background:#fff; border:1px solid #ccc; border-radius:6px; padding:1px 6px; font-size:11px; font-weight:700; }
+  .btn { display:inline-block; border-radius:999px; padding:8px 14px; font-weight:700; font-size:12px; margin:6px 6px 0 0; }
+  .btn.p { background:var(--primary); color:#fff; }
+  .btn.o { background:#fff; border:1px solid var(--primary); color:var(--primary); }
+  .ver { background:#f6f5f1; border:1px solid #e5e2da; border-radius:8px; padding:8px; margin-top:6px; }
+  .pin { display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; border-radius:50%; background:var(--gold); color:#2b230f; font-weight:800; font-size:12px; margin-right:4px; }
+  .leg { font-size:14px; margin:4px 0; }
+  .selo { display:inline-block; background:var(--mint); color:var(--primary-dark); border-radius:999px; font-size:11px; font-weight:700; padding:2px 8px; }
+</style>
+</head>
+<body>
+<div class="hero"><div class="hero-in">
+  <span class="eyebrow">Novidade</span>
+  <h1>Histórico do endereço do cliente</h1>
+  <p>Quem mudou, quando mudou — e voltar atrás com um toque.</p>
+</div></div>
+<div class="wrap">
+
+<div class="acc aberto"><button onclick="this.parentNode.classList.toggle('aberto')">O que mudou</button><div class="corpo">
+  <p>Na ficha do cliente, aba <b>Qualidade dos dados</b>, agora existe o cartão <b>Histórico do endereço</b>, logo abaixo da Localização. Ele guarda cada mudança do endereço escrito e do ponto no mapa: <b>quem</b> mexeu, <b>quando</b> e por <b>qual tela</b>.</p>
+  <ul>
+    <li><b>Ver no mapa:</b> toque numa versão antiga e o mapa do cartão Localização mostra onde ela ficava (cinza) e onde está hoje (verde), com a distância entre os dois. Sem sair do app.</li>
+    <li><b>Restaurar:</b> devolve o endereço e/ou o ponto daquela versão. Antes de gravar, o app mostra o que vai mudar e pede confirmação.</li>
+    <li>Quando a versão antiga não tinha ponto, o mapa mostra uma posição <b>estimada pelo endereço</b> (marcador vazado).</li>
+  </ul>
+</div></div>
+
+<div class="acc aberto"><button onclick="this.parentNode.classList.toggle('aberto')">As telas do app</button><div class="corpo">
+  <p><b>Tela 1 — Cartão Localização comparando versões</b></p>
+  <div class="tela">
+    <div class="app-card"><div class="app-h">Localização</div>
+      <div class="mapa"><span class="dot g"></span><span class="dot v"></span><span class="lin"></span><span class="tag">448 m de diferença</span></div>
+      <div style="margin-top:6px;font-size:12px">● <b>Cinza:</b> versão anterior à alteração de 19/10 · ● <b>Verde:</b> ponto atual</div>
+      <span class="btn o">↩ Voltar ao ponto atual</span>
+    </div>
+  </div>
+  <p class="leg"><span class="pin">1</span> Marcador cinza: onde a versão escolhida ficava.</p>
+  <p class="leg"><span class="pin">2</span> Marcador verde: o ponto de hoje, com a linha e a distância.</p>
+  <p class="leg"><span class="pin">3</span> <b>Voltar ao ponto atual</b> limpa a comparação.</p>
+
+  <p style="margin-top:16px"><b>Tela 2 — Cartão Histórico do endereço</b></p>
+  <div class="tela">
+    <div class="app-card"><div class="app-h">Histórico do endereço</div>
+      <b>Maria Souza</b> <span style="color:#666">19/10/2026 às 14:03</span><br>
+      <span class="selo">cadastro do cliente</span>
+      <div style="margin:6px 0">Rua Wolfgang Amon, 45 → Rua Wolfgang Amon, 276 · ponto movido 420 m</div>
+      <div class="ver"><b style="font-size:11px;letter-spacing:.1em">ERA ASSIM ANTES</b><br>Rua Wolfgang Amon, 45 · Costa e Silva · Joinville/SC<br>
+        <span class="btn o">📍 Ver no mapa</span><span class="btn p">↻ Restaurar</span></div>
+    </div>
+  </div>
+  <p class="leg"><span class="pin">4</span> Quem mudou, quando e por qual tela (cadastro, Rota, entrega…).</p>
+  <p class="leg"><span class="pin">5</span> Resumo do que mudou: endereço antigo → novo e quanto o ponto andou.</p>
+  <p class="leg"><span class="pin">6</span> <b>Ver no mapa</b> leva a versão para o mapa do cartão Localização.</p>
+  <p class="leg"><span class="pin">7</span> <b>Restaurar</b> abre a confirmação: você escolhe se volta o endereço escrito, o ponto no mapa, ou os dois.</p>
+
+  <p style="margin-top:16px"><b>Tela 3 — Confirmar a restauração</b></p>
+  <div class="tela">
+    <div class="app-card"><div class="app-h">Restaurar esta versão</div>
+      ☑ <b>Endereço escrito</b><br><span style="color:#666">Hoje:</span> Rua Wolfgang Amon, 276<br><span style="color:#666">Volta para:</span> <b>Rua Wolfgang Amon, 45</b><br><br>
+      ☑ <b>Ponto no mapa</b> — o ponto muda 448 m de lugar.<br><br>
+      <span style="color:#555">O endereço escrito vai nas notas fiscais. Confira antes de restaurar.</span><br>
+      <span class="btn o">Cancelar</span><span class="btn p">Restaurar esta versão</span>
+    </div>
+  </div>
+  <p class="leg"><span class="pin">8</span> Se o ponto ficar perto demais de outro cliente, o app avisa e pede a senha de quem autoriza, como já acontece ao mexer no ponto.</p>
+  <p class="leg"><span class="pin">9</span> Se algo impedir (ex.: cidade que não está mais no cadastro), aparece a mensagem e dá para restaurar só a outra parte.</p>
+</div></div>
+
+<div class="acc aberto"><button onclick="this.parentNode.classList.toggle('aberto')">Para começar a usar</button><div class="corpo">
+  <ol>
+    <li>Abra a ficha do cliente e toque em <b>Qualidade dos dados</b>.</li>
+    <li>Role até <b>Histórico do endereço</b> e toque em <b>Ver no mapa</b> na versão que quer conferir.</li>
+    <li>Se for mesmo a certa, toque em <b>Restaurar</b> e confirme.</li>
+  </ol>
+  <p>Na aba <b>Cadastro</b>, o antigo "Histórico do ponto" agora mostra as 2 últimas mudanças do endereço, com o link <b>ver todas</b>.</p>
+  <p><b>Bom saber:</b> o endereço escrito só começa a ser registrado a partir desta novidade. Antes disso, aparece apenas o histórico do ponto no mapa.</p>
+</div></div>
+
+</div>
+</body>
+</html>

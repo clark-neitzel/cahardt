@@ -13,7 +13,7 @@ import leadService from '../../services/leadService';
 import devolucaoService from '../../services/devolucaoService';
 import { API_URL } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
-import { ArrowLeft, MapPin, Phone, Mail, Calendar, FileText, Save, X, User, Building, DollarSign, MessageCircle, Clock, ClipboardList, ShoppingCart, Package, Sparkles, RefreshCw, Image, UserPlus, Search, ExternalLink, Truck, CreditCard, AlertTriangle, ShieldCheck, CheckCircle, History, ChevronDown } from 'lucide-react';
+import { ArrowLeft, MapPin, Phone, Mail, Calendar, FileText, Save, X, User, Building, DollarSign, MessageCircle, Clock, ClipboardList, ShoppingCart, Package, Sparkles, RefreshCw, Image, UserPlus, Search, ExternalLink, Truck, CreditCard, AlertTriangle, ShieldCheck, CheckCircle } from 'lucide-react';
 import SelectBusca from '../../components/SelectBusca';
 import CampoCidade from '../../components/CampoCidade';
 import ModalCidadeReceita from '../../components/ModalCidadeReceita';
@@ -25,11 +25,12 @@ import gpsClientesService from '../../services/gpsClientesService';
 import ModalPontoGps from '../../components/ModalPontoGps';
 import whatsappClientesService, { rotuloMotivo, calcularValidaAte } from '../../services/whatsappClientesService';
 import QualidadeGps, { avaliarGps } from '../../components/Clientes/QualidadeGps';
+import HistoricoEndereco from '../../components/Clientes/HistoricoEndereco';
 import QualidadeWhatsapp, { avaliarWhatsapp } from '../../components/Clientes/QualidadeWhatsapp';
 import EstadoVazio from '../../components/EstadoVazio';
 import { rotuloFormaAConfirmar } from '../../components/SeloInadimplencia';
 import { ContasEmAbertoLista, AcoesContasEmAberto } from '../../components/PopupContasEmAberto';
-import { detalheAtualizacao, formatarDataHora, telaDaOrigem, linhaNoLocal, acaoHistorico, cargoExibicao } from '../../utils/gpsQuemAtualizou';
+import { detalheAtualizacao } from '../../utils/gpsQuemAtualizou';
 import CampoNumero from '../../components/CampoNumero';
 
 // Data curta em pt-BR, tolerante a valor nulo/inválido vindo do backend
@@ -115,8 +116,9 @@ const DetalheCliente = () => {
     const [gpsInfo, setGpsInfo] = useState(null); // { balcao, selo, sugestao, balcaoPorNome }
     // "Quem atualizou o ponto GPS e quando" — caixa + histórico completo (Logística)
     const [ultimaMudancaGps, setUltimaMudancaGps] = useState(null);
-    const [historicoGps, setHistoricoGps] = useState(null); // null = não carregou/falhou (esconde a seção)
-    const [historicoGpsAberto, setHistoricoGpsAberto] = useState(false);
+    // Histórico do endereço: versão antiga escolhida (mapa do card Localização) + recarga da lista
+    const [versaoEmFoco, setVersaoEmFoco] = useState(null);
+    const [historicoKey, setHistoricoKey] = useState(0);
     // Situação do WhatsApp do cliente vem de `cliente.whatsappStatus` — lido só via
     // `avaliarWhatsapp(cliente)` (situacaoWhatsappAtual), fonte única de verdade.
     // Validade da dispensa — só para completar "dispensado até" quando o registro
@@ -232,12 +234,6 @@ const DetalheCliente = () => {
                     setUltimaMudancaGps(r?.ultimaMudanca || null);
                 })
                 .catch(() => setGpsInfo({}));
-
-            // Histórico completo do ponto (2 últimas + "ver todas"). Falhar aqui (ex.:
-            // permissão) esconde só esta seção — nunca quebra a tela nem vira erro visível.
-            gpsClientesService.historico(uuid)
-                .then(logs => setHistoricoGps(Array.isArray(logs) ? logs : []))
-                .catch(() => setHistoricoGps(null));
 
             try {
                 const atends = await atendimentoService.listarPorCliente(uuid);
@@ -444,7 +440,8 @@ const DetalheCliente = () => {
                 Telefone: telefone,
                 Inscricao_Estadual: ie,
                 Documento: doc,
-                End_Estado: uf
+                End_Estado: uf,
+                origem: 'CADASTRO'
             });
             alert('Dados atualizados com sucesso!');
             navigate('/clientes');
@@ -487,9 +484,24 @@ const DetalheCliente = () => {
             setUltimaMudancaGps(r?.ultimaMudanca || null);
             if (r?.cliente?.Ponto_GPS) setFormData(f => ({ ...f, Ponto_GPS: r.cliente.Ponto_GPS }));
         } catch { /* falha silenciosa: o card já mostrou o resultado do próprio salvamento */ }
-        gpsClientesService.historico(uuid)
-            .then(logs => setHistoricoGps(Array.isArray(logs) ? logs : []))
-            .catch(() => { /* mantém o histórico que já tinha */ });
+        setHistoricoKey(k => k + 1);
+    };
+    // Depois de restaurar uma versão do histórico: relê o cadastro (endereço escrito + ponto)
+    // para a aba Cadastro e os cards mostrarem o valor novo sem recarregar a página.
+    const aposRestaurarEndereco = async () => {
+        try {
+            const c = await clienteService.detalhar(uuid);
+            setCliente(c);
+            setFormData(f => ({
+                ...f,
+                Ponto_GPS: c.Ponto_GPS || '',
+                End_Logradouro: c.End_Logradouro || '', End_Numero: c.End_Numero || '',
+                End_Complemento: c.End_Complemento || '', End_Bairro: c.End_Bairro || '',
+                End_Cidade: c.End_Cidade || '', End_Estado: c.End_Estado || '', End_CEP: c.End_CEP || '',
+            }));
+        } catch { /* a lista do histórico já recarrega sozinha */ }
+        setVersaoEmFoco(null);
+        atualizarQualidadeGps();
     };
     const atualizarQualidadeWhatsapp = async () => {
         try {
@@ -660,6 +672,8 @@ const DetalheCliente = () => {
                                 gps={gpsInfo}
                                 podeEditar={podeEditarPontoGps}
                                 onAtualizado={atualizarQualidadeGps}
+                                versaoEmFoco={versaoEmFoco}
+                                onVoltarAtual={() => setVersaoEmFoco(null)}
                             />
                             <QualidadeWhatsapp
                                 clienteUuid={uuid}
@@ -669,6 +683,16 @@ const DetalheCliente = () => {
                                 podeEditar={podeEditarCadastroCA}
                                 onAtualizado={atualizarQualidadeWhatsapp}
                             />
+                            <HistoricoEndereco
+                            clienteUuid={uuid}
+                            className="md:col-span-2"
+                            podeRestaurarTexto={!!podeEditarCadastroCA}
+                            podeRestaurarPonto={podeEditarPontoGps}
+                            versaoEmFoco={versaoEmFoco}
+                            onVerNoMapa={setVersaoEmFoco}
+                            onRestaurado={aposRestaurarEndereco}
+                            recarregarKey={historicoKey}
+                        />
                         </div>
                     </div>
                 ) : (
@@ -680,6 +704,8 @@ const DetalheCliente = () => {
                             gps={gpsInfo}
                             podeEditar={podeEditarPontoGps}
                             onAtualizado={atualizarQualidadeGps}
+                            versaoEmFoco={versaoEmFoco}
+                            onVoltarAtual={() => setVersaoEmFoco(null)}
                         />
                         <QualidadeWhatsapp
                             clienteUuid={uuid}
@@ -688,6 +714,16 @@ const DetalheCliente = () => {
                             diasValidadeDispensa={diasValidadeDispensa}
                             podeEditar={podeEditarCadastroCA}
                             onAtualizado={atualizarQualidadeWhatsapp}
+                        />
+                        <HistoricoEndereco
+                            clienteUuid={uuid}
+                            className="md:col-span-2"
+                            podeRestaurarTexto={!!podeEditarCadastroCA}
+                            podeRestaurarPonto={podeEditarPontoGps}
+                            versaoEmFoco={versaoEmFoco}
+                            onVerNoMapa={setVersaoEmFoco}
+                            onRestaurado={aposRestaurarEndereco}
+                            recarregarKey={historicoKey}
                         />
                     </div>
                 )
@@ -1232,49 +1268,13 @@ const DetalheCliente = () => {
                             );
                         })()}
 
-                        {/* Histórico do ponto — 2 últimas + "ver todas". Sem `historicoGps`
-                            (falhou a busca, ex.: 403) a seção some, nunca mostra erro na tela. */}
-                        {historicoGps && historicoGps.length > 0 && (
-                            <div className="mt-3 pt-3 border-t border-dashed border-gray-200">
-                                <p className="text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-2 flex items-center gap-1">
-                                    <History className="h-3.5 w-3.5" /> Histórico do ponto
-                                </p>
-                                <div className="space-y-2">
-                                    {(historicoGpsAberto ? historicoGps : historicoGps.slice(0, 2)).map(h => {
-                                        const dataHora = formatarDataHora(h.criadoEm);
-                                        const tela = telaDaOrigem(h.origem);
-                                        const noLocal = linhaNoLocal(h.autorNoLocalM);
-                                        return (
-                                            <div key={h.id} className="flex gap-2 text-xs">
-                                                <span className="w-2 h-2 rounded-full bg-primary mt-1.5 shrink-0" />
-                                                <div className="min-w-0">
-                                                    <p className="text-gray-800">
-                                                        <b>{h.autor || '—'}</b>
-                                                        {cargoExibicao(h) && (
-                                                            <span className="ml-1 text-[9.5px] font-bold px-1.5 py-0.5 rounded-full bg-mint text-primaryDark align-middle">{cargoExibicao(h)}</span>
-                                                        )}
-                                                        {' '}{acaoHistorico(h)}
-                                                    </p>
-                                                    <p className="text-gray-500 text-[11px]">
-                                                        {[dataHora, tela, noLocal].filter(Boolean).join(' · ')}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                                {historicoGps.length > 2 && (
-                                    <button
-                                        type="button"
-                                        onClick={() => setHistoricoGpsAberto(v => !v)}
-                                        className="mt-2 min-h-[44px] text-[11px] font-semibold text-primary hover:text-primaryDark flex items-center gap-1"
-                                    >
-                                        {historicoGpsAberto ? 'Mostrar menos' : `ver todas (${historicoGps.length})`}
-                                        <ChevronDown className={`h-3 w-3 transition-transform ${historicoGpsAberto ? 'rotate-180' : ''}`} />
-                                    </button>
-                                )}
-                            </div>
-                        )}
+                        {/* Histórico do endereço (compacto) — mesma fonte da aba Qualidade; "ver todas" leva para lá. */}
+                        <HistoricoEndereco
+                            clienteUuid={uuid}
+                            compacto
+                            recarregarKey={historicoKey}
+                            onVerTodas={() => setAbaAtiva('qualidade')}
+                        />
 
                         {/* Cliente balcão: ou GPS, ou balcão (com permissão) */}
                         <div className="mt-3 flex items-start gap-2">

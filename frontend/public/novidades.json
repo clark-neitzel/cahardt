@@ -1,5 +1,11 @@
 [
   {
+    "slug": "historico-endereco",
+    "titulo": "Histórico do endereço do cliente",
+    "resumo": "Na ficha do cliente (Qualidade dos dados) agora aparece quem mudou o endereço e quando. Toque numa versão antiga para ver no mapa onde ela ficava e use Restaurar para voltar atrás.",
+    "data": "2026-10-19"
+  },
+  {
     "slug": "etiquetas-cozinha",
     "titulo": "Etiquetas da Cozinha no iPad",
     "resumo": "Nova tela no PCP (Etiq. Cozinha): toque no item, confira a validade sugerida e a etiqueta sai na impressora da cozinha, com lote e quem fez. Tem favoritos, Reimprimir e aviso quando o computador da cozinha está desligado.",

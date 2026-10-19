@@ -15,6 +15,10 @@ const TELA_POR_ORIGEM = {
     MOTORISTA: 'tela de entregas',
     SAUDE: 'Saúde dos pontos',
     PEDIDO: 'pedido',
+    CADASTRO_NOVO: 'cadastro novo',
+    DESFAZER_GPS: 'desfazer na Saúde dos pontos',
+    RESTAURAR: 'restauração do histórico',
+    SISTEMA: 'alteração sem autor registrado',
 };
 
 export const telaDaOrigem = (origem) => (origem && TELA_POR_ORIGEM[origem]) || null;
@@ -132,4 +136,64 @@ export const acaoHistorico = (item) => {
     if (item.pontoAntigo == null) return 'definiu o primeiro ponto';
     const dist = formatarDistancia(item.distanciaM);
     return dist ? `moveu o ponto ${dist}` : 'moveu o ponto';
+};
+
+// ── Histórico do ENDEREÇO (texto + ponto) ────────────────────────────────────
+
+// Distância em metros entre dois pontos { lat, lng } (haversine)
+export const distanciaMetros = (a, b) => {
+    if (!a || !b) return null;
+    const R = 6371000;
+    const rad = (x) => (x * Math.PI) / 180;
+    const dLat = rad(b.lat - a.lat);
+    const dLng = rad(b.lng - a.lng);
+    const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(h));
+};
+
+// "Rua X, 120 · Centro · Cidade/SC · CEP" a partir de um snapshot (campo ausente é pulado)
+export const linhaEndereco = (snap) => {
+    if (!snap) return '';
+    const ruaNum = [snap.End_Logradouro, snap.End_Numero].filter(Boolean).join(', ');
+    const cidadeUf = [snap.End_Cidade, snap.End_Estado].filter(Boolean).join('/');
+    return [ruaNum, snap.End_Complemento, snap.End_Bairro, cidadeUf, snap.End_CEP].filter(Boolean).join(' · ');
+};
+
+const ROTULO_CAMPO = {
+    End_Complemento: 'complemento', End_Bairro: 'bairro', End_Estado: 'UF', End_CEP: 'CEP', End_Cidade: 'cidade',
+};
+
+// Resumo curto do que mudou numa versão do histórico:
+// "Rua X, 120 → Rua Y, 45 · ponto movido 310 m"
+export const resumoMudanca = (ev) => {
+    if (!ev) return '';
+    const a = ev.antes || {};
+    const d = ev.depois || {};
+    if (ev.tipo === 'CRIACAO') {
+        const l = linhaEndereco(d);
+        return l ? `Cadastro criado com ${l}` : 'Cadastro criado';
+    }
+    const partes = [];
+    const campos = Array.isArray(ev.camposAlterados) ? ev.camposAlterados : [];
+    const mudou = (c) => (campos.length ? campos.includes(c) : (a[c] ?? null) !== (d[c] ?? null));
+    if (ev.textoRegistrado !== false) {
+        if (mudou('End_Logradouro') || mudou('End_Numero')) {
+            const ant = [a.End_Logradouro, a.End_Numero].filter(Boolean).join(', ') || '(vazio)';
+            const dep = [d.End_Logradouro, d.End_Numero].filter(Boolean).join(', ') || '(vazio)';
+            partes.push(`${ant} → ${dep}`);
+        }
+        Object.keys(ROTULO_CAMPO).forEach((c) => {
+            if (!mudou(c)) return;
+            partes.push(`${ROTULO_CAMPO[c]}: ${a[c] || '(vazio)'} → ${d[c] || '(vazio)'}`);
+        });
+    }
+    if (mudou('Ponto_GPS') || ev.fonte === 'GPS_LEGADO') {
+        if (!a.Ponto_GPS && d.Ponto_GPS) partes.push('ponto definido');
+        else if (a.Ponto_GPS && !d.Ponto_GPS) partes.push('ponto removido');
+        else {
+            const dist = formatarDistancia(ev.distanciaPontoM);
+            partes.push(dist ? `ponto movido ${dist}` : 'ponto movido');
+        }
+    }
+    return partes.join(' · ') || 'Alteração registrada';
 };

@@ -250,9 +250,10 @@ model Cliente {
   whatsappStatus ClienteWhatsappStatus?
 
   // GPS: selo de confiança, cliente balcão, auditoria e sinais (tabelas laterais)
-  gps       ClienteGps?
-  gpsLogs   ClienteGpsLog[]
-  gpsSinais ClienteGpsSinal[]
+  gps          ClienteGps?
+  gpsLogs      ClienteGpsLog[]
+  enderecoLogs ClienteEnderecoLog[] // só relação — não cria coluna em clientes
+  gpsSinais    ClienteGpsSinal[]
 
   kitFestaCliente   KitFestaCliente?
   congeladosCliente CongeladosCliente?
@@ -424,6 +425,39 @@ model ClienteGpsLog {
   @@index([clienteUuid])
   @@index([status])
   @@map("clientes_gps_log")
+}
+
+// Trilha do ENDEREÇO completo (texto + ponto). 1 linha = 1 gravação. antes/depois são snapshots completos.
+// O ponto continua indo para ClienteGpsLog (selo "quem atualizou" / Saúde GPS); gpsLogId liga os dois.
+model ClienteEnderecoLog {
+  id          String  @id @default(uuid())
+  clienteUuid String  @map("cliente_uuid")
+  cliente     Cliente @relation(fields: [clienteUuid], references: [UUID], onDelete: Cascade)
+
+  tipo   String  @default("ALTERACAO") // ALTERACAO | CRIACAO | RESTAURACAO | SISTEMA (mudança detectada sem autor)
+  origem String? // CADASTRO | CADASTRO_NOVO | ROTA | MOTORISTA | SAUDE | PEDIDO | DESFAZER_GPS | RESTAURAR | SISTEMA
+
+  antes           Json? // null em CRIACAO. { End_Logradouro, End_Numero, End_Complemento, End_Bairro, End_Cidade, End_Estado, End_CEP, Ponto_GPS }
+  depois          Json
+  camposAlterados String[] @default([]) @map("campos_alterados")
+  distanciaPontoM Int?     @map("distancia_ponto_m")
+
+  autorId      String? @map("autor_id")
+  autorNome    String? @map("autor_nome")
+  posicaoAutor String? @map("posicao_autor")
+
+  gpsLogId          String? @map("gps_log_id") // ClienteGpsLog criado na mesma gravação (dedupe com o legado)
+  restauradoDeId    String? @map("restaurado_de_id")
+  restauradoLado    String? @map("restaurado_lado")
+  restauradoPartes  String? @map("restaurado_partes")
+  autorizadoPorNome String? @map("autorizado_por_nome")
+  motivo            String? @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([clienteUuid, createdAt])
+  @@index([gpsLogId])
+  @@map("clientes_endereco_log")
 }
 
 // Sinal de "estou na porta do cliente" confirmado pelo motorista quando a entrega

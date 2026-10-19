@@ -324,10 +324,19 @@ const seloEntrega = (gpsEntrega, pontoClienteStr) => {
 
 // ── Registrar mudança de ponto (com regras de aprovação) ─────────────────────
 
-const registrarMudanca = async ({ clienteUuid, pontoNovo, autor, origem, posicaoAutor, autorizacao }) => {
+// Trilha do endereço (clientes_endereco_log): `trilha` (default true) grava a linha após a
+// transação; quem já grava a própria linha (PATCH do cadastro, restaurar) passa `trilha:false`.
+// `extraCliente` (opcional): campos End_* já validados, gravados NA MESMA transação do ponto.
+// Resposta ganhou `logId` (aditivo — consumidores só leem aplicado/pendente/semMudanca).
+const enderecoHist = () => require('./clienteEnderecoHistoricoService');
+
+const registrarMudanca = async ({ clienteUuid, pontoNovo, autor, origem, posicaoAutor, autorizacao, trilha = true, extraCliente }) => {
     const cliente = await prisma.cliente.findUnique({
         where: { UUID: clienteUuid },
-        select: { UUID: true, Nome: true, NomeFantasia: true, Ponto_GPS: true, gps: true }
+        select: {
+            UUID: true, Nome: true, NomeFantasia: true, Ponto_GPS: true, gps: true,
+            End_Logradouro: true, End_Numero: true, End_Complemento: true, End_Bairro: true, End_Cidade: true, End_Estado: true, End_CEP: true
+        }
     });
     if (!cliente) { const err = new Error('Cliente não encontrado.'); err.status = 404; throw err; }
 
@@ -352,6 +361,11 @@ const registrarMudanca = async ({ clienteUuid, pontoNovo, autor, origem, posicao
 
     // Nada mudou (mesmo lugar, <5 m): não grava nem loga
     if (antigo && dist !== null && dist < RAIO_DUPLICADO_M) {
+        // Ponto igual, mas o chamador pediu texto junto (restaurar): grava só o texto
+        if (extraCliente && Object.keys(extraCliente).length) {
+            await prisma.cliente.update({ where: { UUID: clienteUuid }, data: extraCliente });
+            return { aplicado: false, pendente: false, semMudanca: true, textoAplicado: true };
+        }
         return { aplicado: false, pendente: false, semMudanca: true };
     }
 
@@ -376,8 +390,9 @@ const registrarMudanca = async ({ clienteUuid, pontoNovo, autor, origem, posicao
     // (entregas concluídas longe do ponto). Pendências antigas ainda podem ser
     // decididas lá (decidirPendencia), mas nenhuma nova é criada aqui.
 
+    let logId = null;
     await prisma.$transaction(async (tx) => {
-        await tx.cliente.update({ where: { UUID: clienteUuid }, data: { Ponto_GPS: pontoNovoFmt } });
+        await tx.cliente.update({ where: { UUID: clienteUuid }, data: { ...(extraCliente || {}), Ponto_GPS: pontoNovoFmt } });
         // Mudança relevante zera o selo — a repetição das próximas entregas valida
         if (dist === null || dist > AJUSTE_LIVRE_M) {
             await tx.clienteGps.upsert({
@@ -386,10 +401,22 @@ const registrarMudanca = async ({ clienteUuid, pontoNovo, autor, origem, posicao
                 create: { clienteUuid, selo: null, sugestao: null, seloEm: new Date() }
             });
         }
-        await tx.clienteGpsLog.create({ data: { ...dadosLog, status: 'APLICADO' } });
+        const criado = await tx.clienteGpsLog.create({ data: { ...dadosLog, status: 'APLICADO' } });
+        logId = criado.id;
     }, { timeout: 20000, maxWait: 10000 });
 
-    return { aplicado: true, pendente: false };
+    // Trilha do endereço: FORA da transação, best-effort (registrar nunca lança)
+    if (trilha) {
+        const h = enderecoHist();
+        await h.registrar({
+            clienteUuid, antes: h.snapshotDe(cliente),
+            depois: h.snapshotDe({ ...cliente, ...(extraCliente || {}), Ponto_GPS: pontoNovoFmt }),
+            tipo: 'ALTERACAO', origem: origem || 'CADASTRO', autor, posicaoAutor,
+            gpsLogId: logId, autorizadoPorNome: autorizadoPor?.nome || null
+        });
+    }
+
+    return { aplicado: true, pendente: false, logId, autorizadoPorNome: autorizadoPor?.nome || null };
 };
 
 // ── "Quem atualizou o ponto GPS e quando" (aprovado em docs/preview-gps-quem-atualizou.html) ─
@@ -473,6 +500,8 @@ const decidirPendencia = async (logId, aprovar, decisor, motivo) => {
         return { aplicado: false };
     }
 
+    const h = enderecoHist();
+    const antesFoto = await h.foto(log.clienteUuid).catch(() => null);
     await prisma.$transaction(async (tx) => {
         await tx.cliente.update({ where: { UUID: log.clienteUuid }, data: { Ponto_GPS: log.pontoNovo } });
         await tx.clienteGps.upsert({
@@ -482,6 +511,16 @@ const decidirPendencia = async (logId, aprovar, decisor, motivo) => {
         });
         await tx.clienteGpsLog.update({ where: { id: logId }, data: { status: 'APLICADO', ...decisao } });
     }, { timeout: 20000, maxWait: 10000 });
+
+    // Trilha do endereço (fora da transação, best-effort)
+    try {
+        if (antesFoto) {
+            await h.registrar({
+                clienteUuid: log.clienteUuid, antes: antesFoto, depois: await h.foto(log.clienteUuid),
+                tipo: 'ALTERACAO', origem: 'SAUDE', autor: { id: decisor.id, nome: decisor.nome }, gpsLogId: logId
+            });
+        }
+    } catch (e) { console.error('[GpsClientes] trilha do endereço (pendência já aplicada):', e.message); }
 
     return { aplicado: true };
 };
@@ -538,6 +577,8 @@ const desfazerMudanca = async (logId, decisor) => {
     if (!log || log.tipo !== 'MUDANCA' || log.status !== 'APLICADO') {
         const err = new Error('Só mudanças aplicadas podem ser desfeitas.'); err.status = 400; throw err;
     }
+    const h = enderecoHist();
+    const antesFoto = await h.foto(log.clienteUuid).catch(() => null);
     await prisma.$transaction(async (tx) => {
         await tx.cliente.update({ where: { UUID: log.clienteUuid }, data: { Ponto_GPS: log.pontoAntigo } });
         await tx.clienteGpsLog.update({
@@ -545,6 +586,17 @@ const desfazerMudanca = async (logId, decisor) => {
             data: { status: 'DESFEITO', decididoPorId: decisor.id, decididoPorNome: decisor.nome, decididoEm: new Date() }
         });
     }, { timeout: 20000, maxWait: 10000 });
+    // Trilha do endereço (fora da transação, best-effort). Sem gpsLogId: o desfazer não cria
+    // ClienteGpsLog novo. O evento ORIGINAL (linha da trilha ligada a este log por gpsLogId, ou
+    // o legado) aparece com status DESFEITO — o listar() lê o status do ClienteGpsLog ligado.
+    try {
+        if (antesFoto) {
+            await h.registrar({
+                clienteUuid: log.clienteUuid, antes: antesFoto, depois: await h.foto(log.clienteUuid),
+                tipo: 'ALTERACAO', origem: 'DESFAZER_GPS', autor: { id: decisor.id, nome: decisor.nome }
+            });
+        }
+    } catch (e) { console.error('[GpsClientes] trilha do endereço (desfazer já aplicado):', e.message); }
     // Selo recalculado fora da transação (não pode derrubar o desfazer)
     try { await reavaliarCliente(log.clienteUuid); } catch (e) { console.error('[GpsClientes] reavaliar pós-desfazer:', e.message); }
     return { ok: true };

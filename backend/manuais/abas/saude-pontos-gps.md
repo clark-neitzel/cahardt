@@ -39,3 +39,6 @@ Cliente que compra e **retira na empresa** — não precisa de ponto GPS. Marca-
 - **"Por que o pedido não envia?"** — O bloqueio de GPS está ligado e o cliente não tem ponto nem é balcão. Defina o ponto pelo botão "Definir ponto agora" do próprio aviso, ou marque balcão (com permissão).
 - **"O motorista disse que o lugar certo é outro"** — Quando a entrega conclui longe do ponto, o app pergunta ao motorista se ele está na porta; se sim, ele manda foto da fachada e isso vira sinal de correção (aparece aqui como suspeito/sugestão, e avisa o vendedor da carteira na tela inicial dele).
 - **"O que significam os emojis no Caixa?"** — 📍✅ entrega concluída no ponto do cliente; 📍❗ concluída longe do ponto; 📍➖ sem GPS na hora; 📍❓ cliente sem ponto cadastrado. Tocar no emoji mostra a distância.
+
+## Histórico do endereço (10/2026)
+Mudanças de ponto feitas aqui (aprovar pendência, desfazer) passam a aparecer também no **Histórico do endereço** da ficha do cliente (aba Qualidade dos dados), com a origem "Saúde dos Pontos" / "Desfazer na Saúde dos pontos". O histórico do ponto desta tela continua igual.
