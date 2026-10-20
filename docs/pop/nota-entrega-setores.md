@@ -1,7 +1,7 @@
 # Nota de entrega — Cadastro de Setores
 
 > Pedido do dono em 20/10/2026: "cadastrar os setores, editar, e assim mudar em todo lugar o nome do setor."
-> Veredito do gerente de entrega: **LIBERADO** para publicar. A seção "Conferido em produção" fica em branco até o deploy.
+> Veredito do gerente de entrega: **LIBERADO**. Publicado em 20/10/2026 às 10:42 (commit d36ce64e). Conferência em produção abaixo.
 
 ## O que mudou (em termos de uso)
 
@@ -30,13 +30,14 @@
 
 ## Conferido em produção
 
-_(preencher depois do deploy)_
+Feito pelo gerente de projeto em 20/10 às 10:42, logo após o deploy (servidor reiniciado há 20 segundos na hora da conferência):
 
-- [ ] Servidor novo no ar (marcador desta entrega respondendo)
-- [ ] Telas novas no ar (app publicado carrega a rota de Setores)
-- [ ] Cadastro de setores responde "entre para continuar" sem login (e não "não encontrado") — prova que a rota existe
-- [ ] Tablet da Cozinha continua respondendo "aparelho não autorizado" sem chave (rota viva, setor COZINHA semeado e ativo)
-- [ ] Página de novidade abre sem login; aviso do Clippy registrado
+- [x] **Servidor novo no ar** — responde com o marcador desta entrega.
+- [x] **Telas novas no ar** — o app publicado já carrega a rota Configurações → Setores.
+- [x] **Cadastro de setores existe** — sem login responde "token não fornecido" (401), não "não encontrado"; tentar reordenar sem login também é recusado.
+- [x] **Os 4 setores foram semeados no banco** — os endereços do tablet de Cozinha, Estoque, Expedição e Motorista respondem "aparelho não autorizado" (setor existe e está ativo); um setor que não existe ("limpeza") responde "setor não encontrado" — ou seja, a lista vem da tabela nova, não de valor fixo.
+- [x] **Página de novidade abre sem login**; a entrada do Clippy está no topo da lista de novidades.
+- [ ] **Renomear um setor e ver o nome novo na ficha, no Como Fazer e no tablet** — exige login; provado no ambiente de testes pelo QA. Fica para você (abaixo).
 
 ## O que você precisa fazer / conferir (um minuto)
 
