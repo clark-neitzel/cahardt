@@ -7,6 +7,7 @@ const router = express.Router();
 const prisma = require('../config/database');
 const svc = require('../services/impressaoService');
 const render = require('../services/etiquetaCozinhaRender');
+const bitmapRender = require('../services/etiquetaBitmapRender');
 
 function permsDe(req) {
     const p = req.user?.permissoes;
@@ -36,7 +37,7 @@ async function auditar(req, acao, agente, extra) {
 
 const LINGUAGENS = ['EPL2', 'ZPL'];
 const TAMANHOS = ['40x25', '100x120'];
-const TIPOS_TESTE = ['TEXTO_EPL2', 'TEXTO_ZPL', 'ETIQUETA_EXEMPLO'];
+const TIPOS_TESTE = ['TEXTO_EPL2', 'TEXTO_ZPL', 'ETIQUETA_EXEMPLO', 'BITMAP_TESTE'];
 const STATUS_FILA = ['PENDENTE', 'ENVIANDO', 'IMPRESSO', 'ERRO', 'EXPIRADO', 'CANCELADO'];
 
 // ---------- agentes ----------
@@ -107,11 +108,7 @@ router.post('/agentes/:id/atualizar-impressoras', soAdmin, async (req, res) => {
 
 // ---------- impressoras ----------
 
-function estadoWindowsDe(agente, nomeWindows) {
-    const lista = Array.isArray(agente?.impressorasWindows) ? agente.impressorasWindows : [];
-    const p = lista.find((x) => x?.nome === nomeWindows);
-    return p ? (p.status || 'desconhecido') : 'nao_listada';
-}
+const estadoWindowsDe = svc.estadoWindowsDe; // movido p/ o service (E3), comportamento idêntico
 
 router.get('/impressoras', async (req, res) => {
     try {
@@ -158,16 +155,10 @@ function validarImpressora(b, parcial) {
     if (tem('ativa')) d.ativa = !!b.ativa;
     if (tem('ajustes')) {
         if (b.ajustes === null) d.ajustes = null;
-        else if (typeof b.ajustes !== 'object' || Array.isArray(b.ajustes)) return { erro: 'Ajustes inválidos.' };
         else {
-            const aj = {};
-            for (const k of ['densidade', 'velocidade', 'col1X', 'col2X', 'offsetX', 'offsetY']) {
-                if (b.ajustes[k] === undefined || b.ajustes[k] === null || b.ajustes[k] === '') continue;
-                const n = Number(b.ajustes[k]);
-                if (!Number.isFinite(n) || Math.abs(n) > 2000) return { erro: `Ajuste "${k}" inválido.` };
-                aj[k] = n;
-            }
-            d.ajustes = aj;
+            const r = svc.validarAjustes(b.ajustes);
+            if (r.erro) return { erro: r.erro };
+            d.ajustes = r.ajustes;
         }
     }
     return { dados: d };
@@ -215,7 +206,17 @@ router.post('/impressoras/:id/teste', soAdmin, async (req, res) => {
         const imp = await prisma.impressora.findUnique({ where: { id: req.params.id } });
         if (!imp) return res.status(404).json({ error: 'Impressora não encontrada.' });
         let conteudo;
-        try { conteudo = render.renderTeste(tipo, imp); } catch (e) { return res.status(400).json({ error: e.message }); }
+        try {
+            if (tipo === 'BITMAP_TESTE') {
+                // E3: imagem de teste assimétrica pelo MESMO empacotador de produção. compressao: 'Z64' (padrão) | 'HEX'
+                let compressao = req.body?.compressao;
+                if (compressao !== undefined && !['Z64', 'HEX'].includes(compressao)) return res.status(400).json({ error: "compressao deve ser 'Z64' ou 'HEX'." });
+                if (!compressao) compressao = await svc.compressaoGf(imp);
+                conteudo = bitmapRender.renderTesteBitmap(imp, compressao);
+            } else {
+                conteudo = render.renderTeste(tipo, imp);
+            }
+        } catch (e) { return res.status(400).json({ error: e.message }); }
         const t = await svc.enfileirar({
             impressoraId: imp.id, tipo: 'TESTE', conteudo, copias: tipo === 'ETIQUETA_EXEMPLO' ? 2 : 1,
             usuario: { id: String(req.user?.id || ''), nome: req.user?.nome || null },
@@ -229,7 +230,7 @@ router.post('/impressoras/:id/teste', soAdmin, async (req, res) => {
 const SEM_CONTEUDO = {
     id: true, impressoraId: true, tipo: true, status: true, conteudoBytes: true, copias: true, tentativas: true,
     maxTentativas: true, erro: true, loteId: true, solicitadoPorNome: true, pedidoEm: true, expiraEm: true,
-    enviadoAoAgenteEm: true, impressoEm: true,
+    enviadoAoAgenteEm: true, impressoEm: true, referencia: true,
 };
 
 router.get('/fila', soAdmin, async (req, res) => {
@@ -250,8 +251,9 @@ router.get('/fila', soAdmin, async (req, res) => {
 
 router.get('/trabalhos/:id', async (req, res) => {
     try {
+        // E3: dono do trabalho OU admin (quem imprime caixas só com kitFesta/Delivery também acompanha o seu).
+        // A checagem de dono abaixo é a proteção real; não exige mais pcp.etiquetas.
         const admin = ehAdmin(req);
-        if (!admin && !podeEtiquetar(req)) return res.status(403).json({ error: 'Sem permissão.' });
         const t = await prisma.impressaoTrabalho.findUnique({
             where: { id: req.params.id },
             select: { id: true, status: true, erro: true, tentativas: true, solicitadoPorId: true, impressora: { select: { agente: { select: { id: true, ativo: true, ultimoContato: true } } } } },

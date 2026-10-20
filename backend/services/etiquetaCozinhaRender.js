@@ -153,7 +153,8 @@ function colunaEpl2(dados, ox, oy, ascii) {
     return L;
 }
 
-function renderEpl2Pequena(dados, impressora = {}) {
+// Parâmetros EPL2 da impressora pequena (cabeçalho, colunas, offsets). Compartilhado com etiquetaBitmapRender (E3).
+function parametrosEpl2(impressora = {}) {
     const ajustes = impressora.ajustes || {};
     const ascii = impressora.removerAcentos !== false;
     const colunas = Number(impressora.colunas) >= 2 ? 2 : 1;
@@ -166,8 +167,14 @@ function renderEpl2Pequena(dados, impressora = {}) {
     const dens = Number(ajustes.densidade) || 8;
     const vel = Number(ajustes.velocidade) || 2;
 
-    const linhas = ['', 'N', `q${rolo * 8}`, `Q200,${gap}`, `D${dens}`, `S${vel}`, 'ZT'];
-    if (!ascii) linhas.push('I8,A,055'); // Windows-1252 — só ligar depois de validar (plano 3.2 item 4)
+    const cabecalho = ['', 'N', `q${rolo * 8}`, `Q200,${gap}`, `D${dens}`, `S${vel}`, 'ZT'];
+    if (!ascii) cabecalho.push('I8,A,055'); // Windows-1252 — só ligar depois de validar (plano 3.2 item 4)
+    return { ascii, colunas, rolo, gap, offsetX, oy, col1, col2, dens, vel, cabecalho };
+}
+
+function renderEpl2Pequena(dados, impressora = {}) {
+    const { ascii, colunas, oy, col1, col2, cabecalho } = parametrosEpl2(impressora);
+    const linhas = [...cabecalho];
 
     const total = qtd(dados);
     const formularios = [];
@@ -341,7 +348,7 @@ function renderTeste(tipo, impressora = {}) {
 }
 
 module.exports = {
-    renderEpl2Pequena, renderZplGrande, renderTeste,
+    renderEpl2Pequena, renderZplGrande, renderTeste, parametrosEpl2,
     // exportados p/ teste
     _internos: { quebrar, diaSemana, ddmm, escolherFonteNome, escolherFonteZplNome, pesoTexto },
 };

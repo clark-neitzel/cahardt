@@ -85,6 +85,7 @@ const EtiquetasDados = lazyComRetry(() => import('./pages/PCP/EtiquetasDados'));
 const EtiquetasCozinha = lazyComRetry(() => import('./pages/PCP/EtiquetasCozinha'));
 const EtiquetaForm = lazyComRetry(() => import('./pages/PCP/EtiquetaForm'));
 const EtiquetaImprimir = lazyComRetry(() => import('./pages/PCP/EtiquetaImprimir'));
+const EtiquetaTesteRaster = lazyComRetry(() => import('./pages/PCP/EtiquetaTesteRaster')); // spike E3 (admin, sem menu)
 const DeliveryKanban = lazyComRetry(() => import('./pages/Delivery/DeliveryKanban'));
 const DeliveryConfig = lazyComRetry(() => import('./pages/Delivery/DeliveryConfig'));
 const PainelAtendimentos = lazyComRetry(() => import('./pages/Atendimentos/PainelAtendimentos'));
@@ -937,6 +938,7 @@ function App() {
               <Route path="/pcp/etiquetas/cozinha" element={<PrivateRoute><EtiquetasCozinha /></PrivateRoute>} />
               <Route path="/pcp/etiquetas/dados" element={<PrivateRoute><EtiquetasDados /></PrivateRoute>} />
               <Route path="/pcp/etiquetas/nova" element={<PrivateRoute><EtiquetaForm /></PrivateRoute>} />
+              <Route path="/pcp/etiquetas/teste-raster" element={<PrivateRoute><EtiquetaTesteRaster /></PrivateRoute>} />
               <Route path="/pcp/etiquetas/:id/editar" element={<PrivateRoute><EtiquetaForm /></PrivateRoute>} />
               <Route path="/pcp/etiquetas/:id/imprimir" element={<PrivateRoute><EtiquetaImprimir /></PrivateRoute>} />
 

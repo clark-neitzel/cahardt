@@ -1,0 +1,44 @@
+### BITMAP_TESTE ZPL 100x120 (padrao Z64)
+{"trabalhoId":"23bcc894-822c-479e-b69b-a1b0fc0cb3c3"} [HTTP 201]
+bytes gravados: 1115 | tipo TESTE
+### BITMAP_TESTE ZPL 100x120 HEX
+{"trabalhoId":"63ea9387-2cac-426e-b37b-67a29770500b"} [HTTP 201]
+bytes gravados: 192077 | tipo TESTE
+### BITMAP_TESTE compressao invalida
+{"error":"compressao deve ser 'Z64' ou 'HEX'."} [HTTP 400]
+### BITMAP_TESTE EPL2 40x25
+{"trabalhoId":"12590716-6b08-4011-8d15-fcb7c639a541"} [HTTP 201]
+bytes gravados: 16061 | tipo TESTE
+### tipo invalido
+{"error":"tipo deve ser um de: TEXTO_EPL2, TEXTO_ZPL, ETIQUETA_EXEMPLO, BITMAP_TESTE."} [HTTP 400]
+### nao-admin no teste (403)
+{"error":"Apenas administradores."} [HTTP 403]
+
+### ZPL gerado (Z64) - primeiros 300 caracteres
+^XA
+^CI28
+^PW800
+^LL960
+^LH0,0
+^FO0,0^GFA,96000,96000,100,:Z64:eNrt3T2K21AUBtAnXKgZpA0YvIUpVQS0pWQDsWcD8pYEKdQMZAuCt4EZpnFhdIMSAgkkIydBgSjnQ5UxOhi9q/t+CqckIiLyO4mVMxundX9CwWCsZnw/lBkMBoPBYDAYDAaDwfia+kd7IAwGg8FgMBgMBoPBYDAYmzWWv1f/wY4Ng8FgMBgMBoPBYDAYDAaDwWAwXjO+ZGIwGAwGg8FgMBgMBoPBYNhbYjAYDAaDwWAwG
+... tamanho total     1115 bytes; final do arquivo:
+g8FgMBgMBoPBYDD+XyNWThIREfmtfAK8Oam0:1258^FS
+^PQ1,0,1,N
+^XZ
+### ZPL HEX - primeiros 200 caracteres
+^XA
+^CI28
+^PW800
+^LL960
+^LH0,0
+^FO0,0^GFA,96000,96000,100,0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+tamanho total   192077
+
+### EPL2 - estrutura (dados binarios do GW resumidos)
+tamanho total: 16061 bytes
+antes do 1o GW: '\nN\nq672\nQ200,24\nD8\nS2\nZT\nN\n'
+GW16,0,40,200, + 8000 bytes de dados | depois: b'\nGW3'
+GW352,0,40,200, + 8000 bytes de dados | depois: b'\nP1\n'
+Traceback (most recent call last):
+  File "<stdin>", line 9, in <module>
+UnicodeDecodeError: 'utf-8' codec can't decode byte 0xff in position 0: invalid start byte

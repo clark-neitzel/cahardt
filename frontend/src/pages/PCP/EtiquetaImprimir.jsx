@@ -10,6 +10,8 @@ import { IconeOrientacao, useEscalaPreview } from './OrientacaoEtiqueta';
 import { TAMANHOS } from './etiquetaModelos';
 import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 import CampoNumero from '../../components/CampoNumero';
+import ImprimirDireto from './ImprimirDireto';
+import { prepararProduto } from './etiquetaDireto';
 
 function hojeIso() { return new Date().toISOString().split('T')[0]; }
 
@@ -67,6 +69,16 @@ export default function EtiquetaImprimir() {
 
         imprimirEtiquetas(conteudo.innerHTML, parseInt(copies) || 1, tamanho, deitada ? 'DEITADA' : 'EM_PE');
     };
+
+    // Zebra grande só imprime 100×120; o Clássico é fixo 80×100 (decisão do gerente: sem centralizar no rolo grande)
+    const bloqueioZebra = tamanho === 'p80'
+        ? 'Sem impressora para 80×100 — use 100×120 ou Imprimir pelo navegador.'
+        : (!deitada && layout === 'classico')
+            ? 'O layout Clássico só existe em 80×100 — escolha ANVISA ou use Imprimir pelo navegador.'
+            : null;
+    const acaoBloqueio = tamanho === 'p80'
+        ? { rotulo: 'Usar 100×120', onClick: () => setTamanho('g120') }
+        : bloqueioZebra ? { rotulo: 'Usar ANVISA', onClick: () => setModelo('anvisa') } : null;
 
     return (
         <div className="w-full max-w-full overflow-x-hidden px-3 py-4 md:px-4 md:py-6">
@@ -162,11 +174,18 @@ export default function EtiquetaImprimir() {
                             </button>
                         </div>
                     </div>
-                    <button onClick={handlePrint} className="col-span-2 md:col-auto flex items-center justify-center gap-2 px-6 py-2 min-h-[44px] bg-primary text-white rounded-full font-semibold hover:bg-primaryDark transition-colors">
-                        <Printer className="h-4 w-4" />
-                        Imprimir {copies > 1 ? `${copies} cópias` : ''}
-                    </button>
                 </div>
+                <ImprimirDireto
+                    className="mt-4"
+                    origem="PRODUTO"
+                    copias={copies}
+                    nome={et.nomeProduto}
+                    referencia={{ tipo: 'ETIQUETA_PRODUTO', id: String(et.id), rotulo: `${et.nomeProduto} · fab ${dataFabDisplay}` }}
+                    bloqueio={bloqueioZebra}
+                    acaoBloqueio={acaoBloqueio}
+                    onNavegador={handlePrint}
+                    preparar={() => prepararProduto({ et, tamanho, layout, dataFab: dataFabDisplay, dataVal: dataValDisplay })}
+                />
                 <div className="mt-4 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
                     <Printer className="h-4 w-4 text-amber-700 flex-shrink-0 mt-0.5" />
                     <p className="text-xs text-amber-900 leading-relaxed">

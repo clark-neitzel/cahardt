@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Etiquetas direto na Zebra — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp (sem imagem: cartão compacto) -->
+<meta property="og:title" content="🏷️ Novidade no Hardt App: etiquetas saem direto na Zebra">
+<meta property="og:description" content="Etiqueta do produto e das caixas do Kit Festa/Delivery com 1 toque: sem janela de impressão, sem escolher papel. O jeito de antes continua ao lado.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 96px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 7vw, 40px);
+    font-weight: 800;
+    line-height: 1.12;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.75);
+    font-size: 16px;
+    max-width: 46ch;
+    margin: 0 auto;
+    text-wrap: balance;
+  }
+
+  /* mock da tela flutuando sobre o hero */
+  .mock {
+    max-width: 420px;
+    margin: -68px auto 28px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.28);
+    overflow: hidden;
+    text-align: left;
+  }
+  .mock-top {
+    background: var(--house);
+    color: #fff;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .mock-top small {
+    display: block;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    color: rgba(255,255,255,.55);
+  }
+  .mock-top strong { font-size: 16px; line-height: 1.2; }
+  .mock-ico { font-size: 24px; }
+  .mock-body { padding: 16px 18px 18px; }
+  .mock-label {
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--ink-soft);
+    margin-bottom: 4px;
+  }
+  .mock-input {
+    border: 1.5px solid #d8d5cc;
+    border-radius: 10px;
+    padding: 11px 13px;
+    font-size: 15px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--ink);
+    background: #fff;
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+  }
+  .mock-input.focado { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0,117,74,.14); }
+  .cursor { display: inline-block; width: 2px; height: 18px; background: var(--primary); margin-left: 2px; animation: pisca 1s steps(1) infinite; }
+  @keyframes pisca { 50% { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .cursor { animation: none; } }
+  .mock-campos { margin-top: 14px; display: grid; gap: 9px; }
+  .campo {
+    background: #f6f5f1;
+    border-radius: 9px;
+    padding: 8px 12px;
+    font-size: 13px;
+    color: #b9b5aa;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background .4s, color .4s;
+  }
+  .campo b { font-weight: 700; }
+  .campo.cheio { background: var(--mint); color: var(--primary-dark); }
+  .campo .ck { opacity: 0; transition: opacity .4s; }
+  .campo.cheio .ck { opacity: 1; }
+  .mock-status {
+    margin-top: 12px;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--ink-soft);
+    min-height: 20px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .mock-status.ok { color: var(--primary-dark); }
+
+  /* botão de demo */
+  .demo-cta {
+    display: block;
+    width: 100%;
+    max-width: 420px;
+    margin: 0 auto 8px;
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    font: inherit;
+    font-size: 16px;
+    font-weight: 800;
+    padding: 16px;
+    border-radius: 999px;
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(0,117,74,.35);
+  }
+  .demo-cta:hover { background: var(--primary-dark); }
+  .demo-cta:focus-visible, .acc-head:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .demo-hint { text-align: center; font-size: 12px; color: var(--ink-soft); margin: 0 0 34px; }
+
+  /* ── SEÇÕES / ACCORDION ── */
+  .sec-label {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: var(--primary-dark);
+    margin: 34px 4px 12px;
+  }
+  .acc {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .acc-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: none;
+    border: none;
+    font: inherit;
+    text-align: left;
+    padding: 15px 16px;
+    cursor: pointer;
+    min-height: 56px;
+  }
+  .acc-ico {
+    width: 38px; height: 38px;
+    border-radius: 11px;
+    background: var(--mint);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  /* passos */
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n {
+    width: 30px; height: 30px; flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 800;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .rodape {
+    text-align: center;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 40px;
+  }
+  .rodape strong { color: var(--primary-dark); }
+
+  /* ── MOCKUPS DAS TELAS DO APP ── */
+  .tela {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .tela-titulo {
+    background: var(--house);
+    color: #fff;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .app-card {
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .app-card-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    border-bottom: 1px solid #f0efe9;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: #6b756f;
+  }
+  .app-card-body { padding: 12px; }
+  .app-input {
+    border: 1px solid #d8d5cc;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 12.5px;
+    color: var(--ink);
+    background: #fff;
+    margin-bottom: 8px;
+  }
+  .app-input small { display: block; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: #9aa5a0; margin-bottom: 2px; }
+  .app-input.ok { background: var(--mint); border-color: rgba(0,117,74,.25); }
+  .app-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--primary);
+    color: #fff;
+    font-size: 12.5px;
+    font-weight: 700;
+    padding: 9px 16px;
+    border-radius: 999px;
+  }
+  .app-btn.claro { background: #fff; border: 1.5px solid var(--primary); color: var(--primary); }
+  .app-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+  .app-pill {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 7px 14px;
+    border-radius: 999px;
+    border: 1.5px solid #d8d5cc;
+    color: #6b756f;
+    background: #fff;
+  }
+  .app-pill.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .app-busca {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .app-busca .app-input { flex: 1; margin-bottom: 0; color: #9aa5a0; }
+  .app-toggle-linha {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: #f7f6f2;
+    border: 1px solid #edece6;
+    border-radius: 10px;
+    padding: 9px 12px;
+    font-size: 12.5px;
+  }
+  .app-toggle-linha small { display: block; font-size: 10.5px; color: #9aa5a0; }
+  .app-toggle {
+    width: 38px; height: 22px; flex-shrink: 0;
+    border-radius: 999px;
+    background: var(--primary);
+    position: relative;
+  }
+  .app-toggle::after {
+    content: '';
+    position: absolute;
+    top: 3px; right: 3px;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: #fff;
+  }
+  .pin {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    flex-shrink: 0;
+    vertical-align: 2px;
+    margin-left: 6px;
+  }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+
+  .zebra-chip { display:inline-block; font-size:11px; font-weight:800; padding:3px 9px; border-radius:999px; }
+  .zebra-chip.on { background:#dcfce7; color:#166534; }
+  .zebra-chip.off { background:#fee2e2; color:#b91c1c; }
+  .estado { border-radius:10px; padding:9px 12px; font-size:12.5px; margin-top:8px; border:1px solid #e5e3dc; background:#f7f6f2; color:#444; }
+  .estado.erro { background:#fef2f2; border-color:#fecaca; color:#991b1b; }
+  .estado.ok { background:#f0fdf4; border-color:#bbf7d0; color:#166534; font-weight:700; }
+  .etq-mini { display:inline-block; width:92px; height:110px; border:2px solid #111; border-radius:4px; background:#fff; position:relative; }
+  .etq-mini i { position:absolute; left:6px; right:6px; height:5px; background:#222; border-radius:2px; }
+  .linha-btns { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>Etiquetas saindo direto<br>na Zebra</h1>
+    <p>As etiquetas dos produtos e das caixas do Kit Festa e do Delivery agora têm um botão verde: <b>Imprimir na Zebra</b>. Um toque e a etiqueta sai — sem janela de impressão, sem escolher papel, sem escala.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="mock" aria-hidden="true">
+    <div class="mock-top">
+      <span class="mock-ico">🏷️</span>
+      <div>
+        <small>PCP · Etiquetas · Imprimir</small>
+        <strong>Imprimir na Zebra</strong>
+      </div>
+    </div>
+    <div class="mock-body">
+      <div class="mock-label">Impressora</div>
+      <div class="mock-input" style="font-family:inherit;gap:8px">Etiqueta Grande <span class="zebra-chip on">online</span></div>
+      <div class="linha-btns">
+        <span class="app-btn">🖨️ Imprimir na Zebra</span>
+        <span class="app-btn claro">🌐 Imprimir pelo navegador</span>
+      </div>
+      <div class="estado ok" style="margin-top:12px">✅ Saiu na impressora.</div>
+    </div>
+  </div>
+
+  <div class="sec-label">O que mudou</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🖨️</span>
+      <strong>Dois botões em cada lugar</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Nos <b>três lugares</b> onde se imprime etiqueta, agora existem dois botões lado a lado:</p>
+      <ul>
+        <li><b>Imprimir na Zebra</b> (verde) — manda pelo app direto para a impressora da cozinha. Não abre janela, não pergunta papel.</li>
+        <li><b>Imprimir pelo navegador</b> (contorno) — o jeito de sempre, com a janela de impressão. <b>Continua igualzinho</b>; é a reserva se o computador da cozinha estiver desligado.</li>
+      </ul>
+      <p>Os lugares: <b>PCP → Etiquetas</b> (lista e tela de imprimir), <b>Pedidos Online → Kit Festa</b> (pedido → Etiquetas) e o card do <b>Delivery</b> (ícone de impressora).</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🚦</span>
+      <strong>Você vê o que está acontecendo</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li><b>Impressora:</b> aparece o nome e o estado — <b>online</b>, <b>instável</b> ou <b>PC desligado</b> (a etiqueta espera na fila por 15 minutos).</li>
+        <li><b>Passos:</b> Preparando → Na fila → Imprimindo → <b>Saiu</b>.</li>
+        <li><b>Deu problema?</b> Aparece o motivo, com <b>Tentar de novo</b> e <b>Cancelar e imprimir pelo navegador</b>. O cancelar tira a etiqueta da fila antes — assim <b>não sai em dobro</b> quando o computador ligar.</li>
+        <li>Tocar duas vezes sem querer <b>não imprime duas vezes</b>.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">📏</span>
+      <strong>O desenho é o mesmo de sempre</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>A etiqueta que sai é a <b>mesma que você vê na tela</b>: mesma tabela nutricional, mesmos selos "ALTO EM", mesmo texto. O que mudou foi só o caminho até a impressora.</li>
+        <li><b>Produto: só no tamanho 100 × 120</b>, com o desenho <b>ANVISA</b> ou <b>Deitada</b>. No 80 × 100 e no Clássico não existe impressora/rolo — o botão da Zebra fica apagado com um aviso e um atalho (<b>Usar 100×120</b> / <b>Usar ANVISA</b>). O botão do navegador segue valendo.</li>
+        <li><b>Cópias:</b> vale o campo Cópias, como antes.</li>
+        <li>Pode haver diferença de <b>fração de milímetro</b> no papel em relação ao jeito do navegador. Se notar algo estranho (letra cortada, código que não lê), avise.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ══════════ TELAS ══════════ -->
+  <div class="sec-label">As telas do app</div>
+
+  <div class="tela">
+    <div class="tela-titulo">🏷️ Tela 1 · PCP → Etiquetas → Imprimir</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">Etiqueta</div>
+        <div class="app-card-body">
+          <div class="app-pills" style="margin-bottom:8px">
+            <span class="app-pill">80 × 100</span><span class="app-pill on">100 × 120</span>
+            <span class="app-pill">Clássico</span><span class="app-pill on">ANVISA</span><span class="pin">1</span>
+          </div>
+          <div style="font-size:12.5px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">Etiqueta Grande <span class="zebra-chip on">online</span><span class="pin">2</span></div>
+          <div class="linha-btns">
+            <span class="app-btn">🖨️ Imprimir na Zebra</span><span class="pin">3</span>
+            <span class="app-btn claro">🌐 Imprimir pelo navegador</span><span class="pin">4</span>
+          </div>
+          <div class="estado">⏳ Na fila — esperando a impressora pegar.<span class="pin">5</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Tamanho e desenho</b> como sempre. Para a Zebra: <b>100 × 120</b> + <b>ANVISA</b> (ou etiqueta Deitada).</span></div>
+      <div><span class="pin">2</span><span><b>Impressora e estado.</b> "PC desligado" = a etiqueta espera até 15 minutos.</span></div>
+      <div><span class="pin">3</span><span><b>Imprimir na Zebra:</b> manda direto. Usa o campo Cópias.</span></div>
+      <div><span class="pin">4</span><span><b>Imprimir pelo navegador:</b> o jeito antigo, com a janela de impressão.</span></div>
+      <div><span class="pin">5</span><span><b>Andamento:</b> Preparando → Na fila → Imprimindo → Saiu.</span></div>
+    </div>
+  </div>
+
+  <div class="tela">
+    <div class="tela-titulo">⚠️ Tela 2 · Quando algo dá errado</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-body">
+          <div class="estado erro">⚠️ Impressora sem etiqueta. Coloque o rolo e tente de novo.<span class="pin">1</span></div>
+          <div class="linha-btns">
+            <span class="app-btn">Tentar de novo</span><span class="pin">2</span>
+            <span class="app-btn claro">Cancelar e imprimir pelo navegador</span><span class="pin">3</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>O motivo aparece em português, no lugar onde você clicou.</span></div>
+      <div><span class="pin">2</span><span><b>Tentar de novo</b> manda outra vez (não duplica a que falhou).</span></div>
+      <div><span class="pin">3</span><span><b>Cancelar e imprimir pelo navegador</b> tira a etiqueta da fila e abre a janela de impressão de sempre — sem risco de sair duas.</span></div>
+    </div>
+  </div>
+
+  <div class="tela">
+    <div class="tela-titulo">🎉 Tela 3 · Etiquetas das caixas (Kit Festa e Delivery)</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">🖨️ Etiquetas das caixas · #349 Gomed Clínica</div>
+        <div class="app-card-body">
+          <div style="font-size:12px;color:#6b756f;margin-bottom:8px">1 etiqueta por caixa com sabor, nº do pedido, QR e frase · Total: <b>20</b> etiquetas.<span class="pin">1</span></div>
+          <div style="font-size:12.5px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">Etiqueta Pequena · 2 colunas <span class="zebra-chip on">online</span><span class="pin">2</span></div>
+          <div class="linha-btns">
+            <span class="app-btn">🖨️ Imprimir na Zebra</span><span class="pin">3</span>
+            <span class="app-btn claro">🌐 Imprimir pelo navegador</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>As opções (frase, "a cada N caixas", tirar o "C/25-HF") são as mesmas de antes.</span></div>
+      <div><span class="pin">2</span><span>A Zebra pequena usa as <b>2 colunas do cadastro</b> da impressora — a caixinha "Rolo de 2 colunas" vale só para o navegador.</span></div>
+      <div><span class="pin">3</span><span>Mais de 60 etiquetas pede confirmação. A ordem é a mesma de sempre (sabor, sabor… e a etiqueta do pedido a cada N caixas).</span></div>
+    </div>
+  </div>
+
+  <div class="sec-label">Para começar a usar</div>
+  <div class="passos">
+    <div class="passo"><span class="passo-n">1</span><div>Abra a etiqueta (PCP → Etiquetas) ou o pedido/card das caixas.</div></div>
+    <div class="passo"><span class="passo-n">2</span><div>Confira <b>100 × 120</b> e o desenho <b>ANVISA</b> e a <b>impressora online</b>.</div></div>
+    <div class="passo"><span class="passo-n">3</span><div>Toque em <b>Imprimir na Zebra</b> e espere o <b>Saiu</b>.</div></div>
+    <div class="passo"><span class="passo-n">4</span><div>Computador da cozinha desligado? Use <b>Imprimir pelo navegador</b>.</div></div>
+  </div>
+
+  <div class="rodape"><strong>Hardt App</strong> · Novidade de outubro/2026</div>
+</div>
+
+<script>
+function alternar(btn) {
+  var acc = btn.parentElement;
+  var aberto = acc.classList.toggle('aberto');
+  btn.setAttribute('aria-expanded', aberto ? 'true' : 'false');
+}
+</script>
+</body>
+</html>

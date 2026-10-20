@@ -109,8 +109,56 @@ async function minutosExpiracao() {
     return EXPIRA_PADRAO_MIN;
 }
 
+// Compressão do ^GFA: ajustes.gfCompressao da impressora > appConfig 'impressao_gf_compressao' > 'Z64'.
+// 'Z64' (padrão) | 'HEX' (reserva p/ firmware sem :Z64:). Corrigível por configuração, sem deploy.
+async function compressaoGf(impressora) {
+    const doCadastro = String(impressora?.ajustes?.gfCompressao ?? '').toUpperCase();
+    if (doCadastro === 'HEX' || doCadastro === 'Z64') return doCadastro;
+    try {
+        const cfg = await prisma.appConfig.findUnique({ where: { key: 'impressao_gf_compressao' } });
+        const v = String(cfg?.value ?? '').toUpperCase();
+        if (v === 'HEX' || v === 'Z64') return v;
+    } catch (_) { /* usa o padrão */ }
+    return 'Z64';
+}
+
+// Valida o objeto `ajustes` de uma impressora (PUT /impressoras/:id e admin-exec impressora-ajustes).
+// Devolve { ajustes } ou { erro }. Chaves desconhecidas são ignoradas.
+function validarAjustes(b) {
+    if (typeof b !== 'object' || b === null || Array.isArray(b)) return { erro: 'Ajustes inválidos.' };
+    const aj = {};
+    for (const k of ['densidade', 'velocidade', 'col1X', 'col2X']) {
+        if (b[k] === undefined || b[k] === null || b[k] === '') continue;
+        const n = Number(b[k]);
+        if (!Number.isFinite(n) || Math.abs(n) > 2000) return { erro: `Ajuste "${k}" inválido.` };
+        aj[k] = n;
+    }
+    for (const k of ['offsetX', 'offsetY']) { // inteiros 0..200 (negativo a impressão recusa)
+        if (b[k] === undefined || b[k] === null || b[k] === '') continue;
+        const n = Number(b[k]);
+        if (!Number.isInteger(n) || n < 0 || n > 200) return { erro: `Ajuste "${k}" deve ser um inteiro de 0 a 200.` };
+        aj[k] = n;
+    }
+    if (b.gwInverter !== undefined && b.gwInverter !== null) {
+        if (typeof b.gwInverter !== 'boolean') return { erro: 'Ajuste "gwInverter" deve ser verdadeiro ou falso.' };
+        aj.gwInverter = b.gwInverter;
+    }
+    if (b.gfCompressao !== undefined && b.gfCompressao !== null && b.gfCompressao !== '') {
+        if (!['Z64', 'HEX'].includes(b.gfCompressao)) return { erro: 'Ajuste "gfCompressao" deve ser Z64 ou HEX.' };
+        aj.gfCompressao = b.gfCompressao;
+    }
+    return { ajustes: aj };
+}
+
+// Estado da impressora na lista que o agente reportou ('Pronta'|'Offline'|...|'nao_listada')
+function estadoWindowsDe(agente, nomeWindows) {
+    const lista = Array.isArray(agente?.impressorasWindows) ? agente.impressorasWindows : [];
+    const p = lista.find((x) => x?.nome === nomeWindows);
+    return p ? (p.status || 'desconhecido') : 'nao_listada';
+}
+
 // Grava um trabalho PENDENTE. `chaveIdempotencia` repetida devolve o trabalho que já existe.
-async function enfileirar({ impressoraId, tipo = 'OUTRO', conteudo, copias = 1, chaveIdempotencia = null, loteId = null, usuario = null }) {
+async function enfileirar({ impressoraId, tipo = 'OUTRO', conteudo, copias = 1, chaveIdempotencia = null, loteId = null, usuario = null, referencia = null }) {
     if (!Buffer.isBuffer(conteudo) || conteudo.length === 0) throw new Error('Conteúdo vazio.');
     if (chaveIdempotencia) {
         const existente = await prisma.impressaoTrabalho.findUnique({ where: { chaveIdempotencia } });
@@ -122,6 +170,7 @@ async function enfileirar({ impressoraId, tipo = 'OUTRO', conteudo, copias = 1, 
             data: {
                 impressoraId, tipo, status: 'PENDENTE', conteudo, conteudoBytes: conteudo.length,
                 copias, chaveIdempotencia, loteId,
+                referencia: referencia ? String(referencia).slice(0, 200) : null,
                 solicitadoPorId: usuario?.id || null, solicitadoPorNome: usuario?.nome || null,
                 expiraEm: new Date(Date.now() + min * 60 * 1000),
             },
@@ -418,6 +467,6 @@ module.exports = {
     VERSAO_SERVIDOR, EXPIRA_PADRAO_MIN,
     lerScript, hashToken, gerarToken, autenticarAgente,
     estadoAgente, agentePublico,
-    enfileirar, reivindicar, sincronizar, registrarResultado, expirarELimpar,
+    enfileirar, estadoWindowsDe, compressaoGf, validarAjustes, reivindicar, sincronizar, registrarResultado, expirarELimpar,
     gerarInstaladorBat, gerarDesinstaladorBat, baseUrlPublica,
 };

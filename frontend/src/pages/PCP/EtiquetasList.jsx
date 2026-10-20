@@ -9,6 +9,8 @@ import { TAMANHOS, TAMANHO_PADRAO, LAYOUTS, LAYOUT_PADRAO, layoutValido, paginaI
 import { IconeOrientacao, useEscalaPreview } from './OrientacaoEtiqueta';
 import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 import CampoNumero from '../../components/CampoNumero';
+import ImprimirDireto from './ImprimirDireto';
+import { prepararProduto } from './etiquetaDireto';
 
 // ─── Utilidades de data ───────────────────────────────────────────────────────
 
@@ -94,6 +96,16 @@ function PrintModal({ et, onClose }) {
 
         imprimirEtiquetas(conteudo.innerHTML, parseInt(copies) || 1, tamanho, deitada ? 'DEITADA' : 'EM_PE');
     };
+
+    // Zebra grande só imprime 100×120; o Clássico é fixo 80×100 (sem centralizar no rolo grande)
+    const bloqueioZebra = tamanho === 'p80'
+        ? 'Sem impressora para 80×100 — use 100×120 ou Imprimir pelo navegador.'
+        : (!deitada && layout === 'classico')
+            ? 'O layout Clássico só existe em 80×100 — escolha ANVISA ou use Imprimir pelo navegador.'
+            : null;
+    const acaoBloqueio = tamanho === 'p80'
+        ? { rotulo: 'Usar 100×120', onClick: () => setTamanho('g120') }
+        : bloqueioZebra ? { rotulo: 'Usar ANVISA', onClick: () => setModelo('anvisa') } : null;
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-2 md:p-4" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
@@ -202,13 +214,19 @@ function PrintModal({ et, onClose }) {
                             </button>
                         </div>
                     </div>
-                    <button
-                        onClick={handlePrint}
-                        className="col-span-2 md:col-auto md:ml-auto flex items-center justify-center gap-2 px-7 py-2.5 min-h-[44px] bg-primary text-white rounded-full font-semibold text-base hover:bg-primaryDark transition-colors shadow-sm"
-                    >
-                        <Printer className="h-5 w-5" />
-                        Imprimir{copies > 1 ? ` ${copies}×` : ''}
-                    </button>
+                </div>
+
+                <div className="px-4 py-3 md:px-6 bg-gray-50 border-b">
+                    <ImprimirDireto
+                        origem="PRODUTO"
+                        copias={copies}
+                        nome={et.nomeProduto}
+                        referencia={{ tipo: 'ETIQUETA_PRODUTO', id: String(et.id), rotulo: `${et.nomeProduto} · fab ${dataFabDisplay}` }}
+                        bloqueio={bloqueioZebra}
+                        acaoBloqueio={acaoBloqueio}
+                        onNavegador={handlePrint}
+                        preparar={() => prepararProduto({ et, tamanho, layout, dataFab: dataFabDisplay, dataVal: dataValDisplay })}
+                    />
                 </div>
 
                 {/* Papel do diálogo do sistema — se não bater com a página, o navegador encolhe a etiqueta */}

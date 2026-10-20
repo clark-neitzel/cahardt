@@ -3,6 +3,7 @@ import JsBarcode from 'jsbarcode';
 import EtiquetaLabel from './EtiquetaLabel';
 import EtiquetaLabelDeitada from './EtiquetaLabelDeitada';
 import { useAutoFit } from './useAutoFit';
+import { marcarEanRaster } from './etiquetaEan';
 import {
     TAMANHOS, TAMANHO_PADRAO, LAYOUT_PADRAO, layoutValido, ehDeitada, dimensoesEtiqueta,
     codExibir, pesoLiquidoStr, pesoTabela, linhasNutricionais, selosAnvisa,
@@ -80,7 +81,7 @@ function SeloAnvisa({ selos, sm }) {
 // pedido do dono em 08/2026: datas empilhadas encurtam a linha e sobra mais
 // espaço vertical p/ os textos.
 // Renderiza no TAMANHO escolhido: 100×120 (padrão) ou 80×100 compacto (sm).
-export function EtiquetaLabelNova({ et, dataFab, dataVal, larguraMM = 100, alturaMM = 120 }) {
+export function EtiquetaLabelNova({ et, dataFab, dataVal, larguraMM = 100, alturaMM = 120, modoRaster = false }) {
     const svgRef = useRef(null);
     // sm = rolo pequeno 80×100 → aperto de fontes/paddings (classe .label.sm do mockup)
     const sm = larguraMM <= 80;
@@ -124,7 +125,8 @@ export function EtiquetaLabelNova({ et, dataFab, dataVal, larguraMM = 100, altur
             svg.style.width = `${(w * PX2MM).toFixed(2)}mm`;
             svg.style.height = `${(h * PX2MM).toFixed(2)}mm`;
         }
-    }, [et.codigoBarras, sm]);
+        if (modoRaster) marcarEanRaster(svg, opts, et.codigoBarras);
+    }, [et.codigoBarras, sm, modoRaster]);
 
     const selos = selosAnvisa(et);
 
@@ -305,7 +307,7 @@ export function EtiquetaLabelNova({ et, dataFab, dataVal, larguraMM = 100, altur
 // ─── Despachante: escolhe o componente pelo LAYOUT e o tamanho pelo TAMANHO ─────
 // (import estático). `layout` = 'classico' | 'anvisa'; `tamanho` = 'p80' | 'g120'.
 // Compat: aceita o `modelo` antigo ('classico' | 'anvisa120') e o traduz.
-export function EtiquetaRender({ layout, tamanho, modelo, et, dataFab, dataVal }) {
+export function EtiquetaRender({ layout, tamanho, modelo, et, dataFab, dataVal, modoRaster = false }) {
     let lay = layout, tam = tamanho;
     if (modelo != null && lay == null && tam == null) {
         lay = modelo === 'anvisa120' ? 'anvisa' : 'classico';
@@ -318,13 +320,13 @@ export function EtiquetaRender({ layout, tamanho, modelo, et, dataFab, dataVal }
     // "Modelo" escolhido na tela (a deitada tem um desenho só). Dimensões trocadas.
     if (ehDeitada(et)) {
         const d = dimensoesEtiqueta(tam, 'DEITADA');
-        return <EtiquetaLabelDeitada et={et} dataFab={dataFab} dataVal={dataVal} larguraMM={d.larguraMM} alturaMM={d.alturaMM} />;
+        return <EtiquetaLabelDeitada et={et} dataFab={dataFab} dataVal={dataVal} larguraMM={d.larguraMM} alturaMM={d.alturaMM} modoRaster={modoRaster} />;
     }
 
     if (lay === 'anvisa') {
-        return <EtiquetaLabelNova et={et} dataFab={dataFab} dataVal={dataVal} larguraMM={dim.larguraMM} alturaMM={dim.alturaMM} />;
+        return <EtiquetaLabelNova et={et} dataFab={dataFab} dataVal={dataVal} larguraMM={dim.larguraMM} alturaMM={dim.alturaMM} modoRaster={modoRaster} />;
     }
-    return <EtiquetaLabel et={et} dataFab={dataFab} dataVal={dataVal} larguraMM={dim.larguraMM} alturaMM={dim.alturaMM} />;
+    return <EtiquetaLabel et={et} dataFab={dataFab} dataVal={dataVal} larguraMM={dim.larguraMM} alturaMM={dim.alturaMM} modoRaster={modoRaster} />;
 }
 
 export default EtiquetaLabelNova;

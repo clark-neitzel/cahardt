@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
-import { Printer, Plus, Pencil, Trash2, FileText, Tag, Loader2, CheckCircle, XCircle } from 'lucide-react';
+import { Printer, Plus, Pencil, Trash2, FileText, Tag, Image as ImageIcon, ChevronDown, Loader2, CheckCircle, XCircle } from 'lucide-react';
+import CampoNumero from '../../../components/CampoNumero';
 import SelectBusca from '../../../components/SelectBusca';
 import impressaoService from '../../../services/impressaoService';
 import { Card, Modal, EstadoAgente, btnPrim, btnSec, btnPerigo, btnGhost, inputCls, labelCls, erroDe } from './comuns';
@@ -18,11 +19,16 @@ export function sugerirLinguagem(driver) {
 
 const VAZIO = { nome: '', agenteId: '', nomeWindows: '', linguagem: 'EPL2', tamanho: '40x25', colunas: 2, rotacao: 0, ativa: false };
 
+const AJ_VAZIO = { gwInverter: false, gfCompressao: 'Z64', offsetX: '', offsetY: '' };
+
 const ImpressoraForm = ({ inicial, agentes, onFechar, onSalvo }) => {
     const [f, setF] = useState(() => ({ ...VAZIO, agenteId: agentes.find(a => a.ativo !== false)?.id || '', ...inicial }));
     const [manual, setManual] = useState(false);
     const [salvando, setSalvando] = useState(false);
     const [sugestao, setSugestao] = useState(null);
+    const [ajAberto, setAjAberto] = useState(false);
+    const [aj, setAj] = useState(() => ({ ...AJ_VAZIO, ...(inicial?.ajustes && typeof inicial.ajustes === 'object' ? Object.fromEntries(Object.entries(inicial.ajustes).filter(([k]) => k in AJ_VAZIO)) : {}) }));
+    const setAjuste = (k, v) => setAj(p => ({ ...p, [k]: v }));
     const set = (k, v) => setF(p => ({ ...p, [k]: v }));
     const agente = agentes.find(a => a.id === f.agenteId);
     const lista = Array.isArray(agente?.impressorasWindows) ? agente.impressorasWindows : [];
@@ -45,6 +51,20 @@ const ImpressoraForm = ({ inicial, agentes, onFechar, onSalvo }) => {
         if (!f.agenteId) return toast.error('Escolha o computador onde ela está ligada.');
         if (!f.nomeWindows.trim()) return toast.error('Escolha (ou digite) o nome da impressora no Windows.');
         const corpo = { nome: f.nome.trim(), agenteId: f.agenteId, nomeWindows: f.nomeWindows.trim(), linguagem: f.linguagem, tamanho: f.tamanho, colunas: Number(f.colunas) || 1, rotacao: Number(f.rotacao) || 0, ativa: !!f.ativa };
+        // Ajustes finos: preserva as chaves já salvas (densidade etc.) e só mexe nas de imagem
+        const ajustes = { ...(f.ajustes && typeof f.ajustes === 'object' ? f.ajustes : {}) };
+        ['offsetX', 'offsetY'].forEach(k => {
+            if (aj[k] === '' || aj[k] == null) delete ajustes[k];
+            else {
+                const n = Number(aj[k]);
+                if (!Number.isInteger(n) || n < 0 || n > 200) { corpo.__erro = 'O deslocamento deve ser um número inteiro de 0 a 200.'; }
+                else ajustes[k] = n;
+            }
+        });
+        if (corpo.__erro) return toast.error(corpo.__erro);
+        if (aj.gwInverter) ajustes.gwInverter = true; else delete ajustes.gwInverter;
+        if (aj.gfCompressao === 'HEX') ajustes.gfCompressao = 'HEX'; else delete ajustes.gfCompressao;
+        corpo.ajustes = ajustes;
         setSalvando(true);
         try {
             const r = f.id ? await impressaoService.atualizarImpressora(f.id, corpo) : await impressaoService.criarImpressora(corpo);
@@ -112,6 +132,34 @@ const ImpressoraForm = ({ inicial, agentes, onFechar, onSalvo }) => {
                         <option value="0">Inativa (só aceita teste)</option>
                     </SelectBusca>
                     {!f.id && <p className="text-xs text-gray-500 mt-1">Dica: deixe inativa, faça o teste e só depois ative.</p>}</div>
+                <div className="md:col-span-2 border border-gray-200 rounded-xl">
+                    <button type="button" onClick={() => setAjAberto(v => !v)} aria-expanded={ajAberto}
+                        className="w-full flex items-center justify-between gap-2 px-4 py-3 min-h-[44px] text-left">
+                        <span className="text-xs font-bold uppercase tracking-widest text-gray-600">Ajustes finos (imagem)</span>
+                        <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform ${ajAberto ? 'rotate-180' : ''}`} />
+                    </button>
+                    {ajAberto && (
+                        <div className="px-4 pb-4 grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-gray-100 pt-3">
+                            <div className="md:col-span-2">
+                                <label className="flex items-center gap-3 min-h-[44px] cursor-pointer">
+                                    <input type="checkbox" className="h-5 w-5 accent-primary" checked={!!aj.gwInverter} onChange={e => setAjuste('gwInverter', e.target.checked)} />
+                                    <span className="text-sm font-medium text-gray-700">Inverter imagem (pequena/EPL2)</span>
+                                </label>
+                                <p className="text-xs text-gray-500">Ligue só se o teste de imagem sair em negativo (fundo preto).</p>
+                            </div>
+                            <div className="md:col-span-2"><label className={labelCls}>Compressão da imagem (grande/ZPL)</label>
+                                <SelectBusca value={aj.gfCompressao} onChange={e => setAjuste('gfCompressao', e.target.value)} className="w-full">
+                                    <option value="Z64">Z64 (padrão, mais leve)</option>
+                                    <option value="HEX">HEX (mais pesado, mais compatível)</option>
+                                </SelectBusca></div>
+                            <div><label className={labelCls}>Deslocar para a direita (dots)</label>
+                                <CampoNumero value={aj.offsetX} onChange={e => setAjuste('offsetX', e.target.value)} min={0} max={200} className={inputCls} placeholder="0" /></div>
+                            <div><label className={labelCls}>Deslocar para baixo (dots)</label>
+                                <CampoNumero value={aj.offsetY} onChange={e => setAjuste('offsetY', e.target.value)} min={0} max={200} className={inputCls} placeholder="0" /></div>
+                            <p className="md:col-span-2 text-xs text-gray-500">Valores de 0 a 200 dots (8 dots = 1 mm). Use só se o teste de imagem sair deslocado.</p>
+                        </div>
+                    )}
+                </div>
             </div>
         </Modal>
     );
@@ -201,6 +249,7 @@ const ImpressorasCard = ({ impressoras, agentes, onRecarregar }) => {
             <button type="button" className={btnSec} disabled={!!ocupado} onClick={() => testar(imp, 'TEXTO_EPL2', 'Teste de texto (EPL2)')}><FileText className="h-4 w-4" />Teste de texto (EPL2)</button>
             <button type="button" className={btnSec} disabled={!!ocupado} onClick={() => testar(imp, 'TEXTO_ZPL', 'Teste de texto (ZPL)')}><FileText className="h-4 w-4" />Teste de texto (ZPL)</button>
             <button type="button" className={btnSec} disabled={!!ocupado} onClick={() => testar(imp, 'ETIQUETA_EXEMPLO', 'Etiqueta de exemplo')}><Tag className="h-4 w-4" />Etiqueta de exemplo</button>
+            <button type="button" className={btnSec} disabled={!!ocupado} onClick={() => testar(imp, 'BITMAP_TESTE', 'Teste de imagem')}><ImageIcon className="h-4 w-4" />Teste de imagem</button>
             <button type="button" className={btnGhost} onClick={() => setForm(imp)}><Pencil className="h-4 w-4 inline mr-1" />Editar</button>
             {imp.ativa === false && <button type="button" className={btnPrim} onClick={() => ativar(imp)}>Ativar</button>}
             {imp.ativa !== false && <button type="button" className={btnPerigo} onClick={() => desativar(imp)}><Trash2 className="h-4 w-4" />Desativar</button>}
@@ -211,6 +260,7 @@ const ImpressorasCard = ({ impressoras, agentes, onRecarregar }) => {
         <Card icone={Printer} titulo="Impressoras"
             acoes={<button type="button" className={btnPrim} disabled={ativos.length === 0} onClick={() => setForm({})}><Plus className="h-4 w-4" />Nova impressora</button>}>
             {ativos.length === 0 && <p className="text-sm text-gray-600 mb-3">Cadastre primeiro o computador da cozinha (card acima).</p>}
+            {impressoras.length > 0 && <p className="text-xs text-gray-600 mb-3">Teste de imagem: prova que a impressora aceita etiqueta em imagem (produto e caixas). Deve sair: moldura, quadrado preto no canto superior esquerdo, letra F, dois códigos de barras e um QR. Se sair em negativo (fundo preto), ligue "Inverter imagem" em Editar.</p>}
             {impressoras.length === 0 ? (
                 ativos.length > 0 && <p className="text-sm text-gray-600">Nenhuma impressora cadastrada. Clique em <b>Nova impressora</b>.</p>
             ) : (

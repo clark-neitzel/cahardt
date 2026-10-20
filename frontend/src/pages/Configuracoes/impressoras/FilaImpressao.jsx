@@ -5,7 +5,9 @@ import SelectBusca from '../../../components/SelectBusca';
 import impressaoService from '../../../services/impressaoService';
 import { Card, BadgeTrabalho, btnSec, btnPerigo, erroDe, formatarDataHora } from './comuns';
 
-const TIPOS = { TESTE: 'Teste', ETIQUETA_COZINHA: 'Etiqueta da cozinha', OUTRO: 'Outro' };
+const TIPOS = { TESTE: 'Teste de impressão', ETIQUETA_COZINHA: 'Cozinha', ETIQUETA_PRODUTO: 'Etiqueta de produto', CAIXA_KIT_FESTA: 'Caixa Kit Festa/Delivery', OUTRO: 'Outro' };
+// "COXINHA [ETIQUETA_PRODUTO:5569]" -> mostra só o rótulo legível
+const refLegivel = (r) => (r ? String(r).replace(/\s*\[[A-Z_]+:[^\]]*\]\s*$/, '').trim() : '');
 
 const FilaImpressao = ({ fila, impressoras, onRecarregar, filtros, setFiltros }) => {
     const nomeImp = (t) => t.impressora?.nome || impressoras.find(i => i.id === t.impressoraId)?.nome || '—';
@@ -59,6 +61,7 @@ const FilaImpressao = ({ fila, impressoras, onRecarregar, filtros, setFiltros })
                                     <span className="font-semibold text-gray-900 truncate">{TIPOS[t.tipo] || t.tipo}</span>
                                     <BadgeTrabalho status={t.status} />
                                 </div>
+                                {refLegivel(t.referencia) && <p className="text-sm text-gray-800 break-words">{refLegivel(t.referencia)}</p>}
                                 <p className="text-sm text-gray-600 truncate">{nomeImp(t)} · {t.copias || 1} etiqueta(s)</p>
                                 <p className="text-xs text-gray-500">{formatarDataHora(t.pedidoEm)}{t.solicitadoPorNome ? ` · ${t.solicitadoPorNome}` : ''}</p>
                                 {t.erro && <p className="text-xs text-red-700 mt-1 break-words">{t.erro}</p>}
@@ -75,7 +78,7 @@ const FilaImpressao = ({ fila, impressoras, onRecarregar, filtros, setFiltros })
                                 {fila.map(t => (
                                     <tr key={t.id} className="hover:bg-gray-50">
                                         <td className="px-4 py-3 text-gray-700">{formatarDataHora(t.pedidoEm)}</td>
-                                        <td className="px-4 py-3 text-gray-900">{TIPOS[t.tipo] || t.tipo}</td>
+                                        <td className="px-4 py-3 text-gray-900">{TIPOS[t.tipo] || t.tipo}{refLegivel(t.referencia) && <div className="text-xs text-gray-600 max-w-xs break-words">{refLegivel(t.referencia)}</div>}</td>
                                         <td className="px-4 py-3 text-gray-700">{nomeImp(t)}</td>
                                         <td className="px-4 py-3 text-gray-700">{t.copias || 1}</td>
                                         <td className="px-4 py-3 text-gray-700">{t.solicitadoPorNome || '—'}</td>

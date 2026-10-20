@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import JsBarcode from 'jsbarcode';
+import { marcarEanRaster } from './etiquetaEan';
 import { TAMANHOS, TAMANHO_PADRAO, MODELOS, orientacaoValida, codExibir, validadeDias, pesoLiquidoStr, parseValor, parseVD, fmtNum } from './etiquetaModelos';
 
 // Reexporta os helpers puros (a fonte agora é etiquetaModelos.js) para NÃO quebrar
@@ -91,24 +92,21 @@ export function imprimirEtiquetas(labelHtml, copies = 1, tamanho = TAMANHO_PADRA
 
 // ─── Etiqueta visual (preview + impressão) ────────────────────────────────────
 
-export default function EtiquetaLabel({ et, dataFab, dataVal, larguraMM = 80, alturaMM = 100 }) {
+export default function EtiquetaLabel({ et, dataFab, dataVal, larguraMM = 80, alturaMM = 100, modoRaster = false }) {
     const svgRef = useRef(null);
     useEffect(() => {
         if (!svgRef.current || !et.codigoBarras) return;
+        const opts = { width: 2.2, height: 40, displayValue: true, fontSize: 12, margin: 0, textMargin: 1 };
+        let ok = false;
         try {
-            JsBarcode(svgRef.current, et.codigoBarras, {
-                format: 'EAN13', width: 2.2, height: 40,
-                displayValue: true, fontSize: 12, margin: 0, textMargin: 1,
-            });
+            JsBarcode(svgRef.current, et.codigoBarras, { format: 'EAN13', ...opts }); ok = true;
         } catch {
             try {
-                JsBarcode(svgRef.current, et.codigoBarras, {
-                    format: 'CODE128', width: 2.2, height: 40,
-                    displayValue: true, fontSize: 12, margin: 0, textMargin: 1,
-                });
+                JsBarcode(svgRef.current, et.codigoBarras, { format: 'CODE128', ...opts }); ok = true;
             } catch { /* sem código de barras */ }
         }
-    }, [et.codigoBarras]);
+        if (ok && modoRaster) marcarEanRaster(svgRef.current, opts, et.codigoBarras);
+    }, [et.codigoBarras, modoRaster]);
 
     // Alérgenos com espécie entre parênteses (RDC 26/2015) p/ crustáceos e peixes
     const alergenos = (Array.isArray(et.alergenos) ? et.alergenos.filter(Boolean) : []).map(a => {

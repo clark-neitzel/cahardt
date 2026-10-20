@@ -110,6 +110,11 @@ app.use(helmet({
     crossOriginEmbedderPolicy: false,
 }));
 
+// Etiquetas em imagem (E3): parser PRÓPRIO de 4 MB (o global abaixo é 100 KB). Precisa vir ANTES do express.json() global.
+// authMiddleware antes do parser: corpo grande só é lido para quem está logado.
+const impressaoEtiquetasRoutes = require('./routes/impressaoEtiquetasRoutes');
+app.use('/api/impressao/etiquetas', authMiddleware, express.json({ limit: '4mb' }), impressaoEtiquetasRoutes, impressaoEtiquetasRoutes.tratarErro);
+
 app.use(express.json());
 app.use((req, res, next) => {
     // Log básico para debug

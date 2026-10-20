@@ -1,0 +1,16 @@
+### 100 etiquetas Kit Festa => 2 trabalhos (80 + 20)
+{"trabalhos":[{"id":"17b61eef-0cce-46f5-83cd-d53ed208a777","status":"PENDENTE"},{"id":"03c83cca-1fe5-49e2-a7e3-0b126fd4b056","status":"PENDENTE"}],"totalEtiquetas":100,"agente":{"estado":"OFFLINE"},"aviso":"O computador da cozinha parece desligado. A etiqueta fica na fila por 15 minutos."} [HTTP 201]
+### repetindo => 200 repetido:true com os mesmos 2 ids
+{"trabalhos":[{"id":"17b61eef-0cce-46f5-83cd-d53ed208a777","status":"PENDENTE"},{"id":"03c83cca-1fe5-49e2-a7e3-0b126fd4b056","status":"PENDENTE"}],"totalEtiquetas":100,"agente":{"estado":"OFFLINE"},"repetido":true} [HTTP 200]
+### 241 etiquetas => 400
+{"error":"Etiquetas demais de uma vez. Divida em lotes menores."} [HTTP 400]
+### appConfig impressao_gf_compressao=HEX muda o PRODUTO para hexa
+{"trabalhos":[{"id":"f2d2a646-d037-4dde-a687-09e49f630d29","status":"PENDENTE"}],"totalEtiquetas":2,"agente":{"estado":"OFFLINE"},"aviso":"O computador da cozinha parece desligado. A etiqueta fica na fila por 15 minutos."} [HTTP 201]
+       tipo       | copias | conteudo_bytes |                referencia                
+------------------+--------+----------------+------------------------------------------
+ ETIQUETA_PRODUTO |      2 |         192077 | COXINHA FRANGO · fab 19/10 [ETIQUETA_PRO
+ CAIXA_KIT_FESTA  |      1 |         160385 | Pedido 2053 [PEDIDO:2053]
+ CAIXA_KIT_FESTA  |      1 |         641465 | Pedido 2053 [PEDIDO:2053]
+ TESTE            |      1 |          16061 | 
+(4 rows)
+

@@ -1,0 +1,49 @@
+### GET /etiquetas/impressoras por origem
+-- delivery/DELIVERY
+[{"id":"677a71d8-03f4-4b2d-818a-b67eb5ac27b4","nome":"Zebra pequena 40x25","tamanho":"40x25","colunas":2,"estadoAgente":"OFFLINE","estadoWindows":"Pronta"},{"id":"dc6277c3-999d-4ddd-be07-00fe884041f7","nome":"Zebra pequena TESTE","tamanho":"40x25","colunas":2,"estadoAgente":"OFFLINE","estadoWindows":"nao_listada"}]
+[HTTP 200]
+-- pcp/PRODUTO
+[{"id":"d479e93a-667f-43a8-91d4-f7344580269d","nome":"ZDesigner grande 100x120 (teste local)","tamanho":"100x120","colunas":1,"estadoAgente":"OFFLINE","estadoWindows":"nao_listada"},{"id":"fd7771fb-9012-4aee-9360-eda654123f59","nome":"ZDesigner grande TESTE","tamanho":"100x120","colunas":1,"estadoAgente":"OFFLINE","estadoWindows":"nao_listada"}]
+[HTTP 200]
+-- kit/PRODUTO (403)
+{"error":"Sem permissão para imprimir etiquetas desta área."}
+[HTTP 403]
+-- sem origem (400)
+{"error":"origem deve ser uma de: PRODUTO, KIT_FESTA, DELIVERY."}
+[HTTP 400]
+
+### GET /trabalhos/:id (dono ou admin; kit so tem o dele)
+-- dono kitFesta (200)
+{"id":"e7278255-26c0-4a77-8846-22741ff7da8c","status":"PENDENTE","erro":null,"tentativas":0,"agenteOnline":false}
+[HTTP 200]
+-- kit no trabalho do delivery (404)
+{"error":"Trabalho não encontrado."}
+[HTTP 404]
+-- delivery no seu (200)
+{"id":"09b2bb6c-3e64-47d8-a8d6-8d542bac7409","status":"PENDENTE","erro":null,"tentativas":0,"agenteOnline":false}
+[HTTP 200]
+-- admin (200)
+{"id":"e7278255-26c0-4a77-8846-22741ff7da8c","status":"PENDENTE","erro":null,"tentativas":0,"agenteOnline":false}
+[HTTP 200]
+-- sem permissao nenhuma, trabalho alheio (404)
+{"error":"Trabalho não encontrado."}
+[HTTP 404]
+
+### cancelar (dono) e de novo (409), e de outro (404)
+-- outro (404)
+{"error":"Trabalho não encontrado."}
+[HTTP 404]
+-- dono (200)
+{"ok":true}
+[HTTP 200]
+-- dono de novo (409)
+{"error":"Só dá para cancelar trabalho que ainda está pendente."}
+[HTTP 409]
+-- status final
+{"id":"e7278255-26c0-4a77-8846-22741ff7da8c","status":"CANCELADO","erro":"Cancelado por quem pediu.","tentativas":0,"agenteOnline":false}
+[HTTP 200]
+
+### fila admin mostra referencia
+{'tipo': 'CAIXA_KIT_FESTA', 'status': 'PENDENTE', 'copias': 1, 'conteudoBytes': 40117, 'referencia': 'Pedido 2053 [PEDIDO:2053]', 'solicitadoPorNome': 'e3-delivery'}
+{'tipo': 'CAIXA_KIT_FESTA', 'status': 'CANCELADO', 'copias': 1, 'conteudoBytes': 40117, 'referencia': 'Pedido 2053 [PEDIDO:2053]', 'solicitadoPorNome': 'e3-kit'}
+{'tipo': 'ETIQUETA_PRODUTO', 'status': 'PENDENTE', 'copias': 2, 'conteudoBytes': 1115, 'referencia': 'COXINHA FRANGO · fab 19/10 [ETIQUETA_PRODUTO:abc]', 'solicitadoPorNome': 'e3-pcp'}

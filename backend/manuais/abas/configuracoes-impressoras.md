@@ -27,7 +27,7 @@ Conceitos:
 - **Trocar a senha (rotacionar o token)** de um agente — a senha antiga para de valer na hora
 - **Revogar** um agente (corta o acesso dele)
 - **Cadastrar uma impressora**: escolher o agente, escolher a impressora **da lista do Windows**, informar linguagem, tamanho, colunas e ajustes
-- **Testar a impressão** de uma impressora (três botões, ver abaixo)
+- **Testar a impressão** de uma impressora (quatro botões, ver abaixo)
 - Acompanhar a **fila** de impressão: pendente, enviando, impresso, erro, expirado, cancelado — com a mensagem de erro quando houver
 - **Reenviar** um pedido (cria um pedido novo igual) e **cancelar** um que ainda está pendente
 
@@ -57,7 +57,17 @@ O agente passa a ligar sozinho com o Windows, **sem precisar de ninguém logado*
 
 - Botões **Teste de texto (EPL2)** e **Teste de texto (ZPL)**: imprimem 3 linhas simples. A que sair **legível** mostra qual é a linguagem certa da impressora; a outra pode sair lixo ou nada — é normal, é assim que se descobre.
 - Botão **Etiqueta de exemplo**: imprime uma etiqueta fictícia "RECHEIO DE TESTE" no layout real, para conferir margens, as duas colunas, o tamanho da letra e se nada ficou cortado.
+- Botão **Teste de imagem**: prova que a impressora aceita etiqueta **em imagem** (é assim que saem as etiquetas de produto e as caixas). Deve sair: **moldura, quadrado preto no canto superior esquerdo, letra F, dois códigos de barras e um QR**. Se sair **em negativo** (fundo preto), ligue **Inverter imagem** em Editar (veja Ajustes finos).
 - Se algo sair deslocado, os **ajustes** (posição das colunas, deslocamento, densidade) corrigem sem mexer em código.
+
+#### Ajustes finos (imagem)
+Em **Editar impressora → Ajustes finos (imagem)** (seção recolhida; só administrador):
+- **Inverter imagem (pequena/EPL2)**: liga se o teste de imagem sair em negativo.
+- **Compressão da imagem (grande/ZPL)**: Z64 (padrão, mais leve) ou HEX (mais pesado e mais compatível; use se a Z64 sair truncada ou lixo).
+- **Deslocar para a direita / para baixo (dots)**: de 0 a 200 (8 dots = 1 mm). Corrige imagem deslocada na etiqueta; não aceita número negativo.
+
+Na **Fila**, cada pedido mostra o tipo (Teste de impressão, Etiqueta de produto, Caixa Kit Festa/Delivery, Cozinha) e, quando existir, o que foi impresso (ex.: o produto ou o pedido).
+
 
 ---
 
@@ -71,3 +81,7 @@ O agente passa a ligar sozinho com o Windows, **sem precisar de ninguém logado*
 - **Suspeito que a senha vazou.** Use **Trocar senha** (ou **Revogar**) na hora.
 - **Saiu lixo ou nada na impressora.** Linguagem errada. Teste a outra (EPL2 ou ZPL) e corrija o cadastro.
 - **A impressão pelo navegador (Kit Festa, etiqueta de produto) mudou?** Não. Continua como antes; esta fila é um caminho à parte.
+
+
+## Etiquetas atuais pela Zebra (10/2026)
+As etiquetas de produto (100 × 120) e as das caixas Kit Festa/Delivery (40 × 25) agora também saem por esta fila, como **imagem**: PCP → Etiquetas, Pedidos Online → Kit Festa e Delivery ganharam o botão **Imprimir na Zebra**. Na **Fila** o tipo aparece como etiqueta de produto ou caixa Kit Festa, com a **referência** (produto/pedido). Precisa de uma impressora ativa de cada tamanho (100×120 ZPL e 40×25 EPL2) neste cadastro. O ajuste fino (polaridade, posição, compressão) continua nos ajustes da impressora; o aumento do código de barras para 3 pontos é feito no aparelho (`localStorage etiquetas:eanModuloDots`) pelo time técnico.

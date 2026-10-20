@@ -263,7 +263,7 @@ export default function DeliveryKanban() {
                 <ModalDetalhes card={pedidoDetalhe} onClose={() => setPedidoDetalhe(null)} />
             )}
             {etqCard && (
-                <PainelEtiquetas pedido={pedidoDoDelivery(etqCard)} qrSvg={qrSvg}
+                <PainelEtiquetas origem="DELIVERY" pedido={pedidoDoDelivery(etqCard)} qrSvg={qrSvg}
                     titulo={`#${etqCard.numero} ${etqCard.cliente?.NomeFantasia || etqCard.cliente?.Nome || ''}`}
                     onClose={() => setEtqCard(null)} />
             )}

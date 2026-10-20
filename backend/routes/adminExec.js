@@ -52,7 +52,7 @@ router.get('/ping', (req, res) => {
         ok: true,
         // Marcador de deploy: bumpar a cada mudança de backend que precise de confirmação
         // em produção (não há outro jeito de saber de fora qual versão está no ar).
-        deployMarker: 'caixa-pilula-km-atendimento-2026-10-19',
+        deployMarker: 'etiquetas-imagem-e3-2026-10-19',
         uptimeSegundos: Math.round(process.uptime()),
         timestamp: new Date().toISOString(),
         openaiConfigurada: !!process.env.OPENAI_API_KEY,
@@ -12603,6 +12603,25 @@ router.post('/indicadores-ajustes-dados', async (req, res) => {
 });
 
 // POST /api/admin-exec/etiquetas-cozinha-classificar[?aplicar=1]
+// POST /api/admin-exec/impressora-ajustes  { impressoraId, ajustes:{ gwInverter?, gfCompressao?, offsetX?, offsetY?, col1X?, col2X?, densidade?, velocidade? } }
+// Atalho p/ calibrar a Zebra sem tela/deploy. MESCLA com os ajustes atuais (valor null remove a chave). Mesma validação do PUT.
+router.post('/impressora-ajustes', async (req, res) => {
+    try {
+        const svcImp = require('../services/impressaoService');
+        const { impressoraId, ajustes } = req.body || {};
+        if (!impressoraId || typeof ajustes !== 'object' || ajustes === null || Array.isArray(ajustes)) return res.status(400).json({ error: 'Envie { impressoraId, ajustes:{...} }.' });
+        const imp = await prisma.impressora.findUnique({ where: { id: String(impressoraId) } });
+        if (!imp) return res.status(404).json({ error: 'Impressora não encontrada.' });
+        const atual = (imp.ajustes && typeof imp.ajustes === 'object') ? imp.ajustes : {};
+        const mesclado = { ...atual };
+        for (const [k, v] of Object.entries(ajustes)) { if (v === null) delete mesclado[k]; else mesclado[k] = v; }
+        const r = svcImp.validarAjustes(mesclado);
+        if (r.erro) return res.status(400).json({ error: r.erro });
+        const nova = await prisma.impressora.update({ where: { id: imp.id }, data: { ajustes: r.ajustes } });
+        res.json({ ok: true, impressora: nova.nome, ajustesAntes: imp.ajustes, ajustesDepois: nova.ajustes });
+    } catch (e) { console.error('[admin-exec] impressora-ajustes', e.message); res.status(500).json({ error: e.message }); }
+});
+
 // Etiquetas da Cozinha (E2): sugere o grupo (RECHEIO/MASSA) dos itens SUB ativos sem grupo, pelo começo do nome
 // ("Recheio de frango" -> RECHEIO, "Massa de coxinha" -> MASSA). Sem ?aplicar=1 só SIMULA (dono confirma antes).
 // Nunca sobrescreve grupo já definido. Itens sem padrão ficam como estão (aparecem em "Outros").

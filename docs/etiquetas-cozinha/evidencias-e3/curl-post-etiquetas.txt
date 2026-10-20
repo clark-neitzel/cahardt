@@ -1,0 +1,63 @@
+### PRODUTO: sem permissao / pcp.etiquetas sem a flag / kitFesta / pcp.etiquetas / delivery
+-- e3-sem
+{"error":"Sem permissão para imprimir etiquetas desta área."}
+[HTTP 403]
+-- e3-pcpso
+{"error":"Sem permissão para imprimir etiquetas desta área."}
+[HTTP 403]
+-- e3-kit
+{"error":"Sem permissão para imprimir etiquetas desta área."}
+[HTTP 403]
+-- e3-delivery
+{"error":"Sem permissão para imprimir etiquetas desta área."}
+[HTTP 403]
+-- e3-pcp (ok)
+{"trabalhos":[{"id":"d138ad9f-8afa-4170-b83e-827ba87513ef","status":"PENDENTE"}],"totalEtiquetas":2,"agente":{"estado":"OFFLINE"},"aviso":"O computador da cozinha parece desligado. A etiqueta fica na fila por 15 minutos."}
+[HTTP 201]
+-- e3-pcp repetido (mesma requisicaoId) => 200 repetido:true
+{"trabalhos":[{"id":"d138ad9f-8afa-4170-b83e-827ba87513ef","status":"PENDENTE"}],"totalEtiquetas":2,"agente":{"estado":"OFFLINE"},"repetido":true}
+[HTTP 200]
+
+### KIT_FESTA: sem permissao / delivery / pcp / kit (ok) / repetido
+-- e3-sem
+{"error":"Sem permissão para imprimir etiquetas desta área."}
+[HTTP 403]
+-- e3-delivery
+{"error":"Sem permissão para imprimir etiquetas desta área."}
+[HTTP 403]
+-- e3-pcp
+{"error":"Sem permissão para imprimir etiquetas desta área."}
+[HTTP 403]
+-- e3-kit (ok)
+{"trabalhos":[{"id":"e7278255-26c0-4a77-8846-22741ff7da8c","status":"PENDENTE"}],"totalEtiquetas":5,"agente":{"estado":"OFFLINE"},"aviso":"O computador da cozinha parece desligado. A etiqueta fica na fila por 15 minutos."}
+[HTTP 201]
+-- e3-kit repetido
+{"trabalhos":[{"id":"e7278255-26c0-4a77-8846-22741ff7da8c","status":"PENDENTE"}],"totalEtiquetas":5,"agente":{"estado":"OFFLINE"},"repetido":true}
+[HTTP 200]
+
+### DELIVERY: sem permissao / kitFesta / delivery (ok) / admin
+-- e3-sem
+{"error":"Sem permissão para imprimir etiquetas desta área."}
+[HTTP 403]
+-- e3-kit
+{"error":"Sem permissão para imprimir etiquetas desta área."}
+[HTTP 403]
+-- e3-delivery (ok)
+{"trabalhos":[{"id":"09b2bb6c-3e64-47d8-a8d6-8d542bac7409","status":"PENDENTE"}],"totalEtiquetas":5,"agente":{"estado":"OFFLINE"},"aviso":"O computador da cozinha parece desligado. A etiqueta fica na fila por 15 minutos."}
+[HTTP 201]
+
+### outro usuario reutilizando requisicaoId => 409
+{"error":"Esse requisicaoId já foi usado por outra pessoa. Gere um novo."}
+[HTTP 409]
+
+### dimensao errada (319) => 400
+{"error":"Tamanho da imagem inválido: esperado 320x200 dots, recebido 319x200."}
+[HTTP 400]
+
+### corpo > 4 MB => 413
+{"error":"Etiqueta grande demais (limite de 4 MB). Envie menos etiquetas por vez."}
+[HTTP 413]
+
+### sem token => 401
+{"error":"Token não fornecido ou inválido."}
+[HTTP 401]

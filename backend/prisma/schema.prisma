@@ -4627,7 +4627,7 @@ model ImpressaoTrabalho {
   id                String               @id @default(uuid())
   impressoraId      String               @map("impressora_id")
   impressora        Impressora           @relation(fields: [impressoraId], references: [id])
-  tipo              String // TESTE | ETIQUETA_COZINHA | OUTRO
+  tipo              String // TESTE | ETIQUETA_COZINHA | ETIQUETA_PRODUTO | CAIXA_KIT_FESTA | OUTRO
   chaveIdempotencia String?              @unique @map("chave_idempotencia")
   status            String // PENDENTE | ENVIANDO | IMPRESSO | ERRO | EXPIRADO | CANCELADO
   conteudo          Bytes?
@@ -4645,6 +4645,7 @@ model ImpressaoTrabalho {
   enviadoAoAgenteEm DateTime?            @map("enviado_ao_agente_em")
   impressoEm        DateTime?            @map("impresso_em")
   agenteId          String?              @map("agente_id")
+  referencia        String?              @map("referencia") // E3: texto livre (<=200) p/ a fila mostrar o que é (ex.: "COXINHA · fab 19/10 [ETIQUETA_PRODUTO:abc]")
 
   @@index([status, pedidoEm])
   @@index([impressoraId, status])

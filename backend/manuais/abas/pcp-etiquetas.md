@@ -57,10 +57,22 @@ As duas escolhas ficam **salvas no navegador** e valem tanto no modal quanto na 
 6. Confira ou altere a **Data de Fabricação** (padrão: hoje).
 7. A **Validade** é calculada automaticamente somando os dias configurados na etiqueta.
 8. Ajuste o número de **Cópias** (use os botões + / − ou digite diretamente).
-9. Clique em **Imprimir** — o diálogo de impressão do navegador abre com as cópias pré-configuradas.
-10. **Na janela de impressão do computador, confira o papel e a escala** (ver abaixo).
+9. Clique em **Imprimir na Zebra** (direto, sem janela) ou em **Imprimir pelo navegador** (abre o diálogo de impressão com as cópias pré-configuradas).
+10. Só no caminho do navegador: **na janela de impressão do computador, confira o papel e a escala** (ver abaixo).
 
-**O papel da janela de impressão (o que mais dá problema):**
+**Imprimir na Zebra — impressão direta (10/2026):**
+
+No modal da lista e na tela dedicada de impressão existem agora **dois botões**: **Imprimir na Zebra** (verde, principal) e **Imprimir pelo navegador** (contorno verde — é o caminho de sempre, com a janela de impressão, e continua igual). A Zebra imprime **sem janela de impressão, sem escolher papel e sem escala**: o app manda a etiqueta para a fila e o computador da cozinha entrega para a impressora de etiqueta grande.
+
+- Acima dos botões aparece a **impressora** com o estado: **online**, **instável** ou **PC desligado** (nesse caso a etiqueta espera na fila por 15 minutos até o computador da cozinha ligar). Se houver mais de uma impressora de etiqueta grande, aparece um seletor (a escolha fica lembrada).
+- Estados depois do clique: **Preparando a imagem…** → **Enviando…** → **Na fila** → **Imprimindo…** → **Saiu na impressora**. Clique repetido não imprime em dobro.
+- **Erro** (impressora sem etiqueta, tampa aberta, fila vencida): aparece a mensagem com **Tentar de novo** e **Cancelar e imprimir pelo navegador**. Se a etiqueta ainda está na fila (PC desligado), use **Cancelar e imprimir pelo navegador**: ele cancela a da fila antes, para **não sair etiqueta em dobro** quando o computador ligar.
+- A quantidade é o campo **Cópias** (1 a 999). A etiqueta é o mesmo desenho do preview, enviada como imagem preto-e-branco; o texto e o código de barras podem diferir em fração de milímetro do impresso pelo navegador.
+- **Só imprime na Zebra com Tamanho 100 × 120** e com o desenho **ANVISA** ou **Deitada**. Em **80 × 100** (não há impressora para esse rolo) e no **Clássico** (desenho fixo 80 × 100) o botão da Zebra fica desabilitado com o aviso e um botão de um toque (**Usar 100×120** / **Usar ANVISA**); o **Imprimir pelo navegador** continua valendo para esses casos.
+- Quem pode: o mesmo acesso de Etiquetas (`pcp.etiquetas`) ou admin. A impressora é cadastrada em **Configurações → Impressoras** (só admin); sem impressora ativa de 100×120 o aviso aparece e o botão fica desabilitado.
+- Se o leitor de código de barras não ler a etiqueta impressa na Zebra, o admin pode aumentar a espessura das barras (módulo de 3 pontos) sem publicar nada novo — pedir ao time técnico (ajuste no aparelho).
+
+**O papel da janela de impressão (o que mais dá problema) — vale só para "Imprimir pelo navegador":**
 
 A impressora ZDesigner está configurada em **paisagem**: a etiqueta entra deitada, então a folha enviada é a etiqueta girada 90°.
 
@@ -204,6 +216,7 @@ Admin (`admin: true`) tem acesso sem precisar de `pcp.etiquetas`.
 | `frontend/src/pages/PCP/EtiquetaLabelNova.jsx` | Componente do rótulo ANVISA (recebe o tamanho; versão compacta no 80×100) + despachante `EtiquetaRender` (`layout` + `tamanho`) |
 | `frontend/src/pages/PCP/EtiquetaLabelDeitada.jsx` | Componente do rótulo **deitado** (layout de mercado, 120×100 / 100×80) |
 | `frontend/src/pages/PCP/OrientacaoEtiqueta.jsx` | Botão/seletor de orientação (lista e formulário) e escala responsiva do preview |
+| `frontend/src/pages/PCP/ImprimirDireto.jsx`, `useEnvioBitmap.js`, `etiquetaDireto.jsx`, `etiquetaRaster.js`, `etiquetaEan.jsx` | Impressão direta na Zebra: botões, estados do envio, transformação do desenho em imagem 1-bit (203 dpi) e código de barras em pixels inteiros |
 | `frontend/src/pages/PCP/etiquetaModelos.js` | Fonte única: `TAMANHOS` (p80/g120), `LAYOUTS` (classico/anvisa) e `ORIENTACOES` (EM_PE/DEITADA) separados, helpers puros e cálculo dos selos ANVISA (`selosAnvisa`) |
 | `backend/routes/pcpEtiquetaRoutes.js` | API das etiquetas; `PATCH /:id/orientacao` alterna em pé ⇄ deitada (campo `orientacao` na tabela `etiquetas_produtos`) |
 | `frontend/src/services/etiquetaService.js` | Chamadas de API para etiquetas |

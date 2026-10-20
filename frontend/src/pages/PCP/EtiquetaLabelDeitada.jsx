@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import JsBarcode from 'jsbarcode';
+import { marcarEanRaster } from './etiquetaEan';
 import { useAutoFit } from './useAutoFit';
 import {
     codExibir, pesoLiquidoStr, pesoTabela, linhasNutricionais, selosAnvisa,
@@ -132,7 +133,7 @@ function SeloAnvisa({ selos, sm }) {
 }
 
 // larguraMM/alturaMM já vêm DEITADOS (120×100 ou 100×80).
-export default function EtiquetaLabelDeitada({ et, dataFab, dataVal, larguraMM = 120, alturaMM = 100 }) {
+export default function EtiquetaLabelDeitada({ et, dataFab, dataVal, larguraMM = 120, alturaMM = 100, modoRaster = false }) {
     const svgRef = useRef(null);
     const sm = larguraMM <= 100; // rolo pequeno (100×80 deitado)
     const nomeRef = useAjusteNome([et.nomeProduto, et.pesoPacote, et.quantidadeEmbalagem, et.pesoUnitario, sm, larguraMM]);
@@ -162,7 +163,8 @@ export default function EtiquetaLabelDeitada({ et, dataFab, dataVal, larguraMM =
             svg.style.width = `${(w * PX2MM).toFixed(2)}mm`;
             svg.style.height = `${(h * PX2MM).toFixed(2)}mm`;
         }
-    }, [et.codigoBarras, sm]);
+        if (modoRaster) marcarEanRaster(svg, opts, et.codigoBarras);
+    }, [et.codigoBarras, sm, modoRaster]);
 
     const selos = selosAnvisa(et);
     const peso = pesoTabela(et);

@@ -6,6 +6,8 @@ import { useFiltrosSalvos } from '../../hooks/useFiltrosSalvos';
 import { imprimirNaPagina } from '../../utils/imprimirNaPagina';
 import { montarEtiquetas, OPCOES_PADRAO, CONJUNTOS_FRASES } from './etiquetasCaixas';
 import CampoNumero from '../../components/CampoNumero';
+import ImprimirDireto from '../PCP/ImprimirDireto';
+import { prepararCaixas } from '../PCP/etiquetaDireto';
 
 /**
  * Painel de opções + botão de imprimir as etiquetas das caixas (rolo 40×25 mm, TLP 2844).
@@ -16,8 +18,9 @@ import CampoNumero from '../../components/CampoNumero';
  * @param {string} qrSvg    QR já gerado (SVG inline) — print() precisa ser síncrono no clique
  * @param {string} titulo   opcional (ex.: cliente) mostrado no cabeçalho
  * @param {function} onClose quando informado, renderiza como modal com botão de fechar
+ * @param {string} origem   'KIT_FESTA' (modal do pedido) ou 'DELIVERY' (card do kanban) — decide a permissão no servidor
  */
-export default function PainelEtiquetas({ pedido, qrSvg, titulo, onClose }) {
+export default function PainelEtiquetas({ pedido, qrSvg, titulo, onClose, origem = 'KIT_FESTA' }) {
   const [op, setOp] = useFiltrosSalvos('kit-festa:etiquetas', OPCOES_PADRAO);
   const [cadaTxt, setCadaTxt] = useState(null); // texto digitado (null = espelha o valor salvo)
   const [, setFontesOk] = useState(0); // re-render quando as fontes terminam de carregar (medição fiel)
@@ -71,12 +74,18 @@ export default function PainelEtiquetas({ pedido, qrSvg, titulo, onClose }) {
           Rolo de 2 colunas
         </label>
       </div>
-      <div className="flex items-center gap-3 pt-1">
-        <button onClick={imprimir} className="px-4 py-2 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm flex items-center gap-2 min-h-[44px] sm:min-h-0">
-          <Printer className="h-4 w-4" /> Imprimir etiquetas
-        </button>
-        <span className="text-xs text-gray-500">Na impressão escolha a TLP 2844, margem 0, escala 100%.</span>
-      </div>
+      <ImprimirDireto
+        className="pt-1"
+        origem={origem}
+        nome={`Pedido #${pedido?.numero ?? ''}`}
+        rotuloZebra="Imprimir na Zebra"
+        referencia={{ tipo: 'PEDIDO', id: String(pedido?.numero ?? ''), rotulo: `Pedido #${pedido?.numero ?? ''} · ${previa.total} etiquetas` }}
+        total={previa.total}
+        confirmar={() => previa.total <= 60 || window.confirm(`Isto vai imprimir ${previa.total} etiquetas. Confirma?`)}
+        onNavegador={imprimir}
+        preparar={() => prepararCaixas({ pedido, opcoes: { cada: Number(op.cada) || OPCOES_PADRAO.cada, nomeLimpo: op.nomeLimpo, colunas: op.colunas, frases: op.frases || OPCOES_PADRAO.frases } })}
+      />
+      <div className="text-xs text-gray-500">Pelo navegador: escolha a TLP 2844, margem 0, escala 100%. Na Zebra o rolo usa as colunas do cadastro da impressora.</div>
     </div>
   );
 
