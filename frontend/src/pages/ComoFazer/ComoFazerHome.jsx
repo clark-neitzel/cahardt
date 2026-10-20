@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BarChart3, Plus, Loader2 } from 'lucide-react';
-import comoFazerService, { mensagemErro, statusVisual, TIPOS, SETORES } from '../../services/comoFazerService';
+import { capitalizarCodigo } from '../../services/setorService';
+import comoFazerService, { mensagemErro, statusVisual, TIPOS } from '../../services/comoFazerService';
 import TelaEquipe from '../../components/ComoFazer/TelaEquipe';
 import { useBaseComoFazer } from '../../components/ComoFazer/BaseComoFazer';
 import SelectBusca from '../../components/SelectBusca';
@@ -80,10 +81,13 @@ export default function ComoFazerHome() {
     const totalFalta = (Array.isArray(dados?.itens) ? dados.itens : []).filter((i) => statusVisual(i.status).pendente).length;
     const primeiro = String(me?.funcionario?.nome || '').split(' ')[0];
     const setorAtual = dados?.setorAtual || setor || '';
-    const nomeSetor = SETORES.find((s) => s.slug === setorAtual)?.nome || '';
-    const setoresChips = Array.isArray(dados?.setores) && dados.setores.length
-        ? dados.setores.map((s) => ({ slug: s.slug, nome: s.nome, emoji: SETORES.find((x) => x.slug === s.slug)?.emoji || '', pendentes: s.pendentes || 0 }))
-        : SETORES.map((s) => ({ ...s, pendentes: 0 }));
+    // setores vêm do servidor (/home) — o tablet não tem login para ler /api/setores. Valor = codigo; slug só para a chamada.
+    const setoresChips = (Array.isArray(dados?.setores) ? dados.setores : []).filter((s) => s && (s.codigo || s.slug)).map((s) => {
+        const slug = String(s.slug || s.codigo).toLowerCase();
+        const codigo = String(s.codigo || s.slug).toUpperCase();
+        return { slug, codigo, nome: s.nome || capitalizarCodigo(codigo), emoji: s.icone || '', pendentes: s.pendentes || 0 };
+    });
+    const nomeSetor = setoresChips.find((s) => s.codigo === String(setorAtual).toUpperCase())?.nome || '';
 
     const abrir = (i) => navigate(`${base}/c/${i.id}`);
     const fazer = (i) => {
@@ -106,9 +110,9 @@ export default function ComoFazerHome() {
         <TelaEquipe titulo="Como Fazer" emoji="📘" subtitulo={subt} mostrarVoltar={false} acoes={acoes}>
             <div className="flex flex-wrap items-center gap-2 mb-2">
                 {setoresChips.map((s) => (
-                    <button key={s.slug} type="button" onClick={() => setSetor(s.slug)}
-                        className={`min-h-[56px] px-5 rounded-full border text-base font-bold ${setorAtual === s.slug ? 'bg-primary border-primary text-white' : 'bg-white border-gray-300 text-gray-800'}`}>
-                        {s.emoji} {s.nome}{s.pendentes > 0 ? ` (${s.pendentes})` : ''}
+                    <button key={s.codigo} type="button" onClick={() => setSetor(s.slug)}
+                        className={`min-h-[56px] px-5 rounded-full border text-base font-bold ${String(setorAtual).toUpperCase() === s.codigo ? 'bg-primary border-primary text-white' : 'bg-white border-gray-300 text-gray-800'}`}>
+                        {s.emoji ? `${s.emoji} ` : ''}{s.nome}{s.pendentes > 0 ? ` (${s.pendentes})` : ''}
                     </button>
                 ))}
                 <div className="w-full md:w-auto md:ml-auto">

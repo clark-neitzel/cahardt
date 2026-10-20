@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const prisma = require('../config/database');
 const schema = require('./comoFazerSchema');
 const auth = require('./comoFazerAuthService');
+const setoresService = require('./setoresService');
 const agenda = require('./comoFazerAgendaService');
 const { ocorreNoDia, datasDoIntervalo } = require('./tarefaRecorrenciaService');
 
@@ -140,7 +141,7 @@ async function me(cf) {
     return {
         origem: cf.origem,
         funcionario: f ? { id: f.id, nome: f.nome, foto: f.foto || null, setor: f.setor || null, cargo: f.cargo || null } : null,
-        setores: auth.SETORES.map(s => ({ slug: s.slug, nome: s.nome })),
+        setores: (await setoresService.listar()).map(s => ({ slug: s.slug, nome: s.nome, codigo: s.codigo, icone: s.icone, ordem: s.ordem })),
         pode,
     };
 }
@@ -148,7 +149,8 @@ async function me(cf) {
 // ───────── /home ─────────
 async function home(cf, setorParam) {
     const func = await funcionarioDoContexto(cf);
-    const setorAtual = auth.setorPorCodigo(setorParam)?.codigo || func?.setor || 'COZINHA';
+    const setoresAtivos = await setoresService.listar();
+    const setorAtual = (await auth.setorPorCodigo(setorParam))?.codigo || func?.setor || setoresAtivos[0]?.codigo || null;
     const agora = new Date();
 
     const publicados = await prisma.comoFazerConteudo.findMany({
@@ -165,13 +167,13 @@ async function home(cf, setorParam) {
     const treinoPor = (c) => treinos.find(t => t.conteudoId === c.id && t.versaoTreinoNumero === c.versaoTreinoNumero && t.ciclo === 1) || null;
     const ultimoTreino = (c) => treinos.filter(t => t.conteudoId === c.id).sort((a, b) => b.versaoNumero - a.versaoNumero)[0] || null;
 
-    const setores = auth.SETORES.map(s => {
+    const setores = setoresAtivos.map(s => {
         const doSetor = publicados.filter(c => (c.setores || []).includes(s.codigo));
         const aplicaveis = func ? doSetor.filter(c => aplica(c, func) || func.setor !== s.codigo) : doSetor;
         const pendentes = func
             ? doSetor.filter(c => func.setor === s.codigo && STATUS_FALTA.includes(statusTreino(c, treinoPor(c), agora, func))).length
             : 0;
-        return { slug: s.slug, nome: s.nome, total: aplicaveis.length, pendentes };
+        return { slug: s.slug, nome: s.nome, codigo: s.codigo, icone: s.icone, ordem: s.ordem, total: aplicaveis.length, pendentes };
     });
 
     const doSetorAtual = publicados.filter(c => (c.setores || []).includes(setorAtual));
@@ -298,7 +300,8 @@ const temPermConfirmar = (vendedor) => {
 
 async function encarregados(cf, setorParam) {
     const func = await funcionarioDoContexto(cf);
-    const setor = auth.setorPorCodigo(setorParam)?.codigo || func?.setor || 'COZINHA';
+    const setor = (await auth.setorPorCodigo(setorParam))?.codigo || func?.setor || (await setoresService.listar())[0]?.codigo || null;
+    if (!setor) return { encarregados: [] };
     const lista = await prisma.funcionario.findMany({
         where: { ativo: true, setor, senhaNumerica: true, vendedorId: { not: null } },
         select: { id: true, nome: true, foto: true, vendedor: { select: { permissoes: true, ativo: true } } },
@@ -537,11 +540,10 @@ async function chamarEncarregado(cf, id, secaoId) {
 }
 
 // ───────── admin: criar / editar / rascunho / publicar ─────────
-const SETORES_COD = auth.SETORES.map(s => s.codigo);
 const RECORR = ['NUNCA', 'DIARIA', 'DIAS_UTEIS', 'SEMANAL', 'MENSAL', 'DIAS_SEMANA'];
 const RE_HORA = /^([01]\d|2[0-3]):[0-5]\d$/;
 
-function metadadosValidos(b, parcial = false) {
+async function metadadosValidos(b, parcial = false, setoresAtuais = []) {
     const out = {};
     const tem = (k) => b[k] !== undefined;
     if (!parcial || tem('titulo')) {
@@ -554,7 +556,9 @@ function metadadosValidos(b, parcial = false) {
     if (tem('ordem')) out.ordem = Number.isInteger(Number(b.ordem)) ? Number(b.ordem) : 0;
     if (tem('setores')) {
         const s = [...new Set((Array.isArray(b.setores) ? b.setores : []).map(x => String(x).toUpperCase()))];
-        if (s.some(x => !SETORES_COD.includes(x))) throw new ErroCF(400, 'DADOS_INVALIDOS', 'Setor inválido.');
+        const ativos = await setoresService.codigosAtivos();
+        const jaTinha = (setoresAtuais || []).map(x => String(x).toUpperCase());
+        if (s.some(x => !ativos.includes(x) && !jaTinha.includes(x))) throw new ErroCF(400, 'DADOS_INVALIDOS', 'Setor inválido ou desativado.');
         out.setores = s;
     }
     if (tem('cargos')) out.cargos = [...new Set((Array.isArray(b.cargos) ? b.cargos : []).map(x => String(x).trim()).filter(Boolean))];
@@ -576,7 +580,7 @@ function metadadosValidos(b, parcial = false) {
 async function criarConteudo(cf, body) {
     const tipo = String(body?.tipo || '').toUpperCase();
     if (!schema.TIPOS.includes(tipo)) throw new ErroCF(400, 'DADOS_INVALIDOS', 'Tipo inválido.');
-    const meta = metadadosValidos(body);
+    const meta = await metadadosValidos(body);
     if (meta.codigo) {
         const dup = await prisma.comoFazerConteudo.findUnique({ where: { codigo: meta.codigo } });
         if (dup) throw new ErroCF(409, 'CODIGO_REPETIDO', 'Já existe um conteúdo com esse código.');
@@ -593,7 +597,7 @@ async function criarConteudo(cf, body) {
 async function atualizarConteudo(cf, id, body) {
     const c = await prisma.comoFazerConteudo.findUnique({ where: { id } });
     if (!c) throw new ErroCF(404, 'NAO_ENCONTRADO', 'Conteúdo não encontrado.');
-    const meta = metadadosValidos(body || {}, true);
+    const meta = await metadadosValidos(body || {}, true, c.setores);
     if (meta.codigo && meta.codigo !== c.codigo) {
         const dup = await prisma.comoFazerConteudo.findUnique({ where: { codigo: meta.codigo } });
         if (dup && dup.id !== id) throw new ErroCF(409, 'CODIGO_REPETIDO', 'Já existe um conteúdo com esse código.');

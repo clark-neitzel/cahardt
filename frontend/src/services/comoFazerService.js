@@ -120,12 +120,6 @@ export const TIPOS = {
     REGRA: { rotulo: 'Regra', icone: '📜' },
     DOSAGEM: { rotulo: 'Dosagem', icone: '🥄' },
 };
-export const SETORES = [
-    { slug: 'COZINHA', nome: 'Cozinha', emoji: '🍳' },
-    { slug: 'ESTOQUE', nome: 'Estoque', emoji: '📦' },
-    { slug: 'EXPEDICAO', nome: 'Expedição', emoji: '🚚' },
-    { slug: 'MOTORISTA', nome: 'Motorista', emoji: '🛵' },
-];
 
 /** uuid para a `chave` de idempotência (fallback p/ iOS antigo sem crypto.randomUUID) */
 export function novoUuid() {

@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Loader2, Bell } from 'lucide-react';
 import toast from 'react-hot-toast';
-import comoFazerService, { mensagemErro, statusVisual, SETORES, TIPOS } from '../../../services/comoFazerService';
+import { useSetores, opcoesSetores } from '../../../hooks/useSetores';
+import comoFazerService, { mensagemErro, statusVisual, TIPOS } from '../../../services/comoFazerService';
 import SelectBusca from '../../../components/SelectBusca';
 import FotoPessoa from '../../../components/ComoFazer/FotoPessoa';
 import { useFiltrosSalvos } from '../../../hooks/useFiltrosSalvos';
@@ -18,21 +19,25 @@ function Kpi({ rotulo, valor, tom }) {
 }
 
 export default function TabTreinamentos({ podeEditar }) {
-    const [filtros, setFiltros] = useFiltrosSalvos('como-fazer-painel', { setor: 'COZINHA' });
+    const { setores: listaSetores, carregando: carregandoSetores, aviso: avisoSetores } = useSetores();
+    const [filtros, setFiltros] = useFiltrosSalvos('como-fazer-painel', { setor: '' });
+    // filtro salvo apontando para setor que não existe mais / está inativo (ou ainda vazio) cai no primeiro ativo
+    const setorAtivo = listaSetores.some((s) => s.codigo === filtros.setor) ? filtros.setor : (listaSetores[0]?.codigo || filtros.setor || '');
     const [dados, setDados] = useState(null);
     const [kpis, setKpis] = useState(null);
     const [erro, setErro] = useState('');
     const [lembrando, setLembrando] = useState('');
 
     const carregar = useCallback(async () => {
+        if (carregandoSetores || !setorAtivo) return;
         try {
             const [t, r] = await Promise.all([
-                comoFazerService.painelTreinamentos(filtros.setor),
-                comoFazerService.painelResumo({ setor: filtros.setor }).catch(() => null),
+                comoFazerService.painelTreinamentos(setorAtivo),
+                comoFazerService.painelResumo({ setor: setorAtivo }).catch(() => null),
             ]);
             setDados(t); setKpis(r?.kpis || null); setErro('');
         } catch (e) { setErro(mensagemErro(e)); }
-    }, [filtros.setor]);
+    }, [setorAtivo, carregandoSetores]);
 
     useEffect(() => { carregar(); }, [carregar]);
 
@@ -76,9 +81,10 @@ export default function TabTreinamentos({ podeEditar }) {
     return (
         <div className="space-y-4">
             <div className="max-w-xs">
-                <SelectBusca value={filtros.setor} onChange={(e) => setFiltros({ ...filtros, setor: e.target.value })} className="w-full">
-                    {SETORES.map((s) => <option key={s.slug} value={s.slug}>{s.emoji} {s.nome}</option>)}
+                <SelectBusca value={setorAtivo} onChange={(e) => setFiltros({ ...filtros, setor: e.target.value })} className="w-full">
+                    {opcoesSetores(listaSetores, [setorAtivo], true, false).map((o) => <option key={o.codigo} value={o.codigo}>{o.nome}</option>)}
                 </SelectBusca>
+                {avisoSetores && <p className="text-xs text-amber-700 font-semibold mt-1">Não consegui carregar os setores. Tente atualizar a página.</p>}
             </div>
 
             {kpis && (
@@ -91,7 +97,7 @@ export default function TabTreinamentos({ podeEditar }) {
             )}
 
             {erro && <p className="rounded-xl bg-red-50 text-red-700 font-semibold p-4">{erro}</p>}
-            {!dados && !erro && <Loader2 className="h-8 w-8 animate-spin mx-auto my-8 text-primary" />}
+            {!dados && !erro && setorAtivo && <Loader2 className="h-8 w-8 animate-spin mx-auto my-8 text-primary" />}
 
             {(semSetor.length > 0 || encSem.length > 0) && (
                 <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800 space-y-1">

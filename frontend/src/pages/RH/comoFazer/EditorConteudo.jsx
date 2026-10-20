@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ArrowUp, ArrowDown, Trash2, Plus, Loader2, Rocket, Archive, RefreshCw, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
-import comoFazerService, { mensagemErro, codigoErro, TIPOS, SETORES } from '../../../services/comoFazerService';
+import { useSetores, opcoesSetores } from '../../../hooks/useSetores';
+import comoFazerService, { mensagemErro, codigoErro, TIPOS } from '../../../services/comoFazerService';
 import tarefaService from '../../../services/tarefaService';
 import SelectBusca from '../../../components/SelectBusca';
 import MultiSelect from '../../../components/MultiSelect';
@@ -27,6 +28,7 @@ function Caixa({ titulo, children }) {
 }
 
 export default function EditorConteudo({ id, onVoltar }) {
+    const { setores: listaSetores, carregando: carregandoSetores, erro: erroSetores, aviso: avisoSetores } = useSetores();
     const [carregado, setCarregado] = useState(false);
     const [erro, setErro] = useState('');
     const [meta, setMeta] = useState(null);
@@ -258,7 +260,8 @@ export default function EditorConteudo({ id, onVoltar }) {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div><span className="text-sm font-medium text-gray-700">Setores</span>
-                        <div className="mt-1"><MultiSelect options={SETORES} valueKey="slug" labelKey="nome" selected={meta.setores} onChange={(v) => setMeta({ ...meta, setores: v })} placeholder="Escolha os setores" /></div>
+                        <div className="mt-1"><MultiSelect options={opcoesSetores(listaSetores, meta.setores, true, !carregandoSetores && !erroSetores)} valueKey="codigo" labelKey="nome" selected={meta.setores} onChange={(v) => setMeta({ ...meta, setores: v })} placeholder="Escolha os setores" />
+                            {avisoSetores && <p className="text-xs text-amber-700 font-semibold mt-1">Não consegui carregar os setores. Tente atualizar a página.</p>}</div>
                     </div>
                     <label className="block"><span className="text-sm font-medium text-gray-700">Cargos que treinam (vazio = todos)</span><input value={meta.cargos} onChange={(e) => setMeta({ ...meta, cargos: e.target.value })} placeholder="Auxiliar de cozinha, Cozinheiro" className={`${CAMPO} mt-1`} /></label>
                 </div>

@@ -8,7 +8,7 @@ permissao: todos (confirmar treinamento e editar exigem permissões específicas
 
 ## O que é
 
-A biblioteca do "jeito certo" de fazer as coisas na empresa, pensada para quem não gosta de ler: cada coisa tem **foto, frase curta e um botão Ouvir** que lê em voz alta. Hoje está sendo usada na **Cozinha**. Existem quatro tipos de conteúdo:
+A biblioteca do "jeito certo" de fazer as coisas na empresa, pensada para quem não gosta de ler: cada coisa tem **foto, frase curta e um botão Ouvir** que lê em voz alta. Hoje está sendo usada na **Cozinha**. Os **setores** (Cozinha, Estoque, Expedição, Motorista e os que o RH criar) vêm do cadastro em Configurações → Setores: renomear muda o nome na hora, em todas as telas e no tablet. Existem quatro tipos de conteúdo:
 
 - **Regra** (ex.: Higiene e uniforme): o que pode e o que não pode.
 - **Máquina** (ex.: Fritadeira): como montar, como usar, como limpar e o que fazer quando dá problema.

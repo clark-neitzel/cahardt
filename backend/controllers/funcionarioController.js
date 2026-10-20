@@ -5,6 +5,7 @@ const bcrypt = require('bcryptjs');
 const prisma = require('../config/database');
 const pontoService = require('../services/pontoService');
 const acertoService = require('../services/pontoAcertoService');
+const setoresService = require('../services/setoresService');
 
 const soDigitos = (s) => String(s || '').replace(/\D/g, '');
 
@@ -208,7 +209,12 @@ const funcionarioController = {
             const data = {};
             if (setor !== undefined) {
                 const cod = String(setor || '').toUpperCase();
-                if (cod && !['COZINHA', 'ESTOQUE', 'EXPEDICAO', 'MOTORISTA'].includes(cod)) return res.status(400).json({ erro: 'Setor inválido.' });
+                if (cod) {
+                    // aceita setor ativo, ou o mesmo que o funcionário já tem (mesmo desativado)
+                    const atualFunc = await prisma.funcionario.findUnique({ where: { id: req.params.id }, select: { setor: true } });
+                    const permitir = atualFunc?.setor ? [atualFunc.setor] : [];
+                    if (!(await setoresService.validarCodigo(cod, { permitir }))) return res.status(400).json({ erro: 'Setor inválido ou desativado.' });
+                }
                 data.setor = cod || null;
             }
             if (nome !== undefined) data.nome = nome;

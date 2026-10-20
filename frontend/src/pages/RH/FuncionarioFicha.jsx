@@ -9,6 +9,7 @@ import FiltroPeriodo, { usePeriodoSalvo } from '../../components/FiltroPeriodo';
 import { imprimirCartaoPonto, imprimirReciboPrestador } from './imprimirCartaoPonto';
 import { API_URL } from '../../services/api';
 import CampoNumero from '../../components/CampoNumero';
+import { useSetores, opcoesSetores } from '../../hooks/useSetores';
 import FotoPessoa from '../../components/ComoFazer/FotoPessoa';
 import { reduzirImagem } from '../../components/ComoFazer/imagem';
 
@@ -81,6 +82,7 @@ export default function FuncionarioFicha() {
 
 // ─── Aba Dados ────────────────────────────────────────────────────────────────
 function AbaDados({ f, onSaved }) {
+  const { setores: setoresLista, carregando: carregandoSetores, aviso: avisoSetores, erro: erroSetores } = useSetores();
   const [form, setForm] = useState({
     cargo: f.cargo || '', salario: f.salario ?? '', tipoHoraExtra: f.tipoHoraExtra || 'BANCO',
     percentualHoraExtra: f.percentualHoraExtra ?? 50, divisorHoras: f.divisorHoras ?? 220,
@@ -220,11 +222,9 @@ function AbaDados({ f, onSaved }) {
           <label className="block flex-1 max-w-xs"><span className="text-sm font-medium text-gray-700">Setor</span>
             <SelectBusca value={form.setor} onChange={set('setor')} className="mt-1 w-full">
               <option value="">Sem setor</option>
-              <option value="COZINHA">Cozinha</option>
-              <option value="ESTOQUE">Estoque</option>
-              <option value="EXPEDICAO">Expedição</option>
-              <option value="MOTORISTA">Motorista</option>
+              {opcoesSetores(setoresLista, [form.setor], true, !carregandoSetores && !erroSetores).map((o) => <option key={o.codigo} value={o.codigo}>{o.nome}</option>)}
             </SelectBusca>
+            {avisoSetores && <span className="block text-xs text-amber-700 font-semibold mt-1">Não consegui carregar os setores. Tente atualizar a página.</span>}
           </label>
           <span className={`self-start md:self-center px-2 py-1 text-xs font-semibold rounded-full ${senhaNumerica && form.setor ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-700'}`}>
             {!form.setor ? 'Tablet: falta o setor' : senhaNumerica ? 'Tablet: pronto' : 'Tablet: sem senha de 4 números'}

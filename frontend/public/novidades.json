@@ -1,5 +1,11 @@
 [
   {
+    "slug": "setores",
+    "titulo": "Setores: crie e renomeie",
+    "resumo": "Nova tela Configurações → Setores: crie setores, mude o nome (Cozinha, Estoque…) e o ícone. O nome novo aparece na ficha do funcionário, no Como Fazer e no tablet.",
+    "data": "2026-10-20"
+  },
+  {
     "slug": "etiquetas-direto",
     "titulo": "Etiquetas direto na Zebra",
     "resumo": "Etiqueta do produto e das caixas do Kit Festa e do Delivery agora saem com 1 toque no botão verde \"Imprimir na Zebra\" — sem janela de impressão. O jeito antigo continua ao lado.",

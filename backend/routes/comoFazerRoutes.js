@@ -41,22 +41,24 @@ async function checarAparelho(req, setor) {
 }
 
 router.get('/tablet/:setor/funcionarios', h(async (req, res) => {
-    const setor = auth.setorPorSlug(req.params.setor);
+    const setor = await auth.setorPorSlug(req.params.setor);
     if (!setor) return erro(res, 404, 'SETOR_INVALIDO', 'Setor não encontrado.');
+    if (!setor.ativo) return erro(res, 404, 'SETOR_INATIVO', 'Este setor foi desativado pelo RH.');
     if (!(await checarAparelho(req, setor))) return erro(res, 401, 'APARELHO_NAO_AUTORIZADO', 'Este aparelho ainda não foi liberado. Peça ao RH o link de liberação.');
     const lista = await prisma.funcionario.findMany({
         where: { ativo: true, setor: setor.codigo, senhaNumerica: true },
         select: { id: true, nome: true, foto: true }, orderBy: { nome: 'asc' },
     });
     res.json({
-        setor: { slug: setor.slug, nome: setor.nome },
+        setor: { slug: setor.slug, nome: setor.nome, icone: setor.icone || null },
         funcionarios: lista.map(f => ({ id: f.id, nome: f.nome, primeiroNome: String(f.nome).trim().split(/\s+/)[0], foto: f.foto || null })),
     });
 }));
 
 router.post('/tablet/:setor/entrar', h(async (req, res) => {
-    const setor = auth.setorPorSlug(req.params.setor);
+    const setor = await auth.setorPorSlug(req.params.setor);
     if (!setor) return erro(res, 404, 'SETOR_INVALIDO', 'Setor não encontrado.');
+    if (!setor.ativo) return erro(res, 404, 'SETOR_INATIVO', 'Este setor foi desativado pelo RH.');
     if (!(await checarAparelho(req, setor))) return erro(res, 401, 'APARELHO_NAO_AUTORIZADO', 'Este aparelho ainda não foi liberado. Peça ao RH o link de liberação.');
     const { funcionarioId, pin } = req.body || {};
     if (!funcionarioId || typeof funcionarioId !== 'string') return erro(res, 400, 'DADOS_INVALIDOS', 'Escolha a sua foto.');
@@ -94,6 +96,8 @@ router.post('/sessao/renovar', h(async (req, res) => {
     if (req.cf.origem !== 'TABLET') return erro(res, 409, 'SEM_SESSAO_TABLET', 'Não há sessão de tablet para renovar.');
     const f = await prisma.funcionario.findUnique({ where: { id: req.cf.funcionarioId }, select: { ativo: true, setor: true } });
     if (!f || !f.ativo) return erro(res, 401, 'SESSAO_EXPIROU', 'Sua sessão terminou. Escolha sua foto de novo.');
+    const st = f.setor ? await auth.setorPorCodigo(f.setor) : null;
+    if (!st || !st.ativo) return erro(res, 401, 'SETOR_INATIVO', 'Este setor foi desativado pelo RH.');
     res.json(auth.emitirTokenTablet({ funcionarioId: req.cf.funcionarioId, setor: f.setor }));
 }));
 
@@ -167,8 +171,9 @@ router.post('/admin/conteudos/:id/arquivar', ESCOPO_EDITAR, h(async (req, res) =
 router.post('/admin/conteudos/:id/sincronizar-agenda', ESCOPO_EDITAR, h(async (req, res) => res.json(await svc.sincronizarAgenda(req.cf, req.params.id))));
 
 router.post('/admin/tablet/:setor/parear', ESCOPO_EDITAR, h(async (req, res) => {
-    const setor = auth.setorPorSlug(req.params.setor);
+    const setor = await auth.setorPorSlug(req.params.setor);
     if (!setor) return erro(res, 404, 'SETOR_INVALIDO', 'Setor não encontrado.');
+    if (!setor.ativo) return erro(res, 409, 'SETOR_INATIVO', 'Este setor está desativado. Reative-o antes de parear um tablet.');
     const chave = await auth.gerarChaveAparelho(setor.codigo, req.cf.vendedorId);
     const origem = req.headers.origin || `${req.headers['x-forwarded-proto'] || req.protocol}://${req.headers['x-forwarded-host'] || req.headers.host}`;
     res.json({ setor: setor.slug, link: `${origem}/setor/${setor.slug}#k=${chave}`, chave });

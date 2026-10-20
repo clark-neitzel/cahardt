@@ -3,7 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Printer, QrCode, Pencil, Volume2, Loader2, PlayCircle } from 'lucide-react';
 import QRCode from 'qrcode';
 import toast from 'react-hot-toast';
-import comoFazerService, { mensagemErro, codigoErro, TIPOS, SETORES } from '../../services/comoFazerService';
+import { capitalizarCodigo } from '../../services/setorService';
+import comoFazerService, { mensagemErro, codigoErro, TIPOS } from '../../services/comoFazerService';
 import TelaEquipe from '../../components/ComoFazer/TelaEquipe';
 import { useBaseComoFazer } from '../../components/ComoFazer/BaseComoFazer';
 import PassoCard from '../../components/ComoFazer/PassoCard';
@@ -157,7 +158,7 @@ export default function ConteudoPagina() {
     const tipo = TIPOS[conteudo.tipo] || { rotulo: '', icone: '📘' };
     const maquina = conteudo.tipo === 'MAQUINA';
     const nomesSetores = (Array.isArray(conteudo.setores) ? conteudo.setores : [])
-        .map((s) => SETORES.find((x) => x.slug === s)?.nome || s).join(' · ');
+        .map((s) => (Array.isArray(me?.setores) ? me.setores.find((x) => x.codigo === s) : null)?.nome || capitalizarCodigo(s)).join(' · ');
     const cargos = Array.isArray(conteudo.cargos) && conteudo.cargos.length ? conteudo.cargos.join(', ') : 'Todos os cargos';
     const encarregados = Array.isArray(conteudo.encarregados) ? conteudo.encarregados.map((e) => e?.nome).filter(Boolean).join(', ') : '';
     const subt = [

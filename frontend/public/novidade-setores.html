@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Cadastro de Setores — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp (sem og:image de propósito: cartão compacto) -->
+<meta property="og:title" content="🏷️ Novidade no Hardt App: Setores com nome editável">
+<meta property="og:description" content="Agora dá para criar setores novos e mudar o nome de qualquer setor (Cozinha, Estoque…). O nome novo aparece em todo o sistema na hora.">
+<meta property="og:type" content="website">
+<style>
+  :root { --primary:#00754A; --primary-dark:#006241; --house:#1E3932; --mint:#d4e9e2; --cream:#f2f0eb; --gold:#cba258; --ink:rgba(0,0,0,.87); --ink-soft:#5f6b66; letter-spacing:-0.01em; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--cream); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; line-height:1.55; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:620px; margin:0 auto; padding:0 16px 56px; }
+  .hero { background:linear-gradient(168deg,var(--house) 0%,#16302a 100%); color:#fff; padding:40px 16px 40px; }
+  .hero-inner { max-width:620px; margin:0 auto; text-align:center; }
+  .eyebrow { display:inline-block; background:var(--gold); color:#2b230f; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.14em; padding:6px 14px; border-radius:999px; margin-bottom:18px; }
+  .hero h1 { font-size:clamp(28px,7vw,40px); font-weight:800; line-height:1.12; margin:0 0 12px; }
+  .hero p { color:rgba(255,255,255,.75); font-size:16px; max-width:46ch; margin:0 auto; }
+  h2.sec { font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.12em; color:#4a5a54; margin:28px 0 10px; }
+  .acc { background:#fff; border:1px solid #e3e0d8; border-radius:14px; margin-bottom:10px; overflow:hidden; }
+  .acc-head { width:100%; display:flex; align-items:center; gap:12px; padding:14px 16px; background:none; border:0; text-align:left; font:inherit; cursor:pointer; min-height:48px; }
+  .acc-ico { width:36px; height:36px; border-radius:10px; background:var(--mint); display:flex; align-items:center; justify-content:center; font-size:18px; flex:none; }
+  .acc-head strong { flex:1; font-size:15.5px; font-weight:700; }
+  .acc-seta { color:#9aa5a0; transition:transform .2s; font-size:13px; }
+  .acc.aberto .acc-seta { transform:rotate(180deg); }
+  .acc-corpo { display:none; padding:0 16px 16px 64px; }
+  .acc.aberto .acc-corpo { display:block; }
+  .acc-corpo p, .acc-corpo li { font-size:14px; color:var(--ink-soft); }
+  .acc-corpo p { margin:0 0 10px; } .acc-corpo ul { margin:0; padding-left:18px; } .acc-corpo li { margin-bottom:7px; } .acc-corpo b { color:var(--ink); }
+  .acc-head:focus-visible { outline:3px solid var(--gold); outline-offset:2px; }
+  @media (max-width:420px){ .acc-corpo { padding-left:16px; } }
+
+  /* mock das telas */
+  .tela { background:#fff; border:1px solid #e3e0d8; border-radius:16px; margin-bottom:18px; overflow:hidden; }
+  .tela-titulo { padding:12px 16px; font-size:13px; font-weight:800; color:var(--primary-dark); border-bottom:1px solid #eee; background:#faf9f6; }
+  .app-card { margin:14px; border:1px solid #e5e7eb; border-radius:12px; background:#fff; }
+  .app-card .topo { display:flex; justify-content:space-between; align-items:center; padding:10px 12px; border-bottom:1px solid #f1f1f1; gap:8px; }
+  .app-card .topo b { font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:#4b5563; }
+  .btn { display:inline-flex; align-items:center; gap:4px; background:var(--primary); color:#fff; border-radius:999px; padding:6px 12px; font-size:12px; font-weight:700; white-space:nowrap; }
+  .btn.sec { background:#fff; color:var(--primary); border:1px solid var(--primary); }
+  .linha { display:flex; align-items:center; gap:8px; padding:10px 12px; border-bottom:1px solid #f1f1f1; font-size:13px; flex-wrap:wrap; }
+  .linha:last-child { border-bottom:0; }
+  .linha .nome { flex:1; min-width:120px; font-weight:700; color:#111; }
+  .linha small { color:#6b7280; font-size:11px; display:block; font-weight:400; }
+  .badge { padding:2px 8px; border-radius:999px; font-size:11px; font-weight:700; }
+  .b-ok { background:#dcfce7; color:#166534; } .b-off { background:#fee2e2; color:#b91c1c; }
+  .ico { width:26px; height:26px; border:1px solid #e5e7eb; border-radius:999px; display:inline-flex; align-items:center; justify-content:center; font-size:12px; color:#6b7280; }
+  .campo { border:1px solid #d1d5db; border-radius:6px; padding:7px 10px; font-size:13px; margin-top:4px; background:#fff; }
+  .rot { font-size:12px; font-weight:600; color:#374151; }
+  .pin { display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:999px; background:var(--gold); color:#2b230f; font-size:11px; font-weight:800; flex:none; }
+  .legenda { padding:4px 16px 16px; }
+  .legenda div { display:flex; gap:8px; font-size:13px; color:var(--ink-soft); margin-bottom:7px; align-items:flex-start; }
+  .legenda .pin { margin-top:2px; } .legenda b { color:var(--ink); }
+  .passos { counter-reset:p; list-style:none; padding:0; margin:0; }
+  .passos li { counter-increment:p; background:#fff; border:1px solid #e3e0d8; border-radius:12px; padding:12px 14px 12px 48px; margin-bottom:8px; position:relative; font-size:14px; color:var(--ink-soft); }
+  .passos li::before { content:counter(p); position:absolute; left:14px; top:12px; width:24px; height:24px; border-radius:999px; background:var(--primary); color:#fff; font-weight:800; font-size:13px; display:flex; align-items:center; justify-content:center; }
+  .passos b { color:var(--ink); }
+</style>
+</head>
+<body>
+<div class="hero"><div class="hero-inner">
+  <span class="eyebrow">Novidade no Hardt App</span>
+  <h1>Setores com nome que você muda</h1>
+  <p>Cozinha, Estoque, Expedição, Motorista… agora a lista é sua: crie setores novos e renomeie quando quiser. O nome novo aparece em todo o sistema.</p>
+</div></div>
+
+<div class="wrap">
+  <h2 class="sec">O que mudou</h2>
+  <div class="acc aberto"><button class="acc-head" type="button"><span class="acc-ico">🏷️</span><strong>Uma tela só para cuidar dos setores</strong><span class="acc-seta">▼</span></button>
+    <div class="acc-corpo"><ul>
+      <li>Em <b>Configurações → Setores</b> você cria, renomeia, escolhe o ícone (emoji) e muda a ordem.</li>
+      <li>Mudou o nome? Ele troca <b>na ficha do funcionário, no Como Fazer, no painel e no tablet</b> — sem precisar refazer nada.</li>
+      <li>Funcionários, manuais e tablets já ligados ao setor <b>continuam ligados</b>. O tablet não pede link novo.</li>
+    </ul></div></div>
+  <div class="acc aberto"><button class="acc-head" type="button"><span class="acc-ico">⛔</span><strong>Desativar sem perder nada</strong><span class="acc-seta">▼</span></button>
+    <div class="acc-corpo"><ul>
+      <li>Setor que não se usa mais pode ser <b>desativado</b>. Antes, o app avisa quantos funcionários e conteúdos usam.</li>
+      <li>Os dados ficam guardados; o setor some das escolhas e o tablet dele fica fora do ar. Dá para <b>reativar</b> quando quiser.</li>
+      <li><b>Excluir</b> só é possível para setor sem nenhum funcionário nem conteúdo.</li>
+    </ul></div></div>
+  <div class="acc aberto"><button class="acc-head" type="button"><span class="acc-ico">🔒</span><strong>Quem pode mexer</strong><span class="acc-seta">▼</span></button>
+    <div class="acc-corpo"><p>Qualquer pessoa vê a lista. Só quem tem a permissão de <b>Configurações</b> consegue criar, renomear, desativar ou mudar a ordem.</p></div></div>
+
+  <h2 class="sec">As telas do app</h2>
+  <div class="tela">
+    <div class="tela-titulo">Tela 1 · Configurações → Setores</div>
+    <div class="app-card">
+      <div class="topo"><b>Lista de setores</b><span class="btn">+ Novo setor <span class="pin" style="margin-left:4px">1</span></span></div>
+      <div class="linha"><span class="pin">2</span><div class="nome">🍳 Cozinha Quente (exemplo)<small>código COZINHA · 5 funcionários · 6 conteúdos (exemplo)</small></div><span class="badge b-ok">Ativo</span><span class="ico">↑</span><span class="ico">↓</span><span class="ico">✎</span><span class="ico">⦸</span></div>
+      <div class="linha"><div class="nome">🧊 Estoque (exemplo)<small>código ESTOQUE · 0 funcionários · 0 conteúdos (exemplo)</small></div><span class="badge b-ok">Ativo</span><span class="ico">↑</span><span class="ico">↓</span><span class="ico">✎</span><span class="ico">⦸</span></div>
+      <div class="linha"><div class="nome">🧹 Limpeza (exemplo)<small>código LIMPEZA · 1 funcionário · 0 conteúdos (exemplo)</small></div><span class="badge b-off">Inativo</span><span class="ico">↑</span><span class="ico">↓</span><span class="ico">✎</span><span class="ico">↺</span></div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Novo setor:</b> digite o nome e escolha um emoji. O app cria o setor na hora.</span></div>
+      <div><span class="pin">2</span><span><b>Botões da linha:</b> ↑ ↓ mudam a ordem · ✎ renomeia e troca o ícone · ⦸ desativa (↺ reativa) · a lixeira aparece só em setor sem uso.</span></div>
+    </div>
+  </div>
+  <div class="tela">
+    <div class="tela-titulo">Tela 2 · Renomear um setor</div>
+    <div class="app-card" style="padding:12px">
+      <div class="rot">Nome <span class="pin">3</span></div><div class="campo">Cozinha Quente (exemplo)</div>
+      <p style="font-size:12px;color:#4b5563;margin:10px 0 8px">Código interno: <b>COZINHA</b>. Ele não muda — só o nome. <span class="pin">4</span></p>
+      <span class="btn">Salvar <span class="pin" style="margin-left:4px">5</span></span>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">3</span><span><b>Nome e ícone:</b> é o que as pessoas veem na ficha, no Como Fazer e no tablet.</span></div>
+      <div><span class="pin">4</span><span><b>Código interno:</b> fica travado. É ele que mantém funcionários, manuais e tablets ligados ao setor.</span></div>
+      <div><span class="pin">5</span><span><b>Salvar:</b> o nome novo aparece em todas as telas.</span></div>
+    </div>
+  </div>
+  <div class="tela">
+    <div class="tela-titulo">Tela 3 · Aviso ao desativar um setor em uso</div>
+    <div class="app-card" style="padding:12px">
+      <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px;font-size:12px;color:#92400e">⚠️ O setor <b>Cozinha Quente (exemplo)</b> tem 5 funcionários e 6 conteúdos (exemplo). Eles continuam cadastrados, mas o setor some das escolhas e o tablet dele fica fora do ar. <span class="pin">6</span></div>
+      <div style="margin-top:10px"><span class="btn" style="background:#dc2626">Desativar mesmo assim</span></div>
+    </div>
+    <div class="legenda"><div><span class="pin">6</span><span><b>Aviso com números:</b> você vê o impacto antes de confirmar. Nada é apagado.</span></div></div>
+  </div>
+
+  <h2 class="sec">Para começar a usar</h2>
+  <ol class="passos">
+    <li>Abra <b>Configurações → Setores</b> no menu.</li>
+    <li>Quer um setor novo? Toque em <b>Novo setor</b>, digite o nome e escolha um emoji.</li>
+    <li>Na <b>ficha do funcionário</b>, o campo Setor já mostra a lista nova.</li>
+    <li>Em <b>Como Fazer</b>, marque o setor novo nos manuais que ele deve treinar.</li>
+    <li>Para o tablet do setor novo, gere o link em <b>Painel Como Fazer → Aparelhos</b>.</li>
+  </ol>
+</div>
+<script>
+  document.querySelectorAll('.acc-head').forEach(function (h) {
+    h.addEventListener('click', function () { h.parentElement.classList.toggle('aberto'); });
+  });
+</script>
+</body>
+</html>

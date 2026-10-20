@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
-import comoFazerService, { mensagemErro, TIPOS, SETORES } from '../../../services/comoFazerService';
+import { useSetores, opcoesSetores } from '../../../hooks/useSetores';
+import comoFazerService, { mensagemErro, TIPOS } from '../../../services/comoFazerService';
 import SelectBusca from '../../../components/SelectBusca';
 import MultiSelect from '../../../components/MultiSelect';
 import { useFiltrosSalvos } from '../../../hooks/useFiltrosSalvos';
@@ -13,7 +14,9 @@ function ModalNovo({ onCriado, onFechar }) {
     const [tipo, setTipo] = useState('REGRA');
     const [titulo, setTitulo] = useState('');
     const [icone, setIcone] = useState('');
-    const [setores, setSetores] = useState(['COZINHA']);
+    const { setores: listaSetores, aviso: avisoSetores } = useSetores();
+    const [escolhidos, setSetores] = useState(null); // null = ainda não mexeu: sugere o primeiro setor ativo
+    const setores = escolhidos ?? (listaSetores[0] ? [listaSetores[0].codigo] : []);
     const [salvando, setSalvando] = useState(false);
 
     const criar = async () => {
@@ -39,7 +42,8 @@ function ModalNovo({ onCriado, onFechar }) {
                     <label className="block"><span className="text-sm font-medium text-gray-700">Ícone</span><input value={icone} maxLength={4} onChange={(e) => setIcone(e.target.value)} className={`${CAMPO} mt-1`} placeholder="👕" /></label>
                 </div>
                 <div><span className="text-sm font-medium text-gray-700">Setores</span>
-                    <div className="mt-1"><MultiSelect options={SETORES} valueKey="slug" labelKey="nome" selected={setores} onChange={setSetores} placeholder="Escolha os setores" /></div>
+                    <div className="mt-1"><MultiSelect options={opcoesSetores(listaSetores, setores, true, false)} valueKey="codigo" labelKey="nome" selected={setores} onChange={setSetores} placeholder="Escolha os setores" />
+                        {avisoSetores && <p className="text-xs text-amber-700 font-semibold mt-1">Não consegui carregar os setores. Tente atualizar a página.</p>}</div>
                 </div>
                 <div className="flex gap-2 pt-1">
                     <button type="button" onClick={onFechar} className="flex-1 min-h-[48px] rounded-full bg-white border border-gray-300 text-gray-800 font-semibold">Cancelar</button>

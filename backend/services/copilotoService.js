@@ -119,6 +119,7 @@ const ABAS = [
     { slug: 'config-comissoes',            nome: 'Configurações — Comissões',     rota: '/config/comissoes',                  perm: 'configuracoes' },
     { slug: 'config-categorias-produto',   nome: 'Configurações — Cat. Produtos', rota: '/config/categorias-produto',         perm: 'configuracoes' },
     { slug: 'config-categorias-cliente',   nome: 'Configurações — Cat. Clientes', rota: '/config/categorias-cliente',         perm: 'configuracoes' },
+    { slug: 'config-setores',             nome: 'Configurações — Setores',       rota: '/config/setores',                    perm: 'configuracoes' },
     { slug: 'config-cidades',              nome: 'Configurações — Cidades',       rota: '/config/cidades',                    perm: 'configuracoes' },
     { slug: 'configuracoes-impressoras',    nome: 'Configurações — Impressoras',   rota: '/config/impressoras',                perm: 'admin' },
     { slug: 'config-categorias-estoque',   nome: 'Configurações — Cat. Estoque',  rota: '/config/categorias-estoque',         perm: 'configuracoes' },

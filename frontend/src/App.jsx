@@ -25,6 +25,7 @@ const CategoriasProduto = lazyComRetry(() => import('./pages/Configuracoes/Categ
 const CategoriasCliente = lazyComRetry(() => import('./pages/Configuracoes/CategoriasCliente'));
 const CategoriasEstoque = lazyComRetry(() => import('./pages/Configuracoes/CategoriasEstoque'));
 const ConfigCidades = lazyComRetry(() => import('./pages/Configuracoes/Cidades'));
+const ConfigSetores = lazyComRetry(() => import('./pages/Configuracoes/Setores'));
 const ConfigImpressoras = lazyComRetry(() => import('./pages/Configuracoes/Impressoras'));
 const DashboardHome = lazyComRetry(() => import('./pages/Dashboard/DashboardHome'));
 const DashboardVendedorPessoal = lazyComRetry(() => import('./pages/Dashboard/DashboardVendedorPessoal'));
@@ -498,6 +499,7 @@ const Layout = ({ children }) => {
       { to: '/config/categorias-cliente', icon: FolderOpen, label: 'Cat. Clientes' },
       { to: '/config/categorias-estoque', icon: FolderOpen, label: 'Cat. Estoque' },
       { to: '/config/cidades', icon: MapPin, label: 'Cidades' },
+      { to: '/config/setores', icon: Tag, label: 'Setores' },
       isAdmin && { to: '/config/impressoras', icon: Printer, label: 'Impressoras' },
     ].filter(Boolean) : []) },
   ].filter(s => s.items.length > 0);
@@ -991,6 +993,7 @@ function App() {
               <Route path="/config/categorias-cliente" element={<PrivateRoute tab="configuracoes"><CategoriasCliente /></PrivateRoute>} />
               <Route path="/config/categorias-estoque" element={<PrivateRoute tab="configuracoes"><CategoriasEstoque /></PrivateRoute>} />
               <Route path="/config/cidades" element={<PrivateRoute tab="configuracoes"><ConfigCidades /></PrivateRoute>} />
+              <Route path="/config/setores" element={<PrivateRoute tab="configuracoes"><ConfigSetores /></PrivateRoute>} />
               <Route path="/config/impressoras" element={<PrivateRoute tab="configuracoes"><ConfigImpressoras /></PrivateRoute>} />
 
               {/* RH — Currículos */}

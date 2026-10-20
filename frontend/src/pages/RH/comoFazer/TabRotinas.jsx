@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Loader2, Printer, ImageOff, X } from 'lucide-react';
-import comoFazerService, { mensagemErro, urlMidia, SETORES } from '../../../services/comoFazerService';
+import { useSetores, opcoesSetores } from '../../../hooks/useSetores';
+import comoFazerService, { mensagemErro, urlMidia } from '../../../services/comoFazerService';
 import SelectBusca from '../../../components/SelectBusca';
 import FiltroPeriodo, { usePeriodoSalvo } from '../../../components/FiltroPeriodo';
 import { useFiltrosSalvos } from '../../../hooks/useFiltrosSalvos';
@@ -42,6 +43,7 @@ const detalheLegivel = (txt) => String(txt || '').replace(/: (SIM|NAO)(?= â€”| Â
 
 export default function TabRotinas({ destaque }) {
     const [periodo, periodoCtl] = usePeriodoSalvo('como-fazer-painel', '7d');
+    const { setores: listaSetores, carregando: carregandoSetores, aviso: avisoSetores } = useSetores();
     const [filtros, setFiltros] = useFiltrosSalvos('como-fazer-painel-rotinas', { situacao: 'todas', setor: '' });
     const [dados, setDados] = useState(null);
     const [erro, setErro] = useState('');
@@ -71,7 +73,7 @@ export default function TabRotinas({ destaque }) {
                 </SelectBusca>
                 <SelectBusca value={filtros.setor} onChange={(e) => setFiltros({ ...filtros, setor: e.target.value })} className="w-full md:w-44">
                     <option value="">Todos os setores</option>
-                    {SETORES.map((s) => <option key={s.slug} value={s.slug}>{s.nome}</option>)}
+                    {opcoesSetores(listaSetores, [filtros.setor], false, !carregandoSetores && !avisoSetores).map((o) => <option key={o.codigo} value={o.codigo}>{o.nome}</option>)}
                 </SelectBusca>
                 {nFiltros > 0 && <button type="button" onClick={limpar} className="min-h-[44px] px-3 text-sm font-semibold text-primary">Limpar filtros ({nFiltros})</button>}
                 <button type="button" onClick={() => setRelatorio(true)} className="md:ml-auto min-h-[44px] px-4 inline-flex items-center justify-center gap-2 rounded-full bg-white border border-primary text-primary font-semibold text-sm">

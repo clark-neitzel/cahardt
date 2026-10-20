@@ -46,14 +46,14 @@ A tela da gestão para acompanhar o **Como Fazer**: quem já foi treinado, quais
 O tablet só mostra as fotos da equipe depois de ser liberado, para o nome e a foto dos funcionários não ficarem abertos para qualquer pessoa na internet.
 1. Na aba **Aparelhos**, toque em **Liberar** no setor. O sistema mostra um **link**, uma única vez.
 2. Abra esse link no tablet. Ele guarda a liberação e passa a mostrar a grade de fotos.
-3. Gerar o link de novo **desliga o tablet anterior** do mesmo setor. Se o tablet mostrar "aparelho não liberado", gere um link novo.
+3. Gerar o link de novo **desliga o tablet anterior** do mesmo setor. Se o setor for **desativado** em Configurações → Setores, o tablet dele sai do ar ("setor desativado") até ser reativado; renomear o setor não desliga o tablet. Se o tablet mostrar "aparelho não liberado", gere um link novo.
 
 ---
 
 ## Cadastro do funcionário (RH)
 
 Na ficha do funcionário (RH → Funcionários) ficam os dados que o tablet usa:
-- **Setor** (Cozinha, Estoque, Expedição ou Motorista);
+- **Setor** (a lista vem de Configurações → Setores; setor desativado não aparece para escolher);
 - **Foto** (aparece na grade do tablet);
 - **Senha**: para entrar no tablet, precisa ser de **exatamente 4 números**. Senhas antigas com letras continuam servindo para o ponto, mas a pessoa não aparece no tablet até o RH definir uma senha de 4 números.
 

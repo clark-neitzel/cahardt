@@ -164,6 +164,7 @@ app.use('/api/canhotos', authMiddleware, canhotoRoutes); // Canhoto da NF assina
 app.use('/api/produtos', authMiddleware, produtoRoutes);
 app.use('/api/clientes', authMiddleware, clienteRoutes);
 app.use('/api/inadimplencia', authMiddleware, require('./routes/inadimplenciaRoutes')); // Inadimplência visível: config (selo, carência, trava)
+app.use('/api/setores', authMiddleware, require('./routes/setores')); // Cadastro de Setores (Como Fazer / ficha do funcionário)
 app.use('/api/cidades', authMiddleware, require('./routes/cidades')); // Lista canônica de cidades (dropdowns) — padronização de grafia
 app.use('/api/gps-clientes', authMiddleware, require('./routes/gpsClientesRoutes')); // Ponto GPS confiável por cliente
 app.use('/api/whatsapp-clientes', authMiddleware, require('./routes/whatsappClienteRoutes')); // WhatsApp do cliente: obrigatório, verificado e com selo
@@ -266,6 +267,10 @@ const startServer = async () => {
 
         const migrationService = require('./services/migrationService');
         await migrationService.run();
+
+        // Cadastro de Setores: semeia os 4 atuais se a tabela estiver vazia (falha NUNCA derruba o boot)
+        try { await require('./services/setoresService').garantirSeed(); }
+        catch (e) { console.error('[Setores] seed no boot falhou:', e.message); }
 
         app.listen(PORT, () => {
             console.log(`Servidor rodando na porta ${PORT}`);

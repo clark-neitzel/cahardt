@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { X, Printer, Loader2 } from 'lucide-react';
+import { useSetores } from '../../../hooks/useSetores';
 import comoFazerService, { mensagemErro, urlMidia, TIPOS } from '../../../services/comoFazerService';
 import SelectBusca from '../../../components/SelectBusca';
 import imprimirNaPagina from '../../../utils/imprimirNaPagina';
@@ -22,16 +23,19 @@ export default function RelatorioComoFazer({ periodo, onFechar }) {
     const [pronto, setPronto] = useState(false);
     const [erro, setErro] = useState('');
 
+    const { setores: listaSetores, carregando: carregandoSetores, aviso: avisoSetores } = useSetores();
+
     useEffect(() => {
-        Promise.all(['COZINHA', 'ESTOQUE', 'EXPEDICAO', 'MOTORISTA'].map((s) => comoFazerService.painelTreinamentos(s).catch(() => null)))
+        if (carregandoSetores) return;
+        Promise.all(listaSetores.map((s) => comoFazerService.painelTreinamentos(s.codigo).catch(() => null)))
             .then((rs) => {
                 const mapa = new Map();
                 rs.forEach((r) => (r?.conteudos || []).forEach((c) => mapa.set(c.id, c)));
                 const lista = [...mapa.values()];
                 setConteudos(lista);
-                if (lista[0]) setConteudoId(lista[0].id);
+                if (lista[0]) setConteudoId((atual) => atual || lista[0].id);
             });
-    }, []);
+    }, [carregandoSetores, listaSetores]);
 
     useEffect(() => {
         if (!conteudoId) return undefined;
@@ -80,6 +84,7 @@ export default function RelatorioComoFazer({ periodo, onFechar }) {
                 <SelectBusca value={conteudoId} onChange={(e) => escolher(e.target.value)} className="w-full">
                     {conteudos.map((c) => <option key={c.id} value={c.id}>{c.icone || TIPOS[c.tipo]?.icone} {c.titulo}</option>)}
                 </SelectBusca>
+                {avisoSetores && <p className="text-xs text-amber-700 font-semibold">Não consegui carregar os setores. Tente atualizar a página.</p>}
                 {erro && <p className="rounded-xl bg-red-50 text-red-700 font-semibold p-3 text-sm">{erro}</p>}
                 {!pronto && !erro && <div className="flex items-center gap-2 text-sm text-gray-600"><Loader2 className="h-4 w-4 animate-spin" /> Preparando as fotos…</div>}
                 {pronto && rel && (

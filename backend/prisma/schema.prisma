@@ -1121,7 +1121,7 @@ model Funcionario {
   senhaHash  String? @map("senha_hash")
 
   // Como Fazer: setor do tablet e se a senha são 4 números (pode entrar no tablet)
-  setor         String? @map("setor") // COZINHA | ESTOQUE | EXPEDICAO | MOTORISTA
+  setor         String? @map("setor") // código de um Setor (tabela setores): COZINHA, ESTOQUE, EXPEDICAO, MOTORISTA ou criado na tela
   senhaNumerica Boolean @default(false) @map("senha_numerica")
 
   ativo      Boolean @default(true)
@@ -4707,7 +4707,7 @@ model ComoFazerConteudo {
   titulo String
   icone  String? // emoji
 
-  setores String[] @default([]) // COZINHA | ESTOQUE | EXPEDICAO | MOTORISTA
+  setores String[] @default([]) // códigos de Setor (tabela setores), não ids
   cargos  String[] @default([]) // texto de Funcionario.cargo; vazio = todos do setor
   ordem   Int      @default(0)
 
@@ -4808,4 +4808,19 @@ model ComoFazerExecucao {
   @@index([dataRef, temDesvio])
   @@index([funcionarioId])
   @@map("como_fazer_execucoes")
+}
+
+// Cadastro de Setores (Como Fazer / ficha do funcionário). `codigo` é a chave estável que
+// Funcionario.setor, ComoFazerConteudo.setores e o AppConfig como_fazer_aparelhos guardam — nunca muda.
+model Setor {
+  id        String   @id @default(uuid())
+  codigo    String   @unique
+  nome      String
+  icone     String?
+  ordem     Int      @default(0)
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("setores")
 }

@@ -15,14 +15,11 @@ const SEGREDO_TABLET = JWT_SECRET + ':como-fazer-tablet';
 const SESSAO_SEGUNDOS = 120;
 const CONFIG_APARELHOS = 'como_fazer_aparelhos';
 
-const SETORES = [
-    { slug: 'cozinha', codigo: 'COZINHA', nome: 'Cozinha' },
-    { slug: 'estoque', codigo: 'ESTOQUE', nome: 'Estoque' },
-    { slug: 'expedicao', codigo: 'EXPEDICAO', nome: 'Expedição' },
-    { slug: 'motorista', codigo: 'MOTORISTA', nome: 'Motorista' },
-];
-const setorPorSlug = (slug) => SETORES.find(s => s.slug === String(slug || '').toLowerCase()) || null;
-const setorPorCodigo = (cod) => SETORES.find(s => s.codigo === String(cod || '').toUpperCase()) || null;
+// Setores vêm do cadastro (tabela `setores`). ASSÍNCRONOS — todo chamador precisa de await.
+// Resolvem também setor inativo; quem decide "só ativos" é o chamador.
+const setoresService = require('./setoresService');
+const setorPorSlug = (slug) => setoresService.porSlug(slug);
+const setorPorCodigo = (cod) => setoresService.porCodigo(cod);
 
 const erro = (res, status, codigo, mensagem, extra = {}) => res.status(status).json({ erro: mensagem, codigo, ...extra });
 
@@ -186,7 +183,7 @@ const exigirPermissao = (...nomes) => (req, res, next) => {
 };
 
 module.exports = {
-    SETORES, setorPorSlug, setorPorCodigo, erro, ipDe,
+    setorPorSlug, setorPorCodigo, erro, ipDe,
     gerarChaveAparelho, chaveConfere,
     emitirTokenTablet, SESSAO_SEGUNDOS,
     segundosBloqueado, registrarErroPin, limparErrosPin,

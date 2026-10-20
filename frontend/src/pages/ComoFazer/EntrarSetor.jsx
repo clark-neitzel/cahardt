@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Loader2, ChevronLeft } from 'lucide-react';
 import comoFazerService, {
-    gravarSessaoTablet, gravarChaveAparelho, limparChaveAparelho, lerChaveAparelho, codigoErro, semResposta, SETORES,
+    gravarSessaoTablet, gravarChaveAparelho, limparChaveAparelho, lerChaveAparelho, codigoErro, semResposta,
 } from '../../services/comoFazerService';
 import FotoPessoa from '../../components/ComoFazer/FotoPessoa';
 import TecladoNumerico from '../../components/ComoFazer/TecladoNumerico';
@@ -9,8 +9,7 @@ import TecladoNumerico from '../../components/ComoFazer/TecladoNumerico';
 // /setor/:slug — o funcionário toca na PRÓPRIA FOTO e digita 4 números. Sem digitar nome, sem texto.
 export default function EntrarSetor({ slug: slugRota }) {
     const slug = String(slugRota || '').toLowerCase();
-    const setorApi = String(slug || '').toUpperCase();
-    const setor = SETORES.find((s) => s.slug === setorApi);
+    const [setor, setSetor] = useState(null); // { nome, icone } vindo de /tablet/:slug/funcionarios
     const [estado, setEstado] = useState('carregando'); // carregando | liberar | rede | grade
     const [lista, setLista] = useState([]);
     const [escolhido, setEscolhido] = useState(null);
@@ -38,10 +37,12 @@ export default function EntrarSetor({ slug: slugRota }) {
         if (!lerChaveAparelho(slug)) { setEstado('liberar'); return; }
         let vivo = true;
         comoFazerService.grade(slug)
-            .then((d) => { if (vivo) { setLista(Array.isArray(d?.funcionarios) ? d.funcionarios : []); setEstado('grade'); } })
+            .then((d) => { if (vivo) { setSetor(d?.setor || null); setLista(Array.isArray(d?.funcionarios) ? d.funcionarios : []); setEstado('grade'); } })
             .catch((e) => {
                 if (!vivo) return;
-                if (codigoErro(e) === 'APARELHO_NAO_AUTORIZADO') { limparChaveAparelho(slug); setEstado('liberar'); }
+                const c = codigoErro(e);
+                if (c === 'APARELHO_NAO_AUTORIZADO') { limparChaveAparelho(slug); setEstado('liberar'); }
+                else if (c === 'SETOR_INATIVO' || c === 'SETOR_INVALIDO' || e?.response?.status === 404) setEstado('setor-fora');
                 else if (semResposta(e)) setEstado('rede');
                 else setEstado('liberar');
             });
@@ -57,6 +58,7 @@ export default function EntrarSetor({ slug: slugRota }) {
             setPin('');
             const cod = codigoErro(e);
             if (cod === 'APARELHO_NAO_AUTORIZADO') { limparChaveAparelho(slug); setEstado('liberar'); return; }
+            if (cod === 'SETOR_INATIVO' || cod === 'SETOR_INVALIDO') { setEstado('setor-fora'); return; }
             setTremer(true); setTimeout(() => setTremer(false), 500);
             if (cod === 'PIN_INCORRETO') {
                 const n = erros + 1; setErros(n);
@@ -75,12 +77,21 @@ export default function EntrarSetor({ slug: slugRota }) {
 
     const moldura = (children) => (
         <div className="min-h-screen bg-house text-white p-4 md:p-8 flex flex-col">
-            <h1 className="text-center text-xl md:text-3xl font-extrabold mb-4">{setor ? `${setor.emoji} ${setor.nome}` : 'Como Fazer'}</h1>
+            <h1 className="text-center text-xl md:text-3xl font-extrabold mb-4">{setor?.nome ? `${setor.icone ? `${setor.icone} ` : ''}${setor.nome}` : 'Como Fazer'}</h1>
             {children}
         </div>
     );
 
     if (estado === 'carregando') return moldura(<Loader2 className="h-10 w-10 animate-spin mx-auto mt-10" />);
+    if (estado === 'setor-fora') {
+        return moldura(
+            <div className="bg-white text-gray-900 rounded-2xl p-6 max-w-md mx-auto text-center mt-6">
+                <div className="text-5xl mb-2">🚫</div>
+                <h2 className="text-xl font-bold mb-1">Este setor não existe mais</h2>
+                <p className="text-gray-700">Este setor foi desativado ou não existe. Fale com o RH.</p>
+            </div>
+        );
+    }
     if (estado === 'liberar') {
         return moldura(
             <div className="bg-white text-gray-900 rounded-2xl p-6 max-w-md mx-auto text-center mt-6">

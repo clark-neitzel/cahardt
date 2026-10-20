@@ -1,6 +1,7 @@
 // Como Fazer — consultas do painel do gestor (treinamentos, execuções, relatório, lembrete).
 const prisma = require('../config/database');
 const auth = require('./comoFazerAuthService');
+const setoresService = require('./setoresService');
 const agenda = require('./comoFazerAgendaService');
 const base = require('./comoFazerService');
 const { ocorreNoDia, datasDoIntervalo } = require('./tarefaRecorrenciaService');
@@ -18,7 +19,7 @@ function periodo({ de, ate }) {
     return { de: ini, ate: fim };
 }
 
-const setorCodigo = (s) => (s ? auth.setorPorCodigo(s)?.codigo || null : null);
+const setorCodigo = async (s) => (s ? (await auth.setorPorCodigo(s))?.codigo || null : null);
 
 async function conteudosPublicados(setor, tipo) {
     return prisma.comoFazerConteudo.findMany({
@@ -29,7 +30,8 @@ async function conteudosPublicados(setor, tipo) {
 
 // ───────── matriz de treinamentos ─────────
 async function treinamentos(setorParam) {
-    const setor = setorCodigo(setorParam) || 'COZINHA';
+    const setor = (await setorCodigo(setorParam)) || (await setoresService.listar())[0]?.codigo || null;
+    if (!setor) return { setor: null, conteudos: [], funcionarios: [], semSetor: [], encarregadosSemFuncionario: [] };
     const agora = new Date();
     const conteudos = await conteudosPublicados(setor);
     const funcs = await prisma.funcionario.findMany({
@@ -115,7 +117,7 @@ async function naoFeitas(conteudos, de, ate) {
 async function execucoes({ de, ate, setor, conteudoId, situacao }) {
     const p = periodo({ de, ate });
     const sit = String(situacao || 'todas').toUpperCase();
-    const cod = setorCodigo(setor);
+    const cod = await setorCodigo(setor);
     const conteudos = await prisma.comoFazerConteudo.findMany({
         where: { tipo: 'ROTINA', ...(conteudoId ? { id: conteudoId } : {}), ...(cod ? { setores: { has: cod } } : {}) },
     });
@@ -162,7 +164,8 @@ async function resumo({ setor, de, ate }) {
     const p = periodo({ de, ate });
     let faltando = 0, vencendo = 0;
     // um setor só quando informado; senão soma todos (cada setor consultado uma única vez)
-    const setoresAlvo = setorCodigo(setor) ? [setorCodigo(setor)] : auth.SETORES.map(s => s.codigo);
+    const codUnico = await setorCodigo(setor);
+    const setoresAlvo = codUnico ? [codUnico] : (await setoresService.listar()).map(s => s.codigo);
     for (const cod of setoresAlvo) {
         const ts = await treinamentos(cod);
         for (const f of ts.funcionarios) for (const cel of Object.values(f.celulas)) {
@@ -170,7 +173,7 @@ async function resumo({ setor, de, ate }) {
             if (cel.status === 'VENCENDO') vencendo++;
         }
     }
-    const cod = setorCodigo(setor);
+    const cod = codUnico;
     const conteudos = await prisma.comoFazerConteudo.findMany({ where: { tipo: 'ROTINA', ...(cod ? { setores: { has: cod } } : {}) } });
     const execs = await prisma.comoFazerExecucao.findMany({
         where: { conteudoId: { in: conteudos.map(c => c.id) }, dataRef: { gte: p.de, lte: p.ate } }, select: { temDesvio: true, horaAlvo: true },
