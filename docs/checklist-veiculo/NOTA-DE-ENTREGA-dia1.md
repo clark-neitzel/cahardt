@@ -76,16 +76,13 @@ Com o app instalado no celular (atalho) e num carro no pátio, de manhã cedo:
 
 ---
 
-## 6. Prova em produção (preencher pelo gerente de projeto após o deploy)
+## 6. Prova em produção (preenchida pelo gerente de projeto em 20/10, 19:35–19:50)
 
-- [ ] `GET /api/admin-exec/ping` devolve `deployMarker: "checklist-foto-dia1-2026-10-20"` → hora: ______
-- [ ] Frontend novo no ar (campo **Tipo** aparece no modal de veículo) → hora: ______
-- [ ] `GET /api/checklists-veiculo/config/modo` → `{"modo":"TESTE"}` → ______
-- [ ] Foto modelo enviada num veículo real → URL: ______
-- [ ] **Novo deploy / restart depois disso** → hora: ______
-- [ ] A mesma URL ainda abre a foto (prova de que `/uploads` persistiu) → ______
-- [ ] Primeiro checklist real de um motorista: id ______ · veredito ______ · tempo da IA ______ ms (tabela `checklist_veiculo_fotos`, colunas `ia_ms`, `ia_tokens`, `ia_modelo`)
-- [ ] `openaiConfigurada: true` no ping (a IA usa a mesma chave já em uso; `AI_MODEL_VISAO` **não** precisa ser criada)
+- [x] `GET /api/admin-exec/ping` devolve `deployMarker: "checklist-foto-dia1-2026-10-20"` → 19:35 (commit 9f11fa22, `openaiConfigurada: true`, node v20).
+- [x] Frontend novo no ar → 19:48: o chunk `/assets/index-DhbZ7IaF.js` de produção contém as telas novas ("Tire assim", "Seguir mesmo assim", "Fotos modelo"); `novidade-checklist-foto.html` responde 200; `novidades.json` tem a entrada no topo (o Clippy avisa).
+- [x] Volume de uploads sobrevive ao deploy → arquivo de teste gravado em `/app/uploads` às 22:35:29 UTC, backend reiniciado por redeploy vazio (commit 6e8f7a41) às 22:36:00 UTC, arquivo continuava lá depois do reinício; apagado em seguida. As pastas novas (`uploads/veiculos/.../modelo` e `uploads/checklists-veiculo`) ficam no mesmo volume `/app/uploads`.
+- [ ] Foto modelo enviada num veículo real e checklist real de um motorista: **só amanhã**, com login da equipe (não há usuário de teste em produção). Primeiro checklist real: conferir `ia_ms`/`ia_tokens` na tabela `checklist_veiculo_fotos`.
+- [ ] `GET /api/checklists-veiculo/config/modo` → precisa de token de admin; a chave nasce como TESTE na primeira leitura.
 
 Se algo der errado de manhã: administrador chama `PUT /api/checklists-veiculo/config/modo` com `{"modo":"DESLIGADO"}` e todo mundo volta às caixinhas na hora, sem publicar nada.
 
