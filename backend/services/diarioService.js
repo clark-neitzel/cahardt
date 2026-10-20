@@ -4,6 +4,29 @@ const prisma = require('../config/database');
 // services, ex.: atendimentoService.buscarPendenciasRota).
 const { getDataReferencia } = require('../utils/dataReferenciaBrasilia');
 
+// ── Checklist por foto (Dia 1) ──────────────────────────────────────────
+// Nada aqui pode barrar o início do dia: qualquer falha só loga.
+async function derivarChecklist(checklistId, vendedorId, veiculoId, checklistDoCorpo) {
+    try {
+        const r = await require('./checklistVeiculoService').resumoParaDiario({ checklistId, vendedorId, veiculoId });
+        if (r.ok) return r.resumo;
+        console.warn(`[Diario] checklistId ignorado (${r.motivo}): ${checklistId}`);
+    } catch (e) {
+        console.error('[Diario] falha ao derivar checklist por foto:', e.message);
+    }
+    return checklistDoCorpo || {};
+}
+
+async function amarrarChecklist(checklistId, diarioId, vendedorId, veiculoId) {
+    try {
+        const svc = require('./checklistVeiculoService');
+        const ok = await svc.amarrarAoDiario(String(checklistId), diarioId, vendedorId, veiculoId);
+        if (!ok) console.warn(`[Diario] checklist ${checklistId} NÃO amarrado ao diário ${diarioId} (outro dono/veículo, já amarrado ou não é rascunho)`);
+    } catch (e) {
+        console.error('[Diario] falha ao amarrar checklist ao diário (dia já aberto):', e.message);
+    }
+}
+
 const diarioService = {
     // 1. Validar Status Atual do Usuário (Se ele tem que fechar o dia anterior, ou se já abriu hoje)
     statusDoDia: async (vendedorId) => {
@@ -42,7 +65,9 @@ const diarioService = {
     // `permissoes` vem do req.user do controller (objeto já parseado pelo authMiddleware) —
     // só serve para a isenção admin/Isento_Ponto da trava de pendência de rota abaixo.
     iniciarDia: async (vendedorId, dados, permissoes) => {
-        const { modo, veiculoId, kmInicial, checklist, obs } = dados;
+        const { modo, veiculoId, kmInicial, obs } = dados;
+        let { checklist } = dados;
+        const checklistId = dados.checklistId || null;
         const hojeDateRef = getDataReferencia();
 
         // Bloqueia duplo check-in
@@ -87,6 +112,9 @@ const diarioService = {
 
         // Valida modo Presencial
         if (modo === 'PRESENCIAL') {
+            // Checklist por foto: deriva o resumo compatível (*Ok). checklistId inválido NÃO barra o dia:
+            // loga e segue com o `checklist` do corpo (ou {}). Payload antigo (só `checklist`) segue igual.
+            if (checklistId) checklist = await derivarChecklist(checklistId, vendedorId, veiculoId, checklist);
             if (!veiculoId || kmInicial === undefined || kmInicial === null || !checklist) {
                 throw new Error('Para o modo presencial, informe Veículo, KM Inicial e Checklist.');
             }
@@ -105,7 +133,7 @@ const diarioService = {
             }
         }
 
-        return await prisma.diarioVendedor.create({
+        const diarioCriado = await prisma.diarioVendedor.create({
             data: {
                 vendedorId,
                 dataReferencia: hojeDateRef,
@@ -117,6 +145,8 @@ const diarioService = {
                 inicioHora: new Date()
             }
         });
+        if (modo === 'PRESENCIAL' && checklistId) await amarrarChecklist(checklistId, diarioCriado.id, vendedorId, veiculoId);
+        return diarioCriado;
     },
 
     // 2b. Pegar o veículo DEPOIS de ter iniciado o dia em Home Office
@@ -124,7 +154,9 @@ const diarioService = {
     // Converte o MESMO registro do dia para PRESENCIAL — todos os relatórios que
     // olham `modo === 'PRESENCIAL' && veiculoId` (Caixa, Veículos) passam a enxergá-lo.
     assumirVeiculo: async (vendedorId, dados) => {
-        const { veiculoId, kmInicial, checklist, obs } = dados;
+        const { veiculoId, kmInicial, obs } = dados;
+        let { checklist } = dados;
+        const checklistId = dados.checklistId || null;
         const hojeDateRef = getDataReferencia();
 
         const diarioHoje = await prisma.diarioVendedor.findFirst({
@@ -134,6 +166,8 @@ const diarioService = {
         if (diarioHoje.modo === 'PRESENCIAL' && diarioHoje.veiculoId) {
             throw new Error('Você já está com um veículo hoje. Encerre o expediente antes de pegar outro.');
         }
+
+        if (checklistId) checklist = await derivarChecklist(checklistId, vendedorId, veiculoId, checklist);
 
         if (!veiculoId || kmInicial === undefined || kmInicial === null || !checklist) {
             throw new Error('Informe Veículo, KM Inicial e Checklist.');
@@ -158,7 +192,7 @@ const diarioService = {
         novaObs += `${novaObs ? '\n' : ''}[Começou em Home Office — pegou o veículo às ${hora}]`;
         if (obs) novaObs += `\n${obs}`;
 
-        return await prisma.diarioVendedor.update({
+        const diarioAtualizado = await prisma.diarioVendedor.update({
             where: { id: diarioHoje.id },
             data: {
                 modo: 'PRESENCIAL',
@@ -169,6 +203,8 @@ const diarioService = {
             },
             include: { veiculo: true }
         });
+        if (checklistId) await amarrarChecklist(checklistId, diarioAtualizado.id, vendedorId, veiculoId);
+        return diarioAtualizado;
     },
 
     // 3. Finalizar o dia/Pendência

@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Checklist do veículo com foto — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp (sem imagem de propósito: cartão compacto) -->
+<meta property="og:title" content="📸 Novidade no Hardt App: checklist do veículo com foto">
+<meta property="og:description" content="Antes de sair, o motorista tira fotos do veículo e o app confere. Fase de teste: se der problema, ele avisa e o motorista decide. Veja como funciona.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 96px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 7vw, 40px);
+    font-weight: 800;
+    line-height: 1.12;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.75);
+    font-size: 16px;
+    max-width: 46ch;
+    margin: 0 auto;
+    text-wrap: balance;
+  }
+
+  /* mock da tela flutuando sobre o hero */
+  .mock {
+    max-width: 420px;
+    margin: -68px auto 28px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.28);
+    overflow: hidden;
+    text-align: left;
+  }
+  .mock-top {
+    background: var(--house);
+    color: #fff;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .mock-top small {
+    display: block;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    color: rgba(255,255,255,.55);
+  }
+  .mock-top strong { font-size: 16px; line-height: 1.2; }
+  .mock-ico { font-size: 24px; }
+  .mock-body { padding: 16px 18px 18px; }
+  .mock-label {
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--ink-soft);
+    margin-bottom: 4px;
+  }
+  .mock-input {
+    border: 1.5px solid #d8d5cc;
+    border-radius: 10px;
+    padding: 11px 13px;
+    font-size: 15px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--ink);
+    background: #fff;
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+  }
+  .mock-input.focado { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0,117,74,.14); }
+  .cursor { display: inline-block; width: 2px; height: 18px; background: var(--primary); margin-left: 2px; animation: pisca 1s steps(1) infinite; }
+  @keyframes pisca { 50% { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .cursor { animation: none; } }
+  .mock-campos { margin-top: 14px; display: grid; gap: 9px; }
+  .campo {
+    background: #f6f5f1;
+    border-radius: 9px;
+    padding: 8px 12px;
+    font-size: 13px;
+    color: #b9b5aa;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background .4s, color .4s;
+  }
+  .campo b { font-weight: 700; }
+  .campo.cheio { background: var(--mint); color: var(--primary-dark); }
+  .campo .ck { opacity: 0; transition: opacity .4s; }
+  .campo.cheio .ck { opacity: 1; }
+  .mock-status {
+    margin-top: 12px;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--ink-soft);
+    min-height: 20px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .mock-status.ok { color: var(--primary-dark); }
+
+  /* botão de demo */
+  .demo-cta {
+    display: block;
+    width: 100%;
+    max-width: 420px;
+    margin: 0 auto 8px;
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    font: inherit;
+    font-size: 16px;
+    font-weight: 800;
+    padding: 16px;
+    border-radius: 999px;
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(0,117,74,.35);
+  }
+  .demo-cta:hover { background: var(--primary-dark); }
+  .demo-cta:focus-visible, .acc-head:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .demo-hint { text-align: center; font-size: 12px; color: var(--ink-soft); margin: 0 0 34px; }
+
+  /* ── SEÇÕES / ACCORDION ── */
+  .sec-label {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: var(--primary-dark);
+    margin: 34px 4px 12px;
+  }
+  .acc {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .acc-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: none;
+    border: none;
+    font: inherit;
+    text-align: left;
+    padding: 15px 16px;
+    cursor: pointer;
+    min-height: 56px;
+  }
+  .acc-ico {
+    width: 38px; height: 38px;
+    border-radius: 11px;
+    background: var(--mint);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  /* passos */
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n {
+    width: 30px; height: 30px; flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 800;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .rodape {
+    text-align: center;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 40px;
+  }
+  .rodape strong { color: var(--primary-dark); }
+
+  /* ── MOCKUPS DAS TELAS DO APP ── */
+  .tela {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .tela-titulo {
+    background: var(--house);
+    color: #fff;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .app-card {
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .app-card-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    border-bottom: 1px solid #f0efe9;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: #6b756f;
+  }
+  .app-card-body { padding: 12px; }
+  .app-input {
+    border: 1px solid #d8d5cc;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 12.5px;
+    color: var(--ink);
+    background: #fff;
+    margin-bottom: 8px;
+  }
+  .app-input small { display: block; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: #9aa5a0; margin-bottom: 2px; }
+  .app-input.ok { background: var(--mint); border-color: rgba(0,117,74,.25); }
+  .app-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--primary);
+    color: #fff;
+    font-size: 12.5px;
+    font-weight: 700;
+    padding: 9px 16px;
+    border-radius: 999px;
+  }
+  .app-btn.claro { background: #fff; border: 1.5px solid var(--primary); color: var(--primary); }
+  .app-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+  .app-pill {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 7px 14px;
+    border-radius: 999px;
+    border: 1.5px solid #d8d5cc;
+    color: #6b756f;
+    background: #fff;
+  }
+  .app-pill.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .app-busca {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .app-busca .app-input { flex: 1; margin-bottom: 0; color: #9aa5a0; }
+  .app-toggle-linha {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: #f7f6f2;
+    border: 1px solid #edece6;
+    border-radius: 10px;
+    padding: 9px 12px;
+    font-size: 12.5px;
+  }
+  .app-toggle-linha small { display: block; font-size: 10.5px; color: #9aa5a0; }
+  .app-toggle {
+    width: 38px; height: 22px; flex-shrink: 0;
+    border-radius: 999px;
+    background: var(--primary);
+    position: relative;
+  }
+  .app-toggle::after {
+    content: '';
+    position: absolute;
+    top: 3px; right: 3px;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: #fff;
+  }
+  .pin {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    flex-shrink: 0;
+    vertical-align: 2px;
+    margin-left: 6px;
+  }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+
+  .slots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .slot { text-align: center; font-size: 10.5px; font-weight: 700; color: #4a544f; line-height: 1.2; }
+  .slot-q { position: relative; aspect-ratio: 1; border-radius: 10px; border: 2px dashed #cfcbbf; background: #f6f5f1; display: flex; align-items: center; justify-content: center; font-size: 22px; margin-bottom: 4px; overflow: hidden; }
+  .slot-q.ok { border: 2px solid #1f9d55; background: var(--mint); }
+  .slot-q.ref { border: 2px solid #d64545; background: #fdecec; }
+  .slot-q.sem { border: 2px solid #9aa5a0; background: #eceae3; }
+  .slot-q i { position: absolute; left: 0; right: 0; bottom: 0; font-style: normal; font-size: 9px; font-weight: 800; padding: 2px 0; color: #fff; }
+  .slot-q.ok i { background: #1f9d55; } .slot-q.ref i { background: #d64545; } .slot-q.sem i { background: #6b756f; }
+  .faltam { display: inline-block; background: #fdf0c8; color: #8a5a00; font-size: 10.5px; font-weight: 800; padding: 3px 9px; border-radius: 999px; }
+  .prob { border: 1px solid #e5e3dc; border-radius: 10px; padding: 9px 11px; margin-bottom: 7px; font-size: 12px; background: #fff; }
+  .prob b { display: block; color: var(--ink); }
+  .prob span { color: var(--ink-soft); }
+  .tag-g { display: inline-block; font-size: 9px; font-weight: 800; padding: 2px 7px; border-radius: 999px; margin-right: 5px; }
+  .tag-g.at { background: #fdf0c8; color: #8a5a00; } .tag-g.gr { background: #fbdcdc; color: #a12626; }
+  .aviso { background: #e8f0fb; border: 1px solid #c6d8f2; color: #1e3f73; border-radius: 10px; padding: 9px 11px; font-size: 12px; margin: 10px 0; }
+  .modelo-img { height: 110px; border-radius: 10px; background: linear-gradient(135deg,#d9d6cb,#efede6); display: flex; align-items: center; justify-content: center; font-size: 44px; margin-bottom: 8px; }
+  .lista-mini { display: flex; align-items: center; justify-content: space-between; gap: 8px; border: 1px solid #e5e3dc; border-radius: 10px; padding: 9px 11px; margin-bottom: 7px; background: #fff; font-size: 12px; }
+  .badge { font-size: 10px; font-weight: 800; padding: 3px 9px; border-radius: 999px; }
+  .b-ok { background: #d9f2e1; color: #176b3a; } .b-at { background: #fdf0c8; color: #8a5a00; }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>Checklist do veículo<br>agora é com foto</h1>
+    <p>Em vez de marcar caixinhas, o motorista tira fotos do veículo antes de sair. O app confere sozinho e avisa se algo não está certo. Por enquanto é só um período de teste: ninguém fica travado.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="mock" aria-hidden="true">
+    <div class="mock-top">
+      <span class="mock-ico">🚚</span>
+      <div><small>Início do dia · Visitação</small><strong>Fotos do veículo</strong></div>
+    </div>
+    <div class="mock-body">
+      <div class="slots">
+        <div class="slot"><div class="slot-q ok">📷<i>OK</i></div>Frente com placa</div>
+        <div class="slot"><div class="slot-q ok">📷<i>OK</i></div>Lateral direita</div>
+        <div class="slot"><div class="slot-q">📷</div>Lateral esquerda *</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec-label">O que mudou</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">📸</span>
+      <strong>Fotos no lugar das caixinhas</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Ao escolher o veículo, aparecem os <b>espaços de foto</b> daquele tipo de veículo: frente, laterais, traseira, painel, água do radiador e baú (ou porta-malas).</li>
+        <li>Cada foto <b>sobe na hora</b> e o app analisa. O quadrinho fica verde quando está tudo certo.</li>
+        <li>Só abre a <b>câmera</b> do celular. Não dá para escolher foto da galeria.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">👀</span>
+      <strong>Tela "Tire assim"</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Ao tocar num espaço, aparece uma <b>foto modelo</b> do próprio veículo mostrando como tirar, mais uma instrução curta.</li>
+        <li>Se o veículo ainda não tem foto modelo, aparece só a instrução escrita. Nada trava.</li>
+        <li>A <b>vareta de óleo</b> é obrigatória às segundas e quintas, ou quando o motorista marca <b>"Luz de óleo acesa?"</b>.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🤖</span>
+      <strong>O app confere e avisa</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Se o app achar algo errado (pneu murcho, nível de água baixo, KM do painel diferente do digitado, placa que não é do veículo), mostra a <b>frase do problema</b> e <b>o que fazer</b>.</li>
+        <li>O motorista escolhe: <b>Corrigir agora</b> (volta às fotos) ou <b>Seguir mesmo assim (teste)</b>.</li>
+        <li>Foto escura <b>não é motivo de reprovação</b>. Se faltar algo, o app diz o que mostrar.</li>
+        <li>Se a conferência automática estiver fora do ar, a foto fica "enviada sem análise" e o dia começa normalmente.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🧪</span>
+      <strong>Período de teste: ninguém fica travado</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Agora tudo fica <b>registrado</b>, mas nada bloqueia o início do dia.</li>
+        <li>Sem sinal para enviar uma foto? Há <b>"Tentar de novo"</b> e <b>"Pular esta foto (teste)"</b>.</li>
+        <li>No futuro, quem sair com problema vai precisar de liberação do escritório. O aviso já diz isso.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🗂️</span>
+      <strong>Para o escritório</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li><b>Veículos</b>: novo campo <b>Tipo</b> (Carga, Passeio ou Particular). É ele que define quais fotos o motorista tira.</li>
+        <li>Na ficha do veículo, aba <b>Fotos modelo</b>: suba ou troque a foto de referência de cada ângulo.</li>
+        <li>Na ficha, aba <b>Checklists</b>: lista por dia com resultado, decisão do motorista, KM lido pelo app × KM digitado e miniaturas das fotos.</li>
+        <li>Importante: confira se o <b>Tipo</b> de cada veículo está certo antes do teste.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="sec-label">As telas do app, sem mistério</div>
+
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 1 · Fotos do veículo (motorista)</div>
+    <div class="tela-corpo">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <b style="font-size:12.5px;">Fotos do veículo<span class="pin">1</span></b>
+        <span class="faltam">Faltam 3 fotos<span class="pin">2</span></span>
+      </div>
+      <div class="slots">
+        <div class="slot"><div class="slot-q ok">📷<i>OK</i></div>Frente com placa</div>
+        <div class="slot"><div class="slot-q ref">📷<i>Refazer</i></div>Lateral direita *<span class="pin">3</span></div>
+        <div class="slot"><div class="slot-q sem">📷<i>Sem análise</i></div>Traseira *<span class="pin">4</span></div>
+        <div class="slot"><div class="slot-q">📷</div>Painel *</div>
+        <div class="slot"><div class="slot-q">📷</div>Água radiador *</div>
+        <div class="slot"><div class="slot-q">📷</div>Baú *</div>
+      </div>
+      <div class="aviso" style="background:#fff8e6;border-color:#f0dfa8;color:#6b5412;">⚡ Pouca luz? Toque no raio da câmera e deixe em Automático ou Ligado.<span class="pin">5</span></div>
+      <div class="app-toggle-linha"><div>Luz de óleo acesa?<small>Se sim, a vareta fica obrigatória</small></div><div class="app-toggle"></div><span class="pin">6</span></div>
+      <div style="margin-top:12px;"><span class="app-btn">Conferir e iniciar</span></div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Cada quadrinho é uma foto. Toque nele para abrir a tela "Tire assim" e depois a câmera.</span></div>
+      <div><span class="pin">2</span><span>O contador mostra quantas fotos obrigatórias ainda faltam.</span></div>
+      <div><span class="pin">3</span><span><b>Refazer</b>: o app não conseguiu avaliar aquela foto e explica o motivo. Tocar abre a câmera direto.</span></div>
+      <div><span class="pin">4</span><span><b>Sem análise</b>: a foto foi enviada, mas a conferência automática estava fora do ar. Não impede nada.</span></div>
+      <div><span class="pin">5</span><span>Dica de flash. O app nunca reprova só porque a foto está escura.</span></div>
+      <div><span class="pin">6</span><span>Ligue se a luz de óleo estiver acesa: a foto da vareta passa a ser obrigatória.</span></div>
+    </div>
+  </div>
+
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 2 · "Tire assim"</div>
+    <div class="tela-corpo">
+      <b style="font-size:14px;">Frente com placa</b>
+      <div class="modelo-img" style="margin-top:8px;">🚐<span class="pin">1</span></div>
+      <div style="font-size:12.5px;color:#5f6b66;margin-bottom:8px;">Frente inteira, a 2 m, pegando a placa e os faróis.<span class="pin">2</span></div>
+      <div class="aviso" style="background:#fff8e6;border-color:#f0dfa8;color:#6b5412;">🌙 De noite: use o flash da câmera.<span class="pin">3</span></div>
+      <span class="app-btn">📷 Abrir câmera<span class="pin">4</span></span>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Foto modelo <b>deste veículo</b>, cadastrada pelo escritório. Sem ela, aparece o aviso "Este veículo ainda não tem foto modelo cadastrada".</span></div>
+      <div><span class="pin">2</span><span>Instrução curta de como enquadrar.</span></div>
+      <div><span class="pin">3</span><span>Dica para pouca luz.</span></div>
+      <div><span class="pin">4</span><span>Abre a câmera do celular (não a galeria).</span></div>
+    </div>
+  </div>
+
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 3 · Quando o app encontra um problema</div>
+    <div class="tela-corpo">
+      <div class="prob"><span class="tag-g gr">GRAVE</span><b>Água do radiador abaixo do mínimo<span class="pin">1</span></b><span>O que fazer: complete com água até a marca MAX e refaça a foto.<span class="pin">2</span></span></div>
+      <div class="prob"><span class="tag-g at">ATENÇÃO</span><b>KM do painel (84.390) diferente do digitado (84.312)</b><span>O que fazer: confira o KM digitado.</span></div>
+      <div class="aviso">Estamos em período de teste. Em breve não será possível sair com o veículo assim sem liberação do escritório.<span class="pin">3</span></div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <span class="app-btn" style="justify-content:center;">Corrigir agora<span class="pin">4</span></span>
+        <span class="app-btn claro" style="justify-content:center;">Seguir mesmo assim (teste)<span class="pin">5</span></span>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>A frase do problema, em português simples.</span></div>
+      <div><span class="pin">2</span><span>O que o motorista deve fazer para resolver.</span></div>
+      <div><span class="pin">3</span><span>Aviso do período de teste (vem pronto do sistema).</span></div>
+      <div><span class="pin">4</span><span><b>Corrigir agora</b> volta para as fotos.</span></div>
+      <div><span class="pin">5</span><span><b>Seguir mesmo assim</b> abre o dia normalmente e deixa a decisão registrada.</span></div>
+    </div>
+  </div>
+
+  <div class="tela">
+    <div class="tela-titulo">💻 Tela 4 · Ficha do veículo → aba Checklists (escritório)</div>
+    <div class="tela-corpo">
+      <div class="lista-mini"><div><b>21/10/2026</b><br><span style="color:#6b756f;">Maria · KM lido 84.390 / digitado 84.312<span class="pin">1</span></span></div><div style="text-align:right;"><span class="badge b-at">Atenção</span><br><span style="font-size:10px;color:#6b756f;">Seguiu (teste)<span class="pin">2</span></span></div></div>
+      <div class="lista-mini"><div><b>20/10/2026</b><br><span style="color:#6b756f;">João · KM lido 84.120 / digitado 84.120</span></div><div style="text-align:right;"><span class="badge b-ok">Aprovado</span></div></div>
+      <div style="display:flex;gap:6px;margin-top:6px;">📷 📷 📷 📷 📷 📷<span class="pin">3</span></div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>KM que o app leu no painel × KM que o motorista digitou.</span></div>
+      <div><span class="pin">2</span><span>O que o motorista decidiu diante do aviso.</span></div>
+      <div><span class="pin">3</span><span>Miniaturas das fotos do dia. Toque para ampliar.</span></div>
+    </div>
+  </div>
+
+  <div class="sec-label">Para começar a usar</div>
+  <div class="passos">
+    <div class="passo"><div class="passo-n">1</div><div><b>Escritório:</b> confira o <b>Tipo</b> de cada veículo (Veículos).</div></div>
+    <div class="passo"><div class="passo-n">2</div><div><b>Escritório:</b> cadastre as <b>fotos modelo</b> na ficha do veículo, aba Fotos modelo.</div></div>
+    <div class="passo"><div class="passo-n">3</div><div><b>Motorista:</b> ao iniciar o dia, escolha o veículo e tire as fotos.</div></div>
+    <div class="passo"><div class="passo-n">4</div><div>Dúvida ou problema? Fale com o escritório. Estamos em teste e sua opinião ajuda.</div></div>
+  </div>
+
+  <p class="rodape"><strong>Hardt App</strong> · Atualize o app (ícone de recarregar) para ver a novidade.</p>
+</div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.parentElement;
+    const abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>

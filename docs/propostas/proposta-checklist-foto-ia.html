@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Checklist com Foto e IA</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap">
+<style>
+/* Layout: página de proposta no tema do app (Starbucks): bandas verde-escuro, cards brancos sobre creme, mocks de tela do celular. */
+:root{
+  --primary:#00754A; --primary-dark:#006241; --house:#1E3932; --mint:#d4e9e2; --gold:#cba258;
+  --bg:#f2f0eb; --surface:#ffffff; --surface-2:#f7f5f0; --fg:rgba(0,0,0,.87); --muted:#5f6b66; --line:#dfe3e0;
+  --red:#b42318; --red-bg:#fde8e6; --amber:#9a6700; --amber-bg:#fff1cc; --green:#0a6b3a; --green-bg:#d4e9e2;
+  --font:'Manrope',"SF Pro Text",system-ui,-apple-system,sans-serif;
+  --mock-bg:#f2f0eb; --mock-line:#e3e6e3; --wa:#e7fbe3; --wa-fg:#1b3a1b;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#13201b; --surface:#1b2a24; --surface-2:#22332c; --fg:#e9efec; --muted:#a3b3ab; --line:#2f433a;
+  --mint:#234a3c; --red-bg:#4a1f1b; --amber-bg:#4a3a0f; --green-bg:#1c4a35; --green:#8fd8b3; --red:#ff9c92; --amber:#f0c25c;
+  --mock-bg:#111b16; --mock-line:#2f433a; --wa:#1f3d2a; --wa-fg:#dff5e3; color-scheme:dark } }
+:root[data-theme="dark"]{
+  --bg:#13201b; --surface:#1b2a24; --surface-2:#22332c; --fg:#e9efec; --muted:#a3b3ab; --line:#2f433a;
+  --mint:#234a3c; --red-bg:#4a1f1b; --amber-bg:#4a3a0f; --green-bg:#1c4a35; --green:#8fd8b3; --red:#ff9c92; --amber:#f0c25c;
+  --mock-bg:#111b16; --mock-line:#2f433a; --wa:#1f3d2a; --wa-fg:#dff5e3; color-scheme:dark }
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font);letter-spacing:-0.01em;font-variant-numeric:tabular-nums;line-height:1.5;font-size:16px}
+.wrap{max-width:860px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0}
+h1,h2,h3{text-wrap:balance;margin:0;line-height:1.2}
+h2{font-size:1.5rem;font-weight:800;margin-bottom:.35rem}
+h3{font-size:1.05rem;font-weight:700}
+p{margin:0}
+.eyebrow{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:var(--primary)}
+.hero{background:var(--house);color:#fff;padding-block:40px 36px}
+.hero .eyebrow{color:var(--gold)}
+.hero h1{font-size:clamp(1.8rem,5vw,2.6rem);font-weight:800;margin:.4rem 0 .8rem}
+.hero p{max-width:60ch;color:rgba(255,255,255,.82);font-size:1.05rem}
+.hero .meta{margin-top:18px;font-size:.85rem;color:rgba(255,255,255,.6)}
+.novo{display:inline-block;background:var(--gold);color:#1E3932;font-size:.68rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;padding:2px 8px;border-radius:999px;vertical-align:middle;margin-left:6px}
+section{padding-block:36px 8px}
+.lead{color:var(--muted);max-width:66ch;margin-bottom:18px}
+.stack{display:flex;flex-direction:column;gap:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:0 1px 2px rgba(0,0,0,.04);min-width:0}
+.card .head{display:flex;align-items:center;gap:10px;padding:12px 18px;border-bottom:1px solid var(--line)}
+.card .head .t{font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:var(--muted)}
+.card .body{padding:16px 18px}
+.card .body p + p{margin-top:8px}
+.num{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:var(--primary);color:#fff;font-weight:800;font-size:.85rem;flex:none}
+.regra{display:flex;gap:14px;align-items:flex-start;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.regra strong{display:block;margin-bottom:2px}
+.regra p{color:var(--muted);font-size:.95rem}
+ul,ol{margin:0;padding-left:1.2rem}
+li{margin:4px 0}
+li::marker{color:var(--primary)}
+.pill{display:inline-block;padding:3px 10px;border-radius:999px;font-size:.75rem;font-weight:700}
+.ok{background:var(--green-bg);color:var(--green)} .at{background:var(--amber-bg);color:var(--amber)} .no{background:var(--red-bg);color:var(--red)}
+table{width:100%;border-collapse:collapse;font-size:.92rem}
+th{text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);padding:8px 10px;border-bottom:1px solid var(--line)}
+td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:0}
+.tbl{overflow-x:auto}
+.fluxo{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+.passo{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;font-size:.88rem;min-width:0}
+.passo .k{font-size:.68rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--primary);margin-bottom:4px}
+.passo.alerta .k{color:var(--amber)} .passo.fim .k{color:var(--green)}
+/* mocks de tela */
+.telas{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px}
+.tela{display:flex;flex-direction:column;gap:8px;min-width:0}
+.phone{background:var(--mock-bg);border:1px solid var(--line);border-radius:22px;padding:10px;max-width:100%}
+.app-card{background:var(--surface);border:1px solid var(--mock-line);border-radius:12px;padding:10px 12px;margin-bottom:8px;font-size:.78rem}
+.app-card .ttl{font-weight:800;font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:6px}
+.fotos{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.slot{aspect-ratio:1;border:1.5px dashed var(--line);border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:.62rem;color:var(--muted);text-align:center;padding:4px;position:relative;line-height:1.2;max-width:100%}
+.slot.feita{border-style:solid;border-color:var(--primary);background:var(--mint);color:var(--primary-dark);font-weight:700}
+.slot.ruim{border-style:solid;border-color:var(--red);background:var(--red-bg);color:var(--red);font-weight:700}
+.slot.noite{background:#1E3932;color:#fff;border-style:solid;border-color:#1E3932}
+.pin{position:absolute;top:-7px;right:-7px;width:18px;height:18px;border-radius:50%;background:var(--gold);color:#1E3932;font-size:.62rem;font-weight:800;display:flex;align-items:center;justify-content:center}
+.pin.inline{position:static;flex:none;margin-right:6px}
+.btn{display:block;text-align:center;border-radius:999px;padding:9px;font-weight:700;font-size:.8rem;color:#fff;background:var(--primary)}
+.btn.sec{background:var(--surface);color:var(--primary);border:1px solid var(--primary)}
+.btn.off{background:#9aa5a0;color:#fff}
+.btn.perigo{background:var(--red)}
+.btn + .btn{margin-top:6px}
+.row{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--mock-line)}
+.row:last-child{border-bottom:0}
+.row .l{color:var(--muted)}
+.veredito{border-radius:10px;padding:10px;font-size:.78rem}
+.veredito.at{background:var(--amber-bg);color:var(--amber)} .veredito.no{background:var(--red-bg);color:var(--red)} .veredito.ok{background:var(--green-bg);color:var(--green)}
+.veredito b{display:block;font-size:.85rem;margin-bottom:3px}
+.teste{font-size:.7rem;background:var(--mint);color:var(--primary-dark);border-radius:8px;padding:6px 8px;margin-top:6px;font-weight:600}
+.wa{background:var(--wa);color:var(--wa-fg);border-radius:12px 12px 12px 2px;padding:10px 12px;font-size:.78rem;white-space:pre-line;line-height:1.45}
+.legenda{font-size:.9rem;display:flex;flex-direction:column;gap:6px}
+.legenda div{display:flex;align-items:flex-start}
+.fase{display:grid;grid-template-columns:34px 1fr auto;gap:12px;align-items:start;padding:14px 16px;background:var(--surface);border:1px solid var(--line);border-radius:12px}
+.fase .tempo{font-size:.8rem;color:var(--muted);white-space:nowrap;text-align:right}
+.fase p{color:var(--muted);font-size:.93rem}
+@media (max-width:480px){.fase{grid-template-columns:34px 1fr}.fase .tempo{grid-column:2;text-align:left}}
+.pergunta{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;background:var(--surface);border:1px solid var(--line);border-radius:12px}
+.pergunta .q{font-weight:700}
+.pergunta .s{color:var(--muted);font-size:.92rem}
+.band{background:var(--mint);border-radius:12px;padding:16px 18px;border:1px solid var(--line)}
+.foot{padding-block:28px 40px;color:var(--muted);font-size:.85rem}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="eyebrow">Proposta · versão 2 · Motoristas e veículos</div>
+    <h1>Checklist com foto, conferido por IA. Primeiro avisa, depois trava.</h1>
+    <p>Fotos obrigatórias do veículo na saída, uma IA que olha cada foto e aponta o problema, e um período de teste em que nada trava: o motorista é avisado, escolhe se corrige, e o escritório recebe o relatório. Quando a equipe estiver acostumada, liga-se a trava com um clique.</p>
+    <div class="meta">Hardt Salgados · CA-Hardt · 20/10/2026 · revisada com as 7 mudanças pedidas pelo dono</div>
+  </div>
+</header>
+
+<section class="wrap">
+  <div class="eyebrow">O que mudou nesta versão</div>
+  <h2>Sete ajustes que você pediu</h2>
+  <div class="stack">
+    <div class="regra"><span class="num">1</span><div><strong>Período de teste sem trava.</strong><p>A IA aponta o problema, o app pergunta "quer corrigir agora?" e avisa que em breve não dará para sair assim. Tudo fica registrado para você ver quem corrige e quem ignora. A trava liga depois, por uma chave em Configurações.</p></div></div>
+    <div class="regra"><span class="num">2</span><div><strong>Carregamento à noite.</strong><p>Flash ligado pelo app, foto de perto, e a IA avaliando se o detalhe pedido aparece, não se a foto é escura. Mais uma luz LED no pátio de carga resolve o resto.</p></div></div>
+    <div class="regra"><span class="num">3</span><div><strong>Água do radiador e nível do óleo.</strong><p>Capô aberto: foto do reservatório de água todo dia (10 segundos) e foto da vareta de óleo nos dias marcados. A IA lê se está entre o mínimo e o máximo.</p></div></div>
+    <div class="regra"><span class="num">4</span><div><strong>Reprovou? Pede liberação ao admin pelo WhatsApp.</strong><p>O admin recebe no WhatsApp o resumo com o motivo e um link que abre as fotos e os botões Liberar / Recusar. A resposta aparece na tela do motorista em segundos.</p></div></div>
+    <div class="regra"><span class="num">5</span><div><strong>Pendência de ontem: o responsável consegue dar o OK.</strong><p>Fotos da volta esquecidas, despesa marcada ou liberação sem resposta aparecem para o responsável, que resolve com um toque e um motivo. Ninguém fica travado esperando programador.</p></div></div>
+    <div class="regra"><span class="num">6</span><div><strong>Foto modelo de cada veículo: "tire assim".</strong><p>Cada veículo tem, no cadastro, a foto de referência de cada ângulo. Antes de abrir a câmera o app mostra a foto modelo daquele carro, e a moldura segue o mesmo enquadramento. As mesmas fotos viram a base para a IA comparar depois.</p></div></div>
+    <div class="regra"><span class="num">7</span><div><strong>Carro de passeio do vendedor (Uno) entra, com checklist próprio.</strong><p>O cadastro do veículo ganha o tipo: carga (Fiorino com baú) ou passeio (Uno). Carro de passeio não tem baú nem termômetro, mas tem frente, laterais, traseira, painel, água e óleo, e o porta-malas com o mostruário.</p></div></div>
+  </div>
+</section>
+
+<section class="wrap">
+  <div class="eyebrow">Período de teste</div>
+  <h2>Como funciona enquanto nada trava <span class="novo">novo</span></h2>
+  <p class="lead">O objetivo do teste é duplo: acostumar a equipe e calibrar a IA. Por isso o fluxo inteiro já roda, inclusive a liberação pelo admin, mas o motorista sempre tem uma saída.</p>
+  <div class="fluxo">
+    <div class="passo"><div class="k">1 · Fotos</div>Motorista tira as fotos pedidas. Foto que não serve (borrada, cortada) volta na hora com "refaça".</div>
+    <div class="passo alerta"><div class="k">2 · IA aponta</div>"Encontrei um problema: água do radiador abaixo do mínimo. Quer corrigir agora?"</div>
+    <div class="passo"><div class="k">3 · Motorista escolhe</div><strong>Corrigir</strong> (refaz a foto depois de completar) ou <strong>Pedir liberação</strong> ao admin.</div>
+    <div class="passo"><div class="k">4 · Admin decide</div>Recebe WhatsApp com link, vê fotos e motivo, toca Liberar ou Recusar.</div>
+    <div class="passo fim"><div class="k">5 · Só no teste</div>Sem resposta em 10 min, aparece "Seguir sem resposta (período de teste)". Fica registrado.</div>
+  </div>
+  <div class="grid" style="margin-top:14px">
+    <div class="card"><div class="head"><span class="t">O que o motorista lê no aviso</span></div><div class="body">
+      <p>"⚠️ A IA encontrou um problema no seu checklist: <strong>pneu traseiro esquerdo murcho</strong>. Quer corrigir agora?"</p>
+      <p style="color:var(--muted)">"Estamos em período de teste. Em breve não será possível sair com o veículo com um problema assim sem liberação do escritório."</p>
+      <p style="margin-top:8px">Botões: <strong>Corrigir agora</strong> · <strong>Pedir liberação</strong>. Depois de 10 minutos sem resposta do admin: <strong>Seguir sem resposta (teste)</strong>.</p>
+    </div></div>
+    <div class="card"><div class="head"><span class="t">O que você vê durante o teste</span></div><div class="body"><ul>
+      <li>Por motorista: quantos checklists, quantos com problema, quantos corrigiu, quantos pediu liberação, quantos seguiu sem resposta.</li>
+      <li>Por veículo: quais problemas repetem (água baixa toda semana é vazamento, não descuido).</li>
+      <li>Acertos e erros da IA: cada reprovação que o admin liberou com "a foto estava boa" ajusta a tolerância.</li>
+      <li>Resumo semanal no WhatsApp interno para você, toda segunda.</li>
+    </ul></div></div>
+  </div>
+  <div class="band" style="margin-top:14px"><strong>Quando ligar a trava:</strong> chave única em Configurações → Veículos. Ao ligar, some o botão "Seguir sem resposta", e sem checklist aprovado ou liberado o dia não abre, o motorista não entra na rota nem no Caixa. Sugestão: ligar depois de 3 semanas, ou antes se a taxa de "seguiu sem resposta" cair perto de zero.</div>
+</section>
+
+<section class="wrap">
+  <div class="eyebrow">Foto modelo por veículo</div>
+  <h2>Primeiro mostrar como se faz, depois cobrar <span class="novo">novo</span></h2>
+  <p class="lead">Ninguém acerta um enquadramento que nunca viu. Cada veículo ganha um conjunto de fotos modelo, tiradas uma vez pelo escritório, e o app as usa de três jeitos.</p>
+  <div class="grid">
+    <div class="card"><div class="head"><span class="t">1 · Como se monta</span></div><div class="body"><ul>
+      <li>Na ficha do veículo, botão <strong>Fotos modelo</strong>: o app guia o escritório pelos mesmos ângulos do checklist (frente, laterais, traseira, painel, reservatório de água, vareta, baú ou porta-malas).</li>
+      <li>Leva uns 10 minutos por veículo, de dia, com o carro limpo e em ordem. É o "estado certo" daquele carro.</li>
+      <li>Dá para refazer uma foto modelo a qualquer momento (depois de um reparo, troca de pneus, adesivo novo). O histórico fica guardado.</li>
+      <li>Até o veículo ter fotos modelo, o checklist usa o desenho genérico da moldura. A IA avisa o escritório: "Fiorino ABC-1D23 ainda sem fotos modelo".</li>
+    </ul></div></div>
+    <div class="card"><div class="head"><span class="t">2 · Como o motorista vê</span></div><div class="body"><ul>
+      <li>Antes de cada foto, uma tela "Tire assim" com a foto modelo daquele carro e uma frase: "lateral esquerda inteira, a 2 m, pegando as duas rodas".</li>
+      <li>Ao abrir a câmera, a foto modelo aparece meio transparente por cima da imagem ao vivo, como guia. Ele só alinha e dispara.</li>
+      <li>Nas primeiras vezes a tela "Tire assim" aparece sempre; depois de 5 checklists aprovados ela vira um botão "ver modelo" para quem quiser.</li>
+    </ul></div></div>
+    <div class="card"><div class="head"><span class="t">3 · O que a IA faz com elas</span></div><div class="body"><ul>
+      <li>Compara a foto de hoje com a foto modelo: amassado, risco, retrovisor quebrado, adesivo faltando aparecem como diferença.</li>
+      <li>Sabe onde fica o reservatório e a vareta naquele carro, então lê o nível no lugar certo em vez de procurar.</li>
+      <li>Confere o enquadramento: se a foto de hoje está muito diferente da modelo, pede para refazer em vez de tentar adivinhar.</li>
+      <li>Depois, essas fotos servem de galeria do veículo: estado em cada mês, antes e depois de reparo, prova para seguro.</li>
+    </ul></div></div>
+  </div>
+</section>
+
+<section class="wrap">
+  <div class="eyebrow">Tipos de veículo</div>
+  <h2>Carga e passeio: checklist diferente para cada um <span class="novo">novo</span></h2>
+  <p class="lead">O cadastro do veículo ganha um campo <strong>Tipo</strong>. O checklist, as fotos modelo e as regras da IA seguem o tipo. Quem dirige não escolhe nada: o app já sabe.</p>
+  <div class="card tbl">
+    <table>
+      <thead><tr><th>Foto</th><th>Carga (Fiorino, baú)</th><th>Passeio (Uno do vendedor)</th></tr></thead>
+      <tbody>
+        <tr><td>Frente com placa</td><td>Sim</td><td>Sim</td></tr>
+        <tr><td>Lateral direita e esquerda</td><td>Sim</td><td>Sim</td></tr>
+        <tr><td>Traseira</td><td>Sim, porta do baú fechada</td><td>Sim, porta-malas fechado</td></tr>
+        <tr><td>Painel ligado (KM, luzes, combustível)</td><td>Sim, saída e volta</td><td>Sim, saída e volta</td></tr>
+        <tr><td>Reservatório de água do radiador</td><td>Sim</td><td>Sim</td></tr>
+        <tr><td>Vareta de óleo</td><td>Seg e qui</td><td>Seg e qui</td></tr>
+        <tr><td>Baú aberto / termômetro</td><td>Sim, saída e volta</td><td>Não existe</td></tr>
+        <tr><td>Porta-malas aberto</td><td>Não</td><td>Sim: mostruário, caixa térmica de amostras, limpeza</td></tr>
+        <tr><td>Total na saída</td><td>7 fotos (8 nos dias de vareta)</td><td>7 fotos (8 nos dias de vareta)</td></tr>
+        <tr><td>Travas (quando ligarem)</td><td>Dia, rota, entrega, caixa, despesa</td><td>Dia, atendimentos da rota, caixa, despesa</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="band" style="margin-top:14px"><strong>Carro próprio do vendedor</strong> (quando houver): tipo "particular", só painel com KM e cupom de combustível, sem fotos externas. Não é carro da empresa, mas o KM e o combustível entram na conta do mesmo jeito.</div>
+</section>
+
+<section class="wrap">
+  <div class="eyebrow">As fotos</div>
+  <h2>O que fotografar, e como fica à noite</h2>
+  <p class="lead">Cada foto abre a câmera com uma moldura mostrando o enquadramento. Só câmera, sem galeria. O app comprime antes de enviar e guarda no celular se não houver sinal.</p>
+  <div class="card tbl">
+    <table>
+      <thead><tr><th>Foto</th><th>Quando</th><th>A IA confere</th><th>À noite</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Frente com placa</strong></td><td>Toda saída</td><td>Placa bate com o veículo escolhido; farol e para-brisa.</td><td>Flash. Placa reflete bem.</td></tr>
+        <tr><td><strong>Lateral direita</strong> e <strong>esquerda</strong></td><td>Toda saída</td><td>Pneus murchos ou carecas, amassado ou risco novo (compara com dias anteriores).</td><td>Flash a 2 m. Se o pneu não aparece, a IA pede "aproxime do pneu traseiro".</td></tr>
+        <tr><td><strong>Traseira</strong></td><td>Toda saída</td><td>Porta do baú fechada, lanterna, placa traseira.</td><td>Flash.</td></tr>
+        <tr><td><strong>Painel ligado</strong></td><td>Toda saída e toda volta</td><td>Lê o KM e compara com o digitado e com ontem; luz de aviso acesa; marcador de combustível.</td><td>Melhor à noite: painel aceso, sem flash.</td></tr>
+        <tr><td><strong>Reservatório de água do radiador</strong> <span class="novo">novo</span></td><td>Toda saída</td><td>Nível entre MIN e MAX do reservatório transparente. Abaixo do mínimo: problema.</td><td>Flash de perto. O reservatório é claro e o líquido colorido.</td></tr>
+        <tr><td><strong>Vareta de óleo</strong> <span class="novo">novo</span></td><td>Segunda e quinta, e sempre que a luz de óleo acender</td><td>Ponta da vareta sobre papel branco: nível entre as duas marcas; óleo muito escuro vira atenção.</td><td>Flash sobre o papel branco. Funciona bem.</td></tr>
+        <tr><td><strong>Baú aberto</strong> (carga) ou <strong>porta-malas</strong> (passeio)</td><td>Toda saída e toda volta</td><td>Limpo e organizado; se refrigerado, lê o termômetro; no Uno, mostruário e caixa térmica no lugar.</td><td>Luz interna ou flash.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="grid" style="margin-top:14px">
+    <div class="card"><div class="head"><span class="t">Regras para foto noturna</span></div><div class="body"><ul>
+      <li>O app liga o flash sozinho quando a câmera detecta pouca luz. O motorista não precisa lembrar.</li>
+      <li>A IA é instruída a não reprovar por "foto escura". Ela reprova por "não consigo ver o pneu" e diz o que fazer: "aproxime 1 m e aponte o flash para o pneu".</li>
+      <li>Fotos externas podem ser tiradas no pátio de carga, debaixo da luz, antes de sair. O painel e o capô podem ser no mesmo lugar.</li>
+      <li>Sugestão prática e barata: um refletor LED no ponto de carga. Melhora as fotos e a própria carga.</li>
+      <li>Durante o teste, a IA aprende com as fotos noturnas reais da Hardt. As primeiras semanas servem exatamente para isso.</li>
+    </ul></div></div>
+    <div class="card"><div class="head"><span class="t">Como fazer a da vareta em 40 segundos</span></div><div class="body"><ol>
+      <li>Motor desligado e frio (antes de sair está).</li>
+      <li>Puxar a vareta, limpar com papel, enfiar de volta até o fim, puxar de novo.</li>
+      <li>Apoiar a ponta sobre um papel branco (o app mostra a moldura) e fotografar com flash.</li>
+      <li>A IA mostra: "nível OK, entre as marcas" ou "abaixo do mínimo, complete antes de sair".</li>
+    </ol><p style="margin-top:8px;color:var(--muted)">Vai para o Como Fazer como POP com foto. Água do radiador é mais simples: abrir o capô e fotografar o reservatório.</p></div></div>
+  </div>
+</section>
+
+<section class="wrap">
+  <div class="eyebrow">Liberação pelo admin</div>
+  <h2>Reprovou: como o admin autoriza sim ou não <span class="novo">novo</span></h2>
+  <p class="lead">O bot de WhatsApp da empresa só envia texto, não envia foto. Então a mensagem traz o resumo e um link; o link abre as fotos e a decisão dentro do app, que o admin já tem instalado no celular. São dois toques.</p>
+  <div class="grid">
+    <div class="card"><div class="head"><span class="t">O que chega no WhatsApp do admin</span></div><div class="body">
+      <div class="wa">🚗 *Checklist reprovado* · 05:42
+Motorista: *João*
+Veículo: *Fiorino ABC-1D23*
+
+Problemas:
+• Pneu traseiro esquerdo murcho
+• Água do radiador abaixo do mínimo
+
+João pediu liberação para sair assim.
+Ver fotos e decidir (Liberar / Recusar):
+https://app.hardt…/liberacao/8f3k2</div>
+      <p style="margin-top:10px;color:var(--muted)">Vai para quem está na lista "Quem libera checklist" em Configurações (hoje seria quem tem permissão de admin e telefone, igual aos avisos de backup). Sem resposta em 10 min, vai para o segundo da lista.</p>
+    </div></div>
+    <div class="card"><div class="head"><span class="t">O que o admin vê ao tocar no link</span></div><div class="body"><ul>
+      <li>As fotos do checklist, com a que tem problema em destaque, e o parecer da IA em uma linha por foto.</li>
+      <li>Histórico curto: quantas vezes esse motorista e esse veículo tiveram esse problema no mês.</li>
+      <li>Dois botões grandes: <strong>Liberar</strong> e <strong>Recusar</strong>, com campo de motivo (obrigatório ao liberar, para ficar no histórico).</li>
+      <li>Opção "a foto estava boa, a IA errou": libera e ensina a IA.</li>
+      <li>Precisa estar logado no app como admin. Não dá para decidir respondendo o WhatsApp, porque aquele número é o da Ana, que atende clientes.</li>
+    </ul></div></div>
+  </div>
+  <div class="card" style="margin-top:14px"><div class="head"><span class="t">E o motorista, enquanto espera?</span></div><div class="body">
+    <p>A tela dele mostra "Aguardando liberação de <strong>Clarkson</strong>… 2 min", e vira <span class="pill ok">Liberado por Clarkson às 05:46</span> ou <span class="pill no">Recusado: calibre o pneu antes de sair</span>. Ele também recebe um WhatsApp interno com a decisão, caso tenha saído do app.</p>
+    <p>No período de teste, depois de 10 minutos sem resposta aparece "Seguir sem resposta (teste)". Com a trava ligada, esse botão não existe: ele espera ou corrige.</p>
+  </div></div>
+</section>
+
+<section class="wrap">
+  <div class="eyebrow">Pendência do dia anterior</div>
+  <h2>Ficou algo de ontem: o responsável dá o OK e resolve <span class="novo">novo</span></h2>
+  <p class="lead">Motorista esqueceu as fotos da volta, despesa ficou marcada, pedido de liberação ficou sem resposta. Nada disso pode deixar a pessoa travada na manhã seguinte sem ninguém conseguir destravar.</p>
+  <div class="grid">
+    <div class="card"><div class="head"><span class="t">O que vira pendência</span></div><div class="body"><ul>
+      <li>Volta sem as 3 fotos de retorno (ou sem KM final).</li>
+      <li>Despesa divergente ou sem foto que ainda não foi aceita.</li>
+      <li>Pedido de liberação que ficou sem resposta (no teste, quando ele seguiu sem resposta).</li>
+      <li>Problema apontado pela IA que o motorista disse que ia corrigir e não refez a foto.</li>
+    </ul></div></div>
+    <div class="card"><div class="head"><span class="t">Quem resolve, e como</span></div><div class="body"><ul>
+      <li><strong>O próprio motorista</strong>, de manhã: tira as fotos de retorno que faltaram, marcadas como "atrasadas". Isso já limpa a pendência dele.</li>
+      <li><strong>O responsável</strong> (mesma lista de quem libera checklist), na Central de Pendências ou pelo link do WhatsApp: vê o que faltou e toca <strong>Dar OK</strong>, com motivo obrigatório ("carro conferido hoje no pátio", "cupom conferido no caixa").</li>
+      <li>O OK destrava o dia do motorista na hora. Fica no histórico quem deu, quando e por quê.</li>
+      <li>Toda manhã às 6h, o responsável recebe no WhatsApp interno a lista de pendências abertas de ontem, com o link para resolver de uma vez.</li>
+    </ul></div></div>
+  </div>
+  <div class="band" style="margin-top:14px"><strong>Regra prática:</strong> a pendência nunca some sozinha e nunca precisa de programador para sair. Ou o motorista completa, ou o responsável dá o OK com motivo. As duas saídas aparecem no relatório semanal para você ver quem está esquecendo e quem está dando OK demais.</div>
+</section>
+
+<section class="wrap">
+  <div class="eyebrow">Despesas</div>
+  <h2>Cupom fotografado, mesmo tratamento</h2>
+  <p class="lead">Mesma regra do teste: a IA aponta a divergência, o motorista escolhe corrigir ou justificar, e nada trava até a chave ser ligada.</p>
+  <div class="grid">
+    <div class="card"><div class="head"><span class="t">A foto do cupom</span></div><div class="body"><ul>
+      <li>Cupom inteiro, do cabeçalho ao total, sobre uma superfície plana. Flash à noite.</li>
+      <li>Borrada ou cortada volta na hora: "refaça".</li>
+      <li>Só câmera, sem galeria.</li>
+    </ul></div></div>
+    <div class="card"><div class="head"><span class="t">A IA compara</span></div><div class="body"><ul>
+      <li>Valor, data e hora, litros e preço por litro do cupom × o que foi digitado.</li>
+      <li>Litros maiores que o tanque do veículo; cupom de outro dia; o mesmo cupom lançado duas vezes.</li>
+      <li>Consumo (km por litro) fora da faixa do veículo gera atenção.</li>
+    </ul></div></div>
+    <div class="card"><div class="head"><span class="t">No teste e depois</span></div><div class="body">
+      <p><strong>Teste:</strong> divergência aparece para o motorista ("você digitou 180, o cupom diz 160, corrigir?") e entra marcada no Caixa. O escritório vê foto, leitura da IA e valor digitado lado a lado.</p>
+      <p><strong>Trava ligada:</strong> despesa divergente ou sem foto não entra, e o caixa não fecha com despesa marcada até o escritório aceitar.</p>
+    </div></div>
+  </div>
+</section>
+
+<section class="wrap">
+  <div class="eyebrow">As telas</div>
+  <h2>Como fica no celular</h2>
+  <p class="lead">Mocks no tema do app. Os pins dourados explicam cada ponto.</p>
+  <div class="telas">
+    <div class="tela">
+      <div class="phone">
+        <div class="app-card"><div class="ttl">Tire assim · lateral esquerda</div>
+          <div class="slot feita" style="aspect-ratio:4/3;font-size:.7rem">📷 Foto modelo da Fiorino ABC-1D23<br><span style="font-weight:400">lateral esquerda inteira, a 2 m, pegando as duas rodas</span><span class="pin">A</span></div>
+          <div class="row" style="margin-top:8px"><span class="l">Tipo</span><span>Carga · baú</span></div>
+          <div class="row"><span class="l">Modelo tirado em</span><span>12/10 pelo escritório</span></div>
+        </div>
+        <div class="btn">Abrir câmera com o guia<span style="margin-left:6px" class="pin inline">B</span></div>
+      </div>
+      <div class="legenda">
+        <div><span class="pin inline">A</span>A foto modelo é daquele carro, não um desenho. O motorista vê exatamente o que se espera.</div>
+        <div><span class="pin inline">B</span>Na câmera a foto modelo fica meio transparente por cima da imagem ao vivo. É só alinhar e disparar.</div>
+      </div>
+    </div>
+
+    <div class="tela">
+      <div class="phone">
+        <div class="app-card"><div class="ttl">Saída · Fiorino ABC-1D23 · 05:30</div>
+          <div class="fotos">
+            <div class="slot feita">Frente ✓</div>
+            <div class="slot feita">Lat. direita ✓</div>
+            <div class="slot ruim">Lat. esquerda<br>pneu não aparece<span class="pin">1</span></div>
+            <div class="slot feita">Traseira ✓</div>
+            <div class="slot feita">Painel ✓<br>84.312 km</div>
+            <div class="slot noite">Água radiador<br>🔦 flash ligado<span class="pin">2</span></div>
+            <div class="slot">Vareta óleo<br>hoje é segunda<span class="pin">3</span></div>
+            <div class="slot">Baú</div>
+          </div>
+        </div>
+        <div class="btn off">Faltam 3 fotos</div>
+      </div>
+      <div class="legenda">
+        <div><span class="pin inline">1</span>À noite a IA não diz "escura". Diz o que falta ver e como: "aproxime 1 m com flash no pneu".</div>
+        <div><span class="pin inline">2</span>Flash liga sozinho com pouca luz. A moldura mostra onde o reservatório deve ficar.</div>
+        <div><span class="pin inline">3</span>A vareta só aparece nos dias marcados ou se a luz de óleo acendeu.</div>
+      </div>
+    </div>
+
+    <div class="tela">
+      <div class="phone">
+        <div class="app-card"><div class="ttl">A IA encontrou um problema</div>
+          <div class="veredito at"><b>⚠️ Água do radiador abaixo do mínimo</b>Complete com água até a marca MAX e refaça a foto. Leva 2 minutos.<span class="pin inline" style="float:right">4</span></div>
+          <div class="teste">Estamos em período de teste. Em breve não será possível sair com o veículo assim sem liberação do escritório.<span class="pin inline" style="float:right">5</span></div>
+        </div>
+        <div class="btn">Corrigir agora</div>
+        <div class="btn sec">Pedir liberação ao escritório</div>
+        <div class="btn off" style="margin-top:14px">Seguir sem resposta (teste) · em 10 min<span style="margin-left:6px" class="pin inline">6</span></div>
+      </div>
+      <div class="legenda">
+        <div><span class="pin inline">4</span>Problema em uma frase, com o que fazer e quanto tempo leva.</div>
+        <div><span class="pin inline">5</span>Aviso fixo do período de teste. Some quando a trava ligar.</div>
+        <div><span class="pin inline">6</span>Só no teste, e só depois de pedir liberação e esperar 10 min. Fica registrado com nome e hora.</div>
+      </div>
+    </div>
+
+    <div class="tela">
+      <div class="phone">
+        <div class="app-card"><div class="ttl">Liberação · João · ABC-1D23</div>
+          <div class="fotos" style="grid-template-columns:repeat(2,1fr)">
+            <div class="slot ruim" style="aspect-ratio:4/3">Lat. esquerda<br>pneu murcho</div>
+            <div class="slot ruim" style="aspect-ratio:4/3">Água radiador<br>abaixo do MIN</div>
+          </div>
+          <div class="row" style="margin-top:8px"><span class="l">Este mês</span><span>João: 2ª vez · Fiorino: 4ª vez<span style="margin-left:6px" class="pin inline">7</span></span></div>
+          <div class="row"><span class="l">Pedido às</span><span>05:42 · há 3 min</span></div>
+        </div>
+        <div class="btn">Liberar (informe o motivo)</div>
+        <div class="btn perigo">Recusar</div>
+        <div class="btn sec" style="margin-top:10px">A foto estava boa, a IA errou<span style="margin-left:6px" class="pin inline">8</span></div>
+      </div>
+      <div class="legenda">
+        <div><span class="pin inline">7</span>A 4ª vez do mesmo veículo com água baixa é vazamento. O admin vê isso antes de decidir.</div>
+        <div><span class="pin inline">8</span>Cada erro apontado calibra a IA durante o teste.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="wrap">
+  <div class="eyebrow">O que fica fechado quando a trava ligar</div>
+  <h2>As travas, prontas desde o início, desligadas até você decidir</h2>
+  <div class="card tbl">
+    <table>
+      <thead><tr><th>Sem checklist aprovado ou liberado…</th><th>…com a trava ligada</th></tr></thead>
+      <tbody>
+        <tr><td>Abrir o dia presencial</td><td>Não abre. Mesmo portão que hoje cobra o KM final de ontem.</td></tr>
+        <tr><td>Rota e embarque</td><td>Motorista não aparece para receber carga; expedição vê "sem checklist" ao lado do nome.</td></tr>
+        <tr><td>Registrar entrega, receber, bipar canhoto</td><td>Recusado no servidor.</td></tr>
+        <tr><td>Caixa do dia</td><td>Não aparece, não abre, não fecha, não visualiza.</td></tr>
+        <tr><td>Despesas</td><td>Só com foto conferida, no veículo do dia.</td></tr>
+        <tr><td>Volta sem fotos de retorno</td><td>Dia seguinte não abre; caixa fica "aguardando retorno".</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p style="margin-top:10px;color:var(--muted)">Quem não dirige veículo da empresa não é afetado. Trava no servidor, não só na tela.</p>
+</section>
+
+<section class="wrap">
+  <div class="eyebrow">Ordem de entrega</div>
+  <h2>Como eu faria</h2>
+  <div class="stack">
+    <div class="fase"><span class="num">1</span><div><strong>Fotos modelo + fotos + IA + aviso + liberação, tudo em modo teste</strong><p>Tipo no cadastro do veículo, fotos modelo na ficha, tela "Tire assim", câmera com guia e flash, 7 fotos (8 nos dias de vareta), IA conferindo e apontando, botões Corrigir / Pedir liberação / Seguir sem resposta, WhatsApp e tela do admin, cupom na despesa. Chave da trava já existe, desligada.</p></div><span class="tempo">~2 semanas e meia</span></div>
+    <div class="fase"><span class="num">2</span><div><strong>Período de teste</strong><p>Equipe usa todo dia. Você recebe o resumo semanal. Ajustamos tolerâncias (KM, água, óleo, foto noturna) pelo que o admin liberar. POP no Como Fazer e anúncio no grupo.</p></div><span class="tempo">3 semanas</span></div>
+    <div class="fase"><span class="num">3</span><div><strong>Ligar a trava</strong><p>Um clique em Configurações. Aviso à equipe uma semana antes, dentro do próprio alerta ("a partir de segunda, dia 24, não será mais possível seguir sem liberação").</p></div><span class="tempo">1 dia</span></div>
+    <div class="fase"><span class="num">4</span><div><strong>Histórico e painel</strong><p>Linha do tempo por veículo (avarias, água, óleo, KM, consumo, temperatura), consulta por placa e data para multa, conformidade por motorista.</p></div><span class="tempo">~1 semana</span></div>
+  </div>
+</section>
+
+<section class="wrap">
+  <div class="eyebrow">Preciso que você decida</div>
+  <h2>Seis perguntas</h2>
+  <div class="stack">
+    <div class="pergunta"><span class="num">1</span><div><div class="q">Vareta de óleo: segunda e quinta, ou todo dia?</div><div class="s">Sugestão: segunda e quinta mais quando a luz acender. Todo dia são 40 segundos a mais e a leitura quase não muda.</div></div></div>
+    <div class="pergunta"><span class="num">2</span><div><div class="q">Quem recebe o pedido de liberação de madrugada e à noite?</div><div class="s">Sugestão: lista com 2 ou 3 nomes em ordem; sem resposta em 10 min passa para o próximo. Você é o último da lista ou o primeiro?</div></div></div>
+    <div class="pergunta"><span class="num">3</span><div><div class="q">10 minutos de espera antes do "Seguir sem resposta" está bom?</div><div class="s">Menos que isso o admin não acorda; mais que isso o motorista atrasa a rota.</div></div></div>
+    <div class="pergunta"><span class="num">4</span><div><div class="q">3 semanas de teste antes de ligar a trava?</div><div class="s">Dá para ligar antes se a taxa de "seguiu sem resposta" cair perto de zero.</div></div></div>
+    <div class="pergunta"><span class="num">5</span><div><div class="q">Quem tira as fotos modelo dos veículos, e quando?</div><div class="s">Sugestão: expedição, numa manhã, todos os carros limpos. Uns 10 minutos por veículo. Precisa ser antes de a equipe começar a usar, senão o "tire assim" sai genérico.</div></div></div>
+    <div class="pergunta"><span class="num">6</span><div><div class="q">Começo a fase 1 agora?</div><div class="s">É tarefa grande (caixa, permissões, WhatsApp). Passa pelo arquiteto e pela equipe completa, como manda a regra do projeto.</div></div></div>
+  </div>
+</section>
+
+<div class="wrap foot">
+  Base: código do CA-Hardt em 20/10/2026 (diário do vendedor, veículos, despesas, caixa, bot de WhatsApp interno, provedor de IA). O bot da empresa só envia texto; foto no WhatsApp exigiria a API oficial da Meta, por isso a decisão abre no app. Prazos são para a equipe de agentes do projeto.
+</div>
+
+</body>
+</html>

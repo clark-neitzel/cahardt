@@ -147,6 +147,71 @@ async function gerarTextoGemini({ system, mensagens, maxTokens, temperature, jso
     };
 }
 
+
+// ─────────────────────────────────────────────
+// Visão (imagem + texto) — checklist de veículo por foto
+// ─────────────────────────────────────────────
+
+/** Modelo para visão: AI_MODEL_VISAO > AI_MODEL > padrão. */
+function modeloVisao() {
+    return process.env.AI_MODEL_VISAO || modeloAtual();
+}
+
+/**
+ * Analisa imagens com o provider configurado. Sempre com timeout (padrão 25 s).
+ * @param {Object} opts
+ * @param {string}  opts.system
+ * @param {string}  opts.texto
+ * @param {Array}   opts.imagens   [{ base64, mime }]
+ * @param {number} [opts.maxTokens] (use 2000+: modelos novos gastam tokens com raciocínio)
+ * @param {boolean}[opts.json]
+ * @param {number} [opts.timeoutMs]
+ */
+async function analisarImagem({ system, texto, imagens = [], maxTokens = 2500, json = true, timeoutMs = 25000 }) {
+    if (PROVIDER === 'gemini') throw new Error('Visão não suportada para o provider gemini neste módulo.');
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) throw new Error('OPENAI_API_KEY não configurada.');
+
+    const { OpenAI } = require('openai');
+    const openai = new OpenAI({ apiKey, timeout: timeoutMs, maxRetries: 0 });
+    const modelo = modeloVisao();
+
+    const content = [{ type: 'text', text: texto }];
+    for (const img of imagens) {
+        content.push({
+            type: 'image_url',
+            image_url: { url: `data:${img.mime || 'image/jpeg'};base64,${img.base64}`, detail: 'auto' },
+        });
+    }
+    const msgs = [];
+    if (system) msgs.push({ role: 'system', content: system });
+    msgs.push({ role: 'user', content });
+
+    const resp = await openai.chat.completions.create({
+        model: modelo,
+        messages: msgs,
+        ...parametrosOpenAI(modelo, { maxTokens, temperature: 0.2 }),
+        ...(json ? { response_format: { type: 'json_object' } } : {}),
+    });
+
+    const escolha = resp.choices[0];
+    const conteudo = escolha?.message?.content;
+    if (!conteudo || !conteudo.trim()) {
+        throw new Error(`IA devolveu resposta vazia (finish_reason=${escolha?.finish_reason || '?'}, ` +
+            `raciocinio=${resp.usage?.completion_tokens_details?.reasoning_tokens ?? 0} tokens).`);
+    }
+    return {
+        texto: conteudo.trim(),
+        usage: {
+            prompt: resp.usage?.prompt_tokens ?? null,
+            resposta: resp.usage?.completion_tokens ?? null,
+            total: resp.usage?.total_tokens ?? null,
+        },
+        modelo,
+        provider: 'openai',
+    };
+}
+
 /**
  * Gera texto com o provider configurado.
  * @param {Object} opts
@@ -161,4 +226,4 @@ async function gerarTexto(opts) {
     return gerarTextoOpenAI(opts); // openai (padrão)
 }
 
-module.exports = { gerarTexto, isConfigured, providerAtual, modeloAtual, parametrosOpenAI };
+module.exports = { gerarTexto, analisarImagem, isConfigured, providerAtual, modeloAtual, modeloVisao, parametrosOpenAI };

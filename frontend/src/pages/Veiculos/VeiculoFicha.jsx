@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
     X, Car, FileText, Shield, Wrench, Fuel, Users, MessageSquare,
-    AlertTriangle, CheckCircle, BellRing, ChevronRight, Edit3, Save, TrendingUp, Plus, Loader, Trash2, Upload
+    AlertTriangle, CheckCircle, BellRing, ChevronRight, Edit3, Save, TrendingUp, Plus, Loader, Trash2, Upload, Camera, ClipboardCheck
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import api, { API_URL } from '../../services/api';
@@ -9,6 +9,8 @@ import vendedorService from '../../services/vendedorService';
 import { useAuth } from '../../contexts/AuthContext';
 import SelectBusca from '../../components/SelectBusca';
 import CampoNumero from '../../components/CampoNumero';
+import FotosModeloVeiculo from './FotosModeloVeiculo';
+import ChecklistsVeiculoLista from './ChecklistsVeiculoLista';
 
 const TABS = [
     { id: 'resumo', label: 'Resumo', icon: Car },
@@ -17,6 +19,15 @@ const TABS = [
     { id: 'consumo', label: 'Consumo', icon: Fuel },
     { id: 'historico', label: 'Motoristas', icon: Users },
     { id: 'obs', label: 'Obs.', icon: MessageSquare },
+    { id: 'fotos', label: 'Fotos modelo', icon: Camera },
+    // checklist por foto: só quem tem acesso aos veículos (admin || Pode_Acessar_Veiculos)
+    { id: 'checklists', label: 'Checklists', icon: ClipboardCheck, exige: 'acessar' },
+];
+
+const TIPOS_VEICULO = [
+    { value: 'CARGA', label: 'Carga' },
+    { value: 'PASSEIO', label: 'Passeio' },
+    { value: 'PARTICULAR', label: 'Particular' },
 ];
 
 const TIPOS_MANUTENCAO = [
@@ -64,6 +75,9 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate, readOnly = false, allowedT
 
     const { user: authUser } = useAuth();
     const isAdmin = !!authUser?.permissoes?.admin;
+    // espelha o back: foto modelo = admin || Pode_Editar_Veiculos; aba Checklists = admin || Pode_Acessar_Veiculos
+    const podeEditarVeiculos = !!(authUser?.permissoes?.admin || authUser?.permissoes?.Pode_Editar_Veiculos);
+    const podeAcessarVeiculos = !!(authUser?.permissoes?.admin || authUser?.permissoes?.Pode_Acessar_Veiculos);
 
     // Edição inline
     const [editingAbastId, setEditingAbastId] = useState(null);
@@ -89,6 +103,7 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate, readOnly = false, allowedT
                 capacidadeTanque: res.data.capacidadeTanque || '',
                 kmMedioSugerido: res.data.kmMedioSugerido || '',
                 tipoCombustivel: res.data.tipoCombustivel || '',
+                tipo: res.data.tipo || 'CARGA',
                 observacoes: res.data.observacoes || '',
                 documentoUrl: res.data.documentoUrl || '',
             });
@@ -105,7 +120,11 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate, readOnly = false, allowedT
     const salvarFicha = async () => {
         try {
             setSaving(true);
-            await api.put(`/veiculos/${veiculoId}`, form);
+            await api.put(`/veiculos/${veiculoId}`, {
+                ...form,
+                capacidadeTanque: form.capacidadeTanque === '' || form.capacidadeTanque == null ? null : form.capacidadeTanque,
+                kmMedioSugerido: form.kmMedioSugerido === '' || form.kmMedioSugerido == null ? null : form.kmMedioSugerido,
+            });
             toast.success('Ficha atualizada!');
             setEditando(false);
             carregarFicha();
@@ -377,7 +396,8 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate, readOnly = false, allowedT
     };
 
     const stats = ficha?.stats || {};
-    const visibleTabs = TABS.filter(tab => !allowedTabs || allowedTabs.includes(tab.id));
+    const visibleTabs = TABS.filter(tab => (!allowedTabs || allowedTabs.includes(tab.id))
+        && (tab.exige !== 'acessar' || podeAcessarVeiculos));
     const diasSeguro = diasParaVencer(ficha?.seguroVencimento);
     const pendentes = ficha?.alertasManutencao?.filter(a => !a.concluido) || [];
 
@@ -477,6 +497,21 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate, readOnly = false, allowedT
                                         <p className="text-xs mt-1 opacity-70">{label}</p>
                                     </div>
                                 ))}
+                            </div>
+
+                            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                                <label className="block text-xs text-gray-500 mb-1">Tipo do veículo (define as fotos do checklist)</label>
+                                {editando ? (
+                                    <SelectBusca value={form.tipo || 'CARGA'}
+                                        onChange={e => setForm(p => ({ ...p, tipo: e.target.value }))}
+                                        className="w-full">
+                                        {TIPOS_VEICULO.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                                    </SelectBusca>
+                                ) : (
+                                    <p className="text-base font-bold text-gray-900">
+                                        {(TIPOS_VEICULO.find(t => t.value === (ficha?.tipo || 'CARGA')) || TIPOS_VEICULO[0]).label}
+                                    </p>
+                                )}
                             </div>
 
                             {/* Últimos usos */}
@@ -1183,6 +1218,14 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate, readOnly = false, allowedT
                                 );
                             })}
                         </div>
+                    )}
+
+                    {/* ── FOTOS MODELO / CHECKLISTS ── */}
+                    {activeTab === 'fotos' && (
+                        <FotosModeloVeiculo veiculoId={veiculoId} podeEditar={podeEditarVeiculos} />
+                    )}
+                    {activeTab === 'checklists' && podeAcessarVeiculos && (
+                        <ChecklistsVeiculoLista veiculoId={veiculoId} />
                     )}
 
                     {/* ── OBSERVAÇÕES ── */}

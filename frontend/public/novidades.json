@@ -1,5 +1,11 @@
 [
   {
+    "slug": "checklist-foto",
+    "titulo": "Checklist do veículo com foto",
+    "resumo": "Antes de sair, o motorista tira fotos do veículo e o app confere. Fase de teste: se der problema, avisa e o motorista decide. Veículos ganham tipo e fotos modelo.",
+    "data": "2026-10-21"
+  },
+  {
     "slug": "aviso-custo-fora-da-curva",
     "titulo": "Aviso de custo fora do normal",
     "resumo": "Ao lançar nota ou despesa com quantidade ou conversão estranha (ex.: 2 caixas viraram R$ 124/kg), o app avisa antes de gravar e você confere ou confirma.",

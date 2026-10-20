@@ -748,6 +748,7 @@ model Vendedor {
   atendimentosTransferidos Atendimento[]    @relation("AtendimentoTransferido")
   atendimentosRegistrados  Atendimento[]    @relation("AtendimentoRegistro")
   diarios                  DiarioVendedor[]
+  checklistsVeiculo        ChecklistVeiculo[]
   amostrasSolicitadas      Amostra[]        @relation("AmostrasSolicitadas")
 
   embarques                    Embarque[]
@@ -1600,6 +1601,11 @@ model Veiculo {
   despesas          Despesa[]
   alertasManutencao ManutencaoAlerta[]
 
+  // Checklist por foto (Dia 1)
+  tipo        String              @default("CARGA") // CARGA | PASSEIO | PARTICULAR
+  checklists  ChecklistVeiculo[]
+  fotosModelo VeiculoFotoModelo[]
+
   @@map("veiculos")
 }
 
@@ -1622,12 +1628,97 @@ model DiarioVendedor {
 
   vendedor Vendedor @relation(fields: [vendedorId], references: [id])
   veiculo  Veiculo? @relation(fields: [veiculoId], references: [id])
+  checklistsVeiculo ChecklistVeiculo[]
 
   @@unique([vendedorId, dataReferencia])
   @@index([vendedorId])
   @@index([dataReferencia])
   @@index([veiculoId])
   @@map("diario_vendedor")
+}
+
+// =============================================
+// CHECKLIST DE VEÍCULO POR FOTO + IA (Dia 1, modo teste)
+// =============================================
+model ChecklistVeiculo {
+  id             String  @id @default(uuid())
+  diarioId       String? @map("diario_id") // nulo enquanto rascunho; preenchido em iniciar/assumir
+  veiculoId      String  @map("veiculo_id")
+  vendedorId     String  @map("vendedor_id")
+  dataReferencia String  @map("data_referencia") // YYYY-MM-DD (fuso Brasília)
+  momento        String  @default("SAIDA") // SAIDA | VOLTA (VOLTA = Dia 2)
+  tipoVeiculo    String  @map("tipo_veiculo") // snapshot do Veiculo.tipo
+  modo           String  @default("TESTE") // snapshot de checklist_foto_modo
+  status         String  @default("RASCUNHO") // RASCUNHO | CONCLUIDO
+  kmDigitado     Int?    @map("km_digitado")
+  kmLido         Int?    @map("km_lido")
+  luzOleoAcesa   Boolean @default(false) @map("luz_oleo_acesa")
+  veredito       String? // APROVADO | ATENCAO | REPROVADO | IA_INDISPONIVEL
+  problemas      Json?
+  fotosPuladas   Json?   @map("fotos_puladas")
+  decisao        String? // CORRIGIU | SEGUIU_TESTE
+  decisoes       Json?
+  decisaoEm      DateTime? @map("decisao_em")
+  // reservado para o Dia 2 (nasce vazio)
+  liberacaoStatus   String?   @map("liberacao_status")
+  liberacaoPedidaEm DateTime? @map("liberacao_pedida_em")
+  liberacaoPorId    String?   @map("liberacao_por_id")
+  liberacaoMotivo   String?   @map("liberacao_motivo") @db.Text
+  liberacaoEm       DateTime? @map("liberacao_em")
+  okPendenciaPorId  String?   @map("ok_pendencia_por_id")
+  okPendenciaMotivo String?   @map("ok_pendencia_motivo") @db.Text
+  okPendenciaEm     DateTime? @map("ok_pendencia_em")
+  criadoEm     DateTime  @default(now()) @map("criado_em")
+  atualizadoEm DateTime  @updatedAt @map("atualizado_em")
+  concluidoEm  DateTime? @map("concluido_em")
+
+  veiculo  Veiculo         @relation(fields: [veiculoId], references: [id])
+  vendedor Vendedor        @relation(fields: [vendedorId], references: [id])
+  diario   DiarioVendedor? @relation(fields: [diarioId], references: [id])
+  fotos    ChecklistVeiculoFoto[]
+
+  @@index([diarioId])
+  @@index([veiculoId, dataReferencia])
+  @@index([vendedorId, dataReferencia])
+  @@map("checklists_veiculo")
+}
+
+model ChecklistVeiculoFoto {
+  id            String   @id @default(uuid())
+  checklistId   String   @map("checklist_id")
+  angulo        String
+  caminho       String // /uploads/checklists-veiculo/<veiculoId>/<data>/<checklistId>/<angulo>-<hex>.jpg
+  ativa         Boolean  @default(true)
+  tamanhoBytes  Int?     @map("tamanho_bytes")
+  statusIa      String   @default("NAO_ANALISADA") @map("status_ia") // OK | ATENCAO | REPROVA | REFAZER | IA_INDISPONIVEL | NAO_ANALISADA
+  serve         Boolean?
+  motivoRefazer String?  @map("motivo_refazer") @db.Text
+  problemas     Json?
+  leituras      Json?
+  iaModelo      String?  @map("ia_modelo")
+  iaMs          Int?     @map("ia_ms")
+  iaTokens      Int?     @map("ia_tokens")
+  criadoEm      DateTime @default(now()) @map("criado_em")
+
+  checklist ChecklistVeiculo @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+
+  @@index([checklistId, angulo])
+  @@map("checklist_veiculo_fotos")
+}
+
+model VeiculoFotoModelo {
+  id          String   @id @default(uuid())
+  veiculoId   String   @map("veiculo_id")
+  angulo      String
+  caminho     String // /uploads/veiculos/<veiculoId>/modelo/<angulo>-<hex>.jpg
+  ativa       Boolean  @default(true)
+  criadoPorId String?  @map("criado_por_id")
+  criadoEm    DateTime @default(now()) @map("criado_em")
+
+  veiculo Veiculo @relation(fields: [veiculoId], references: [id])
+
+  @@index([veiculoId, angulo, ativa])
+  @@map("veiculo_fotos_modelo")
 }
 
 // =============================================

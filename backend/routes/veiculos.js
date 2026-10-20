@@ -4,6 +4,21 @@ const veiculoController = require('../controllers/veiculoController');
 const authMiddleware = require('../middlewares/authMiddleware');
 const uploadVeiculo = require('../middlewares/uploadVeiculoMiddleware');
 const prisma = require('../config/database'); // singleton compartilhado (pool único)
+const checklistSvc = require('../services/checklistVeiculoService');
+const { receberFoto } = require('../middlewares/uploadFotoChecklistMiddleware');
+
+// Executa handler convertendo ErroChecklist em { error, codigo }
+const rotaChecklist = (fn) => async (req, res) => {
+    try {
+        await fn(req, res);
+    } catch (e) {
+        if (e instanceof checklistSvc.ErroChecklist) {
+            return res.status(e.status).json({ error: e.message, codigo: e.codigo });
+        }
+        console.error('[Veiculos/Checklist] erro inesperado:', e);
+        res.status(500).json({ error: 'Erro interno ao processar o pedido.', codigo: 'ERRO_INTERNO' });
+    }
+};
 
 // Rotas públicas (para vendedores listarem ao iniciar o dia)
 router.get('/', authMiddleware, veiculoController.listarAtivos);
@@ -64,12 +79,46 @@ router.get('/:id/preco-medio-litro', authMiddleware, async (req, res) => {
     }
 });
 router.get('/:id/ficha', authMiddleware, veiculoController.obterFicha);
+
+// ── Checklist por foto: configuração, fotos modelo e histórico ──
+router.get('/:id/checklist-config', authMiddleware, rotaChecklist(async (req, res) => {
+    res.json(await checklistSvc.montarConfig(req.params.id));
+}));
+
+router.get('/:id/fotos-modelo', authMiddleware, rotaChecklist(async (req, res) => {
+    res.json(await checklistSvc.listarFotosModelo(req.params.id));
+}));
+
+// Permissão checada ANTES de receber o arquivo
+router.post('/:id/fotos-modelo', authMiddleware, (req, res, next) => {
+    if (!checklistSvc.pode(req.user, 'Pode_Editar_Veiculos')) {
+        return res.status(403).json({ error: 'Sem permissão para cadastrar foto modelo.', codigo: 'SEM_PERMISSAO' });
+    }
+    next();
+}, receberFoto, rotaChecklist(async (req, res) => {
+    const r = await checklistSvc.salvarFotoModelo(req.params.id, req.user, req.body?.angulo, req.file);
+    res.status(201).json(r);
+}));
+
+router.get('/:id/checklists', authMiddleware, rotaChecklist(async (req, res) => {
+    if (!checklistSvc.pode(req.user, 'Pode_Acessar_Veiculos')) {
+        return res.status(403).json({ error: 'Sem permissão para ver os checklists do veículo.', codigo: 'SEM_PERMISSAO' });
+    }
+    res.json(await checklistSvc.listarPorVeiculo(req.params.id, req.query));
+}));
 router.get('/:id', authMiddleware, veiculoController.obterPorId);
 
 // Rotas Administrativas (apenas quem gerencia)
 router.get('/admin/todos', authMiddleware, veiculoController.listarTodos);
-router.post('/', authMiddleware, veiculoController.criar);
-router.put('/:id', authMiddleware, veiculoController.atualizar);
+// O `tipo` do veículo define quais fotos o motorista tira no checklist: só quem edita veículos mexe aqui
+const exigirEdicaoVeiculo = (req, res, next) => {
+    if (!checklistSvc.pode(req.user, 'Pode_Editar_Veiculos')) {
+        return res.status(403).json({ error: 'Sem permissão para cadastrar ou editar veículos.', codigo: 'SEM_PERMISSAO' });
+    }
+    next();
+};
+router.post('/', authMiddleware, exigirEdicaoVeiculo, veiculoController.criar);
+router.put('/:id', authMiddleware, exigirEdicaoVeiculo, veiculoController.atualizar);
 router.delete('/:id', authMiddleware, veiculoController.excluir);
 
 

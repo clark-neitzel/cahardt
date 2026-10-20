@@ -1,6 +1,6 @@
 ---
 aba: Veículos
-rota: /veiculos
+rota: /admin/veiculos
 permissao: todos visualizam; admin ou Pode_Editar_Veiculos para editar
 ---
 
@@ -22,6 +22,9 @@ Cadastro e controle da frota de veículos da empresa. Permite registrar carros/c
 - Gerenciar manutenções: criar alertas de manutenção preventiva por KM ou data
 - Marcar um alerta de manutenção como concluído
 - Ver quantos alertas pendentes cada veículo tem (badge vermelho)
+- Definir o **Tipo** do veículo (Carga, Passeio ou Particular): é ele que decide quais fotos o motorista tira no checklist de saída
+- Cadastrar as **fotos modelo** do veículo (aba "Fotos modelo" da ficha): o motorista vê a foto modelo na tela "Tire assim"
+- Conferir na aba **Checklists** da ficha o que cada motorista fotografou na saída
 
 ---
 
@@ -29,7 +32,7 @@ Cadastro e controle da frota de veículos da empresa. Permite registrar carros/c
 
 ### Cadastrar um veículo
 1. Clique no botão **+ Novo Veículo** (admin ou com permissão)
-2. Preencha: placa, modelo, tipo de combustível, URL do documento (opcional)
+2. Preencha: placa, modelo, **tipo do veículo** (Carga, Passeio ou Particular; o padrão é Carga), tipo de combustível, URL do documento (opcional)
 3. Salve
 
 ### Registrar alerta de manutenção
@@ -51,6 +54,25 @@ Ao abrir o app, todo usuário sem a permissão "Isento de Ponto" (e que não é 
 - Admin pode ajustar o KM inicial ou apagar o ponto do dia (ex.: modo escolhido errado) pela ficha do veículo.
 - **Pendências de Rota (desde 09/2026):** além da trava de KM acima, iniciar o dia também é recusado se o vendedor deixou cliente(s) da rota do **dia útil anterior** (ontem, ou sexta se hoje é segunda) sem nenhum atendimento registrado nem pedido criado. A mensagem mostra quantos clientes e a data ("Você tem N cliente(s) da rota de DD/MM sem atendimento..."); a tela cheia com a lista (registrar atendimento ou abrir pedido para cada um) é o `PendenciaRotaGateway`. Vale a mesma isenção: `admin` ou `Isento_Ponto` pulam a trava. A regra é reforçada nos dois lados — o app já bloqueia a tela (frontend) e o backend também recusa `POST /api/diarios/iniciar` (código `PENDENCIA_ROTA`) se alguém tentar contornar chamando a API direto. Não conta domingo/sábado (o motorista não deveria estar trabalhando) e só vale a partir de 15/04/2026. **A partir de 09/10/2026, a tela de pendências exige justificativa escrita** (campo Observação com no mínimo 10 caracteres) em todo atendimento, inclusive "Sem visita"; o app não deixa salvar sem ela e o servidor também recusa (erro 400, código `JUSTIFICATIVA_OBRIGATORIA`) quando o pedido vem dessa tela. Além disso, enquanto o cliente estiver na lista de pendência de ontem, qualquer atendimento dele registrado pelo próprio vendedor (inclusive pela tela Rota) também exige a justificativa. Administrador, quem tem Isento de Ponto e o escritório registrando em nome do vendedor não entram nessa regra.
   - **Rechecagem automática (desde 09/2026):** como o app fica dias abertos no celular (PWA), a checagem de pendência não é feita só na abertura — ela repete sozinha ao voltar para o app (trocar de aba/app e voltar) no máximo 1x a cada 5 minutos (banco compartilhado lento no pico), e sempre que o dia local virar (mesmo com o celular ligado e o app aberto a noite toda) — nesse caso a rechecagem é imediata, sem esperar os 5 minutos. O mesmo vale para o status do Ponto (`DiarioContext`): se o dia virar com o app aberto, a trava de "iniciar o dia" volta a aparecer sozinha, sem precisar fechar e abrir o app. Se o backend recusar `POST /api/diarios/iniciar` com `PENDENCIA_ROTA` (alguém contornou a checagem do frontend), o app já dispara a rechecagem na hora — a tela cheia de pendências aparece em vez de só um aviso confuso. Se a checagem de pendências falhar por rede (3 tentativas), o app **não libera silenciosamente**: mostra a tela "Não foi possível conferir suas pendências de rota" com botão "Tentar novamente" — o usuário continua logado, só não usa o app até confirmar.
+
+### Checklist de saída por foto (modo teste, desde 20/10/2026)
+
+No lugar das 6 caixinhas, o motorista que sai **Presencial** (ou usa "Pegar veículo") tira **fotos** do veículo, conforme o tipo:
+- **Carga**: frente com placa, lateral direita, lateral esquerda, traseira com placa, painel, água do radiador, baú por dentro e a vareta de óleo.
+- **Passeio**: igual, trocando o baú por porta-malas.
+- **Particular**: só a foto do painel.
+- A **vareta de óleo** só é obrigatória às **segundas e quintas** ou quando o motorista marca "luz de óleo acesa". Nos outros dias é opcional.
+- Cada foto é enviada na hora e analisada por uma IA, que lê placa, KM do painel, luzes de aviso e níveis, e aponta problemas (pneu murcho, óleo ou água baixos, luz grave acesa...). A IA **não reprova foto por estar escura**: se faltar algo, ela diz o que mostrar. Se a foto não serve, o motorista vê o motivo e tira de novo (até 6 tentativas por ângulo).
+- O sistema também confere: a **placa** lida precisa ser a do veículo escolhido e o **KM do painel** precisa bater com o KM digitado (até 5 km de diferença é normal; de 6 a 1.000 vira atenção; acima de 1.000 é reprovação). Também avisa se o KM do painel é menor que o último KM final registrado do veículo.
+- Se houver problema, o motorista vê a frase do problema, o que fazer e o aviso fixo de período de teste, e escolhe **Corrigir agora** ou **Seguir mesmo assim (teste)**. **Em modo teste nada trava o início do dia**: IA fora do ar, foto que não sobe (dá para "Pular esta foto (teste)") ou veículo sem foto modelo não impedem a saída. As travas de KM final de ontem pendente, pendência de rota e veículo já em uso continuam valendo normalmente.
+- Quando a IA está fora do ar, a foto sobe "sem análise" e o resultado do checklist fica como "IA indisponível".
+- O que o motorista decidiu (corrigiu ou seguiu) e todas as fotos ficam gravados.
+
+**Fotos modelo** (quem tem admin ou "Pode_Editar_Veiculos"): na ficha do veículo, aba "Fotos modelo", envie uma foto por ângulo. Enviar de novo substitui a anterior (a antiga fica no histórico). Quem só visualiza pode ver, mas não enviar. Sem foto modelo o motorista vê só a orientação escrita.
+
+**Aba Checklists da ficha** (admin ou "Pode_Acessar_Veiculos"): lista, do mais recente ao mais antigo, os checklists concluídos do veículo com motorista, resultado (aprovado, atenção, reprovado, IA indisponível), decisão do motorista, KM lido no painel × KM digitado e as miniaturas das fotos.
+
+**Chave de emergência**: existe uma chave no servidor que volta o checklist para as 6 caixinhas antigas sem publicar nada. Hoje ela é acionada pela equipe técnica a pedido do admin; o botão na tela vem na próxima entrega. O resumo antigo (✓/✗ por item) continua aparecendo na aba de motoristas da ficha.
 
 ### Ver ficha do veículo (histórico de KM)
 1. Clique no ícone de ficha (ChevronRight) no veículo

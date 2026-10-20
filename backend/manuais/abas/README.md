@@ -90,7 +90,7 @@
 | Produtos | `/admin/produtos` | Gestão do cadastro de produtos (nome, peso, descrição, preço, categoria) com imagens | [produtos.md](produtos.md) |
 | Usuários (Vendedores) | `/admin/vendedores` | Gerenciamento de usuários, permissões, Flex e formas de atendimento | [vendedores.md](vendedores.md) |
 | Mensagens Agendadas | `/admin/mensagens-agendadas` | Configuração de mensagens automáticas de WhatsApp para a equipe | [mensagens-agendadas.md](mensagens-agendadas.md) |
-| Veículos | `/veiculos` | Cadastro e controle da frota com manutenções preventivas | [veiculos.md](veiculos.md) |
+| Veículos | `/admin/veiculos` | Cadastro e controle da frota, manutenções, tipo do veículo, fotos modelo e checklist de saída por foto | [veiculos.md](veiculos.md) |
 | Contabilidade | `/admin/contabilidade` | Relatórios de consulta para o escritório de contabilidade (títulos, recebimentos, NF, banco da baixa) | [contabilidade.md](contabilidade.md) |
 
 ---

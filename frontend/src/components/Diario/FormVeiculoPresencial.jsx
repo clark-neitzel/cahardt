@@ -1,9 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { MapPin, CheckCircle, FileText } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import api from '../../services/api';
 import SelectBusca from '../SelectBusca';
 import CampoNumero from '../CampoNumero';
+import checklistVeiculoService from '../../services/checklistVeiculoService';
+import ChecklistFotos from './ChecklistFotos';
+import ChecklistProblemaTela from './ChecklistProblemaTela';
 
 const CHECKLIST_ITENS = [
     ['pneusOk', 'Calibragem Pneus OK'],
@@ -21,7 +24,8 @@ const CHECKLIST_ITENS = [
  *  - no botão "Pegar veículo" (DiarioPegarVeiculo), quando ele começou em Home Office
  *    e só assume o carro ao chegar na empresa.
  *
- * `onConfirmar({ veiculoId, kmInicial, checklist, obs })` faz o envio; o componente
+ * `onConfirmar({ veiculoId, kmInicial, checklistId, obs })` (modo foto) ou
+ * `onConfirmar({ veiculoId, kmInicial, checklist, obs })` (caixinhas de fallback) faz o envio; o componente
  * cuida de carregar placas, veículos já em uso hoje e o último KM do veículo.
  */
 const FormVeiculoPresencial = ({ titulo = 'Visitação (Rota)', onConfirmar, onVoltar, labelVoltar = 'Voltar/Mudar' }) => {
@@ -35,6 +39,12 @@ const FormVeiculoPresencial = ({ titulo = 'Visitação (Rota)', onConfirmar, onV
     const [checklist, setChecklist] = useState(
         Object.fromEntries(CHECKLIST_ITENS.map(([campo]) => [campo, false]))
     );
+    // Checklist por foto: config do veículo escolhido ('carregando' | 'erro' | objeto)
+    const [config, setConfig] = useState(null);
+    const [rascunhoFalhou, setRascunhoFalhou] = useState(false);
+    const [estadoFotos, setEstadoFotos] = useState({ checklistId: null, faltam: 0 });
+    const [resultado, setResultado] = useState(null); // resposta do /avaliar quando há problema
+    const [seguindo, setSeguindo] = useState(false);
 
     // Carrega a placa dos veículos e quais estão em uso hoje
     useEffect(() => {
@@ -57,23 +67,127 @@ const FormVeiculoPresencial = ({ titulo = 'Visitação (Rota)', onConfirmar, onV
             .catch(() => setUltimoKm(null));
     }, [veiculoId]);
 
+    // Ao escolher o veículo, busca a configuração do checklist por foto
+    useEffect(() => {
+        setResultado(null);
+        setRascunhoFalhou(false);
+        setEstadoFotos({ checklistId: null, faltam: 0 });
+        if (!veiculoId) { setConfig(null); return undefined; }
+        let cancelado = false;
+        setConfig('carregando');
+        checklistVeiculoService.config(veiculoId)
+            .then(c => { if (!cancelado) setConfig(c); })
+            .catch(err => {
+                console.error('Checklist: falha ao ler a configuração, usando as caixinhas', err);
+                if (!cancelado) setConfig('erro');
+            });
+        return () => { cancelado = true; };
+    }, [veiculoId]);
+
+    // Modo foto = config válida, com slots e não desligada, e rascunho criado com sucesso.
+    // Qualquer falha (rede, 500, DESLIGADO) cai nas 6 caixinhas antigas.
+    const configOk = config && typeof config === 'object';
+    const modoFoto = !!(configOk && config.modo !== 'DESLIGADO' && (config.slots || []).length > 0 && !rascunhoFalhou);
+    const carregandoConfig = !!veiculoId && config === 'carregando';
+    const rotulos = Object.fromEntries((configOk ? config.slots || [] : []).map(s => [s.angulo, s.rotulo]));
+
+    // Trava síncrona contra duplo toque (state só atualiza no próximo render)
+    const travaRef = useRef(false);
+
     const handleChecklist = (campo) => setChecklist(prev => ({ ...prev, [campo]: !prev[campo] }));
     const checklistCompleto = Object.values(checklist).every(v => v === true);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!checklistCompleto) {
-            return toast.error('Sua segurança importa! Marque todo o checklist do veículo antes de sair.');
+        if (travaRef.current) return;
+        if (!veiculoId) return toast.error('Escolha o veículo.');
+        const km = parseInt(kmInicial);
+        if (!Number.isFinite(km) || km < 0) return toast.error('Informe o KM inicial.');
+        if (carregandoConfig) return toast('Aguarde, preparando o checklist...');
+
+        if (!modoFoto) {
+            // Fallback: caixinhas de antes
+            if (!checklistCompleto) {
+                return toast.error('Sua segurança importa! Marque todo o checklist do veículo antes de sair.');
+            }
+            try {
+                travaRef.current = true;
+                setIsSubmitting(true);
+                await onConfirmar({ veiculoId, kmInicial: km, checklist, obs });
+            } finally {
+                travaRef.current = false;
+                setIsSubmitting(false);
+            }
+            return;
         }
+
+        if (!estadoFotos.checklistId) return toast('Aguarde, preparando o checklist...');
         try {
+            travaRef.current = true;
             setIsSubmitting(true);
-            await onConfirmar({ veiculoId, kmInicial: parseInt(kmInicial), checklist, obs });
+            let r = null;
+            try {
+                r = await checklistVeiculoService.avaliar(estadoFotos.checklistId, km);
+            } catch (err) {
+                // A conferência nunca pode impedir o início do dia (modo teste): segue sem veredito.
+                console.error('Checklist: falha ao avaliar, seguindo sem veredito', err);
+            }
+            if (r && (r.veredito === 'ATENCAO' || r.veredito === 'REPROVADO')) {
+                setResultado(r);
+                return;
+            }
+            await onConfirmar({ veiculoId, kmInicial: km, checklistId: estadoFotos.checklistId, obs });
         } finally {
+            travaRef.current = false;
             setIsSubmitting(false);
         }
     };
 
+    const corrigirAgora = () => {
+        if (travaRef.current) return;
+        const id = estadoFotos.checklistId;
+        setResultado(null);
+        if (id) checklistVeiculoService.decidir(id, 'CORRIGIU').catch(() => {}); // só registro
+    };
+
+    const seguirMesmoAssim = async () => {
+        if (travaRef.current) return;
+        travaRef.current = true;
+        const id = estadoFotos.checklistId;
+        try {
+            setSeguindo(true);
+            try {
+                await checklistVeiculoService.decidir(id, 'SEGUIU_TESTE');
+            } catch (err) {
+                if (err?.response?.data?.codigo === 'TRAVA_ATIVA') {
+                    toast.error(err.response.data.error || 'Não é possível seguir com este veículo sem liberação.');
+                    return;
+                }
+                console.error('Checklist: falha ao gravar a decisão, seguindo', err);
+            }
+            await onConfirmar({ veiculoId, kmInicial: parseInt(kmInicial), checklistId: id, obs });
+        } finally {
+            travaRef.current = false;
+            setSeguindo(false);
+        }
+    };
+
     const veiculoSel = veiculos.find(v => v.id === veiculoId);
+
+    if (resultado) {
+        return (
+            <div className="space-y-4 animate-fade-in">
+                <h2 className="text-xl font-bold text-gray-900 border-b pb-3">Conferência do veículo</h2>
+                <ChecklistProblemaTela
+                    resultado={resultado}
+                    rotulos={rotulos}
+                    seguindo={seguindo}
+                    onCorrigir={corrigirAgora}
+                    onSeguir={seguirMesmoAssim}
+                />
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6 animate-fade-in">
@@ -153,16 +267,35 @@ const FormVeiculoPresencial = ({ titulo = 'Visitação (Rota)', onConfirmar, onV
                 </div>
 
                 {/* CHECKLIST */}
-                <div className="pt-2">
-                    <p className="text-sm font-bold text-gray-800 mb-3 border-b pb-2">Checklist de Segurança (Obrigatório)</p>
-                    <div className="grid grid-cols-2 gap-3">
-                        {CHECKLIST_ITENS.map(([campo, rotulo]) => (
-                            <label key={campo} className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${checklist[campo] ? 'bg-green-50 border-green-500 text-green-900 font-medium' : 'bg-gray-50 hover:bg-gray-100 text-gray-700'}`}>
-                                <input type="checkbox" checked={checklist[campo]} onChange={() => handleChecklist(campo)} className="mr-3 h-5 w-5 text-green-600 focus:ring-green-500 rounded border-gray-300" /> {rotulo}
-                            </label>
-                        ))}
+                {carregandoConfig && (
+                    <p className="pt-2 text-sm text-gray-500">Preparando o checklist do veículo...</p>
+                )}
+                {modoFoto && (
+                    <div className="pt-2">
+                        <ChecklistFotos
+                            key={veiculoId}
+                            veiculoId={veiculoId}
+                            config={config}
+                            onEstado={setEstadoFotos}
+                            onFalha={() => setRascunhoFalhou(true)}
+                        />
                     </div>
-                </div>
+                )}
+                {!!veiculoId && !carregandoConfig && !modoFoto && (
+                    <div className="pt-2">
+                        <p className="text-sm font-bold text-gray-800 mb-3 border-b pb-2">Checklist de Segurança (Obrigatório)</p>
+                        <div className="grid grid-cols-2 gap-3">
+                            {CHECKLIST_ITENS.map(([campo, rotulo]) => (
+                                <label key={campo} className={`flex items-center p-3 min-h-[44px] border rounded-lg cursor-pointer transition-colors ${checklist[campo] ? 'bg-green-50 border-green-500 text-green-900 font-medium' : 'bg-gray-50 hover:bg-gray-100 text-gray-700'}`}>
+                                    <input type="checkbox" checked={checklist[campo]} onChange={() => handleChecklist(campo)} className="mr-3 h-5 w-5 text-green-600 focus:ring-green-500 rounded border-gray-300" /> {rotulo}
+                                </label>
+                            ))}
+                        </div>
+                    </div>
+                )}
+                {!veiculoId && (
+                    <p className="pt-2 text-sm text-gray-500">Escolha o veículo para ver o checklist.</p>
+                )}
 
                 <textarea
                     className="w-full mt-2 rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 text-sm p-3 bg-gray-50"
@@ -173,7 +306,7 @@ const FormVeiculoPresencial = ({ titulo = 'Visitação (Rota)', onConfirmar, onV
                 />
 
                 <button type="submit" disabled={isSubmitting} className="w-full h-14 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-bold rounded-xl text-lg flex items-center justify-center shadow-lg transition-transform active:scale-95 space-x-2">
-                    <CheckCircle className="w-6 h-6" /> <span>{isSubmitting ? 'AGUARDE...' : 'CONFIRMAR INÍCIO (TUDO CHECADO)'}</span>
+                    <CheckCircle className="w-6 h-6" /> <span>{isSubmitting ? 'Abrindo o dia…' : (modoFoto ? 'CONFERIR E INICIAR' : 'CONFIRMAR INÍCIO (TUDO CHECADO)')}</span>
                 </button>
             </form>
         </div>

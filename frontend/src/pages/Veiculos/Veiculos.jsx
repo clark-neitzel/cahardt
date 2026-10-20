@@ -7,6 +7,13 @@ import { useAuth } from '../../contexts/AuthContext';
 import SelectBusca from '../../components/SelectBusca';
 import CampoNumero from '../../components/CampoNumero';
 
+const TIPOS_VEICULO = [
+    { value: 'CARGA', label: 'Carga', badge: 'bg-gray-100 text-gray-700' },
+    { value: 'PASSEIO', label: 'Passeio', badge: 'bg-blue-100 text-blue-800' },
+    { value: 'PARTICULAR', label: 'Particular', badge: 'bg-amber-100 text-amber-700' },
+];
+const tipoInfo = (t) => TIPOS_VEICULO.find(x => x.value === t) || TIPOS_VEICULO[0];
+
 const Veiculos = () => {
     const { user } = useAuth();
     const podeEditarVeiculos = !!(user?.permissoes?.admin || user?.permissoes?.Pode_Editar_Veiculos);
@@ -22,7 +29,7 @@ const Veiculos = () => {
     const [novoAlerta, setNovoAlerta] = useState({ tipo: '', descricao: '', kmAlerta: '', dataAlerta: '' });
     const [alertasPendentes, setAlertasPendentes] = useState({});
     const [formData, setFormData] = useState({
-        id: null, placa: '', modelo: '', tipoCombustivel: '', documentoUrl: '', ativo: true
+        id: null, placa: '', modelo: '', tipo: 'CARGA', tipoCombustivel: '', documentoUrl: '', ativo: true
     });
 
     const carregarVeiculos = async () => {
@@ -61,7 +68,7 @@ const Veiculos = () => {
     };
 
     const openEdit = (veiculo) => {
-        setFormData({ id: veiculo.id, placa: veiculo.placa, modelo: veiculo.modelo, tipoCombustivel: veiculo.tipoCombustivel || '', documentoUrl: veiculo.documentoUrl || '', ativo: veiculo.ativo });
+        setFormData({ id: veiculo.id, placa: veiculo.placa, modelo: veiculo.modelo, tipo: veiculo.tipo || 'CARGA', tipoCombustivel: veiculo.tipoCombustivel || '', documentoUrl: veiculo.documentoUrl || '', ativo: veiculo.ativo });
         setIsModalOpen(true);
     };
 
@@ -173,7 +180,7 @@ const Veiculos = () => {
                     <p className="text-xs md:text-sm text-gray-500 mt-0.5">Gerencie a frota e acompanhe o histórico</p>
                 </div>
                 <button
-                    onClick={() => { setFormData({ id: null, placa: '', modelo: '', tipoCombustivel: '', documentoUrl: '', ativo: true }); setIsModalOpen(true); }}
+                    onClick={() => { setFormData({ id: null, placa: '', modelo: '', tipo: 'CARGA', tipoCombustivel: '', documentoUrl: '', ativo: true }); setIsModalOpen(true); }}
                     disabled={!podeEditarVeiculos}
                     className="flex items-center justify-center px-4 py-2 rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-dark w-full sm:w-auto"
                 >
@@ -188,6 +195,7 @@ const Veiculos = () => {
                         <tr>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Placa</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Modelo</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Documento</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                             <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
@@ -204,6 +212,9 @@ const Veiculos = () => {
                                     </div>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-gray-500">{veiculo.modelo}</td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${tipoInfo(veiculo.tipo).badge}`}>{tipoInfo(veiculo.tipo).label}</span>
+                                </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                     {veiculo.documentoUrl ? (
                                         <a href={veiculo.documentoUrl.startsWith('/uploads') ? `${API_URL}${veiculo.documentoUrl}` : veiculo.documentoUrl} target="_blank" rel="noopener noreferrer"
@@ -258,8 +269,8 @@ const Veiculos = () => {
                                 )}
                             </div>
                             <div className="flex gap-1" onClick={e => e.stopPropagation()}>
-                                {podeEditarVeiculos && <button onClick={() => openEdit(veiculo)} className="p-1.5 bg-blue-50 text-primary rounded-lg"><Edit2 className="h-4 w-4" /></button>}
-                                {podeEditarVeiculos && <button onClick={() => openManutencao(veiculo)} className="relative p-1.5 bg-amber-50 text-amber-600 rounded-lg">
+                                {podeEditarVeiculos && <button onClick={() => openEdit(veiculo)} className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center bg-blue-50 text-primary rounded-lg"><Edit2 className="h-4 w-4" /></button>}
+                                {podeEditarVeiculos && <button onClick={() => openManutencao(veiculo)} className="relative min-h-[44px] min-w-[44px] inline-flex items-center justify-center bg-amber-50 text-amber-600 rounded-lg">
                                     <Wrench className="h-4 w-4" />
                                     {alertasPendentes[veiculo.id] > 0 && (
                                         <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold rounded-full h-4 w-4 flex items-center justify-center">
@@ -267,10 +278,13 @@ const Veiculos = () => {
                                         </span>
                                     )}
                                 </button>}
-                                {podeEditarVeiculos && <button onClick={() => handleDelete(veiculo.id)} className="p-1.5 bg-red-50 text-red-600 rounded-lg"><Trash2 className="h-4 w-4" /></button>}
+                                {podeEditarVeiculos && <button onClick={() => handleDelete(veiculo.id)} className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center bg-red-50 text-red-600 rounded-lg"><Trash2 className="h-4 w-4" /></button>}
                             </div>
                         </div>
-                        <p className="text-[12px] text-gray-500">{veiculo.modelo}</p>
+                        <p className="text-[12px] text-gray-500 flex items-center gap-2 flex-wrap">
+                            <span>{veiculo.modelo}</span>
+                            <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-full ${tipoInfo(veiculo.tipo).badge}`}>{tipoInfo(veiculo.tipo).label}</span>
+                        </p>
                         <div className="flex items-center gap-1 mt-1">
                             <ChevronRight className="h-3 w-3 text-blue-400" />
                             <span className="text-[11px] text-blue-600">Toque para ver ficha completa</span>
@@ -297,6 +311,15 @@ const Veiculos = () => {
                                 <label className="block text-sm font-medium text-gray-700">Modelo *</label>
                                 <input type="text" name="modelo" required value={formData.modelo} onChange={handleChange}
                                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50" placeholder="Ex: Fiat Fiorino / Baú" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Tipo do veículo</label>
+                                <SelectBusca value={formData.tipo || 'CARGA'}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, tipo: e.target.value }))}
+                                    className="mt-1 w-full">
+                                    {TIPOS_VEICULO.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                                </SelectBusca>
+                                <p className="text-xs text-gray-500 mt-1">Define quais fotos o motorista tira no checklist de saída.</p>
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700">Tipo de Combustível</label>

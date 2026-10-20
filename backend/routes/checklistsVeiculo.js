@@ -1,0 +1,61 @@
+// Checklist de veículo por foto + IA. Montado em /api/checklists-veiculo (com authMiddleware no index.js).
+// Fotos gravadas em backend/uploads/checklists-veiculo (via services/checklistVeiculoService.js).
+const express = require('express');
+const router = express.Router();
+const svc = require('../services/checklistVeiculoService');
+const { receberFoto } = require('../middlewares/uploadFotoChecklistMiddleware');
+
+const rota = (fn) => async (req, res) => {
+    try {
+        await fn(req, res);
+    } catch (e) {
+        if (e instanceof svc.ErroChecklist) {
+            return res.status(e.status).json({ error: e.message, codigo: e.codigo });
+        }
+        console.error('[ChecklistVeiculo] erro inesperado:', e);
+        res.status(500).json({ error: 'Erro interno ao processar o checklist.', codigo: 'ERRO_INTERNO' });
+    }
+};
+
+// Chave do modo (declarar ANTES de /:id)
+router.get('/config/modo', rota(async (req, res) => {
+    res.json({ modo: await svc.getModo() });
+}));
+
+router.put('/config/modo', rota(async (req, res) => {
+    if (!svc.ehAdmin(req.user)) {
+        return res.status(403).json({ error: 'Só administrador altera o modo do checklist.', codigo: 'SEM_PERMISSAO' });
+    }
+    res.json({ modo: await svc.setModo(req.body?.modo) });
+}));
+
+router.post('/', rota(async (req, res) => {
+    res.json(await svc.criarRascunho(req.user, req.body));
+}));
+
+router.get('/:id', rota(async (req, res) => {
+    res.json(await svc.detalhe(req.params.id, req.user));
+}));
+
+router.patch('/:id', rota(async (req, res) => {
+    res.json(await svc.atualizarRascunho(req.params.id, req.user, req.body));
+}));
+
+router.post('/:id/fotos', receberFoto, rota(async (req, res) => {
+    const r = await svc.enviarFoto(req.params.id, req.user, req.body?.angulo, req.file);
+    res.status(201).json(r);
+}));
+
+router.post('/:id/pular', rota(async (req, res) => {
+    res.json(await svc.pularFoto(req.params.id, req.user, req.body));
+}));
+
+router.post('/:id/avaliar', rota(async (req, res) => {
+    res.json(await svc.avaliar(req.params.id, req.user, req.body));
+}));
+
+router.post('/:id/decisao', rota(async (req, res) => {
+    res.json(await svc.registrarDecisao(req.params.id, req.user, req.body));
+}));
+
+module.exports = router;

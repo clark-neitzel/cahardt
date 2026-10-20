@@ -29,6 +29,7 @@ const leadRoutes = require('./routes/leadRoutes'); // CRM: Leads
 const atendimentoRoutes = require('./routes/atendimentoRoutes'); // CRM: Atendimentos
 const veiculoRoutes = require('./routes/veiculos'); // Módulo de Veículos
 const diarioRoutes = require('./routes/diarios'); // Módulo do Diário/Ponto
+const checklistsVeiculoRoutes = require('./routes/checklistsVeiculo'); // Checklist de veículo por foto + IA
 const formasPagamentoEntregaRoutes = require('./routes/formasPagamentoEntrega'); // Módulo Pagamento Embarque
 const embarqueRoutes = require('./routes/embarques'); // Módulo de Formação de Carga/Expedição
 const embarquesMapaRoutes = require('./routes/embarquesMapa'); // Mapa de divisão de cargas (Expedição)
@@ -181,6 +182,7 @@ app.use('/api/leads', authMiddleware, leadRoutes); // CRM: Leads
 app.use('/api/atendimentos', authMiddleware, atendimentoRoutes); // CRM: Atendimentos
 app.use('/api/veiculos', authMiddleware, veiculoRoutes); // Módulo de Veículos
 app.use('/api/diarios', authMiddleware, diarioRoutes); // Relatório Diário / Ponto
+app.use('/api/checklists-veiculo', authMiddleware, checklistsVeiculoRoutes); // Checklist de veículo por foto + IA
 app.use('/api/pagamentos-entrega', formasPagamentoEntregaRoutes); // Pagamentos de Entrega
 app.use('/api/embarques', embarquesMapaRoutes); // Mapa de divisão de cargas — ANTES do router clássico (senão /mapa cai no GET /:id)
 app.use('/api/embarques', embarqueRoutes); // Montagem Cargas e Despacho Logístico

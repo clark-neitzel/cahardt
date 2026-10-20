@@ -1,4 +1,32 @@
 const prisma = require('../config/database');
+const { tipoValido, TIPOS_VEICULO } = require('../config/checklistVeiculoAngulos');
+
+// Normalização de campos opcionais numéricos/data: '' / null → null; inválido → erro em português (400)
+const _vazio = (v) => v === null || v === undefined || (typeof v === 'string' && v.trim() === '');
+function normDecimal(v, rotulo) {
+    if (_vazio(v)) return null;
+    const n = Number(typeof v === 'string' ? v.replace(',', '.') : v);
+    if (!Number.isFinite(n) || n < 0) throw new Error(`${rotulo} inválido(a). Informe um número.`);
+    return n;
+}
+function normInt(v, rotulo) {
+    if (_vazio(v)) return null;
+    const n = parseInt(v, 10);
+    if (!Number.isFinite(n) || n < 0) throw new Error(`${rotulo} inválido(a). Informe um número inteiro.`);
+    return n;
+}
+function normData(v, rotulo) {
+    if (_vazio(v)) return null;
+    const d = new Date(v);
+    if (isNaN(d.getTime())) throw new Error(`${rotulo} inválida. Informe uma data válida.`);
+    return d;
+}
+
+function validarTipo(tipo) {
+    if (tipo !== undefined && tipo !== null && !tipoValido(tipo)) {
+        throw new Error(`Tipo de veículo inválido. Use: ${TIPOS_VEICULO.join(', ')}.`);
+    }
+}
 
 const veiculoService = {
     listar: async () => {
@@ -139,6 +167,7 @@ const veiculoService = {
     },
 
     criar: async (dados) => {
+        validarTipo(dados.tipo);
         const existente = await prisma.veiculo.findUnique({ where: { placa: dados.placa } });
         if (existente) throw new Error('Já existe um veículo cadastrado com esta placa.');
 
@@ -148,19 +177,21 @@ const veiculoService = {
                 modelo: dados.modelo,
                 ativo: dados.ativo !== undefined ? dados.ativo : true,
                 documentoUrl: dados.documentoUrl || null,
-                seguroVencimento: dados.seguroVencimento ? new Date(dados.seguroVencimento) : null,
+                seguroVencimento: normData(dados.seguroVencimento, 'Vencimento do seguro'),
                 seguroApolice: dados.seguroApolice || null,
                 seguroSeguradora: dados.seguroSeguradora || null,
                 seguroApoliceUrl: dados.seguroApoliceUrl || null,
-                capacidadeTanque: dados.capacidadeTanque || null,
-                kmMedioSugerido: dados.kmMedioSugerido ? parseInt(dados.kmMedioSugerido) : null,
+                capacidadeTanque: normDecimal(dados.capacidadeTanque, 'Capacidade do tanque'),
+                kmMedioSugerido: normInt(dados.kmMedioSugerido, 'KM médio sugerido'),
                 tipoCombustivel: dados.tipoCombustivel || null,
-                observacoes: dados.observacoes || null
+                observacoes: dados.observacoes || null,
+                tipo: dados.tipo || 'CARGA'
             }
         });
     },
 
     atualizar: async (id, dados) => {
+        validarTipo(dados.tipo);
         if (dados.placa) {
             const existente = await prisma.veiculo.findFirst({
                 where: { placa: dados.placa, id: { not: id } }
@@ -176,17 +207,18 @@ const veiculoService = {
                 ativo: dados.ativo,
                 documentoUrl: dados.documentoUrl !== undefined ? dados.documentoUrl : undefined,
                 seguroVencimento: dados.seguroVencimento !== undefined
-                    ? (dados.seguroVencimento ? new Date(dados.seguroVencimento) : null)
+                    ? normData(dados.seguroVencimento, 'Vencimento do seguro')
                     : undefined,
                 seguroApolice: dados.seguroApolice !== undefined ? dados.seguroApolice : undefined,
                 seguroSeguradora: dados.seguroSeguradora !== undefined ? dados.seguroSeguradora : undefined,
                 seguroApoliceUrl: dados.seguroApoliceUrl !== undefined ? dados.seguroApoliceUrl : undefined,
-                capacidadeTanque: dados.capacidadeTanque !== undefined ? dados.capacidadeTanque : undefined,
+                capacidadeTanque: dados.capacidadeTanque !== undefined ? normDecimal(dados.capacidadeTanque, 'Capacidade do tanque') : undefined,
                 kmMedioSugerido: dados.kmMedioSugerido !== undefined
-                    ? (dados.kmMedioSugerido ? parseInt(dados.kmMedioSugerido) : null)
+                    ? normInt(dados.kmMedioSugerido, 'KM médio sugerido')
                     : undefined,
                 tipoCombustivel: dados.tipoCombustivel !== undefined ? (dados.tipoCombustivel || null) : undefined,
-                observacoes: dados.observacoes !== undefined ? dados.observacoes : undefined
+                observacoes: dados.observacoes !== undefined ? dados.observacoes : undefined,
+                tipo: dados.tipo ? dados.tipo : undefined
             }
         });
     },
