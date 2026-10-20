@@ -1,8 +1,12 @@
 # Proposta — "Começar com a IA": o Claude monta o primeiro rascunho do POP dentro do app
 
-> 20/10/2026 · Status: PROPOSTA (nada implementado) · Mockup: `docs/pop/mockup-ia-pop.html`
-> Pedido do dono: a gerente de produção vai montar os manuais e quer uma IA que **sugira o início** do POP. O dono quer
-> usar a **API do Claude**, com o modelo **Claude Fable 5.1**, dentro do próprio sistema.
+> 20/10/2026 · Status: **APROVADA pelo dono** (v1.1) · Mockup: `docs/pop/mockup-ia-pop.html`
+> Pedido do dono: a gerente de produção vai montar os manuais e quer uma IA que **sugira o início** do POP.
+> **Decisão do dono (20/10, v1.1): a Fase 1 usa o ChatGPT que já está configurado no app** (provedor OpenAI do
+> `aiProvider`, modelo `gpt-6-luna`, chave já no EasyPanel) — sem chave nova, sem custo extra de configuração. O Claude
+> (Sonnet 5.5 / Opus 5.5 / Fable 5.1) fica como **opção no seletor** de Configurações → IA, para testar depois se a
+> gerente quiser comparar. **Começa só depois que a entrega "checklist de veículos" (outra sessão) for commitada**,
+> porque ela está mexendo no mesmo `aiProvider.js`.
 
 ## A ideia em uma frase
 
@@ -40,16 +44,17 @@ ou pessoal vai para a IA.
   **"Rascunho feito com ajuda da IA — confira antes de publicar"** e o selo some quando a pessoa edita/publica.
 - Não inventa fotos: descreve **qual** foto tirar.
 - Não tem acesso ao banco: recebe só o que o sistema monta para aquele pedido.
-- Chave da API **só no EasyPanel** (variável `ANTHROPIC_API_KEY`), nunca no código nem no banco.
+- Chave da API **só no EasyPanel** (a `OPENAI_API_KEY` já existente; `ANTHROPIC_API_KEY` só se um dia ativar o Claude), nunca no código nem no banco.
 - Limite diário de uso (ex.: 40 chamadas/dia) e registro de cada chamada (quem, quando, tokens, custo estimado).
 
 ## Modelo e custo
 
-O dono escolheu o **Claude Fable 5.1**. Fica configurável em **Configurações → IA** (sem redeploy):
+Fase 1 roda no **ChatGPT já integrado** (gpt-6-luna). O volume previsto é pequeno (30 a 50 POPs no total nos primeiros meses), então o custo da API é secundário em qualquer opção. Fica configurável em **Configurações → IA** (sem redeploy):
 
 | Modelo | Quando usar | Custo estimado por POP montado* |
 |---|---|---|
-| **Claude Fable 5.1** (`claude-fable-5-1`) — escolhido | melhor texto e mais cuidado com segurança do trabalho | ≈ US$ 0,13 (≈ R$ 0,75) |
+| **ChatGPT gpt-6-luna** (OpenAI, já integrado) — **Fase 1** | já configurado; custo da faixa barata (conferir na conta da OpenAI) | centavos |
+| Claude Fable 5.1 (`claude-fable-5-1`) | melhor texto e mais cuidado com segurança do trabalho | ≈ US$ 0,13 (≈ R$ 0,75) |
 | Claude Opus 5.5 (`claude-opus-5-5`) | ótimo e mais barato | ≈ US$ 0,05 (≈ R$ 0,30) |
 | Claude Sonnet 5.5 (`claude-sonnet-5-5`) | rápido, para "melhorar texto" | ≈ US$ 0,03 (≈ R$ 0,15) |
 
@@ -74,15 +79,13 @@ Observações técnicas do Fable 5.1 que entram no desenho: o raciocínio é sem
 
 | Fase | Entrega | Esforço |
 |---|---|---|
-| **1 — Montar o POP** | Provedor Anthropic no `aiProvider`; rota `POST /api/como-fazer/ia/montar` (com streaming); modal "Conte para a IA" com ditado por voz; prévia; "Pedir diferente"; rascunho no editor com selo; Configurações → IA (modelo, chave, limite, uso); registro de uso; manual do Clippy; novidade | 4 a 5 dias |
+| **1 — Montar o POP** | ChatGPT já integrado (provedor OpenAI do `aiProvider`); rota `POST /api/como-fazer/ia/montar` (com streaming); modal "Conte para a IA" com ditado por voz; prévia; "Pedir diferente"; rascunho no editor com selo; Configurações → IA (modelo, chave, limite, uso); registro de uso; manual do Clippy; novidade | 4 a 5 dias |
 | **2 — Ajudar dentro do editor** | ✨ Melhorar / Mais simples por passo; Sugerir o que NÃO fazer / perguntas / se der errado; IA lê a foto do passo e propõe a frase | 2 dias |
 | **3 — Revisor** | "✨ Revisar este POP": aponta passo confuso, perigo não citado, passo sem foto, frase longa demais | 1 dia |
 
 ## Esboço técnico (para a equipe)
 
-- `backend/services/aiProvider.js`: provider `anthropic` com `@anthropic-ai/sdk` (TypeScript/JS oficial); modelo por função
-  via `app_configs` (`ia_como_fazer_modelo`, padrão `claude-fable-5-1`); chamada com `thinking` omitido (Fable: sempre
-  ligado), `output_config.effort` médio, **saída estruturada** com o schema do documento (`secoes[].passos[]`, `objetivo`,
+- `backend/services/aiProvider.js`: Fase 1 usa o provider `openai` existente (gpt-6-luna; lembrar que ele recusa `max_tokens`/`temperature` — ver `parametrosOpenAI`), com **saída em JSON** validada pelo schema do documento; modelo/provedor por função via `app_configs` (`ia_como_fazer_provedor`, `ia_como_fazer_modelo`). Provider `anthropic` (`@anthropic-ai/sdk`) entra como opção (Fase 1b, só se a gerente quiser comparar): `thinking` omitido no Fable (sempre ligado), `output_config.effort` médio, **saída estruturada** com o schema do documento (`secoes[].passos[]`, `objetivo`,
   `materiais`, `naoFazer`, `seDerErrado`, `perguntas` com min/max para Rotina, `fotoSugerida` por passo); streaming;
   `fallbacks: "default"` para recusa; tratamento de `stop_reason: "refusal"` com mensagem simples.
 - `backend/services/comoFazerIaService.js`: monta o contexto (setores, itens PCP do setor, 2 conteúdos publicados do mesmo

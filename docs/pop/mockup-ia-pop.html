@@ -99,9 +99,9 @@ footer{max-width:1100px;margin:0 auto;padding:10px 16px 40px;font-size:12px;colo
 </head>
 <body>
 <div class="hero"><div class="wrap">
-  <span class="tag">Mockup · proposta · nada implementado ainda</span>
+  <span class="tag">Mockup v1.1 · aprovado · Fase 1 com o ChatGPT já integrado · começa após o checklist de veículos</span>
   <h1>"Começar com a IA": o Claude monta o primeiro rascunho do POP, dentro do app</h1>
-  <p>A gerente conta em palavras simples (ou <b>fala no microfone</b>) o que quer ensinar. O Claude Fable 5.1 devolve o POP no formato do app: para que serve, o que precisa, passos numerados, o que não fazer, se der errado e <b>qual foto tirar em cada passo</b>. Ela aceita, tira as fotos e ajusta no editor que já existe. A IA nunca publica.</p>
+  <p>A gerente conta em palavras simples (ou <b>fala no microfone</b>) o que quer ensinar. A IA (o ChatGPT que o app já usa; Claude como opção) devolve o POP no formato do app: para que serve, o que precisa, passos numerados, o que não fazer, se der errado e <b>qual foto tirar em cada passo</b>. Ela aceita, tira as fotos e ajusta no editor que já existe. A IA nunca publica.</p>
 </div></div>
 
 <div class="nav"><div class="wrap">
@@ -140,10 +140,10 @@ footer{max-width:1100px;margin:0 auto;padding:10px 16px 40px;font-size:12px;colo
     <div class="card"><div class="tit">📊 Uso visível e limitado</div><div class="meta">Cada chamada fica registrada (quem, quando, custo). Limite por dia. Tela mostra o gasto do mês.</div></div>
   </div>
 
-  <div class="sec-h" style="margin-top:14px">Modelo e custo (escolhido: Claude Fable 5.1)<span class="ln"></span></div>
+  <div class="sec-h" style="margin-top:14px">Modelo e custo (Fase 1: ChatGPT já integrado; Claude como opção)<span class="ln"></span></div>
   <div class="app"><div class="body"><table>
     <tr><th>Modelo</th><th>Para quê</th><th>Custo por POP montado</th><th>100 POPs no mês</th></tr>
-    <tr><td><b>Claude Fable 5.1</b> <span class="badge b-roxo">escolhido</span></td><td>melhor texto, mais cuidado com segurança</td><td>≈ R$ 0,75</td><td>≈ R$ 75</td></tr>
+    <tr><td><b>ChatGPT gpt-6-luna</b> <span class="badge b-roxo">Fase 1</span></td><td>já configurado no app, sem chave nova</td><td>centavos</td><td>poucos reais</td></tr><tr><td>Claude Fable 5.1</td><td>melhor texto, mais cuidado com segurança</td><td>≈ R$ 0,75</td><td>≈ R$ 75</td></tr>
     <tr><td>Claude Opus 5.5</td><td>ótimo e mais barato</td><td>≈ R$ 0,30</td><td>≈ R$ 30</td></tr>
     <tr><td>Claude Sonnet 5.5</td><td>rápido, para "melhorar texto"</td><td>≈ R$ 0,15</td><td>≈ R$ 15</td></tr>
   </table><div style="font-size:12px;color:var(--muted);margin-top:8px">Estimativa com ~2.500 palavras-token de entrada e ~2.000 de saída por POP, preço de lista da API. Os botões pequenos ("melhorar texto") custam centavos. Dá para trocar o modelo na tela 6 sem mexer em código.</div></div></div>
@@ -206,7 +206,7 @@ footer{max-width:1100px;margin:0 auto;padding:10px 16px 40px;font-size:12px;colo
 <section class="tela" id="t3">
   <div class="intro"><b>Montando.</b> A resposta chega aos poucos (10 a 30 segundos). A tela mostra o texto aparecendo para a pessoa não achar que travou. Dá para cancelar.</div>
   <div class="modal">
-    <div class="mh"><div class="ico" style="background:var(--iaBg);color:var(--ia)">✨</div><div><b>Montando o POP da Fritadeira…</b><small>Claude Fable 5.1 · Cozinha · Máquina</small></div></div>
+    <div class="mh"><div class="ico" style="background:var(--iaBg);color:var(--ia)">✨</div><div><b>Montando o POP da Fritadeira…</b><small>ChatGPT (gpt-6-luna) · Cozinha · Máquina</small></div></div>
     <div class="mb">
       <div class="prog"><i></i></div>
       <div class="stream"><span style="color:#a78bfa">Para que serve:</span> Fritar os salgados na temperatura certa, sem queimar o produto e sem ninguém se queimar.<br><span style="color:#a78bfa">O que precisa:</span> luva térmica, pegador longo, termômetro, pano seco…<br><span style="color:#a78bfa">Ligar e aquecer</span><br>1. Confira se tem óleo até a marca antes de ligar.<br>2. Ligue a chave geral e ajuste para 180 °C.<br>3. Espere a luz apagar: é sinal de que chegou na temperatura.<br><span style="color:#a78bfa">Usar</span><br>4. Encha o cesto só até a metade<span class="c"></span></div>
@@ -292,24 +292,24 @@ footer{max-width:1100px;margin:0 auto;padding:10px 16px 40px;font-size:12px;colo
       <div class="kpis" style="position:relative"><div class="kpi"><b>37</b><small>POPs montados no mês</small></div><div class="kpi"><b>R$ 28,40</b><small>gasto estimado no mês</small></div><div class="kpi"><b>14 s</b><small>tempo médio</small></div><div class="kpi"><b>✅</b><small>chave configurada no servidor</small></div><span class="pin" style="right:-6px;top:-10px">1</span></div>
       <div class="sec-h">Como Fazer (montar POP, melhorar texto, sugestões)<span class="ln"></span></div>
       <div class="grid">
-        <div style="position:relative"><span class="lbl">Provedor</span><div class="inp sel">Anthropic (Claude)</div><span class="lbl">Modelo para montar o POP</span><div class="inp sel">Claude Fable 5.1 — ≈ R$ 0,75 por POP</div><span class="lbl">Modelo para ajustes pequenos (melhorar, mais simples)</span><div class="inp sel">Claude Sonnet 5.5 — centavos</div><span class="pin" style="right:-6px;top:-10px">2</span></div>
-        <div style="position:relative"><span class="lbl">Ligado</span><div class="inp"><span class="tog"></span> Botões ✨ aparecem para quem edita o Como Fazer</div><span class="lbl">Limite por dia (todas as pessoas)</span><div class="inp">40 chamadas</div><span class="lbl">Chave da API</span><div class="inp" style="color:var(--muted)">Fica na configuração do servidor (ANTHROPIC_API_KEY). Não é editada aqui.</div><span class="pin" style="right:-6px;top:-10px">3</span></div>
+        <div style="position:relative"><span class="lbl">Provedor</span><div class="inp sel">OpenAI (ChatGPT) — já configurado</div><span class="lbl">Modelo para montar o POP</span><div class="inp sel">gpt-6-luna — centavos por POP</div><span class="lbl">Modelo para ajustes pequenos (melhorar, mais simples)</span><div class="inp sel">gpt-6-luna — centavos</div><div style="font-size:12px;color:var(--muted);margin-top:6px">Opções no menu: Claude Sonnet 5.5, Opus 5.5, Fable 5.1 (precisam da chave ANTHROPIC_API_KEY no servidor).</div><span class="pin" style="right:-6px;top:-10px">2</span></div>
+        <div style="position:relative"><span class="lbl">Ligado</span><div class="inp"><span class="tog"></span> Botões ✨ aparecem para quem edita o Como Fazer</div><span class="lbl">Limite por dia (todas as pessoas)</span><div class="inp">40 chamadas</div><span class="lbl">Chave da API</span><div class="inp" style="color:var(--muted)">Fica na configuração do servidor (OPENAI_API_KEY, já existe). Não é editada aqui.</div><span class="pin" style="right:-6px;top:-10px">3</span></div>
       </div>
       <div class="sec-h" style="margin-top:12px">Clippy (assistente de ajuda)<span class="ln"></span></div>
       <div class="grid"><div><span class="lbl">Provedor</span><div class="inp sel">OpenAI (como hoje)</div></div><div><span class="lbl">Modelo</span><div class="inp sel">gpt-6-luna (como hoje)</div></div></div>
       <div class="sec-h" style="margin-top:12px">Histórico de uso<span class="ln"></span></div>
       <table><tr><th>Quando</th><th>Quem</th><th>O quê</th><th>Modelo</th><th>Tempo</th><th>Custo</th><th>Resultado</th></tr>
-        <tr><td>20/10 14:02</td><td>Gerente de produção</td><td>Montar POP · Fritadeira</td><td>Fable 5.1</td><td>18 s</td><td>R$ 0,81</td><td><span class="badge b-verde">Usado</span></td></tr>
-        <tr><td>20/10 14:05</td><td>Gerente de produção</td><td>Pedir diferente · Fritadeira</td><td>Fable 5.1</td><td>12 s</td><td>R$ 0,62</td><td><span class="badge b-verde">Usado</span></td></tr>
-        <tr><td>20/10 14:11</td><td>Gerente de produção</td><td>Melhorar passo 4</td><td>Sonnet 5.5</td><td>3 s</td><td>R$ 0,02</td><td><span class="badge b-cinza">Descartado</span></td></tr>
-        <tr><td>19/10 16:40</td><td>Clarkson</td><td>Montar POP · Higiene e uniforme</td><td>Fable 5.1</td><td>15 s</td><td>R$ 0,70</td><td><span class="badge b-amarelo">Recusado pela IA</span></td></tr>
+        <tr><td>20/10 14:02</td><td>Gerente de produção</td><td>Montar POP · Fritadeira</td><td>gpt-6-luna</td><td>14 s</td><td>R$ 0,06</td><td><span class="badge b-verde">Usado</span></td></tr>
+        <tr><td>20/10 14:05</td><td>Gerente de produção</td><td>Pedir diferente · Fritadeira</td><td>gpt-6-luna</td><td>9 s</td><td>R$ 0,04</td><td><span class="badge b-verde">Usado</span></td></tr>
+        <tr><td>20/10 14:11</td><td>Gerente de produção</td><td>Melhorar passo 4</td><td>gpt-6-luna</td><td>3 s</td><td>R$ 0,01</td><td><span class="badge b-cinza">Descartado</span></td></tr>
+        <tr><td>19/10 16:40</td><td>Clarkson</td><td>Montar POP · Higiene e uniforme</td><td>Sonnet 5.5 (teste)</td><td>11 s</td><td>R$ 0,15</td><td><span class="badge b-amarelo">Recusado pela IA</span></td></tr>
       </table>
     </div>
   </div>
   <div class="legenda"><h3>Legenda</h3><ol>
     <li><i>1</i>Resumo do mês: quantos POPs, gasto estimado (calculado pelos tokens que a API informa), tempo médio, e se a chave está no servidor.</li>
-    <li><i>2</i>Modelo por função. Montar o POP usa o Fable 5.1 (escolha do dono). Ajustes pequenos podem usar um modelo mais barato. Troca sem redeploy.</li>
-    <li><i>3</i>Chave nunca aparece nem é digitada no app: mora só na variável do EasyPanel. Limite diário evita surpresa na conta.</li>
+    <li><i>2</i>Modelo por função. Fase 1 usa o ChatGPT já configurado (decisão do dono). O Claude aparece no menu para comparar depois, se a gerente quiser. Troca sem redeploy.</li>
+    <li><i>3</i>Chave nunca aparece nem é digitada no app: mora só na variável do EasyPanel (a da OpenAI já existe). Limite diário evita surpresa na conta.</li>
     <li><i>4</i>Histórico por chamada, com custo e se a sugestão foi usada. "Recusado pela IA" é raro (a API pode recusar um pedido); o app mostra uma mensagem simples e não cobra nada da pessoa.</li>
   </ol></div>
 </section>
