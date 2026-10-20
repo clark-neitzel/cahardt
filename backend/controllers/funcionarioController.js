@@ -1,4 +1,6 @@
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 const bcrypt = require('bcryptjs');
 const prisma = require('../config/database');
 const pontoService = require('../services/pontoService');
@@ -78,6 +80,8 @@ const funcionarioController = {
                     nome: f.nome,
                     cargo: f.cargo,
                     foto: f.foto,
+                    setor: f.setor || null,
+                    senhaNumerica: !!f.senhaNumerica,
                     ativo: f.ativo,
                     pontoToken: f.pontoToken,
                     registraPontoEm: f.registraPontoEm || 'APP',
@@ -117,6 +121,31 @@ const funcionarioController = {
         }
     },
 
+    // ─── Foto do funcionário (grade do tablet do Como Fazer) ──────────────────
+    enviarFoto: async (req, res) => {
+        try {
+            const arquivo = (req.files?.arquivo || req.files?.foto || [])[0];
+            if (!arquivo) return res.status(400).json({ erro: 'Envie a foto.' });
+            const atual = await prisma.funcionario.findUnique({ where: { id: req.params.id }, select: { foto: true } });
+            if (!atual) {
+                try { fs.unlinkSync(arquivo.path); } catch (_) { /* sem arquivo */ }
+                return res.status(404).json({ erro: 'Funcionário não encontrado.' });
+            }
+            const foto = `funcionarios/${req.params.id}/${arquivo.filename}`;
+            await prisma.funcionario.update({ where: { id: req.params.id }, data: { foto } });
+            // apaga a foto anterior (só as nossas "foto-*"), sem derrubar o envio se falhar
+            try {
+                if (atual.foto && /^funcionarios\/[^/]+\/foto-[^/]+$/.test(atual.foto) && atual.foto !== foto) {
+                    fs.unlinkSync(path.join(__dirname, '../uploads', atual.foto));
+                }
+            } catch (_) { /* arquivo antigo já não existe */ }
+            res.json({ ok: true, foto });
+        } catch (error) {
+            console.error('[RH] enviar foto:', error);
+            res.status(500).json({ erro: 'Erro ao salvar a foto.' });
+        }
+    },
+
     // ─── Definir/resetar a senha de acesso ao ponto ───────────────────────────
     definirSenha: async (req, res) => {
         try {
@@ -125,8 +154,10 @@ const funcionarioController = {
                 return res.status(400).json({ erro: 'A senha deve ter ao menos 4 caracteres.' });
             }
             const senhaHash = await bcrypt.hash(String(senha), 10);
-            await prisma.funcionario.update({ where: { id: req.params.id }, data: { senhaHash } });
-            res.json({ ok: true, temSenha: true });
+            // Como Fazer: só quem tem senha de exatamente 4 números entra no tablet
+            const senhaNumerica = /^\d{4}$/.test(String(senha));
+            await prisma.funcionario.update({ where: { id: req.params.id }, data: { senhaHash, senhaNumerica } });
+            res.json({ ok: true, temSenha: true, senhaNumerica });
         } catch (error) {
             console.error('[RH] definir senha:', error);
             res.status(500).json({ erro: 'Erro ao definir a senha.' });
@@ -173,8 +204,13 @@ const funcionarioController = {
     atualizar: async (req, res) => {
         try {
             const { nome, cpf, telefone, email, endereco, cargo, dataAdmissao, dataDemissao, salario, tipoHoraExtra, jornadaMovel, ativo, observacao,
-                percentualHoraExtra, divisorHoras, descontarDsrFalta, registraPontoEm } = req.body || {};
+                percentualHoraExtra, divisorHoras, descontarDsrFalta, registraPontoEm, setor } = req.body || {};
             const data = {};
+            if (setor !== undefined) {
+                const cod = String(setor || '').toUpperCase();
+                if (cod && !['COZINHA', 'ESTOQUE', 'EXPEDICAO', 'MOTORISTA'].includes(cod)) return res.status(400).json({ erro: 'Setor inválido.' });
+                data.setor = cod || null;
+            }
             if (nome !== undefined) data.nome = nome;
             if (cpf !== undefined) data.cpf = cpf ? soDigitos(cpf) : null;
             if (telefone !== undefined) data.telefone = telefone;

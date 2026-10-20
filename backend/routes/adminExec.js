@@ -45,6 +45,18 @@ router.use((req, res, next) => {
     next();
 });
 
+// POST /api/admin-exec/como-fazer-seed
+// Cria (idempotente, nunca sobrescreve) os 3 conteúdos de exemplo do Como Fazer como RASCUNHO.
+router.post('/como-fazer-seed', async (req, res) => {
+    try {
+        const { seed } = require('../scripts/seedComoFazer');
+        res.json({ ok: true, resultado: await seed() });
+    } catch (err) {
+        console.error('[admin-exec] como-fazer-seed:', err);
+        res.status(500).json({ ok: false, error: err.message });
+    }
+});
+
 // GET /api/admin-exec/ping
 // Verifica se o servidor está respondendo e com as variáveis corretas
 router.get('/ping', (req, res) => {
@@ -52,7 +64,7 @@ router.get('/ping', (req, res) => {
         ok: true,
         // Marcador de deploy: bumpar a cada mudança de backend que precise de confirmação
         // em produção (não há outro jeito de saber de fora qual versão está no ar).
-        deployMarker: 'etiquetas-imagem-e3-2026-10-19',
+        deployMarker: 'como-fazer-fase1-2026-10-20',
         uptimeSegundos: Math.round(process.uptime()),
         timestamp: new Date().toISOString(),
         openaiConfigurada: !!process.env.OPENAI_API_KEY,

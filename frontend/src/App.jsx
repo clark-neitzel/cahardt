@@ -105,6 +105,9 @@ const KitFestaSite = lazyComRetry(() => import('./pages/KitFestaSite/KitFestaSit
 const HomeSite = lazyComRetry(() => import('./pages/Site/HomeSite'));
 const TarefasAgenda = lazyComRetry(() => import('./pages/Tarefas/TarefasAgenda'));
 const TarefasParecer = lazyComRetry(() => import('./pages/Tarefas/TarefasParecer'));
+const ComoFazerApp = lazyComRetry(() => import('./pages/ComoFazer/ComoFazerApp'));
+const SetorTablet = lazyComRetry(() => import('./pages/ComoFazer/SetorTablet'));
+const ComoFazerPainel = lazyComRetry(() => import('./pages/RH/ComoFazerPainel'));
 const CongeladosSite = lazyComRetry(() => import('./pages/Site/CongeladosSite'));
 const ListaPersonalizada = lazyComRetry(() => import('./pages/Site/ListaPersonalizada'));
 // KitFestaAdmin e SiteAdmin (telas administrativas) agora são montados DENTRO de
@@ -118,6 +121,7 @@ import {
   Settings, DollarSign, Building2, TrendingUp, FolderOpen, Warehouse,
   Package, BookOpen as BookOpenIcon, Factory, Play, ClipboardList as ClipboardListIcon, Calendar as CalendarIcon, Lightbulb, BarChart3, BarChart2, History, Sparkles, BellRing, UserCheck, Tag, DatabaseZap, Percent, Clock, Fingerprint, Inbox, Landmark, CalendarCheck, Star, AlertTriangle, ShoppingBag, MapPin, Gauge, Printer, ChefHat
 } from 'lucide-react';
+import { BookOpenCheck } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { useMenuFavoritos } from './hooks/useMenuFavoritos';
 import { usePerfil } from './hooks/usePerfil';
@@ -382,8 +386,11 @@ const Layout = ({ children }) => {
   // menu completo" — some sozinha depois que a pessoa abrir o menu completo
   // ou fechar a dica (X), e nunca mais volta (por usuário, localStorage).
   const [dicaMenuVista, setDicaMenuVista] = useFiltroSalvo('menu:dicaVista', false);
+  const { pathname: caminhoAtual } = useLocation();
 
-  if (!user || loading) return <>{children}</>;
+  // Tablet do setor (/setor/*) é tela NUA: sem menu, sem alertas, sem Clippy — mesmo que o
+  // aparelho tenha um login do app guardado.
+  if (!user || loading || caminhoAtual.startsWith('/setor/')) return <>{children}</>;
 
   const handleToggleFavorito = (to) => {
     if (!toggleFavorito(to)) {
@@ -458,6 +465,7 @@ const Layout = ({ children }) => {
       showRH && { to: '/rh/curriculos', icon: UserCheck, label: 'Currículos' },
       showPonto && { to: '/rh/funcionarios', icon: Fingerprint, label: 'Funcionários' },
       showPonto && { to: '/rh/ponto', icon: Clock, label: 'Ponto' },
+      (isAdmin || hasPermission('Pode_Ver_Painel_Como_Fazer') || hasPermission('Pode_Editar_Como_Fazer')) && { to: '/rh/como-fazer', icon: BookOpenCheck, label: 'Painel Como Fazer' },
     ].filter(Boolean) },
     { label: 'PCP', icon: Factory, twoCols: true, items: [
       canPcp('itens') && { to: '/pcp/itens', icon: Package, label: 'Itens' },
@@ -542,6 +550,7 @@ const Layout = ({ children }) => {
         {/* Nav — só as SEÇÕES (barra curta); cada uma abre o submenu à direita no hover */}
         <nav className="flex-1 py-2 space-y-0.5 overflow-y-auto">
           <SidebarItem to="/tarefas" icon={CalendarCheck} label="Tarefas" />
+          <SidebarItem to="/como-fazer" icon={BookOpenCheck} label="Como Fazer" />
           <SidebarItem to="/" icon={LayoutDashboard} label="Dashboard" end />
           {itensFavoritos.length > 0 && (
             <>
@@ -675,6 +684,12 @@ const Layout = ({ children }) => {
             <NavLink to="/tarefas" onClick={closeMobile} className={({ isActive }) => `flex items-center gap-2.5 px-4 py-3 text-sm font-semibold transition-colors ${isActive ? 'text-primary bg-primary-50/50' : 'text-gray-700 hover:bg-gray-50'}`}>
               <CalendarCheck className="h-4 w-4" />
               Tarefas
+            </NavLink>
+
+            {/* Como Fazer — manuais, treinamento e rotinas (toda a equipe logada) */}
+            <NavLink to="/como-fazer" onClick={closeMobile} className={({ isActive }) => `flex items-center gap-2.5 px-4 py-3 text-sm font-semibold transition-colors ${isActive ? 'text-primary bg-primary-50/50' : 'text-gray-700 hover:bg-gray-50'}`}>
+              <BookOpenCheck className="h-4 w-4" />
+              Como Fazer
             </NavLink>
 
             {/* Dashboard — sempre visível */}
@@ -827,6 +842,9 @@ function App() {
               {/* Bater ponto pelo link pessoal (sem autenticação) */}
               <Route path="/ponto/:token" element={<BaterPonto />} />
 
+              {/* Tablet do setor (Como Fazer): foto + 4 números, sem login do app */}
+              <Route path="/setor/:slug/*" element={<SetorTablet />} />
+
               {/* Site público do Kit Festa (sem autenticação do app) */}
               <Route path="/kit-festa" element={<KitFestaSite />} />
 
@@ -847,6 +865,9 @@ function App() {
 
               {/* Tarefas da Equipe (agenda com alertas) — toda a equipe logada */}
               <Route path="/tarefas" element={<PrivateRoute><TarefasAgenda /></PrivateRoute>} />
+ {/* Como Fazer — manuais, treinamento e rotinas (toda a equipe logada) */}
+              <Route path="/como-fazer/*" element={<PrivateRoute><ComoFazerApp /></PrivateRoute>} />
+              <Route path="/rh/como-fazer" element={<PrivateRoute tab={['Pode_Ver_Painel_Como_Fazer', 'Pode_Editar_Como_Fazer']}><ComoFazerPainel /></PrivateRoute>} />
               <Route path="/tarefas/parecer" element={<PrivateRoute tab="Pode_Ver_Parecer_Tarefas"><TarefasParecer /></PrivateRoute>} />
 
               {/* Catálogo */}

@@ -69,6 +69,7 @@ const kitFestaRoutes = require('./routes/kitFestaRoutes'); // Kit Festa: painel 
 const kitFestaPublicRoutes = require('./routes/kitFestaPublicRoutes'); // Kit Festa: site público do cliente
 const congeladosRoutes = require('./routes/congeladosRoutes'); // Site Congelados: painel admin
 const tarefaRoutes = require('./routes/tarefaRoutes'); // Tarefas da Equipe (agenda com alerta sonoro)
+const comoFazerRoutes = require('./routes/comoFazerRoutes'); // Como Fazer (POPs, treinamento, rotinas) — auth interna
 const pendenciasRoutes = require('./routes/pendenciasRoutes'); // Central de Pendências (A3, 09/2026)
 const cobrancaRoutes = require('./routes/cobrancaRoutes'); // Régua de Cobrança (inadimplentes)
 const congeladosPublicRoutes = require('./routes/congeladosPublicRoutes'); // Site Congelados: site público do cliente
@@ -115,7 +116,9 @@ app.use(helmet({
 const impressaoEtiquetasRoutes = require('./routes/impressaoEtiquetasRoutes');
 app.use('/api/impressao/etiquetas', authMiddleware, express.json({ limit: '4mb' }), impressaoEtiquetasRoutes, impressaoEtiquetasRoutes.tratarErro);
 
-app.use(express.json());
+// Como Fazer: parser próprio no router (2 MB só nas rotas de salvar documento); o global de 100 KB não pode ler antes
+const jsonGlobal = express.json();
+app.use((req, res, next) => (req.path.startsWith('/api/como-fazer') ? next() : jsonGlobal(req, res, next)));
 app.use((req, res, next) => {
     // Log básico para debug
     console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
@@ -235,6 +238,7 @@ app.use('/api/kitfesta', authMiddleware, kitFestaRoutes); // Kit Festa: painel a
 app.use('/api/congelados', authMiddleware, congeladosRoutes); // Site Congelados: painel admin (produtos, pedidos)
 app.use('/api/catalogo-personalizado', authMiddleware, catalogoPersonalizadoRoutes); // Catálogo Personalizado: montar lista de preços e gerar link
 app.use('/api/tarefas', authMiddleware, tarefaRoutes); // Tarefas da Equipe (agenda com alerta sonoro)
+app.use('/api/como-fazer', comoFazerRoutes); // Como Fazer: SEM authMiddleware (aparelho/tablet/app — auth interna)
 app.use('/api/pendencias', authMiddleware, pendenciasRoutes); // Central de Pendências (A3, 09/2026)
 app.use('/api/cobranca', cobrancaRoutes); // Régua de Cobrança de inadimplentes (auth inside)
 

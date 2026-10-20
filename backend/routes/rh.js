@@ -3,6 +3,7 @@ const router = express.Router();
 const ctrl = require('../controllers/curriculoController');
 const func = require('../controllers/funcionarioController');
 const uploadFuncionario = require('../middlewares/uploadFuncionarioMiddleware');
+const uploadFotoFuncionario = require('../middlewares/uploadFuncionarioFotoMiddleware');
 
 // Todas as rotas aqui já passam pelo authMiddleware (registrado no index.js)
 // Além disso verificamos a permissão Pode_Ver_RH
@@ -76,6 +77,7 @@ router.get('/funcionarios/:id', checkPonto, func.detalhe);
 router.put('/funcionarios/:id', checkEditPonto, func.atualizar);
 router.post('/funcionarios/:id/gerar-link', checkEditPonto, func.gerarLink);
 router.put('/funcionarios/:id/senha', checkEditPonto, func.definirSenha);
+router.post('/funcionarios/:id/foto', checkEditPonto, uploadFotoFuncionario.receber, func.enviarFoto);
 router.put('/funcionarios/:id/jornada', checkEditPonto, func.salvarJornada);
 router.get('/funcionarios/:id/cartao', checkPonto, func.cartao);
 router.put('/funcionarios/:id/folha', checkEditPonto, func.salvarAjusteFolha);

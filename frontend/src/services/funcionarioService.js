@@ -7,6 +7,12 @@ const funcionarioService = {
     detalhar: async (id) => (await api.get(`/rh/funcionarios/${id}`)).data,
     criar: async (dados) => (await api.post('/rh/funcionarios', dados)).data,
     atualizar: async (id, dados) => (await api.put(`/rh/funcionarios/${id}`, dados)).data,
+    // Foto do funcionário (aparece na grade do tablet do Como Fazer)
+    enviarFoto: async (id, arquivo) => {
+        const form = new FormData();
+        form.append('foto', arquivo);
+        return (await api.post(`/rh/funcionarios/${id}/foto`, form, { headers: { 'Content-Type': 'multipart/form-data' } })).data;
+    },
     gerarLink: async (id) => (await api.post(`/rh/funcionarios/${id}/gerar-link`)).data,
     definirSenha: async (id, senha) => (await api.put(`/rh/funcionarios/${id}/senha`, { senha })).data,
     salvarJornada: async (id, dados) => (await api.put(`/rh/funcionarios/${id}/jornada`, dados)).data,

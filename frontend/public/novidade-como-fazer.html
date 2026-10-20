@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Como Fazer — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp (sem imagem: cartão compacto) -->
+<meta property="og:title" content="📘 Novidade no Hardt App: Como Fazer">
+<meta property="og:description" content="Manuais com foto e voz, treinamento confirmado pelo encarregado e rotinas com checklist (temperatura dos freezers). Veja as telas.">
+<meta property="og:type" content="website">
+<style>
+  :root { --primary:#00754A; --primary-dark:#006241; --house:#1E3932; --mint:#d4e9e2; --cream:#f2f0eb; --gold:#cba258; --ink:rgba(0,0,0,.87); --ink-soft:#5f6b66; letter-spacing:-0.01em; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--cream); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; line-height:1.55; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:620px; margin:0 auto; padding:0 16px 56px; }
+  .hero { background:linear-gradient(168deg,var(--house) 0%,#16302a 100%); color:#fff; padding:40px 16px 56px; }
+  .hero-inner { max-width:620px; margin:0 auto; text-align:center; }
+  .eyebrow { display:inline-block; background:var(--gold); color:#2b230f; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.14em; padding:6px 14px; border-radius:999px; margin-bottom:18px; }
+  .hero h1 { font-size:clamp(28px,7vw,40px); font-weight:800; line-height:1.12; margin:0 0 12px; text-wrap:balance; }
+  .hero p { color:rgba(255,255,255,.75); font-size:16px; max-width:46ch; margin:0 auto; text-wrap:balance; }
+  .sec-label { font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.16em; color:var(--primary-dark); margin:34px 4px 12px; }
+  .acc { background:#fff; border:1px solid #e3e1da; border-radius:16px; margin-bottom:10px; overflow:hidden; box-shadow:0 1px 2px rgba(30,57,50,.05); }
+  .acc-head { width:100%; display:flex; align-items:center; gap:12px; background:none; border:none; font:inherit; text-align:left; padding:15px 16px; cursor:pointer; min-height:56px; }
+  .acc-head:focus-visible { outline:3px solid var(--gold); outline-offset:2px; }
+  .acc-ico { width:38px; height:38px; border-radius:11px; background:var(--mint); display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
+  .acc-head strong { flex:1; font-size:15.5px; font-weight:700; }
+  .acc-seta { color:#9aa5a0; transition:transform .2s; font-size:13px; }
+  .acc.aberto .acc-seta { transform:rotate(180deg); }
+  .acc-corpo { display:none; padding:0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display:block; }
+  .acc-corpo p, .acc-corpo li { font-size:14px; color:var(--ink-soft); }
+  .acc-corpo p { margin:0 0 10px; }
+  .acc-corpo ul { margin:0; padding-left:18px; }
+  .acc-corpo li { margin-bottom:7px; }
+  .acc-corpo b { color:var(--ink); }
+  @media (max-width:420px) { .acc-corpo { padding-left:16px; } }
+  .passos { background:#fff; border:1px solid #e3e1da; border-radius:16px; padding:18px 16px; }
+  .passo { display:flex; gap:14px; padding:10px 0; }
+  .passo + .passo { border-top:1px dashed #e3e1da; }
+  .passo-n { width:30px; height:30px; flex-shrink:0; border-radius:50%; background:var(--primary); color:#fff; font-weight:800; font-size:14px; display:flex; align-items:center; justify-content:center; }
+  .passo div { font-size:14px; color:var(--ink-soft); }
+  .passo b { color:var(--ink); }
+  .rodape { text-align:center; font-size:13px; color:var(--ink-soft); margin-top:40px; }
+  .rodape strong { color:var(--primary-dark); }
+  /* mockups */
+  .tela { background:#fff; border:1px solid #e3e1da; border-radius:16px; overflow:hidden; margin-bottom:12px; box-shadow:0 1px 2px rgba(30,57,50,.05); }
+  .tela-titulo { background:var(--house); color:#fff; padding:12px 16px; font-size:13px; font-weight:800; }
+  .tela-corpo { padding:14px; background:#f7f6f2; position:relative; }
+  .tela-corpo.escuro { background:var(--house); }
+  .app-card { background:#fff; border:1px solid #e5e3dc; border-radius:12px; padding:10px 12px; margin-bottom:8px; position:relative; }
+  .app-card.amarelo { border:2px solid #f59e0b; }
+  .app-card small { display:block; font-size:10px; font-weight:800; letter-spacing:.08em; color:#6b756f; }
+  .app-card b { font-size:14px; }
+  .badge { display:inline-block; padding:3px 8px; font-size:11px; font-weight:700; border-radius:999px; margin-right:4px; }
+  .b-roxo { background:#f3e8ff; color:#7e22ce; } .b-amarelo { background:#fef9c3; color:#854d0e; } .b-verde { background:#dcfce7; color:#166534; } .b-azul { background:#dbeafe; color:#1e40af; } .b-verm { background:#fee2e2; color:#b91c1c; }
+  .btn { display:inline-block; background:var(--primary); color:#fff; font-weight:800; font-size:13px; padding:9px 18px; border-radius:999px; margin-top:6px; }
+  .btn.s { background:#fff; color:var(--primary); border:1.5px solid var(--primary); }
+  .faces { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+  .face { background:#fff; border-radius:12px; padding:8px 4px; text-align:center; font-size:12px; font-weight:700; position:relative; }
+  .face i { display:block; width:42px; height:42px; border-radius:50%; background:var(--mint); margin:0 auto 4px; font-style:normal; line-height:42px; color:var(--primary-dark); }
+  .keys { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; max-width:200px; margin:10px auto 0; }
+  .keys span { background:#fff; border-radius:10px; text-align:center; padding:9px 0; font-weight:800; }
+  .dots { text-align:center; margin-top:8px; } .dots i { display:inline-block; width:12px; height:12px; border-radius:50%; background:rgba(255,255,255,.35); margin:0 4px; } .dots i.on { background:var(--gold); }
+  .passoM { display:flex; gap:10px; align-items:center; background:#fff; border:1px solid #e5e3dc; border-radius:12px; padding:9px; margin-bottom:8px; position:relative; }
+  .passoM .n { width:28px; height:28px; border-radius:50%; background:var(--house); color:#fff; text-align:center; line-height:28px; font-weight:800; flex-shrink:0; }
+  .passoM .foto { margin-left:auto; width:58px; height:46px; background:repeating-linear-gradient(45deg,#e5e7eb 0 6px,#f3f4f6 6px 12px); border-radius:8px; flex-shrink:0; }
+  .passoM .tx { font-size:13px; font-weight:700; }
+  .alerta { background:#fef2f2; border-left:4px solid #dc2626; border-radius:8px; padding:8px 10px; font-size:12.5px; margin:8px 0; position:relative; }
+  .num { border:2px solid #dc2626; background:#fff; color:#b91c1c; border-radius:12px; text-align:center; font-weight:800; font-size:20px; padding:8px; margin-top:6px; }
+  table.m { width:100%; border-collapse:collapse; font-size:12px; background:#fff; border-radius:10px; overflow:hidden; }
+  table.m th { background:#f3f4f6; text-align:center; padding:6px 4px; font-size:10px; text-transform:uppercase; color:#6b7280; }
+  table.m td { padding:6px 4px; text-align:center; border-top:1px solid #f0efe9; } table.m td:first-child { text-align:left; font-weight:700; }
+  .pin { position:absolute; width:22px; height:22px; border-radius:50%; background:var(--gold); color:#1E3932; font-size:12px; font-weight:800; display:flex; align-items:center; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,.3); z-index:5; }
+  .legenda { background:#fff; border:1px solid #e3e1da; border-radius:12px; padding:12px 14px; margin-bottom:22px; }
+  .legenda h3 { margin:0 0 8px; font-size:11px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; color:#4b5563; }
+  .legenda ol { margin:0; padding:0; list-style:none; display:grid; gap:8px; }
+  .legenda li { display:flex; gap:10px; font-size:13.5px; color:var(--ink-soft); }
+  .legenda li i { flex:none; width:22px; height:22px; border-radius:50%; background:var(--gold); color:#1E3932; font-style:normal; font-weight:800; font-size:12px; display:flex; align-items:center; justify-content:center; }
+</style>
+</head>
+<body>
+
+<header class="hero"><div class="hero-inner">
+  <span class="eyebrow">Novidade no Hardt App</span>
+  <h1>📘 Como Fazer: o jeito certo, com foto e voz</h1>
+  <p>Manuais da cozinha, treinamento confirmado pelo encarregado e rotinas com checklist — tudo no tablet do setor e no app.</p>
+</div></header>
+
+<div class="wrap">
+
+  <div class="sec-label">O que é</div>
+  <div class="acc aberto"><button class="acc-head" aria-expanded="true"><span class="acc-ico">📘</span><strong>Um lugar só para aprender e fazer certo</strong><span class="acc-seta">▾</span></button>
+    <div class="acc-corpo">
+      <p>Cada coisa que a equipe precisa saber vira um <b>conteúdo</b> com passos curtos, <b>foto</b> e botão <b>🔊 Ouvir</b> (o aparelho lê em voz alta):</p>
+      <ul>
+        <li><b>Regra</b> — ex.: higiene e uniforme.</li>
+        <li><b>Máquina</b> — montar, usar, limpar e o que fazer se der problema.</li>
+        <li><b>Dosagem</b> — quanto de cada coisa, com a foto da medida.</li>
+        <li><b>Rotina</b> — checklist com horário, como a temperatura dos freezers.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="acc aberto"><button class="acc-head" aria-expanded="true"><span class="acc-ico">🔒</span><strong>Treinamento que fica registrado</strong><span class="acc-seta">▾</span></button>
+    <div class="acc-corpo"><p>O funcionário lê e toca <b>Aprendi</b>. Depois faz na prática com o encarregado olhando, e o <b>encarregado confirma com a senha de 4 números dele</b>. Fica registrado quem aprendeu, quando e quem confirmou. Se o manual mudar, todo mundo treina de novo.</p></div>
+  </div>
+  <div class="acc aberto"><button class="acc-head" aria-expanded="true"><span class="acc-ico">🌡️</span><strong>Rotina com alarme e aviso de problema</strong><span class="acc-seta">▾</span></button>
+    <div class="acc-corpo"><p>No horário, a tarefa toca na agenda do encarregado com o botão <b>Fazer agora</b>. O checklist pede a temperatura, sim/não e foto. Se algo ficar fora do normal, a tela fica <b>vermelha</b> e o encarregado recebe uma tarefa de aviso.</p></div>
+  </div>
+
+  <div class="sec-label">As telas do app</div>
+
+  <div class="tela"><div class="tela-titulo">Tela 1 · Entrar no tablet do setor</div>
+    <div class="tela-corpo escuro">
+      <div style="text-align:center;color:#fff;font-weight:800;margin-bottom:8px">🍳 Cozinha — toque na sua foto</div>
+      <div class="faces" style="position:relative"><div class="face"><i>M</i>Maria (exemplo)</div><div class="face"><i>J</i>João (exemplo)</div><div class="face"><i>A</i>Ana (exemplo)</div><span class="pin" style="left:-4px;top:-8px">1</span></div>
+      <div class="dots" style="position:relative"><i class="on"></i><i class="on"></i><i></i><i></i><span class="pin" style="right:12px;top:-8px">2</span></div>
+      <div class="keys"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span></div>
+    </div>
+  </div>
+  <div class="legenda"><h3>Legenda</h3><ol>
+    <li><i>1</i><span>O funcionário toca na <b>própria foto</b> — não digita nome.</span></li>
+    <li><i>2</i><span>Digita os <b>4 números</b> (a mesma senha do ponto, se ela tiver 4 números). Se ficar 2 minutos sem tocar, o tablet volta sozinho para as fotos.</span></li>
+  </ol></div>
+
+  <div class="tela"><div class="tela-titulo">Tela 2 · A biblioteca</div>
+    <div class="tela-corpo">
+      <div class="app-card amarelo"><small>POP-HIG-001 · v3</small><b>👕 Higiene e uniforme</b><div style="margin-top:4px"><span class="badge b-roxo">Regra</span><span class="badge b-amarelo">Você não treinou</span></div><span class="pin" style="right:8px;top:8px">1</span></div>
+      <div class="app-card"><small>POP-FRZ-001 · v2</small><b>🧊 Temperatura dos freezers</b><div style="margin-top:4px"><span class="badge b-verde">Rotina</span><span class="badge b-azul">07:30 e 16:30</span></div><span class="btn">Fazer agora</span><span class="pin" style="right:8px;top:8px">2</span></div>
+      <div class="app-card"><small>POP-MAQ-001 · v1</small><b>🍟 Fritadeira</b><div style="margin-top:4px"><span class="badge b-azul">Máquina</span> já sei ✅</div></div>
+    </div>
+  </div>
+  <div class="legenda"><h3>Legenda</h3><ol>
+    <li><i>1</i><span>O que você ainda não treinou aparece <b>primeiro</b>, com borda e selo amarelo.</span></li>
+    <li><i>2</i><span>Rotina tem o botão <b>Fazer agora</b> direto no cartão.</span></li>
+  </ol></div>
+
+  <div class="tela"><div class="tela-titulo">Tela 3 · O documento inteiro numa página</div>
+    <div class="tela-corpo">
+      <div class="passoM"><span class="n">1</span><span class="tx">Tire anel, brinco, relógio e deixe o celular no armário.</span><span class="foto"></span><span class="pin" style="right:-4px;top:-8px">1</span></div>
+      <div class="passoM"><span class="n">2</span><span class="tx">Lave as mãos até o cotovelo, por 20 segundos. <span style="display:block;color:#00754A">🔊 Ouvir</span></span><span class="foto"></span><span class="pin" style="left:-4px;top:-8px">2</span></div>
+      <div class="alerta"><b>O que NÃO fazer:</b> entrar com celular ou comer na produção.<span class="pin" style="right:6px;top:-9px">3</span></div>
+      <div style="text-align:center;margin-top:6px;position:relative"><span class="btn">✅ Aprendi — Maria</span> <span class="btn s">🔒 Encarregado confirma</span><span class="pin" style="right:0;top:-10px">4</span></div>
+    </div>
+  </div>
+  <div class="legenda"><h3>Legenda</h3><ol>
+    <li><i>1</i><span>Passo numerado: frase curta, foto (ou vídeo de até 20 s) à direita.</span></li>
+    <li><i>2</i><span><b>🔊 Ouvir</b> lê o passo em voz alta.</span></li>
+    <li><i>3</i><span>"O que NÃO fazer" e "Se der errado" aparecem no fim do documento.</span></li>
+    <li><i>4</i><span>No rodapé: <b>Aprendi</b> e depois o <b>encarregado confirma</b> escolhendo a foto dele e digitando a senha.</span></li>
+  </ol></div>
+
+  <div class="tela"><div class="tela-titulo">Tela 4 · Checklist da rotina</div>
+    <div class="tela-corpo">
+      <div class="passoM" style="display:block"><div class="tx">Freezer 1 — qual a temperatura?</div><div class="num">−10 °C</div><span class="pin" style="right:-4px;top:-8px">1</span></div>
+      <div class="alerta">Está muito quente. Passe o produto para outro freezer e avise o encarregado.<span class="pin" style="right:6px;top:-9px">2</span></div>
+      <div style="text-align:center;position:relative"><span class="btn" style="opacity:.45">✓ Pronto</span><span class="pin" style="right:16px;top:-8px">3</span></div>
+    </div>
+  </div>
+  <div class="legenda"><h3>Legenda</h3><ol>
+    <li><i>1</i><span>Toque no número, digite a temperatura num teclado grande. Tem também perguntas de <b>sim/não</b> e <b>foto</b> (abre a câmera).</span></li>
+    <li><i>2</i><span>Fora do normal? A linha fica <b>vermelha</b> e mostra o que fazer. O encarregado recebe uma tarefa de aviso.</span></li>
+    <li><i>3</i><span><b>Pronto</b> só libera quando tudo que é obrigatório foi respondido. Se a internet cair, a tela avisa e dá para tentar de novo sem duplicar.</span></li>
+  </ol></div>
+
+  <div class="tela"><div class="tela-titulo">Tela 5 · Painel Como Fazer (RH → Painel Como Fazer)</div>
+    <div class="tela-corpo" style="position:relative">
+      <table class="m"><tr><th>Funcionário</th><th>Higiene</th><th>Fritadeira</th><th>Freezers</th></tr>
+        <tr><td>Maria (exemplo)</td><td>✅</td><td>🟡</td><td>✅</td></tr><tr><td>João (exemplo)</td><td>🟡</td><td>🟡</td><td>✅</td></tr></table>
+      <span class="pin" style="right:-4px;top:-8px">1</span>
+      <div style="margin-top:8px;position:relative"><span class="btn s">Relatório p/ Vigilância</span><span class="pin" style="right:10px;top:-8px">2</span></div>
+    </div>
+  </div>
+  <div class="legenda"><h3>Legenda</h3><ol>
+    <li><i>1</i><span>Quem já treinou (✅) e quem falta (🟡). Abas: Treinamentos, Rotinas (feitas, atrasadas e com desvio), Conteúdos e Aparelhos.</span></li>
+    <li><i>2</i><span>Relatório para a Vigilância: mostra o manual, quem treinou e as rotinas do período, pronto para imprimir.</span></li>
+  </ol></div>
+
+  <div class="sec-label">Para começar a usar</div>
+  <div class="passos">
+    <div class="passo"><div class="passo-n">1</div><div><b>RH:</b> na ficha de cada funcionário, escolha o <b>setor</b>, envie a <b>foto</b> e defina uma senha de <b>4 números</b>.</div></div>
+    <div class="passo"><div class="passo-n">2</div><div><b>RH:</b> em Painel Como Fazer → Aparelhos, gere o link do tablet e abra-o uma vez no tablet.</div></div>
+    <div class="passo"><div class="passo-n">3</div><div><b>Encarregado:</b> peça ao administrador a permissão "Confirmar treinamento" e deixe seu usuário ligado à sua ficha de funcionário.</div></div>
+    <div class="passo"><div class="passo-n">4</div><div><b>Equipe:</b> toque na foto, digite os 4 números e comece pelo que está com a etiqueta amarela.</div></div>
+  </div>
+
+  <div class="rodape"><strong>Hardt App</strong> — dúvidas? Pergunte ao Clippy.</div>
+</div>
+
+<script>
+  document.querySelectorAll('.acc-head').forEach(function (h) {
+    h.addEventListener('click', function () {
+      var acc = h.parentElement; var aberto = acc.classList.toggle('aberto');
+      h.setAttribute('aria-expanded', aberto ? 'true' : 'false');
+    });
+  });
+</script>
+</body>
+</html>

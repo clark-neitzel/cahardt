@@ -47,3 +47,4 @@ Cadastro operacional de funcionários da empresa: ficha completa, documentos, ex
 - O **link de ponto** é fixo por funcionário: ele salva nos favoritos e bate todos os dias pelo mesmo endereço.
 - Os anexos ficam em `/uploads/funcionarios/<id>/` e aceitam PDF e imagens (até 15 MB).
 - Funcionário pode ser ativado a partir de um Cliente (origem dos dados) e, opcionalmente, vinculado a um usuário do app.
+- **Tablet do Como Fazer (10/2026):** a ficha também guarda o **setor** (Cozinha, Estoque, Expedição ou Motorista), a **foto** e o selo da senha. Quem tem senha de **exatamente 4 números** fica "pronto para o tablet" e aparece na grade de fotos do setor; senha com letras continua valendo para o ponto, mas a pessoa não entra no tablet. A mesma senha serve para o ponto e para o tablet. Para o encarregado confirmar treinamentos, o usuário dele precisa estar vinculado ao cadastro de funcionário.

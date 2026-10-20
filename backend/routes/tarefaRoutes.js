@@ -45,38 +45,14 @@ const minutos = (hhmm) => {
     return (h || 0) * 60 + (m || 0);
 };
 
-// dia da semana de 'YYYY-MM-DD' sem depender do fuso do servidor (0=dom ... 6=sáb)
-const diaSemana = (dataStr) => new Date(`${dataStr}T12:00:00Z`).getUTCDay();
+// diaSemana / ocorreNoDia / datasDoIntervalo moveram para services/tarefaRecorrenciaService.js
+// (o Como Fazer também precisa delas). Comportamento idêntico.
+const { diaSemana, ocorreNoDia, datasDoIntervalo } = require('../services/tarefaRecorrenciaService');
 
-// a tarefa "toca" no dia dataRef?
-function ocorreNoDia(tarefa, dataRef) {
-    if (dataRef < tarefa.dataInicio) return false;
-    if (tarefa.recorrenciaFim && dataRef > tarefa.recorrenciaFim) return false;
-    switch (tarefa.recorrencia) {
-        case 'NUNCA': return dataRef === tarefa.dataInicio;
-        case 'DIARIA': return true;
-        case 'DIAS_UTEIS': {
-            const d = diaSemana(dataRef);
-            return d >= 1 && d <= 5;
-        }
-        case 'SEMANAL': return diaSemana(dataRef) === diaSemana(tarefa.dataInicio);
-        case 'MENSAL': return dataRef.slice(8) === tarefa.dataInicio.slice(8);
-        case 'DIAS_SEMANA': return (tarefa.diasSemana || []).includes(diaSemana(dataRef));
-        default: return false;
-    }
-}
-
-// lista de datas 'YYYY-MM-DD' entre de..ate (inclusive), com trava de tamanho
-function datasDoIntervalo(de, ate, maxDias = 62) {
-    const datas = [];
-    const d = new Date(`${de}T12:00:00Z`);
-    const fim = new Date(`${ate}T12:00:00Z`);
-    while (d <= fim && datas.length < maxDias) {
-        datas.push(d.toISOString().slice(0, 10));
-        d.setUTCDate(d.getUTCDate() + 1);
-    }
-    return datas;
-}
+// Como Fazer: tarefas geradas pelo módulo. A da rotina (COMO_FAZER) se conclui preenchendo o
+// checklist e é gerenciada pelo módulo; desvio/chamado/lembrete são tarefas comuns.
+const ORIGENS_EDITAVEIS = ['COMO_FAZER_DESVIO', 'COMO_FAZER_CHAMADO', 'COMO_FAZER_LEMBRETE'];
+const geridaPeloComoFazer = (t) => !!t.origem && !ORIGENS_EDITAVEIS.includes(t.origem);
 
 const parsePerms = (p) => {
     if (!p) return {};
@@ -98,7 +74,9 @@ const resumoTarefa = (t, req) => ({
     responsavel: t.responsavel ? { id: t.responsavel.id, nome: t.responsavel.nome } : null,
     criadaPeloAdmin: !!parsePerms(t.criadoPorPermissoes).admin,
     anexos: (t.anexos || []).map(a => ({ id: a.id, tipo: a.tipo, nome: a.nome, url: a.url })),
-    podeEditar: isAdmin(req) || t.criadoPorId === req.user.id,
+    podeEditar: !geridaPeloComoFazer(t) && (isAdmin(req) || t.criadoPorId === req.user.id),
+    origem: t.origem || null,
+    origemRef: t.origemRef || null,
 });
 
 // busca a tarefa e resolve se o usuário pode editar/excluir
@@ -109,6 +87,10 @@ async function carregarComPermissaoDeEdicao(req, res) {
     });
     if (!tarefa) {
         res.status(404).json({ error: 'Tarefa não encontrada.' });
+        return null;
+    }
+    if (geridaPeloComoFazer(tarefa)) {
+        res.status(403).json({ error: 'Esta tarefa é gerenciada pelo Como Fazer.' });
         return null;
     }
     if (!isAdmin(req) && tarefa.criadoPorId !== req.user.id) {
@@ -483,6 +465,14 @@ router.post('/:id/concluir', async (req, res) => {
         });
         if (existente?.status === 'CONCLUIDA') {
             return res.json({ message: 'Tarefa já estava concluída.', concluidaHora: existente.concluidaHora });
+        }
+        // Rotina do Como Fazer: só se conclui preenchendo o checklist
+        if (tarefa.origem === 'COMO_FAZER') {
+            return res.status(409).json({
+                error: 'Esta tarefa se conclui preenchendo o checklist.',
+                acao: 'ABRIR_CHECKLIST',
+                conteudoId: tarefa.origemRef || null,
+            });
         }
 
         const horaConclusao = RE_HORA.test(hora || '') ? hora : null;

@@ -9,6 +9,8 @@ import FiltroPeriodo, { usePeriodoSalvo } from '../../components/FiltroPeriodo';
 import { imprimirCartaoPonto, imprimirReciboPrestador } from './imprimirCartaoPonto';
 import { API_URL } from '../../services/api';
 import CampoNumero from '../../components/CampoNumero';
+import FotoPessoa from '../../components/ComoFazer/FotoPessoa';
+import { reduzirImagem } from '../../components/ComoFazer/imagem';
 
 const DIAS = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
 const CATS_DOC = ['RG', 'CPF', 'CTPS', 'RESIDENCIA', 'CONTRATO', 'OUTRO'];
@@ -85,7 +87,8 @@ function AbaDados({ f, onSaved }) {
     descontarDsrFalta: f.descontarDsrFalta !== false,
     registraPontoEm: f.registraPontoEm || 'APP',
     tipoContrato: f.tipoContrato || 'CLT', valorHora: f.valorHora ?? '',
-    jornadaMovel: f.jornadaMovel, ativo: f.ativo
+    jornadaMovel: f.jornadaMovel, ativo: f.ativo,
+    setor: f.setor || ''
   });
   const ehPrestador = form.tipoContrato === 'PRESTADOR';
   const [jornadas, setJornadas] = useState(() => {
@@ -99,6 +102,9 @@ function AbaDados({ f, onSaved }) {
   const [senha, setSenha] = useState('');
   const [salvandoSenha, setSalvandoSenha] = useState(false);
   const [temSenha, setTemSenha] = useState(!!f.temSenha);
+  const [senhaNumerica, setSenhaNumerica] = useState(!!f.senhaNumerica);
+  const [foto, setFoto] = useState(f.foto || null);
+  const [enviandoFoto, setEnviandoFoto] = useState(false);
 
   // Base do link de ponto configurável (ex.: domínio hardtsalgados); cai no domínio atual
   useEffect(() => {
@@ -114,9 +120,22 @@ function AbaDados({ f, onSaved }) {
   const salvarSenha = async () => {
     if (!senha || senha.length < 4) { toast.error('A senha deve ter ao menos 4 caracteres.'); return; }
     setSalvandoSenha(true);
-    try { await funcionarioService.definirSenha(f.id, senha); setTemSenha(true); setSenha(''); toast.success('Senha definida!'); }
+    try { await funcionarioService.definirSenha(f.id, senha); setTemSenha(true); setSenhaNumerica(/^\d{4}$/.test(senha)); setSenha(''); toast.success('Senha definida!'); }
     catch (e) { toast.error(e?.response?.data?.erro || 'Erro ao definir senha.'); }
     finally { setSalvandoSenha(false); }
+  };
+
+  const trocarFoto = async (arquivo) => {
+    if (!arquivo) return;
+    setEnviandoFoto(true);
+    try {
+      const reduzida = await reduzirImagem(arquivo, 800);
+      const r = await funcionarioService.enviarFoto(f.id, reduzida);
+      setFoto(r?.foto || foto);
+      toast.success('Foto atualizada!');
+      onSaved();
+    } catch (e) { toast.error(e?.response?.data?.erro || 'Erro ao enviar a foto.'); }
+    finally { setEnviandoFoto(false); }
   };
 
   const salvar = async () => {
@@ -186,6 +205,33 @@ function AbaDados({ f, onSaved }) {
               : 'Bate pelo link pessoal, no celular, com GPS.'}
         </span>
       </label>
+
+      {/* Como Fazer: setor e foto para o tablet */}
+      <div className="border border-gray-200 rounded-lg p-4">
+        <p className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-3">Tablet do setor (Como Fazer)</p>
+        <div className="flex flex-col md:flex-row md:items-end gap-4">
+          <div className="flex items-center gap-3">
+            <FotoPessoa foto={foto} nome={f.nome} tamanho={64} />
+            <label className="px-3 py-2 min-h-[44px] bg-white border border-primary text-primary hover:bg-mint/40 rounded-full text-sm font-semibold inline-flex items-center gap-1 cursor-pointer">
+              {enviandoFoto ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />} {foto ? 'Trocar foto' : 'Enviar foto'}
+              <input type="file" accept="image/*" className="hidden" disabled={enviandoFoto} onChange={(e) => { const a = e.target.files?.[0]; e.target.value = ''; trocarFoto(a); }} />
+            </label>
+          </div>
+          <label className="block flex-1 max-w-xs"><span className="text-sm font-medium text-gray-700">Setor</span>
+            <SelectBusca value={form.setor} onChange={set('setor')} className="mt-1 w-full">
+              <option value="">Sem setor</option>
+              <option value="COZINHA">Cozinha</option>
+              <option value="ESTOQUE">Estoque</option>
+              <option value="EXPEDICAO">Expedição</option>
+              <option value="MOTORISTA">Motorista</option>
+            </SelectBusca>
+          </label>
+          <span className={`self-start md:self-center px-2 py-1 text-xs font-semibold rounded-full ${senhaNumerica && form.setor ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-700'}`}>
+            {!form.setor ? 'Tablet: falta o setor' : senhaNumerica ? 'Tablet: pronto' : 'Tablet: sem senha de 4 números'}
+          </span>
+        </div>
+        <p className="text-xs text-gray-500 mt-2">O funcionário toca na foto e digita a senha de 4 números. Depois de escolher o setor, clique em salvar os dados.</p>
+      </div>
 
       {/* parâmetros do cálculo da folha — só fazem sentido para CLT */}
       <div className={`border border-gray-200 rounded-lg ${ehPrestador ? 'hidden' : ''}`}>
@@ -262,6 +308,7 @@ function AbaDados({ f, onSaved }) {
           {temSenha
             ? 'O funcionário já tem senha. Defina uma nova abaixo para substituir.'
             : 'Defina uma senha — sem ela o funcionário não consegue bater o ponto pelo link.'}
+          {' '}Para usar o tablet do Como Fazer, a senha precisa ter exatamente 4 números (a mesma vale para o ponto).
         </p>
         <div className="flex flex-col md:flex-row gap-2">
           <input type="text" value={senha} onChange={(e) => setSenha(e.target.value)} placeholder="Nova senha (mín. 4)" className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm" />

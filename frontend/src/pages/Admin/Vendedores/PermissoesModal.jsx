@@ -156,6 +156,10 @@ const DEFAULT_PERMISSIONS = {
     Pode_Criar_Tarefas_Para_Outros: false,
     Pode_Ver_Agenda_Colegas: false,
     Pode_Ver_Parecer_Tarefas: false,
+    // Como Fazer (manuais, treinamento e rotinas)
+    Pode_Ver_Painel_Como_Fazer: false,
+    Pode_Editar_Como_Fazer: false,
+    Pode_Confirmar_Treinamento: false,
 };
 
 const TELAS_INICIAIS = [
@@ -225,6 +229,7 @@ const SECOES = [
     { id: 'acesso', nome: 'Acesso e Conta', icon: KeyRound },
     { id: 'dashboard', nome: 'Dashboard', icon: LayoutDashboard },
     { id: 'tarefas', nome: 'Tarefas da Equipe', icon: CalendarCheck },
+    { id: 'comofazer', nome: 'Como Fazer', icon: ClipboardCheck },
     { id: 'vendas', nome: 'Vendas', icon: ClipboardList },
     { id: 'logistica', nome: 'Logística', icon: Truck },
     { id: 'financeiro', nome: 'Financeiro', icon: DollarSign },
@@ -256,6 +261,10 @@ const BOOL_INDEX = [
     { sec: 'tarefas', path: 'Pode_Criar_Tarefas_Para_Outros', nome: 'Criar tarefas para outros', desc: 'Sem isso, a pessoa só cria tarefa para si mesma', kw: 'agenda delegar tarefa equipe' },
     { sec: 'tarefas', path: 'Pode_Ver_Agenda_Colegas', nome: 'Ver a agenda dos colegas', desc: "Ver as tarefas dos outros (sem editar) e o filtro 'Toda a equipe'", kw: 'agenda equipe tarefas outros colegas' },
     { sec: 'tarefas', path: 'Pode_Ver_Parecer_Tarefas', nome: 'Ver o parecer do dia', desc: 'Relatório por funcionário: concluídas no horário, com atraso, não feitas e adiamentos', kw: 'relatorio atraso concluidas parecer adiamento' },
+    // Como Fazer
+    { sec: 'comofazer', path: 'Pode_Ver_Painel_Como_Fazer', nome: 'Ver o painel do Como Fazer', desc: 'Ver quem já treinou, as rotinas feitas/atrasadas/com desvio e imprimir o relatório', kw: 'como fazer pop manual treinamento rotina checklist painel vigilancia' },
+    { sec: 'comofazer', path: 'Pode_Editar_Como_Fazer', nome: 'Criar e editar o Como Fazer', desc: 'Criar manuais, regras, rotinas e dosagens, publicar versões e liberar o tablet do setor', kw: 'como fazer pop manual editar publicar tablet pareamento' },
+    { sec: 'comofazer', path: 'Pode_Confirmar_Treinamento', nome: 'Confirmar treinamento (encarregado)', desc: 'Aparece na lista de encarregados e confirma com a senha de 4 números que o funcionário aprendeu', kw: 'como fazer treinamento encarregado confirmar pin' },
     // Vendas — menus
     { sec: 'vendas', path: 'catalogo.view', nome: 'Ver Catálogo', desc: 'Menu Catálogo visível, com preços', kw: 'menu precos tabela produtos catalogo' },
     { sec: 'vendas', path: 'pedidos.view', nome: 'Ver Pedidos (+ Relatórios e Rota)', desc: 'Menus Pedidos, Relatórios e Rota visíveis', kw: 'menu vender lista pedidos relatorios rota' },
@@ -887,6 +896,34 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
         </div>
     );
 
+    const secaoComoFazer = (
+        <div>
+            <CabecalhoSecao sec="comofazer" />
+            <p className="text-xs text-gray-500 px-2 mb-1.5">A aba Como Fazer é visível para todos. Estas chaves liberam funções extras:</p>
+            <Toggle
+                checked={!!permissoes.Pode_Ver_Painel_Como_Fazer}
+                onChange={() => toggleBool('Pode_Ver_Painel_Como_Fazer')}
+                label="Pode ver o painel do Como Fazer"
+                sublabel="Quem já treinou, rotinas feitas/atrasadas/com desvio e relatório para imprimir"
+                colorClass="bg-emerald-600"
+            />
+            <Toggle
+                checked={!!permissoes.Pode_Editar_Como_Fazer}
+                onChange={() => toggleBool('Pode_Editar_Como_Fazer')}
+                label="Pode criar e editar o Como Fazer"
+                sublabel="Criar e publicar manuais, regras, rotinas e dosagens; liberar o tablet do setor"
+                colorClass="bg-emerald-600"
+            />
+            <Toggle
+                checked={!!permissoes.Pode_Confirmar_Treinamento}
+                onChange={() => toggleBool('Pode_Confirmar_Treinamento')}
+                label="Pode confirmar treinamento (encarregado)"
+                sublabel="Confirma com a senha de 4 números que o funcionário aprendeu"
+                colorClass="bg-emerald-600"
+            />
+        </div>
+    );
+
     const secaoVendas = (
         <div>
             <CabecalhoSecao sec="vendas" />
@@ -1489,7 +1526,7 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
     );
 
     const SECAO_RENDER = {
-        acesso: secaoAcesso, dashboard: secaoDashboard, tarefas: secaoTarefas, vendas: secaoVendas,
+        acesso: secaoAcesso, dashboard: secaoDashboard, tarefas: secaoTarefas, comofazer: secaoComoFazer, vendas: secaoVendas,
         logistica: secaoLogistica, financeiro: secaoFinanceiro, caixa: secaoCaixa, admin: secaoAdmin,
         estoque: secaoEstoque, pcp: secaoPcp, rh: secaoRh, config: secaoConfig,
     };

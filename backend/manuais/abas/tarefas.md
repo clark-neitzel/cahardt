@@ -40,6 +40,17 @@ Agenda de tarefas com alerta sonoro, estilo Google Agenda, para toda a equipe. C
 
 ---
 
+## Tarefas que vêm do Como Fazer (10/2026)
+
+Algumas tarefas aparecem na agenda sozinhas, criadas pelo módulo **Como Fazer**:
+- **Rotina** (ex.: Temperatura dos freezers): nos horários combinados, para o encarregado. No lugar de "Concluir", o botão é **Fazer agora** e abre a lista de conferência; a tarefa só é concluída quando a lista é preenchida (ela conclui para todos os encarregados daquele horário). Não dá para editar nem excluir essa tarefa aqui: quem muda é o Painel Como Fazer.
+- **Desvio**: aviso de que uma resposta ficou fora do esperado numa rotina. Conclui normalmente.
+- **Chamado**: alguém tocou em "Chamar o encarregado" numa máquina. Conclui normalmente.
+- **Lembrete**: pedido da gestão para a pessoa fazer um treinamento pendente. Conclui normalmente.
+Essas tarefas entram no mesmo pop-up e no Parecer do dia como qualquer outra.
+
+---
+
 ## Cores na agenda
 
 | Cor | Significado |

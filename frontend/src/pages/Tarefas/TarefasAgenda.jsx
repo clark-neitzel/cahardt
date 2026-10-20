@@ -3,7 +3,7 @@ import {
     CalendarCheck, ChevronLeft, ChevronRight, Plus, Bell, Lock, User as UserIcon,
     Repeat, CheckCircle2, Pencil, Trash2, X, BarChart3,
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
 import SelectBusca from '../../components/SelectBusca';
@@ -95,7 +95,7 @@ const TarefaDetalheModal = ({ oc, usuario, onClose, onConcluir, onEditar, onExcl
                         {podeConcluir && (
                             <button onClick={() => onConcluir(oc)}
                                 className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm min-h-[44px]">
-                                <CheckCircle2 className="h-4 w-4" /> Concluir tarefa
+                                <CheckCircle2 className="h-4 w-4" /> {oc.origem === 'COMO_FAZER' && oc.origemRef ? 'Fazer agora' : 'Concluir tarefa'}
                             </button>
                         )}
                         {oc.podeEditar && (
@@ -147,6 +147,7 @@ const CardTarefa = ({ oc, userId, onClick, mostrarResponsavel }) => {
 
 const TarefasAgenda = () => {
     const { user, hasPermission } = useAuth();
+    const navigate = useNavigate();
     const isAdmin = !!user?.permissoes?.admin;
     const podeVerColegas = isAdmin || hasPermission('Pode_Ver_Agenda_Colegas');
     const podeParaOutros = isAdmin || hasPermission('Pode_Criar_Tarefas_Para_Outros');
@@ -199,6 +200,12 @@ const TarefasAgenda = () => {
     };
 
     const concluir = async (oc) => {
+        // Rotina do Como Fazer: abre o checklist (a tarefa conclui sozinha quando ele é enviado)
+        if (oc.origem === 'COMO_FAZER' && oc.origemRef) {
+            setDetalhe(null);
+            navigate(`/como-fazer/fazer/${oc.origemRef}?${new URLSearchParams({ tarefa: oc.id, data: oc.dataRef, ...(oc.hora ? { hora: oc.hora } : {}) })}`);
+            return;
+        }
         try {
             await tarefaService.concluir(oc.id, oc.dataRef);
             toast.success('Tarefa concluída!');

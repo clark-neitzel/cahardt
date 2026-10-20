@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup — "Como Fazer" (POPs, manuais e treinamento) no CA-Hardt</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--primary:#00754A;--primaryDark:#006241;--house:#1E3932;--mint:#d4e9e2;--bg:#f2f0eb;--gold:#cba258;--text:rgba(0,0,0,.87);--muted:#6b7280;--border:#e5e7eb}
+*{box-sizing:border-box}
+body{margin:0;font-family:Manrope,-apple-system,"SF Pro Text",sans-serif;letter-spacing:-.01em;font-variant-numeric:tabular-nums;background:var(--bg);color:var(--text)}
+.hero{background:var(--house);color:#fff;padding:28px 16px 22px}
+.hero .wrap{max-width:1100px;margin:0 auto}
+.hero .tag{display:inline-block;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:999px;padding:3px 12px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.hero h1{margin:12px 0 6px;font-size:24px;font-weight:800;line-height:1.15}
+.hero p{margin:0;color:rgba(255,255,255,.8);font-size:14px;max-width:760px;line-height:1.5}
+.nav{position:sticky;top:0;z-index:20;background:#fff;border-bottom:1px solid var(--border)}
+.nav .wrap{max-width:1100px;margin:0 auto;display:flex;gap:6px;overflow-x:auto;padding:10px 16px;scrollbar-width:none}
+.nav button{flex:none;border:1px solid var(--primary);background:#fff;color:var(--primary);border-radius:999px;padding:8px 14px;font:inherit;font-weight:600;font-size:13px;cursor:pointer;min-height:40px}
+.nav button.on{background:var(--primary);color:#fff}
+main{max-width:1100px;margin:0 auto;padding:16px}
+section.tela{display:none}section.tela.on{display:block}
+.intro{background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:14px;font-size:14px;line-height:1.5}
+.intro b{color:var(--primaryDark)}
+.app{background:#fff;border:1px solid var(--border);border-radius:16px;box-shadow:0 1px 3px rgba(0,0,0,.06);overflow:hidden;position:relative}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 16px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.topbar .t{display:flex;align-items:center;gap:10px}
+.ico{background:var(--mint);width:38px;height:38px;border-radius:10px;display:grid;place-items:center;color:var(--primary);font-size:18px}
+.topbar h2{margin:0;font-size:18px;font-weight:800}
+.topbar small{display:block;color:var(--muted);font-weight:500;font-size:12px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:999px;padding:8px 16px;font-weight:700;font-size:13px;border:1px solid transparent;cursor:default;min-height:40px;white-space:nowrap}
+.btn.p{background:var(--primary);color:#fff}.btn.s{background:#fff;border-color:var(--primary);color:var(--primary)}.btn.g{background:#f3f4f6;color:#374151}.btn.r{background:#dc2626;color:#fff}
+.btn.xl{font-size:17px;min-height:60px;padding:12px 22px;border-radius:18px}
+.body{padding:14px 16px}
+.badge{display:inline-block;padding:3px 8px;font-size:11px;font-weight:700;border-radius:999px;white-space:nowrap}
+.b-verde{background:#dcfce7;color:#166534}.b-cinza{background:#f3f4f6;color:#374151}.b-amarelo{background:#fef9c3;color:#854d0e}.b-vermelho{background:#fee2e2;color:#b91c1c}.b-azul{background:var(--mint);color:var(--primaryDark)}.b-roxo{background:#f3e8ff;color:#6b21a8}.b-ambar{background:#fef3c7;color:#b45309}
+.grid{display:grid;grid-template-columns:1fr;gap:10px}
+@media(min-width:768px){.grid{grid-template-columns:1fr 1fr}.grid.c3{grid-template-columns:1fr 1fr 1fr}.grid.c4{grid-template-columns:repeat(4,1fr)}}
+.grid.m2{grid-template-columns:1fr 1fr}
+.card{border:1px solid var(--border);border-radius:12px;padding:12px 14px;background:#fff;position:relative}
+.card .cod{font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em}
+.card .tit{font-weight:700;font-size:15px;margin:2px 0 4px}
+.card .meta{font-size:12px;color:var(--muted);display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.sec-h{display:flex;align-items:center;gap:8px;padding:10px 0 8px;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#4b5563}
+.sec-h .ln{flex:1;height:1px;background:var(--border)}
+.pin{position:absolute;width:22px;height:22px;border-radius:999px;background:var(--gold);color:#1E3932;font-size:12px;font-weight:800;display:grid;place-items:center;box-shadow:0 1px 3px rgba(0,0,0,.3);z-index:5}
+.legenda{margin-top:14px;background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px 16px}
+.legenda h3{margin:0 0 8px;font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#4b5563}
+.legenda ol{margin:0;padding:0;list-style:none;display:grid;gap:8px}
+@media(min-width:768px){.legenda ol{grid-template-columns:1fr 1fr}}
+.legenda li{display:flex;gap:10px;font-size:13px;line-height:1.45}
+.legenda li i{flex:none;width:22px;height:22px;border-radius:999px;background:var(--gold);color:#1E3932;font-style:normal;font-weight:800;font-size:12px;display:grid;place-items:center}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);padding:0 16px;overflow-x:auto;scrollbar-width:none}
+.tabs span{padding:10px 12px;font-size:13px;font-weight:700;color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap}
+.tabs span.on{color:var(--primaryDark);border-color:var(--primary)}
+/* setor tiles (telas para leigos) */
+.tile{border:2px solid var(--border);border-radius:18px;padding:18px 12px;text-align:center;background:#fff;position:relative;min-height:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}
+.tile .em{font-size:40px;line-height:1}
+.tile b{font-size:17px}
+.tile small{font-size:12px;color:var(--muted);font-weight:600}
+.tile .num{position:absolute;top:10px;right:10px;background:#dc2626;color:#fff;font-size:12px;font-weight:800;border-radius:999px;min-width:24px;height:24px;display:grid;place-items:center;padding:0 6px}
+.item{display:flex;align-items:center;gap:12px;border:1px solid var(--border);border-radius:16px;padding:12px 14px;background:#fff;min-height:72px;position:relative}
+.item .em{font-size:30px;width:44px;text-align:center;flex:none}
+.item .tx{flex:1}.item .tx b{display:block;font-size:16px}.item .tx small{font-size:12px;color:var(--muted);font-weight:600}
+.item .st{flex:none;font-size:22px}
+/* step viewer */
+.viewer{max-width:520px;margin:0 auto;border:1px solid var(--border);border-radius:20px;overflow:hidden;background:#fff}
+.viewer .vh{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border);font-size:13px;font-weight:700;color:var(--muted)}
+.vfoto{height:230px;background:repeating-linear-gradient(45deg,#e5e7eb 0 8px,#f3f4f6 8px 16px);display:grid;place-items:center;color:#6b7280;font-weight:800;font-size:14px;position:relative}
+.vfoto .play{width:64px;height:64px;border-radius:999px;background:rgba(30,57,50,.9);color:#fff;display:grid;place-items:center;font-size:26px}
+.vtxt{padding:16px 18px 6px;font-size:22px;font-weight:700;line-height:1.3;text-align:center}
+.vsub{padding:0 18px 12px;text-align:center;color:var(--muted);font-size:14px}
+.vact{display:flex;gap:8px;padding:10px 14px 14px}
+.dots{display:flex;gap:6px;justify-content:center;padding:4px 0 10px}.dots i{width:10px;height:10px;border-radius:999px;background:#d1d5db}.dots i.on{background:var(--primary);width:26px}
+.ouvir{display:inline-flex;align-items:center;gap:8px;border:2px solid var(--primary);color:var(--primaryDark);border-radius:999px;padding:8px 16px;font-weight:800;font-size:15px;background:#fff;cursor:pointer;min-height:46px}
+.ouvir:active{background:var(--mint)}
+/* kiosk */
+.kiosk{background:var(--house);border-radius:20px;padding:18px;color:#fff}
+.kiosk h3{margin:0 0 12px;text-align:center;font-size:20px}
+.faces{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+@media(min-width:768px){.faces{grid-template-columns:repeat(6,1fr)}}
+.face{background:#fff;color:var(--text);border-radius:16px;padding:10px 6px;text-align:center;position:relative}
+.face .av{width:56px;height:56px;border-radius:999px;background:var(--mint);margin:0 auto 6px;display:grid;place-items:center;font-size:24px}
+.face b{font-size:13px;display:block}
+.face.sel{outline:4px solid var(--gold)}
+.keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:260px;margin:12px auto 0}
+.keypad span{background:#fff;color:var(--text);border-radius:14px;height:58px;display:grid;place-items:center;font-size:22px;font-weight:800}
+.pinbox{display:flex;gap:10px;justify-content:center;margin-top:12px}.pinbox i{width:16px;height:16px;border-radius:999px;background:rgba(255,255,255,.35)}.pinbox i.on{background:var(--gold)}
+/* checklist phone */
+.phone-wrap{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start}
+.phone{width:100%;max-width:390px;margin:0 auto;border:10px solid #1f2937;border-radius:38px;background:#fff;overflow:hidden;position:relative;box-shadow:0 10px 30px rgba(0,0,0,.18)}
+.phone .notch{height:26px;background:#1f2937;border-radius:0 0 16px 16px;width:140px;margin:0 auto}
+.phone .ph{padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.phone .ph b{font-size:15px}.phone .ph small{display:block;font-size:11px;color:var(--muted)}
+.chk{display:flex;gap:12px;padding:14px;border-bottom:1px solid #f3f4f6;align-items:center;font-size:16px;font-weight:600;line-height:1.3;min-height:64px}
+.chk .bx{flex:none;width:36px;height:36px;border-radius:10px;border:3px solid #9ca3af;display:grid;place-items:center;font-size:20px;font-weight:800}
+.chk .bx.ok{background:var(--primary);border-color:var(--primary);color:#fff}
+.chk .em{font-size:26px;flex:none}
+.bigopt{display:flex;gap:8px;margin-top:8px}.bigopt span{flex:1;text-align:center;border:2px solid #d1d5db;border-radius:12px;padding:10px;font-weight:800;font-size:16px}
+.bigopt span.on{background:var(--mint);border-color:var(--primary);color:var(--primaryDark)}.bigopt span.bad{background:#fef2f2;border-color:#dc2626;color:#b91c1c}
+.bignum{display:flex;align-items:center;gap:10px;margin-top:8px}.bignum span{border:2px solid #dc2626;color:#b91c1c;background:#fef2f2;border-radius:12px;padding:8px 16px;font-size:24px;font-weight:800;min-width:110px;text-align:center}
+.fotobtn{border:2px dashed var(--primary);color:var(--primary);border-radius:12px;padding:10px 14px;font-size:15px;font-weight:800;display:inline-flex;gap:8px;align-items:center;margin-top:8px;min-height:48px}
+.alerta{border-left:4px solid #dc2626;background:#fef2f2;border-radius:8px;padding:10px 12px;font-size:14px;margin:10px 0}
+.alerta b{color:#b91c1c}
+.barra{position:sticky;bottom:0;background:#fff;border-top:1px solid var(--border);padding:10px 14px;display:flex;gap:8px}
+.barra .btn{flex:1}
+.prog{height:8px;background:#e5e7eb;border-radius:999px;margin:10px 14px 0;overflow:hidden}.prog i{display:block;height:100%;width:60%;background:#3b82f6}
+/* painel */
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+@media(min-width:768px){.kpis{grid-template-columns:repeat(4,1fr)}}
+.kpi{border:1px solid var(--border);border-radius:12px;padding:12px 14px;background:#fff}
+.kpi b{display:block;font-size:24px;font-weight:800}.kpi small{color:var(--muted);font-size:12px;font-weight:600}
+.kpi.r b{color:#b91c1c}.kpi.a b{color:#b45309}.kpi.v b{color:#166534}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:8px 10px;background:#f9fafb;border-bottom:1px solid var(--border)}
+td{padding:9px 10px;border-bottom:1px solid #f3f4f6;vertical-align:middle;text-align:left}
+td.c,th.c{text-align:center}
+.tbl{display:none}@media(min-width:768px){.tbl{display:block}.cards-m{display:none}}
+.cards-m .card{margin-bottom:8px}
+.av{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:999px;background:var(--mint);color:var(--primaryDark);font-size:11px;font-weight:800;margin-right:6px}
+.menu-mock{display:flex;gap:14px;flex-wrap:wrap;align-items:stretch}
+.side{background:var(--house);color:#fff;border-radius:14px;padding:12px;width:100%;max-width:230px;font-size:13px}
+.side .g{font-size:9px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.5);padding:10px 8px 4px}
+.side .i{padding:8px 10px;border-radius:8px;display:flex;gap:8px;align-items:center}
+.side .i.on{background:rgba(255,255,255,.14);font-weight:700}.side .i.new{outline:2px dashed var(--gold);outline-offset:-2px}
+.prio{counter-reset:p;display:grid;gap:10px}
+.prio .p{display:flex;gap:12px;background:#fff;border:1px solid var(--border);border-radius:14px;padding:12px 14px;align-items:flex-start}
+.prio .p .n{flex:none;width:34px;height:34px;border-radius:999px;background:var(--house);color:#fff;display:grid;place-items:center;font-weight:800;font-size:15px}
+.prio .p b{display:block;font-size:15px}.prio .p small{display:block;color:var(--muted);font-size:13px;line-height:1.45;margin-top:2px}
+.regras{display:grid;gap:8px}@media(min-width:768px){.regras{grid-template-columns:1fr 1fr}}
+.regras div{background:#fff;border:1px solid var(--border);border-radius:12px;padding:10px 12px;font-size:13.5px;line-height:1.45;display:flex;gap:10px}
+.regras div span{font-size:22px;flex:none}
+.dose{display:flex;gap:12px;align-items:center;border:1px solid var(--border);border-radius:16px;padding:12px;background:#fff;margin-bottom:8px}
+.dose .f{flex:none;width:90px;height:90px;border-radius:12px;background:repeating-linear-gradient(45deg,#e5e7eb 0 8px,#f3f4f6 8px 16px);display:grid;place-items:center;font-size:11px;color:#6b7280;font-weight:800;text-align:center;padding:4px}
+.dose .q{font-size:30px;font-weight:800;color:var(--primaryDark);line-height:1}
+.dose .q small{display:block;font-size:14px;color:var(--text);font-weight:700;margin-top:4px}
+.dose .q em{display:block;font-size:12px;color:var(--muted);font-style:normal;margin-top:2px}
+footer{max-width:1100px;margin:0 auto;padding:10px 16px 40px;font-size:12px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="hero"><div class="wrap">
+  <span class="tag">Mockup v2.1 · em desenvolvimento (Fase 1)</span>
+  <h1>"Como Fazer" — POPs, manuais de máquina, uniforme, dosagem e treinamento, feito para gente leiga</h1>
+  <p>Cozinha · Estoque · Expedição · Motorista. Nada de texto longo: cada passo é <b>uma foto, uma frase e um botão para ouvir</b>. Para entrar, a pessoa toca na própria foto e digita 4 números. Treinamento é ver, fazer na prática e os dois (funcionário e encarregado) confirmarem no tablet. Toque nas abas para ver cada tela.</p>
+</div></div>
+
+<div class="nav"><div class="wrap">
+  <button class="on" data-t="t0">0 · Por onde começar</button>
+  <button data-t="t1">1 · Entrar (tablet do setor)</button>
+  <button data-t="t2">2 · Biblioteca</button>
+  <button data-t="t3">3 · Conteúdo aberto + treino</button>
+  <button data-t="t4">4 · Manual da máquina</button>
+  <button data-t="t5">5 · Dosagem</button>
+  <button data-t="t6">6 · Rotina com checklist</button>
+  <button data-t="t7">7 · Painel do gestor</button>
+</div></div>
+
+<main>
+
+<!-- ===== 0 ===== -->
+<section class="tela on" id="t0">
+  <div class="intro"><b>Os quatro tipos de conteúdo</b>, todos com a mesma cara (foto + frase + ouvir) e todos deixando registro:</div>
+  <div class="grid c4" style="margin-bottom:14px">
+    <div class="card"><div class="tit">🔁 Rotina</div><div class="meta">Tem dia e hora. Vira tarefa na agenda e é feita por <b>checklist</b> (ex.: temperatura do freezer, limpeza do fim do turno).</div></div>
+    <div class="card"><div class="tit">⚙️ Máquina</div><div class="meta">Montar · Usar · Limpar · Deu problema. Treinamento com prática (ex.: fritadeira, seladora, masseira).</div></div>
+    <div class="card"><div class="tit">👕 Regra</div><div class="meta">Uniforme, higiene, o que pode e o que não pode. Treinamento no 1º dia e a cada nova versão.</div></div>
+    <div class="card"><div class="tit">🥄 Dosagem</div><div class="meta">Quanto de cada coisa, com foto da medida (concha, copo, tampa). Vale para produto e para limpeza.</div></div>
+  </div>
+
+  <div class="sec-h">Por onde começar (ordem de importância)<span class="ln"></span></div>
+  <div class="prio">
+    <div class="p"><div class="n">1</div><div><b>👕 Higiene e uniforme — todo mundo, 1º dia</b><small>Lavar as mãos, uniforme, touca, unha, adorno, celular na cozinha, o que não pode. É o que a Vigilância Sanitária pergunta primeiro, é o mais simples de montar (10 passos com foto) e já cria o hábito de "treinar no tablet". Resultado: cada funcionário com treinamento registrado.</small></div></div>
+    <div class="p"><div class="n">2</div><div><b>🧊 Temperatura dos freezers — rotina 2× ao dia</b><small>Primeira rotina com checklist. Simples (ler o visor, digitar o número, foto), mas é o registro que protege o produto e a empresa. Serve de piloto do "fazer e registrar".</small></div></div>
+    <div class="p"><div class="n">3</div><div><b>⚙️ A máquina que mais dá problema ou mais machuca</b><small>Fritadeira, seladora ou masseira — a que você escolher. Montar · Usar · Limpar · Deu problema. Vídeo curto do encarregado fazendo. Treinamento com prática confirmado pelos dois.</small></div></div>
+    <div class="p"><div class="n">4</div><div><b>🥄 Dosagens da cozinha e da limpeza</b><small>Padrão de produto (mesma coxinha sempre) e custo (sem desperdício). Sanitizante na medida certa é item de Vigilância. Foto da medida vale mais que o número.</small></div></div>
+    <div class="p"><div class="n">5</div><div><b>📦 Estoque e Expedição — rotinas diárias</b><small>Primeiro que entra, primeiro que sai (PEPS); etiqueta e validade; separação e carregamento da rota (liga com o Embarque que já existe).</small></div></div>
+    <div class="p"><div class="n">6</div><div><b>🚚 Motorista — checklist do veículo e da entrega</b><small>Antes de sair (pneu, baú, temperatura, documentos) e na entrega (conferir, canhoto, recebimento). O motorista já usa o app no celular, então entra sem tablet.</small></div></div>
+  </div>
+
+  <div class="sec-h" style="margin-top:14px">Regras de ouro para gente leiga (valem para toda tela)<span class="ln"></span></div>
+  <div class="regras">
+    <div><span>📷</span>Cada passo = <b>uma foto grande + uma frase curta</b>. Quando a foto não basta, vídeo de 20 segundos gravado no celular pelo encarregado.</div>
+    <div><span>🔊</span>Botão <b>Ouvir</b> em todo passo: o app lê em voz alta. Quem não lê bem acompanha do mesmo jeito.</div>
+    <div><span>🙂</span><b>Sem senha, sem usuário</b>: no tablet do setor toca na própria foto e digita 4 números (igual ao ponto).</div>
+    <div><span>👆</span>Botões grandes, <b>uma coisa por tela</b>. Nunca digitar texto: só tocar (Sim/Não), número no teclado grande ou foto.</div>
+    <div><span>🤝</span>Treinamento = <b>ver no tablet + fazer na prática</b> com o encarregado olhando + os dois confirmam. Fica registrado com data.</div>
+    <div><span>🏷️</span><b>QR na máquina e no freezer</b>: aponta o tablet/celular e abre o manual daquela máquina na hora.</div>
+    <div><span>⏰</span>Rotina chega pela agenda (alerta sonoro que já existe). Ninguém precisa lembrar.</div>
+    <div><span>🧑‍🍳</span>Quem monta o conteúdo também é leigo: <b>criar passo = tirar foto + escrever uma frase</b>, pelo celular, sem editor complicado.</div>
+  </div>
+
+  <div class="sec-h" style="margin-top:14px">Onde fica no menu<span class="ln"></span></div>
+  <div class="app"><div class="body"><div class="menu-mock">
+    <div class="side">
+      <div class="g">Equipe</div><div class="i">📅 Tarefas</div>
+      <div class="i on new" style="position:relative">📘 Como Fazer <span class="pin" style="right:-8px;top:-8px">1</span></div>
+      <div class="g">RH</div><div class="i">🪪 Funcionários</div><div class="i">⏱ Ponto</div>
+      <div class="i new" style="position:relative">📊 Painel Como Fazer <span class="pin" style="right:-8px;top:-8px">2</span></div>
+      <div class="g">PCP</div><div class="i">📦 Itens</div><div class="i">📖 Receitas</div>
+    </div>
+    <div style="flex:1;min-width:260px" class="legenda"><h3>Legenda</h3><ol style="grid-template-columns:1fr">
+      <li><i>1</i><b>Como Fazer</b> fica ao lado de Tarefas, para todo mundo. É a tela de ler, treinar e executar. No tablet do setor abre direto, sem menu.</li>
+      <li><i>2</i><b>Painel Como Fazer</b> no RH, só para a gestão: quem treinou, o que venceu, execuções, cadastro dos conteúdos.</li>
+    </ol></div>
+  </div></div></div>
+</section>
+
+<!-- ===== 1 ===== -->
+<section class="tela" id="t1">
+  <div class="intro"><b>Entrar no tablet do setor.</b> Um tablet fixo na cozinha, outro no estoque/expedição, sempre aberto nesta tela. A pessoa toca na própria foto e digita 4 números (o mesmo PIN do ponto). Nada de usuário, senha ou e-mail. Depois de 2 minutos parado, volta para esta tela sozinho.</div>
+  <div class="kiosk" style="position:relative">
+    <h3>Quem é você?</h3>
+    <div class="faces">
+      <div class="face"><div class="av">👩</div><b>Maria</b></div>
+      <div class="face sel" style="position:relative"><div class="av">👨</div><b>Rafael</b><span class="pin" style="right:-6px;top:-6px">1</span></div>
+      <div class="face"><div class="av">👩</div><b>Ana</b></div>
+      <div class="face"><div class="av">👨</div><b>João</b></div>
+      <div class="face"><div class="av">👩</div><b>Lúcia</b></div>
+      <div class="face"><div class="av">👨</div><b>Carlos</b></div>
+    </div>
+    <div class="pinbox"><i class="on"></i><i class="on"></i><i></i><i></i></div>
+    <div class="keypad" style="position:relative"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span style="background:transparent"></span><span>0</span><span style="background:transparent;color:#fff">⌫</span><span class="pin" style="right:-10px;top:-10px">2</span></div>
+  </div>
+  <div class="legenda"><h3>Legenda</h3><ol>
+    <li><i>1</i>Fotos reais dos funcionários do setor (vêm do cadastro do RH). Toca na sua.</li>
+    <li><i>2</i>Teclado grande de 4 números. Errou 3 vezes? Chama o encarregado (não bloqueia ninguém).</li>
+    <li><i>3</i>O motorista não usa tablet: ele já entra no app pelo celular e vê o "Como Fazer" dele lá.</li>
+    <li><i>4</i>Segurança: pelo tablet só se vê o "Como Fazer" do setor. Nenhuma outra tela do sistema.</li>
+  </ol></div>
+</section>
+
+<!-- ===== 2 ===== -->
+<section class="tela" id="t2">
+  <div class="intro"><b>Biblioteca (jeito da versão 1, escolhido pelo dono).</b> Lista em cartões, agrupada por setor, com código, versão e selos. É a mesma tela para a equipe (tablet) e para a gestão; o que muda é que a gestão vê também Rascunho, "Revisão vencida" e os botões de editar. O que falta aprender aparece com selo amarelo.</div>
+  <div class="app">
+    <div class="topbar">
+      <div class="t"><div class="ico">📘</div><div><h2>Como Fazer</h2><small>Olá, Rafael · Cozinha · 2 coisas para aprender</small></div></div>
+      <div style="display:flex;gap:8px;position:relative"><span class="btn s">📊 Painel</span><span class="btn p">+ Novo</span><span class="pin" style="right:-8px;top:-10px">1</span></div>
+    </div>
+    <div class="body">
+      <div class="chips" style="position:relative"><span class="chip on">🍳 Cozinha</span><span class="chip">🧊 Estoque</span><span class="chip">📦 Expedição</span><span class="chip">🚚 Motorista</span><span class="chip" style="margin-left:auto">Tipo: Todos ▾</span><span class="pin" style="left:-6px;top:-10px">2</span></div>
+
+      <div class="sec-h">Falta aprender<span class="ln"></span></div>
+      <div class="grid c3">
+        <div class="card" style="position:relative;border-color:#f59e0b"><div class="cod">HIG-001 · v3</div><div class="tit">👕 Higiene e uniforme</div><div class="meta"><span class="badge b-roxo">Regra</span><span class="badge b-amarelo">Você não treinou</span>· versão nova em 10/10</div><span class="pin" style="right:8px;top:8px">3</span></div>
+        <div class="card" style="border-color:#f59e0b"><div class="cod">MAQ-001 · v1</div><div class="tit">⚙️ Fritadeira</div><div class="meta"><span class="badge b-azul">Máquina</span><span class="badge b-amarelo">Você não treinou</span>· montar, usar, limpar</div></div>
+      </div>
+
+      <div class="sec-h">Rotinas (com checklist)<span class="ln"></span></div>
+      <div class="grid c3">
+        <div class="card" style="position:relative"><div class="cod">ROT-001 · v1</div><div class="tit">🔁 Temperatura dos freezers</div><div class="meta"><span class="badge b-verde">Rotina</span><span class="badge b-azul">07:30 e 16:30</span>· já sei ✅</div><span class="btn p" style="margin-top:8px;min-height:36px;padding:4px 14px">Fazer agora</span><span class="pin" style="right:8px;top:8px">4</span></div>
+        <div class="card"><div class="cod">ROT-002 · v2</div><div class="tit">🧼 Limpeza do fim do turno</div><div class="meta"><span class="badge b-verde">Rotina</span><span class="badge b-azul">17:30</span>· já sei ✅</div></div>
+        <div class="card"><div class="cod">ROT-003 · v1</div><div class="tit">📥 Recebimento de mercadoria</div><div class="meta"><span class="badge b-verde">Rotina</span><span class="badge b-azul">Por evento</span>· já sei ✅</div></div>
+      </div>
+
+      <div class="sec-h">Máquinas · Regras · Dosagens<span class="ln"></span></div>
+      <div class="grid c3">
+        <div class="card"><div class="cod">MAQ-002 · v2</div><div class="tit">⚙️ Seladora</div><div class="meta"><span class="badge b-azul">Máquina</span>· já sei ✅</div></div>
+        <div class="card"><div class="cod">REG-002 · v1</div><div class="tit">🏷️ Etiqueta e validade</div><div class="meta"><span class="badge b-roxo">Regra</span>· já sei ✅</div></div>
+        <div class="card"><div class="cod">DOS-001 · v1</div><div class="tit">🥄 Massa da coxinha</div><div class="meta"><span class="badge b-ambar">Dosagem</span>· já li ✅</div></div>
+        <div class="card"><div class="cod">DOS-002 · v1</div><div class="tit">🥄 Sanitizante da bancada</div><div class="meta"><span class="badge b-ambar">Dosagem</span>· já li ✅</div></div>
+        <div class="card" style="position:relative"><div class="cod">REG-003 · v1</div><div class="tit">🐜 Controle de pragas</div><div class="meta"><span class="badge b-roxo">Regra</span><span class="badge b-vermelho">Revisão vencida</span></div><span class="pin" style="right:8px;top:8px">5</span></div>
+        <div class="card" style="position:relative"><div class="cod">MAQ-003</div><div class="tit">⚙️ Masseira</div><div class="meta"><span class="badge b-cinza">Rascunho</span>· só quem edita vê</div><span class="pin" style="right:8px;top:8px">6</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="legenda"><h3>Legenda</h3><ol>
+    <li><i>1</i><b>+ Novo</b> e <b>Painel</b> só aparecem para quem tem permissão. No tablet da equipe não existem.</li>
+    <li><i>2</i>Setor em chips (Cozinha, Estoque, Expedição, Motorista) e filtro de tipo. Abre no setor da pessoa. Filtro fica lembrado por usuário.</li>
+    <li><i>3</i>Cartão com borda e selo amarelo <b>"Você não treinou"</b>: aparece primeiro. Some quando o treinamento é confirmado.</li>
+    <li><i>4</i>Rotina tem botão <b>Fazer agora</b> no próprio cartão (abre o checklist da tela 6). Na hora marcada ela também chega pela agenda.</li>
+    <li><i>5</i><b>Revisão vencida</b>: só a gestão vê.</li>
+    <li><i>6</i><b>Rascunho</b> é invisível para a equipe até ser publicado.</li>
+  </ol></div>
+</section>
+
+<!-- ===== 3 ===== -->
+<section class="tela" id="t3">
+  <div class="intro"><b>Conteúdo aberto (jeito da versão 1, escolhido pelo dono).</b> O documento inteiro numa página só: cabeçalho, objetivo, materiais, passos numerados com foto, o que não fazer, o que fazer quando dá errado. Cada passo tem o botão <b>🔊 Ouvir</b> (toque no mockup: fala de verdade). No rodapé, o treinamento: o funcionário toca <b>Aprendi</b> e o encarregado confirma com o PIN dele.</div>
+  <div class="app">
+    <div class="topbar">
+      <div class="t"><div class="ico">👕</div><div><h2>Higiene e uniforme</h2><small>HIG-001 · versão 3 · aprovada por Clarkson em 10/10/2026 · treinar de novo a cada 12 meses</small></div></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;position:relative"><span class="btn g">🖨 Imprimir A4</span><span class="btn g">▦ QR code</span><span class="btn s">✎ Nova versão</span><span class="pin" style="right:-8px;top:-10px">1</span></div>
+    </div>
+    <div class="tabs" style="position:relative"><span class="on">Passo a passo</span><span>Versões (3)</span><span>Quem treinou (9 de 12)</span><span class="pin" style="right:8px;top:6px">2</span></div>
+    <div class="body">
+      <div class="info" style="position:relative">
+        <div><b>Tipo</b><span>👕 Regra</span></div>
+        <div><b>Setor</b><span>Cozinha · Estoque · Expedição</span></div>
+        <div><b>Quem treina</b><span>Todos os cargos</span></div>
+        <div><b>Encarregado</b><span>Lúcia</span></div>
+        <span class="pin" style="right:-6px;top:-10px">3</span>
+      </div>
+      <div class="sec-h">Para que serve<span class="ln"></span></div>
+      <p style="font-size:15px;margin:0 0 10px;line-height:1.5">Ninguém entra na cozinha sem estar limpo e com o uniforme completo. É o que protege o produto e é a primeira coisa que a Vigilância olha.</p>
+      <div class="sec-h">O que precisa<span class="ln"></span></div>
+      <p style="font-size:15px;margin:0 0 10px">Touca · avental branco · sapato fechado · unhas curtas e sem esmalte · sem anel, brinco, relógio ou celular.</p>
+
+      <div class="sec-h">Passos<span class="ln"></span></div>
+      <div style="position:relative">
+        <div class="passo"><div class="n">1</div><div class="tx">Tire anel, brinco, relógio e deixe o celular no armário.<small>Antes de vestir o uniforme.</small><div style="margin-top:6px"><button class="ouvir" style="min-height:40px;font-size:14px" onclick="falar('Passo 1. Tire anel, brinco, relógio e deixe o celular no armário. Antes de vestir o uniforme.')">🔊 Ouvir</button></div></div><div class="foto">FOTO</div></div>
+        <div class="passo"><div class="n">2</div><div class="tx">Vista o avental branco limpo e prenda todo o cabelo na touca.<div style="margin-top:6px"><button class="ouvir" style="min-height:40px;font-size:14px" onclick="falar('Passo 2. Vista o avental branco limpo e prenda todo o cabelo na touca.')">🔊 Ouvir</button></div></div><div class="foto">FOTO</div></div>
+        <div class="passo" style="position:relative"><div class="n">3</div><div class="tx">Lave as mãos até o cotovelo, com sabão, por 20 segundos.<small>Antes de começar, depois do banheiro e toda vez que sair da cozinha.</small><div style="margin-top:6px"><button class="ouvir" style="min-height:40px;font-size:14px" onclick="falar('Passo 3. Lave as mãos até o cotovelo, com sabão, por 20 segundos. Antes de começar, depois do banheiro e toda vez que sair da cozinha.')">🔊 Ouvir</button></div></div><div class="foto">▶ VÍDEO<br>20 s</div><span class="pin" style="right:-6px;top:-10px">4</span></div>
+        <div class="passo"><div class="n">4</div><div class="tx">Seque com papel toalha e passe o álcool em gel.<div style="margin-top:6px"><button class="ouvir" style="min-height:40px;font-size:14px" onclick="falar('Passo 4. Seque com papel toalha e passe o álcool em gel.')">🔊 Ouvir</button></div></div><div class="foto">FOTO</div></div>
+        <div style="text-align:center;color:var(--muted);font-size:13px;padding:4px 0 8px">… passos 5 a 10 …</div>
+      </div>
+
+      <div class="alerta" style="position:relative"><b>O que NÃO fazer:</b> entrar com celular, comer na área de produção, usar o mesmo avental de ontem, sair para a rua de uniforme.<span class="pin" style="right:8px;top:-10px">5</span></div>
+
+      <div class="sec-h">Se der errado<span class="ln"></span></div>
+      <table><tr><th>Se…</th><th>Então…</th></tr>
+        <tr><td>Sujou o avental</td><td>Troque na hora. Tem avental limpo no armário cinza.</td></tr>
+        <tr><td>Se cortou</td><td>Avise o encarregado, cubra com curativo e luva. Não volte à bancada sem isso.</td></tr>
+      </table>
+
+      <div class="ciencia" style="position:relative;flex-direction:column;align-items:stretch;gap:8px">
+        <span>🤝 Agora faça na prática com o encarregado olhando. Quando terminar, os dois confirmam aqui.</span>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><span class="btn p xl" style="flex:1">✅ Aprendi — Rafael</span><span class="btn s xl" style="flex:1">🔒 Encarregado confirma (PIN)</span></div>
+        <small style="color:var(--primaryDark);font-weight:700">Fica registrado: Rafael aprendeu "Higiene e uniforme" versão 3 em 19/10/2026 às 09:40, confirmado por Lúcia.</small>
+        <span class="pin" style="right:-6px;top:-10px">6</span>
+      </div>
+    </div>
+  </div>
+  <div class="legenda"><h3>Legenda</h3><ol>
+    <li><i>1</i><b>Imprimir A4</b> pelo padrão do app (funciona no iPad). <b>QR code</b> para colar no setor. <b>Nova versão</b> só para quem edita (no tablet esses botões não aparecem).</li>
+    <li><i>2</i>Abas: <b>Versões</b> (histórico com quem aprovou), <b>Quem treinou</b> (9 de 12). Rotina ganha a aba <b>Execuções</b>.</li>
+    <li><i>3</i>Cabeçalho: tipo, setores, cargos que treinam, encarregado responsável. Rotina mostra também os horários.</li>
+    <li><i>4</i>Passo numerado = frase curta + detalhe + foto (ou vídeo de 20 s) + <b>Ouvir</b>. Mesmo formato para Rotina, Máquina, Regra e Dosagem (Máquina divide em Montar/Usar/Limpar/Deu problema; Dosagem mostra foto da medida + quantidade).</li>
+    <li><i>5</i>"O que NÃO fazer" em vermelho, lido em voz alta também.</li>
+    <li><i>6</i>Treinamento: <b>Aprendi</b> (funcionário) + <b>Encarregado confirma</b> digitando o PIN dele no mesmo aparelho. Rotina e Dosagem pedem só "Li e entendi". Nova versão ou reciclagem pede de novo.</li>
+  </ol></div>
+</section>
+
+<!-- ===== 4 ===== -->
+<section class="tela" id="t4">
+  <div class="intro"><b>Manual da máquina.</b> Quatro botões grandes: Montar · Usar · Limpar · Deu problema. Cada um é um passo a passo igual ao da tela 3. O QR colado na máquina abre direto aqui.</div>
+  <div class="app">
+    <div class="topbar"><div class="t"><div class="ico">⚙️</div><div><h2>Fritadeira</h2><small>Cozinha · Máquina · você ainda não treinou 🟡</small></div></div><span class="btn g">▦ QR da máquina</span></div>
+    <div class="body">
+      <div class="vfoto" style="height:160px;border-radius:14px;margin-bottom:12px">FOTO DA MÁQUINA<br><small>(a fritadeira de verdade, na cozinha)</small></div>
+      <div class="grid c4 m2" style="position:relative">
+        <div class="tile"><div class="em">🔧</div><b>Montar</b><small>6 passos</small></div>
+        <div class="tile"><div class="em">▶️</div><b>Usar</b><small>8 passos</small></div>
+        <div class="tile"><div class="em">🧼</div><b>Limpar</b><small>7 passos · rotina 17:30</small></div>
+        <div class="tile" style="border-color:#dc2626"><div class="em">🚨</div><b>Deu problema</b><small>5 situações</small></div>
+        <span class="pin" style="right:-6px;top:-10px">1</span>
+      </div>
+      <div class="alerta" style="position:relative;margin-top:14px"><b>⚠️ Perigo:</b> óleo quente. Nunca encher com água. Nunca ligar sem o cesto. Use a luva térmica.<span class="pin" style="right:8px;top:-10px">2</span></div>
+      <div class="sec-h">🚨 Deu problema<span class="ln"></span></div>
+      <div class="grid">
+        <div class="item"><div class="em">🌡️</div><div class="tx"><b>Não esquenta</b><small>Toque para ver o que fazer</small></div><div class="st">›</div></div>
+        <div class="item"><div class="em">💨</div><div class="tx"><b>Fumaça no óleo</b><small>Toque para ver o que fazer</small></div><div class="st">›</div></div>
+        <div class="item"><div class="em">🔌</div><div class="tx"><b>Desarmou a energia</b><small>Toque para ver o que fazer</small></div><div class="st">›</div></div>
+        <div class="item" style="border-color:#dc2626;position:relative"><div class="em">📞</div><div class="tx"><b>Chamar o encarregado</b><small>Avisa pela agenda dele agora</small></div><div class="st">›</div><span class="pin" style="right:-6px;top:-8px">3</span></div>
+      </div>
+      <div style="margin-top:14px;position:relative"><span class="btn p xl" style="width:100%">🎓 Fazer o treinamento desta máquina</span><span class="pin" style="right:-6px;top:-8px">4</span></div>
+    </div>
+  </div>
+  <div class="legenda"><h3>Legenda</h3><ol>
+    <li><i>1</i>Quatro partes fixas para toda máquina. "Limpar" pode ter frequência e aí vira rotina com checklist na agenda.</li>
+    <li><i>2</i>Aviso de perigo sempre no topo, em vermelho, lido em voz alta antes do primeiro passo.</li>
+    <li><i>3</i>"Chamar o encarregado" cria uma tarefa na agenda dele na hora, com o nome da máquina. Sem telefone, sem WhatsApp.</li>
+    <li><i>4</i>Treinamento da máquina = passa por Montar, Usar e Limpar no tablet + faz na prática + os dois confirmam (tela 3, no rodapé do documento).</li>
+  </ol></div>
+</section>
+
+<!-- ===== 5 ===== -->
+<section class="tela" id="t5">
+  <div class="intro"><b>Dosagem.</b> Quanto de cada coisa, mostrado com a foto da medida de verdade (a concha, o copo, a tampa que existem na cozinha) e um número grande. Sem gramas quando dá para evitar: "2 conchas rasas" é mais seguro que "180 g" para quem não usa balança.</div>
+  <div class="phone-wrap">
+    <div class="viewer" style="max-width:480px;position:relative">
+      <div class="vh"><span>🥄 Sanitizante da bancada</span><span>Limpeza</span></div>
+      <div class="body">
+        <div class="dose"><div class="f">FOTO<br>tampa cheia</div><div class="q">1 tampa<small>do sanitizante</small><em>até a borda</em></div></div>
+        <div style="text-align:center;font-size:22px;font-weight:800;color:var(--muted)">+</div>
+        <div class="dose"><div class="f">FOTO<br>balde na marca</div><div class="q">1 balde<small>de água</small><em>até a linha vermelha</em></div></div>
+        <div class="alerta"><b>Nunca</b> misturar com outro produto. Trocar a mistura a cada 4 horas.</div>
+        <div style="text-align:center;padding:4px 0 10px"><button class="ouvir" onclick="falar('Sanitizante da bancada. Uma tampa cheia do sanitizante, até a borda. Mais um balde de água, até a linha vermelha. Nunca misturar com outro produto. Trocar a mistura a cada 4 horas.')">🔊 Ouvir</button></div>
+      </div>
+      <span class="pin" style="right:10px;top:10px">1</span>
+    </div>
+    <div class="viewer" style="max-width:480px;position:relative">
+      <div class="vh"><span>🥄 Massa da coxinha</span><span>Para 1 masseira</span></div>
+      <div class="body">
+        <div class="dose"><div class="f">FOTO<br>saco de farinha</div><div class="q">2 sacos<small>farinha de trigo</small><em>saco de 5 kg</em></div></div>
+        <div class="dose"><div class="f">FOTO<br>panela na marca</div><div class="q">1 panela<small>caldo quente</small><em>até a marca da panela</em></div></div>
+        <div class="dose"><div class="f">FOTO<br>concha rasa</div><div class="q">2 conchas<small>margarina</small><em>rasas</em></div></div>
+        <div class="dose"><div class="f">FOTO<br>copo medidor</div><div class="q">½ copo<small>sal</small><em>até a linha do meio</em></div></div>
+        <div style="background:#f9fafb;border:1px solid var(--border);border-radius:12px;padding:10px 12px;font-size:13px;position:relative">Ligado à <b>Receita do PCP</b>: se a receita mudar lá, a dosagem muda aqui sozinha.<span class="pin" style="right:8px;top:-10px">2</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="legenda"><h3>Legenda</h3><ol>
+    <li><i>1</i>Cada linha é foto da medida + número grande + nome do ingrediente. A foto é da medida que existe de verdade na cozinha (marca a concha/copo com fita colorida e fotografa).</li>
+    <li><i>2</i>Dosagem de produto pode nascer da Receita do PCP (que já tem os ingredientes); a gestão só escolhe a "medida caseira" e tira a foto. Dosagem de limpeza é cadastrada à mão.</li>
+    <li><i>3</i>Dosagem não exige treinamento com encarregado: basta "Li e entendi". Mas pode ser impressa e colada na parede ao lado da máquina (A4 com as mesmas fotos).</li>
+  </ol></div>
+</section>
+
+<!-- ===== 6 ===== -->
+<section class="tela" id="t6">
+  <div class="intro"><b>Rotina com checklist (fazer e registrar).</b> Chega pela agenda no horário, com o alerta sonoro que já existe. Linhas grandes: toca e fica verde. Número no teclado grande. Foto direto da câmera. Fora do padrão fica vermelho e avisa o encarregado. Não conclui sem o obrigatório.</div>
+  <div class="phone-wrap">
+    <div class="phone" style="position:relative">
+      <div class="notch"></div>
+      <div class="ph"><div class="ico">⏰</div><div><b>Temperatura dos freezers</b><small>Hoje 16:30 · Freezer 2 · Rafael</small></div><span class="pin" style="right:10px;top:34px">1</span></div>
+      <div class="prog"><i></i></div>
+      <div class="chk"><div class="bx ok">✓</div><div class="em">👀</div><div>Olhe a temperatura no visor</div></div>
+      <div class="chk" style="display:block;position:relative"><div style="display:flex;gap:12px;align-items:center"><div class="bx ok">✓</div><div class="em">🌡️</div><div>Qual a temperatura?</div></div><div class="bignum" style="margin-left:48px"><span>−10 °C</span><small style="color:#b91c1c;font-weight:800">muito quente!</small></div><span class="pin" style="right:10px;top:10px">2</span></div>
+      <div class="chk" style="display:block"><div style="display:flex;gap:12px;align-items:center"><div class="bx ok">✓</div><div class="em">🚪</div><div>A porta fecha bem?</div></div><div class="bigopt" style="margin-left:48px"><span class="on">👍 Sim</span><span>👎 Não</span></div></div>
+      <div class="chk" style="position:relative"><div class="bx"></div><div class="em">📷</div><div>Foto do visor<br><span class="fotobtn">📷 Tirar foto</span></div><span class="pin" style="right:10px;top:10px">3</span></div>
+      <div class="alerta" style="margin:10px 14px"><b>Está muito quente.</b> Passe o produto para outro freezer. A Lúcia já foi avisada.</div>
+      <div class="barra" style="position:relative"><span class="btn g xl">Depois</span><span class="btn p xl" style="opacity:.5">Pronto ✓</span><span class="pin" style="right:10px;top:-10px">4</span></div>
+    </div>
+    <div style="flex:1;min-width:260px">
+      <div class="legenda" style="margin-top:0"><h3>Legenda</h3><ol style="grid-template-columns:1fr">
+        <li><i>1</i>A tarefa nasce sozinha da frequência da rotina (aqui 2× ao dia, uma por freezer). Toca o alerta de sempre.</li>
+        <li><i>2</i>Número digitado em teclado grande. Fora do limite fica vermelho na hora, com frase simples ("muito quente!"), e a execução é marcada como <b>desvio</b>.</li>
+        <li><i>3</i>Foto abre a câmera direto. É a evidência para a auditoria.</li>
+        <li><i>4</i><b>Pronto</b> só libera com os obrigatórios feitos. Com desvio, o encarregado recebe tarefa na agenda dele na hora. "Depois" adia 5 minutos, como toda tarefa.</li>
+        <li><i>5</i>Rotina "por evento" (recebimento de mercadoria, carregamento da rota) tem botão <b>Fazer agora</b> no item e no QR do setor.</li>
+      </ol></div>
+      <div class="intro" style="margin-top:12px"><b>Motorista:</b> mesma tela no celular dele. Checklist do veículo antes de sair (pneu, baú fechado, temperatura, documentos) e checklist da entrega quando precisar.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 7 ===== -->
+<section class="tela" id="t7">
+  <div class="intro"><b>Painel do gestor (RH).</b> A única tela "de computador" do módulo. Responde: quem treinou em quê, o que venceu, quais rotinas atrasaram ou saíram do padrão. E é aqui que se cadastra o conteúdo (foto + frase, pelo celular ou pelo computador).</div>
+  <div class="app">
+    <div class="topbar">
+      <div class="t"><div class="ico">📊</div><div><h2>Painel Como Fazer</h2><small>Treinamentos, rotinas e conteúdos</small></div></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;position:relative"><span class="btn g">‹ Este mês ▾ ›</span><span class="btn g">🖨 Relatório p/ Vigilância</span><span class="btn p">+ Novo conteúdo</span><span class="pin" style="right:-8px;top:-10px">1</span></div>
+    </div>
+    <div class="tabs"><span class="on">Treinamentos</span><span>Rotinas</span><span>Conteúdos (27)</span></div>
+    <div class="body">
+      <div class="kpis"><div class="kpi r"><b>7</b><small>treinamentos faltando</small></div><div class="kpi a"><b>3</b><small>reciclagens vencendo</small></div><div class="kpi r"><b>2</b><small>rotinas com desvio</small></div><div class="kpi v"><b>96%</b><small>rotinas feitas no prazo</small></div></div>
+
+      <div class="sec-h">Quem treinou em quê · 🍳 Cozinha<span class="ln"></span></div>
+      <div class="tbl" style="position:relative">
+        <table><tr><th>Funcionário</th><th class="c">👕 Higiene</th><th class="c">⚙️ Fritadeira</th><th class="c">⚙️ Seladora</th><th class="c">🥄 Massa</th><th class="c">🧊 Freezers</th><th></th></tr>
+          <tr><td><span class="av">MA</span>Maria</td><td class="c">✅</td><td class="c">✅</td><td class="c">✅</td><td class="c">✅</td><td class="c">✅</td><td></td></tr>
+          <tr><td><span class="av">RA</span>Rafael</td><td class="c">🟡 <small>v2</small></td><td class="c">🟡</td><td class="c">✅</td><td class="c">✅</td><td class="c">✅</td><td><span class="btn s" style="min-height:30px;padding:4px 12px">Lembrar</span></td></tr>
+          <tr><td><span class="av">AN</span>Ana</td><td class="c">✅</td><td class="c">✅</td><td class="c">⏳ <small>vence 30/10</small></td><td class="c">✅</td><td class="c">—</td><td></td></tr>
+          <tr><td><span class="av">CA</span>Carlos <small>(novo, 15/10)</small></td><td class="c">🟡</td><td class="c">🟡</td><td class="c">🟡</td><td class="c">🟡</td><td class="c">🟡</td><td><span class="btn s" style="min-height:30px;padding:4px 12px">Lembrar</span></td></tr>
+        </table>
+        <span class="pin" style="right:8px;top:8px">2</span>
+      </div>
+      <div class="cards-m">
+        <div class="card"><div class="tit"><span class="av">RA</span>Rafael</div><div class="meta">👕 🟡 v2 · ⚙️ Fritadeira 🟡 · resto ✅</div></div>
+        <div class="card"><div class="tit"><span class="av">CA</span>Carlos <small>(novo)</small></div><div class="meta">tudo 🟡 · 5 treinamentos</div></div>
+      </div>
+
+      <div class="sec-h">Rotinas com desvio ou não feitas<span class="ln"></span></div>
+      <div class="tbl" style="position:relative">
+        <table><tr><th>Quando</th><th>Rotina</th><th>Quem</th><th>Situação</th><th>Detalhe</th></tr>
+          <tr><td>19/10 16:32</td><td>🧊 Freezer 2</td><td>Rafael</td><td><span class="badge b-vermelho">Desvio</span></td><td>−10 °C · foto · Lúcia avisada</td></tr>
+          <tr><td>18/10 17:30</td><td>🧼 Limpeza fim do turno</td><td>—</td><td><span class="badge b-ambar">Não feita</span></td><td>adiada 4× e não concluída</td></tr>
+          <tr><td>18/10 06:50</td><td>🚚 Veículo antes de sair</td><td>João</td><td><span class="badge b-verde">OK</span></td><td>6 de 6 · 1 foto</td></tr>
+        </table>
+        <span class="pin" style="right:8px;top:8px">3</span>
+      </div>
+      <div class="cards-m">
+        <div class="card"><div class="cod">19/10 16:32 · 🧊 Freezer 2</div><div class="tit">Rafael <span class="badge b-vermelho">Desvio</span></div><div class="meta">−10 °C · foto · Lúcia avisada</div></div>
+      </div>
+
+      <div class="sec-h">Cadastrar conteúdo (como fica para quem monta)<span class="ln"></span></div>
+      <div class="grid" style="position:relative">
+        <div class="card"><div class="tit">Passo 4 de "Fritadeira · Usar"</div><div class="vfoto" style="height:110px;border-radius:10px;margin:8px 0">📷 Tirar foto / 🎥 gravar 20 s</div><div style="border:1px solid #d1d5db;border-radius:6px;padding:8px 10px;font-size:14px">Coloque o cesto devagar, sem respingar.</div><div class="meta" style="margin-top:8px"><span class="badge b-cinza">+ Pergunta no checklist (opcional)</span><span class="badge b-cinza">⚠️ Marcar como perigo</span></div></div>
+        <div class="card"><div class="tit">Dados do conteúdo</div><div class="meta" style="flex-direction:column;align-items:flex-start;gap:6px;font-size:13px"><span>Tipo: <b>Máquina</b> · Setor: <b>Cozinha</b></span><span>Quem precisa treinar: <b>Aux. de produção, Encarregado</b></span><span>Reciclagem: <b>a cada 12 meses</b></span><span>Limpeza vira rotina: <b>todo dia 17:30</b></span><span>Situação: <span class="badge b-cinza">Rascunho</span> → <span class="btn p" style="min-height:30px;padding:4px 12px">Publicar</span></span></div></div>
+        <span class="pin" style="right:-6px;top:-10px">4</span>
+      </div>
+    </div>
+  </div>
+  <div class="legenda"><h3>Legenda</h3><ol>
+    <li><i>1</i><b>Relatório para a Vigilância</b> imprime (A4, pelo iPad) o conteúdo + quem treinou + execuções do período. <b>Novo conteúdo</b> abre o cadastro simples.</li>
+    <li><i>2</i>Tabela funcionário × conteúdo por setor: ✅ treinado, 🟡 falta, ⏳ reciclagem vencendo. Funcionário novo nasce com tudo 🟡 do cargo dele. <b>Lembrar</b> cria tarefa na agenda da pessoa.</li>
+    <li><i>3</i>Toda execução registrada: quem, quando, números, fotos, desvio. "Não feita" = a rotina venceu sem checklist.</li>
+    <li><i>4</i>Cadastrar passo = foto (ou vídeo de 20 s) + uma frase. Dá para fazer pelo celular na própria cozinha. Publicar manda para os tablets; versão nova pede treinamento de novo.</li>
+  </ol></div>
+</section>
+
+</main>
+<footer>Mockup estático v2 no tema do app. Dados e nomes fictícios. Arquivo: docs/pop/mockup-pop.html · Proposta: docs/pop/proposta-pop.md</footer>
+<script>
+document.querySelectorAll('.nav button').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('on'));b.classList.add('on');
+  document.querySelectorAll('section.tela').forEach(s=>s.classList.toggle('on',s.id===b.dataset.t));
+  window.scrollTo({top:0,behavior:'smooth'});
+}));
+function falar(t){try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang='pt-BR';u.rate=.95;speechSynthesis.speak(u);}catch(e){alert('Este navegador não tem voz. No iPad e no Android funciona.');}}
+</script>
+</body>
+</html>

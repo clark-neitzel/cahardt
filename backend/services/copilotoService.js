@@ -35,6 +35,7 @@ const ABAS = [
     // ── Equipe ──────────────────────────────────
     { slug: 'tarefas',            nome: 'Tarefas da Equipe',            rota: '/tarefas',                            perm: null },
     { slug: 'tarefas-parecer',    nome: 'Tarefas — Parecer do Dia',     rota: '/tarefas/parecer',                    perm: 'Pode_Ver_Parecer_Tarefas' },
+    { slug: 'como-fazer',         nome: 'Como Fazer',                   rota: '/como-fazer',                         perm: null },
     // ── Vendas ──────────────────────────────────
     { slug: 'dashboard',          nome: 'Dashboard',                    rota: '/',                                   perm: null },
     { slug: 'catalogo',           nome: 'Catálogo',                     rota: '/catalogo',                           perm: 'catalogo' },
@@ -92,6 +93,7 @@ const ABAS = [
     { slug: 'curriculos',         nome: 'Currículos',                   rota: '/rh/curriculos',                      perm: ['Pode_Ver_RH', 'Pode_Editar_RH'] },
     { slug: 'rh-funcionarios',    nome: 'Funcionários (RH)',            rota: '/rh/funcionarios',                    perm: ['Pode_Ver_Ponto', 'Pode_Editar_Ponto'] },
     { slug: 'rh-ponto',           nome: 'Ponto',                        rota: '/rh/ponto',                           perm: ['Pode_Ver_Ponto', 'Pode_Editar_Ponto'] },
+    { slug: 'rh-como-fazer-painel', nome: 'Painel Como Fazer',          rota: '/rh/como-fazer',                      perm: ['Pode_Ver_Painel_Como_Fazer', 'Pode_Editar_Como_Fazer'] },
     // ── PCP — sub-permissões específicas ─────────
     { slug: 'pcp-itens',          nome: 'PCP — Itens',                  rota: '/pcp/itens',                          perm: 'pcp.itens' },
     { slug: 'pcp-receitas',       nome: 'PCP — Receitas',               rota: '/pcp/receitas',                       perm: 'pcp.receitas' },

@@ -84,9 +84,16 @@ const AlertaTarefas = () => {
         try { await tarefaService.adiar(tarefa.id, tarefa.dataRef); } catch { /* registro do adiamento é secundário */ }
     };
 
+    // Rotina do Como Fazer: não se conclui com um clique — abre o checklist para preencher
+    const ehComoFazer = tarefa.origem === 'COMO_FAZER' && !!tarefa.origemRef;
     const concluir = async () => {
         const t = tarefa;
         setTarefa(null);
+        if (t.origem === 'COMO_FAZER' && t.origemRef) {
+            snoozeRef.current[chave(t)] = Date.now() + SNOOZE_MS;
+            navigate(`/como-fazer/fazer/${t.origemRef}?${new URLSearchParams({ tarefa: t.id, data: t.dataRef, ...(t.hora ? { hora: t.hora } : {}) })}`);
+            return;
+        }
         try {
             await tarefaService.concluir(t.id, t.dataRef);
             verificar(); // se houver outra pendente, ela assume
@@ -147,7 +154,7 @@ const AlertaTarefas = () => {
                     <div className="flex flex-col sm:flex-row gap-3 pt-1">
                         <button onClick={concluir}
                             className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm min-h-[44px]">
-                            <CheckCircle2 className="h-4 w-4" /> Concluir tarefa
+                            <CheckCircle2 className="h-4 w-4" /> {ehComoFazer ? 'Fazer agora' : 'Concluir tarefa'}
                         </button>
                         <button onClick={adiar}
                             className="flex-1 px-4 py-3 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-sm min-h-[44px]">

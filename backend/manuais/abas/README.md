@@ -18,6 +18,7 @@
 |-----|------|-----------|--------|
 | Tarefas da Equipe | `/tarefas` | Agenda de tarefas com alerta sonoro (pop-up que insiste a cada 5 min até concluir), anexos de ajuda e permissões por criador | [tarefas.md](tarefas.md) |
 | Tarefas — Parecer do Dia | `/tarefas/parecer` | Relatório diário por funcionário: concluídas no horário, com atraso, não feitas e adiamentos (admin) | [tarefas-parecer.md](tarefas-parecer.md) |
+| Como Fazer | `/como-fazer` | Biblioteca do jeito certo de fazer (regras, máquinas, rotinas de conferência, dosagens) com foto, frase e botão Ouvir; treinamento com confirmação do encarregado; tablet por foto + senha de 4 números | [como-fazer.md](como-fazer.md) |
 
 ---
 
@@ -101,6 +102,7 @@
 | Currículos | `/rh/curriculos` | Funil de seleção de candidatos com status e área de interesse | [curriculos.md](curriculos.md) |
 | Funcionários | `/rh/funcionarios` | Cadastro completo do funcionário: documentos, exames (ASO), atestados, escala, link de ponto e desempenho | [rh-funcionarios.md](rh-funcionarios.md) |
 | Ponto | `/rh/ponto` | Ponto eletrônico por link com GPS/geofence, painel do dia, ajuste manual e importação do relógio (CSV) | [rh-ponto.md](rh-ponto.md) |
+| Painel Como Fazer | `/rh/como-fazer` | Quadro de treinamentos, rotinas feitas/com desvio/não feitas, editor e publicação de conteúdos, liberação do tablet e relatório para a Vigilância | [rh-como-fazer-painel.md](rh-como-fazer-painel.md) |
 
 ---
 

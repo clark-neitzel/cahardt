@@ -835,6 +835,9 @@ model Tarefa {
   ativo          Boolean @default(true)
   criadoPorId    String  @map("criado_por_id")
   responsavelId  String  @map("responsavel_id")
+  // Como Fazer: tarefa gerada pelo módulo (COMO_FAZER | COMO_FAZER_DESVIO | COMO_FAZER_CHAMADO | COMO_FAZER_LEMBRETE)
+  origem    String?
+  origemRef String? @map("origem_ref") // conteudoId (ou execucaoId no desvio)
 
   criadoPor   Vendedor           @relation("TarefasCriadas", fields: [criadoPorId], references: [id])
   responsavel Vendedor           @relation("TarefasRecebidas", fields: [responsavelId], references: [id])
@@ -845,6 +848,7 @@ model Tarefa {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@index([responsavelId, dataInicio])
+  @@index([origem, origemRef])
   @@map("tarefas")
 }
 
@@ -1116,6 +1120,10 @@ model Funcionario {
   // Senha de acesso ao link de ponto (bcrypt). Sem senha = acesso não liberado.
   senhaHash  String? @map("senha_hash")
 
+  // Como Fazer: setor do tablet e se a senha são 4 números (pode entrar no tablet)
+  setor         String? @map("setor") // COZINHA | ESTOQUE | EXPEDICAO | MOTORISTA
+  senhaNumerica Boolean @default(false) @map("senha_numerica")
+
   ativo      Boolean @default(true)
   observacao String? @db.Text
 
@@ -1141,6 +1149,7 @@ model Funcionario {
   acertos     PontoAcerto[]
 
   @@index([ativo])
+  @@index([setor, ativo])
   @@map("funcionarios")
 }
 
@@ -4686,4 +4695,117 @@ model EtiquetaCozinhaLote {
   @@index([loteData])
   @@index([criadoPorId, createdAt])
   @@map("etiquetas_cozinha_lotes")
+}
+
+// ───────── Como Fazer (POPs, manuais, regras, dosagem, treinamento) ─────────
+
+// Um "conteúdo" = uma coisa que a equipe precisa saber/fazer. Os 4 tipos usam a MESMA estrutura.
+model ComoFazerConteudo {
+  id     String  @id @default(uuid())
+  tipo   String // ROTINA | MAQUINA | REGRA | DOSAGEM
+  codigo String? @unique // só no painel (ex.: POP-HIG-003). NUNCA mostrar ao funcionário.
+  titulo String
+  icone  String? // emoji
+
+  setores String[] @default([]) // COZINHA | ESTOQUE | EXPEDICAO | MOTORISTA
+  cargos  String[] @default([]) // texto de Funcionario.cargo; vazio = todos do setor
+  ordem   Int      @default(0)
+
+  status               String    @default("RASCUNHO") // RASCUNHO | PUBLICADO | ARQUIVADO
+  versaoPublicadaId    String?   @map("versao_publicada_id") // sem FK de propósito (evita ciclo)
+  versaoTreinoNumero   Int       @default(0) @map("versao_treino_numero") // sobe quando o publicar zera o treinamento
+  primeiraPublicacaoEm DateTime? @map("primeira_publicacao_em")
+
+  exigeConfirmacao Boolean @default(false) @map("exige_confirmacao")
+  reciclagemMeses  Int?    @map("reciclagem_meses") // Fase 3
+
+  horarios        String[] @default([]) // 'HH:MM'
+  horariosDesde   Json     @default("{}") @map("horarios_desde") // { 'HH:MM': 'YYYY-MM-DDTHH:MM' (SP) } — a partir de quando cada horário passou a valer ("não feita" não é retroativa)
+  recorrencia     String   @default("NUNCA")
+  diasSemana      Int[]    @default([]) @map("dias_semana")
+  responsaveisIds String[] @default([]) @map("responsaveis_ids") // Vendedor.id dos encarregados
+
+  relacionadoId String? @map("relacionado_id")
+
+  criadoPorId String   @map("criado_por_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  versoes      ComoFazerVersao[]
+  treinamentos ComoFazerTreinamento[]
+  execucoes    ComoFazerExecucao[]
+
+  @@index([status, tipo])
+  @@map("como_fazer_conteudos")
+}
+
+model ComoFazerVersao {
+  id              String    @id @default(uuid())
+  conteudoId      String    @map("conteudo_id")
+  numero          Int
+  status          String    @default("RASCUNHO") // RASCUNHO | PUBLICADA | SUBSTITUIDA
+  passos          Json      @default("{}") // documento inteiro (seção 5 do plano)
+  zeraTreinamento Boolean   @default(true) @map("zera_treinamento")
+  publicadaEm     DateTime? @map("publicada_em")
+  publicadaPorId  String?   @map("publicada_por_id")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  conteudo  ComoFazerConteudo   @relation(fields: [conteudoId], references: [id], onDelete: Cascade)
+  execucoes ComoFazerExecucao[]
+
+  @@unique([conteudoId, numero])
+  @@index([conteudoId, status])
+  @@map("como_fazer_versoes")
+}
+
+model ComoFazerTreinamento {
+  id                         String    @id @default(uuid())
+  conteudoId                 String    @map("conteudo_id")
+  versaoId                   String    @map("versao_id")
+  versaoNumero               Int       @map("versao_numero")
+  versaoTreinoNumero         Int       @map("versao_treino_numero")
+  ciclo                      Int       @default(1)
+  funcionarioId              String    @map("funcionario_id")
+  aprendeuEm                 DateTime  @default(now()) @map("aprendeu_em")
+  origem                     String    @default("TABLET") // TABLET | APP
+  exigeConfirmacao           Boolean   @map("exige_confirmacao")
+  confirmadoPorFuncionarioId String?   @map("confirmado_por_funcionario_id")
+  confirmadoPorVendedorId    String?   @map("confirmado_por_vendedor_id")
+  confirmadoEm               DateTime? @map("confirmado_em")
+  validoAte                  DateTime? @map("valido_ate")
+  createdAt                  DateTime  @default(now()) @map("created_at")
+
+  conteudo ComoFazerConteudo @relation(fields: [conteudoId], references: [id], onDelete: Cascade)
+
+  @@unique([funcionarioId, conteudoId, versaoTreinoNumero, ciclo])
+  @@index([conteudoId])
+  @@index([funcionarioId])
+  @@map("como_fazer_treinamentos")
+}
+
+model ComoFazerExecucao {
+  id              String   @id @default(uuid())
+  chave           String   @unique // idempotência: uuid gerado pela tela
+  conteudoId      String   @map("conteudo_id")
+  versaoId        String   @map("versao_id")
+  versaoNumero    Int      @map("versao_numero")
+  funcionarioId   String?  @map("funcionario_id")
+  vendedorId      String?  @map("vendedor_id")
+  dataRef         String   @map("data_ref") // 'YYYY-MM-DD' (dia SP)
+  horaAlvo        String?  @map("hora_alvo") // 'HH:MM'
+  tarefaId        String?  @map("tarefa_id")
+  respostas       Json     @default("[]")
+  temDesvio       Boolean  @default(false) @map("tem_desvio")
+  desvioTarefaIds String[] @default([]) @map("desvio_tarefa_ids")
+  concluidaEm     DateTime @default(now()) @map("concluida_em")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  conteudo ComoFazerConteudo @relation(fields: [conteudoId], references: [id], onDelete: Cascade)
+  versao   ComoFazerVersao   @relation(fields: [versaoId], references: [id])
+
+  @@index([conteudoId, dataRef])
+  @@index([dataRef, temDesvio])
+  @@index([funcionarioId])
+  @@map("como_fazer_execucoes")
 }
