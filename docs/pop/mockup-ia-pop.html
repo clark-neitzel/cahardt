@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup — "Começar com a IA": o Claude monta o rascunho do POP</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--primary:#00754A;--primaryDark:#006241;--house:#1E3932;--mint:#d4e9e2;--bg:#f2f0eb;--gold:#cba258;--text:rgba(0,0,0,.87);--muted:#6b7280;--border:#e5e7eb;--ia:#6d28d9;--iaBg:#f3e8ff}
+*{box-sizing:border-box}
+body{margin:0;font-family:Manrope,-apple-system,"SF Pro Text",sans-serif;letter-spacing:-.01em;font-variant-numeric:tabular-nums;background:var(--bg);color:var(--text)}
+.hero{background:var(--house);color:#fff;padding:28px 16px 22px}
+.hero .wrap{max-width:1100px;margin:0 auto}
+.hero .tag{display:inline-block;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:999px;padding:3px 12px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.hero h1{margin:12px 0 6px;font-size:24px;font-weight:800;line-height:1.15}
+.hero p{margin:0;color:rgba(255,255,255,.8);font-size:14px;max-width:760px;line-height:1.5}
+.nav{position:sticky;top:0;z-index:20;background:#fff;border-bottom:1px solid var(--border)}
+.nav .wrap{max-width:1100px;margin:0 auto;display:flex;gap:6px;overflow-x:auto;padding:10px 16px;scrollbar-width:none}
+.nav button{flex:none;border:1px solid var(--primary);background:#fff;color:var(--primary);border-radius:999px;padding:8px 14px;font:inherit;font-weight:600;font-size:13px;cursor:pointer;min-height:40px}
+.nav button.on{background:var(--primary);color:#fff}
+main{max-width:1100px;margin:0 auto;padding:16px}
+section.tela{display:none}section.tela.on{display:block}
+.intro{background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:14px;font-size:14px;line-height:1.5}
+.intro b{color:var(--primaryDark)}
+.app{background:#fff;border:1px solid var(--border);border-radius:16px;box-shadow:0 1px 3px rgba(0,0,0,.06);overflow:hidden;position:relative}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 16px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.topbar .t{display:flex;align-items:center;gap:10px}
+.ico{background:var(--mint);width:38px;height:38px;border-radius:10px;display:grid;place-items:center;color:var(--primary);font-size:18px}
+.topbar h2{margin:0;font-size:18px;font-weight:800}
+.topbar small{display:block;color:var(--muted);font-weight:500;font-size:12px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:999px;padding:8px 16px;font-weight:700;font-size:13px;border:1px solid transparent;cursor:default;min-height:40px;white-space:nowrap}
+.btn.p{background:var(--primary);color:#fff}.btn.s{background:#fff;border-color:var(--primary);color:var(--primary)}.btn.g{background:#f3f4f6;color:#374151}
+.btn.ia{background:var(--ia);color:#fff}.btn.ia2{background:var(--iaBg);color:var(--ia);border-color:#ddd6fe}
+.btn.xl{font-size:16px;min-height:56px;padding:12px 22px;border-radius:18px}
+.body{padding:14px 16px}
+.badge{display:inline-block;padding:3px 8px;font-size:11px;font-weight:700;border-radius:999px;white-space:nowrap}
+.b-cinza{background:#f3f4f6;color:#374151}.b-roxo{background:var(--iaBg);color:var(--ia)}.b-verde{background:#dcfce7;color:#166534}.b-amarelo{background:#fef9c3;color:#854d0e}.b-azul{background:var(--mint);color:var(--primaryDark)}
+.grid{display:grid;grid-template-columns:1fr;gap:10px}
+@media(min-width:768px){.grid{grid-template-columns:1fr 1fr}.grid.c3{grid-template-columns:1fr 1fr 1fr}.grid.c4{grid-template-columns:repeat(4,1fr)}}
+.card{border:1px solid var(--border);border-radius:12px;padding:12px 14px;background:#fff;position:relative}
+.card .tit{font-weight:700;font-size:15px;margin:2px 0 4px}
+.card .meta{font-size:12px;color:var(--muted);line-height:1.5}
+.sec-h{display:flex;align-items:center;gap:8px;padding:10px 0 8px;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#4b5563}
+.sec-h .ln{flex:1;height:1px;background:var(--border)}
+.pin{position:absolute;width:22px;height:22px;border-radius:999px;background:var(--gold);color:#1E3932;font-size:12px;font-weight:800;display:grid;place-items:center;box-shadow:0 1px 3px rgba(0,0,0,.3);z-index:5}
+.legenda{margin-top:14px;background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px 16px}
+.legenda h3{margin:0 0 8px;font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#4b5563}
+.legenda ol{margin:0;padding:0;list-style:none;display:grid;gap:8px}
+@media(min-width:768px){.legenda ol{grid-template-columns:1fr 1fr}}
+.legenda li{display:flex;gap:10px;font-size:13px;line-height:1.45}
+.legenda li i{flex:none;width:22px;height:22px;border-radius:999px;background:var(--gold);color:#1E3932;font-style:normal;font-weight:800;font-size:12px;display:grid;place-items:center}
+.inp{border:1px solid #d1d5db;border-radius:6px;padding:9px 12px;font-size:14px;color:#374151;background:#fff;min-height:42px;display:flex;align-items:center;gap:8px;width:100%}
+.inp.sel::after{content:"▾";margin-left:auto;color:#9ca3af}
+.lbl{font-size:12px;font-weight:700;color:#374151;margin:10px 0 4px;display:block}
+.ta{border:1px solid #d1d5db;border-radius:8px;padding:12px;font-size:15px;line-height:1.5;color:#374151;background:#fff;min-height:120px;position:relative}
+.ta .mic{position:absolute;right:10px;bottom:10px;background:var(--ia);color:#fff;border-radius:999px;padding:8px 14px;font-size:13px;font-weight:800;display:inline-flex;gap:6px;align-items:center;min-height:44px}
+.modal{max-width:640px;margin:0 auto;background:#fff;border:1px solid var(--border);border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,.18);overflow:hidden;position:relative}
+.modal .mh{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--border)}
+.modal .mh b{font-size:17px}.modal .mh small{display:block;color:var(--muted);font-size:12px;font-weight:500}
+.modal .mb{padding:12px 18px 18px}
+.modal .mf{display:flex;gap:8px;padding:12px 18px;border-top:1px solid var(--border);background:#fafafa;flex-wrap:wrap}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border-radius:999px;padding:7px 12px;font-size:13px;font-weight:700;background:#f3f4f6;color:#374151;min-height:40px;display:inline-flex;align-items:center;gap:6px}
+.chip.on{background:var(--house);color:#fff}
+.passo{display:flex;gap:12px;border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:8px;background:#fff;position:relative}
+.passo .n{flex:none;width:30px;height:30px;border-radius:999px;background:var(--house);color:#fff;font-weight:800;display:grid;place-items:center;font-size:14px}
+.passo .tx{flex:1;font-size:14px;line-height:1.45}
+.passo .tx small{display:block;color:var(--muted);font-size:12px;margin-top:3px}
+.foto{flex:none;width:110px;min-height:64px;border-radius:8px;background:var(--iaBg);border:1px dashed #c4b5fd;display:grid;place-items:center;font-size:11px;color:var(--ia);font-weight:700;text-align:center;padding:6px;line-height:1.3}
+.alerta{border-left:4px solid #dc2626;background:#fef2f2;border-radius:8px;padding:10px 12px;font-size:14px;margin:10px 0}
+.alerta b{color:#b91c1c}
+.selo-ia{background:var(--iaBg);color:var(--ia);border:1px solid #ddd6fe;border-radius:10px;padding:10px 12px;font-size:13px;font-weight:700;display:flex;gap:8px;align-items:center;margin-bottom:12px}
+.stream{font-family:ui-monospace,Menlo,monospace;font-size:13px;background:#0f172a;color:#e2e8f0;border-radius:12px;padding:14px;line-height:1.6;min-height:140px}
+.stream .c{display:inline-block;width:8px;height:16px;background:#a78bfa;vertical-align:-3px;animation:b 1s steps(2) infinite}
+@keyframes b{50%{opacity:0}}
+.prog{height:8px;background:#e5e7eb;border-radius:999px;overflow:hidden;margin:10px 0}.prog i{display:block;height:100%;width:55%;background:var(--ia)}
+.info{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+@media(min-width:768px){.info{grid-template-columns:repeat(4,1fr)}}
+.info div{background:#f9fafb;border:1px solid var(--border);border-radius:10px;padding:8px 10px}
+.info b{display:block;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:800}
+.info span{font-size:13px;font-weight:600}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:8px 10px;background:#f9fafb;border-bottom:1px solid var(--border)}
+td{padding:9px 10px;border-bottom:1px solid #f3f4f6;vertical-align:middle}
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+@media(min-width:768px){.kpis{grid-template-columns:repeat(4,1fr)}}
+.kpi{border:1px solid var(--border);border-radius:12px;padding:12px 14px;background:#fff}
+.kpi b{display:block;font-size:22px;font-weight:800}.kpi small{color:var(--muted);font-size:12px;font-weight:600}
+.flow{display:grid;gap:8px}@media(min-width:768px){.flow{grid-template-columns:repeat(5,1fr)}}
+.flow div{background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center;font-size:13px;line-height:1.4}
+.flow div b{display:block;font-size:26px;margin-bottom:4px}
+.tog{display:inline-block;width:44px;height:24px;border-radius:999px;background:var(--primary);position:relative;vertical-align:middle}
+.tog::after{content:"";position:absolute;top:3px;right:3px;width:18px;height:18px;border-radius:999px;background:#fff}
+.pergunta{border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:6px;font-size:13px;display:flex;gap:10px;align-items:center;background:#fafafa}
+.pergunta .tp{flex:none;font-size:11px;font-weight:800;color:var(--ia);background:var(--iaBg);border-radius:6px;padding:3px 8px}
+footer{max-width:1100px;margin:0 auto;padding:10px 16px 40px;font-size:12px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="hero"><div class="wrap">
+  <span class="tag">Mockup · proposta · nada implementado ainda</span>
+  <h1>"Começar com a IA": o Claude monta o primeiro rascunho do POP, dentro do app</h1>
+  <p>A gerente conta em palavras simples (ou <b>fala no microfone</b>) o que quer ensinar. O Claude Fable 5.1 devolve o POP no formato do app: para que serve, o que precisa, passos numerados, o que não fazer, se der errado e <b>qual foto tirar em cada passo</b>. Ela aceita, tira as fotos e ajusta no editor que já existe. A IA nunca publica.</p>
+</div></div>
+
+<div class="nav"><div class="wrap">
+  <button class="on" data-t="t0">0 · Como funciona</button>
+  <button data-t="t1">1 · Botão no editor</button>
+  <button data-t="t2">2 · Conte para a IA</button>
+  <button data-t="t3">3 · Montando…</button>
+  <button data-t="t4">4 · Prévia do rascunho</button>
+  <button data-t="t5">5 · No editor</button>
+  <button data-t="t6">6 · Configurações → IA</button>
+</div></div>
+
+<main>
+
+<!-- 0 -->
+<section class="tela on" id="t0">
+  <div class="sec-h">O caminho da gerente<span class="ln"></span></div>
+  <div class="flow">
+    <div><b>✨</b>Clica em <b>Começar com a IA</b> no editor</div>
+    <div><b>🎤</b>Conta o que quer ensinar (fala ou digita)</div>
+    <div><b>⏳</b>O Claude escreve em 10 a 30 s</div>
+    <div><b>👀</b>Vê a prévia, pede diferente se quiser</div>
+    <div><b>📷</b>Aceita, tira as fotos, ajusta e publica</div>
+  </div>
+
+  <div class="sec-h" style="margin-top:14px">O que a IA recebe e o que devolve<span class="ln"></span></div>
+  <div class="grid">
+    <div class="card"><div class="tit">📥 O que vai para a IA (montado pelo sistema)</div><div class="meta">• O pedido da gerente (tipo, setor, título, o que quer ensinar, foto opcional)<br>• Os setores cadastrados e as máquinas/itens do PCP daquele setor<br>• Dois conteúdos já publicados do mesmo tipo, como exemplo do "jeito Hardt" de escrever<br>• As regras de ouro: frase curta, uma ação por passo, linguagem de quem não gosta de ler<br>• <b>Nada</b> de cliente, preço, financeiro ou dado pessoal</div></div>
+    <div class="card"><div class="tit">📤 O que a IA devolve (sempre no formato do app)</div><div class="meta">• Para que serve · O que precisa (EPI, materiais)<br>• Passos numerados, cada um com frase curta, detalhe e <b>"foto para tirar"</b><br>• O que NÃO fazer · Se der errado (se… então…)<br>• Em Rotina: perguntas do checklist (número com limite, sim/não, foto)<br>• Em Máquina: Montar · Usar · Limpar · Deu problema<br>• Tudo entra como <b>rascunho</b>, com o selo "feito com ajuda da IA"</div></div>
+  </div>
+
+  <div class="sec-h" style="margin-top:14px">Guarda-corpos<span class="ln"></span></div>
+  <div class="grid c3">
+    <div class="card"><div class="tit">🔒 Nunca publica</div><div class="meta">Só rascunho. Publicar continua sendo clique de pessoa, como hoje.</div></div>
+    <div class="card"><div class="tit">🔑 Chave fora do código</div><div class="meta">A chave da Anthropic fica só na configuração do servidor (EasyPanel). Nem no código, nem no banco.</div></div>
+    <div class="card"><div class="tit">📊 Uso visível e limitado</div><div class="meta">Cada chamada fica registrada (quem, quando, custo). Limite por dia. Tela mostra o gasto do mês.</div></div>
+  </div>
+
+  <div class="sec-h" style="margin-top:14px">Modelo e custo (escolhido: Claude Fable 5.1)<span class="ln"></span></div>
+  <div class="app"><div class="body"><table>
+    <tr><th>Modelo</th><th>Para quê</th><th>Custo por POP montado</th><th>100 POPs no mês</th></tr>
+    <tr><td><b>Claude Fable 5.1</b> <span class="badge b-roxo">escolhido</span></td><td>melhor texto, mais cuidado com segurança</td><td>≈ R$ 0,75</td><td>≈ R$ 75</td></tr>
+    <tr><td>Claude Opus 5.5</td><td>ótimo e mais barato</td><td>≈ R$ 0,30</td><td>≈ R$ 30</td></tr>
+    <tr><td>Claude Sonnet 5.5</td><td>rápido, para "melhorar texto"</td><td>≈ R$ 0,15</td><td>≈ R$ 15</td></tr>
+  </table><div style="font-size:12px;color:var(--muted);margin-top:8px">Estimativa com ~2.500 palavras-token de entrada e ~2.000 de saída por POP, preço de lista da API. Os botões pequenos ("melhorar texto") custam centavos. Dá para trocar o modelo na tela 6 sem mexer em código.</div></div></div>
+</section>
+
+<!-- 1 -->
+<section class="tela" id="t1">
+  <div class="intro"><b>Onde o botão aparece.</b> Em <b>Painel Como Fazer → Conteúdos → + Novo</b> e dentro de qualquer conteúdo que ainda esteja vazio. Quem não tem permissão de editar não vê.</div>
+  <div class="app">
+    <div class="topbar"><div class="t"><div class="ico">📘</div><div><h2>Novo conteúdo</h2><small>Painel Como Fazer → Conteúdos</small></div></div></div>
+    <div class="body">
+      <div class="grid">
+        <div style="position:relative"><span class="lbl">Tipo</span><div class="inp sel">⚙️ Máquina</div><span class="lbl">Setor</span><div class="inp sel">🍳 Cozinha</div><span class="lbl">Título</span><div class="inp">Fritadeira</div></div>
+        <div style="position:relative">
+          <div style="background:var(--iaBg);border:1px solid #ddd6fe;border-radius:14px;padding:16px;height:100%">
+            <div style="font-weight:800;font-size:15px;color:var(--ia)">✨ Quer que a IA monte o começo?</div>
+            <div style="font-size:13px;color:#4b5563;margin:6px 0 12px;line-height:1.5">Conte o que você quer ensinar e o Claude escreve um rascunho completo, com os passos e qual foto tirar. Você ajusta depois.</div>
+            <span class="btn ia xl" style="width:100%">✨ Começar com a IA</span>
+            <div style="font-size:12px;color:var(--muted);margin-top:8px;text-align:center">ou <u>começar em branco</u> como hoje</div>
+          </div>
+          <span class="pin" style="right:-6px;top:-10px">1</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="legenda"><h3>Legenda</h3><ol>
+    <li><i>1</i>O cartão roxo é a única coisa nova nesta tela. Tipo, setor e título continuam como hoje e vão junto para a IA.</li>
+    <li><i>2</i>"Começar em branco" mantém o caminho atual intacto. A IA é opcional.</li>
+  </ol></div>
+</section>
+
+<!-- 2 -->
+<section class="tela" id="t2">
+  <div class="intro"><b>"Conte para a IA".</b> Uma janela só. O campo grande aceita <b>fala</b> (botão 🎤, o celular/iPad transcreve) ou digitação. Quanto mais ela contar, melhor sai; mas até uma frase ("como fritar coxinha sem queimar e sem se queimar") já gera um rascunho útil.</div>
+  <div class="modal">
+    <div class="mh"><div class="ico" style="background:var(--iaBg);color:var(--ia)">✨</div><div><b>Conte para a IA</b><small>Ela monta o rascunho; você ajusta depois</small></div></div>
+    <div class="mb">
+      <div class="grid" style="gap:8px"><div><span class="lbl">Tipo</span><div class="inp sel">⚙️ Máquina</div></div><div><span class="lbl">Setor</span><div class="inp sel">🍳 Cozinha</div></div></div>
+      <span class="lbl">Título</span><div class="inp">Fritadeira</div>
+      <span class="lbl" style="position:relative">O que você quer ensinar? <span class="pin" style="left:190px;top:-4px">1</span></span>
+      <div class="ta">Como ligar a fritadeira, esperar o óleo chegar na temperatura, fritar a coxinha sem encher demais o cesto, e como desligar e limpar no fim do dia. O pessoal se queima tirando o cesto rápido e deixa o óleo velho.<span class="mic">🎤 Falar</span></div>
+      <div class="grid" style="gap:8px;margin-top:4px">
+        <div style="position:relative"><span class="lbl">Máquina/item do PCP (opcional)</span><div class="inp sel">Fritadeira elétrica 2 cubas</div><span class="pin" style="right:-6px;top:8px">2</span></div>
+        <div><span class="lbl">Quem executa</span><div class="inp sel">Auxiliar de produção</div></div>
+      </div>
+      <span class="lbl">Tamanho</span><div class="chips"><span class="chip on">Completo (8 a 15 passos)</span><span class="chip">Curto (até 6 passos)</span></div>
+      <div style="margin-top:10px;position:relative"><span class="btn g" style="width:100%;border:1px dashed #d1d5db;background:#fff">📷 Juntar uma foto da máquina (opcional) — a IA olha a foto para descrever melhor</span><span class="pin" style="right:-6px;top:-8px">3</span></div>
+    </div>
+    <div class="mf" style="position:relative"><span class="btn g">Cancelar</span><span class="btn ia xl" style="flex:1">✨ Montar o POP</span><span class="pin" style="right:8px;top:-10px">4</span></div>
+  </div>
+  <div class="legenda"><h3>Legenda</h3><ol>
+    <li><i>1</i>Campo livre, em linguagem de todo dia. O botão <b>Falar</b> usa o microfone do aparelho e vai escrevendo o que ela diz (funciona no iPad, iPhone e Chrome).</li>
+    <li><i>2</i>Lista das máquinas/itens já cadastrados no PCP do setor. Se escolher, a IA usa o nome certo e o que já se sabe sobre ela.</li>
+    <li><i>3</i>Foto opcional: a IA "enxerga" a máquina e descreve botões, cesto, painel. Vale para Máquina e Dosagem.</li>
+    <li><i>4</i><b>Montar o POP</b> chama o Claude (modelo escolhido na tela 6). Conta uma chamada no limite diário.</li>
+  </ol></div>
+</section>
+
+<!-- 3 -->
+<section class="tela" id="t3">
+  <div class="intro"><b>Montando.</b> A resposta chega aos poucos (10 a 30 segundos). A tela mostra o texto aparecendo para a pessoa não achar que travou. Dá para cancelar.</div>
+  <div class="modal">
+    <div class="mh"><div class="ico" style="background:var(--iaBg);color:var(--ia)">✨</div><div><b>Montando o POP da Fritadeira…</b><small>Claude Fable 5.1 · Cozinha · Máquina</small></div></div>
+    <div class="mb">
+      <div class="prog"><i></i></div>
+      <div class="stream"><span style="color:#a78bfa">Para que serve:</span> Fritar os salgados na temperatura certa, sem queimar o produto e sem ninguém se queimar.<br><span style="color:#a78bfa">O que precisa:</span> luva térmica, pegador longo, termômetro, pano seco…<br><span style="color:#a78bfa">Ligar e aquecer</span><br>1. Confira se tem óleo até a marca antes de ligar.<br>2. Ligue a chave geral e ajuste para 180 °C.<br>3. Espere a luz apagar: é sinal de que chegou na temperatura.<br><span style="color:#a78bfa">Usar</span><br>4. Encha o cesto só até a metade<span class="c"></span></div>
+      <div style="font-size:12px;color:var(--muted);margin-top:8px">A IA está usando: setores da Hardt, itens do PCP da Cozinha e os 2 conteúdos publicados de Máquina como exemplo de tom.</div>
+    </div>
+    <div class="mf"><span class="btn g">Cancelar</span></div>
+  </div>
+</section>
+
+<!-- 4 -->
+<section class="tela" id="t4">
+  <div class="intro"><b>Prévia do rascunho.</b> Mesmo visual do documento que a equipe vê. Cada passo traz a dica <b>"Foto para tirar"</b>. Ela pode aceitar, pedir diferente (dizendo o que mudar) ou cancelar. Nada foi salvo ainda.</div>
+  <div class="app">
+    <div class="topbar"><div class="t"><div class="ico" style="background:var(--iaBg);color:var(--ia)">✨</div><div><h2>Rascunho sugerido: Fritadeira</h2><small>Máquina · Cozinha · 12 passos em 4 blocos · feito em 18 s</small></div></div><div style="display:flex;gap:8px;position:relative"><span class="btn ia2">↻ Pedir diferente</span><span class="btn p">✓ Usar este rascunho</span><span class="pin" style="right:-8px;top:-10px">1</span></div></div>
+    <div class="body">
+      <div class="selo-ia">✨ Rascunho feito com ajuda da IA — confira cada passo antes de publicar. Ela não substitui quem conhece a máquina.</div>
+      <div class="info"><div><b>Tipo</b><span>⚙️ Máquina</span></div><div><b>Setor</b><span>Cozinha</span></div><div><b>Quem treina</b><span>Auxiliar de produção</span></div><div><b>Exige confirmação</b><span>Sim (encarregado)</span></div></div>
+      <div class="sec-h">Para que serve<span class="ln"></span></div>
+      <p style="font-size:14px;margin:0 0 8px;line-height:1.5">Fritar os salgados na temperatura certa, sem queimar o produto e sem ninguém se queimar.</p>
+      <div class="sec-h">O que precisa<span class="ln"></span></div>
+      <p style="font-size:14px;margin:0 0 8px">Luva térmica · pegador longo · termômetro · pano seco · balde para óleo usado.</p>
+      <div class="alerta" style="position:relative"><b>⚠️ Perigo:</b> óleo quente. Nunca encher com água. Nunca tirar o cesto com pressa. Use a luva térmica.<span class="pin" style="right:8px;top:-10px">2</span></div>
+      <div class="sec-h">🔧 Ligar e aquecer<span class="ln"></span></div>
+      <div class="passo"><div class="n">1</div><div class="tx">Confira se tem óleo até a marca antes de ligar.<small>Sem óleo a resistência queima.</small></div><div class="foto">📷 Foto para tirar: a marca de nível dentro da cuba</div></div>
+      <div class="passo" style="position:relative"><div class="n">2</div><div class="tx">Ligue a chave geral e ajuste para 180 °C.</div><div class="foto">📷 Foto para tirar: o botão de temperatura no 180</div><span class="pin" style="right:-6px;top:-10px">3</span></div>
+      <div class="passo"><div class="n">3</div><div class="tx">Espere a luz apagar. É sinal de que chegou na temperatura.<small>Leva uns 10 minutos.</small></div><div class="foto">📷 Foto para tirar: a luz do painel apagada</div></div>
+      <div class="sec-h">▶️ Usar<span class="ln"></span></div>
+      <div class="passo"><div class="n">4</div><div class="tx">Encha o cesto só até a metade.<small>Cesto cheio esfria o óleo e o salgado fica encharcado.</small></div><div class="foto">📷 Foto para tirar: cesto pela metade</div></div>
+      <div class="passo"><div class="n">5</div><div class="tx">Desça o cesto devagar, sem respingar.</div><div class="foto">📷 Foto para tirar: mão com luva descendo o cesto</div></div>
+      <div style="text-align:center;color:var(--muted);font-size:13px;padding:4px 0 8px">… passos 6 a 12 (Usar · Limpar · Deu problema) …</div>
+      <div class="sec-h">O que NÃO fazer<span class="ln"></span></div>
+      <div class="alerta">Encher com água · deixar o óleo mais de 3 dias · tirar o cesto sem luva · deixar ligada sem ninguém.</div>
+      <div class="sec-h">Se der errado<span class="ln"></span></div>
+      <table><tr><th>Se…</th><th>Então…</th></tr><tr><td>Fumaça no óleo</td><td>Desligue, espere esfriar, troque o óleo.</td></tr><tr><td>Não esquenta</td><td>Veja a chave geral. Se continuar, chame o encarregado.</td></tr></table>
+      <div style="margin-top:12px;background:#fafafa;border:1px solid var(--border);border-radius:12px;padding:12px;position:relative">
+        <div style="font-weight:800;font-size:13px;margin-bottom:6px">↻ Pedir diferente — o que mudar?</div>
+        <div class="inp">ex.: "mais curto", "fala do termômetro", "coloca um passo para trocar o óleo"</div>
+        <span class="pin" style="right:-6px;top:-10px">4</span>
+      </div>
+    </div>
+  </div>
+  <div class="legenda"><h3>Legenda</h3><ol>
+    <li><i>1</i><b>Usar este rascunho</b> cria o rascunho no editor (nada publicado). <b>Pedir diferente</b> manda o pedido de volta com a observação.</li>
+    <li><i>2</i>A IA sempre coloca o aviso de perigo no topo quando há risco (óleo quente, lâmina, carga). A pessoa pode editar ou apagar.</li>
+    <li><i>3</i>Cada passo tem a <b>dica de foto</b> no lugar onde a foto vai entrar. No editor essa dica vira o texto do botão "tirar foto".</li>
+    <li><i>4</i>"Pedir diferente" não zera: a IA recebe o rascunho anterior e a observação, e devolve a versão ajustada.</li>
+  </ol></div>
+</section>
+
+<!-- 5 -->
+<section class="tela" id="t5">
+  <div class="intro"><b>No editor que já existe.</b> O rascunho entra como se ela tivesse digitado. Diferenças: o selo "feito com ajuda da IA" (some quando ela publica), a dica de foto em cada passo e os botões ✨ pequenos para pedir ajuda em um passo só.</div>
+  <div class="app">
+    <div class="topbar"><div class="t"><div class="ico">✎</div><div><h2>Fritadeira</h2><small>Rascunho · Máquina · Cozinha</small></div></div><div style="display:flex;gap:8px"><span class="btn g">Prévia</span><span class="btn p">Publicar</span></div></div>
+    <div class="body">
+      <div class="selo-ia" style="position:relative">✨ Rascunho feito com ajuda da IA — confira antes de publicar.<span class="pin" style="right:-6px;top:-10px">1</span></div>
+      <div class="sec-h">🔧 Ligar e aquecer<span class="ln"></span></div>
+      <div class="passo" style="position:relative"><div class="n">1</div><div class="tx"><div class="inp" style="margin-bottom:6px">Confira se tem óleo até a marca antes de ligar.</div><div style="display:flex;gap:6px;flex-wrap:wrap"><span class="btn ia2" style="min-height:34px;padding:4px 10px;font-size:12px">✨ Melhorar</span><span class="btn ia2" style="min-height:34px;padding:4px 10px;font-size:12px">✨ Mais simples</span><span class="btn g" style="min-height:34px;padding:4px 10px;font-size:12px">⚠️ Marcar perigo</span></div></div><div class="foto" style="background:#fff;border-color:var(--primary);color:var(--primary)">📷 Tirar foto<br><small style="color:var(--muted);font-weight:500">dica: a marca de nível dentro da cuba</small></div><span class="pin" style="right:-6px;top:-10px">2</span></div>
+      <div class="passo"><div class="n">2</div><div class="tx"><div class="inp" style="margin-bottom:6px">Ligue a chave geral e ajuste para 180 °C.</div><div style="display:flex;gap:6px"><span class="btn ia2" style="min-height:34px;padding:4px 10px;font-size:12px">✨ Melhorar</span><span class="btn ia2" style="min-height:34px;padding:4px 10px;font-size:12px">✨ Mais simples</span></div></div><div class="foto" style="background:#fff;border-color:var(--primary);color:var(--primary)">📷 Tirar foto<br><small style="color:var(--muted);font-weight:500">dica: o botão no 180</small></div></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 14px;position:relative"><span class="btn g">+ Passo</span><span class="btn ia2">✨ Sugerir mais passos</span><span class="pin" style="right:-6px;top:-10px">3</span></div>
+      <div class="sec-h">Ajuda da IA no documento<span class="ln"></span></div>
+      <div class="chips" style="position:relative"><span class="chip">✨ Sugerir "O que NÃO fazer"</span><span class="chip">✨ Sugerir "Se der errado"</span><span class="chip">✨ Sugerir perguntas do checklist</span><span class="chip">✨ Revisar o POP inteiro</span><span class="pin" style="right:-6px;top:-10px">4</span></div>
+      <div class="sec-h" style="margin-top:14px">Exemplo: perguntas sugeridas para uma Rotina<span class="ln"></span></div>
+      <div class="pergunta"><span class="tp">NÚMERO</span>Qual a temperatura do óleo? <small style="color:var(--muted)">(esperado 170 a 185 °C)</small><span class="btn p" style="margin-left:auto;min-height:32px;padding:4px 12px;font-size:12px">Usar</span></div>
+      <div class="pergunta"><span class="tp">SIM/NÃO</span>O óleo está limpo (sem resíduo no fundo)?<span class="btn p" style="margin-left:auto;min-height:32px;padding:4px 12px;font-size:12px">Usar</span></div>
+      <div class="pergunta"><span class="tp">FOTO</span>Foto do painel com a temperatura<span class="btn p" style="margin-left:auto;min-height:32px;padding:4px 12px;font-size:12px">Usar</span></div>
+    </div>
+  </div>
+  <div class="legenda"><h3>Legenda</h3><ol>
+    <li><i>1</i>Selo visível só no editor e na prévia. No tablet da equipe nunca aparece; some quando ela publica.</li>
+    <li><i>2</i><b>Melhorar</b> reescreve o passo mais claro; <b>Mais simples</b> encurta para quem lê pouco. A dica de foto fica no botão de tirar foto.</li>
+    <li><i>3</i><b>Sugerir mais passos</b> olha o que já existe e propõe o que falta (ex.: "faltou desligar a chave geral").</li>
+    <li><i>4</i>Botões do documento inteiro (Fase 2 e 3). Cada sugestão vem com botão <b>Usar</b>: nada entra sozinho.</li>
+  </ol></div>
+</section>
+
+<!-- 6 -->
+<section class="tela" id="t6">
+  <div class="intro"><b>Configurações → IA.</b> Tela da gestão (permissão de Configurações). Escolhe o modelo por função (o Clippy pode ficar como está; o Como Fazer usa o Claude), vê se a chave está no servidor, liga/desliga, define o limite por dia e acompanha o gasto do mês.</div>
+  <div class="app">
+    <div class="topbar"><div class="t"><div class="ico">🤖</div><div><h2>Inteligência artificial</h2><small>Configurações</small></div></div><span class="btn p">Salvar</span></div>
+    <div class="body">
+      <div class="kpis" style="position:relative"><div class="kpi"><b>37</b><small>POPs montados no mês</small></div><div class="kpi"><b>R$ 28,40</b><small>gasto estimado no mês</small></div><div class="kpi"><b>14 s</b><small>tempo médio</small></div><div class="kpi"><b>✅</b><small>chave configurada no servidor</small></div><span class="pin" style="right:-6px;top:-10px">1</span></div>
+      <div class="sec-h">Como Fazer (montar POP, melhorar texto, sugestões)<span class="ln"></span></div>
+      <div class="grid">
+        <div style="position:relative"><span class="lbl">Provedor</span><div class="inp sel">Anthropic (Claude)</div><span class="lbl">Modelo para montar o POP</span><div class="inp sel">Claude Fable 5.1 — ≈ R$ 0,75 por POP</div><span class="lbl">Modelo para ajustes pequenos (melhorar, mais simples)</span><div class="inp sel">Claude Sonnet 5.5 — centavos</div><span class="pin" style="right:-6px;top:-10px">2</span></div>
+        <div style="position:relative"><span class="lbl">Ligado</span><div class="inp"><span class="tog"></span> Botões ✨ aparecem para quem edita o Como Fazer</div><span class="lbl">Limite por dia (todas as pessoas)</span><div class="inp">40 chamadas</div><span class="lbl">Chave da API</span><div class="inp" style="color:var(--muted)">Fica na configuração do servidor (ANTHROPIC_API_KEY). Não é editada aqui.</div><span class="pin" style="right:-6px;top:-10px">3</span></div>
+      </div>
+      <div class="sec-h" style="margin-top:12px">Clippy (assistente de ajuda)<span class="ln"></span></div>
+      <div class="grid"><div><span class="lbl">Provedor</span><div class="inp sel">OpenAI (como hoje)</div></div><div><span class="lbl">Modelo</span><div class="inp sel">gpt-6-luna (como hoje)</div></div></div>
+      <div class="sec-h" style="margin-top:12px">Histórico de uso<span class="ln"></span></div>
+      <table><tr><th>Quando</th><th>Quem</th><th>O quê</th><th>Modelo</th><th>Tempo</th><th>Custo</th><th>Resultado</th></tr>
+        <tr><td>20/10 14:02</td><td>Gerente de produção</td><td>Montar POP · Fritadeira</td><td>Fable 5.1</td><td>18 s</td><td>R$ 0,81</td><td><span class="badge b-verde">Usado</span></td></tr>
+        <tr><td>20/10 14:05</td><td>Gerente de produção</td><td>Pedir diferente · Fritadeira</td><td>Fable 5.1</td><td>12 s</td><td>R$ 0,62</td><td><span class="badge b-verde">Usado</span></td></tr>
+        <tr><td>20/10 14:11</td><td>Gerente de produção</td><td>Melhorar passo 4</td><td>Sonnet 5.5</td><td>3 s</td><td>R$ 0,02</td><td><span class="badge b-cinza">Descartado</span></td></tr>
+        <tr><td>19/10 16:40</td><td>Clarkson</td><td>Montar POP · Higiene e uniforme</td><td>Fable 5.1</td><td>15 s</td><td>R$ 0,70</td><td><span class="badge b-amarelo">Recusado pela IA</span></td></tr>
+      </table>
+    </div>
+  </div>
+  <div class="legenda"><h3>Legenda</h3><ol>
+    <li><i>1</i>Resumo do mês: quantos POPs, gasto estimado (calculado pelos tokens que a API informa), tempo médio, e se a chave está no servidor.</li>
+    <li><i>2</i>Modelo por função. Montar o POP usa o Fable 5.1 (escolha do dono). Ajustes pequenos podem usar um modelo mais barato. Troca sem redeploy.</li>
+    <li><i>3</i>Chave nunca aparece nem é digitada no app: mora só na variável do EasyPanel. Limite diário evita surpresa na conta.</li>
+    <li><i>4</i>Histórico por chamada, com custo e se a sugestão foi usada. "Recusado pela IA" é raro (a API pode recusar um pedido); o app mostra uma mensagem simples e não cobra nada da pessoa.</li>
+  </ol></div>
+</section>
+
+</main>
+<footer>Mockup estático no tema do app. Dados fictícios. Arquivo: docs/pop/mockup-ia-pop.html · Proposta: docs/pop/proposta-ia-pop.md</footer>
+<script>
+document.querySelectorAll('.nav button').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('on'));b.classList.add('on');
+  document.querySelectorAll('section.tela').forEach(s=>s.classList.toggle('on',s.id===b.dataset.t));
+  window.scrollTo({top:0,behavior:'smooth'});
+}));
+</script>
+</body>
+</html>
