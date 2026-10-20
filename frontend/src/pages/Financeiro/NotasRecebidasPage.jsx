@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import useConfirmarCustoForaDaCurva, { gravarComAvisoDeCusto } from '../../hooks/useConfirmarCustoForaDaCurva';
 import notasEntradaService from '../../services/notasEntradaService';
 import contasPagarService from '../../services/contasPagarService';
 import categoriaProdutoService from '../../services/categoriaProdutoService';
@@ -1967,6 +1968,7 @@ const PainelRegistrarEntrada = ({ nota, obterItens, onCancelar, onChanged, bloqu
     const [motivo, setMotivo] = useState(nota.motivoSugerido || '');
     const [observacao, setObservacao] = useState('');
     const [salvando, setSalvando] = useState(false);
+    const [modalCusto, confirmarCusto] = useConfirmarCustoForaDaCurva();
 
     const registrar = async () => {
         if (!motivo) { toast.error('Escolha o motivo da entrada.'); return; }
@@ -1979,11 +1981,20 @@ const PainelRegistrarEntrada = ({ nota, obterItens, onCancelar, onChanged, bloqu
         }
         setSalvando(true);
         try {
-            const resp = await notasEntradaService.registrarEntrada(nota.id, {
-                motivo,
-                observacao: observacao.trim() || undefined,
-                itens
+            const r = await gravarComAvisoDeCusto({
+                confirmar: confirmarCusto,
+                avaliar: itens && itens.length > 0
+                    ? () => notasEntradaService.avaliarCusto(nota.id, { itens, modo: 'ENTRADA_SEM_PAGAMENTO' })
+                    : null,
+                gravar: (confirmado) => notasEntradaService.registrarEntrada(nota.id, {
+                    motivo,
+                    observacao: observacao.trim() || undefined,
+                    itens,
+                    ...(confirmado ? { confirmarCustoForaDaCurva: true } : {})
+                })
             });
+            if (r.cancelado) return;   // "Voltar e corrigir": nada foi gravado, formulário intacto
+            const resp = r.resposta;
             toast.success(resp?.message || 'Entrada registrada sem pagamento!');
             toastEstoque(resp?.estoque);
             toastProdutosCriados(resp?.produtosCriados);
@@ -2004,6 +2015,7 @@ const PainelRegistrarEntrada = ({ nota, obterItens, onCancelar, onChanged, bloqu
 
     return (
         <div className="border-2 border-primary rounded-xl overflow-hidden bg-white">
+            {modalCusto}
             {/* Cabeçalho */}
             <div className="px-4 md:px-5 py-3.5 border-b border-gray-100 flex items-start justify-between gap-2">
                 <div className="min-w-0">
@@ -2441,6 +2453,7 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
     const [observacoes, setObservacoes] = useState('');
     const [enviarCA, setEnviarCA] = useState(true);
     const [gerando, setGerando] = useState(false);
+    const [modalCusto, confirmarCusto] = useConfirmarCustoForaDaCurva();
     const [ignorando, setIgnorando] = useState(false);
     // Caminho alternativo: a despesa JÁ está lançada — só anexar a nota nela (não gera despesa)
     const [vincularAberto, setVincularAberto] = useState(false);
@@ -2778,7 +2791,15 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
         }
         setGerando(true);
         try {
-            const resp = await notasEntradaService.gerarConta(nota.id, {
+            const itensPayload = montarItensBase().map((base, i) => ({
+                ...base,
+                categoria: vinculos[i]?.categoria || null,
+                categoriaCaId: caIdDaCategoria(vinculos[i]?.categoria)
+            }));
+            const r = await gravarComAvisoDeCusto({
+                confirmar: confirmarCusto,
+                avaliar: () => notasEntradaService.avaliarCusto(nota.id, { itens: itensPayload, modo: 'GERAR_CONTA' }),
+                gravar: (confirmado) => notasEntradaService.gerarConta(nota.id, {
                 categoriaPadrao: categoriaPadrao || undefined,
                 categoriaPadraoCaId: caIdDaCategoria(categoriaPadrao),
                 enviarCA,
@@ -2788,12 +2809,12 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                 pago: pago || undefined,
                 dataPagamento: pago ? dataPagamento : undefined,
                 parcelas: parcelas.map(p => ({ valor: parseNum(p.valor), dataVencimento: p.dataVencimento })),
-                itens: montarItensBase().map((base, i) => ({
-                    ...base,
-                    categoria: vinculos[i]?.categoria || null,
-                    categoriaCaId: caIdDaCategoria(vinculos[i]?.categoria)
-                }))
+                itens: itensPayload,
+                ...(confirmado ? { confirmarCustoForaDaCurva: true } : {})
+                })
             });
+            if (r.cancelado) return;   // "Voltar e corrigir": nada foi gravado
+            const resp = r.resposta;
             toast.success(
                 <span>
                     {pago ? 'Conta a Pagar gerada como PAGA!' : 'Conta a Pagar gerada!'}{' '}
@@ -2868,6 +2889,7 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
 
     return (
         <div className="p-4 md:p-5 space-y-4">
+            {modalCusto}
             {/* Tentativa de manifestação recusada pela SEFAZ deixa a nota em NOVA — ou seja,
                 nesta tela. É aqui que o usuário precisa ver o que aconteceu. */}
             {!entradaAberta && <ManifestacoesRecusadas nota={nota} />}
@@ -3590,6 +3612,7 @@ const PainelCorrigirEntrada = ({ nota, itensPcp, modo = 'corrigir', onCancelar, 
     }));
     const [salvando, setSalvando] = useState(false);
     const [confirmando, setConfirmando] = useState(false);
+    const [modalCusto, confirmarCusto] = useConfirmarCustoForaDaCurva();
     // Índice do item com o modal "Criar produto a partir da nota" aberto ('' = fechado)
     const [modalProdutoIdx, setModalProdutoIdx] = useState('');
 
@@ -3645,8 +3668,7 @@ const PainelCorrigirEntrada = ({ nota, itensPcp, modo = 'corrigir', onCancelar, 
         if (erro) { toast.error(erro); return; }
         setSalvando(true);
         try {
-            const resp = await notasEntradaService.corrigirEntradaEstoque(nota.id, {
-                itens: vinculos.map(v => ({
+            const itensCorrecao = vinculos.map(v => ({
                     itemId: v.itemId,
                     vinculo: v.novo ? null : (v.vinculoValue || null),
                     fatorConversao: parseFator(v.fator) > 0 ? parseFator(v.fator) : null,
@@ -3662,8 +3684,17 @@ const PainelCorrigirEntrada = ({ nota, itensPcp, modo = 'corrigir', onCancelar, 
                             ncm: v.novo.ncm || undefined
                         }
                         : null
-                }))
+                }));
+            const r = await gravarComAvisoDeCusto({
+                confirmar: confirmarCusto,
+                avaliar: () => notasEntradaService.avaliarCusto(nota.id, { itens: itensCorrecao, modo: 'CORRECAO' }),
+                gravar: (confirmado) => notasEntradaService.corrigirEntradaEstoque(nota.id, {
+                    itens: itensCorrecao,
+                    ...(confirmado ? { confirmarCustoForaDaCurva: true } : {})
+                })
             });
+            if (r.cancelado) return;   // "Voltar e corrigir": nada foi gravado
+            const resp = r.resposta;
             toast.success(resp?.message || (lancando ? 'Entrada lançada!' : 'Entrada corrigida!'));
             toastEstoque(resp?.depois);
             toastProdutosCriados(resp?.produtosCriados);
@@ -3679,6 +3710,7 @@ const PainelCorrigirEntrada = ({ nota, itensPcp, modo = 'corrigir', onCancelar, 
 
     return (
         <div className="border-2 border-amber-400 rounded-xl overflow-hidden bg-white">
+            {modalCusto}
             <div className="px-4 md:px-5 py-3.5 border-b border-gray-100 flex items-start justify-between gap-2">
                 <div className="min-w-0">
                     <div className="flex items-center gap-2">

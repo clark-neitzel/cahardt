@@ -10,6 +10,7 @@ import ComboBusca from '../../components/ComboBusca';
 import SelectBusca from '../../components/SelectBusca';
 import FiltroPeriodo, { usePeriodoSalvo } from '../../components/FiltroPeriodo';
 import { useFiltrosSalvos } from '../../hooks/useFiltrosSalvos';
+import useConfirmarCustoForaDaCurva, { gravarComAvisoDeCusto } from '../../hooks/useConfirmarCustoForaDaCurva';
 import { formatarDoc } from '../../utils/documento';
 import CampoNumero from '../../components/CampoNumero'; // CNPJ/CPF (inclui alfanumérico)
 
@@ -990,6 +991,7 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
     // corrigidos pela rota separada PUT /:id/itens — o caso real foi uma despesa lançada
     // com a quantidade errada, que deixava estoque e custo torto sem conserto.
     const [mostraProdutos, setMostraProdutos] = useState(false);
+    const [modalCusto, confirmarCusto] = useConfirmarCustoForaDaCurva();
     const [itensCompra, setItensCompra] = useState([]); // { uid, vinculo, nome, unidade, sub, quantidade, valorUnitario, valorTotal }
     // `uid` = chave estável de cada linha na lista do React. NUNCA usar `vinculo` como key:
     // a despesa pode ter o mesmo produto em duas CompraItem (o backend grava uma por
@@ -1283,6 +1285,25 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
         salvandoRef.current = true;
         setSalvando(true);
         try {
+            // Aviso de "custo fora da curva": prévia ANTES de gravar qualquer coisa (inclusive o passo 1
+            // da edição). Falha da prévia nunca bloqueia — a gravação tem a trava dela (409).
+            let custoConfirmado = false;
+            if (((!editando && itensCompra.length > 0) || itensMudaram) && itensCompra.length > 0) {
+                try {
+                    const previa = await contasPagarService.avaliarCusto({
+                        ...(editando ? { contaId: conta.id } : {}),
+                        itens: itensCompra.map(it => ({
+                            vinculo: it.vinculo,
+                            quantidade: parseNum(it.quantidade),
+                            valorTotal: parseNum(it.valorTotal)
+                        }))
+                    });
+                    if (previa?.temAlerta && Array.isArray(previa.alertas) && previa.alertas.length > 0) {
+                        if (!(await confirmarCusto(previa.alertas))) return;   // "Voltar e corrigir": nada gravado, modal segue aberto
+                        custoConfirmado = true;
+                    }
+                } catch { /* prévia fora do ar: segue para a gravação */ }
+            }
             const payload = {
                 fornecedorId,
                 descricao: descricao.trim(),
@@ -1338,15 +1359,23 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
                         naoSalvos.push('os produtos (o estoque e o custo continuam como estavam)');
                     } else {
                         try {
-                            const r = await contasPagarService.atualizarItens(conta.id, {
-                                itens: itensCompra.map(it => ({
-                                    vinculo: it.vinculo,
-                                    // Preserva a descrição do fornecedor das linhas que já existiam
-                                    descricao: descricaoEnvio(it),
-                                    quantidade: parseNum(it.quantidade),
-                                    valorTotal: parseNum(it.valorTotal)
-                                }))
+                            const itensEnvio = itensCompra.map(it => ({
+                                vinculo: it.vinculo,
+                                // Preserva a descrição do fornecedor das linhas que já existiam
+                                descricao: descricaoEnvio(it),
+                                quantidade: parseNum(it.quantidade),
+                                valorTotal: parseNum(it.valorTotal)
+                            }));
+                            // 409 CUSTO_FORA_DA_CURVA (prévia fora do ar): abre o modal e repete 1x com a flag
+                            const ri = await gravarComAvisoDeCusto({
+                                confirmar: confirmarCusto,
+                                gravar: (c) => contasPagarService.atualizarItens(conta.id, {
+                                    itens: itensEnvio,
+                                    ...((c || custoConfirmado) ? { confirmarCustoForaDaCurva: true } : {})
+                                })
                             });
+                            if (ri.cancelado) throw Object.assign(new Error('cancelado'), { response: { data: { error: 'você voltou no aviso de custo; o estoque e o custo continuam como estavam.' } } });
+                            const r = ri.resposta;
                             setSnapshotItens(assinaturaAtual);
                             despesaSalvaRef.current = true;
                             salvos.push(PARTE_ITENS);
@@ -1395,7 +1424,14 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
                 if (msgItens) toast.success(msgItens, { duration: 6000 });
                 if (salvos.some(s => s !== PARTE_ITENS)) toast.success('Despesa atualizada!');
             } else {
-                const r = await contasPagarService.criar(payload);
+                const rc = await gravarComAvisoDeCusto({
+                    confirmar: confirmarCusto,
+                    gravar: (c) => contasPagarService.criar(
+                        (c || custoConfirmado) ? { ...payload, confirmarCustoForaDaCurva: true } : payload
+                    )
+                });
+                if (rc.cancelado) return;
+                const r = rc.resposta;
                 contaId = r?.conta?.id || r?.id;
                 const entradas = Number(r?.estoque?.entradas || 0);
                 mostrarAvisosEstoque(r?.estoque, r);
@@ -1422,6 +1458,7 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
     return (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-end md:items-center justify-center md:p-4" onClick={fecharModal}>
       <div className="bg-white rounded-t-2xl md:rounded-2xl shadow-xl max-w-2xl w-full max-h-[92vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        {modalCusto}
                 <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white z-10">
                     <h2 className="font-bold text-gray-900">{editando ? 'Editar Despesa' : 'Nova Despesa'}</h2>
                     <button onClick={fecharModal} className="p-1.5 text-gray-400 hover:text-gray-600 rounded hover:bg-gray-100"><X className="w-5 h-5" /></button>

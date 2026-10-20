@@ -18,6 +18,12 @@ const contasPagarService = {
         const response = await api.post('/contas-pagar', dados);
         return response.data; // { message, conta, estoque?: { entradas, avisos } }
     },
+    // PRÉVIA do aviso "custo fora da curva" (só leitura). payload: { contaId?, itens: [{ vinculo, quantidade, valorTotal }] }
+    // → { ok, temAlerta, alertas: [...] }
+    avaliarCusto: async (payload) => {
+        const response = await api.post('/contas-pagar/avaliar-custo', payload);
+        return response.data;
+    },
     // Produtos do catálogo + insumos PCP para lançar compra junto com a despesa manual
     produtosOpcoes: async () => {
         const response = await api.get('/contas-pagar/produtos-opcoes');

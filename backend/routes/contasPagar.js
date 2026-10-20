@@ -15,6 +15,7 @@ const router = express.Router();
 const prisma = require('../config/database');
 const verificarAuth = require('../middlewares/authMiddleware');
 const contasPagarCaSyncService = require('../services/contasPagarCaSyncService');
+const custoForaDaCurva = require('../services/custoForaDaCurvaService');
 const categoriaDespesaService = require('../services/categoriaDespesaService');
 const contaAzulService = require('../services/contaAzulService');
 // App é o dono do financeiro: com esta chave ligada, Contas a Pagar não envia mais ao CA
@@ -627,6 +628,76 @@ const validarItensBody = async (itens) => {
     return { itens: itensCompra };
 };
 
+// ── Trava de "custo fora da curva" (20/10/2026) — despesa manual ──
+// Só aviso de custo (despesa manual não tem unidade do fornecedor → sem checagem de embalagem).
+// Leitura pura; roda ANTES de qualquer gravação/transação. Na edição, a linha idêntica a uma
+// compra ATIVA da própria despesa (mesmo alvo, mesma quantidade e valor) não é reavaliada.
+const avaliarItensDespesa = async (itens, contaId = null) => {
+    let jaLancados = [];
+    if (contaId) {
+        jaLancados = await prisma.compraItem.findMany({
+            where: { contaPagarId: contaId, estornado: false },
+            select: { produtoId: true, itemPcpId: true, quantidadeFornecedor: true, valorTotal: true }
+        });
+    }
+    const lote = [];
+    for (const it of itens) {
+        const quantidade = Number(it.quantidade);
+        const valorTotal = Number(it.valorTotal);
+        if (!(quantidade > 0) || !(valorTotal > 0)) continue;
+        if (!it.produtoId && !it.itemPcpId) continue;
+        const igual = jaLancados.some((c) =>
+            (it.produtoId ? c.produtoId === it.produtoId : c.itemPcpId === it.itemPcpId)
+            && Math.abs(Number(c.quantidadeFornecedor) - quantidade) < 0.0005
+            && Math.abs(Number(c.valorTotal) - valorTotal) < 0.005);
+        if (igual) continue;
+        lote.push({
+            chave: it.produtoId ? `PROD:${it.produtoId}` : `PCP:${it.itemPcpId}`,
+            descricao: String(it.descricao || '').trim() || null,
+            produtoId: it.produtoId || null, itemPcpId: it.itemPcpId || null,
+            quantidade, valorTotal, fator: 1,
+            checarCusto: true, checarEmbalagem: false
+        });
+    }
+    return custoForaDaCurva.avaliarLote(lote, { excluirContaId: contaId });
+};
+
+// Porta de entrada comum de POST / e PUT /:id/itens. true = já respondeu 409.
+// Falha da avaliação nunca bloqueia a gravação (só log).
+const bloquearSeCustoSuspeito = async (req, res, itens, contaId, contexto) => {
+    try {
+        const alertas = await avaliarItensDespesa(itens, contaId);
+        if (alertas.length === 0) return false;
+        if (req.body?.confirmarCustoForaDaCurva === true) {
+            custoForaDaCurva.logConfirmacao(alertas, req.user.id, `${contexto}${contaId ? ` conta=${contaId}` : ''}`);
+            return false;
+        }
+        res.status(409).json(custoForaDaCurva.respostaBloqueio(alertas));
+        return true;
+    } catch (err) {
+        console.error('[CustoForaDaCurva] Falha ao avaliar a despesa (gravação segue):', err.message);
+        return false;
+    }
+};
+
+// ── POST /avaliar-custo — prévia (só leitura) da trava de custo fora da curva ──
+// Body: { contaId?, itens: [{ vinculo, descricao?, quantidade, valorTotal }] }
+// Declarada ANTES de qualquer rota /:id.
+router.post('/avaliar-custo', verificarAuth, checkAcesso, async (req, res) => {
+    try {
+        const itens = (Array.isArray(req.body?.itens) ? req.body.itens : []).map((it) => ({
+            ...decodeVinculo(it?.vinculo),
+            descricao: it?.descricao, quantidade: it?.quantidade, valorTotal: it?.valorTotal
+        }));
+        const contaId = req.body?.contaId ? String(req.body.contaId) : null;
+        const alertas = await avaliarItensDespesa(itens, contaId);
+        res.json({ ok: true, temAlerta: alertas.length > 0, alertas });
+    } catch (error) {
+        console.error('Erro ao avaliar o custo da despesa:', error);
+        res.status(500).json({ error: 'Erro ao avaliar o custo da despesa.' });
+    }
+});
+
 // ── POST / — criar conta a pagar ──
 router.post('/', verificarAuth, checkEscrita, async (req, res) => {
     try {
@@ -678,6 +749,8 @@ router.post('/', verificarAuth, checkEscrita, async (req, res) => {
         const validacaoItens = await validarItensBody(itens);
         if (validacaoItens.erro) return res.status(400).json({ error: validacaoItens.erro });
         const itensCompra = validacaoItens.itens;
+        // Trava de custo fora da curva (409 sem a confirmação explícita) — antes de criar a conta.
+        if (itensCompra.length > 0 && await bloquearSeCustoSuspeito(req, res, itensCompra, null, 'contas-pagar POST')) return;
 
         const valorTotal = round2(parcelas.reduce((s, p) => s + Number(p.valor), 0));
         const includeConta = {
@@ -1033,6 +1106,7 @@ router.put('/:id/itens', verificarAuth, checkAcesso, checkEscrita, checkEditarIt
         const validacao = await validarItensBody(req.body?.itens);
         if (validacao.erro) return res.status(400).json({ error: validacao.erro });
         const itensDesejados = validacao.itens;
+        if (await bloquearSeCustoSuspeito(req, res, itensDesejados, conta.id, 'contas-pagar PUT itens')) return;
 
         // Estorna tudo e relança a lista nova numa transação só (a idempotência de
         // registrarCompras não olha quantidade/valor: sem estornar antes, o reenvio

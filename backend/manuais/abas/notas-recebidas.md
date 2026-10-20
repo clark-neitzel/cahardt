@@ -110,6 +110,18 @@ De cada nota dá para gerar a **conta a pagar** com um clique, já com as parcel
 
 ---
 
+## Aviso de "custo fora da curva" e de embalagem com fator 1 (20/10/2026)
+
+Antes de gravar, o app confere cada item vinculado e **abre um aviso** quando algo parece digitação errada. Vale em **Gerar conta**, **Registrar entrada (sem pagamento)** e **Corrigir entrada**.
+
+- **Custo alto / custo baixo:** o custo por unidade nossa (valor do item da nota ÷ quantidade já convertida pelo fator) está **mais de 3 vezes acima** ou **menos de 1/3** do custo de referência do produto/insumo. A **referência é a mediana das últimas 5 compras válidas** do produto (dos últimos ~18 meses; a mensagem mostra a última compra e a data). Se o produto nunca foi comprado, usa o **custo do cadastro** ("Custo atual do cadastro"). Sem compra e sem custo no cadastro, **não há aviso de custo**.
+- **Embalagem com fator 1:** a unidade da nota é de embalagem (caixa, fardo, pacote, bandeja, saco...), a nossa unidade é outra (kg, un...) e o fator ficou em **1** — ex.: "2 CX viraram 2 kg". O aviso pergunta quantos kg/unidades tem cada caixa. Se o produto já foi comprado antes nessa mesma embalagem com fator 1, o aviso não repete.
+- **Itens fora da conta:** nota de serviço (NFS-e), item "não é estoque", item sem destino e item de valor zero (bonificação) não entram na checagem de custo. Produto **criado na hora** só recebe o aviso de embalagem. Em **Registrar entrada (sem pagamento)** só o aviso de embalagem aparece (essa entrada não mexe em custo). Em **Corrigir entrada** só são avaliados os itens que **mudaram** em relação ao que já estava lançado.
+- **O que fazer:** **"Voltar e corrigir"** (nada é gravado — ajuste quantidade/fator e tente de novo) ou **"Confirmar mesmo assim"** (exige marcar "Conferi quantidade e conversão"). Confirmar **não muda nada no cálculo**: só autoriza gravar do jeito que está; o sistema registra no log quem confirmou, o item e o motivo.
+- É uma **trava, não um bloqueio definitivo**: se a conferência do aviso falhar por instabilidade, a gravação segue normalmente.
+
+---
+
 ## Corrigir produto/conversão de uma nota JÁ lançada (sem mexer no pagamento)
 
 **O problema que isto resolve:** se a conferência foi feita com o **produto errado** ou a **conversão errada** (ex.: 1 caixa lançada como 1 kg em vez de 10 kg), o **custo do produto sai errado** — porque o custo é sempre *valor do item ÷ quantidade convertida*. Até 08/2026 o único conserto era "Cancelar entrada e refazer", que exige **estornar a baixa, cancelar a despesa e refazer o pagamento**. Aconteceu em julho/2026 e travou a correção do custo.
@@ -324,7 +336,8 @@ Envio Contabilidade
 | `backend/services/sefazDfeService.js` | Robô de captura de NF-e na SEFAZ (Distribuição DF-e + Ciência da Operação 210210 automática) + busca pontual por chave (`buscarPorChave`) + **`manifestar()`**: Confirmação (210200), Desconhecimento (210220) e Operação não Realizada (210240) — só grava na nota quando a SEFAZ ACEITA (cStat 135/136) |
 | `backend/prisma/schema.prisma` | `NotaEntrada.manifestacao*` (o que ficou valendo) e **`NotaEntradaManifestacao`** (histórico de TODA tentativa, aceita ou não) |
 | `backend/services/nfseAdnService.js` | Robô de captura de NFS-e no Ambiente de Dados Nacional (ADN) + espelho DANFSE |
-| `backend/routes/notasEntrada.js` | Rotas da API (listar com filtro de tipo/período, detalhar, XML, DANFE/DANFSE, gerar conta com categoria por item + rateio, **parcelas-compativeis / vincular-parcelas / desvincular-parcelas**, **registrar-entrada / desfazer-entrada** (entrada sem pagamento), **manifestar** (Confirmação da Operação / Operação Não Realizada / Desconhecimento), ignorar, consultar agora, **importar-xml** e **lancar-manual**) — dispara o salvamento do XML no Drive ao dar entrada/registrar/ignorar |
+| `backend/routes/notasEntrada.js` | Rotas da API (listar com filtro de tipo/período, detalhar, XML, DANFE/DANFSE, gerar conta com categoria por item + rateio, **parcelas-compativeis / vincular-parcelas / desvincular-parcelas**, **registrar-entrada / desfazer-entrada** (entrada sem pagamento), **avaliar-custo** (prévia do aviso de custo fora da curva; o mesmo aviso trava gerar-conta, registrar-entrada e corrigir-entrada-estoque com HTTP 409 até vir `confirmarCustoForaDaCurva`), **manifestar** (Confirmação da Operação / Operação Não Realizada / Desconhecimento), ignorar, consultar agora, **importar-xml** e **lancar-manual**) — dispara o salvamento do XML no Drive ao dar entrada/registrar/ignorar |
+| `backend/services/custoForaDaCurvaService.js` | Regra do aviso de custo fora da curva / embalagem com fator 1 (referência = mediana das últimas 5 compras) — só leitura, compartilhado com Contas a Pagar |
 | `backend/services/googleDriveService.js` | Salva o XML da nota no Google Drive da Contabilidade (pasta do mês por emissão; subpasta "Ignoradas"); credenciais OAuth em `app_configs.gdrive_config` |
 | `backend/services/danfeHtmlService.js` | Monta o HTML da DANFE simplificada (função pura) a partir do XML da NF-e |
 | `backend/routes/configNotas.js` | Certificado digital + liga/desliga das capturas (NF-e e NFS-e) |

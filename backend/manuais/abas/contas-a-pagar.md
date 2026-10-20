@@ -66,6 +66,7 @@ Gestão das despesas da empresa (contas a pagar): lançamento manual de contas c
   - Um resumo embaixo mostra quanto abate da parcela e se ela fica quitada ou parcial antes de confirmar. Também dá para informar banco/caixa e forma de pagamento.
 - **Quitar várias de uma vez (baixa em lote)**: marque as caixinhas das parcelas em aberto (há um "selecionar todas" no cabeçalho da tabela) e clique em **"Quitar selecionadas"**. Informe **uma vez só** a data, a forma de pagamento e o banco/caixa — todas as marcadas são quitadas pelo **saldo restante** com essa condição (registro só no app). Útil quando um único PIX/dinheiro pagou várias notas (ex.: nota de serviço + nota de peça).
 - **Estornar** um pagamento específico. Baixa feita no app estorna direto. *(Baixa antiga que veio do Conta Azul — "Baixado via DDA" — o app exclui a baixa lá no CA primeiro e depois estorna aqui; se o CA recusar porque ela já está conciliada com o extrato lá, desfaça a conciliação no CA e tente de novo.)*
+- **Aviso de "custo fora da curva" nos produtos da despesa (20/10/2026):** ao **criar** a despesa com produtos ou ao **corrigir os produtos** (inclusive de despesa quitada), o app confere o custo por unidade (valor ÷ quantidade) de cada produto. Se estiver **mais de 3 vezes acima ou menos de 1/3** da referência — a **mediana das últimas 5 compras** do produto (ou o custo do cadastro, se nunca foi comprado) — abre um aviso mostrando o custo digitado e a última compra. Escolha **"Voltar e corrigir"** (nada é gravado) ou **"Confirmar mesmo assim"** (exige marcar "Conferi quantidade e conversão"); confirmar apenas autoriza gravar como está e fica registrado no log. Na correção, linhas **iguais às que já estavam lançadas** não são reavaliadas. Despesa manual não tem unidade do fornecedor, por isso não há o aviso de "embalagem com fator 1" (esse existe só nas Notas Recebidas). Se a conferência do aviso falhar por instabilidade, a gravação segue normalmente.
 - Cancelar uma conta (só se não tiver pagamento registrado; estorne antes se precisar). Se a despesa manual tinha **produtos lançados**, o cancelamento **devolve o estoque e recalcula o custo** automaticamente (ver detalhes na seção "Lançar os produtos da compra", acima)
 
 ---
@@ -130,8 +131,9 @@ Uma parcela **já lançada aqui** pode ter **uma ou mais notas fiscais vinculada
 
 | Caminho | Papel |
 |---------|-------|
-| `backend/routes/contasPagar.js` | Rotas da API (listar, criar, editar, baixar, estornar, cancelar, **detalhe com itens da nota**, produtos-opcoes, **`PUT /:id/itens` = corrigir os produtos da despesa**) |
+| `backend/routes/contasPagar.js` | Rotas da API (listar, criar, editar, baixar, estornar, cancelar, **detalhe com itens da nota**, produtos-opcoes, **`PUT /:id/itens` = corrigir os produtos da despesa**, **`POST /avaliar-custo`** = prévia do aviso de custo fora da curva) |
 | `backend/services/contasPagarCaSyncService.js` | Robôs do CA: envio **desligado** por `CA_SOMENTE_LEITURA` (drena filas p/ "só no app"); mantém a **leitura** de baixas de títulos antigos |
 | `backend/config/contaAzulModo.js` | Chave `CA_SOMENTE_LEITURA` que desliga o envio ao Conta Azul (app dono do financeiro) |
+| `backend/services/custoForaDaCurvaService.js` | Regra do aviso de custo fora da curva (mediana das últimas 5 compras) usada por `POST /` e `PUT /:id/itens` — só leitura |
 | `backend/services/compraEstoqueService.js` | Entrada de estoque/custo/histórico das compras (nota conferida e despesa manual com produtos); **estorno que devolve o custo** e **`sincronizarComprasConta`** (desfaz e refaz os produtos da despesa numa transação só) |
 | `frontend/src/pages/Financeiro/ContasPagar*` | Telas do módulo |

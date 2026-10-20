@@ -25,6 +25,7 @@ const categoriaDespesaService = require('../services/categoriaDespesaService');
 const googleDriveService = require('../services/googleDriveService');
 // Toda nota conferida SOMA no estoque (decisão do dono, 07/2026) — ledger + aplicação/estorno.
 const notaEstoqueService = require('../services/notaEstoqueService');
+const custoForaDaCurva = require('../services/custoForaDaCurvaService');
 // Etapa 1 Entrada de Notas (09/2026): "Criar produto novo" na conferência cria um Produto
 // de verdade (não mais um ItemPcp solto) — ver produtoService.criar.
 const produtoService = require('../services/produtoService');
@@ -1603,6 +1604,96 @@ const processarItensConferencia = async (tx, nota, itensBody, itensNota, { catPa
     return { vinculados, produtosCriados };
 };
 
+// ── Trava de "custo fora da curva" (20/10/2026) ──
+// Avalia (só leitura) os itens da conferência ANTES de gravar: custo unitário > 3x ou < 1/3 da
+// referência do produto, e unidade de embalagem (CX, FD...) com fator 1. Quantidade, valor e
+// unidade do fornecedor vêm SEMPRE do banco (NotaEntradaItem), nunca do corpo. Mesmo cálculo
+// de fator de processarItensConferencia. Fica nas ROTAS, fora de qualquer $transaction.
+//   checarCusto=false (entrada sem pagamento não mexe em custo) → só embalagem.
+//   antesAplicado (correção) → só os itens que MUDARAM em relação ao que está somado hoje.
+const avaliarItensDaNota = async (nota, itensBody, { checarCusto = true, antesAplicado = null } = {}) => {
+    if (nota.tipo === 'NFSE') return [];
+    const itensNota = new Map(nota.itens.map((i) => [i.id, i]));
+    const antesPorItem = antesAplicado ? new Map(antesAplicado.filter((l) => l.notaEntradaItemId).map((l) => [l.notaEntradaItemId, l])) : null;
+    const lote = [];
+    for (const it of itensBody) {
+        const itemNota = itensNota.get(it?.itemId);
+        if (!itemNota) continue;
+        const { produtoId, itemPcpId } = decodeVinculo(it.vinculo);
+        const fator = Number(it.fatorConversao) > 0 ? round4(it.fatorConversao) : 1;
+        const criado = !produtoId && !itemPcpId && it.criarProduto?.unidade ? String(it.criarProduto.unidade).trim() : null;
+        if (!produtoId && !itemPcpId && !criado) continue; // sem destino / "não é estoque"
+        if (antesPorItem) {
+            const antes = antesPorItem.get(itemNota.id);
+            const qtdNova = Math.round(Number(itemNota.quantidade) * fator * 1000) / 1000;
+            const igual = antes && !criado
+                && antes.vinculo === (produtoId ? `PROD:${produtoId}` : `PCP:${itemPcpId}`)
+                && Math.abs(Number(antes.quantidade) - qtdNova) <= 0.0005;
+            if (igual) continue;
+        }
+        lote.push({
+            chave: itemNota.id,
+            descricao: itemNota.descricao,
+            produtoId, itemPcpId,
+            alvoUnidadeNovo: criado,
+            quantidade: Number(itemNota.quantidade),
+            valorTotal: Number(itemNota.valorTotal),
+            unidadeFornecedor: itemNota.unidade,
+            fator,
+            checarCusto: checarCusto && !criado,
+            checarEmbalagem: true
+        });
+    }
+    return custoForaDaCurva.avaliarLote(lote, { excluirNotaId: nota.id });
+};
+
+// Porta de entrada comum das 3 rotas de gravação. Devolve true se JÁ respondeu 409.
+// Falha da avaliação (banco lento etc.) NUNCA bloqueia a gravação — só registra no log.
+const bloquearSeCustoSuspeito = async (req, res, nota, itensBody, opts, contexto) => {
+    try {
+        const alertas = await avaliarItensDaNota(nota, itensBody, opts);
+        if (alertas.length === 0) return false;
+        if (req.body?.confirmarCustoForaDaCurva === true) {
+            custoForaDaCurva.logConfirmacao(alertas, req.user.id, `${contexto} nota=${nota.id}`);
+            return false;
+        }
+        res.status(409).json(custoForaDaCurva.respostaBloqueio(alertas));
+        return true;
+    } catch (err) {
+        console.error('[CustoForaDaCurva] Falha ao avaliar a nota (gravação segue):', err.message);
+        return false;
+    }
+};
+
+// ── POST /:id/avaliar-custo — prévia (só leitura) da trava de custo fora da curva ──
+// Body: { itens (mesmo formato do gerar-conta), modo: 'GERAR_CONTA'|'ENTRADA_SEM_PAGAMENTO'|'CORRECAO' }
+router.post('/:id/avaliar-custo', verificarAuth, checkAcesso, async (req, res) => {
+    try {
+        const modo = String(req.body?.modo || 'GERAR_CONTA').toUpperCase();
+        if (!['GERAR_CONTA', 'ENTRADA_SEM_PAGAMENTO', 'CORRECAO'].includes(modo)) {
+            return res.status(400).json({ error: 'Modo inválido.' });
+        }
+        const nota = await prisma.notaEntrada.findUnique({ where: { id: req.params.id }, include: { itens: true } });
+        if (!nota) return res.status(404).json({ error: 'Nota não encontrada.' });
+        const itensBody = Array.isArray(req.body?.itens) ? req.body.itens : [];
+        const itensNota = new Map(nota.itens.map((i) => [i.id, i]));
+        const erroItens = await validarItensBody(itensBody, itensNota, { nota });
+        if (erroItens) return res.status(400).json({ ok: false, ...erroItens });
+
+        let opts = { checarCusto: modo === 'GERAR_CONTA' };
+        if (modo === 'CORRECAO') {
+            const antesAplicado = await notaEstoqueService.entradaAplicada(prisma, nota.id);
+            const comCusto = nota.status === 'CONFERIDA' || antesAplicado.some((l) => l.custoUnitario != null);
+            opts = { checarCusto: comCusto, antesAplicado };
+        }
+        const alertas = await avaliarItensDaNota(nota, itensBody, opts);
+        res.json({ ok: true, temAlerta: alertas.length > 0, alertas });
+    } catch (error) {
+        console.error('Erro ao avaliar o custo da nota:', error);
+        res.status(500).json({ error: 'Erro ao avaliar o custo da nota.' });
+    }
+});
+
 // ── POST /:id/gerar-conta — cria a Conta a Pagar a partir da nota ──
 router.post('/:id/gerar-conta', verificarAuth, checkEscrita, async (req, res) => {
     try {
@@ -1694,6 +1785,8 @@ router.post('/:id/gerar-conta', verificarAuth, checkEscrita, async (req, res) =>
         // Trava: em nota que não é NFS-e, todo item precisa de destino (vínculo ou "não é estoque").
         const erroItens = await validarItensBody(itensBody, itensNota, { nota, exigirDestino: true });
         if (erroItens) return res.status(400).json({ ok: false, ...erroItens });
+        // Trava de custo fora da curva (409 sem a confirmação explícita) — antes de qualquer gravação.
+        if (await bloquearSeCustoSuspeito(req, res, nota, itensBody, { checarCusto: true }, 'gerar-conta')) return;
 
         const catPadrao = categoriaPadrao?.trim() || null;
         const catPadraoCaId = categoriaPadraoCaId || null;
@@ -1915,6 +2008,8 @@ router.post('/:id/registrar-entrada', verificarAuth, checkEscrita, async (req, r
         // Trava: em nota que não é NFS-e, todo item precisa de destino (vínculo ou "não é estoque").
         const erroItens = await validarItensBody(itensBody, itensNota, { nota, exigirDestino: true });
         if (erroItens) return res.status(400).json({ ok: false, ...erroItens });
+        // Entrada sem pagamento não mexe em custo: a trava aqui só olha embalagem com fator 1.
+        if (await bloquearSeCustoSuspeito(req, res, nota, itensBody, { checarCusto: false }, 'registrar-entrada')) return;
 
         let estoqueResultado = { itens: [], avisos: [] };
         let produtosCriados = [];
@@ -2373,6 +2468,8 @@ router.post('/:id/corrigir-entrada-estoque', verificarAuth, checkAcesso, checkCo
         if (antesAplicado.length === 0 && !vaiVincular) {
             return res.status(400).json({ error: 'Esta nota não tem entrada de estoque — vincule pelo menos um item a um produto ou insumo para lançar a entrada.' });
         }
+        // Só os itens que MUDARAM em relação ao que está somado hoje entram na avaliação.
+        if (await bloquearSeCustoSuspeito(req, res, nota, itensBody, { checarCusto: comCusto, antesAplicado }, 'corrigir-entrada-estoque')) return;
 
         let resultado = { antes: [], depois: [], avisos: [], alvos: { produtoIds: [], itemPcpIds: [] } };
         let produtosCriados = [];

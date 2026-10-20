@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Aviso de custo fora do normal — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<meta property="og:title" content="⚠️ Novidade no Hardt App: aviso de custo fora do normal">
+<meta property="og:description" content="Ao lançar uma nota ou despesa com quantidade ou conversão estranha, o app avisa ANTES de gravar. Evita custo errado no estoque.">
+<meta property="og:type" content="website">
+<style>
+  :root { --primary:#00754A; --primary-dark:#006241; --house:#1E3932; --mint:#d4e9e2; --cream:#f2f0eb; --gold:#cba258; --ink:rgba(0,0,0,.87); --ink-soft:#5f6b66; --red:#dc2626; letter-spacing:-0.01em; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--cream); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; line-height:1.55; -webkit-font-smoothing:antialiased; overflow-x:hidden; }
+  .wrap { max-width:620px; margin:0 auto; padding:0 16px 56px; }
+  .hero { background:linear-gradient(168deg,var(--house) 0%,#16302a 100%); color:#fff; padding:40px 16px 48px; }
+  .hero-inner { max-width:620px; margin:0 auto; text-align:center; }
+  .eyebrow { display:inline-block; background:var(--gold); color:#2b230f; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.14em; padding:6px 14px; border-radius:999px; margin-bottom:18px; }
+  .hero h1 { font-size:clamp(28px,7vw,40px); font-weight:800; line-height:1.12; margin:0 0 12px; text-wrap:balance; }
+  .hero p { color:rgba(255,255,255,.75); font-size:16px; max-width:46ch; margin:0 auto; text-wrap:balance; }
+  .sec-label { font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.14em; color:var(--ink-soft); margin:30px 0 12px; }
+  .acc { background:#fff; border:1px solid #e3e1da; border-radius:16px; margin-bottom:10px; overflow:hidden; }
+  .acc-head { display:flex; align-items:center; gap:12px; width:100%; background:none; border:0; font:inherit; text-align:left; padding:14px 16px; cursor:pointer; min-height:48px; }
+  .acc-head:focus-visible { outline:3px solid var(--gold); outline-offset:-3px; }
+  .acc-ico { width:38px; height:38px; border-radius:12px; background:var(--mint); display:flex; align-items:center; justify-content:center; font-size:19px; flex-shrink:0; }
+  .acc-head strong { flex:1; font-size:15.5px; font-weight:700; }
+  .acc-seta { color:#9aa5a0; transition:transform .2s; font-size:13px; }
+  .acc.aberto .acc-seta { transform:rotate(180deg); }
+  .acc-corpo { display:none; padding:0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display:block; }
+  .acc-corpo p, .acc-corpo li { font-size:14px; color:var(--ink-soft); }
+  .acc-corpo p { margin:0 0 10px; }
+  .acc-corpo ul { margin:0; padding-left:18px; }
+  .acc-corpo li { margin-bottom:7px; }
+  .acc-corpo b { color:var(--ink); }
+  @media (max-width:420px) { .acc-corpo { padding-left:16px; } }
+  .tela { background:#fff; border:1px solid #e3e1da; border-radius:16px; overflow:hidden; margin-bottom:12px; }
+  .tela-titulo { background:var(--house); color:#fff; padding:12px 16px; font-size:13px; font-weight:800; }
+  .tela-corpo { padding:16px; background:#f7f6f2; }
+  .app-card { background:#fff; border:1px solid #e5e3dc; border-radius:12px; overflow:hidden; margin-bottom:10px; }
+  .app-card-head { padding:9px 12px; border-bottom:1px solid #f0efe9; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.12em; color:#6b756f; }
+  .app-card-body { padding:12px; font-size:12.5px; }
+  .app-linha { display:flex; justify-content:space-between; gap:8px; padding:5px 0; border-bottom:1px dashed #eceae3; }
+  .app-linha:last-child { border:0; }
+  .app-btn { display:inline-block; background:var(--primary); color:#fff; font-weight:700; font-size:12.5px; padding:9px 18px; border-radius:999px; }
+  .pin { display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:50%; background:var(--gold); color:#2b230f; font-size:11px; font-weight:800; flex-shrink:0; vertical-align:2px; margin-left:6px; }
+  .legenda { padding:12px 16px 16px; }
+  .legenda div { display:flex; gap:8px; font-size:13px; color:var(--ink-soft); margin-bottom:7px; align-items:flex-start; }
+  .legenda .pin { margin:1px 0 0; }
+  .legenda b { color:var(--ink); }
+  .modal { background:var(--cream); border:2px solid var(--red); border-radius:14px; overflow:hidden; }
+  .modal-head { background:var(--red); color:#fff; font-weight:800; font-size:13px; padding:10px 12px; }
+  .modal-corpo { padding:10px; }
+  .alerta-intro { font-size:11.5px; color:#555; margin-bottom:8px; }
+  .alerta { background:#fff; border:1px solid #e5e3dc; border-radius:10px; padding:9px 11px; margin-bottom:8px; }
+  .alerta-tipo { font-size:9.5px; font-weight:800; text-transform:uppercase; letter-spacing:.1em; color:#b91c1c; }
+  .alerta-nome { font-weight:700; font-size:13px; margin:2px 0; }
+  .alerta-msg { font-size:12px; color:#333; margin-bottom:6px; }
+  .alerta-linhas div { display:flex; justify-content:space-between; gap:8px; font-size:11.5px; color:#666; padding:2px 0; }
+  .alerta-linhas b { color:#111; }
+  .check { background:#fff; border:1px solid #e5e3dc; border-radius:10px; padding:10px 11px; font-size:12.5px; font-weight:600; display:flex; align-items:center; gap:9px; margin-bottom:8px; }
+  .caixa { width:16px; height:16px; border:2px solid var(--primary); border-radius:4px; flex-shrink:0; }
+  .btn-verde, .btn-verm { text-align:center; color:#fff; font-weight:700; font-size:12.5px; padding:11px; border-radius:999px; margin-bottom:6px; }
+  .btn-verde { background:var(--primary); }
+  .btn-verm { background:var(--red); opacity:.9; }
+  .passos { background:#fff; border:1px solid #e3e1da; border-radius:16px; padding:18px 16px; }
+  .passo { display:flex; gap:14px; padding:10px 0; }
+  .passo + .passo { border-top:1px dashed #e3e1da; }
+  .passo-n { width:28px; height:28px; border-radius:50%; background:var(--primary); color:#fff; font-weight:800; font-size:14px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .passo div { font-size:14px; color:var(--ink-soft); }
+  .passo b { color:var(--ink); }
+  .rodape { text-align:center; font-size:13px; color:var(--ink-soft); margin-top:30px; }
+  .rodape strong { color:var(--primary-dark); }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>O app agora avisa<br>quando o custo está estranho</h1>
+    <p>Ao lançar uma nota ou uma despesa com produtos, se a quantidade ou a conversão fizer o custo sair do normal, uma janela de aviso aparece <b>antes</b> de gravar.</p>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <div class="sec-label">Por que isso existe</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" aria-expanded="true"><span class="acc-ico">💥</span><strong>O caso do apresuntado</strong><span class="acc-seta">▼</span></button>
+    <div class="acc-corpo">
+      <p>Uma nota de apresuntado foi lançada como <b>"2 CX com fator 1"</b>: o app entendeu 2 kg, quando eram várias caixas de vários kg. Resultado: o custo foi para <b>R$ 124/kg</b>, sendo que o normal é <b>R$ 9,52/kg</b>. Estoque e custo ficaram tortos, e todo preço calculado em cima disso também.</p>
+      <p>Agora o app compara o custo da nota com as últimas compras do produto e <b>para para você conferir</b> antes de gravar.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" aria-expanded="true"><span class="acc-ico">🔎</span><strong>Quando o aviso aparece</strong><span class="acc-seta">▼</span></button>
+    <div class="acc-corpo">
+      <ul>
+        <li><b>Custo muito acima ou muito abaixo:</b> mais de 3 vezes (ou menos de 1/3) do que costuma ser, comparado com a mediana das últimas 5 compras.</li>
+        <li><b>Caixa com fator 1:</b> a nota veio em caixa, fardo, pacote etc., o produto é em kg ou unidade, e a conversão ficou em 1.</li>
+        <li>Vale em: <b>Notas Recebidas</b> (gerar conta, registrar entrada sem pagamento e corrigir entrada de estoque) e <b>Contas a Pagar</b> (despesa com produtos, ao criar ou ao corrigir os produtos).</li>
+        <li>Produto sem nenhum histórico de compra e sem custo no cadastro: não tem com o que comparar, então não avisa.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" aria-expanded="true"><span class="acc-ico">🛑</span><strong>O que você pode fazer</strong><span class="acc-seta">▼</span></button>
+    <div class="acc-corpo">
+      <ul>
+        <li><b>Voltar e corrigir</b> (botão verde): nada é gravado, e o que você preencheu continua na tela. Ajuste a conversão e grave de novo.</li>
+        <li><b>Confirmar mesmo assim</b> (botão vermelho): só libera depois de marcar <b>"Conferi quantidade e conversão"</b>. Use quando o custo é mesmo diferente (promoção, mudança de fornecedor).</li>
+        <li>A tecla <b>Enter não confirma</b> — de propósito, para o leitor de código de barras não confirmar sem querer. <b>Esc</b> volta.</li>
+        <li>Se o servidor não conseguir fazer a prévia, o app <b>não trava</b>: grava normalmente e a trava do servidor ainda avisa se precisar.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="sec-label">As telas do app, sem mistério</div>
+
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 1 · Notas Recebidas — ao gerar a Conta a Pagar</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">Itens da nota → nossos produtos</div>
+        <div class="app-card-body">
+          <div class="app-linha"><span>APRESUNTADO · 2 CX</span><b>R$ 248,17</b></div>
+          <div class="app-linha"><span>Fator de conversão</span><b>1</b></div>
+        </div>
+      </div>
+      <div style="text-align:center;margin-bottom:12px"><span class="app-btn">Gerar Conta a Pagar</span><span class="pin">1</span></div>
+      
+    <div class="modal">
+      <div class="modal-head">⚠️ Confira estes 2 itens antes de gravar</div>
+      <div class="modal-corpo">
+        <div class="alerta-intro">O custo ou a conversão abaixo foge do normal. Um erro aqui bagunça o estoque e o custo do produto.</div>
+        <div class="alerta">
+          <div class="alerta-tipo">Custo muito acima do normal<span class="pin">2</span></div>
+          <div class="alerta-nome">APRESUNTADO</div>
+          <div class="alerta-msg">R$ 124,09/kg. Última compra: R$ 9,52/kg (16/09). Confira quantidade e fator de conversão.</div>
+          <div class="alerta-linhas"><div><span>Custo resultante</span><b>R$ 124,09/kg</b></div><div><span>Referência (compras)</span><b>R$ 9,52/kg</b></div><div><span>Diferença</span><b>13×</b></div></div>
+        </div>
+        <div class="alerta">
+          <div class="alerta-tipo">Embalagem com fator 1</div>
+          <div class="alerta-nome">APRESUNTADO</div>
+          <div class="alerta-msg">Caixa com fator 1: 2 CX viraram 2 kg. Quantos kg tem cada caixa?</div>
+          <div class="alerta-linhas"><div><span>Quantidade</span><b>2 CX → 2 kg</b></div><div><span>Fator de conversão</span><b>1</b></div></div>
+        </div>
+        <div class="check"><span class="caixa"></span> Conferi quantidade e conversão<span class="pin">3</span></div>
+        <div class="btn-verde">Voltar e corrigir<span class="pin">4</span></div>
+        <div class="btn-verm">Confirmar mesmo assim<span class="pin">5</span></div>
+      </div>
+    </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Você clica em <b>Gerar Conta a Pagar</b> (ou Registrar entrada / Corrigir entrada). Antes de gravar, o app confere o custo.</span></div>
+      <div><span class="pin">2</span><span>Cada item estranho ganha um <b>cartão</b> com o motivo, o custo resultante, a referência das compras anteriores e a quantidade convertida.</span></div>
+      <div><span class="pin">3</span><span><b>Marque</b> "Conferi quantidade e conversão" para liberar o botão vermelho.</span></div>
+      <div><span class="pin">4</span><span><b>Voltar e corrigir</b>: fecha o aviso sem gravar nada.</span></div>
+      <div><span class="pin">5</span><span><b>Confirmar mesmo assim</b>: grava com o custo como está. Fica registrado no servidor.</span></div>
+    </div>
+  </div>
+
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 2 · Contas a Pagar — despesa com produtos</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">Produtos comprados</div>
+        <div class="app-card-body">
+          <div class="app-linha"><span>APRESUNTADO</span><b>2 kg · R$ 248,17</b></div>
+        </div>
+      </div>
+      <div style="text-align:center;margin-bottom:12px"><span class="app-btn">Salvar</span><span class="pin">1</span></div>
+      
+    <div class="modal">
+      <div class="modal-head">⚠️ Confira estes 2 itens antes de gravar</div>
+      <div class="modal-corpo">
+        <div class="alerta-intro">O custo ou a conversão abaixo foge do normal. Um erro aqui bagunça o estoque e o custo do produto.</div>
+        <div class="alerta">
+          <div class="alerta-tipo">Custo muito acima do normal<span class="pin">2</span></div>
+          <div class="alerta-nome">APRESUNTADO</div>
+          <div class="alerta-msg">R$ 124,09/kg. Última compra: R$ 9,52/kg (16/09). Confira quantidade e fator de conversão.</div>
+          <div class="alerta-linhas"><div><span>Custo resultante</span><b>R$ 124,09/kg</b></div><div><span>Referência (compras)</span><b>R$ 9,52/kg</b></div><div><span>Diferença</span><b>13×</b></div></div>
+        </div>
+        <div class="alerta">
+          <div class="alerta-tipo">Embalagem com fator 1</div>
+          <div class="alerta-nome">APRESUNTADO</div>
+          <div class="alerta-msg">Caixa com fator 1: 2 CX viraram 2 kg. Quantos kg tem cada caixa?</div>
+          <div class="alerta-linhas"><div><span>Quantidade</span><b>2 CX → 2 kg</b></div><div><span>Fator de conversão</span><b>1</b></div></div>
+        </div>
+        <div class="check"><span class="caixa"></span> Conferi quantidade e conversão<span class="pin">3</span></div>
+        <div class="btn-verde">Voltar e corrigir<span class="pin">4</span></div>
+        <div class="btn-verm">Confirmar mesmo assim<span class="pin">5</span></div>
+      </div>
+    </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Ao <b>Salvar</b> uma despesa nova com produtos (ou ao mexer nos produtos de uma despesa existente), o aviso aparece <b>antes</b> de criar ou alterar qualquer coisa.</span></div>
+      <div><span class="pin">2</span><span>Mesmo cartão da tela de notas. Aqui não existe "caixa do fornecedor", então só o aviso de <b>custo</b> aparece.</span></div>
+      <div><span class="pin">3</span><span>Marque a conferência para liberar o botão vermelho.</span></div>
+      <div><span class="pin">4</span><span><b>Voltar e corrigir</b>: a janela da despesa continua aberta, nada foi salvo.</span></div>
+      <div><span class="pin">5</span><span><b>Confirmar mesmo assim</b>: grava a despesa e dá a entrada no estoque.</span></div>
+    </div>
+  </div>
+
+  <div class="sec-label">Para começar a usar</div>
+  <div class="passos">
+    <div class="passo"><span class="passo-n">1</span><div>Lance a nota ou a despesa <b>como sempre</b>.</div></div>
+    <div class="passo"><span class="passo-n">2</span><div>Se aparecer o aviso, <b>leia o cartão</b>: ele diz qual item e o que parece errado.</div></div>
+    <div class="passo"><span class="passo-n">3</span><div>Na dúvida, <b>Voltar e corrigir</b> e confira a conversão (quantos kg tem cada caixa?).</div></div>
+    <div class="passo"><span class="passo-n">4</span><div>Se o custo está certo, marque a conferência e <b>Confirmar mesmo assim</b>.</div></div>
+  </div>
+
+  <p class="rodape"><strong>Hardt App</strong> · custo certo no estoque, preço certo na venda.</p>
+</main>
+
+<script>
+  document.querySelectorAll('.acc-head').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var acc = btn.parentElement;
+      var abriu = acc.classList.toggle('aberto');
+      btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+    });
+  });
+</script>
+</body>
+</html>

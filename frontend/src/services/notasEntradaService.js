@@ -26,6 +26,13 @@ const notasEntradaService = {
         const response = await api.post(`/notas-entrada/${id}/gerar-conta`, dados);
         return response.data;
     },
+    // PRÉVIA do aviso "custo fora da curva" (só leitura, nada é gravado).
+    // payload: mesmo `itens` do gerar-conta/registrar-entrada/corrigir + modo: 'GERAR_CONTA'|'ENTRADA_SEM_PAGAMENTO'|'CORRECAO'
+    // → { ok, temAlerta, alertas: [{ chave, descricao, tipo, custoUnitario, unidade, referencia, razao, ..., mensagem }] }
+    avaliarCusto: async (id, payload) => {
+        const response = await api.post(`/notas-entrada/${id}/avaliar-custo`, payload);
+        return response.data;
+    },
     // Parcelas do Contas a Pagar candidatas a receber esta nota (mesmo fornecedor por padrão,
     // incluindo as JÁ PAGAS; `busca` procura em qualquer fornecedor).
     // → { notaValor, jaVinculadoTotal, parcelas: [...] }
