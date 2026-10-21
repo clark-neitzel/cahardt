@@ -1,7 +1,7 @@
 # Nota de entrega — Como Fazer só para quem tem ficha de funcionário ou é da gestão
 
 > Pedido do dono em 21/10/2026: o menu e o conteúdo apareciam para todos; quem não tem cadastro (vendedor, escritório) via conteúdo de todos os setores.
-> Veredito do gerente de entrega: **LIBERADO**. A seção "Conferido em produção" fica em branco até o deploy.
+> Veredito do gerente de entrega: **LIBERADO**. Publicado em 21/10/2026 (commit fc18d2d4). Conferência em produção abaixo.
 
 ## O que mudou (em termos de uso)
 
@@ -23,7 +23,11 @@ A **gestão sem ficha de funcionário continua vendo tudo** e **pode preencher r
 
 ## Conferido em produção
 
-_(preencher depois do deploy)_
+Feito pelo gerente de projeto em 21/10/2026, depois do deploy:
+
+- [x] **Telas novas no ar** — os arquivos publicados do app já trazem o cartão "ainda não está ligado a um funcionário" e a trava de quem não tem cadastro.
+- [x] **Sem login, o módulo continua recusando** ("entre para continuar").
+- [ ] **O servidor devolvendo o bloqueio de verdade** — só dá para ver com login: abra o Como Fazer com um usuário sem ficha de funcionário (vendedor, por exemplo) e confirme que o item sumiu do menu. Provado no ambiente de testes pelo QA.
 
 - [ ] Telas novas no ar (o app publicado contém o texto do cartão "ainda não está ligado a um funcionário")
 - [ ] Sem login, o módulo continua respondendo "entre para continuar"
