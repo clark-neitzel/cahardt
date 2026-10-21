@@ -64,7 +64,7 @@ router.get('/ping', (req, res) => {
         ok: true,
         // Marcador de deploy: bumpar a cada mudança de backend que precise de confirmação
         // em produção (não há outro jeito de saber de fora qual versão está no ar).
-        deployMarker: 'checklist-dia3a-2026-10-22',
+        deployMarker: 'anexos-f1-2026-10-22',
         uptimeSegundos: Math.round(process.uptime()),
         timestamp: new Date().toISOString(),
         openaiConfigurada: !!process.env.OPENAI_API_KEY,
@@ -3587,6 +3587,21 @@ router.get('/diag-receita-custo', async (req, res) => {
     } catch (error) {
         console.error('[admin-exec] diag-receita-custo:', error);
         res.status(500).json({ error: error.message });
+    }
+});
+
+// POST /api/admin-exec/anexos-migrar-pdf-contas-pagar — espelha cada contas_pagar.pdfPath em `anexos`
+// (chaveLegado 'pdf:<contaId>'). Idempotente; não move nem copia arquivo.
+// SEGURO POR PADRÃO: sem parâmetro (ou ?dry=1, que vence ?gravar=1) só SIMULA. Grava apenas com ?gravar=1.
+// PDF cujo arquivo sumiu também ganha o anexo (tamanho 0; abrir = ARQUIVO_PERDIDO) e continua em `contasComArquivoSumido`.
+// ?limite=N (padrão 200, máx 5000) processa em lotes; a resposta traz `restantes` (repita até 0).
+router.post('/anexos-migrar-pdf-contas-pagar', async (req, res) => {
+    try {
+        const dry = req.query.dry === '1' || req.query.gravar !== '1'; // dry=1 sempre vence
+        res.json(await require('../services/anexoService').migrarPdfLegado({ dry, limite: req.query.limite }));
+    } catch (err) {
+        console.error('[anexos-migrar-pdf-contas-pagar]', err);
+        res.status(500).json({ error: err.message });
     }
 });
 

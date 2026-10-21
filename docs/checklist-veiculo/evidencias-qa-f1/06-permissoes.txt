@@ -1,0 +1,39 @@
+### LER POST anexos
+HTTP 403
+{"error":"Sem permissão para anexar arquivos em contas a pagar.","codigo":"SEM_PERMISSAO"}
+### LER PATCH tipo
+HTTP 403
+{"error":"Sem permissão para alterar anexos.","codigo":"SEM_PERMISSAO"}
+### LER DELETE
+HTTP 403
+{"error":"Sem permissão para remover anexos.","codigo":"SEM_PERMISSAO"}
+### LER GET lista (podeEscrever deve ser false)
+HTTP 200
+{"podeEscrever":false,"anexos":[{"id":"a6ad5553-5f56-47e8-938f-73869886acc9","entidadeTipo":"CONTA_PAGAR","entidadeId":"d53ad54a-8c36-4949-928f-6d5925329c02","tipo":"NF","nomeOriginal":"nota.pdf","mime":"application/pdf","tamanho":193,"sha256":"38fdbb387f29091e7b58df1c0676008d8670c1a8a06cd20228f6c2f
+### E2 DELETE anexo do E1 (SO_AUTOR_OU_ADMIN)
+HTTP 403
+{"error":"Só quem anexou o arquivo (ou o administrador) pode removê-lo.","codigo":"SO_AUTOR_OU_ADMIN"}
+### E2 PATCH tipo (escrita ok)
+HTTP 200
+{"anexo":{"id":"a6ad5553-5f56-47e8-938f-73869886acc9","entidadeTipo":"CONTA_PAGAR","entidadeId":"d53ad54a-8c36-4949-928f-6d5925329c02","tipo":"BOLETO","nomeOriginal":"nota.pdf","mime":"application/pdf","tamanho":193,"sha256":"38fdbb387f29091e7b58df1c0676008d8670c1a8a06cd20228f6c2fc2da4142b","ehImage
+### PATCH tipo invalido
+HTTP 400
+{"error":"Tipo de anexo inválido. Use: COMPROVANTE, NF, BOLETO, CONTRATO, OUTRO.","codigo":"TIPO_INVALIDO"}
+### PATCH tipo comprovante
+HTTP 200
+{"anexo":{"id":"a6ad5553-5f56-47e8-938f-73869886acc9","entidadeTipo":"CONTA_PAGAR","entidadeId":"d53ad54a-8c36-4949-928f-6d5925329c02","tipo":"COMPROVANTE","nomeOriginal":"nota.pdf","mime":"application/pdf","tamanho":193,"sha256":"38fdbb387f29091e7b58df1c0676008d8670c1a8a06cd20228f6c2fc2da4142b","eh
+### E1 DELETE proprio foto1
+HTTP 200
+{"message":"Anexo removido.","removido":true,"arquivoApagado":true}
+### E1 DELETE de novo (idempotencia)
+HTTP 404
+{"error":"Anexo não encontrado.","codigo":"NAO_ENCONTRADO"}
+### GET arquivo removido
+HTTP 404
+{"error":"Anexo não encontrado.","codigo":"NAO_ENCONTRADO"}
+### ADM DELETE jpg do E1
+HTTP 200
+{"message":"Anexo removido.","removido":true,"arquivoApagado":true}
+### lista C1 apos remocoes
+HTTP 200
+{"podeEscrever":true,"anexos":[{"id":"a6ad5553-5f56-47e8-938f-73869886acc9","entidadeTipo":"CONTA_PAGAR","entidadeId":"d53ad54a-8c36-4949-928f-6d5925329c02","tipo":"COMPROVANTE","nomeOriginal":"nota.pdf","mime":"application/pdf","tamanho":193,"sha256":"38fdbb387f29091e7b58df1c0676008d8670c1a8a06cd20

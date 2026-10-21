@@ -1,0 +1,7 @@
+contab QAF1 B True
+contab QAF1 C True
+contab QAF1 D False
+contab QAF1 A True
+contab QAF1 legadoSumido True
+contab QAF1 legadoOK2 True
+contab QAF1 legadoOK True

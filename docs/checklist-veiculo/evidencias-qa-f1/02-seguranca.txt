@@ -1,0 +1,60 @@
+### exe renomeado .pdf
+HTTP 400
+{"error":"\"falso.pdf\" não é um arquivo aceito. Envie PDF, foto (JPG, PNG, WebP) ou XML.","codigo":"ARQUIVO_INVALIDO","recusados":[{"arquivo":"falso.pdf","erro":"\"falso.pdf\" não é um arquivo aceito. Envie PDF, foto (JPG, PNG, WebP) ou XML.","codigo":"ARQUIVO_INVALIDO"}]}
+### pdf declarado como imagem (.png com conteudo pdf)
+HTTP 400
+{"error":"\"pdf-como-imagem.png\" não confere: o conteúdo é PDF, mas veio como \"image/png\". Arquivo recusado.","codigo":"ARQUIVO_INVALIDO","recusados":[{"arquivo":"pdf-como-imagem.png","erro":"\"pdf-como-imagem.png\" não confere: o conteúdo é PDF, mas veio como \"image/png\". Arquivo recusado.","codigo":"ARQUIVO_INVALIDO"}]}
+### pdf-como-imagem sem type forcado
+HTTP 400
+{"error":"\"pdf-como-imagem.png\" não confere: o conteúdo é PDF, mas veio como \"image/png\". Arquivo recusado.","codigo":"ARQUIVO_INVALIDO","recusados":[{"arquivo":"pdf-como-imagem.png","erro":"\"pdf-como-imagem.png\" não confere: o conteúdo é PDF, mas veio como \"image/png\". Arquivo recusado.","codigo":"ARQUIVO_INVALIDO"}]}
+### 31MB
+HTTP 413
+{"error":"Há arquivo com mais de 30 MB. Reduza o arquivo e tente de novo.","codigo":"ARQUIVO_GRANDE"}
+### 11 arquivos
+HTTP 400
+{"error":"Envie no máximo 10 arquivos por vez (campo \"arquivos\").","codigo":"LIMITE_ARQUIVOS"}
+### tipo invalido
+HTTP 400
+{"error":"Tipo de anexo inválido. Use: COMPROVANTE, NF, BOLETO, CONTRATO, OUTRO.","codigo":"TIPO_INVALIDO"}
+### duplicado (nota-dup.pdf na C1 que ja tem nota.pdf)
+HTTP 201
+{"anexos":[{"id":"d72cd1cc-e8d2-4ac9-9fe6-f253e58a0475","entidadeTipo":"CONTA_PAGAR","entidadeId":"d53ad54a-8c36-4949-928f-6d5925329c02","tipo":"OUTRO","nomeOriginal":"nota-dup.pdf","mime":"application/pdf","tamanho":193,"sha256":"38fdbb387f29091e7b58df1c0676008d8670c1a8a06cd20228f6c2fc2da4142b","ehImagem":false,"ehPdf":true,"ehXml":false,"legado":false,"criadoEm":"2026-10-21T19:52:27.665Z","criad
+### sem arquivo
+HTTP 400
+{"error":"Nenhum arquivo enviado (campo \"arquivos\").","codigo":"SEM_ARQUIVO"}
+### conta inexistente
+HTTP 404
+{"error":"Conta não encontrada.","codigo":"NAO_ENCONTRADO"}
+### uploads/anexos direto
+HTTP 403
+{"error":"Acesso negado."}
+### uploads/contas-pagar direto
+HTTP 403
+{"error":"Acesso negado."}
+### arquivo sem token
+HTTP 401
+{"error":"Token não fornecido ou inválido."}
+### arquivo token invalido
+HTTP 401
+{"error":"Token expirado ou inválido."}
+### arquivo usuario SEM Acessar_CP
+HTTP 403
+{"error":"Sem permissão para abrir este anexo.","codigo":"SEM_PERMISSAO"}
+### arquivo perfil Producao
+HTTP 403
+{"error":"Sem permissão para abrir este anexo.","codigo":"SEM_PERMISSAO"}
+### lista anexos Producao
+HTTP 403
+{"error":"Sem permissão para acessar contas a pagar.","codigo":"SEM_PERMISSAO"}
+### lista anexos SEM
+HTTP 403
+{"error":"Sem permissão para acessar contas a pagar.","codigo":"SEM_PERMISSAO"}
+### arquivo leitor (ver ok)
+HTTP 200
+%PDF-1.4
+1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj
+2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj
+3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 300 200]>>endobj
+trailer<</Root 1 0 R>>
+%%EOF
+

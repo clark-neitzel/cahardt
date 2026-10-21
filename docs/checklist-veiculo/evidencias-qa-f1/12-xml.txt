@@ -1,0 +1,29 @@
+### nfe-real.xml (xml)
+{"anexos":[{"id":"f3a56791-3aa1-453d-b36a-f61ad20ded5c","entidadeTipo":"CONTA_PAGAR","entidadeId":"22093375-3b91-400c-87d8-393d01f67626","tipo":"OUTRO","nomeOriginal":"nfe-real.xml","mime":"application/xml","tamanho":369,"sha256": ... ]}
+HTTP 201
+### pagina.xml (xml)
+{"error":"\"pagina.xml\" não é um arquivo aceito. Envie PDF, foto (JPG, PNG, WebP) ou XML.","codigo":"ARQUIVO_INVALIDO","recusados":[{"arquivo":"pagina.xml","erro":"\"pagina.xml\" não é um arquivo aceito. Envie PDF, foto (JPG, PNG ... ]}
+HTTP 400
+### svg-como-xml.xml (xml)
+{"error":"\"svg-como-xml.xml\" não é um arquivo aceito. Envie PDF, foto (JPG, PNG, WebP) ou XML.","codigo":"ARQUIVO_INVALIDO","recusados":[{"arquivo":"svg-como-xml.xml","erro":"\"svg-como-xml.xml\" não é um arquivo aceito. Envie P ... ]}
+HTTP 400
+### doctype-html.xml (xml)
+{"error":"\"doctype-html.xml\" não é um arquivo aceito. Envie PDF, foto (JPG, PNG, WebP) ou XML.","codigo":"ARQUIVO_INVALIDO","recusados":[{"arquivo":"doctype-html.xml","erro":"\"doctype-html.xml\" não é um arquivo aceito. Envie P ... ]}
+HTTP 400
+### xhtml.xml (xml)
+{"error":"\"xhtml.xml\" não é um arquivo aceito. Envie PDF, foto (JPG, PNG, WebP) ou XML.","codigo":"ARQUIVO_INVALIDO","recusados":[{"arquivo":"xhtml.xml","erro":"\"xhtml.xml\" não é um arquivo aceito. Envie PDF, foto (JPG, PNG, W ... ]}
+HTTP 400
+### xxe.xml (xml)
+{"anexos":[{"id":"f9dab85b-d6b9-44e4-9bfb-3e5bc9f0a4d9","entidadeTipo":"CONTA_PAGAR","entidadeId":"22093375-3b91-400c-87d8-393d01f67626","tipo":"OUTRO","nomeOriginal":"xxe.xml","mime":"application/xml","tamanho":95,"sha256":"a556d ... ]}
+HTTP 201
+### img.svg image/svg+xml
+{"error":"\"img.svg\" não é um arquivo aceito. Envie PDF, foto (JPG, PNG, WebP) ou XML.","codigo":"ARQUIVO_INVALIDO","recusados":[{"arquivo":"img.svg","erro":"\"img.svg\" não é um arquivo aceito. Envi
+HTTP 400
+### html como image/png
+{"error":"\"pagina.xml\" não é um arquivo aceito. Envie PDF, foto (JPG, PNG, WebP) ou XML.","codigo":"ARQUIVO_INVALIDO","recusados":[{"arquivo":"pagina.xml","erro":"\"pagina.xml\" não é um arquivo ace
+HTTP 400
+Strict-Transport-Security: max-age=31536000; includeSubDomains
+X-Content-Type-Options: nosniff
+Content-Type: application/xml
+Content-Security-Policy: sandbox
+<nfeProc xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00"><NFe xmlns="http://www.portalfiscal.inf.br/nfe"><infNFe Id="NFe41261012345678000190550010000012341000012345" versao="4.00"><ide><cUF>41</cUF><nNF>1234</nNF></ide><emit><CNPJ>12345678000190</CNPJ><xNome>Fornecedor Teste Ltda</xNome></emit></infNFe></NFe></nfeProc>

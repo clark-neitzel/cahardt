@@ -99,4 +99,31 @@ const contasPagarService = {
     }
 };
 
+// ── Anexos múltiplos (PDF, fotos, XML) — mesma API serve qualquer entidade ──
+// Arquivo SEMPRE por blob na instância autenticada: nunca URL pública / <img src> direto.
+export const anexosService = {
+    listar: async (entidadeTipo, entidadeId) => {
+        const rota = entidadeTipo === 'CONTA_PAGAR' ? `/contas-pagar/${entidadeId}/anexos` : null;
+        if (!rota) throw new Error('Tipo de anexo não suportado');
+        const r = await api.get(rota);
+        // contrato real: { podeEscrever, anexos: [{..., podeRemover, arquivoDisponivel}] }
+        return Array.isArray(r.data) ? { anexos: r.data } : { podeEscrever: r.data?.podeEscrever, anexos: r.data?.anexos || [] };
+    },
+    enviar: async (entidadeTipo, entidadeId, arquivos, tipo) => {
+        const form = new FormData();
+        arquivos.forEach((a) => form.append('arquivos', a));
+        form.append('tipo', tipo || 'OUTRO');
+        const r = await api.post(`/contas-pagar/${entidadeId}/anexos`, form, {
+            headers: { 'Content-Type': 'multipart/form-data' }, timeout: 120000,
+        });
+        return r.data;
+    },
+    arquivo: async (anexoId) => {
+        const r = await api.get(`/anexos/${anexoId}/arquivo`, { responseType: 'blob' });
+        return r.data;
+    },
+    remover: async (anexoId) => (await api.delete(`/anexos/${anexoId}`)).data,
+    mudarTipo: async (anexoId, tipo) => (await api.patch(`/anexos/${anexoId}`, { tipo })).data,
+};
+
 export default contasPagarService;

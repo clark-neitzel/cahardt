@@ -1,5 +1,11 @@
 [
   {
+    "slug": "anexos-contas-pagar",
+    "titulo": "Vários anexos no Contas a Pagar",
+    "resumo": "Cada conta aceita vários arquivos (PDF, foto, XML), com tipo e quem enviou, e abre direto na hora de pagar. Só abre com login.",
+    "data": "2026-10-22"
+  },
+  {
     "slug": "checklist-volta",
     "titulo": "Fechar o dia com foto do painel",
     "resumo": "Na volta, o app lê o KM do painel pela foto e você só confirma. Quem esquecer, o responsável resolve na Central de Pendências.",

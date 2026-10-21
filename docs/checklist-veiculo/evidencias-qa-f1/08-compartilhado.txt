@@ -1,0 +1,8 @@
+caminho=anexos/CONTA_PAGAR/2026-10/f3497d7eaba4167c.pdf
+/Users/clarksonneitzel/Projetos/CA-Hardt/backend/uploads/anexos/CONTA_PAGAR/2026-10/f3497d7eaba4167c.pdf
+DELETE linha 1:
+{"message":"Anexo removido.","removido":true,"arquivoApagado":false}/Users/clarksonneitzel/Projetos/CA-Hardt/backend/uploads/anexos/CONTA_PAGAR/2026-10/f3497d7eaba4167c.pdf
+abrir linha 2:
+HTTP 200
+DELETE linha 2 (ultima):
+{"message":"Anexo removido.","removido":true,"arquivoApagado":true}ls: /Users/clarksonneitzel/Projetos/CA-Hardt/backend/uploads/anexos/CONTA_PAGAR/2026-10/f3497d7eaba4167c.pdf: No such file or directory

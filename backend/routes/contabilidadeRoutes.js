@@ -29,6 +29,7 @@ const express = require('express');
 const router = express.Router();
 const prisma = require('../config/database');
 const verificarAuth = require('../middlewares/authMiddleware');
+const anexoService = require('../services/anexoService');
 
 const getPerms = async (userId) => {
     const vendedor = await prisma.vendedor.findUnique({
@@ -468,6 +469,7 @@ router.get('/relatorio-pagar', verificarAuth, checkAcesso, async (req, res) => {
             });
             truncado = pagamentos.length > LIMITE_LINHAS;
             const conciliados = await idsConciliadosPagar(pagamentos.slice(0, LIMITE_LINHAS).map((p) => p.id));
+            const comAnexo = await anexoService.idsContasComAnexo(pagamentos.slice(0, LIMITE_LINHAS).map((p) => p.parcelaPagar.contaPagar.id));
 
             for (const pg of pagamentos.slice(0, LIMITE_LINHAS)) {
                 const conta = pg.parcelaPagar.contaPagar;
@@ -497,7 +499,7 @@ router.get('/relatorio-pagar', verificarAuth, checkAcesso, async (req, res) => {
                     baixadoPor: pg.registradoPor?.nome || null,
                     conciliado: conciliados.has(pg.id),
                     status: pg.parcelaPagar.status,
-                    temAnexo: !!conta.pdfPath
+                    temAnexo: !!conta.pdfPath || comAnexo.has(conta.id)
                 });
             }
         } else if (visao === 'categorias') {
@@ -571,6 +573,7 @@ router.get('/relatorio-pagar', verificarAuth, checkAcesso, async (req, res) => {
             truncado = parcelas.length > LIMITE_LINHAS;
             const idsPg = parcelas.slice(0, LIMITE_LINHAS).flatMap((p) => p.pagamentos.map((x) => x.id));
             const conciliados = await idsConciliadosPagar(idsPg);
+            const comAnexo = await anexoService.idsContasComAnexo(parcelas.slice(0, LIMITE_LINHAS).map((p) => p.contaPagar.id));
 
             for (const par of parcelas.slice(0, LIMITE_LINHAS)) {
                 const conta = par.contaPagar;
@@ -603,7 +606,7 @@ router.get('/relatorio-pagar', verificarAuth, checkAcesso, async (req, res) => {
                     baixadoPor: null,
                     conciliado: par.pagamentos.some((x) => conciliados.has(x.id)),
                     status: par.status,
-                    temAnexo: !!conta.pdfPath
+                    temAnexo: !!conta.pdfPath || comAnexo.has(conta.id)
                 });
             }
         }

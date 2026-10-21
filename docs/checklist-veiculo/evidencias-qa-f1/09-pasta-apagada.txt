@@ -1,0 +1,21 @@
+ls: /Users/clarksonneitzel/Projetos/CA-Hardt/backend/uploads/anexos: No such file or directory
+ls: /Users/clarksonneitzel/Projetos/CA-Hardt/backend/uploads/contas-pagar: No such file or directory
+a44a-45e6-99b0-e046ceb08309/arquivo","podeRemover":true,"arquivoDisponivel":true}],"recusados":[],"avisos":[]}
+HTTP 201
+{"message":"PDF anexado com sucesso!","temPdf":true,"pdfNome":"1792612446445-bcf7d374-a895-4f44-8415-2394018050b8.pdf"}
+HTTP 200
+/Users/clarksonneitzel/Projetos/CA-Hardt/backend/uploads/contas-pagar/1792612446445-bcf7d374-a895-4f44-8415-2394018050b8.pdf
+/Users/clarksonneitzel/Projetos/CA-Hardt/backend/uploads/anexos/CONTA_PAGAR/2026-10/d22583978d8fc61f.png
+## baixa C1 (com anexos)
+{"message":"Parcela quitada com sucesso!","novoStatusParcela":"PAGO","novoStatusConta":"QUITADO"}
+HTTP 200
+PAGO
+{"error":"Informe o pagamento a estornar."}
+HTTP 400
+PAGO
+[('QAF1 A', 3)]
+filtro status HTTP 200
+{"message":"Pagamento estornado com sucesso!","novoStatusParcela":"PENDENTE","novoStatusConta":"ABERTO"}
+HTTP 200
+PENDENTE
+3

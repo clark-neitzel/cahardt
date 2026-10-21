@@ -85,6 +85,7 @@ const focusNfeWebhookRoutes = require('./routes/focusNfeWebhookRoutes'); // Focu
 const notasFiscaisRoutes = require('./routes/notasFiscaisRoutes'); // Focus NFe: emissão de NF-e pelo app (fila/emitir/DANFE)
 const canhotoRoutes = require('./routes/canhotoRoutes'); // Canhoto da NF: bipe do código de barras da DANFE, arquivo do mês
 const contasPagarRoutes = require('./routes/contasPagar'); // Financeiro: Contas a Pagar (Fase 1)
+const anexosRoutes = require('./routes/anexos'); // Anexos múltiplos (F1: Contas a Pagar)
 const fornecedoresRoutes = require('./routes/fornecedores'); // Financeiro: Fornecedores
 const configNotasRoutes = require('./routes/configNotas'); // Configurações: Certificado Digital (notas)
 const notasEntradaRoutes = require('./routes/notasEntrada'); // Financeiro: Notas Recebidas — captura NF-e SEFAZ (Fase 2)
@@ -134,6 +135,10 @@ app.use('/uploads/certificado', (req, res) => res.status(403).json({ error: 'Ace
 app.use('/uploads/notas-xml', (req, res) => res.status(403).json({ error: 'Acesso negado.' }));
 // Cache de DANFEs/boletos da impressão em lote — documentos de cliente, nunca públicos
 app.use('/uploads/cache-fiscal', (req, res) => res.status(403).json({ error: 'Acesso negado.' }));
+// Anexos (comprovantes/NF/boletos) e PDFs do Contas a Pagar: só pela rota autenticada
+// (/api/anexos/:id/arquivo e /api/contas-pagar/:id/pdf), nunca por URL pública.
+app.use('/uploads/anexos', (req, res) => res.status(403).json({ error: 'Acesso negado.' }));
+app.use('/uploads/contas-pagar', (req, res) => res.status(403).json({ error: 'Acesso negado.' }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Dados vivos NUNCA são cacheados. O Safari do iOS (app PWA instalado na tela
@@ -204,6 +209,7 @@ app.use('/api/categorias-cliente', authMiddleware, categoriasClienteRoutes); // 
 app.use('/api/insights', authMiddleware, insightRoutes); // Inteligência Comercial - Motor
 app.use('/api/amostras', authMiddleware, amostraRoutes); // Amostras (mini-pedidos)
 app.use('/api/contas-receber', contasReceberRoutes); // Contas a Receber (auth inside)
+app.use('/api', anexosRoutes); // Anexos (auth em cada rota; caminhos /contas-pagar/:id/anexos e /anexos/:id)
 app.use('/api/contas-pagar', contasPagarRoutes); // Contas a Pagar (auth inside)
 app.use('/api/fornecedores', fornecedoresRoutes); // Fornecedores (auth inside)
 app.use('/api/config-notas', configNotasRoutes); // Certificado Digital p/ notas (auth inside)

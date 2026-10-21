@@ -4971,3 +4971,29 @@ model Setor {
 
   @@map("setores")
 }
+
+// Anexos genéricos (comprovantes, NF, boleto…) de qualquer entidade — F1: Contas a Pagar.
+// Sem relação/coluna nas tabelas de origem (contas_pagar etc. continuam intactas). Soft delete;
+// o arquivo só sai do disco quando nenhum anexo ativo aponta para o mesmo `caminho`.
+model Anexo {
+  id            String    @id @default(uuid())
+  entidadeTipo  String    @map("entidade_tipo") // CONTA_PAGAR | DESPESA | (futuro: NOTA_ENTRADA...)
+  entidadeId    String    @map("entidade_id")
+  tipo          String    @default("OUTRO") // COMPROVANTE | NF | BOLETO | CONTRATO | OUTRO
+  nomeOriginal  String    @map("nome_original")
+  mime          String
+  tamanho       Int
+  sha256        String    @map("sha256")
+  caminho       String    @db.Text // path gravado, sempre sob uploads/
+  chaveLegado   String?   @unique @map("chave_legado") // 'pdf:<contaId>' idempotência do backfill
+  criadoPorId   String?   @map("criado_por_id")
+  criadoPorNome String?   @map("criado_por_nome")
+  criadoEm      DateTime  @default(now()) @map("criado_em")
+  ativo         Boolean   @default(true)
+  removidoEm    DateTime? @map("removido_em")
+  removidoPorId String?   @map("removido_por_id")
+
+  @@index([entidadeTipo, entidadeId, ativo])
+  @@index([sha256])
+  @@map("anexos")
+}

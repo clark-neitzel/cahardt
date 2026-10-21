@@ -1,0 +1,28 @@
+linhas pdf: no inicio: 0
+## POST 
+{"dry":true,"contasComPdf":3,"jaMigradas":0,"aMigrar":2,"migradas":0,"limite":200,"restantes":2,"arquivosNaPastaAntigaForaDoVolume":0,"sumiram":1,"contasComArquivoSumido":[{"contaId":"829f7384-86c5-4dad-b250-ff1ea91ba7d7","pdfPath":"/Users/clarksonneitzel/Proj
+linhas: 0
+## POST ?dry=1
+{"dry":true,"contasComPdf":3,"jaMigradas":0,"aMigrar":2,"migradas":0,"limite":200,"restantes":2,"arquivosNaPastaAntigaForaDoVolume":0,"sumiram":1,"contasComArquivoSumido":[{"contaId":"829f7384-86c5-4dad-b250-ff1ea91ba7d7","pdfPath":"/Users/clarksonneitzel/Proj
+linhas: 0
+## POST ?gravar=0
+{"dry":true,"contasComPdf":3,"jaMigradas":0,"aMigrar":2,"migradas":0,"limite":200,"restantes":2,"arquivosNaPastaAntigaForaDoVolume":0,"sumiram":1,"contasComArquivoSumido":[{"contaId":"829f7384-86c5-4dad-b250-ff1ea91ba7d7","pdfPath":"/Users/clarksonneitzel/Proj
+linhas: 0
+## POST ?limite=1
+{"dry":true,"contasComPdf":3,"jaMigradas":0,"aMigrar":2,"migradas":0,"limite":1,"restantes":2,"arquivosNaPastaAntigaForaDoVolume":0,"sumiram":1,"contasComArquivoSumido":[{"contaId":"829f7384-86c5-4dad-b250-ff1ea91ba7d7","pdfPath":"/Users/clarksonneitzel/Projet
+linhas: 0
+## POST ?dry=1&gravar=1
+{"dry":false,"contasComPdf":3,"jaMigradas":0,"aMigrar":2,"migradas":2,"limite":200,"restantes":0,"arquivosNaPastaAntigaForaDoVolume":0,"sumiram":1,"contasComArquivoSumido":[{"contaId":"829f7384-86c5-4dad-b250-ff1ea91ba7d7","pdfPath":"/Users/clarksonneitzel/Pro
+linhas: 2
+## ?gravar=1&limite=1
+{"dry":false,"contasComPdf":3,"jaMigradas":2,"aMigrar":0,"migradas":0,"limite":1,"restantes":0,"arquivosNaPastaAntigaForaDoVolume":0,"sumiram":1,"contasComArquivoSumido":[{"contaId":"829f7384-86c5-4dad-b250-ff1ea91ba7d7","pdfPath":"/Users/clarksonneitzel/Proje
+linhas: 2
+## ?gravar=1
+{"dry":false,"contasComPdf":3,"jaMigradas":2,"aMigrar":0,"migradas":0,"limite":200,"restantes":0,"arquivosNaPastaAntigaForaDoVolume":0,"sumiram":1,"contasComArquivoSumido":[{"contaId":"829f7384-86c5-4dad-b250-ff1ea91ba7d7","pdfPath":"/Users/clarksonneitzel/Projetos/CA-Hardt/backend/uploads/contas-pagar/nao-existe-qa.pdf"}]}linhas: 2
+## ?gravar=1 de novo
+{"dry":false,"contasComPdf":3,"jaMigradas":2,"aMigrar":0,"migradas":0,"limite":200,"restantes":0,"arquivosNaPastaAntigaForaDoVolume":0,"sumiram":1,"contasComArquivoSumido":[{"contaId":"829f7384-86c5-4
+linhas: 2
+## reset + gravar=1&limite=1
+{"dry":false,"contasComPdf":3,"jaMigradas":0,"aMigrar":2,"migradas":1,"limite":1,"restantes":1,"arquivosNaPastaAntigaForaDoVolume":0,"sumiram":1,"cont
+1
+2

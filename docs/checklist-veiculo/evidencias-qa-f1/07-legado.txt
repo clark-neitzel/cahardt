@@ -1,0 +1,66 @@
+### lista (qtdAnexos/temAnexo) antes de qualquer GET anexos / backfill
+QAF1 legadoOK2 True 1 True
+QAF1 legadoSumido True 1 True
+QAF1 legadoOK True 1 True
+QAF1 D False 5 True
+QAF1 C False 2 True
+QAF1 B False 1 True
+QAF1 A False 3 True
+ count 
+-------
+     0
+(1 row)
+
+## GET /:id/pdf antigo (C5)
+HTTP 200 application/pdf
+## GET /:id/pdf sumido (C6)
+{"error":"O arquivo deste PDF não está mais no servidor (anexo antigo, perdido numa atualização). Anexe o documento novamente."}
+HTTP 404
+## GET anexos C5 sem backfill (ler)
+[('legado-qa-A.pdf', True, True, 'OUTRO', 'Migração PDF legado')]
+espelhos apos GET (linhas pdf:): 1
+## GET anexos C6 (arquivo sumido)
+[]
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Error</title>
+</head>
+<body>
+<pre>Cannot GET /api/anexos//arquivo</pre>
+</body>
+</html>
+
+HTTP 404
+{"dry":true,"contasComPdf":3,"jaMigradas":1,"aMigrar":1,"migradas":0,"arquivosNaPastaAntigaForaDoVolume":0,"sumiram":1,"contasComArquivoSumido":[{"contaId":"829f7384-86c5-4dad-b250-ff1ea91ba7d7","pdfPath":"/Users/clarksonneitzel/Projetos/CA-Hardt/backend/uploads/contas-pagar/nao-existe-qa.pdf"}]}linhas pdf: apos dry: 1
+{"dry":true,"contasComPdf":3,"jaMigradas":0,"aMigrar":2,"migradas":0,"arquivosNaPastaAntigaForaDoVolume":0,"sumiram":1,"contasComArquivoSumido":[{"contaId":"829f7384-86c5-4dad-b250-ff1ea91ba7d7","pdfPath":"/Users/clarksonneitzel/Projetos/CA-Hardt/backend/uploads/contas-pagar/nao-existe-qa.pdf"}]}linhas apos dry virgem: 0
+{"dry":false,"contasComPdf":3,"jaMigradas":0,"aMigrar":2,"migradas":2,"arquivosNaPastaAntigaForaDoVolume":0,"sumiram":1,"contasComArquivoSumido":[{"contaId":"829f7384-86c5-4dad-b250-ff1ea91ba7d7","pdfPath":"/Users/clarksonneitzel/Projetos/CA-Hardt/backend/uploads/contas-pagar/nao-existe-qa.pdf"}]}linhas: 2
+{"dry":false,"contasComPdf":3,"jaMigradas":2,"aMigrar":0,"migradas":0,"arquivosNaPastaAntigaForaDoVolume":0,"sumiram":1,"contasComArquivoSumido":[{"contaId":"829f7384-86c5-4dad-b250-ff1ea91ba7d7","pdfPath":"/Users/clarksonneitzel/Projetos/CA-Hardt/backend/uploads/contas-pagar/nao-existe-qa.pdf"}]}linhas: 2
+## POST /:id/pdf em C4 (sem pdf) pela rota antiga, E1
+{"message":"PDF anexado com sucesso!","temPdf":true,"pdfNome":"1792612426994-4712851a-0103-411a-8cf2-2ca5041ccb97.pdf"}
+HTTP 200
+/Users/clarksonneitzel/Projetos/CA-Hardt/backend/uploads/contas-pagar/1792612426994-4712851a-0103-411a-8cf2-2ca5041ccb97.pdf
+1792612426994-4712851a-0103-411a-8cf2-2ca5041ccb97.pdf|contas-pagar/1792612426994-4712851a-0103-411a-8cf2-2ca5041ccb97.pdf|pdf:4712851a-0103-411a-8cf2-2ca5041ccb97|t|QA F1 esc1
+## POST de novo (substituir) com outro pdf
+{"message":"PDF anexado com sucesso!","temPdf":true,"pdfNome":"1792612427049-4712851a-0103-411a-8cf2-2ca5041ccb97.pdf"}
+HTTP 200
+/Users/clarksonneitzel/Projetos/CA-Hardt/backend/uploads/contas-pagar/1792612427049-4712851a-0103-411a-8cf2-2ca5041ccb97.pdf
+1792612427049-4712851a-0103-411a-8cf2-2ca5041ccb97.pdf|contas-pagar/1792612427049-4712851a-0103-411a-8cf2-2ca5041ccb97.pdf|pdf:4712851a-0103-411a-8cf2-2ca5041ccb97|t|195
+## qtd anexos C4 na lista e lista /anexos
+[('evil.pdf', False), ('evil.pdf', False), ('a%22b%0D%0AX-Evil: 1.pdf', False), ('<img src=x onerror=alert(1)>.pdf', False), ('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', False), ('1792612427049-4712851a-0103-411a-8cf2-2ca5041ccb97.pdf', True)]
+## GET /:id/pdf
+HTTP 200
+## DELETE /:id/pdf
+{"message":"PDF removido com sucesso!","temPdf":false,"pdfNome":null}
+HTTP 200
+t
+f|t
+## POST de novo apos DELETE (chaveLegado unica -> reativa?)
+{"message":"PDF anexado com sucesso!","temPdf":true,"pdfNome":"1792612427211-4712851a-0103-411a-8cf2-2ca5041ccb97.pdf"}
+HTTP 200
+t|1792612427211-4712851a-0103-411a-8cf2-2ca5041ccb97.pdf
+## DELETE via DELETE /anexos/:id (espelho) limpa pdfPath
+{"message":"Anexo removido.","removido":true,"arquivoApagado":true}
+HTTP 200
+t

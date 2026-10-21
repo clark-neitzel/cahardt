@@ -18,6 +18,7 @@ const contasPagarCaSyncService = require('../services/contasPagarCaSyncService')
 const custoForaDaCurva = require('../services/custoForaDaCurvaService');
 const categoriaDespesaService = require('../services/categoriaDespesaService');
 const contaAzulService = require('../services/contaAzulService');
+const anexoService = require('../services/anexoService');
 // App é o dono do financeiro: com esta chave ligada, Contas a Pagar não envia mais ao CA
 // (a despesa/baixa nasce "só no app"). A forma/banco continuam sendo capturados p/ os saldos.
 const { CA_SOMENTE_LEITURA } = require('../config/contaAzulModo');
@@ -48,7 +49,9 @@ function localizarPdf(pdfPath) {
 
 const uploadPdf = multer({
     storage: multer.diskStorage({
-        destination: (_req, _file, cb) => cb(null, PDF_DIR),
+        destination: (_req, _file, cb) => {
+            try { fs.mkdirSync(PDF_DIR, { recursive: true }); cb(null, PDF_DIR); } catch (e) { cb(e); }
+        },
         filename: (req, _file, cb) => cb(null, `${Date.now()}-${req.params.id}.pdf`)
     }),
     limits: { fileSize: 30 * 1024 * 1024 },
@@ -133,7 +136,14 @@ const formatarPagamento = (pg, bancos = {}) => ({
     banco: (pg.contaFinanceiraCaId && bancos[pg.contaFinanceiraCaId]) || null
 });
 
-const formatarConta = (c, bancos = {}) => ({
+// anexosResumo: Map contaId → { qtd, temEspelho } (anexoService.resumoPorContas)
+const qtdAnexosDe = (c, resumo) => {
+    const r = resumo && resumo.get(c.id);
+    const base = r ? r.qtd : 0;
+    return base + (c.pdfPath && !(r && r.temEspelho) ? 1 : 0);
+};
+
+const formatarConta = (c, bancos = {}, anexosResumo = null) => ({
     id: c.id,
     descricao: c.descricao,
     categoria: c.categoria,
@@ -148,6 +158,9 @@ const formatarConta = (c, bancos = {}) => ({
     // PDF: se tem arquivo, expõe true + nome do arquivo (sem o caminho completo)
     temPdf: !!c.pdfPath,
     pdfNome: c.pdfPath ? path.basename(c.pdfPath) : null,
+    // Anexos múltiplos (tabela `anexos`). O PDF antigo conta como 1 mesmo antes do backfill (espelho ainda não criado).
+    qtdAnexos: qtdAnexosDe(c, anexosResumo),
+    temAnexo: qtdAnexosDe(c, anexosResumo) > 0,
     fornecedor: c.fornecedor
         ? { id: c.fornecedor.id, razaoSocial: c.fornecedor.razaoSocial, nomeFantasia: c.fornecedor.nomeFantasia, cnpjCpf: c.fornecedor.cnpjCpf || null }
         : null,
@@ -357,6 +370,7 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
         }
 
         const bancos = await mapaBancos();
+        const anexosResumo = await anexoService.resumoPorContas(contas.map((c) => c.id));
         res.json({
             kpis: {
                 vencidas,
@@ -364,7 +378,7 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
                 abertoMes: { valor: round2(abertoValor), qtd: abertoQtd },
                 pagoMes: { valor: round2(pagoValor), qtd: parcelasComPgtoNoMes.size }
             },
-            contas: contas.map((c) => formatarConta(c, bancos))
+            contas: contas.map((c) => formatarConta(c, bancos, anexosResumo))
         });
     } catch (error) {
         console.error('Erro ao listar contas a pagar:', error);
@@ -494,6 +508,8 @@ router.post('/:id/pdf', verificarAuth, checkEscrita, (req, res, next) => {
             where: { id: req.params.id },
             data: { pdfPath: req.file.path }
         });
+        // Dupla escrita: reflete em `anexos` (chaveLegado 'pdf:<id>'); nunca falha a rota antiga
+        await anexoService.espelharPdfLegado(req.params.id, req.file.path, { id: req.user?.id, nome: req.user?.nome || null });
 
         res.json({
             message: 'PDF anexado com sucesso!',
@@ -542,6 +558,7 @@ router.delete('/:id/pdf', verificarAuth, checkEscrita, async (req, res) => {
         if (arquivo) fs.unlink(arquivo, () => {});
 
         await prisma.contaPagar.update({ where: { id: req.params.id }, data: { pdfPath: null } });
+        await anexoService.desativarEspelhoPdfLegado(req.params.id, { id: req.user?.id });
 
         res.json({ message: 'PDF removido com sucesso!', temPdf: false, pdfNome: null });
     } catch (error) {
@@ -836,7 +853,7 @@ router.post('/', verificarAuth, checkEscrita, async (req, res) => {
 
         res.status(201).json({
             message: 'Conta a pagar criada!',
-            conta: formatarConta(conta, await mapaBancos()),
+            conta: formatarConta(conta, await mapaBancos(), await anexoService.resumoPorContas([conta.id])),
             estoque: { entradas: estoque.registradas, avisos: estoque.avisos }
         });
     } catch (error) {
@@ -994,7 +1011,7 @@ router.put('/:id', verificarAuth, checkEscrita, async (req, res) => {
                         parcelas: { orderBy: { numeroParcela: 'asc' }, include: { pagamentos: { orderBy: { dataPagamento: 'asc' } } } }
                     }
                 });
-                return res.json({ message: 'Despesa atualizada e sincronizada com o Conta Azul!', conta: formatarConta(atualizada, await mapaBancos()) });
+                return res.json({ message: 'Despesa atualizada e sincronizada com o Conta Azul!', conta: formatarConta(atualizada, await mapaBancos(), await anexoService.resumoPorContas([atualizada.id])) });
             }
 
             await prisma.$transaction(async (tx) => {
@@ -1042,7 +1059,7 @@ router.put('/:id', verificarAuth, checkEscrita, async (req, res) => {
                 parcelas: { orderBy: { numeroParcela: 'asc' }, include: { pagamentos: { orderBy: { dataPagamento: 'asc' } } } }
             }
         });
-        res.json({ message: 'Conta atualizada!', conta: formatarConta(atualizada, await mapaBancos()) });
+        res.json({ message: 'Conta atualizada!', conta: formatarConta(atualizada, await mapaBancos(), await anexoService.resumoPorContas([atualizada.id])) });
     } catch (error) {
         console.error('Erro ao editar conta a pagar:', error);
         res.status(500).json({ error: 'Erro ao editar conta a pagar.' });

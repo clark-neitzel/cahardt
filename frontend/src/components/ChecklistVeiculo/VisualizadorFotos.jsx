@@ -13,6 +13,7 @@ import { MSG_FOTO_PERDIDA } from '../Diario/ImgComFalha';
  *   indiceInicial?: number
  *   onClose: () => void
  *   modo: 'motorista' | 'escritorio'
+ *   titulo?: string           (com semParecer) troca o título "Fotos modelo" (ex.: "Anexo")
  *   semParecer?: boolean       esconde o rodapé de parecer e usa o título "Fotos modelo" (fotos modelo do veículo)
  *   contexto?: { motorista, data, veiculo, kmLido, kmDigitado, kmOrigem }   faixa do painel, só escritório
  *   acoes?: {                  só motorista (todas podem devolver Promise; erro vira toast)
@@ -51,7 +52,7 @@ const horaDe = (iso) => {
 };
 const fmtKm = (n) => (n != null && Number.isFinite(Number(n)) ? Number(n).toLocaleString('pt-BR') : null);
 
-const VisualizadorFotos = ({ slides = [], indiceInicial = 0, onClose, modo = 'motorista', contexto = null, acoes = null, semParecer = false }) => {
+const VisualizadorFotos = ({ slides = [], indiceInicial = 0, onClose, modo = 'motorista', contexto = null, acoes = null, semParecer = false, titulo = null }) => {
     const total = slides.length;
     const [indice, setIndice] = useState(clamp(indiceInicial, 0, Math.max(0, total - 1)));
     const [t, setT] = useState(T0);
@@ -254,7 +255,7 @@ const VisualizadorFotos = ({ slides = [], indiceInicial = 0, onClose, modo = 'mo
             <div className="relative flex-1 min-h-0 min-w-0 overflow-hidden">
                 <div className="absolute top-0 inset-x-0 z-10 flex items-center justify-between gap-2 px-3 py-2 bg-gradient-to-b from-black/70 to-transparent">
                     <span className="text-sm font-bold text-white truncate min-w-0">
-                        {semParecer ? `Fotos modelo · ${slide.rotulo}` : slide.rotulo} · {indice + 1} de {total}
+                        {semParecer ? `${titulo || 'Fotos modelo'} · ${slide.rotulo}` : slide.rotulo} · {indice + 1} de {total}
                         {contexto?.veiculo && <span className="ml-2 text-xs font-semibold text-gray-300">{contexto.veiculo}</span>}
                         {verComp && <span className="ml-2 text-xs font-semibold text-amber-300">foto extra</span>}
                     </span>
