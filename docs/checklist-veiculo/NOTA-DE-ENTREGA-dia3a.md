@@ -80,13 +80,10 @@ Ainda é fase de teste: nada trava ninguém.
 Veja as telas: https://cahardt-github.xrqvlq.easypanel.host/novidade-checklist-volta.html
 ```
 
-## Prova em produção
+## Prova em produção (preenchida pelo gerente de projeto em 21/10, 17:25)
 
-*(a preencher pelo gerente de projeto depois do deploy)*
-
-- [ ] `GET /api/admin-exec/ping` devolve `deployMarker: checklist-dia3a-2026-10-22`
-- [ ] `db push` criou a tabela `pendencias_veiculo_ok` e as colunas `atrasada` e `bateu_ou_raspou` (backend subiu sem erro de schema)
-- [ ] `GET /api/checklists-veiculo/pendencias` responde (logado como admin) e gravou `checklist_volta_inicio` em `app_configs`
-- [ ] Página `https://cahardt-github.xrqvlq.easypanel.host/novidade-checklist-volta.html` abre sem login
-- [ ] Volta real no celular (dono): KM final do painel gravado no diário
-- [ ] Aviso das 6h de amanhã: chegou (ou não havia pendência), conferido em Configurações → Notificação WhatsApp / `app_configs` chave `checklist_pend_aviso_<dia>`
+- [x] Backend: `GET /api/admin-exec/ping` devolveu `deployMarker: checklist-dia3a-2026-10-22` (commit ec054a3b, ~80 s após o push).
+- [x] Frontend: o bundle de produção `/assets/index-lrBQG6-y.js` contém "Não consegui tirar as fotos".
+- [x] Rotas novas existem (sem token respondem 401, não 404): `GET /api/checklists-veiculo/pendencias` e `GET /api/checklists-veiculo/config/responsaveis`. Página `novidade-checklist-volta.html` responde 200.
+- [ ] Uma volta real no celular do dono (fotos, KM do painel confirmado, encerrar o dia): só com login e aparelho.
+- [ ] Aviso das 6h de amanhã no WhatsApp interno e criação da tabela `pendencias_veiculo_ok`/data `checklist_volta_inicio` na primeira abertura da Central: amanhã cedo.

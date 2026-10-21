@@ -78,6 +78,12 @@ Veja as telas e como usar:
 https://cahardt-github.xrqvlq.easypanel.host/novidade-anexos-contas-pagar.html
 ```
 
-## 7. Prova em produção
+## Prova em produção (preenchida pelo gerente de projeto em 21/10, 17:40)
 
-_(preencher após o deploy: data/hora, despesa usada, arquivo anexado, deploy seguinte confirmado por `deployMarker`, arquivo aberto depois — sim/não, resultado do backfill `dry` e `gravar`, quantas das 14 contas perdidas foram reanexadas.)_
+- [x] Backend: `deployMarker: anexos-f1-2026-10-22` (commit 27d2adce).
+- [x] Frontend: o pedaço de produção `ContasPagarPage-Bfyj0h7r.js` contém "Adicionar arquivos", "Arquivo não encontrado no servidor" e "Ver documento".
+- [x] Rotas novas existem (401 sem token): `GET /api/contas-pagar/:id/anexos` e `GET /api/anexos/:id/arquivo`. Acesso direto a arquivo bloqueado: `/uploads/anexos/...` e `/uploads/contas-pagar/...` respondem **403**. Página `novidade-anexos-contas-pagar.html` responde 200.
+- [x] Persistência do volume de uploads atravessando deploys: as 24 fotos de checklist enviadas hoje às 10h abrem (24 de 24) depois de 4 deploys; o volume `/app/uploads/contas-pagar` segue com 135 arquivos. (Prova indireta: não há login de usuário para anexar em produção; o mesmo volume `/app/uploads` guarda os anexos novos.)
+- [x] Simulação do backfill em produção (`POST /api/admin-exec/anexos-migrar-pdf-contas-pagar?dry=1`, nada gravado): **148 contas com PDF, 13 com o arquivo perdido, 0 erros**. O backfill real (`?gravar=1&limite=200`) é opcional: a tela cria o anexo sozinha ao abrir cada conta.
+- [ ] Anexar uma foto do celular numa conta e abrir de novo depois do próximo deploy: dono, com login.
+- [ ] Reanexar o documento das 13 contas com arquivo perdido: dono.
