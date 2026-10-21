@@ -48,7 +48,7 @@ const diarioController = {
             const diarioFinalizado = await diarioService.encerrarDia(vendedorId, req.body);
             res.json(diarioFinalizado);
         } catch (error) {
-            res.status(400).json({ error: error.message });
+            res.status(400).json({ error: error.message, ...(error.codigo ? { codigo: error.codigo } : {}) });
         }
     }
 };

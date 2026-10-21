@@ -17,6 +17,9 @@ const ChecklistVeiculosConfigCard = () => {
     const [salvando, setSalvando] = useState(false);
     const [testando, setTestando] = useState(false);
     const [trocandoModo, setTrocandoModo] = useState(false);
+    // Dia 3: quem libera e dá OK (ordem importa). null = ainda não carregou / rota indisponível.
+    const [resp, setResp] = useState(null);       // { ids, candidatos }
+    const [salvandoResp, setSalvandoResp] = useState(false);
 
     const carregar = async () => {
         try {
@@ -30,6 +33,10 @@ const ChecklistVeiculosConfigCard = () => {
                 horas: a?.horas || [], candidatos: a?.candidatos || [],
             });
             setModo(m?.modo || null);
+            try {
+                const r = await checklistEscritorioService.responsaveis();
+                setResp({ ids: r?.ids || r?.responsaveis || [], candidatos: r?.candidatos || a?.candidatos || [] });
+            } catch { setResp(null); }
         } catch {
             setErro(true);
         }
@@ -57,6 +64,19 @@ const ChecklistVeiculosConfigCard = () => {
             toast.error(e.response?.data?.error || 'Erro ao salvar.');
         } finally {
             setSalvando(false);
+        }
+    };
+
+    const salvarResp = async () => {
+        setSalvandoResp(true);
+        try {
+            const r = await checklistEscritorioService.salvarResponsaveis(resp.ids);
+            setResp(p => ({ ...p, ids: r?.ids || r?.responsaveis || p.ids }));
+            toast.success('Quem libera e dá OK foi salvo.');
+        } catch (e) {
+            toast.error(e.response?.data?.error || 'Erro ao salvar.');
+        } finally {
+            setSalvandoResp(false);
         }
     };
 
@@ -171,6 +191,26 @@ const ChecklistVeiculosConfigCard = () => {
                     <p className="text-xs text-gray-500">
                         Sem telefone no cadastro (não recebem): {semTelefone.map(c => c.nome).join(', ')}.
                     </p>
+                )}
+
+                {/* Quem libera e dá OK */}
+                {resp && (
+                    <div>
+                        <p className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-2">Quem libera e dá OK</p>
+                        <MultiSelect
+                            options={(resp.candidatos || []).map(c => ({ value: c.id, label: c.temTelefone === false ? `${c.nome} (sem telefone)` : c.nome }))}
+                            selected={resp.ids} valueKey="value" labelKey="label" searchable
+                            placeholder="Escolha as pessoas..."
+                            onChange={v => setResp(p => ({ ...p, ids: v }))} />
+                        <p className="text-xs text-gray-500 mt-1">
+                            Estas pessoas dão o OK nas pendências de checklist (Central de Pendências).
+                            Se ficar vazio, valem os administradores.
+                        </p>
+                        <button type="button" onClick={salvarResp} disabled={salvandoResp}
+                            className="mt-2 min-h-[44px] px-5 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm disabled:opacity-50 inline-flex items-center justify-center gap-2">
+                            {salvandoResp && <Loader2 className="h-4 w-4 animate-spin" />} Salvar quem libera
+                        </button>
+                    </div>
                 )}
 
                 {/* Horários */}

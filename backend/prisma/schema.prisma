@@ -1674,6 +1674,8 @@ model ChecklistVeiculo {
   okPendenciaPorId  String?   @map("ok_pendencia_por_id")
   okPendenciaMotivo String?   @map("ok_pendencia_motivo") @db.Text
   okPendenciaEm     DateTime? @map("ok_pendencia_em")
+  atrasada          Boolean   @default(false) @map("atrasada") // Dia 3: foto de volta tirada no dia seguinte
+  bateuOuRaspou     Boolean?  @map("bateu_ou_raspou") // Dia 3: resposta da volta ("Bateu ou raspou em algo hoje?"); true => laterais obrigatórias
   criadoEm     DateTime  @default(now()) @map("criado_em")
   atualizadoEm DateTime  @updatedAt @map("atualizado_em")
   concluidoEm  DateTime? @map("concluido_em")
@@ -1687,6 +1689,23 @@ model ChecklistVeiculo {
   @@index([veiculoId, dataReferencia])
   @@index([vendedorId, dataReferencia])
   @@map("checklists_veiculo")
+}
+
+// Dia 3: OK dado por um responsável a uma pendência de veículo (volta sem foto etc.). @@unique = OK repetido não duplica.
+model PendenciaVeiculoOk {
+  id             String   @id @default(uuid())
+  tipo           String // VOLTA | DESPESA | LIBERACAO
+  refId          String   @map("ref_id")
+  dataReferencia String   @map("data_referencia") // YYYY-MM-DD do dia da pendência
+  vendedorId     String?  @map("vendedor_id") // motorista da pendência
+  porId          String   @map("por_id")
+  porNome        String   @map("por_nome")
+  motivo         String   @db.Text
+  criadoEm       DateTime @default(now()) @map("criado_em")
+
+  @@unique([tipo, refId])
+  @@index([dataReferencia])
+  @@map("pendencias_veiculo_ok")
 }
 
 model ChecklistVeiculoFoto {

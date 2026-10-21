@@ -12,6 +12,10 @@ import {
 // Os grupos (Fora, Painel, Capô, Carga), a ordem e as dicas vêm do servidor (slot.grupo / dicaGrupo);
 // utils/checklistFotos.js cai num mapa fixo quando o servidor não manda.
 
+// Volta: sem a ordem "capô fechado / capô aberto" da saída
+const TITULO_VOLTA = { FORA: 'Por fora', PAINEL: 'Painel (porta fechada, chave ligada)', CARGA: 'Baú / Porta-malas' };
+const DICA_VOLTA = { FORA: 'Fotos de fora do veículo', CARGA: 'Abre o baú ou o porta-malas: tem que estar vazio e limpo' };
+
 const TEXTO_FLASH = 'Pouca luz? Antes de bater a foto, toque no raio (⚡) da câmera e deixe em Automático ou Ligado. A IA não reprova foto por ser escura: se faltar algo, ela diz o que mostrar.';
 
 /**
@@ -21,7 +25,10 @@ const TEXTO_FLASH = 'Pouca luz? Antes de bater a foto, toque no raio (⚡) da c�
  *   onEstado = ({ checklistId, faltam, luzOleoAcesa, kmLido, kmLidoRev }) => void
  *   onFalha  = () => void  (rascunho não pôde ser criado -> pai volta às caixinhas)
  */
-const ChecklistFotos = ({ veiculoId, config, onEstado, onFalha }) => {
+const ChecklistFotos = ({ veiculoId, config, onEstado, onFalha, momento = 'SAIDA', diarioId = null, atrasada = false }) => {
+    const ehVolta = momento === 'VOLTA';
+    // rascunho: na volta vai amarrado ao diário (e `atrasada` quando é o dia anterior)
+    const extraRascunho = ehVolta ? { momento: 'VOLTA', diarioId, ...(atrasada ? { atrasada: true } : {}) } : {};
     const [checklist, setChecklist] = useState(null); // { id, fotos, fotosPuladas, luzOleoAcesa, modo }
     const [envio, setEnvio] = useState({});            // { angulo: { fase, mensagem } }
     const [tireAssim, setTireAssim] = useState(null);
@@ -41,14 +48,14 @@ const ChecklistFotos = ({ veiculoId, config, onEstado, onFalha }) => {
     // Cria (ou recupera) o rascunho ao escolher o veículo
     useEffect(() => {
         let cancelado = false;
-        checklistVeiculoService.criarRascunho(veiculoId)
+        checklistVeiculoService.criarRascunho(veiculoId, extraRascunho)
             .then(r => { if (!cancelado) setChecklist(r); })
             .catch(err => {
                 console.error('Checklist: falha ao criar rascunho', err);
                 if (!cancelado) onFalhaRef.current?.();
             });
         return () => { cancelado = true; };
-    }, [veiculoId]);
+    }, [veiculoId, diarioId]); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => () => {
         Object.values(previewsRef.current).forEach(u => { try { URL.revokeObjectURL(u); } catch { /* */ } });
@@ -203,7 +210,7 @@ const ChecklistFotos = ({ veiculoId, config, onEstado, onFalha }) => {
     };
     const ressincronizar = async () => {
         try {
-            const r = await checklistVeiculoService.criarRascunho(veiculoId); // idempotente
+            const r = await checklistVeiculoService.criarRascunho(veiculoId, extraRascunho); // idempotente
             setChecklist(r);
         } catch { /* mantém o que já está na tela */ }
     };
@@ -312,8 +319,8 @@ const ChecklistFotos = ({ veiculoId, config, onEstado, onFalha }) => {
 
     const secao = (g) => (
         <div key={g.grupo}>
-            <p className="text-xs font-bold uppercase tracking-widest text-gray-600">{g.titulo}</p>
-            {g.dica && <p className="text-xs text-gray-600 mt-0.5 mb-2">{g.dica}</p>}
+            <p className="text-xs font-bold uppercase tracking-widest text-gray-600">{ehVolta ? (TITULO_VOLTA[g.grupo] || g.titulo) : g.titulo}</p>
+            {g.dica && <p className="text-xs text-gray-600 mt-0.5 mb-2">{ehVolta && DICA_VOLTA[g.grupo] && !g.slots.some(sl => sl.dicaGrupo) ? DICA_VOLTA[g.grupo] : g.dica}</p>}
             {g.grupo === 'CAPO' && foraCompleto && !capoCompleto && (
                 <p className="mb-2 flex items-start gap-1.5 text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-2">
                     <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" /> <span>As fotos de fora já estão feitas? Então pode abrir o capô.</span>
@@ -352,7 +359,7 @@ const ChecklistFotos = ({ veiculoId, config, onEstado, onFalha }) => {
                 )}
             </div>
 
-            {!config?.temFotoModelo && (
+            {!ehVolta && !config?.temFotoModelo && (
                 <p className="text-xs text-gray-600 flex items-start gap-1.5">
                     <AlertTriangle className="h-4 w-4 shrink-0 text-gray-400" />
                     Este veículo ainda não tem foto modelo cadastrada. Siga a instrução escrita de cada foto.

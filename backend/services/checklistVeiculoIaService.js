@@ -109,6 +109,21 @@ Pintura raspada ou risco pequeno antigo: ATENCAO com PERGUNTA "Já era assim?" (
 COMPLEMENTO.lateral_direita = COMPLEMENTO_LATERAL;
 COMPLEMENTO.lateral_esquerda = COMPLEMENTO_LATERAL;
 
+// Volta do dia (Dia 3): o carro voltou da rota, está no pátio. Sobrepõe as regras de saída.
+const CONTEXTO_VOLTA = `ESTA É A FOTO DE VOLTA: o carro acabou de voltar da rota de entregas e está parado no pátio.
+Poeira, barro e sujeira leve de rua são NORMAIS; não reclame disso. Combustível baixo NÃO é problema na volta
+(não gere problema de combustível). Placa e KM: apenas LEIA em leituras. Dano novo e evidente (amassado, lanterna
+quebrada, pneu murcho) continua sendo ATENCAO, com PERGUNTA "Já era assim?" quando puder ser antigo.`;
+const COMPLEMENTO_VOLTA = {
+    bau: 'BAÚ por dentro NA VOLTA: o certo é estar VAZIO e LIMPO. Sobra de produto, caixa, lixo ou sujeira = ATENCAO ("Tira o que sobrou e limpa o baú."). Baú vazio e limpo: sem problemas, NÃO reclame que está vazio.',
+    porta_malas: 'PORTA-MALAS NA VOLTA: o certo é estar vazio e limpo (as bolsas pretas do mostruário podem ficar e são normais). Sobra de produto, lixo ou sujeira = ATENCAO. Vazio e limpo: sem problemas.',
+    traseira: `TRASEIRA NA VOLTA. O motorista deve estar a ~2 passos, placa e lanternas no quadro, porta do baú FECHADA.
+Leia a placa. Veja lanternas quebradas, para-choque amassado, porta do baú aberta (ATENCAO "Fecha a porta do baú e tira de novo.").`,
+    painel: `PAINEL NA VOLTA. A tarefa principal é LER o odômetro total (KM, número inteiro; se não dá para ler, km=null e NÃO é problema).
+Anote também as luzes acesas em leituras.luzesAviso. Só óleo, temperatura, bateria, motor, airbag, ABS, direção acesas = REPROVA.
+Freio/porta/cinto = uma PERGUNTA no máximo. NÃO fale de combustível. Se o reflexo cobre o painel, serve=false com "Inclina um pouco o celular pra tirar o reflexo."`,
+};
+
 const EXTRA_ULTIMA_TENTATIVA = 'ESTA É A ÚLTIMA TENTATIVA: NÃO peça para refazer (serve=true). Avalie o que dá e, se não der para avaliar, devolva uma PERGUNTA.';
 
 const NIVEIS = ['ABAIXO_MIN', 'OK', 'ACIMA_MAX'];
@@ -282,10 +297,12 @@ async function analisarFoto(p) {
     try {
         if (!aiProvider.isConfigured()) return IA_INDISPONIVEL({ motivo: 'sem_chave' });
         const rotulo = ANGULOS[p.angulo]?.rotulo || p.angulo;
+        const volta = p.momento === 'VOLTA';
         const linhas = [
             `Carro: ${p.veiculo?.modelo || '?'}, tipo ${p.tipo}. Ângulo: ${rotulo}.`,
-            COMPLEMENTO[p.angulo] || '',
+            (volta && COMPLEMENTO_VOLTA[p.angulo]) || COMPLEMENTO[p.angulo] || '',
         ];
+        if (volta) linhas.push(CONTEXTO_VOLTA);
         linhas.push(...contextoDoVeiculo(p.angulo, p.veiculo));
         if (p.ultimaTentativa) linhas.push(EXTRA_ULTIMA_TENTATIVA);
         if (p.angulo === 'painel' && p.luzOleoAcesa) linhas.push('O motorista informou que a luz de óleo está acesa.');
@@ -298,6 +315,10 @@ async function analisarFoto(p) {
             timeoutMs: TIMEOUT_MS,
         });
         const v = validarResposta(extrairJson(r.texto), p.angulo);
+        if (volta) {
+            // Volta: combustível baixo não é problema (rede de segurança, caso a IA gere mesmo assim)
+            v.problemas = v.problemas.filter((q) => !/combust|reserva|tanque|abaste/i.test(`${q.descricao} ${q.oQueFazer}`));
+        }
         if (!v.serve && p.ultimaTentativa) {
             // Última tentativa: nunca devolve "refazer". Vira atenção com pergunta de um toque.
             v.serve = true;

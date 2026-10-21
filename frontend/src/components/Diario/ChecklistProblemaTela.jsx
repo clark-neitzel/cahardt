@@ -9,7 +9,7 @@ import checklistVeiculoService from '../../services/checklistVeiculoService';
  * `resultado` = resposta de POST /checklists-veiculo/:id/avaliar (contrato 5.6).
  * `rotulos` = { angulo: 'Frente com placa' } para nomear fotos que faltam.
  */
-const ChecklistProblemaTela = ({ resultado, rotulos = {}, checklistId, onAtualizar, onCorrigir, onSeguir, seguindo = false }) => {
+const ChecklistProblemaTela = ({ resultado, rotulos = {}, checklistId, onAtualizar, onCorrigir, onSeguir, seguindo = false, volta = false }) => {
     const travaRef = useRef(false);
     const [respondendo, setRespondendo] = useState(false);
 
@@ -61,7 +61,7 @@ const ChecklistProblemaTela = ({ resultado, rotulos = {}, checklistId, onAtualiz
                 <div className={`flex items-center gap-2 rounded-xl px-4 py-3 border ${grave ? 'bg-red-50 border-red-200 text-red-800' : 'bg-amber-50 border-amber-200 text-amber-800'}`}>
                     {grave ? <XCircle className="h-6 w-6 shrink-0" /> : <AlertTriangle className="h-6 w-6 shrink-0" />}
                     <div>
-                        <p className="font-bold text-base">{soPerguntas ? 'Só confirma uma coisa pra mim' : 'Dá uma olhada nisso antes de sair'}</p>
+                        <p className="font-bold text-base">{soPerguntas ? 'Só confirma uma coisa pra mim' : (volta ? 'Dá uma olhada nisso antes de entregar o carro' : 'Dá uma olhada nisso antes de sair')}</p>
                         <p className="text-xs opacity-80">Veja abaixo o que a conferência apontou.</p>
                     </div>
                 </div>
@@ -72,14 +72,14 @@ const ChecklistProblemaTela = ({ resultado, rotulos = {}, checklistId, onAtualiz
                     const reprova = efetiva(p) === 'REPROVA';
                     if (confirmada(p)) {
                         return (
-                            <p key={`${p.angulo || 'x'}-${p.indice ?? i}`} className="flex items-start gap-1.5 text-xs text-green-800 px-1">
+                            <p key={`${p.angulo || 'x'}-${p.indice ?? 'n'}-${i}`} className="flex items-start gap-1.5 text-xs text-green-800 px-1">
                                 <CheckCircle className="h-4 w-4 shrink-0" /> <span>Você confirmou: {p.pergunta || p.descricao}</span>
                             </p>
                         );
                     }
                     if (aberta(p)) {
                         return (
-                            <div key={`${p.angulo || 'x'}-${p.indice ?? i}`} className="bg-amber-50 rounded-xl border border-amber-300 shadow-sm p-3">
+                            <div key={`${p.angulo || 'x'}-${p.indice ?? 'n'}-${i}`} className="bg-amber-50 rounded-xl border border-amber-300 shadow-sm p-3">
                                 <div className="flex items-start gap-2">
                                     <HelpCircle className="h-5 w-5 shrink-0 text-amber-600 mt-0.5" />
                                     <div className="min-w-0 flex-1">
@@ -103,7 +103,7 @@ const ChecklistProblemaTela = ({ resultado, rotulos = {}, checklistId, onAtualiz
                         );
                     }
                     return (
-                        <div key={`${p.angulo || 'x'}-${i}`} className="bg-white rounded-xl border border-gray-200 shadow-sm p-3">
+                        <div key={`${p.angulo || 'x'}-n-${i}`} className="bg-white rounded-xl border border-gray-200 shadow-sm p-3">
                             <div className="flex items-start gap-2">
                                 <span className={`mt-0.5 shrink-0 px-2 py-0.5 text-[10px] font-bold rounded-full ${reprova ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
                                     {reprova ? 'GRAVE' : 'ATENÇÃO'}
@@ -134,7 +134,7 @@ const ChecklistProblemaTela = ({ resultado, rotulos = {}, checklistId, onAtualiz
                 {tudoCerto ? (
                     <button type="button" onClick={() => onSeguir?.({ semDecisao: true })} disabled={seguindo || respondendo}
                         className="w-full min-h-[48px] bg-primary hover:bg-primaryDark disabled:opacity-50 text-white rounded-full font-semibold text-sm shadow-sm">
-                        {seguindo ? 'Abrindo o dia…' : 'Seguir'}
+                        {seguindo ? (volta ? 'Encerrando o dia…' : 'Abrindo o dia…') : (volta ? 'Encerrar o dia' : 'Seguir')}
                     </button>
                 ) : (
                     <button type="button" onClick={onCorrigir} disabled={seguindo || respondendo}
@@ -145,7 +145,7 @@ const ChecklistProblemaTela = ({ resultado, rotulos = {}, checklistId, onAtualiz
                 {!tudoCerto && resultado?.podeSeguir && (
                     <button type="button" onClick={() => onSeguir?.()} disabled={seguindo || respondendo}
                         className="w-full min-h-[48px] bg-white border border-primary text-primary hover:bg-mint/40 disabled:opacity-50 rounded-full font-medium text-sm">
-                        {seguindo ? 'Abrindo o dia…' : 'Seguir mesmo assim (teste)'}
+                        {seguindo ? (volta ? 'Encerrando o dia…' : 'Abrindo o dia…') : (volta ? 'Encerrar mesmo assim (teste)' : 'Seguir mesmo assim (teste)')}
                     </button>
                 )}
             </div>

@@ -53,11 +53,20 @@ const diarioService = {
             include: { veiculo: true }
         });
 
+        // Dia 3 (aditivo): dia anterior sem foto da volta. Nunca lança nem atrasa a abertura do dia.
+        let pendenciaVolta = null;
+        try {
+            pendenciaVolta = await require('./checklistPendenciasService').pendenciaVoltaDoMotorista(vendedorId);
+        } catch (e) {
+            console.error('[Diario] pendenciaVolta indisponível:', e.message);
+        }
+
         return {
             hojeStatus: diarioHoje ? 'iniciado' : 'nao_iniciado',
             diarioHoje,
             pendenciaAnterior: ultimoDiarioPresencial ? true : false,
-            diarioPendente: ultimoDiarioPresencial
+            diarioPendente: ultimoDiarioPresencial,
+            pendenciaVolta
         };
     },
 
@@ -208,8 +217,11 @@ const diarioService = {
     },
 
     // 3. Finalizar o dia/Pendência
+    // Com `checklistId` (foto de volta, Dia 3) o SERVIDOR decide o KM: se o motorista confirmou o painel, vale o KM lido
+    // pela IA. Sem checklistId (ou checklist inválido) vale o KM digitado (D11: sempre dá para encerrar o dia).
+    // Idempotente: se o diário já tem KM final, devolve o registro atual (repetir não sobrescreve KM nem observação).
     encerrarDia: async (vendedorId, dados) => {
-        const { diarioId, kmFinal, obsFinal } = dados;
+        const { diarioId, kmFinal, obsFinal, checklistId } = dados;
 
         const diario = await prisma.diarioVendedor.findUnique({
             where: { id: diarioId, vendedorId } // Protegido pelo vendedor
@@ -218,11 +230,57 @@ const diarioService = {
         if (!diario) throw new Error('Diário não encontrado.');
         if (diario.modo !== 'PRESENCIAL') throw new Error('Apenas o modo presencial exige fechamento com KM.');
 
-        if (kmFinal === undefined || kmFinal === null) {
-            throw new Error('Informe a quilometragem final do veículo.');
+        // Foto de volta informada: só vale se for do próprio motorista, deste diário, momento VOLTA.
+        let volta = null;
+        if (checklistId) {
+            try {
+                const c = await prisma.checklistVeiculo.findUnique({ where: { id: String(checklistId) } });
+                if (c && c.vendedorId === vendedorId && c.diarioId === diario.id && c.momento === 'VOLTA'
+                    && (c.status === 'RASCUNHO' || c.status === 'CONCLUIDO')) {
+                    volta = c;
+                } else {
+                    console.warn(`[Diario] checklistId de volta ignorado (outro dono/diário/momento): ${checklistId}`);
+                }
+            } catch (e) {
+                console.error('[Diario] falha ao ler checklist de volta (segue com KM digitado):', e.message);
+            }
         }
 
-        if (kmFinal < diario.kmInicial) {
+        // Já encerrado: não regrava KM/observação. Se veio uma volta válida ainda aberta, só conclui o checklist
+        // (é assim que o motorista resolve depois uma pendência de "volta sem foto").
+        if (diario.kmFinal !== null && diario.kmFinal !== undefined) {
+            if (volta && volta.status === 'RASCUNHO') {
+                await prisma.checklistVeiculo.updateMany({
+                    where: { id: volta.id, status: 'RASCUNHO' },
+                    data: { status: 'CONCLUIDO', concluidoEm: new Date() },
+                });
+            }
+            return diario;
+        }
+
+        let km = kmFinal;
+        let kmOrigemPainel = false;
+        if (volta && volta.kmOrigem === 'PAINEL_CONFIRMADO' && volta.kmLido != null) {
+            // Painel confirmado: o servidor usa o KM lido; o digitado (se vier) só pode diferir até a tolerância.
+            const tol = require('./checklistVeiculoService').REGRAS.kmOk;
+            if (km !== undefined && km !== null && km !== '' && Math.abs(Number(km) - volta.kmLido) > tol) {
+                const err = new Error(`O KM que você mandou (${Number(km).toLocaleString('pt-BR')}) não bate com o painel da foto (${volta.kmLido.toLocaleString('pt-BR')}). Confere o painel.`);
+                err.codigo = 'KM_DIVERGE_DO_PAINEL';
+                throw err;
+            }
+            km = volta.kmLido;
+            kmOrigemPainel = true;
+        }
+
+        if (km === undefined || km === null || km === '') {
+            throw new Error('Informe a quilometragem final do veículo.');
+        }
+        km = Number(km);
+        if (!Number.isInteger(km) || km < 0 || km > 9999999) {
+            throw new Error('Quilometragem final inválida. Confere os números.');
+        }
+
+        if (km < diario.kmInicial) {
             throw new Error('A quilometragem final não pode ser menor que a inicial.');
         }
 
@@ -231,14 +289,21 @@ const diarioService = {
             novaObs += `\n[Fim do Dia]: ${obsFinal}`;
         }
 
-        return await prisma.diarioVendedor.update({
-            where: { id: diarioId },
-            data: {
-                kmFinal,
-                fimHora: new Date(),
-                obs: novaObs
+        // Atômico: KM final + conclusão da volta andam juntos (só banco; sem IA/WhatsApp aqui dentro)
+        const atualizado = await prisma.$transaction(async (tx) => {
+            const d = await tx.diarioVendedor.update({
+                where: { id: diarioId },
+                data: { kmFinal: km, fimHora: new Date(), obs: novaObs },
+            });
+            if (volta && volta.status === 'RASCUNHO') {
+                await tx.checklistVeiculo.updateMany({
+                    where: { id: volta.id, status: 'RASCUNHO' },
+                    data: { status: 'CONCLUIDO', concluidoEm: new Date(), ...(kmOrigemPainel ? {} : { kmDigitado: km }) },
+                });
             }
-        });
+            return d;
+        }, { timeout: 20000, maxWait: 10000 });
+        return atualizado;
     }
 };
 

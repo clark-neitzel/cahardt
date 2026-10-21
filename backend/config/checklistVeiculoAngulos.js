@@ -85,26 +85,74 @@ const CONDICIONAIS = {
     vareta_oleo: 'SEGUNDA_QUINTA_OU_LUZ_OLEO',
 };
 
+// ── Momento VOLTA (Dia 3): fim do dia. 3 fotos obrigatórias; as laterais só valem se o motorista
+// disse que bateu/raspou em algo. Frontend NUNCA repete esta lista (vem em checklist-config?momento=VOLTA).
+const SLOTS_VOLTA_POR_TIPO = {
+    CARGA: ['painel', 'traseira', 'bau', 'lateral_direita', 'lateral_esquerda'],
+    PASSEIO: ['painel', 'traseira', 'porta_malas', 'lateral_direita', 'lateral_esquerda'],
+    PARTICULAR: ['painel'],
+};
+// Laterais da volta: opcionais; viram obrigatórias quando bateuOuRaspou === true.
+const CONDICIONAIS_VOLTA = {
+    lateral_direita: 'BATEU_OU_RASPOU',
+    lateral_esquerda: 'BATEU_OU_RASPOU',
+};
+// Textos próprios da volta (sobrepõem o ANGULOS da saída).
+const ANGULOS_VOLTA = {
+    painel: {
+        instrucao: 'Porta fechada e chave ligada: pega o painel inteiro, com o KM. Sem flash',
+    },
+    traseira: {
+        instrucao: 'Chega 2 passos de distância: placa e lanternas no quadro, porta do baú fechada',
+    },
+    bau: {
+        rotulo: 'Baú por dentro (vazio e limpo)',
+        instrucao: 'Abre o baú e pega o interior inteiro: tem que estar vazio e limpo, sem sobra de produto nem lixo',
+    },
+    porta_malas: {
+        rotulo: 'Porta-malas (vazio e limpo)',
+        instrucao: 'Abre o porta-malas e pega tudo: vazio e limpo (só ficam as bolsas, se elas moram no carro)',
+    },
+    lateral_direita: { rotulo: 'Lateral direita (onde bateu/raspou)', instrucao: 'Fica 4 passos (uns 5 m) de distância: o carro inteiro, com as duas rodas' },
+    lateral_esquerda: { rotulo: 'Lateral esquerda (onde bateu/raspou)', instrucao: 'Fica 4 passos (uns 5 m) de distância: o carro inteiro, com as duas rodas' },
+};
+
+// Dicas de grupo da volta (sem falar de capô)
+const DICA_GRUPO_VOLTA = {
+    PAINEL: 'Porta fechada, chave ligada, sem flash',
+    FORA: 'Fotos de fora, com o carro parado no pátio',
+    CARGA: 'Abre o baú ou o porta-malas: tem que estar vazio e limpo',
+};
+
+const ehVolta = (momento) => momento === 'VOLTA';
+
 function tipoValido(tipo) {
     return TIPOS_VEICULO.includes(tipo);
 }
 
-/** Lista de slots (sem foto modelo) do tipo, na ordem. */
-function slotsDoTipo(tipo) {
-    const lista = SLOTS_POR_TIPO[tipoValido(tipo) ? tipo : 'CARGA'];
-    return lista.map((angulo, i) => ({
+function listaDoTipo(tipo, momento) {
+    const base = ehVolta(momento) ? SLOTS_VOLTA_POR_TIPO : SLOTS_POR_TIPO;
+    return base[tipoValido(tipo) ? tipo : 'CARGA'];
+}
+
+/** Lista de slots (sem foto modelo) do tipo, na ordem. `momento` padrão SAIDA (contrato do Dia 1 intacto). */
+function slotsDoTipo(tipo, momento) {
+    const volta = ehVolta(momento);
+    const cond = volta ? CONDICIONAIS_VOLTA : CONDICIONAIS;
+    return listaDoTipo(tipo, momento).map((angulo, i) => ({
         angulo,
         ...ANGULOS[angulo],
+        ...(volta ? (ANGULOS_VOLTA[angulo] || {}) : {}),
         ordem: i + 1,
         grupo: GRUPO_POR_ANGULO[angulo],
-        dicaGrupo: DICA_GRUPO[GRUPO_POR_ANGULO[angulo]],
-        condicional: !!CONDICIONAIS[angulo],
-        condicao: CONDICIONAIS[angulo] || null,
+        dicaGrupo: volta ? (DICA_GRUPO_VOLTA[GRUPO_POR_ANGULO[angulo]] || DICA_GRUPO[GRUPO_POR_ANGULO[angulo]]) : DICA_GRUPO[GRUPO_POR_ANGULO[angulo]],
+        condicional: !!cond[angulo],
+        condicao: cond[angulo] || null,
     }));
 }
 
-function anguloDoTipo(tipo, angulo) {
-    return (SLOTS_POR_TIPO[tipoValido(tipo) ? tipo : 'CARGA'] || []).includes(angulo);
+function anguloDoTipo(tipo, angulo, momento) {
+    return (listaDoTipo(tipo, momento) || []).includes(angulo);
 }
 
 // Chave do resumo compatível gravado em DiarioVendedor.checklist (booleanos com sufixo Ok)
@@ -120,4 +168,4 @@ const CHAVE_RESUMO = {
     porta_malas: 'portaMalasOk',
 };
 
-module.exports = { COMPLEMENTO_ROTULO, GRUPO_POR_ANGULO, DICA_GRUPO, TIPOS_VEICULO, ANGULOS, SLOTS_POR_TIPO, CONDICIONAIS, CHAVE_RESUMO, tipoValido, slotsDoTipo, anguloDoTipo };
+module.exports = { SLOTS_VOLTA_POR_TIPO, CONDICIONAIS_VOLTA, ehVolta, COMPLEMENTO_ROTULO, GRUPO_POR_ANGULO, DICA_GRUPO, TIPOS_VEICULO, ANGULOS, SLOTS_POR_TIPO, CONDICIONAIS, CHAVE_RESUMO, tipoValido, slotsDoTipo, anguloDoTipo };

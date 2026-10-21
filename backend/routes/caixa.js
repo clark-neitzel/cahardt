@@ -417,6 +417,18 @@ router.get('/resumo', async (req, res) => {
             } catch (e) {
                 console.error('[Caixa] resumo do checklist falhou (ignorado):', e.message);
             }
+            // Volta do dia (Dia 3): aditivo, em try/catch próprio para nunca derrubar o selo da saída nem o Caixa
+            diarioInfo.checklistVolta = null;
+            diarioInfo.voltaEsperada = false;
+            try {
+                const rv = await require('../services/checklistCaixaService').resumoVoltaParaCaixa({
+                    diarioId: diario.id, veiculoId: diario.veiculoId, dataReferencia: data, modo: diario.modo,
+                });
+                diarioInfo.checklistVolta = rv.checklistVolta;
+                diarioInfo.voltaEsperada = rv.voltaEsperada;
+            } catch (e) {
+                console.error('[Caixa] resumo da volta do checklist falhou (ignorado):', e.message);
+            }
         }
 
         // 3. Calcular média combustível

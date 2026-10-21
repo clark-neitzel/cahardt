@@ -29,7 +29,7 @@ async function resumoParaCaixa({ diarioId, veiculoId, dataReferencia, modo }) {
     const esperado = modo === 'PRESENCIAL' && !!veiculoId && dataReferencia >= CHECKLIST_INICIO
         && (dataReferencia < hoje || modoAtual !== 'DESLIGADO');
     const c = await prisma.checklistVeiculo.findFirst({
-        where: { diarioId, veiculoId },
+        where: { diarioId, veiculoId, momento: 'SAIDA' }, // a volta tem resumo próprio (resumoVoltaParaCaixa)
         orderBy: { criadoEm: 'desc' },
         select: { id: true, veredito: true, decisao: true, modo: true, concluidoEm: true, problemas: true, fotos: selectFotos },
     });
@@ -40,6 +40,26 @@ async function resumoParaCaixa({ diarioId, veiculoId, dataReferencia, modo }) {
             ...contar(c), concluidoEm: c.concluidoEm,
         },
         checklistEsperado: esperado,
+    };
+}
+
+// Volta do dia (Dia 3), aditivo no card do Caixa: { id, status, veredito, kmLido, atrasada } ou null.
+// Devolve também `voltaEsperada` (diário já encerrado ou de dia anterior, presencial, com checklist ligado).
+async function resumoVoltaParaCaixa({ diarioId, veiculoId, dataReferencia, modo }) {
+    const vazio = { checklistVolta: null, voltaEsperada: false };
+    if (!diarioId || !veiculoId) return vazio;
+    const { getModo } = require('./checklistVeiculoService');
+    const modoAtual = await getModo();
+    const hoje = getDataReferencia();
+    const voltaEsperada = modo === 'PRESENCIAL' && dataReferencia >= CHECKLIST_INICIO && dataReferencia < hoje && modoAtual !== 'DESLIGADO';
+    const c = await prisma.checklistVeiculo.findFirst({
+        where: { diarioId, veiculoId, momento: 'VOLTA' },
+        orderBy: { criadoEm: 'desc' },
+        select: { id: true, status: true, veredito: true, kmLido: true, atrasada: true, concluidoEm: true },
+    });
+    return {
+        checklistVolta: c ? { id: c.id, status: c.status, veredito: c.veredito, kmLido: c.kmLido, atrasada: c.atrasada === true, concluidoEm: c.concluidoEm } : null,
+        voltaEsperada,
     };
 }
 
@@ -79,4 +99,4 @@ async function checklistsHoje() {
     return { dataReferencia: dia, itens: [...porVeiculo.values()] };
 }
 
-module.exports = { resumoParaCaixa, checklistsHoje };
+module.exports = { resumoParaCaixa, resumoVoltaParaCaixa, checklistsHoje };

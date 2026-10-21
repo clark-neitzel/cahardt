@@ -11,7 +11,8 @@ export const urlImagem = (caminho) => {
 
 const checklistVeiculoService = {
     // 5.1
-    config: async (veiculoId) => (await api.get(`/veiculos/${veiculoId}/checklist-config`)).data,
+    config: async (veiculoId, momento) =>
+        (await api.get(`/veiculos/${veiculoId}/checklist-config`, momento && momento !== 'SAIDA' ? { params: { momento } } : undefined)).data,
     // 5.2 (idempotente: devolve o rascunho do dia com as fotos já enviadas)
     criarRascunho: async (veiculoId, extra = {}) =>
         (await api.post('/checklists-veiculo', { veiculoId, momento: 'SAIDA', ...extra })).data,

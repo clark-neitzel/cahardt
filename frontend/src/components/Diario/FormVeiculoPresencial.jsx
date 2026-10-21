@@ -35,6 +35,7 @@ const FormVeiculoPresencial = ({ titulo = 'Visitação (Rota)', onConfirmar, onV
     const [kmInicial, setKmInicial] = useState('');
     const [ultimoKm, setUltimoKm] = useState(null); // { kmFinal, dataReferencia }
     const [ultimoKmCarregado, setUltimoKmCarregado] = useState(false); // já respondeu (null = veículo sem KM anterior)
+    const [ultimoKmErro, setUltimoKmErro] = useState(false); // /ultimo-km falhou: NÃO é "sem KM anterior"
     const [obs, setObs] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [checklist, setChecklist] = useState(
@@ -62,13 +63,14 @@ const FormVeiculoPresencial = ({ titulo = 'Visitação (Rota)', onConfirmar, onV
     // Ao selecionar veículo, busca o último KM final registrado
     useEffect(() => {
         setUltimoKmCarregado(false);
+        setUltimoKmErro(false);
         if (!veiculoId) { setUltimoKm(null); setKmInicial(''); return; }
         api.get(`/veiculos/${veiculoId}/ultimo-km`)
             .then(res => {
                 setUltimoKm(res.data);
                 if (res.data?.kmFinal) setKmInicial(String(res.data.kmFinal));
             })
-            .catch(() => setUltimoKm(null))
+            .catch(() => { setUltimoKm(null); setUltimoKmErro(true); }) // erro: não sabemos o KM anterior, sem cartão "Confirma?"
             .finally(() => setUltimoKmCarregado(true));
     }, [veiculoId]);
 
@@ -99,8 +101,8 @@ const FormVeiculoPresencial = ({ titulo = 'Visitação (Rota)', onConfirmar, onV
     // KM que a IA leu do painel (só vale se não for menor que o último KM registrado)
     const kmLido = modoFoto && Number.isFinite(estadoFotos.kmLido) ? estadoFotos.kmLido : null;
     const kmFinalAnterior = ultimoKm?.kmFinal || 0;
-    const kmPodeConfirmar = ultimoKmCarregado && kmLido != null && kmLido >= kmFinalAnterior;
-    const kmMenorQueUltimo = ultimoKmCarregado && kmLido != null && kmLido < kmFinalAnterior;
+    const kmPodeConfirmar = ultimoKmCarregado && !ultimoKmErro && kmLido != null && kmLido >= kmFinalAnterior;
+    const kmMenorQueUltimo = ultimoKmCarregado && !ultimoKmErro && kmLido != null && kmLido < kmFinalAnterior;
     const mostraCartaoKm = kmPodeConfirmar && kmModo !== 'corrigir';
     // foto do painel refeita (ou outro veículo): a confirmação anterior não vale mais
     useEffect(() => { setKmModo(null); }, [estadoFotos.kmLidoRev, veiculoId]);
@@ -305,6 +307,11 @@ const FormVeiculoPresencial = ({ titulo = 'Visitação (Rota)', onConfirmar, onV
                             </div>
                         ) : (
                             <>
+                                {ultimoKmErro && (
+                                    <p className="mb-2 text-xs bg-amber-50 border border-amber-200 text-amber-900 rounded-md px-3 py-2">
+                                        Não consegui ver o último KM deste veículo agora. Digite o KM do painel.
+                                    </p>
+                                )}
                                 {kmMenorQueUltimo && (
                                     <p className="mb-2 text-xs bg-amber-50 border border-amber-200 text-amber-900 rounded-md px-3 py-2">
                                         Painel marca {kmLido.toLocaleString('pt-BR')} km, mas o último KM registrado foi {kmFinalAnterior.toLocaleString('pt-BR')}. Digite o KM.

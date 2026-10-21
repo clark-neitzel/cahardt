@@ -4,13 +4,14 @@ const express = require('express');
 const router = express.Router();
 const svc = require('../services/checklistVeiculoService');
 const avisos = require('../services/checklistAvisosService');
+const pendSvc = require('../services/checklistPendenciasService');
 const { receberFoto } = require('../middlewares/uploadFotoChecklistMiddleware');
 
 const rota = (fn) => async (req, res) => {
     try {
         await fn(req, res);
     } catch (e) {
-        if (e instanceof svc.ErroChecklist) {
+        if (e instanceof svc.ErroChecklist || e instanceof pendSvc.ErroPendencia) {
             return res.status(e.status).json({ error: e.message, codigo: e.codigo });
         }
         console.error('[ChecklistVeiculo] erro inesperado:', e);
@@ -28,6 +29,31 @@ router.put('/config/modo', rota(async (req, res) => {
         return res.status(403).json({ error: 'Só administrador altera o modo do checklist.', codigo: 'SEM_PERMISSAO' });
     }
     res.json({ modo: await svc.setModo(req.body?.modo) });
+}));
+
+// Quem libera / dá OK (Dia 3). ANTES de /:id.
+router.get('/config/responsaveis', rota(async (req, res) => {
+    if (!svc.ehAdmin(req.user)) {
+        return res.status(403).json({ error: 'Só administrador vê e altera quem libera e dá OK.', codigo: 'SEM_PERMISSAO' });
+    }
+    res.json(await pendSvc.obterConfigResponsaveis());
+}));
+
+router.put('/config/responsaveis', rota(async (req, res) => {
+    if (!svc.ehAdmin(req.user)) {
+        return res.status(403).json({ error: 'Só administrador altera quem libera e dá OK.', codigo: 'SEM_PERMISSAO' });
+    }
+    res.json(await pendSvc.salvarConfigResponsaveis(req.body));
+}));
+
+// Pendências dos veículos (volta sem foto etc.) e o OK do responsável. ANTES de /:id.
+router.get('/pendencias', rota(async (req, res) => {
+    const dias = Math.min(Math.max(parseInt(req.query.dias, 10) || 30, 1), 90);
+    res.json(await pendSvc.listarParaTela(req.user, { dias }));
+}));
+
+router.post('/pendencias/ok', rota(async (req, res) => {
+    res.json(await pendSvc.darOk(req.body, req.user));
 }));
 
 router.post('/', rota(async (req, res) => {

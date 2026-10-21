@@ -90,7 +90,7 @@ router.get('/:id/ficha', authMiddleware, veiculoController.obterFicha);
 
 // ── Checklist por foto: configuração, fotos modelo e histórico ──
 router.get('/:id/checklist-config', authMiddleware, rotaChecklist(async (req, res) => {
-    res.json(await checklistSvc.montarConfig(req.params.id));
+    res.json(await checklistSvc.montarConfig(req.params.id, req.query.momento, { user: req.user, diarioId: req.query.diarioId }));
 }));
 
 router.get('/:id/fotos-modelo', authMiddleware, rotaChecklist(async (req, res) => {
@@ -117,7 +117,13 @@ router.get('/:id/checklists', authMiddleware, rotaChecklist(async (req, res) => 
 router.get('/:id', authMiddleware, veiculoController.obterPorId);
 
 // Rotas Administrativas (apenas quem gerencia)
-router.get('/admin/todos', authMiddleware, veiculoController.listarTodos);
+// Lista completa (inclui inativos): só quem acessa a tela de Veículos (espelha App.jsx). GET / (ativos) segue aberto.
+router.get('/admin/todos', authMiddleware, (req, res, next) => {
+    if (!checklistSvc.pode(req.user, 'Pode_Acessar_Veiculos')) {
+        return res.status(403).json({ error: 'Sem permissão para ver a lista completa de veículos.', codigo: 'SEM_PERMISSAO' });
+    }
+    next();
+}, veiculoController.listarTodos);
 // O `tipo` do veículo define quais fotos o motorista tira no checklist: só quem edita veículos mexe aqui
 const exigirEdicaoVeiculo = (req, res, next) => {
     if (!checklistSvc.pode(req.user, 'Pode_Editar_Veiculos')) {
@@ -127,7 +133,7 @@ const exigirEdicaoVeiculo = (req, res, next) => {
 };
 router.post('/', authMiddleware, exigirEdicaoVeiculo, veiculoController.criar);
 router.put('/:id', authMiddleware, exigirEdicaoVeiculo, veiculoController.atualizar);
-router.delete('/:id', authMiddleware, veiculoController.excluir);
+router.delete('/:id', authMiddleware, exigirEdicaoVeiculo, veiculoController.excluir);
 
 
 // ── Autorização Manual de Uso (admin registra uso interno/avulso) ──

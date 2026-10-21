@@ -530,6 +530,19 @@ function startSchedulers() {
     setTimeout(_runChecklistResumos, 3 * 60 * 1000);
     setInterval(_runChecklistResumos, 5 * 60 * 1000);
 
+    // === 15b. AVISO DAS 6H: dias sem foto da volta (checklist de veículos, Dia 3) ===
+    // Idempotente: marcador do dia em app_configs + referência por destinatário. Só equipe interna, tipo 'interno'.
+    let _chkPendRodando = false;
+    const _runChecklistPendencias = () => {
+        if (_chkPendRodando) return;
+        _chkPendRodando = true;
+        require('../services/checklistPendenciasService').rodarAvisoPendencias()
+            .catch(err => console.error('⚠️ Checklist (pendências 6h) Error:', err.message))
+            .finally(() => { _chkPendRodando = false; });
+    };
+    setTimeout(_runChecklistPendencias, 4 * 60 * 1000);
+    setInterval(_runChecklistPendencias, 5 * 60 * 1000);
+
     // === Impressão direta (Etiquetas da Cozinha) ===
     // A cada 60 s: expira trabalho vencido (etiqueta velha NUNCA sai sozinha horas depois), devolve à fila o que
     // ficou "ENVIANDO" sem confirmação do agente (respeitando maxTentativas) e, 1x/dia, apaga conteúdo/linhas antigas.

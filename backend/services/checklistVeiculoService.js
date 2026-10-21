@@ -149,6 +149,11 @@ function checklistDTO(c, fotosAtivas) {
         dataReferencia: c.dataReferencia,
         kmDigitado: c.kmDigitado,
         kmOrigem: c.kmOrigem || null,
+        kmLido: c.kmLido ?? null,
+        momento: c.momento || 'SAIDA',
+        diarioId: c.diarioId || null,
+        atrasada: c.atrasada === true,
+        bateuOuRaspou: typeof c.bateuOuRaspou === 'boolean' ? c.bateuOuRaspou : null,
         luzOleoAcesa: c.luzOleoAcesa,
         fotos: ordenarFotos(fotosAtivas).map((f) => fotoDTO(f)),
         fotosPuladas: Array.isArray(c.fotosPuladas) ? c.fotosPuladas : [],
@@ -201,7 +206,10 @@ async function fotosModeloAtivasMap(veiculoId) {
     return mapa;
 }
 
-async function montarConfig(veiculoId) {
+const normMomento = (m) => (m === 'VOLTA' ? 'VOLTA' : 'SAIDA');
+
+async function montarConfig(veiculoId, momentoBruto, opcoes = {}) {
+    const momento = normMomento(momentoBruto);
     const v = await prisma.veiculo.findUnique({ where: { id: veiculoId } });
     if (!v) throw new ErroChecklist(404, 'VEICULO_NAO_ENCONTRADO', 'Veículo não encontrado.');
     if (v.ativo === false) throw new ErroChecklist(400, 'VEICULO_INATIVO', 'Este veículo está inativo.');
@@ -209,7 +217,7 @@ async function montarConfig(veiculoId) {
     const dataReferencia = getDataReferencia();
     const vareta = varetaHoje(dataReferencia);
     const modelos = await fotosModeloAtivasMap(v.id);
-    const slots = catalogo.slotsDoTipo(v.tipo).map((s) => ({
+    const slots = catalogo.slotsDoTipo(v.tipo, momento).map((s) => ({
         angulo: s.angulo,
         rotulo: s.rotulo,
         instrucao: s.instrucao,
@@ -217,20 +225,42 @@ async function montarConfig(veiculoId) {
         ordem: s.ordem,
         grupo: s.grupo,
         dicaGrupo: s.dicaGrupo,
-        obrigatorio: s.condicional ? vareta : true,
+        // Saída: vareta depende do dia. Volta: laterais só se bateu/raspou (o app liga a obrigatoriedade).
+        obrigatorio: s.condicional ? (momento === 'VOLTA' ? false : vareta) : true,
         condicional: s.condicional,
         ...(s.condicional ? { condicao: s.condicao } : {}),
         fotoModeloUrl: modelos[s.angulo]?.caminho || null,
-        complementoRotulo: catalogo.COMPLEMENTO_ROTULO[s.angulo] || null,
+        complementoRotulo: momento === 'VOLTA' ? null : (catalogo.COMPLEMENTO_ROTULO[s.angulo] || null),
     }));
+    let extraVolta = {};
+    if (momento === 'VOLTA') {
+        // KM de saída do diário em aberto do motorista (para o app mostrar "rodou X km")
+        let kmInicialDiario = null;
+        try {
+            if (opcoes.user?.id) {
+                const d = await prisma.diarioVendedor.findFirst({
+                    where: {
+                        vendedorId: opcoes.user.id, veiculoId: v.id, modo: 'PRESENCIAL',
+                        ...(opcoes.diarioId ? { id: String(opcoes.diarioId) } : { kmFinal: null }),
+                    },
+                    orderBy: { dataReferencia: 'desc' },
+                    select: { kmInicial: true },
+                });
+                kmInicialDiario = d?.kmInicial ?? null;
+            }
+        } catch (e) { console.error('[ChecklistVeiculo] kmInicialDiario:', e.message); }
+        extraVolta = { kmInicialDiario, kmMedioSugerido: v.kmMedioSugerido ?? null };
+    }
     return {
+        momento,
+        ...extraVolta,
         veiculoId: v.id,
         placa: v.placa,
         modelo: v.modelo,
         tipo: v.tipo,
         modo,
         dataReferencia,
-        varetaHoje: vareta,
+        varetaHoje: momento === 'VOLTA' ? false : vareta,
         tipoVareta: v.tipoVareta || null,
         reservatorioOpaco: v.reservatorioOpaco === true,
         temFotoModelo: slots.some((s) => s.fotoModeloUrl),
@@ -313,9 +343,26 @@ async function criarRascunho(user, body = {}) {
     if (!v) throw new ErroChecklist(404, 'VEICULO_NAO_ENCONTRADO', 'Veículo não encontrado.');
     if (v.ativo === false) throw new ErroChecklist(400, 'VEICULO_INATIVO', 'Este veículo está inativo.');
 
-    const dataReferencia = getDataReferencia();
+    let dataReferencia = getDataReferencia();
+    let diarioVolta = null;
+    let whereRascunho = { vendedorId: user.id, veiculoId: v.id, momento, dataReferencia, diarioId: null, status: 'RASCUNHO' };
+    if (momento === 'VOLTA') {
+        // Volta: nasce amarrada ao diário em aberto do próprio motorista (mesmo veículo, ainda sem KM final)
+        if (!body.diarioId) throw new ErroChecklist(400, 'DIARIO_OBRIGATORIO', 'Informe o diário do dia para fazer o checklist de volta.');
+        diarioVolta = await prisma.diarioVendedor.findUnique({ where: { id: String(body.diarioId) } });
+        if (!diarioVolta || diarioVolta.vendedorId !== user.id) {
+            throw new ErroChecklist(404, 'DIARIO_NAO_ENCONTRADO', 'Não achei o seu dia de trabalho. Abra o app de novo.');
+        }
+        if (diarioVolta.modo !== 'PRESENCIAL') throw new ErroChecklist(400, 'DIARIO_NAO_PRESENCIAL', 'Esse dia não foi com carro, então não tem volta.');
+        if (diarioVolta.veiculoId !== v.id) throw new ErroChecklist(400, 'VEICULO_DIVERGENTE', 'Esse não é o carro que você pegou nesse dia.');
+        const jaConcluido = await prisma.checklistVeiculo.findFirst({ where: { diarioId: diarioVolta.id, momento: 'VOLTA', status: 'CONCLUIDO' }, select: { id: true } });
+        // Dia já encerrado SEM foto (KM digitado) pode receber a volta depois: é assim que se resolve a pendência.
+        if (jaConcluido) throw new ErroChecklist(409, 'DIA_JA_ENCERRADO', 'Esse dia já foi encerrado com as fotos da volta.');
+        dataReferencia = diarioVolta.dataReferencia;
+        whereRascunho = { vendedorId: user.id, veiculoId: v.id, momento, diarioId: diarioVolta.id, status: 'RASCUNHO' };
+    }
     let c = await prisma.checklistVeiculo.findFirst({
-        where: { vendedorId: user.id, veiculoId: v.id, momento, dataReferencia, diarioId: null, status: 'RASCUNHO' },
+        where: whereRascunho,
         orderBy: { criadoEm: 'desc' },
     });
     const dados = {};
@@ -325,8 +372,9 @@ async function criarRascunho(user, body = {}) {
         if (Object.keys(dados).length) c = await prisma.checklistVeiculo.update({ where: { id: c.id }, data: dados });
     } else {
         const modo = await getModo();
+        const extra = diarioVolta ? { diarioId: diarioVolta.id, atrasada: diarioVolta.dataReferencia < getDataReferencia() } : {};
         c = await prisma.checklistVeiculo.create({
-            data: { veiculoId: v.id, vendedorId: user.id, dataReferencia, momento, tipoVeiculo: v.tipo, modo, ...dados },
+            data: { veiculoId: v.id, vendedorId: user.id, dataReferencia, momento, tipoVeiculo: v.tipo, modo, ...extra, ...dados },
         });
     }
     return checklistDTO(c, await fotosAtivasDe(c.id));
@@ -339,6 +387,11 @@ async function atualizarRascunho(id, user, body = {}) {
     const km = parseKm(body.kmDigitado);
     if (km !== undefined) dados.kmDigitado = km;
     if (typeof body.luzOleoAcesa === 'boolean') dados.luzOleoAcesa = body.luzOleoAcesa;
+    if (body.bateuOuRaspou !== undefined && body.bateuOuRaspou !== null) {
+        if (typeof body.bateuOuRaspou !== 'boolean') throw new ErroChecklist(400, 'RESPOSTA_INVALIDA', 'Responda Sim ou Não: bateu ou raspou em algo?');
+        if (c.momento !== 'VOLTA') throw new ErroChecklist(400, 'SO_NA_VOLTA', 'Essa pergunta só existe no checklist de volta.');
+        dados.bateuOuRaspou = body.bateuOuRaspou;
+    }
     if (body.kmOrigem !== undefined && body.kmOrigem !== null) {
         if (!['PAINEL_CONFIRMADO', 'DIGITADO'].includes(body.kmOrigem)) {
             throw new ErroChecklist(400, 'KM_ORIGEM_INVALIDA', 'Origem do KM inválida. Use PAINEL_CONFIRMADO ou DIGITADO.');
@@ -354,11 +407,11 @@ async function atualizarRascunho(id, user, body = {}) {
 async function enviarFoto(id, user, angulo, file, opcoes = {}) {
     const c = await carregarDoDono(id, user);
     exigirAberto(c);
-    if (!catalogo.anguloDoTipo(c.tipoVeiculo, angulo)) {
+    if (!catalogo.anguloDoTipo(c.tipoVeiculo, angulo, c.momento)) {
         throw new ErroChecklist(400, 'ANGULO_INVALIDO', 'Esse ângulo não existe para o tipo deste veículo.');
     }
     const complemento = ['1', 'true', true, 1].includes(opcoes.complemento);
-    if (complemento && !catalogo.COMPLEMENTO_ROTULO[angulo]) {
+    if (complemento && (c.momento === 'VOLTA' || !catalogo.COMPLEMENTO_ROTULO[angulo])) {
         throw new ErroChecklist(400, 'COMPLEMENTO_INVALIDO', 'Esse ângulo não aceita foto extra.');
     }
     const img = validarArquivo(file);
@@ -399,6 +452,7 @@ async function enviarFoto(id, user, angulo, file, opcoes = {}) {
         kmDigitado: c.kmDigitado,
         luzOleoAcesa: c.luzOleoAcesa,
         ultimaTentativa: refazeres >= MAX_REFAZER_POR_ANGULO,
+        momento: c.momento,
     });
 
     await prisma.checklistVeiculoFoto.updateMany({ where: { checklistId: id, angulo, ativa: true, complemento: false }, data: { ativa: false } });
@@ -419,6 +473,12 @@ async function enviarFoto(id, user, angulo, file, opcoes = {}) {
             iaTokens: r.iaTokens,
         },
     });
+
+    // Refez a foto do painel: o KM confirmado antes não vale mais (o app pede a confirmação de novo)
+    if (angulo === 'painel' && c.kmOrigem) {
+        try { await prisma.checklistVeiculo.update({ where: { id }, data: { kmOrigem: null } }); }
+        catch (e) { console.error('[ChecklistVeiculo] falha ao zerar kmOrigem:', e.message); }
+    }
 
     // enviou a foto: some da lista de puladas
     const puladas = Array.isArray(c.fotosPuladas) ? c.fotosPuladas : [];
@@ -463,7 +523,7 @@ async function pularFoto(id, user, body = {}) {
     const modo = await getModo();
     if (modo === 'TRAVA') throw new ErroChecklist(400, 'TRAVA_ATIVA', 'Não é possível pular fotos neste momento.');
     const angulo = body.angulo;
-    if (!catalogo.anguloDoTipo(c.tipoVeiculo, angulo)) {
+    if (!catalogo.anguloDoTipo(c.tipoVeiculo, angulo, c.momento)) {
         throw new ErroChecklist(400, 'ANGULO_INVALIDO', 'Esse ângulo não existe para o tipo deste veículo.');
     }
     const motivo = ['FALHA_ENVIO', 'SEM_CONDICAO', 'OUTRO'].includes(body.motivo) ? body.motivo : 'OUTRO';
@@ -483,20 +543,22 @@ async function avaliar(id, user, body = {}) {
     const kmBody = parseKm(body.kmDigitado);
     const kmDigitado = kmBody !== undefined && kmBody !== null ? kmBody : c.kmDigitado;
     const modo = await getModo();
-    const veiculo = await prisma.veiculo.findUnique({ where: { id: c.veiculoId }, select: { placa: true } });
+    const veiculo = await prisma.veiculo.findUnique({ where: { id: c.veiculoId }, select: { placa: true, kmMedioSugerido: true } });
+    const volta = c.momento === 'VOLTA';
     const fotos = fotosPrincipais(await fotosAtivasDe(id));
     const porAngulo = {};
     fotos.forEach((f) => { porAngulo[f.angulo] = f; });
     const puladas = Array.isArray(c.fotosPuladas) ? c.fotosPuladas : [];
 
     const vareta = varetaHoje(c.dataReferencia) || c.luzOleoAcesa === true;
-    const slots = catalogo.slotsDoTipo(c.tipoVeiculo);
+    const slots = catalogo.slotsDoTipo(c.tipoVeiculo, c.momento);
     const problemas = [];
     const faltando = [];
     const aceitosPeloMotorista = []; // fotos em que o motorista discordou da IA (Dia 2)
 
     for (const s of slots) {
-        const obrigatorio = s.condicional ? vareta : true;
+        // Saída: vareta depende do dia. Volta: laterais só são obrigatórias se o motorista disse que bateu/raspou.
+        const obrigatorio = s.condicional ? (volta ? c.bateuOuRaspou === true : vareta) : true;
         const f = porAngulo[s.angulo];
         if (!f) {
             const pulada = puladas.find((p) => p.angulo === s.angulo);
@@ -564,7 +626,28 @@ async function avaliar(id, user, body = {}) {
             });
         }
     }
-    if (kmLido !== null) {
+    // Volta: o KM do painel não pode ser menor que o da saída do mesmo dia; e mede quanto rodou
+    let kmRodado = null;
+    let kmExcessivo = false;
+    if (volta) {
+        try {
+            const dia = c.diarioId ? await prisma.diarioVendedor.findUnique({ where: { id: c.diarioId }, select: { kmInicial: true } }) : null;
+            const kmRef = kmLido ?? (kmDigitado ?? null);
+            if (dia?.kmInicial != null && kmRef !== null) {
+                kmRodado = kmRef - dia.kmInicial;
+                if (kmLido !== null && kmLido < dia.kmInicial) {
+                    problemas.push({
+                        angulo: 'painel', gravidade: 'ATENCAO',
+                        descricao: `Painel marca ${fmtKm(kmLido)}, menos que o KM da saída (${fmtKm(dia.kmInicial)}).`,
+                        oQueFazer: 'Confere se é o painel do carro certo e tira a foto de novo.', origem: 'REGRA',
+                    });
+                }
+                const media = veiculo?.kmMedioSugerido;
+                kmExcessivo = !!media && media > 0 && kmRodado > media * 1.5;
+            }
+        } catch (e) { console.error('[ChecklistVeiculo] km da volta:', e.message); }
+    }
+    if (kmLido !== null && !volta) {
         try {
             const ultimo = await require('./veiculoService').ultimoKmFinal(c.veiculoId);
             if (ultimo?.kmFinal != null && kmLido < ultimo.kmFinal - REGRAS.kmFinalOntemFolga) {
@@ -586,11 +669,14 @@ async function avaliar(id, user, body = {}) {
     else veredito = 'APROVADO';
 
     const temProblema = veredito === 'ATENCAO' || veredito === 'REPROVADO';
-    const podeSeguir = modo !== 'TRAVA' || !temProblema;
+    // Volta nunca impede a pessoa de largar o carro e encerrar o dia (o escritório vê depois).
+    const podeSeguir = volta || modo !== 'TRAVA' || !temProblema;
     const aviso = temProblema
-        ? (modo === 'TRAVA'
-            ? 'Não dá pra sair assim sem a liberação do escritório.'
-            : AVISO_TESTE)
+        ? (volta
+            ? 'Deu diferença em alguma foto. Pode encerrar o dia mesmo assim: o escritório vai olhar.'
+            : (modo === 'TRAVA'
+                ? 'Não dá pra sair assim sem a liberação do escritório.'
+                : AVISO_TESTE))
         : null;
 
     const dados = { veredito, problemas, kmLido };
@@ -606,6 +692,9 @@ async function avaliar(id, user, body = {}) {
         aviso,
         podeSeguir,
         podePedirLiberacao: false,
+        kmLido,
+        kmRodado,
+        kmExcessivo,
         aceitosPeloMotorista: aceitosPeloMotorista.filter((x, i, arr2) => arr2.findIndex((y) => y.angulo === x.angulo) === i),
     };
 }
@@ -621,7 +710,7 @@ async function responderPergunta(id, user, body = {}) {
     if (!['SIM', 'NAO'].includes(resposta)) throw new ErroChecklist(400, 'RESPOSTA_INVALIDA', 'Responda SIM ou NAO.');
     const angulo = body.angulo;
     const indice = (typeof body.indice === 'number' || (typeof body.indice === 'string' && /^\d+$/.test(body.indice.trim()))) ? Number(body.indice) : NaN;
-    if (!catalogo.anguloDoTipo(c.tipoVeiculo, angulo)) throw new ErroChecklist(400, 'ANGULO_INVALIDO', 'Esse ângulo não existe para o tipo deste carro.');
+    if (!catalogo.anguloDoTipo(c.tipoVeiculo, angulo, c.momento)) throw new ErroChecklist(400, 'ANGULO_INVALIDO', 'Esse ângulo não existe para o tipo deste carro.');
     if (!Number.isInteger(indice) || indice < 0) throw new ErroChecklist(400, 'INDICE_INVALIDO', 'Pergunta não encontrada.');
     const foto = await prisma.checklistVeiculoFoto.findFirst({ where: { checklistId: id, angulo, ativa: true, complemento: false } });
     const lista = Array.isArray(foto?.problemas) ? foto.problemas.map((p) => ({ ...p })) : [];
@@ -690,6 +779,8 @@ function dtoCompleto(c, fotosAtivas) {
         problemas: c.problemas || [],
         fotosPuladas: Array.isArray(c.fotosPuladas) ? c.fotosPuladas : [],
         diarioId: c.diarioId,
+        atrasada: c.atrasada === true,
+        bateuOuRaspou: typeof c.bateuOuRaspou === 'boolean' ? c.bateuOuRaspou : null,
         discordancias: fotosPrincipais(fotosAtivas).filter((f) => f.aceitaPeloMotorista).length,
         fotos: ordenarFotos(fotosAtivas).map((f) => fotoDTO(f, { rotulo: catalogo.ANGULOS[f.angulo]?.rotulo || f.angulo })),
         criadoEm: c.criadoEm,
@@ -746,6 +837,7 @@ async function resumoParaDiario({ checklistId, vendedorId, veiculoId }) {
         if (!c) return { ok: false, motivo: 'inexistente' };
         if (c.vendedorId !== vendedorId) return { ok: false, motivo: 'outro_vendedor' };
         if (c.veiculoId !== veiculoId) return { ok: false, motivo: 'outro_veiculo' };
+        if (c.momento !== 'SAIDA') return { ok: false, motivo: 'nao_e_saida' };
         if (c.diarioId) return { ok: false, motivo: 'ja_amarrado' };
         const fotos = fotosPrincipais(await fotosAtivasDe(c.id));
         const por = {};
@@ -776,7 +868,7 @@ async function resumoParaDiario({ checklistId, vendedorId, veiculoId }) {
  *  Devolve true se amarrou, false se ignorou. Chamar em try/catch próprio. */
 async function amarrarAoDiario(checklistId, diarioId, vendedorId, veiculoId) {
     const r = await prisma.checklistVeiculo.updateMany({
-        where: { id: checklistId, vendedorId, veiculoId, diarioId: null, status: 'RASCUNHO' },
+        where: { id: checklistId, vendedorId, veiculoId, momento: 'SAIDA', diarioId: null, status: 'RASCUNHO' },
         data: { diarioId, status: 'CONCLUIDO', concluidoEm: new Date() },
     });
     return r.count > 0;

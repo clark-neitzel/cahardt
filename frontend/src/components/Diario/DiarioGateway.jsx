@@ -5,7 +5,7 @@ import { useDiario } from '../../contexts/DiarioContext';
 import { toast } from 'react-hot-toast';
 import api from '../../services/api';
 import FormVeiculoPresencial from './FormVeiculoPresencial';
-import CampoNumero from '../CampoNumero';
+import FormVoltaPresencial from './FormVoltaPresencial';
 
 const DiarioGateway = () => {
     const { logout, user, signed } = useAuth();
@@ -14,10 +14,6 @@ const DiarioGateway = () => {
     // Passos do modal
     // 1: PendenciaOntem -> 2: Escolher Modo -> 3: Form Presencial
     const [step, setStep] = useState(1);
-
-    // Dados de Encerramento Pendente
-    const [pendenciaKm, setPendenciaKm] = useState('');
-    const [pendenciaObs, setPendenciaObs] = useState('');
 
     // Dados Novo Checkin Presencial
     const [modo, setModo] = useState(null); // 'HOME_OFFICE' ou 'PRESENCIAL'
@@ -30,25 +26,6 @@ const DiarioGateway = () => {
             setStep(1); // Cobra o fechamento de ontem
         }
     }, [diarioStatus.pendenciaAnterior]);
-
-    const resolverPendencia = async (e) => {
-        e.preventDefault();
-        try {
-            setIsSubmitting(true);
-            await api.post('/diarios/encerrar', {
-                diarioId: diarioStatus.diarioPendente.id,
-                kmFinal: parseInt(pendenciaKm),
-                obsFinal: pendenciaObs
-            });
-            toast.success('Ponto do dia anterior encerrado com sucesso!');
-            await carregarStatus();
-            setStep(2); // Libera pro inicio de hoje
-        } catch (error) {
-            toast.error(error.response?.data?.error || 'Erro ao salvar quilometragem final.');
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
 
     // Quando /diarios/iniciar recusa por PENDENCIA_ROTA (cliente da rota de dia
     // anterior sem atendimento), o backend já manda a mensagem pronta ("Você tem N
@@ -100,9 +77,9 @@ const DiarioGateway = () => {
 
     // Modal de Bloqueio Intransponível
     return (
-        <div className="fixed inset-0 bg-gray-100 z-[100] overflow-y-auto w-full h-full flex flex-col justify-center items-center py-4 sm:py-0">
+        <div className="fixed inset-0 bg-gray-100 z-[100] overflow-y-auto w-full h-full flex flex-col items-center py-4">
 
-            <div className="bg-white mx-4 p-6 sm:p-8 w-full max-w-xl rounded-2xl shadow-xl border border-gray-200 relative">
+            <div className="bg-white mx-4 my-auto p-4 sm:p-8 w-full max-w-xl rounded-2xl shadow-xl border border-gray-200 relative">
 
                 {/* Header do Gatekeeper */}
                 <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-100">
@@ -120,30 +97,19 @@ const DiarioGateway = () => {
                             <h2 className="text-2xl font-bold text-center">Fechamento do Dia de Ontem Pendente!</h2>
                         </div>
                         <p className="text-gray-600 text-center">
-                            Você trabalhou pelo modo <strong>PRESECIAL</strong> em {new Date(diarioStatus.diarioPendente?.dataReferencia).toLocaleDateString()} com o veículo <strong>{diarioStatus.diarioPendente?.veiculo?.placa}</strong>.
-                            <br />Para liberar o aplicativo <b>hoje</b>, você precisa bater seu ponto final informando a quilometragem na qual entregou o veículo!
+                            Você trabalhou pelo modo <strong>PRESENCIAL</strong> em {(() => { const [a, m, d] = String(diarioStatus.diarioPendente?.dataReferencia || '').split('T')[0].split('-'); return d ? `${d}/${m}/${a}` : ''; })()} com o veículo <strong>{diarioStatus.diarioPendente?.veiculo?.placa}</strong>.
+                            <br />Para liberar o aplicativo <b>hoje</b>, tire as fotos de volta do veículo (ou, se a câmera não ajudar, digite o KM).
                         </p>
 
-                        <div className="bg-orange-50 p-4 rounded-lg flex items-center justify-between text-orange-900 border border-orange-200">
-                            <span>KM INICIAL (Sua saída na rua):</span>
-                            <span className="font-mono text-xl">{diarioStatus.diarioPendente?.kmInicial}</span>
-                        </div>
-
-                        <form onSubmit={resolverPendencia} className="space-y-4 pt-4 border-t border-gray-100">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 uppercase tracking-wider">KM FINAL DO VEÍCULO (Sua Chegada) *</label>
-                                <CampoNumero
-                                    required
-                                    className="mt-1 flex-1 block w-full bg-gray-50 focus:bg-white rounded-md border-gray-300 text-center text-3xl h-16 font-mono font-bold focus:border-red-500 focus:ring-red-500"
-                                    value={pendenciaKm}
-                                    onChange={(e) => setPendenciaKm(e.target.value)}
-                                    placeholder="00000"
+                        {diarioStatus.diarioPendente && (
+                            <div className="pt-4 border-t border-gray-100">
+                                <FormVoltaPresencial
+                                    diario={diarioStatus.diarioPendente}
+                                    atrasada
+                                    onEncerrado={async () => { await carregarStatus(); setStep(2); }}
                                 />
                             </div>
-                            <button type="submit" disabled={isSubmitting} className="w-full h-14 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl text-lg flex items-center justify-center shadow-lg transition-transform active:scale-95">
-                                ENVIAR KM E LIBERAR SISTEMA
-                            </button>
-                        </form>
+                        )}
                     </div>
                 )}
 

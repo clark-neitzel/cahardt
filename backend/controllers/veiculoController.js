@@ -49,7 +49,7 @@ const veiculoController = {
             res.json(resultado);
         } catch (error) {
             console.error('Erro ao buscar último KM:', error);
-            res.status(500).json({ error: 'Erro ao buscar último KM.' });
+            res.status(500).json({ error: 'Não deu pra buscar o último KM deste carro. Tenta de novo.', codigo: 'ULTIMO_KM_INDISPONIVEL' });
         }
     },
 

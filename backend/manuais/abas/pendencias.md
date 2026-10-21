@@ -80,3 +80,6 @@ Os totais do topo:
   pode superestimar em produção — vale conferir com o financeiro antes de tratar como alarme vermelho.
 - Os números batidos até agora foram só no banco local, com dados de teste distorcidos — os volumes
   reais de produção ainda não foram conferidos.
+
+## Bloco "Veículos: volta sem foto" (Dia 3 do checklist de veículo)
+Mostra os dias em que o motorista saiu de carro e não mandou as fotos da volta (nem recebeu OK). Clicar abre `/veiculos/pendencias`, onde administrador ou quem está em "Quem libera e dá OK" dá o OK com motivo. Detalhes em *Veículos*.

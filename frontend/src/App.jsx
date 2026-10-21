@@ -62,6 +62,7 @@ const CategoriasDespesaPage = lazyComRetry(() => import('./pages/Financeiro/Cate
 const ReguaCobrancaPage = lazyComRetry(() => import('./pages/Financeiro/ReguaCobrancaPage'));
 const NotasFiscais = lazyComRetry(() => import('./pages/Financeiro/NotasFiscais'));
 const PainelPendencias = lazyComRetry(() => import('./pages/Pendencias/PainelPendencias'));
+const ChecklistPendencias = lazyComRetry(() => import('./pages/Veiculos/ChecklistPendencias'));
 const RelatorioPedidos = lazyComRetry(() => import('./pages/Relatorios/RelatorioPedidos'));
 const RelatorioVendas = lazyComRetry(() => import('./pages/Relatorios/RelatorioVendas'));
 const RelatorioFlex = lazyComRetry(() => import('./pages/Relatorios/RelatorioFlex'));
@@ -933,6 +934,7 @@ function App() {
               <Route path="/notas-recebidas" element={<PrivateRoute tab="Pode_Acessar_Notas_Recebidas"><NotasRecebidasPage /></PrivateRoute>} />
               <Route path="/notas-fiscais" element={<PrivateRoute tab="Pode_Acessar_Notas_Fiscais"><NotasFiscais /></PrivateRoute>} />
               <Route path="/fornecedores" element={<PrivateRoute tab="Pode_Acessar_Fornecedores"><FornecedoresPage /></PrivateRoute>} />
+              <Route path="/veiculos/pendencias" element={<PrivateRoute><ChecklistPendencias /></PrivateRoute>} />
               <Route path="/pendencias" element={<PrivateRoute tab={['Pode_Acessar_Financeiro_Gerencial', 'Pode_Ver_Pendencias']}><PainelPendencias /></PrivateRoute>} />
               <Route path="/financeiro/fluxo-caixa" element={<PrivateRoute tab="Pode_Acessar_Financeiro_Gerencial"><FluxoCaixaPage /></PrivateRoute>} />
               <Route path="/financeiro/margem-produtos" element={<PrivateRoute tab="Pode_Acessar_Financeiro_Gerencial"><ProdutosMargemCusto /></PrivateRoute>} />

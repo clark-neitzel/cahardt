@@ -1,5 +1,11 @@
 [
   {
+    "slug": "checklist-volta",
+    "titulo": "Fechar o dia com foto do painel",
+    "resumo": "Na volta, o app lê o KM do painel pela foto e você só confirma. Quem esquecer, o responsável resolve na Central de Pendências.",
+    "data": "2026-10-22"
+  },
+  {
     "slug": "checklist-foto-v2",
     "titulo": "Checklist: foto com parecer, Sim/Não e aviso",
     "resumo": "Toque na foto para ver o que o app viu e o que fazer, responda Sim/Não em vez de alarme falso, e o escritório é avisado no WhatsApp. Veículos ganha duas colunas no computador.",

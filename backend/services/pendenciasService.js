@@ -513,6 +513,29 @@ async function blocoTarefasAtrasadas(limite, usuario) {
     };
 }
 
+// ── Bloco: veiculos_pendencias ──────────────────────────────────────────────────
+// Dias em que o motorista saiu de carro e não mandou as fotos da volta (checklist de veículo, Dia 3).
+// Fonte: checklistPendenciasService.listarVolta (calculada, sem tabela própria). Itens SEM `acao`:
+// o OK exige motivo, então abre a tela /veiculos/pendencias (quem dá OK é decidido no servidor).
+async function blocoVeiculosPendencias(limite) {
+    const todas = await require('./checklistPendenciasService').listarVolta({ dias: 30 });
+    const itens = todas.slice(0, limite).map((p) => ({
+        id: p.refId,
+        titulo: `${String(p.dataReferencia).split('-').reverse().slice(0, 2).join('/')} · ${p.motorista?.nome || 'Motorista'} · ${p.placa || '—'}`,
+        subtitulo: p.resumo,
+        dataRef: `${p.dataReferencia}T12:00:00-03:00`, // meio-dia de Brasília: o front faz new Date() e não pode voltar um dia
+        rota: '/veiculos/pendencias',
+    }));
+    return {
+        chave: 'veiculos_pendencias',
+        titulo: 'Veículos: volta sem foto',
+        severidade: 'ambar',
+        contador: todas.length,
+        itens,
+        rotaVerTodos: '/veiculos/pendencias',
+    };
+}
+
 // ── Agregador ─────────────────────────────────────────────────────────────────
 const DEFINICOES = [
     { chave: 'pedidos_aprovar', fn: (l, u, c) => blocoPedidosAprovar(l, c) },
@@ -524,6 +547,7 @@ const DEFINICOES = [
     { chave: 'boletos_nao_enviados', fn: (l, u) => blocoBoletosNaoEnviados(l) },
     { chave: 'producao_sugerida', fn: (l, u) => blocoProducaoSugerida(l) },
     { chave: 'tarefas_atrasadas', fn: (l, u) => blocoTarefasAtrasadas(l, u) },
+    { chave: 'veiculos_pendencias', fn: (l) => blocoVeiculosPendencias(l) },
 ];
 
 const TITULOS = {
@@ -536,6 +560,7 @@ const TITULOS = {
     boletos_nao_enviados: 'Faturados sem cobrança gerada',
     producao_sugerida: 'Ordens de produção sugeridas',
     tarefas_atrasadas: 'Tarefas atrasadas (minhas)',
+    veiculos_pendencias: 'Veículos: volta sem foto',
 };
 
 const ROTAS_VER_TODOS = {
@@ -548,6 +573,7 @@ const ROTAS_VER_TODOS = {
     boletos_nao_enviados: '/pedidos',
     producao_sugerida: '/pcp/sugestoes',
     tarefas_atrasadas: '/tarefas',
+    veiculos_pendencias: '/veiculos/pendencias',
 };
 
 const listarPendencias = async ({ usuario, limitePorBloco = 5 } = {}) => {
@@ -584,7 +610,8 @@ const listarPendencias = async ({ usuario, limitePorBloco = 5 } = {}) => {
     const avisos = (resultados.find(b => b.chave === 'nfe_rejeitada')?.contador || 0)
         + (resultados.find(b => b.chave === 'liberacao_inadimplente')?.contador || 0)
         + (resultados.find(b => b.chave === 'boletos_nao_enviados')?.contador || 0)
-        + (resultados.find(b => b.chave === 'producao_sugerida')?.contador || 0);
+        + (resultados.find(b => b.chave === 'producao_sugerida')?.contador || 0)
+        + (resultados.find(b => b.chave === 'veiculos_pendencias')?.contador || 0);
 
     return {
         geradoEm: new Date().toISOString(),

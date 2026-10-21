@@ -180,7 +180,7 @@ function cabecalhoVeiculo(c) {
 
 async function aoSeguirReprovado(checklistId) {
     const c = await carregarChecklist(checklistId);
-    if (!c || c.veredito !== 'REPROVADO' || c.decisao !== 'SEGUIU_TESTE') return { enviados: 0, motivo: 'nao_aplica' };
+    if (!c || c.momento !== 'SAIDA' || c.veredito !== 'REPROVADO' || c.decisao !== 'SEGUIU_TESTE') return { enviados: 0, motivo: 'nao_aplica' };
     const cfg = await lerConfig();
     const dests = await destinatarios(cfg.naHora);
     const texto = [
@@ -203,7 +203,7 @@ async function aoResponderNao(checklistId, angulo, indice) {
     const dests = await destinatarios(cfg.naHora);
     const texto = [
         `🚗 *Checklist com problema* · ${agoraSP().hhmm}`,
-        `${rotuloAngulo(angulo)}: o motorista respondeu NÃO a uma pergunta da IA`,
+        `${rotuloAngulo(angulo)}${c.momento === 'VOLTA' ? ' (volta)' : ''}: o motorista respondeu NÃO a uma pergunta da IA`,
         cabecalhoVeiculo(c),
         `• ${trunc(p.descricao, 140)}${p.pergunta ? ` — ${trunc(p.pergunta, 100)}` : ''}`,
         `Ver fotos: app → Veículos → ${c.veiculo?.placa || ''} → Checklists`,
@@ -368,6 +368,8 @@ async function testar(user) {
 }
 
 module.exports = {
+    // helpers reaproveitados por checklistPendenciasService (aviso das 6h)
+    agoraSP, reivindicar, enviarParaTodos, destinatarios, adminsComTelefone, dataBR, cortar, temTel, ehAdminVend,
     ErroAvisos, obterConfig, salvarConfig, lerConfig,
     aoSeguirReprovado, aoResponderNao, rodarResumos, montarResumo, testar,
     CHECKLIST_INICIO,
