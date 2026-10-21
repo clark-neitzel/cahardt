@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup — Impressão do Como Fazer (parede, fichário, registro)</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--primary:#00754A;--primaryDark:#006241;--house:#1E3932;--mint:#d4e9e2;--bg:#f2f0eb;--gold:#cba258;--border:#e5e7eb;--red:#b91c1c}
+*{box-sizing:border-box}
+body{margin:0;font-family:Manrope,Arial,sans-serif;background:var(--bg);color:#111}
+.hero{background:var(--house);color:#fff;padding:24px 16px}.hero .w{max-width:1100px;margin:0 auto}
+.tag{display:inline-block;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:999px;padding:3px 12px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.hero h1{margin:10px 0 6px;font-size:22px;font-weight:800}.hero p{margin:0;color:rgba(255,255,255,.8);font-size:14px;max-width:780px;line-height:1.5}
+.nav{position:sticky;top:0;z-index:30;background:#fff;border-bottom:1px solid var(--border)}
+.nav .w{max-width:1100px;margin:0 auto;display:flex;gap:6px;overflow-x:auto;padding:10px 16px}
+.nav button{flex:none;border:1px solid var(--primary);background:#fff;color:var(--primary);border-radius:999px;padding:8px 14px;font:inherit;font-weight:600;font-size:13px;cursor:pointer;min-height:40px}
+.nav button.on{background:var(--primary);color:#fff}
+main{max-width:1100px;margin:0 auto;padding:16px}
+section.tela{display:none}section.tela.on{display:block}
+.intro{background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:14px;font-size:14px;line-height:1.5}
+.intro b{color:var(--primaryDark)}
+.btn{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:8px 16px;font-weight:700;font-size:13px;border:1px solid var(--primary);background:var(--primary);color:#fff;cursor:pointer;min-height:40px;font-family:inherit}
+.legenda{margin-top:14px;background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px 16px}
+.legenda h3{margin:0 0 8px;font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#4b5563}
+.legenda ol{margin:0;padding:0;list-style:none;display:grid;gap:8px}@media(min-width:800px){.legenda ol{grid-template-columns:1fr 1fr}}
+.legenda li{display:flex;gap:10px;font-size:13px;line-height:1.45}
+.legenda li i,.pin{flex:none;width:22px;height:22px;border-radius:999px;background:var(--gold);color:#1E3932;font-style:normal;font-weight:800;font-size:12px;display:grid;place-items:center}
+.pin{position:absolute;box-shadow:0 1px 3px rgba(0,0,0,.3);z-index:5}
+.grid3{display:grid;gap:10px}@media(min-width:800px){.grid3{grid-template-columns:repeat(3,1fr)}}
+.card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px 14px;font-size:13px;line-height:1.5}.card b{font-size:15px;display:block;margin-bottom:4px}
+.scroller{overflow-x:auto;padding:8px 0 16px}
+/* ===== FOLHA A4 REAL (210x297mm) ===== */
+.folha{position:relative;width:210mm;height:297mm;background:#fff;margin:0 auto 18px;box-shadow:0 2px 12px rgba(0,0,0,.18);overflow:hidden;font-family:Arial,Helvetica,sans-serif;color:#111;flex:none}
+.foto{background:repeating-linear-gradient(45deg,#e5e7eb 0 6px,#f3f4f6 6px 12px);border:1px solid #cbd5e1;display:grid;place-items:center;color:#64748b;font-weight:700;text-align:center;line-height:1.2;position:relative}
+.foto small{position:absolute;left:3px;bottom:2px;background:#1E3932;color:#fff;font-size:7pt;padding:1px 5px;border-radius:8px}
+/* CARTAZ */
+.cz-head{background:#1E3932;color:#fff;padding:7mm 9mm 5mm;display:flex;align-items:center;gap:6mm}
+.cz-head h1{margin:0;font-size:30pt;line-height:1;letter-spacing:-.5px}.cz-head p{margin:2mm 0 0;font-size:13pt;color:#d4e9e2}
+.qr{width:24mm;height:24mm;background:#fff;color:#111;display:grid;place-items:center;font-size:8pt;font-weight:700;text-align:center;border-radius:2mm;flex:none}
+.cz-info{margin-left:auto;text-align:right;font-size:9pt;color:#d4e9e2;line-height:1.5}
+.cz-grid{display:grid;grid-template-columns:1fr 1fr;gap:4mm;padding:5mm 9mm}
+.cz-card{border:1.2mm solid #1E3932;border-radius:3mm;padding:3mm;display:flex;flex-direction:column;gap:2mm;background:#fff}
+.cz-card .top{display:flex;align-items:center;gap:3mm}
+.cz-card .n{width:11mm;height:11mm;border-radius:50%;background:#1E3932;color:#fff;font-size:19pt;font-weight:800;display:grid;place-items:center;flex:none}
+.cz-card .tx{font-size:15pt;font-weight:800;line-height:1.1}
+.cz-card .sm{font-size:9.5pt;color:#374151}
+.cz-card.pg{border-color:#b91c1c}.cz-card.pg .n{background:#b91c1c}
+.fotos{display:grid;gap:1.5mm}.f1{grid-template-columns:1fr}.f2{grid-template-columns:1fr 1fr}.f3{grid-template-columns:1fr 1fr}.f3 .foto:first-child{grid-column:1/3}.f4{grid-template-columns:1fr 1fr}
+.cz-nao{margin:1mm 9mm 0;background:#b91c1c;color:#fff;border-radius:3mm;padding:3.5mm 5mm;display:flex;gap:4mm;align-items:center}
+.cz-nao b{font-size:15pt;letter-spacing:.04em}.cz-nao span{font-size:11.5pt;font-weight:700}
+.cz-rod{position:absolute;left:0;right:0;bottom:0;padding:3mm 9mm;font-size:8pt;color:#374151;border-top:.3mm solid #cbd5e1;display:flex;justify-content:space-between}
+/* FICHARIO */
+.fi{padding:12mm 10mm 12mm 28mm}
+.fi .furos{position:absolute;left:7mm;top:0;bottom:0;width:6mm}.fi .furos i{position:absolute;left:0;width:6mm;height:6mm;border-radius:50%;background:var(--bg);box-shadow:inset 0 0 2px rgba(0,0,0,.4)}
+.fi table{width:100%;border-collapse:collapse;font-size:8.5pt}.fi td,.fi th{border:.3mm solid #475569;padding:1.2mm 2mm;vertical-align:top;text-align:left}.fi th{background:#e5e7eb;font-size:8pt}
+.fi .cab td{font-size:8.5pt}.fi .cab .tt{font-size:15pt;font-weight:800;text-align:center;vertical-align:middle}
+.fi h2{font-size:9.5pt;background:#1E3932;color:#fff;margin:3.5mm 0 1.5mm;padding:1mm 2mm;letter-spacing:.04em}
+.fi p{margin:0 0 1mm;font-size:9pt;line-height:1.35}
+.fi .pas td:first-child{width:7mm;text-align:center;font-weight:800;font-size:11pt}.fi .pas .foto{width:13mm;height:13mm;font-size:6.5pt;display:inline-grid;margin-right:1mm}
+.fi .nao{border:.5mm solid #b91c1c;background:#fef2f2;padding:2mm;font-size:9pt}
+.fi .rod{position:absolute;left:28mm;right:10mm;bottom:8mm;font-size:7.5pt;display:flex;justify-content:space-between;border-top:.3mm solid #475569;padding-top:1.5mm}
+/* REGISTRO */
+.folha.paisagem{width:297mm;height:210mm}@page paisagem{size:A4 landscape;margin:0}.folha.paisagem{page:paisagem}.rg{padding:9mm 10mm}.rg h1{font-size:15pt;margin:0}.rg .sub{font-size:9pt;color:#374151;margin-bottom:3mm}
+.rg table{width:100%;border-collapse:collapse;font-size:8pt}.rg th,.rg td{border:.3mm solid #475569;padding:0;height:8.4mm;text-align:center}.rg th{background:#e5e7eb;font-size:7pt}
+.rg td.l,.rg th.l{text-align:left;padding:0 1.5mm;font-size:8pt}
+.rg .cond{margin-top:2.5mm;font-size:8.5pt;display:grid;grid-template-columns:1fr 1fr;gap:3mm}
+.rg .box{border:.3mm solid #475569;padding:2mm;min-height:13mm}
+@media print{
+  @page{size:A4 portrait;margin:0}
+  body{background:#fff}.hero,.nav,.intro,.legenda,.grid3,.btn,.nao-imp{display:none!important}
+  main{padding:0;max-width:none}section.tela{display:none!important}section.tela.on{display:block!important}
+  .folha{box-shadow:none;margin:0;page-break-after:always;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .scroller{overflow:visible;padding:0}
+}
+</style>
+</head>
+<body>
+<div class="hero"><div class="w">
+  <span class="tag">Mockup · proposta · nada implementado ainda</span>
+  <h1>Impressão do Como Fazer: parede, fichário e registro</h1>
+  <p>Exemplo com <b>Higiene e uniforme</b>. As folhas abaixo estão em <b>tamanho A4 de verdade</b>: o botão "Imprimir esta folha" imprime só a folha da aba. Dados e fotos são de exemplo (as faixas listradas são o lugar das fotos).</p>
+</div></div>
+<div class="nav"><div class="w">
+  <button class="on" data-t="t0">0 · O padrão</button>
+  <button data-t="t1">1 · Cartaz de parede</button>
+  <button data-t="t2">2 · Folha de fichário</button>
+  <button data-t="t3">3 · Mais de uma foto por passo</button>
+  <button data-t="t4">4 · Folha de registro (rotina)</button>
+</div></div>
+<main>
+
+<!-- 0 -->
+<section class="tela on" id="t0">
+  <div class="intro"><b>Um conteúdo, três formatos.</b> O conteúdo é escrito uma vez só no app. Na hora de imprimir, a pessoa escolhe <b>onde vai usar</b>, e o app monta a folha certa. O padrão é o mesmo para todos os setores: o que muda é só o conteúdo.</div>
+  <div class="grid3">
+    <div class="card"><b>🧱 Cartaz de parede</b>Para colar ao lado da máquina, da pia ou da porta. Letra grande (frases de até 140 caracteres viram 15 pt), foto grande, no máximo 8 passos por folha, QR para abrir o conteúdo completo no tablet. <u>Ler a 1,5 metro.</u></div>
+    <div class="card"><b>📒 Folha de fichário (manual)</b>Para o fichário da gerência e da Vigilância Sanitária. Margem de 28 mm para furar, cabeçalho com código, versão, data e página, tabela de passos com foto pequena, controle de revisões e <b>lista de treinados com assinatura</b>. Folha oficial.</div>
+    <div class="card"><b>📋 Folha de registro</b>Só para <b>Rotina</b>: tabela do mês para marcar à mão (dia × item), com a faixa certa (ex.: −18 a −12 °C) e espaço para ação corretiva e visto do encarregado. Serve de backup se o tablet falhar.</div>
+  </div>
+  <div class="legenda"><h3>Regras do padrão (valem para os três)</h3><ol>
+    <li><i>1</i><span><b>Cabeçalho fixo</b>: nome, código e versão, setor, aprovado por/em, próxima revisão, encarregado. Nunca imprime rascunho: só a versão publicada.</span></li>
+    <li><i>2</i><span><b>QR em toda folha</b>: abre o conteúdo certo no app (exige login). Ao trocar a versão, a folha antiga continua trazendo "versão 3" no cabeçalho, para a equipe saber que está desatualizada.</span></li>
+    <li><i>3</i><span><b>Só preto, verde-escuro e vermelho</b>: funciona em impressora preto e branco; vermelho só para perigo e "não fazer".</span></li>
+    <li><i>4</i><span><b>Fotos</b>: 1 a 4 por passo (aba 3). Foto que falta aparece como quadro vazio com a dica "foto para tirar", para ninguém imprimir sem perceber.</span></li>
+    <li><i>5</i><span><b>Sem rodapé do app</b>: nada de menu ou botão na folha; impressão na própria página, como as outras do sistema (funciona no iPad).</span></li>
+    <li><i>6</i><span><b>Tamanho</b>: A4 em pé por padrão (cartaz e fichário); o <b>registro sai deitado</b> (A4 paisagem) porque tem 31 colunas; o cartaz também pode sair em <b>A3</b> (mesma folha ampliada) para parede grande.</span></li>
+  </ol></div>
+</section>
+
+<!-- 1 -->
+<section class="tela" id="t1">
+  <div class="intro"><b>Cartaz de parede — Higiene e uniforme.</b> Letra grande e pouca palavra. Passo com perigo ganha moldura vermelha. O QR leva ao conteúdo com a voz (Ouvir) para quem não lê bem. <button class="btn" style="margin-left:8px" onclick="window.print()">🖨 Imprimir esta folha</button></div>
+  <div class="scroller"><div class="folha" style="position:relative">
+    <div class="cz-head"><div><h1>HIGIENE E UNIFORME</h1><p>Antes de entrar na cozinha, todo dia</p></div><div class="cz-info">HIG-001 · versão 3<br>Cozinha · Estoque · Expedição<br>Aprovada em 10/10/2026</div><div class="qr" style="position:relative">QR<br>abrir no<br>app<span class="pin" style="right:-8px;top:-8px">1</span></div></div>
+    <div class="cz-grid">
+      <div class="cz-card"><div class="top"><div class="n">1</div><div class="tx">Tire anel, brinco e relógio</div></div><div class="fotos f1"><div class="foto" style="height:27mm">FOTO 1<br>objetos no armário</div></div><div class="sm">Celular fica no armário.</div></div>
+      <div class="cz-card"><div class="top"><div class="n">2</div><div class="tx">Vista o avental limpo</div></div><div class="fotos f1"><div class="foto" style="height:27mm">FOTO 1<br>avental vestido</div></div><div class="sm">Avental de ontem não vale.</div></div>
+      <div class="cz-card" style="position:relative"><div class="top"><div class="n">3</div><div class="tx">Prenda todo o cabelo na touca</div></div><div class="fotos f2"><div class="foto" style="height:27mm">de frente<small>1</small></div><div class="foto" style="height:27mm">de lado<small>2</small></div></div><div class="sm">Nenhum fio de fora.</div><span class="pin" style="right:-8px;top:-8px">2</span></div>
+      <div class="cz-card"><div class="top"><div class="n">4</div><div class="tx">Calce sapato fechado</div></div><div class="fotos f1"><div class="foto" style="height:27mm">FOTO 1<br>sapato</div></div></div>
+      <div class="cz-card" style="grid-column:1/3;position:relative"><div class="top"><div class="n">5</div><div class="tx">Lave as mãos até o cotovelo por 20 segundos</div></div><div class="fotos" style="grid-template-columns:repeat(4,1fr)"><div class="foto" style="height:23mm">molhe<small>1</small></div><div class="foto" style="height:23mm">sabão<small>2</small></div><div class="foto" style="height:23mm">esfregue<small>3</small></div><div class="foto" style="height:23mm">enxágue<small>4</small></div></div><div class="sm">Depois do banheiro e toda vez que sair da cozinha.</div><span class="pin" style="right:-8px;top:-8px">3</span></div>
+      <div class="cz-card"><div class="top"><div class="n">6</div><div class="tx">Seque com papel toalha</div></div><div class="fotos f1"><div class="foto" style="height:20mm">FOTO 1</div></div></div>
+      <div class="cz-card"><div class="top"><div class="n">7</div><div class="tx">Passe álcool em gel</div></div><div class="fotos f1"><div class="foto" style="height:20mm">FOTO 1</div></div></div>
+    </div>
+    <div class="cz-nao" style="position:relative"><b>NÃO FAZER</b><span>Entrar com celular · comer na produção · usar o avental de ontem · sair à rua de uniforme</span><span class="pin" style="right:-4px;top:-10px">4</span></div>
+    <div class="cz-rod"><span>Encarregada: Lúcia (exemplo) · Revisar até 10/10/2027</span><span>Hardt Salgados · Como Fazer · pág. 1/1</span></div>
+  </div></div>
+  <div class="legenda"><h3>Legenda</h3><ol>
+    <li><i>1</i><span>QR no canto: abre este conteúdo no tablet/celular (com botão Ouvir e treinamento). Código e versão ao lado.</span></li>
+    <li><i>2</i><span>Passo com 2 fotos (de frente / de lado): as fotos dividem a largura do cartão.</span></li>
+    <li><i>3</i><span>Passo importante com 4 fotos em sequência ocupa a linha inteira, com número da foto no canto.</span></li>
+    <li><i>4</i><span>Faixa vermelha fixa embaixo com "NÃO FAZER". Se houver passo de perigo, o cartão dele ganha moldura vermelha.</span></li>
+    <li><i>5</i><span>Cabem até 8 passos por folha. Conteúdo maior vira cartaz em 2 folhas ("pág. 1/2") ou o app sugere o formato fichário.</span></li>
+    <li><i>6</i><span>Texto do cartaz é o <b>mesmo passo curto</b> que já existe no app; o "detalhe" (texto longo) só entra se sobrar espaço.</span></li>
+  </ol></div>
+</section>
+
+<!-- 2 -->
+<section class="tela" id="t2">
+  <div class="intro"><b>Folha de fichário — manual oficial.</b> Margem de 28 mm para furar, cabeçalho de controle, tabela de passos (foto pequena + texto), "Se der errado", controle de revisões e <b>lista de treinados com assinatura</b>. É a folha que se mostra para a Vigilância. <button class="btn" style="margin-left:8px" onclick="window.print()">🖨 Imprimir esta folha</button></div>
+  <div class="scroller"><div class="folha"><div class="fi">
+    <div class="furos"><i style="top:60mm"></i><i style="top:148mm"></i><i style="top:236mm"></i></div>
+    <table class="cab" style="position:relative"><tr><td rowspan="3" style="width:28mm;text-align:center;vertical-align:middle;font-weight:800">Hardt<br>Salgados<br><span style="font-size:7pt;font-weight:400">(logo)</span></td><td class="tt" rowspan="3">PROCEDIMENTO OPERACIONAL PADRÃO<br><span style="font-size:12pt">HIGIENE E UNIFORME</span></td><td style="width:34mm">Código: <b>HIG-001</b></td></tr><tr><td>Versão: <b>3</b></td></tr><tr><td>Página: <b>1 de 2</b></td></tr>
+      <tr><td>Setor: <b>Cozinha · Estoque · Expedição</b></td><td>Aprovado por: <b>Clarkson (exemplo)</b> em <b>10/10/2026</b></td><td>Revisar até: <b>10/10/2027</b></td></tr></table>
+    <h2>1. OBJETIVO</h2><p>Garantir que ninguém entre na área de produção sem estar limpo e com o uniforme completo, protegendo o produto e a saúde de quem come.</p>
+    <h2>2. QUEM EXECUTA / QUEM SUPERVISIONA</h2><p>Executa: todos os cargos da Cozinha, Estoque e Expedição. Supervisiona: Lúcia (encarregada, exemplo).</p>
+    <h2>3. MATERIAIS E EPI</h2><p>Touca · avental branco · sapato fechado · sabão · papel toalha · álcool em gel.</p>
+    <h2 style="position:relative">4. PROCEDIMENTO <span class="pin" style="left:40mm;top:-1mm">1</span></h2>
+    <table class="pas">
+      <tr><th>Nº</th><th>O que fazer</th><th style="width:60mm">Fotos</th></tr>
+      <tr><td>1</td><td><b>Tire anel, brinco e relógio.</b> Celular fica no armário.</td><td><span class="foto">foto</span></td></tr>
+      <tr><td>2</td><td><b>Vista o avental branco limpo.</b></td><td><span class="foto">foto</span></td></tr>
+      <tr><td>3</td><td><b>Prenda todo o cabelo na touca.</b> Nenhum fio de fora.</td><td><span class="foto">frente</span><span class="foto">lado</span></td></tr>
+      <tr><td>4</td><td><b>Calce sapato fechado.</b></td><td><span class="foto">foto</span></td></tr>
+      <tr><td>5</td><td><b>Lave as mãos até o cotovelo, com sabão, por 20 segundos.</b> Depois do banheiro e toda vez que sair da cozinha.</td><td><span class="foto">1</span><span class="foto">2</span><span class="foto">3</span><span class="foto">4</span></td></tr>
+      <tr><td>6</td><td><b>Seque com papel toalha.</b></td><td><span class="foto">foto</span></td></tr>
+      <tr><td>7</td><td><b>Passe álcool em gel.</b></td><td><span class="foto">foto</span></td></tr>
+    </table>
+    <h2>5. O QUE NÃO FAZER</h2><div class="nao">Entrar com celular · comer na produção · usar o avental de ontem · sair à rua de uniforme.</div>
+    <div class="rod"><span>HIG-001 · v3 · Impresso em 21/10/2026 por Clarkson (exemplo)</span><span style="position:relative">QR ▦ <span class="pin" style="right:-26px;top:-6px">2</span></span></div>
+  </div></div>
+
+  <div class="folha"><div class="fi">
+    <div class="furos"><i style="top:60mm"></i><i style="top:148mm"></i><i style="top:236mm"></i></div>
+    <table class="cab"><tr><td rowspan="2" style="width:28mm;text-align:center;font-weight:800">Hardt<br>Salgados</td><td class="tt" rowspan="2" style="font-size:11pt">HIGIENE E UNIFORME</td><td style="width:34mm">HIG-001 · v3</td></tr><tr><td>Página: <b>2 de 2</b></td></tr></table>
+        <h2>6. SE DER ERRADO</h2><table><tr><th>Se…</th><th>Então…</th></tr><tr><td>Sujou o avental</td><td>Troque na hora (avental limpo no armário).</td></tr><tr><td>Se cortou</td><td>Avise o encarregado, cubra com curativo e luva.</td></tr></table>
+    <h2 style="position:relative">7. CONTROLE DE REVISÕES <span class="pin" style="left:62mm;top:-1mm">3</span></h2>
+    <table><tr><th>Versão</th><th>Data</th><th>O que mudou</th><th>Aprovado por</th></tr><tr><td>3</td><td>10/10/2026</td><td>Incluído passo do álcool em gel</td><td>Clarkson</td></tr><tr><td>2</td><td>05/06/2026</td><td>Fotos novas</td><td>Clarkson</td></tr><tr><td>1</td><td>12/03/2026</td><td>Primeira versão</td><td>Clarkson</td></tr></table>
+    <h2 style="position:relative">8. TREINAMENTO — QUEM APRENDEU ESTA VERSÃO <span class="pin" style="left:104mm;top:-1mm">4</span></h2>
+    <table><tr><th>Nome</th><th style="width:22mm">Data</th><th style="width:34mm">Assinatura do funcionário</th><th style="width:34mm">Visto do encarregado</th></tr>
+      <tr><td>Maria (exemplo)</td><td>10/10/2026</td><td></td><td></td></tr><tr><td>João (exemplo)</td><td>10/10/2026</td><td></td><td></td></tr><tr><td>Ana (exemplo)</td><td>11/10/2026</td><td></td><td></td></tr>
+      <tr><td>&nbsp;</td><td></td><td></td><td></td></tr><tr><td>&nbsp;</td><td></td><td></td><td></td></tr><tr><td>&nbsp;</td><td></td><td></td><td></td></tr><tr><td>&nbsp;</td><td></td><td></td><td></td></tr><tr><td>&nbsp;</td><td></td><td></td><td></td></tr></table>
+    <p style="font-size:8pt;margin-top:2mm;color:#475569">Nomes e datas vêm do registro do app (quem tocou "Aprendi" e foi confirmado pelo encarregado). As linhas em branco servem para assinar à mão o que o app ainda não registrou.</p>
+    <div class="rod"><span>HIG-001 · v3 · Impresso em 21/10/2026</span><span>Fim do documento</span></div>
+  </div></div></div>
+  <div class="legenda"><h3>Legenda</h3><ol>
+    <li><i>1</i><span>Passos em tabela: número, texto curto + detalhe e até 4 fotos pequenas lado a lado na coluna da direita (cada foto com 13 mm, até 4 lado a lado, cabe sem esticar a linha).</span></li>
+    <li><i>2</i><span>Rodapé com "impresso em … por …" e QR: prova de qual versão estava no fichário.</span></li>
+    <li><i>3</i><span>Controle de revisões vem do histórico de versões do app (o campo "o que mudou" é preenchido ao publicar uma versão nova).</span></li>
+    <li><i>4</i><span>Treinamento: a tabela já sai preenchida com quem treinou naquela versão; linhas em branco para assinar à mão. A Vigilância costuma pedir exatamente isto.</span></li>
+  </ol></div>
+</section>
+
+<!-- 3 -->
+<section class="tela" id="t3">
+  <div class="intro"><b>Mais de uma foto por passo.</b> Hoje cada passo tem 1 foto. Proposta: <b>até 4 fotos por passo</b>, na ordem em que a pessoa toca. O editor ganha "+ Adicionar outra foto" (e arrastar para reordenar), cada foto com uma legenda curta opcional ("de frente", "de lado"). No tablet, as fotos passam em sequência (deslizar); no papel, ocupam a largura do cartão como abaixo.</div>
+  <div class="grid3">
+    <div class="card"><b>1 foto</b><div class="fotos f1" style="display:grid;gap:3px"><div class="foto" style="height:90px">FOTO 1</div></div>Passo simples: o objeto ou a ação.</div>
+    <div class="card"><b>2 fotos</b><div class="fotos f2" style="display:grid;gap:3px;grid-template-columns:1fr 1fr"><div class="foto" style="height:90px">de frente<small>1</small></div><div class="foto" style="height:90px">de lado<small>2</small></div></div>Dois ângulos, ou antes e depois.</div>
+    <div class="card"><b>3 fotos</b><div style="display:grid;gap:3px;grid-template-columns:1fr 1fr"><div class="foto" style="height:60px;grid-column:1/3">visão geral<small>1</small></div><div class="foto" style="height:60px">detalhe<small>2</small></div><div class="foto" style="height:60px">detalhe<small>3</small></div></div>Uma geral grande e dois detalhes.</div>
+    <div class="card"><b>4 fotos (sequência)</b><div style="display:grid;gap:3px;grid-template-columns:repeat(4,1fr)"><div class="foto" style="height:70px">1<small>molhe</small></div><div class="foto" style="height:70px">2<small>sabão</small></div><div class="foto" style="height:70px">3<small>esfregue</small></div><div class="foto" style="height:70px">4<small>enxágue</small></div></div>Etapas do mesmo gesto (lavar as mãos).</div>
+    <div class="card"><b>No editor</b>📷 Foto 1 · 📷 Foto 2 · <u>+ Adicionar outra foto</u> (máx. 4)<br>Cada foto: legenda curta (opcional), trocar, remover, mover.<br>A dica da IA vira "foto 1 sugerida: …".</div>
+    <div class="card"><b>No tablet</b>As fotos aparecem lado a lado (celular: deslizar), com bolinhas "1 de 3". Tocar na foto amplia. O botão Ouvir lê o passo e as legendas.</div>
+  </div>
+  <div class="legenda"><h3>O que muda por baixo (para a equipe de desenvolvimento)</h3><ol>
+    <li><i>1</i><span>Passo passa a ter <b>fotos: [{url, legenda}]</b> (máx. 4). O campo antigo <b>foto</b> continua valendo: o sistema converte sozinho para fotos[0], sem perder nada do que já foi cadastrado.</span></li>
+    <li><i>2</i><span>Validação do documento, editor, prévia da IA ("foto para tirar" por foto), tablet e as 3 impressões leem o mesmo campo. Nada de formato novo por tipo de conteúdo.</span></li>
+    <li><i>3</i><span>Limite de 4 fotos mantém a folha legível e o tamanho dos arquivos sob controle (as fotos já são reduzidas a 1600 px antes de subir).</span></li>
+    <li><i>4</i><span>Vídeo continua 1 por passo (não sai no papel; no cartaz vira uma foto com o selo ▶ e o QR leva ao vídeo).</span></li>
+  </ol></div>
+</section>
+
+<!-- 4 -->
+<section class="tela" id="t4">
+  <div class="intro"><b>Folha de registro — só para Rotina.</b> Exemplo: Temperatura dos freezers, mês de outubro. O encarregado marca à mão na parede; se o tablet funcionar, o app já registra por ele. A faixa vem da pergunta do checklist (aqui −18 a −12 °C), então a folha nunca fica desatualizada. <button class="btn" style="margin-left:8px" onclick="window.print()">🖨 Imprimir esta folha</button></div>
+  <div class="scroller"><div class="folha paisagem"><div class="rg">
+    <h1>REGISTRO — TEMPERATURA DOS FREEZERS</h1>
+    <div class="sub">ROT-001 · versão 1 · Cozinha · Mês: Outubro/2026 · Faixa aceitável: <b>−18 °C a −12 °C</b> · 2× ao dia (07:30 e 16:30)</div>
+    <div style="position:relative"><table id="tabReg"></table><span class="pin" style="right:-8px;top:-10px">1</span></div>
+    <div class="cond"><div class="box"><b style="font-size:8.5pt">Se fora da faixa (ação corretiva)</b><br><span style="font-size:8pt">Passe o produto para outro freezer, chame o encarregado e anote aqui o dia e o que foi feito.</span></div><div class="box"><b style="font-size:8.5pt">Observações</b></div></div>
+    <div class="cond"><div class="box" style="min-height:11mm"><b style="font-size:8.5pt">Visto do encarregado (semana 1 / 2 / 3 / 4)</b></div><div class="box" style="min-height:11mm;position:relative"><b style="font-size:8.5pt">QR ▦ abrir no app</b><span class="pin" style="right:6px;top:6px">2</span></div></div>
+  </div></div></div>
+  <div class="legenda"><h3>Legenda</h3><ol>
+    <li><i>1</i><span>Uma coluna por dia do mês e uma linha por item e horário. Escreve-se só o número (ex.: −15). Dia que não existe no mês (31) sai riscado.</span></li>
+    <li><i>2</i><span>Cabeçalho e QR iguais ao padrão; a folha leva "versão" para saber se o texto é o vigente. O app pode <b>pré-preencher</b> com o que o tablet já registrou (opcional, escolhido na hora de imprimir).</span></li>
+    <li><i>3</i><span>Só aparece para conteúdo do tipo Rotina com pergunta de número ou sim/não. Rotina "por evento" (sem horário fixo) sai com linhas em branco para anotar data e hora.</span></li>
+  </ol></div>
+</section>
+
+</main>
+<script>
+// monta a grade da folha de registro (31 dias × 9 linhas)
+(function(){
+  let h='<tr><th class="l" style="width:34mm">Freezer / hora</th>';
+  for(let i=1;i<=31;i++) h+='<th>'+i+'</th>'; h+='</tr>';
+  ['Freezer 1 · 07:30','Freezer 1 · 16:30','Freezer 2 · 07:30','Freezer 2 · 16:30','Freezer 3 · 07:30','Freezer 3 · 16:30','Câmara · 07:30','Câmara · 16:30','Visto do encarregado'].forEach(n=>{
+    h+='<tr><td class="l">'+n+'</td>'+Array.from({length:31}).map(()=>'<td></td>').join('')+'</tr>';
+  });
+  document.getElementById('tabReg').innerHTML=h;
+})();
+document.querySelectorAll('.nav button').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('on'));b.classList.add('on');
+  document.querySelectorAll('section.tela').forEach(s=>s.classList.toggle('on',s.id===b.dataset.t));
+  window.scrollTo({top:0,behavior:'smooth'});
+}));
+</script>
+</body>
+</html>
