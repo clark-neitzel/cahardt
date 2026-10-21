@@ -3,6 +3,7 @@
 const express = require('express');
 const router = express.Router();
 const svc = require('../services/checklistVeiculoService');
+const avisos = require('../services/checklistAvisosService');
 const { receberFoto } = require('../middlewares/uploadFotoChecklistMiddleware');
 
 const rota = (fn) => async (req, res) => {
@@ -42,8 +43,13 @@ router.patch('/:id', rota(async (req, res) => {
 }));
 
 router.post('/:id/fotos', receberFoto, rota(async (req, res) => {
-    const r = await svc.enviarFoto(req.params.id, req.user, req.body?.angulo, req.file);
+    const r = await svc.enviarFoto(req.params.id, req.user, req.body?.angulo, req.file, { complemento: req.body?.complemento });
     res.status(201).json(r);
+}));
+
+// "Tá certo assim": motorista discorda da IA numa foto ATENCAO/REFAZER (só modo TESTE; REPROVA nunca)
+router.post('/:id/fotos/:fotoId/aceitar', rota(async (req, res) => {
+    res.json(await svc.aceitarFoto(req.params.id, req.params.fotoId, req.user, req.body));
 }));
 
 router.post('/:id/pular', rota(async (req, res) => {
@@ -55,11 +61,22 @@ router.post('/:id/avaliar', rota(async (req, res) => {
 }));
 
 router.post('/:id/responder', rota(async (req, res) => {
-    res.json(await svc.responderPergunta(req.params.id, req.user, req.body));
+    const r = await svc.responderPergunta(req.params.id, req.user, req.body);
+    res.json(r);
+    // Aviso na hora (WhatsApp) FORA do request do motorista: nunca await, falha nunca afeta a resposta
+    if (r && r.resposta === 'NAO') {
+        const { id } = req.params; const { angulo, indice } = r;
+        setImmediate(() => { avisos.aoResponderNao(id, angulo, indice).catch((e) => console.error('[ChecklistAvisos] aviso NAO:', e.message)); });
+    }
 }));
 
 router.post('/:id/decisao', rota(async (req, res) => {
-    res.json(await svc.registrarDecisao(req.params.id, req.user, req.body));
+    const r = await svc.registrarDecisao(req.params.id, req.user, req.body);
+    res.json(r);
+    if (r && r.decisao === 'SEGUIU_TESTE') {
+        const { id } = req.params;
+        setImmediate(() => { avisos.aoSeguirReprovado(id).catch((e) => console.error('[ChecklistAvisos] aviso seguiu:', e.message)); });
+    }
 }));
 
 module.exports = router;

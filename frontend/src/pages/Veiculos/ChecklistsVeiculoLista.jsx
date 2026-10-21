@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import ImgComFalha, { } from '../../components/Diario/ImgComFalha';
 import { Loader2, ClipboardCheck } from 'lucide-react';
 import checklistVeiculoService, { urlImagem } from '../../services/checklistVeiculoService';
+import VisualizadorFotos from '../../components/ChecklistVeiculo/VisualizadorFotos';
+import { montarSlides, complementoDe } from '../../utils/checklistFotos';
 
 const VEREDITO = {
     APROVADO: { label: 'Aprovado', cls: 'bg-green-100 text-green-800' },
@@ -22,10 +24,12 @@ const fmtData = (d) => {
 const fmtKm = (n) => (n != null ? `${Number(n).toLocaleString('pt-BR')} km` : '—');
 
 /** Aba "Checklists" da ficha do veículo: lista simples por dia (Dia 1, sem modal de detalhe). */
-const ChecklistsVeiculoLista = ({ veiculoId }) => {
+const KM_ORIGEM = { PAINEL_CONFIRMADO: 'confirmado pelo painel', DIGITADO: 'digitado' };
+
+const ChecklistsVeiculoLista = ({ veiculoId, destaque = null, placa = null }) => {
     const [lista, setLista] = useState(null);
     const [erro, setErro] = useState(false);
-    const [foto, setFoto] = useState(null); // miniatura ampliada
+    const [ver, setVer] = useState(null); // { slides, indice } no visualizador
 
     const carregar = async () => {
         try {
@@ -56,35 +60,76 @@ const ChecklistsVeiculoLista = ({ veiculoId }) => {
         );
     }
 
+    // rascunho de hoje primeiro, depois o card em destaque (vindo do Caixa), depois a ordem do servidor
+    const peso = (c) => (c.status === 'RASCUNHO' ? 0 : (destaque && c.id === destaque ? 1 : 2));
+    const ordenada = lista.map((c, i) => ({ c, i })).sort((a, b) => peso(a.c) - peso(b.c) || a.i - b.i).map(x => x.c);
+
+    const abrir = (c, angulo) => {
+        const fotos = Array.isArray(c.fotos) ? c.fotos : [];
+        const slots = [];
+        fotos.forEach((f, i) => {
+            if (f.complemento || slots.some(x => x.angulo === f.angulo)) return;
+            slots.push({ angulo: f.angulo, rotulo: f.rotulo || f.angulo, ordem: i });
+        });
+        const slides = montarSlides(fotos, slots, { editavel: false, modo: 'escritorio' });
+        setVer({
+            slides,
+            indice: Math.max(0, slides.findIndex(sl => sl.angulo === angulo)),
+            contexto: {
+                motorista: c.vendedor?.nome || null,
+                data: fmtData(c.dataReferencia),
+                veiculo: placa,
+                kmLido: c.kmLido ?? null,
+                kmDigitado: c.kmDigitado ?? null,
+                kmOrigem: c.kmOrigem || null,
+            },
+        });
+    };
+
     return (
         <div className="space-y-3">
-            {lista.map(c => {
+            {ordenada.map(c => {
                 const v = VEREDITO[c.veredito] || { label: c.veredito || 'Sem veredito', cls: 'bg-gray-100 text-gray-700' };
                 const problemas = Array.isArray(c.problemas) ? c.problemas : [];
                 const fotos = Array.isArray(c.fotos) ? c.fotos : [];
+                const emAndamento = c.status === 'RASCUNHO';
+                const ehDestaque = !!destaque && c.id === destaque;
+                const discord = Number(c.discordancias) || 0;
                 const kmDiverge = c.kmLido != null && c.kmDigitado != null && c.kmLido !== c.kmDigitado;
                 return (
-                    <div key={c.id} className="bg-white rounded-xl border border-gray-200 shadow-sm p-3">
+                    <div key={c.id} className={`bg-white rounded-xl shadow-sm p-3 ${ehDestaque ? 'border-2 border-primary' : 'border border-gray-200'}`}>
                         <div className="flex items-start justify-between gap-2 mb-2">
                             <div className="min-w-0">
                                 <p className="text-sm font-bold text-gray-900">{fmtData(c.dataReferencia)}{c.momento === 'VOLTA' ? ' · Volta' : ''}</p>
                                 <p className="text-xs text-gray-500 truncate">{c.vendedor?.nome || '—'}</p>
                             </div>
-                            <span className={`shrink-0 px-2 py-1 text-xs font-semibold rounded-full ${v.cls}`}>{v.label}</span>
+                            {emAndamento
+                                ? <span className="shrink-0 px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">Em andamento</span>
+                                : <span className={`shrink-0 px-2 py-1 text-xs font-semibold rounded-full ${v.cls}`}>{v.label}</span>}
                         </div>
                         <div className="text-xs text-gray-600 space-y-0.5 mb-2">
                             <p>Decisão: <span className="font-semibold text-gray-800">{c.decisao ? (DECISAO[c.decisao] || c.decisao) : '—'}</span></p>
                             <p>
                                 KM lido pela IA: <span className="font-mono font-semibold text-gray-800">{fmtKm(c.kmLido)}</span>
                                 {' · '}digitado: <span className={`font-mono font-semibold ${kmDiverge ? 'text-amber-700' : 'text-gray-800'}`}>{fmtKm(c.kmDigitado)}</span>
+                                {c.kmOrigem && KM_ORIGEM[c.kmOrigem] ? <span className="text-gray-500"> ({KM_ORIGEM[c.kmOrigem]})</span> : null}
                             </p>
+                            {discord > 0 && (
+                                <p className="text-amber-700 font-semibold">{discord} {discord === 1 ? 'discordância' : 'discordâncias'}: o motorista disse "tá certo assim" e seguiu</p>
+                            )}
                         </div>
                         {fotos.length > 0 && (
-                            <div className="flex gap-1.5 overflow-x-auto pb-1">
-                                {fotos.map(f => (
-                                    <button key={f.id} type="button" onClick={() => setFoto(f)} className="shrink-0 text-left" title={f.rotulo || f.angulo}>
+                            <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2">
+                                {fotos.filter(f => !f.complemento).map(f => (
+                                    <button key={f.id} type="button" onClick={() => abrir(c, f.angulo)} className="min-w-0 text-left" title={f.rotulo || f.angulo}>
                                         <ImgComFalha compacto src={urlImagem(f.url)} alt={f.rotulo || f.angulo} loading="lazy"
-                                            className="h-14 w-14 object-cover rounded-lg border border-gray-200" />
+                                            className="aspect-square w-full object-cover rounded-lg border border-gray-200" />
+                                        {f.aceitaPeloMotorista && (
+                                            <span className="mt-0.5 block text-center px-1 py-0.5 text-[10px] font-semibold rounded-full bg-amber-100 text-amber-700">Tá certo assim</span>
+                                        )}
+                                        {complementoDe(fotos, f.angulo) && (
+                                            <span className="mt-0.5 block text-center px-1 py-0.5 text-[10px] font-semibold rounded-full bg-gray-100 text-gray-700">Foto extra</span>
+                                        )}
                                         {f.perguntasRespondidas > 0 && f.statusIa !== 'PERGUNTA' && (
                                             <span className="mt-0.5 block text-center px-1 py-0.5 text-[10px] font-semibold rounded-full bg-green-100 text-green-800">Respondida</span>
                                         )}
@@ -116,14 +161,8 @@ const ChecklistsVeiculoLista = ({ veiculoId }) => {
                 );
             })}
 
-            {foto && (
-                <div className="fixed inset-0 z-[130] bg-black/80 flex items-center justify-center p-4" onClick={() => setFoto(null)}>
-                    <div className="max-w-full" onClick={e => e.stopPropagation()}>
-                        <ImgComFalha src={urlImagem(foto.url)} alt={foto.rotulo || foto.angulo} className="min-h-[120px] min-w-[220px] max-h-[80vh] max-w-full rounded-lg" />
-                        <p className="text-white text-sm text-center mt-2">{foto.rotulo || foto.angulo}</p>
-                        <button type="button" onClick={() => setFoto(null)} className="block mx-auto mt-2 min-h-[44px] px-5 bg-white text-gray-800 rounded-full text-sm font-semibold">Fechar</button>
-                    </div>
-                </div>
+            {ver && ver.slides.length > 0 && (
+                <VisualizadorFotos slides={ver.slides} indiceInicial={ver.indice} modo="escritorio" contexto={ver.contexto} onClose={() => setVer(null)} />
             )}
         </div>
     );

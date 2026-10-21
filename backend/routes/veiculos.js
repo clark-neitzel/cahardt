@@ -23,6 +23,14 @@ const rotaChecklist = (fn) => async (req, res) => {
 // Rotas públicas (para vendedores listarem ao iniciar o dia)
 router.get('/', authMiddleware, veiculoController.listarAtivos);
 
+// Checklists de hoje por veículo (escritório). ANTES de /:id.
+router.get('/checklists-hoje', authMiddleware, rotaChecklist(async (req, res) => {
+    if (!checklistSvc.pode(req.user, 'Pode_Acessar_Veiculos')) {
+        return res.status(403).json({ error: 'Sem permissão para ver os checklists do dia.', codigo: 'SEM_PERMISSAO' });
+    }
+    res.json(await require('../services/checklistCaixaService').checklistsHoje());
+}));
+
 // Alertas pendentes de manutenção (deve vir antes de /:id)
 router.get('/alertas-pendentes', authMiddleware, async (req, res) => {
     try {
@@ -101,7 +109,7 @@ router.post('/:id/fotos-modelo', authMiddleware, (req, res, next) => {
 }));
 
 router.get('/:id/checklists', authMiddleware, rotaChecklist(async (req, res) => {
-    if (!checklistSvc.pode(req.user, 'Pode_Acessar_Veiculos')) {
+    if (!checklistSvc.pode(req.user, 'Pode_Acessar_Veiculos', 'Pode_Acessar_Caixa', 'Pode_Editar_Caixa')) {
         return res.status(403).json({ error: 'Sem permissão para ver os checklists do veículo.', codigo: 'SEM_PERMISSAO' });
     }
     res.json(await checklistSvc.listarPorVeiculo(req.params.id, req.query));

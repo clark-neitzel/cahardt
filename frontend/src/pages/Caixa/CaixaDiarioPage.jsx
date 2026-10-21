@@ -10,6 +10,7 @@ import toast from 'react-hot-toast';
 import api from '../../services/api';
 import NovaDespesaModal from './NovaDespesaModal';
 import VeiculoFicha from '../Veiculos/VeiculoFicha';
+import SeloChecklist from '../../components/ChecklistVeiculo/SeloChecklist';
 import ModalDevolucao from '../Pedidos/ModalDevolucao';
 import CaixaPilulasDia from './CaixaPilulasDia';
 import ConferenciaDevolucaoCard from './ConferenciaDevolucaoCard';
@@ -729,6 +730,12 @@ const CaixaDiarioPage = () => {
                                     <Truck className="h-5 w-5 text-sky-600" />
                                     <h3 className="text-sm font-semibold text-gray-700">Diário do Dia</h3>
                                 </div>
+                                <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                                {resumo.diario?.modo === 'PRESENCIAL' && (
+                                    <span onClick={e => { e.stopPropagation(); if (resumo.diario?.veiculoId) setVeiculoFichaId(resumo.diario.veiculoId); }}>
+                                        <SeloChecklist checklist={resumo.diario?.checklist} esperado={resumo.diario?.checklistEsperado === true} />
+                                    </span>
+                                )}
                                 {resumo.diario?.modo && (
                                     <span className={`inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full ${
                                         resumo.diario.modo === 'PRESENCIAL'
@@ -741,6 +748,7 @@ const CaixaDiarioPage = () => {
                                         }
                                     </span>
                                 )}
+                                </div>
                             </div>
                             {resumo.diario ? (
                                 <div className="text-sm text-gray-600">
@@ -839,7 +847,7 @@ const CaixaDiarioPage = () => {
                                         </>
                                     )}
                                     {resumo.diario.veiculoId && (
-                                        <p className="text-[11px] text-sky-700 mt-2">Clique para ver Resumo, Documentos e Manutenção</p>
+                                        <p className="text-[11px] text-sky-700 mt-2">Clique para ver Resumo, Documentos, Manutenção e Checklists</p>
                                     )}
                                     {isAdmin && resumo.diario.id && (
                                         <button
@@ -1791,7 +1799,9 @@ const CaixaDiarioPage = () => {
                     veiculoId={veiculoFichaId}
                     onClose={() => setVeiculoFichaId(null)}
                     readOnly={true}
-                    allowedTabs={['resumo', 'documentos', 'manutencao']}
+                    allowedTabs={['resumo', 'documentos', 'manutencao', 'checklists', 'fotos']}
+                    abaInicial={resumo?.diario?.checklist ? 'checklists' : 'resumo'}
+                    destaque={resumo?.diario?.checklist?.id || null}
                 />
             )}
 

@@ -249,6 +249,30 @@ function statusDe({ serve, problemas }) {
     return 'OK';
 }
 
+// Contexto cadastrado no veículo (Dia 2). Cada linha só entra quando o campo existe.
+// O texto digitado pelo escritório vai entre aspas e truncado a 500 caracteres (dado, não instrução).
+const ANGULOS_EXTERNOS = ['frente', 'lateral_direita', 'lateral_esquerda', 'traseira'];
+const cortaTxt = (t) => String(t || '').replace(/\s+/g, ' ').replace(/"/g, "'").trim().slice(0, 500);
+function contextoDoVeiculo(angulo, v) {
+    const out = [];
+    if (!v) return out;
+    if (angulo === 'vareta_oleo' && v.tipoVareta === 'PLASTICO_QUADRICULADA') {
+        out.push('A vareta deste carro é de plástico laranja com área quadriculada; o nível está certo quando o óleo molha dentro do quadriculado.');
+    } else if (angulo === 'vareta_oleo' && v.tipoVareta === 'METAL_MARCAS') {
+        out.push('A vareta deste carro é de metal com duas marcas; o nível está certo quando o óleo fica entre as duas marcas.');
+    }
+    if (angulo === 'agua_radiador' && v.reservatorioOpaco) {
+        out.push('O reservatório deste carro é opaco/sujo; se não enxergar o nível, use gravidade PERGUNTA em vez de pedir outra foto.');
+    }
+    if ((angulo === 'bau' || angulo === 'porta_malas') && cortaTxt(v.normalDentro)) {
+        out.push(`É NORMAL ter dentro (texto do cadastro): "${cortaTxt(v.normalDentro)}". Não reclame disso.`);
+    }
+    if (ANGULOS_EXTERNOS.includes(angulo) && cortaTxt(v.avariasConhecidas)) {
+        out.push(`Avarias já conhecidas (texto do cadastro), não aponte de novo: "${cortaTxt(v.avariasConhecidas)}".`);
+    }
+    return out;
+}
+
 /**
  * @param {{buffer:Buffer, mime:string, angulo:string, veiculo:{placa,modelo}, tipo:string,
  *          kmDigitado?:number, ultimoKmFinal?:number, luzOleoAcesa?:boolean, ultimaTentativa?:boolean}} p
@@ -262,6 +286,7 @@ async function analisarFoto(p) {
             `Carro: ${p.veiculo?.modelo || '?'}, tipo ${p.tipo}. Ângulo: ${rotulo}.`,
             COMPLEMENTO[p.angulo] || '',
         ];
+        linhas.push(...contextoDoVeiculo(p.angulo, p.veiculo));
         if (p.ultimaTentativa) linhas.push(EXTRA_ULTIMA_TENTATIVA);
         if (p.angulo === 'painel' && p.luzOleoAcesa) linhas.push('O motorista informou que a luz de óleo está acesa.');
         const r = await aiProvider.analisarImagem({
@@ -297,4 +322,4 @@ async function analisarFoto(p) {
     }
 }
 
-module.exports = { umaPerguntaPorFoto, gravEfetiva, normalizarLuzes, analisarFoto, validarResposta, extrairJson, statusDe, SYSTEM_PROMPT };
+module.exports = { contextoDoVeiculo, umaPerguntaPorFoto, gravEfetiva, normalizarLuzes, analisarFoto, validarResposta, extrairJson, statusDe, SYSTEM_PROMPT };

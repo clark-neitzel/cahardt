@@ -1,11 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Check, X, FileText, Wrench, BellRing, ChevronRight } from 'lucide-react';
+import { Plus, Edit2, Trash2, Check, X, FileText, Wrench, BellRing, ChevronRight, Car, Search } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import api, { API_URL } from '../../services/api';
 import VeiculoFicha from './VeiculoFicha';
 import { useAuth } from '../../contexts/AuthContext';
 import SelectBusca from '../../components/SelectBusca';
 import CampoNumero from '../../components/CampoNumero';
+import SeloChecklist from '../../components/ChecklistVeiculo/SeloChecklist';
+import checklistEscritorioService from '../../services/checklistEscritorioService';
+import { useMediaQuery } from '../../hooks/useMediaQuery';
+import { useFiltrosSalvos, useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
+import { useAtualizaAoVoltar } from '../../hooks/useAtualizaAoVoltar';
 
 const TIPOS_VEICULO = [
     { value: 'CARGA', label: 'Carga', badge: 'bg-gray-100 text-gray-700' },
@@ -17,6 +22,13 @@ const tipoInfo = (t) => TIPOS_VEICULO.find(x => x.value === t) || TIPOS_VEICULO[
 const Veiculos = () => {
     const { user } = useAuth();
     const podeEditarVeiculos = !!(user?.permissoes?.admin || user?.permissoes?.Pode_Editar_Veiculos);
+    // espelha o back de GET /veiculos/checklists-hoje: admin || Pode_Acessar_Veiculos
+    const podeVerChecklistsHoje = !!(user?.permissoes?.admin || user?.permissoes?.Pode_Acessar_Veiculos);
+    const ehDesktop = useMediaQuery('(min-width: 1024px)'); // mestre-detalhe a partir de lg
+    const [filtros, setFiltros] = useFiltrosSalvos('veiculos', { tipo: 'todos', soAtivos: true });
+    const [abaFicha, setAbaFicha] = useFiltroSalvo('veiculos:aba', 'resumo');
+    const [busca, setBusca] = useState(''); // busca livre: não persiste
+    const [hojeMap, setHojeMap] = useState({}); // veiculoId -> { checklist, emUso, motorista }
     const [veiculos, setVeiculos] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -44,6 +56,26 @@ const Veiculos = () => {
     };
 
     useEffect(() => { carregarVeiculos(); }, []);
+
+    const carregarHoje = async () => {
+        if (!podeVerChecklistsHoje) return;
+        try {
+            const r = await checklistEscritorioService.hoje();
+            const m = {};
+            (r?.itens || []).forEach(it => { if (it?.veiculoId) m[it.veiculoId] = it; });
+            setHojeMap(m);
+        } catch { /* sem o selo a tela segue normal */ }
+    };
+    useEffect(() => { carregarHoje(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    useAtualizaAoVoltar(carregarHoje);
+
+    const veiculosFiltrados = veiculos.filter(v => {
+        if (filtros.soAtivos && !v.ativo) return false;
+        if (filtros.tipo !== 'todos' && (v.tipo || 'CARGA') !== filtros.tipo) return false;
+        const q = busca.trim().toLowerCase();
+        if (q && !`${v.placa || ''} ${v.modelo || ''}`.toLowerCase().includes(q)) return false;
+        return true;
+    });
 
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
@@ -172,6 +204,285 @@ const Veiculos = () => {
 
     if (loading) return <div className="p-8 text-center text-gray-500">Carregando veículos...</div>;
 
+    if (ehDesktop) {
+        return (
+            <div className="mt-4 h-[calc(100vh-3.5rem-var(--topo-extra,0px))] supports-[height:100dvh]:h-[calc(100dvh-3.5rem-var(--topo-extra,0px))] flex flex-col">
+                <div className="grid grid-cols-[minmax(360px,40%)_minmax(0,1fr)] gap-4 flex-1 min-h-0">
+                    {/* Esquerda: lista */}
+                    <div className="bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col min-h-0 overflow-hidden">
+                        <div className="p-4 border-b border-gray-100 space-y-3 shrink-0">
+                            <div className="flex items-center justify-between gap-2">
+                                <div>
+                                    <h2 className="text-xl font-bold text-gray-900">Veículos</h2>
+                                    <p className="text-xs text-gray-500">{veiculosFiltrados.length} de {veiculos.length} veículos</p>
+                                </div>
+                                <button
+                                    onClick={() => { setFormData({ id: null, placa: '', modelo: '', tipo: 'CARGA', tipoCombustivel: '', documentoUrl: '', ativo: true }); setIsModalOpen(true); }}
+                                    disabled={!podeEditarVeiculos}
+                                    className="inline-flex items-center justify-center min-h-[44px] px-4 rounded-full shadow-sm text-sm font-semibold text-white bg-primary hover:bg-primaryDark disabled:opacity-50"
+                                >
+                                    <Plus className="h-4 w-4 mr-1.5" /> Novo veículo
+                                </button>
+                            </div>
+                            <div className="relative">
+                                <Search className="h-4 w-4 text-gray-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                                <input type="text" value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar por placa ou modelo"
+                                    className="w-full border border-gray-300 rounded px-3 py-2 pl-9 text-sm min-h-[44px] focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <SelectBusca value={filtros.tipo} onChange={e => setFiltros(f => ({ ...f, tipo: e.target.value }))} className="flex-1">
+                                    <option value="todos">Todos os tipos</option>
+                                    {TIPOS_VEICULO.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                                </SelectBusca>
+                                <label className="inline-flex items-center gap-2 text-sm text-gray-700 min-h-[44px] cursor-pointer whitespace-nowrap">
+                                    <input type="checkbox" checked={filtros.soAtivos} onChange={e => setFiltros(f => ({ ...f, soAtivos: e.target.checked }))} className="h-4 w-4 accent-primary" />
+                                    Só ativos
+                                </label>
+                            </div>
+                        </div>
+                        <div className="flex-1 min-h-0 overflow-y-auto">
+                            <table className="min-w-full divide-y divide-gray-200">
+                                <thead className="bg-gray-50 sticky top-0 z-10">
+                                    <tr>
+                                        <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Veículo</th>
+                                        <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Tipo</th>
+                                        <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Hoje</th>
+                                        <th className="px-2 py-3" />
+                                    </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200 text-sm">
+                                    {veiculosFiltrados.map(v => (
+                                        <tr key={v.id} onClick={() => setVeiculoFichaId(v.id)}
+                                            className={`cursor-pointer transition-colors ${veiculoFichaId === v.id ? 'bg-mint/50' : 'hover:bg-gray-50'}`}>
+                                            <td className="px-3 py-3">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-bold text-gray-900 font-mono tracking-wider">{v.placa}</span>
+                                                    {!v.ativo && <span className="text-[10px] font-bold bg-red-100 text-red-700 px-1.5 py-0.5 rounded-full">Inativo</span>}
+                                                </div>
+                                                <p className="text-xs text-gray-500 truncate max-w-[180px]">{v.modelo}</p>
+                                            </td>
+                                            <td className="px-3 py-3">
+                                                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${tipoInfo(v.tipo).badge}`}>{tipoInfo(v.tipo).label}</span>
+                                            </td>
+                                            <td className="px-3 py-3">
+                                                <SeloChecklist checklist={hojeMap[v.id]?.checklist} traco />
+                                            </td>
+                                            <td className="px-2 py-3 text-right">
+                                                <div className="flex justify-end gap-1" onClick={e => e.stopPropagation()}>
+                                                    {podeEditarVeiculos && <button onClick={() => openEdit(v)} className="min-h-[36px] min-w-[36px] inline-flex items-center justify-center text-primary rounded-full hover:bg-mint/50" title="Editar"><Edit2 className="h-4 w-4" /></button>}
+                                                    {podeEditarVeiculos && <button onClick={() => openManutencao(v)} className="relative min-h-[36px] min-w-[36px] inline-flex items-center justify-center text-amber-600 rounded-full hover:bg-amber-50" title="Manutenção">
+                                                        <Wrench className="h-4 w-4" />
+                                                        {alertasPendentes[v.id] > 0 && (
+                                                            <span className="absolute top-0 right-0 bg-red-500 text-white text-[9px] font-bold rounded-full h-4 w-4 flex items-center justify-center">{alertasPendentes[v.id]}</span>
+                                                        )}
+                                                    </button>}
+                                                    {podeEditarVeiculos && <button onClick={() => handleDelete(v.id)} className="min-h-[36px] min-w-[36px] inline-flex items-center justify-center text-red-600 rounded-full hover:bg-red-50" title="Excluir"><Trash2 className="h-4 w-4" /></button>}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                            {veiculosFiltrados.length === 0 && <div className="text-center py-12 text-sm text-gray-500">Nenhum veículo encontrado.</div>}
+                        </div>
+                    </div>
+
+                    {/* Direita: ficha sem sair da tela */}
+                    <div className="min-h-0 min-w-0">
+                        {veiculoFichaId ? (
+                            <VeiculoFicha
+                                key={veiculoFichaId}
+                                veiculoId={veiculoFichaId}
+                                modoEmbutido
+                                abaInicial={abaFicha}
+                                onAbaChange={setAbaFicha}
+                                onClose={() => setVeiculoFichaId(null)}
+                                onUpdate={carregarVeiculos}
+                                readOnly={!podeEditarVeiculos}
+                            />
+                        ) : (
+                            <div className="h-full bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col items-center justify-center text-center p-8">
+                                <Car className="h-10 w-10 text-gray-400 mb-3" />
+                                <p className="text-base font-semibold text-gray-800">Escolha um veículo</p>
+                                <p className="text-sm text-gray-500 mt-1">A ficha completa aparece aqui, sem sair da lista.</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            {/* Modal de Cadastro/Edição */}
+            {isModalOpen && (
+                <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
+                    <div className="relative p-5 border w-full max-w-lg shadow-lg rounded-md bg-white mx-4">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-medium text-gray-900">{formData.id ? 'Editar Veículo' : 'Novo Veículo'}</h3>
+                            <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-500"><X className="h-6 w-6" /></button>
+                        </div>
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Placa *</label>
+                                <input type="text" name="placa" required value={formData.placa} onChange={handleChange}
+                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50 uppercase" placeholder="AAA9A99" maxLength={7} />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Modelo *</label>
+                                <input type="text" name="modelo" required value={formData.modelo} onChange={handleChange}
+                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50" placeholder="Ex: Fiat Fiorino / Baú" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Tipo do veículo</label>
+                                <SelectBusca value={formData.tipo || 'CARGA'}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, tipo: e.target.value }))}
+                                    className="mt-1 w-full">
+                                    {TIPOS_VEICULO.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                                </SelectBusca>
+                                <p className="text-xs text-gray-500 mt-1">Define quais fotos o motorista tira no checklist de saída.</p>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Tipo de Combustível</label>
+                                <select name="tipoCombustivel" value={formData.tipoCombustivel} onChange={handleChange}
+                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50">
+                                    <option value="">Não definido</option>
+                                    <option value="GASOLINA">Gasolina</option>
+                                    <option value="DIESEL">Diesel</option>
+                                    <option value="ETANOL">Etanol</option>
+                                    <option value="FLEX">Flex (Gasolina/Etanol)</option>
+                                </select>
+                            </div>
+                            <p className="text-xs text-gray-400">Documentos e apolice podem ser enviados pela ficha do veiculo apos o cadastro.</p>
+                            <div className="flex items-center">
+                                <input type="checkbox" name="ativo" id="ativo" checked={formData.ativo} onChange={handleChange}
+                                    className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded" />
+                                <label htmlFor="ativo" className="ml-2 block text-sm text-gray-900">Ativo</label>
+                            </div>
+                            <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+                                <button type="button" onClick={() => setIsModalOpen(false)}
+                                    className="w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">Cancelar</button>
+                                <button type="submit"
+                                    className="w-full sm:w-auto px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-dark">Salvar</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal de Manutenção */}
+            {isManutencaoOpen && (
+                <div className="fixed inset-0 overflow-hidden z-[60]">
+                    <div className="absolute inset-0 overflow-hidden">
+                        <div className="absolute inset-0 bg-gray-500 bg-opacity-75" onClick={() => setIsManutencaoOpen(false)} />
+                        <div className="fixed inset-y-0 right-0 pl-0 md:pl-10 max-w-full flex">
+                            <div className="w-screen max-w-md">
+                                <div className="h-full flex flex-col bg-white shadow-xl overflow-y-scroll">
+                                    <div className="p-4 md:p-6 bg-amber-600">
+                                        <div className="flex items-center justify-between">
+                                            <h2 className="text-base md:text-lg font-medium text-white flex items-center">
+                                                <Wrench className="h-5 w-5 mr-2" /> Manutenção
+                                            </h2>
+                                            <button onClick={() => setIsManutencaoOpen(false)} className="text-amber-200 hover:text-white"><X className="h-6 w-6" /></button>
+                                        </div>
+                                        <p className="text-sm text-amber-100 mt-1">{manutencaoVeiculoNome}</p>
+                                    </div>
+
+                                    <div className="flex-1 p-4 md:p-6 space-y-6">
+                                        {/* Formulário Novo Alerta */}
+                                        <form onSubmit={handleCriarAlerta} className="bg-amber-50 p-4 rounded-lg border border-amber-200 space-y-3">
+                                            <h3 className="text-sm font-bold text-amber-900">Novo Alerta</h3>
+                                            <SelectBusca
+                                                value={novoAlerta.tipo}
+                                                onChange={(e) => setNovoAlerta(prev => ({ ...prev, tipo: e.target.value }))}
+                                                className="w-full"
+                                            >
+                                                <option value="">Tipo de manutenção...</option>
+                                                {TIPOS_MANUTENCAO.map(t => (
+                                                    <option key={t.value} value={t.value}>{t.label}</option>
+                                                ))}
+                                            </SelectBusca>
+                                            <input
+                                                type="text"
+                                                placeholder="Descrição (opcional)"
+                                                value={novoAlerta.descricao}
+                                                onChange={(e) => setNovoAlerta(prev => ({ ...prev, descricao: e.target.value }))}
+                                                className="w-full border border-gray-300 rounded-md p-2 text-sm"
+                                            />
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div>
+                                                    <label className="block text-xs text-gray-600 mb-1">Alerta por KM</label>
+                                                    <CampoNumero
+                                                        placeholder="Ex: 150000"
+                                                        value={novoAlerta.kmAlerta}
+                                                        onChange={(e) => setNovoAlerta(prev => ({ ...prev, kmAlerta: e.target.value }))}
+                                                        className="w-full border border-gray-300 rounded-md p-2 text-sm"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs text-gray-600 mb-1">Alerta por Data</label>
+                                                    <input
+                                                        type="date"
+                                                        value={novoAlerta.dataAlerta}
+                                                        onChange={(e) => setNovoAlerta(prev => ({ ...prev, dataAlerta: e.target.value }))}
+                                                        className="w-full border border-gray-300 rounded-md p-2 text-sm"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <button type="submit" className="w-full px-4 py-2 bg-amber-600 text-white rounded-md text-sm font-medium hover:bg-amber-700">
+                                                Criar Alerta
+                                            </button>
+                                        </form>
+
+                                        {/* Lista de Alertas */}
+                                        <div>
+                                            <h3 className="text-sm font-bold text-gray-700 mb-3">Alertas Cadastrados</h3>
+                                            {loadingAlertas ? (
+                                                <div className="flex justify-center py-6"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-amber-600"></div></div>
+                                            ) : alertas.length === 0 ? (
+                                                <p className="text-center text-gray-400 py-6">Nenhum alerta cadastrado.</p>
+                                            ) : (
+                                                <div className="space-y-2">
+                                                    {alertas.map(a => (
+                                                        <div key={a.id} className={`p-3 rounded-lg border ${a.concluido ? 'bg-gray-50 border-gray-200 opacity-60' : 'bg-white border-amber-200'}`}>
+                                                            <div className="flex items-start justify-between">
+                                                                <div>
+                                                                    <div className="flex items-center space-x-2">
+                                                                        {a.concluido ? (
+                                                                            <Check className="h-4 w-4 text-green-600" />
+                                                                        ) : (
+                                                                            <BellRing className="h-4 w-4 text-amber-600" />
+                                                                        )}
+                                                                        <span className="text-sm font-medium text-gray-900">{a.tipo?.replace(/_/g, ' ')}</span>
+                                                                    </div>
+                                                                    {a.descricao && <p className="text-xs text-gray-500 mt-1 ml-6">{a.descricao}</p>}
+                                                                    <div className="text-xs text-gray-400 mt-1 ml-6 space-x-3">
+                                                                        {a.kmAlerta && <span>KM: {a.kmAlerta.toLocaleString('pt-BR')}</span>}
+                                                                        {a.dataAlerta && <span>Data: {new Date(a.dataAlerta).toLocaleDateString('pt-BR')}</span>}
+                                                                    </div>
+                                                                </div>
+                                                                {!a.concluido && (
+                                                                    <button
+                                                                        onClick={() => handleConcluirAlerta(a.id)}
+                                                                        className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded font-medium hover:bg-green-200"
+                                                                    >
+                                                                        Concluir
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            </div>
+        );
+    }
+
+
     return (
         <div className="bg-white rounded-lg shadow mt-4">
             <div className="p-3 md:p-6 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
@@ -283,6 +594,7 @@ const Veiculos = () => {
                         </div>
                         <p className="text-[12px] text-gray-500 flex items-center gap-2 flex-wrap">
                             <span>{veiculo.modelo}</span>
+                            <SeloChecklist checklist={hojeMap[veiculo.id]?.checklist} className="!px-2 !py-0.5 !text-[10px]" />
                             <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-full ${tipoInfo(veiculo.tipo).badge}`}>{tipoInfo(veiculo.tipo).label}</span>
                         </p>
                         <div className="flex items-center gap-1 mt-1">
@@ -350,7 +662,7 @@ const Veiculos = () => {
             )}
 
             {/* Ficha Completa do Veículo */}
-            {veiculoFichaId && (
+            {veiculoFichaId && !ehDesktop && (
                 <VeiculoFicha
                     veiculoId={veiculoFichaId}
                     onClose={() => setVeiculoFichaId(null)}

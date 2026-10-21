@@ -78,7 +78,25 @@ No lugar das 6 caixinhas, o motorista que sai **Presencial** (ou usa "Pegar veí
 
 **Aba Checklists da ficha** (admin ou "Pode_Acessar_Veiculos"): lista, do mais recente ao mais antigo, os checklists concluídos do veículo com motorista, resultado (aprovado, atenção, reprovado, IA indisponível), decisão do motorista, KM lido no painel × KM digitado e as miniaturas das fotos.
 
-**Chave de emergência**: existe uma chave no servidor que volta o checklist para as 6 caixinhas antigas sem publicar nada. Hoje ela é acionada pela equipe técnica a pedido do admin; o botão na tela vem na próxima entrega. O resumo antigo (✓/✗ por item) continua aparecendo na aba de motoristas da ficha.
+**Chave de emergência**: existe uma chave que volta o checklist para as 6 caixinhas antigas sem publicar nada. Agora ela tem **botão em Configurações → card "Checklist de veículos"** (só administrador). O resumo antigo (✓/✗ por item) continua aparecendo na aba de motoristas da ficha.
+
+**Dia 2 (22/10/2026): o que mudou para o motorista**
+- **Foto extra opcional** na água do radiador ("foto de cima, com a tampa aberta") e na vareta de óleo ("foto da ponta, bem de perto"). **Nunca trava**: dá para escolher "Depois". Essa 2ª foto **não passa pela IA** (sem custo, não reprova) e fica só como apoio para o escritório; mandar de novo troca só a foto extra, a principal não muda.
+- **"Tá certo assim, deixa"**: se a IA marcou uma foto como atenção ou pediu para refazer, o motorista pode discordar e seguir. Vale **só no modo teste** e **nunca para foto reprovada** nem para pergunta ainda sem resposta. O veredito original da IA não é alterado (serve para calibrar a IA); o sistema só passa a não contar aquele aviso no resultado e registra a **discordância** (hora e foto). Dá para desfazer enquanto o checklist está aberto. Com a chave em "desligado" o botão é recusado.
+- **KM do painel**: o app guarda se o KM foi **confirmado a partir do painel** ou **digitado** (campo "origem do KM").
+
+**Dia 2: o que mudou para o escritório**
+- **Cadastro do veículo (quem edita veículos) ganhou 4 campos que ajudam a IA**: *tipo de vareta* (plástico quadriculada ou metal com marcas), *reservatório de água opaco* (sim/não), *o que é normal ter dentro* (até 500 caracteres, ex.: "bolsas pretas do mostruário, caixa térmica azul") e *avarias já conhecidas* (até 500 caracteres, ex.: "para-choque traseiro raspado"). A IA passa a usar: na vareta lê pelo tipo certo, no reservatório opaco pergunta em vez de pedir outra foto, não reclama do que é normal no baú/porta-malas e não aponta de novo avaria já conhecida (nas 4 fotos de fora). O texto digitado é tratado como informação.
+- **Aba Checklists da ficha**: além dos concluídos, mostra o checklist **em andamento de hoje** (com pelo menos 1 foto), para quem recebe o aviso por WhatsApp conseguir ver as fotos antes de o motorista iniciar o dia. Quem tem permissão do **Caixa** (acessar ou editar) também vê essa aba ao abrir a ficha pelo Caixa. Cada checklist mostra o número de **discordâncias** (fotos em que o motorista disse "tá certo assim") e a origem do KM.
+- **Visão do dia**: lista dos veículos que saíram hoje (ou têm checklist em andamento) com motorista e resultado — rota `GET /api/veiculos/checklists-hoje` (admin ou "Pode_Acessar_Veiculos").
+- **Avisos por WhatsApp** (equipe interna, nunca cliente): *na hora* quando um motorista **segue mesmo com checklist reprovado** ou **responde "Não" a uma pergunta da IA**; e **resumos** nos horários configurados (padrão 7h e 13h) com quantos saíram, quem teve problema, quem saiu **sem checklist por foto** e quem está montando. Se ninguém foi escolhido, o aviso vai para os **administradores com telefone cadastrado**. Quem recebe e os horários ficam em Configurações → "Checklist de veículos" (botão de teste manda uma mensagem só para você). Domingo sem movimento não manda resumo. Se o WhatsApp do bot estiver fora, as mensagens ficam na fila e saem depois.
+
+**Como o motorista vê a foto (Dia 2):**
+- **Tocar num quadrinho com foto abre a foto em tela cheia** com o parecer da IA e o que fazer; arrastar para o lado troca de foto, dois dedos ampliam, e o botão "Tirar de novo" abre a câmera no mesmo toque. Quadrinho vazio abre a tela "Tire assim", que agora mostra um **desenho** da posição e distância (vale mesmo sem foto modelo).
+- Os quadrinhos ficam em **blocos na ordem certa**: por fora (capô fechado), painel, capô aberto (água e óleo) e baú/porta-malas. Ao passar para o capô sem as fotos de fora, o app avisa, mas deixa seguir.
+- **KM do painel**: quando a IA lê o KM, o app mostra "Painel marca X km. Confirma?" com Confirma/Corrigir, em vez de pedir para digitar.
+
+**Veículos no computador (Dia 2):** em tela a partir de 1024 px, lista à esquerda e ficha à direita, sem painel por cima, com busca por placa/modelo, filtro de tipo, "só ativos" e a coluna **Hoje** com o selo do checklist. No celular e iPad em pé continua com cartões e painel lateral. As miniaturas de checklist e as fotos modelo abrem em tela cheia (setas do teclado, roda do mouse para ampliar, Esc fecha).
 
 ### Ver ficha do veículo (histórico de KM)
 1. Clique no ícone de ficha (ChevronRight) no veículo

@@ -516,6 +516,20 @@ function startSchedulers() {
     };
     scheduleCaixaAviso();
 
+    // === 15. RESUMOS DO CHECKLIST DE VEÍCULOS (WhatsApp interno, 7h e 13h por padrão) ===
+    // Idempotente: marcador do dia em app_configs + referência por destinatário (não duplica em restart).
+    console.log('⏰ Iniciando Worker dos resumos do checklist de veículos...');
+    let _chkResumoRodando = false;
+    const _runChecklistResumos = () => {
+        if (_chkResumoRodando) return;
+        _chkResumoRodando = true;
+        require('../services/checklistAvisosService').rodarResumos()
+            .catch(err => console.error('⚠️ Checklist (resumos) Error:', err.message))
+            .finally(() => { _chkResumoRodando = false; });
+    };
+    setTimeout(_runChecklistResumos, 3 * 60 * 1000);
+    setInterval(_runChecklistResumos, 5 * 60 * 1000);
+
     // === Impressão direta (Etiquetas da Cozinha) ===
     // A cada 60 s: expira trabalho vencido (etiqueta velha NUNCA sai sozinha horas depois), devolve à fila o que
     // ficou "ENVIANDO" sem confirmação do agente (respeitando maxTentativas) e, 1x/dia, apaga conteúdo/linhas antigas.

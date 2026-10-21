@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Camera, X, Moon, ImageOff } from 'lucide-react';
 import { MSG_FOTO_PERDIDA } from './ImgComFalha';
 import { urlImagem } from '../../services/checklistVeiculoService';
+import DesenhoEnquadramento from '../ChecklistVeiculo/DesenhosEnquadramento';
 
 /**
  * Tela "Tire assim": mostra a foto modelo DO VEÍCULO (quando existe) e a instrução
  * do ângulo, antes de abrir a câmera. O botão chama `onAbrirCamera` direto no clique
  * (o navegador só deixa abrir a câmera dentro do toque do usuário).
  */
-const TireAssimModal = ({ slot, onClose, onAbrirCamera }) => {
+const TireAssimModal = ({ slot, tipoVareta, onClose, onAbrirCamera }) => {
     const [fotoFalhou, setFotoFalhou] = useState(false);
     useEffect(() => { setFotoFalhou(false); }, [slot?.angulo, slot?.fotoModeloUrl]);
     if (!slot) return null;
@@ -16,7 +17,7 @@ const TireAssimModal = ({ slot, onClose, onAbrirCamera }) => {
     return (
         <div className="fixed inset-0 z-[120] bg-black/60 flex items-end sm:items-center justify-center" onClick={onClose}>
             <div
-                className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl max-h-[92vh] overflow-y-auto"
+                className="bg-white w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl max-h-[92vh] overflow-y-auto"
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
@@ -28,16 +29,25 @@ const TireAssimModal = ({ slot, onClose, onAbrirCamera }) => {
                 </div>
                 <div className="p-4 space-y-3">
                     <h3 className="text-lg font-bold text-gray-900">{slot.rotulo}</h3>
-                    {modelo && !fotoFalhou ? (
-                        <img src={modelo} alt={`Foto modelo: ${slot.rotulo}`}
-                            className="w-full max-h-72 object-contain rounded-xl border border-gray-200 bg-gray-50"
-                            onError={() => setFotoFalhou(true)} />
-                    ) : (
-                        <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-5 text-center">
-                            <ImageOff className="h-8 w-8 mx-auto text-gray-400 mb-2" />
-                            <p className="text-sm text-gray-600">{fotoFalhou ? MSG_FOTO_PERDIDA : 'Este veículo ainda não tem foto modelo cadastrada.'}</p>
+                    <div className={modelo && !fotoFalhou ? 'grid grid-cols-1 sm:grid-cols-2 gap-3' : ''}>
+                        <div>
+                            <DesenhoEnquadramento angulo={slot.angulo} variante={tipoVareta} />
+                            <p className="mt-1 text-[11px] text-gray-600 text-center">O tracejado verde é o quadro da foto. A câmera abre normal, sem o desenho.</p>
                         </div>
-                    )}
+                        {modelo && !fotoFalhou ? (
+                            <div>
+                                <img src={modelo} alt={`Foto modelo: ${slot.rotulo}`}
+                                    className="w-full max-h-72 object-contain rounded-xl border border-gray-200 bg-gray-50"
+                                    onError={() => setFotoFalhou(true)} />
+                                <p className="mt-1 text-[11px] text-gray-600 text-center">Foto modelo deste veículo</p>
+                            </div>
+                        ) : fotoFalhou ? (
+                            <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-5 text-center">
+                                <ImageOff className="h-8 w-8 mx-auto text-gray-400 mb-2" />
+                                <p className="text-sm text-gray-600">{MSG_FOTO_PERDIDA}</p>
+                            </div>
+                        ) : null}
+                    </div>
                     {slot.instrucao && <p className="text-sm text-gray-700">{slot.instrucao}</p>}
                     {slot.dicaNoite && (
                         <div className="flex items-start gap-2 text-xs bg-amber-50 border border-amber-200 text-amber-800 rounded-lg px-3 py-2">

@@ -59,7 +59,7 @@ const veiculoController = {
             res.status(201).json(novoVeiculo);
         } catch (error) {
             console.error('Erro ao criar veículo:', error);
-            res.status(400).json({ error: error.message });
+            res.status(400).json({ error: error.message, ...(error.codigo ? { codigo: error.codigo } : {}) });
         }
     },
 
@@ -69,7 +69,7 @@ const veiculoController = {
             res.json(veiculoAtualizado);
         } catch (error) {
             console.error('Erro ao atualizar veículo:', error);
-            res.status(400).json({ error: error.message });
+            res.status(400).json({ error: error.message, ...(error.codigo ? { codigo: error.codigo } : {}) });
         }
     },
 

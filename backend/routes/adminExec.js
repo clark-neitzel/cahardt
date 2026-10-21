@@ -64,7 +64,7 @@ router.get('/ping', (req, res) => {
         ok: true,
         // Marcador de deploy: bumpar a cada mudança de backend que precise de confirmação
         // em produção (não há outro jeito de saber de fora qual versão está no ar).
-        deployMarker: 'ia-pop-fase1-2026-10-21',
+        deployMarker: 'checklist-dia2-2026-10-22',
         uptimeSegundos: Math.round(process.uptime()),
         timestamp: new Date().toISOString(),
         openaiConfigurada: !!process.env.OPENAI_API_KEY,

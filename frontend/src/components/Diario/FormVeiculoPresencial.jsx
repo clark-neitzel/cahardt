@@ -34,6 +34,7 @@ const FormVeiculoPresencial = ({ titulo = 'Visitação (Rota)', onConfirmar, onV
     const [veiculoId, setVeiculoId] = useState('');
     const [kmInicial, setKmInicial] = useState('');
     const [ultimoKm, setUltimoKm] = useState(null); // { kmFinal, dataReferencia }
+    const [ultimoKmCarregado, setUltimoKmCarregado] = useState(false); // já respondeu (null = veículo sem KM anterior)
     const [obs, setObs] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [checklist, setChecklist] = useState(
@@ -45,6 +46,8 @@ const FormVeiculoPresencial = ({ titulo = 'Visitação (Rota)', onConfirmar, onV
     const [estadoFotos, setEstadoFotos] = useState({ checklistId: null, faltam: 0 });
     const [resultado, setResultado] = useState(null); // resposta do /avaliar quando há problema
     const [seguindo, setSeguindo] = useState(false);
+    // KM lido do painel: null = ainda não decidiu | 'confirmado' | 'corrigir' (digita)
+    const [kmModo, setKmModo] = useState(null);
 
     // Carrega a placa dos veículos e quais estão em uso hoje
     useEffect(() => {
@@ -58,13 +61,15 @@ const FormVeiculoPresencial = ({ titulo = 'Visitação (Rota)', onConfirmar, onV
 
     // Ao selecionar veículo, busca o último KM final registrado
     useEffect(() => {
+        setUltimoKmCarregado(false);
         if (!veiculoId) { setUltimoKm(null); setKmInicial(''); return; }
         api.get(`/veiculos/${veiculoId}/ultimo-km`)
             .then(res => {
                 setUltimoKm(res.data);
                 if (res.data?.kmFinal) setKmInicial(String(res.data.kmFinal));
             })
-            .catch(() => setUltimoKm(null));
+            .catch(() => setUltimoKm(null))
+            .finally(() => setUltimoKmCarregado(true));
     }, [veiculoId]);
 
     // Ao escolher o veículo, busca a configuração do checklist por foto
@@ -91,6 +96,15 @@ const FormVeiculoPresencial = ({ titulo = 'Visitação (Rota)', onConfirmar, onV
     const carregandoConfig = !!veiculoId && config === 'carregando';
     const rotulos = Object.fromEntries((configOk ? config.slots || [] : []).map(s => [s.angulo, s.rotulo]));
 
+    // KM que a IA leu do painel (só vale se não for menor que o último KM registrado)
+    const kmLido = modoFoto && Number.isFinite(estadoFotos.kmLido) ? estadoFotos.kmLido : null;
+    const kmFinalAnterior = ultimoKm?.kmFinal || 0;
+    const kmPodeConfirmar = ultimoKmCarregado && kmLido != null && kmLido >= kmFinalAnterior;
+    const kmMenorQueUltimo = ultimoKmCarregado && kmLido != null && kmLido < kmFinalAnterior;
+    const mostraCartaoKm = kmPodeConfirmar && kmModo !== 'corrigir';
+    // foto do painel refeita (ou outro veículo): a confirmação anterior não vale mais
+    useEffect(() => { setKmModo(null); }, [estadoFotos.kmLidoRev, veiculoId]);
+
     // Trava síncrona contra duplo toque (state só atualiza no próximo render)
     const travaRef = useRef(false);
 
@@ -101,7 +115,10 @@ const FormVeiculoPresencial = ({ titulo = 'Visitação (Rota)', onConfirmar, onV
         e.preventDefault();
         if (travaRef.current) return;
         if (!veiculoId) return toast.error('Escolha o veículo.');
-        const km = parseInt(kmInicial);
+        if (modoFoto && mostraCartaoKm && kmModo !== 'confirmado') {
+            return toast.error('Confirme o KM do painel ou toque em Corrigir.');
+        }
+        const km = mostraCartaoKm && kmModo === 'confirmado' ? kmLido : parseInt(kmInicial);
         if (!Number.isFinite(km) || km < 0) return toast.error('Informe o KM inicial.');
         if (carregandoConfig) return toast('Aguarde, preparando o checklist...');
 
@@ -126,6 +143,14 @@ const FormVeiculoPresencial = ({ titulo = 'Visitação (Rota)', onConfirmar, onV
             travaRef.current = true;
             setIsSubmitting(true);
             let r = null;
+            // de onde veio o KM (best-effort: nunca impede o dia)
+            try {
+                await checklistVeiculoService.atualizar(estadoFotos.checklistId, {
+                    kmDigitado: km, kmOrigem: mostraCartaoKm && kmModo === 'confirmado' ? 'PAINEL_CONFIRMADO' : 'DIGITADO',
+                });
+            } catch (err) {
+                console.error('Checklist: não gravou a origem do KM, seguindo', err);
+            }
             try {
                 r = await checklistVeiculoService.avaliar(estadoFotos.checklistId, km);
             } catch (err) {
@@ -167,7 +192,7 @@ const FormVeiculoPresencial = ({ titulo = 'Visitação (Rota)', onConfirmar, onV
                 }
                 console.error('Checklist: falha ao gravar a decisão, seguindo', err);
             }
-            await onConfirmar({ veiculoId, kmInicial: parseInt(kmInicial), checklistId: id, obs });
+            await onConfirmar({ veiculoId, kmInicial: mostraCartaoKm && kmModo === 'confirmado' ? kmLido : parseInt(kmInicial), checklistId: id, obs });
         } finally {
             travaRef.current = false;
             setSeguindo(false);
@@ -252,20 +277,55 @@ const FormVeiculoPresencial = ({ titulo = 'Visitação (Rota)', onConfirmar, onV
                                 <span className="text-blue-500">({ultimoKm.dataReferencia}) — não pode ser menor</span>
                             </div>
                         )}
-                        <CampoNumero
-                            required
-                            className="mt-1 flex-1 block w-full bg-gray-50 focus:bg-white rounded-md border-gray-300 flex text-center text-3xl font-mono h-14 font-bold focus:border-green-500 focus:ring-green-500"
-                            value={kmInicial}
-                            onChange={(e) => {
-                                const val = parseInt(e.target.value);
-                                if (ultimoKm?.kmFinal && val < ultimoKm.kmFinal) return; // bloqueia valor menor
-                                setKmInicial(e.target.value);
-                            }}
-                            min={ultimoKm?.kmFinal || 0}
-                            placeholder="00000"
-                        />
-                        {ultimoKm?.kmFinal && (
-                            <p className="text-xs text-amber-600 mt-1">⚠️ O odômetro não pode retroceder. Mínimo: {ultimoKm.kmFinal.toLocaleString('pt-BR')} km</p>
+                        {mostraCartaoKm ? (
+                            <div className={`rounded-xl border p-3 ${kmModo === 'confirmado' ? 'bg-green-50 border-green-300' : 'bg-amber-50 border-amber-300'}`}>
+                                {kmModo === 'confirmado' ? (
+                                    <div className="flex items-center justify-between gap-2">
+                                        <p className="text-sm font-bold text-green-900 flex items-center gap-1.5">
+                                            <CheckCircle className="h-5 w-5" /> KM confirmado: {kmLido.toLocaleString('pt-BR')} km
+                                        </p>
+                                        <button type="button" onClick={() => setKmModo('corrigir')}
+                                            className="min-h-[44px] px-3 text-xs font-medium text-primary underline">Corrigir</button>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <p className="text-base font-bold text-gray-900">Painel marca {kmLido.toLocaleString('pt-BR')} km. Confirma?</p>
+                                        <div className="grid grid-cols-2 gap-2 mt-3">
+                                            <button type="button" onClick={() => {
+                                                setKmModo('confirmado');
+                                                setKmInicial(String(kmLido));
+                                                if (estadoFotos.checklistId) checklistVeiculoService.atualizar(estadoFotos.checklistId, { kmDigitado: kmLido, kmOrigem: 'PAINEL_CONFIRMADO' }).catch(() => {});
+                                            }}
+                                                className="min-h-[44px] bg-primary hover:bg-primaryDark text-white rounded-full font-semibold text-sm">Confirma</button>
+                                            <button type="button" onClick={() => setKmModo('corrigir')}
+                                                className="min-h-[44px] bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-semibold text-sm">Corrigir</button>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        ) : (
+                            <>
+                                {kmMenorQueUltimo && (
+                                    <p className="mb-2 text-xs bg-amber-50 border border-amber-200 text-amber-900 rounded-md px-3 py-2">
+                                        Painel marca {kmLido.toLocaleString('pt-BR')} km, mas o último KM registrado foi {kmFinalAnterior.toLocaleString('pt-BR')}. Digite o KM.
+                                    </p>
+                                )}
+                            <CampoNumero
+                                required
+                                className="mt-1 flex-1 block w-full bg-gray-50 focus:bg-white rounded-md border-gray-300 flex text-center text-3xl font-mono h-14 font-bold focus:border-green-500 focus:ring-green-500"
+                                value={kmInicial}
+                                onChange={(e) => {
+                                    const val = parseInt(e.target.value);
+                                    if (ultimoKm?.kmFinal && val < ultimoKm.kmFinal) return; // bloqueia valor menor
+                                    setKmInicial(e.target.value);
+                                }}
+                                min={ultimoKm?.kmFinal || 0}
+                                placeholder="00000"
+                            />
+                            {ultimoKm?.kmFinal && (
+                                <p className="text-xs text-amber-600 mt-1">⚠️ O odômetro não pode retroceder. Mínimo: {ultimoKm.kmFinal.toLocaleString('pt-BR')} km</p>
+                            )}
+                            </>
                         )}
                     </div>
                 </div>

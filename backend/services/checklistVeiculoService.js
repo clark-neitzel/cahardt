@@ -131,6 +131,9 @@ function fotoDTO(f, extra = {}) {
         problemas: f.problemas || [],
         perguntasRespondidas: Array.isArray(f.problemas) ? f.problemas.filter((p) => p && p.gravidade === 'PERGUNTA' && p.resposta).length : 0,
         leituras: f.leituras || null,
+        complemento: f.complemento === true,
+        aceitaPeloMotorista: f.aceitaPeloMotorista === true,
+        aceitaEm: f.aceitaEm || null,
         criadoEm: f.criadoEm,
         ...extra,
     };
@@ -145,10 +148,23 @@ function checklistDTO(c, fotosAtivas) {
         modo: c.modo,
         dataReferencia: c.dataReferencia,
         kmDigitado: c.kmDigitado,
+        kmOrigem: c.kmOrigem || null,
         luzOleoAcesa: c.luzOleoAcesa,
-        fotos: fotosAtivas.map((f) => fotoDTO(f)),
+        fotos: ordenarFotos(fotosAtivas).map((f) => fotoDTO(f)),
         fotosPuladas: Array.isArray(c.fotosPuladas) ? c.fotosPuladas : [],
     };
+}
+
+// Foto principal de cada ângulo = ativa e NÃO complemento. TODO consumidor que escolhe "a foto do ângulo"
+// (avaliar, resumo do diário, contadores) passa por aqui; o complemento (2ª foto) nunca é a foto do ângulo.
+// Ordem de saída: PRINCIPAIS antes das extras (complemento) e, em cada grupo, por criadoEm — um `find` por ângulo no front pega a principal.
+function ordenarFotos(fotos) {
+    const t = (f) => new Date(f.criadoEm || 0).getTime();
+    return [...(fotos || [])].sort((a, b) => ((a.complemento === true) - (b.complemento === true)) || (t(a) - t(b)));
+}
+
+function fotosPrincipais(fotos) {
+    return (fotos || []).filter((f) => f && f.complemento !== true);
 }
 
 async function fotosAtivasDe(checklistId) {
@@ -205,6 +221,7 @@ async function montarConfig(veiculoId) {
         condicional: s.condicional,
         ...(s.condicional ? { condicao: s.condicao } : {}),
         fotoModeloUrl: modelos[s.angulo]?.caminho || null,
+        complementoRotulo: catalogo.COMPLEMENTO_ROTULO[s.angulo] || null,
     }));
     return {
         veiculoId: v.id,
@@ -214,6 +231,8 @@ async function montarConfig(veiculoId) {
         modo,
         dataReferencia,
         varetaHoje: vareta,
+        tipoVareta: v.tipoVareta || null,
+        reservatorioOpaco: v.reservatorioOpaco === true,
         temFotoModelo: slots.some((s) => s.fotoModeloUrl),
         fotosModeloFaltando: slots.filter((s) => !s.fotoModeloUrl).map((s) => s.angulo),
         slots,
@@ -320,31 +339,55 @@ async function atualizarRascunho(id, user, body = {}) {
     const km = parseKm(body.kmDigitado);
     if (km !== undefined) dados.kmDigitado = km;
     if (typeof body.luzOleoAcesa === 'boolean') dados.luzOleoAcesa = body.luzOleoAcesa;
+    if (body.kmOrigem !== undefined && body.kmOrigem !== null) {
+        if (!['PAINEL_CONFIRMADO', 'DIGITADO'].includes(body.kmOrigem)) {
+            throw new ErroChecklist(400, 'KM_ORIGEM_INVALIDA', 'Origem do KM inválida. Use PAINEL_CONFIRMADO ou DIGITADO.');
+        }
+        dados.kmOrigem = body.kmOrigem;
+    }
     const novo = Object.keys(dados).length ? await prisma.checklistVeiculo.update({ where: { id }, data: dados }) : c;
     return checklistDTO(novo, await fotosAtivasDe(id));
 }
 
 // ───────────── foto do checklist ─────────────
 
-async function enviarFoto(id, user, angulo, file) {
+async function enviarFoto(id, user, angulo, file, opcoes = {}) {
     const c = await carregarDoDono(id, user);
     exigirAberto(c);
     if (!catalogo.anguloDoTipo(c.tipoVeiculo, angulo)) {
         throw new ErroChecklist(400, 'ANGULO_INVALIDO', 'Esse ângulo não existe para o tipo deste veículo.');
     }
+    const complemento = ['1', 'true', true, 1].includes(opcoes.complemento);
+    if (complemento && !catalogo.COMPLEMENTO_ROTULO[angulo]) {
+        throw new ErroChecklist(400, 'COMPLEMENTO_INVALIDO', 'Esse ângulo não aceita foto extra.');
+    }
     const img = validarArquivo(file);
-    const tentativas = await prisma.checklistVeiculoFoto.count({ where: { checklistId: id, angulo } });
+    // limite de tentativas conta separado para principal e complemento
+    const tentativas = await prisma.checklistVeiculoFoto.count({ where: { checklistId: id, angulo, complemento } });
     if (tentativas >= MAX_TENTATIVAS_POR_ANGULO) {
         throw new ErroChecklist(400, 'MUITAS_TENTATIVAS', 'Muitas tentativas para esta foto. Fale com o escritório.');
     }
-    const veiculo = await prisma.veiculo.findUnique({ where: { id: c.veiculoId }, select: { placa: true, modelo: true } });
-    const refazeres = await prisma.checklistVeiculoFoto.count({ where: { checklistId: id, angulo, statusIa: 'REFAZER' } });
+    const veiculo = await prisma.veiculo.findUnique({
+        where: { id: c.veiculoId },
+        select: { placa: true, modelo: true, tipoVareta: true, reservatorioOpaco: true, normalDentro: true, avariasConhecidas: true },
+    });
+    const refazeres = await prisma.checklistVeiculoFoto.count({ where: { checklistId: id, angulo, complemento: false, statusIa: 'REFAZER' } });
 
     const dir = path.join(DIR_CHECKLISTS, c.veiculoId, c.dataReferencia, c.id);
     fs.mkdirSync(dir, { recursive: true });
     const nome = `${angulo}-${crypto.randomBytes(8).toString('hex')}${img.ext}`;
     fs.writeFileSync(path.join(dir, nome), file.buffer);
     const caminho = `/uploads/checklists-veiculo/${c.veiculoId}/${c.dataReferencia}/${c.id}/${nome}`;
+
+    // Complemento (Dia 2): sem IA, sem custo, sem risco de reprovar. Troca só o complemento anterior do ângulo.
+    if (complemento) {
+        await prisma.checklistVeiculoFoto.updateMany({ where: { checklistId: id, angulo, ativa: true, complemento: true }, data: { ativa: false } });
+        const extra = await prisma.checklistVeiculoFoto.create({
+            data: { checklistId: id, angulo, caminho, ativa: true, tamanhoBytes: file.buffer.length, statusIa: 'NAO_ANALISADA', serve: true, problemas: [], complemento: true },
+        });
+        const totalC = await prisma.checklistVeiculoFoto.count({ where: { checklistId: id, ativa: true, complemento: false } });
+        return { foto: fotoDTO(extra), checklist: { id, fotosEnviadas: totalC } };
+    }
 
     // IA fora de qualquer transação; nunca lança
     const r = await iaService.analisarFoto({
@@ -358,7 +401,7 @@ async function enviarFoto(id, user, angulo, file) {
         ultimaTentativa: refazeres >= MAX_REFAZER_POR_ANGULO,
     });
 
-    await prisma.checklistVeiculoFoto.updateMany({ where: { checklistId: id, angulo, ativa: true }, data: { ativa: false } });
+    await prisma.checklistVeiculoFoto.updateMany({ where: { checklistId: id, angulo, ativa: true, complemento: false }, data: { ativa: false } });
     const foto = await prisma.checklistVeiculoFoto.create({
         data: {
             checklistId: id,
@@ -384,8 +427,34 @@ async function enviarFoto(id, user, angulo, file) {
             await prisma.checklistVeiculo.update({ where: { id }, data: { fotosPuladas: puladas.filter((p) => p.angulo !== angulo) } });
         } catch (e) { console.error('[ChecklistVeiculo] falha ao limpar pulada:', e.message); }
     }
-    const total = await prisma.checklistVeiculoFoto.count({ where: { checklistId: id, ativa: true } });
+    const total = await prisma.checklistVeiculoFoto.count({ where: { checklistId: id, ativa: true, complemento: false } });
     return { foto: fotoDTO(foto), checklist: { id, fotosEnviadas: total } };
+}
+
+/**
+ * "Tá certo assim": o motorista discorda da IA numa foto ATENCAO/REFAZER (só no modo TESTE).
+ * NÃO altera o veredito original da IA (dado de calibração); só marca aceitaPeloMotorista. REPROVA nunca é aceitável.
+ */
+async function aceitarFoto(id, fotoId, user, body = {}) {
+    const c = await carregarDoDono(id, user);
+    exigirAberto(c);
+    const foto = await prisma.checklistVeiculoFoto.findFirst({ where: { id: String(fotoId), checklistId: id, ativa: true } });
+    if (!foto) throw new ErroChecklist(404, 'FOTO_NAO_ENCONTRADA', 'Foto não encontrada neste checklist.');
+    const desfazer = body?.desfazer === true || body?.desfazer === 'true';
+    if (desfazer) {
+        if (foto.aceitaPeloMotorista) {
+            const f = await prisma.checklistVeiculoFoto.update({ where: { id: foto.id }, data: { aceitaPeloMotorista: false, aceitaEm: null } });
+            return { ok: true, foto: fotoDTO(f) };
+        }
+        return { ok: true, foto: fotoDTO(foto) };
+    }
+    const modo = await getModo();
+    if (modo !== 'TESTE') throw new ErroChecklist(400, 'TRAVA_ATIVA', 'Neste momento não dá para seguir sem corrigir.');
+    const aceitavel = !foto.complemento && foto.statusIa !== 'REPROVA' && (['ATENCAO', 'REFAZER'].includes(foto.statusIa) || foto.serve === false);
+    if (!aceitavel) throw new ErroChecklist(400, 'NAO_ACEITAVEL', 'Essa foto não pode ser aceita desse jeito.');
+    if (foto.aceitaPeloMotorista) return { ok: true, foto: fotoDTO(foto) }; // idempotente
+    const f = await prisma.checklistVeiculoFoto.update({ where: { id: foto.id }, data: { aceitaPeloMotorista: true, aceitaEm: new Date() } });
+    return { ok: true, foto: fotoDTO(f) };
 }
 
 async function pularFoto(id, user, body = {}) {
@@ -415,7 +484,7 @@ async function avaliar(id, user, body = {}) {
     const kmDigitado = kmBody !== undefined && kmBody !== null ? kmBody : c.kmDigitado;
     const modo = await getModo();
     const veiculo = await prisma.veiculo.findUnique({ where: { id: c.veiculoId }, select: { placa: true } });
-    const fotos = await fotosAtivasDe(id);
+    const fotos = fotosPrincipais(await fotosAtivasDe(id));
     const porAngulo = {};
     fotos.forEach((f) => { porAngulo[f.angulo] = f; });
     const puladas = Array.isArray(c.fotosPuladas) ? c.fotosPuladas : [];
@@ -424,6 +493,7 @@ async function avaliar(id, user, body = {}) {
     const slots = catalogo.slotsDoTipo(c.tipoVeiculo);
     const problemas = [];
     const faltando = [];
+    const aceitosPeloMotorista = []; // fotos em que o motorista discordou da IA (Dia 2)
 
     for (const s of slots) {
         const obrigatorio = s.condicional ? vareta : true;
@@ -438,8 +508,12 @@ async function avaliar(id, user, body = {}) {
             continue;
         }
         if (f.statusIa === 'REFAZER' || f.serve === false) {
-            problemas.push({ angulo: s.angulo, gravidade: 'ATENCAO', descricao: f.motivoRefazer || `Tira de novo: ${s.rotulo}`, oQueFazer: 'Tira essa foto de novo.', origem: 'IA' });
-            continue;
+            if (f.aceitaPeloMotorista) {
+                aceitosPeloMotorista.push({ angulo: s.angulo, rotulo: s.rotulo, descricao: f.motivoRefazer || `A IA pediu para refazer: ${s.rotulo}` });
+            } else {
+                problemas.push({ angulo: s.angulo, gravidade: 'ATENCAO', descricao: f.motivoRefazer || `Tira de novo: ${s.rotulo}`, oQueFazer: 'Tira essa foto de novo.', origem: 'IA' });
+                continue;
+            }
         }
         const doFoto = Array.isArray(f.problemas) ? f.problemas : [];
         for (let i = 0; i < doFoto.length; i++) {
@@ -454,6 +528,11 @@ async function avaliar(id, user, body = {}) {
                     pergunta: p.pergunta || '', seNao: p.seNao || 'ATENCAO', indice: i, origem: 'IA',
                     ...(respondida ? { resposta: p.resposta, respondidoEm: p.respondidoEm || null, gravidadeAplicada: iaService.gravEfetiva(p) } : {}),
                 });
+                continue;
+            }
+            // Foto aceita pelo motorista: ATENCAO da IA não pesa (REPROVA nunca é ignorada). Fica registrado em aceitosPeloMotorista.
+            if (f.aceitaPeloMotorista && p.gravidade !== 'REPROVA') {
+                aceitosPeloMotorista.push({ angulo: s.angulo, rotulo: s.rotulo, descricao: p.descricao });
                 continue;
             }
             problemas.push({ angulo: s.angulo, gravidade: p.gravidade === 'REPROVA' ? 'REPROVA' : 'ATENCAO', descricao: p.descricao, oQueFazer: p.oQueFazer || '', ...(p.resposta ? { resposta: p.resposta } : {}), origem: 'IA' });
@@ -527,6 +606,7 @@ async function avaliar(id, user, body = {}) {
         aviso,
         podeSeguir,
         podePedirLiberacao: false,
+        aceitosPeloMotorista: aceitosPeloMotorista.filter((x, i, arr2) => arr2.findIndex((y) => y.angulo === x.angulo) === i),
     };
 }
 
@@ -543,7 +623,7 @@ async function responderPergunta(id, user, body = {}) {
     const indice = (typeof body.indice === 'number' || (typeof body.indice === 'string' && /^\d+$/.test(body.indice.trim()))) ? Number(body.indice) : NaN;
     if (!catalogo.anguloDoTipo(c.tipoVeiculo, angulo)) throw new ErroChecklist(400, 'ANGULO_INVALIDO', 'Esse ângulo não existe para o tipo deste carro.');
     if (!Number.isInteger(indice) || indice < 0) throw new ErroChecklist(400, 'INDICE_INVALIDO', 'Pergunta não encontrada.');
-    const foto = await prisma.checklistVeiculoFoto.findFirst({ where: { checklistId: id, angulo, ativa: true } });
+    const foto = await prisma.checklistVeiculoFoto.findFirst({ where: { checklistId: id, angulo, ativa: true, complemento: false } });
     const lista = Array.isArray(foto?.problemas) ? foto.problemas.map((p) => ({ ...p })) : [];
     const p = lista[indice];
     if (!foto || !p || p.gravidade !== 'PERGUNTA') {
@@ -605,11 +685,13 @@ function dtoCompleto(c, fotosAtivas) {
         modo: c.modo,
         kmDigitado: c.kmDigitado,
         kmLido: c.kmLido,
+        kmOrigem: c.kmOrigem || null,
         luzOleoAcesa: c.luzOleoAcesa,
         problemas: c.problemas || [],
         fotosPuladas: Array.isArray(c.fotosPuladas) ? c.fotosPuladas : [],
         diarioId: c.diarioId,
-        fotos: fotosAtivas.map((f) => fotoDTO(f, { rotulo: catalogo.ANGULOS[f.angulo]?.rotulo || f.angulo })),
+        discordancias: fotosPrincipais(fotosAtivas).filter((f) => f.aceitaPeloMotorista).length,
+        fotos: ordenarFotos(fotosAtivas).map((f) => fotoDTO(f, { rotulo: catalogo.ANGULOS[f.angulo]?.rotulo || f.angulo })),
         criadoEm: c.criadoEm,
     };
 }
@@ -626,7 +708,14 @@ async function detalhe(id, user) {
 
 async function listarPorVeiculo(veiculoId, { limit, de, ate } = {}) {
     const take = Math.min(Math.max(parseInt(limit, 10) || 30, 1), 200);
-    const where = { veiculoId, status: 'CONCLUIDO' };
+    // Concluídos + rascunho de HOJE com pelo menos uma foto ("Em andamento"): o aviso por WhatsApp sai antes do diário existir.
+    const where = {
+        veiculoId,
+        OR: [
+            { status: 'CONCLUIDO' },
+            { status: 'RASCUNHO', dataReferencia: getDataReferencia(), fotos: { some: { ativa: true } } },
+        ],
+    };
     const re = /^\d{4}-\d{2}-\d{2}$/;
     if ((de && re.test(de)) || (ate && re.test(ate))) {
         where.dataReferencia = {};
@@ -658,7 +747,7 @@ async function resumoParaDiario({ checklistId, vendedorId, veiculoId }) {
         if (c.vendedorId !== vendedorId) return { ok: false, motivo: 'outro_vendedor' };
         if (c.veiculoId !== veiculoId) return { ok: false, motivo: 'outro_veiculo' };
         if (c.diarioId) return { ok: false, motivo: 'ja_amarrado' };
-        const fotos = await fotosAtivasDe(c.id);
+        const fotos = fotosPrincipais(await fotosAtivasDe(c.id));
         const por = {};
         fotos.forEach((f) => { por[f.angulo] = f; });
         const puladas = Array.isArray(c.fotosPuladas) ? c.fotosPuladas : [];
@@ -674,7 +763,7 @@ async function resumoParaDiario({ checklistId, vendedorId, veiculoId }) {
             const reprova = consolidado
                 ? consolidado.some((p) => p && p.angulo === s.angulo && iaService.gravEfetiva(p) === 'REPROVA')
                 : (!!f && (f.statusIa === 'REPROVA' || (Array.isArray(f.problemas) && f.problemas.some((p) => p && iaService.gravEfetiva(p) === 'REPROVA'))));
-            resumo[catalogo.CHAVE_RESUMO[s.angulo]] = !!f && f.serve !== false && !reprova;
+            resumo[catalogo.CHAVE_RESUMO[s.angulo]] = !!f && (f.serve !== false || f.aceitaPeloMotorista === true) && !reprova;
         }
         return { ok: true, resumo };
     } catch (e) {
@@ -696,7 +785,7 @@ async function amarrarAoDiario(checklistId, diarioId, vendedorId, veiculoId) {
 module.exports = {
     ErroChecklist, getModo, setModo, montarConfig,
     listarFotosModelo, salvarFotoModelo,
-    criarRascunho, atualizarRascunho, enviarFoto, pularFoto, avaliar, responderPergunta, registrarDecisao,
+    criarRascunho, atualizarRascunho, enviarFoto, aceitarFoto, pularFoto, avaliar, responderPergunta, registrarDecisao,
     detalhe, listarPorVeiculo, resumoParaDiario, amarrarAoDiario,
-    pode, ehAdmin, REGRAS,
+    pode, ehAdmin, REGRAS, fotosPrincipais,
 };

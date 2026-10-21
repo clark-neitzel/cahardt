@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ImgComFalha from '../../components/Diario/ImgComFalha';
 import { Camera, Loader2, ImageOff } from 'lucide-react';
+import VisualizadorFotos from '../../components/ChecklistVeiculo/VisualizadorFotos';
 import { toast } from 'react-hot-toast';
 import checklistVeiculoService, { urlImagem } from '../../services/checklistVeiculoService';
 import { comprimirFoto } from '../../utils/comprimirFoto';
@@ -14,6 +15,7 @@ const FotosModeloVeiculo = ({ veiculoId, podeEditar }) => {
     const [dados, setDados] = useState(null);
     const [erro, setErro] = useState(false);
     const [enviando, setEnviando] = useState(null); // ângulo em envio
+    const [verIndice, setVerIndice] = useState(null); // índice no visualizador
     const inputRef = useRef(null);
     const anguloRef = useRef(null);
 
@@ -60,13 +62,22 @@ const FotosModeloVeiculo = ({ veiculoId, podeEditar }) => {
     }
     if (!dados) return <div className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
 
+    const comFoto = (dados.slots || []).filter(sl => sl.modelo && sl.modelo.url)
+        .map(sl => ({
+            chave: sl.angulo, angulo: sl.angulo, rotulo: sl.rotulo, url: urlImagem(sl.modelo.url),
+            parecer: null, perguntas: [], complemento: null, editavel: false, statusIa: 'NAO_ANALISADA',
+        }));
+
     return (
         <div className="space-y-3">
+            {verIndice != null && verIndice >= 0 && (
+                <VisualizadorFotos slides={comFoto} indiceInicial={verIndice} modo="escritorio" semParecer onClose={() => setVerIndice(null)} />
+            )}
             <p className="text-sm text-gray-600">
                 Fotos de referência deste veículo. O motorista vê a foto modelo na tela "Tire assim" antes de abrir a câmera.
                 {!podeEditar && ' Você só pode visualizar.'}
             </p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
                 {(dados.slots || []).map(slot => {
                     const m = slot.modelo;
                     const ocupado = enviando === slot.angulo;
@@ -74,7 +85,10 @@ const FotosModeloVeiculo = ({ veiculoId, podeEditar }) => {
                         <div key={slot.angulo} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
                             <div className="relative aspect-square bg-gray-50 flex items-center justify-center">
                                 {m ? (
-                                    <ImgComFalha src={urlImagem(m.url)} alt={slot.rotulo} className="absolute inset-0 h-full w-full object-cover" />
+                                    <button type="button" onClick={() => setVerIndice(comFoto.findIndex(x => x.angulo === slot.angulo))}
+                                        className="absolute inset-0 h-full w-full" aria-label={`Ampliar ${slot.rotulo}`}>
+                                        <ImgComFalha src={urlImagem(m.url)} alt={slot.rotulo} className="h-full w-full object-cover" />
+                                    </button>
                                 ) : (
                                     <div className="text-center text-gray-500 px-2">
                                         <ImageOff className="h-7 w-7 mx-auto mb-1 text-gray-400" />

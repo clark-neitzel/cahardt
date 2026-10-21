@@ -28,6 +28,38 @@ function validarTipo(tipo) {
     }
 }
 
+// Campos de contexto da IA do checklist (Dia 2). undefined = não mexer.
+const TIPOS_VARETA = ['PLASTICO_QUADRICULADA', 'METAL_MARCAS'];
+function normCampoIa(dados) {
+    const out = {};
+    if (dados.tipoVareta !== undefined) {
+        const v = _vazio(dados.tipoVareta) ? null : String(dados.tipoVareta).trim();
+        if (v !== null && !TIPOS_VARETA.includes(v)) {
+            const e = new Error(`Tipo de vareta inválido. Use: ${TIPOS_VARETA.join(', ')}.`);
+            e.codigo = 'TIPO_VARETA_INVALIDO';
+            throw e;
+        }
+        out.tipoVareta = v;
+    }
+    if (dados.reservatorioOpaco !== undefined) {
+        const v = dados.reservatorioOpaco;
+        if (v === true || v === 'true') out.reservatorioOpaco = true;
+        else if (v === false || v === 'false') out.reservatorioOpaco = false;
+        else throw new Error('Reservatório opaco precisa ser verdadeiro ou falso.');
+    }
+    for (const [campo, rotulo] of [['normalDentro', 'O campo "o que é normal ter dentro"'], ['avariasConhecidas', 'O campo "avarias conhecidas"']]) {
+        if (dados[campo] === undefined) continue;
+        const t = dados[campo] === null ? '' : String(dados[campo]).trim();
+        if (t.length > 500) {
+            const e = new Error(`${rotulo} passa de 500 caracteres.`);
+            e.codigo = 'TEXTO_LONGO';
+            throw e;
+        }
+        out[campo] = t || null;
+    }
+    return out;
+}
+
 const veiculoService = {
     listar: async () => {
         return await prisma.veiculo.findMany({
@@ -168,6 +200,7 @@ const veiculoService = {
 
     criar: async (dados) => {
         validarTipo(dados.tipo);
+        const extraIa = normCampoIa(dados);
         const existente = await prisma.veiculo.findUnique({ where: { placa: dados.placa } });
         if (existente) throw new Error('Já existe um veículo cadastrado com esta placa.');
 
@@ -185,13 +218,15 @@ const veiculoService = {
                 kmMedioSugerido: normInt(dados.kmMedioSugerido, 'KM médio sugerido'),
                 tipoCombustivel: dados.tipoCombustivel || null,
                 observacoes: dados.observacoes || null,
-                tipo: dados.tipo || 'CARGA'
+                tipo: dados.tipo || 'CARGA',
+                ...extraIa
             }
         });
     },
 
     atualizar: async (id, dados) => {
         validarTipo(dados.tipo);
+        const extraIa = normCampoIa(dados);
         if (dados.placa) {
             const existente = await prisma.veiculo.findFirst({
                 where: { placa: dados.placa, id: { not: id } }
@@ -218,7 +253,8 @@ const veiculoService = {
                     : undefined,
                 tipoCombustivel: dados.tipoCombustivel !== undefined ? (dados.tipoCombustivel || null) : undefined,
                 observacoes: dados.observacoes !== undefined ? dados.observacoes : undefined,
-                tipo: dados.tipo ? dados.tipo : undefined
+                tipo: dados.tipo ? dados.tipo : undefined,
+                ...extraIa
             }
         });
     },

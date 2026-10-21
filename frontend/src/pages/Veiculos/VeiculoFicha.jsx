@@ -20,8 +20,8 @@ const TABS = [
     { id: 'historico', label: 'Motoristas', icon: Users },
     { id: 'obs', label: 'Obs.', icon: MessageSquare },
     { id: 'fotos', label: 'Fotos modelo', icon: Camera },
-    // checklist por foto: só quem tem acesso aos veículos (admin || Pode_Acessar_Veiculos)
-    { id: 'checklists', label: 'Checklists', icon: ClipboardCheck, exige: 'acessar' },
+    // checklist por foto: admin || Pode_Acessar_Veiculos || Pode_Acessar_Caixa || Pode_Editar_Caixa (igual ao back)
+    { id: 'checklists', label: 'Checklists', icon: ClipboardCheck, exige: 'checklists' },
 ];
 
 const TIPOS_VEICULO = [
@@ -29,6 +29,13 @@ const TIPOS_VEICULO = [
     { value: 'PASSEIO', label: 'Passeio' },
     { value: 'PARTICULAR', label: 'Particular' },
 ];
+
+const TIPOS_VARETA = [
+    { value: '', label: 'Não sei / não definida' },
+    { value: 'PLASTICO_QUADRICULADA', label: 'Plástico laranja quadriculada' },
+    { value: 'METAL_MARCAS', label: 'Metal com marcas' },
+];
+const LIMITE_TEXTO = 500;
 
 const TIPOS_MANUTENCAO = [
     { value: 'REVISAO', label: 'Revisão' },
@@ -50,8 +57,12 @@ const diasParaVencer = (dateStr) => {
     return Math.ceil((new Date(dateStr) - new Date()) / (1000 * 60 * 60 * 24));
 };
 
-const VeiculoFicha = ({ veiculoId, onClose, onUpdate, readOnly = false, allowedTabs = null }) => {
-    const [activeTab, setActiveTab] = useState('resumo');
+// abaInicial: aba aberta ao montar (ex.: 'checklists' vindo do Caixa)
+// modoEmbutido: painel fixo dentro da página (mestre-detalhe de Veículos no desktop), sem overlay
+// destaque: id do checklist a mostrar primeiro na aba Checklists
+const VeiculoFicha = ({ veiculoId, onClose, onUpdate, readOnly = false, allowedTabs = null, abaInicial = 'resumo', modoEmbutido = false, destaque = null, onAbaChange = null }) => {
+    const [activeTab, setActiveTab] = useState(abaInicial || 'resumo');
+    useEffect(() => { if (onAbaChange) onAbaChange(activeTab); }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
     const [ficha, setFicha] = useState(null);
     const [loading, setLoading] = useState(true);
     const [editando, setEditando] = useState(false);
@@ -77,7 +88,8 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate, readOnly = false, allowedT
     const isAdmin = !!authUser?.permissoes?.admin;
     // espelha o back: foto modelo = admin || Pode_Editar_Veiculos; aba Checklists = admin || Pode_Acessar_Veiculos
     const podeEditarVeiculos = !!(authUser?.permissoes?.admin || authUser?.permissoes?.Pode_Editar_Veiculos);
-    const podeAcessarVeiculos = !!(authUser?.permissoes?.admin || authUser?.permissoes?.Pode_Acessar_Veiculos);
+    const podeVerChecklists = !!(authUser?.permissoes?.admin || authUser?.permissoes?.Pode_Acessar_Veiculos
+        || authUser?.permissoes?.Pode_Acessar_Caixa || authUser?.permissoes?.Pode_Editar_Caixa);
 
     // Edição inline
     const [editingAbastId, setEditingAbastId] = useState(null);
@@ -106,6 +118,10 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate, readOnly = false, allowedT
                 tipo: res.data.tipo || 'CARGA',
                 observacoes: res.data.observacoes || '',
                 documentoUrl: res.data.documentoUrl || '',
+                tipoVareta: res.data.tipoVareta || '',
+                reservatorioOpaco: res.data.reservatorioOpaco === true,
+                normalDentro: res.data.normalDentro || '',
+                avariasConhecidas: res.data.avariasConhecidas || '',
             });
         } catch (e) {
             toast.error('Erro ao carregar ficha do veículo.');
@@ -124,6 +140,10 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate, readOnly = false, allowedT
                 ...form,
                 capacidadeTanque: form.capacidadeTanque === '' || form.capacidadeTanque == null ? null : form.capacidadeTanque,
                 kmMedioSugerido: form.kmMedioSugerido === '' || form.kmMedioSugerido == null ? null : form.kmMedioSugerido,
+                tipoVareta: form.tipoVareta || null,
+                reservatorioOpaco: form.reservatorioOpaco === true,
+                normalDentro: (form.normalDentro || '').trim() || null,
+                avariasConhecidas: (form.avariasConhecidas || '').trim() || null,
             });
             toast.success('Ficha atualizada!');
             setEditando(false);
@@ -397,7 +417,7 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate, readOnly = false, allowedT
 
     const stats = ficha?.stats || {};
     const visibleTabs = TABS.filter(tab => (!allowedTabs || allowedTabs.includes(tab.id))
-        && (tab.exige !== 'acessar' || podeAcessarVeiculos));
+        && (tab.exige !== 'checklists' || podeVerChecklists));
     const diasSeguro = diasParaVencer(ficha?.seguroVencimento);
     const pendentes = ficha?.alertasManutencao?.filter(a => !a.concluido) || [];
 
@@ -406,6 +426,14 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate, readOnly = false, allowedT
             setActiveTab(visibleTabs[0]?.id || 'resumo');
         }
     }, [activeTab, visibleTabs]);
+
+    if (loading && modoEmbutido) {
+        return (
+            <div className="h-full bg-white border border-gray-200 rounded-xl flex items-center justify-center">
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" />
+            </div>
+        );
+    }
 
     if (loading) {
         return (
@@ -418,12 +446,14 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate, readOnly = false, allowedT
     }
 
     return (
-        <div className="fixed inset-0 z-[70] flex">
-            {/* Overlay */}
-            <div className="flex-1 bg-black bg-opacity-50" onClick={onClose} />
+        <div className={modoEmbutido ? 'h-full min-h-0 flex' : 'fixed inset-0 z-[70] flex'}>
+            {/* Overlay (some no modo embutido) */}
+            {!modoEmbutido && <div className="flex-1 bg-black bg-opacity-50" onClick={onClose} />}
 
             {/* Painel */}
-            <div className="w-full max-w-2xl h-full bg-white shadow-2xl flex flex-col overflow-hidden">
+            <div className={modoEmbutido
+                ? 'w-full h-full bg-white border border-gray-200 rounded-xl flex flex-col overflow-hidden'
+                : 'w-full max-w-2xl h-full bg-white shadow-2xl flex flex-col overflow-hidden'}>
                 {/* Header */}
                 <div className="bg-gray-900 text-white px-5 py-4 flex items-center justify-between shrink-0">
                     <div>
@@ -513,6 +543,52 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate, readOnly = false, allowedT
                                     </p>
                                 )}
                             </div>
+
+                            {/* Para a conferência por foto (alimenta a IA do checklist) */}
+                            {(editando && podeEditarVeiculos) ? (
+                                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-3">
+                                    <p className="text-xs font-bold uppercase tracking-widest text-gray-600">Para a conferência por foto</p>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de vareta de óleo</label>
+                                        <SelectBusca value={form.tipoVareta || ''}
+                                            onChange={e => setForm(p => ({ ...p, tipoVareta: e.target.value }))}
+                                            className="w-full">
+                                            {TIPOS_VARETA.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                                        </SelectBusca>
+                                    </div>
+                                    <div className="flex items-center justify-between gap-3 min-h-[44px]">
+                                        <span className="text-sm font-medium text-gray-700">Reservatório de água opaco ou sujo</span>
+                                        <button type="button" role="switch" aria-checked={form.reservatorioOpaco === true}
+                                            onClick={() => setForm(p => ({ ...p, reservatorioOpaco: !p.reservatorioOpaco }))}
+                                            className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors ${form.reservatorioOpaco ? 'bg-primary' : 'bg-gray-300'}`}>
+                                            <span className={`inline-block h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${form.reservatorioOpaco ? 'translate-x-6' : 'translate-x-1'}`} />
+                                        </button>
+                                    </div>
+                                    {[
+                                        { campo: 'normalDentro', rotulo: 'O que é normal ter dentro', dica: 'Ex.: bolsas pretas do mostruário, caixa térmica azul' },
+                                        { campo: 'avariasConhecidas', rotulo: 'Avarias conhecidas', dica: 'Ex.: para-choque traseiro raspado desde 09/2026' },
+                                    ].map(({ campo, rotulo, dica }) => (
+                                        <div key={campo}>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">{rotulo}</label>
+                                            <textarea rows={3} maxLength={LIMITE_TEXTO} value={form[campo] || ''}
+                                                onChange={e => setForm(p => ({ ...p, [campo]: e.target.value }))}
+                                                placeholder={dica}
+                                                className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
+                                            <p className="text-xs text-gray-500 text-right">{(form[campo] || '').length}/{LIMITE_TEXTO}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (ficha?.tipoVareta || ficha?.reservatorioOpaco || ficha?.normalDentro || ficha?.avariasConhecidas) ? (
+                                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-2">
+                                    <p className="text-xs font-bold uppercase tracking-widest text-gray-600">Para a conferência por foto</p>
+                                    {ficha?.tipoVareta && (
+                                        <p className="text-sm text-gray-700"><span className="text-gray-500">Vareta:</span> {(TIPOS_VARETA.find(t => t.value === ficha.tipoVareta) || {}).label || ficha.tipoVareta}</p>
+                                    )}
+                                    {ficha?.reservatorioOpaco && <p className="text-sm text-gray-700">Reservatório de água opaco ou sujo</p>}
+                                    {ficha?.normalDentro && <p className="text-sm text-gray-700 whitespace-pre-wrap"><span className="text-gray-500">Normal ter dentro:</span> {ficha.normalDentro}</p>}
+                                    {ficha?.avariasConhecidas && <p className="text-sm text-gray-700 whitespace-pre-wrap"><span className="text-gray-500">Avarias conhecidas:</span> {ficha.avariasConhecidas}</p>}
+                                </div>
+                            ) : null}
 
                             {/* Últimos usos */}
                             {ficha?.diarios?.slice(0, 3).map(d => (
@@ -1222,10 +1298,10 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate, readOnly = false, allowedT
 
                     {/* ── FOTOS MODELO / CHECKLISTS ── */}
                     {activeTab === 'fotos' && (
-                        <FotosModeloVeiculo veiculoId={veiculoId} podeEditar={podeEditarVeiculos} />
+                        <FotosModeloVeiculo veiculoId={veiculoId} podeEditar={podeEditarVeiculos && !readOnly} />
                     )}
-                    {activeTab === 'checklists' && podeAcessarVeiculos && (
-                        <ChecklistsVeiculoLista veiculoId={veiculoId} />
+                    {activeTab === 'checklists' && podeVerChecklists && (
+                        <ChecklistsVeiculoLista veiculoId={veiculoId} destaque={destaque} placa={ficha?.placa || null} />
                     )}
 
                     {/* ── OBSERVAÇÕES ── */}

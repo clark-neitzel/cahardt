@@ -404,6 +404,21 @@ router.get('/resumo', async (req, res) => {
             modo: diario.modo
         } : null;
 
+        // Selo do checklist de veículo (aditivo). Falha aqui NUNCA pode quebrar o Caixa.
+        if (diarioInfo) {
+            diarioInfo.checklist = null;
+            diarioInfo.checklistEsperado = false;
+            try {
+                const rc = await require('../services/checklistCaixaService').resumoParaCaixa({
+                    diarioId: diario.id, veiculoId: diario.veiculoId, dataReferencia: data, modo: diario.modo,
+                });
+                diarioInfo.checklist = rc.checklist;
+                diarioInfo.checklistEsperado = rc.checklistEsperado;
+            } catch (e) {
+                console.error('[Caixa] resumo do checklist falhou (ignorado):', e.message);
+            }
+        }
+
         // 3. Calcular média combustível
         const mediaCombustivel3Meses = diario?.veiculoId ? await calcularMediaCombustivel(diario.veiculoId) : null;
 

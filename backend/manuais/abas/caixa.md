@@ -319,6 +319,9 @@ O relatório sai em **2 folhas A4**:
 - Com a conferência do dinheiro ligada, o app **exige o motivo** da reabertura
 - O status volta para ABERTO, os totais são recalculados ao fechar novamente e a **conferência do dinheiro é cancelada**: o caixa volta para a fila de quem confere, que precisa contar de novo antes de o caixa poder ser fechado
 
+### Selo do checklist do veículo no card do veículo (10/2026)
+No card do veículo do dia (quando o dia foi **Presencial**), o Caixa mostra o resultado do **checklist de saída por foto**: aprovado, atenção ou reprovado, se o motorista seguiu mesmo assim (modo teste), quantas fotos, quantos problemas, quantas vezes ele discordou da IA ("tá certo assim") e quantas perguntas respondeu "Não". Se o dia era para ter checklist e **não tem**, aparece "Sem checklist" — isso só vale para dias a partir de 20/10/2026 e não aparece em dia Home Office nem em caixa antigo. Se o dado do checklist falhar por qualquer motivo, o Caixa abre normal, só sem o selo. Ao clicar no card, a ficha do veículo abre também com a aba **Checklists** para quem tem permissão do Caixa (veja o manual de Veículos). Dados: `diario.checklist` e `diario.checklistEsperado` em `GET /api/caixa/resumo`.
+
 ### Registrar devolução
 - Na linha de uma entrega, clique no botão de devolução (ícone de retorno)
 - O modal de devolução abre vinculado àquele pedido e àquele caixa

@@ -75,6 +75,12 @@ const SLOTS_POR_TIPO = {
     PARTICULAR: ['painel'],
 };
 
+// Foto extra opcional (Dia 2): 2ª foto do mesmo ângulo. Não passa por IA, nunca bloqueia.
+const COMPLEMENTO_ROTULO = {
+    agua_radiador: 'Foto de cima, com a tampa aberta',
+    vareta_oleo: 'Foto da ponta da vareta, bem de perto',
+};
+
 const CONDICIONAIS = {
     vareta_oleo: 'SEGUNDA_QUINTA_OU_LUZ_OLEO',
 };
@@ -114,4 +120,4 @@ const CHAVE_RESUMO = {
     porta_malas: 'portaMalasOk',
 };
 
-module.exports = { GRUPO_POR_ANGULO, DICA_GRUPO, TIPOS_VEICULO, ANGULOS, SLOTS_POR_TIPO, CONDICIONAIS, CHAVE_RESUMO, tipoValido, slotsDoTipo, anguloDoTipo };
+module.exports = { COMPLEMENTO_ROTULO, GRUPO_POR_ANGULO, DICA_GRUPO, TIPOS_VEICULO, ANGULOS, SLOTS_POR_TIPO, CONDICIONAIS, CHAVE_RESUMO, tipoValido, slotsDoTipo, anguloDoTipo };

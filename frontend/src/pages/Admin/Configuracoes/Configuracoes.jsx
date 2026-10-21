@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import ConferenciaCaixaConfigCard from './ConferenciaCaixaConfigCard';
+import ChecklistVeiculosConfigCard from './ChecklistVeiculosConfigCard';
 import VendaInadimplenteConfigCard from './VendaInadimplenteConfigCard';
 import configService from '../../../services/configService';
 import { Save, AlertCircle, CheckCircle, Plus, X, ClipboardList, Trash2, Loader2, ScrollText, MapPin, Zap, Target, ChevronDown, ChevronUp, Eye, EyeOff, MessageSquare } from 'lucide-react';
@@ -776,6 +777,7 @@ const Configuracoes = () => {
 
             {/* ── Caixa: conferência do dinheiro (liga/desliga a regra) ── */}
             {isAdmin && <ConferenciaCaixaConfigCard />}
+            {user?.permissoes?.admin === true && <ChecklistVeiculosConfigCard />}
 
             {/* Só admin: o PUT /inadimplencia/config também exige admin no servidor */}
             {user?.permissoes?.admin && <VendaInadimplenteConfigCard />}

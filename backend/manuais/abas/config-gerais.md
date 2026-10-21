@@ -145,6 +145,15 @@ Cartão **"Caixa — conferência do dinheiro"**. Quatro controles:
 3. **Tarefa na agenda quando houver diferença** — falta ou sobra no dinheiro vira lembrete para cobrar a pessoa (o vale continua sendo lançado à mão no Contas a Pagar)
 4. **Avisar no WhatsApp caixa parado** — quantos dias sem conferir até o bot avisar quem confere (0 = não avisar). Uma mensagem por pessoa por dia, às 8h
 
+### Checklist de veículos — só admin (10/2026)
+Card **"Checklist de veículos"** em Configurações (visível só para administrador):
+- **Chave de emergência**: liga/desliga o checklist por foto. Em "desligado" o motorista volta às 6 caixinhas antigas, sem publicar nada.
+- **Quem recebe o aviso na hora**: quem é avisado no WhatsApp quando um motorista segue com checklist reprovado ou responde "Não" a uma pergunta da IA.
+- **Quem recebe os resumos** e **horários dos resumos** (até 4 horários; padrão 07:00 e 13:00). Se um horário do dia já passou ao salvar, o resumo sai na próxima rodada do sistema (roda a cada 5 minutos) **só se ainda estiver dentro de 3 horas depois do horário**; passou disso, aquele resumo não sai mais naquele dia. Se o envio falhar (ex.: ninguém com telefone), o sistema tenta mais uma vez depois de 30 minutos, ainda dentro dessa janela.
+- Enquanto ninguém for escolhido, os avisos vão para os **administradores ativos com telefone**. Escolher uma lista vazia significa que ninguém recebe.
+- **Botão de teste**: manda uma mensagem de teste só para o seu telefone (precisa ter telefone no seu cadastro). Só mensagens internas, nunca cliente.
+- API: `GET`/`PUT /api/checklists-veiculo/config/avisos`, `POST .../config/avisos/testar` (só admin).
+
 ### Backup automático — só admin (somente leitura)
 O sistema faz backup sozinho para o **Google Drive** (a mesma conta conectada para os XMLs da contabilidade): o **banco de dados a cada 15 minutos** e os **arquivos anexados (PDFs, XMLs, fotos) 1x por dia** de madrugada. A janela máxima de perda de dados do banco é de 15 minutos.
 
@@ -201,4 +210,5 @@ Card em **Configurações** que ajusta a regra do selo "em atraso" e da trava de
 | `backend/services/certificadoService.js` | Validação do .pfx e criptografia AES-256-GCM |
 | `frontend/src/components/AlertaDevolucaoRefItem.jsx` | Lembrete a cada 10 minutos (só para o Clarkson) enquanto a chave da referência por item não for acionada; montado global no `App.jsx` |
 | `frontend/src/pages/Admin/Configuracoes/SecaoBackup.jsx` | Cartão de status do backup automático |
+| `backend/services/checklistAvisosService.js` + `backend/routes/checklistAvisosRoutes.js` | Avisos de WhatsApp do checklist de veículos (config, na hora, resumos) |
 | `backend/services/backupService.js` | Backup do banco (15 min) e dos uploads (diário) para o Google Drive |
