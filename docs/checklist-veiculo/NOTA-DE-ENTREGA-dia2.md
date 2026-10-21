@@ -84,19 +84,14 @@ Ajuste de texto; não precisa de build nem de novo QA.
 
 ---
 
-## Prova em produção
+## Prova em produção (preenchida pelo gerente de projeto em 21/10, 15:40)
 
-Preenchida pelo gerente de projeto após o deploy.
-
-- [ ] Backend: `GET /api/admin-exec/ping` devolve `deployMarker: checklist-dia2-2026-10-22`.
-- [ ] Backend: `GET /api/checklists-veiculo/config/avisos` responde 401 sem token (existe; antes daria 404 ou cairia em `/:id`).
-- [ ] Frontend: `https://cahardt-github.xrqvlq.easypanel.host/novidade-checklist-foto-v2.html` abre (200), e o chunk de produção contém "Tá certo assim, deixa".
-- [ ] Logs do servidor: "Iniciando Worker dos resumos do checklist de veículos" na subida.
-- [ ] Mensagem de teste chegou no WhatsApp do dono (botão em Configurações).
-- [ ] Foto extra: gravar numa vareta → novo deploy/restart → a foto extra continua abrindo na ficha.
-- [ ] Resumo das 7h de 22/10 chegou (e `app_configs` tem `checklist_avisos_resumo_2026-10-22_0700` com `estado: OK`).
-
----
+- [x] Backend: `GET /api/admin-exec/ping` devolve `deployMarker: checklist-dia2-2026-10-22` (commit 0b68e79f; chegou ao remoto junto com o push da outra sessão, 053a5b18).
+- [x] Frontend: o chunk de produção `/assets/index-BPNM71_8.js` contém "Fotos modelo ·", "Painel marca" e "Tá certo assim".
+- [x] Rotas novas existem (sem token respondem 401, não 404): `config/avisos`, `veiculos/checklists-hoje`, `fotos/:id/aceitar`. Página `novidade-checklist-foto-v2.html` responde 200.
+- [ ] Teste de aviso por WhatsApp real (Configurações → "Enviar mensagem de teste para mim"): só o dono, com login.
+- [ ] Primeiro checklist real com visualizador, KM do painel e foto extra; resumo das 7h de amanhã; foto extra atravessando um deploy: amanhã cedo.
+- [ ] Câmera abrindo no "Tirar de novo" e pinça no iPhone/iPad: só aparelho real.
 
 ## Texto para o grupo do WhatsApp
 
