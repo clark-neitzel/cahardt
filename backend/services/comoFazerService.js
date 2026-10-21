@@ -130,6 +130,12 @@ const subtitulo = (c, novaVersaoEm) => {
 };
 const ddmm = (d) => { const s = dataSP(d); return s ? `${s.slice(8)}/${s.slice(5, 7)}` : null; };
 
+/** gestão = admin, edita ou vê o painel do Como Fazer (mesma lógica do pode.* do /me) */
+const ehGestaoCF = (cf) => auth.temPermissao({ cf }, 'Pode_Editar_Como_Fazer') || auth.temPermissao({ cf }, 'Pode_Ver_Painel_Como_Fazer');
+/** usuário do app sem ficha de funcionário e fora da gestão não vê conteúdo nenhum */
+const ERRO_SEM_CADASTRO = () => new ErroCF(403, 'SEM_CADASTRO', 'Seu usuário ainda não está ligado a um funcionário. Peça ao RH.');
+const semCadastroCF = (cf, func) => !func && !ehGestaoCF(cf);
+
 // ───────── /me ─────────
 async function me(cf) {
     const f = await funcionarioDoContexto(cf);
@@ -138,7 +144,9 @@ async function me(cf) {
         editar: auth.temPermissao({ cf }, 'Pode_Editar_Como_Fazer'),
         painel: auth.temPermissao({ cf }, 'Pode_Ver_Painel_Como_Fazer'),
     };
+    pode.ver = Boolean(f) || pode.editar || pode.painel || cf?.permissoes?.admin === true;
     return {
+        semCadastro: !pode.ver,
         origem: cf.origem,
         funcionario: f ? { id: f.id, nome: f.nome, foto: f.foto || null, setor: f.setor || null, cargo: f.cargo || null } : null,
         setores: (await setoresService.listar()).map(s => ({ slug: s.slug, nome: s.nome, codigo: s.codigo, icone: s.icone, ordem: s.ordem })),
@@ -149,6 +157,7 @@ async function me(cf) {
 // ───────── /home ─────────
 async function home(cf, setorParam) {
     const func = await funcionarioDoContexto(cf);
+    if (semCadastroCF(cf, func)) return { setorAtual: null, setores: [], itens: [], semCadastro: true };
     const setoresAtivos = await setoresService.listar();
     const setorAtual = (await auth.setorPorCodigo(setorParam))?.codigo || func?.setor || setoresAtivos[0]?.codigo || null;
     const agora = new Date();
@@ -250,6 +259,7 @@ async function abrirConteudo(cf, id, previa) {
     }
 
     const func = await funcionarioDoContexto(cf);
+    if (!previa && semCadastroCF(cf, func)) throw ERRO_SEM_CADASTRO();
     let meuTreino = null;
     if (func) {
         const t = await treinoAtual(func.id, c);
@@ -313,6 +323,7 @@ const temPermConfirmar = (vendedor) => {
 
 async function encarregados(cf, setorParam) {
     const func = await funcionarioDoContexto(cf);
+    if (semCadastroCF(cf, func)) throw ERRO_SEM_CADASTRO();
     const setor = (await auth.setorPorCodigo(setorParam))?.codigo || func?.setor || (await setoresService.listar())[0]?.codigo || null;
     if (!setor) return { encarregados: [] };
     const lista = await prisma.funcionario.findMany({
@@ -447,6 +458,7 @@ async function nomeDeQuemFez(exec) {
 }
 
 async function executar(cf, id, body) {
+    if (semCadastroCF(cf, await funcionarioDoContexto(cf))) throw ERRO_SEM_CADASTRO();
     const { chave, dataRef, horaAlvo: horaBody, tarefaId, respostas } = body || {};
     if (!chave || typeof chave !== 'string' || chave.length < 8 || chave.length > 80) throw new ErroCF(400, 'DADOS_INVALIDOS', 'Falta o código do envio (chave).');
 
@@ -520,7 +532,9 @@ function montarRespostaExecucao(exec, doc, tarefaCriada, status) {
     };
 }
 
-async function execucoesHoje(id) {
+async function execucoesHoje(cf, id) {
+    if (semCadastroCF(cf, await funcionarioDoContexto(cf))) throw ERRO_SEM_CADASTRO();
+    await conteudoPublicado(id);
     const hoje = hojeSP();
     const lista = await prisma.comoFazerExecucao.findMany({ where: { conteudoId: id, dataRef: hoje }, orderBy: { concluidaEm: 'asc' } });
     const feitas = [];
@@ -533,6 +547,7 @@ const chamados = new Map(); // `${conteudoId}|${quem}` -> timestamp
 async function chamarEncarregado(cf, id, secaoId) {
     const c = await conteudoPublicado(id);
     const func = await funcionarioDoContexto(cf);
+    if (semCadastroCF(cf, func)) throw ERRO_SEM_CADASTRO();
     let quem = func?.nome;
     if (!quem && cf.vendedorId) quem = (await prisma.vendedor.findUnique({ where: { id: cf.vendedorId }, select: { nome: true } }))?.nome;
     quem = quem || 'Alguém';

@@ -24,7 +24,7 @@ A biblioteca do "jeito certo" de fazer as coisas na empresa, pensada para quem n
 - Se a foto da pessoa não aparece, é porque ela ainda não tem senha de 4 números (ou não tem setor) no cadastro do RH.
 - Se aparecer "Este aparelho ainda não foi liberado", o tablet precisa ser liberado de novo pelo RH (veja o manual do Painel Como Fazer).
 
-**No app (celular ou computador)**, quem tem login entra pelo menu **Como Fazer**, logo abaixo de Tarefas. Para treinar pelo app, o usuário precisa estar ligado a um cadastro de funcionário no RH.
+**No app (celular ou computador)**, quem tem login entra pelo menu **Como Fazer**, logo abaixo de Tarefas. Para treinar pelo app, o usuário precisa estar ligado a um cadastro de funcionário no RH. **Quem não tem ficha de funcionário (e não é da gestão do Como Fazer nem administrador) não vê conteúdo nenhum** — a tela avisa que o usuário ainda não está ligado a um funcionário; peça ao RH para fazer a ligação.
 
 ---
 

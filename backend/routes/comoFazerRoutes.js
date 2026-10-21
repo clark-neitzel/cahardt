@@ -125,7 +125,7 @@ router.post('/conteudos/:id/execucoes', h(async (req, res) => {
     res.status(r.status).json(r.corpo);
 }));
 
-router.get('/conteudos/:id/execucoes/hoje', h(async (req, res) => res.json(await svc.execucoesHoje(req.params.id))));
+router.get('/conteudos/:id/execucoes/hoje', h(async (req, res) => res.json(await svc.execucoesHoje(req.cf, req.params.id))));
 
 router.post('/conteudos/:id/chamar-encarregado', h(async (req, res) => {
     res.status(201).json(await svc.chamarEncarregado(req.cf, req.params.id, req.body?.secaoId));

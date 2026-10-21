@@ -129,6 +129,7 @@ import { useMenuFavoritos } from './hooks/useMenuFavoritos';
 import { usePerfil } from './hooks/usePerfil';
 import { useFiltroSalvo } from './hooks/useFiltrosSalvos';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { usePodeVerComoFazer } from './pages/ComoFazer/hooks/useComoFazerMe';
 import { DiarioProvider } from './contexts/DiarioContext';
 import DiarioGateway from './components/Diario/DiarioGateway';
 import DiarioCheckout from './components/Diario/DiarioCheckout';
@@ -382,6 +383,7 @@ const Layout = ({ children }) => {
   const { updateAvailable } = useVersionCheck();
   const { favoritos, toggle: toggleFavorito, limite: limiteFavoritos } = useMenuFavoritos(user?.id);
   const perfil = usePerfil();
+  const podeVerComoFazer = usePodeVerComoFazer(user?.id);
   const [menuCompleto, setMenuCompleto] = useFiltroSalvo('menu:completo', false);
   // Dica de descoberta (correção pós-revisão): na 1ª vez que o filtro de
   // perfil esconder algum grupo, mostrar uma linha discreta oferecendo "Ver
@@ -554,7 +556,7 @@ const Layout = ({ children }) => {
         {/* Nav — só as SEÇÕES (barra curta); cada uma abre o submenu à direita no hover */}
         <nav className="flex-1 py-2 space-y-0.5 overflow-y-auto">
           <SidebarItem to="/tarefas" icon={CalendarCheck} label="Tarefas" />
-          <SidebarItem to="/como-fazer" icon={BookOpenCheck} label="Como Fazer" />
+          {podeVerComoFazer && <SidebarItem to="/como-fazer" icon={BookOpenCheck} label="Como Fazer" />}
           <SidebarItem to="/" icon={LayoutDashboard} label="Dashboard" end />
           {itensFavoritos.length > 0 && (
             <>
@@ -691,10 +693,12 @@ const Layout = ({ children }) => {
             </NavLink>
 
             {/* Como Fazer — manuais, treinamento e rotinas (toda a equipe logada) */}
-            <NavLink to="/como-fazer" onClick={closeMobile} className={({ isActive }) => `flex items-center gap-2.5 px-4 py-3 text-sm font-semibold transition-colors ${isActive ? 'text-primary bg-primary-50/50' : 'text-gray-700 hover:bg-gray-50'}`}>
-              <BookOpenCheck className="h-4 w-4" />
-              Como Fazer
-            </NavLink>
+            {podeVerComoFazer && (
+              <NavLink to="/como-fazer" onClick={closeMobile} className={({ isActive }) => `flex items-center gap-2.5 px-4 py-3 text-sm font-semibold transition-colors ${isActive ? 'text-primary bg-primary-50/50' : 'text-gray-700 hover:bg-gray-50'}`}>
+                <BookOpenCheck className="h-4 w-4" />
+                Como Fazer
+              </NavLink>
+            )}
 
             {/* Dashboard — sempre visível */}
             <NavLink to="/" end onClick={closeMobile} className={({ isActive }) => `flex items-center gap-2.5 px-4 py-3 text-sm font-semibold transition-colors ${isActive ? 'text-primary bg-primary-50/50' : 'text-gray-700 hover:bg-gray-50'}`}>

@@ -56,7 +56,7 @@ function Cartao({ item, onAbrir, onFazer }) {
 export default function ComoFazerHome() {
     const navigate = useNavigate();
     const { base, tablet } = useBaseComoFazer();
-    const { me, pode } = useComoFazerMe();
+    const { me, pode, semCadastro: meSemCadastro } = useComoFazerMe();
     const [setor, setSetor] = useState(null);
     const [dados, setDados] = useState(null);
     const [erro, setErro] = useState('');
@@ -105,6 +105,19 @@ export default function ComoFazerHome() {
             {pode.editar && <button type="button" onClick={() => navigate('/rh/como-fazer?aba=conteudos&novo=1')} aria-label="Novo conteúdo" className="min-h-[48px] px-4 inline-flex items-center gap-2 rounded-full bg-primary hover:bg-primaryDark text-white font-bold text-sm"><Plus className="h-4 w-4" /> <span className="hidden sm:inline">Novo</span></button>}
         </div>
     ) : null;
+
+    // usuário sem ficha de funcionário (e fora da gestão): cartão simples, sem chips nem lista
+    if (dados?.semCadastro === true || (meSemCadastro && !pode.ver)) {
+        return (
+            <TelaEquipe titulo="Como Fazer" emoji="📘" subtitulo="" mostrarVoltar={false}>
+                <div className="rounded-xl bg-white border border-gray-200 shadow-sm p-6 text-center max-w-md mx-auto my-8">
+                    <div className="text-4xl mb-2" aria-hidden="true">📘</div>
+                    <p className="text-base font-semibold text-gray-900">Seu usuário ainda não está ligado a um funcionário.</p>
+                    <p className="mt-1 text-sm text-gray-600">Peça ao RH para ligar o seu cadastro.</p>
+                </div>
+            </TelaEquipe>
+        );
+    }
 
     return (
         <TelaEquipe titulo="Como Fazer" emoji="📘" subtitulo={subt} mostrarVoltar={false} acoes={acoes}>
