@@ -92,18 +92,19 @@ Previsão: Partes B e C seguem o plano em `PLANO-dia2.md`; data combinada com o 
 
 ## Prova em produção
 
-_(a preencher depois do deploy)_
+Preenchida pelo gerente de projeto em 21/10, 11:26.
 
-- [ ] `GET /api/admin-exec/ping` devolve `deployMarker: checklist-parteA-2026-10-21`
-- [ ] Checklist real de um Bongo amanhã cedo: painel com pergunta de freio/porta, não "Grave"
-- [ ] Resposta Sim/Não gravada e visível na ficha do veículo (aba Checklists)
+- [x] Backend: `GET /api/admin-exec/ping` devolve `deployMarker: checklist-parteA-2026-10-21` (220 s após o push do commit 1e3e9236). A rota nova `POST /api/checklists-veiculo/:id/responder` responde 401 sem token (existe; antes daria 404).
+- [x] Frontend: o chunk de produção `/assets/index-C6UEifXt.js` contém os títulos novos ("Só confirma uma coisa pra mim", "Dá uma olhada nisso antes de sair"), confirmado às 11:17.
+- [ ] Checklist real de um Bongo (próximo que sair, ou amanhã cedo): painel com pergunta de freio/porta e botões Sim/Não, não "Grave". Só o dono/equipe prova, com login.
+- [ ] Resposta Sim/Não gravada e visível na ficha do veículo (aba Checklists). Idem.
 
 ---
 
 ## Texto para o grupo do WhatsApp (sem link)
 
 ```
-*Checklist do veículo: mudou amanhã cedo* 🚚📸
+*Checklist do veículo: mudou (vale a partir do próximo checklist)* 🚚📸
 
 Ajustamos o que a IA fala e o que ela cobra:
 
