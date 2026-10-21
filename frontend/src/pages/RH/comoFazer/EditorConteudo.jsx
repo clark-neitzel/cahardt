@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ChevronLeft, ArrowUp, ArrowDown, Trash2, Plus, Loader2, Rocket, Archive, RefreshCw, Save } from 'lucide-react';
+import { ChevronLeft, ArrowUp, ArrowDown, Trash2, Plus, Loader2, Rocket, Archive, RefreshCw, Save, Sparkles } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useSetores, opcoesSetores } from '../../../hooks/useSetores';
 import comoFazerService, { mensagemErro, codigoErro, TIPOS } from '../../../services/comoFazerService';
@@ -7,9 +7,13 @@ import tarefaService from '../../../services/tarefaService';
 import SelectBusca from '../../../components/SelectBusca';
 import MultiSelect from '../../../components/MultiSelect';
 import PassoEditor from './PassoEditor';
+import ModalComecarComIA from './ModalComecarComIA';
+import { resumoPergunta } from './PreviaIA';
+import { useIaStatus } from '../../../components/ComoFazer/useIaStatus';
+import iaService, { registrarResultado, mensagemDeErroIa } from '../../../services/comoFazerIaService';
 import { BADGE_CONTEUDO, CLS_BADGE } from '../../../components/ComoFazer/visual';
 
-const CAMPO = 'w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none';
+const CAMPO = 'w-full min-h-[44px] border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none';
 const novoId = (p) => `${p}_${Math.random().toString(36).slice(2, 8)}`;
 const RECORRENCIAS = [
     ['NUNCA', 'Não se repete (por evento / uma vez)'], ['DIARIA', 'Todo dia'], ['DIAS_UTEIS', 'Segunda a sexta'],
@@ -27,8 +31,122 @@ function Caixa({ titulo, children }) {
     );
 }
 
+const SUGESTOES = [
+    ['naoFazer', 'O que NÃO fazer'],
+    ['seDerErrado', 'Se der errado'],
+    ['perguntas', 'Perguntas do checklist'],
+    ['maisPassos', 'Mais passos'],
+];
+
+// Chips ✨ Sugerir: a IA propõe, cada item tem "Usar". Nada entra sozinho.
+function SugestoesIa({ doc, meta, conteudoId, alterar, onPassoNovo }) {
+    const [carregando, setCarregando] = useState('');
+    const [sug, setSug] = useState(null);   // { tipo, usoId, itens, usou }
+    const [erro, setErro] = useState('');
+    const secoes = Array.isArray(doc.secoes) ? doc.secoes : [];
+    const planos = secoes.flatMap((s) => (s.passos || []).map((p) => ({ secao: s.bloco, texto: p.texto || '' })));
+    const ehRotina = meta.tipo === 'ROTINA';
+
+    const pedir = async (tipo) => {
+        if (carregando) return;
+        setCarregando(tipo); setErro(''); setSug(null); usouRef.current = false;
+        try {
+            const naoFazerAtual = String(doc.naoFazer || '').trim();
+            const r = await iaService.sugerir({
+                tipo,
+                contexto: {
+                    tipoConteudo: meta.tipo, titulo: meta.titulo, setor: meta.setores[0] || '', objetivo: doc.objetivo || '',
+                    passos: planos.slice(0, 60),
+                    ...(naoFazerAtual ? { naoFazer: naoFazerAtual } : {}),
+                    ...(Array.isArray(doc.seDerErrado) && doc.seDerErrado.length ? { seDerErrado: doc.seDerErrado.filter((x) => x?.se || x?.entao) } : {}),
+                },
+            });
+            const itens = Array.isArray(r?.itens) ? r.itens : [];
+            if (itens.length === 0) { setErro('A IA não teve sugestão desta vez.'); registrarResultado(r?.usoId, 'DESCARTADO', conteudoId); }
+            else setSug({ tipo, usoId: r.usoId, itens, usou: false });
+        } catch (e) { setErro(mensagemDeErroIa(e)); }
+        finally { setCarregando(''); }
+    };
+
+    const usouRef = useRef(false);
+    const marcarUsou = () => {
+        if (!usouRef.current && sug) { usouRef.current = true; registrarResultado(sug.usoId, 'USADO', conteudoId); }   // fora do updater (StrictMode)
+        setSug((a) => (a ? { ...a, usou: true } : a));
+    };
+    const tirar = (i) => setSug((a) => (a ? { ...a, itens: a.itens.filter((_, j) => j !== i) } : a));
+    const fechar = () => { if (sug && !usouRef.current) registrarResultado(sug.usoId, 'DESCARTADO', conteudoId); setSug(null); };
+
+    const usar = (item, i) => {
+        if (sug.tipo === 'naoFazer') {
+            const txt = String(item || '').trim();
+            if (!txt) return;
+            alterar((d) => ({ ...d, naoFazer: [String(d.naoFazer || '').trim(), txt].filter(Boolean).join(' · ') }));
+        } else if (sug.tipo === 'seDerErrado') {
+            alterar((d) => ({ ...d, seDerErrado: [...(Array.isArray(d.seDerErrado) ? d.seDerErrado : []), { se: String(item?.se || ''), entao: String(item?.entao || '') }] }));
+        } else if (sug.tipo === 'perguntas') {
+            const alvo = Number(item?.passoIndice);
+            alterar((d) => {
+                let k = -1;
+                return { ...d, secoes: d.secoes.map((s) => ({ ...s, passos: s.passos.map((p) => { k += 1; return k === alvo && !p.pergunta && item.pergunta ? { ...p, pergunta: item.pergunta } : p; }) })) };
+            });
+        } else if (sug.tipo === 'maisPassos') {
+            const novo = {
+                id: novoId('p'), texto: String(item?.texto || '').slice(0, 140), detalhe: item?.detalhe ? String(item.detalhe).slice(0, 240) : null,
+                foto: null, video: null, perigo: item?.perigo === true, itens: null, pergunta: null,
+                ...(item?.fotoSugerida ? { fotoSugerida: String(item.fotoSugerida).slice(0, 140) } : {}),
+            };
+            alterar((d) => {
+                const alvoGlobal = Number(item?.depoisDoIndice);
+                let k = -1; let si = d.secoes.findIndex((s) => s.bloco === item?.secaoBloco);
+                if (si < 0) si = d.secoes.length - 1;
+                let pos = alvoGlobal === -1 ? 0 : d.secoes[si].passos.length;   // -1 = começo da seção; senão no fim, salvo se o passo-âncora estiver nela
+                d.secoes.forEach((s, idx) => s.passos.forEach((_, pi) => { k += 1; if (idx === si && k === alvoGlobal) pos = pi + 1; }));
+                return { ...d, secoes: d.secoes.map((s, idx) => (idx === si ? { ...s, passos: [...s.passos.slice(0, pos), novo, ...s.passos.slice(pos)] } : s)) };
+            });
+            onPassoNovo?.();
+        }
+        marcarUsou(); tirar(i);
+    };
+
+    const rotuloItem = (item) => {
+        if (sug.tipo === 'naoFazer') return String(item || '');
+        if (sug.tipo === 'seDerErrado') return `Se ${item?.se || ''} → então ${item?.entao || ''}`;
+        if (sug.tipo === 'perguntas') return `Passo ${Number(item?.passoIndice) + 1}: ${resumoPergunta(item?.pergunta)}`;
+        return `${item?.texto || ''}${item?.fotoSugerida ? ` (📷 ${item.fotoSugerida})` : ''}`;
+    };
+
+    return (
+        <div className="space-y-2">
+            <div className="flex flex-wrap gap-2">
+                {SUGESTOES.filter(([t]) => t !== 'perguntas' || ehRotina).map(([t, r]) => (
+                    <button key={t} type="button" onClick={() => pedir(t)} disabled={!!carregando}
+                        className="min-h-[44px] px-4 inline-flex items-center gap-2 rounded-full bg-white border border-violet-300 text-violet-800 text-sm font-semibold disabled:opacity-50">
+                        {carregando === t ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} Sugerir: {r}
+                    </button>
+                ))}
+            </div>
+            {erro && <p className="rounded-lg bg-red-50 border border-red-200 text-red-800 text-sm font-semibold p-2 break-words" role="alert">{erro}</p>}
+            {sug && (
+                <div className="rounded-xl border border-violet-200 bg-violet-50 p-3 space-y-2">
+                    <p className="text-xs font-bold uppercase tracking-widest text-violet-800">✨ Sugestões da IA — nada entra sozinho</p>
+                    {sug.itens.length === 0 && <p className="text-sm text-gray-700">Você já usou todas.</p>}
+                    {sug.itens.map((item, i) => (
+                        <div key={i} className="flex items-center gap-2 rounded-lg bg-white border border-violet-100 p-2">
+                            <span className="flex-1 min-w-0 text-sm text-gray-900 break-words">{rotuloItem(item)}</span>
+                            <button type="button" onClick={() => usar(item, i)} className="min-h-[44px] px-4 rounded-full bg-primary hover:bg-primaryDark text-white text-sm font-semibold shrink-0">Usar</button>
+                        </div>
+                    ))}
+                    <button type="button" onClick={fechar} className="min-h-[44px] px-4 rounded-full bg-white border border-gray-300 text-gray-800 text-sm font-semibold">{sug.usou ? 'Fechar' : 'Descartar'}</button>
+                </div>
+            )}
+        </div>
+    );
+}
+
 export default function EditorConteudo({ id, onVoltar }) {
     const { setores: listaSetores, carregando: carregandoSetores, erro: erroSetores, aviso: avisoSetores } = useSetores();
+    const { ativa: iaAtiva } = useIaStatus();
+    const [modalIa, setModalIa] = useState(false);
     const [carregado, setCarregado] = useState(false);
     const [erro, setErro] = useState('');
     const [meta, setMeta] = useState(null);
@@ -194,6 +312,8 @@ export default function EditorConteudo({ id, onVoltar }) {
             const r = await comoFazerService.publicar(id, !soTexto);
             setResultado(r);
             setMeta((m) => ({ ...m, status: 'PUBLICADO' }));
+            // o servidor já tirou o selo da IA ao publicar: tira daqui também, sem disparar autosave
+            setDoc((d) => { if (!d?.ia) return d; const { ia, ...resto } = d; docRef.current = resto; return resto; }); // eslint-disable-line no-unused-vars
             toast.success(`Versão ${r?.versao?.numero ?? ''} publicada!`);
             setModalPublicar(false);
         } catch (e) {
@@ -219,6 +339,7 @@ export default function EditorConteudo({ id, onVoltar }) {
     const tipo = meta.tipo;
     const ehRotina = tipo === 'ROTINA';
     const secoes = Array.isArray(doc.secoes) ? doc.secoes : [];
+    const totalPassos = secoes.reduce((n, x) => n + (x.passos?.length || 0), 0);
     const selecionado = sel && secoes[sel.s]?.passos[sel.p] ? secoes[sel.s].passos[sel.p] : null;
     const textoSalvo = { salvo: '✓ Rascunho salvo', salvando: 'Salvando…', pendente: 'Alterações a salvar…', erro: 'Não salvou — toque em Salvar' }[salvo];
 
@@ -238,6 +359,20 @@ export default function EditorConteudo({ id, onVoltar }) {
                 <button type="button" onClick={arquivar} className="min-h-[44px] px-4 inline-flex items-center gap-2 rounded-full bg-white border border-red-300 text-red-700 text-sm font-semibold"><Archive className="h-4 w-4" /> Arquivar</button>
             </div>
 
+            {doc.ia && (
+                <p className="rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm font-semibold p-3">
+                    ✨ Rascunho feito com ajuda da IA — confira cada passo antes de publicar. O selo some quando você publicar.
+                </p>
+            )}
+            {iaAtiva && totalPassos === 0 && (
+                <div className="rounded-xl border border-violet-200 bg-violet-50 p-4 space-y-2">
+                    <p className="text-sm font-bold text-violet-900">✨ Quer que a IA monte o começo?</p>
+                    <p className="text-xs text-violet-900">Conte o que você quer ensinar e a IA escreve um rascunho completo, com os passos e qual foto tirar. Você revisa antes de usar.</p>
+                    <button type="button" onClick={() => setModalIa(true)} className="w-full md:w-auto min-h-[48px] px-6 rounded-full bg-violet-700 hover:bg-violet-800 text-white font-semibold text-sm inline-flex items-center justify-center gap-2">
+                        <Sparkles className="h-4 w-4" /> Começar com a IA
+                    </button>
+                </div>
+            )}
             {resultado?.agenda?.erro && <p className="rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm font-semibold p-3">{resultado.agenda.erro}</p>}
             {errosDoc.length > 0 && (
                 <div className="rounded-xl bg-red-50 border border-red-200 text-red-800 text-sm p-3">
@@ -280,7 +415,7 @@ export default function EditorConteudo({ id, onVoltar }) {
                         </div>
                         <div className="space-y-2">
                             <label className="block"><span className="text-sm font-medium text-gray-700">Repetição</span>
-                                <SelectBusca value={meta.recorrencia} onChange={(e) => setMeta({ ...meta, recorrencia: e.target.value })} className="mt-1 w-full">
+                                <SelectBusca value={meta.recorrencia} onChange={(e) => setMeta({ ...meta, recorrencia: e.target.value })} className="mt-1 w-full h-11">
                                     {RECORRENCIAS.map(([v, r]) => <option key={v} value={v}>{r}</option>)}
                                 </SelectBusca>
                             </label>
@@ -324,6 +459,12 @@ export default function EditorConteudo({ id, onVoltar }) {
                 </div>
             </Caixa>
 
+            {iaAtiva && totalPassos > 0 && (
+                <Caixa titulo="Ajuda da IA no documento">
+                    <SugestoesIa doc={doc} meta={meta} conteudoId={id} alterar={alterar} />
+                </Caixa>
+            )}
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
                 <div className="space-y-4">
                     {secoes.map((s, si) => (
@@ -360,11 +501,31 @@ export default function EditorConteudo({ id, onVoltar }) {
                 <div className="lg:sticky lg:top-3">
                     {selecionado ? (
                         <Caixa titulo={`Passo ${sel.p + 1}`}>
-                            <PassoEditor key={selecionado.id} passo={selecionado} tipo={tipo} conteudoId={id} onChange={(p) => setPasso(sel.s, sel.p, p)} />
+                            <PassoEditor key={selecionado.id} passo={selecionado} tipo={tipo} conteudoId={id} onChange={(p) => setPasso(sel.s, sel.p, p)} ia={{ ativa: iaAtiva, titulo: meta.titulo, objetivo: doc.objetivo || '' }} />
                         </Caixa>
                     ) : <p className="rounded-xl bg-white border border-gray-200 p-6 text-center text-sm text-gray-600">Toque num passo para editar. Aqui aparece como a equipe vai ver.</p>}
                 </div>
             </div>
+
+            {modalIa && (
+                <ModalComecarComIA modo="vazio" conteudoId={id}
+                    contexto={{ tipo: meta.tipo, titulo: meta.titulo, setor: meta.setores[0] || '', setorNome: listaSetores.find((x) => x.codigo === meta.setores[0])?.nome || meta.setores[0] || '' }}
+                    onAplicar={(docIA) => {
+                        // nunca apaga o que a pessoa já escreveu: texto já preenchido fica; a IA só completa o que está vazio
+                        const mantidos = [];
+                        alterar((d) => {
+                            const novo = { ...docIA };
+                            [['objetivo', 'Para que serve'], ['materiais', 'O que precisa'], ['avisoPerigo', 'Aviso de perigo'], ['naoFazer', 'O que NÃO fazer']].forEach(([c, r]) => {
+                                if (String(d?.[c] || '').trim()) { if (String(docIA[c] || '').trim() && docIA[c] !== d[c]) mantidos.push(r); novo[c] = d[c]; }
+                            });
+                            const meus = Array.isArray(d?.seDerErrado) ? d.seDerErrado.filter((x) => x?.se || x?.entao) : [];
+                            if (meus.length) { if (Array.isArray(docIA.seDerErrado) && docIA.seDerErrado.length) mantidos.push('Se der errado'); novo.seDerErrado = d.seDerErrado; }
+                            return novo;
+                        });
+                        if (mantidos.length) toast(`Mantive o que você já tinha escrito em: ${mantidos.join(', ')}.`, { duration: 7000 });
+                        setSel(null);
+                    }} onFechar={() => setModalIa(false)} />
+            )}
 
             {modalPublicar && (
                 <div className="fixed inset-0 z-[9000] bg-black/60 flex items-center justify-center p-3">

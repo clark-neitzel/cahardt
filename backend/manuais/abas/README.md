@@ -148,5 +148,6 @@
 | Config — Cat. Cliente | `/configuracoes/categorias-cliente` | Segmentos de cliente com ciclo padrão e regras de desconto | [config-categorias-cliente.md](config-categorias-cliente.md) |
 | Config — Cidades | `/config/cidades` | Cadastro oficial de cidades: todo campo Cidade só aceita da lista; cadastrar nova (com "você quis dizer"), editar, fundir com simulação e snapshot, pendências vindas do Conta Azul/IA | [config-cidades.md](config-cidades.md) |
 | Config — Setores | `/config/setores` | Cadastro de setores (Cozinha, Estoque…): criar, renomear (vale em todo lugar), ordenar, desativar e excluir (só sem uso) | [config-setores.md](config-setores.md) |
+| Config — Inteligência artificial | `/config/ia` | Liga/desliga a IA do Como Fazer, escolhe modelo e limite por dia, cadastra preço e mostra o uso e o custo do mês (por enquanto só ChatGPT) | [config-ia.md](config-ia.md) |
 | Config — Impressoras | `/config/impressoras` | Impressão direta de etiquetas (só admin): agente do PC da cozinha, impressoras Zebra, testes de impressão e fila | [configuracoes-impressoras.md](configuracoes-impressoras.md) |
 | Config — Cat. Estoque | `/configuracoes/categorias-estoque` | Define quais categorias de produto têm controle de estoque ativo | [config-categorias-estoque.md](config-categorias-estoque.md) |

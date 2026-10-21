@@ -179,6 +179,51 @@ router.post('/admin/tablet/:setor/parear', ESCOPO_EDITAR, h(async (req, res) => 
     res.json({ setor: setor.slug, link: `${origem}/setor/${setor.slug}#k=${chave}`, chave });
 }));
 
+// ═════════ IA — "Começar com a IA" (Fase 1). Só app + Pode_Editar_Como_Fazer; tablet leva 403. ═════════
+const ia = require('../services/comoFazerIaService');
+
+router.get('/ia/status', ESCOPO_EDITAR, h(async (req, res) => res.json(await ia.status())));
+router.get('/ia/itens-pcp', ESCOPO_EDITAR, h(async (req, res) => res.json(await ia.itensPcp(req.query.busca))));
+router.post('/ia/passo', ESCOPO_EDITAR, h(async (req, res) => res.json(await ia.melhorarPasso(req.cf, req.body))));
+router.post('/ia/sugerir', ESCOPO_EDITAR, h(async (req, res) => res.json(await ia.sugerir(req.cf, req.body))));
+router.post('/ia/usos/:id/resultado', ESCOPO_EDITAR, h(async (req, res) => res.json(await ia.registrarResultado(req.cf, req.params.id, req.body))));
+
+// Montagem em streaming (SSE). Erros de validação/limite saem como JSON normal ANTES do stream;
+// os cabeçalhos SSE só abrem no primeiro evento. `no-transform` impede o compression() de bufferizar.
+router.post('/ia/montar', ESCOPO_EDITAR, h(async (req, res) => {
+    const ctrl = new AbortController();
+    let aberto = false, fechado = false, beat = null, prog = null;
+    const t0 = Date.now();
+    res.on('close', () => {
+        fechado = true;
+        clearInterval(beat); clearInterval(prog);
+        if (!res.writableEnded) ctrl.abort(); // cliente foi embora -> cancela a IA
+    });
+    const escrever = (txt) => { if (fechado) return; res.write(txt); if (typeof res.flush === 'function') res.flush(); };
+    const abrir = () => {
+        if (aberto) return;
+        aberto = true;
+        res.status(200);
+        res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+        res.setHeader('Cache-Control', 'no-cache, no-transform');
+        res.setHeader('Connection', 'keep-alive');
+        res.setHeader('X-Accel-Buffering', 'no');
+        res.flushHeaders();
+        beat = setInterval(() => escrever(': ping\n\n'), 15000);
+        prog = setInterval(() => escrever(`event: progresso\ndata: ${JSON.stringify({ segundos: Math.round((Date.now() - t0) / 1000) })}\n\n`), 5000);
+    };
+    const emitir = (evento, dados) => { abrir(); escrever(`event: ${evento}\ndata: ${JSON.stringify(dados)}\n\n`); };
+    try {
+        await ia.montar({ cf: req.cf, body: req.body, emitir, signal: ctrl.signal });
+    } catch (e) {
+        if (aberto) { emitir('erro', { erro: 'Não consegui concluir. Tente de novo.', codigo: 'IA_FALHOU' }); console.error('[ComoFazerIA] montar (SSE aberto):', e); }
+        else throw e; // ainda sem stream: h() responde JSON { erro, codigo }
+    } finally {
+        clearInterval(beat); clearInterval(prog);
+        if (aberto && !fechado) res.end();
+    }
+}));
+
 // qualquer rota do módulo que não existe: 404 no formato do módulo
 router.use((req, res) => erro(res, 404, 'ROTA_NAO_ENCONTRADA', 'Rota não encontrada.'));
 

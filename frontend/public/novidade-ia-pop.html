@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Comece o manual com a IA — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp (sem imagem de propósito: cartão compacto) -->
+<meta property="og:title" content="✨ Novidade no Hardt App: a IA monta o primeiro rascunho do manual">
+<meta property="og:description" content="No Como Fazer, conte (ou fale) o que quer ensinar e a IA escreve o manual e diz qual foto tirar em cada passo. Você confere, ajusta e publica.">
+<meta property="og:type" content="website">
+<style>
+  :root { --primary:#00754A; --primary-dark:#006241; --house:#1E3932; --mint:#d4e9e2; --cream:#f2f0eb; --gold:#cba258; --ia:#6d28d9; --iabg:#f3e8ff; --ink:rgba(0,0,0,.87); --ink-soft:#5f6b66; letter-spacing:-0.01em; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--cream); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; line-height:1.55; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:620px; margin:0 auto; padding:0 16px 56px; }
+  .hero { background:linear-gradient(168deg,var(--house) 0%,#16302a 100%); color:#fff; padding:40px 16px 36px; }
+  .hero-inner { max-width:620px; margin:0 auto; text-align:center; }
+  .eyebrow { display:inline-block; background:var(--gold); color:#2b230f; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.14em; padding:6px 14px; border-radius:999px; margin-bottom:18px; }
+  .hero h1 { font-size:clamp(28px,7vw,40px); font-weight:800; line-height:1.12; margin:0 0 12px; text-wrap:balance; }
+  .hero p { color:rgba(255,255,255,.78); font-size:16px; max-width:46ch; margin:0 auto; text-wrap:balance; }
+  h2.sec { font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.14em; color:var(--ink-soft); margin:28px 0 10px; }
+  .acc { background:#fff; border:1px solid #e5e7eb; border-radius:14px; margin-bottom:10px; overflow:hidden; }
+  .acc-head { width:100%; display:flex; align-items:center; gap:12px; background:none; border:0; padding:14px 16px; min-height:56px; font:inherit; text-align:left; cursor:pointer; }
+  .acc-head:focus-visible { outline:3px solid var(--gold); outline-offset:2px; }
+  .acc-ico { width:36px; height:36px; border-radius:10px; background:var(--mint); display:flex; align-items:center; justify-content:center; font-size:18px; flex:none; }
+  .acc-head strong { flex:1; font-size:15.5px; font-weight:700; }
+  .acc-seta { color:#9aa5a0; transition:transform .2s; font-size:13px; }
+  .acc.aberto .acc-seta { transform:rotate(180deg); }
+  .acc-corpo { display:none; padding:0 16px 16px 64px; }
+  .acc.aberto .acc-corpo { display:block; }
+  .acc-corpo p, .acc-corpo li { font-size:14px; color:var(--ink-soft); }
+  .acc-corpo p { margin:0 0 10px; } .acc-corpo ul { margin:0; padding-left:18px; } .acc-corpo li { margin-bottom:7px; } .acc-corpo b { color:var(--ink); }
+  @media (max-width:420px) { .acc-corpo { padding-left:16px; } }
+  /* mocks das telas */
+  .tela { background:#fff; border:1px solid #e5e7eb; border-radius:16px; overflow:hidden; margin-bottom:14px; box-shadow:0 6px 18px rgba(20,40,34,.08); }
+  .tela-titulo { background:var(--house); color:#fff; font-size:12px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; padding:10px 14px; }
+  .tela-corpo { padding:14px; background:#f7f6f2; }
+  .campo { margin-bottom:10px; } .campo small { display:block; font-size:12px; font-weight:600; color:#4b5563; margin-bottom:3px; }
+  .input { background:#fff; border:1px solid #d1d5db; border-radius:6px; padding:8px 10px; font-size:13px; color:#374151; }
+  .input.area { min-height:84px; line-height:1.4; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .btn { display:inline-flex; align-items:center; justify-content:center; gap:6px; border-radius:999px; font-weight:700; font-size:13px; padding:9px 16px; border:1px solid var(--primary); color:var(--primary); background:#fff; }
+  .btn.prim { background:var(--primary); color:#fff; } .btn.ia { background:var(--ia); border-color:var(--ia); color:#fff; } .btn.iaout { border-color:#c4b5fd; color:#5b21b6; }
+  .card-ia { background:var(--iabg); border:1px solid #ddd6fe; border-radius:12px; padding:12px; } .card-ia b { color:#4c1d95; font-size:13px; } .card-ia p { margin:4px 0 10px; font-size:12px; color:#4c1d95; }
+  .selo { background:#fffbeb; border:1px solid #fde68a; color:#92400e; border-radius:10px; padding:9px 11px; font-size:12.5px; font-weight:700; margin-bottom:10px; }
+  .passo { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:10px; display:flex; gap:10px; margin-bottom:8px; }
+  .passo.perigo { border:2px solid #ef4444; }
+  .num { flex:none; width:30px; height:30px; border-radius:50%; background:var(--house); color:#fff; font-weight:800; display:flex; align-items:center; justify-content:center; font-size:14px; }
+  .passo.perigo .num { background:#dc2626; }
+  .passo b { font-size:14px; display:block; } .dica { display:inline-block; margin-top:5px; background:var(--iabg); color:#5b21b6; font-size:11.5px; font-weight:700; border-radius:8px; padding:3px 8px; }
+  .kpis { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px; } .kpi { background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:8px 10px; } .kpi small { font-size:10px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; color:#6b7280; display:block; } .kpi b { font-size:18px; }
+  .pin { display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; border-radius:50%; background:var(--gold); color:#2b230f; font-size:11px; font-weight:800; margin-left:6px; vertical-align:middle; flex:none; }
+  .legenda { padding:12px 16px 16px; } .legenda div { display:flex; gap:8px; font-size:13px; color:var(--ink-soft); margin-bottom:7px; align-items:flex-start; } .legenda .pin { margin:1px 0 0; } .legenda b { color:var(--ink); }
+  .nota { font-size:12px; color:var(--ink-soft); text-align:center; margin:6px 0 0; }
+</style>
+</head>
+<body>
+<div class="hero"><div class="hero-inner">
+  <span class="eyebrow">Novidade · Como Fazer</span>
+  <h1>✨ A IA monta o primeiro rascunho do manual</h1>
+  <p>Conte (ou fale) o que quer ensinar. Ela escreve o passo a passo e diz qual foto tirar em cada passo. Você confere, ajusta e publica.</p>
+</div></div>
+
+<div class="wrap">
+  <h2 class="sec">Como funciona</h2>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true"><span class="acc-ico">✨</span><strong>Começar com a IA</strong><span class="acc-seta">▼</span></button>
+    <div class="acc-corpo">
+      <p>Em <b>Painel Como Fazer → Conteúdos → Novo conteúdo</b>, dê o nome e escolha o tipo e o setor. Aparece um cartão roxo: <b>Começar com a IA</b>.</p>
+      <ul>
+        <li>Escreva o que quer ensinar, em palavras de todo dia — ou toque em <b>Falar</b> e conte no microfone (onde o aparelho permite).</li>
+        <li>Se quiser, escolha o <b>produto/item</b> do PCP e diga <b>quem executa</b>. Escolha <b>Completo</b> ou <b>Curto</b>.</li>
+        <li>Toque em <b>Montar o POP</b>. Leva de 10 a 40 segundos; dá para <b>Cancelar</b> a qualquer hora.</li>
+        <li>Veja a prévia. Não gostou? <b>Pedir diferente</b> e diga o que mudar (“mais curto”, “coloque o termômetro”).</li>
+        <li>Gostou? <b>Usar este rascunho</b>. Só nesse momento o conteúdo é criado, como rascunho.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true"><span class="acc-ico">🛡️</span><strong>A IA nunca publica</strong><span class="acc-seta">▼</span></button>
+    <div class="acc-corpo">
+      <p>O resultado é sempre <b>rascunho</b> com um selo amarelo “feito com ajuda da IA”. <b>Publicar continua sendo clique seu.</b> O selo some ao publicar e a equipe no tablet nunca vê nada de IA.</p>
+      <p>A IA <b>não conhece sua máquina de verdade</b>: confira cada passo antes de publicar, principalmente temperatura, tempo e perigo.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true"><span class="acc-ico">🪄</span><strong>Ajuda dentro do editor</strong><span class="acc-seta">▼</span></button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Em cada passo: <b>✨ Melhorar</b> (frase mais clara) e <b>✨ Mais simples</b> (mais curta). Aparece a sugestão com <b>Usar</b> ou <b>Descartar</b>.</li>
+        <li>No documento: <b>Sugerir</b> “O que NÃO fazer”, “Se der errado”, perguntas do checklist (só Rotina) e mais passos. Cada item tem o seu <b>Usar</b>: nada entra sozinho.</li>
+        <li>Em conteúdo <b>vazio</b> aparece o cartão “Quer que a IA monte o começo?”. Em conteúdo que já tem passos, não aparece (para a IA nunca apagar o seu trabalho).</li>
+        <li>A <b>dica de foto</b> (“Foto para tirar: …”) fica no botão de foto do passo e some quando você coloca a foto.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true"><span class="acc-ico">⚙️</span><strong>Configurações → Inteligência artificial</strong><span class="acc-seta">▼</span></button>
+    <div class="acc-corpo">
+      <p>Para quem tem acesso às Configurações: liga/desliga a IA, define o <b>limite por dia</b>, mostra quantos POPs foram montados no mês, o tempo médio, o gasto estimado e o histórico (quem pediu, o quê, se foi usado). Por enquanto funciona com o ChatGPT que o app já usa; o Claude aparece desativado para o futuro.</p>
+    </div>
+  </div>
+
+  <h2 class="sec">As telas do app</h2>
+
+  <div class="tela"><div class="tela-titulo">Tela 1 · Novo conteúdo</div><div class="tela-corpo">
+    <div class="campo"><small>Tipo</small><div class="input">⚙️ Máquina</div></div>
+    <div class="campo"><small>Nome</small><div class="input">Fritadeira (exemplo)</div></div>
+    <div class="card-ia"><b>✨ Quer que a IA monte o começo?</b><span class="pin">1</span><p>Conte o que você quer ensinar e a IA escreve um rascunho completo, com os passos e qual foto tirar.</p>
+      <div class="row"><span class="btn ia">✨ Começar com a IA</span></div></div>
+    <div class="row" style="margin-top:10px"><span class="btn">Cancelar</span><span class="btn prim">Criar</span><span class="pin">2</span></div>
+  </div><div class="legenda">
+    <div><span class="pin">1</span><span>O cartão roxo só aparece para quem edita o Como Fazer e quando a IA está ligada. <b>Dê o nome antes</b>.</span></div>
+    <div><span class="pin">2</span><span><b>Criar</b> continua do jeito de sempre: começar em branco.</span></div></div></div>
+
+  <div class="tela"><div class="tela-titulo">Tela 2 · Conte para a IA</div><div class="tela-corpo">
+    <div class="campo"><small>O que você quer ensinar? <span class="pin">1</span></small><div class="input area">Como ligar a fritadeira, esperar o óleo esquentar, fritar sem encher o cesto e limpar no fim do dia. O pessoal se queima tirando o cesto rápido. (exemplo)</div>
+      <div class="row" style="margin-top:6px"><span class="btn iaout">🎤 Falar</span><span class="pin">2</span></div></div>
+    <div class="campo"><small>Produto / item relacionado (opcional)</small><div class="input">Buscar no cadastro do PCP…</div></div>
+    <div class="row"><span class="btn" style="background:#d4e9e2">Completo · 8 a 15 passos</span><span class="btn">Curto · até 6</span></div>
+    <div class="row" style="margin-top:10px"><span class="btn">Cancelar</span><span class="btn prim">✨ Montar o POP</span><span class="pin">3</span></div>
+  </div><div class="legenda">
+    <div><span class="pin">1</span><span>Campo livre. Quanto mais você contar, melhor sai; mínimo de 10 letras.</span></div>
+    <div><span class="pin">2</span><span>O botão <b>Falar</b> só aparece se o aparelho tem ditado. Na primeira vez, libere o microfone.</span></div>
+    <div><span class="pin">3</span><span>Enquanto monta, aparece o cronômetro e o texto chegando. <b>Cancelar</b> guarda tudo o que você escreveu.</span></div></div></div>
+
+  <div class="tela"><div class="tela-titulo">Tela 3 · Prévia do rascunho</div><div class="tela-corpo">
+    <div class="selo">✨ Rascunho feito com ajuda da IA — confira cada passo antes de publicar.</div>
+    <div class="passo"><span class="num">1</span><div><b>Confira se o óleo está até a marca. (exemplo)</b><span class="dica">📷 Foto para tirar: a marca de nível dentro da cuba</span><span class="pin">1</span></div></div>
+    <div class="passo perigo"><span class="num">2</span><div><b>Encha o cesto só até a metade. (exemplo)</b><span class="dica">📷 Foto para tirar: cesto pela metade</span></div></div>
+    <div class="row" style="margin-top:10px"><span class="btn">Cancelar</span><span class="btn iaout">↻ Pedir diferente</span><span class="pin">2</span><span class="btn prim">✓ Usar este rascunho</span><span class="pin">3</span></div>
+  </div><div class="legenda">
+    <div><span class="pin">1</span><span>Cada passo traz a <b>dica da foto</b> que você precisa tirar depois, no editor.</span></div>
+    <div><span class="pin">2</span><span><b>Pedir diferente</b>: escreva o que mudar; a IA ajusta o rascunho anterior.</span></div>
+    <div><span class="pin">3</span><span><b>Usar</b> cria o conteúdo como rascunho e abre o editor. Nada foi salvo antes disso.</span></div></div></div>
+
+  <div class="tela"><div class="tela-titulo">Tela 4 · No editor</div><div class="tela-corpo">
+    <div class="selo">✨ Rascunho feito com ajuda da IA — o selo some quando você publicar.<span class="pin">1</span></div>
+    <div class="campo"><small>O que fazer (frase curta)</small><div class="input">Confira se o óleo está até a marca. (exemplo)</div></div>
+    <div class="row"><span class="btn iaout">✨ Melhorar</span><span class="btn iaout">✨ Mais simples</span><span class="pin">2</span></div>
+    <div class="row" style="margin-top:8px"><span class="btn">📷 Tirar / escolher foto</span></div>
+    <span class="dica">📷 Foto para tirar: a marca de nível dentro da cuba</span><span class="pin">3</span>
+    <div class="row" style="margin-top:10px"><span class="btn iaout">✨ Sugerir: O que NÃO fazer</span><span class="btn iaout">✨ Sugerir: Mais passos</span><span class="pin">4</span></div>
+  </div><div class="legenda">
+    <div><span class="pin">1</span><span>O selo só existe aqui no editor; some ao publicar.</span></div>
+    <div><span class="pin">2</span><span>A sugestão aparece com <b>Usar</b> ou <b>Descartar</b>. O limite de 140 letras é respeitado.</span></div>
+    <div><span class="pin">3</span><span>A dica fica abaixo do botão de foto e some quando a foto entra.</span></div>
+    <div><span class="pin">4</span><span>Cada sugestão tem o seu <b>Usar</b>.</span></div></div></div>
+
+  <div class="tela"><div class="tela-titulo">Tela 5 · Configurações → Inteligência artificial</div><div class="tela-corpo">
+    <div class="kpis"><div class="kpi"><small>POPs montados no mês</small><b>12 (exemplo)</b></div><div class="kpi"><small>Gasto estimado</small><b>R$ 1,20 (exemplo)</b></div><div class="kpi"><small>Tempo médio</small><b>25 s (exemplo)</b></div><div class="kpi"><small>Chave no servidor</small><b style="color:#15803d">Configurada</b></div></div>
+    <span class="pin">1</span>
+    <div class="campo" style="margin-top:8px"><small>Limite por dia (todas as pessoas)</small><div class="input">40 (exemplo)</div><span class="pin">2</span></div>
+    <div class="campo"><small>Preço por modelo</small><div class="input">Preencha para ver o gasto em reais</div><span class="pin">3</span></div>
+  </div><div class="legenda">
+    <div><span class="pin">1</span><span>Resumo do mês. Sem preço cadastrado o gasto aparece como “—”, nunca como zero.</span></div>
+    <div><span class="pin">2</span><span>Passou do limite do dia, a IA avisa e a pessoa começa em branco.</span></div>
+    <div><span class="pin">3</span><span>O preço é o de lista do provedor; o sistema não inventa valores. Quem só pode <b>ver</b> as Configurações vê tudo, mas não altera.</span></div></div></div>
+  <p class="nota">Nomes e valores das telas acima são apenas exemplos.</p>
+
+  <h2 class="sec">Para começar a usar</h2>
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true"><span class="acc-ico">1️⃣</span><strong>Passo a passo</strong><span class="acc-seta">▼</span></button>
+    <div class="acc-corpo"><ul>
+      <li>Abra <b>Painel Como Fazer → Conteúdos → Novo conteúdo</b> e dê o nome.</li>
+      <li>Toque em <b>Começar com a IA</b> e conte o que quer ensinar.</li>
+      <li>Confira a prévia, use o rascunho, tire as fotos e <b>publique</b>.</li>
+    </ul></div>
+  </div>
+</div>
+<script>
+  function alternar(btn) { const acc = btn.parentElement; const abriu = !acc.classList.contains('aberto'); acc.classList.toggle('aberto'); btn.setAttribute('aria-expanded', abriu ? 'true' : 'false'); }
+</script>
+</body>
+</html>

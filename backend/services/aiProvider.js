@@ -61,13 +61,13 @@ function parametrosOpenAI(modelo, { maxTokens, temperature }) {
     return { max_completion_tokens: maxTokens ?? 600 };
 }
 
-async function gerarTextoOpenAI({ system, mensagens, maxTokens, temperature, json }) {
+async function gerarTextoOpenAI({ system, mensagens, maxTokens, temperature, json, modelo: modeloOpt, signal }) {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) throw new Error('OPENAI_API_KEY não configurada.');
 
     const { OpenAI } = require('openai');
     const openai = new OpenAI({ apiKey });
-    const modelo = modeloAtual();
+    const modelo = modeloOpt || modeloAtual();
 
     const msgs = [];
     if (system) msgs.push({ role: 'system', content: system });
@@ -78,13 +78,18 @@ async function gerarTextoOpenAI({ system, mensagens, maxTokens, temperature, jso
         messages: msgs,
         ...parametrosOpenAI(modelo, { maxTokens, temperature }),
         ...(json ? { response_format: { type: 'json_object' } } : {}),
-    });
+    }, signal ? { signal } : undefined);
 
     const escolha = resp.choices[0];
     const conteudo = escolha?.message?.content;
+    const recusa = escolha?.message?.refusal || null;
     if (!conteudo || !conteudo.trim()) {
-        throw new Error(`IA devolveu resposta vazia (finish_reason=${escolha?.finish_reason || '?'}, ` +
+        const e = new Error(`IA devolveu resposta vazia (finish_reason=${escolha?.finish_reason || '?'}, ` +
             `raciocinio=${resp.usage?.completion_tokens_details?.reasoning_tokens ?? 0} tokens). Aumente o teto de tokens.`);
+        e.finishReason = escolha?.finish_reason || null;
+        e.recusa = recusa;
+        e.usage = { prompt: resp.usage?.prompt_tokens ?? null, resposta: resp.usage?.completion_tokens ?? null, total: resp.usage?.total_tokens ?? null };
+        throw e;
     }
 
     return {
@@ -96,13 +101,15 @@ async function gerarTextoOpenAI({ system, mensagens, maxTokens, temperature, jso
         },
         modelo,
         provider: 'openai',
+        finishReason: escolha?.finish_reason || null,
+        recusa,
     };
 }
 
 // ─────────────────────────────────────────────
 // Gemini (Google) — grátis dentro do free tier
 // ─────────────────────────────────────────────
-async function gerarTextoGemini({ system, mensagens, maxTokens, temperature, json }) {
+async function gerarTextoGemini({ system, mensagens, maxTokens, temperature, json, modelo: modeloOpt }) {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) throw new Error('GEMINI_API_KEY não configurada.');
 
@@ -114,7 +121,7 @@ async function gerarTextoGemini({ system, mensagens, maxTokens, temperature, jso
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const modelo = modeloAtual();
+    const modelo = modeloOpt || modeloAtual();
     const model = genAI.getGenerativeModel({
         model: modelo,
         ...(system ? { systemInstruction: system } : {}),
@@ -222,8 +229,79 @@ async function analisarImagem({ system, texto, imagens = [], maxTokens = 2500, j
  * @param {boolean}[opts.json]      Força saída JSON
  */
 async function gerarTexto(opts) {
-    if (PROVIDER === 'gemini') return gerarTextoGemini(opts);
+    const prov = (opts && opts.provedor) || PROVIDER; // `provedor`/`modelo` por chamada são opcionais
+    if (prov === 'anthropic') {
+        const e = new Error('Provedor Claude ainda não está disponível (precisa da chave ANTHROPIC_API_KEY).');
+        e.codigo = 'PROVEDOR_INDISPONIVEL';
+        throw e;
+    }
+    if (prov === 'gemini') return gerarTextoGemini(opts);
     return gerarTextoOpenAI(opts); // openai (padrão)
 }
 
-module.exports = { gerarTexto, analisarImagem, isConfigured, providerAtual, modeloAtual, modeloVisao, parametrosOpenAI };
+/** Há chave para o provedor pedido (openai | gemini | anthropic)? */
+function isConfiguredProvedor(prov) {
+    const p = String(prov || PROVIDER).toLowerCase();
+    if (p === 'gemini') return !!process.env.GEMINI_API_KEY;
+    if (p === 'anthropic') return !!process.env.ANTHROPIC_API_KEY;
+    return !!process.env.OPENAI_API_KEY;
+}
+
+/**
+ * Geração com STREAMING (só OpenAI). Chama `onTexto(delta)` a cada pedaço.
+ * Resolve com { texto, usage, modelo, provider, finishReason, recusa }.
+ * `signal` (AbortSignal) cancela a chamada; nesse caso lança com name 'AbortError'.
+ * Lança com .finishReason/.recusa/.usage quando vier vazio.
+ */
+async function gerarTextoStream({ system, mensagens, maxTokens, json, modelo: modeloOpt, provedor, signal, onTexto, timeoutMs = 120000 }) {
+    const prov = provedor || PROVIDER;
+    if (prov === 'anthropic') { const e = new Error('Provedor Claude ainda não está disponível.'); e.codigo = 'PROVEDOR_INDISPONIVEL'; throw e; }
+    if (prov !== 'openai') { const e = new Error('Este provedor não suporta streaming.'); e.codigo = 'STREAM_NAO_SUPORTADO'; throw e; }
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) throw new Error('OPENAI_API_KEY não configurada.');
+
+    const { OpenAI } = require('openai');
+    const openai = new OpenAI({ apiKey, timeout: timeoutMs, maxRetries: 0 });
+    const modelo = modeloOpt || modeloAtual();
+
+    const msgs = [];
+    if (system) msgs.push({ role: 'system', content: system });
+    for (const m of mensagens) msgs.push({ role: m.role, content: m.content });
+
+    const stream = await openai.chat.completions.create({
+        model: modelo,
+        messages: msgs,
+        ...parametrosOpenAI(modelo, { maxTokens }),
+        ...(json ? { response_format: { type: 'json_object' } } : {}),
+        stream: true,
+        stream_options: { include_usage: true },
+    }, signal ? { signal } : undefined);
+
+    let texto = '', finishReason = null, recusa = '', usage = null;
+    for await (const chunk of stream) {
+        const ch = chunk.choices && chunk.choices[0];
+        if (ch) {
+            const d = ch.delta || {};
+            if (d.content) { texto += d.content; if (onTexto) { try { onTexto(d.content); } catch { /* callback nunca derruba a geração */ } } }
+            if (d.refusal) recusa += d.refusal;
+            if (ch.finish_reason) finishReason = ch.finish_reason;
+        }
+        if (chunk.usage) usage = chunk.usage;
+    }
+    const u = {
+        prompt: usage?.prompt_tokens ?? null,
+        resposta: usage?.completion_tokens ?? null,
+        total: usage?.total_tokens ?? null,
+    };
+    if (!texto.trim()) {
+        const e = new Error(`IA devolveu resposta vazia (finish_reason=${finishReason || '?'}).`);
+        e.finishReason = finishReason; e.recusa = recusa || null; e.usage = u;
+        throw e;
+    }
+    return { texto: texto.trim(), usage: u, modelo, provider: 'openai', finishReason, recusa: recusa || null };
+}
+
+module.exports = {
+    gerarTexto, gerarTextoStream, analisarImagem, isConfigured, isConfiguredProvedor,
+    providerAtual, modeloAtual, modeloVisao, parametrosOpenAI,
+};

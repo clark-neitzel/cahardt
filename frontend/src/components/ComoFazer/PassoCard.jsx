@@ -61,7 +61,7 @@ function Midia({ foto, video, alt, pequena }) {
     );
 }
 
-export default function PassoCard({ passo, numero, compacto = false, semOuvir = false }) {
+export default function PassoCard({ passo, numero, compacto = false, semOuvir = false, dicaFoto = '' }) {
     if (!passo) return null;
     const itens = Array.isArray(passo.itens) ? passo.itens : [];
     const podeOuvir = !semOuvir && suportaFala();
@@ -79,6 +79,7 @@ export default function PassoCard({ passo, numero, compacto = false, semOuvir = 
                 )}
                 <p className={`${compacto ? 'text-base' : 'text-lg md:text-xl'} font-bold text-gray-900 leading-snug break-words`}>{passo.texto || ''}</p>
                 {passo.detalhe ? <p className="text-sm text-gray-600 mt-1 break-words">{passo.detalhe}</p> : null}
+                {dicaFoto ? <p className="mt-1.5 text-xs font-semibold text-violet-800 bg-violet-50 rounded-lg px-2 py-1 break-words">📷 Foto para tirar: {dicaFoto}</p> : null}
 
                 {itens.length > 0 && (
                     <div className="grid grid-cols-1 gap-2 mt-3">

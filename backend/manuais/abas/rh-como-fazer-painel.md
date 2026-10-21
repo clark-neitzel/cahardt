@@ -39,6 +39,16 @@ A tela da gestão para acompanhar o **Como Fazer**: quem já foi treinado, quais
 6. Publicar uma Rotina cria as tarefas na agenda do encarregado; trocar o horário ou o encarregado atualiza a agenda sozinho (as tarefas antigas são desativadas, não apagadas). Se a agenda der erro, aparece o botão **Refazer agenda**.
 7. **Arquivar** tira o conteúdo dos tablets e desativa as tarefas da rotina.
 
+### Começar com a IA (rascunho automático)
+
+Quem tem **Pode_Editar_Como_Fazer** vê o cartão **✨ Começar com a IA** ao criar um conteúdo. Conte com as suas palavras (digitando ou ditando) o que quer ensinar, escolha tipo, setor, título e o tamanho (curto ou completo) e clique em **Montar o POP**. O texto vai aparecendo aos poucos; ao final você vê a **prévia**:
+- A IA monta as seções, os passos (frases curtas), o aviso de perigo, "o que NÃO fazer", "se der errado" e, em Rotina, as perguntas (número com mínimo e máximo, sim/não ou foto).
+- Em cada passo aparece uma **dica da foto para tirar** ("Mostre o painel com a temperatura..."). A dica fica só no editor, ajuda a tirar a foto e some quando a foto é enviada. O funcionário no tablet nunca vê a dica.
+- **Usar este rascunho** cria o conteúdo como **rascunho** (com um selo âmbar "Rascunho feito com ajuda da IA — confira antes de publicar"). **Pedir diferente** gera outra versão com a sua observação; **Cancelar** descarta. Nada é publicado pela IA, e o selo some quando você publica.
+- Dentro do editor há botões **✨ Melhorar** e **✨ Mais simples** em cada passo, e sugestões de "o que NÃO fazer", "se der errado", perguntas (só Rotina) e passos que faltam. Nada entra sozinho: você escolhe Usar ou Descartar.
+- Sempre **confira o texto**: a IA pode errar números e não conhece a sua máquina. Temperaturas, tempos e medidas precisam ser revistos por quem conhece o processo.
+- Existe um **limite de usos por dia** e uma chave liga/desliga em Configurações → Inteligência artificial. Se estiver desligada ou no limite, o sistema avisa e você pode começar o conteúdo em branco.
+
 ---
 
 ## Liberar o tablet (aba Aparelhos)

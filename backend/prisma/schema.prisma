@@ -1603,6 +1603,11 @@ model Veiculo {
 
   // Checklist por foto (Dia 1)
   tipo        String              @default("CARGA") // CARGA | PASSEIO | PARTICULAR
+  // Contexto para a IA do checklist (Dia 2)
+  tipoVareta        String? @map("tipo_vareta") // PLASTICO_QUADRICULADA | METAL_MARCAS | null
+  reservatorioOpaco Boolean @default(false) @map("reservatorio_opaco")
+  normalDentro      String? @map("normal_dentro") @db.Text
+  avariasConhecidas String? @map("avarias_conhecidas") @db.Text
   checklists  ChecklistVeiculo[]
   fotosModelo VeiculoFotoModelo[]
 
@@ -1652,6 +1657,7 @@ model ChecklistVeiculo {
   status         String  @default("RASCUNHO") // RASCUNHO | CONCLUIDO
   kmDigitado     Int?    @map("km_digitado")
   kmLido         Int?    @map("km_lido")
+  kmOrigem       String? @map("km_origem") // PAINEL_CONFIRMADO | DIGITADO
   luzOleoAcesa   Boolean @default(false) @map("luz_oleo_acesa")
   veredito       String? // APROVADO | ATENCAO | REPROVADO | IA_INDISPONIVEL
   problemas      Json?
@@ -1698,6 +1704,9 @@ model ChecklistVeiculoFoto {
   iaModelo      String?  @map("ia_modelo")
   iaMs          Int?     @map("ia_ms")
   iaTokens      Int?     @map("ia_tokens")
+  aceitaPeloMotorista Boolean   @default(false) @map("aceita_pelo_motorista")
+  aceitaEm            DateTime? @map("aceita_em")
+  complemento         Boolean   @default(false) // 2ª foto do mesmo ângulo (água de cima / vareta de perto)
   criadoEm      DateTime @default(now()) @map("criado_em")
 
   checklist ChecklistVeiculo @relation(fields: [checklistId], references: [id], onDelete: Cascade)
@@ -4789,6 +4798,34 @@ model EtiquetaCozinhaLote {
 }
 
 // ───────── Como Fazer (POPs, manuais, regras, dosagem, treinamento) ─────────
+
+// Uso da IA no Como Fazer (Fase 1 "Começar com a IA"). NUNCA guarda prompt/pedido/resposta — só tamanhos e tokens.
+model ComoFazerIaUso {
+  id               String   @id @default(uuid())
+  createdAt        DateTime @default(now()) @map("created_at")
+  vendedorId       String   @map("vendedor_id")
+  vendedorNome     String?  @map("vendedor_nome")
+  funcao           String   @default("COMO_FAZER")
+  acao             String // MONTAR | PEDIR_DIFERENTE | MELHORAR_PASSO | SIMPLIFICAR_PASSO | SUGERIR_NAOFAZER | SUGERIR_SEDERERRADO | SUGERIR_PERGUNTAS | SUGERIR_PASSOS
+  conteudoId       String?  @map("conteudo_id")
+  tipoConteudo     String?  @map("tipo_conteudo")
+  tituloRef        String?  @map("titulo_ref")
+  provedor         String
+  modelo           String
+  tokensEntrada    Int?     @map("tokens_entrada")
+  tokensSaida      Int?     @map("tokens_saida")
+  custoUsd         Decimal? @map("custo_usd") @db.Decimal(10, 6)
+  duracaoMs        Int?     @map("duracao_ms")
+  tamPromptChars   Int?     @map("tam_prompt_chars")
+  tamRespostaChars Int?     @map("tam_resposta_chars")
+  reparou          Boolean  @default(false)
+  resultado        String   @default("GERADO") // GERADO | USADO | DESCARTADO | ERRO | RECUSADO | CANCELADO
+  erroCodigo       String?  @map("erro_codigo")
+
+  @@index([createdAt])
+  @@index([vendedorId, createdAt])
+  @@map("como_fazer_ia_usos")
+}
 
 // Um "conteúdo" = uma coisa que a equipe precisa saber/fazer. Os 4 tipos usam a MESMA estrutura.
 model ComoFazerConteudo {

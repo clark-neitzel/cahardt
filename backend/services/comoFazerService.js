@@ -220,6 +220,19 @@ async function resolverPublicadaPor(vendedorId) {
     return v ? { id: v.id, nome: v.nome } : null;
 }
 
+// Tablet (não-prévia) nunca vê rastro da IA: tira `ia` e `fotoSugerida` (dica só do editor).
+function docParaLeitura(doc, previa) {
+    if (previa) return doc;
+    const { ia, ...resto } = doc;
+    return {
+        ...resto,
+        secoes: (doc.secoes || []).map(s => ({
+            ...s,
+            passos: (s.passos || []).map(p => { const { fotoSugerida, ...q } = p; return q; }),
+        })),
+    };
+}
+
 // ───────── /conteudos/:id ─────────
 async function abrirConteudo(cf, id, previa) {
     const c = await prisma.comoFazerConteudo.findUnique({ where: { id } });
@@ -257,7 +270,7 @@ async function abrirConteudo(cf, id, previa) {
         id: c.id, tipo: c.tipo, titulo: c.titulo, icone: c.icone || null, codigo: c.codigo || null,
         setores: c.setores, cargos: c.cargos, exigeConfirmacao: c.exigeConfirmacao,
         encarregados: await resolverEncarregados(c.responsaveisIds),
-        versao: { id: versao.id, numero: versao.numero, publicadaEm: versao.publicadaEm, publicadaPor: await resolverPublicadaPor(versao.publicadaPorId), doc: versao.passos && versao.passos.secoes ? versao.passos : schema.docVazio(c.tipo) },
+        versao: { id: versao.id, numero: versao.numero, publicadaEm: versao.publicadaEm, publicadaPor: await resolverPublicadaPor(versao.publicadaPorId), doc: docParaLeitura(versao.passos && versao.passos.secoes ? versao.passos : schema.docVazio(c.tipo), previa) },
         meuTreino,
         rotina: c.tipo === 'ROTINA' ? { horarios: [...(c.horarios || [])].sort(), recorrencia: c.recorrencia } : null,
         relacionado,
@@ -647,6 +660,7 @@ async function publicar(cf, id, { zeraTreinamento = true } = {}) {
     const rasc = await rascunhoDe(id);
     if (!rasc) throw new ErroCF(409, 'SEM_RASCUNHO', 'Não há alterações para publicar.');
     const { doc, erros } = schema.processarDoc(rasc.passos, c);
+    delete doc.ia; // a marca "montado pela IA" não vai para a versão publicada
     if (erros.length) throw new ErroCF(400, 'VALIDACAO_FALHOU', erros[0], { erros });
     // rotina com horário precisa de ao menos 1 encarregado ATIVO (senão ninguém recebe o alarme)
     if (c.tipo === 'ROTINA' && (c.horarios || []).length && (c.responsaveisIds || []).length) {

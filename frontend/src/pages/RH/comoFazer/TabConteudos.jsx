@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Plus } from 'lucide-react';
+import { Loader2, Plus, Sparkles } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useSetores, opcoesSetores } from '../../../hooks/useSetores';
 import comoFazerService, { mensagemErro, TIPOS } from '../../../services/comoFazerService';
@@ -7,6 +7,8 @@ import SelectBusca from '../../../components/SelectBusca';
 import MultiSelect from '../../../components/MultiSelect';
 import { useFiltrosSalvos } from '../../../hooks/useFiltrosSalvos';
 import EditorConteudo from './EditorConteudo';
+import ModalComecarComIA from './ModalComecarComIA';
+import { useIaStatus } from '../../../components/ComoFazer/useIaStatus';
 import { BADGE_TIPO, BADGE_CONTEUDO, CLS_BADGE } from '../../../components/ComoFazer/visual';
 
 const CAMPO = 'w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none';
@@ -18,6 +20,14 @@ function ModalNovo({ onCriado, onFechar }) {
     const [escolhidos, setSetores] = useState(null); // null = ainda não mexeu: sugere o primeiro setor ativo
     const setores = escolhidos ?? (listaSetores[0] ? [listaSetores[0].codigo] : []);
     const [salvando, setSalvando] = useState(false);
+    const { ativa: iaAtiva } = useIaStatus();
+    const [comIa, setComIa] = useState(false);
+
+    const abrirIa = () => {
+        if (!titulo.trim()) { toast.error('Dê um nome ao conteúdo antes de chamar a IA.'); return; }
+        if (!setores[0]) { toast.error('Escolha um setor antes de chamar a IA.'); return; }
+        setComIa(true);
+    };
 
     const criar = async () => {
         if (!titulo.trim()) { toast.error('Dê um nome ao conteúdo.'); return; }
@@ -45,6 +55,16 @@ function ModalNovo({ onCriado, onFechar }) {
                     <div className="mt-1"><MultiSelect options={opcoesSetores(listaSetores, setores, true, false)} valueKey="codigo" labelKey="nome" selected={setores} onChange={setSetores} placeholder="Escolha os setores" />
                         {avisoSetores && <p className="text-xs text-amber-700 font-semibold mt-1">Não consegui carregar os setores. Tente atualizar a página.</p>}</div>
                 </div>
+                {iaAtiva && (
+                    <div className="rounded-xl border border-violet-200 bg-violet-50 p-3 space-y-2">
+                        <p className="text-sm font-bold text-violet-900">✨ Quer que a IA monte o começo?</p>
+                        <p className="text-xs text-violet-900">Conte o que você quer ensinar e a IA escreve um rascunho completo, com os passos e qual foto tirar. Nada é publicado sozinho.</p>
+                        <button type="button" onClick={abrirIa} className="w-full min-h-[48px] rounded-full bg-violet-700 hover:bg-violet-800 text-white font-semibold text-sm inline-flex items-center justify-center gap-2">
+                            <Sparkles className="h-4 w-4" /> Começar com a IA
+                        </button>
+                        <p className="text-xs text-center text-gray-600">ou preencha acima e toque em <b>Criar</b> para começar em branco</p>
+                    </div>
+                )}
                 <div className="flex gap-2 pt-1">
                     <button type="button" onClick={onFechar} className="flex-1 min-h-[48px] rounded-full bg-white border border-gray-300 text-gray-800 font-semibold">Cancelar</button>
                     <button type="button" onClick={criar} disabled={salvando} className="flex-1 min-h-[48px] rounded-full bg-primary hover:bg-primaryDark text-white font-semibold inline-flex items-center justify-center gap-2 disabled:opacity-60">
@@ -52,6 +72,12 @@ function ModalNovo({ onCriado, onFechar }) {
                     </button>
                 </div>
             </div>
+            {comIa && (
+                <ModalComecarComIA modo="novo"
+                    contexto={{ tipo, titulo: titulo.trim(), setor: setores[0], setorNome: listaSetores.find((x) => x.codigo === setores[0])?.nome || setores[0] }}
+                    criarDados={{ tipo, titulo: titulo.trim(), icone: icone.trim() || undefined, setores }}
+                    onCriado={onCriado} onFechar={() => setComIa(false)} />
+            )}
         </div>
     );
 }

@@ -12,7 +12,10 @@ const configController = {
             const configs = await prisma.appConfig.findMany();
             // Transform array to object { key: value }
             const configObj = {};
-            configs.forEach(c => configObj[c.key] = c.value);
+            const p = req.user?.permissoes || {};
+            const c0 = p.configuracoes;
+            const veConfig = p.admin === true || c0 === true || (c0 && typeof c0 === 'object' && (c0.view === true || c0.edit === true));
+            configs.forEach(c => { if (!c.key.startsWith('ia_') || veConfig) configObj[c.key] = c.value; }); // ia_* só para quem vê Configurações
             res.json(configObj);
         } catch (error) {
             console.error(error);

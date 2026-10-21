@@ -75,6 +75,9 @@ function normalizarPasso(p) {
         itens: normalizarItens(p?.itens),
         pergunta: normalizarPergunta(p?.pergunta),
     };
+    // "foto para tirar" sugerida pela IA (Fase 1 IA). Só orienta o editor; omitido se vazio.
+    const dica = str(p?.fotoSugerida).slice(0, MAX_TEXTO);
+    if (dica) passo.fotoSugerida = dica;
     return passo;
 }
 
@@ -99,6 +102,11 @@ function normalizarDoc(doc, tipo) {
             .filter(x => x.se || x.entao)
             .slice(0, MAX_SE_DER_ERRADO);
         if (lista.length) out.seDerErrado = lista;
+    }
+
+    // marca de rascunho montado pela IA (some no publicar)
+    if (d.ia && typeof d.ia === 'object' && d.ia.origem === 'IA') {
+        out.ia = { origem: 'IA', usoId: str(d.ia.usoId).slice(0, 80), modelo: str(d.ia.modelo).slice(0, 80), em: str(d.ia.em).slice(0, 40) };
     }
 
     const secoesIn = Array.isArray(d.secoes) ? d.secoes : [];
@@ -225,6 +233,6 @@ function perguntasDoDoc(doc) {
 }
 
 module.exports = {
-    TIPOS, BLOCOS, MAX_TEXTO, MAX_DETALHE,
+    TIPOS, BLOCOS, MAX_TEXTO, MAX_DETALHE, MAX_PASSOS_SECAO, normalizarPergunta,
     novoId, docVazio, normalizarDoc, validarDoc, processarDoc, contarSemFoto, perguntasDoDoc, midiaValida,
 };

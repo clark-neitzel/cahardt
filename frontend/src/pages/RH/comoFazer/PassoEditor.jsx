@@ -1,14 +1,15 @@
 import { useState } from 'react';
-import { Camera, Video, Trash2, Plus, Loader2 } from 'lucide-react';
+import { Camera, Video, Trash2, Plus, Loader2, Sparkles } from 'lucide-react';
 import toast from 'react-hot-toast';
 import comoFazerService, { mensagemErro, urlMidia } from '../../../services/comoFazerService';
+import iaService, { registrarResultado, mensagemDeErroIa } from '../../../services/comoFazerIaService';
 import SelectBusca from '../../../components/SelectBusca';
 import CampoNumero from '../../../components/CampoNumero';
 import PassoCard from '../../../components/ComoFazer/PassoCard';
 import { reduzirImagem, duracaoVideo } from '../../../components/ComoFazer/imagem';
 
 const novoId = (p) => `${p}_${Math.random().toString(36).slice(2, 8)}`;
-const CAMPO = 'w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none';
+const CAMPO = 'w-full min-h-[44px] border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none';
 
 // Botão de foto (câmera no celular) que sobe a imagem reduzida e devolve o caminho.
 function BotaoFoto({ valor, aoMudar, rotulo = 'Foto', contexto = 'conteudo', conteudoId }) {
@@ -59,7 +60,50 @@ function BotaoVideo({ valor, aoMudar, conteudoId }) {
 }
 
 // Editor de UM passo + a prévia (o mesmo PassoCard que a equipe vê).
-export default function PassoEditor({ passo, tipo, conteudoId, onChange }) {
+function AjudaIaDoPasso({ passo, tipo, ia, onUsar }) {
+    const [carregando, setCarregando] = useState('');   // 'melhorar' | 'simplificar' | ''
+    const [proposta, setProposta] = useState(null);     // { usoId, texto, detalhe }
+    const [erro, setErro] = useState('');
+    const pedir = async (acao) => {
+        if (carregando) return;
+        if (!(passo.texto || '').trim()) { toast.error('Escreva o passo antes de pedir ajuda à IA.'); return; }
+        setCarregando(acao); setErro(''); setProposta(null);
+        try {
+            const r = await iaService.melhorarPasso({ acao, texto: passo.texto, detalhe: passo.detalhe || undefined, tipo, titulo: ia.titulo || '', objetivo: ia.objetivo || undefined });
+            setProposta({ usoId: r.usoId, texto: String(r.texto || '').slice(0, 140), detalhe: r.detalhe ? String(r.detalhe).slice(0, 240) : '' });
+        } catch (e) { setErro(mensagemDeErroIa(e)); }
+        finally { setCarregando(''); }
+    };
+    const usar = () => { onUsar({ texto: proposta.texto, detalhe: proposta.detalhe || null }); registrarResultado(proposta.usoId, 'USADO'); setProposta(null); };
+    const descartar = () => { registrarResultado(proposta.usoId, 'DESCARTADO'); setProposta(null); };
+    const bt = 'min-h-[44px] px-4 inline-flex items-center gap-2 rounded-full bg-white border border-violet-300 text-violet-800 text-sm font-semibold disabled:opacity-50';
+    return (
+        <div className="space-y-2">
+            <div className="flex flex-wrap gap-2">
+                <button type="button" onClick={() => pedir('melhorar')} disabled={!!carregando} className={bt}>
+                    {carregando === 'melhorar' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} Melhorar
+                </button>
+                <button type="button" onClick={() => pedir('simplificar')} disabled={!!carregando} className={bt}>
+                    {carregando === 'simplificar' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} Mais simples
+                </button>
+            </div>
+            {erro && <p className="rounded-lg bg-red-50 border border-red-200 text-red-800 text-sm font-semibold p-2 break-words" role="alert">{erro}</p>}
+            {proposta && (
+                <div className="rounded-xl border border-violet-200 bg-violet-50 p-3 space-y-2">
+                    <p className="text-xs font-bold uppercase tracking-widest text-violet-800">✨ Sugestão da IA</p>
+                    <p className="text-sm font-bold text-gray-900 break-words">{proposta.texto}</p>
+                    {proposta.detalhe ? <p className="text-sm text-gray-700 break-words">{proposta.detalhe}</p> : null}
+                    <div className="flex gap-2">
+                        <button type="button" onClick={descartar} className="flex-1 min-h-[44px] rounded-full bg-white border border-gray-300 text-gray-800 text-sm font-semibold">Descartar</button>
+                        <button type="button" onClick={usar} className="flex-1 min-h-[44px] rounded-full bg-primary hover:bg-primaryDark text-white text-sm font-semibold">Usar</button>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+export default function PassoEditor({ passo, tipo, conteudoId, onChange, ia = null }) {
     const set = (parte) => onChange({ ...passo, ...parte });
     const per = passo.pergunta || null;
     const setPer = (parte) => set({ pergunta: { ...per, ...parte } });
@@ -76,7 +120,11 @@ export default function PassoEditor({ passo, tipo, conteudoId, onChange }) {
                 <span className="text-sm font-medium text-gray-700">Detalhe (opcional) <span className="text-gray-500">{(passo.detalhe || '').length}/240</span></span>
                 <textarea value={passo.detalhe || ''} maxLength={240} rows={2} onChange={(e) => set({ detalhe: e.target.value })} className={`${CAMPO} mt-1`} />
             </label>
+            {ia?.ativa && <AjudaIaDoPasso passo={passo} tipo={tipo} ia={ia} onUsar={(parte) => set(parte)} />}
             <BotaoFoto conteudoId={conteudoId} valor={passo.foto} aoMudar={(u) => set({ foto: u })} />
+            {passo.fotoSugerida && !passo.foto && (
+                <p className="text-xs font-semibold text-violet-800 bg-violet-50 rounded-lg px-2 py-1.5 break-words">📷 Foto para tirar: {passo.fotoSugerida}</p>
+            )}
             <BotaoVideo conteudoId={conteudoId} valor={passo.video} aoMudar={(u) => set({ video: u })} />
             <label className="flex items-center gap-2 min-h-[44px] text-sm text-gray-800">
                 <input type="checkbox" checked={passo.perigo === true} onChange={(e) => set({ perigo: e.target.checked })} className="h-5 w-5" />
@@ -107,7 +155,7 @@ export default function PassoEditor({ passo, tipo, conteudoId, onChange }) {
             {tipo === 'ROTINA' && (
                 <div className="rounded-lg border border-gray-200 p-3 space-y-2">
                     <p className="text-xs font-bold uppercase tracking-widest text-gray-600">Pergunta do checklist</p>
-                    <SelectBusca value={per?.tipo || ''} className="w-full"
+                    <SelectBusca value={per?.tipo || ''} className="w-full h-11"
                         onChange={(e) => {
                             const t = e.target.value;
                             if (!t) set({ pergunta: null });
@@ -132,7 +180,7 @@ export default function PassoEditor({ passo, tipo, conteudoId, onChange }) {
                                 </div>
                             )}
                             {per.tipo === 'SIMNAO' && (
-                                <SelectBusca value={per.respostaEsperada === 'NAO' ? 'NAO' : 'SIM'} onChange={(e) => setPer({ respostaEsperada: e.target.value })} className="w-full">
+                                <SelectBusca value={per.respostaEsperada === 'NAO' ? 'NAO' : 'SIM'} onChange={(e) => setPer({ respostaEsperada: e.target.value })} className="w-full h-11">
                                     <option value="SIM">Resposta certa: Sim</option>
                                     <option value="NAO">Resposta certa: Não</option>
                                 </SelectBusca>

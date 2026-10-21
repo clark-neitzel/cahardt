@@ -1,5 +1,17 @@
 [
   {
+    "slug": "checklist-foto-v2",
+    "titulo": "Checklist: foto com parecer, Sim/Não e aviso",
+    "resumo": "Toque na foto para ver o que o app viu e o que fazer, responda Sim/Não em vez de alarme falso, e o escritório é avisado no WhatsApp. Veículos ganha duas colunas no computador.",
+    "data": "2026-10-22"
+  },
+  {
+    "slug": "ia-pop",
+    "titulo": "A IA monta o rascunho do manual",
+    "resumo": "No Como Fazer, conte ou fale o que quer ensinar e a IA escreve o manual com os passos e a foto de cada um. Você confere, ajusta e publica — ela nunca publica sozinha.",
+    "data": "2026-10-21"
+  },
+  {
     "slug": "checklist-foto",
     "titulo": "Checklist do veículo com foto",
     "resumo": "Antes de sair, o motorista tira fotos do veículo e o app confere. Fase de teste: se der problema, avisa e o motorista decide. Veículos ganham tipo e fotos modelo.",
