@@ -1,7 +1,7 @@
 # Nota de entrega — "Começar com a IA" (Como Fazer), fase 1
 
 > Pedido do dono: a IA monta o primeiro rascunho do manual (POP) no editor do Como Fazer, usando o ChatGPT que o sistema já tem.
-> Veredito do gerente de entrega em 21/10/2026: **LIBERADO** para publicar. A seção "Conferido em produção" fica em branco até o deploy.
+> Veredito do gerente de entrega em 21/10/2026: **LIBERADO**. Publicado em 21/10/2026 (commit fb455027). Conferência em produção abaixo.
 
 ## O que mudou (em termos de uso)
 
@@ -32,13 +32,13 @@
 
 ## Conferido em produção
 
-_(preencher depois do deploy)_
+Feito pelo gerente de projeto em 21/10/2026, depois do deploy (a publicação demorou cerca de 15 minutos para aparecer):
 
-- [ ] Servidor novo no ar (marcador desta entrega respondendo)
-- [ ] Telas novas no ar (app publicado carrega a rota de Configurações → IA)
-- [ ] Consulta de status da IA sem login → "entre para continuar" (rota existe)
-- [ ] Configuração da IA sem login → "entre para continuar" (rota existe, protegida)
-- [ ] Página de novidade abre sem login; aviso do Clippy registrado
+- [x] **Servidor novo no ar** — responde com o marcador desta entrega.
+- [x] **Telas novas no ar** — o app publicado já carrega a rota Configurações → Inteligência artificial.
+- [x] **Consulta de status da IA sem login** → "entre para continuar" (a rota existe e está protegida).
+- [x] **Configuração da IA e montagem do POP sem login** → recusadas (protegidas).
+- [x] **Página de novidade abre sem login**; o aviso do Clippy está registrado.
 - [ ] **Texto chegando aos poucos em produção** — só dá para ver com login: dono ou gerente abre Novo conteúdo → Começar com a IA → Montar e observa o texto aparecendo antes do fim. Se vier tudo de uma vez no final, registrar aqui (não bloqueia: o rascunho chega do mesmo jeito).
 
 ## O que você precisa fazer / conferir (uns 5 minutos)
