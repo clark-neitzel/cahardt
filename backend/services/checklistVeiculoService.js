@@ -19,13 +19,14 @@ const FOTO_MAX_BYTES = 6 * 1024 * 1024;
 
 // Tolerâncias das regras do servidor (configuráveis num lugar só)
 const REGRAS = {
-    kmOk: 5,            // até 5 km de diferença: ok
+    kmOk: 30,           // até 30 km de diferença: ok (erro de digitação)
     kmReprovaAcima: 1000, // acima disso: REPROVA
     kmFinalOntemFolga: 5,
     placaDistanciaIgnora: 1,
 };
 
-const AVISO_TESTE = 'Estamos em período de teste. Em breve não será possível sair com o veículo assim sem liberação do escritório.';
+const AVISO_TESTE = 'Período de teste: hoje você pode seguir. Daqui a pouco vai precisar da liberação do escritório.';
+const MAX_REFAZER_POR_ANGULO = 2; // a 3ª foto é a última tentativa: a IA não pede mais para refazer
 
 class ErroChecklist extends Error {
     constructor(status, codigo, mensagem) {
@@ -128,6 +129,7 @@ function fotoDTO(f, extra = {}) {
         serve: f.serve,
         motivoRefazer: f.motivoRefazer,
         problemas: f.problemas || [],
+        perguntasRespondidas: Array.isArray(f.problemas) ? f.problemas.filter((p) => p && p.gravidade === 'PERGUNTA' && p.resposta).length : 0,
         leituras: f.leituras || null,
         criadoEm: f.criadoEm,
         ...extra,
@@ -197,6 +199,8 @@ async function montarConfig(veiculoId) {
         instrucao: s.instrucao,
         dicaNoite: s.dicaNoite,
         ordem: s.ordem,
+        grupo: s.grupo,
+        dicaGrupo: s.dicaGrupo,
         obrigatorio: s.condicional ? vareta : true,
         condicional: s.condicional,
         ...(s.condicional ? { condicao: s.condicao } : {}),
@@ -334,6 +338,7 @@ async function enviarFoto(id, user, angulo, file) {
         throw new ErroChecklist(400, 'MUITAS_TENTATIVAS', 'Muitas tentativas para esta foto. Fale com o escritório.');
     }
     const veiculo = await prisma.veiculo.findUnique({ where: { id: c.veiculoId }, select: { placa: true, modelo: true } });
+    const refazeres = await prisma.checklistVeiculoFoto.count({ where: { checklistId: id, angulo, statusIa: 'REFAZER' } });
 
     const dir = path.join(DIR_CHECKLISTS, c.veiculoId, c.dataReferencia, c.id);
     fs.mkdirSync(dir, { recursive: true });
@@ -350,6 +355,7 @@ async function enviarFoto(id, user, angulo, file) {
         tipo: c.tipoVeiculo,
         kmDigitado: c.kmDigitado,
         luzOleoAcesa: c.luzOleoAcesa,
+        ultimaTentativa: refazeres >= MAX_REFAZER_POR_ANGULO,
     });
 
     await prisma.checklistVeiculoFoto.updateMany({ where: { checklistId: id, angulo, ativa: true }, data: { ativa: false } });
@@ -400,7 +406,7 @@ async function pularFoto(id, user, body = {}) {
 
 // ───────────── avaliação (regras do servidor) ─────────────
 
-const ordemGrav = { REPROVA: 0, ATENCAO: 1 };
+const ordemGrav = { REPROVA: 0, ATENCAO: 1, PERGUNTA: 2 };
 
 async function avaliar(id, user, body = {}) {
     const c = await carregarDoDono(id, user);
@@ -425,18 +431,32 @@ async function avaliar(id, user, body = {}) {
         if (!f) {
             const pulada = puladas.find((p) => p.angulo === s.angulo);
             if (pulada) {
-                problemas.push({ angulo: s.angulo, gravidade: 'ATENCAO', descricao: `Foto não enviada: ${s.rotulo}`, oQueFazer: 'Se puder, tire esta foto antes de sair.', origem: 'REGRA' });
+                problemas.push({ angulo: s.angulo, gravidade: 'ATENCAO', descricao: `Falta a foto: ${s.rotulo}`, oQueFazer: 'Se der, tira essa foto antes de sair.', origem: 'REGRA' });
             } else if (obrigatorio) {
                 faltando.push(s.angulo);
             }
             continue;
         }
         if (f.statusIa === 'REFAZER' || f.serve === false) {
-            problemas.push({ angulo: s.angulo, gravidade: 'ATENCAO', descricao: f.motivoRefazer || `Não foi possível avaliar: ${s.rotulo}`, oQueFazer: 'Tire esta foto de novo.', origem: 'IA' });
+            problemas.push({ angulo: s.angulo, gravidade: 'ATENCAO', descricao: f.motivoRefazer || `Tira de novo: ${s.rotulo}`, oQueFazer: 'Tira essa foto de novo.', origem: 'IA' });
             continue;
         }
-        for (const p of (Array.isArray(f.problemas) ? f.problemas : [])) {
-            problemas.push({ angulo: s.angulo, gravidade: p.gravidade === 'REPROVA' ? 'REPROVA' : 'ATENCAO', descricao: p.descricao, oQueFazer: p.oQueFazer || '', origem: 'IA' });
+        const doFoto = Array.isArray(f.problemas) ? f.problemas : [];
+        for (let i = 0; i < doFoto.length; i++) {
+            const p = doFoto[i];
+            if (p.gravidade === 'PERGUNTA') {
+                // PERGUNTA fica SEMPRE no consolidado (rastro para o escritório). `indice` = posição em fotos[].problemas.
+                // Sem resposta ou SIM: não pesa. NAO: pesa como `gravidadeAplicada`.
+                const respondida = !!p.resposta;
+                problemas.push({
+                    angulo: s.angulo, gravidade: 'PERGUNTA', descricao: `${p.descricao} ${p.pergunta || ''}`.trim(),
+                    oQueFazer: p.resposta === 'NAO' ? (p.oQueFazer || 'Resolve isso antes de sair.') : '',
+                    pergunta: p.pergunta || '', seNao: p.seNao || 'ATENCAO', indice: i, origem: 'IA',
+                    ...(respondida ? { resposta: p.resposta, respondidoEm: p.respondidoEm || null, gravidadeAplicada: iaService.gravEfetiva(p) } : {}),
+                });
+                continue;
+            }
+            problemas.push({ angulo: s.angulo, gravidade: p.gravidade === 'REPROVA' ? 'REPROVA' : 'ATENCAO', descricao: p.descricao, oQueFazer: p.oQueFazer || '', ...(p.resposta ? { resposta: p.resposta } : {}), origem: 'IA' });
         }
     }
 
@@ -447,7 +467,7 @@ async function avaliar(id, user, body = {}) {
         if (!lida || !placaVeiculo) continue;
         const dist = distancia(lida, placaVeiculo);
         if (dist > REGRAS.placaDistanciaIgnora) {
-            problemas.push({ angulo: ang, gravidade: 'REPROVA', descricao: `A placa da foto (${lida}) não é a do veículo (${placaVeiculo})`, oQueFazer: 'Confira se escolheu o veículo certo e refaça a foto.', origem: 'REGRA' });
+            problemas.push({ angulo: ang, gravidade: 'REPROVA', descricao: `A placa da foto (${lida}) não é a do carro escolhido (${placaVeiculo}).`, oQueFazer: 'Confere se escolheu o carro certo e tira a foto de novo.', origem: 'REGRA' });
         }
     }
 
@@ -459,8 +479,8 @@ async function avaliar(id, user, body = {}) {
             problemas.push({
                 angulo: 'painel',
                 gravidade: dif > REGRAS.kmReprovaAcima ? 'REPROVA' : 'ATENCAO',
-                descricao: `KM do painel (${fmtKm(kmLido)}) diferente do digitado (${fmtKm(kmDigitado)})`,
-                oQueFazer: 'Confira o KM digitado.',
+                descricao: `Painel marca ${fmtKm(kmLido)}.`,
+                oQueFazer: `Confere o KM que você digitou (${fmtKm(kmDigitado)}).`,
                 origem: 'REGRA',
             });
         }
@@ -469,17 +489,20 @@ async function avaliar(id, user, body = {}) {
         try {
             const ultimo = await require('./veiculoService').ultimoKmFinal(c.veiculoId);
             if (ultimo?.kmFinal != null && kmLido < ultimo.kmFinal - REGRAS.kmFinalOntemFolga) {
-                problemas.push({ angulo: 'painel', gravidade: 'ATENCAO', descricao: `KM do painel (${fmtKm(kmLido)}) menor que o último KM final registrado (${fmtKm(ultimo.kmFinal)})`, oQueFazer: 'Confira a foto do painel e o veículo escolhido.', origem: 'REGRA' });
+                problemas.push({ angulo: 'painel', gravidade: 'ATENCAO', descricao: `Painel marca ${fmtKm(kmLido)}, menos que o último KM registrado (${fmtKm(ultimo.kmFinal)}).`, oQueFazer: 'Confere a foto do painel e o carro escolhido.', origem: 'REGRA' });
             }
         } catch (e) { console.error('[ChecklistVeiculo] ultimoKmFinal:', e.message); }
     }
 
-    problemas.sort((a, b) => ordemGrav[a.gravidade] - ordemGrav[b.gravidade]);
+    const gravOrd = (p) => ordemGrav[iaService.gravEfetiva(p) || 'PERGUNTA'];
+    problemas.sort((a, b) => gravOrd(a) - gravOrd(b));
 
     const analisadas = fotos.filter((f) => !['IA_INDISPONIVEL', 'NAO_ANALISADA'].includes(f.statusIa));
     let veredito;
-    if (problemas.some((p) => p.gravidade === 'REPROVA')) veredito = 'REPROVADO';
-    else if (problemas.length || faltando.length) veredito = 'ATENCAO';
+    // PERGUNTA sem resposta não conta: não é ATENCAO nem REPROVA
+    const pesam = problemas.filter((p) => iaService.gravEfetiva(p));
+    if (pesam.some((p) => iaService.gravEfetiva(p) === 'REPROVA')) veredito = 'REPROVADO';
+    else if (pesam.length || faltando.length) veredito = 'ATENCAO';
     else if (!analisadas.length) veredito = 'IA_INDISPONIVEL';
     else veredito = 'APROVADO';
 
@@ -487,7 +510,7 @@ async function avaliar(id, user, body = {}) {
     const podeSeguir = modo !== 'TRAVA' || !temProblema;
     const aviso = temProblema
         ? (modo === 'TRAVA'
-            ? 'Não é possível sair com o veículo assim sem liberação do escritório.'
+            ? 'Não dá pra sair assim sem a liberação do escritório.'
             : AVISO_TESTE)
         : null;
 
@@ -505,6 +528,43 @@ async function avaliar(id, user, body = {}) {
         podeSeguir,
         podePedirLiberacao: false,
     };
+}
+
+/**
+ * Resposta de um toque (Sim/Não) a uma PERGUNTA da IA. Grava no `problemas` da foto ativa do ângulo.
+ * SIM: pergunta resolvida. NAO: a gravidade vira `seNao` (ATENCAO ou REPROVA). Idempotente: repetir não muda nada.
+ */
+async function responderPergunta(id, user, body = {}) {
+    const c = await carregarDoDono(id, user);
+    exigirAberto(c);
+    const resposta = body.resposta;
+    if (!['SIM', 'NAO'].includes(resposta)) throw new ErroChecklist(400, 'RESPOSTA_INVALIDA', 'Responda SIM ou NAO.');
+    const angulo = body.angulo;
+    const indice = (typeof body.indice === 'number' || (typeof body.indice === 'string' && /^\d+$/.test(body.indice.trim()))) ? Number(body.indice) : NaN;
+    if (!catalogo.anguloDoTipo(c.tipoVeiculo, angulo)) throw new ErroChecklist(400, 'ANGULO_INVALIDO', 'Esse ângulo não existe para o tipo deste carro.');
+    if (!Number.isInteger(indice) || indice < 0) throw new ErroChecklist(400, 'INDICE_INVALIDO', 'Pergunta não encontrada.');
+    const foto = await prisma.checklistVeiculoFoto.findFirst({ where: { checklistId: id, angulo, ativa: true } });
+    const lista = Array.isArray(foto?.problemas) ? foto.problemas.map((p) => ({ ...p })) : [];
+    const p = lista[indice];
+    if (!foto || !p || p.gravidade !== 'PERGUNTA') {
+        throw new ErroChecklist(404, 'PERGUNTA_NAO_ENCONTRADA', 'Essa pergunta não existe mais (a foto pode ter sido refeita).');
+    }
+    if (!p.resposta) {
+        p.resposta = resposta;
+        p.respondidoEm = new Date().toISOString();
+        if (resposta === 'SIM') p.gravidadeAplicada = null;
+        if (resposta === 'NAO') {
+            p.gravidadeAplicada = p.seNao === 'REPROVA' ? 'REPROVA' : 'ATENCAO'; // gravidade fica PERGUNTA (rastro)
+            p.oQueFazer = p.oQueFazer || 'Resolve isso antes de sair.';
+        }
+        const statusIa = iaService.statusDe({ serve: foto.serve !== false, problemas: lista });
+        await prisma.checklistVeiculoFoto.update({ where: { id: foto.id }, data: { problemas: lista, statusIa } });
+        foto.statusIa = statusIa;
+    }
+    foto.problemas = lista;
+    // Reavalia o checklist já com a resposta: veredito/problemas consolidados ficam coerentes mesmo sem o front chamar /avaliar
+    const avaliacao = await avaliar(id, user, {});
+    return { ok: true, angulo, indice, resposta: p.resposta, gravidade: p.gravidade, gravidadeAplicada: p.gravidadeAplicada ?? null, foto: fotoDTO(foto), avaliacao };
 }
 
 async function registrarDecisao(id, user, body = {}) {
@@ -612,8 +672,8 @@ async function resumoParaDiario({ checklistId, vendedorId, veiculoId }) {
             const pulada = puladas.some((p) => p.angulo === s.angulo);
             if (!f && !pulada && !obrigatorio) continue; // vareta não exigida e não tirada: fica fora
             const reprova = consolidado
-                ? consolidado.some((p) => p && p.angulo === s.angulo && p.gravidade === 'REPROVA')
-                : (!!f && (f.statusIa === 'REPROVA' || (Array.isArray(f.problemas) && f.problemas.some((p) => p && p.gravidade === 'REPROVA'))));
+                ? consolidado.some((p) => p && p.angulo === s.angulo && iaService.gravEfetiva(p) === 'REPROVA')
+                : (!!f && (f.statusIa === 'REPROVA' || (Array.isArray(f.problemas) && f.problemas.some((p) => p && iaService.gravEfetiva(p) === 'REPROVA'))));
             resumo[catalogo.CHAVE_RESUMO[s.angulo]] = !!f && f.serve !== false && !reprova;
         }
         return { ok: true, resumo };
@@ -636,7 +696,7 @@ async function amarrarAoDiario(checklistId, diarioId, vendedorId, veiculoId) {
 module.exports = {
     ErroChecklist, getModo, setModo, montarConfig,
     listarFotosModelo, salvarFotoModelo,
-    criarRascunho, atualizarRascunho, enviarFoto, pularFoto, avaliar, registrarDecisao,
+    criarRascunho, atualizarRascunho, enviarFoto, pularFoto, avaliar, responderPergunta, registrarDecisao,
     detalhe, listarPorVeiculo, resumoParaDiario, amarrarAoDiario,
     pode, ehAdmin, REGRAS,
 };

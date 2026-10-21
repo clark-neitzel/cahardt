@@ -1,0 +1,43 @@
+Prova do gerente de entrega, 21/10/2026: IA real (chave local) rodando o código HEAD + arquivos da Parte A sobre 7 das 24 fotos reais de 21/10.
+Antes (prompt do Dia 1) está em fotos-reais-2026-10-21/pareceres-dia1.txt. Modelo não determinístico: a mesma foto pode variar de uma rodada para outra.
+
+
+### Bongo1 painel (antes: REPROVA porta aberta)  [7 s]
+statusIa=PERGUNTA serve=true motivoRefazer=null
+leituras={"placa":null,"km":206380,"combustivel":"perto do F","luzesAviso":["porta"],"nivelAgua":null,"nivelOleo":null}
+  - {"gravidade":"PERGUNTA","descricao":"Tem luz de porta no painel.","oQueFazer":"","pergunta":"A porta está aberta?","seNao":"ATENCAO"}
+palavras proibidas: nenhuma
+
+### Bongo2 painel (antes: REPROVA freio)  [16 s]
+statusIa=PERGUNTA serve=true motivoRefazer=null
+leituras={"placa":null,"km":272767,"combustivel":null,"luzesAviso":["freio","porta"],"nivelAgua":null,"nivelOleo":null}
+  - {"gravidade":"PERGUNTA","descricao":"Luzes de freio e porta acesas.","oQueFazer":"","pergunta":"O freio de mão está puxado e a porta está aberta?","seNao":"ATENCAO"}
+palavras proibidas: nenhuma
+
+### Uno painel (antes: combustivel reserva)  [19 s]
+statusIa=PERGUNTA serve=true motivoRefazer=null
+leituras={"placa":null,"km":159564,"combustivel":null,"luzesAviso":["outra"],"nivelAgua":null,"nivelOleo":null}
+  - {"gravidade":"PERGUNTA","descricao":"Triângulo amarelo aceso no painel.","oQueFazer":"","pergunta":"Você sabe o que esse triângulo indica?","seNao":"ATENCAO"}
+palavras proibidas: nenhuma
+
+### Uno porta-malas (antes: ATENCAO mostruario)  [4 s]
+statusIa=OK serve=true motivoRefazer=null
+leituras={"placa":null,"km":null,"combustivel":null,"luzesAviso":[],"nivelAgua":null,"nivelOleo":null}
+palavras proibidas: nenhuma
+
+### Uno agua (antes: ATENCAO nivel)  [7 s]
+statusIa=PERGUNTA serve=true motivoRefazer=null
+leituras={"placa":null,"km":null,"combustivel":null,"luzesAviso":[],"nivelAgua":null,"nivelOleo":null}
+  - {"gravidade":"PERGUNTA","descricao":"Não dá pra ver o nível por fora.","oQueFazer":"","pergunta":"Acende a lanterna atrás dele ou abre a tampa e olha: a água tá entre MIN e MAX?","seNao":"ATENCAO"}
+palavras proibidas: nenhuma
+
+### Uno vareta (antes: ATENCAO papel branco)  [6 s]
+statusIa=OK serve=true motivoRefazer=null
+leituras={"placa":null,"km":null,"combustivel":null,"luzesAviso":[],"nivelAgua":null,"nivelOleo":"OK"}
+palavras proibidas: nenhuma
+
+### Bongo1 frente (antes: confira a pressao)  [5 s]
+statusIa=ATENCAO serve=true motivoRefazer=null
+leituras={"placa":"RLJ1I28","km":null,"combustivel":null,"luzesAviso":[],"nivelAgua":null,"nivelOleo":null}
+  - {"gravidade":"ATENCAO","descricao":"Rodas dianteiras fora do quadro.","oQueFazer":"Chega 2 passos pra trás: preciso ver as duas rodas da frente."}
+palavras proibidas: nenhuma

@@ -132,7 +132,8 @@ const FormVeiculoPresencial = ({ titulo = 'Visitação (Rota)', onConfirmar, onV
                 // A conferência nunca pode impedir o início do dia (modo teste): segue sem veredito.
                 console.error('Checklist: falha ao avaliar, seguindo sem veredito', err);
             }
-            if (r && (r.veredito === 'ATENCAO' || r.veredito === 'REPROVADO')) {
+            const temPergunta = Array.isArray(r?.problemas) && r.problemas.some(p => p.gravidade === 'PERGUNTA' && !p.resposta);
+            if (r && (r.veredito === 'ATENCAO' || r.veredito === 'REPROVADO' || temPergunta)) {
                 setResultado(r);
                 return;
             }
@@ -150,14 +151,15 @@ const FormVeiculoPresencial = ({ titulo = 'Visitação (Rota)', onConfirmar, onV
         if (id) checklistVeiculoService.decidir(id, 'CORRIGIU').catch(() => {}); // só registro
     };
 
-    const seguirMesmoAssim = async () => {
+    const seguirMesmoAssim = async (opts) => {
+        const semDecisao = opts?.semDecisao === true; // 'Tudo certo': não grava SEGUIU_TESTE
         if (travaRef.current) return;
         travaRef.current = true;
         const id = estadoFotos.checklistId;
         try {
             setSeguindo(true);
             try {
-                await checklistVeiculoService.decidir(id, 'SEGUIU_TESTE');
+                if (!semDecisao) await checklistVeiculoService.decidir(id, 'SEGUIU_TESTE');
             } catch (err) {
                 if (err?.response?.data?.codigo === 'TRAVA_ATIVA') {
                     toast.error(err.response.data.error || 'Não é possível seguir com este veículo sem liberação.');
@@ -182,8 +184,10 @@ const FormVeiculoPresencial = ({ titulo = 'Visitação (Rota)', onConfirmar, onV
                     resultado={resultado}
                     rotulos={rotulos}
                     seguindo={seguindo}
+                    checklistId={estadoFotos.checklistId}
+                    onAtualizar={setResultado}
                     onCorrigir={corrigirAgora}
-                    onSeguir={seguirMesmoAssim}
+                    onSeguir={(o) => seguirMesmoAssim(o)}
                 />
             </div>
         );

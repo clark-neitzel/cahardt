@@ -85,6 +85,12 @@ const ChecklistsVeiculoLista = ({ veiculoId }) => {
                                     <button key={f.id} type="button" onClick={() => setFoto(f)} className="shrink-0 text-left" title={f.rotulo || f.angulo}>
                                         <ImgComFalha compacto src={urlImagem(f.url)} alt={f.rotulo || f.angulo} loading="lazy"
                                             className="h-14 w-14 object-cover rounded-lg border border-gray-200" />
+                                        {f.perguntasRespondidas > 0 && f.statusIa !== 'PERGUNTA' && (
+                                            <span className="mt-0.5 block text-center px-1 py-0.5 text-[10px] font-semibold rounded-full bg-green-100 text-green-800">Respondida</span>
+                                        )}
+                                        {f.statusIa === 'PERGUNTA' && (
+                                            <span className="mt-0.5 block text-center px-1 py-0.5 text-[10px] font-semibold rounded-full bg-amber-100 text-amber-700">Pergunta</span>
+                                        )}
                                     </button>
                                 ))}
                             </div>
@@ -93,8 +99,15 @@ const ChecklistsVeiculoLista = ({ veiculoId }) => {
                             <ul className="mt-2 space-y-1">
                                 {problemas.map((p, i) => (
                                     <li key={i} className="text-xs text-gray-700 flex gap-1.5">
-                                        <span className={`shrink-0 font-bold ${p.gravidade === 'REPROVA' ? 'text-red-600' : 'text-amber-600'}`}>{p.gravidade === 'REPROVA' ? 'Grave' : 'Atenção'}:</span>
-                                        <span>{p.descricao}</span>
+                                        <span className={`shrink-0 font-bold ${p.gravidade === 'REPROVA' ? 'text-red-600' : 'text-amber-600'}`}>{p.gravidade === 'REPROVA' ? 'Grave' : p.gravidade === 'PERGUNTA' ? 'Pergunta' : 'Atenção'}:</span>
+                                        <span>
+                                            {p.gravidade === 'PERGUNTA' ? (p.pergunta || p.descricao) : p.descricao}
+                                            {p.resposta && (
+                                                <span className={`ml-1 px-1.5 py-0.5 rounded-full font-semibold ${p.resposta === 'SIM' ? 'bg-green-100 text-green-800' : p.gravidadeAplicada === 'REPROVA' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
+                                                    Respondeu: {p.resposta === 'SIM' ? 'Sim' : 'Não'}
+                                                </span>
+                                            )}
+                                        </span>
                                     </li>
                                 ))}
                             </ul>

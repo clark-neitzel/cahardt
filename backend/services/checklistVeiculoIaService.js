@@ -4,44 +4,112 @@
 const aiProvider = require('./aiProvider');
 const { ANGULOS } = require('../config/checklistVeiculoAngulos');
 
-const TIMEOUT_MS = 25000;
+const TIMEOUT_MS = 40000; // prompt do Dia 2 é maior: fotos de painel chegaram a 17-20 s
 
-const SYSTEM_PROMPT = `Você confere fotos de checklist de um veículo de entregas (salgados congelados) tirada por um
-motorista, muitas vezes de madrugada ou à noite, no pátio. Responda SOMENTE um JSON válido.
+const SYSTEM_PROMPT = `Você confere fotos de checklist de um carro/caminhão de entregas (salgados congelados) tiradas
+por um motorista no pátio da empresa, muitas vezes de madrugada. Responda SOMENTE um JSON válido.
+
+CONTEXTO FIXO
+O carro está PARADO no pátio, chave ligada, motor desligado ou em marcha lenta. Freio de mão puxado,
+porta aberta e cinto solto são NORMAIS neste momento: a luz de freio (vermelha, símbolo de freio, P ou !),
+a luz de porta aberta e a luz de cinto NÃO são problema.
+
+COMO FALAR (vale para TODA frase que o motorista lê: descricao, oQueFazer, motivoRefazer, pergunta)
+- No máximo 2 frases curtas. A PRIMEIRA diz o que fazer. Fale com "você", verbo no imperativo informal
+  ("chega", "afasta", "fecha", "tira de novo", "abastece").
+- PROIBIDO usar as palavras: veículo, compartimento, nítido, avaliar, "não consigo". Sem ponto de exclamação.
+- Quando o problema é enquadramento (cortado, longe, perto), a resposta OBRIGATORIAMENTE diz "mais perto"
+  ou "mais longe" (ou "chega"/"afasta") com uma medida em passos ou centímetros.
+- Máx. 140 caracteres cada frase. "confira"/"verifique" não: use "confere"/"olha".
+- NÃO repita a mesma frase: "descricao" diz o que está errado (curto, 3 a 8 palavras); "oQueFazer" diz a ação.
+Exemplos do tom certo:
+  "Chega 2 passos pra trás: preciso ver as duas rodas da frente."
+  "Afasta uns 4 passos e pega o carro inteiro, com as duas rodas."
+  "Fecha o capô e tira de novo. Primeiro as fotos de fora, depois abre o capô."
+  "Afasta uns 30 cm e pega o reservatório inteiro, com as letras MIN e MAX."
+  "Chega a 20 cm da pontinha da vareta, com ela ocupando a foto toda. Fundo claro ajuda."
+  "Abastece antes da rota."
+  "Para-choque raspado. Já era assim?"
+  "Porta-malas ok: bolsas no lugar, piso limpo."
 
 REGRAS
-1. NUNCA reprove nem peça para refazer porque "a foto está escura/baixa luz". Se algo importante
-   não está visível, diga o que NÃO consegue ver e o que o motorista deve fazer
-   (ex.: "não vejo o pneu traseiro; aproxime 1 m e aponte o flash para o pneu").
-2. Só relate o que enxerga. Em caso de dúvida real, use serve=false com motivoRefazer
-   ou gravidade ATENCAO. Nunca invente leitura (placa, KM, nível).
-3. REPROVA só para risco de segurança ou operação evidente: pneu visivelmente murcho/careca,
-   nível de água ou óleo claramente abaixo do mínimo, luz de aviso grave acesa (freio, óleo,
-   temperatura, airbag), porta/baú aberto ou danificado, dano grave. A conferência da placa
-   com o cadastro é feita pelo sistema: apenas LEIA a placa em leituras.placa, sem julgar. Sujeira leve, risco pequeno, amassado antigo, dúvida = ATENCAO.
-4. Frases curtas, em português do Brasil, para quem dirige. Máx. 140 caracteres cada.
-5. serve=false SOMENTE se a foto não permite avaliar o ângulo pedido (cortada, borrada, outro
-   assunto, ângulo errado). Informe motivoRefazer e como tirar de novo.
+1. NUNCA reprove nem peça para refazer só porque a foto está escura. Se algo importante não aparece, diga
+   o que fazer (chegar, afastar, fechar o capô). Não mande ligar flash no painel.
+2. Só relate o que enxerga. Nunca invente leitura (placa, KM, nível).
+3. REPROVA só para risco de segurança evidente: pneu visivelmente murcho/careca, nível de água ou óleo
+   CLARAMENTE abaixo do mínimo, e no painel SOMENTE estas luzes acesas: óleo (lata pingando),
+   temperatura (termômetro), bateria, motor/check engine, airbag, ABS, direção. Dano grave também.
+   Sujeira leve, risco pequeno, amassado antigo, dúvida = ATENCAO.
+   Nível de óleo/água: só REPROVA se você VÊ com clareza as marcas e o nível claramente abaixo delas.
+   Foto desfocada, ponta ilegível ou marcas apagadas: NUNCA reprova nem chuta nível; devolva PERGUNTA.
+4. Luz de freio, de porta aberta ou de cinto: liste em leituras.luzesAviso e gere NO MÁXIMO um problema com
+   gravidade "PERGUNTA" (nunca REPROVA nem ATENCAO). Ex.: descricao "Tem luz de freio no painel.",
+   pergunta "É o freio de mão puxado?", seNao "ATENCAO". Junte freio+porta+cinto numa pergunta só.
+5. Combustível: só aponte baixo se o ponteiro está CLARAMENTE no E/reserva (vermelho/zona final) ou a luz de reserva está acesa:
+   aí ATENCAO, oQueFazer "Abastece antes da rota." e luzesAviso inclui "reserva". O mostrador de combustível é pequeno e o ponteiro engana: só afirme reserva se a LUZ de reserva (ícone de bomba) está acesa
+   ou se o ponteiro está INEQUIVOCAMENTE encostado no E. Só ponha "reserva" em luzesAviso quando a luz da bomba está acesa. Ponteiro no meio, perto do F ou na dúvida:
+   leituras.combustivel null e NENHUM problema de combustível.
+6. Outras luzes de aviso (triângulo, injeção, etc.): ATENCAO com pergunta curta se você não souber qual é.
+7. A placa é conferida pelo sistema: apenas LEIA a placa em leituras.placa, sem julgar.
+8. serve=false SOMENTE se a foto não permite ver o ângulo pedido (cortada, longe demais, borrada, outro
+   assunto). Informe motivoRefazer com a medida (passos/cm). Se a foto dá para aproveitar, use serve=true
+   com ATENCAO em vez de pedir de novo.
+9. PERGUNTA = você não consegue confirmar sozinho e o motorista pode responder Sim/Não olhando o carro.
+   Sempre com "pergunta" (curta, resposta Sim/Não) e "seNao" ("ATENCAO" ou "REPROVA": o que acontece se
+   ele responder Não).
 
 FORMATO
 {"serve":bool,"motivoRefazer":string|null,
- "problemas":[{"gravidade":"ATENCAO"|"REPROVA","descricao":string,"oQueFazer":string}],
+ "problemas":[{"gravidade":"ATENCAO"|"REPROVA"|"PERGUNTA","descricao":string,"oQueFazer":string,
+               "pergunta":string (só PERGUNTA),"seNao":"ATENCAO"|"REPROVA" (só PERGUNTA)}],
  "leituras":{"placa":string|null,"km":int|null,"combustivel":string|null,
-             "luzesAviso":[string],"nivelAgua":"ABAIXO_MIN"|"OK"|"ACIMA_MAX"|null,
+             "luzesAviso":[string]  (use só: freio, porta, cinto, oleo, temperatura, bateria, motor, airbag, abs, direcao, reserva, outra),"nivelAgua":"ABAIXO_MIN"|"OK"|"ACIMA_MAX"|null,
              "nivelOleo":"ABAIXO_MIN"|"OK"|"ACIMA_MAX"|null}}
-Campos não aplicáveis a este ângulo: null (ou [] para lista).`;
+Campos não aplicáveis a este ângulo: null (ou [] para lista). Foto sem problema: "problemas":[].`;
 
 const COMPLEMENTO = {
-    frente: 'Frente com a placa legível. Leia a placa. Farol quebrado, para-brisa trincado, para-choque, pneus dianteiros murchos.',
-    lateral_direita: 'Veículo inteiro de lado. Dois pneus: murcho, careca, parede estufada. Amassado ou risco grande. Pneu não visível: serve=false ou ATENCAO "aproxime do pneu".',
-    lateral_esquerda: 'Veículo inteiro de lado. Dois pneus: murcho, careca, parede estufada. Amassado ou risco grande. Pneu não visível: serve=false ou ATENCAO "aproxime do pneu".',
-    traseira: 'Placa traseira legível. Leia a placa. Lanternas, porta/baú fechado, para-choque.',
-    painel: 'Painel ligado. Leia o odômetro total (km, inteiro), combustível e luzes de aviso acesas. Freio/óleo/temperatura/airbag acesas = REPROVA. KM ilegível: km=null (NÃO é problema).',
-    agua_radiador: 'Reservatório com marcas MIN/MAX. Nível abaixo do MIN = REPROVA; entre as marcas = OK; acima do MAX = ATENCAO. Se a marca não aparece: serve=false ("abra o capô e aproxime o celular do reservatório").',
-    vareta_oleo: 'Ponta da vareta sobre papel branco. Entre as marcas = OK; abaixo = REPROVA; óleo muito escuro/espesso = ATENCAO.',
-    bau: 'Interior do baú: limpo e organizado? Termômetro se visível. Sujeira grande ou carga solta = ATENCAO.',
-    porta_malas: 'Mostruário e caixa térmica no lugar, limpeza do porta-malas.',
+    frente: `FRENTE. O motorista deve estar a ~2 passos (3 m), com as DUAS rodas da frente e a placa dentro do quadro.
+Leia a placa. Veja farol quebrado, para-brisa trincado, para-choque danificado, pneus dianteiros murchos.
+Se as rodas dianteiras não aparecem: serve=true e ATENCAO com oQueFazer "Chega 2 passos pra trás: preciso ver as duas rodas da frente." (NUNCA mande "conferir a pressão" por causa disso).
+Capô aberto: ATENCAO "Fecha o capô e tira de novo. Primeiro as fotos de fora, depois abre o capô."`,
+    lateral_direita: null,
+    lateral_esquerda: null,
+    traseira: `TRASEIRA. O motorista deve estar a ~2 passos, com placa e lanternas no quadro e a porta do baú FECHADA.
+Leia a placa. Veja lanternas quebradas, para-choque, porta do baú aberta (ATENCAO "Fecha a porta do baú e tira de novo.").
+Pintura raspada ou risco pequeno antigo: ATENCAO com PERGUNTA "Já era assim?" (seNao "ATENCAO"), nunca "confira se as peças estão firmes".`,
+    painel: `PAINEL. Leia o odômetro total (KM, número inteiro; se não dá para ler, km=null e NÃO é problema),
+o combustível e todas as luzes acesas (leituras.luzesAviso). Lembre: carro parado, freio de mão e porta aberta são normais.
+Só óleo, temperatura, bateria, motor, airbag, ABS, direção acesas = REPROVA. Freio/porta/cinto = uma PERGUNTA no máximo.
+Combustível: ATENCAO "Abastece antes da rota." SÓ se o ponteiro está claramente no E/reserva ou a luz de reserva acesa; na dúvida combustivel=null e nada de ATENCAO. Sem flash: reflexo no vidro atrapalha;
+se o reflexo cobre o painel, serve=false com "Inclina um pouco o celular pra tirar o reflexo."`,
+    agua_radiador: `ÁGUA DO RADIADOR. Foto a ~30 cm, reservatório inteiro com as marcas MIN e MAX.
+O reservatório pode ser OPACO/sujo. Três casos:
+ a) Marcas MIN/MAX e nível visíveis: abaixo do MIN = REPROVA; entre as marcas = OK (nivelAgua OK); acima do MAX = ATENCAO.
+ b) Marcas MIN/MAX aparecem mas o nível NÃO dá para ver (plástico opaco/sujo): NÃO peça para refazer (serve=true). Devolva PERGUNTA
+    descricao "Não dá pra ver o nível por fora.", pergunta "Acende a lanterna atrás dele ou abre a tampa e olha: a água tá entre MIN e MAX?", seNao "ATENCAO".
+ c) Nem as marcas aparecem (longe, cortado, borrado): serve=false, motivoRefazer "Afasta uns 30 cm e pega o reservatório inteiro, com as letras MIN e MAX."`,
+    vareta_oleo: `VARETA DE ÓLEO. Dois tipos:
+ - Plástico laranja com uma área quadriculada (Uno, Fiat, Celta e semelhantes): nível OK = óleo molhando DENTRO do quadriculado; abaixo ou acima do quadriculado = ATENCAO/REPROVA se claramente fora.
+ - Metal com duas marcas ou furos (Bongo, Fiorino): nível OK = óleo ENTRE as duas marcas; abaixo da marca de baixo = REPROVA.
+Decida o tipo pelo modelo do carro e confirme pela foto; na dúvida, vale o que a foto mostra.
+NUNCA peça papel branco; peça "fundo claro" e "chega a 20 cm da pontinha, ela ocupando a foto".
+Se a ponta aparece mas dá para ler o nível: nivelOleo e OK sem problema. Se NÃO dá para ler o nível: serve=true e PERGUNTA
+descricao "Não deu pra ler o nível do óleo.", pergunta "O óleo tá molhando dentro do quadriculado (ou entre as duas marcas)?", seNao "ATENCAO".
+Só serve=false se a ponta da vareta nem aparece: motivoRefazer "Chega a 20 cm da pontinha da vareta, com ela ocupando a foto toda."
+Óleo muito escuro/espesso = ATENCAO.`,
+    bau: 'BAÚ por dentro: limpo e organizado? Termômetro se visível. Sujeira grande ou carga solta = ATENCAO. Se está limpo e organizado: sem problemas.',
+    porta_malas: `PORTA-MALAS (carro de passeio). Olhe SÓ organização, limpeza do piso e tampa/porta. NÃO procure "mostruário" nem "caixa térmica":
+as bolsas pretas são o mostruário e são normais. Bolsas no lugar e piso limpo = sem problemas (frase de OK: "Porta-malas ok: bolsas no lugar, piso limpo.").`,
 };
+const COMPLEMENTO_LATERAL = `LATERAL. O motorista deve estar a ~4 passos (5 m), no meio do carro, com o carro INTEIRO e as DUAS rodas no quadro.
+Pneu murcho, careca, parede estufada; amassado ou risco grande. Se o carro está cortado ou uma roda não aparece:
+serve=true e ATENCAO "Afasta até pegar o carro inteiro." (ou serve=false se não dá para ver nada).
+Capô aberto aparecendo: ATENCAO "Fecha o capô e tira de novo. Primeiro as fotos de fora, depois abre o capô."
+Pintura raspada ou risco pequeno antigo: ATENCAO com PERGUNTA "Já era assim?" (seNao "ATENCAO").`;
+COMPLEMENTO.lateral_direita = COMPLEMENTO_LATERAL;
+COMPLEMENTO.lateral_esquerda = COMPLEMENTO_LATERAL;
+
+const EXTRA_ULTIMA_TENTATIVA = 'ESTA É A ÚLTIMA TENTATIVA: NÃO peça para refazer (serve=true). Avalie o que dá e, se não der para avaliar, devolva uma PERGUNTA.';
 
 const NIVEIS = ['ABAIXO_MIN', 'OK', 'ACIMA_MAX'];
 
@@ -71,45 +139,119 @@ function extrairJson(txt) {
     throw new Error('JSON ausente na resposta da IA');
 }
 
+const LUZES_VOCAB = [
+    ['abs', /\babs\b/i], ['freio', /freio|brake|handbrake/i], ['porta', /porta|door/i], ['cinto', /cinto|seat ?belt/i],
+    ['oleo', /[óo]leo|oil/i], ['temperatura', /temperatura|term[oô]metro|superaquec|coolant/i],
+    ['bateria', /bateria|carga|battery|alternador/i], ['motor', /\bmotor\b|inje[cç][aã]o|check ?engine/i],
+    ['airbag', /air ?bag/i], ['direcao', /dire[cç][aã]o|volante|steering/i],
+    ['reserva', /reserva|combust[ií]vel/i],
+];
+/** Vocabulário fixo: freio, porta, cinto, oleo, temperatura, bateria, motor, airbag, abs, direcao, reserva, outra. */
+function normalizarLuzes(lista) {
+    if (!Array.isArray(lista)) return [];
+    const out = [];
+    for (const x of lista) {
+        if (typeof x !== 'string' || !x.trim()) continue;
+        const hit = LUZES_VOCAB.find(([, re]) => re.test(x));
+        const k = hit ? hit[0] : 'outra';
+        if (!out.includes(k)) out.push(k);
+    }
+    return out.slice(0, 12);
+}
+
+/** No máximo 1 PERGUNTA por foto (mantém a primeira). */
+function umaPerguntaPorFoto(problemas) {
+    let achou = false;
+    return problemas.filter((q) => {
+        if (q.gravidade !== 'PERGUNTA') return true;
+        if (achou) return false;
+        achou = true;
+        return true;
+    });
+}
+
 /** Validação rígida do JSON devolvido. Lança se o formato não for o combinado. */
-function validarResposta(obj) {
+function validarResposta(obj, angulo) {
     if (!obj || typeof obj !== 'object' || Array.isArray(obj)) throw new Error('Resposta da IA não é objeto');
     if (typeof obj.serve !== 'boolean') throw new Error('Campo "serve" ausente ou inválido');
     const problemas = [];
     if (obj.problemas != null) {
         if (!Array.isArray(obj.problemas)) throw new Error('Campo "problemas" inválido');
-        for (const p of obj.problemas.slice(0, 8)) {
+        for (let p of obj.problemas.slice(0, 8)) {
             if (!p || typeof p !== 'object') continue;
-            const gravidade = p.gravidade === 'REPROVA' ? 'REPROVA' : p.gravidade === 'ATENCAO' ? 'ATENCAO' : null;
+            let gravidade = ['REPROVA', 'ATENCAO', 'PERGUNTA'].includes(p.gravidade) ? p.gravidade : null;
             const descricao = texto140(p.descricao);
             if (!gravidade || !descricao) continue;
-            problemas.push({ gravidade, descricao, oQueFazer: texto140(p.oQueFazer) });
+            let oQueFazer = texto140(p.oQueFazer);
+            // Evita a mesma frase duas vezes (descricao + oQueFazer)
+            const norm = (t) => t.toLowerCase().replace(/[^a-zà-ú0-9 ]/g, '').trim();
+            if (oQueFazer && norm(descricao).includes(norm(oQueFazer))) oQueFazer = '';
+            const frases = descricao.split(/(?<=[.?])\s+/);
+            const descLimpa = frases.filter((f) => !oQueFazer || !norm(oQueFazer).includes(norm(f))).join(' ') || descricao;
+            // Rede de segurança: no painel, freio/porta/cinto nunca reprovam nem pedem atenção (carro parado no pátio).
+            if (angulo === 'painel' && gravidade !== 'PERGUNTA' && /freio|porta|cinto/i.test(descricao)
+                && !/[óo]leo|temperatura|bateria|\bmotor\b|airbag|\babs\b|dire[cç][aã]o/i.test(descricao)) {
+                gravidade = 'PERGUNTA';
+                const tf = /freio/i.test(descricao), tp = /porta/i.test(descricao), tc = /cinto/i.test(descricao);
+                const pergunta = (tf && tp) ? 'É o freio de mão puxado e a porta aberta?'
+                    : tf ? 'O freio de mão está puxado?'
+                    : tp ? 'A porta está aberta?'
+                    : tc ? 'É o cinto que está solto?'
+                    : 'É o freio de mão puxado e a porta aberta?';
+                p = { ...p, pergunta, seNao: 'ATENCAO' };
+            }
+            if (gravidade === 'PERGUNTA') {
+                const pergunta = texto140(p.pergunta) || 'Você conferiu e está tudo certo?';
+                problemas.push({ gravidade, descricao, oQueFazer: '', pergunta, seNao: p.seNao === 'REPROVA' ? 'REPROVA' : 'ATENCAO' });
+            } else {
+                problemas.push({ gravidade, descricao: descLimpa, oQueFazer });
+            }
         }
     }
+    // no máximo 1 PERGUNTA por foto (mantém a primeira)
+    const problemasUnicos = umaPerguntaPorFoto(problemas);
+    problemas.length = 0;
+    problemas.push(...problemasUnicos);
     const l = obj.leituras && typeof obj.leituras === 'object' ? obj.leituras : {};
     const kmNum = Number(l.km);
     const leituras = {
         placa: typeof l.placa === 'string' && l.placa.trim() ? l.placa.trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8) : null,
         km: Number.isFinite(kmNum) && kmNum >= 0 && kmNum < 10000000 && l.km !== null && l.km !== '' ? Math.round(kmNum) : null,
         combustivel: typeof l.combustivel === 'string' && l.combustivel.trim() ? l.combustivel.trim().slice(0, 20) : null,
-        luzesAviso: Array.isArray(l.luzesAviso) ? l.luzesAviso.filter(x => typeof x === 'string').map(x => x.slice(0, 40)).slice(0, 12) : [],
+        luzesAviso: normalizarLuzes(l.luzesAviso),
         nivelAgua: NIVEIS.includes(l.nivelAgua) ? l.nivelAgua : null,
         nivelOleo: NIVEIS.includes(l.nivelOleo) ? l.nivelOleo : null,
     };
-    const motivoRefazer = obj.serve ? null : (texto140(obj.motivoRefazer) || 'Não foi possível avaliar esta foto. Tire de novo, mais perto e com a imagem inteira.');
+    // Combustível só vira problema se a leitura é firme (ponteiro claramente no E ou luz de reserva): na dúvida, nada.
+    if (angulo === 'painel' && !leituras.combustivel && !leituras.luzesAviso.includes('reserva')) {
+        for (let i = problemas.length - 1; i >= 0; i--) {
+            if (/combust|reserva|tanque|abaste/i.test(`${problemas[i].descricao} ${problemas[i].oQueFazer}`)) problemas.splice(i, 1);
+        }
+    }
+    const motivoRefazer = obj.serve ? null : (texto140(obj.motivoRefazer) || 'Não deu pra ver a foto. Tira de novo, mais perto e com a imagem inteira.');
     return { serve: obj.serve, motivoRefazer, problemas, leituras };
+}
+
+/** Gravidade que PESA de um problema. PERGUNTA sem resposta ou respondida SIM não pesa (null);
+ *  respondida NAO pesa como `gravidadeAplicada` (ou `seNao`). */
+function gravEfetiva(p) {
+    if (!p) return null;
+    if (p.gravidade !== 'PERGUNTA') return p.gravidade === 'REPROVA' ? 'REPROVA' : 'ATENCAO';
+    if (p.resposta !== 'NAO') return null;
+    return (p.gravidadeAplicada || p.seNao) === 'REPROVA' ? 'REPROVA' : 'ATENCAO';
 }
 
 function statusDe({ serve, problemas }) {
     if (!serve) return 'REFAZER';
-    if (problemas.some(p => p.gravidade === 'REPROVA')) return 'REPROVA';
-    if (problemas.length) return 'ATENCAO';
+    if (problemas.some(p => gravEfetiva(p) === 'REPROVA')) return 'REPROVA';
+    if (problemas.some(p => gravEfetiva(p) === 'ATENCAO')) return 'ATENCAO';
+    if (problemas.some(p => p.gravidade === 'PERGUNTA' && !p.resposta)) return 'PERGUNTA';
     return 'OK';
 }
 
 /**
  * @param {{buffer:Buffer, mime:string, angulo:string, veiculo:{placa,modelo}, tipo:string,
- *          kmDigitado?:number, ultimoKmFinal?:number, luzOleoAcesa?:boolean}} p
+ *          kmDigitado?:number, ultimoKmFinal?:number, luzOleoAcesa?:boolean, ultimaTentativa?:boolean}} p
  */
 async function analisarFoto(p) {
     const t0 = Date.now();
@@ -117,9 +259,10 @@ async function analisarFoto(p) {
         if (!aiProvider.isConfigured()) return IA_INDISPONIVEL({ motivo: 'sem_chave' });
         const rotulo = ANGULOS[p.angulo]?.rotulo || p.angulo;
         const linhas = [
-            `Veículo: ${p.veiculo?.modelo || '?'}, tipo ${p.tipo}. Ângulo: ${rotulo}.`,
+            `Carro: ${p.veiculo?.modelo || '?'}, tipo ${p.tipo}. Ângulo: ${rotulo}.`,
             COMPLEMENTO[p.angulo] || '',
         ];
+        if (p.ultimaTentativa) linhas.push(EXTRA_ULTIMA_TENTATIVA);
         if (p.angulo === 'painel' && p.luzOleoAcesa) linhas.push('O motorista informou que a luz de óleo está acesa.');
         const r = await aiProvider.analisarImagem({
             system: SYSTEM_PROMPT,
@@ -129,9 +272,17 @@ async function analisarFoto(p) {
             json: true,
             timeoutMs: TIMEOUT_MS,
         });
-        const v = validarResposta(extrairJson(r.texto));
+        const v = validarResposta(extrairJson(r.texto), p.angulo);
+        if (!v.serve && p.ultimaTentativa) {
+            // Última tentativa: nunca devolve "refazer". Vira atenção com pergunta de um toque.
+            v.serve = true;
+            v.motivoRefazer = null;
+            if (!v.problemas.some((q) => q.gravidade === 'PERGUNTA')) v.problemas = [...v.problemas, { gravidade: 'PERGUNTA', descricao: 'Não deu pra ver na foto.', oQueFazer: '', pergunta: 'Você conferiu e está ok?', seNao: 'ATENCAO' }];
+            v.problemas = umaPerguntaPorFoto(v.problemas); // 1 PERGUNTA por foto, também depois da inserção
+            v.forcarAtencao = true;
+        }
         return {
-            statusIa: statusDe(v),
+            statusIa: v.forcarAtencao ? 'ATENCAO' : statusDe(v),
             serve: v.serve,
             motivoRefazer: v.motivoRefazer,
             problemas: v.problemas,
@@ -146,4 +297,4 @@ async function analisarFoto(p) {
     }
 }
 
-module.exports = { analisarFoto, validarResposta, extrairJson, statusDe, SYSTEM_PROMPT };
+module.exports = { umaPerguntaPorFoto, gravEfetiva, normalizarLuzes, analisarFoto, validarResposta, extrairJson, statusDe, SYSTEM_PROMPT };

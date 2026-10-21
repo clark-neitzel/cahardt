@@ -54,6 +54,10 @@ router.post('/:id/avaliar', rota(async (req, res) => {
     res.json(await svc.avaliar(req.params.id, req.user, req.body));
 }));
 
+router.post('/:id/responder', rota(async (req, res) => {
+    res.json(await svc.responderPergunta(req.params.id, req.user, req.body));
+}));
+
 router.post('/:id/decisao', rota(async (req, res) => {
     res.json(await svc.registrarDecisao(req.params.id, req.user, req.body));
 }));

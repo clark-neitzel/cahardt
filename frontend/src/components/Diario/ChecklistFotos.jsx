@@ -215,6 +215,9 @@ const ChecklistFotos = ({ veiculoId, config, onEstado, onFalha }) => {
             } else if (st === 'REPROVA') {
                 moldura = 'border-red-400';
                 faixa = { cor: 'bg-red-600 text-white', texto: 'Problema' };
+            } else if (st === 'PERGUNTA') {
+                moldura = 'border-amber-400';
+                faixa = { cor: 'bg-amber-500 text-white', texto: '? pergunta' };
             } else if (st === 'ATENCAO') {
                 moldura = 'border-amber-400';
                 faixa = { cor: 'bg-amber-500 text-white', texto: 'Atenção' };

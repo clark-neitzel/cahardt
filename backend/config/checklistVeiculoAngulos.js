@@ -8,53 +8,67 @@ const DICA_NOITE_EXTERNO = 'Pouca luz? Ligue o flash da câmera antes de bater a
 const ANGULOS = {
     frente: {
         rotulo: 'Frente com placa',
-        instrucao: 'Frente inteira, a 2 m, pegando a placa e os faróis',
+        instrucao: 'Chega 2 passos (uns 3 m) de distância: as duas rodas da frente e a placa dentro do quadro. Capô fechado',
         dicaNoite: DICA_NOITE_EXTERNO,
     },
     lateral_direita: {
         rotulo: 'Lateral direita',
-        instrucao: 'Veículo inteiro de lado, mostrando os dois pneus',
+        instrucao: 'Fica 4 passos (uns 5 m) de distância, no meio do carro: o carro inteiro, com as duas rodas. Capô fechado',
         dicaNoite: DICA_NOITE_EXTERNO,
     },
     lateral_esquerda: {
         rotulo: 'Lateral esquerda',
-        instrucao: 'Veículo inteiro de lado, mostrando os dois pneus',
+        instrucao: 'Fica 4 passos (uns 5 m) de distância, no meio do carro: o carro inteiro, com as duas rodas. Capô fechado',
         dicaNoite: DICA_NOITE_EXTERNO,
     },
     traseira: {
         rotulo: 'Traseira com placa',
-        instrucao: 'Traseira inteira, a 2 m, pegando a placa e as lanternas',
+        instrucao: 'Chega 2 passos de distância: placa e lanternas no quadro, porta do baú fechada',
         dicaNoite: DICA_NOITE_EXTERNO,
     },
     painel: {
         rotulo: 'Painel (KM e luzes)',
-        instrucao: 'Com o veículo ligado, mostre o painel inteiro: KM, combustível e luzes de aviso',
-        dicaNoite: 'Evite reflexo: incline um pouco o celular. Use o flash se o painel estiver escuro.',
+        instrucao: 'Porta fechada e chave ligada: pega o painel inteiro, com KM, combustível e luzes. Sem flash',
+        dicaNoite: 'Sem flash: ele reflete no vidro. Incline um pouco o celular pra tirar o reflexo.',
     },
     agua_radiador: {
         rotulo: 'Água do radiador',
-        instrucao: 'Abra o capô e aproxime o celular do reservatório, mostrando as marcas MIN e MAX',
-        dicaNoite: 'Use o flash da câmera e aproxime bem do reservatório.',
+        instrucao: 'Abre o capô e chega a 30 cm: o reservatório inteiro, com as letras MIN e MAX',
+        dicaNoite: 'Se o plástico for sujo, acende a lanterna atrás dele: o nível aparece como sombra.',
     },
     vareta_oleo: {
         rotulo: 'Vareta de óleo',
-        instrucao: 'Retire a vareta, limpe, recoloque e retire de novo. Fotografe a ponta sobre um papel branco',
-        dicaNoite: 'Use o flash da câmera e um papel branco atrás da vareta.',
+        instrucao: 'Tira a vareta, limpa, enfia até o fim e puxa de novo. Chega a 20 cm da pontinha, ela ocupando a foto, num fundo claro',
+        dicaNoite: 'Use o flash e um fundo claro (pano, papel ou a tampa do motor) atrás da vareta.',
     },
     bau: {
         rotulo: 'Baú por dentro',
-        instrucao: 'Abra o baú e fotografe o interior inteiro, mostrando limpeza e organização',
+        instrucao: 'Abre o baú e pega o interior inteiro, mostrando limpeza e organização',
         dicaNoite: 'Use o flash da câmera.',
     },
     porta_malas: {
         rotulo: 'Porta-malas',
-        instrucao: 'Abra o porta-malas e fotografe o mostruário e a caixa térmica no lugar',
+        instrucao: 'Abre o porta-malas e pega tudo: bolsas no lugar e o piso limpo',
         dicaNoite: 'Use o flash da câmera.',
     },
 };
 
 // Ordem e regra de cada ângulo, por tipo de veículo.
 // condicional + condicao: obrigatório só quando a condição vale (vareta: segunda/quinta ou luz de óleo).
+// Grupos (ordem guiada): 1 fora -> 2 painel -> 3 capô -> 4 baú/porta-malas
+const GRUPO_POR_ANGULO = {
+    frente: 'FORA', lateral_direita: 'FORA', lateral_esquerda: 'FORA', traseira: 'FORA',
+    painel: 'PAINEL',
+    agua_radiador: 'CAPO', vareta_oleo: 'CAPO',
+    bau: 'CARGA', porta_malas: 'CARGA',
+};
+const DICA_GRUPO = {
+    FORA: 'Fotos de fora com o capô fechado',
+    PAINEL: 'Porta fechada, chave ligada, sem flash',
+    CAPO: 'Agora pode abrir o capô',
+    CARGA: 'Por último, abre o baú ou o porta-malas',
+};
+
 const SLOTS_POR_TIPO = {
     CARGA: ['frente', 'lateral_direita', 'lateral_esquerda', 'traseira', 'painel', 'agua_radiador', 'vareta_oleo', 'bau'],
     PASSEIO: ['frente', 'lateral_direita', 'lateral_esquerda', 'traseira', 'painel', 'agua_radiador', 'vareta_oleo', 'porta_malas'],
@@ -76,6 +90,8 @@ function slotsDoTipo(tipo) {
         angulo,
         ...ANGULOS[angulo],
         ordem: i + 1,
+        grupo: GRUPO_POR_ANGULO[angulo],
+        dicaGrupo: DICA_GRUPO[GRUPO_POR_ANGULO[angulo]],
         condicional: !!CONDICIONAIS[angulo],
         condicao: CONDICIONAIS[angulo] || null,
     }));
@@ -98,4 +114,4 @@ const CHAVE_RESUMO = {
     porta_malas: 'portaMalasOk',
 };
 
-module.exports = { TIPOS_VEICULO, ANGULOS, SLOTS_POR_TIPO, CONDICIONAIS, CHAVE_RESUMO, tipoValido, slotsDoTipo, anguloDoTipo };
+module.exports = { GRUPO_POR_ANGULO, DICA_GRUPO, TIPOS_VEICULO, ANGULOS, SLOTS_POR_TIPO, CONDICIONAIS, CHAVE_RESUMO, tipoValido, slotsDoTipo, anguloDoTipo };

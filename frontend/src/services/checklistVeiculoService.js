@@ -32,6 +32,9 @@ const checklistVeiculoService = {
     // 5.6
     avaliar: async (id, kmDigitado) =>
         (await api.post(`/checklists-veiculo/${id}/avaliar`, { kmDigitado })).data,
+    // Resposta Sim/Não a uma PERGUNTA da IA (indice vem de avaliar().problemas[].indice)
+    responder: async (id, { angulo, indice, resposta }) =>
+        (await api.post(`/checklists-veiculo/${id}/responder`, { angulo, indice, resposta })).data,
     // 5.7
     decidir: async (id, decisao) =>
         (await api.post(`/checklists-veiculo/${id}/decisao`, { decisao })).data,
