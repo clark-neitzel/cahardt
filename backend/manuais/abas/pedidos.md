@@ -148,6 +148,7 @@ Quando **não** é possível cancelar (o app avisa e explica):
 2. Mostre o QR, **copie o código PIX** ou **envie o link por WhatsApp** ao cliente
 3. Quando pagar: **baixa automática** na parcela do app (conta financeira ASAAS); check verde ✓ aparece na pílula
 4. **Pedido ESPECIAL + PIX = conversão**: antes de gerar aparece um aviso vermelho destacado — ao receber qualquer valor via PIX (parcial ou total), o pedido especial é **convertido automaticamente em pedido normal**: ganha número novo na sequência e a **NF-e deve ser emitida** pelo faturamento (aba Notas Fiscais do app)
+   - **Pix comum também converte (10/2026):** pedido especial finalizado na entrega com forma **Pix** (sem QR Asaas), ou cujo crédito é confirmado no extrato do banco na **Conciliação Bancária** (qualquer crédito conciliado a baixa de especial), também vira pedido normal sozinho (número novo, fila de NF-e). **A NF-e não é emitida automaticamente** — confira o Pix no extrato e emita em Notas Fiscais. Pedido cancelado, excluído ou devolvido nunca converte. Pix misto (parte em Pix) converte o pedido inteiro. A **edição administrativa da entrega** (Auditoria de Entregas) que troque ou acrescente uma linha Pix num especial também converte. Entrega parcial com devolução já registrada converte normalmente. Se já havia devolução de especial registrada antes (sem NF), o sistema avisa para conferir com a contabilidade.
 5. Quem fatura recebe um **popup a cada 5 minutos** ("Pedido convertido — emitir NF-e") até dar ciência; quem recebe esse aviso é escolhido na aba **Usuários** (ícone de setas circulares laranja)
 
 ### Aprovar Pedido Especial ou Bonificação
@@ -164,7 +165,7 @@ Quando **não** é possível cancelar (o app avisa e explica):
 4. **Nada duplica e nada se perde**: é o MESMO registro que muda de aba — entrega, carga, devoluções e tudo que já foi recebido (dinheiro, PIX, boleto) continuam no pedido, visíveis nos detalhes
 5. Serve para o caso do cliente que **exige a NF** de um pedido especial, pago em qualquer forma. **Não dá para desfazer**
 6. Após converter, o pedido leva o selo âmbar **"⚡ Especial convertido · era ZZ#"** e o mesmo popup do faturamento ("Pedido convertido — emitir NF-e") avisa quem emite a nota
-- A conversão **automática** continua igual: pedido especial que recebe **PIX Asaas** converte sozinho (ver seção do PIX acima)
+- A conversão **automática** vale para **PIX Asaas** e, desde 10/2026, também para **Pix comum** informado na entrega ou crédito confirmado no extrato do banco na Conciliação Bancária (ver seção do PIX acima). A NF-e nunca sai sozinha
 
 ### Detalhes do pedido (clicar no pedido) — tudo num lugar só
 Ao clicar em qualquer pedido, além dos itens e valores, o app mostra (desde jul/2026):

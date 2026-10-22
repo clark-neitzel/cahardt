@@ -40,6 +40,7 @@ não derruba a tela toda).
    aprovados. Botão "Aprovar" na própria linha faz o mesmo que aprovar na tela Pedidos.
 2. **NF-e a emitir** — pedidos faturados que ainda não têm nenhuma tentativa de nota fiscal emitida.
    Botão "Emitir NF-e" dispara a emissão, igual à fila de Notas Fiscais.
+   Os **convertidos de especial sem nota aparecem primeiro** na lista (com o subtítulo "Era ZZ#… · convertido, falta emitir a NF-e"), ordenados pela **data da conversão** (o convertido mais recentemente vem primeiro), depois os demais por data da venda; o contador não mudou de critério. Inclui o pedido que era especial e foi convertido automaticamente (Pix na entrega ou crédito confirmado no extrato do banco, 10/2026): confira o Pix no extrato antes de emitir.
 3. **NF-e rejeitada pela SEFAZ** — notas que tentaram emitir e voltaram com erro/rejeição. Mostra o
    motivo resumido. Botão "Tentar de novo" reemite.
 4. **Caixas para conferir** — caixas diários de vendedores esperando alguém contar o dinheiro (a partir

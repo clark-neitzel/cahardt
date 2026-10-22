@@ -89,10 +89,43 @@ router.get('/fila', checkVer, async (req, res) => {
                 cliente: { select: { Nome: true, Documento: true } },
                 itens: { select: { quantidade: true, valor: true } },
                 notasFiscaisApp: true,
+                avisosConversao: { select: { numeroAntigo: true }, orderBy: { createdAt: 'desc' }, take: 1 },
             },
             orderBy: { numero: 'desc' },
             take: LIMITE,
         });
+
+        // ESPECIAL CONVERTIDO sem nota entra SEMPRE na fila, mesmo fora do período filtrado
+        // (a tela abre em "Hoje"; o ZZ vendido dias antes e convertido hoje não pode sumir).
+        // Mesmos critérios da fila + ainda sem nota no ambiente atual e sem nota do CA.
+        const idsDoPeriodo = new Set(pedidos.map(p => p.id));
+        const convertidosPendentes = await prisma.pedido.findMany({
+            where: {
+                especial: false,
+                cancelado: false,
+                statusEnvio: { not: 'EXCLUIDO' },
+                numero: { not: null },
+                nfeChave: null,
+                avisosConversao: { some: {} },
+                notasFiscaisApp: { none: { ref: { startsWith: prefixo } } },
+                AND: [
+                    { OR: [{ situacaoCA: null }, { situacaoCA: { notIn: ['CANCELADO', 'EXCLUIDO'] } }] },
+                ],
+                ...(idsDoPeriodo.size > 0 ? { id: { notIn: [...idsDoPeriodo] } } : {}),
+            },
+            include: {
+                cliente: { select: { Nome: true, Documento: true } },
+                itens: { select: { quantidade: true, valor: true } },
+                notasFiscaisApp: true,
+                avisosConversao: { select: { numeroAntigo: true, createdAt: true }, orderBy: { createdAt: 'desc' }, take: 1 },
+            },
+            orderBy: { numero: 'desc' },
+            take: 200,
+        });
+        // conversão mais recente primeiro
+        const dataConv = (p) => (p.avisosConversao?.[0]?.createdAt ? new Date(p.avisosConversao[0].createdAt).getTime() : 0);
+        convertidosPendentes.sort((a, b) => dataConv(b) - dataConv(a));
+        pedidos.unshift(...convertidosPendentes); // convertidos pendentes primeiro
 
         const resposta = pedidos.map(p => {
             const doc = String(p.cliente?.Documento || '').replace(/[^0-9A-Za-z]/g, '');
@@ -117,6 +150,9 @@ router.get('/fila', checkVer, async (req, res) => {
                 marcadaPor: p.nfBonificacaoDefinidaPorNome
                     ? { nome: p.nfBonificacaoDefinidaPorNome, em: p.nfBonificacaoDefinidaEm }
                     : null,
+                // Campos opcionais novos: pedido que nasceu especial (ZZ#) e foi convertido.
+                convertidoDeEspecial: (p.avisosConversao || []).length > 0,
+                numeroEspecialOrigem: p.avisosConversao?.[0]?.numeroAntigo ?? null,
                 podeEmitir: !bloqueioEmissao,
                 bloqueioEmissao,
                 cliente: {
@@ -138,7 +174,7 @@ router.get('/fila', checkVer, async (req, res) => {
         });
         // truncado: o período pediu mais pedidos do que o backstop — a tela avisa o
         // usuário para escolher um período menor em vez de esconder notas em silêncio.
-        res.json({ ambiente, truncado: pedidos.length === LIMITE, pedidos: resposta });
+        res.json({ ambiente, truncado: pedidos.length - convertidosPendentes.length === LIMITE, pedidos: resposta });
     } catch (e) {
         console.error('[NotasFiscais] fila:', e);
         res.status(500).json({ error: e.message });

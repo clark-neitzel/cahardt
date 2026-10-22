@@ -128,6 +128,7 @@ No cabeçalho da faixa fica um resumo contando quantas pílulas há de cada stat
 **Pagamentos "PIX Asaas":** o dinheiro desse PIX **não** fica com o motorista — não entra no valor a prestar.
 
 **Pedido ESPECIAL (desde 08/2026):** o título do especial **não é mais quitado sozinho na entrega**. O motorista só registra o que recebeu; a baixa acontece **aqui**, quando alguém confere o caixa e clica em Processar. Por isso:
+- **Especial pago em Pix que virou pedido normal (10/2026):** o pedido que era especial e foi convertido (Pix na entrega ou crédito confirmado no extrato do banco) segue o fluxo de pedido normal no Caixa. **Orientação:** emita a NF-e de venda **antes** de conferir a devolução no Caixa. Entrega parcial com Pix também converte o pedido; se já houver devolução de especial registrada antes (sem NF), o sistema avisa para conferir com a contabilidade. Pedido cancelado, excluído ou devolvido nunca é convertido.
 - o especial pago em dinheiro aparece **em aberto** na lista até a conferência — é justamente o que deve ser conferido;
 - **o caixa não fecha** enquanto houver especial com dinheiro sem baixa (entra nas pendências do fechamento);
 - quem faz a baixa fica gravado como responsável dela (aparece no histórico do cliente e no ledger da parcela);

@@ -1322,6 +1322,20 @@ async function _criarDespesaTarifaTx(tx, lanc, valorTarifa, grupoId, userId, ref
 }
 
 /**
+ * Rede de conversão: pedido ESPECIAL cuja baixa acabou de ser amarrada a um crédito do extrato
+ * vira pedido normal (entra na fila de NF-e; a NF-e NÃO sai sozinha). NUNCA lança — a conciliação
+ * já foi efetivada. Devolve só os convertidos.
+ */
+async function converterEspeciaisDasBaixas(pagamentoIds, userId = null) {
+    try {
+        return await require('./pedidoConversaoService').converterEspeciaisDasBaixas(pagamentoIds, { userId });
+    } catch (e) {
+        console.error('[Conciliação] conversão de especiais (conciliação já efetivada):', e.message);
+        return [];
+    }
+}
+
+/**
  * Conciliação DETERMINÍSTICA dos créditos do extrato Asaas: o refNum do lançamento
  * guarda o pay_... da cobrança, que aponta exatamente a parcela (boleto) ou o
  * pedido (PIX) no app — sem depender de data e valor baterem. Resolve os três
@@ -1355,6 +1369,7 @@ async function _conciliarPorRefAsaas(pendentes, contaFinanceiraCaId, usados, use
     const parcelasPorPedido = new Map(contasPed.map((c) => [c.pedidoId, c.parcelas.map((p) => p.id)]));
 
     let conciliados = 0;
+    const baixasConciliadas = [];
     for (const l of creditos) {
         const cob = porPay.get(l.refNum);
         if (!cob) continue;
@@ -1380,7 +1395,7 @@ async function _conciliarPorRefAsaas(pendentes, contaFinanceiraCaId, usados, use
                         conciliadoEm: new Date(), pagamentoParcelaId: baixa.id
                     }
                 });
-                if (r.count > 0) { usados.add(baixa.id); feitos.add(l.id); conciliados++; }
+                if (r.count > 0) { usados.add(baixa.id); feitos.add(l.id); conciliados++; baixasConciliadas.push(baixa.id); }
             } else if (dif > 0.01 && dif <= tetoJuros) {
                 // Crédito MAIOR que a baixa: juros/multa do atraso. A baixa do app fica
                 // como está (nominal); a diferença entra registrada no grupo — mesmo
@@ -1409,11 +1424,12 @@ async function _conciliarPorRefAsaas(pendentes, contaFinanceiraCaId, usados, use
                     });
                     if (r.count === 0) throw erro('O lançamento deixou de estar pendente.');
                 }, { timeout: 20000, maxWait: 10000 });
-                usados.add(baixa.id); feitos.add(l.id); conciliados++;
+                usados.add(baixa.id); feitos.add(l.id); conciliados++; baixasConciliadas.push(baixa.id);
             }
             // dif negativa (crédito MENOR que a baixa) ou juros acima do teto: análise manual.
         } catch (_) { /* corrida/duplo clique — segue para o próximo */ }
     }
+    if (baixasConciliadas.length > 0) await converterEspeciaisDasBaixas(baixasConciliadas, userId);
     return { conciliados, ids: feitos };
 }
 
@@ -1430,6 +1446,7 @@ async function conciliarAutomatico({ contaFinanceiraCaId, de, ate, userId }) {
     const porRef = await _conciliarPorRefAsaas(pendentes, contaFinanceiraCaId, usados, userId);
 
     let conciliados = porRef.conciliados;
+    const baixasAuto = [];
     for (const l of pendentes) {
         if (porRef.ids.has(l.id)) continue;
         const cands = candidatosPara({ data: ymd(l.data), valor: num(l.valor), tipo: l.tipo }, pools, usados);
@@ -1440,6 +1457,7 @@ async function conciliarAutomatico({ contaFinanceiraCaId, de, ate, userId }) {
             try {
                 await _vincularComTarifaCA(l, alvo.id, alvo.valor, userId, true);
                 usados.add(alvo.id); conciliados++;
+                if (l.tipo === 'CREDITO') baixasAuto.push(alvo.id);
             } catch (_) { /* corrida/duplo clique — segue para o próximo */ }
             continue;
         }
@@ -1453,8 +1471,9 @@ async function conciliarAutomatico({ contaFinanceiraCaId, de, ate, userId }) {
                 ...(l.tipo === 'CREDITO' ? { pagamentoParcelaId: alvo.id } : { pagamentoParcelaPagarId: alvo.id })
             }
         });
-        if (r.count > 0) { usados.add(alvo.id); conciliados++; }
+        if (r.count > 0) { usados.add(alvo.id); conciliados++; if (l.tipo === 'CREDITO') baixasAuto.push(alvo.id); }
     }
+    if (baixasAuto.length > 0) await converterEspeciaisDasBaixas(baixasAuto, userId);
     return { conciliados, restantes: pendentes.length - conciliados };
 }
 
@@ -1493,6 +1512,7 @@ async function conciliar({ lancamentoId, pagamentoParcelaId, pagamentoParcelaPag
         !valorBate(num(pagamento.valorRecebido), num(l.valor)) &&
         valorBate(num(pagamento.valorRecebido), round2(num(l.valor) + TARIFA_BOLETO_CA))) {
         await _vincularComTarifaCA(l, pagId, num(pagamento.valorRecebido), userId, false);
+        await converterEspeciaisDasBaixas([pagId], userId);
         return { message: `Conciliado! Tarifa de R$ ${TARIFA_BOLETO_CA.toFixed(2)} registrada e despesa da tarifa gerada (paga, só no app).` };
     }
 
@@ -1507,6 +1527,7 @@ async function conciliar({ lancamentoId, pagamentoParcelaId, pagamentoParcelaPag
             pagamentoParcelaPagarId: l.tipo === 'CREDITO' ? null : pagId
         }
     });
+    if (l.tipo === 'CREDITO') await converterEspeciaisDasBaixas([pagId], userId);
     return { message: 'Lançamento conciliado!' };
 }
 
@@ -1527,6 +1548,7 @@ async function confirmarIdentificadas({ contaFinanceiraCaId, de, ate, userId }) 
     const mapa = await _identificarPendentes(linhas, usados);
 
     let confirmadas = 0, comTarifa = 0;
+    const baixasConfirmadas = [];
     const naoFecham = [];
     for (const l of linhas) {
         const ident = mapa.get(l.id);
@@ -1535,7 +1557,7 @@ async function confirmarIdentificadas({ contaFinanceiraCaId, de, ate, userId }) 
         if (ident.tarifa) {
             try {
                 await _vincularComTarifaCA(l, ident.pagamentoId, ident.valorBaixa, userId, false);
-                usados.add(ident.pagamentoId); confirmadas++; comTarifa++;
+                usados.add(ident.pagamentoId); confirmadas++; comTarifa++; baixasConfirmadas.push(ident.pagamentoId);
             } catch (_) { /* corrida — segue */ }
         } else {
             const r = await prisma.extratoLancamento.updateMany({
@@ -1546,9 +1568,10 @@ async function confirmarIdentificadas({ contaFinanceiraCaId, de, ate, userId }) 
                     pagamentoParcelaId: ident.pagamentoId
                 }
             });
-            if (r.count > 0) { usados.add(ident.pagamentoId); confirmadas++; }
+            if (r.count > 0) { usados.add(ident.pagamentoId); confirmadas++; baixasConfirmadas.push(ident.pagamentoId); }
         }
     }
+    if (baixasConfirmadas.length > 0) await converterEspeciaisDasBaixas(baixasConfirmadas, userId);
     const partes = [`${confirmadas} identificada(s) confirmada(s)`];
     if (comTarifa) partes.push(`${comTarifa} com tarifa de R$ ${TARIFA_BOLETO_CA.toFixed(2)} (despesas geradas)`);
     if (naoFecham.length) partes.push(`${naoFecham.length} identificada(s) ficaram para análise`);
@@ -2034,10 +2057,19 @@ async function corrigirContaBaixa({ tipo, pagamentoId, novaContaId, userId }) {
         if (eraAguardando) await recalcularParcelaReceber(tx, pg.parcelaId);
     }, { timeout: 20000, maxWait: 10000 });
 
+    // Crédito de pedido ESPECIAL confirmado no extrato do banco: o pedido vira normal (fila de NF-e; NF-e NÃO automática).
+    let avisoConversao = '';
+    if (eraAguardando) {
+        const conv = await converterEspeciaisDasBaixas([pg.id], userId);
+        if (conv.length > 0) {
+            avisoConversao = ' ' + conv.map((c) => `Pedido ZZ#${c.numeroAntigo ?? '?'} virou #${c.numeroNovo} — emitir NF-e.`).join(' ');
+        }
+    }
+
     return {
-        message: eraAguardando
+        message: (eraAguardando
             ? `Confirmado! O Pix/cartão informado no Caixa bateu com o extrato — vinculado a ${conta.nomeBanco} e a parcela foi atualizada.`
-            : `Baixa movida para ${conta.nomeBanco} no app. Confira o banco do recebimento no Conta Azul (o app não guarda o vínculo dessa baixa lá).`,
+            : `Baixa movida para ${conta.nomeBanco} no app. Confira o banco do recebimento no Conta Azul (o app não guarda o vínculo dessa baixa lá).`) + avisoConversao,
         caAtualizado: false
     };
 }
@@ -2592,6 +2624,10 @@ async function conciliarUnificado({
         }
     }, { timeout: 30000, maxWait: 10000 });
 
+    // Pedidos ESPECIAIS cujas baixas acabaram de casar com o crédito do extrato viram pedido normal.
+    let convertidosEspeciais = [];
+    if (tipo === 'CREDITO') convertidosEspeciais = await converterEspeciaisDasBaixas([...idsPag, ...criadas], userId);
+
     const partes = [];
     if (alocacoes.length > 0) {
         const quitadas = alocacoes.length - (sobraUltima > 0.01 ? 1 : 0);
@@ -2606,6 +2642,7 @@ async function conciliarUnificado({
         if (sobraUltima > 0.01) partes.push(`1 baixa parcial (faltam R$ ${sobraUltima.toFixed(2)})`);
     }
     if (idsPag.length > 0) partes.push(`${idsPag.length} baixa(s) já registrada(s) amarrada(s)`);
+    if (convertidosEspeciais.length > 0) partes.push(`${convertidosEspeciais.length} pedido(s) especial(is) convertido(s) em pedido com NF (emitir NF-e)`);
     if (temDiferenca) partes.push(`diferença de R$ ${Math.abs(diferenca).toFixed(2)} registrada: ${rotuloMotivo}`);
     return { message: `Conciliado! ${partes.join(' · ')}.` };
 }

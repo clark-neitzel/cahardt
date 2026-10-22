@@ -543,6 +543,25 @@ function startSchedulers() {
     setTimeout(_runChecklistPendencias, 4 * 60 * 1000);
     setInterval(_runChecklistPendencias, 5 * 60 * 1000);
 
+    // === Varredura de segurança: pedido ESPECIAL pago em Pix comum vira pedido normal ===
+    // Pega o que os gatilhos (conclusão da entrega / conciliação bancária) perderam por falha pontual.
+    // Conservadora: últimos 3 dias e nunca antes de 21/10/2026 (corte fixo), só converte (NF-e NUNCA sai sozinha), loga cada conversão.
+    let _varreduraEspeciaisRodando = false;
+    const _runVarreduraEspeciais = async () => {
+        if (_varreduraEspeciaisRodando) return;
+        _varreduraEspeciaisRodando = true;
+        try {
+            const n = await require('../services/pedidoConversaoService').varrerEspeciaisPagos();
+            if (n > 0) console.log(`🔁 [Conversão/varredura] ${n} pedido(s) especial(is) convertido(s).`);
+        } catch (err) {
+            console.error('⚠️ Varredura de especiais pagos Error:', err.message);
+        } finally {
+            _varreduraEspeciaisRodando = false;
+        }
+    };
+    setTimeout(_runVarreduraEspeciais, 90 * 1000);
+    setInterval(_runVarreduraEspeciais, 10 * 60 * 1000);
+
     // === Impressão direta (Etiquetas da Cozinha) ===
     // A cada 60 s: expira trabalho vencido (etiqueta velha NUNCA sai sozinha horas depois), devolve à fila o que
     // ficou "ENVIANDO" sem confirmação do agente (respeitando maxTentativas) e, 1x/dia, apaga conteúdo/linhas antigas.

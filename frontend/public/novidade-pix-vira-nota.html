@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Pedido especial pago com Pix vira pedido com nota a emitir — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<meta property="og:title" content="🧾 Novidade no Hardt App: pedido especial pago com Pix vira pedido com nota a emitir">
+<meta property="og:description" content="Pedido ESPECIAL pago por Pix vira pedido normal e fica pendente para o escritório emitir a NF-e. Quem não quer nota paga em dinheiro. Veja como fica na tela.">
+<meta property="og:type" content="website">
+<style>
+  :root { --primary:#00754A; --primary-dark:#006241; --house:#1E3932; --mint:#d4e9e2; --cream:#f2f0eb; --gold:#cba258; --ink:rgba(0,0,0,.87); --ink-soft:#5f6b66; letter-spacing:-0.01em; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--cream); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; line-height:1.55; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:620px; margin:0 auto; padding:24px 16px 56px; }
+  .hero { background:linear-gradient(168deg,var(--house) 0%,#16302a 100%); color:#fff; padding:40px 16px 44px; }
+  .hero-inner { max-width:620px; margin:0 auto; text-align:center; }
+  .eyebrow { display:inline-block; background:var(--gold); color:#2b230f; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.14em; padding:6px 14px; border-radius:999px; margin-bottom:18px; }
+  .hero h1 { font-size:clamp(26px,7vw,38px); font-weight:800; line-height:1.12; margin:0 0 12px; text-wrap:balance; }
+  .hero p { color:rgba(255,255,255,.75); font-size:16px; max-width:46ch; margin:0 auto; text-wrap:balance; }
+  h2 { font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.14em; color:#6b756f; margin:26px 0 10px; }
+  .acc { background:#fff; border:1px solid #e3e1da; border-radius:16px; margin-bottom:10px; overflow:hidden; box-shadow:0 1px 2px rgba(30,57,50,.05); }
+  .acc-head { width:100%; display:flex; align-items:center; gap:12px; background:none; border:none; font:inherit; text-align:left; padding:15px 16px; cursor:pointer; min-height:56px; }
+  .acc-ico { width:38px; height:38px; border-radius:11px; background:var(--mint); display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
+  .acc-head strong { flex:1; font-size:15.5px; font-weight:700; }
+  .acc-seta { color:#9aa5a0; transition:transform .2s; font-size:13px; }
+  .acc.aberto .acc-seta { transform:rotate(180deg); }
+  .acc-corpo { display:none; padding:0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display:block; }
+  .acc-corpo p, .acc-corpo li { font-size:14px; color:var(--ink-soft); }
+  .acc-corpo p { margin:0 0 10px; }
+  .acc-corpo ul { margin:0; padding-left:18px; }
+  .acc-corpo li { margin-bottom:7px; }
+  .acc-corpo b { color:var(--ink); }
+  @media (max-width:420px) { .acc-corpo { padding-left:16px; } }
+  .tela { background:#fff; border:1px solid #e3e1da; border-radius:16px; overflow:hidden; margin-bottom:12px; box-shadow:0 1px 2px rgba(30,57,50,.05); }
+  .tela-titulo { background:var(--house); color:#fff; padding:12px 16px; font-size:13px; font-weight:800; }
+  .tela-corpo { padding:16px; background:#f7f6f2; }
+  .app-card { background:#fff; border:1px solid #e5e3dc; border-radius:12px; overflow:hidden; margin-bottom:10px; }
+  .app-card-head { padding:9px 12px; border-bottom:1px solid #f0efe9; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.12em; color:#6b756f; }
+  .app-card-body { padding:12px; font-size:13px; }
+  .app-input { border:1px solid #d8d5cc; border-radius:8px; padding:9px 10px; font-size:13px; background:#fff; display:flex; justify-content:space-between; margin-bottom:8px; }
+  .aviso { background:#fef2f2; border:2px solid #dc2626; border-radius:12px; padding:12px; margin-bottom:10px; }
+  .aviso b.t { color:#991b1b; font-size:13px; display:block; }
+  .aviso span { color:#7f1d1d; font-size:12px; display:block; margin-top:5px; }
+  .btn { border-radius:999px; text-align:center; font-weight:800; font-size:12px; padding:11px 8px; flex:1; }
+  .btn-v { background:#fff; border:1px solid #d1d5db; color:#374151; }
+  .btn-r { background:#dc2626; color:#fff; }
+  .btn-g { background:#22c55e; color:#fff; font-size:14px; }
+  .linha { display:flex; gap:8px; }
+  .badge { display:inline-block; font-size:11px; font-weight:700; padding:3px 9px; border-radius:999px; }
+  .b-am { background:#fef3c7; color:#b45309; } .b-pu { background:#f3e8ff; color:#7e22ce; } .b-gr { background:#dcfce7; color:#166534; }
+  .item { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:9px 0; border-bottom:1px solid #f0efe9; }
+  .item:last-child { border-bottom:0; }
+  .pin { display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:50%; background:var(--gold); color:#2b230f; font-size:11px; font-weight:800; flex-shrink:0; vertical-align:2px; margin-left:6px; }
+  .legenda { padding:12px 16px 16px; }
+  .legenda div { display:flex; gap:8px; font-size:13px; color:var(--ink-soft); margin-bottom:7px; align-items:flex-start; }
+  .legenda .pin { margin:1px 0 0; }
+  .legenda b { color:var(--ink); }
+  .rodape { text-align:center; font-size:13px; color:var(--ink-soft); margin-top:28px; }
+</style>
+</head>
+<body>
+<div class="hero"><div class="hero-inner">
+  <span class="eyebrow">Novidade</span>
+  <h1>Pedido especial pago com Pix vira pedido com nota a emitir</h1>
+  <p>Receber um pedido ESPECIAL por Pix agora vira pedido normal e fica pendente para o escritório emitir a NF-e, sem ninguém converter na mão.</p>
+</div></div>
+
+<div class="wrap">
+  <h2>O que muda</h2>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true"><span class="acc-ico">🧾</span><strong>Pix em pedido especial = nota</strong><span class="acc-seta">▼</span></button>
+    <div class="acc-corpo"><ul>
+      <li>Pedido <b>ESPECIAL</b> (ZZ) pago por <b>Pix</b> — chave ou QR Code na entrega, ou pagamento confirmado no extrato do banco (qualquer crédito conciliado) — é <b>convertido automaticamente</b> em pedido normal. A NF-e <b>não sai sozinha</b>: o escritório emite.</li>
+      <li>O pedido ganha número novo e fica <b>pendente para o escritório emitir a NF-e</b>.</li>
+      <li>Quem <b>não quer nota</b> paga em <b>dinheiro</b>: nesse caso nada muda e o pedido continua especial.</li>
+    </ul></div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true"><span class="acc-ico">🚚</span><strong>Para o motorista</strong><span class="acc-seta">▼</span></button>
+    <div class="acc-corpo"><ul>
+      <li>Ao escolher Pix na tela de pagamento de um pedido especial, aparece o <b>aviso vermelho</b> "Este pedido vai virar NOTA FISCAL".</li>
+      <li>Ao tocar em Finalizar, o app <b>pede confirmação</b>, porque a conversão não desfaz. Dá para voltar e trocar a forma de pagamento.</li>
+      <li>Depois de finalizar, uma mensagem mostra o <b>número novo</b> do pedido.</li>
+    </ul></div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true"><span class="acc-ico">🗂️</span><strong>Para o escritório</strong><span class="acc-seta">▼</span></button>
+    <div class="acc-corpo"><ul>
+      <li>O pedido convertido aparece em <b>Notas Fiscais</b> e na <b>Central de Pendências</b>, em "NF-e a emitir".</li>
+      <li><b>Confira o valor no extrato do banco</b> antes de emitir a nota.</li>
+      <li>Pedido já entregue <b>não volta para a carga</b>: a conversão só muda o tipo do pedido e pede a nota.</li>
+    </ul></div>
+  </div>
+
+  <h2>As telas do app</h2>
+
+  <div class="tela">
+    <div class="tela-titulo">Tela 1 · Entrega do motorista (pagamento)</div>
+    <div class="tela-corpo">
+      <div class="app-card"><div class="app-card-head">Forma de pagamento<span class="pin">1</span></div>
+        <div class="app-card-body">
+          <div class="app-input"><span>Pix</span><span>▾</span></div>
+          <div class="app-input"><span>Valor</span><b>R$ 150,00</b></div>
+        </div></div>
+      <div class="aviso"><b class="t">⚠ Este pedido vai virar pedido com NOTA FISCAL<span class="pin">2</span></b>
+        <span>Pedido ESPECIAL pago com Pix é convertido em pedido normal e o escritório emite a NF-e. Se o cliente não quiser nota, receba em dinheiro.</span></div>
+      <div class="app-card"><div class="app-card-body">
+        <b style="font-size:13px">Confirma o recebimento em Pix?</b><span class="pin">3</span>
+        <div style="font-size:12px;color:#5f6b66;margin:4px 0 10px">A conversão em nota fiscal não pode ser desfeita.</div>
+        <div class="linha"><div class="btn btn-v">Voltar e trocar a forma</div><div class="btn btn-r">Confirmar Pix</div></div>
+      </div></div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Escolha a forma de pagamento. Se for <b>Pix</b> em pedido especial, o aviso aparece.</span></div>
+      <div><span class="pin">2</span><span>O <b>aviso vermelho</b> lembra que haverá nota. Quem não quer nota paga em dinheiro.</span></div>
+      <div><span class="pin">3</span><span>Ao finalizar, a <b>confirmação</b> evita conversão por engano. "Voltar" não grava nada.</span></div>
+    </div>
+  </div>
+
+  <div class="tela">
+    <div class="tela-titulo">Tela 2 · Escritório: NF-e a emitir</div>
+    <div class="tela-corpo">
+      <div class="app-card"><div class="app-card-head">Central de Pendências<span class="pin">1</span></div>
+        <div class="app-card-body">
+          <div class="item"><span><b>NF-e a emitir</b><br><span style="color:#5f6b66;font-size:12px">Pedidos aguardando nota</span></span><span class="badge b-am">1</span></div>
+          <div class="item"><span>Pedido novo · Cliente exemplo<span class="pin">2</span><br><span style="color:#5f6b66;font-size:12px">Veio de pedido especial · pago em Pix</span></span><span class="badge b-pu">Convertido</span></div>
+        </div></div>
+      <div class="app-card"><div class="app-card-body">
+        <div class="linha"><div class="btn btn-g" style="background:#00754A">Emitir NF-e<span class="pin">3</span></div></div>
+      </div></div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>O cartão <b>NF-e a emitir</b> na Central de Pendências conta os pedidos que esperam nota (também listados em Notas Fiscais).</span></div>
+      <div><span class="pin">2</span><span>O pedido convertido traz o <b>número novo</b>. Antes de emitir, <b>confira o valor no extrato</b>.</span></div>
+      <div><span class="pin">3</span><span>Conferiu? <b>Emita a NF-e</b> normalmente.</span></div>
+    </div>
+  </div>
+
+  <p class="rodape">Dúvidas? Fale com o escritório.</p>
+</div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.parentElement;
+    const abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>

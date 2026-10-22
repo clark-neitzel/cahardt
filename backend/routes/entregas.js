@@ -702,9 +702,12 @@ router.post('/:id/concluir', verificarAuth, checkAcessoEntregador, async (req, r
             }
         }
 
+        let entregaJaFinalizada = false;
         await prisma.$transaction(async (tx) => {
-            await tx.pedido.update({
-                where: { id },
+            // Condicional: duas requisições simultâneas (duplo clique) passam pela checagem de
+            // PENDENTE lá em cima, mas só UMA vence este update — a outra aborta sem gravar pagamento.
+            const marcou = await tx.pedido.updateMany({
+                where: { id, statusEntrega: 'PENDENTE' },
                 data: {
                     statusEntrega,
                     gpsEntrega: gpsEntrega || null,
@@ -714,6 +717,7 @@ router.post('/:id/concluir', verificarAuth, checkAcessoEntregador, async (req, r
                     observacaoEntrega: observacaoEntrega || null
                 }
             });
+            if (marcou.count === 0) { entregaJaFinalizada = true; return; }
 
             if (operacoesPgto.length > 0) {
                 await tx.pedidoPagamentoReal.createMany({
@@ -735,6 +739,26 @@ router.post('/:id/concluir', verificarAuth, checkAcessoEntregador, async (req, r
             // O dinheiro do motorista continua no "a prestar" dele — esse cálculo sai dos
             // pagamentos da entrega (pagamentos_reais), nunca do status da parcela.
         }, { timeout: 20000, maxWait: 10000 });
+
+        if (entregaJaFinalizada) {
+            return res.status(400).json({ error: 'Este pedido já foi finalizado (a entrega acabou de ser registrada por outra requisição).' });
+        }
+
+        // Pedido ESPECIAL pago em Pix COMUM (sem QR Asaas) vira pedido normal (entra na fila de NF-e;
+        // a NF-e NÃO sai sozinha). Bloco isolado: nada aqui altera o status HTTP nem desfaz a entrega.
+        let convertidoInfo = null;
+        try {
+            if (pedido.especial && statusEntrega !== 'DEVOLVIDO') {
+                const r = await require('../services/pedidoConversaoService').converterSePixNaEntrega(id, {
+                    criadoPorId: req.user.id,
+                    criadoPorNome: req.user.nome || req.user.login || null,
+                    comoConverteu: 'Pix na entrega'
+                });
+                if (r.convertido) convertidoInfo = { numeroNovo: r.numeroNovo, numeroAntigo: r.numeroAntigo };
+            }
+        } catch (convErr) {
+            console.error('[Conversão] Pix na entrega (entrega já registrada):', convErr.message);
+        }
 
         // Ponto GPS do cliente: se a entrega concluiu LONGE do ponto cadastrado (ou o
         // cliente nem tem ponto), o app pergunta ao motorista se ele está na porta —
@@ -760,7 +784,11 @@ router.post('/:id/concluir', verificarAuth, checkAcessoEntregador, async (req, r
             console.error('[GpsClientes] selo pós-entrega (entrega já registrada):', gpsErr.message);
         }
 
-        res.json({ message: 'Entrega Finalizada e Registrada com Sucesso!', gps: gpsInfo });
+        res.json({
+            message: 'Entrega Finalizada e Registrada com Sucesso!',
+            gps: gpsInfo,
+            ...(convertidoInfo ? { convertido: convertidoInfo } : {})
+        });
     } catch (error) {
         console.error('Erro na submissão de baixa logística:', error);
         res.status(500).json({ error: 'Erro crítico ao processar o fechamento de caixa do motorista.' });
@@ -945,7 +973,25 @@ router.patch('/:id/editar', verificarAuth, checkAjustador, async (req, res) => {
             }
         }, { timeout: 20000, maxWait: 10000 });
 
-        res.json({ message: 'Lançamento de entrega atualizado com sucesso.' });
+        // Admin trocou/acrescentou linha Pix num pedido ESPECIAL: mesma regra da conclusão (só converte).
+        let convertidoEdicao = null;
+        try {
+            if (pedido.especial && pagamentos) {
+                const r = await require('../services/pedidoConversaoService').converterSePixNaEntrega(id, {
+                    criadoPorId: req.user.id,
+                    criadoPorNome: req.user.nome || req.user.login || null,
+                    comoConverteu: 'Pix na edição da entrega'
+                });
+                if (r.convertido) convertidoEdicao = { numeroNovo: r.numeroNovo, numeroAntigo: r.numeroAntigo };
+            }
+        } catch (convErr) {
+            console.error('[Conversão] Pix na edição da entrega (edição já registrada):', convErr.message);
+        }
+
+        res.json({
+            message: 'Lançamento de entrega atualizado com sucesso.',
+            ...(convertidoEdicao ? { convertido: convertidoEdicao } : {})
+        });
     } catch (error) {
         console.error('Erro ao editar lançamento de entrega:', error);
         res.status(500).json({ error: 'Erro ao atualizar lançamento.' });

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { X, CheckCircle, Package, ArrowRight, Save, Navigation, DollarSign, AlertCircle, Trash2, Plus, Mic, MicOff, MessageSquare, QrCode } from 'lucide-react';
+import { X, CheckCircle, Package, ArrowRight, Save, Navigation, DollarSign, AlertCircle, Trash2, Plus, Mic, MicOff, MessageSquare, QrCode, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import entregasService from '../../../services/entregasService';
 import formasPagamentoService from '../../../services/formasPagamentoService';
@@ -24,6 +24,7 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
     const [alertaGpsDismissed, setAlertaGpsDismissed] = useState(false);
     const [naPortaInfo, setNaPortaInfo] = useState(null); // pergunta "está na porta?" pós-conclusão
     const [showClientePopupGps, setShowClientePopupGps] = useState(false);
+    const [confirmaConversao, setConfirmaConversao] = useState(false); // confirmação ZZ + Pix comum
 
     // Faixa informativa de cliente em atraso (só se a chave "motorista vê o atraso" estiver ligada).
     // NÃO bloqueia a entrega: o motorista só fica sabendo e pode oferecer o recebimento na hora.
@@ -54,6 +55,7 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
     const [gpsCoords, setGpsCoords] = useState(null);
     const [capturingGps, setCapturingGps] = useState(false);
     const [submitting, setSubmitting] = useState(false);
+    const enviandoRef = useRef(false); // trava SÍNCRONA contra clique duplo (o estado só atualiza no próximo render)
 
     // Diversos
     const [divergencia, setDivergencia] = useState(false);
@@ -496,8 +498,40 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
         );
     };
 
-    const handleFinalizar = async () => {
+    // Pedido ESPECIAL pago com Pix comum (chave/QR fora do Asaas) vira pedido normal pendente de NF-e.
+    // MESMA regra do backend (inadimplenciaService.classificarFormaApontada): nome sem acento/caixa;
+    // boleto primeiro; dinheiro/espécie antes de pix; "pix asaas ... estornado" não é Pix.
+    // Não conta o PIX Asaas confirmado (aviso próprio no modal do QR) nem linha de responsável.
+    const ehPixComum = (p) => {
+        if (p._cobrancaAsaasId || linhaAceitaResponsavel(p)) return false;
+        const n = String(formasDisp.find(f => f._selectId === p._selectId)?.nome || '')
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+        if (!n) return false;
+        if (n.includes('boleto')) return false;
+        if (n.includes('dinheiro') || n.includes('especie')) return false;
+        if (n.includes('pix asaas') && n.includes('estornado')) return false;
+        return n.includes('pix');
+    };
+    const vaiVirarNota = !!pedido.especial && statusFinal !== 'DEVOLVIDO' && pagamentos.some(ehPixComum);
+
+    const AvisoPixViraNota = () => (
+        <div className="bg-red-50 border-2 border-red-600 rounded-xl p-3.5 text-left" data-testid="aviso-pix-nota">
+            <p className="flex items-center gap-2 font-bold text-red-800 text-sm">
+                <AlertTriangle className="h-5 w-5 shrink-0" /> Este pedido vai virar pedido com NOTA FISCAL
+            </p>
+            <p className="text-xs text-red-900 mt-1.5">
+                Pedido ESPECIAL pago com Pix é <b>convertido em pedido normal</b> e o escritório emite a NF-e.
+                Se o cliente não quiser nota, receba em dinheiro.
+            </p>
+        </div>
+    );
+
+    const handleFinalizar = async (confirmado = false) => {
         if (!gpsCoords) return toast.error('Aperte no botão para obter sua Localização Geográfica da Entrega (Obrigatório).');
+        if (vaiVirarNota && confirmado !== true) { setConfirmaConversao(true); return; }
+        if (enviandoRef.current) return;
+        enviandoRef.current = true;
+        setConfirmaConversao(false);
 
         try {
             setSubmitting(true);
@@ -553,6 +587,10 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
             // Manda pro Cloud
             const respConcluir = await entregasService.concluirEntrega(pedido.id, payload);
 
+            if (respConcluir?.convertido?.numeroNovo != null) {
+                toast.success(`Pedido virou #${respConcluir.convertido.numeroNovo} — o escritório emite a NF-e.`);
+            }
+
             // Entrega concluída longe do ponto do cliente (ou cliente sem ponto):
             // pergunta se o motorista está na porta — resposta corrige o cadastro.
             if (respConcluir?.gps?.perguntarNaPorta && respConcluir?.gps?.clienteUuid) {
@@ -563,6 +601,24 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
             // Aciona o painel anterior p/ sumir
             onSuccess();
         } catch (error) {
+            const msgErro = String(error.response?.data?.error || '');
+            if (error.response?.status === 400) {
+                // 2ª conclusão simultânea (corrida): o backend já registrou a 1ª — trata como sucesso
+                if (msgErro.includes('acabou de ser registrada')) {
+                    toast('Entrega já registrada.', { icon: 'ℹ️' });
+                    onSuccess();
+                    return;
+                }
+                // Pedido que OUTRO usuário já finalizou (pode ter sido DEVOLVIDO): nada foi registrado
+                // agora — avisa o status real e só recarrega a lista (sem fluxo de sucesso).
+                const m = msgErro.match(/já foi finalizado anteriormente como\s+([A-Z_]+)/);
+                if (m) {
+                    toast(`Esta entrega já tinha sido finalizada como ${m[1]}.`, { icon: 'ℹ️', duration: 6000 });
+                    onSuccess();
+                    return;
+                }
+            }
+            enviandoRef.current = false; // libera só no erro (no sucesso o modal sai de cena)
             toast.error(error.response?.data?.error || 'Erro Crítico no fechamento do caixa.');
         } finally {
             setSubmitting(false);
@@ -575,6 +631,18 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
 
     return (
         <>
+        {confirmaConversao && (
+            <div className="fixed inset-0 z-[70] bg-black/60 flex items-end sm:items-center justify-center p-3" data-testid="confirma-conversao">
+                <div className="bg-white rounded-2xl w-full max-w-sm p-4 space-y-3 shadow-xl">
+                    <AvisoPixViraNota />
+                    <p className="text-xs text-gray-700">A conversão em nota fiscal <b>não pode ser desfeita</b>. Confirma o recebimento em Pix?</p>
+                    <div className="flex gap-2">
+                        <button onClick={() => setConfirmaConversao(false)} className="flex-1 min-h-[44px] rounded-full border border-gray-300 text-sm font-bold text-gray-700 bg-white active:bg-gray-100">Voltar e trocar a forma</button>
+                        <button onClick={() => handleFinalizar(true)} disabled={submitting} className="flex-1 min-h-[44px] rounded-full text-sm font-bold text-white bg-red-600 active:bg-red-700 disabled:opacity-50">{submitting ? 'Enviando...' : 'Confirmar Pix'}</button>
+                    </div>
+                </div>
+            </div>
+        )}
         {naPortaInfo && (
             <NaPortaGpsModal
                 clienteUuid={naPortaInfo.clienteUuid}
@@ -962,6 +1030,8 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
                                     ))
                                 )}
 
+                                {vaiVirarNota && <AvisoPixViraNota />}
+
                                 {/* Cobrar via PIX com QR Code (Asaas) — confirmação bancária na hora */}
                                 {asaasDisponivel && pixSugerido > 0.01 && (
                                     <button
@@ -1040,10 +1110,11 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
                                     )}
                                 </div>
                             </div>
+                            {vaiVirarNota && <div className="px-4 pb-3 bg-white"><AvisoPixViraNota /></div>}
                             <div className="p-4 bg-gray-50 border-t border-gray-200">
                                 <div className="flex space-x-3">
                                     <button onClick={() => statusFinal === 'DEVOLVIDO' ? setStep(5) : isCondicaoFixa() ? (statusFinal === 'ENTREGUE_PARCIAL' ? setStep(2) : setStep(1)) : setStep(3)} className="w-1/3 py-4 text-sm font-bold text-gray-600 bg-white border border-gray-300 rounded-xl active:bg-gray-100">Voltar</button>
-                                    <button onClick={handleFinalizar} disabled={submitting || !gpsCoords} className="w-2/3 py-4 text-lg font-black text-white bg-green-500 rounded-xl flex items-center justify-center active:bg-green-600 shadow-xl disabled:opacity-50 disabled:bg-gray-400 disabled:shadow-none transition-all">
+                                    <button onClick={() => handleFinalizar()} disabled={submitting || !gpsCoords} className="w-2/3 py-4 text-lg font-black text-white bg-green-500 rounded-xl flex items-center justify-center active:bg-green-600 shadow-xl disabled:opacity-50 disabled:bg-gray-400 disabled:shadow-none transition-all">
                                         {submitting ? 'Transmitindo...' : '2. FINALIZAR Rota'}
                                     </button>
                                 </div>

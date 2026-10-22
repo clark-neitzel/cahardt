@@ -249,26 +249,43 @@ async function blocoNfeEmitir(limite) {
         ],
         notasFiscaisApp: { none: { ref: { startsWith: prefixo } } },
     };
-    const [contador, pedidos] = await Promise.all([
+    const sel = {
+        id: true, numero: true, bonificacao: true, dataVenda: true, clienteId: true, nfeChave: true,
+        cliente: { select: { Nome: true } },
+        itens: { select: { quantidade: true, valor: true } },
+        avisosConversao: { select: { numeroAntigo: true, createdAt: true }, orderBy: { createdAt: 'desc' }, take: 1 },
+    };
+    // Ordem: ESPECIAIS CONVERTIDOS sem nota primeiro (o dono quer que apareçam pendentes sempre),
+    // depois o resto por dataVenda. O critério do contador NÃO muda (mesmo `where`).
+    const [contador, convertidos] = await Promise.all([
         prisma.pedido.count({ where }),
         prisma.pedido.findMany({
-            where,
-            select: {
-                id: true, numero: true, bonificacao: true, dataVenda: true, clienteId: true,
-                cliente: { select: { Nome: true } },
-                itens: { select: { quantidade: true, valor: true } },
-            },
-            orderBy: { dataVenda: 'desc' },
-            take: limite,
+            where: { ...where, nfeChave: null, avisosConversao: { some: {} } },
+            select: sel, orderBy: { dataVenda: 'desc' }, take: 500,
         }),
     ]);
+    // Convertidos: o mais recentemente CONVERTIDO primeiro (ZZ vendido dias atrás e convertido hoje
+    // não pode ficar fora da lista visível); só então aplica o limite.
+    const dataConv = (p) => (p.avisosConversao?.[0]?.createdAt ? new Date(p.avisosConversao[0].createdAt).getTime() : 0);
+    convertidos.sort((a, b) => dataConv(b) - dataConv(a));
+    convertidos.length = Math.min(convertidos.length, limite);
+    const restantes = limite - convertidos.length > 0
+        ? await prisma.pedido.findMany({
+            where: convertidos.length > 0 ? { ...where, id: { notIn: convertidos.map(c => c.id) } } : where,
+            select: sel, orderBy: { dataVenda: 'desc' }, take: limite - convertidos.length,
+        })
+        : [];
+    const pedidos = [...convertidos, ...restantes];
     const itens = pedidos.map(p => ({
         id: p.id,
         clienteId: p.clienteId || null,
         titulo: `${p.bonificacao ? 'BN#' : '#'}${p.numero} · ${p.cliente?.Nome || 'Cliente'}`,
-        subtitulo: 'Sem NF-e emitida',
+        subtitulo: (p.avisosConversao && p.avisosConversao.length > 0 && !p.nfeChave)
+            ? `Era ZZ#${p.avisosConversao[0].numeroAntigo ?? '?'} · convertido, falta emitir a NF-e`
+            : 'Sem NF-e emitida',
         valor: round2(p.itens.reduce((s, i) => s + Number(i.quantidade) * Number(i.valor), 0)),
         dataRef: p.dataVenda,
+        convertidoDeEspecial: !!(p.avisosConversao && p.avisosConversao.length > 0),
         rota: '/notas-fiscais',
         acao: { tipo: 'emitir_nfe', label: 'Emitir NF-e', endpoint: `/api/notas-fiscais/emitir/${p.id}`, metodo: 'POST' },
     }));

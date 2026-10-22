@@ -8,7 +8,7 @@ import { explicarRejeicao } from '../../utils/rejeicaoNfe';
 import clienteService from '../../services/clienteService';
 import CanhotosTab from './CanhotosTab';
 import {
-    FileText, Loader2, RefreshCw, Send, FileDown, FileCode2, AlertTriangle, HelpCircle, Search, Ban
+    FileText, Loader2, RefreshCw, Send, FileDown, FileCode2, AlertTriangle, HelpCircle, Search, Ban, Zap
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -29,6 +29,19 @@ const ehBonificacao = (p) => p.tipo === 'BONIFICACAO' || !!p.bonificacao;
 const subtituloLinha = (p) => ehBonificacao(p)
     ? `${fmtData(p.dataVenda)} · Bonificação · sem cobrança`
     : `${fmtData(p.dataVenda)}${p.tipoPagamento ? ` · ${p.tipoPagamento}` : ''}`;
+
+// Selo âmbar: pedido que nasceu especial (ZZ) e foi convertido — a fila traz esses pedidos
+// no topo mesmo fora do período (campos opcionais: backend antigo não manda, selo some).
+const SeloConvertido = ({ pedido }) => {
+    if (!pedido.convertidoDeEspecial) return null;
+    const origem = pedido.numeroEspecialOrigem != null && pedido.numeroEspecialOrigem !== ''
+        ? `ZZ#${pedido.numeroEspecialOrigem}` : 'ZZ';
+    return (
+        <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-700 whitespace-nowrap">
+            <Zap className="h-3 w-3" /> Era {origem} · convertido
+        </span>
+    );
+};
 
 // Selo roxo da bonificação (cor semântica do design system para "Especial/Bonificação")
 const SeloBonificacao = ({ pedido }) => {
@@ -680,8 +693,8 @@ const NotasFiscais = () => {
                                             </span>
                                             <BadgeNota pedido={p} />
                                         </div>
-                                        {ehBonificacao(p) && (
-                                            <div className="mb-1"><SeloBonificacao pedido={p} /></div>
+                                        {(ehBonificacao(p) || p.convertidoDeEspecial) && (
+                                            <div className="mb-1 flex flex-wrap gap-1"><SeloBonificacao pedido={p} /><SeloConvertido pedido={p} /></div>
                                         )}
                                         <div className="text-sm text-gray-900">{p.cliente?.nome || '—'}</div>
                                         <MarcadaPor pedido={p} />
@@ -744,6 +757,7 @@ const NotasFiscais = () => {
                                                     <div className="flex items-center gap-2 flex-wrap">
                                                         <span className="font-semibold">{rotuloPedido(p)}</span>
                                                         <SeloBonificacao pedido={p} />
+                                                        <SeloConvertido pedido={p} />
                                                     </div>
                                                     <div className="text-xs text-gray-500">
                                                         {subtituloLinha(p)}

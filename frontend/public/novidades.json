@@ -1,5 +1,11 @@
 [
   {
+    "slug": "pix-vira-nota",
+    "titulo": "Pedido especial pago com Pix vira pedido com nota a emitir",
+    "resumo": "Pedido ESPECIAL pago por Pix vira pedido normal e fica pendente para o escritório emitir a NF-e. O motorista vê um aviso e confirma; quem não quer nota paga em dinheiro. O escritório confere o valor no extrato antes de emitir.",
+    "data": "2026-10-22"
+  },
+  {
     "slug": "pdf-pop",
     "titulo": "Como Fazer: PDF para imprimir",
     "resumo": "Cada manual do Como Fazer gera um PDF (cartaz de parede ou folha de fichário). Você escolhe quantas páginas e quais passos vão em cada uma, vê no app e imprime ou salva. O botão PDF fica no conteúdo aberto, na lista de Conteúdos e no editor.",
