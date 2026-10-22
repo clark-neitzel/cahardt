@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Plus, Sparkles } from 'lucide-react';
+import { Loader2, Plus, Sparkles, FileText, Pencil } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useSetores, opcoesSetores } from '../../../hooks/useSetores';
 import comoFazerService, { mensagemErro, TIPOS } from '../../../services/comoFazerService';
@@ -9,6 +9,8 @@ import { useFiltrosSalvos } from '../../../hooks/useFiltrosSalvos';
 import EditorConteudo from './EditorConteudo';
 import ModalComecarComIA from './ModalComecarComIA';
 import { useIaStatus } from '../../../components/ComoFazer/useIaStatus';
+import { useComoFazerMe } from '../../ComoFazer/hooks/useComoFazerMe';
+import ModalPdfLazy from '../../ComoFazer/ModalPdfLazy';
 import { BADGE_TIPO, BADGE_CONTEUDO, CLS_BADGE } from '../../../components/ComoFazer/visual';
 
 const CAMPO = 'w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none';
@@ -82,12 +84,29 @@ function ModalNovo({ onCriado, onFechar }) {
     );
 }
 
+// Botão PDF de uma linha da lista: só liga quando há versão publicada no ar (rascunho e arquivado nunca imprimem).
+function BotaoPdfLinha({ c, onAbrir }) {
+    const ligado = c.status === 'PUBLICADO' && c.versaoAtual != null;
+    const motivo = c.status === 'ARQUIVADO' ? 'Arquivado: publique de novo para gerar o PDF' : 'Publique primeiro para gerar o PDF';
+    return (
+        <div className="inline-flex flex-col items-start">
+            <button type="button" onClick={onAbrir} disabled={!ligado} aria-disabled={!ligado} title={ligado ? 'Gerar PDF para imprimir' : motivo}
+                className="min-h-[44px] px-4 inline-flex items-center gap-2 rounded-full bg-white border border-primary text-primary text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"><FileText className="h-4 w-4" /> PDF</button>
+            {!ligado && <span className="text-xs text-gray-600 mt-1 max-w-[12rem]">{motivo}</span>}
+            {ligado && c.temRascunho ? <span className="text-xs text-amber-800 mt-1 max-w-[12rem]">Usa a versão publicada (v{c.versaoAtual}), não o rascunho</span> : null}
+        </div>
+    );
+}
+
 export default function TabConteudos({ abrirId, abrirNovo }) {
     const [filtros, setFiltros] = useFiltrosSalvos('como-fazer-conteudos', { tipo: '', status: '' });
     const [lista, setLista] = useState(null);
     const [erro, setErro] = useState('');
     const [editando, setEditando] = useState(abrirId || '');
     const [novo, setNovo] = useState(!!abrirNovo);
+    const [pdfDe, setPdfDe] = useState(null); // conteúdo cujo PDF está aberto
+    const { pode } = useComoFazerMe();
+    const podePdf = pode.editar || pode.painel; // mesma regra do Imprimir A4
 
     const carregar = useCallback(async () => {
         try {
@@ -124,7 +143,8 @@ export default function TabConteudos({ abrirId, abrirNovo }) {
                 <>
                     <div className="md:hidden space-y-3">
                         {lista.map((c) => (
-                            <button key={c.id} type="button" onClick={() => setEditando(c.id)} className="w-full text-left bg-white rounded-xl border border-gray-200 shadow-sm p-3">
+                            <div key={c.id} className="bg-white rounded-xl border border-gray-200 shadow-sm p-3">
+                                <button type="button" onClick={() => setEditando(c.id)} className="w-full text-left min-h-[44px]">
                                 <div className="flex items-center justify-between gap-2">
                                     <span className="font-semibold text-gray-900 break-words">{c.icone || TIPOS[c.tipo]?.icone} {c.titulo}</span>
                                     <span className={`${CLS_BADGE} ${(BADGE_CONTEUDO[c.status] || BADGE_CONTEUDO.RASCUNHO).cls}`}>{(BADGE_CONTEUDO[c.status] || BADGE_CONTEUDO.RASCUNHO).rotulo}</span>
@@ -137,13 +157,18 @@ export default function TabConteudos({ abrirId, abrirNovo }) {
                                     {c.semFoto > 0 ? <span className="px-2 py-1 font-semibold rounded-full bg-amber-100 text-amber-700">sem foto: {c.semFoto}</span> : null}
                                     {c.agenda && c.agenda.ok === false ? <span className="px-2 py-1 font-semibold rounded-full bg-red-100 text-red-700">agenda com problema</span> : null}
                                 </div>
-                            </button>
+                                </button>
+                                <div className="mt-2 flex flex-wrap items-center gap-2">
+                                    {podePdf && <BotaoPdfLinha c={c} onAbrir={() => setPdfDe(c)} />}
+                                    <button type="button" onClick={() => setEditando(c.id)} className="min-h-[44px] px-4 inline-flex items-center gap-2 rounded-full bg-white border border-gray-300 text-gray-800 text-sm font-semibold"><Pencil className="h-4 w-4" /> Editar</button>
+                                </div>
+                            </div>
                         ))}
                     </div>
                     <div className="hidden md:block bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto">
                         <table className="min-w-full divide-y divide-gray-200">
                             <thead className="bg-gray-50"><tr>
-                                {['Conteúdo', 'Tipo', 'Código', 'Versão', 'Situação', 'Atenção'].map((h) => <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>)}
+                                {['Conteúdo', 'Tipo', 'Código', 'Versão', 'Situação', 'Atenção', 'Ações'].map((h) => <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>)}
                             </tr></thead>
                             <tbody className="divide-y divide-gray-200 text-sm">
                                 {lista.map((c) => (
@@ -158,6 +183,9 @@ export default function TabConteudos({ abrirId, abrirNovo }) {
                                             {c.semFoto > 0 ? <span className="px-2 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-700">sem foto: {c.semFoto}</span> : null}
                                             {c.agenda && c.agenda.ok === false ? <span className="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-700">agenda com problema</span> : null}
                                         </td>
+                                        <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                                            {podePdf ? <BotaoPdfLinha c={c} onAbrir={() => setPdfDe(c)} /> : null}
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -166,6 +194,7 @@ export default function TabConteudos({ abrirId, abrirNovo }) {
                 </>
             )}
 
+            {pdfDe && <ModalPdfLazy conteudoId={pdfDe.id} titulo={pdfDe.titulo} avisoRascunho={!!pdfDe.temRascunho} aoFechar={() => setPdfDe(null)} />}
             {novo && <ModalNovo onFechar={() => setNovo(false)} onCriado={(id) => { setNovo(false); setEditando(id); }} />}
         </div>
     );

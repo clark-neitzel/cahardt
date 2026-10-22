@@ -10,6 +10,7 @@ const svc = require('../services/comoFazerService');
 const painel = require('../services/comoFazerPainelService');
 const upl = require('../middlewares/uploadComoFazerMiddleware');
 const agenda = require('../services/comoFazerAgendaService');
+const pdfSvc = require('../services/comoFazerPdfService');
 
 const { erro, exigirPermissao } = auth;
 
@@ -34,6 +35,8 @@ const h = (fn) => async (req, res) => {
 
 const ESCOPO_PAINEL = exigirPermissao('Pode_Ver_Painel_Como_Fazer');
 const ESCOPO_EDITAR = exigirPermissao('Pode_Editar_Como_Fazer');
+// PDF do conteúdo: mesmo critério do botão "Imprimir A4" (editar OU ver painel). Tablet e funcionário comum levam 403.
+const ESCOPO_IMPRIMIR = exigirPermissao('Pode_Editar_Como_Fazer', 'Pode_Ver_Painel_Como_Fazer');
 
 // ═════════ P — entrar no tablet (sem login) ═════════
 async function checarAparelho(req, setor) {
@@ -145,6 +148,29 @@ router.post('/upload', upl.receberArquivo, h(async (req, res) => {
         throw e;
     }
 }));
+
+// igual ao h(), mas erro inesperado vira mensagem simples do PDF
+const hPdf = (fn) => async (req, res) => {
+    try { await fn(req, res); }
+    catch (e) {
+        if (e instanceof ErroCF) return erro(res, e.status, e.codigo, e.message, e.extra);
+        console.error(`[ComoFazer][pdf] ${req.method} ${req.originalUrl}:`, e);
+        return erro(res, 500, 'PDF_FALHOU', 'Não deu para gerar o PDF agora. Tente de novo.');
+    }
+};
+// ═════════ A — PDF (cartaz / fichário) — só versão PUBLICADA; arranjo de páginas validado aqui ═════════
+router.post('/conteudos/:id/pdf/previa', ESCOPO_IMPRIMIR, hPdf(async (req, res) => res.json(await pdfSvc.previa(req.params.id, req.body || {}, req.cf))));
+router.post('/conteudos/:id/pdf', ESCOPO_IMPRIMIR, hPdf(async (req, res) => {
+    const r = await pdfSvc.gerar(req.params.id, req.body || {}, req.cf, req);
+    res.status(200);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${r.nomeArquivo}"`);
+    res.setHeader('Content-Length', r.buffer.length);
+    res.end(r.buffer);
+}));
+router.get('/conteudos/:id/pdf/arranjo', ESCOPO_IMPRIMIR, hPdf(async (req, res) => res.json(await pdfSvc.arranjoObter(req.params.id, req.query))));
+router.put('/conteudos/:id/pdf/arranjo', ESCOPO_IMPRIMIR, hPdf(async (req, res) => res.json(await pdfSvc.arranjoSalvar(req.params.id, req.body || {}, req.cf))));
+router.delete('/conteudos/:id/pdf/arranjo', ESCOPO_IMPRIMIR, hPdf(async (req, res) => res.json(await pdfSvc.arranjoApagar(req.params.id, req.query))));
 
 // ═════════ A — painel ═════════
 router.get('/painel/resumo', ESCOPO_PAINEL, h(async (req, res) => res.json(await painel.resumo(req.query))));

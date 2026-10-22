@@ -1,5 +1,11 @@
 [
   {
+    "slug": "pdf-pop",
+    "titulo": "Como Fazer: PDF para imprimir",
+    "resumo": "Cada manual do Como Fazer gera um PDF (cartaz de parede ou folha de fichário). Você escolhe quantas páginas e quais passos vão em cada uma, vê no app e imprime ou salva. O botão PDF fica no conteúdo aberto, na lista de Conteúdos e no editor.",
+    "data": "2026-10-22"
+  },
+  {
     "slug": "anexos-contas-pagar",
     "titulo": "Vários anexos no Contas a Pagar",
     "resumo": "Cada conta aceita vários arquivos (PDF, foto, XML), com tipo e quem enviou, e abre direto na hora de pagar. Só abre com login.",

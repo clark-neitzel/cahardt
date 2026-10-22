@@ -95,6 +95,32 @@ export function mensagemErro(e, padrao = 'Não deu certo. Tente de novo.') {
 export const codigoErro = (e) => e?.response?.data?.codigo || '';
 export const semResposta = (e) => !e?.response; // falha de rede (backend parado, sem internet)
 
+// ---------- erros do PDF ----------
+// Com responseType:'blob' o corpo do erro (JSON) chega como Blob: lê o texto antes de mostrar a mensagem.
+function erroPdf(e) {
+    e.pdf = { codigo: e?.response?.data?.codigo || '', extra: e?.response?.data?.extra || e?.response?.data || {} };
+    return e;
+}
+async function erroPdfBlob(e) {
+    const dados = e?.response?.data;
+    if (dados instanceof Blob) {
+        try {
+            const json = JSON.parse(await dados.text());
+            e.response.data = json;
+        } catch { /* não era JSON: segue com a mensagem genérica */ }
+    }
+    return erroPdf(e);
+}
+/** Mensagem simples para erro de PDF (cobre o 422 com bloqueios). */
+export function mensagemErroPdf(e) {
+    const d = e?.response?.data || {};
+    const bl = d.extra?.bloqueios || d.bloqueios;
+    if (Array.isArray(bl) && bl.length) return bl.map((b) => b?.mensagem).filter(Boolean).join(' ');
+    if (e?.response?.status === 403) return 'Você não tem permissão para gerar o PDF deste conteúdo.';
+    if (e?.response?.status === 503) return 'O servidor está ocupado montando outros PDFs. Tente de novo em instantes.';
+    return mensagemErro(e, 'Não consegui montar o PDF. Tente de novo.');
+}
+
 // ---------- mídia ----------
 /** Caminho relativo vindo do backend → URL da imagem/vídeo. Vazio se não houver. */
 export function urlMidia(rel) {
@@ -177,6 +203,21 @@ const comoFazerService = {
     arquivar: async (id) => (await api.post(`/como-fazer/admin/conteudos/${id}/arquivar`)).data,
     sincronizarAgenda: async (id) => (await api.post(`/como-fazer/admin/conteudos/${id}/sincronizar-agenda`)).data,
     parear: async (setor) => (await api.post(`/como-fazer/admin/tablet/${setor}/parear`)).data,
+
+    // — PDF do conteúdo (app; só quem edita ou vê o painel) —
+    pdfPrevia: async (id, corpo, opcoes = {}) => {
+        try { return (await api.post(`/como-fazer/conteudos/${id}/pdf/previa`, corpo, { signal: opcoes.signal })).data; }
+        catch (e) { throw erroPdf(e); }
+    },
+    pdfGerar: async (id, corpo) => {
+        try {
+            const r = await api.post(`/como-fazer/conteudos/${id}/pdf`, corpo, { responseType: 'blob', timeout: 90000 });
+            return r.data; // Blob application/pdf
+        } catch (e) { throw await erroPdfBlob(e); }
+    },
+    pdfArranjoObter: async (id, formato) => (await api.get(`/como-fazer/conteudos/${id}/pdf/arranjo`, { params: { formato } })).data,
+    pdfArranjoSalvar: async (id, formato, arranjo) => (await api.put(`/como-fazer/conteudos/${id}/pdf/arranjo`, { formato, arranjo })).data,
+    pdfArranjoApagar: async (id, formato) => (await api.delete(`/como-fazer/conteudos/${id}/pdf/arranjo`, { params: { formato } })).data,
 };
 
 export default comoFazerService;

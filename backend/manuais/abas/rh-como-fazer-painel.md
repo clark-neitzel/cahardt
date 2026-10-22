@@ -39,6 +39,10 @@ A tela da gestão para acompanhar o **Como Fazer**: quem já foi treinado, quais
 6. Publicar uma Rotina cria as tarefas na agenda do encarregado; trocar o horário ou o encarregado atualiza a agenda sozinho (as tarefas antigas são desativadas, não apagadas). Se a agenda der erro, aparece o botão **Refazer agenda**.
 7. **Arquivar** tira o conteúdo dos tablets e desativa as tarefas da rotina.
 
+### PDF do conteúdo (cartaz e fichário)
+
+Em cada conteúdo **publicado** da lista (e na barra do editor, entre Publicar e Arquivar) há o botão **PDF**: escolha cartaz de parede ou folha de fichário, escolha quantas páginas e quais passos entram em cada uma (**Montar as páginas**) e veja o PDF na tela antes de imprimir ou salvar. Conteúdo só em rascunho ou arquivado fica com o botão desligado. Detalhes e regras na aba Como Fazer ([como-fazer.md](como-fazer.md), seção "PDF para imprimir").
+
 ### Começar com a IA (rascunho automático)
 
 Quem tem **Pode_Editar_Como_Fazer** vê o cartão **✨ Começar com a IA** ao criar um conteúdo. Conte com as suas palavras (digitando ou ditando) o que quer ensinar, escolha tipo, setor, título e o tamanho (curto ou completo) e clique em **Montar o POP**. O texto vai aparecendo aos poucos; ao final você vê a **prévia**:

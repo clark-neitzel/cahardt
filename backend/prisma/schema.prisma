@@ -4881,6 +4881,7 @@ model ComoFazerConteudo {
   versoes      ComoFazerVersao[]
   treinamentos ComoFazerTreinamento[]
   execucoes    ComoFazerExecucao[]
+  layoutsImpressao ComoFazerLayoutImpressao[]
 
   @@index([status, tipo])
   @@map("como_fazer_conteudos")
@@ -4904,6 +4905,23 @@ model ComoFazerVersao {
   @@unique([conteudoId, numero])
   @@index([conteudoId, status])
   @@map("como_fazer_versoes")
+}
+
+// Arranjo de páginas do PDF (cartaz/fichário): preferência de impressão, NÃO faz parte da versão ensinada.
+model ComoFazerLayoutImpressao {
+  id              String   @id @default(uuid())
+  conteudoId      String   @map("conteudo_id")
+  formato         String // CARTAZ | FICHARIO (| REGISTRO no futuro)
+  layout          Json     @default("{}") // { paginas:[{titulo, passoIds[]}], compacto }
+  atualizadoPorId String?  @map("atualizado_por_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  conteudo ComoFazerConteudo @relation(fields: [conteudoId], references: [id], onDelete: Cascade)
+
+  @@unique([conteudoId, formato])
+  @@index([conteudoId])
+  @@map("como_fazer_layouts_impressao")
 }
 
 model ComoFazerTreinamento {

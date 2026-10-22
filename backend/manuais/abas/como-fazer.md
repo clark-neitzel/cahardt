@@ -66,6 +66,22 @@ A tela mostra o aviso de perigo (em vermelho, lido em voz alta), e quatro atalho
 
 ---
 
+## PDF para imprimir (cartaz de parede e folha de fichário)
+
+Quem tem **Pode_Editar_Como_Fazer** ou **Pode_Ver_Painel_Como_Fazer** (ou é admin) vê o botão **PDF** no conteúdo aberto na Biblioteca (ao lado de Imprimir A4 e QR code), na lista de Conteúdos do Painel e na barra do editor. Funcionário comum e tablet **não** geram PDF.
+
+- **Só a versão publicada imprime.** Conteúdo em rascunho ou arquivado não gera PDF ("Publique o conteúdo antes"). Se existe um rascunho novo por cima, o PDF continua sendo da versão publicada, e a tela diz qual (ex.: versão 3).
+- **Dois formatos:** **Cartaz de parede** (A4 em pé, letra e foto grandes, até 6 passos por folha; a chave "Letra e foto menores" libera até 8) e **Folha de fichário** (A4 com margem de 28 mm para furar, cabeçalho de controle, tabela de passos, "O que não fazer", "Se der errado", controle de revisões e lista de treinados com linhas em branco para assinar; até 12 passos por folha). A **folha de registro** ainda não existe ("em breve").
+- **Em todo cartaz** saem: nome, código e versão, setor, "Aprovada em", QR que abre o conteúdo no app, a faixa vermelha NÃO FAZER (repetida em todas as páginas, para cada folha poder ir sozinha para a parede), encarregado, "Revisar até" (a data de publicação + 12 meses, calculada pelo sistema), "pág. X/N" e "Impresso em ... por ...". A numeração dos passos é a do manual (o passo 5 é "5" em qualquer página).
+- **Você escolhe quantas páginas e quais passos vão em cada uma.** Atalhos: "Passos por página" (3 a 6), "Um processo por página" (usa as seções do manual; em manual com uma seção só o atalho fica desligado e você nomeia as páginas), "Automático" (menor número de páginas que cabe). Para ajustar à mão use **Montar as páginas**: cada página tem nome (até 40 letras), um medidor ("4 passos · cabe bem" ou "9 passos · não cabe (máximo 6)") e botões para mover passo entre páginas ou para **Fora das páginas**.
+- **O servidor confere tudo de novo.** Página estourada (passos demais ou texto tão longo que a letra ficaria ilegível) ou página vazia **bloqueia** o PDF e diz quantos passos mover. Passo esquecido em "Fora das páginas" não bloqueia, mas pede confirmação ("Sim, imprimir sem esses passos"); sem ela o PDF não sai e o passo nunca entra escondido.
+- **O arranjo fica guardado** por conteúdo e formato (quem guardou e quando aparece na tela) e vale para quem abrir depois. "Voltar ao automático" apaga o arranjo guardado. Ao publicar uma versão nova, as páginas e nomes são mantidos: passo que saiu do manual some das páginas; **passo novo vai para "Fora das páginas"** com aviso, para alguém decidir onde colocar.
+- **Fotos:** foto que falta (ou que sumiu do servidor) sai como quadro tracejado com a dica "foto para tirar", e a tela avisa antes de gerar. Texto com emoji ou símbolos que a impressão não desenha tem esses símbolos retirados.
+- **Limites:** no máximo 8 páginas no cartaz e 6 no fichário; cada pessoa gera até 20 PDFs por minuto. Se muita gente pedir ao mesmo tempo pode aparecer "tente de novo em alguns segundos".
+- No fichário, as linhas de treinados já vêm com quem aprendeu a versão em vigor; o campo "O que mudou" das revisões sai em branco para escrever à mão.
+
+---
+
 ## Permissões
 
 | Permissão | O que libera |

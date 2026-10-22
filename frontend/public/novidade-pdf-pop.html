@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: PDF do Como Fazer — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp (sem imagem de propósito: cartão compacto) -->
+<meta property="og:title" content="📄 Como Fazer agora gera PDF para imprimir: cartaz de parede e folha de fichário">
+<meta property="og:description" content="Você escolhe quantas páginas e quais passos vão em cada uma, vê o PDF no app e imprime ou salva. Veja as telas.">
+<meta property="og:type" content="website">
+<style>
+  :root { --primary:#00754A; --primary-dark:#006241; --house:#1E3932; --mint:#d4e9e2; --cream:#f2f0eb; --gold:#cba258; --ink:rgba(0,0,0,.87); --ink-soft:#5f6b66; --red:#c62828; letter-spacing:-0.01em; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--cream); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; line-height:1.55; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:620px; margin:0 auto; padding:0 16px 56px; }
+
+  .hero { background:linear-gradient(168deg,var(--house) 0%,#16302a 100%); color:#fff; padding:40px 16px 40px; }
+  .hero-inner { max-width:620px; margin:0 auto; text-align:center; }
+  .eyebrow { display:inline-block; background:var(--gold); color:#2b230f; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.14em; padding:6px 14px; border-radius:999px; margin-bottom:18px; }
+  .hero h1 { font-size:clamp(28px,7vw,40px); font-weight:800; line-height:1.12; margin:0 0 12px; text-wrap:balance; }
+  .hero p { color:rgba(255,255,255,.78); font-size:16px; max-width:46ch; margin:0 auto; text-wrap:balance; }
+
+  h2.sec { font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.16em; color:#5f6b66; margin:34px 0 12px; }
+
+  .acc { background:#fff; border:1px solid #e3e0d6; border-radius:16px; margin-bottom:10px; overflow:hidden; }
+  .acc-head { width:100%; display:flex; align-items:center; gap:12px; min-height:56px; padding:12px 16px; background:none; border:0; font:inherit; text-align:left; cursor:pointer; color:var(--ink); }
+  .acc-head:focus-visible { outline:3px solid var(--gold); outline-offset:-3px; }
+  .acc-ico { width:36px; height:36px; border-radius:10px; background:var(--mint); display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
+  .acc-head strong { flex:1; font-size:15.5px; font-weight:700; }
+  .acc-seta { color:#9aa5a0; transition:transform .2s; font-size:13px; }
+  .acc.aberto .acc-seta { transform:rotate(180deg); }
+  .acc-corpo { display:none; padding:0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display:block; }
+  .acc-corpo p, .acc-corpo li { font-size:14px; color:var(--ink-soft); }
+  .acc-corpo p { margin:0 0 10px; }
+  .acc-corpo ul { margin:0; padding-left:18px; }
+  .acc-corpo li { margin-bottom:7px; }
+  .acc-corpo b { color:var(--ink); }
+  @media (max-width:420px) { .acc-corpo { padding-left:16px; } }
+
+  /* ── mocks das telas ── */
+  .exemplo { display:inline-block; background:#fff3d6; color:#7a5a00; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.1em; padding:4px 10px; border-radius:999px; margin-bottom:8px; }
+  .tela { background:#fff; border:1px solid #e3e0d6; border-radius:18px; overflow:hidden; margin-bottom:6px; }
+  .tela-titulo { background:var(--house); color:#fff; font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.12em; padding:10px 16px; }
+  .tela-corpo { padding:14px; background:#f7f6f2; position:relative; }
+  .m-modal { background:#fff; border-radius:14px; border:1px solid #e3e0d6; padding:12px; position:relative; }
+  .m-h { font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.14em; color:#5f6b66; margin:12px 0 6px; }
+  .m-mint { background:rgba(212,233,226,.6); border:1px solid var(--mint); border-radius:10px; padding:8px 10px; font-size:12.5px; }
+  .m-card { border:2px solid #e3e0d6; border-radius:12px; padding:8px 10px; font-size:13px; margin-bottom:6px; position:relative; }
+  .m-card.on { border-color:var(--primary); background:rgba(212,233,226,.4); }
+  .m-card small { display:block; color:var(--ink-soft); font-size:11.5px; }
+  .m-chips { display:flex; flex-wrap:wrap; gap:6px; position:relative; }
+  .chip { min-height:34px; padding:0 12px; border-radius:999px; border:1px solid #cfcabb; background:#fff; font-size:12.5px; font-weight:700; display:inline-flex; align-items:center; }
+  .chip.on { background:var(--primary); border-color:var(--primary); color:#fff; }
+  .chip.off { color:#9aa5a0; }
+  .btn { display:inline-flex; align-items:center; justify-content:center; min-height:40px; padding:0 16px; border-radius:999px; font-size:13px; font-weight:800; border:1px solid var(--primary); color:var(--primary); background:#fff; position:relative; }
+  .btn.pri { background:var(--primary); color:#fff; }
+  .ok { color:var(--primary-dark); font-weight:700; font-size:12.5px; margin:8px 0; }
+  .m-pags { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:8px; }
+  .m-pag { background:#fff; border:2px solid #e3e0d6; border-radius:12px; padding:8px; position:relative; font-size:12px; }
+  .m-pag.cheia { border-color:#e0a000; }
+  .m-pag.ruim { border-color:#d94c4c; }
+  .m-pag b.t { font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:#5f6b66; }
+  .barra { height:7px; border-radius:99px; background:#e4e2da; margin:5px 0; overflow:hidden; }
+  .barra i { display:block; height:100%; background:#22b45a; }
+  .m-pag.cheia .barra i { background:#e0a000; }
+  .m-pag.ruim .barra i { background:#d94c4c; }
+  .msg { font-size:11px; font-weight:700; color:var(--primary-dark); }
+  .m-pag.ruim .msg { color:var(--red); }
+  .m-passo { min-width:0; display:flex; gap:6px; align-items:center; background:#faf9f6; border:1px solid #e8e5dc; border-radius:8px; padding:4px 6px; margin-top:4px; font-size:11.5px; }
+  .m-passo em { font-style:normal; background:var(--mint); color:var(--primary-dark); border-radius:99px; min-width:20px; text-align:center; font-weight:800; font-size:10.5px; }
+  .m-passo u { margin-left:auto; text-decoration:none; border:1px solid #cfcabb; border-radius:99px; padding:1px 8px; font-size:10.5px; background:#fff; white-space:nowrap; }
+  .m-fora { margin-top:8px; background:#fff7e0; border:2px solid #e8c25a; border-radius:12px; padding:8px 10px; font-size:12px; position:relative; }
+  .m-bar { background:#fff; border-bottom:1px solid #e3e0d6; padding:8px 10px; display:flex; flex-wrap:wrap; gap:6px; align-items:center; font-size:12px; font-weight:700; }
+  .m-folha { background:#fff; border:1px solid #d7d3c8; margin:10px auto 0; width:78%; aspect-ratio:210/297; padding:6px; box-shadow:0 4px 14px rgba(0,0,0,.2); position:relative; }
+  .m-folha .cab { background:var(--house); color:#fff; font-size:9px; font-weight:800; padding:4px 6px; }
+  .m-folha .gr { display:grid; grid-template-columns:1fr 1fr; gap:4px; margin-top:4px; }
+  .m-folha .gr div { border:1.5px solid var(--house); border-radius:4px; height:48px; font-size:8px; padding:2px 3px; font-weight:700; }
+  .m-folha .nf { position:absolute; left:6px; right:6px; bottom:6px; background:var(--red); color:#fff; font-size:8px; font-weight:800; padding:3px 5px; }
+  .dark { background:#1c2530; padding:8px 8px 14px; }
+
+  .pin { position:absolute; top:-9px; right:-6px; width:22px; height:22px; border-radius:50%; background:var(--gold); color:#2b230f; font-size:12px; font-weight:800; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 6px rgba(0,0,0,.25); z-index:2; }
+  .pin.l { right:auto; left:-6px; }
+  .legenda { list-style:none; margin:10px 0 18px; padding:0; counter-reset:l; }
+  .legenda li { display:flex; gap:10px; align-items:flex-start; font-size:13.5px; color:var(--ink-soft); margin-bottom:7px; }
+  .legenda li i { flex:0 0 22px; height:22px; border-radius:50%; background:var(--gold); color:#2b230f; font-style:normal; font-weight:800; font-size:12px; display:flex; align-items:center; justify-content:center; }
+  .legenda li span b { color:var(--ink); }
+
+  .passos { counter-reset:p; list-style:none; padding:0; margin:0; }
+  .passos li { counter-increment:p; position:relative; background:#fff; border:1px solid #e3e0d6; border-radius:14px; padding:12px 14px 12px 52px; margin-bottom:8px; font-size:14px; color:var(--ink-soft); }
+  .passos li::before { content:counter(p); position:absolute; left:14px; top:12px; width:26px; height:26px; border-radius:50%; background:var(--house); color:#fff; font-weight:800; font-size:13px; display:flex; align-items:center; justify-content:center; }
+  .passos b { color:var(--ink); }
+  .rodape { text-align:center; font-size:12px; color:#8a948f; margin-top:28px; }
+</style>
+</head>
+<body>
+
+<header class="hero"><div class="hero-inner">
+  <span class="eyebrow">Novidade · Como Fazer</span>
+  <h1>Agora o manual vira PDF para imprimir</h1>
+  <p>Cartaz para colar na parede ou folha de fichário. Você escolhe quantas páginas e quais passos vão em cada uma, confere na tela e só então imprime.</p>
+</div></header>
+
+<main class="wrap">
+
+<h2 class="sec">O que mudou</h2>
+
+<div class="acc aberto">
+  <button class="acc-head" onclick="alternar(this)" aria-expanded="true"><span class="acc-ico">📄</span><strong>Dois tipos de folha</strong><span class="acc-seta">▲</span></button>
+  <div class="acc-corpo">
+    <ul>
+      <li><b>Cartaz de parede:</b> folha A4 em pé com os passos grandes, número, foto e a faixa vermelha <b>NÃO FAZER</b> em todas as páginas. Até 6 passos por folha (8 com letra menor).</li>
+      <li><b>Folha de fichário:</b> procedimento completo, com margem para furar, cabeçalho de controle, passos em tabela, "Se der errado", revisões e lista de quem foi treinado com linhas para assinar. Até 12 passos por folha.</li>
+      <li>Toda folha traz código, versão, QR do conteúdo e "pág. X/N". Só a <b>versão publicada</b> imprime.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="acc aberto">
+  <button class="acc-head" onclick="alternar(this)" aria-expanded="true"><span class="acc-ico">🧩</span><strong>Você monta cada página</strong><span class="acc-seta">▲</span></button>
+  <div class="acc-corpo">
+    <ul>
+      <li>Escolha um atalho: <b>Automático</b>, <b>3 a 6 passos por página</b> ou <b>Um processo por página</b> (nas máquinas, cada parte vira uma página).</li>
+      <li>Ou toque em <b>Montar as páginas</b>: dê um nome a cada página e escolha quais passos entram nela. Cada página mostra na hora se ainda dá para ler (verde cabe, vermelho não cabe).</li>
+      <li>Passo tirado de uma página vai para <b>Fora das páginas</b>. O app avisa e só imprime sem ele se você confirmar.</li>
+      <li><b>Guardar este arranjo</b> deixa as páginas prontas para a próxima vez. Se o manual ganhar um passo novo, ele aparece em "Fora das páginas" para você decidir onde fica.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="acc aberto">
+  <button class="acc-head" onclick="alternar(this)" aria-expanded="true"><span class="acc-ico">🖨️</span><strong>Veja no app, depois imprima ou salve</strong><span class="acc-seta">▲</span></button>
+  <div class="acc-corpo">
+    <ul>
+      <li>O PDF abre dentro do app, com zoom e setas de página.</li>
+      <li><b>Imprimir</b> manda as páginas para a impressora. <b>Salvar PDF</b> guarda o arquivo (no iPad, abre a folha de compartilhar).</li>
+      <li>No iPad, se a janela de impressão não abrir: toque em <b>Salvar PDF</b> e escolha <b>Imprimir</b> na folha de compartilhar.</li>
+    </ul>
+  </div>
+</div>
+
+<h2 class="sec">Onde fica o botão PDF</h2>
+<ul class="passos">
+  <li><b>No conteúdo aberto (Biblioteca):</b> ao lado de "Imprimir A4" e "QR code".</li>
+  <li><b>Na lista de Conteúdos do Painel:</b> uma ação PDF em cada linha publicada, sem precisar abrir o editor.</li>
+  <li><b>No editor:</b> entre "Publicar" e "Arquivar". Se o conteúdo ainda é só rascunho, o botão fica apagado ("Publique primeiro para gerar o PDF"). Se há rascunho novo por cima, o app lembra: "O PDF usa a versão publicada, não o rascunho".</li>
+</ul>
+
+<h2 class="sec">As telas do app</h2>
+<span class="exemplo">Exemplos com dados de mentira</span>
+
+<div class="tela"><div class="tela-titulo">Tela 1 · Escolher formato e páginas</div>
+<div class="tela-corpo">
+  <div class="m-modal">
+    <div class="m-mint">Imprime a <b>versão 3</b>, publicada em 15/10/2026. <span class="pin">1</span></div>
+    <div class="m-h">1 · Formato</div>
+    <div class="m-card on"><b>🧱 Cartaz de parede</b><small>Passos grandes com foto, para colar na parede.</small><span class="pin">2</span></div>
+    <div class="m-card"><b>📒 Folha de fichário</b><small>Procedimento completo, com revisões e treinamento.</small></div>
+    <div class="m-h">2 · Páginas</div>
+    <div class="m-chips"><span class="chip on">Automático</span><span class="chip">3</span><span class="chip">4</span><span class="chip">5</span><span class="chip">6</span><span class="chip off">Um processo por página</span><span class="pin">3</span></div>
+    <div style="margin-top:8px"><span class="btn">Montar as páginas<span class="pin">4</span></span></div>
+    <div class="ok">4 páginas · 16 passos · tudo cabe</div>
+    <div style="text-align:right"><span class="btn pri">Ver o PDF<span class="pin">5</span></span></div>
+  </div>
+</div></div>
+<ol class="legenda">
+  <li><i>1</i><span>Diz <b>qual versão</b> será impressa. Rascunho nunca imprime.</span></li>
+  <li><i>2</i><span>Escolha o <b>formato</b>: cartaz de parede ou folha de fichário.</span></li>
+  <li><i>3</i><span><b>Atalhos de páginas.</b> "Um processo por página" fica apagado quando o manual tem uma seção só.</span></li>
+  <li><i>4</i><span>Abre a tela para montar cada página à mão.</span></li>
+  <li><i>5</i><span>Só liga quando tudo cabe. Se algo estoura, o texto em vermelho diz o que mover.</span></li>
+</ol>
+
+<div class="tela"><div class="tela-titulo">Tela 2 · Montar cada página</div>
+<div class="tela-corpo">
+  <div class="m-pags">
+    <div class="m-pag"><b class="t">Pág. 1 · Vestir</b><span class="pin l">1</span>
+      <div class="barra"><i style="width:67%"></i></div><div class="msg">4 passos · cabe bem</div>
+      <div class="m-passo"><em>1</em>Tire o relógio<u>Mover ▾</u></div><div class="m-passo"><em>2</em>Coloque a touca<u>Mover ▾</u></div></div>
+    <div class="m-pag ruim"><b class="t">Pág. 2 · Lavar as mãos</b><span class="pin">2</span>
+      <div class="barra"><i style="width:100%"></i></div><div class="msg">8 passos · não cabe (máximo 6). Mova 2.</div>
+      <div class="m-passo"><em>5</em>Molhe as mãos<u>Mover ▾</u></div><div class="m-passo"><em>6</em>Passe sabonete<u>Mover ▾</u></div></div>
+  </div>
+  <div class="m-fora"><b>Fora das páginas (1)</b> · Passo esquecido: não vai para o PDF até você colocá-lo numa página.<span class="pin">3</span></div>
+  <div style="margin-top:8px;font-size:12.5px"><b>☑ Guardar este arranjo</b> para a próxima vez<span class="pin" style="position:relative;display:inline-flex;top:0;right:0;margin-left:6px">4</span></div>
+</div></div>
+<ol class="legenda">
+  <li><i>1</i><span>Cada página tem <b>nome</b> (aparece no cabeçalho do PDF) e um medidor: verde cabe, amarelo está cheia, vermelho não cabe.</span></li>
+  <li><i>2</i><span><b>Mover ▾</b> leva o passo para outra página, com um toque. No computador também dá para arrastar.</span></li>
+  <li><i>3</i><span>Passos tirados das páginas ficam aqui, em destaque amarelo, para ninguém esquecer.</span></li>
+  <li><i>4</i><span>Marcado, o arranjo fica guardado para quem abrir depois. No celular as páginas ficam empilhadas e dá para recolher cada uma.</span></li>
+</ol>
+
+<div class="tela"><div class="tela-titulo">Tela 3 · Ver, imprimir e salvar</div>
+<div class="tela-corpo dark" style="padding:0">
+  <div class="m-bar"><span style="flex:1">Higiene e uniforme</span><span>‹ pág. 1/4 ›</span><span>− 100% +</span><span class="btn" style="min-height:32px">Salvar PDF<span class="pin l">1</span></span><span class="btn pri" style="min-height:32px">Imprimir<span class="pin">2</span></span></div>
+  <div class="m-folha"><div class="cab">HIGIENE E UNIFORME</div><div class="gr"><div>1 Tire o relógio</div><div>2 Coloque a touca</div><div>3 Vista o avental</div><div>4 Calce as botas</div></div><div class="nf">NÃO FAZER · não entre com anéis<span class="pin">3</span></div></div>
+</div></div>
+<ol class="legenda">
+  <li><i>1</i><span><b>Salvar PDF</b> baixa o arquivo (ex.: HIG-001-v3-cartaz.pdf) ou abre a folha de compartilhar no iPad e no celular.</span></li>
+  <li><i>2</i><span><b>Imprimir</b> usa a impressão do aparelho, sem abrir outra aba. O botão liga assim que as páginas estiverem prontas.</span></li>
+  <li><i>3</i><span>A folha sai igual no computador, no iPad e no celular. A faixa <b>NÃO FAZER</b> repete em todas as páginas do cartaz.</span></li>
+</ol>
+
+<h2 class="sec">Quem pode</h2>
+<ul class="passos">
+  <li>Quem pode <b>editar o Como Fazer</b> ou <b>ver o painel</b> (a mesma regra do "Imprimir A4"). Funcionário comum e tablet do setor não geram PDF.</li>
+  <li>"Imprimir A4" continua do jeito de sempre.</li>
+</ul>
+
+<p class="rodape">Hardt Salgados · Como Fazer</p>
+</main>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.parentElement;
+    const abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>

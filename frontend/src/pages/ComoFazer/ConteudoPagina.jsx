@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Printer, QrCode, Pencil, Volume2, Loader2, PlayCircle } from 'lucide-react';
+import { Printer, QrCode, Pencil, Volume2, Loader2, PlayCircle, FileText } from 'lucide-react';
 import QRCode from 'qrcode';
 import toast from 'react-hot-toast';
 import { capitalizarCodigo } from '../../services/setorService';
@@ -14,6 +14,7 @@ import { falar, suportaFala, pararFala } from '../../components/ComoFazer/falar'
 import { BADGE_VERSAO, CLS_BADGE, fmtData, fmtDataHora } from '../../components/ComoFazer/visual';
 import imprimirNaPagina from '../../utils/imprimirNaPagina';
 import { useComoFazerMe } from './hooks/useComoFazerMe';
+import ModalPdfLazy from './ModalPdfLazy';
 import { montarCorpoDocumento, ESTILOS_FOLHA, esc } from './htmlDocumento';
 
 const BLOCOS = {
@@ -124,6 +125,7 @@ export default function ConteudoPagina() {
     const [erro, setErro] = useState('');
     const [aba, setAba] = useState('passos');
     const [qr, setQr] = useState(false);
+    const [pdf, setPdf] = useState(false);
 
     const carregar = useCallback(async () => {
         try {
@@ -181,6 +183,9 @@ export default function ConteudoPagina() {
         <div className="flex flex-wrap gap-2 mb-3">
             {(pode.painel || pode.editar) && (
                 <button type="button" onClick={imprimir} className="min-h-[44px] px-4 inline-flex items-center gap-2 rounded-full bg-gray-100 text-gray-800 font-bold text-sm"><Printer className="h-4 w-4" /> Imprimir A4</button>
+            )}
+            {(pode.painel || pode.editar) && (
+                <button type="button" onClick={() => setPdf(true)} className="min-h-[44px] px-4 inline-flex items-center gap-2 rounded-full bg-white border border-primary text-primary font-bold text-sm"><FileText className="h-4 w-4" /> PDF</button>
             )}
             {(pode.painel || pode.editar) && (
                 <button type="button" onClick={() => setQr(true)} className="min-h-[44px] px-4 inline-flex items-center gap-2 rounded-full bg-gray-100 text-gray-800 font-bold text-sm"><QrCode className="h-4 w-4" /> QR code</button>
@@ -292,6 +297,7 @@ export default function ConteudoPagina() {
                 </div>
             )}
 
+            {pdf && <ModalPdfLazy conteudoId={conteudo.id} titulo={conteudo.titulo} aoFechar={() => setPdf(false)} />}
             {qr && <ModalQr url={`${window.location.origin}/como-fazer/c/${conteudo.id}`} titulo={conteudo.titulo} onFechar={() => setQr(false)} />}
         </TelaEquipe>
     );

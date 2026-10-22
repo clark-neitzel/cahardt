@@ -23,6 +23,7 @@
     "jsqr": "^1.4.0",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.563.0",
+    "pdfjs-dist": "3.11.174",
     "qrcode": "^1.5.4",
     "qz-tray": "^2.2.5",
     "react": "^19.2.0",

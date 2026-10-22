@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ChevronLeft, ArrowUp, ArrowDown, Trash2, Plus, Loader2, Rocket, Archive, RefreshCw, Save, Sparkles } from 'lucide-react';
+import { ChevronLeft, ArrowUp, ArrowDown, Trash2, Plus, Loader2, Rocket, Archive, RefreshCw, Save, Sparkles, FileText } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useSetores, opcoesSetores } from '../../../hooks/useSetores';
 import comoFazerService, { mensagemErro, codigoErro, TIPOS } from '../../../services/comoFazerService';
@@ -12,6 +12,8 @@ import { resumoPergunta } from './PreviaIA';
 import { useIaStatus } from '../../../components/ComoFazer/useIaStatus';
 import iaService, { registrarResultado, mensagemDeErroIa } from '../../../services/comoFazerIaService';
 import { BADGE_CONTEUDO, CLS_BADGE } from '../../../components/ComoFazer/visual';
+import { useComoFazerMe } from '../../ComoFazer/hooks/useComoFazerMe';
+import ModalPdfLazy from '../../ComoFazer/ModalPdfLazy';
 
 const CAMPO = 'w-full min-h-[44px] border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none';
 const novoId = (p) => `${p}_${Math.random().toString(36).slice(2, 8)}`;
@@ -147,6 +149,8 @@ export default function EditorConteudo({ id, onVoltar }) {
     const { setores: listaSetores, carregando: carregandoSetores, erro: erroSetores, aviso: avisoSetores } = useSetores();
     const { ativa: iaAtiva } = useIaStatus();
     const [modalIa, setModalIa] = useState(false);
+    const [modalPdf, setModalPdf] = useState(false);
+    const { pode } = useComoFazerMe();
     const [carregado, setCarregado] = useState(false);
     const [erro, setErro] = useState('');
     const [meta, setMeta] = useState(null);
@@ -178,6 +182,9 @@ export default function EditorConteudo({ id, onVoltar }) {
                     setores: d.setores || [], cargos: (d.cargos || []).join(', '), horarios: d.horarios || [],
                     recorrencia: d.recorrencia || 'NUNCA', diasSemana: d.diasSemana || [], responsaveisIds: d.responsaveisIds || [],
                     versaoAtual: d.versaoAtual || null,
+                    // PDF: usa SEMPRE a versão publicada; estes dois dados dizem se existe rascunho por cima
+                    temRascunho: Array.isArray(d.versoes) && d.versoes.some((v) => v.status === 'RASCUNHO'),
+                    versaoPublicada: (Array.isArray(d.versoes) ? d.versoes.find((v) => v.status === 'PUBLICADA')?.numero : null) ?? null,
                 });
                 setDoc(d.doc); docRef.current = d.doc;
                 setAvisos(Array.isArray(d.avisos) ? d.avisos : []);
@@ -208,6 +215,7 @@ export default function EditorConteudo({ id, onVoltar }) {
                         return novo;
                     });
                     sujo.current = false;
+                    setMeta((m) => (m && !m.temRascunho ? { ...m, temRascunho: true } : m));
                     setSalvo('salvo');
                 } else setSalvo('pendente');
                 setAvisos(Array.isArray(r.avisos) ? r.avisos : []);
@@ -311,7 +319,7 @@ export default function EditorConteudo({ id, onVoltar }) {
             if (salvo !== 'salvo') { const ok = await salvarAgora(); if (!ok) { setPublicando(false); return; } }
             const r = await comoFazerService.publicar(id, !soTexto);
             setResultado(r);
-            setMeta((m) => ({ ...m, status: 'PUBLICADO' }));
+            setMeta((m) => ({ ...m, status: 'PUBLICADO', temRascunho: false, versaoPublicada: r?.versao?.numero ?? m.versaoPublicada }));
             // o servidor já tirou o selo da IA ao publicar: tira daqui também, sem disparar autosave
             setDoc((d) => { if (!d?.ia) return d; const { ia, ...resto } = d; docRef.current = resto; return resto; }); // eslint-disable-line no-unused-vars
             toast.success(`Versão ${r?.versao?.numero ?? ''} publicada!`);
@@ -355,6 +363,20 @@ export default function EditorConteudo({ id, onVoltar }) {
                 <span className={`text-sm font-semibold ${salvo === 'erro' ? 'text-red-700' : 'text-gray-600'}`}>{textoSalvo}</span>
                 <button type="button" onClick={salvarAgora} disabled={salvo === 'salvando'} className="min-h-[44px] px-4 inline-flex items-center gap-2 rounded-full bg-white border border-primary text-primary text-sm font-semibold"><Save className="h-4 w-4" /> Salvar rascunho</button>
                 <button type="button" onClick={() => setModalPublicar(true)} className="min-h-[44px] px-4 inline-flex items-center gap-2 rounded-full bg-primary hover:bg-primaryDark text-white text-sm font-semibold"><Rocket className="h-4 w-4" /> Publicar</button>
+                {(pode.editar || pode.painel) && (() => {
+                    const ligado = meta.status === 'PUBLICADO';
+                    const aviso = ligado && (meta.temRascunho || salvo !== 'salvo')
+                        ? `O PDF usa a versão publicada${meta.versaoPublicada != null ? ` (v${meta.versaoPublicada})` : ''}, não o rascunho.` : '';
+                    const motivo = meta.status === 'ARQUIVADO' ? 'Arquivado: publique de novo para gerar o PDF' : 'Publique primeiro para gerar o PDF';
+                    return (
+                        <span className="inline-flex flex-col items-start">
+                            <button type="button" onClick={() => setModalPdf(true)} disabled={!ligado} aria-disabled={!ligado} title={ligado ? 'Gerar PDF para imprimir' : motivo}
+                                className="min-h-[44px] px-4 inline-flex items-center gap-2 rounded-full bg-white border border-primary text-primary text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"><FileText className="h-4 w-4" /> PDF</button>
+                            {!ligado && <span className="text-xs text-gray-600 mt-1">{motivo}</span>}
+                            {aviso && <span className="text-xs text-amber-800 mt-1">{aviso}</span>}
+                        </span>
+                    );
+                })()}
                 {ehRotina && <button type="button" onClick={refazerAgenda} className="min-h-[44px] px-4 inline-flex items-center gap-2 rounded-full bg-white border border-gray-300 text-gray-700 text-sm font-semibold"><RefreshCw className="h-4 w-4" /> Refazer agenda</button>}
                 <button type="button" onClick={arquivar} className="min-h-[44px] px-4 inline-flex items-center gap-2 rounded-full bg-white border border-red-300 text-red-700 text-sm font-semibold"><Archive className="h-4 w-4" /> Arquivar</button>
             </div>
@@ -507,6 +529,7 @@ export default function EditorConteudo({ id, onVoltar }) {
                 </div>
             </div>
 
+            {modalPdf && <ModalPdfLazy conteudoId={id} titulo={meta.titulo || 'Conteúdo'} avisoRascunho={meta.temRascunho || salvo !== 'salvo'} aoFechar={() => setModalPdf(false)} />}
             {modalIa && (
                 <ModalComecarComIA modo="vazio" conteudoId={id}
                     contexto={{ tipo: meta.tipo, titulo: meta.titulo, setor: meta.setores[0] || '', setorNome: listaSetores.find((x) => x.codigo === meta.setores[0])?.nome || meta.setores[0] || '' }}

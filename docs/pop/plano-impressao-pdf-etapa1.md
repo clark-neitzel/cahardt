@@ -6,6 +6,10 @@ Desenho aprovado: `docs/pop/mockup-impressao-pop.html` (abas 0, 1, 2 e 5). Abas 
 
 ---
 
+> ## REVISÃO 22/10 (requisito novo do dono) — ARRANJO DE PÁGINAS MANDA; "N páginas" virou atalho
+> O dono escolhe **quantas páginas** e **quais passos entram em cada uma** (aba 6 do mockup, "Montar as páginas"). Onde este documento falar em "paginação automática / DP como caminho principal", vale o que está no **§4 (contrato)**, **§5.0 (algoritmo)**, **§6 passos 11-13b** e **§13 (aceite)** já reescritos abaixo. O DP do §5.1 passou a ser só a **sugestão inicial** do arranjo. Nada mais muda: pdfkit, sharp, pdfjs, imprimir/salvar, permissões.
+> Pesos e limites do mockup (aba 6): passo = 1; passo com 3-4 fotos = 2 (etapa 2; na etapa 1 todo passo vale 1). **Cartaz: 6 por página com foto grande (até 8 em modo compacto). Fichário: 12.**
+
 ## 1. Entendimento do pedido
 
 Em cada conteúdo do Como Fazer, botão **"PDF"**. A pessoa escolhe formato (cartaz de parede / folha de fichário; registro fica "em breve"), **quantas páginas** quer, vê o PDF dentro do app (modal, sem outra aba) com zoom e setas, e tem **Imprimir** e **Salvar PDF**. O PDF nasce no servidor, A4 real, igual em computador/iPad/celular. Só versão **publicada** imprime.
@@ -72,45 +76,121 @@ Detalhes que o dev-backend precisa tratar:
 
 Todas em `backend/routes/comoFazerRoutes.js`, com um novo
 `const ESCOPO_IMPRIMIR = exigirPermissao('Pode_Editar_Como_Fazer', 'Pode_Ver_Painel_Como_Fazer');`
-(= o mesmo critério do botão "Imprimir A4"; **tablet e usuário sem essas permissões levam 403**; o funcionário comum não gera PDF — alinhado com o frontend `pode.painel || pode.editar`, `ConteudoPagina.jsx:182`).
+(= o mesmo critério do botão "Imprimir A4"; **tablet e usuário sem essas permissões levam 403**; funcionário comum não gera PDF, alinhado ao front `pode.painel || pode.editar`, `ConteudoPagina.jsx:182`).
 
-### 4.1 `POST /api/como-fazer/conteudos/:id/pdf/previa` → JSON
-Corpo: `{ formato: 'CARTAZ'|'FICHARIO', blocoNovaPagina?: boolean }`
+### 4.0 O ARRANJO (objeto comum a todas as rotas)
+```json
+{ "formato": "CARTAZ",
+  "paginas": [ { "titulo": "Vestir",        "passoIds": ["p_a1","p_a2","p_a3","p_a4"] },
+               { "titulo": "Lavar as mãos", "passoIds": ["p_b1","p_b2","p_b3"] } ],
+  "foraDasPaginas": ["p_z9"],          // só devolvido pela API; na entrada é ignorado (o servidor recalcula)
+  "confirmarOmitidos": false,           // true = o dono viu o aviso e aceita imprimir sem os passos "fora"
+  "compacto": false }                   // cartaz: true libera até 8 por página (letra/foto menores)
+```
+`passoIds` são os `id` estáveis do documento (`normalizarPasso` mantém o id; o rascunho nasce clonando a versão publicada, então o id sobrevive às versões). Ordem em `passoIds` = ordem no papel. Título: texto simples ≤ 40 caracteres, vai no cabeçalho do PDF ("Página 2 de 4 · Lavar as mãos"); vazio → "Página N". A numeração dos passos no papel continua **a do manual** (passo 5 é "5" em qualquer página), não recomeça por página: o encarregado cita "passo 5" e o número bate com o tablet.
+
+### 4.1 `POST /api/como-fazer/conteudos/:id/pdf/previa` → JSON (medição, não lê imagem)
+Corpo: `{ formato, arranjo?: {paginas, compacto}, modo?: 'passosPorPagina'|'umProcessoPorPagina'|'automatico', passosPorPagina?: 3|4|5|6, blocoNovaPagina?: bool }`
+- **Sem `arranjo`** (ou com `modo`): o servidor **calcula e devolve a sugestão** de arranjo para o modo pedido (é o que os atalhos do front chamam):
+  - `passosPorPagina: k` → fatias contíguas de k passos, **respeitando o limite** (k > limite → 422 "no cartaz cabem 6"); a última página recebe o resto, balanceada com a anterior (nunca 1 passo sozinho: 13 passos com k=6 → 5+4+4... usa DP de equilíbrio com o nº de páginas = ceil(T/k)).
+  - `umProcessoPorPagina` → uma página por **grupo** (ver §4.5): seções do documento (Montar/Usar/Limpar/Problema) ou, se houver só uma seção, os grupos do passo; seção/grupo que passa do limite é dividida em partes ("Limpar (1/2)", "Limpar (2/2)").
+  - `automatico` → o DP do §5.1: menor nº de páginas que cabe, equilibrado.
+- **Com `arranjo`**: valida e mede esse arranjo.
 Resposta 200:
 ```json
-{
-  "formato": "CARTAZ", "versao": 3, "codigo": "HIG-001", "totalPassos": 12,
-  "paginasMinimas": 2, "paginasMaximas": 4, "paginasAutomatico": 2,
-  "opcoes": [
-    { "paginas": 1, "cabe": false, "motivo": "Não cabe em 1 página: cabem 8 passos por folha. Escolha 2 ou mais." },
-    { "paginas": 2, "cabe": true,  "passosPorPagina": [6,6], "tamanhoFoto": "média" },
-    { "paginas": 3, "cabe": true,  "passosPorPagina": [4,4,4], "tamanhoFoto": "grande" }
-  ],
-  "temBlocos": false, "blocos": null,
-  "avisos": [ { "tipo": "SEM_FOTO", "mensagem": "3 passos sem foto: sairá quadro vazio com a dica da foto." },
-              { "tipo": "FOTO_PERDIDA", "mensagem": "A foto do passo 4 não está mais no servidor." } ],
-  "nomeArquivo": "HIG-001-v3-cartaz.pdf"
-}
+{ "formato":"CARTAZ","versao":3,"codigo":"HIG-001","totalPassos":16,
+  "limite": { "porPagina": 6, "compactoAte": 8, "pesoFoto34": 2 },
+  "arranjo": { "paginas":[{"titulo":"Vestir","passoIds":[…]}], "foraDasPaginas":[], "compacto":false },
+  "paginasResumo":[ { "indice":1,"titulo":"Vestir","passos":4,"peso":4,"limite":6,"situacao":"OK|CHEIA|ESTOURADA|VAZIA",
+                      "mensagem":"4 passos · cabe bem" },
+                    { "indice":3,"situacao":"ESTOURADA","excesso":3,
+                      "mensagem":"9 passos · não cabe (máximo 6). Mova 3 passos para outra página." } ],
+  "podeGerar": false,
+  "bloqueios":[ { "tipo":"PAGINA_ESTOURADA","pagina":3,"excesso":3,"mensagem":"…" },
+                { "tipo":"PAGINA_VAZIA","pagina":4,"mensagem":"A página 4 está vazia: tire-a ou coloque passos." } ],
+  "avisos":[ { "tipo":"PASSOS_FORA","passoIds":["p_z9"],"mensagem":"1 passo ficou fora das páginas: o passo 9 'Passe álcool em gel'." },
+             { "tipo":"SEM_FOTO","mensagem":"3 passos sem foto…" }, { "tipo":"FOTO_PERDIDA","mensagem":"…" } ],
+  "layoutGuardado": { "existe": true, "atualizadoEm":"…", "passosNovos":["p_n1"], "passosRemovidos":["p_x"] },
+  "nomeArquivo":"HIG-001-v3-cartaz.pdf" }
 ```
-Para Máquina `temBlocos:true`, `blocos:[{bloco:'MONTAR',passos:5},…]` e, se `blocoNovaPagina`, `paginasMinimas` ≥ nº de blocos com passo.
-Erros: `NAO_ENCONTRADO` 404; `SEM_VERSAO_PUBLICADA` 409 ("Este conteúdo ainda não tem versão publicada. Publique antes de gerar o PDF."); `FORMATO_INVALIDO` 400; `FORMATO_INDISPONIVEL` 501 para `REGISTRO` (gancho etapa 3).
-A prévia faz só **medição** (sem ler imagem de verdade; só `existsSync` para o aviso de foto perdida) → rápida, e a tela pode chamá-la a cada troca de formato/bloco.
+`podeGerar=false` quando há `bloqueios` (página estourada, página vazia, passoId inexistente/duplicado, nº de páginas fora de 1–8 no cartaz e 1–6 no fichário) **ou** há passos fora e `confirmarOmitidos` não veio `true`. Passo fora das páginas **não** é bloqueio duro, é **aviso que exige confirmação explícita** (o dono pode querer deixar de fora de propósito).
+Erros: `NAO_ENCONTRADO` 404; `SEM_VERSAO_PUBLICADA` 409; `FORMATO_INVALIDO` 400; `FORMATO_INDISPONIVEL` 501 (`REGISTRO`).
 
 ### 4.2 `POST /api/como-fazer/conteudos/:id/pdf` → binário
-Corpo: `{ formato, paginas: 'auto' | 1..N, blocoNovaPagina?: boolean }`.
-200: `Content-Type: application/pdf`, `Content-Disposition: attachment; filename="HIG-001-v3-cartaz.pdf"`, `Content-Length`, `Cache-Control: no-store` (já global). Número de páginas **não** vai em header (o pdfjs lê do arquivo).
-Erros (todos JSON `{erro,codigo,...extra}` via `ErroCF`): os da prévia + `PAGINAS_INSUFICIENTES` 422 `extra:{paginasMinimas, passosPorPagina}` ("Não cabe em 1 página: cabem 8 passos. Escolha 2."), `PAGINAS_INVALIDAS` 400 (fora de 1–4 cartaz / 1–6 fichário), `PDF_OCUPADO` 503, `ERRO_INTERNO`.
-**Frontend:** com `responseType:'blob'` o corpo de erro também vem como Blob → o service precisa fazer `JSON.parse(await err.response.data.text())` antes de passar para `mensagemErro/codigoErro`. (Costura clássica — testar um erro de verdade.)
+Corpo: `{ formato, arranjo:{paginas:[{titulo,passoIds}], compacto?}, confirmarOmitidos? }`. (`paginas:'auto'|N` do plano anterior **foi retirado**; quem quiser "automático" chama a prévia com `modo` e envia o arranjo devolvido.) O servidor **revalida tudo** (mesma função da prévia) e responde:
+- 200 `application/pdf`, `Content-Disposition: attachment; filename="HIG-001-v3-cartaz.pdf"`.
+- **422** `ARRANJO_INVALIDO` com `extra:{bloqueios:[…mesmo formato da prévia…]}` — ex.: `{tipo:'PAGINA_ESTOURADA', pagina:3, excesso:3}`; **422** `PASSOS_FORA_SEM_CONFIRMACAO` com `extra:{passoIds}`; 400 `ARRANJO_MALFORMADO` (JSON inválido, títulos longos, >40 passoIds por página).
+- Demais: `PDF_OCUPADO` 503, `ERRO_INTERNO`.
+**Frontend:** erro em blob → `JSON.parse(await err.response.data.text())` antes de mostrar (costura clássica).
 
-### 4.3 Regras de servidor
-- Só `status==='PUBLICADO'` + `versaoPublicadaId` + versão `PUBLICADA`. Rascunho **nunca** imprime (não há `?previa`). Conteúdo ARQUIVADO → 404/409 igual.
-- **Cache** em memória (LRU, 12 entradas, ≤ 30 MB, TTL 10 min) com chave `conteudoId|versaoId|formato|paginas|bloco|dataDoDia` + (fichário) `hash(lista de treinados + revisões)`. Invalidação na publicação é automática (versaoId muda). Não é persistido (sem arquivo no disco → nada a perder em deploy). A data "Impresso em" entra na chave pelo dia.
-- Auditoria leve: `console.log('[ComoFazer][pdf]', conteudoId, formato, paginas, vendedorId, ms)`.
-- `req.cf.vendedorId` → nome via `resolverPublicadaPor` (rodapé "Impresso em … por …").
+### 4.3 Arranjo guardado — **tabela própria aditiva** (recomendado), não dentro do JSON da versão
+Por quê: (a) o JSON da versão é imutável depois de publicado e o arranjo precisa **sobreviver à troca de versão**; (b) `normalizarDoc` descarta campo desconhecido do documento e a publicação o reescreve; (c) arranjo é preferência de impressão, não conteúdo ensinado, não deve gerar versão/zerar treinamento. Modelo novo (só ADICIONA tabela; `db push` sem risco):
+```prisma
+model ComoFazerLayoutImpressao {
+  id            String   @id @default(uuid())
+  conteudoId    String   @map("conteudo_id")
+  formato       String   // CARTAZ | FICHARIO (| REGISTRO no futuro)
+  layout        Json     @default("{}") // { paginas:[{titulo, passoIds[]}], compacto }
+  atualizadoPorId String? @map("atualizado_por_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  conteudo ComoFazerConteudo @relation(fields: [conteudoId], references: [id], onDelete: Cascade)
+  @@unique([conteudoId, formato])
+  @@map("como_fazer_layouts_impressao")
+}
+```
+(+ `layoutsImpressao ComoFazerLayoutImpressao[]` no `ComoFazerConteudo`; nenhum campo existente muda.)
+- `GET  /api/como-fazer/conteudos/:id/pdf/arranjo?formato=CARTAZ` → `{ existe, arranjo, atualizadoEm, atualizadoPor }` (a prévia já embute a reconciliação, mas o GET permite carregar sem medir).
+- `PUT  /api/como-fazer/conteudos/:id/pdf/arranjo` `{formato, arranjo}` → grava (upsert). `DELETE ?formato=` → "voltar ao automático". Todos com `ESCOPO_IMPRIMIR`. Última gravação vence (mostrar "atualizado por X em …" no front).
+- **Reconciliação com a versão em vigor** (feita no servidor, em toda prévia/GET): ids que não existem mais são **removidos em silêncio** das páginas e listados em `passosRemovidos`; ids novos (não presentes em nenhuma página) vão para `foraDasPaginas` e são listados em `passosNovos` — **o arranjo e os títulos são mantidos**, nada é re-distribuído sozinho. O front mostra: "A versão 4 trouxe 2 passos novos. Eles estão em *Fora das páginas*: coloque-os numa página." Página que ficou vazia continua existindo (vazia = bloqueio até o dono tirar ou preencher).
+- Salvar o arranjo **não** exige que ele seja válido (dá para guardar rascunho de arranjo); gerar PDF exige.
+
+### 4.4 Regras de servidor (inalteradas + novas)
+- Só `PUBLICADO` + versão `PUBLICADA`; rascunho nunca imprime. Sem `?previa`.
+- Cache em memória (LRU 12 / 30 MB / 10 min) com chave `conteudoId|versaoId|formato|hash(arranjo)|compacto|dia` (+ hash de treinados/revisões no fichário). Nada em disco.
+- Fila de 2 PDFs simultâneos; freio de 20/min por usuário; validar tamanho do corpo (`jsonPequeno` 100 KB basta: 40 passoIds × 8 páginas).
+- Log `[ComoFazer][pdf]` com conteudoId, formato, nº de páginas, vendedorId, ms.
+
+### 4.5 Pergunta do coordenador 1 — o que é "bloco/processo" quando há uma seção só (Regra/Rotina com 16 passos)?
+Hoje só **Máquina** tem seções nomeadas (MONTAR/USAR/LIMPAR/PROBLEMA); Regra/Rotina/Dosagem têm uma seção `PRINCIPAL`. **Recomendação (duas camadas, sem mexer em nada do que já existe):**
+1. **Etapa 1 — só pela montagem das páginas.** Para conteúdo de seção única, "Um processo por página" não tem de onde tirar grupos; então o atalho vira "Dividir em páginas de 3-5" e o dono **nomeia cada página** ("Vestir", "Lavar as mãos", "Conferir") na tela de montagem. O arranjo guardado (§4.3) *é* o agrupamento. Zero mudança no editor e no schema do documento. Se o conteúdo for Máquina, o atalho usa as seções reais como página natural (padrão do pedido).
+2. **Etapa 2 (opcional, junto das várias fotos) — campo `grupo` opcional no passo** (texto ≤ 30, ex. "Lavar as mãos"; passos consecutivos com o mesmo `grupo` formam um processo). Entra em `normalizarPasso`/`validarDoc`/`PassoEditor.jsx`, **aditivo** (ausente = sem grupo) e vira a fonte do "Um processo por página" para Regra/Rotina. Vantagem: o agrupamento passa a fazer parte do ensino (tablet pode mostrar "Etapa: Lavar as mãos"), mas mexe em versão/treinamento → fica fora da etapa 1. **Decisão do dono:** começar pela camada 1 (não custa nada e entrega o pedido); `grupo` só se ele sentir falta de agrupar no próprio editor.
+
+### 4.6 Onde entra o botão "PDF": **TRÊS lugares**, um só componente (`ModalPdf`)
+O dono procurou e não achou: "Imprimir A4" só existe dentro do conteúdo aberto da Biblioteca (`ConteudoPagina.jsx:183`), e nem a lista nem o editor têm botão de impressão. Mesma permissão nos três (`pode.editar || pode.painel`; admin passa) e o servidor é quem decide (§4.1: sem versão publicada devolve `SEM_VERSAO_PUBLICADA`).
+1. **Conteúdo aberto (Biblioteca)** — `ConteudoPagina.jsx`, `botoesGestao`, ao lado de Imprimir A4 / QR code. Aqui a versão é sempre a publicada (a tela já exige).
+2. **Lista de Conteúdos do Painel** — `frontend/src/pages/RH/comoFazer/TabConteudos.jsx`: cartão mobile `:127` e tabela desktop `:150-160`. Hoje a **linha inteira é um `<button>`** que abre o editor: não aninhar botão dentro de botão (HTML inválido; no iOS o toque erra o alvo). Tirar a ação para uma coluna "Ações" na tabela; no cartão mobile trocar o `<button>` raiz por `<div>` com a área do título clicável e uma barra de ações embaixo (`PDF` e `Editar`, `min-h-[44px]`). Habilitado só com `c.status==='PUBLICADO' && c.versaoAtual != null`; nos outros casos o botão aparece desligado com o texto do item 3. Com `c.temRascunho` aparece o aviso do item 3.
+3. **Barra do editor** — `frontend/src/pages/RH/comoFazer/EditorConteudo.jsx:355-360`, a linha de ações (`✓ Rascunho salvo · Salvar rascunho · Publicar · (Refazer agenda) · Arquivar`): inserir **"PDF"** entre `Publicar` e `Refazer agenda/Arquivar` (nunca ao lado do Arquivar, vermelho, para não induzir toque errado), mesma classe de botão secundário (`bg-white border border-primary text-primary rounded-full min-h-[44px]`), ícone `FileText`. Regras de estado (texto simples sob o botão, `text-xs text-gray-600`, ou `title`):
+   - **só rascunho** (`meta.status==='RASCUNHO'`, nunca publicado): botão **visível e desligado** (`disabled`, `aria-disabled`, opacidade 50%), texto "Publique primeiro para gerar o PDF". Rascunho nunca imprime.
+   - **publicado e sem alteração pendente**: ligado, abre o modal.
+   - **publicado + rascunho sobre ele** (existe versão `RASCUNHO` além da `PUBLICADA`, ou o editor tem alteração não salva/publicada): ligado, com o aviso fixo dentro do modal e como texto sob o botão: "O PDF usa a versão publicada (v3), não o rascunho." Detectar com os dados que o editor já carrega via `detalheAdmin` (lista de versões com status) ou o flag `temRascunho` de `listarAdmin`; se a informação não existir no estado do editor, mostrar o aviso sempre que `meta.status==='PUBLICADO'` (aviso extra é inofensivo, silêncio errado não).
+   - **arquivado**: desligado, "Arquivado: publique de novo para gerar o PDF".
+   - Não bloquear o botão por `salvo==='pendente'`: o PDF não depende do rascunho.
+   O modal sempre mostra no topo "Imprime a **versão N**, publicada em dd/mm" (vem da prévia).
+Em todos os três o `ModalPdf` recebe só `{conteudoId, titulo, aoFechar}`, busca a prévia e a gravação do arranjo sozinho e lembra do formato (`useFiltroSalvo`). `lazyComRetry` no import em cada ponto.
 
 ## 5. Algoritmo de paginação (backend; arquivo novo `comoFazerPdfLayout.js`, funções puras e testáveis)
 
 Unidade: mm; conversão `MM = 72/25.4` como na receita. A4 = 210×297.
+
+### 5.0 (REVISÃO 22/10) Algoritmo com ARRANJO — é este que vale; o DP de 5.1/5.2 só alimenta a sugestão
+Funções puras em `comoFazerPdfLayout.js`:
+1. `reconciliar(arranjoGuardado|null, docPublicado)` → `{arranjo, foraDasPaginas, passosNovos, passosRemovidos}`. Percorre os `passoIds` de cada página; descarta ids que não existem na versão (remoção silenciosa, registrada); ids do documento que não estão em página nenhuma → `foraDasPaginas` (ordem do documento); duplicados (mesmo id em 2 páginas) → `ARRANJO_INVALIDO` na entrada de POST, mas na reconciliação de arranjo guardado mantém a 1ª ocorrência.
+2. `pesoDoPasso(p)` = 1; (etapa 2) `fotosDoPasso(p).length >= 3 ? 2 : 1`. Passo `perigo` com texto > 90 caracteres no cartaz também pesa 2 (ocupa linha dupla — é o mesmo cálculo de largura dupla do 5.1.3).
+3. `limitePagina(formato, compacto)` = cartaz `compacto ? 8 : 6`; fichário 12. (O modo "compacto" é uma chave do próprio modal: "Letra e foto menores (até 8 por página)". Sem ela, cartaz = foto grande, 6.) Nº de páginas: 1–8 cartaz, 1–6 fichário (cartaz com 16 passos × 4 páginas × 4; ok).
+4. `validarArranjo(arranjo, doc, formato)` → `{paginasResumo, bloqueios, avisos, podeGerar}`. Por página: `peso = Σ pesoDoPasso`; `ESTOURADA` se `peso > limite` (`excesso = peso − limite`, mensagem "Mova N passo(s) para outra página"); `VAZIA` se 0 passos; `CHEIA` se `peso == limite`; `OK` senão. **Ainda mede de verdade**: roda a medição de altura do 5.1.3 com a distribuição daquela página — se o peso cabe mas o texto é tão longo que `Σ hMin > corpoH`, marca `ESTOURADA` com `excesso` em passos (`ceil((Σ hMin − corpoH) / hMedio)`). O peso é a regra simples que o dono entende; a medição é a rede de segurança para nunca gerar folha ilegível.
+5. `sugerir(modo, doc, formato, k?)`:
+   - `passosPorPagina k` → N = ceil(T/k); distribui T em N fatias contíguas o mais iguais possível (13 passos, k=6 → 5/4/4). Se k > limite → 422.
+   - `umProcessoPorPagina` → uma página por seção do documento com passos (Máquina: Montar/Usar/Limpar/Problema, título = título da seção); seção maior que o limite → dividida em partes iguais ("Limpar (1/2)"). Conteúdo de seção única → devolve `{modo:'umProcessoPorPagina', indisponivel:true, motivo:'Este manual tem uma seção só: use "Passos por página" e dê um nome a cada página.'}` (o front desliga o atalho com esse texto). Quando existir o campo `grupo` (etapa 2), agrupa por ele.
+   - `automatico` → o DP do 5.1: menor nº de páginas viável (peso ≤ limite e altura ≤ corpoH), equilibrado, sem página com menos de 2 passos salvo se T < 2.
+   - Todas as sugestões trazem `titulo` automático ("Página N", ou o da seção/grupo); o dono renomeia.
+6. **Fichário com arranjo**: cada página do arranjo vira "uma folha de procedimento": a página 1 traz cabeçalho de controle + Objetivo + Quem executa + Materiais + a tabela de Procedimento só com os passos dela; as seguintes trazem o cabeçalho compacto (com o título da página) + a tabela dos seus passos; as seções finais (NÃO FAZER, Se der errado, Revisões, Treinamento) seguem depois da última página do arranjo. Quebra de página **forçada** entre páginas do arranjo. A escala de foto/fonte (5.2.3) é calculada **por página** para ocupar a folha. Se as seções iniciais + passos da página 1 não cabem em uma folha (limite 12 passos é "teórico"), a medição marca `ESTOURADA` na página 1. Se o bloco final não cabe no que sobra da última página, gera **1 folha extra** de fechamento e a prévia diz "Mais 1 página só com Revisões e Treinamento (total 5)". O número "de N" no rodapé conta tudo.
+7. **Passos fora das páginas**: nunca entram no PDF; a geração exige `confirmarOmitidos:true` e a primeira página do PDF **não** ganha marca (o dono decidiu). Não existe "impressão silenciosa com passo esquecido".
+8. Cache/idempotência: `hash(arranjo normalizado)` (JSON estável com chaves ordenadas).
+
+Prova do algoritmo (script `teste-comofazer-pdf.js`): 16 passos → `passosPorPagina 4` → 4 páginas de 4; `3` → 6 páginas (5/5/... limite de nº de páginas 8 ok); `6` → 3 páginas (6/5/5); página com 9 passos → 422 com `{pagina:3,excesso:3}`; um passoId fora; id inexistente; id duplicado; arranjo guardado + versão com passo novo e passo removido.
+
+> Os itens 5.1.5 a 5.1.9 abaixo ("paginasMinimas / recusa por N / DP / expansão") ficam como **sugestão e como medição de altura por página**; quem decide as páginas é o arranjo (5.0). A recusa por N pequeno virou a validação de página estourada.
 
 ### 5.1 CARTAZ (A4 em pé, margem 8 mm, 2 colunas)
 1. **Entrada normalizada**: lista de "itens de fluxo" a partir de `secoes[]`: `{tipo:'FAIXA_BLOCO', titulo}` (só quando há >1 seção com passos) e `{tipo:'CARTAO', n, texto, detalhe, perigo, foto, dica}`. Numeração dos passos **contínua** (1..T) atravessando blocos e páginas.
@@ -146,7 +226,8 @@ Unidade: mm; conversão `MM = 72/25.4` como na receita. A4 = 210×297.
 1. `backend/package.json`: adicionar `sharp` (versão estável compatível com node20 musl); rodar `npm install` local; confirmar que `docker build` do `backend/Dockerfile` instala (não precisa mudar o Dockerfile). **Parar e avisar** se o binário `linuxmusl` não instalar.
 2. `backend/services/comoFazerPdfLayout.js` (novo, puro): `medirCartaz`, `medirFicharioPaginas`, `distribuirLinhas` (DP), `limparTextoPdf`. Sem pdfkit e sem banco → testável por script.
 3. `backend/services/comoFazerPdfService.js` (novo): `carregarConteudoParaPdf(id)` (valida publicada, lê `versao.passos`, treinados, revisões, encarregados, nomes de setor), `previa(id, opts)`, `gerar(id, opts, cf)`, fotos via `sharp` + `existsSync` em `RAIZ`, QR vetorial, cache LRU, fila de 2, freio por usuário. Padrão visual copiado de `receitaPdfService.js` (MM, estrutura, tratamento de erro).
-4. `backend/routes/comoFazerRoutes.js`: `ESCOPO_IMPRIMIR`, as duas rotas do §4, `res.type('application/pdf')…send(buffer)`; erros via `ErroCF` (importar de `svc` como as outras).
+3b. `backend/prisma/schema.prisma`: model aditivo `ComoFazerLayoutImpressao` (§4.3) + relação no `ComoFazerConteudo`; **nenhum campo existente muda**; validar com `npx prisma validate`/`db push` local em `hardt_local` (CLAUDE.md: deploy usa `db push`).
+4. `backend/routes/comoFazerRoutes.js`: `ESCOPO_IMPRIMIR`, as rotas do §4 (`pdf/previa`, `pdf`, `pdf/arranjo` GET/PUT/DELETE), `res.type('application/pdf')…send(buffer)`; erros via `ErroCF` (importar de `svc` como as outras).
 5. **Prova de conceito antes de mexer em tela** (§7). Só depois seguir.
 6. `backend/scripts/teste-comofazer-pdf.js` (script de teste, ver §7): gera cartaz 5 e 12 passos × 1/2/3 páginas, fichário 2 páginas, foto ausente, Máquina com bloco novo, rascunho bloqueado; grava PDFs em pasta temporária e imprime resumo.
 7. `backend/manuais/abas/como-fazer.md`: documentar o botão PDF, formatos, escolha de páginas, avisos, quem pode. `backend/services/copilotoService.js` tabela `ABAS`: não muda (rota e permissão da aba não mudam) — conferir.
@@ -155,9 +236,16 @@ Unidade: mm; conversão `MM = 72/25.4` como na receita. A4 = 210×297.
 8. `frontend/package.json`: `pdfjs-dist@3.11.174` (exato, sem `^`). Confirmar `npm run build` e que o worker sai como asset em `dist/assets/`.
 9. `frontend/src/services/comoFazerService.js`: `pdfPrevia(id, corpo)` (JSON) e `pdfGerar(id, corpo)` → `api.post(..., {responseType:'blob'})`, traduzindo erro-em-blob para `{codigo,mensagem,extra}`. Somente cliente `api` (app), nunca o do tablet.
 10. `frontend/src/components/VisualizadorPdf.jsx` (novo, **genérico**: recebe `blob` ou `url`, `nomeArquivo`, `onFechar`; nada de Como Fazer dentro). Modal tela cheia (`fixed inset-0 z-[9000]`, fundo cinza-escuro, barra superior: nome, "pág. X/N", `‹ ›`, `− 100% +` e "Ajustar à largura", Salvar PDF, Imprimir, Fechar — todos com `min-h-[44px]`). Renderização: uma `<canvas>` por página em coluna rolável, `devicePixelRatio` limitado a 2, render sob demanda (IntersectionObserver) e liberação ao sair de vista; zoom por botões (50-300%) com rolagem horizontal **dentro** do modal (a página do app não ganha scroll horizontal); setas rolam até a página; indicador "pág. 1/2" atualiza pelo scroll. Pré-renderização de impressão (§3.3) em segundo plano. Texto do limite do iPad (§3.3). Reaproveitável por Anexos/DANFE depois (`AnexosEntidade.jsx` hoje abre blob em outra aba: **não mexer agora**).
-11. `frontend/src/pages/ComoFazer/ModalPdf.jsx` (novo): passo 1 "Como você vai usar?" — dois cartões grandes (🧱 Cartaz de parede / 📒 Folha de fichário; "📋 Folha de registro — em breve" desabilitado); passo 2 "Quantas páginas?" chips `Automático · 1 · 2 · 3 · 4` (cartaz) ou `Automático · 1…6` (fichário), preenchidos pela `previa`: chip `cabe:false` fica desabilitado com o motivo embaixo, em texto simples ("Não cabe em 1 página: cabem 8 passos por folha. Escolha 2 ou mais."); a escolha inicial é o `paginasAutomatico`; aviso verde "Vai sair em 2 páginas, 6 passos em cada" (como a aba 5 do mockup); só para Máquina, chave "Começar cada bloco (Montar/Usar/Limpar/Problema) em página nova"; lista os `avisos` (sem foto, foto perdida); botão **"Ver o PDF"** (loading "Montando o PDF…") → abre `VisualizadorPdf`. Erros em português simples ("Não consegui montar o PDF. Tente de novo."; para `PAGINAS_INSUFICIENTES` mostra o mínimo vindo do servidor). Sem `<select>` nativo; chips como no mockup. Mobile 375 px: modal vira folha de baixo com botões fixos no rodapé.
-12. `ConteudoPagina.jsx`: botão **"PDF"** em `botoesGestao` ao lado de Imprimir A4 / QR code, mesma condição `(pode.painel || pode.editar)` **e** `conteudo.versao` publicada (a tela só abre publicado: `abrirConteudo` com `previa` falso já exige). Ícone `FileText` (lucide). `ModalPdf` e `VisualizadorPdf` carregados com `lazyComRetry`.
-13. Persistir as últimas escolhas (formato; bloco novo) com `useFiltroSalvo('como-fazer-pdf:formato', 'CARTAZ')` (CLAUDE.md); **não** persistir nº de páginas (depende do conteúdo).
+11. `frontend/src/pages/ComoFazer/ModalPdf.jsx` (novo; ponto de entrada nos 3 lugares do §4.6). Fluxo em 3 passos dentro de um modal (folha de baixo no celular, botões fixos no rodapé): **(a) Formato** — dois cartões grandes (🧱 Cartaz de parede / 📒 Folha de fichário; "📋 Folha de registro — em breve" desligado) e, em Máquina, nada de pergunta extra (blocos são páginas naturais); **(b) Páginas** — chips de atalho `Automático · 3 · 4 · 5 · 6 passos por página` e `Um processo por página`, e o botão **"Montar as páginas"** que abre o `MontarPaginas`; resumo "4 páginas · 16 passos · tudo cabe" ou o motivo do bloqueio; chave "Letra e foto menores (até 8 por página)" só no cartaz; **(c) Ver o PDF** — botão grande (loading "Montando o PDF…") que **só liga com `podeGerar`**; avisos listados (sem foto, foto perdida, passos fora → pede o "Sim, imprimir sem esses passos" que seta `confirmarOmitidos`). Chama a prévia a cada mudança de arranjo (debounce 400 ms, cancelando a chamada anterior) — a prévia é a **única fonte** de verdade da validação, o front só desenha o resultado.
+12. `frontend/src/pages/ComoFazer/MontarPaginas.jsx` (novo; mockup aba 6). Estado: `arranjo={paginas:[{uid,titulo,passoIds}], compacto}` + `fora` (derivado: todos os passos do documento menos os colocados) + `resumo` (da prévia). Itens:
+    - Atalhos no topo (chips 44 px): `Passos por página 3/4/5/6`, `Um processo por página` (desligado com o texto do servidor quando `indisponivel`), `+ Página`, `Voltar ao automático`. Cada atalho chama a prévia com `modo` e **substitui o arranjo** (se o dono já mexeu à mão, confirmar: "Isso refaz as páginas que você montou. Continuar?").
+    - Um cartão por página: título editável (input), medidor (barra verde/âmbar/vermelha + texto "4 passos · cabe bem" / "9 passos · não cabe (máximo 6). Mova 3 passos para outra página."), lista de passos com `☰` (arrastar), número do passo, texto, selo "4 fotos · conta como 2", e **"Mover ▾"** (`SelectBusca`-like em portal com as páginas + "Fora das páginas"; **toque, é o caminho principal em celular/iPad**). Arrastar só no computador (HTML5 drag & drop com `draggable`; **não** depender dele no toque), sem biblioteca nova. Página tem "Remover página" (os passos vão para *Fora*).
+    - Bandeja **"Fora das páginas (N)"**: mesmos itens com "Colocar em ▾". Fundo âmbar se N>0 e "Passo esquecido" explícito.
+    - Layout: computador = grade de cartões lado a lado (`md:grid-cols-2 lg:grid-cols-3`); celular = empilhados e **recolhíveis** (cabeçalho do cartão é botão ▾/▴ 44 px, abre só o primeiro e o estourado); alvos ≥ 44 px; sem scroll horizontal; `gap` em todos os grids.
+    - "Guardar este arranjo" (caixa marcada por padrão): ao fechar o modal ou clicar em **Ver o PDF**, `PUT /pdf/arranjo` (debounce, só se mudou). Indica "Arranjo guardado por X em dd/mm". Banner de reconciliação: "A versão 4 trouxe 2 passos novos; estão em *Fora das páginas*." e "1 passo foi removido do manual e saiu das páginas."
+    - Os cálculos de peso no front são só para **feedback imediato ao arrastar** (opcional); o bloqueio de verdade vem da prévia/servidor.
+13. `frontend/src/services/comoFazerService.js` (rever o passo 9): `pdfPrevia(id, corpo)`, `pdfGerar(id, corpo)` (blob, erro-em-blob → JSON com `bloqueios`), `pdfArranjo.obter/salvar/apagar`. Persistir com `useFiltroSalvo('como-fazer-pdf:formato','CARTAZ')` apenas formato e `compacto`; **o arranjo vive no servidor, não no localStorage**.
+13b. Pontos de entrada do botão: `ConteudoPagina.jsx`, `TabConteudos.jsx` (desktop+mobile, §4.6) e `EditorConteudo.jsx` (§4.6.3), todos com `lazyComRetry(() => import('…/ModalPdf'))`.
 14. Manter `htmlDocumento.js` + "Imprimir A4" **como estão** (§8).
 15. Novidade: `frontend/public/novidade-pdf-pop.html` (padrão `novidade-tarefas.html`, accordions abertos, mockups com pins das 3 telas: opções, visualizador, folha pronta; sem `og:image`, sem botão "abrir o app") + entrada no topo de `frontend/public/novidades.json` (`slug:'pdf-pop'`). Texto pronto para o WhatsApp na nota de entrega.
 16. `npm run build` (obrigatório) e marcador de deploy conforme o padrão do projeto para conferir o chunk em produção.
@@ -200,6 +288,11 @@ Etapa 1: **não mexer** em `htmlDocumento.js`/"Imprimir A4" (é o único caminho
 | Conflito com o working tree compartilhado | arquivos novos em sua maioria; únicas edições em arquivo existente: `comoFazerRoutes.js`, `comoFazerService.js` (front), `ConteudoPagina.jsx`, `backend/package.json`, `frontend/package.json`, `novidades.json`, `manuais/abas/como-fazer.md`. Add explícito, nunca `git add .` |
 | Consumidores quebrados | nada existente muda de formato: grep confirma que `abrirConteudo`, `relatorio`, `htmlDocumento.js` não são alterados. A API `/api/ia-consulta/v1` não é tocada |
 | Cache servir folha velha | chave inclui `versaoId` e hash de treinados/revisões; lista de treinados muda → chave muda |
+| Arranjo guardado fica velho (passo novo/removido) | reconciliação no servidor (§4.3) em toda prévia; nunca redistribui sozinho; passo novo vai para "Fora" |
+| Cliente manda arranjo adulterado (id de outro conteúdo, 500 ids) | servidor valida cada `passoId` contra o documento publicado, limita 40 ids × 8 páginas, título ≤ 40 |
+| Dois gestores editam o arranjo juntos | última gravação vence; tela mostra "atualizado por X em …" |
+| Botão aninhado em linha clicável da lista | §4.6.2 (cartão vira `div`; ação separada) |
+| Tela de montagem pesada no celular | sem biblioteca de drag; cartões recolhíveis; prévia com debounce e cancelamento |
 
 ## 11. O que NÃO fazer
 - Não usar `window.open`, `<iframe>`, `<embed>` ou `<object>` para mostrar/imprimir o PDF (regra do CLAUDE.md; o iPad imprime branco).
@@ -215,25 +308,32 @@ Etapa 1: **não mexer** em `htmlDocumento.js`/"Imprimir A4" (é o único caminho
 - Não persistir nº de páginas escolhido; não usar `<select>` nativo (usar chips).
 - Não criar gerador separado "por tipo de conteúdo": um só layout lê o mesmo doc.
 
+- Não colocar o botão PDF dentro de um `<button>` (linha da lista) nem ao lado do Arquivar no editor.
+- Não gravar o arranjo no JSON da versão nem no localStorage; não deixar o front ser o único validador (servidor revalida com 422).
+- Não imprimir rascunho nem "o rascunho aberto no editor": PDF = versão publicada, e a tela diz isso.
+- Não depender de arrastar para mover passo (toque com "Mover ▾" é o caminho principal).
+
 ## 12. Ganchos das etapas 2 e 3
 - **Etapa 2 (até 4 fotos por passo, `fotos:[{url,legenda}]`)**: o layout já mede por "slots" e por lista de fotos (`passo.fotos ?? (passo.foto ? [passo.foto] : [])`); cartão com 3-4 fotos ocupa linha dupla. Escrever o normalizador `fotosDoPasso(p)` desde já.
 - **Etapa 3 (registro de rotina, A4 paisagem)**: `formato:'REGISTRO'` já existe no contrato e responde `FORMATO_INDISPONIVEL`; o modal já mostra o cartão desabilitado "em breve"; o layout paisagem entra como terceira função em `comoFazerPdfLayout.js`.
 
-## 13. Critérios de aceite (QA clicando no app local + PDF aberto de verdade)
-1. Cartaz, conteúdo de **5 passos**: 1 página (auto), 2 páginas (3+2 ou equivalente, sem página quase vazia), 3 páginas: letras legíveis, fotos maiores com mais páginas.
-2. Cartaz, **12 passos**: "1 página" fica desabilitada com o aviso "Não cabe em 1 página: cabem 8 passos por folha. Escolha 2 ou mais."; `auto` = 2 páginas (6+6); 3 páginas (4+4+4). Forçar `POST` com `paginas:1` direto na API devolve `422 PAGINAS_INSUFICIENTES` com o mínimo.
-3. Em todas as páginas do cartaz: QR, código/versão, faixa NÃO FAZER, "pág. X/N" corretos; numeração dos passos contínua.
-4. Fichário **2 páginas**: margem esquerda 28 mm, cabeçalho de controle, passos em tabela, "Se der errado", controle de revisões e lista de treinados com linhas em branco; página 2 com cabeçalho compacto e "Página 2 de 2"; nenhuma linha cortada.
-5. Foto ausente (arquivo apagado do volume) e passo sem foto: quadro tracejado com a dica; PDF gerado; aviso na prévia.
-6. Versão **rascunho** / conteúdo arquivado: botão PDF não aparece; chamada direta à API devolve erro (`SEM_VERSAO_PUBLICADA`/404). Tablet e usuário sem permissão: 403; botão ausente.
-7. Conteúdo de **Máquina** com "bloco em página nova": Montar, Usar, Limpar, Problema começam cada um em página própria; páginas extras vão para o bloco mais longo.
-8. Visualizador em **375 px** e em **iPad** (largura 820): sem scroll horizontal da página; setas e "pág. 1/2" funcionam; zoom + / − / ajustar; botões ≥ 44 px; fechar volta ao conteúdo sem recarregar. Sem nova aba/janela em nenhum momento.
-9. **Salvar PDF**: no desktop baixa `HIG-001-v3-cartaz.pdf` (abrir o arquivo e conferir que é o formato/páginas escolhidos); no iPad abre a folha de compartilhar com o arquivo.
-10. **Imprimir**: abre o diálogo do navegador com as N páginas A4 sem o app por baixo; ao cancelar/terminar o app volta inteiro; botão só habilita quando pronto. Texto do limite do iPad aparece em iOS.
-11. Erro de rede/servidor: mensagem em português simples, botão continua utilizável.
-12. Regressão: "Imprimir A4" e "QR code" funcionam como antes; abas Versões/Quem treinou/Execuções; editor do conteúdo; tablet abre conteúdo normalmente.
-13. `npm run build` do frontend passa; chunk principal sem pdfjs; worker presente em `dist/assets`.
-14. Pós-deploy (gerente/QA em produção): gerar o PDF de um conteúdo real **com foto** (prova a leitura do volume e do `sharp` no container) e abrir no iPad.
-15. Clippy: `backend/manuais/abas/como-fazer.md` atualizado; novidade `novidade-pdf-pop.html` + `novidades.json` publicados.
+## 13. Critérios de aceite (REVISADOS 22/10; QA clicando no app local + PDF aberto de verdade)
+1. **16 passos em 4 páginas**: atalho "4 passos por página" monta 4 páginas de 4 (medidor verde); "Ver o PDF" gera 4 páginas A4 com os passos certos em cada uma, numeração do manual (1–16) contínua, o **nome de cada página no cabeçalho**, QR/código/versão/"pág. X/4" em todas.
+2. **Um processo por página**: em conteúdo de **Máquina**, uma página por Montar/Usar/Limpar/Problema (seção grande é dividida em partes); em Regra/Rotina de seção única o atalho aparece desligado com a explicação e "Passos por página" + nomes manuais funcionam.
+3. **Página estourada bloqueia**: mover 9 passos para uma página (cartaz) deixa o cartão vermelho com "não cabe (máximo 6). Mova 3 passos…", "Ver o PDF" desligado; chamada direta `POST /pdf` com o mesmo arranjo devolve **422 ARRANJO_INVALIDO** com `{pagina, excesso}`. "Letra e foto menores" libera até 8. Fichário aceita até 12. Página vazia também bloqueia.
+4. **Passo esquecido avisa**: tirar um passo de uma página o leva a "Fora das páginas (1)"; gerar exige o "Sim, imprimir sem esse passo" (sem isso a API devolve 422 `PASSOS_FORA_SEM_CONFIRMACAO`); o PDF não contém o passo.
+5. **Arranjo guardado volta igual**: montar, gerar, fechar tudo, reabrir (e em outro navegador com outro usuário gestor): mesmas páginas, títulos, ordem; "Voltar ao automático" apaga.
+6. **Troca de versão**: publicar versão nova com 1 passo a mais e 1 a menos: arranjo e títulos mantidos, o passo novo em "Fora das páginas" com o aviso, o removido some sem erro; PDF antigo continua dizendo a versão antiga.
+7. **Mover**: "Mover ▾" por toque entre páginas e para/de "Fora" (celular 375 px e iPad); arrastar pelo ☰ no computador; ambos atualizam o medidor na hora.
+8. **Responsivo**: computador = páginas lado a lado; 375 px = cartões empilhados e recolhíveis; alvos ≥ 44 px; sem scroll horizontal; iPad (820 px) usável só com toque.
+9. **Os três botões**: PDF visível e funcional na Biblioteca (ao lado do Imprimir A4), em cada linha publicada da lista de Conteúdos (desktop e mobile, sem abrir o editor ao tocar) e na barra do editor (entre Publicar e Arquivar). Editor: conteúdo só-rascunho = botão desligado "Publique primeiro para gerar o PDF"; publicado com rascunho por cima = aviso "O PDF usa a versão publicada (vN), não o rascunho"; arquivado = desligado. Usuário sem permissão/tablet: nenhum dos três aparece e a API devolve 403.
+10. Visualizador, Salvar PDF e Imprimir (itens 8-10 antigos): em 375 px e iPad sem scroll horizontal da página; setas e "pág. X/N"; zoom; Salvar baixa `HIG-001-v3-cartaz.pdf` certo (iPad: folha de compartilhar); Imprimir abre o diálogo com as N páginas e sem nova aba; texto do limite do iPad em iOS.
+11. Foto ausente (arquivo apagado) e passo sem foto: quadro tracejado com a dica; PDF gerado; aviso na prévia. Texto com emoji/`−`/`→` não gera lixo no PDF.
+12. Fichário com arranjo de 2 páginas (6+6 passos): margem 28 mm, cabeçalho de controle na 1ª, compacto com o nome da página na 2ª, Revisões e Treinamento no fim (folha extra anunciada na prévia se preciso), nenhuma linha cortada.
+13. Erro de rede/servidor: mensagem simples em português; botões continuam utilizáveis.
+14. Regressão: "Imprimir A4", QR code, Nova versão, Publicar/Arquivar/Salvar rascunho do editor, abas Versões/Quem treinou/Execuções, tablet abrindo conteúdo, autosave do editor.
+15. `npm run build` passa; pdfjs fora do bundle principal; worker em `dist/assets`; `prisma validate` e `db push` locais ok (tabela nova apenas adicionada).
+16. Pós-deploy em produção: PDF de conteúdo real com foto, arranjo guardado, e **abrir de novo depois de um deploy** (a tabela é banco, mas a leitura de foto do volume e o `sharp` no container precisam ser provados lá).
+17. Clippy: `backend/manuais/abas/como-fazer.md` e `rh-como-fazer-painel.md` atualizados (botão PDF nos 3 lugares, montar páginas); novidade `novidade-pdf-pop.html` com mockups das telas (opções, montar páginas desktop/celular, visualizador) + `novidades.json`.
 
-Revisor confere: ausência de `window.open`/iframe; `exigirPermissao` com as duas permissões; nenhum `fotoSugerida` vazando fora do PDF de gestão; `sharp` só no serviço novo; sem escrita em disco; `limparTextoPdf` aplicado a todo texto; caminho de foto com `path.resolve` dentro de `RAIZ`; cleanup de `blob:` URLs e de canvases; `lazyComRetry` no import; sem `<select>` nativo.
+Revisor confere: arranjo validado no servidor com os mesmos limites; ids vindos do cliente conferidos contra o documento; `exigirPermissao` com as duas permissões em TODAS as rotas novas (incl. `/pdf/arranjo`); schema só aditivo; nenhum `fotoSugerida` vazando fora do PDF de gestão; `sharp` só no serviço novo; sem escrita em disco; `limparTextoPdf` em todo texto; caminho de foto com `path.resolve` dentro de `RAIZ`; cleanup de `blob:` e canvases; sem `window.open`/iframe; sem `<select>` nativo; sem botão dentro de botão.
