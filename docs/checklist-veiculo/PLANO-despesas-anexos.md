@@ -2,6 +2,14 @@
 
 Arquiteto, 21/10/2026, somente leitura (versão salva pelo gerente de projeto). Substitui a fatia 3C do `PLANO-dia3.md`.
 
+## DECISÕES DO DONO (22/10/2026) — valem sobre qualquer sugestão deste plano
+1. **Lançamento no Contas a Pagar: manual pelo escritório por 2 semanas, depois automático no fechamento do caixa** (por chave, desligada no início).
+2. **Despesas antigas ficam como estão** (sem lançamento retroativo).
+3. **Fornecedor:** a IA lê o fornecedor no documento; **quem faz o fechamento do caixa confirma** o que a IA achou (vincula ao cadastro de fornecedores por CNPJ quando existir).
+4. **Foto obrigatória em TODA despesa (recibo ou nota)**, não só em combustível/manutenção/pedágio. A IA confere se o documento é referente à despesa: nome e CNPJ do fornecedor, tipo de documento, valor, data (e litros no combustível). Modo teste: só marca e avisa, nunca trava; "sem comprovante" exige motivo.
+5. **Categoria de despesa e itens (produtos): vinculados MANUALMENTE pelo escritório no fechamento do caixa**, escolhendo nas listas que já existem (Categorias de Despesa e produtos/itens cadastrados). Sem mapeamento automático de categoria. O fechamento mostra os lançamentos do dia e o total para conferir se fecha com as despesas.
+Pendente de verificação no código (arquiteto): o que o vínculo de itens/produtos faz em estoque e custo para uma conta `DESPESA_MOTORISTA` (não pode gerar entrada de estoque nem alterar custo sem decisão explícita).
+
 ## 0. Premissas do dono × código
 
 | Premissa | Veredito |
