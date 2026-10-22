@@ -91,6 +91,24 @@ section.tela{display:none}section.tela.on{display:block}
 .viewer5 .pg{padding:16px;display:grid;gap:12px;justify-items:center}
 .viewer5 .mini{width:min(300px,80%);aspect-ratio:210/297;background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.5);padding:10px;display:grid;gap:6px;align-content:start;font-size:9px;font-weight:800;color:#1E3932}
 .viewer5 .mini .h{background:#1E3932;color:#fff;padding:6px;font-size:10px}.viewer5 .mini .g{display:grid;grid-template-columns:1fr 1fr;gap:5px}.viewer5 .mini .g div{border:2px solid #1E3932;border-radius:5px;height:62px;padding:3px}
+
+.mp-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.mp-bar .lb{margin:0 4px 0 0}
+.mp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px;align-items:start}
+.pgc{background:#fff;border:1px solid var(--border);border-radius:14px;overflow:hidden;position:relative}
+.pgc .ph{padding:10px 12px;border-bottom:1px solid var(--border);background:#f9fafb}
+.pgc .ph input,.pgc .ph .tt{font-weight:800;font-size:14px;border:1px solid #d1d5db;border-radius:8px;padding:8px 10px;width:100%;background:#fff;min-height:44px;display:flex;align-items:center}
+.meter{height:8px;background:#e5e7eb;border-radius:999px;overflow:hidden;margin:8px 0 4px}.meter i{display:block;height:100%}
+.mtx{font-size:12px;font-weight:700}
+.stp{display:flex;gap:8px;align-items:center;padding:8px 10px;border-bottom:1px solid #f3f4f6;font-size:13px;min-height:48px}
+.stp .hd{color:#9ca3af;font-size:16px;flex:none;width:22px;text-align:center}
+.stp .nn{flex:none;width:24px;height:24px;border-radius:50%;background:#1E3932;color:#fff;font-size:12px;font-weight:800;display:grid;place-items:center}
+.stp .tx{flex:1;min-width:0;line-height:1.3}.stp .ft{font-size:11px;color:#6b7280;display:block}
+.stp .mv{flex:none;border:1px solid #d1d5db;border-radius:8px;padding:0 8px;min-height:36px;display:inline-flex;align-items:center;font-size:12px;font-weight:700;background:#fff}
+.pgc.ruim{border-color:#dc2626}.pgc.ruim .ph{background:#fef2f2}
+.fora{border:2px dashed #cbd5e1;border-radius:14px;padding:10px 12px;font-size:13px;background:#fafafa}
+.phone5{width:min(100%,380px);margin:0 auto;border:9px solid #1f2937;border-radius:34px;background:#f9fafb;overflow:hidden;position:relative}
+.phone5 .nt{height:22px;background:#1f2937;border-radius:0 0 14px 14px;width:120px;margin:0 auto}
 </style>
 </head>
 <body>
@@ -106,6 +124,7 @@ section.tela{display:none}section.tela.on{display:block}
   <button data-t="t3">3 · Mais de uma foto por passo</button>
   <button data-t="t4">4 · Folha de registro (rotina)</button>
   <button data-t="t5">5 · Escolher páginas e ver o PDF</button>
+  <button data-t="t6">6 · Montar cada página</button>
 </div></div>
 <main>
 
@@ -280,6 +299,37 @@ section.tela{display:none}section.tela.on{display:block}
     <li><i>4</i><span>Escolheu pouco? O app avisa antes de gerar e oferece o mínimo em um toque. Nunca imprime folha com letra miúda.</span></li>
     <li><i>5</i><span><b>Visualizador dentro do app</b>: páginas em sequência, zoom, <b>Salvar PDF</b> e <b>Imprimir</b>. No computador a impressão abre normal. No <b>iPad</b> o botão abre a janela de compartilhar do iPad, onde se escolhe "Imprimir" ou "Salvar em Arquivos" (o iPad não deixa o aplicativo mandar direto para a impressora).</span></li>
     <li><i>6</i><span>O PDF é montado no servidor em A4 real: sai igual no computador, no iPad e no celular, e o mesmo arquivo serve para a Vigilância.</span></li>
+  </ol></div>
+</section>
+
+
+<!-- 6 -->
+<section class="tela" id="t6">
+  <div class="intro"><b>Montar cada página.</b> Depois de escolher o formato e o número de páginas (aba 5), toque em <b>Montar as páginas</b>. Cada página é um cartão: você dá um nome, escolhe <b>quais passos entram nela</b> e vê na hora se ainda dá para ler. Exemplo real do problema: <b>16 passos</b> em uma folha só viram letra miúda. Aqui eles são divididos em 4 páginas legíveis, ou um processo por página.</div>
+  <div class="mp-bar" style="position:relative"><span class="lb">Atalhos:</span><span class="chip">Passos por página: 3</span><span class="chip on">4</span><span class="chip">5</span><span class="chip">6</span><span class="btn" style="background:#fff;color:var(--primary)">Um processo por página</span><span class="btn" style="background:#fff;color:var(--primary)">+ Página</span><span class="pin" style="right:-6px;top:-8px">1</span></div>
+  <div class="mp-grid">
+    <div class="pgc"><div class="ph"><div class="tt" style="position:relative">Página 1 · Vestir<span class="pin" style="right:-6px;top:-14px">2</span></div><div class="meter"><i style="width:67%;background:#16a34a"></i></div><div class="mtx" style="color:#166534">4 passos · cabe bem</div></div><div class="stp"><span class="hd">☰</span><span class="nn">1</span><span class="tx">Tire anel, brinco e relógio<span class="ft">1 foto</span></span><span class="mv">Mover ▾</span></div><div class="stp"><span class="hd">☰</span><span class="nn">2</span><span class="tx">Vista o avental limpo<span class="ft">1 foto</span></span><span class="mv">Mover ▾</span></div><div class="stp"><span class="hd">☰</span><span class="nn">3</span><span class="tx">Prenda todo o cabelo na touca<span class="ft">2 fotos</span></span><span class="mv">Mover ▾</span></div><div class="stp"><span class="hd">☰</span><span class="nn">4</span><span class="tx">Calce sapato fechado<span class="ft">1 foto</span></span><span class="mv">Mover ▾</span></div></div>
+    <div class="pgc"><div class="ph"><div class="tt">Página 2 · Lavar as mãos</div><div class="meter"><i style="width:75%;background:#16a34a"></i></div><div class="mtx" style="color:#166534">3 passos (peso 4,5 de 6) · cabe bem</div></div><div class="stp"><span class="hd">☰</span><span class="nn">5</span><span class="tx">Lave as mãos até o cotovelo, 20 segundos<span class="ft">4 fotos · conta como 2</span></span><span class="mv">Mover ▾</span></div><div class="stp"><span class="hd">☰</span><span class="nn">6</span><span class="tx">Seque com papel toalha<span class="ft">1 foto</span></span><span class="mv">Mover ▾</span></div><div class="stp"><span class="hd">☰</span><span class="nn">7</span><span class="tx">Passe álcool em gel<span class="ft">1 foto</span></span><span class="mv">Mover ▾</span></div></div>
+    <div class="pgc ruim" style="position:relative"><div class="ph"><div class="tt">Página 3 · Conferir</div><div class="meter"><i style="width:100%;background:#dc2626"></i></div><div class="mtx" style="color:#b91c1c">9 passos · não cabe (máximo 6)</div><div style="font-size:12px;color:#b91c1c;margin-top:4px">Mova 3 passos para outra página.</div></div><div class="stp"><span class="hd">☰</span><span class="nn">8</span><span class="tx">Confira unhas curtas<span class="ft">1 foto</span></span><span class="mv">Mover ▾</span></div><div class="stp"><span class="hd">☰</span><span class="nn">9</span><span class="tx">Sem esmalte nem unha postiça<span class="ft">1 foto</span></span><span class="mv">Mover ▾</span></div><div class="stp"><span class="hd">☰</span><span class="nn">10</span><span class="tx">Barba coberta ou feita<span class="ft">1 foto</span></span><span class="mv">Mover ▾</span></div><div class="stp"><span class="hd">☰</span><span class="nn">11</span><span class="tx">Sem adornos no pescoço<span class="ft">1 foto</span></span><span class="mv">Mover ▾</span></div><div class="stp"><span class="hd">☰</span><span class="nn">12</span><span class="tx">Sem maquiagem pesada<span class="ft">1 foto</span></span><span class="mv">Mover ▾</span></div><div class="stp"><span class="hd">☰</span><span class="nn">13</span><span class="tx">Uniforme sem rasgos<span class="ft">1 foto</span></span><span class="mv">Mover ▾</span></div><div class="stp"><span class="hd">☰</span><span class="nn">14</span><span class="tx">Crachá à vista<span class="ft">1 foto</span></span><span class="mv">Mover ▾</span></div><div class="stp"><span class="hd">☰</span><span class="nn">15</span><span class="tx">Avise se tem ferimento<span class="ft">1 foto</span></span><span class="mv">Mover ▾</span></div><div class="stp"><span class="hd">☰</span><span class="nn">16</span><span class="tx">Registre a entrada<span class="ft">1 foto</span></span><span class="mv">Mover ▾</span></div><span class="pin" style="right:-6px;top:-8px">3</span></div>
+  </div>
+  <div class="fora" style="margin-top:10px;position:relative"><b>Fora das páginas (0)</b> · passos que você tirar de uma página ficam aqui até serem colocados em outra, para nada se perder.<span class="pin" style="right:-6px;top:-8px">4</span></div>
+  <div class="card" style="margin-top:10px;position:relative;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><label style="display:flex;gap:8px;align-items:center;font-size:13px;min-height:44px"><span style="width:22px;height:22px;border:2px solid var(--primary);border-radius:5px;background:var(--primary);color:#fff;display:grid;place-items:center;font-size:14px">✓</span><b>Guardar este arranjo</b> para imprimir de novo igual (por formato)</label><span style="flex:1"></span><span class="btn" style="background:#f3f4f6;color:#374151;border-color:#e5e7eb">Voltar</span><span class="btn" style="opacity:.5;min-height:52px;font-size:15px">Ver o PDF (resolva a página 3)</span><span class="pin" style="right:-6px;top:-8px">5</span></div>
+
+  <div class="sec-h" style="margin:18px 0 10px;font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#4b5563">No celular: um cartão de cada vez</div>
+  <div class="phone5"><div class="nt"></div><div style="padding:10px;display:grid;gap:8px">
+    <div style="font-weight:800;font-size:15px">Montar as páginas <span style="font-weight:500;color:#6b7280;font-size:12px">4 páginas · 16 passos</span></div>
+    <div class="pgc"><div class="ph"><div class="tt">Página 1 · Vestir ▾</div><div class="meter"><i style="width:67%;background:#16a34a"></i></div><div class="mtx" style="color:#166534">4 passos · cabe bem</div></div></div>
+    <div class="pgc"><div class="ph"><div class="tt">Página 2 · Lavar as mãos ▴</div><div class="meter"><i style="width:75%;background:#16a34a"></i></div><div class="mtx" style="color:#166534">3 passos · cabe bem</div></div><div class="stp"><span class="hd">☰</span><span class="nn">5</span><span class="tx">Lave as mãos até o cotovelo<span class="ft">4 fotos</span></span><span class="mv">Página 2 ▾</span></div><div class="stp"><span class="hd">☰</span><span class="nn">6</span><span class="tx">Seque com papel toalha<span class="ft">1 foto</span></span><span class="mv">Página 2 ▾</span></div><div class="stp"><span class="hd">☰</span><span class="nn">7</span><span class="tx">Passe álcool em gel<span class="ft">1 foto</span></span><span class="mv">Página 2 ▾</span></div></div>
+    <div class="pgc ruim"><div class="ph"><div class="tt">Página 3 · Conferir ▾</div><div class="meter"><i style="width:100%;background:#dc2626"></i></div><div class="mtx" style="color:#b91c1c">9 passos · não cabe (máx. 6)</div></div></div>
+    <span class="btn" style="justify-content:center;opacity:.5;min-height:52px">Ver o PDF</span>
+  </div></div>
+  <div class="legenda"><h3>Legenda</h3><ol>
+    <li><i>1</i><span><b>Atalhos</b> para começar rápido: "passos por página" distribui sozinho (3, 4, 5, 6); "Um processo por página" usa os blocos do manual (ex.: Montar, Usar, Limpar, Problema; ou grupos de 3 a 5 etapas) como uma página cada; "+ Página" cria uma página vazia. Depois você ajusta à mão.</span></li>
+    <li><i>2</i><span>Cada página tem <b>nome próprio</b> (aparece no cabeçalho do PDF). Os passos ficam em lista: arraste pelo ☰ no computador; no celular e no iPad toque em <b>Mover ▾</b> e escolha a página (sem precisar arrastar).</span></li>
+    <li><i>3</i><span><b>Limite de leitura por página</b>, mostrado numa barra: verde cabe, vermelho não cabe. Cada passo vale 1; passo com 3 ou 4 fotos vale 2 (ocupa mais espaço). Cartaz: máximo 6 com foto grande (até 8 compactos); fichário: até 12. Passou do limite, o botão Ver o PDF fica desligado e o app diz o que mover.</span></li>
+    <li><i>4</i><span>Passo tirado de uma página vai para <b>Fora das páginas</b>, e o app não deixa gerar o PDF com passo esquecido sem avisar.</span></li>
+    <li><i>5</i><span><b>Guardar este arranjo</b>: fica salvo junto do manual (por formato); na próxima vez que imprimir, já vem montado. Se o manual mudar de versão, o app mantém as páginas e avisa os passos novos que ficaram fora.</span></li>
+    <li><i>6</i><span><b>Responsivo</b>: no computador as páginas aparecem lado a lado; no celular, uma embaixo da outra, cada uma abre e fecha. Botões e alvos de toque com 44 px ou mais.</span></li>
   </ol></div>
 </section>
 
