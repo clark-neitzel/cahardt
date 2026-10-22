@@ -36,6 +36,7 @@ const embarqueRoutes = require('./routes/embarques'); // Módulo de Formação d
 const embarquesMapaRoutes = require('./routes/embarquesMapa'); // Mapa de divisão de cargas (Expedição)
 const entregasRoutes = require('./routes/entregas'); // Módulo Mobile do Entregador
 const despesasRoutes = require('./routes/despesas'); // Módulo de Despesas
+const despesaComprovanteRoutes = require('./routes/despesaComprovante'); // F2: comprovante da despesa (foto + IA)
 const caixaRoutes = require('./routes/caixa'); // Módulo Caixa Diário
 const cobrancasRotaRoutes = require('./routes/cobrancasRota'); // Cobrança em Rota (títulos cobrados pelo motorista/vendedor)
 const adminResetRoutes = require('./routes/adminReset'); // Reset Transacional (Admin)
@@ -194,6 +195,7 @@ app.use('/api/pagamentos-entrega', formasPagamentoEntregaRoutes); // Pagamentos 
 app.use('/api/embarques', embarquesMapaRoutes); // Mapa de divisão de cargas — ANTES do router clássico (senão /mapa cai no GET /:id)
 app.use('/api/embarques', embarqueRoutes); // Montagem Cargas e Despacho Logístico
 app.use('/api/entregas', entregasRoutes); // App Motorista
+app.use('/api/despesas', despesaComprovanteRoutes); // F2: precisa vir ANTES (rotas próprias, auth por rota)
 app.use('/api/despesas', despesasRoutes); // Módulo de Despesas
 app.use('/api/caixa', caixaRoutes); // Módulo Caixa Diário
 app.use('/api/cobrancas-rota', cobrancasRotaRoutes); // Cobrança em Rota (auth inside)

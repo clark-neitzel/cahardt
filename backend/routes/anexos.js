@@ -21,7 +21,9 @@ const { AnexoErro } = anexoService;
 
 // Permissões por tipo de entidade (F2 acrescenta DESPESA). Tipo sem regra = ninguém abre/escreve.
 const REGRAS = {
-    CONTA_PAGAR: { ver: 'Pode_Acessar_Contas_Pagar', escrever: 'Pode_Baixar_Contas_Pagar' }
+    CONTA_PAGAR: { ver: 'Pode_Acessar_Contas_Pagar', escrever: 'Pode_Baixar_Contas_Pagar' },
+    // F2: despesa do motorista. Escritório = Pode_Editar_Caixa/admin; o DONO da despesa também vê (e escreve antes do fechamento).
+    DESPESA: { ver: 'Pode_Editar_Caixa', escrever: 'Pode_Editar_Caixa' }
 };
 
 const erro = (res, status, mensagem, codigo) => res.status(status).json({ error: mensagem, codigo });
@@ -33,6 +35,17 @@ const pode = (req, tipoEntidade, acao) => {
     const regra = REGRAS[tipoEntidade];
     return !!(regra && perms[regra[acao]]);
 };
+
+/** Permissão sobre UM anexo. Despesa: dono da despesa (escrever só com o caixa aberto) ou escritório; demais: REGRAS. */
+async function podeNoAnexo(req, a, acao) {
+    if (pode(req, a.entidadeTipo, acao)) return { ok: true };
+    if (a.entidadeTipo !== 'DESPESA') return { ok: false };
+    const d = await prisma.despesa.findUnique({ where: { id: a.entidadeId }, select: { vendedorId: true, criadoPor: true, dataReferencia: true } });
+    if (!d || !(d.vendedorId === req.user.id || d.criadoPor === req.user.id)) return { ok: false };
+    if (acao === 'ver') return { ok: true };
+    const bloqueio = await require('../services/caixaConferenciaService').bloqueioPorCaixaFechado(d.vendedorId, d.dataReferencia);
+    return bloqueio ? { ok: false, mensagem: bloqueio } : { ok: true };
+}
 
 // nome do usuário (o token nem sempre traz)
 async function usuarioDe(req) {
@@ -137,7 +150,7 @@ router.get('/anexos/:id/arquivo', verificarAuth, async (req, res) => {
     try {
         const a = await anexoService.porId(req.params.id);
         if (!a || !a.ativo) return erro(res, 404, 'Anexo não encontrado.', 'NAO_ENCONTRADO');
-        if (!pode(req, a.entidadeTipo, 'ver')) return erro(res, 403, 'Sem permissão para abrir este anexo.', 'SEM_PERMISSAO');
+        if (!(await podeNoAnexo(req, a, 'ver')).ok) return erro(res, 403, 'Sem permissão para abrir este anexo.', 'SEM_PERMISSAO');
         const { stream } = anexoService.abrirStream(a);
         res.setHeader('Content-Type', a.mime);
         res.setHeader('Content-Disposition', `inline; filename*=UTF-8''${encodeURIComponent(a.nomeOriginal)}`);
@@ -161,7 +174,8 @@ router.patch('/anexos/:id', verificarAuth, async (req, res) => {
     try {
         const a = await anexoService.porId(req.params.id);
         if (!a || !a.ativo) return erro(res, 404, 'Anexo não encontrado.', 'NAO_ENCONTRADO');
-        if (!pode(req, a.entidadeTipo, 'escrever')) return erro(res, 403, 'Sem permissão para alterar anexos.', 'SEM_PERMISSAO');
+        const pAlt = await podeNoAnexo(req, a, 'escrever');
+        if (!pAlt.ok) return erro(res, 403, pAlt.mensagem || 'Sem permissão para alterar anexos.', 'SEM_PERMISSAO');
         const novo = await anexoService.alterarTipo(a.id, String(req.body?.tipo || '').toUpperCase());
         const usuario = await usuarioDe(req);
         res.json({ anexo: anexoService.formatar(novo, { usuario, podeEscrever: true }) });
@@ -177,9 +191,11 @@ router.delete('/anexos/:id', verificarAuth, async (req, res) => {
     try {
         const a = await anexoService.porId(req.params.id);
         if (!a || !a.ativo) return erro(res, 404, 'Anexo não encontrado.', 'NAO_ENCONTRADO');
-        if (!pode(req, a.entidadeTipo, 'escrever')) return erro(res, 403, 'Sem permissão para remover anexos.', 'SEM_PERMISSAO');
+        const pRem = await podeNoAnexo(req, a, 'escrever');
+        if (!pRem.ok) return erro(res, 403, pRem.mensagem || 'Sem permissão para remover anexos.', 'SEM_PERMISSAO');
         const usuario = await usuarioDe(req);
-        if (!usuario.admin && !a.chaveLegado && a.criadoPorId !== usuario.id) {
+        // despesa: dono/escritório já passaram na regra acima (sem o "só o autor" da conta a pagar)
+        if (a.entidadeTipo !== 'DESPESA' && !usuario.admin && !a.chaveLegado && a.criadoPorId !== usuario.id) {
             return erro(res, 403, 'Só quem anexou o arquivo (ou o administrador) pode removê-lo.', 'SO_AUTOR_OU_ADMIN');
         }
         let pdfPathZerado = false;
@@ -192,7 +208,8 @@ router.delete('/anexos/:id', verificarAuth, async (req, res) => {
                 console.error('[Anexos] não limpou pdfPath legado:', e.message);
             }
         }
-        const r = await anexoService.remover(a, usuario);
+        const r = await anexoService.remover(a, usuario, { manterArquivo: a.entidadeTipo === 'DESPESA' }); // despesa: arquivo fica (trilha)
+        if (a.entidadeTipo === 'DESPESA') await require('../services/cupomDespesaService').aoRemoverAnexo(a); // nunca lança
         res.json({ message: 'Anexo removido.', removido: true, arquivoApagado: r.arquivoApagado, pdfPathZerado });
     } catch (e) {
         console.error('[Anexos] DELETE:', e);

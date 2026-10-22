@@ -1,9 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, Save, AlertTriangle } from 'lucide-react';
 import api from '../../services/api';
+import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
 import SelectBusca from '../../components/SelectBusca';
 import CampoNumero from '../../components/CampoNumero';
+import comprimirFoto from '../../utils/comprimirFoto';
+import { useComprovanteDespesa, SecaoComprovante } from './ComprovanteDespesa';
 
 const CATEGORIAS = [
     { value: 'MERCADORIA_EMPRESA', label: 'Mercadoria da Empresa' },
@@ -40,6 +43,9 @@ const NovaDespesaModal = ({ onClose, onSaved, vendedorId, dataReferencia, despes
     const { user: authUser } = useAuth();
     const isAdmin = !!authUser?.permissoes?.admin;
     const podeEditarVeiculos = isAdmin || !!authUser?.permissoes?.Pode_Editar_Veiculos;
+    const travaRef = useRef(false); // duplo toque em Salvar
+    const comp = useComprovanteDespesa({ categoria, valor, dataReferencia, litros, veiculoId });
+    const jaTemComprovante = !!despesaEditando && (despesaEditando.comprovante?.qtdAnexos > 0 || !!despesaEditando.comprovante?.status && despesaEditando.comprovante.status !== 'SEM_COMPROVANTE');
 
     useEffect(() => {
         api.get('/veiculos').then(res => setVeiculos(res.data || [])).catch(() => { });
@@ -135,6 +141,19 @@ const NovaDespesaModal = ({ onClose, onSaved, vendedorId, dataReferencia, despes
             }
         }
 
+        // Foto do recibo/nota: obrigatória (ou "não tenho comprovante" + motivo). Só a falta da
+        // escolha impede salvar; problema na leitura da IA NUNCA impede (modo teste).
+        const exigeComprovante = !despesaEditando; // editar despesa existente nunca exige foto/motivo
+        if (exigeComprovante && !comp.arquivo && !(comp.semComprovante && comp.motivoSem.trim().length >= 5)) {
+            alert(comp.semComprovante
+                ? 'Escreva o motivo de não ter o comprovante (pelo menos 5 letras).'
+                : 'Mande a foto do recibo ou da nota. Se não tiver, toque em "Não tenho comprovante".');
+            return;
+        }
+
+        if (travaRef.current) return;
+        travaRef.current = true;
+        let enviarDepois = false;
         try {
             setSaving(true);
             const dados = {
@@ -155,10 +174,42 @@ const NovaDespesaModal = ({ onClose, onSaved, vendedorId, dataReferencia, despes
                 dados.tipoManutencao = tipoManutencao || null;
             }
 
+            // Comprovante: espera a leitura em andamento (até ~25 s) ou refaz uma vez se a rede falhou.
+            if (comp.arquivo) {
+                let r = comp.analise;
+                if (comp.analisando && comp.promRef.current) {
+                    r = await Promise.race([comp.promRef.current, new Promise((res) => setTimeout(() => res(null), 25000))]);
+                } else if (!r && comp.podeAnalisar) {
+                    r = await comp.analisar();
+                }
+                if (r?.comprovanteRef) dados.comprovanteRef = r.comprovanteRef;
+                else enviarDepois = true; // sem referência: a foto sobe depois pela rota própria
+            } else if (comp.semComprovante) {
+                dados.semComprovanteMotivo = comp.motivoSem.trim();
+            }
+
+            let idSalvo = despesaEditando?.id || null;
+            let respSalvo = null;
             if (despesaEditando) {
-                await api.put(`/despesas/${despesaEditando.id}`, dados);
+                respSalvo = await api.put(`/despesas/${despesaEditando.id}`, dados);
             } else {
-                await api.post('/despesas', dados);
+                respSalvo = await api.post('/despesas', dados);
+                idSalvo = respSalvo?.data?.id || respSalvo?.data?.despesa?.id || null;
+            }
+            // Referência ruim/expirada não dá erro: a despesa salva sem comprovante e o servidor avisa.
+            if (respSalvo?.data?.comprovanteErro && comp.arquivo) enviarDepois = true;
+
+            // Foto nunca é descartada em silêncio: sem comprovanteRef, sobe agora pela rota da despesa.
+            if (enviarDepois && comp.arquivo) {
+                const msgFalha = 'Despesa salva. A foto não subiu, tente de novo na lista de despesas.';
+                if (!idSalvo) {
+                    toast.error(msgFalha, { duration: 7000 });
+                } else {
+                    const form = new FormData();
+                    form.append('arquivo', comp.arquivo);
+                    api.post(`/despesas/${idSalvo}/comprovante`, form, { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 120000 })
+                        .catch(() => toast.error(msgFalha, { duration: 7000 }));
+                }
             }
 
             onSaved();
@@ -166,6 +217,7 @@ const NovaDespesaModal = ({ onClose, onSaved, vendedorId, dataReferencia, despes
             console.error('Erro ao salvar despesa:', error);
             alert(error.response?.data?.error || 'Erro ao salvar despesa.');
         } finally {
+            travaRef.current = false;
             setSaving(false);
         }
     };
@@ -334,6 +386,18 @@ const NovaDespesaModal = ({ onClose, onSaved, vendedorId, dataReferencia, despes
                         />
                     </div>
 
+                    {/* Foto do recibo ou da nota */}
+                    {categoria && !bloqueadoSemVeiculo && (
+                        <SecaoComprovante
+                            c={comp}
+                            comprimir={comprimirFoto}
+                            obrigatorio={!despesaEditando}
+                            jaTemComprovante={jaTemComprovante}
+                            digitado={{ valor, data: dataReferencia, litros, mostrarLitros: categoria === 'COMBUSTIVEL' }}
+                            onCorrigir={(c) => { if (c.valor != null) setValor(String(c.valor)); if (c.litros != null) setLitros(String(c.litros)) }}
+                        />
+                    )}
+
                     {/* Descrição */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
@@ -348,13 +412,13 @@ const NovaDespesaModal = ({ onClose, onSaved, vendedorId, dataReferencia, despes
 
                     {/* Botões */}
                     <div className="flex justify-end gap-3 pt-2">
-                        <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                        <button type="button" onClick={onClose} className="px-4 py-2 min-h-[44px] text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
                             Cancelar
                         </button>
                         <button
                             type="submit"
                             disabled={saving || erroKm || bloqueadoSemVeiculo}
-                            className={`px-4 py-2 text-sm font-medium text-white rounded-md flex items-center gap-2 ${alertaPreco && !confirmandoPreco ? 'bg-orange-500 hover:bg-orange-600' : 'bg-primary hover:bg-primary-dark'} disabled:opacity-50`}
+                            className={`px-4 py-2 min-h-[44px] text-sm font-medium text-white rounded-md flex items-center gap-2 ${alertaPreco && !confirmandoPreco ? 'bg-orange-500 hover:bg-orange-600' : 'bg-primary hover:bg-primary-dark'} disabled:opacity-50`}
                         >
                             <Save className="h-4 w-4" />
                             {saving ? 'Salvando...' : alertaPreco && !confirmandoPreco ? 'Confirmar mesmo assim' : 'Salvar'}

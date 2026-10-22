@@ -1,5 +1,11 @@
 [
   {
+    "slug": "comprovante-despesa",
+    "titulo": "Foto do comprovante em toda despesa",
+    "resumo": "Toda despesa do motorista agora leva a foto do cupom, nota ou recibo. O app lê o documento e confere valor, data, litros e fornecedor com o que foi digitado; se não bater, só avisa e salva. O escritório vê o selo no Caixa e aceita com motivo.",
+    "data": "2026-10-22"
+  },
+  {
     "slug": "pix-vira-nota",
     "titulo": "Pedido especial pago com Pix vira pedido com nota a emitir",
     "resumo": "Pedido ESPECIAL pago por Pix vira pedido normal e fica pendente para o escritório emitir a NF-e. O motorista vê um aviso e confirma; quem não quer nota paga em dinheiro. O escritório confere o valor no extrato antes de emitir.",

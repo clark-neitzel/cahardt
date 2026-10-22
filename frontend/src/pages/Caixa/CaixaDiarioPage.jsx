@@ -953,6 +953,16 @@ const CaixaDiarioPage = () => {
                             R$ {Number(resumo.totalDespesas || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                         </p>
                         <p className="text-xs text-gray-500 mt-1">{resumo.despesas?.length || 0} lançamentos</p>
+                        {(() => {
+                            const pend = (resumo.despesas || []).filter(d => ['DIVERGENTE', 'RECUSADA', 'IA_INDISPONIVEL', 'SEM_COMPROVANTE'].includes(d.comprovante?.status || 'SEM_COMPROVANTE'));
+                            const comRegistro = (resumo.despesas || []).some(d => d.comprovante);
+                            if (!comRegistro || pend.length === 0) return null;
+                            return (
+                                <p className="text-xs font-semibold text-amber-700 mt-1">
+                                    {pend.length} {pend.length === 1 ? 'despesa precisa' : 'despesas precisam'} de conferência do comprovante
+                                </p>
+                            );
+                        })()}
                     </div>
 
                     {/* Card Entregas */}

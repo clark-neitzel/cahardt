@@ -6,6 +6,9 @@ const uploadVeiculo = require('../middlewares/uploadVeiculoMiddleware');
 const prisma = require('../config/database'); // singleton compartilhado (pool único)
 const checklistSvc = require('../services/checklistVeiculoService');
 const { receberFoto } = require('../middlewares/uploadFotoChecklistMiddleware');
+// F2: comprovante do abastecimento (foto opcional aqui). Só marca e avisa; falha dele nunca desfaz o abastecimento.
+const cupomService = require('../services/cupomDespesaService');
+const usuarioComprovante = (req) => ({ id: req.user.id, nome: req.user.nome || null, admin: req.user?.permissoes?.admin === true });
 
 // Executa handler convertendo ErroChecklist em { error, codigo }
 const rotaChecklist = (fn) => async (req, res) => {
@@ -247,7 +250,7 @@ router.post('/:id/uso-manual', authMiddleware, async (req, res) => {
 // Registrar abastecimento manual (a partir da ficha do veículo)
 router.post('/:id/abastecimento', authMiddleware, async (req, res) => {
     try {
-        const { dataReferencia, litros, valor, kmNoAbastecimento, descricao, vendedorId } = req.body;
+        const { dataReferencia, litros, valor, kmNoAbastecimento, descricao, vendedorId, comprovanteRef, semComprovanteMotivo } = req.body;
 
         if (!dataReferencia || !valor) {
             return res.status(400).json({ error: 'Data e valor são obrigatórios.' });
@@ -289,7 +292,11 @@ router.post('/:id/abastecimento', authMiddleware, async (req, res) => {
             include: { veiculo: { select: { placa: true, modelo: true } } }
         });
 
-        res.status(201).json(despesa);
+        // F2: despesa já salva; comprovante é depois e nunca lança
+        const reg = await cupomService.registrarParaDespesa({ despesa, comprovanteRef, semComprovanteMotivo, usuario: usuarioComprovante(req) });
+        const resumo = (await cupomService.resumoPorDespesas([despesa.id])).get(despesa.id) || null;
+
+        res.status(201).json({ ...despesa, comprovante: resumo, comprovanteErro: reg.comprovanteErro || null });
     } catch (error) {
         console.error('Erro ao registrar abastecimento:', error);
         res.status(500).json({ error: 'Erro ao registrar abastecimento.' });
@@ -380,7 +387,7 @@ router.delete('/:id/uso-manual/:diarioId', authMiddleware, async (req, res) => {
 // Editar abastecimento manual
 router.put('/:id/abastecimento/:despesaId', authMiddleware, async (req, res) => {
     try {
-        const { dataReferencia, litros, valor, kmNoAbastecimento, descricao } = req.body;
+        const { dataReferencia, litros, valor, kmNoAbastecimento, descricao, comprovanteRef } = req.body;
 
         if (!dataReferencia || !valor) {
             return res.status(400).json({ error: 'Data e valor são obrigatórios.' });
@@ -424,7 +431,17 @@ router.put('/:id/abastecimento/:despesaId', authMiddleware, async (req, res) => 
             include: { veiculo: { select: { placa: true, modelo: true } } }
         });
 
-        res.json(despesa);
+        // F2: troca de foto ou recálculo com a leitura já guardada (sem IA); nunca lança
+        let comprovanteErro = null;
+        if (comprovanteRef) {
+            const reg = await cupomService.registrarParaDespesa({ despesa, comprovanteRef, usuario: usuarioComprovante(req), substituir: true });
+            comprovanteErro = reg.comprovanteErro || null;
+        } else {
+            await cupomService.recalcularParaDespesa(despesa);
+        }
+        const resumo = (await cupomService.resumoPorDespesas([despesa.id])).get(despesa.id) || null;
+
+        res.json({ ...despesa, comprovante: resumo, comprovanteErro });
     } catch (error) {
         console.error('Erro ao editar abastecimento:', error);
         res.status(500).json({ error: 'Erro ao editar abastecimento.' });
@@ -437,6 +454,7 @@ router.delete('/:id/abastecimento/:despesaId', authMiddleware, async (req, res) 
         await prisma.despesa.delete({
             where: { id: req.params.despesaId }
         });
+        await cupomService.aoExcluirDespesa(req.params.despesaId, usuarioComprovante(req)); // nunca lança
         res.json({ ok: true });
     } catch (error) {
         console.error('Erro ao excluir abastecimento:', error);

@@ -4,6 +4,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import despesaService from '../../services/despesaService';
 import api from '../../services/api';
 import NovaDespesaModal from './NovaDespesaModal';
+import { SeloComprovante, PainelComprovanteDespesa } from './ComprovanteDespesa';
 import { Plus, Trash2, Edit, Fuel, Hotel, Wrench, DollarSign, ReceiptText, CircleEllipsis, ArrowLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -53,18 +54,27 @@ const DespesasPage = () => {
     const [showModal, setShowModal] = useState(false);
     const [despesaEditando, setDespesaEditando] = useState(null);
     const [veiculoDoDia, setVeiculoDoDia] = useState(null);
+    const [compPorId, setCompPorId] = useState({}); // { despesaId: comprovante } vindo do resumo do Caixa
+    const [verComprovante, setVerComprovante] = useState(null);
 
     // Persistir filtros na sessão sempre que mudarem
     useEffect(() => {
         sessionStorage.setItem(SESSION_KEY, JSON.stringify({ data, vendedorId }));
     }, [data, vendedorId]);
 
+    const fetchResumoDia = () => api.get('/caixa/resumo', { params: { data, vendedorId } })
+        .then(res => {
+            setVeiculoDoDia(res.data?.diario?.veiculoId || null);
+            const m = {};
+            (res.data?.despesas || []).forEach(x => { if (x?.id) m[x.id] = x.comprovante || null; });
+            setCompPorId(m);
+        })
+        .catch(() => { setVeiculoDoDia(null); setCompPorId({}); });
+
     useEffect(() => {
         if (vendedorId && data) {
             fetchDespesas();
-            api.get('/caixa/resumo', { params: { data, vendedorId } })
-                .then(res => setVeiculoDoDia(res.data?.diario?.veiculoId || null))
-                .catch(() => setVeiculoDoDia(null));
+            fetchResumoDia();
         }
     }, [vendedorId, data]);
 
@@ -92,7 +102,7 @@ const DespesasPage = () => {
     };
 
     const handleEdit = (despesa) => {
-        setDespesaEditando(despesa);
+        setDespesaEditando({ ...despesa, comprovante: despesa.comprovante ?? compPorId[despesa.id] ?? null });
         setShowModal(true);
     };
 
@@ -101,6 +111,7 @@ const DespesasPage = () => {
         setDespesaEditando(null);
         toast.success(despesaEditando ? 'Despesa atualizada!' : 'Despesa criada!');
         fetchDespesas();
+        fetchResumoDia();
     };
 
     const handleVoltar = () => {
@@ -209,6 +220,7 @@ const DespesasPage = () => {
                                             {d.categoria === 'COMBUSTIVEL' && d.litros && `${d.litros}L`}
                                             {d.categoria === 'COMBUSTIVEL' && d.kmNoAbastecimento && ` • ${d.kmNoAbastecimento} km`}
                                             {d.categoria === 'MANUTENCAO_VEICULO' && d.tipoManutencao && d.tipoManutencao}
+                                            <div className="mt-1"><SeloComprovante comprovante={d.comprovante !== undefined ? d.comprovante : compPorId[d.id]} onClick={() => setVerComprovante(d)} /></div>
                                         </td>
                                         <td className="px-6 py-3 text-sm font-bold text-gray-900 text-right">
                                             R$ {Number(d.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
@@ -253,7 +265,7 @@ const DespesasPage = () => {
                                         <div className={`p-2 rounded-full ${cat.color}`}>
                                             <Icon className="h-5 w-5" />
                                         </div>
-                                        <div>
+                                        <div className="min-w-0">
                                             <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${cat.color}`}>
                                                 {cat.label}
                                             </span>
@@ -266,6 +278,7 @@ const DespesasPage = () => {
                                                 {d.categoria === 'COMBUSTIVEL' && d.kmNoAbastecimento && ` • ${d.kmNoAbastecimento} km`}
                                                 {d.categoria === 'MANUTENCAO_VEICULO' && d.tipoManutencao && ` • ${d.tipoManutencao}`}
                                             </p>
+                                            <div className="mt-1"><SeloComprovante comprovante={d.comprovante !== undefined ? d.comprovante : compPorId[d.id]} onClick={() => setVerComprovante(d)} /></div>
                                         </div>
                                     </div>
                                     <div className="text-right">
@@ -287,6 +300,15 @@ const DespesasPage = () => {
                     })
                 )}
             </div>
+
+            {verComprovante && (
+                <PainelComprovanteDespesa
+                    despesa={verComprovante}
+                    dataReferencia={data}
+                    onClose={() => setVerComprovante(null)}
+                    onChanged={fetchResumoDia}
+                />
+            )}
 
             {showModal && (
                 <NovaDespesaModal

@@ -252,12 +252,14 @@ function arquivoExiste(anexo) {
 }
 
 // ── remover (soft) ──────────────────────────────────────────────────────────────
-async function remover(anexo, usuario) {
+/** manterArquivo: trilha de auditoria (comprovante de despesa) — só desativa o registro, o arquivo fica no disco. */
+async function remover(anexo, usuario, { manterArquivo = false } = {}) {
     await prisma.anexo.update({
         where: { id: anexo.id },
         data: { ativo: false, removidoEm: new Date(), removidoPorId: usuario?.id || null }
     });
     let arquivoApagado = false;
+    if (manterArquivo) return { arquivoApagado };
     try {
         const outras = await prisma.anexo.count({ where: { caminho: anexo.caminho, ativo: true } });
         if (outras === 0) {
@@ -448,5 +450,7 @@ module.exports = {
     AnexoErro, corrigirNome, TIPOS, ENTIDADES, LIMITE_BYTES, TMP_DIR,
     salvar, listar, porId, abrirStream, arquivoExiste, remover, alterarTipo, formatar,
     espelharPdfLegado, desativarEspelhoPdfLegado, garantirEspelhoDaConta, migrarPdfLegado,
-    resumoPorContas, idsContasComAnexo
+    resumoPorContas, idsContasComAnexo,
+    // F2 (comprovante da despesa) reaproveita a validação por conteúdo
+    detectarPeloConteudo, lerCabecalho, sha256DoArquivo, CANONICO, MIMES_DECLARADOS
 };

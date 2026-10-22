@@ -4,6 +4,15 @@ const prisma = require('../config/database'); // singleton compartilhado (pool �
 const verificarAuth = require('../middlewares/authMiddleware');
 // Caixa fechado não se altera (08/2026) — a trava só vale com a chave ligada.
 const confService = require('../services/caixaConferenciaService');
+// F2: comprovante da despesa (foto + leitura da IA). Só marca e avisa: nunca trava nem desfaz a despesa.
+const cupomService = require('../services/cupomDespesaService');
+
+const usuarioComprovante = (req) => ({ id: req.user.id, nome: req.user.nome || null, admin: req.user?.permissoes?.admin === true });
+// motivo de "sem comprovante": se veio o campo, tem que ter pelo menos 5 letras (campo ausente = app antigo, segue sem foto)
+const motivoSemComprovanteInvalido = (b) =>
+    b.semComprovanteMotivo !== undefined && b.semComprovanteMotivo !== null && !b.comprovanteRef
+    && String(b.semComprovanteMotivo).replace(/\s/g, '').length < 5;
+const MSG_MOTIVO_SEM_COMPROVANTE = 'Informe o motivo de não ter o comprovante (mínimo 5 letras).';
 
 // ── Helpers ──
 const getPerms = async (userId) => {
@@ -52,7 +61,9 @@ router.get('/', async (req, res) => {
             orderBy: { createdAt: 'asc' }
         });
 
-        res.json(despesas);
+        // F2: resumo do comprovante por despesa (falha -> null; a lista nunca quebra por isso)
+        const resumos = await cupomService.resumoPorDespesas(despesas.map((d) => d.id));
+        res.json(despesas.map((d) => ({ ...d, comprovante: resumos.get(d.id) || null })));
     } catch (error) {
         console.error('Erro ao listar despesas:', error);
         res.status(500).json({ error: 'Erro ao listar despesas.' });
@@ -62,11 +73,12 @@ router.get('/', async (req, res) => {
 // ── POST / — Criar despesa ──
 router.post('/', async (req, res) => {
     try {
-        const { vendedorId, dataReferencia, categoria, descricao, valor, veiculoId, litros, kmNoAbastecimento, tipoManutencao } = req.body;
+        const { vendedorId, dataReferencia, categoria, descricao, valor, veiculoId, litros, kmNoAbastecimento, tipoManutencao, comprovanteRef, semComprovanteMotivo } = req.body;
 
         if (!dataReferencia || !categoria || valor === undefined) {
             return res.status(400).json({ error: 'Campos obrigatórios: dataReferencia, categoria, valor.' });
         }
+        if (motivoSemComprovanteInvalido(req.body)) return res.status(400).json({ error: MSG_MOTIVO_SEM_COMPROVANTE, codigo: 'MOTIVO_OBRIGATORIO' });
 
         // Validar KM de combustível: obrigatório e deve ser maior que o último
         if (categoria === 'COMBUSTIVEL' && veiculoId) {
@@ -111,7 +123,11 @@ router.post('/', async (req, res) => {
             include: { veiculo: { select: { placa: true, modelo: true } } }
         });
 
-        res.status(201).json(despesa);
+        // F2: a despesa JÁ está salva. Comprovante é depois, fora de transação, e falha dele nunca desfaz nada.
+        const reg = await cupomService.registrarParaDespesa({ despesa, comprovanteRef, semComprovanteMotivo, usuario: usuarioComprovante(req) });
+        const resumo = (await cupomService.resumoPorDespesas([despesa.id])).get(despesa.id) || null;
+
+        res.status(201).json({ ...despesa, comprovante: resumo, comprovanteErro: reg.comprovanteErro || null });
     } catch (error) {
         console.error('Erro ao criar despesa:', error);
         res.status(500).json({ error: 'Erro ao criar despesa.' });
@@ -148,8 +164,9 @@ router.put('/:id', async (req, res) => {
         const bloqueioEdit = await confService.bloqueioPorCaixaFechado(despesa.vendedorId, despesa.dataReferencia);
         if (bloqueioEdit) return res.status(400).json({ error: bloqueioEdit });
 
-        const { categoria, descricao, valor, veiculoId, litros, kmNoAbastecimento, tipoManutencao } = req.body;
+        const { categoria, descricao, valor, veiculoId, litros, kmNoAbastecimento, tipoManutencao, comprovanteRef, semComprovanteMotivo } = req.body;
         const catFinal = categoria || despesa.categoria;
+        if (motivoSemComprovanteInvalido(req.body)) return res.status(400).json({ error: MSG_MOTIVO_SEM_COMPROVANTE, codigo: 'MOTIVO_OBRIGATORIO' });
 
         // Validar KM de combustível na edição
         if (catFinal === 'COMBUSTIVEL' && veiculoId) {
@@ -186,7 +203,23 @@ router.put('/:id', async (req, res) => {
             include: { veiculo: { select: { placa: true, modelo: true } } }
         });
 
-        res.json(updated);
+        // F2: comprovante (despesa já atualizada; nada abaixo desfaz nem bloqueia a edição)
+        let comprovanteErro = null;
+        if (comprovanteRef) {
+            const reg = await cupomService.registrarParaDespesa({ despesa: updated, comprovanteRef, usuario: usuarioComprovante(req), substituir: true });
+            comprovanteErro = reg.comprovanteErro || null;
+        } else if (semComprovanteMotivo !== undefined && semComprovanteMotivo !== null) {
+            // só vale se a despesa ainda não tem foto (não apaga comprovante existente)
+            try {
+                const tem = await prisma.anexo.count({ where: { entidadeTipo: 'DESPESA', entidadeId: id, tipo: 'COMPROVANTE', ativo: true } });
+                if (!tem) await cupomService.registrarParaDespesa({ despesa: updated, semComprovanteMotivo, usuario: usuarioComprovante(req) });
+            } catch (e) { console.error('[Despesas] motivo sem comprovante não gravado:', e.message); }
+        } else if (['valor', 'litros', 'veiculoId', 'categoria'].some((k) => req.body[k] !== undefined)) {
+            await cupomService.recalcularParaDespesa(updated); // refaz a comparação com a leitura já guardada (sem IA)
+        }
+        const resumo = (await cupomService.resumoPorDespesas([id])).get(id) || null;
+
+        res.json({ ...updated, comprovante: resumo, comprovanteErro });
     } catch (error) {
         console.error('Erro ao editar despesa:', error);
         res.status(500).json({ error: 'Erro ao editar despesa.' });
@@ -222,6 +255,7 @@ router.delete('/:id', async (req, res) => {
         if (bloqueioDel) return res.status(400).json({ error: bloqueioDel });
 
         await prisma.despesa.delete({ where: { id } });
+        await cupomService.aoExcluirDespesa(id, usuarioComprovante(req)); // solta comprovante (nunca lança)
         res.json({ ok: true });
     } catch (error) {
         console.error('Erro ao excluir despesa:', error);

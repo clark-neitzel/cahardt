@@ -203,6 +203,18 @@ O cartão **Títulos Recebidos** aparece quando alguém quitou um título **em d
 3. Informe valor e descrição
 4. Salve — a despesa é vinculada ao caixa do dia
 
+### Comprovante da despesa (foto do cupom/nota/recibo) — MODO TESTE: só marca e avisa
+- Toda despesa deve ter a **foto do comprovante** (cupom fiscal, nota ou recibo). Se não houver, escolha **"Sem comprovante"** e escreva o motivo (mínimo 5 letras).
+- Ao enviar a foto, o sistema **lê o documento** (tipo, valor, data, nome e CNPJ do fornecedor, número; no combustível também litros) e **confere** com o que foi digitado: valor (diferença de até R$ 0,05 passa), data do documento x dia da despesa, litros (até 0,5 L), litros x tamanho do tanque do veículo, e se o fornecedor combina com a categoria (combustível = posto, manutenção = oficina/auto peças, pedágio = pedágio/balsa). Também avisa se o **mesmo cupom** já foi usado em outra despesa nos últimos 90 dias.
+- Resultado por despesa: **Conferida** (tudo bate), **Divergente** (algo não bate — a lista de motivos aparece), **Recusada** (foto ilegível ou não é um comprovante), **Leitura indisponível** (IA fora do ar ou PDF; o escritório confere), **Sem comprovante** (com o motivo) ou **Aceita** (o escritório aceitou mesmo assim).
+- **Nada trava**: a despesa **sempre salva**, mesmo divergente, sem foto ou com a leitura fora do ar. O valor a prestar do caixa **não muda** por causa do comprovante.
+- Quem fecha o caixa vê o selo de cada despesa e, se o fornecedor lido tem CNPJ cadastrado, a sugestão do fornecedor (a confirmação é do escritório).
+- **Aceitar** uma despesa divergente/sem comprovante: só `Pode_Editar_Caixa` ou admin, informando o motivo (mínimo 5 letras). Fica registrado quem aceitou e quando.
+- **Anexar/trocar a foto depois**: o dono da despesa enquanto o caixa estiver aberto; o escritório (`Pode_Editar_Caixa`/admin) a qualquer momento, inclusive com o caixa fechado (anexar a foto não muda dinheiro). Ao editar valor/litros da despesa, a conferência é refeita com a leitura já guardada.
+- A foto só abre por dentro do sistema (nunca por link público): dono da despesa, `Pode_Editar_Caixa` ou admin.
+- A mesma regra vale para o abastecimento lançado pela ficha do veículo (lá a foto é opcional).
+- O PDF do caixa **não mostra** a leitura da IA.
+
 ### Definir adiantamento
 1. No card de resumo, localize o campo **Adiantamento (R$)**
 2. Digite o valor e clique em **Salvar** (visível para `Pode_Definir_Adiantamento`, `Pode_Editar_Caixa` ou `admin`)

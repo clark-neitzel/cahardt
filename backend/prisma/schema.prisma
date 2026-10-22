@@ -5015,3 +5015,32 @@ model Anexo {
   @@index([sha256])
   @@map("anexos")
 }
+
+// F2 (despesas): leitura/conferência do comprovante (foto do cupom/nota/recibo) de uma despesa do motorista.
+// Tabela NOVA, sem relação com `despesas` (nenhuma coluna nova lá). Só marca e avisa — nunca trava o Caixa.
+model DespesaComprovante {
+  id                   String    @id @default(uuid())
+  despesaId            String    @unique @map("despesa_id")
+  anexoId              String?   @map("anexo_id")
+  status               String    @default("SEM_COMPROVANTE") // CONFERIDA | DIVERGENTE | RECUSADA | IA_INDISPONIVEL | SEM_COMPROVANTE | ACEITA
+  motivos              Json?
+  motivosAnteriores    Json? @map("motivos_anteriores") // trilha: motivos/status de antes de remover o comprovante
+  leitura              Json? // {valor,data,hora,litros,precoLitro,fornecedorNome,fornecedorCnpj,numero,tipoEstabelecimento,...}
+  tipoDocumento        String?   @map("tipo_documento") // CUPOM_FISCAL | NOTA_FISCAL | RECIBO | OUTRO
+  semComprovanteMotivo String?   @map("sem_comprovante_motivo")
+  cupomCnpj            String?   @map("cupom_cnpj")
+  cupomNumero          String?   @map("cupom_numero")
+  fornecedorNomeLido   String?   @map("fornecedor_nome_lido")
+  fornecedorCnpjLido   String?   @map("fornecedor_cnpj_lido")
+  fornecedorSugeridoId String?   @map("fornecedor_sugerido_id")
+  aceitaPorId          String?   @map("aceita_por_id")
+  aceitaPorNome        String?   @map("aceita_por_nome")
+  aceitaEm             DateTime? @map("aceita_em")
+  aceitaMotivo         String?   @map("aceita_motivo")
+  criadoEm             DateTime  @default(now()) @map("criado_em")
+  atualizadoEm         DateTime  @updatedAt @map("atualizado_em")
+
+  @@index([status])
+  @@index([cupomCnpj, cupomNumero])
+  @@map("despesa_comprovantes")
+}

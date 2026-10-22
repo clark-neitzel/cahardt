@@ -443,6 +443,10 @@ router.get('/resumo', async (req, res) => {
 
         const totalDespesas = despesas.reduce((sum, d) => sum + Number(d.valor), 0);
 
+        // F2: resumo do comprovante por despesa (só informativo: não entra em nenhuma conta; falha -> null)
+        const resumosComprovante = await require('../services/cupomDespesaService').resumoPorDespesas(despesas.map((d) => d.id));
+        const despesasComComprovante = despesas.map((d) => ({ ...d, comprovante: resumosComprovante.get(d.id) || null }));
+
         // 5. Buscar entregas do dia (via dataEntrega + embarque.responsavelId).
         //    inicioDia/fimDia vêm do intervalo do caixa (fim de semana entra na segunda).
 
@@ -978,7 +982,7 @@ router.get('/resumo', async (req, res) => {
             conferenciaDinheiro,
             diario: diarioInfo,
             mediaCombustivel3Meses: mediaCombustivel3Meses,
-            despesas,
+            despesas: despesasComComprovante,
             totalDespesas: Math.round(totalDespesas * 100) / 100,
             entregas: entregasFormatadas,
             contagens: {
