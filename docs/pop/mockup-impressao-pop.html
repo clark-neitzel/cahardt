@@ -24,7 +24,7 @@ section.tela{display:none}section.tela.on{display:block}
 .legenda{margin-top:14px;background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px 16px}
 .legenda h3{margin:0 0 8px;font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#4b5563}
 .legenda ol{margin:0;padding:0;list-style:none;display:grid;gap:8px}@media(min-width:800px){.legenda ol{grid-template-columns:1fr 1fr}}
-.legenda li{display:flex;gap:10px;font-size:13px;line-height:1.45}
+.legenda li{display:flex;gap:10px;font-size:13px;line-height:1.45}.legenda li span{min-width:0}
 .legenda li i,.pin{flex:none;width:22px;height:22px;border-radius:999px;background:var(--gold);color:#1E3932;font-style:normal;font-weight:800;font-size:12px;display:grid;place-items:center}
 .pin{position:absolute;box-shadow:0 1px 3px rgba(0,0,0,.3);z-index:5}
 .grid3{display:grid;gap:10px}@media(min-width:800px){.grid3{grid-template-columns:repeat(3,1fr)}}
@@ -73,6 +73,24 @@ section.tela{display:none}section.tela.on{display:block}
   .folha{box-shadow:none;margin:0;page-break-after:always;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   .scroller{overflow:visible;padding:0}
 }
+
+.modal5{max-width:560px;margin:0 auto 14px;background:#fff;border:1px solid var(--border);border-radius:18px;box-shadow:0 12px 40px rgba(0,0,0,.14);overflow:hidden;position:relative}
+.modal5 .mh{padding:14px 18px;border-bottom:1px solid var(--border);font-weight:800;font-size:16px;display:flex;gap:10px;align-items:center}
+.modal5 .mb{padding:14px 18px;display:grid;gap:12px}.modal5 .mf{padding:12px 18px;border-top:1px solid var(--border);background:#fafafa;display:flex;gap:8px;flex-wrap:wrap}
+.lb{font-size:12px;font-weight:800;color:#374151;margin-bottom:6px;display:block}
+.chips{display:flex;gap:6px;flex-wrap:wrap}.chip{border-radius:999px;padding:9px 15px;font-size:14px;font-weight:700;background:#f3f4f6;color:#374151;min-height:44px;display:inline-flex;align-items:center}.chip.on{background:var(--house);color:#fff}
+.aviso-ok{background:#ecfdf5;border:1px solid #a7f3d0;border-radius:10px;padding:10px 12px;font-size:13px;color:#065f46;line-height:1.45}
+.aviso-am{background:#fffbeb;border:1px solid #fcd34d;border-radius:10px;padding:10px 12px;font-size:13px;color:#92400e;line-height:1.45}
+.dist{display:flex;gap:8px}.dist div{flex:1;border:1px solid var(--border);border-radius:8px;padding:6px;font-size:12px;text-align:center;background:#fafafa}.dist div i{display:block;height:34px;border-radius:4px;margin-bottom:4px;background:repeating-linear-gradient(45deg,#e5e7eb 0 5px,#f3f4f6 5px 10px)}
+.viewer5{max-width:760px;margin:0 auto;background:#374151;border-radius:16px;overflow:hidden;position:relative}
+.viewer5 .vb{background:#1f2937;color:#fff;display:flex;gap:8px;align-items:center;padding:10px 12px;flex-wrap:wrap}
+.viewer5 .vb b{font-size:14px}.viewer5 .vb .sp{flex:1}
+.viewer5 .vb .bt{background:#fff;color:#111;border-radius:999px;padding:8px 14px;font-weight:800;font-size:13px;min-height:44px;display:inline-flex;align-items:center}
+.viewer5 .vb .bt.p{background:var(--primary);color:#fff}
+.viewer5 .vb .sm{background:#4b5563;color:#fff;border-radius:8px;width:44px;height:44px;display:grid;place-items:center;font-weight:800}
+.viewer5 .pg{padding:16px;display:grid;gap:12px;justify-items:center}
+.viewer5 .mini{width:min(300px,80%);aspect-ratio:210/297;background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.5);padding:10px;display:grid;gap:6px;align-content:start;font-size:9px;font-weight:800;color:#1E3932}
+.viewer5 .mini .h{background:#1E3932;color:#fff;padding:6px;font-size:10px}.viewer5 .mini .g{display:grid;grid-template-columns:1fr 1fr;gap:5px}.viewer5 .mini .g div{border:2px solid #1E3932;border-radius:5px;height:62px;padding:3px}
 </style>
 </head>
 <body>
@@ -87,6 +105,7 @@ section.tela{display:none}section.tela.on{display:block}
   <button data-t="t2">2 · Folha de fichário</button>
   <button data-t="t3">3 · Mais de uma foto por passo</button>
   <button data-t="t4">4 · Folha de registro (rotina)</button>
+  <button data-t="t5">5 · Escolher páginas e ver o PDF</button>
 </div></div>
 <main>
 
@@ -130,7 +149,7 @@ section.tela{display:none}section.tela.on{display:block}
     <li><i>2</i><span>Passo com 2 fotos (de frente / de lado): as fotos dividem a largura do cartão.</span></li>
     <li><i>3</i><span>Passo importante com 4 fotos em sequência ocupa a linha inteira, com número da foto no canto.</span></li>
     <li><i>4</i><span>Faixa vermelha fixa embaixo com "NÃO FAZER". Se houver passo de perigo, o cartão dele ganha moldura vermelha.</span></li>
-    <li><i>5</i><span>Cabem até 8 passos por folha. Conteúdo maior vira cartaz em 2 folhas ("pág. 1/2") ou o app sugere o formato fichário.</span></li>
+    <li><i>5</i><span>Cabem até 8 passos por folha com letra legível. <b>Você escolhe quantas páginas</b> (1 a 4) na tela de PDF (aba 5); se escolher pouco, o app avisa antes de gerar.</span></li>
     <li><i>6</i><span>Texto do cartaz é o <b>mesmo passo curto</b> que já existe no app; o "detalhe" (texto longo) só entra se sobrar espaço.</span></li>
   </ol></div>
 </section>
@@ -214,6 +233,53 @@ section.tela{display:none}section.tela.on{display:block}
     <li><i>1</i><span>Uma coluna por dia do mês e uma linha por item e horário. Escreve-se só o número (ex.: −15). Dia que não existe no mês (31) sai riscado.</span></li>
     <li><i>2</i><span>Cabeçalho e QR iguais ao padrão; a folha leva "versão" para saber se o texto é o vigente. O app pode <b>pré-preencher</b> com o que o tablet já registrou (opcional, escolhido na hora de imprimir).</span></li>
     <li><i>3</i><span>Só aparece para conteúdo do tipo Rotina com pergunta de número ou sim/não. Rotina "por evento" (sem horário fixo) sai com linhas em branco para anotar data e hora.</span></li>
+  </ol></div>
+</section>
+
+
+<!-- 5 -->
+<section class="tela" id="t5">
+  <div class="intro"><b>Escolher quantas páginas e ver o PDF.</b> Botão <b>📄 PDF</b> em cada conteúdo publicado. A pessoa escolhe o formato e <b>quantas páginas</b> o POP vai ter. Se o número escolhido não comporta o conteúdo, o app avisa <i>antes</i> de gerar e sugere o mínimo, para nunca sair folha ilegível. Depois abre o <b>visualizador dentro do app</b>, com Imprimir e Salvar PDF.</div>
+  <div class="grid3" style="margin-bottom:14px">
+    <div>
+      <div class="modal5">
+        <div class="mh">📄 PDF do manual <span style="font-weight:500;color:#6b7280;font-size:12px">Máquina · Fritadeira · 12 passos</span></div>
+        <div class="mb">
+          <div><span class="lb">Formato</span><div class="chips"><span class="chip on">Cartaz de parede</span><span class="chip">Folha de fichário</span></div></div>
+          <div style="position:relative"><span class="lb">Quantas páginas?</span><div class="chips"><span class="chip">Automático</span><span class="chip">1</span><span class="chip on">2</span><span class="chip">3</span><span class="chip">4</span></div><span class="pin" style="right:-6px;top:-4px">1</span></div>
+          <div class="aviso-ok" style="position:relative">✔ Cabe bem em <b>2 páginas</b>: 6 passos em cada, fotos grandes.<span class="pin" style="right:-6px;top:-8px">2</span></div>
+          <div class="dist"><div><i></i>pág. 1 · passos 1 a 6</div><div><i></i>pág. 2 · passos 7 a 12</div></div>
+          <label style="display:flex;gap:8px;align-items:center;font-size:13px;min-height:44px"><span style="width:22px;height:22px;border:2px solid var(--primary);border-radius:5px;background:var(--primary);color:#fff;display:grid;place-items:center;font-size:14px">✓</span>Começar cada bloco (Montar, Usar, Limpar, Problema) em página nova <span class="pin" style="position:static;margin-left:4px">3</span></label>
+        </div>
+        <div class="mf"><span class="btn" style="background:#f3f4f6;color:#374151;border-color:#e5e7eb">Cancelar</span><span class="btn" style="flex:1;justify-content:center;min-height:52px;font-size:15px">Ver o PDF</span></div>
+      </div>
+    </div>
+    <div>
+      <div class="modal5">
+        <div class="mh">📄 PDF do manual <span style="font-weight:500;color:#6b7280;font-size:12px">Máquina · Fritadeira · 12 passos</span></div>
+        <div class="mb">
+          <div><span class="lb">Formato</span><div class="chips"><span class="chip on">Cartaz de parede</span><span class="chip">Folha de fichário</span></div></div>
+          <div><span class="lb">Quantas páginas?</span><div class="chips"><span class="chip">Automático</span><span class="chip on">1</span><span class="chip">2</span><span class="chip">3</span><span class="chip">4</span></div></div>
+          <div class="aviso-am" style="position:relative">⚠ <b>Não cabe em 1 página.</b> O cartaz comporta até 8 passos por folha com letra legível; este manual tem 12. O mínimo é <b>2 páginas</b>.<span class="pin" style="right:-6px;top:-8px">4</span></div>
+        </div>
+        <div class="mf"><span class="btn" style="background:#f3f4f6;color:#374151;border-color:#e5e7eb">Cancelar</span><span class="btn" style="flex:1;justify-content:center;min-height:52px;font-size:15px">Usar 2 páginas</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="viewer5" style="position:relative">
+    <div class="vb"><b>HIG-001 · cartaz · v3</b><span class="sp"></span><span class="sm">−</span><span class="sm">+</span><span style="font-size:13px">pág. 1 / 2</span><span class="bt">Salvar PDF</span><span class="bt p">Imprimir</span></div>
+    <div class="pg"><div class="mini"><div class="h">HIGIENE E UNIFORME</div><div class="g"><div>1 Tire anel…</div><div>2 Vista o avental…</div><div>3 Prenda a touca</div><div>4 Calce sapato</div><div>5 Lave as mãos</div><div>6 Seque</div></div></div>
+    <span style="color:#d1d5db;font-size:12px">Deslize ou use as setas para a página seguinte · toque duas vezes para ampliar</span></div>
+    <span class="pin" style="right:10px;top:62px">5</span>
+  </div>
+  <div class="legenda"><h3>Legenda</h3><ol>
+    <li><i>1</i><span><b>Quantas páginas?</b> Automático (o app escolhe o mínimo bom) ou você decide: cartaz de 1 a 4, fichário de 1 a 6. Quanto mais páginas, maiores as fotos.</span></li>
+    <li><i>2</i><span>Mostra na hora como os passos se dividem (aqui 6 + 6, sem página quase vazia).</span></li>
+    <li><i>3</i><span>Para Máquina, opção de começar cada bloco numa página nova (Montar, Usar, Limpar, Problema), bom para colar cada um ao lado da parte da máquina.</span></li>
+    <li><i>4</i><span>Escolheu pouco? O app avisa antes de gerar e oferece o mínimo em um toque. Nunca imprime folha com letra miúda.</span></li>
+    <li><i>5</i><span><b>Visualizador dentro do app</b>: páginas em sequência, zoom, <b>Salvar PDF</b> e <b>Imprimir</b>. No computador a impressão abre normal. No <b>iPad</b> o botão abre a janela de compartilhar do iPad, onde se escolhe "Imprimir" ou "Salvar em Arquivos" (o iPad não deixa o aplicativo mandar direto para a impressora).</span></li>
+    <li><i>6</i><span>O PDF é montado no servidor em A4 real: sai igual no computador, no iPad e no celular, e o mesmo arquivo serve para a Vigilância.</span></li>
   </ol></div>
 </section>
 
