@@ -1,7 +1,7 @@
 # Nota de entrega — PDF do Como Fazer (etapa 1)
 
 > Pedido do dono em 22/10/2026: gerar PDF dos manuais para imprimir, escolhendo quantas páginas e quais passos vão em cada uma, em A4, funcionando no celular e no iPad, e com o botão de imprimir fácil de achar.
-> Veredito do gerente de entrega: **LIBERADO COM PENDÊNCIA** (itens que só se provam em produção e no iPad estão no fim). A seção "Conferido em produção" fica em branco até o deploy.
+> Veredito do gerente de entrega: **LIBERADO COM PENDÊNCIA** (itens que só se provam em produção e no iPad estão no fim). Publicado em 22/10/2026 (commit 90dfed9f). Conferência em produção abaixo.
 
 ## O que mudou (em termos de uso)
 
@@ -31,11 +31,11 @@
 
 ## Conferido em produção
 
-_(preencher depois do deploy)_
+Feito pelo gerente de projeto em 22/10/2026. O servidor subiu às 04:52 (reiniciou e respondeu com o marcador desta entrega, sem erro com a biblioteca de fotos nova). O app demorou mais e só entrou depois de uma segunda publicação (commit vazio 84ca3cc2); depois disso foi conferido:
 
-- [ ] Servidor novo no ar (marcador desta entrega respondendo)
-- [ ] Telas novas no ar (o app publicado contém o botão PDF / a tela de montar páginas)
-- [ ] Rota do PDF existe e pede login (sem login: "entre para continuar", não "não encontrado")
+- [x] **Servidor novo no ar** — respondeu com o marcador desta entrega e reiniciou sem erro.
+- [x] **Telas novas no ar** — o app publicado traz o botão PDF no editor e na lista, o modal com "Montar as páginas", "Fora das páginas" e "Ver o PDF", o visualizador (com Salvar PDF e Imprimir) e o arquivo de apoio do PDF.
+- [x] **Rotas do PDF pedem login** (sem login: "entre para continuar", não "não encontrado").
 - [ ] Tabela de arranjos criada no banco (o dono ou o gerente salva um arranjo e ele volta ao reabrir)
 - [ ] **Foto real no PDF (dono):** gerar um PDF de um manual que tenha foto enviada e conferir que a foto aparece (e não um quadro tracejado)
 - [ ] **QR do PDF abre o manual no endereço do sistema** (dono lê com o celular)
