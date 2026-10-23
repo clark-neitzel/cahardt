@@ -1,5 +1,11 @@
 [
   {
+    "slug": "mapa-cliente-pedido",
+    "titulo": "Mapa das entregas: abra o pedido e a ficha do cliente",
+    "resumo": "Clicou no pino? Agora o cartão tem o botão \"Dados do cliente\" (ficha completa, com ajuste do GPS) e dá para tocar no pedido para ver tudo dele, sem sair do mapa nem perder a divisão das cargas.",
+    "data": "2026-10-23"
+  },
+  {
     "slug": "comprovante-despesa",
     "titulo": "Foto do comprovante em toda despesa",
     "resumo": "Toda despesa do motorista agora leva a foto do cupom, nota ou recibo. O app lê o documento e confere valor, data, litros e fornecedor com o que foi digitado; se não bater, só avisa e salva. O escritório vê o selo no Caixa e aceita com motivo.",

@@ -3,13 +3,15 @@ import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Map as MapIcon, Loader2, Wand2, Route as RouteIcon, X, Truck, Printer, MapPinOff, MapPin, Eye, EyeOff, Lock, ArrowLeftRight, Trash2, AlertTriangle } from 'lucide-react';
+import { Map as MapIcon, Loader2, Wand2, Route as RouteIcon, X, Truck, Printer, MapPinOff, MapPin, Eye, EyeOff, Lock, ArrowLeftRight, Trash2, AlertTriangle, User, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import mapaExpedicaoService from '../../../services/mapaExpedicaoService';
 import SelectBusca from '../../../components/SelectBusca';
 import { useFiltrosSalvos, useFiltroSalvo } from '../../../hooks/useFiltrosSalvos';
 import FiltroPeriodo, { usePeriodoSalvo } from '../../../components/FiltroPeriodo';
 import CampoNumero from '../../../components/CampoNumero';
+import ClientePopup from '../../Rota/ClientePopup';                 // ficha do cliente (a mesma da Rota/Pedidos)
+import ModalPedidoConsulta from '../../Atendimentos/ModalPedidoConsulta'; // popup de consulta do pedido
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Mapa de divisão de cargas: a expedição vê TUDO que vai para a rua no dia —
@@ -246,6 +248,9 @@ export default function MapaExpedicao() {
     const [confirmandoApagar, setConfirmandoApagar] = useState(false); // aviso antes de apagar cobrança
     const [selecionado, setSelecionado] = useState(null); // chave do CLIENTE do pino clicado
     const [sheetAberta, setSheetAberta] = useState(false); // bottom-sheet no celular
+    const [fichaCliente, setFichaCliente] = useState(null); // { UUID, Nome } — ficha aberta pelo cartão do pino
+    const [pedidoAberto, setPedidoAberto] = useState(null); // item (pedido) aberto pelo cartão do pino
+    const [gpsAjustado, setGpsAjustado] = useState({});     // clienteId -> {lat,lng} salvo na ficha (só local; não recarrega o mapa)
     const requisicaoMapa = useRef(0);
     // Espelho do rascunho para uso DENTRO do `carregar` (que não pode depender dele:
     // entrar na lista de dependências recriaria o callback e o efeito rodaria em laço).
@@ -356,7 +361,11 @@ export default function MapaExpedicao() {
     const todas = useMemo(() => {
         const m = new Map();
         const add = (raw) => {
-            const it = normalizarItem(raw);
+            let it = normalizarItem(raw);
+            // ponto GPS salvo na ficha nesta sessão: vale para TODOS os itens do cliente
+            // (sai de "Sem localização" e entra nas estimativas sem recarregar o mapa)
+            const aj = it.clienteId ? gpsAjustado[it.clienteId] : null;
+            if (aj) it = { ...it, gps: aj, origemGps: 'gps' };
             if (!m.has(it.chave)) m.set(it.chave, it);
         };
         (dados?.entregas || []).forEach(add);
@@ -364,7 +373,7 @@ export default function MapaExpedicao() {
         (dados?.cobrancas || []).forEach(add);
         (dados?.semGps || []).forEach(add);
         return [...m.values()];
-    }, [dados]);
+    }, [dados, gpsAjustado]);
     const semLocalizacao = useMemo(() => todas.filter(e => !e.gps), [todas]);
 
     // ── Rascunho: onde cada item está AGORA na tela ──
@@ -429,6 +438,7 @@ export default function MapaExpedicao() {
                 });
             }
             const g = m.get(k);
+            if (!g.clienteId && p.clienteId) g.clienteId = p.clienteId;
             g.itens.push(p);
             if (!g.cidade && p.cidade) g.cidade = p.cidade;
             if (!g.endereco && p.endereco) g.endereco = p.endereco;
@@ -1171,6 +1181,11 @@ export default function MapaExpedicao() {
     }, [dados, gruposComPino, data]);
 
     // ── Peças de UI ──
+    const fecharPedido = useCallback(() => setPedidoAberto(null), []);
+    const resumoPedidoAberto = useMemo(() => pedidoAberto ? {
+        rotuloPedido: pedidoAberto.etiqueta || pedidoAberto.numero,
+        cliente: { Nome: pedidoAberto.clienteNome }
+    } : null, [pedidoAberto]);
     const sel = selecionado != null ? gruposCliente.find(g => g.chave === selecionado) : null;
     const focarCliente = useCallback((g) => {
         setSelecionado(g.chave);
@@ -1550,18 +1565,31 @@ export default function MapaExpedicao() {
 
                             {/* Item a item: tipo, etiqueta, valor (quando houver), cadeado */}
                             <div className="mb-2 divide-y divide-gray-100 max-h-40 overflow-y-auto">
-                                {sel.itens.map(i => (
-                                    <div key={i.chave} className="flex items-center gap-2 py-1.5">
-                                        {badgeTipo(i.tipoItem)}
-                                        <span className="text-xs text-gray-700 truncate flex-1">
-                                            {NOME_TIPO[i.tipoItem] || 'Item'}{i.etiqueta || i.numero ? ` ${i.etiqueta || i.numero}` : ''}
-                                        </span>
-                                        {i.valorTotal != null && (
-                                            <span className="text-xs font-semibold text-gray-700 shrink-0">{fmtBRL(i.valorTotal)}</span>
-                                        )}
-                                        {i.travado && <Lock className="h-3.5 w-3.5 text-gray-500 shrink-0" />}
-                                    </div>
-                                ))}
+                                {sel.itens.map(i => {
+                                    const abrivel = i.tipoPayload === 'pedido' && i.pedidoId != null;
+                                    const Linha = abrivel ? 'button' : 'div';
+                                    return (
+                                        <Linha
+                                            key={i.chave}
+                                            {...(abrivel ? {
+                                                type: 'button',
+                                                onClick: () => setPedidoAberto(i),
+                                                'aria-label': `Abrir ${NOME_TIPO[i.tipoItem] || 'pedido'} ${i.etiqueta || i.numero || ''}`.trim()
+                                            } : {})}
+                                            className={`flex items-center gap-2 py-1.5 w-full text-left ${abrivel ? 'min-h-[44px] md:min-h-0 hover:bg-gray-50 rounded-lg px-1 -mx-1' : ''}`}
+                                        >
+                                            {badgeTipo(i.tipoItem)}
+                                            <span className={`text-xs truncate flex-1 ${abrivel ? 'text-primaryDark font-semibold' : 'text-gray-700'}`}>
+                                                {NOME_TIPO[i.tipoItem] || 'Item'}{i.etiqueta || i.numero ? ` ${i.etiqueta || i.numero}` : ''}
+                                            </span>
+                                            {i.valorTotal != null && (
+                                                <span className="text-xs font-semibold text-gray-700 shrink-0">{fmtBRL(i.valorTotal)}</span>
+                                            )}
+                                            {i.travado && <Lock className="h-3.5 w-3.5 text-gray-500 shrink-0" />}
+                                            {abrivel && <ChevronRight className="h-4 w-4 text-gray-500 shrink-0" />}
+                                        </Linha>
+                                    );
+                                })}
                                 {selComValor.length > 1 && (
                                     <div className="flex items-center justify-between gap-2 py-1.5">
                                         <span className="text-xs text-gray-500">Total</span>
@@ -1573,6 +1601,15 @@ export default function MapaExpedicao() {
                             </div>
 
                             {sel.endereco && <p className="text-xs text-gray-500 mb-2">{sel.endereco}</p>}
+                            {sel.clienteId && (
+                                <button
+                                    type="button"
+                                    onClick={() => setFichaCliente({ UUID: sel.clienteId, Nome: sel.clienteNome || '' })}
+                                    className="mb-2 w-full min-h-[44px] md:min-h-0 px-4 py-2 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-sm flex items-center justify-center gap-1.5"
+                                >
+                                    <User className="h-4 w-4" /> Dados do cliente
+                                </button>
+                            )}
                             {sel.origemGps === 'endereco' && (
                                 <p className="text-[11px] text-gray-500 mb-2">
                                     📍 posição pelo endereço do cadastro (aproximada) — o ponto GPS ainda não foi confirmado
@@ -2069,6 +2106,15 @@ export default function MapaExpedicao() {
                                                 <p className="font-semibold text-gray-900 text-sm truncate">
                                                     {clienteNome || 'Cliente'}{cidade ? ` · ${cidade}` : ''}
                                                 </p>
+                                                {representante.clienteId && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setFichaCliente({ UUID: representante.clienteId, Nome: clienteNome || '' })}
+                                                        className="mt-2 w-full min-h-[44px] md:min-h-0 px-4 py-2 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-sm flex items-center justify-center gap-1.5"
+                                                    >
+                                                        <User className="h-4 w-4" /> Dados do cliente
+                                                    </button>
+                                                )}
 
                                                 {/* Itens sem posição, com o MOTIVO que o backend informou */}
                                                 <div className="mt-1.5 mb-2 space-y-1.5">
@@ -2113,6 +2159,37 @@ export default function MapaExpedicao() {
                     </div>
                 </div>
             </div>
+
+            {/* Popups por cima de tudo (mapa z Leaflet, cartão 1050, painel 1100). O wrapper
+                `relative z-[2000]` cria o contexto de empilhamento; os modais (fixed) ficam
+                dentro dele. Fechar não mexe em seleção/rascunho da divisão. */}
+            {(fichaCliente || pedidoAberto) && createPortal(
+                <div className="relative z-[2000]">
+                    {pedidoAberto && (
+                        <ModalPedidoConsulta
+                            pedidoId={pedidoAberto.pedidoId}
+                            resumo={resumoPedidoAberto}
+                            onClose={fecharPedido}
+                        />
+                    )}
+                    {fichaCliente && (
+                        <ClientePopup
+                            cliente={fichaCliente}
+                            onClose={() => setFichaCliente(null)}
+                            onAtualizado={(c) => {
+                                const m = String(c?.Ponto_GPS || '').match(/(-?\d+(?:[.,]\d+)?)\s*[, ]\s*(-?\d+(?:[.,]\d+)?)/);
+                                if (!m) return;
+                                const lat = parseFloat(m[1].replace(',', '.'));
+                                const lng = parseFloat(m[2].replace(',', '.'));
+                                if (Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180) {
+                                    setGpsAjustado(prev => ({ ...prev, [fichaCliente.UUID]: { lat, lng } }));
+                                }
+                            }}
+                        />
+                    )}
+                </div>,
+                document.body
+            )}
         </div>
     );
 }

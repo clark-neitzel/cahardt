@@ -116,6 +116,16 @@ Detalhes que valem a pena saber:
 - Cobrança **"não cobrada"** (o motorista tentou e não recebeu) continua aparecendo no mapa como **pino travado** **e conta no cartão da carga**, junto com "a cobrar", "cobrada" e "baixada": o cartão mostra **todas** as cobranças penduradas na carga, em qualquer situação. É o mesmo número da seção **"Cobranças na Carga"** do Painel de Expedição — os `$` do mapa e a contagem do cartão sempre batem. (Antes a "não cobrada" aparecia no mapa mas ficava de fora da contagem, e dava a impressão de erro. Ela conta porque **não é o fim da linha**: o escritório pode **desfazer** o registro e ela volta a "a cobrar" na mesma carga.)
 - **Registrar a versão e o histórico não trava o remanejo**: essa parte roda **depois** que a divisão já foi gravada e, se falhar, não desfaz nada. Num caso raro a nova divisão vale mesmo sem a versão ter subido — ou seja, sem o aviso âmbar de **"reimprimir"** aparecer. Se a carga mudou e a folha não avisou, confira o **Histórico da carga** antes de sair. (Mesma regra do Embarque: "Registrar a versão nunca trava a operação".)
 
+## Clicou no pino: ver o pedido e os dados do cliente
+
+Ao clicar num pino abre o **cartão do cliente** (nome, cidade, itens com valor, endereço e "Mover para…"). Dele dá para ir mais fundo **sem sair do mapa**:
+
+- **"Dados do cliente"** (botão verde, abaixo do endereço): abre a **ficha do cliente**, a mesma da Rota e da aba Pedidos — telefone, endereço, dias de venda/entrega, condição de pagamento, observações, histórico e o **ponto GPS**. Só aparece para cliente cadastrado; pino de **lead** (amostra de lead) não tem esse botão. **Cliente sem localização** (sem pino no mapa) abre a ficha pelo mesmo botão **"Dados do cliente"** no cartão dele na lista **"Sem localização"** — é o caminho para corrigir o GPS de quem não aparece no mapa.
+- **Clicar na linha de um pedido** (pedido, bonificação BN# ou especial ZZ#, marcadas com uma setinha): abre o **popup do pedido**, só para **consulta** — itens, valores, pagamento, entrega e a linha do tempo. Dele não dá para cancelar, aprovar nem editar; para agir no pedido use a aba **Pedidos**. **Amostra e cobrança não abrem popup** (não há tela de consulta equivalente).
+- Os dois popups abrem **por cima do mapa**. Fechar volta (no popup do pedido: X, ESC ou clicar no fundo; na ficha do cliente: X ou clicar no fundo — o ESC fecha só o popup do pedido) ao mapa **exatamente como estava**: o cliente continua selecionado e o rascunho da divisão de cargas não muda.
+- **Editar o ponto GPS na ficha**: se você salvar um novo ponto, o pino **se move na hora** e o cliente, se estava em "Sem localização", passa a ser localizado e entra nas estimativas — sem recarregar o mapa nem perder a divisão. Se a mudança do ponto ficar **aguardando aprovação da logística** ou **sem internet**, o pino só muda depois. Quem pode editar o GPS segue a regra da ficha (administrador, "Pode editar GPS" ou editar clientes); quem não tem só consulta.
+- Mudar **nome ou endereço** não é feito por essa ficha do mapa; o cartão mostra o que veio no carregamento do mapa.
+
 ## Horário de referência 16:30
 
 Se a volta prevista de uma carga passa de 16:30, o horário aparece em âmbar ("volta prevista 17:05 · ref. 16:30"). É só um **aviso visual** — não trava nada e não impede o Confirmar.
@@ -128,3 +138,4 @@ Se a volta prevista de uma carga passa de 16:30, o horário aparece em âmbar ("
 - Não libera amostra: amostra só entra na divisão depois de **liberada** na tela de Amostras.
 - Não aprova especial/bonificação: eles só aparecem aqui depois de aprovados na tela de Pedidos.
 - Não mexe em item que já saiu / já foi trabalhado (cadeado).
+- Não cancela, aprova nem edita pedido: o popup do pedido aqui é só consulta (a tela completa é a aba Pedidos).
