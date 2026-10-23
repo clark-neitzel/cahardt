@@ -38,6 +38,8 @@ router.post('/chat', async (req, res) => {
             pergunta,
             historico: Array.isArray(historico) ? historico : [],
             perms: req.user?.permissoes || {},
+            usuarioId: req.user?.id || null,
+            usuarioNome: req.user?.nome || null,
         });
         res.json(data);
     } catch (error) {

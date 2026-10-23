@@ -453,6 +453,7 @@ async function enviarFoto(id, user, angulo, file, opcoes = {}) {
         luzOleoAcesa: c.luzOleoAcesa,
         ultimaTentativa: refazeres >= MAX_REFAZER_POR_ANGULO,
         momento: c.momento,
+        usuarioId: user?.id || null, usuarioNome: user?.nome || null, checklistId: id,
     });
 
     await prisma.checklistVeiculoFoto.updateMany({ where: { checklistId: id, angulo, ativa: true, complemento: false }, data: { ativa: false } });

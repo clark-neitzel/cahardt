@@ -1,0 +1,8 @@
+inicial ["on","40","1,5","6",""] | db {"gpt-6-luna": {"saidaUsdPorM": 6, "entradaUsdPorM": 1.5}}
+após backspace entrada ["on","40","","6",""]
+a) salvo (só entrada apagada) -> db {} | tela ["on","40","","",""]
+b) válido -> db {"gpt-6-luna": {"saidaUsdPorM": 9, "entradaUsdPorM": 2.5}} | tela ["on","40","2,5","9",""]
+c) ambos limpos -> db {} | tela ["on","40","","",""]
+d1) cotação 5,7 -> db {"cotacaoBrl": 5.7}
+d2) cotação limpa -> db {}
+e) 0 e 0 -> db {} | tela ["on","40","0","0",""]

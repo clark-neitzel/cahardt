@@ -63,6 +63,7 @@ const pcpEtiquetaRoutes = require('./routes/pcpEtiquetaRoutes'); // PCP: Etiquet
 const devolucaoRoutes = require('./routes/devolucaoRoutes'); // Devoluções
 const deliveryRoutes = require('./routes/deliveryRoutes'); // Delivery (Kit Festa)
 const iaLogsRoutes = require('./routes/iaLogs'); // Logs de Análise IA
+const iaUsoRoutes = require('./routes/iaUso'); // Uso/custo da IA (só admin)
 const mensagemAgendadaRoutes = require('./routes/mensagemAgendadaRoutes'); // Mensagens Agendadas
 const curriculoRoutes = require('./routes/curriculos'); // Módulo RH: Currículos (público)
 const rhRoutes = require('./routes/rh'); // Módulo RH: Painel interno
@@ -240,6 +241,7 @@ app.use('/api/pcp-impressao', require('./routes/pcpImpressaoRoutes'));
 app.use('/api/devolucoes', authMiddleware, devolucaoRoutes); // Devoluções
 app.use('/api/delivery', authMiddleware, deliveryRoutes); // Delivery (Kit Festa)
 app.use('/api/ia-logs', iaLogsRoutes); // Logs de Análise IA (auth interno)
+app.use('/api/ia-uso', iaUsoRoutes); // Uso/custo da IA no Dashboard (só admin, auth interno)
 
 app.use('/api/mensagens-agendadas', authMiddleware, mensagemAgendadaRoutes); // Mensagens Agendadas
 app.use('/api/migrations', authMiddleware, migrationRoutes); // Migration endpoint (protegido)

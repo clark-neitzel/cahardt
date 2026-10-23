@@ -61,9 +61,9 @@ function parametrosOpenAI(modelo, { maxTokens, temperature }) {
     return { max_completion_tokens: maxTokens ?? 600 };
 }
 
-async function gerarTextoOpenAI({ system, mensagens, maxTokens, temperature, json, modelo: modeloOpt, signal }) {
+async function gerarTextoOpenAI({ system, mensagens, maxTokens, temperature, json, modelo: modeloOpt, signal, _m = {} }) {
     const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) throw new Error('OPENAI_API_KEY não configurada.');
+    if (!apiKey) throw erroConfig('OPENAI_API_KEY não configurada.');
 
     const { OpenAI } = require('openai');
     const openai = new OpenAI({ apiKey });
@@ -83,6 +83,7 @@ async function gerarTextoOpenAI({ system, mensagens, maxTokens, temperature, jso
     const escolha = resp.choices[0];
     const conteudo = escolha?.message?.content;
     const recusa = escolha?.message?.refusal || null;
+    _m.raciocinio = resp.usage?.completion_tokens_details?.reasoning_tokens ?? null;
     if (!conteudo || !conteudo.trim()) {
         const e = new Error(`IA devolveu resposta vazia (finish_reason=${escolha?.finish_reason || '?'}, ` +
             `raciocinio=${resp.usage?.completion_tokens_details?.reasoning_tokens ?? 0} tokens). Aumente o teto de tokens.`);
@@ -111,7 +112,7 @@ async function gerarTextoOpenAI({ system, mensagens, maxTokens, temperature, jso
 // ─────────────────────────────────────────────
 async function gerarTextoGemini({ system, mensagens, maxTokens, temperature, json, modelo: modeloOpt }) {
     const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) throw new Error('GEMINI_API_KEY não configurada.');
+    if (!apiKey) throw erroConfig('GEMINI_API_KEY não configurada.');
 
     let GoogleGenerativeAI;
     try {
@@ -174,10 +175,10 @@ function modeloVisao() {
  * @param {boolean}[opts.json]
  * @param {number} [opts.timeoutMs]
  */
-async function analisarImagem({ system, texto, imagens = [], maxTokens = 2500, json = true, timeoutMs = 25000 }) {
+async function analisarImagemInterno({ system, texto, imagens = [], maxTokens = 2500, json = true, timeoutMs = 25000, _m = {} }) {
     if (PROVIDER === 'gemini') throw new Error('Visão não suportada para o provider gemini neste módulo.');
     const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) throw new Error('OPENAI_API_KEY não configurada.');
+    if (!apiKey) throw erroConfig('OPENAI_API_KEY não configurada.');
 
     const { OpenAI } = require('openai');
     const openai = new OpenAI({ apiKey, timeout: timeoutMs, maxRetries: 0 });
@@ -203,9 +204,12 @@ async function analisarImagem({ system, texto, imagens = [], maxTokens = 2500, j
 
     const escolha = resp.choices[0];
     const conteudo = escolha?.message?.content;
+    _m.raciocinio = resp.usage?.completion_tokens_details?.reasoning_tokens ?? null;
     if (!conteudo || !conteudo.trim()) {
-        throw new Error(`IA devolveu resposta vazia (finish_reason=${escolha?.finish_reason || '?'}, ` +
+        const e = new Error(`IA devolveu resposta vazia (finish_reason=${escolha?.finish_reason || '?'}, ` +
             `raciocinio=${resp.usage?.completion_tokens_details?.reasoning_tokens ?? 0} tokens).`);
+        e.usage = { prompt: resp.usage?.prompt_tokens ?? null, resposta: resp.usage?.completion_tokens ?? null, total: resp.usage?.total_tokens ?? null };
+        throw e;
     }
     return {
         texto: conteudo.trim(),
@@ -228,7 +232,7 @@ async function analisarImagem({ system, texto, imagens = [], maxTokens = 2500, j
  * @param {number} [opts.temperature]
  * @param {boolean}[opts.json]      Força saída JSON
  */
-async function gerarTexto(opts) {
+async function gerarTextoInterno(opts) {
     const prov = (opts && opts.provedor) || PROVIDER; // `provedor`/`modelo` por chamada são opcionais
     if (prov === 'anthropic') {
         const e = new Error('Provedor Claude ainda não está disponível (precisa da chave ANTHROPIC_API_KEY).');
@@ -253,12 +257,12 @@ function isConfiguredProvedor(prov) {
  * `signal` (AbortSignal) cancela a chamada; nesse caso lança com name 'AbortError'.
  * Lança com .finishReason/.recusa/.usage quando vier vazio.
  */
-async function gerarTextoStream({ system, mensagens, maxTokens, json, modelo: modeloOpt, provedor, signal, onTexto, timeoutMs = 120000 }) {
+async function gerarTextoStreamInterno({ system, mensagens, maxTokens, json, modelo: modeloOpt, provedor, signal, onTexto, timeoutMs = 120000, _m = {} }) {
     const prov = provedor || PROVIDER;
     if (prov === 'anthropic') { const e = new Error('Provedor Claude ainda não está disponível.'); e.codigo = 'PROVEDOR_INDISPONIVEL'; throw e; }
     if (prov !== 'openai') { const e = new Error('Este provedor não suporta streaming.'); e.codigo = 'STREAM_NAO_SUPORTADO'; throw e; }
     const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) throw new Error('OPENAI_API_KEY não configurada.');
+    if (!apiKey) throw erroConfig('OPENAI_API_KEY não configurada.');
 
     const { OpenAI } = require('openai');
     const openai = new OpenAI({ apiKey, timeout: timeoutMs, maxRetries: 0 });
@@ -293,6 +297,7 @@ async function gerarTextoStream({ system, mensagens, maxTokens, json, modelo: mo
         resposta: usage?.completion_tokens ?? null,
         total: usage?.total_tokens ?? null,
     };
+    _m.raciocinio = usage?.completion_tokens_details?.reasoning_tokens ?? null;
     if (!texto.trim()) {
         const e = new Error(`IA devolveu resposta vazia (finish_reason=${finishReason || '?'}).`);
         e.finishReason = finishReason; e.recusa = recusa || null; e.usage = u;
@@ -301,7 +306,82 @@ async function gerarTextoStream({ system, mensagens, maxTokens, json, modelo: mo
     return { texto: texto.trim(), usage: u, modelo, provider: 'openai', finishReason, recusa: recusa || null };
 }
 
+// ─────────────────────────────────────────────
+// Registro de uso (quanto custou / quem / onde) — tabela ia_uso_logs
+// ─────────────────────────────────────────────
+// Fire-and-forget: NUNCA espera, NUNCA lança, NUNCA entra em $transaction. Se a tabela estiver
+// indisponível a IA segue igual (só loga [IaUso]). Não grava prompt nem resposta.
+const ORIGEM_PADRAO = 'OUTRO';
+const SEM_REGISTRO = new Set(['PROVEDOR_INDISPONIVEL', 'STREAM_NAO_SUPORTADO', 'CONFIG_AUSENTE']);
+const cortar = (v, n) => (v == null ? null : String(v).slice(0, n));
+
+/** Erro de configuração (chave ausente): não é falha do provedor — não entra no registro de uso. */
+function erroConfig(msg) { const e = new Error(msg); e.codigo = 'CONFIG_AUSENTE'; return e; }
+
+function registrarUso({ uso, provedor, modelo, usage, raciocinio, ok, erroCodigo, duracaoMs }) {
+    try {
+        Promise.resolve().then(async () => {
+            const prisma = require('../config/database');
+            const { lerPrecos, custoUsd, cotacaoEfetiva } = require('./iaCustoService');
+            const u = uso && typeof uso === 'object' ? uso : {};
+            const precos = await lerPrecos();
+            const custo = await custoUsd(modelo, usage, precos);
+            // cotação sem esperar rede (manual > automática salva > nada); estimada de 5.0 não é gravada
+            const cotacao = await cotacaoEfetiva(precos);
+            const custoBrl = custo != null && !cotacao.estimada ? Number((custo * cotacao.valor).toFixed(4)) : null;
+            const gatilho = cortar(u.gatilho, 40);
+            const automatico = u.automatico === true || (gatilho ? gatilho.startsWith('AUTOMATICO') : false);
+            let usuarioNome = cortar(u.usuarioNome, 120);
+            if (!usuarioNome && u.usuarioId) {
+                try { usuarioNome = (await prisma.vendedor.findUnique({ where: { id: String(u.usuarioId) }, select: { nome: true } }))?.nome || null; } catch { /* snapshot opcional */ }
+            }
+            await prisma.iaUsoLog.create({
+                data: {
+                    origem: cortar(u.origem, 40) || ORIGEM_PADRAO,
+                    gatilho, automatico,
+                    provedor: String(provedor || 'openai'), modelo: String(modelo || '?'),
+                    tokensPrompt: usage?.prompt ?? null, tokensResposta: usage?.resposta ?? null,
+                    tokensRaciocinio: raciocinio ?? null, tokensTotal: usage?.total ?? null,
+                    custoUsd: custo, custoBrl,
+                    usuarioId: u.usuarioId ? String(u.usuarioId) : null, usuarioNome,
+                    referencia: cortar(u.referencia, 120),
+                    ok: !!ok, erroCodigo: cortar(erroCodigo, 60), duracaoMs: duracaoMs ?? null,
+                },
+            });
+        }).catch((e) => console.error('[IaUso] falha ao registrar (IA não foi afetada):', e.message));
+    } catch (e) {
+        console.error('[IaUso] falha ao registrar (IA não foi afetada):', e && e.message);
+    }
+}
+
+/** Envolve uma chamada de IA: mede, registra e devolve o MESMO resultado/erro da função original. */
+async function comRegistro(fn, opts, { provedor, modelo }) {
+    const m = {};
+    const t0 = Date.now();
+    try {
+        const r = await fn({ ...opts, _m: m });
+        registrarUso({ uso: opts && opts.uso, provedor: r.provider || provedor, modelo: r.modelo || modelo, usage: r.usage, raciocinio: m.raciocinio, ok: true, duracaoMs: Date.now() - t0 });
+        return r;
+    } catch (e) {
+        if (!(e && SEM_REGISTRO.has(e.codigo))) {
+            registrarUso({ uso: opts && opts.uso, provedor, modelo, usage: e && e.usage, raciocinio: m.raciocinio, ok: false, erroCodigo: (e && (e.codigo || e.finishReason || e.code || e.status || e.name)) || 'ERRO', duracaoMs: Date.now() - t0 });
+        }
+        throw e;
+    }
+}
+
+/** Parâmetro opcional `uso: { origem, gatilho?, usuarioId?, usuarioNome?, referencia? }` identifica quem/onde. */
+function gerarTexto(opts) {
+    return comRegistro(gerarTextoInterno, opts, { provedor: (opts && opts.provedor) || PROVIDER, modelo: (opts && opts.modelo) || modeloAtual() });
+}
+function gerarTextoStream(opts) {
+    return comRegistro(gerarTextoStreamInterno, opts, { provedor: (opts && opts.provedor) || PROVIDER, modelo: (opts && opts.modelo) || modeloAtual() });
+}
+function analisarImagem(opts) {
+    return comRegistro(analisarImagemInterno, opts, { provedor: PROVIDER, modelo: modeloVisao() });
+}
+
 module.exports = {
     gerarTexto, gerarTextoStream, analisarImagem, isConfigured, isConfiguredProvedor,
-    providerAtual, modeloAtual, modeloVisao, parametrosOpenAI,
+    providerAtual, modeloAtual, modeloVisao, parametrosOpenAI, registrarUso,
 };

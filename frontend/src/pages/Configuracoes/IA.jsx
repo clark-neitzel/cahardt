@@ -31,8 +31,8 @@ const RESULTADO = {
 };
 const Resultado = ({ r }) => { const [t, c] = RESULTADO[r] || [r || '—', 'bg-gray-100 text-gray-700']; return <span className={`px-2 py-1 text-xs font-semibold rounded-full whitespace-nowrap ${c}`}>{t}</span>; };
 
-const fmtBrl = (n) => `R$ ${Number(n).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-const fmtUsd = (n) => `US$ ${Number(n).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`;
+const fmtBrl = (n) => (Number(n) > 0 && Number(n) < 0.01 ? '< R$ 0,01' : `R$ ${Number(n).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
+const fmtUsd = (n) => (Number(n) > 0 && Number(n) < 0.01 ? '< US$ 0,01' : `US$ ${Number(n).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`);
 const fmtSeg = (ms) => (ms == null ? '—' : `${Math.round(ms / 1000)} s`);
 const fmtQuando = (iso) => { const d = new Date(iso); return Number.isNaN(d.getTime()) ? '' : `${d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} ${d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`; };
 
@@ -95,7 +95,8 @@ export default function ConfigIA() {
     const modelos = dados?.modelos || [];
     const rotuloModelo = (m) => (m.disponivel || /ANTHROPIC_API_KEY/.test(m.rotulo || '') ? m.rotulo : `${m.rotulo} — precisa da chave ANTHROPIC_API_KEY`);
     const usados = cfg ? [...new Set([cfg.modelo, cfg.modeloAjustes])] : [];
-    const semPreco = usados.filter((m) => { const p = precos[m]; return !p || p.e === '' || p.s === ''; });
+    const padrao = dados?.precosPadrao || {};
+    const semPreco = usados.filter((m) => { const p = precos[m]; return (!p || p.e === '' || p.s === '') && !padrao[m]; });
 
     const salvar = async () => {
         const lim = Number(cfg.limiteDia);
@@ -115,7 +116,7 @@ export default function ConfigIA() {
     if (!dados || !cfg) return <div className="p-6"><Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" /></div>;
 
     const r = uso?.resumo;
-    const cot = Number(cotacao) > 0 ? Number(cotacao) : (dados.precos?.cotacaoBrl || null);
+    const cot = Number(cotacao) > 0 ? Number(cotacao) : (dados.precos?.cotacaoBrl || (dados.cotacaoAutomatica && !dados.cotacaoAutomatica.estimada ? dados.cotacaoAutomatica.valor : null));
     const chaveOk = dados.chave?.openai === true;
     const custoTxt = !r ? '…' : r.custoBrl != null ? fmtBrl(r.custoBrl) : r.custoUsd != null ? fmtUsd(r.custoUsd) : '—';
     const custoLinha = (u) => (u.custoUsd == null ? '—' : cot ? fmtBrl(u.custoUsd * cot) : fmtUsd(u.custoUsd));
@@ -137,7 +138,7 @@ export default function ConfigIA() {
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <Kpi rotulo="POPs montados no mês" valor={r ? r.montados : '…'} sub={r ? `${r.usos} chamadas no total` : ''} />
-                <Kpi rotulo="Gasto estimado no mês" valor={custoTxt} sub={r && r.custoUsd == null ? 'preencha o preço do modelo' : r?.usosSemPreco ? `${r.usosSemPreco} chamadas sem preço` : 'pelos tokens que a IA informa'} />
+                <Kpi rotulo="Gasto estimado no mês" valor={custoTxt} sub={r && r.custoUsd == null ? 'preencha o preço do modelo' : r?.usosSemPreco ? `${r.usosSemPreco} ${Number(r.usosSemPreco) === 1 ? 'chamada' : 'chamadas'} sem preço` : 'pelos tokens que a IA informa'} />
                 <Kpi rotulo="Tempo médio" valor={r ? fmtSeg(r.tempoMedioMs) : '…'} sub={r && r.erros ? `${r.erros} com erro ou recusa` : ''} />
                 <Kpi rotulo="Chave no servidor" valor={chaveOk ? 'Configurada' : 'Sem chave'} tom={chaveOk ? 'text-green-700' : 'text-red-700'} sub={chaveOk ? 'OpenAI (ChatGPT)' : 'A IA não funciona sem a chave'} />
             </div>
@@ -188,22 +189,22 @@ export default function ConfigIA() {
                 <div className="px-4 py-3 border-b border-gray-100"><span className={TIT}>Preço por modelo (para calcular o gasto)</span></div>
                 <div className="p-4 space-y-3">
                     {semPreco.length > 0 && (
-                        <p className="rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm font-semibold p-3 flex gap-2"><AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" /> <span>Preencha o preço de {semPreco.join(', ')} para ver o gasto. Sem preço o custo aparece como “—”, nunca como R$ 0,00.</span></p>
+                        <p className="rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm font-semibold p-3 flex gap-2"><AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" /> <span>Não conheço o preço de {semPreco.join(', ')}. Preencha para ver o gasto; sem preço o custo aparece como “—”, nunca como R$ 0,00.</span></p>
                     )}
-                    <p className="text-xs text-gray-600">Use o preço de lista do site do provedor, em dólares por 1 milhão de tokens. O sistema não inventa valores.</p>
+                    <p className="text-xs text-gray-600">Os preços e a cotação do dólar são buscados sozinhos: deixe os campos vazios para usar o automático. Preencha só para corrigir (em dólares por 1 milhão de tokens).</p>
                     {modelos.filter((m) => m.disponivel).map((m) => (
                         <div key={m.modelo} className="rounded-lg border border-gray-200 p-3">
                             <p className="text-sm font-semibold text-gray-900 mb-2 break-words">{m.rotulo}</p>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 <label className="block text-sm font-medium text-gray-700">Entrada (US$ por 1 mi de tokens)
-                                    <CampoNumero decimal value={precos[m.modelo]?.e ?? ''} disabled={!editar} onChange={(e) => setPrecos({ ...precos, [m.modelo]: { e: e.target.value, s: precos[m.modelo]?.s ?? '' } })} className={`${CAMPO} mt-1`} /></label>
+                                    <CampoNumero decimal placeholder={padrao[m.modelo] ? `automático: ${padrao[m.modelo].entradaUsdPorM}` : ''} value={precos[m.modelo]?.e ?? ''} disabled={!editar} onChange={(e) => setPrecos({ ...precos, [m.modelo]: { e: e.target.value, s: precos[m.modelo]?.s ?? '' } })} className={`${CAMPO} mt-1`} /></label>
                                 <label className="block text-sm font-medium text-gray-700">Saída (US$ por 1 mi de tokens)
-                                    <CampoNumero decimal value={precos[m.modelo]?.s ?? ''} disabled={!editar} onChange={(e) => setPrecos({ ...precos, [m.modelo]: { e: precos[m.modelo]?.e ?? '', s: e.target.value } })} className={`${CAMPO} mt-1`} /></label>
+                                    <CampoNumero decimal placeholder={padrao[m.modelo] ? `automático: ${padrao[m.modelo].saidaUsdPorM}` : ''} value={precos[m.modelo]?.s ?? ''} disabled={!editar} onChange={(e) => setPrecos({ ...precos, [m.modelo]: { e: precos[m.modelo]?.e ?? '', s: e.target.value } })} className={`${CAMPO} mt-1`} /></label>
                             </div>
                         </div>
                     ))}
                     <label className="block text-sm font-medium text-gray-700 md:max-w-xs">Cotação do dólar (R$) — para mostrar o gasto em reais
-                        <CampoNumero decimal value={cotacao} disabled={!editar} onChange={(e) => setCotacao(e.target.value)} className={`${CAMPO} mt-1`} /></label>
+                        <CampoNumero decimal placeholder={dados.cotacaoAutomatica ? (dados.cotacaoAutomatica.estimada === true ? 'automático (indisponível agora)' : `automático: ${dados.cotacaoAutomatica.valor}`) : ''} value={cotacao} disabled={!editar} onChange={(e) => setCotacao(e.target.value)} className={`${CAMPO} mt-1`} /></label>
                 </div>
             </div>
 

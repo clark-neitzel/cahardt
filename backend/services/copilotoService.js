@@ -276,7 +276,7 @@ REGRAS:
  * Responde uma dúvida de uso com base nos manuais das abas acessíveis ao usuário.
  * @returns {Promise<{resposta:string, atalhos:Array<{label,rota}>}>}
  */
-async function responderAjuda({ pergunta, historico = [], perms = {} } = {}) {
+async function responderAjuda({ pergunta, historico = [], perms = {}, usuarioId = null, usuarioNome = null } = {}) {
     if (!ai.isConfigured()) {
         const err = new Error('IA não configurada (defina OPENAI_API_KEY ou GEMINI_API_KEY).');
         err.statusCode = 503;
@@ -329,6 +329,7 @@ Responda SEMPRE em JSON neste formato:
         maxTokens: 1500, // gpt-6-luna gasta parte do teto em raciocínio (max_completion_tokens)
         temperature: 0.2,
         json: true,
+        uso: { origem: 'CLIPPY', usuarioId, usuarioNome },
     });
 
     let parsed;

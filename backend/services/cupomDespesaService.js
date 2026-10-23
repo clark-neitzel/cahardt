@@ -179,7 +179,7 @@ function normalizarLeitura(j) {
 }
 
 /** Chama a IA. NUNCA lança: devolve { indisponivel:true, motivo } ou { leitura }. */
-async function lerComIa({ buffer, mime, categoria }) {
+async function lerComIa({ buffer, mime, categoria, vendedorId = null }) {
     const t0 = Date.now();
     try {
         if (!aiProvider.isConfigured()) return { indisponivel: true, motivoIa: 'sem_chave' };
@@ -191,6 +191,7 @@ async function lerComIa({ buffer, mime, categoria }) {
             maxTokens: 2500,
             json: true,
             timeoutMs: TIMEOUT_MS,
+            uso: { origem: 'CUPOM_DESPESA', usuarioId: vendedorId || null },
         });
         const j = extrairJson(r.texto);
         if (!j || typeof j !== 'object') return { indisponivel: true, motivoIa: 'resposta_invalida' };
@@ -313,9 +314,9 @@ async function capacidadeDoVeiculo(veiculoId) {
 }
 
 /** Resultado completo da análise de um arquivo (lê + compara + fornecedor + duplicidade). Nunca lança. */
-async function analisarArquivo({ arquivoPath, mime, sha256, digitado, ignorarDespesaId }) {
+async function analisarArquivo({ arquivoPath, mime, sha256, digitado, ignorarDespesaId, vendedorId = null }) {
     const buffer = fs.readFileSync(arquivoPath);
-    const ia = await lerComIa({ buffer, mime, categoria: digitado?.categoria });
+    const ia = await lerComIa({ buffer, mime, categoria: digitado?.categoria, vendedorId });
     if (ia.indisponivel) {
         const duplicados = await acharDuplicidade({ sha256, ignorarDespesaId });
         const motivos = [motivo('IA_INDISPONIVEL', ia.motivoIa === 'pdf_nao_lido'
@@ -363,7 +364,7 @@ async function analisarRascunho({ arquivo, vendedorId, digitado }) {
     try { fs.renameSync(arquivo.path, destino); } catch (_) { fs.copyFileSync(arquivo.path, destino); apagar(arquivo.path); }
 
     const capacidadeTanque = await capacidadeDoVeiculo(digitado?.veiculoId);
-    const r = await analisarArquivo({ arquivoPath: destino, mime: canon.mime, sha256, digitado: { ...digitado, capacidadeTanque } });
+    const r = await analisarArquivo({ arquivoPath: destino, mime: canon.mime, sha256, digitado: { ...digitado, capacidadeTanque }, vendedorId });
 
     // sidecar: o POST da despesa recalcula a comparação com os valores finais SEM chamar a IA de novo
     const meta = {

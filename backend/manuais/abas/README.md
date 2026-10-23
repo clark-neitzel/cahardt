@@ -26,7 +26,7 @@
 
 | Aba | Rota | Descrição | Manual |
 |-----|------|-----------|--------|
-| Dashboard | `/dashboard` | Acompanhamento de meta mensal, projeção e desempenho do vendedor por cidade | [dashboard.md](dashboard.md) |
+| Dashboard | `/dashboard` | Acompanhamento de meta mensal, projeção e desempenho do vendedor por cidade; aba IA (custo/uso da inteligência artificial, só administrador) | [dashboard.md](dashboard.md) |
 | Catálogo | `/catalogo` | Vitrine de produtos disponíveis para consulta antes e durante a visita | [catalogo.md](catalogo.md) |
 | Rota | `/rota` | Tela central do vendedor: atender clientes, criar pedidos e prospectar leads | [rota.md](rota.md) |
 | Leads | `/leads` | Gestão de prospecções com funil, foto de fachada e conversão em cliente | [leads.md](leads.md) |

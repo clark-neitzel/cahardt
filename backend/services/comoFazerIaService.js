@@ -3,12 +3,13 @@
 // cliente/preço/financeiro/funcionário/telefone/foto/responsável/horário; sem $transaction.
 const prisma = require('../config/database');
 const ai = require('./aiProvider');
+const { lerPrecos, custoUsd, precoDoModelo, cotacaoEfetiva, PRECOS_PADRAO } = require('./iaCustoService');
 const schema = require('./comoFazerSchema');
 const setoresService = require('./setoresService');
 const { ErroCF } = require('./comoFazerService');
 
 const CHAVE_CONFIG = 'ia_como_fazer';
-const CHAVE_PRECOS = 'ia_precos';
+const { CHAVE_PRECOS } = require('./iaCustoService');
 const PADRAO = { ligado: true, provedor: 'openai', modelo: 'gpt-6-luna', modeloAjustes: 'gpt-6-luna', limiteDia: 40 };
 
 // Fase 1: só o OpenAI já configurado funciona; Claude aparece desabilitado.
@@ -56,14 +57,6 @@ async function lerConfig(forcar = false) {
     return _cfg.valor;
 }
 
-async function lerPrecos() {
-    try {
-        const row = await prisma.appConfig.findUnique({ where: { key: CHAVE_PRECOS } });
-        const v = row && row.value && typeof row.value === 'object' ? row.value : {};
-        return v;
-    } catch { return {}; }
-}
-
 function sanitizarPrecos(entrada) {
     const out = {};
     if (!entrada || typeof entrada !== 'object') return out;
@@ -76,7 +69,7 @@ function sanitizarPrecos(entrada) {
         }
         if (!/^[\w.\-]{1,60}$/.test(modelo) || !p || typeof p !== 'object') continue;
         const e = num(p.entradaUsdPorM), s = num(p.saidaUsdPorM);
-        if (e === null || s === null) continue;
+        if (e === null || s === null || e <= 0 || s <= 0) continue; // 0 (campo apagado) não é preço: descarta o modelo, cai no automático
         if (++n > 20) break;
         out[modelo] = { entradaUsdPorM: e, saidaUsdPorM: s };
     }
@@ -120,7 +113,9 @@ async function visaoConfig() {
         config: await lerConfig(true),
         chave: { openai: ai.isConfiguredProvedor('openai'), anthropic: ai.isConfiguredProvedor('anthropic') },
         modelos: MODELOS,
-        precos: await lerPrecos(),
+        precos: await lerPrecos(),              // só o que o admin cadastrou (override)
+        precosPadrao: PRECOS_PADRAO,            // automático embutido: vale quando o campo fica vazio
+        cotacaoAutomatica: await cotacaoEfetiva({}),   // sempre traz `estimada` (boolean)
     };
 }
 
@@ -149,13 +144,6 @@ async function checarAntes(cf, { exclusivo = false } = {}) {
 }
 
 // ───────── custo / registro de uso ─────────
-async function custoUsd(modelo, usage) {
-    if (!usage || usage.prompt == null || usage.resposta == null) return null;
-    const p = (await lerPrecos())[modelo];
-    if (!p || !Number.isFinite(p.entradaUsdPorM) || !Number.isFinite(p.saidaUsdPorM)) return null;
-    return Number(((usage.prompt * p.entradaUsdPorM + usage.resposta * p.saidaUsdPorM) / 1e6).toFixed(6));
-}
-
 async function nomeDoVendedor(id) {
     try { return (await prisma.vendedor.findUnique({ where: { id }, select: { nome: true } }))?.nome || null; } catch { return null; }
 }
@@ -442,6 +430,7 @@ async function montar({ cf, body, emitir, signal }) {
         let r;
         const teste = flagTeste('IA_TESTE_JSON_QUEBRADO'), testeRecusa = flagTeste('IA_TESTE_RECUSA');
         r = await ai.gerarTextoStream({
+            uso: { origem: 'COMO_FAZER_MONTAR', usuarioId: cf.vendedorId, referencia: uso ? uso.id : null },
             system: SYSTEM_MONTAR, mensagens: [{ role: 'user', content: msgUser }], maxTokens, json: true,
             modelo: cfg.modelo, provedor: cfg.provedor, signal: ctrl.signal, timeoutMs: TIMEOUT_MONTAR_MS + 5000,
             onTexto: (delta) => emitir('texto', { delta }),
@@ -468,6 +457,7 @@ async function montar({ cf, body, emitir, signal }) {
         if (av.fatal) {
             reparou = true;
             const rep = await ai.gerarTexto({
+                uso: { origem: 'COMO_FAZER_REPARO', usuarioId: cf.vendedorId, referencia: uso ? uso.id : null },
                 system: SYSTEM_MONTAR,
                 mensagens: [
                     { role: 'user', content: msgUser },
@@ -539,7 +529,7 @@ Reescreva UM passo. Responda SOMENTE com JSON: {"texto":"...","detalhe":"..."}.
 Regras: "texto" com no máximo 140 caracteres, começa com verbo no imperativo, uma única ação. "detalhe" com no máximo 240 caracteres (pode ser vazio). Não invente números, temperaturas ou tempos que não estejam no passo original. ${b.acao === 'simplificar' ? 'Deixe MAIS SIMPLES e mais curto, com palavras do dia a dia.' : 'Deixe mais claro e direto, sem mudar o sentido.'}`;
     const user = `TIPO: ${tipo}\nTÍTULO DO MANUAL: ${titulo}\n${objetivo ? `OBJETIVO: ${objetivo}\n` : ''}PASSO ATUAL: ${texto}\n${detalhe ? `DETALHE ATUAL: ${detalhe}\n` : ''}Devolva o JSON.`;
     try {
-        const r = await comTimeout(ai.gerarTexto({ system, mensagens: [{ role: 'user', content: user }], maxTokens: MAX_TOKENS.ajuste, json: true, modelo: cfg.modeloAjustes, provedor: cfg.provedor }), TIMEOUT_AJUSTE_MS);
+        const r = await comTimeout(ai.gerarTexto({ system, mensagens: [{ role: 'user', content: user }], maxTokens: MAX_TOKENS.ajuste, json: true, modelo: cfg.modeloAjustes, provedor: cfg.provedor, uso: { origem: 'COMO_FAZER_AJUSTE', usuarioId: cf.vendedorId, referencia: uso.id } }), TIMEOUT_AJUSTE_MS);
         const j = extrairJson(r.texto);
         const novo = cortarPalavra(j && j.texto, schema.MAX_TEXTO);
         if (!novo) { const e = new Error('sem texto'); e.fatalJson = true; throw e; }
@@ -593,7 +583,7 @@ async function sugerir(cf, body) {
         `PASSOS ATUAIS:\n${passos.map((p, i) => `${i}. [${p.secao}] ${p.texto}`).join('\n')}`,
         naoFazer && `JÁ TEM "NÃO FAÇA": ${naoFazer}`, sdeIn.length && `JÁ TEM "SE DER ERRADO": ${sdeIn.join('; ')}`, 'Devolva o JSON.'].filter(Boolean).join('\n\n');
     try {
-        const r = await comTimeout(ai.gerarTexto({ system, mensagens: [{ role: 'user', content: user }], maxTokens: MAX_TOKENS.ajuste, json: true, modelo: cfg.modeloAjustes, provedor: cfg.provedor }), TIMEOUT_AJUSTE_MS);
+        const r = await comTimeout(ai.gerarTexto({ system, mensagens: [{ role: 'user', content: user }], maxTokens: MAX_TOKENS.ajuste, json: true, modelo: cfg.modeloAjustes, provedor: cfg.provedor, uso: { origem: 'COMO_FAZER_SUGESTAO', usuarioId: cf.vendedorId, referencia: uso.id } }), TIMEOUT_AJUSTE_MS);
         const j = extrairJson(r.texto);
         const lista = j && Array.isArray(j.itens) ? j.itens : null;
         if (!lista) { const e = new Error('sem itens'); e.fatalJson = true; throw e; }
@@ -686,18 +676,31 @@ async function usoDoMes(mes) {
         prisma.comoFazerIaUso.findMany({ where, orderBy: { createdAt: 'desc' }, take: 200 }),
         lerConfig(), lerPrecos(),
     ]);
-    const semPreco = await prisma.comoFazerIaUso.count({ where: { ...where, custoUsd: null, tokensEntrada: { not: null } } });
-    const custo = agg._sum.custoUsd == null ? null : Number(agg._sum.custoUsd);
-    const cot = precos && Number.isFinite(precos.cotacaoBrl) ? precos.cotacaoBrl : null;
+    const custoGravado = agg._sum.custoUsd == null ? null : Number(agg._sum.custoUsd);
+    // linhas sem custo gravado: calcula na leitura com o preço resolvido (override > padrão) => estimado
+    const nulos = await prisma.comoFazerIaUso.groupBy({ by: ['modelo'], where: { ...where, custoUsd: null, tokensEntrada: { not: null } }, _sum: { tokensEntrada: true, tokensSaida: true }, _count: { _all: true } });
+    let estimadoUsd = 0, semPrecoReal = 0;
+    for (const g of nulos) {
+        const p = precoDoModelo(g.modelo, precos);
+        if (p) estimadoUsd += ((g._sum.tokensEntrada || 0) * p.entradaUsdPorM + (g._sum.tokensSaida || 0) * p.saidaUsdPorM) / 1e6;
+        else semPrecoReal += g._count._all;
+    }
+    const custo = custoGravado == null && estimadoUsd === 0 ? null : Number(((custoGravado || 0) + estimadoUsd).toFixed(6));
+    const cotEf = await cotacaoEfetiva(precos);
+    const cot = cotEf.estimada ? null : cotEf.valor;
     return {
         mes: mesOk,
         resumo: {
             montados, usos: agg._count._all, custoUsd: custo, custoBrl: custo != null && cot ? Number((custo * cot).toFixed(2)) : null,
             tempoMedioMs: agg._avg.duracaoMs != null ? Math.round(agg._avg.duracaoMs) : null, erros,
-            tokensEntrada: agg._sum.tokensEntrada || 0, tokensSaida: agg._sum.tokensSaida || 0, usosSemPreco: semPreco,
+            tokensEntrada: agg._sum.tokensEntrada || 0, tokensSaida: agg._sum.tokensSaida || 0, usosSemPreco: semPrecoReal, custoEstimadoUsd: Number(estimadoUsd.toFixed(6)),
             modelo: cfg.modelo, limiteDia: cfg.limiteDia,
         },
-        usos: usos.map(u => ({ ...u, custoUsd: u.custoUsd == null ? null : Number(u.custoUsd) })),
+        usos: usos.map(u => {
+            if (u.custoUsd != null) return { ...u, custoUsd: Number(u.custoUsd), custoEstimado: false };
+            const p = u.tokensEntrada != null && u.tokensSaida != null ? precoDoModelo(u.modelo, precos) : null;
+            return { ...u, custoUsd: p ? Number(((u.tokensEntrada * p.entradaUsdPorM + u.tokensSaida * p.saidaUsdPorM) / 1e6).toFixed(6)) : null, custoEstimado: !!p };
+        }),
     };
 }
 

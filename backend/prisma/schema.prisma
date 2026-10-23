@@ -5044,3 +5044,34 @@ model DespesaComprovante {
   @@index([cupomCnpj, cupomNumero])
   @@map("despesa_comprovantes")
 }
+
+/// Uso da IA (quanto custou, quem usou, onde). Gravado por aiProvider.registrarUso (fire-and-forget).
+/// Não guarda prompt nem resposta. Alimenta a aba "IA" do Dashboard do admin.
+model IaUsoLog {
+  id               String   @id @default(uuid())
+  criadoEm         DateTime @default(now()) @map("criado_em")
+  origem           String // CLIPPY | ORIENTACAO_CLIENTE | COMO_FAZER_* | CHECKLIST_FOTO | CUPOM_DESPESA | OUTRO
+  gatilho          String? // AUTOMATICO_NOTURNO | AUTOMATICO_ATENDIMENTO | MANUAL
+  automatico       Boolean  @default(false)
+  provedor         String
+  modelo           String
+  tokensPrompt     Int?     @map("tokens_prompt")
+  tokensResposta   Int?     @map("tokens_resposta")
+  tokensRaciocinio Int?     @map("tokens_raciocinio") // informativo: já está dentro de tokensResposta, NÃO somar
+  tokensTotal      Int?     @map("tokens_total")
+  custoUsd         Decimal? @map("custo_usd") @db.Decimal(10, 6)
+  custoBrl         Decimal? @map("custo_brl") @db.Decimal(10, 4)
+  usuarioId        String?  @map("usuario_id")
+  usuarioNome      String?  @map("usuario_nome")
+  referencia       String?
+  retroativo       Boolean  @default(false)
+  refRetro         String?  @unique @map("ref_retro")
+  ok               Boolean  @default(true)
+  erroCodigo       String?  @map("erro_codigo")
+  duracaoMs        Int?     @map("duracao_ms")
+
+  @@index([criadoEm])
+  @@index([origem, criadoEm])
+  @@index([usuarioId, criadoEm])
+  @@map("ia_uso_logs")
+}

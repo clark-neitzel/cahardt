@@ -313,6 +313,7 @@ async function analisarFoto(p) {
             maxTokens: 2500,
             json: true,
             timeoutMs: TIMEOUT_MS,
+            uso: { origem: 'CHECKLIST_FOTO', usuarioId: p.usuarioId || null, usuarioNome: p.usuarioNome || null, referencia: p.checklistId || null },
         });
         const v = validarResposta(extrairJson(r.texto), p.angulo);
         if (volta) {

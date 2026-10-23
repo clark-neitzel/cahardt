@@ -289,6 +289,12 @@ async function gerarOrientacaoIA(clienteId, opcoes = {}) {
             maxTokens: 1000, // folga para tokens de raciocínio do gpt-6-luna (contam no teto)
             temperature: 0.3,
             json: true,
+            uso: {
+                origem: 'ORIENTACAO_CLIENTE',
+                gatilho: disparadoPor === 'NOTURNO' ? 'AUTOMATICO_NOTURNO' : disparadoPor === 'ATENDIMENTO' ? 'AUTOMATICO_ATENDIMENTO' : 'MANUAL',
+                usuarioId: usuarioId || null,
+                referencia: clienteId,
+            },
         });
         modelo = resultadoIA.modelo || modelo;
 

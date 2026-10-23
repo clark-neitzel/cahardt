@@ -6,9 +6,11 @@ import toast from 'react-hot-toast';
 import {
     Home, BarChart3, Repeat, MessageCircle, DollarSign, AlertTriangle,
     CreditCard, Clock, Users, Tag, TrendingDown, TrendingUp, MapPin, CalendarDays,
-    ChevronLeft, ChevronRight
+    ChevronLeft, ChevronRight, Sparkles
 } from 'lucide-react';
 import api from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
+import AbaUsoIA from './AbaUsoIA';
 import SelectBusca from '../../components/SelectBusca';
 import { useFiltrosSalvos } from '../../hooks/useFiltrosSalvos';
 import {
@@ -26,6 +28,8 @@ const ABAS = [
     { key: 'atendimentos', label: 'Atendimentos', icon: MessageCircle },
     { key: 'resultado', label: 'Resultado & Margem', icon: DollarSign },
 ];
+// Aba exclusiva do administrador (permissoes.admin === true, explícito — não é gestor nem Pode_Ver_Dashboard_Admin)
+const ABA_IA = { key: 'ia', label: 'IA', icon: Sparkles };
 
 // Abas cujos dados mudam quando o filtro de categoria muda
 const ABAS_COM_CATEGORIA = ['visao', 'vendas', 'resultado'];
@@ -46,6 +50,9 @@ const ultimoDiaMes = (ym) => {
 };
 
 const DashboardGeral = () => {
+    const { user } = useAuth();
+    const ehAdmin = !!user?.permissoes?.admin;
+    const abasVisiveis = ehAdmin ? [...ABAS, ABA_IA] : ABAS;
     const [filtros, setFiltros] = useFiltrosSalvos('dashboard-geral', { categoria: 'Produto Acabado', aba: 'visao' });
     // Mês selecionado NÃO é persistido: sempre abre no mês corrente (regra do projeto)
     const [mes, setMes] = useState(mesAtualSP());
@@ -55,7 +62,7 @@ const DashboardGeral = () => {
     const [atualizadoEm, setAtualizadoEm] = useState(null);
     const [tick, setTick] = useState(0);        // gatilho de recarga (voltar ao app, aba re-clicada, 5min)
 
-    const aba = ABAS.some((a) => a.key === filtros.aba) ? filtros.aba : 'visao';
+    const aba = abasVisiveis.some((a) => a.key === filtros.aba) ? filtros.aba : 'visao';
     const categoria = filtros.categoria || '';
     const hoje = mesAtualSP();
     const ehAtual = mes === hoje;
@@ -71,6 +78,7 @@ const DashboardGeral = () => {
     }, []);
 
     const buscarAba = useCallback(async (chave, cat, mesSel) => {
+        if (chave === 'ia') return; // a aba IA faz o próprio fetch (AbaUsoIA)
         setCarregando((c) => ({ ...c, [chave]: true }));
         try {
             const params = {};
@@ -119,7 +127,8 @@ const DashboardGeral = () => {
     const irMes = (n) => irParaMes(somaMesYM(mes, n));
 
     const d = dados[aba];
-    const ocupado = carregando[aba] && !d;
+    const ocupado = aba !== 'ia' && carregando[aba] && !d;
+    const ehIA = aba === 'ia';
 
     return (
         <div className="max-w-full overflow-x-hidden">
@@ -132,10 +141,10 @@ const DashboardGeral = () => {
                         </div>
                         <div className="min-w-0">
                             <h1 className="text-base md:text-2xl font-bold text-gray-900 truncate">Dashboard Gerencial</h1>
-                            <p className="text-xs md:text-sm text-gray-500 font-medium capitalize">{rotuloMesLongo(mes)}</p>
+                            <p className={`text-xs md:text-sm text-gray-500 font-medium ${ehIA ? '' : 'capitalize'}`}>{ehIA ? 'Uso e custo da IA' : rotuloMesLongo(mes)}</p>
                         </div>
                     </div>
-                    <div className="md:ml-auto flex flex-wrap items-center gap-2">
+                    {!ehIA && <div className="md:ml-auto flex flex-wrap items-center gap-2">
                         {/* Navegador de mês */}
                         <div className="flex items-center bg-white border border-gray-300 rounded-full">
                             <button onClick={() => irMes(-1)} disabled={mes <= mesMinimo}
@@ -157,9 +166,9 @@ const DashboardGeral = () => {
                                 ))}
                             </SelectBusca>
                         </div>
-                    </div>
+                    </div>}
                 </div>
-                {!ehAtual && (
+                {!ehAtual && !ehIA && (
                     <div className="mt-3">
                         <span className="inline-flex items-center gap-2 text-xs font-bold text-amber-700 bg-amber-100 rounded-full px-3 py-1.5">
                             📅 vendo {rotuloMesLongo(mes)} (mês fechado)
@@ -169,7 +178,7 @@ const DashboardGeral = () => {
                 )}
                 {/* Abas */}
                 <div className="flex gap-2 mt-3 md:mt-4 overflow-x-auto hide-scrollbar -mx-3 px-3 md:mx-0 md:px-0">
-                    {ABAS.map(({ key, label, icon: Icon }) => (
+                    {abasVisiveis.map(({ key, label, icon: Icon }) => (
                         <button
                             key={key}
                             onClick={() => (key === aba ? setTick((t) => t + 1) : setFiltros({ ...filtros, aba: key }))}
@@ -191,6 +200,7 @@ const DashboardGeral = () => {
 
             <div className="p-3 md:p-6 space-y-3 md:space-y-4">
                 {ocupado && <Carregando />}
+                {ehIA && ehAdmin && <AbaUsoIA tick={tick} />}
                 {!ocupado && aba === 'visao' && d && <AbaVisaoGeral d={d} irPara={(k) => setFiltros({ ...filtros, aba: k })} />}
                 {!ocupado && aba === 'vendas' && d && <AbaVendas d={d} />}
                 {!ocupado && aba === 'recorrencia' && d && <>

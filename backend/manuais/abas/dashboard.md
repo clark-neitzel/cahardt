@@ -10,7 +10,7 @@ permissao: todos (cada perfil vê o seu — gestão, vendedor ou entregador)
 
 A tela inicial do app. Desde julho/2026 existe **um dashboard para cada perfil**, escolhido automaticamente pelas permissões de quem entrou:
 
-- **Gestão** (`admin` ou `Pode_Ver_Dashboard_Admin`) → **Dashboard Gerencial** com 5 abas: Visão Geral, Vendas & Pedidos, Recorrência, Atendimentos e Resultado & Margem.
+- **Gestão** (`admin` ou `Pode_Ver_Dashboard_Admin`) → **Dashboard Gerencial** com 5 abas: Visão Geral, Vendas & Pedidos, Recorrência, Atendimentos e Resultado & Margem. Quem é **administrador** (`admin`) vê ainda uma 6ª aba, **IA** (uso e custo da inteligência artificial).
 - **Vendedor** (demais usuários) → **Dashboard pessoal**: minha meta, meu dia, ranking da semana e "quem visitar primeiro".
 - **Entregador** (`Pode_Executar_Entregas`, sem meta de venda) → **Dashboard do Entregador**: rota de hoje, próxima parada, dinheiro a receber na entrega e resumo da semana.
 
@@ -56,6 +56,17 @@ No topo há:
 - Melhores e piores margens por produto (custo da ficha técnica do PCP ou custo de compra)
 - Recebíveis por idade (aging) e custos que mais pesaram no mês
 
+### Aba IA (visível só para administrador)
+Mostra **quanto a inteligência artificial custou, por dia, quem usou e onde gastou** — para o dono enxergar se o gasto é **de uma vez só (pontual)** ou **todo dia (recorrente)**. Quem tem só `Pode_Ver_Dashboard_Admin` (ou é gestor) **não vê** esta aba nem os valores: é exclusiva de `admin`.
+- **Cartões do topo**: custo de hoje, dos últimos 7 dias e dos últimos 30 dias (em dólar e em reais; a cotação do dólar é buscada automaticamente — se alguém cadastrar uma em Config → IA, a cadastrada vale), número de chamadas e % que falhou.
+- **Todo dia × uma vez**: separa os serviços que usam a IA em **Recorrente** (usou em 5 ou mais dias dos últimos 30), **Ocasional** (3 ou 4 dias) e **Pontual** (1 ou 2 dias), com o custo de cada grupo. É aqui que se descobre o gasto que se repete sem ninguém perceber (por exemplo a orientação automática de cada cliente, que roda toda noite e depois de cada atendimento). Logo depois que o painel entra no ar ainda há pouco histórico: enquanto houver menos de 5 dias de dados ele avisa "poucos dados" em vez de classificar errado.
+- **Custo por dia**: barras diárias separando o que foi **automático** (o sistema chamou sozinho) do que foi **manual** (uma pessoa pediu). O dia vale no **horário de Brasília**.
+- **Por serviço**: ranking de onde gastou (Clippy, orientação por cliente, Como Fazer, fotos do checklist do veículo, leitura de comprovante de despesa). Chamada sem identificação aparece como "Sem identificação".
+- **Por pessoa**: quem mais usou. O que o sistema faz sozinho aparece como "Sistema (automático)".
+- Período selecionável no filtro de datas (padrão 30 dias, no máximo 90).
+- **Importante**: o painel mostra **só o que o CA-Hardt chamou — não é a fatura da OpenAI** (a fatura pode ter outros usos e arredondamentos). Valores marcados como **estimado** foram calculados na hora com o preço atual do modelo (linhas antigas sem custo gravado); depois do recálculo de custos feito pelo administrador essas linhas passam a ter o custo gravado e saem de "estimado"; o preço dos modelos conhecidos é automático (não precisa cadastrar); só um modelo desconhecido aparece como "sem preço" até alguém cadastrar em Config → IA (nunca R$ 0,00). Datas no futuro são cortadas em hoje. Se o período pedido (já até hoje) for maior que 90 dias o painel mostra os últimos 90 e avisa (`periodo.encurtado`). Isso vale em todas as listas (por origem, por usuário, por dia, classificação): item sem preço mostra "—" e, se parte das chamadas tem preço, soma só essas. Chamada que falhou sem gastar nada não conta como "sem preço". Usuários apagados aparecem juntos numa só linha "Usuário removido". O histórico anterior ao painel (orientação por cliente, Como Fazer e fotos do checklist) é importado como **retroativo**; antes disso o Clippy e a leitura de comprovante não tinham registro.
+- O sistema não guarda o texto enviado à IA nem a resposta — só quem usou, onde, quando, tokens e custo.
+
 ---
 
 ## Dashboard do Vendedor
@@ -87,6 +98,7 @@ No topo há:
 |-----------|--------|
 | Qualquer usuário logado | Vê o dashboard do seu perfil |
 | `admin` ou `Pode_Ver_Dashboard_Admin` | Vê o Dashboard Gerencial (5 abas) e o dashboard de qualquer vendedor |
+| `admin` (somente) | Vê também a aba **IA** (custo e uso da inteligência artificial) |
 | `Pode_Executar_Entregas` (sem meta de venda) | Vê o Dashboard do Entregador |
 
 ---
@@ -111,6 +123,7 @@ No topo há:
 | `frontend/src/pages/Dashboard/DashboardVendedorPessoal.jsx` | Dashboard do vendedor (rota própria: `/dashboard-vendedor`) |
 | `frontend/src/pages/Dashboard/DashboardEntregador.jsx` | Dashboard do entregador |
 | `backend/routes/dashboards.js` | API `/api/dashboards/geral/*`, `/api/dashboards/vendedor`, `/api/dashboards/entregador` |
+| `backend/routes/iaUso.js` + `backend/services/iaUsoService.js` | API `/api/ia-uso/resumo` da aba IA (só `admin`); dados vêm da tabela `ia_uso_logs`, gravada por `aiProvider.js` |
 | `backend/routes/metaRoutes.js` | API `/metas/dashboard` (painel de metas do vendedor) |
 
 ## Aviso de ponto GPS divergente (vendedor — novo 07/2026)

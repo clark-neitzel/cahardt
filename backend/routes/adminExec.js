@@ -3992,6 +3992,29 @@ router.post('/recalcular-dia/:diaSigla', async (req, res) => {
     }
 });
 
+// POST /api/admin-exec/ia-uso-backfill
+// Importa o histórico antigo de uso da IA (ia_analise_logs, como_fazer_ia_usos, checklist_veiculo_fotos)
+// para ia_uso_logs. Idempotente (refRetro único): pode rodar quantas vezes quiser sem duplicar.
+router.post('/ia-uso-backfill', async (req, res) => {
+    try {
+        res.json({ ok: true, ...(await require('../services/iaUsoService').backfill()) });
+    } catch (error) {
+        console.error('[admin-exec] ia-uso-backfill:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// POST /api/admin-exec/ia-uso-recalcular-custos
+// Preenche custo_usd/custo_brl NULOS em ia_uso_logs com o preço resolvido (cadastrado > padrão). Idempotente.
+router.post('/ia-uso-recalcular-custos', async (req, res) => {
+    try {
+        res.json({ ok: true, ...(await require('../services/iaUsoService').recalcularCustos()) });
+    } catch (error) {
+        console.error('[admin-exec] ia-uso-recalcular-custos:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // POST /api/admin-exec/ia-dia/:diaSigla
 // Gera orientação via IA (modelo configurado em aiProvider) para todos os clientes de um dia de rota
 router.post('/ia-dia/:diaSigla', async (req, res) => {

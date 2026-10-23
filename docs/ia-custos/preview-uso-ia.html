@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Uso da IA — Maquete</title>
+<style>
+:root{--primary:#00754A;--dark:#006241;--house:#1E3932;--mint:#d4e9e2;--bg:#f2f0eb;--gold:#cba258;--red:#dc2626;--amber:#b45309}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);font-family:Manrope,-apple-system,"SF Pro Text",sans-serif;color:rgba(0,0,0,.87);letter-spacing:-.01em;font-variant-numeric:tabular-nums;max-width:100vw;overflow-x:hidden}
+.hero{background:var(--house);color:#fff;padding:20px 16px}
+.hero h1{margin:0 0 4px;font-size:20px}.hero p{margin:0;opacity:.8;font-size:13px}
+.tag{display:inline-block;background:var(--gold);color:#1E3932;font-size:11px;font-weight:700;padding:2px 10px;border-radius:99px;margin-bottom:8px}
+main{padding:12px;max-width:1100px;margin:0 auto}
+.card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;box-shadow:0 1px 2px rgba(0,0,0,.05);margin-bottom:12px}
+.ch{padding:12px 16px;border-bottom:1px solid #f3f4f6;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#4b5563;display:flex;gap:8px;align-items:center;justify-content:space-between}
+.cb{padding:16px}
+.pin{display:inline-flex;width:20px;height:20px;border-radius:50%;background:var(--gold);color:#1E3932;font-size:11px;font-weight:800;align-items:center;justify-content:center;flex:none}
+.filtros{display:flex;flex-direction:column;gap:8px}
+@media(min-width:768px){.filtros{flex-direction:row;flex-wrap:wrap;align-items:center}}
+.pill,select{border:1px solid #d1d5db;background:#fff;border-radius:99px;padding:9px 14px;font:inherit;font-size:13px;min-height:44px}
+select{width:100%}@media(min-width:768px){select{width:auto}}
+.periodo{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px}
+.periodo button{white-space:nowrap;border:1px solid var(--primary);background:#fff;color:var(--primary);border-radius:99px;padding:9px 14px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;min-height:44px}
+.periodo button.on{background:var(--primary);color:#fff}
+.kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+@media(min-width:768px){.kpis{grid-template-columns:repeat(4,1fr)}}
+.kpi{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:12px 14px}
+.kpi small{display:block;font-size:11px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:.06em}
+.kpi b{font-size:22px;color:var(--dark)}.kpi span{display:block;font-size:12px;color:#6b7280;margin-top:2px}
+.bars{display:flex;align-items:flex-end;gap:3px;height:150px;border-bottom:1px solid #e5e7eb}
+.bar{flex:1;background:var(--primary);border-radius:3px 3px 0 0;min-width:3px;position:relative;cursor:pointer}
+.bar:hover{background:var(--gold)}
+.bar:hover::after{content:attr(data-t);position:absolute;bottom:100%;left:50%;transform:translateX(-50%);background:#111;color:#fff;font-size:11px;padding:3px 7px;border-radius:6px;white-space:nowrap;z-index:5}
+.eixo{display:flex;justify-content:space-between;font-size:11px;color:#6b7280;margin-top:4px}
+.rank{display:flex;flex-direction:column;gap:10px}
+.rk{display:grid;grid-template-columns:1fr auto;gap:2px 8px;font-size:13px}
+.rk .n{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rk .v{font-weight:700}.rk .t{grid-column:1/3;height:8px;background:#f3f4f6;border-radius:99px;overflow:hidden}
+.rk .t i{display:block;height:100%;background:var(--primary);border-radius:99px}
+.grid2{display:grid;grid-template-columns:1fr;gap:12px}@media(min-width:768px){.grid2{grid-template-columns:1fr 1fr}}
+.badge{display:inline-block;font-size:11px;font-weight:700;padding:2px 9px;border-radius:99px}
+.b-rec{background:#fee2e2;color:#b91c1c}.b-pon{background:#d1fae5;color:#065f46}.b-med{background:#fef3c7;color:#92400e}
+.srv{border:1px solid #e5e7eb;border-radius:12px;padding:12px;margin-bottom:8px}
+.srv .top{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:4px}
+.srv .nome{font-weight:700}.srv .info{font-size:12px;color:#4b5563}
+.dias{display:flex;gap:2px;margin-top:8px;flex-wrap:wrap}.dias i{width:8px;height:14px;border-radius:2px;background:#e5e7eb}.dias i.u{background:var(--primary)}
+.resposta{background:var(--mint);border-radius:12px;padding:12px 14px;font-size:14px;margin-bottom:12px}
+table{width:100%;border-collapse:collapse;font-size:13px}th{background:#f9fafb;text-align:left;padding:10px 12px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#6b7280}td{padding:10px 12px;border-top:1px solid #f3f4f6}
+.desk{display:none}.mob{display:block}@media(min-width:768px){.desk{display:block;overflow-x:auto}.mob{display:none}}
+.mcard{border:1px solid #e5e7eb;border-radius:12px;padding:12px;margin-bottom:8px;font-size:13px}
+.leg{display:grid;gap:8px;font-size:13px}.leg div{display:flex;gap:10px;align-items:flex-start}
+ul.l{margin:0;padding-left:18px;font-size:13px;line-height:1.7}
+.dados{font-size:12px;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 12px;margin-bottom:12px}
+.btn{border:0;background:var(--primary);color:#fff;border-radius:99px;padding:10px 16px;font:inherit;font-weight:600;font-size:13px;cursor:pointer;min-height:44px}
+.btn.o{background:#fff;border:1px solid var(--primary);color:var(--primary)}
+.steps{counter-reset:s}.steps li{margin-bottom:6px}
+</style>
+</head>
+<body>
+<div class="hero">
+  <span class="tag">MAQUETE — dados de exemplo</span>
+  <h1>Dashboard do Admin › Uso da IA</h1>
+  <p>Quanto a IA custa por dia, quem usou, onde gastou mais — e se o gasto é <b>pontual</b> ou <b>todo dia</b>.</p>
+</div>
+<main>
+
+<div class="dados">⚠️ Os números abaixo são inventados só para você ver como a tela funciona. Os filtros são clicáveis. Os dados reais só começam a ser contados no dia em que for publicado (hoje o sistema não guarda o histórico).</div>
+
+<!-- TELA -->
+<div class="card">
+  <div class="ch"><span>Tela 1 · Filtros <span class="pin">1</span></span></div>
+  <div class="cb">
+    <div class="filtros">
+      <div class="periodo" id="periodo">
+        <button data-d="1">Hoje</button><button data-d="7">7 dias</button><button data-d="30" class="on">30 dias</button><button data-d="90">90 dias</button>
+      </div>
+      <select id="fServ"><option value="">Todos os serviços</option></select>
+      <select id="fUser"><option value="">Todos os usuários</option></select>
+      <select id="fModelo"><option value="">Todos os modelos</option></select>
+    </div>
+  </div>
+</div>
+
+<div class="kpis" id="kpis"></div>
+<div style="height:12px"></div>
+
+<div class="resposta" id="resposta"></div>
+
+<div class="card">
+  <div class="ch"><span>Custo por dia <span class="pin">3</span></span><span id="totPer" style="text-transform:none;letter-spacing:0"></span></div>
+  <div class="cb"><div class="bars" id="bars"></div><div class="eixo"><span id="e1"></span><span>passe o dedo/mouse nas barras</span><span id="e2"></span></div></div>
+</div>
+
+<div class="card">
+  <div class="ch"><span>Pontual × Todo dia <span class="pin">4</span></span></div>
+  <div class="cb" id="serv"></div>
+</div>
+
+<div class="grid2">
+  <div class="card"><div class="ch"><span>Onde gastou mais <span class="pin">5</span></span></div><div class="cb"><div class="rank" id="rkServ"></div></div></div>
+  <div class="card"><div class="ch"><span>Quem usou <span class="pin">6</span></span></div><div class="cb"><div class="rank" id="rkUser"></div></div></div>
+</div>
+
+<div class="card">
+  <div class="ch"><span>Últimas chamadas <span class="pin">7</span></span><span style="text-transform:none;letter-spacing:0" id="qtd"></span></div>
+  <div class="cb" style="padding:0">
+    <div class="desk"><table><thead><tr><th>Quando</th><th>Serviço</th><th>Quem</th><th>Modelo</th><th>Tokens</th><th>Custo</th></tr></thead><tbody id="tb"></tbody></table></div>
+    <div class="mob" style="padding:12px" id="tbm"></div>
+  </div>
+</div>
+
+<!-- LEGENDA -->
+<div class="card">
+  <div class="ch"><span>O que cada parte faz</span></div>
+  <div class="cb leg">
+    <div><span class="pin">1</span><span><b>Filtros</b> — período (Hoje, 7, 30, 90 dias), serviço, usuário e modelo de IA. A última escolha fica salva para você.</span></div>
+    <div><span class="pin">2</span><span><b>Cartões do topo</b> — custo do período, custo de hoje, projeção do mês (se continuar no ritmo) e nº de chamadas.</span></div>
+    <div><span class="pin">3</span><span><b>Custo por dia</b> — uma barra por dia. Dia que disparou fica evidente.</span></div>
+    <div><span class="pin">4</span><span><b>Pontual × Todo dia</b> — a resposta à sua dúvida. Cada serviço mostra em quantos dias do período foi usado e quanto custou; abaixo, um quadradinho por dia (verde = usou).
+      <br><span class="badge b-rec">TODO DIA</span> usou em 60% ou mais dos dias · <span class="badge b-med">DE VEZ EM QUANDO</span> · <span class="badge b-pon">PONTUAL</span> usou em poucos dias.</span></div>
+    <div><span class="pin">5</span><span><b>Onde gastou mais</b> — ranking dos serviços por custo.</span></div>
+    <div><span class="pin">6</span><span><b>Quem usou</b> — ranking por usuário (quem clicou no botão de IA).</span></div>
+    <div><span class="pin">7</span><span><b>Últimas chamadas</b> — cada uso: hora, serviço, pessoa, modelo, tokens e custo. Serve para investigar um pico. No celular vira cartões.</span></div>
+  </div>
+</div>
+
+<!-- PROJETO -->
+<div class="card">
+  <div class="ch"><span>O projeto — como será feito</span></div>
+  <div class="cb">
+    <p style="margin-top:0;font-size:14px"><b>Problema:</b> hoje cada chamada à IA devolve a quantidade de tokens e isso se perde. Sem registro não há como saber custo, quem ou onde.</p>
+    <p style="font-size:13px;font-weight:700;margin-bottom:4px">Etapas</p>
+    <ol class="steps" style="font-size:13px;padding-left:18px;line-height:1.6">
+      <li><b>Registrar:</b> toda chamada à IA grava uma linha (data, serviço, usuário, modelo, tokens, custo). Se a gravação falhar, a IA continua funcionando normalmente.</li>
+      <li><b>Rotular os serviços:</b> dar nome em português a cada lugar que usa IA (ex.: "Montar POP", "Checklist do veículo").</li>
+      <li><b>Calcular custo:</b> tabela de preço por modelo, editável (preço muda). Valor é <b>estimado</b>, não a fatura exata da OpenAI.</li>
+      <li><b>Tela do Admin:</b> esta tela, só para admin, funcionando no celular.</li>
+      <li><b>Equipe confere:</b> teste clicando de verdade + revisão de código antes de chegar a você.</li>
+      <li><b>Manual do Clippy + aviso para o grupo</b> atualizados.</li>
+    </ol>
+    <p style="font-size:13px;font-weight:700;margin-bottom:4px">O que você consegue responder com isso</p>
+    <ul class="l">
+      <li>"Quanto gastei ontem / esta semana / este mês?"</li>
+      <li>"Qual funcionalidade é a mais cara?"</li>
+      <li>"Quem mais usa?"</li>
+      <li>"Esse gasto é de algo que fiz uma vez ou que roda todo dia?"</li>
+      <li>"Em que dia o custo disparou e por quê?"</li>
+    </ul>
+    <p style="font-size:12px;color:#6b7280;margin-bottom:0">Limites honestos: não mostra o passado (só vale após publicar) · custo é estimativa · chamadas feitas fora do app (ex.: pelo bot da Ana, projeto separado) não aparecem aqui.</p>
+  </div>
+</div>
+
+</main>
+<script>
+const SERV=[
+ {n:'Checklist do veículo (foto)',p:.85,c:.014,m:'gpt-6-luna'},
+ {n:'Análise IA (relatórios)',p:.55,c:.03,m:'gpt-6-luna'},
+ {n:'Montar POP (Como Fazer)',p:.09,c:.22,m:'gpt-6-luna'},
+ {n:'Ler nota/etiqueta',p:.25,c:.02,m:'gpt-6-luna'},
+ {n:'Cadastro assistido',p:.04,c:.05,m:'gpt-6-luna'}
+];
+const USERS=['Ana (escritório)','Carlos (motorista)','Marcos (cozinha)','Clarkson (admin)','Juliana (vendas)'];
+const COT=5.5;
+let seed=7;const r=()=>(seed=(seed*16807)%2147483647)/2147483647;
+const hoje=new Date();hoje.setHours(0,0,0,0);
+const LOG=[];
+for(let d=0;d<90;d++){const dt=new Date(hoje);dt.setDate(dt.getDate()-d);
+ SERV.forEach((s,i)=>{if(r()<s.p){const n=1+Math.floor(r()*(s.p>.5?6:3));
+  for(let k=0;k<n;k++){const tok=Math.round(2000+r()*9000*(s.c*40));
+   const h=7+Math.floor(r()*11),m=Math.floor(r()*60);const t=new Date(dt);t.setHours(h,m);
+   LOG.push({t,dia:dt.getTime(),s:s.n,u:USERS[(i+k+d)%5],m:s.m,tok,usd:+(s.c*(.6+r()*.8)).toFixed(3)});}}});}
+const f=(v)=>'R$ '+(v*COT).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fd=(t)=>t.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
+let dias=30;
+function opt(id,arr){const el=document.getElementById(id);arr.forEach(a=>{const o=document.createElement('option');o.value=o.textContent=a;el.appendChild(o)})}
+opt('fServ',SERV.map(s=>s.n));opt('fUser',USERS);opt('fModelo',['gpt-6-luna']);
+function render(){
+ const fs=fServ.value,fu=fUser.value,fm=fModelo.value;
+ const ini=new Date(hoje);ini.setDate(ini.getDate()-(dias-1));
+ const L=LOG.filter(x=>x.dia>=ini.getTime()&&(!fs||x.s===fs)&&(!fu||x.u===fu)&&(!fm||x.m===fm));
+ const tot=L.reduce((a,x)=>a+x.usd,0);
+ const hojeT=L.filter(x=>x.dia===hoje.getTime()).reduce((a,x)=>a+x.usd,0);
+ const media=tot/dias;
+ kpis.innerHTML=`<div class="kpi"><small>Custo no período</small><b>${f(tot)}</b><span>${dias} dias</span></div>
+ <div class="kpi"><small>Hoje</small><b>${f(hojeT)}</b><span>até agora</span></div>
+ <div class="kpi"><small>Projeção do mês</small><b>${f(media*30)}</b><span>no ritmo atual <span class="pin" style="width:16px;height:16px;font-size:9px">2</span></span></div>
+ <div class="kpi"><small>Chamadas</small><b>${L.length}</b><span>${(L.length/dias).toFixed(1)} por dia</span></div>`;
+ // dias
+ const arr=[];for(let i=dias-1;i>=0;i--){const d=new Date(hoje);d.setDate(d.getDate()-i);arr.push(d)}
+ const por=arr.map(d=>L.filter(x=>x.dia===d.getTime()).reduce((a,x)=>a+x.usd,0));
+ const mx=Math.max(...por,.001);
+ bars.innerHTML=por.map((v,i)=>`<div class="bar" style="height:${Math.max(v/mx*100,1)}%" data-t="${fd(arr[i])} · ${f(v)}"></div>`).join('');
+ e1.textContent=fd(arr[0]);e2.textContent=fd(arr[arr.length-1]);totPer.textContent='Total '+f(tot);
+ // por serviço
+ const g={};L.forEach(x=>{(g[x.s]=g[x.s]||{c:0,n:0,d:new Set()});g[x.s].c+=x.usd;g[x.s].n++;g[x.s].d.add(x.dia)});
+ const lista=Object.entries(g).sort((a,b)=>b[1].c-a[1].c);
+ const cls=(q)=>{const p=q/dias;return p>=.6?['TODO DIA','b-rec']:p>=.2?['DE VEZ EM QUANDO','b-med']:['PONTUAL','b-pon']};
+ let rec=0,pon=0;
+ serv.innerHTML=lista.map(([n,v])=>{const [t,c]=cls(v.d.size);if(c==='b-rec')rec+=v.c;if(c==='b-pon')pon+=v.c;
+  const q=arr.map(d=>`<i class="${v.d.has(d.getTime())?'u':''}"></i>`).join('');
+  return `<div class="srv"><div class="top"><span class="nome">${n}</span><span class="badge ${c}">${t}</span></div>
+  <div class="info">Usou em <b>${v.d.size} de ${dias} dias</b> · ${v.n} chamadas · custo <b>${f(v.c)}</b></div><div class="dias">${q}</div></div>`}).join('')||'<p style="font-size:13px;color:#6b7280">Sem uso neste filtro.</p>';
+ resposta.innerHTML=`💡 <b>Resposta curta:</b> ${f(rec)} (${tot?Math.round(rec/tot*100):0}%) vêm de serviços usados <b>todo dia</b> e ${f(pon)} (${tot?Math.round(pon/tot*100):0}%) de serviços <b>pontuais</b>.`;
+ const rk=(el,key)=>{const m={};L.forEach(x=>m[x[key]]=(m[x[key]]||0)+x.usd);const e=Object.entries(m).sort((a,b)=>b[1]-a[1]);const top=e[0]?e[0][1]:1;
+  el.innerHTML=e.map(([n,v])=>`<div class="rk"><span class="n">${n}</span><span class="v">${f(v)}</span><div class="t"><i style="width:${v/top*100}%"></i></div></div>`).join('')||'—'};
+ rk(rkServ,'s');rk(rkUser,'u');
+ const U=[...L].sort((a,b)=>b.t-a.t).slice(0,12);qtd.textContent='12 de '+L.length;
+ tb.innerHTML=U.map(x=>`<tr><td>${fd(x.t)} ${x.t.toTimeString().slice(0,5)}</td><td>${x.s}</td><td>${x.u}</td><td>${x.m}</td><td>${x.tok.toLocaleString('pt-BR')}</td><td><b>${f(x.usd)}</b></td></tr>`).join('');
+ tbm.innerHTML=U.map(x=>`<div class="mcard"><div style="display:flex;justify-content:space-between"><b>${x.s}</b><b>${f(x.usd)}</b></div><div style="color:#6b7280;margin-top:2px">${fd(x.t)} ${x.t.toTimeString().slice(0,5)} · ${x.u}</div></div>`).join('');
+}
+document.querySelectorAll('#periodo button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#periodo button').forEach(x=>x.classList.remove('on'));b.classList.add('on');dias=+b.dataset.d;render()});
+[fServ,fUser,fModelo].forEach(s=>s.onchange=render);
+render();
+</script>
+</body>
+</html>
