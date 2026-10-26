@@ -64,7 +64,7 @@ router.get('/ping', (req, res) => {
         ok: true,
         // Marcador de deploy: bumpar a cada mudança de backend que precise de confirmação
         // em produção (não há outro jeito de saber de fora qual versão está no ar).
-        deployMarker: 'checklist-foto-modelo-2026-10-26',
+        deployMarker: 'diag-checklist-arquivo-2026-10-26',
         uptimeSegundos: Math.round(process.uptime()),
         timestamp: new Date().toISOString(),
         openaiConfigurada: !!process.env.OPENAI_API_KEY,
@@ -3695,6 +3695,88 @@ router.get('/diag-uploads-persistencia', async (req, res) => {
         res.json({ dir: DIR, total: arquivos.length, testes: arquivos.filter((a) => a.nome.startsWith('_teste-persistencia-')), arquivos: arquivos.slice(0, 30) });
     } catch (error) {
         console.error('[admin-exec] diag-uploads-persistencia:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// GET /api/admin-exec/diag-checklist-arquivo?caminho=/uploads/checklists-veiculo/... — SOMENTE LEITURA.
+// Devolve os bytes de uma foto de checklist/modelo de veículo do volume. Só aceita caminhos sob
+// /uploads/checklists-veiculo/ ou /uploads/veiculos/, extensão de imagem, e que (após realpath)
+// fiquem dentro de backend/uploads (sem `..`, sem symlink que escape).
+router.get('/diag-checklist-arquivo', async (req, res) => {
+    try {
+        const fs = require('fs');
+        const path = require('path');
+        const caminho = String(req.query.caminho || '');
+        const okPrefixo = caminho.startsWith('/uploads/checklists-veiculo/') || caminho.startsWith('/uploads/veiculos/');
+        const ext = path.extname(caminho).toLowerCase();
+        const TIPOS = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp' };
+        if (!okPrefixo || !TIPOS[ext] || caminho.includes('\0') || caminho.split('/').includes('..')) {
+            return res.status(400).json({ error: 'Caminho não permitido.' });
+        }
+        const BASE = path.join(__dirname, '../uploads');
+        let baseReal;
+        try { baseReal = await fs.promises.realpath(BASE); }
+        catch { return res.status(404).json({ error: 'Arquivo não encontrado.' }); }
+        const alvo = path.resolve(BASE, '.' + caminho.slice('/uploads'.length));
+        let real;
+        try { real = await fs.promises.realpath(alvo); }
+        catch { return res.status(404).json({ error: 'Arquivo não encontrado.' }); }
+        if (!real.startsWith(baseReal + path.sep)) {
+            return res.status(400).json({ error: 'Caminho não permitido.' });
+        }
+        const st = await fs.promises.stat(real);
+        if (!st.isFile()) return res.status(404).json({ error: 'Arquivo não encontrado.' });
+        res.set('Cache-Control', 'no-store');
+        res.type(TIPOS[ext]);
+        res.send(await fs.promises.readFile(real));
+    } catch (error) {
+        console.error('[admin-exec] diag-checklist-arquivo:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// GET /api/admin-exec/diag-checklist-fotos?veiculoId=&data=YYYY-MM-DD — SOMENTE LEITURA.
+// Lista as fotos dos checklists do veículo no dia + os modelos ativos, p/ achar os caminhos reais.
+router.get('/diag-checklist-fotos', async (req, res) => {
+    try {
+        const { veiculoId, data } = req.query;
+        if (!veiculoId || !/^\d{4}-\d{2}-\d{2}$/.test(String(data || ''))) {
+            return res.status(400).json({ error: 'Informe veiculoId e data=YYYY-MM-DD.' });
+        }
+        const brt = (d) => d ? d.toLocaleString('sv-SE', { timeZone: 'America/Sao_Paulo' }).replace(' ', 'T') + '-03:00' : null;
+        const checklists = await prisma.checklistVeiculo.findMany({
+            where: { veiculoId: String(veiculoId), dataReferencia: String(data) },
+            select: {
+                id: true, momento: true, status: true, veredito: true, vendedorId: true,
+                fotos: {
+                    select: { id: true, checklistId: true, angulo: true, caminho: true, ativa: true, statusIa: true, leituras: true, criadoEm: true },
+                    orderBy: { criadoEm: 'asc' },
+                },
+            },
+            orderBy: { criadoEm: 'asc' },
+        });
+        const modelos = await prisma.veiculoFotoModelo.findMany({
+            where: { veiculoId: String(veiculoId), ativa: true },
+            select: { angulo: true, caminho: true, criadoEm: true },
+            orderBy: [{ angulo: 'asc' }, { criadoEm: 'asc' }],
+        });
+        const fotos = [];
+        for (const c of checklists) {
+            for (const f of c.fotos) {
+                fotos.push({
+                    id: f.id, checklistId: f.checklistId, momento: c.momento, angulo: f.angulo,
+                    caminho: f.caminho, ativa: f.ativa, statusIa: f.statusIa, leituras: f.leituras, criadoEm: brt(f.criadoEm),
+                });
+            }
+        }
+        res.json({
+            checklists: checklists.map((c) => ({ id: c.id, momento: c.momento, status: c.status, veredito: c.veredito, vendedorId: c.vendedorId })),
+            fotos,
+            modelos: modelos.map((m) => ({ angulo: m.angulo, caminho: m.caminho, criadoEm: brt(m.criadoEm) })),
+        });
+    } catch (error) {
+        console.error('[admin-exec] diag-checklist-fotos:', error);
         res.status(500).json({ error: error.message });
     }
 });
