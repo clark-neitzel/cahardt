@@ -1,0 +1,4 @@
+parados total 27
+  QA CIDADE LEAD TESTE 2026-09-13 None
+  QA Lead 40d Visita Ha 10d 2026-09-16 2026-10-16T16:59:34.278Z
+  QA Lead Velho 40d Sem Visita 2026-09-16 None

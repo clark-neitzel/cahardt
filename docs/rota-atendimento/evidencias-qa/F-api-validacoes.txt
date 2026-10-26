@@ -1,0 +1,14 @@
+### sem pausadoAte
+{"error":"Informe até que dia as visitas ficam pausadas.","codigo":"PAUSADO_ATE_OBRIGATORIO"}
+HTTP 400
+### pausadoAte = hoje (2026-10-26)
+{"error":"A data de retomada precisa ser depois de hoje.","codigo":"PAUSADO_ATE_PASSADO"}
+HTTP 400
+### pausadoAte lixo
+{"error":"Informe até que dia as visitas ficam pausadas.","codigo":"PAUSADO_ATE_OBRIGATORIO"}
+HTTP 400
+ count 
+-------
+     0
+(1 row)
+

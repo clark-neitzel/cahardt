@@ -161,15 +161,39 @@ const getAtendimentoHoje = (atendimentos) => {
     return atendimentos.find(a => new Date(a.criadoEm).toDateString() === hoje && a.tipo !== 'FINANCEIRO' && a.tipo !== 'PEDIDO');
 };
 
-const getPedidoHoje = (pedidos) => {
+// Dia de calendário (YYYY-MM-DD) no fuso de São Paulo
+const diaSP = (d) => new Date(d).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+const pedidoCancelado = (p) => p.cancelado === true || p.statusEnvio === 'EXCLUIDO' || ['CANCELADO', 'EXCLUIDO'].includes(p.situacaoCA);
+// Quantos dias de calendário atrás foi o pedido (0 = hoje, 1 = ontem, 2 = anteontem)
+const diasAtrasPedido = (createdAt) => {
+    const a = new Date(diaSP(new Date()) + 'T12:00:00Z');
+    const b = new Date(diaSP(createdAt) + 'T12:00:00Z');
+    return Math.round((a - b) / 86400000);
+};
+
+// Pedido dos últimos 3 dias (hoje, ontem, anteontem) conta como atendido
+const getPedidoRecente = (pedidos) => {
     if (!pedidos || pedidos.length === 0) return null;
-    const hoje = new Date().toDateString();
-    return pedidos.find(p => p.createdAt && new Date(p.createdAt).toDateString() === hoje);
+    return pedidos.find(p => {
+        if (!p.createdAt || pedidoCancelado(p)) return false;
+        const d = diasAtrasPedido(p.createdAt);
+        return d >= 0 && d <= 2;
+    }) || null;
 };
 
 const isAtendidoHoje = (item) => {
-    return !!getAtendimentoHoje(item._atendimentos || item.atendimentos) || !!getPedidoHoje(item._pedidos || item.pedidos);
+    return !!getAtendimentoHoje(item._atendimentos || item.atendimentos) || !!getPedidoRecente(item._pedidos || item.pedidos);
 };
+
+const fmtNumeroPedidoBadge = (p) => p.numero == null ? '(rascunho)' : `${p.bonificacao ? 'BN' : p.especial ? 'ZZ' : ''}#${p.numero}`;
+
+// Cliente pausado (pausadoAte futuro)
+const getPausadoAte = (cliente) => {
+    if (!cliente?.pausadoAte) return null;
+    const dia = diaSP(cliente.pausadoAte); // ISO de fim do dia em -03:00: converte, não corta
+    return new Date(cliente.pausadoAte) > new Date() ? dia : null; // mesma regra do servidor: vale até o fim do dia
+};
+const fmtDiaMes = (iso) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
 
 const fmtHoraAtend = (d) => d ? new Date(d).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
 
@@ -200,6 +224,15 @@ const BadgeAtendidoHoje = ({ atendHoje, atendOutro, pedidoHoje }) => {
     if (pedidoHoje) {
         const nome = (pedidoHoje.usuarioLancamento?.nome || pedidoHoje.vendedor?.nome || '').split(' ')[0];
         const hora = pedidoHoje.createdAt ? fmtHoraAtend(pedidoHoje.createdAt) : '';
+        const diasAtras = pedidoHoje.createdAt ? diasAtrasPedido(pedidoHoje.createdAt) : 0;
+        if (diasAtras > 0) {
+            return (
+                <span className="text-[11px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded flex items-center gap-1" title={nome ? `Pedido por ${nome}` : ''}>
+                    <CheckCircle className="h-3 w-3 shrink-0" />
+                    <span>Com Pedido · {diasAtras === 1 ? 'ontem' : 'anteontem'} · {fmtNumeroPedidoBadge(pedidoHoje)}</span>
+                </span>
+            );
+        }
         return (
             <span className="text-[11px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded flex items-center gap-1" title={nome ? `Pedido por ${nome}` : ''}>
                 <CheckCircle className="h-3 w-3 shrink-0" />
@@ -307,7 +340,7 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostr
     const atendOutro = !atendHoje ? getAtendimentoOutroVendedor(cliente, meuVendedorId) : null;
     const doDia = itemTemDiaBase(cliente.Dia_de_venda); // Cliente do dia
     const insight = cliente.clienteInsights?.[0];
-    const pedidoHoje = !atendHoje && !atendOutro ? getPedidoHoje(cliente._pedidos) : null;
+    const pedidoHoje = !atendHoje && !atendOutro ? getPedidoRecente(cliente._pedidos) : null;
 
     const [inadimplenciaData, setInadimplenciaData] = useState(false);
 
@@ -424,6 +457,9 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostr
                         </button>
                     )}
                     <BadgeAtendidoHoje atendHoje={atendHoje} atendOutro={atendOutro} pedidoHoje={pedidoHoje} />
+                    {getPausadoAte(cliente) && (
+                        <span className="text-[11px] font-bold bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded">Pausado até {fmtDiaMes(getPausadoAte(cliente))}</span>
+                    )}
                     {(atendHoje?.gpsVendedor || atendOutro?.gpsVendedor) && (
                         <button onClick={(e) => { e.stopPropagation(); abrirMapa(atendHoje?.gpsVendedor || atendOutro?.gpsVendedor); }} className="text-[10px] font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 px-1.5 py-0.5 rounded flex items-center gap-0.5" title="Ver onde o atendimento foi registrado">
                             <MapPin className="h-3 w-3" /> GPS atend.
@@ -701,7 +737,7 @@ const CardLead = ({ lead, onAtendimento, onVerCliente, mostrarAcoes = true, pode
                         <div className="flex items-center gap-2 mb-1 flex-wrap">
                             <span className="text-[11px] font-bold text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded uppercase tracking-wide">Lead #{lead.numero || '?'}</span>
                             <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded ${ETAPA_COLORS[lead.etapa] || 'bg-gray-100 text-gray-600'}`}>{lead.etapa}</span>
-                            <BadgeAtendidoHoje atendHoje={atendHoje} atendOutro={atendOutro} pedidoHoje={!atendHoje && !atendOutro ? getPedidoHoje(lead._pedidos || lead.pedidos) : null} />
+                            <BadgeAtendidoHoje atendHoje={atendHoje} atendOutro={atendOutro} pedidoHoje={!atendHoje && !atendOutro ? getPedidoRecente(lead._pedidos || lead.pedidos) : null} />
                             {(atendHoje?.gpsVendedor || atendOutro?.gpsVendedor) && (
                                 <button onClick={(e) => { e.stopPropagation(); abrirMapa(atendHoje?.gpsVendedor || atendOutro?.gpsVendedor); }} className="text-[10px] font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 px-1.5 py-0.5 rounded flex items-center gap-0.5" title="Ver onde o atendimento foi registrado">
                                     <MapPin className="h-3 w-3" /> GPS
@@ -1734,7 +1770,7 @@ const RotaLeads = () => {
 
             const [leadsData, clientesData, atendHojeData, atendHojeTodosData] = await Promise.all([
                 leadService.listarParaRota(idBusca), // se null, traz de todos no backend
-                clienteService.listar({ limit: 2000 }), // cliente traz tudo, filtraremos depois
+                clienteService.listar({ limit: 2000, excluirPausados: 1 }), // cliente traz tudo, filtraremos depois
                 idBusca ? atendimentoService.listarHoje(idBusca) : atendimentoService.listarHoje(),
                 atendimentoService.listarHojeTodos() // todos os vendedores (para saber se outro atendeu)
             ]);
@@ -1748,8 +1784,7 @@ const RotaLeads = () => {
             const listaLeads = Array.isArray(leadsData) ? leadsData : (leadsData?.data || []);
             let listaClientesRaw = Array.isArray(clientesData) ? clientesData : (clientesData?.data || []);
             let listaPedidos = Array.isArray(pedidosDeHojeData) ? pedidosDeHojeData : [];
-            const hojeDataRaw = new Date().toDateString();
-            listaPedidos = listaPedidos.filter(p => p.createdAt && new Date(p.createdAt).toDateString() === hojeDataRaw);
+            listaPedidos = listaPedidos.filter(p => p.createdAt && !pedidoCancelado(p) && (d => d >= 0 && d <= 2)(diasAtrasPedido(p.createdAt)));
 
             // Filtra clientes caso precise (ContaAzul/Prisma)
             if (idBusca) {

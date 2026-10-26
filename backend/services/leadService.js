@@ -1,13 +1,109 @@
 const prisma = require('../config/database');
 const cidadeService = require('../services/cidadeService'); // cadastro oficial de cidades (09/2026)
 
+const { getDataReferencia } = require('../utils/dataReferenciaBrasilia');
+const { fromStr, toStr } = require('../utils/diasUteisCaixa');
+
+// Início (00:00 -03:00) do dia de hoje deslocado N dias.
+function inicioDiaMais(n) {
+    const d = fromStr(getDataReferencia());
+    d.setDate(d.getDate() + n);
+    return new Date(`${toStr(d)}T00:00:00.000-03:00`);
+}
+
+// Lead "ativo" na rota: não finalizado/convertido E (próxima visita >= hoje-7d OU criado há ≤ 30d).
+// Quem não passa é "parado" (ficou esquecido na carteira — a gestão decide o que fazer).
+function filtrosLeadAtivo() {
+    const h7 = inicioDiaMais(-7), h30 = inicioDiaMais(-30);
+    return {
+        ativo: { etapa: { notIn: ['FINALIZADO', 'CONVERTIDO'] }, OR: [{ proximaVisita: { gte: h7 } }, { createdAt: { gte: h30 } }] },
+        // etapa nunca é null (default NOVO); proximaVisita pode ser — OR explícito (Prisma `lt` não pega null)
+        parado: { etapa: { notIn: ['FINALIZADO', 'CONVERTIDO'] }, clienteId: null, createdAt: { lt: h30 }, OR: [{ proximaVisita: null }, { proximaVisita: { lt: h7 } }] },
+    };
+}
+
+// normaliza: minúsculo, sem acento, sem espaços duplos
+const normNome = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+
 const leadService = {
+
+    /**
+     * Leads PARADOS (gestão): ?parados=1 em GET /leads. Mais antigos primeiro.
+     */
+    listarParados: async ({ vendedorId } = {}) => {
+        const leads = await prisma.lead.findMany({
+            where: { ...filtrosLeadAtivo().parado, ...(vendedorId ? { idVendedor: vendedorId } : {}) },
+            select: {
+                id: true, numero: true, nomeEstabelecimento: true, cidade: true, etapa: true,
+                createdAt: true, proximaVisita: true, idVendedor: true,
+                vendedor: { select: { id: true, nome: true } },
+                atendimentos: { orderBy: { criadoEm: 'desc' }, take: 1, select: { criadoEm: true, acaoLabel: true } },
+            },
+            orderBy: { createdAt: 'asc' },
+            take: 1000,
+        });
+        const data = leads.map(({ atendimentos, ...l }) => ({
+            ...l,
+            criadoEm: l.createdAt,
+            ultimoAtendimento: atendimentos[0]?.criadoEm || null,
+            ultimoAtendimentoAcao: atendimentos[0]?.acaoLabel || null,
+        }));
+        return { data, total: data.length, page: 1, totalPages: 1, parados: true };
+    },
+
+    /**
+     * Cadastros parecidos (só consulta, nunca bloqueia): leads abertos e clientes ativos com nome
+     * contendo/contido no informado (mín. 4 letras) OU GPS a ≤ 50 m. Máx. 5.
+     */
+    buscarSimilares: async ({ nome, gps }) => {
+        const { parseLatLng, haversineMetros } = require('./pontoService');
+        const alvo = normNome(nome);
+        const nomeOk = alvo.replace(/\s/g, '').length >= 4;
+        const ponto = parseLatLng(gps);
+        if (!nomeOk && !ponto) return { similares: [] };
+
+        const [leads, clientes] = await Promise.all([
+            prisma.lead.findMany({
+                where: { etapa: { notIn: ['FINALIZADO', 'CONVERTIDO'] }, clienteId: null },
+                select: { id: true, nomeEstabelecimento: true, cidade: true, pontoGps: true, vendedor: { select: { nome: true } } },
+            }),
+            prisma.cliente.findMany({
+                where: { Ativo: true },
+                select: { UUID: true, Nome: true, NomeFantasia: true, End_Cidade: true, Ponto_GPS: true, vendedor: { select: { nome: true } } },
+            }),
+        ]);
+
+        const casaNome = (n) => {
+            const x = normNome(n);
+            return x.replace(/\s/g, '').length >= 4 && (x.includes(alvo) || alvo.includes(x));
+        };
+        const dist = (g) => {
+            const p = ponto && parseLatLng(g);
+            return p ? Math.round(haversineMetros(ponto.lat, ponto.lng, p.lat, p.lng)) : null;
+        };
+
+        const achados = [];
+        for (const l of leads) {
+            const d = dist(l.pontoGps);
+            const porNome = nomeOk && casaNome(l.nomeEstabelecimento);
+            if (porNome || (d != null && d <= 50)) achados.push({ tipo: 'lead', id: l.id, nome: l.nomeEstabelecimento, cidade: l.cidade || null, distanciaM: d, vendedorNome: l.vendedor?.nome || null, _n: porNome ? 0 : 1 });
+        }
+        for (const c of clientes) {
+            const d = dist(c.Ponto_GPS);
+            const porNome = nomeOk && (casaNome(c.NomeFantasia) || casaNome(c.Nome));
+            if (porNome || (d != null && d <= 50)) achados.push({ tipo: 'cliente', id: c.UUID, nome: c.NomeFantasia || c.Nome, cidade: c.End_Cidade || null, distanciaM: d, vendedorNome: c.vendedor?.nome || null, _n: porNome ? 0 : 1 });
+        }
+        // mais perto primeiro (quem não tem distância vai depois), depois por nome
+        achados.sort((a, b) => (a.distanciaM ?? 1e9) - (b.distanciaM ?? 1e9) || a._n - b._n);
+        return { similares: achados.slice(0, 5).map(({ _n, ...r }) => r) };
+    },
 
     /**
      * Lista leads com paginação, filtros e busca.
      * Quando chamado da rota (mode='rota'), exclui leads convertidos e finalizados.
      */
-    listar: async ({ vendedorId, search, etapa, page = 1, limit = 25, mode } = {}) => {
+    listar: async ({ vendedorId, search, etapa, page = 1, limit = 25, mode, parados } = {}) => {
+        if (parados) return leadService.listarParados({ vendedorId });
         const where = {};
 
         if (vendedorId) where.idVendedor = vendedorId;
@@ -48,10 +144,8 @@ const leadService = {
      * Lista simples para a rota (sem paginação, compatibilidade com RotaLeads)
      */
     listarParaRota: async (vendedorId) => {
-        const where = {
-            clienteId: null,
-            etapa: { notIn: ['FINALIZADO', 'CONVERTIDO'] }
-        };
+        // Só leads "ativos" (ver filtrosLeadAtivo); os parados vão para o painel da gestão (?parados=1).
+        const where = { clienteId: null, ...filtrosLeadAtivo().ativo };
         if (vendedorId) where.idVendedor = vendedorId;
 
         return await prisma.lead.findMany({

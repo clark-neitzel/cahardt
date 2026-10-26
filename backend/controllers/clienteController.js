@@ -73,7 +73,7 @@ const clienteController = {
     // Listar clientes com paginação e busca
     listar: async (req, res) => {
         try {
-            const { page = 1, limit = 10, search = '', ativo, idVendedor, diaEntrega, diaVenda, condicaoPagamento, condicaoPermitida, semVenda, semVendaDe, semVendaAte, perfil, whatsapp } = req.query;
+            const { page = 1, limit = 10, search = '', ativo, idVendedor, diaEntrega, diaVenda, condicaoPagamento, condicaoPermitida, semVenda, semVendaDe, semVendaAte, perfil, whatsapp, excluirPausados } = req.query;
             const skip = (page - 1) * limit;
 
             const where = {};
@@ -183,6 +183,12 @@ const clienteController = {
                 else console.warn(`[Clientes] filtro whatsapp="${whatsapp}" desconhecido — ignorado (sem filtro).`);
             }
 
+            // ?excluirPausados=1 (lista da Rota): esconde clientes com visitas pausadas (pausadoAte > agora).
+            // As demais telas que usam /clientes (NovoPedido, Catálogo...) NÃO passam o param e seguem vendo todos.
+            if (excluirPausados === '1' || excluirPausados === 'true') {
+                where.AND = [...(where.AND || []), { OR: [{ pausa: { is: null } }, { pausa: { is: { pausadoAte: { lte: new Date() } } } }] }];
+            }
+
             // Controle de visibilidade com base no nível de permissão (Vendedor/Admin)
             if (req.user) {
                 const permissaoPedidos = req.user.permissoes?.pedidos || {};
@@ -239,7 +245,9 @@ const clienteController = {
                     // `dispensaMotivo`/`dispensaEm` aqui seria payload morto × até 2000
                     // linhas. A ficha individual do cliente (o findUnique mais abaixo)
                     // continua trazendo a dispensa, porque lá ela é mostrada.
-                    whatsappStatus: { select: { selo: true } }
+                    whatsappStatus: { select: { selo: true } },
+                    // Pausa de visitas (tabela lateral) — vira `pausadoAte` achatado abaixo
+                    pausa: { select: { pausadoAte: true } }
                 }
             });
 
@@ -264,8 +272,9 @@ const clienteController = {
             // Serve à bonificação COM NOTA: o vendedor vê na hora o que falta no
             // cadastro, em vez de descobrir com a nota travada no Financeiro.
             const { fiscalApto } = require('../utils/cadastroFiscal');
-            const clientesComFlag = clientes.map(c => ({
+            const clientesComFlag = clientes.map(({ pausa, ...c }) => ({
                 ...c,
+                pausadoAte: pausa?.pausadoAte || null,
                 // campos antigos (inadimplente, totalVencido) mantêm nome e tipo; os 3 últimos são aditivos
                 inadimplente: situacaoMap.get(c.UUID)?.inadimplente || false,
                 totalVencido: situacaoMap.get(c.UUID)?.totalVencido || 0,
@@ -335,13 +344,25 @@ const clienteController = {
                     Observacoes_Gerais: true,
                     Situacao_serasa: true,
                     idVendedor: true,
-                    vendedor: { select: { id: true, nome: true } }
+                    vendedor: { select: { id: true, nome: true } },
+                    pausa: { select: { pausadoAte: true } }
                 }
             });
-            res.json({ data: clientes });
+            res.json({ data: clientes.map(({ pausa, ...c }) => ({ ...c, pausadoAte: pausa?.pausadoAte || null })) });
         } catch (error) {
             console.error('Erro na busca global de clientes:', error);
             res.status(500).json({ error: 'Erro ao buscar clientes' });
+        }
+    },
+
+    // Retoma as visitas de um cliente pausado (mesma permissão de registrar atendimento: qualquer logado).
+    retomarVisitas: async (req, res) => {
+        try {
+            const out = await require('../services/atendimentoService').retomarVisitas(req.params.uuid);
+            res.json(out);
+        } catch (error) {
+            console.error('Erro ao retomar visitas:', error);
+            res.status(500).json({ error: 'Erro ao retomar as visitas do cliente.' });
         }
     },
 
@@ -356,6 +377,7 @@ const clienteController = {
                     arquivos: true,
                     fiscal: true,
                     whatsapp: true,
+                    pausa: { select: { pausadoAte: true } },
                     whatsappStatus: {
                         select: {
                             selo: true, seloEm: true, seloMotivo: true,
@@ -377,6 +399,8 @@ const clienteController = {
             cliente.Inscricao_Estadual = cliente.fiscal?.inscricaoEstadual ?? null;
             // Achata os WhatsApps vinculados (tabela separada) — front usa cliente.Whatsapps
             cliente.Whatsapps = cliente.whatsapp?.numeros ?? [];
+            cliente.pausadoAte = cliente.pausa?.pausadoAte || null;
+            delete cliente.pausa;
 
             // Até quando a dispensa do WhatsApp vale. É calculado (dispensaEm + N dias da
             // config), não é coluna — por isso entra aqui e não no select. Só ADIÇÃO de campo.

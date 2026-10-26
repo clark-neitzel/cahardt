@@ -145,7 +145,11 @@ const atendimentoController = {
 
     listarComFiltros: async (req, res) => {
         try {
-            const { vendedorId, clienteId, leadId, tipo, dataInicio, dataFim, page, limit } = req.query;
+            const { vendedorId, clienteId, leadId, tipo, dataInicio, dataFim, page, limit, pausados } = req.query;
+            // ?pausados=1 → clientes com visitas pausadas (painel da gestão), no lugar da linha do tempo
+            if (pausados === '1' || pausados === 'true') {
+                return res.json(await atendimentoService.listarPausados({ vendedorId: vendedorId || null }));
+            }
             const result = await atendimentoService.listarComFiltros({
                 vendedorId: vendedorId || null,
                 clienteId: clienteId || null,

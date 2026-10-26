@@ -6,7 +6,8 @@ import vendedorService from '../../services/vendedorService';
 import SelectBusca from '../../components/SelectBusca';
 import SeloWhatsappCliente, { LegendaSeloWhatsapp } from '../../components/SeloWhatsappCliente';
 import whatsappClientesService from '../../services/whatsappClientesService';
-import { useFiltrosSalvos } from '../../hooks/useFiltrosSalvos';
+import { useFiltrosSalvos, useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
+import { LeadsParados, ClientesPausados } from './ListasParadosPausados';
 import ClientePopup from '../Rota/ClientePopup';
 import SeloInadimplencia from '../../components/SeloInadimplencia';
 import PopupContasEmAberto from '../../components/PopupContasEmAberto';
@@ -69,7 +70,7 @@ const fmtMoeda = (v) => Number(v || 0).toLocaleString('pt-BR', { style: 'currenc
 // venda viraria uma opção diferente ("Pedido #123", "Pedido #124"...).
 const rotuloAcao = (a) => a.origemPedido ? 'Pedido' : a.acaoLabel;
 
-const PainelAtendimentos = () => {
+const PainelAtendimentosLista = () => {
     const { user } = useAuth();
     const isAdmin = !!user?.permissoes?.admin;
 
@@ -957,6 +958,33 @@ const PainelAtendimentos = () => {
                     onClose={() => setClientePopup(null)}
                 />
             )}
+        </div>
+    );
+};
+
+const VISOES = [
+    { value: 'atendimentos', label: 'Atendimentos' },
+    { value: 'leads-parados', label: 'Leads parados' },
+    { value: 'pausados', label: 'Pausados' },
+];
+
+// Abas do painel: o histórico de atendimentos (padrão) + as duas listas de gestão
+const PainelAtendimentos = () => {
+    const [visao, setVisao] = useFiltroSalvo('painel-atendimentos:visao', 'atendimentos');
+    const visaoOk = VISOES.some(v => v.value === visao) ? visao : 'atendimentos';
+    return (
+        <div>
+            <div className="flex gap-1.5 sm:gap-2 overflow-x-auto pt-4 sm:pt-6 pb-1">
+                {VISOES.map(v => (
+                    <button key={v.value} onClick={() => setVisao(v.value)}
+                        className={`shrink-0 whitespace-nowrap min-h-[44px] px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-semibold border transition-colors ${visaoOk === v.value ? 'bg-primary text-white border-primary' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}>
+                        {v.label}
+                    </button>
+                ))}
+            </div>
+            {visaoOk === 'atendimentos' && <PainelAtendimentosLista />}
+            {visaoOk === 'leads-parados' && <div className="py-4 sm:py-6"><LeadsParados /></div>}
+            {visaoOk === 'pausados' && <div className="py-4 sm:py-6"><ClientesPausados /></div>}
         </div>
     );
 };

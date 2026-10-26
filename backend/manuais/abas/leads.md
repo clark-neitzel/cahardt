@@ -127,3 +127,8 @@ Gestão completa dos leads (prospecções) do sistema. Um lead é um potencial c
 | `frontend/src/pages/Leads/ModalReferenciarCliente.jsx` | Modal de vinculação a cliente |
 | `frontend/src/pages/Rota/ModalNovoLead.jsx` | Modal de criação (também usado na Rota) |
 | `frontend/src/services/leadService.js` | Chamadas de API para leads |
+
+## Leads parados, sem potencial e cadastro parecido (out/2026)
+- **Sem potencial = finalizado:** registrar atendimento com a ação "Sem potencial" leva o lead para Finalizado e ele deixa de voltar para a Rota.
+- **Lead ativo × parado:** a Rota só mostra leads não finalizados/convertidos com próxima visita há no máximo 7 dias atrás (ou futura) **ou** criados nos últimos 30 dias. Os demais são "parados" (lista da gestão, do mais antigo ao mais novo, com vendedor, cidade, data de criação, próxima visita e último atendimento) para decidir se retoma ou finaliza.
+- **Cadastro parecido:** ao criar lead, o sistema consulta leads abertos e clientes ativos com nome parecido (mín. 4 letras) ou GPS a até 50 m e mostra até 5 — é só consulta, não bloqueia.

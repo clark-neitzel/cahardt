@@ -248,6 +248,7 @@ model Cliente {
   // Situação do WhatsApp do cadastro (verificação, selo por uso real, dispensa) —
   // tabela lateral, mesma razão da ClienteFiscal
   whatsappStatus ClienteWhatsappStatus?
+  pausa          ClientePausa?
 
   // GPS: selo de confiança, cliente balcão, auditoria e sinais (tabelas laterais)
   gps          ClienteGps?
@@ -282,6 +283,21 @@ model ClienteFiscal {
   cliente           Cliente @relation(fields: [clienteUuid], references: [UUID], onDelete: Cascade)
 
   @@map("cliente_fiscal")
+}
+
+// Pausa de visitas do cliente (ex.: viagem, reforma) em tabela lateral — a `clientes` está no teto
+// de 1600 colunas do Postgres (mesma razão da ClienteFiscal). Enquanto `pausadoAte` > agora o cliente
+// some da rota do vendedor e da pendência de rota. A API devolve o campo achatado como `cliente.pausadoAte`.
+model ClientePausa {
+  clienteUuid  String   @id @map("cliente_uuid")
+  pausadoAte   DateTime @map("pausado_ate")
+  pausadoPorId String?  @map("pausado_por_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  cliente      Cliente  @relation(fields: [clienteUuid], references: [UUID], onDelete: Cascade)
+
+  @@index([pausadoAte])
+  @@map("clientes_pausa")
 }
 
 // WhatsApps do cliente (lista) em tabela lateral — a `clientes` está no teto de colunas do

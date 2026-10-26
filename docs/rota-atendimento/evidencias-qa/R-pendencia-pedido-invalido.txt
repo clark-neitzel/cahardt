@@ -1,0 +1,9 @@
+hoje 2026-10-26; dia pendente 2026-10-23; janela de pedidos: criado desde 2026-10-21 00:00 -03
+Pendentes base (2): 2
+Cliente alvo: MERCAVILLE COMERCIO DE ALIMENTOS EIRELI 861f2aec-7deb-44dc-b4c8-e6d92ebed213
+(a) cancelado=true, criado 22/10 -> cliente CONTINUA pendente | esperado: continua pendente | OK
+(b) status_envio=EXCLUIDO, criado 22/10 -> cliente CONTINUA pendente | esperado: continua pendente | OK
+(c) situacao_ca=CANCELADO, criado 22/10 -> cliente CONTINUA pendente | esperado: continua pendente | OK
+(d) pedido VALIDO (ABERTO, sit null), criado 22/10 -> cliente SAIU da pendencia | esperado: sair | OK
+(e) pedido VALIDO criado 20/10 (3 dias antes) -> cliente CONTINUA pendente | esperado: continua pendente | OK
+Pedidos de teste removidos; pendentes ao final: 2 (base 2)

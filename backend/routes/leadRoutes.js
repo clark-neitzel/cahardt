@@ -3,8 +3,12 @@ const router = express.Router();
 const leadController = require('../controllers/leadController');
 const uploadLead = require('../middlewares/uploadLeadMiddleware');
 
-router.get('/', leadController.listar);
+const podeVerAtendimentos = require('../middlewares/podeVerAtendimentos');
+// ?parados=1 lista leads de TODOS os vendedores: exige Pode_Ver_Atendimentos (como /atendimentos/filtros).
+const gateParados = (req, res, next) => (req.query.parados === '1' || req.query.parados === 'true') ? podeVerAtendimentos(req, res, next) : next();
+router.get('/', gateParados, leadController.listar);
 router.get('/rota', leadController.listarParaRota);
+router.get('/similares', leadController.similares);
 router.get('/por-cliente/:clienteId', leadController.buscarPorCliente);
 router.get('/:id', leadController.detalhar);
 router.post('/', leadController.criar);

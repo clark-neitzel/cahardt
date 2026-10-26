@@ -23,7 +23,9 @@ const ACOES_PADRAO_CLIENTE = [
     { value: 'MANDA_WHATSAPP', label: 'Manda para WhatsApp' },
     { value: 'AGUARDO_RETORNO', label: 'Amostra pedido', abrePedidoAmostra: true },
     { value: 'ENVIAR_VENDEDOR', label: 'Enviar vendedor' },
+    { value: 'PAUSAR_VISITAS', label: 'Pausar visitas até...', pausaVisitas: true },
 ];
+const ACAO_PAUSAR = { value: 'PAUSAR_VISITAS', label: 'Pausar visitas até...', pausaVisitas: true };
 
 const ACOES_PADRAO_LEAD = [
     { value: 'NOVO', label: 'Novo' },
@@ -52,6 +54,7 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId, onAbrirAmostra,
         dataRetorno: '',
         assuntoRetorno: '',
         transferirParaId: '',
+        pausadoAte: '',
     });
     const [gps, setGps] = useState(null);
     const [loadingGps, setLoadingGps] = useState(false);
@@ -75,7 +78,10 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId, onAbrirAmostra,
             setTipos(finalTipos);
             if (Array.isArray(acoesData) && acoesData.length > 0) {
                 // Filtrar apenas ações ativas
-                setAcoes(acoesData.filter(a => a.ativo !== false));
+                const ativas = acoesData.filter(a => a.ativo !== false);
+                // Config salva antes da novidade não tem "Pausar visitas": acrescenta (só cliente)
+                if (!isLead && !ativas.some(a => a.value === 'PAUSAR_VISITAS')) ativas.push(ACAO_PAUSAR);
+                setAcoes(ativas);
             }
         });
     }, []);
@@ -270,6 +276,17 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId, onAbrirAmostra,
                 return;
             }
         }
+        if (acaoSelecionada?.pausaVisitas) {
+            const amanha = new Date(Date.now() + 86400000).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+            if (!form.pausadoAte) {
+                toast.error('Informe até quando pausar as visitas.');
+                return;
+            }
+            if (form.pausadoAte < amanha) {
+                toast.error('A data da pausa deve ser a partir de amanhã.');
+                return;
+            }
+        }
         if (form.proximaVisita) {
             const pv = new Date(form.proximaVisita);
             const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
@@ -318,6 +335,7 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId, onAbrirAmostra,
                 alertaVisualAtivo: !!acaoSelecionada?.criaAlertaVisual,
                 alertaVisualCor: acaoSelecionada?.criaAlertaVisual ? acaoSelecionada?.cor : null,
                 amostraId: amostraId || null,
+                ...(acaoSelecionada?.pausaVisitas && !isLead && { acaoAtendimento: 'PAUSAR_VISITAS', pausadoAte: form.pausadoAte }),
                 ...(exigeJustificativa && { pendenciaRota: true }),
             });
             onSalvo();
@@ -463,12 +481,34 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId, onAbrirAmostra,
                         </div>
                     )}
 
+                    {isLead && form.acaoAtendimento === 'SEM_POTENCIAL' && (
+                        <p className="text-[12px] text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">O lead será finalizado e sai da rota (fica no histórico).</p>
+                    )}
+
                     {/* Alerta visual info */}
                     {acaoSelecionada?.criaAlertaVisual && (
                         <div className="flex items-center gap-2 text-[12px] rounded-lg px-3 py-2 border"
                             style={{ backgroundColor: (acaoSelecionada.cor || '#ef4444') + '15', borderColor: acaoSelecionada.cor || '#ef4444', color: acaoSelecionada.cor || '#ef4444' }}>
                             <Bell className="h-3.5 w-3.5" />
                             Alerta visual será criado para este atendimento
+                        </div>
+                    )}
+
+                    {/* Pausar visitas até */}
+                    {acaoSelecionada?.pausaVisitas && !isLead && (
+                        <div>
+                            <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">
+                                <Calendar className="h-3.5 w-3.5 inline mr-1" />
+                                Pausar visitas até *
+                            </label>
+                            <input
+                                type="date"
+                                min={new Date(Date.now() + 86400000).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })}
+                                value={form.pausadoAte}
+                                onChange={e => setForm(f => ({ ...f, pausadoAte: e.target.value }))}
+                                className={`block w-full border rounded-lg p-3 bg-white text-gray-900 text-[14px] focus:ring-primary focus:border-primary ${!form.pausadoAte ? 'border-red-300' : 'border-gray-300'}`}
+                            />
+                            <p className="text-[12px] text-gray-500 mt-1">O cliente sai da rota até essa data e volta sozinho depois. Nada é apagado.</p>
                         </div>
                     )}
 

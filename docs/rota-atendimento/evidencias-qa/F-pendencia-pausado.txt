@@ -1,0 +1,9 @@
+sem pausa:
+pendentes 2 de 2 ['MERCAVILLE COMERCI', 'ANA GABRIELA FRANC']
+com Ana Gabriela (24a96726) pausada ate 10/11:
+pendentes 1 de 1 ['MERCAVILLE COMERCI']
+pausa VENCIDA (ate 25/10):
+pendentes 2 de 2 ['ANA GABRIELA FRANC', 'MERCAVILLE COMERCI']
+/clientes?excluirPausados=1 com pausa vencida inclui Rosa dos Ventos?  1
+com pausa ativa inclui?  0
+sem excluirPausados inclui+pausadoAte?  "pausadoAte":"2026-11-05T23:59:59.000Z"

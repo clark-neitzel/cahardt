@@ -330,3 +330,10 @@ computador) ou um toque no **fundo escuro** ao redor da janela.
 
 ## Selo de inadimplência
 Ao lado do nome do cliente (não aparece em lead) fica o selo compacto de atraso/a confirmar; clicar abre o popup Contas em aberto. Serve para lembrar de cobrar durante a visita.
+
+## Abas "Leads parados" e "Pausados" (out/2026)
+No topo do painel há três abas: **Atendimentos** (histórico, padrão), **Leads parados** (leads ativos sem andamento: nome, cidade, vendedor, criado em, próxima visita, último atendimento, botão Abrir para editar o lead) e **Pausados** (clientes com pausa ativa: cidade, vendedor, pausado até, motivo/observação do último atendimento de pausa e botão **Retomar visitas**, que devolve o cliente à rota na hora). A aba escolhida fica salva.
+
+## Pausar visitas e retomar (out/2026)
+- Ação **"Pausar visitas até..."** no atendimento de cliente: exige a data de retomada (depois de hoje). Enquanto a data não chega, o cliente sai da Rota do vendedor e da pendência de rota. Qualquer usuário que registra atendimento pode pausar e retomar.
+- Pedido feito nos últimos 2 dias (calendário) conta como atendido para a pendência de rota; pedido cancelado não conta.

@@ -16,6 +16,7 @@ router.get('/:uuid/inadimplencia', clienteController.obterInadimplencia);
 router.get('/:uuid/endereco-historico', clienteController.enderecoHistorico);
 router.get('/:uuid/endereco-historico/:eventoId/geocode', clienteController.enderecoHistoricoGeocode);
 router.post('/:uuid/endereco-historico/:eventoId/restaurar', clienteController.enderecoHistoricoRestaurar);
+router.patch('/:uuid/retomar-visitas', clienteController.retomarVisitas); // ANTES de PATCH '/:uuid'
 router.get('/:uuid', clienteController.detalhar);
 router.patch('/:uuid', clienteController.atualizar);
 

@@ -375,3 +375,9 @@ A faixa vermelha "Inadimplente — R$ X em atraso" e o detalhe do popup seguem a
 - Clicar no selo abre o popup **Contas em aberto** (o mesmo em todas as telas), com os botões **Cobrar agora (WhatsApp)** (só quem tem a permissão da Régua de Cobrança) e **Abrir no Contas a Receber** (só quem acessa o Contas a Receber).
 
 - No card do cliente da Rota a faixa "Inadimplente — R$ X em atraso" (vermelha) ou "A confirmar — R$ X" (amarela) abre o popup Contas em aberto.
+
+## Pedido recente, leads parados e pausa de visitas (out/2026)
+- **Pedido dos últimos 2 dias conta como atendido.** Se o cliente fez pedido hoje ou nos 2 dias de calendário anteriores ao dia cobrado, ele não entra na pendência de rota nem aparece como "não atendido" (a janela de atendimentos registrados não mudou). Na Rota ele vai para "Atendidos" e o card mostra "Com Pedido · ontem · #1234" (ou "anteontem"); pedido de hoje continua "Com Pedido por fulano · hora". Pedido cancelado não conta.
+- **Lead "Sem potencial" sai da rota sozinho:** ao registrar essa ação num lead, ele vai para a etapa Finalizado. Na Rota só aparecem leads **ativos**: não finalizados e (com próxima visita de até 7 dias atrás em diante **ou** criados nos últimos 30 dias). Os que não passam são "leads parados" e ficam num painel da gestão, em vez de voltar toda semana.
+- **Pausar visitas até uma data:** no atendimento do cliente, a ação **"Pausar visitas até..."** pede a data de retomada (tem de ser depois de hoje). Até lá o cliente some da lista da Rota e da pendência de rota; se for encontrado pela busca, aparece com a marca "Pausado até dd/mm". Vendedor e gestor podem pausar e **retomar** (a retomada apaga a pausa na hora). A gestão vê a lista de pausados no Painel de Atendimentos.
+- Ao cadastrar um lead novo, o sistema avisa se já existe lead/cliente com nome parecido ou GPS a até 50 m (só aviso, não impede o cadastro): o app lista os parecidos e você escolhe "Cadastrar mesmo assim" ou "Voltar".

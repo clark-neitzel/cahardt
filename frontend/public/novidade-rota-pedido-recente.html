@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Rota mais esperta — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<meta property="og:title" content="🗺️ Novidade no Hardt App: a rota ficou mais esperta">
+<meta property="og:description" content="Cliente que comprou nos últimos 2 dias vai para Atendidos, dá para pausar visitas de um cliente e o app avisa se o lead já existe.">
+<meta property="og:type" content="website">
+<style>
+  :root { --primary:#00754A; --primary-dark:#006241; --house:#1E3932; --mint:#d4e9e2; --cream:#f2f0eb; --gold:#cba258; --ink:rgba(0,0,0,.87); --ink-soft:#5f6b66; letter-spacing:-0.01em; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--cream); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; line-height:1.55; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:620px; margin:0 auto; padding:0 16px 56px; }
+  .hero { background:linear-gradient(168deg,var(--house) 0%,#16302a 100%); color:#fff; padding:40px 16px 40px; text-align:center; }
+  .hero-inner { max-width:620px; margin:0 auto; }
+  .eyebrow { display:inline-block; background:var(--gold); color:#2b230f; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.14em; padding:6px 14px; border-radius:999px; margin-bottom:18px; }
+  .hero h1 { font-size:clamp(28px,7vw,38px); font-weight:800; line-height:1.12; margin:0 0 12px; }
+  .hero p { color:rgba(255,255,255,.75); font-size:16px; max-width:46ch; margin:0 auto; }
+  .sec-label { font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.16em; color:var(--primary-dark); margin:30px 4px 12px; }
+  .acc { background:#fff; border:1px solid #e3e1da; border-radius:16px; margin-bottom:10px; overflow:hidden; box-shadow:0 1px 2px rgba(30,57,50,.05); }
+  .acc-head { width:100%; display:flex; align-items:center; gap:12px; background:none; border:none; font:inherit; text-align:left; padding:15px 16px; cursor:pointer; min-height:56px; }
+  .acc-ico { width:38px; height:38px; border-radius:11px; background:var(--mint); display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
+  .acc-head strong { flex:1; font-size:15.5px; font-weight:700; }
+  .acc-seta { color:#9aa5a0; transition:transform .2s; font-size:13px; }
+  .acc.aberto .acc-seta { transform:rotate(180deg); }
+  .acc-corpo { display:none; padding:0 16px 16px 16px; }
+  .acc.aberto .acc-corpo { display:block; }
+  .acc-corpo p, .acc-corpo li { font-size:14px; color:var(--ink-soft); }
+  .acc-corpo p { margin:0 0 10px; }
+  .acc-corpo ul { margin:0; padding-left:18px; }
+  .acc-corpo li { margin-bottom:7px; }
+  .acc-corpo b { color:var(--ink); }
+  .tela { background:#f7f6f2; border:1px solid #e3e1da; border-radius:14px; padding:12px; margin:12px 0; }
+  .app-card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:12px; box-shadow:0 1px 2px rgba(0,0,0,.05); }
+  .nome { font-weight:700; font-size:15px; color:#111; }
+  .cidade { font-size:12px; color:#6b7280; }
+  .badge { display:inline-block; font-size:11px; font-weight:700; padding:2px 6px; border-radius:4px; margin-top:8px; }
+  .b-verde { color:#16a34a; background:#f0fdf4; }
+  .b-cinza { color:#374151; background:#f3f4f6; }
+  .campo { font-size:12px; font-weight:600; color:#374151; margin-bottom:4px; }
+  .input { border:1px solid #d1d5db; border-radius:8px; padding:10px; font-size:14px; background:#fff; color:#111; }
+  .ajuda { font-size:12px; color:#6b7280; margin-top:6px; }
+  .btn { display:inline-block; background:var(--primary); color:#fff; font-weight:600; font-size:13px; padding:8px 16px; border-radius:999px; }
+  .pin { display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; border-radius:50%; background:var(--gold); color:#2b230f; font-size:11px; font-weight:800; flex-shrink:0; vertical-align:middle; margin-left:6px; }
+  .legenda div { display:flex; gap:8px; font-size:13px; color:var(--ink-soft); margin-bottom:7px; align-items:flex-start; }
+  .legenda .pin { margin:1px 0 0; }
+</style>
+</head>
+<body>
+<div class="hero"><div class="hero-inner">
+  <span class="eyebrow">Novidade</span>
+  <h1>A rota ficou mais esperta</h1>
+  <p>Menos visita à toa, menos lead repetido. O card da rota continua igual — só a regra por trás melhorou.</p>
+</div></div>
+
+<div class="wrap">
+  <div class="sec-label">O que mudou</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🛒</span><strong>Comprou nos últimos 2 dias? Vai para "Atendidos"</strong><span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Antes só o pedido de <b>hoje</b> tirava o cliente da fila. Agora vale pedido de <b>hoje, ontem ou anteontem</b>. Pedido cancelado não conta.</p>
+      <div class="tela">
+        <div class="app-card">
+          <div class="nome">Padaria Bom Pão</div>
+          <div class="cidade">Joinville</div>
+          <span class="badge b-verde">✔ Com Pedido · ontem · #1234</span><span class="pin">1</span>
+        </div>
+      </div>
+      <div class="legenda">
+        <div><span class="pin">1</span><span>Pedido de ontem ou anteontem mostra o dia e o número. Pedido de hoje continua "Com Pedido por fulano · 14:32".</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">⏸️</span><strong>Pausar visitas de um cliente</strong><span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Cliente de férias ou fechado? No atendimento, escolha a ação <b>"Pausar visitas até..."</b> e a data. Ele sai da rota e volta sozinho depois. Nada é apagado.</p>
+      <div class="tela">
+        <div class="campo">Pausar visitas até * <span class="pin">2</span></div>
+        <div class="input">15/11/2026</div>
+        <div class="ajuda">O cliente sai da rota até essa data e volta sozinho depois. Nada é apagado.</div>
+        <div style="margin-top:12px" class="app-card">
+          <div class="nome">Mercado do Zé</div>
+          <span class="badge b-cinza">Pausado até 15/11</span><span class="pin">3</span>
+        </div>
+      </div>
+      <div class="legenda">
+        <div><span class="pin">2</span><span>A data é obrigatória e precisa ser de amanhã em diante.</span></div>
+        <div><span class="pin">3</span><span>Na lista, o cliente pausado mostra a etiqueta cinza. O escritório vê todos no Painel de Atendimentos, aba "Pausados", e pode <b>Retomar visitas</b> antes da data.</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🧲</span><strong>Lead: sem repetir cadastro</strong><span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Ao criar um lead, o app confere se já existe cadastro parecido (mesmo nome ou muito perto). Se existir, mostra a lista e você escolhe <b>"Cadastrar mesmo assim"</b> ou <b>"Voltar"</b>.</li>
+        <li>Marcar um lead como <b>"Sem potencial"</b> finaliza o lead: ele sai da rota e fica no histórico.</li>
+        <li>No Painel de Atendimentos, a aba <b>"Leads parados"</b> mostra para o escritório quais leads estão sem andamento.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+<script>
+  function alternar(btn) {
+    var acc = btn.parentElement;
+    var abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>

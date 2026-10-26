@@ -114,6 +114,27 @@ function diaUtilAnteriorPendencia() {
     return { hojeISO, diaAnteriorISO, sigla: SIGLAS_DIA[diaSemana(diaAnteriorISO)] };
 }
 
+// ISO 'YYYY-MM-DD' deslocado em N dias de calendário (aritmética de calendário, sem fuso).
+function isoMaisDias(iso, n) {
+    const d = fromStr(iso);
+    d.setDate(d.getDate() + n);
+    return toStr(d);
+}
+// Pedido dos últimos 2 dias de calendário conta como atendido (regra de 10/2026):
+// a janela de PEDIDOS começa 2 dias ANTES do dia pendente.
+const DIAS_PEDIDO_CONTA_ATENDIDO = 2;
+// Cliente "pausado" = existe linha em clientes_pausa com pausadoAte no futuro.
+// Pedido que conta como atendimento: não cancelado, não excluído (mesma regra da Rota no front).
+// situacaoCA é opcional e `notIn` do Prisma exclui linhas null → OR explícito.
+const PEDIDO_VALIDO = () => ({
+    cancelado: false,
+    AND: [
+        { statusEnvio: { not: 'EXCLUIDO' } }, // statusEnvio é obrigatório (default ABERTO): sem risco de null
+        { OR: [{ situacaoCA: null }, { situacaoCA: { notIn: ['CANCELADO', 'EXCLUIDO'] } }] },
+    ],
+});
+const FILTRO_NAO_PAUSADO = () => ({ OR: [{ pausa: { is: null } }, { pausa: { is: { pausadoAte: { lte: new Date() } } } }] });
+
 const atendimentoService = {
 
     // Registra um atendimento (para Lead ou Cliente)
@@ -124,6 +145,29 @@ const atendimentoService = {
             assuntoRetorno, dataRetorno,
             alertaVisualAtivo, alertaVisualCor,
             amostraId, usuarioRegistroId, pendenciaRota, permissoesUsuario } = data;
+
+        // Ação escolhida: o front manda `acaoKey` (value da ação); aceita também `acaoAtendimento`.
+        const acao = acaoKey || data.acaoAtendimento || null;
+
+        // PAUSAR_VISITAS (cliente): exige `pausadoAte` 'YYYY-MM-DD' futura. Valida ANTES de gravar qualquer coisa.
+        let pausadoAteData = null;
+        if (acao === 'PAUSAR_VISITAS' && clienteId) {
+            const iso = String(data.pausadoAte || '').trim();
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(iso) || isNaN(new Date(`${iso}T12:00:00-03:00`).getTime())) {
+                const err = new Error('Informe até que dia as visitas ficam pausadas.');
+                err.status = 400; err.codigo = 'PAUSADO_ATE_OBRIGATORIO';
+                throw err;
+            }
+            if (iso <= getDataReferencia()) {
+                const err = new Error('A data de retomada precisa ser depois de hoje.');
+                err.status = 400; err.codigo = 'PAUSADO_ATE_PASSADO';
+                throw err;
+            }
+            pausadoAteData = new Date(`${iso}T23:59:59.999-03:00`);
+        }
+
+        // Lead marcado "sem potencial" sai da rota: etapa FINALIZADO (etapa explícita do front prevalece).
+        const etapaNovaFinal = (leadId && acao === 'SEM_POTENCIAL' && !etapaNova) ? 'FINALIZADO' : etapaNova;
 
         // Justificativa obrigatória em atendimento de pendência de rota (09/10/2026).
         // Vale pela flag do front OU, sem depender dela, se o cliente está na pendência de ontem.
@@ -150,46 +194,57 @@ const atendimentoService = {
             }
         }
 
-        // Se for lead, atualizar a etapa e próxima visita
-        if (leadId && etapaNova) {
-            await prisma.lead.update({
-                where: { id: leadId },
+        // Tudo que é banco e precisa dar certo junto: etapa do lead + atendimento + pausa do cliente.
+        const novoAtendimento = await prisma.$transaction(async (tx) => {
+            if (leadId && etapaNovaFinal) {
+                await tx.lead.update({
+                    where: { id: leadId },
+                    data: {
+                        etapa: etapaNovaFinal,
+                        ...(proximaVisita && { proximaVisita: new Date(proximaVisita) })
+                    }
+                });
+            } else if (leadId && proximaVisita) {
+                await tx.lead.update({
+                    where: { id: leadId },
+                    data: { proximaVisita: new Date(proximaVisita) }
+                });
+            }
+
+            const criado = await tx.atendimento.create({
                 data: {
-                    etapa: etapaNova,
-                    ...(proximaVisita && { proximaVisita: new Date(proximaVisita) })
+                    tipo,
+                    observacao,
+                    etapaAnterior: etapaAnterior || null,
+                    etapaNova: etapaNovaFinal || null,
+                    proximaVisita: proximaVisita ? new Date(proximaVisita) : null,
+                    gpsVendedor: gpsVendedor || null,
+                    pedidoId: pedidoId || null,
+                    leadId: leadId || null,
+                    clienteId: clienteId || null,
+                    idVendedor,
+                    usuarioRegistroId: usuarioRegistroId || null,
+                    acaoKey: acaoKey || null,
+                    acaoLabel: acaoLabel || null,
+                    transferidoParaId: transferidoParaId || null,
+                    assuntoRetorno: assuntoRetorno || null,
+                    dataRetorno: dataRetorno ? new Date(dataRetorno) : null,
+                    alertaVisualAtivo: alertaVisualAtivo || false,
+                    alertaVisualCor: alertaVisualCor || null,
+                    alertaVisualVisto: false,
+                    amostraId: amostraId || null,
                 }
             });
-        } else if (leadId && proximaVisita) {
-            await prisma.lead.update({
-                where: { id: leadId },
-                data: { proximaVisita: new Date(proximaVisita) }
-            });
-        }
 
-        const novoAtendimento = await prisma.atendimento.create({
-            data: {
-                tipo,
-                observacao,
-                etapaAnterior: etapaAnterior || null,
-                etapaNova: etapaNova || null,
-                proximaVisita: proximaVisita ? new Date(proximaVisita) : null,
-                gpsVendedor: gpsVendedor || null,
-                pedidoId: pedidoId || null,
-                leadId: leadId || null,
-                clienteId: clienteId || null,
-                idVendedor,
-                usuarioRegistroId: usuarioRegistroId || null,
-                acaoKey: acaoKey || null,
-                acaoLabel: acaoLabel || null,
-                transferidoParaId: transferidoParaId || null,
-                assuntoRetorno: assuntoRetorno || null,
-                dataRetorno: dataRetorno ? new Date(dataRetorno) : null,
-                alertaVisualAtivo: alertaVisualAtivo || false,
-                alertaVisualCor: alertaVisualCor || null,
-                alertaVisualVisto: false,
-                amostraId: amostraId || null,
+            if (pausadoAteData) {
+                await tx.clientePausa.upsert({
+                    where: { clienteUuid: clienteId },
+                    update: { pausadoAte: pausadoAteData, pausadoPorId: usuarioRegistroId || null },
+                    create: { clienteUuid: clienteId, pausadoAte: pausadoAteData, pausadoPorId: usuarioRegistroId || null },
+                });
             }
-        });
+            return criado;
+        }, { timeout: 20000, maxWait: 10000 });
 
         // Async: recalcular insights e orientação IA do cliente
         if (clienteId) {
@@ -411,6 +466,7 @@ const atendimentoService = {
                 idVendedor: vendedorId,
                 Ativo: true,
                 Dia_de_venda: { not: null },
+                ...FILTRO_NAO_PAUSADO(), // cliente com visitas pausadas não é cobrado
             },
             select: {
                 UUID: true,
@@ -436,6 +492,8 @@ const atendimentoService = {
         // compensação). Janela em -03:00 explícito (Brasil não tem mais horário de verão) —
         // não em UTC puro, senão perde ~3h de cada ponta da janela de Brasília.
         const inicioDia = new Date(`${diaAnteriorISO}T00:00:00.000-03:00`);
+        // Pedido dos 2 dias de calendário ANTES do dia pendente também conta como atendido.
+        const inicioPedidos = new Date(`${isoMaisDias(diaAnteriorISO, -DIAS_PEDIDO_CONTA_ATENDIDO)}T00:00:00.000-03:00`);
         const fimHoje = new Date(`${hojeISO}T23:59:59.999-03:00`);
 
         const uuids = clientesDoDia.map(c => c.UUID);
@@ -452,7 +510,8 @@ const atendimentoService = {
             prisma.pedido.findMany({
                 where: {
                     clienteId: { in: uuids },
-                    createdAt: { gte: inicioDia, lte: fimHoje }, // usa data de criação, não dataVenda (que é entrega)
+                    ...PEDIDO_VALIDO(), // cancelado/excluído não conta como atendimento
+                    createdAt: { gte: inicioPedidos, lte: fimHoje }, // usa data de criação, não dataVenda (que é entrega)
                 },
                 select: { clienteId: true }
             })
@@ -485,19 +544,64 @@ const atendimentoService = {
         const ref = diaUtilAnteriorPendencia();
         if (!ref) return false;
         const cli = await prisma.cliente.findFirst({
-            where: { UUID: clienteId, idVendedor: vendedorId, Ativo: true, Dia_de_venda: { not: null } },
+            where: { UUID: clienteId, idVendedor: vendedorId, Ativo: true, Dia_de_venda: { not: null }, ...FILTRO_NAO_PAUSADO() },
             select: { Dia_de_venda: true },
         });
         if (!cli) return false;
         const dias = (cli.Dia_de_venda || '').toUpperCase().split(',').map(d => d.trim());
         if (!dias.includes(ref.sigla)) return false;
         const inicioDia = new Date(`${ref.diaAnteriorISO}T00:00:00.000-03:00`);
+        const inicioPedidos = new Date(`${isoMaisDias(ref.diaAnteriorISO, -DIAS_PEDIDO_CONTA_ATENDIDO)}T00:00:00.000-03:00`);
         const fimHoje = new Date(`${ref.hojeISO}T23:59:59.999-03:00`);
         const [nAt, nPed] = await Promise.all([
             prisma.atendimento.count({ where: { clienteId, criadoEm: { gte: inicioDia, lte: fimHoje }, tipo: { not: 'FINANCEIRO' } } }),
-            prisma.pedido.count({ where: { clienteId, createdAt: { gte: inicioDia, lte: fimHoje } } }),
+            prisma.pedido.count({ where: { clienteId, ...PEDIDO_VALIDO(), createdAt: { gte: inicioPedidos, lte: fimHoje } } }),
         ]);
         return nAt === 0 && nPed === 0;
+    },
+
+    // Retoma as visitas de um cliente pausado (apaga a pausa). Idempotente.
+    retomarVisitas: async (clienteId) => {
+        await prisma.clientePausa.deleteMany({ where: { clienteUuid: clienteId } });
+        return { ok: true, clienteId, pausadoAte: null };
+    },
+
+    // Clientes com visitas pausadas (pausadoAte > agora) — painel da gestão.
+    listarPausados: async ({ vendedorId } = {}) => {
+        const pausas = await prisma.clientePausa.findMany({
+            where: {
+                pausadoAte: { gt: new Date() },
+                ...(vendedorId ? { cliente: { idVendedor: vendedorId } } : {}),
+            },
+            select: {
+                clienteUuid: true, pausadoAte: true,
+                cliente: { select: { UUID: true, Nome: true, NomeFantasia: true, End_Cidade: true, idVendedor: true, vendedor: { select: { id: true, nome: true } } } },
+            },
+            orderBy: { pausadoAte: 'asc' },
+            take: TETO_LINHAS,
+        });
+        const ids = pausas.map(p => p.clienteUuid);
+        const obsMap = new Map();
+        if (ids.length) {
+            const ats = await prisma.atendimento.findMany({
+                where: { clienteId: { in: ids }, acaoKey: 'PAUSAR_VISITAS' },
+                select: { clienteId: true, observacao: true, criadoEm: true },
+                orderBy: { criadoEm: 'desc' },
+            });
+            for (const a of ats) if (!obsMap.has(a.clienteId)) obsMap.set(a.clienteId, a);
+        }
+        const data = pausas.map(p => ({
+            UUID: p.cliente.UUID,
+            Nome: p.cliente.Nome,
+            NomeFantasia: p.cliente.NomeFantasia,
+            End_Cidade: p.cliente.End_Cidade,
+            idVendedor: p.cliente.idVendedor,
+            vendedor: p.cliente.vendedor,
+            pausadoAte: p.pausadoAte,
+            observacao: obsMap.get(p.clienteUuid)?.observacao || null,
+            pausadoEm: obsMap.get(p.clienteUuid)?.criadoEm || null,
+        }));
+        return { data, total: data.length, page: 1, limit: data.length, totalPages: 1, pausados: true };
     },
 
     excluir: async (id) => {

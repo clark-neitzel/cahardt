@@ -47,6 +47,7 @@ const ModalNovoLead = ({ onClose, onSalvo, onCriado, user, vendedorId: propVende
     const [fotoPreviewUrl, setFotoPreviewUrl] = useState(null);
     const [capturandoGps, setCapturandoGps] = useState(false);
     const [saving, setSaving] = useState(false);
+    const [similares, setSimilares] = useState(null); // cadastros parecidos achados antes de salvar
     const [vendedores, setVendedores] = useState(propVendedores || []);
     const [isListening, setIsListening] = useState(false);
     const recognitionRef = useRef(null);
@@ -190,7 +191,7 @@ const ModalNovoLead = ({ onClose, onSalvo, onCriado, user, vendedorId: propVende
         }
     };
 
-    const handleSalvar = async () => {
+    const handleSalvar = async (pulaSimilares = false) => {
         if (!form.nomeEstabelecimento.trim()) {
             toast.error('Informe o nome do estabelecimento.');
             return;
@@ -222,6 +223,21 @@ const ModalNovoLead = ({ onClose, onSalvo, onCriado, user, vendedorId: propVende
         if (!fotoFile) {
             toast.error('Tire uma foto da fachada do estabelecimento.');
             return;
+        }
+        // Confere se já existe cadastro parecido (lead/cliente) — se a consulta falhar, segue normal
+        if (!pulaSimilares) {
+            try {
+                setSaving(true);
+                const r = await api.get('/leads/similares', { params: { nome: form.nomeEstabelecimento.trim(), gps: form.pontoGps.replace(/\s+/g, '') } });
+                const lista = Array.isArray(r.data?.similares) ? r.data.similares : [];
+                if (lista.length > 0) {
+                    setSimilares(lista);
+                    setSaving(false);
+                    return;
+                }
+            } catch (err) {
+                console.warn('Consulta de similares falhou, seguindo com o cadastro:', err);
+            }
         }
         try {
             setSaving(true);
@@ -256,6 +272,34 @@ const ModalNovoLead = ({ onClose, onSalvo, onCriado, user, vendedorId: propVende
 
     return (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-end">
+            {similares && (
+                <div className="absolute inset-0 z-20 bg-black/40 flex items-end md:items-center justify-center">
+                    <div className="bg-white w-full md:max-w-md rounded-t-2xl md:rounded-2xl p-4 max-h-[85vh] overflow-y-auto">
+                        <h3 className="font-bold text-sm text-gray-900 mb-2">Já existe cadastro parecido:</h3>
+                        <ul className="space-y-2 mb-4">
+                            {similares.map(x => (
+                                <li key={`${x.tipo}-${x.id}`} className="text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+                                    <span className="font-semibold text-gray-900">{x.nome}</span>
+                                    {x.cidade ? ` · ${x.cidade}` : ''}
+                                    {x.distanciaM != null && x.distanciaM <= 200 ? ` · a ${Math.round(x.distanciaM)} m` : ''}
+                                    {x.vendedorNome ? ` · ${x.vendedorNome}` : ''}
+                                    <span className="ml-2 text-[11px] font-semibold text-gray-500">{x.tipo === 'cliente' ? 'Cliente' : 'Lead'}</span>
+                                </li>
+                            ))}
+                        </ul>
+                        <div className="flex flex-col gap-2">
+                            <button onClick={() => { setSimilares(null); handleSalvar(true); }}
+                                className="w-full min-h-[44px] px-4 py-2 bg-primary hover:bg-primaryDark text-white rounded-full font-semibold text-sm">
+                                Cadastrar mesmo assim
+                            </button>
+                            <button onClick={() => setSimilares(null)}
+                                className="w-full min-h-[44px] px-4 py-2 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-sm">
+                                Voltar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
             <div className="bg-white w-full rounded-t-2xl max-h-[92vh] overflow-y-auto">
                 <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 sticky top-0 bg-white rounded-t-2xl">
                     <div className="flex items-center gap-3">
@@ -476,7 +520,7 @@ const ModalNovoLead = ({ onClose, onSalvo, onCriado, user, vendedorId: propVende
                                 }`} />
                     </div>
 
-                    <button onClick={handleSalvar} disabled={saving}
+                    <button onClick={() => handleSalvar(false)} disabled={saving}
                         className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl text-sm flex items-center justify-center gap-2 disabled:opacity-70 transition-colors">
                         {saving ? <Loader className="h-5 w-5 animate-spin" /> : null}
                         {saving ? 'Salvando...' : 'Criar Lead'}

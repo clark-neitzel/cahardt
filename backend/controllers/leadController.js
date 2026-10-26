@@ -3,14 +3,15 @@ const leadService = require('../services/leadService');
 const leadController = {
     listar: async (req, res) => {
         try {
-            const { vendedorId, search, etapa, page, limit, mode } = req.query;
+            const { vendedorId, search, etapa, page, limit, mode, parados } = req.query;
             const result = await leadService.listar({
                 vendedorId: vendedorId || null,
                 search: search || null,
                 etapa: etapa || null,
                 page: parseInt(page) || 1,
                 limit: parseInt(limit) || 25,
-                mode: mode || null
+                mode: mode || null,
+                parados: parados === '1' || parados === 'true'
             });
             res.json(result);
         } catch (error) {
@@ -30,6 +31,15 @@ const leadController = {
         } catch (error) {
             console.error('[leadController.listarParaRota]', error);
             res.status(500).json({ error: 'Erro ao listar leads da rota.' });
+        }
+    },
+
+    similares: async (req, res) => {
+        try {
+            res.json(await leadService.buscarSimilares({ nome: req.query.nome, gps: req.query.gps }));
+        } catch (error) {
+            console.error('[leadController.similares]', error);
+            res.status(500).json({ error: 'Erro ao buscar cadastros parecidos.' });
         }
     },
 

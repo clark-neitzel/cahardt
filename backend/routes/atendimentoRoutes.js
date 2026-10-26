@@ -26,19 +26,7 @@ const atendimentoController = require('../controllers/atendimentoController');
 // Desde 08/2026 a resposta traz também o `Telefone_Celular` do cliente (o selo de
 // WhatsApp precisa dele), então o que vazava por aqui deixou de ser só nome e
 // cidade e passou a ser o celular de todos os clientes.
-const podeVerAtendimentos = (req, res, next) => {
-    let perms = req.user?.permissoes;
-    if (typeof perms === 'string') { try { perms = JSON.parse(perms); } catch { perms = {}; } }
-    perms = perms || {};
-
-    if (perms.admin === true) return next();
-
-    const p = perms.Pode_Ver_Atendimentos;
-    if (p === true) return next();
-    if (p && typeof p === 'object' && p.view === true) return next();
-
-    return res.status(403).json({ error: 'Você não tem permissão para ver o Painel de Atendimentos.' });
-};
+const podeVerAtendimentos = require('../middlewares/podeVerAtendimentos');
 
 // IMPORTANTE: rotas fixas devem vir ANTES de /:id para não ser capturado como parâmetro
 router.get('/hoje', atendimentoController.listarHojeVendedor);

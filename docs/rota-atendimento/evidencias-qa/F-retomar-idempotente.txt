@@ -1,0 +1,1 @@
+{"ok":true,"clienteId":"0d83d413-bb06-4133-a8de-c82b8015a02a","pausadoAte":null}

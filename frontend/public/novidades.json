@@ -1,5 +1,11 @@
 [
   {
+    "slug": "rota-pedido-recente",
+    "titulo": "Rota: pedido dos últimos 2 dias, pausar visitas e lead sem duplicar",
+    "resumo": "Cliente que comprou hoje, ontem ou anteontem vai para Atendidos. Dá para pausar as visitas de um cliente até uma data. Ao criar lead, o app avisa se já existe cadastro parecido.",
+    "data": "2026-10-26"
+  },
+  {
     "slug": "editar-despesa",
     "titulo": "Editar despesa e pagamento já pago",
     "resumo": "Errou data, forma, banco, categoria ou fornecedor de uma despesa já paga? Agora dá para corrigir sem estornar, com a permissão \"Editar pagamento / despesa quitada\". Valor e parcelas continuam travados.",
