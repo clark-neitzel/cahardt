@@ -100,6 +100,7 @@ O **"Período de entrega dos pedidos"** fica na mesma caixinha do **"Data do emb
 
 - **Trocar o "Período de entrega dos pedidos" (inclusive as setas ‹ ›) NÃO descarta o rascunho.** As cargas do dia são exatamente as mesmas; só muda quais pedidos livres aparecem na lista. Tudo o que você já tinha movido continua marcado, e a marcação "participa da divisão" também.
   - **Se algum item que você tinha mexido ficar fora do novo período** (saiu da lista e não está em carga nenhuma), **só aquela alteração** é descartada — o resto do rascunho continua. A tela avisa quantas saíram: *"3 itens que você tinha mexido ficaram fora do período escolhido — essas alterações foram descartadas. O resto do rascunho continua aqui."* Nada some sem aviso.
+- **Setas ‹ › ao lado da "Data do embarque"** voltam ou avançam **1 dia** ("Dia anterior" / "Próximo dia"); funcionam igual a digitar a data, inclusive o aviso do rascunho abaixo.
 - **Trocar a "Data do embarque" descarta o rascunho** — aí as cargas são outras de verdade. Antes de trocar, a tela **pergunta**: *"Há alterações de carga ainda não aplicadas. Deseja mudar o dia e descartar o rascunho?"*. Respondendo **Cancelar**, nada muda: a data e o rascunho ficam como estavam.
 - Depois de **Confirmar** com sucesso (e também quando o Confirmar é recusado porque o banco mudou), o mapa recarrega e o rascunho **é zerado** — o que foi gravado já está nas cargas, e não deve reaparecer como pendente.
 - Sair da tela ou fechar o navegador com rascunho pendente também **pergunta antes**.

@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Map as MapIcon, Loader2, Wand2, Route as RouteIcon, X, Truck, Printer, MapPinOff, MapPin, Eye, EyeOff, Lock, ArrowLeftRight, Trash2, AlertTriangle, User, ChevronRight } from 'lucide-react';
+import { Map as MapIcon, Loader2, Wand2, Route as RouteIcon, X, Truck, Printer, MapPinOff, MapPin, Eye, EyeOff, Lock, ArrowLeftRight, Trash2, AlertTriangle, User, ChevronRight, ChevronLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
 import mapaExpedicaoService from '../../../services/mapaExpedicaoService';
 import SelectBusca from '../../../components/SelectBusca';
@@ -50,6 +50,14 @@ const temChave = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
 
 const hojeISO = () => {
     const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+// Soma dias a 'YYYY-MM-DD' pelo calendário LOCAL (sem toISOString/UTC). Inválida → null.
+const somarDiasISO = (iso, n) => {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ''));
+    if (!m) return null;
+    const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]) + n);
+    if (Number.isNaN(d.getTime())) return null;
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 const dataBR = (s) => s ? s.split('-').reverse().join('/') : '';
@@ -1676,15 +1684,34 @@ export default function MapaExpedicao() {
                         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-3">
                             <p className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-2">Embarque e pedidos</p>
                             <div className="grid grid-cols-2 gap-2">
-                                <label className="col-span-2 text-sm font-medium text-gray-700">
-                                    Data do embarque
-                                    <input
-                                        type="date"
-                                        value={data}
-                                        onChange={e => trocarData(e.target.value)}
-                                        className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none min-h-[44px]"
-                                    />
-                                </label>
+                                <div className="col-span-2">
+                                    <label htmlFor="mapa-data-embarque" className="text-sm font-medium text-gray-700">Data do embarque</label>
+                                    <div className="mt-1 flex items-center gap-1.5">
+                                        <button
+                                            type="button"
+                                            aria-label="Dia anterior"
+                                            onClick={() => { const d = somarDiasISO(data, -1) || hojeISO(); trocarData(d); }}
+                                            className="shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-600 hover:text-gray-900 rounded-full hover:bg-gray-100 border border-gray-200"
+                                        >
+                                            <ChevronLeft className="h-5 w-5" />
+                                        </button>
+                                        <input
+                                            id="mapa-data-embarque"
+                                            type="date"
+                                            value={data}
+                                            onChange={e => trocarData(e.target.value)}
+                                            className="min-w-0 flex-1 border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none min-h-[44px]"
+                                        />
+                                        <button
+                                            type="button"
+                                            aria-label="Próximo dia"
+                                            onClick={() => { const d = somarDiasISO(data, 1) || hojeISO(); trocarData(d); }}
+                                            className="shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-600 hover:text-gray-900 rounded-full hover:bg-gray-100 border border-gray-200"
+                                        >
+                                            <ChevronRight className="h-5 w-5" />
+                                        </button>
+                                    </div>
+                                </div>
                                 <div className="col-span-2">
                                     <p className="text-sm font-medium text-gray-700 mb-1">Período de entrega dos pedidos</p>
                                     <FiltroPeriodo
