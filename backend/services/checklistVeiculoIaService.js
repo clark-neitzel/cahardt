@@ -1,6 +1,8 @@
 // Análise de UMA foto do checklist de veículo pela IA (visão).
 // REGRA: a IA NUNCA causa erro nem bloqueia o fluxo. Qualquer falha (sem chave, timeout, JSON ruim)
 // vira { statusIa: 'IA_INDISPONIVEL', serve: true } e o checklist segue.
+const fs = require('fs');
+const path = require('path');
 const aiProvider = require('./aiProvider');
 const { ANGULOS } = require('../config/checklistVeiculoAngulos');
 
@@ -67,9 +69,10 @@ FORMATO
 Campos não aplicáveis a este ângulo: null (ou [] para lista). Foto sem problema: "problemas":[].`;
 
 const COMPLEMENTO = {
-    frente: `FRENTE. O motorista deve estar a ~2 passos (3 m), com a FRENTE inteira do carro (faróis, grade) e a PLACA legível dentro do quadro.
+    frente: `FRENTE. O motorista deve estar a ~3 passos (4 m), com a FRENTE TODA do carro dentro do quadro: capô, faróis, grade, PLACA legível, para-choque e o PARA-BRISA inteiro visível.
 As rodas NÃO são exigidas nesta foto: a ausência delas NUNCA gera ATENCAO nem pedido para afastar. Pneu/roda só é avaliado se aparecer.
 Leia a placa. Veja farol quebrado, para-brisa trincado, para-choque danificado; se os pneus dianteiros aparecerem, veja se estão murchos.
+Se o PARA-BRISA estiver cortado/fora do quadro, ou o teto/parte de cima do carro cortado: serve=true (NUNCA serve=false por isso) e ATENCAO com oQueFazer curto, sempre com a medida "3 passos", ex.: "Chega 3 passos pra trás: preciso ver o para-brisa e a frente toda."
 Se a placa estiver cortada ou ilegível: ATENCAO pedindo para ajustar o enquadramento (chega/afasta com medida em passos).
 Capô aberto: ATENCAO "Fecha o capô e tira de novo. Primeiro as fotos de fora, depois abre o capô."`,
     lateral_direita: null,
@@ -123,6 +126,32 @@ Leia a placa. Veja lanternas quebradas, para-choque amassado, porta do baú aber
 Anote também as luzes acesas em leituras.luzesAviso. Só óleo, temperatura, bateria, motor, airbag, ABS, direção acesas = REPROVA.
 Freio/porta/cinto = uma PERGUNTA no máximo. NÃO fale de combustível. Se o reflexo cobre o painel, serve=false com "Inclina um pouco o celular pra tirar o reflexo."`,
 };
+
+// Foto modelo (referência real do veículo). Só orienta; só em ângulos de enquadramento (painel/água/vareta
+// têm leitura na foto do motorista, o modelo não serve de leitura).
+const ANGULOS_COM_MODELO = ['frente', 'traseira', 'lateral_direita', 'lateral_esquerda', 'porta_malas'];
+const MODELO_MAX_LADO = 768; // px: o modelo é só exemplo de enquadramento; menos tokens e menos tempo
+const TEXTO_MODELO = `FOTO MODELO. Imagem 1 = foto que o motorista tirou agora. Imagem 2 = FOTO MODELO de como este veículo deve ser fotografado neste ângulo (exemplo de enquadramento).
+Use a modelo APENAS para: (a) comparar enquadramento. A modelo MANDA: com modelo, a regra dos "passos/distância ideal" do ângulo NÃO vale; vale só a comparação. Só peça ajuste se a diferença for GRANDE e óbvia. Com ATENCAO e serve=true, sempre com medida em passos: uma parte do carro que aparece inteira na modelo (para-brisa, placa, lanterna, o teto; roda só nas laterais, nunca na frente) está cortada ou fora do quadro na imagem 1, ou o carro ocupa bem menos da metade do tamanho que tem na modelo (pequeno/longe). Com serve=false, como na regra 8: só se a imagem 1 mostra OUTRO LADO do carro (ângulo errado) ou outro assunto. Diferença pequena ou moderada de distância, altura ou inclinação: IGNORE, sem comentar. Na dúvida, não peça ajuste;
+(b) apontar dano, sujeira ou peça faltando que a modelo não tem.
+NUNCA reprove nem peça para refazer por diferença de luz, cor, fundo, chão, clima ou por não ser o mesmo ponto exato. NUNCA serve=false só por não parecer com a modelo. A modelo não é leitura: placa e estado do carro são da imagem 1.`;
+
+/** Lê e reduz a foto modelo. Qualquer falha devolve null (análise segue sem modelo). */
+async function prepararModelo(caminhoDb) {
+    try {
+        const rel = String(caminhoDb || '');
+        if (!rel.startsWith('/uploads/')) return null;
+        const base = path.resolve(__dirname, '../uploads');
+        const abs = path.resolve(base, rel.slice('/uploads/'.length));
+        if (!abs.startsWith(base + path.sep) || !fs.existsSync(abs)) return null;
+        const sharp = require('sharp');
+        const buf = await sharp(abs).rotate().resize(MODELO_MAX_LADO, MODELO_MAX_LADO, { fit: 'inside', withoutEnlargement: true }).jpeg({ quality: 80 }).toBuffer();
+        return { base64: buf.toString('base64'), mime: 'image/jpeg' };
+    } catch (e) {
+        console.error('[ChecklistVeiculoIA] foto modelo indisponível:', e.message);
+        return null;
+    }
+}
 
 const EXTRA_ULTIMA_TENTATIVA = 'ESTA É A ÚLTIMA TENTATIVA: NÃO peça para refazer (serve=true). Avalie o que dá e, se não der para avaliar, devolva uma PERGUNTA.';
 
@@ -305,11 +334,17 @@ async function analisarFoto(p) {
         if (volta) linhas.push(CONTEXTO_VOLTA);
         linhas.push(...contextoDoVeiculo(p.angulo, p.veiculo));
         if (p.ultimaTentativa) linhas.push(EXTRA_ULTIMA_TENTATIVA);
+        const imagens = [{ base64: p.buffer.toString('base64'), mime: p.mime || 'image/jpeg' }];
+        let usouModelo = false;
+        if (p.modeloCaminho && ANGULOS_COM_MODELO.includes(p.angulo)) {
+            const m = await prepararModelo(p.modeloCaminho);
+            if (m) { imagens.push(m); linhas.push(TEXTO_MODELO); usouModelo = true; }
+        }
         if (p.angulo === 'painel' && p.luzOleoAcesa) linhas.push('O motorista informou que a luz de óleo está acesa.');
         const r = await aiProvider.analisarImagem({
             system: SYSTEM_PROMPT,
             texto: linhas.filter(Boolean).join('\n'),
-            imagens: [{ base64: p.buffer.toString('base64'), mime: p.mime || 'image/jpeg' }],
+            imagens,
             maxTokens: 2500,
             json: true,
             timeoutMs: TIMEOUT_MS,
@@ -333,7 +368,8 @@ async function analisarFoto(p) {
             serve: v.serve,
             motivoRefazer: v.motivoRefazer,
             problemas: v.problemas,
-            leituras: v.leituras,
+            leituras: v.leituras ? { ...v.leituras, usouModelo } : v.leituras,
+            usouModelo,
             iaModelo: r.modelo,
             iaMs: Date.now() - t0,
             iaTokens: r.usage?.total ?? null,
@@ -344,4 +380,5 @@ async function analisarFoto(p) {
     }
 }
 
-module.exports = { contextoDoVeiculo, umaPerguntaPorFoto, gravEfetiva, normalizarLuzes, analisarFoto, validarResposta, extrairJson, statusDe, SYSTEM_PROMPT };
+module.exports = {
+    prepararModelo, ANGULOS_COM_MODELO, contextoDoVeiculo, umaPerguntaPorFoto, gravEfetiva, normalizarLuzes, analisarFoto, validarResposta, extrairJson, statusDe, SYSTEM_PROMPT };

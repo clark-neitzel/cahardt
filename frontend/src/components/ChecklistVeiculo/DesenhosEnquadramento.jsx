@@ -23,9 +23,9 @@ const Frente = () => (
         <rect x="74" y="88" width="18" height="18" rx="3" fill="currentColor" /><rect x="158" y="88" width="18" height="18" rx="3" fill="currentColor" />
         <rect x="60" y="22" width="130" height="92" rx="6" fill="none" stroke={PRIMARIO} strokeWidth="2" strokeDasharray="5 4" />
         <line x1="190" y1="70" x2="250" y2="70" stroke={PRIMARIO} strokeWidth="2" />
-        <text x="220" y="62" fontSize="11" textAnchor="middle" fill={PRIMARIO} fontWeight="700">2 passos</text>
+        <text x="220" y="62" fontSize="11" textAnchor="middle" fill={PRIMARIO} fontWeight="700">3 passos</text>
         <Camera x={252} y={60} />
-        <text x="125" y="132" fontSize="11" textAnchor="middle" fill="currentColor">placa + farol dentro do quadro</text>
+        <text x="125" y="132" fontSize="11" textAnchor="middle" fill="currentColor">para-brisa + faróis + placa dentro do quadro</text>
     </>
 );
 
@@ -124,7 +124,7 @@ const Interior = ({ texto }) => (
 );
 
 const DESCRICAO = {
-    frente: 'frente a 2 passos, com a placa e os faróis dentro do quadro',
+    frente: 'frente a 3 passos, com o para-brisa, os faróis e a placa dentro do quadro',
     lateral_direita: 'lateral inteira a 4 passos, no meio do veículo',
     lateral_esquerda: 'lateral inteira a 4 passos, no meio do veículo',
     traseira: 'traseira a 2 passos, porta do baú fechada',

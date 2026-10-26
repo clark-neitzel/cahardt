@@ -442,6 +442,11 @@ async function enviarFoto(id, user, angulo, file, opcoes = {}) {
         return { foto: fotoDTO(extra), checklist: { id, fotosEnviadas: totalC } };
     }
 
+    // Foto modelo ativa do veículo neste ângulo (só orienta a IA; falha = segue sem modelo)
+    let modeloCaminho = null;
+    try { modeloCaminho = (await fotosModeloAtivasMap(c.veiculoId))[angulo]?.caminho || null; }
+    catch (e) { console.error('[ChecklistVeiculo] falha ao buscar foto modelo:', e.message); }
+
     // IA fora de qualquer transação; nunca lança
     const r = await iaService.analisarFoto({
         buffer: file.buffer,
@@ -453,6 +458,7 @@ async function enviarFoto(id, user, angulo, file, opcoes = {}) {
         luzOleoAcesa: c.luzOleoAcesa,
         ultimaTentativa: refazeres >= MAX_REFAZER_POR_ANGULO,
         momento: c.momento,
+        modeloCaminho,
         usuarioId: user?.id || null, usuarioNome: user?.nome || null, checklistId: id,
     });
 
