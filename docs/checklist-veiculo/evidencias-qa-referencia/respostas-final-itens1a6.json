@@ -1,0 +1,257 @@
+[
+ {
+  "caso": "1-frente-base",
+  "angulo": "frente",
+  "fotoId": "51218e62-0b1e-4065-a2b3-e43392c9825d",
+  "statusIaNatural": "OK",
+  "forcadoParaOK_via_SQL": false
+ },
+ {
+  "caso": "1-frente-checklist-anterior-CONCLUIDO",
+  "http": 201,
+  "statusIa": "PERGUNTA",
+  "usouReferencia": true,
+  "referenciaFotoId": "51218e62-0b1e-4065-a2b3-e43392c9825d",
+  "refEsperada": "51218e62-0b1e-4065-a2b3-e43392c9825d",
+  "PASSOU": true,
+  "leiturasDB": {
+   "km": null,
+   "placa": "RLB6E01",
+   "nivelAgua": null,
+   "nivelOleo": null,
+   "luzesAviso": [],
+   "usouModelo": false,
+   "combustivel": null,
+   "usouReferencia": true,
+   "referenciaFotoId": "51218e62-0b1e-4065-a2b3-e43392c9825d"
+  },
+  "problemas": [
+   {
+    "g": "PERGUNTA",
+    "d": "Linhas visíveis no para-brisa.",
+    "q": "O para-brisa está trincado?"
+   }
+  ]
+ },
+ {
+  "caso": "1-traseira-base",
+  "angulo": "traseira",
+  "fotoId": "a2e82784-4e22-494e-a3aa-a7056c903a38",
+  "statusIaNatural": "OK",
+  "forcadoParaOK_via_SQL": false
+ },
+ {
+  "caso": "1-traseira-checklist-anterior-CONCLUIDO",
+  "http": 201,
+  "statusIa": "OK",
+  "usouReferencia": true,
+  "referenciaFotoId": "a2e82784-4e22-494e-a3aa-a7056c903a38",
+  "refEsperada": "a2e82784-4e22-494e-a3aa-a7056c903a38",
+  "PASSOU": true,
+  "leiturasDB": {
+   "km": null,
+   "placa": "RLB6E01",
+   "nivelAgua": null,
+   "nivelOleo": null,
+   "luzesAviso": [],
+   "usouModelo": false,
+   "combustivel": null,
+   "usouReferencia": true,
+   "referenciaFotoId": "a2e82784-4e22-494e-a3aa-a7056c903a38"
+  },
+  "problemas": []
+ },
+ {
+  "caso": "2-frente-base",
+  "angulo": "frente",
+  "fotoId": "2788540e-21f5-4ed1-b2b4-051ae030da56",
+  "statusIaNatural": "OK",
+  "forcadoParaOK_via_SQL": false
+ },
+ {
+  "caso": "2-frente-anterior-so-RASCUNHO",
+  "statusChecklistAnterior": "RASCUNHO",
+  "http": 201,
+  "statusIa": "OK",
+  "usouReferencia": false,
+  "referenciaFotoId": null,
+  "PASSOU": true
+ },
+ {
+  "caso": "3-bau-base",
+  "angulo": "bau",
+  "fotoId": "d1f47e94-f37b-4d48-926a-2c7c8a6daadc",
+  "statusIaNatural": "OK",
+  "forcadoParaOK_via_SQL": false
+ },
+ {
+  "caso": "3-bau-anterior-concluido-OK",
+  "tipo": "CARGA",
+  "rodada": 1,
+  "http": 201,
+  "statusIa": "OK",
+  "usouReferencia": false,
+  "referenciaFotoId": null,
+  "PASSOU": true
+ },
+ {
+  "caso": "3-bau-anterior-concluido-OK",
+  "tipo": "CARGA",
+  "rodada": 2,
+  "http": 201,
+  "statusIa": "OK",
+  "usouReferencia": false,
+  "referenciaFotoId": null,
+  "PASSOU": true
+ },
+ {
+  "caso": "3-bau-anterior-concluido-OK",
+  "tipo": "CARGA",
+  "rodada": 3,
+  "http": 201,
+  "statusIa": "OK",
+  "usouReferencia": false,
+  "referenciaFotoId": null,
+  "PASSOU": true
+ },
+ {
+  "caso": "3-porta_malas-base",
+  "angulo": "porta_malas",
+  "fotoId": "b049fdc0-4eff-4d57-9d4f-f671a3240923",
+  "statusIaNatural": "OK",
+  "forcadoParaOK_via_SQL": false
+ },
+ {
+  "caso": "3-porta_malas-anterior-concluido-OK",
+  "tipo": "PASSEIO",
+  "rodada": 1,
+  "http": 201,
+  "statusIa": "OK",
+  "usouReferencia": false,
+  "referenciaFotoId": null,
+  "PASSOU": true
+ },
+ {
+  "caso": "3-porta_malas-anterior-concluido-OK",
+  "tipo": "PASSEIO",
+  "rodada": 2,
+  "http": 201,
+  "statusIa": "OK",
+  "usouReferencia": false,
+  "referenciaFotoId": null,
+  "PASSOU": true
+ },
+ {
+  "caso": "3-porta_malas-anterior-concluido-OK",
+  "tipo": "PASSEIO",
+  "rodada": 3,
+  "http": 201,
+  "statusIa": "OK",
+  "usouReferencia": false,
+  "referenciaFotoId": null,
+  "PASSOU": true
+ },
+ {
+  "caso": "4-latdir-base",
+  "angulo": "lateral_direita",
+  "fotoId": "2fba70ac-333e-4d75-8d5d-94648ff64074",
+  "statusIaNatural": "OK",
+  "forcadoParaOK_via_SQL": false
+ },
+ {
+  "caso": "4-raspadura-ja-na-referencia",
+  "rodada": 1,
+  "http": 201,
+  "statusIa": "OK",
+  "usouReferencia": true,
+  "refCorreta": true,
+  "problemas": [],
+  "perguntaJaEraAssim": false,
+  "PASSOU": true
+ },
+ {
+  "caso": "4-raspadura-ja-na-referencia",
+  "rodada": 2,
+  "http": 201,
+  "statusIa": "OK",
+  "usouReferencia": true,
+  "refCorreta": false,
+  "problemas": [],
+  "perguntaJaEraAssim": false,
+  "PASSOU": true
+ },
+ {
+  "caso": "4-raspadura-ja-na-referencia",
+  "rodada": 3,
+  "http": 201,
+  "statusIa": "OK",
+  "usouReferencia": true,
+  "refCorreta": false,
+  "problemas": [],
+  "perguntaJaEraAssim": false,
+  "PASSOU": true
+ },
+ {
+  "caso": "5-traseira-base",
+  "angulo": "traseira",
+  "fotoId": "6149251e-613e-4ac2-b46f-0962de35d508",
+  "statusIaNatural": "OK",
+  "forcadoParaOK_via_SQL": false
+ },
+ {
+  "caso": "5-dano-novo-ref-limpa",
+  "rodada": 1,
+  "http": 201,
+  "statusIa": "OK",
+  "usouReferencia": true,
+  "refCorreta": true,
+  "problemas": [],
+  "PASSOU": false
+ },
+ {
+  "caso": "5-dano-novo-ref-limpa",
+  "rodada": 2,
+  "http": 201,
+  "statusIa": "PERGUNTA",
+  "usouReferencia": true,
+  "refCorreta": false,
+  "problemas": [
+   {
+    "g": "PERGUNTA",
+    "d": "Raspão pequeno na porta.",
+    "q": "Já era assim?"
+   }
+  ],
+  "PASSOU": true
+ },
+ {
+  "caso": "5-dano-novo-ref-limpa",
+  "rodada": 3,
+  "http": 201,
+  "statusIa": "OK",
+  "usouReferencia": true,
+  "refCorreta": false,
+  "problemas": [],
+  "PASSOU": false
+ },
+ {
+  "caso": "6-frente-OK-base",
+  "angulo": "frente",
+  "fotoId": "e48f1cea-1442-40a2-bd49-d9b829eac635",
+  "statusIaNatural": "OK",
+  "forcadoParaOK_via_SQL": false
+ },
+ {
+  "caso": "6-selecao-OK-vence-mais-recentes-nao-OK",
+  "idsNaoOK": {
+   "ATENCAO": "78a678ca-de3d-42f2-8492-7edfd7c8e9c4",
+   "REPROVA": "8b92e470-3793-43a8-8e58-472fb2441cf5",
+   "PERGUNTA": "a7a1d182-f167-4dc2-a305-996eac7d1bf8"
+  },
+  "idOK": "e48f1cea-1442-40a2-bd49-d9b829eac635",
+  "http": 201,
+  "usouReferencia": true,
+  "referenciaFotoId": "e48f1cea-1442-40a2-bd49-d9b829eac635",
+  "PASSOU": true
+ }
+]

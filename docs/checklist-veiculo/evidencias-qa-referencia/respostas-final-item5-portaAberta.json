@@ -1,0 +1,54 @@
+[
+ {
+  "caso": "5-traseira-base",
+  "angulo": "traseira",
+  "fotoId": "13b03c2f-e047-4db7-b553-cfbc694729aa",
+  "statusIaNatural": "OK",
+  "forcadoParaOK_via_SQL": false
+ },
+ {
+  "caso": "5-dano-novo-ref-limpa",
+  "rodada": 1,
+  "http": 201,
+  "statusIa": "ATENCAO",
+  "usouReferencia": true,
+  "refCorreta": true,
+  "problemas": [
+   {
+    "g": "ATENCAO",
+    "d": "Porta do baú aberta."
+   }
+  ],
+  "PASSOU": true
+ },
+ {
+  "caso": "5-dano-novo-ref-limpa",
+  "rodada": 2,
+  "http": 201,
+  "statusIa": "ATENCAO",
+  "usouReferencia": true,
+  "refCorreta": true,
+  "problemas": [
+   {
+    "g": "ATENCAO",
+    "d": "Porta do baú aberta."
+   }
+  ],
+  "PASSOU": true
+ },
+ {
+  "caso": "5-dano-novo-ref-limpa",
+  "rodada": 3,
+  "http": 201,
+  "statusIa": "ATENCAO",
+  "usouReferencia": true,
+  "refCorreta": true,
+  "problemas": [
+   {
+    "g": "ATENCAO",
+    "d": "Porta do baú aberta."
+   }
+  ],
+  "PASSOU": true
+ }
+]

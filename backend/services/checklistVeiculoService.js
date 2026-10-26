@@ -442,10 +442,29 @@ async function enviarFoto(id, user, angulo, file, opcoes = {}) {
         return { foto: fotoDTO(extra), checklist: { id, fotosEnviadas: totalC } };
     }
 
-    // Foto modelo ativa do veículo neste ângulo (só orienta a IA; falha = segue sem modelo)
-    let modeloCaminho = null;
-    try { modeloCaminho = (await fotosModeloAtivasMap(c.veiculoId))[angulo]?.caminho || null; }
-    catch (e) { console.error('[ChecklistVeiculo] falha ao buscar foto modelo:', e.message); }
+    // Foto de referência para a IA: a ÚLTIMA foto boa deste veículo no mesmo ângulo (outro checklist).
+    // Falha ou arquivo ausente = segue sem referência. A foto modelo (catálogo) NÃO vai para a IA.
+    let referencia = null;
+    if (iaService.ANGULOS_COM_REFERENCIA.includes(angulo)) {
+        try {
+            const ant = await prisma.checklistVeiculoFoto.findFirst({
+                where: {
+                    angulo, ativa: true, complemento: false,
+                    statusIa: 'OK', // só foto OK vira referência: ATENCAO/REPROVA/PERGUNTA (dano reportado) seguem sendo reportadas até o conserto
+                    checklistId: { not: id },
+                    checklist: { veiculoId: c.veiculoId, status: { not: 'RASCUNHO' } }, // checklist nunca concluído não serve de referência
+                },
+                orderBy: { criadoEm: 'desc' },
+                select: { id: true, caminho: true, criadoEm: true, checklist: { select: { momento: true } } },
+            });
+            if (ant && ant.caminho.startsWith('/uploads/') && fs.existsSync(path.join(__dirname, '..', ant.caminho))) {
+                referencia = {
+                    id: ant.id, caminho: ant.caminho, momento: ant.checklist?.momento || null,
+                    quando: new Date(ant.criadoEm).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }),
+                };
+            }
+        } catch (e) { console.error('[ChecklistVeiculo] falha ao buscar foto anterior:', e.message); }
+    }
 
     // IA fora de qualquer transação; nunca lança
     const r = await iaService.analisarFoto({
@@ -458,7 +477,7 @@ async function enviarFoto(id, user, angulo, file, opcoes = {}) {
         luzOleoAcesa: c.luzOleoAcesa,
         ultimaTentativa: refazeres >= MAX_REFAZER_POR_ANGULO,
         momento: c.momento,
-        modeloCaminho,
+        referencia,
         usuarioId: user?.id || null, usuarioNome: user?.nome || null, checklistId: id,
     });
 

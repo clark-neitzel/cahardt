@@ -1,0 +1,57 @@
+{
+ "slots": [
+  {
+   "slot": "Frente com placa",
+   "ms": 4067,
+   "label": "Frente com placa (obrigatória): ✓ ok"
+  },
+  {
+   "slot": "Lateral direita",
+   "ms": 7436,
+   "label": "Lateral direita (obrigatória): ⚠ atenção"
+  },
+  {
+   "slot": "Lateral esquerda",
+   "ms": 5968,
+   "label": "Lateral esquerda (obrigatória): ⚠ atenção"
+  },
+  {
+   "slot": "Traseira com placa",
+   "ms": 6634,
+   "label": "Traseira com placa (obrigatória): ? pergunta"
+  },
+  {
+   "slot": "Painel",
+   "ms": 13106,
+   "label": "Painel (KM e luzes) (obrigatória): ? pergunta"
+  },
+  {
+   "slot": "Água do radiador",
+   "ms": 5129,
+   "label": "Água do radiador (obrigatória): ↻ refazer"
+  },
+  {
+   "slot": "Vareta",
+   "ms": 10757,
+   "label": "Vareta de óleo (obrigatória): ? pergunta"
+  },
+  {
+   "slot": "Baú",
+   "ms": 3317,
+   "label": "Baú por dentro (obrigatória): ✓ ok"
+  }
+ ],
+ "net": [
+  "200 /checklists-veiculo",
+  "200 /checklists-veiculo",
+  "201 /checklists-veiculo/4de504ef-fd43-499e-8173-652506543141/fotos",
+  "201 /checklists-veiculo/4de504ef-fd43-499e-8173-652506543141/fotos",
+  "201 /checklists-veiculo/4de504ef-fd43-499e-8173-652506543141/fotos",
+  "201 /checklists-veiculo/4de504ef-fd43-499e-8173-652506543141/fotos",
+  "201 /checklists-veiculo/4de504ef-fd43-499e-8173-652506543141/fotos",
+  "201 /checklists-veiculo/4de504ef-fd43-499e-8173-652506543141/fotos",
+  "201 /checklists-veiculo/4de504ef-fd43-499e-8173-652506543141/fotos",
+  "201 /checklists-veiculo/4de504ef-fd43-499e-8173-652506543141/fotos"
+ ],
+ "errosConsole": []
+}

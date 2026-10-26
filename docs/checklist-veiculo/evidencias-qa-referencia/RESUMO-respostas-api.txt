@@ -1,0 +1,23 @@
+RESUMO QA - foto de referencia do checklist de veiculo (CODIGO FINAL) - regravado em 26/10/2026
+
+BACKEND NOVO, iniciado em 26/10/2026 17:59:05 (ps lstart pid 37367; "Servidor rodando na porta 3079" no log; PORT=3079, banco hardt_local).
+Posterior a modificacao dos arquivos:  checklistVeiculoIaService.js = 17:27:40 ; checklistVeiculoService.js = 17:49:43.
+backend.log: 0 ocorrencias de "[ChecklistVeiculo] falha ao buscar foto anterior".
+Tudo pelo POST real /api/checklists-veiculo/:id/fotos (ver respostas-final-*.json e dump-banco-final.json).
+
+1. Frente e traseira, checklist anterior CONCLUIDO + foto OK:  PASSOU
+   frente: usouReferencia=true, referenciaFotoId=51218e62-... (== foto base). traseira: usouReferencia=true, referenciaFotoId=a2e82784-... (== foto base). Gravado tambem no banco (leituras).
+2. Checklist anterior so em RASCUNHO (foto OK):  PASSOU   usouReferencia=false, referenciaFotoId=null.
+3. Bau (CARGA) e porta_malas (PASSEIO), anterior concluido + OK:  PASSOU   3/3 cada: usouReferencia=false.
+4. Raspadura (lateral_direita Bongo, foto ja com a raspadura na referencia), 3 rodadas:  PASSOU
+   usouReferencia=true nas 3, statusIa OK, problemas=[], nenhuma pergunta "Ja era assim?".
+5. Dano novo na traseira com referencia limpa (referencia = base OK, fotos nao-base desativadas a cada rodada):
+   traseira_dano.jpg (arquivo pedido; so uma barra cinza fina horizontal sobre a porta): NAO DETECTADO 0/4 (OK, sem problemas, usouReferencia=true, ref correta).  -> REPROVOU para este arquivo.
+   traseira_dentGrande.jpg (mancha+trinca): 3/3 apontou (PERGUNTA, PERGUNTA, ATENCAO).  PASSOU
+   traseira_portaAberta.jpg: 3/3 ATENCAO "Porta do bau aberta".  PASSOU
+   (Obs.: a 1a tentativa do item 5 sem desativar fotos intermediarias contaminou a referencia - round 1 virou OK e passou a ser a referencia das rodadas 2-3; foi refeita limpa. Resultado bruto da tentativa suja esta em respostas-final-itens1a6.json, marcado refCorreta=false.)
+6. Selecao da referencia: PASSOU   checklists concluidos mais recentes com foto ATENCAO, REPROVA e PERGUNTA; a referenciaFotoId devolvida = a foto OK (e48f1cea-...), usouReferencia=true.
+
+Fixture: nenhuma foto base precisou ser forcada a OK via SQL (statusIaNatural=OK em todas).
+Arquivos antigos respostas-t6b.json e respostas-t6c.json removidos (rodados com backend antigo). respostas-t6.json, t4, t5, 2real sao do backend antigo (historico, nao valem para o codigo final).
+Limite: Chrome/API local, IA real (OpenAI), banco local; nao prova producao nem aparelho.

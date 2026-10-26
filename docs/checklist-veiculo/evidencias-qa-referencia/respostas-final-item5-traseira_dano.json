@@ -1,0 +1,49 @@
+[
+ {
+  "caso": "5-traseira-base",
+  "angulo": "traseira",
+  "fotoId": "2aac8959-261e-44c7-83b0-5929b736de47",
+  "statusIaNatural": "OK",
+  "forcadoParaOK_via_SQL": false
+ },
+ {
+  "caso": "5-dano-novo-ref-limpa",
+  "rodada": 1,
+  "http": 201,
+  "statusIa": "OK",
+  "usouReferencia": true,
+  "refCorreta": true,
+  "problemas": [],
+  "PASSOU": false
+ },
+ {
+  "caso": "5-dano-novo-ref-limpa",
+  "rodada": 2,
+  "http": 201,
+  "statusIa": "OK",
+  "usouReferencia": true,
+  "refCorreta": true,
+  "problemas": [],
+  "PASSOU": false
+ },
+ {
+  "caso": "5-dano-novo-ref-limpa",
+  "rodada": 3,
+  "http": 201,
+  "statusIa": "OK",
+  "usouReferencia": true,
+  "refCorreta": true,
+  "problemas": [],
+  "PASSOU": false
+ },
+ {
+  "caso": "5-dano-novo-ref-limpa",
+  "rodada": 4,
+  "http": 201,
+  "statusIa": "OK",
+  "usouReferencia": true,
+  "refCorreta": true,
+  "problemas": [],
+  "PASSOU": false
+ }
+]

@@ -1,0 +1,65 @@
+{
+ "slots": [
+  {
+   "slot": "Frente com placa",
+   "ms": 4787,
+   "label": "Frente com placa (obrigatória): ✓ ok"
+  },
+  {
+   "slot": "Lateral direita",
+   "ms": 7251,
+   "label": "Lateral direita (obrigatória): ⚠ atenção"
+  },
+  {
+   "slot": "Lateral esquerda",
+   "ms": 4447,
+   "label": "Lateral esquerda (obrigatória): ✓ ok"
+  },
+  {
+   "slot": "Traseira com placa",
+   "ms": 4706,
+   "label": "Traseira com placa (obrigatória): ✓ ok"
+  },
+  {
+   "slot": "Painel",
+   "ms": 12277,
+   "label": "Painel (KM e luzes) (obrigatória): ? pergunta"
+  },
+  {
+   "slot": "Água do radiador",
+   "ms": 4425,
+   "label": "Água do radiador (obrigatória): ↻ refazer"
+  },
+  {
+   "slot": "Vareta",
+   "ms": 6502,
+   "label": "Vareta de óleo (obrigatória): ? pergunta"
+  },
+  {
+   "slot": "Baú",
+   "ms": 3565,
+   "label": "Baú por dentro (obrigatória): ✓ ok"
+  }
+ ],
+ "net": [
+  "200 /checklists-veiculo",
+  "200 /checklists-veiculo",
+  "201 /checklists-veiculo/19d86335-4919-45b2-bad6-d0b620e1386c/fotos",
+  "201 /checklists-veiculo/19d86335-4919-45b2-bad6-d0b620e1386c/fotos",
+  "201 /checklists-veiculo/19d86335-4919-45b2-bad6-d0b620e1386c/fotos",
+  "201 /checklists-veiculo/19d86335-4919-45b2-bad6-d0b620e1386c/fotos",
+  "201 /checklists-veiculo/19d86335-4919-45b2-bad6-d0b620e1386c/fotos",
+  "201 /checklists-veiculo/19d86335-4919-45b2-bad6-d0b620e1386c/fotos",
+  "201 /checklists-veiculo/19d86335-4919-45b2-bad6-d0b620e1386c/fotos",
+  "201 /checklists-veiculo/19d86335-4919-45b2-bad6-d0b620e1386c/fotos",
+  "201 /checklists-veiculo/19d86335-4919-45b2-bad6-d0b620e1386c/fotos",
+  "201 /checklists-veiculo/19d86335-4919-45b2-bad6-d0b620e1386c/fotos",
+  "200 /checklists-veiculo/19d86335-4919-45b2-bad6-d0b620e1386c/responder",
+  "200 /checklists-veiculo/19d86335-4919-45b2-bad6-d0b620e1386c/responder",
+  "200 /checklists-veiculo/19d86335-4919-45b2-bad6-d0b620e1386c/responder",
+  "200 /checklists-veiculo/19d86335-4919-45b2-bad6-d0b620e1386c/fotos/34c10b75-4d99-4f4a-a6c8-9dc976defabc/aceitar",
+  "200 /checklists-veiculo/19d86335-4919-45b2-bad6-d0b620e1386c/avaliar",
+  "200 /checklists-veiculo/19d86335-4919-45b2-bad6-d0b620e1386c/decisao"
+ ],
+ "errosConsole": []
+}

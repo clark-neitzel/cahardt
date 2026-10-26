@@ -127,17 +127,25 @@ Anote também as luzes acesas em leituras.luzesAviso. Só óleo, temperatura, ba
 Freio/porta/cinto = uma PERGUNTA no máximo. NÃO fale de combustível. Se o reflexo cobre o painel, serve=false com "Inclina um pouco o celular pra tirar o reflexo."`,
 };
 
-// Foto modelo (referência real do veículo). Só orienta; só em ângulos de enquadramento (painel/água/vareta
-// têm leitura na foto do motorista, o modelo não serve de leitura).
-const ANGULOS_COM_MODELO = ['frente', 'traseira', 'lateral_direita', 'lateral_esquerda', 'porta_malas'];
-const MODELO_MAX_LADO = 768; // px: o modelo é só exemplo de enquadramento; menos tokens e menos tempo
-const TEXTO_MODELO = `FOTO MODELO. Imagem 1 = foto que o motorista tirou agora. Imagem 2 = FOTO MODELO de como este veículo deve ser fotografado neste ângulo (exemplo de enquadramento).
-Use a modelo APENAS para: (a) comparar enquadramento. A modelo MANDA: com modelo, a regra dos "passos/distância ideal" do ângulo NÃO vale; vale só a comparação. Só peça ajuste se a diferença for GRANDE e óbvia. Com ATENCAO e serve=true, sempre com medida em passos: uma parte do carro que aparece inteira na modelo (para-brisa, placa, lanterna, o teto; roda só nas laterais, nunca na frente) está cortada ou fora do quadro na imagem 1, ou o carro ocupa bem menos da metade do tamanho que tem na modelo (pequeno/longe). Com serve=false, como na regra 8: só se a imagem 1 mostra OUTRO LADO do carro (ângulo errado) ou outro assunto. Diferença pequena ou moderada de distância, altura ou inclinação: IGNORE, sem comentar. Na dúvida, não peça ajuste;
-(b) apontar dano, sujeira ou peça faltando que a modelo não tem.
-NUNCA reprove nem peça para refazer por diferença de luz, cor, fundo, chão, clima ou por não ser o mesmo ponto exato. NUNCA serve=false só por não parecer com a modelo. A modelo não é leitura: placa e estado do carro são da imagem 1.`;
+// Foto de REFERÊNCIA = a ÚLTIMA foto aprovada deste mesmo veículo no mesmo ângulo (vinda do serviço).
+// A foto modelo (catálogo) é só orientação ao motorista na tela e NÃO vai para a IA.
+// Só ângulos de carroceria/interior com enquadramento comparável (baú/porta-malas, painel, água e vareta ficam de fora).
+const ANGULOS_COM_REFERENCIA = ['frente', 'traseira', 'lateral_direita', 'lateral_esquerda'];
+const REFERENCIA_MAX_LADO = 768; // px: menos tokens e menos tempo
 
-/** Lê e reduz a foto modelo. Qualquer falha devolve null (análise segue sem modelo). */
-async function prepararModelo(caminhoDb) {
+function textoReferencia(ref) {
+    const quando = ref?.quando ? `de ${ref.quando}${ref.momento ? `, ${ref.momento === 'VOLTA' ? 'volta' : 'saída'}` : ''}` : '';
+    return `FOTO ANTERIOR. Imagem 1 = foto de AGORA. Imagem 2 = a ÚLTIMA foto deste mesmo veículo neste ângulo${quando ? ` (${quando})` : ''}.
+Aponte o que é DIFERENTE e NOVO na imagem 1: amassado, risco ou raspão que não estava, peça/lanterna/retrovisor faltando ou quebrado, vidro trincado, pneu diferente, porta aberta.
+Dano NOVO (que não está na imagem 2) = ATENCAO, ou PERGUNTA "Já era assim?" se for pequeno, como nas regras do ângulo.
+Avaria ESTÉTICA que JÁ aparece na imagem 2 (risco, raspão, pintura gasta, amassado leve) NÃO é novidade: não pergunte "já era assim?" e não gere problema por ela.
+REGRA QUE VENCE AS DEMAIS: olhando SÓ a imagem 1, como se a imagem 2 não existisse, confira se há dano de SEGURANÇA: pneu murcho/careca, vidro/para-brisa trincado, farol/lanterna/retrovisor quebrado ou faltando. Se houver, REPORTE (ATENCAO) como nas regras do ângulo MESMO que a imagem 2 mostre o mesmo dano: dizer que "já estava na foto anterior" NUNCA é motivo para calar dano de segurança; na dúvida entre trinca e marca, pergunte "O para-brisa está trincado?" (PERGUNTA) em vez de calar. Só a avaria estética que a imagem 2 já mostrava (risco, raspão, pintura gasta, amassado leve) fica sem comentário.
+Diferença de luz, clima, fundo, chão, sujeira normal e pequenas diferenças de enquadramento NÃO são problema. NUNCA serve=false por parecer diferente da imagem 2. Se a imagem 1 mostra OUTRO carro ou OUTRO lado, vale a regra 8. Na dúvida, não peça.
+As demais regras deste ângulo continuam valendo; a imagem 2 só ACRESCENTA a comparação. Placa e leituras são da imagem 1.`;
+}
+
+/** Lê e reduz a foto de referência. Caminho tem que ficar dentro de backend/uploads. Qualquer falha devolve null. */
+async function prepararReferencia(caminhoDb) {
     try {
         const rel = String(caminhoDb || '');
         if (!rel.startsWith('/uploads/')) return null;
@@ -145,10 +153,10 @@ async function prepararModelo(caminhoDb) {
         const abs = path.resolve(base, rel.slice('/uploads/'.length));
         if (!abs.startsWith(base + path.sep) || !fs.existsSync(abs)) return null;
         const sharp = require('sharp');
-        const buf = await sharp(abs).rotate().resize(MODELO_MAX_LADO, MODELO_MAX_LADO, { fit: 'inside', withoutEnlargement: true }).jpeg({ quality: 80 }).toBuffer();
+        const buf = await sharp(abs).rotate().resize(REFERENCIA_MAX_LADO, REFERENCIA_MAX_LADO, { fit: 'inside', withoutEnlargement: true }).jpeg({ quality: 80 }).toBuffer();
         return { base64: buf.toString('base64'), mime: 'image/jpeg' };
     } catch (e) {
-        console.error('[ChecklistVeiculoIA] foto modelo indisponível:', e.message);
+        console.error('[ChecklistVeiculoIA] foto de referência indisponível:', e.message);
         return null;
     }
 }
@@ -335,10 +343,10 @@ async function analisarFoto(p) {
         linhas.push(...contextoDoVeiculo(p.angulo, p.veiculo));
         if (p.ultimaTentativa) linhas.push(EXTRA_ULTIMA_TENTATIVA);
         const imagens = [{ base64: p.buffer.toString('base64'), mime: p.mime || 'image/jpeg' }];
-        let usouModelo = false;
-        if (p.modeloCaminho && ANGULOS_COM_MODELO.includes(p.angulo)) {
-            const m = await prepararModelo(p.modeloCaminho);
-            if (m) { imagens.push(m); linhas.push(TEXTO_MODELO); usouModelo = true; }
+        let usouReferencia = false;
+        if (p.referencia?.caminho && ANGULOS_COM_REFERENCIA.includes(p.angulo)) {
+            const m = await prepararReferencia(p.referencia.caminho);
+            if (m) { imagens.push(m); linhas.push(textoReferencia(p.referencia)); usouReferencia = true; }
         }
         if (p.angulo === 'painel' && p.luzOleoAcesa) linhas.push('O motorista informou que a luz de óleo está acesa.');
         const r = await aiProvider.analisarImagem({
@@ -368,8 +376,9 @@ async function analisarFoto(p) {
             serve: v.serve,
             motivoRefazer: v.motivoRefazer,
             problemas: v.problemas,
-            leituras: v.leituras ? { ...v.leituras, usouModelo } : v.leituras,
-            usouModelo,
+            // usouModelo fica false (compatibilidade): a foto modelo não vai mais para a IA
+            leituras: v.leituras ? { ...v.leituras, usouModelo: false, usouReferencia, referenciaFotoId: usouReferencia ? (p.referencia.id || null) : null } : v.leituras,
+            usouReferencia,
             iaModelo: r.modelo,
             iaMs: Date.now() - t0,
             iaTokens: r.usage?.total ?? null,
@@ -381,4 +390,4 @@ async function analisarFoto(p) {
 }
 
 module.exports = {
-    prepararModelo, ANGULOS_COM_MODELO, contextoDoVeiculo, umaPerguntaPorFoto, gravEfetiva, normalizarLuzes, analisarFoto, validarResposta, extrairJson, statusDe, SYSTEM_PROMPT };
+    prepararReferencia, ANGULOS_COM_REFERENCIA, contextoDoVeiculo, umaPerguntaPorFoto, gravEfetiva, normalizarLuzes, analisarFoto, validarResposta, extrairJson, statusDe, SYSTEM_PROMPT };

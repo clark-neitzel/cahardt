@@ -1,0 +1,56 @@
+[
+ {
+  "caso": "5-traseira-base",
+  "angulo": "traseira",
+  "fotoId": "d0235c3f-5e79-4e7c-85e9-c4dba79e6ccb",
+  "statusIaNatural": "OK",
+  "forcadoParaOK_via_SQL": false
+ },
+ {
+  "caso": "5-dano-novo-ref-limpa",
+  "rodada": 1,
+  "http": 201,
+  "statusIa": "PERGUNTA",
+  "usouReferencia": true,
+  "refCorreta": true,
+  "problemas": [
+   {
+    "g": "PERGUNTA",
+    "d": "Peça preta diferente na porta.",
+    "q": "Já era assim?"
+   }
+  ],
+  "PASSOU": true
+ },
+ {
+  "caso": "5-dano-novo-ref-limpa",
+  "rodada": 2,
+  "http": 201,
+  "statusIa": "PERGUNTA",
+  "usouReferencia": true,
+  "refCorreta": true,
+  "problemas": [
+   {
+    "g": "PERGUNTA",
+    "d": "Peça preta nova na porta.",
+    "q": "Essa peça preta está solta?"
+   }
+  ],
+  "PASSOU": true
+ },
+ {
+  "caso": "5-dano-novo-ref-limpa",
+  "rodada": 3,
+  "http": 201,
+  "statusIa": "ATENCAO",
+  "usouReferencia": true,
+  "refCorreta": true,
+  "problemas": [
+   {
+    "g": "ATENCAO",
+    "d": "Haste preta atravessa a porta."
+   }
+  ],
+  "PASSOU": true
+ }
+]
