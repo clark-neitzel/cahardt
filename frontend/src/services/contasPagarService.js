@@ -62,6 +62,12 @@ const contasPagarService = {
         const response = await api.post(`/contas-pagar/${id}/parcelas/${parcelaId}/estorno`, { pagamentoId });
         return response.data;
     },
+    // Corrige data/forma/banco/observação de um pagamento JÁ lançado, sem estornar.
+    // Exige Pode_Editar_Pagamento_Pagar. 409 PAGAMENTO_CONCILIADO / 400 vêm em { error }.
+    editarPagamento: async (id, parcelaId, pagamentoId, dados) => {
+        const response = await api.put(`/contas-pagar/${id}/parcelas/${parcelaId}/pagamentos/${pagamentoId}`, dados);
+        return response.data; // { message, alterado, conta }
+    },
     // Detalhe completo da despesa: nota fiscal + itens/produtos comprados (para o modal de detalhes)
     detalhe: async (id) => {
         const response = await api.get(`/contas-pagar/${id}/detalhe`);

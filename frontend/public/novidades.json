@@ -1,5 +1,11 @@
 [
   {
+    "slug": "editar-despesa",
+    "titulo": "Editar despesa e pagamento já pago",
+    "resumo": "Errou data, forma, banco, categoria ou fornecedor de uma despesa já paga? Agora dá para corrigir sem estornar, com a permissão \"Editar pagamento / despesa quitada\". Valor e parcelas continuam travados.",
+    "data": "2026-10-26"
+  },
+  {
     "slug": "mapa-cliente-pedido",
     "titulo": "Mapa das entregas: abra o pedido e a ficha do cliente",
     "resumo": "Clicou no pino? Agora o cartão tem o botão \"Dados do cliente\" (ficha completa, com ajuste do GPS) e dá para tocar no pedido para ver tudo dele, sem sair do mapa nem perder a divisão das cargas.",

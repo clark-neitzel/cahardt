@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Editar despesa e pagamento já pago — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp -->
+<meta property="og:title" content="✏️ Novidade no Hardt App: editar despesa e pagamento já pago">
+<meta property="og:description" content="Errou a data, a forma ou o banco de uma despesa que já foi paga? Agora dá para corrigir sem estornar. Veja como funciona!">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 96px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 7vw, 40px);
+    font-weight: 800;
+    line-height: 1.12;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.75);
+    font-size: 16px;
+    max-width: 46ch;
+    margin: 0 auto;
+    text-wrap: balance;
+  }
+
+  /* mock da tela flutuando sobre o hero */
+  .mock {
+    max-width: 420px;
+    margin: -68px auto 28px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.28);
+    overflow: hidden;
+    text-align: left;
+  }
+  .mock-top {
+    background: var(--house);
+    color: #fff;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .mock-top small {
+    display: block;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    color: rgba(255,255,255,.55);
+  }
+  .mock-top strong { font-size: 16px; line-height: 1.2; }
+  .mock-ico { font-size: 24px; }
+  .mock-body { padding: 16px 18px 18px; }
+  .mock-label {
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--ink-soft);
+    margin-bottom: 4px;
+  }
+  .mock-input {
+    border: 1.5px solid #d8d5cc;
+    border-radius: 10px;
+    padding: 11px 13px;
+    font-size: 15px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--ink);
+    background: #fff;
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+  }
+  .mock-input.focado { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0,117,74,.14); }
+  .cursor { display: inline-block; width: 2px; height: 18px; background: var(--primary); margin-left: 2px; animation: pisca 1s steps(1) infinite; }
+  @keyframes pisca { 50% { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .cursor { animation: none; } }
+  .mock-campos { margin-top: 14px; display: grid; gap: 9px; }
+  .campo {
+    background: #f6f5f1;
+    border-radius: 9px;
+    padding: 8px 12px;
+    font-size: 13px;
+    color: #b9b5aa;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background .4s, color .4s;
+  }
+  .campo b { font-weight: 700; }
+  .campo.cheio { background: var(--mint); color: var(--primary-dark); }
+  .campo .ck { opacity: 0; transition: opacity .4s; }
+  .campo.cheio .ck { opacity: 1; }
+  .mock-status {
+    margin-top: 12px;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--ink-soft);
+    min-height: 20px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .mock-status.ok { color: var(--primary-dark); }
+
+  /* botão de demo */
+
+    display: block;
+    width: 100%;
+    max-width: 420px;
+    margin: 0 auto 8px;
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    font: inherit;
+    font-size: 16px;
+    font-weight: 800;
+    padding: 16px;
+    border-radius: 999px;
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(0,117,74,.35);
+  }
+
+
+  .demo-hint { text-align: center; font-size: 12px; color: var(--ink-soft); margin: 0 0 34px; }
+
+  /* ── SEÇÕES / ACCORDION ── */
+  .sec-label {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: var(--primary-dark);
+    margin: 34px 4px 12px;
+  }
+  .acc {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .acc-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: none;
+    border: none;
+    font: inherit;
+    text-align: left;
+    padding: 15px 16px;
+    cursor: pointer;
+    min-height: 56px;
+  }
+  .acc-ico {
+    width: 38px; height: 38px;
+    border-radius: 11px;
+    background: var(--mint);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  /* passos */
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n {
+    width: 30px; height: 30px; flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 800;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .rodape {
+    text-align: center;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 40px;
+  }
+  .rodape strong { color: var(--primary-dark); }
+
+  /* ── MOCKUPS DAS TELAS DO APP ── */
+  .tela {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .tela-titulo {
+    background: var(--house);
+    color: #fff;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .app-card {
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .app-card-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    border-bottom: 1px solid #f0efe9;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: #6b756f;
+  }
+  .app-card-body { padding: 12px; }
+  .app-input {
+    border: 1px solid #d8d5cc;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 12.5px;
+    color: var(--ink);
+    background: #fff;
+    margin-bottom: 8px;
+  }
+  .app-input small { display: block; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: #9aa5a0; margin-bottom: 2px; }
+  .app-input.ok { background: var(--mint); border-color: rgba(0,117,74,.25); }
+  .app-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--primary);
+    color: #fff;
+    font-size: 12.5px;
+    font-weight: 700;
+    padding: 9px 16px;
+    border-radius: 999px;
+  }
+  .app-btn.claro { background: #fff; border: 1.5px solid var(--primary); color: var(--primary); }
+  .app-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+  .app-pill {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 7px 14px;
+    border-radius: 999px;
+    border: 1.5px solid #d8d5cc;
+    color: #6b756f;
+    background: #fff;
+  }
+  .app-pill.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .app-busca {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .app-busca .app-input { flex: 1; margin-bottom: 0; color: #9aa5a0; }
+  .app-toggle-linha {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: #f7f6f2;
+    border: 1px solid #edece6;
+    border-radius: 10px;
+    padding: 9px 12px;
+    font-size: 12.5px;
+  }
+  .app-toggle-linha small { display: block; font-size: 10.5px; color: #9aa5a0; }
+  .app-toggle {
+    width: 38px; height: 22px; flex-shrink: 0;
+    border-radius: 999px;
+    background: var(--primary);
+    position: relative;
+  }
+  .app-toggle::after {
+    content: '';
+    position: absolute;
+    top: 3px; right: 3px;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: #fff;
+  }
+  .pin {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    flex-shrink: 0;
+    vertical-align: 2px;
+    margin-left: 6px;
+  }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+</style>
+  .app-tag { display:inline-block; font-size:10px; font-weight:800; padding:3px 9px; border-radius:999px; background:#dcfce7; color:#166534; }
+  .app-btn.perigo { background:#fff; border:1.5px solid #dc2626; color:#dc2626; }
+  .linha-pg { display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; background:#f7f6f2; border:1px solid #edece6; border-radius:10px; padding:9px 12px; font-size:12.5px; margin-bottom:8px; }
+  .linha-pg small { display:block; font-size:10.5px; color:#9aa5a0; }
+  .linha-pg .acoes { display:flex; gap:6px; flex-wrap:wrap; }
+  .app-input.trava { background:#f1f0ec; color:#9aa5a0; }
+  .modal-mock { background:#fff; border-radius:14px; border:1px solid #e5e3dc; box-shadow:0 10px 28px rgba(20,40,34,.18); padding:14px; }
+  .modal-mock h4 { margin:0 0 10px; font-size:14px; }
+  .grade2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .grade2 .app-input { margin-bottom:0; }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>Despesa já paga?<br>Agora dá para corrigir</h1>
+    <p>Errou o fornecedor, a categoria, a data ou o banco? Não precisa mais estornar o pagamento: edite a despesa e o pagamento direto, com segurança.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="sec-label" style="margin-top:28px">O que mudou</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">✏️</span>
+      <strong>Editar a despesa inteira, mesmo quitada</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Em <b>Contas a Pagar</b>, a despesa já paga agora tem o botão <b>Editar</b>.</li>
+        <li>Dá para corrigir <b>fornecedor, descrição, categoria, datas, competência, forma de pagamento e banco</b>.</li>
+        <li>Sem estornar, sem baixar de novo: o pagamento continua do jeito que está.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">💳</span>
+      <strong>Corrigir um pagamento já lançado</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>No histórico de pagamentos, ao lado de <b>Estornar</b>, agora tem o botão <b>Editar</b>.</li>
+        <li>Abre uma janelinha para ajustar <b>data, forma de pagamento, banco e observação</b> daquele pagamento.</li>
+        <li>Bom para quando a baixa foi lançada com a data ou o banco errado.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🔑</span>
+      <strong>Quem pode editar</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Existe uma permissão nova: <b>"Editar pagamento / despesa quitada"</b>.</li>
+        <li>Quem libera é o <b>dono</b>, em <b>Permissões</b>. Sem ela, os botões não aparecem.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🔒</span>
+      <strong>O que continua travado (de propósito)</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li><b>Valor e parcelas</b> de despesa quitada: para mudar, estorne o pagamento e baixe de novo.</li>
+        <li><b>Data e banco</b> de baixa que veio do <b>Conta Azul</b> ou que já foi enviada a ele: só dá para mudar <b>forma e observação</b>.</li>
+        <li><b>Data e banco</b> de baixa <b>conciliada com o extrato</b>: desfaça a conciliação antes.</li>
+        <li><b>Fornecedor</b> de despesa que veio de <b>NF-e</b>: não muda (a nota manda).</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="sec-label">As telas do app, sem mistério</div>
+
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 1 · Despesa quitada — botão Editar</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">Posto Exemplo · Combustível <span class="app-tag">PAGO</span></div>
+        <div class="app-card-body">
+          <div style="font-size:13px;margin-bottom:10px"><b>R$ 350,00</b> · venc. 10/10 · pago em 10/10</div>
+          <span class="app-btn">✏️ Editar despesa<span class="pin">1</span></span>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>O botão <b>Editar despesa</b> agora aparece também nas despesas <b>pagas</b>, para quem tem a permissão.</span></div>
+    </div>
+  </div>
+
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 2 · Editar Despesa (quitada)</div>
+    <div class="tela-corpo">
+      <div class="app-input"><small>Fornecedor</small>Posto Exemplo<span class="pin">1</span></div>
+      <div class="app-input"><small>Descrição</small>Abastecimento do caminhão</div>
+      <div class="grade2" style="margin-bottom:8px">
+        <div class="app-input"><small>Categoria</small>Combustível</div>
+        <div class="app-input"><small>Competência</small>10/2026<span class="pin">2</span></div>
+        <div class="app-input"><small>Vencimento</small>10/10/2026</div>
+        <div class="app-input"><small>Forma / Banco</small>PIX · Sicredi</div>
+      </div>
+      <div class="grade2" style="margin-bottom:10px">
+        <div class="app-input trava"><small>Valor 🔒</small>R$ 350,00<span class="pin">3</span></div>
+        <div class="app-input trava"><small>Parcelas 🔒</small>1x</div>
+      </div>
+      <span class="app-btn">Salvar alterações<span class="pin">4</span></span>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Fornecedor:</b> editável, exceto em despesa que veio de NF-e.</span></div>
+      <div><span class="pin">2</span><span>Categoria, datas, competência, forma e banco podem ser corrigidos sem mexer no pagamento.</span></div>
+      <div><span class="pin">3</span><span><b>Valor e parcelas</b> ficam travados (cinza). Para mudar: estornar e baixar de novo.</span></div>
+      <div><span class="pin">4</span><span>Ao salvar, a despesa continua <b>paga</b>, só com os dados corrigidos.</span></div>
+    </div>
+  </div>
+
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 3 · Pagamentos — Editar ao lado de Estornar</div>
+    <div class="tela-corpo">
+      <div class="linha-pg">
+        <div><b>R$ 350,00</b> · 10/10/2026<small>PIX · Sicredi</small></div>
+        <div class="acoes">
+          <span class="app-btn claro">✏️ Editar<span class="pin">1</span></span>
+          <span class="app-btn perigo">↩ Estornar<span class="pin">2</span></span>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Editar</b> corrige só aquele pagamento (abre a janelinha da próxima tela).</span></div>
+      <div><span class="pin">2</span><span><b>Estornar</b> continua igual: desfaz o pagamento por inteiro.</span></div>
+    </div>
+  </div>
+
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 4 · Editar pagamento</div>
+    <div class="tela-corpo">
+      <div class="modal-mock">
+        <h4>Editar pagamento</h4>
+        <div class="grade2" style="margin-bottom:8px">
+          <div class="app-input"><small>Data</small>10/10/2026<span class="pin">1</span></div>
+          <div class="app-input"><small>Forma</small>PIX<span class="pin">2</span></div>
+        </div>
+        <div class="app-input"><small>Banco / caixa</small>Sicredi<span class="pin">3</span></div>
+        <div class="app-input"><small>Observação</small>Pago pelo app do banco<span class="pin">4</span></div>
+        <span class="app-btn">Salvar<span class="pin">5</span></span>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Data</b> da baixa. Trava se veio do Conta Azul, já foi enviada a ele ou está conciliada com o extrato.</span></div>
+      <div><span class="pin">2</span><span><b>Forma</b> de pagamento: sempre editável.</span></div>
+      <div><span class="pin">3</span><span><b>Banco</b>: mesmas travas da data.</span></div>
+      <div><span class="pin">4</span><span><b>Observação</b>: sempre editável.</span></div>
+      <div><span class="pin">5</span><span>Salvou, o pagamento é corrigido na hora, sem estorno.</span></div>
+    </div>
+  </div>
+
+  <div class="sec-label">Para começar a usar</div>
+  <div class="passos">
+    <div class="passo">
+      <span class="passo-n">1</span>
+      <div><b>Atualize o app:</b> toque no ícone de atualizar ↻ (ou feche e abra o app).</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">2</span>
+      <div>Peça ao dono para liberar <b>"Editar pagamento / despesa quitada"</b> em Permissões.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">3</span>
+      <div>Em <b>Contas a Pagar</b>, abra a despesa paga e toque em <b>Editar</b>. ✅</div>
+    </div>
+  </div>
+
+  <p class="rodape">Dúvidas? Pergunte ao <strong>Clippy</strong> dentro do app.<br>— Hardt Salgados</p>
+</div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.parentElement;
+    const abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>

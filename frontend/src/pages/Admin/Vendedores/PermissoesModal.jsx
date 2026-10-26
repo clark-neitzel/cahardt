@@ -100,6 +100,7 @@ const DEFAULT_PERMISSIONS = {
     Pode_Vender_Inadimplente: false,
     Pode_Acessar_Contas_Pagar: false,
     Pode_Baixar_Contas_Pagar: false,
+    Pode_Editar_Pagamento_Pagar: false,
     Pode_Acessar_Notas_Recebidas: false,
     Pode_Corrigir_Entrada_Estoque: false,
     Pode_Recusar_Nota_Fiscal: false,
@@ -317,6 +318,7 @@ const BOOL_INDEX = [
     { sec: 'financeiro', path: 'Pode_Editar_Cobranca', nome: 'Editar Régua de Cobrança', desc: 'Ligar/desligar a régua, configurar mensagens/canais, executar e cobrar manualmente', kw: 'regua editar configurar executar cobrar' },
     { sec: 'financeiro', path: 'Pode_Acessar_Contas_Pagar', nome: 'Contas a Pagar', desc: 'Despesas e boletos a pagar da empresa', kw: 'pagar despesa boleto fornecedor menu' },
     { sec: 'financeiro', path: 'Pode_Baixar_Contas_Pagar', nome: 'Operar Contas a Pagar', desc: 'Criar/editar despesas, dar baixa e conferir notas recebidas (gerar conta, ignorar)', kw: 'operar baixa despesa conferir nota gerar conta pagar' },
+    { sec: 'financeiro', path: 'Pode_Editar_Pagamento_Pagar', nome: 'Editar Pagamento e Despesa Quitada', desc: 'Contas a Pagar: corrigir data, forma e banco de um pagamento já lançado e editar descrição/categoria/competência de despesa já quitada, sem estornar (fica registrado quem mexeu)', kw: 'editar pagamento quitada quitado corrigir data banco forma categoria competencia contas pagar estorno', danger: true },
     { sec: 'financeiro', path: 'Pode_Acessar_Notas_Recebidas', nome: 'Notas Recebidas', desc: 'Notas fiscais de entrada (compras)', kw: 'nota recebida entrada xml compra menu' },
     { sec: 'financeiro', path: 'Pode_Corrigir_Entrada_Estoque', nome: 'Corrigir Entrada de Estoque', desc: 'Arruma produto/conversão de uma nota já lançada — mexe no custo e no estoque (a despesa não é alterada)', kw: 'corrigir conversao fator custo estoque nota lancada produto errado', danger: true },
     { sec: 'financeiro', path: 'Pode_Recusar_Nota_Fiscal', nome: 'Recusar Nota na Receita', desc: 'Manifestação do Destinatário: recusar a nota na Receita Federal por "Operação não realizada" (mercadoria não chegou) ou "Desconhecimento" (nota contra o nosso CNPJ sem compra). Ato fiscal IRREVERSÍVEL, com justificativa. Confirmar a operação não precisa desta permissão', kw: 'recusar manifestacao destinatario desconhecimento operacao nao realizada sefaz receita nota entrada irreversivel', danger: true },
@@ -1241,6 +1243,10 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                 <div className="border-t mt-3 pt-3">
                     <Toggle checked={!!permissoes.Pode_Baixar_Contas_Pagar} onChange={() => toggleBool('Pode_Baixar_Contas_Pagar')}
                         label="Operar Contas a Pagar" sublabel="Criar/editar despesas, dar baixa e conferir notas recebidas (gerar conta, ignorar)" />
+                    {permissoes.Pode_Acessar_Contas_Pagar && (
+                        <Toggle checked={!!permissoes.Pode_Editar_Pagamento_Pagar} onChange={() => toggleBool('Pode_Editar_Pagamento_Pagar')}
+                            label="Editar Pagamento e Despesa Quitada" sublabel="Corrige data/forma/banco de pagamento já lançado e dados de despesa quitada, sem estornar. Fica registrado quem mexeu" danger />
+                    )}
                     {permissoes.Pode_Acessar_Notas_Recebidas && (
                         <Toggle checked={!!permissoes.Pode_Corrigir_Entrada_Estoque} onChange={() => toggleBool('Pode_Corrigir_Entrada_Estoque')}
                             label="Corrigir Entrada de Estoque" sublabel="Arruma produto/conversão de nota já lançada — altera custo e estoque (a despesa e os pagamentos ficam intactos)" danger />

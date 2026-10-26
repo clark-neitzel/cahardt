@@ -102,6 +102,19 @@ const checkEditarItens = async (req, res, next) => {
     next();
 };
 
+// Editar pagamento já lançado / despesa QUITADA (decisão do dono, 10/2026): permissão PRÓPRIA,
+// separada de Pode_Baixar_Contas_Pagar. O frontend precisa checar exatamente esta chave.
+const podeEditarPagamento = (perms) => !!(perms && (perms.admin || perms.Pode_Editar_Pagamento_Pagar === true));
+const checkEditarPagamento = async (req, res, next) => {
+    const perms = req._perms || await getPerms(req.user.id);
+    req._perms = perms;
+    if (!podeEditarPagamento(perms)) {
+        return res.status(403).json({ error: 'Sem permissão para editar pagamentos já lançados.' });
+    }
+    next();
+};
+const ymdSP = (d) => new Date(d).toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' });
+
 const num = (v) => (v == null ? null : Number(v));
 const round2 = (v) => Math.round(Number(v) * 100) / 100;
 
@@ -121,6 +134,11 @@ const mapaBancos = async () => {
     }
 };
 
+// Baixa "travada" para data/banco: veio do Conta Azul/DDA/importação ou já foi enviada ao CA —
+// mudar aqui deixaria o app diferente do CA (o CA não é atualizado). Só forma e observação liberadas.
+const baixaTravada = (pg) =>
+    ['CA', 'IMPORTADO_CA', 'DDA'].includes(pg.origem) || !!pg.idBaixaCA || ['ENVIADO', 'ENVIANDO'].includes(pg.statusEnvioCA);
+
 const formatarPagamento = (pg, bancos = {}) => ({
     id: pg.id,
     valorPago: num(pg.valorPago),
@@ -129,8 +147,10 @@ const formatarPagamento = (pg, bancos = {}) => ({
     desconto: num(pg.desconto) || 0,
     formaPagamento: pg.formaPagamento,
     dataPagamento: pg.dataPagamento,
+    observacao: pg.observacao || null,
     origem: pg.origem,
     temBaixaCA: !!pg.idBaixaCA,
+    baixaTravada: baixaTravada(pg),
     estornado: pg.estornado,
     contaFinanceiraCaId: pg.contaFinanceiraCaId || null,
     banco: (pg.contaFinanceiraCaId && bancos[pg.contaFinanceiraCaId]) || null
@@ -155,6 +175,11 @@ const formatarConta = (c, bancos = {}, anexosResumo = null) => ({
     origem: c.origem,
     observacoes: c.observacoes,
     competencia: c.competencia,
+    // Condição de pagamento da despesa (forma + banco/caixa) — editável em PUT /:id
+    metodoPagamentoCA: c.metodoPagamentoCA || null,
+    contaFinanceiraCaId: c.contaFinanceiraCaId || null,
+    // Despesa que nasceu de NF-e/NFS-e: o fornecedor vem da nota e não pode ser trocado
+    fornecedorTravado: ['NFE', 'NFSE'].includes(c.origem) || !!c.notaEntrada,
     // PDF: se tem arquivo, expõe true + nome do arquivo (sem o caminho completo)
     temPdf: !!c.pdfPath,
     pdfNome: c.pdfPath ? path.basename(c.pdfPath) : null,
@@ -297,6 +322,7 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
         const contas = await prisma.contaPagar.findMany({
             where,
             include: {
+                notaEntrada: { select: { id: true } },
                 fornecedor: { select: { id: true, razaoSocial: true, nomeFantasia: true, cnpjCpf: true } },
                 parcelas: {
                     orderBy: { numeroParcela: 'asc' },
@@ -580,6 +606,9 @@ const validarParcelasBody = (parcelas) => {
     return null;
 };
 
+// Competência "YYYY-MM" (input month) → "YYYY-MM-01" (senão vira o último dia do mês anterior em SP)
+const normalizaCompetencia = (v) => (/^\d{4}-\d{2}$/.test(String(v || '').trim()) ? `${String(v).trim()}-01` : v);
+
 const parseVencimento = (v) => {
     const s = String(v);
     return /^\d{4}-\d{2}-\d{2}$/.test(s) ? new Date(`${s}T12:00:00-03:00`) : new Date(s);
@@ -777,7 +806,7 @@ router.post('/', verificarAuth, checkEscrita, async (req, res) => {
 
         // Resolve o ID da categoria fora da transação (cria a linha se for nova)
         const categoriaDespesaId = await categoriaDespesaService.idPorNome(categoria?.trim());
-        const dataEmissaoManual = competencia ? parseVencimento(competencia) : new Date();
+        const dataEmissaoManual = competencia ? parseVencimento(normalizaCompetencia(competencia)) : new Date();
 
         let conta;
         await prisma.$transaction(async (tx) => {
@@ -863,25 +892,42 @@ router.post('/', verificarAuth, checkEscrita, async (req, res) => {
 });
 
 // ── PUT /:id — editar conta (campos e parcelas não pagas) ──
+// Despesa QUITADA também pode ser editada (campos de cadastro, sem parcelas/valores) — exige a
+// permissão Pode_Editar_Pagamento_Pagar. Nunca chama o Conta Azul nesse caminho.
 router.put('/:id', verificarAuth, checkEscrita, async (req, res) => {
     try {
         const conta = await prisma.contaPagar.findUnique({
             where: { id: req.params.id },
-            include: { parcelas: { include: { pagamentos: { where: { estornado: false } } }, orderBy: { numeroParcela: 'asc' } } }
+            include: {
+                notaEntrada: { select: { id: true } },
+                parcelas: { include: { pagamentos: { where: { estornado: false } } }, orderBy: { numeroParcela: 'asc' } }
+            }
         });
         if (!conta) return res.status(404).json({ error: 'Conta não encontrada.' });
-        if (conta.status === 'QUITADO' || conta.status === 'CANCELADO') {
-            return res.status(400).json({ error: `Conta ${conta.status === 'QUITADO' ? 'quitada' : 'cancelada'} não pode ser editada.` });
+        if (conta.status === 'CANCELADO') {
+            return res.status(400).json({ error: 'Conta cancelada não pode ser editada.' });
+        }
+        const quitada = conta.status === 'QUITADO';
+        if (quitada && !podeEditarPagamento(req._perms)) {
+            return res.status(403).json({ error: 'Sem permissão para editar uma despesa já quitada.' });
         }
 
         const {
             fornecedorId, descricao, categoria, categoriaCaId, numeroNota,
-            competencia, observacoes, parcelas
+            competencia, observacoes, parcelas, metodoPagamentoCA, contaFinanceiraCaId, valorTotal
         } = req.body;
+
+        if (quitada && (Array.isArray(parcelas) || (valorTotal !== undefined && valorTotal !== null))) {
+            return res.status(400).json({ error: 'Despesa quitada: parcelas e valores não mudam por aqui.' });
+        }
 
         if (fornecedorId) {
             const fornecedor = await prisma.fornecedor.findUnique({ where: { id: fornecedorId } });
             if (!fornecedor) return res.status(400).json({ error: 'Fornecedor não encontrado.' });
+        }
+        const fornecedorTravado = ['NFE', 'NFSE'].includes(conta.origem) || !!conta.notaEntrada;
+        if (fornecedorTravado && fornecedorId !== undefined && (fornecedorId || null) !== (conta.fornecedorId || null)) {
+            return res.status(400).json({ error: 'O fornecedor desta despesa vem da nota fiscal e não pode ser trocado. Só despesa lançada manualmente permite trocar o fornecedor.' });
         }
 
         const dadosConta = {};
@@ -897,10 +943,76 @@ router.put('/:id', verificarAuth, checkEscrita, async (req, res) => {
         if (categoriaCaId !== undefined) dadosConta.categoriaCaId = categoriaCaId || null;
         if (numeroNota !== undefined) dadosConta.numeroNota = numeroNota?.trim() || null;
         if (competencia !== undefined) {
-            dadosConta.competencia = competencia ? parseVencimento(competencia) : null;
-            if (dadosConta.competencia) dadosConta.dataEmissao = dadosConta.competencia;
+            const compNorm = competencia ? normalizaCompetencia(competencia) : null;
+            if (compNorm && isNaN(parseVencimento(compNorm).getTime())) {
+                return res.status(400).json({ error: 'Competência inválida.' });
+            }
+            dadosConta.competencia = compNorm ? parseVencimento(compNorm) : null;
+            // A emissão de despesa que nasceu de nota é a da nota — só mexe nas demais
+            if (dadosConta.competencia && !fornecedorTravado) dadosConta.dataEmissao = dadosConta.competencia;
         }
         if (observacoes !== undefined) dadosConta.observacoes = observacoes?.trim() || null;
+        if (metodoPagamentoCA !== undefined) {
+            const m = metodoPagamentoCA ? String(metodoPagamentoCA).toUpperCase() : null;
+            if (m && !contasPagarCaSyncService.METODOS_BAIXA_VALIDOS.has(m)) {
+                return res.status(400).json({ error: 'Forma de pagamento inválida.' });
+            }
+            dadosConta.metodoPagamentoCA = m;
+        }
+        if (contaFinanceiraCaId !== undefined) {
+            if (contaFinanceiraCaId) {
+                const cf = await prisma.contaFinanceira.findUnique({ where: { id: String(contaFinanceiraCaId) }, select: { id: true } });
+                if (!cf) return res.status(400).json({ error: 'Banco/caixa não encontrado.' });
+            }
+            dadosConta.contaFinanceiraCaId = contaFinanceiraCaId ? String(contaFinanceiraCaId) : null;
+        }
+
+        // Despesa QUITADA: grava só o que realmente mudou + trilha de auditoria (antes/depois).
+        if (quitada) {
+            const antes = {}, depois = {};
+            const mudou = {};
+            for (const [k, v] of Object.entries(dadosConta)) {
+                const atual = conta[k];
+                const igual = (atual instanceof Date || v instanceof Date)
+                    ? (atual && v && ymdSP(atual) === ymdSP(v)) || (!atual && !v)
+                    : (atual ?? null) === (v ?? null);
+                if (igual) continue;
+                mudou[k] = v;
+                antes[k] = atual instanceof Date ? atual.toISOString() : (atual ?? null);
+                depois[k] = v instanceof Date ? v.toISOString() : (v ?? null);
+            }
+            if (Object.keys(mudou).length === 0) {
+                const semMudanca = await prisma.contaPagar.findUnique({
+                    where: { id: conta.id },
+                    include: {
+                        notaEntrada: { select: { id: true } },
+                        fornecedor: { select: { id: true, razaoSocial: true, nomeFantasia: true, cnpjCpf: true } },
+                        parcelas: { orderBy: { numeroParcela: 'asc' }, include: { pagamentos: { orderBy: { dataPagamento: 'asc' } } } }
+                    }
+                });
+                return res.json({ message: 'Nada foi alterado.', alterado: false, conta: formatarConta(semMudanca, await mapaBancos(), await anexoService.resumoPorContas([semMudanca.id])) });
+            }
+            await prisma.contaPagar.update({ where: { id: conta.id }, data: mudou });
+            try {
+                await prisma.auditLog.create({
+                    data: {
+                        acao: 'EDITAR_DESPESA_QUITADA', entidade: 'ContaPagar', entidadeId: conta.id,
+                        detalhes: JSON.stringify({ descricao: conta.descricao, antes, depois }),
+                        usuarioId: String(req.user?.id || 'desconhecido'),
+                        usuarioNome: String(req.user?.nome || req.user?.login || 'desconhecido')
+                    }
+                });
+            } catch (e) { console.error('[ContasPagar] falha no audit log (edição já efetivada):', e.message); }
+            const atualizadaQ = await prisma.contaPagar.findUnique({
+                where: { id: conta.id },
+                include: {
+                    notaEntrada: { select: { id: true } },
+                    fornecedor: { select: { id: true, razaoSocial: true, nomeFantasia: true, cnpjCpf: true } },
+                    parcelas: { orderBy: { numeroParcela: 'asc' }, include: { pagamentos: { orderBy: { dataPagamento: 'asc' } } } }
+                }
+            });
+            return res.json({ message: 'Despesa atualizada!', alterado: true, conta: formatarConta(atualizadaQ, await mapaBancos(), await anexoService.resumoPorContas([atualizadaQ.id])) });
+        }
 
         // Edição de parcelas.
         //  • Antes do envio ao CA (NAO_ENVIAR / ENVIAR / ERRO): edição livre local (add/remove/valor/venc).
@@ -1007,6 +1119,7 @@ router.put('/:id', verificarAuth, checkEscrita, async (req, res) => {
                 const atualizada = await prisma.contaPagar.findUnique({
                     where: { id: conta.id },
                     include: {
+                        notaEntrada: { select: { id: true } },
                         fornecedor: { select: { id: true, razaoSocial: true, nomeFantasia: true, cnpjCpf: true } },
                         parcelas: { orderBy: { numeroParcela: 'asc' }, include: { pagamentos: { orderBy: { dataPagamento: 'asc' } } } }
                     }
@@ -1055,6 +1168,7 @@ router.put('/:id', verificarAuth, checkEscrita, async (req, res) => {
         const atualizada = await prisma.contaPagar.findUnique({
             where: { id: conta.id },
             include: {
+                notaEntrada: { select: { id: true } },
                 fornecedor: { select: { id: true, razaoSocial: true, nomeFantasia: true, cnpjCpf: true } },
                 parcelas: { orderBy: { numeroParcela: 'asc' }, include: { pagamentos: { orderBy: { dataPagamento: 'asc' } } } }
             }
@@ -1394,6 +1508,119 @@ router.post('/baixar-lote', verificarAuth, checkEscrita, async (req, res) => {
     } catch (error) {
         console.error('Erro na baixa em lote:', error);
         res.status(500).json({ error: 'Erro ao quitar as parcelas em lote.' });
+    }
+});
+
+// ── PUT /:id/parcelas/:parcelaId/pagamentos/:pagamentoId — corrige um pagamento já lançado ──
+// Edita data, forma, banco/caixa e observação SEM estornar (a despesa continua quitada).
+// Permissão própria: Pode_Editar_Pagamento_Pagar (+ checkEscrita). NUNCA chama o Conta Azul.
+//  • Baixa conciliada com o extrato: trocar banco ou data => 409 PAGAMENTO_CONCILIADO.
+//  • Baixa vinda do CA (origem 'CA' / idBaixaCA): só forma e observação.
+router.put('/:id/parcelas/:parcelaId/pagamentos/:pagamentoId', verificarAuth, checkEscrita, checkEditarPagamento, async (req, res) => {
+    try {
+        const { id, parcelaId, pagamentoId } = req.params;
+        const { dataPagamento, formaPagamento, contaFinanceiraCaId, observacao } = req.body || {};
+
+        const pagamento = await prisma.pagamentoParcelaPagar.findUnique({
+            where: { id: pagamentoId },
+            include: { parcelaPagar: { include: { contaPagar: true } } }
+        });
+        if (!pagamento || pagamento.parcelaPagarId !== parcelaId || pagamento.parcelaPagar.contaPagarId !== id) {
+            return res.status(404).json({ error: 'Pagamento não encontrado.' });
+        }
+        if (pagamento.estornado) return res.status(400).json({ error: 'Este pagamento foi estornado e não pode ser editado.' });
+        if (pagamento.parcelaPagar.contaPagar.status === 'CANCELADO') return res.status(400).json({ error: 'Conta cancelada não pode ser editada.' });
+
+        const dados = {};
+        let mudaBancoOuData = false;
+
+        if (formaPagamento !== undefined) {
+            const forma = String(formaPagamento || '').toUpperCase();
+            if (!contasPagarCaSyncService.METODOS_BAIXA_VALIDOS.has(forma)) {
+                return res.status(400).json({ error: 'Forma de pagamento inválida.' });
+            }
+            if (forma !== (pagamento.formaPagamento || null)) dados.formaPagamento = forma;
+        }
+        if (observacao !== undefined) {
+            const obs = observacao ? String(observacao).trim() : null;
+            if ((obs || null) !== (pagamento.observacao || null)) dados.observacao = obs || null;
+        }
+        if (contaFinanceiraCaId !== undefined) {
+            if (!contaFinanceiraCaId) return res.status(400).json({ error: 'Escolha o banco/caixa do pagamento.' });
+            const cf = await prisma.contaFinanceira.findUnique({ where: { id: String(contaFinanceiraCaId) }, select: { id: true } });
+            if (!cf) return res.status(400).json({ error: 'Banco/caixa não encontrado.' });
+            if (String(contaFinanceiraCaId) !== (pagamento.contaFinanceiraCaId || null)) {
+                dados.contaFinanceiraCaId = String(contaFinanceiraCaId);
+                mudaBancoOuData = true;
+            }
+        }
+        if (dataPagamento !== undefined) {
+            const s = String(dataPagamento || '');
+            const nova = parseVencimento(s);
+            if (!s || isNaN(nova.getTime())) return res.status(400).json({ error: 'Informe uma data de pagamento válida.' });
+            if (ymdSP(nova) > ymdSP(new Date())) return res.status(400).json({ error: 'A data do pagamento não pode ser no futuro.' });
+            if (ymdSP(nova) !== ymdSP(pagamento.dataPagamento)) {
+                dados.dataPagamento = nova;
+                mudaBancoOuData = true;
+            }
+        }
+
+        if (mudaBancoOuData) {
+            if (baixaTravada(pagamento)) {
+                return res.status(400).json({ error: 'Esta baixa veio do Conta Azul (ou já foi enviada a ele): aqui só dá para mudar a forma de pagamento e a observação. Banco e data só mudam no Conta Azul — o Conta Azul não é atualizado por esta tela.' });
+            }
+            const conciliadoExtrato = await prisma.extratoLancamento.findFirst({ where: { pagamentoParcelaPagarId: pagamentoId }, select: { id: true } });
+            const conciliadoGrupo = conciliadoExtrato ? null : await prisma.conciliacaoGrupoItem.findFirst({ where: { pagamentoParcelaPagarId: pagamentoId }, select: { id: true } });
+            if (conciliadoExtrato || conciliadoGrupo) {
+                return res.status(409).json({
+                    codigo: 'PAGAMENTO_CONCILIADO',
+                    error: 'Esta baixa está conciliada com o extrato. Desfaça a conciliação antes de trocar banco ou data.'
+                });
+            }
+        }
+
+        const montar = async () => {
+            const c = await prisma.contaPagar.findUnique({
+                where: { id },
+                include: {
+                    notaEntrada: { select: { id: true } },
+                    fornecedor: { select: { id: true, razaoSocial: true, nomeFantasia: true, cnpjCpf: true } },
+                    parcelas: { orderBy: { numeroParcela: 'asc' }, include: { pagamentos: { orderBy: { dataPagamento: 'asc' } } } }
+                }
+            });
+            return formatarConta(c, await mapaBancos(), await anexoService.resumoPorContas([c.id]));
+        };
+
+        if (Object.keys(dados).length === 0) {
+            return res.json({ message: 'Nada foi alterado.', alterado: false, conta: await montar() });
+        }
+
+        await prisma.$transaction(async (tx) => {
+            await tx.pagamentoParcelaPagar.update({ where: { id: pagamentoId }, data: dados });
+            await contasPagarCaSyncService.recalcularParcelaEConta(tx, parcelaId);
+        }, { timeout: 20000, maxWait: 10000 });
+
+        try {
+            const antes = {}, depois = {};
+            for (const [k, v] of Object.entries(dados)) {
+                const a = pagamento[k];
+                antes[k] = a instanceof Date ? a.toISOString() : (a ?? null);
+                depois[k] = v instanceof Date ? v.toISOString() : (v ?? null);
+            }
+            await prisma.auditLog.create({
+                data: {
+                    acao: 'EDITAR_PAGAMENTO_PAGAR', entidade: 'PagamentoParcelaPagar', entidadeId: pagamentoId,
+                    detalhes: JSON.stringify({ contaPagarId: id, parcelaPagarId: parcelaId, despesa: pagamento.parcelaPagar.contaPagar.descricao, antes, depois }),
+                    usuarioId: String(req.user?.id || 'desconhecido'),
+                    usuarioNome: String(req.user?.nome || req.user?.login || 'desconhecido')
+                }
+            });
+        } catch (e) { console.error('[ContasPagar] falha no audit log (edição já efetivada):', e.message); }
+
+        res.json({ message: 'Pagamento atualizado!', alterado: true, conta: await montar() });
+    } catch (error) {
+        console.error('Erro ao editar pagamento de parcela a pagar:', error);
+        res.status(500).json({ error: 'Erro ao editar o pagamento.' });
     }
 });
 

@@ -3,7 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import contasPagarService from '../../services/contasPagarService';
 import fornecedorService from '../../services/fornecedorService';
 import {
-    Wallet, X, Trash2, FileText, RefreshCw, MoreVertical, Loader2, Undo2, Filter, Package, Printer, Copy
+    Wallet, X, Trash2, FileText, RefreshCw, MoreVertical, Loader2, Undo2, Filter, Package, Printer, Copy, Pencil
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ComboBusca from '../../components/ComboBusca';
@@ -915,13 +915,24 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
     const statusConta = String(conta?.status || '').toUpperCase();
     const contaQuitada = editando && statusConta === 'QUITADO';
     const contaCancelada = editando && statusConta === 'CANCELADO';
-    const cabecalhoTravado = contaQuitada || contaCancelada; // dados + parcelas: só leitura
+    // Permissão idêntica à do backend (checkEscrita + checkEditarPagamento): permissão é
+    // objeto — hasPermission já devolve true para admin e exige `=== true` no booleano.
+    const { hasPermission } = useAuth();
+    const podeEditarPagamento = hasPermission('Pode_Baixar_Contas_Pagar')
+        && hasPermission('Pode_Editar_Pagamento_Pagar');
+    // Cabeçalho (fornecedor, descrição, categoria, nº nota, competência, obs, forma, banco):
+    // só CANCELADA trava; QUITADA edita se tiver a permissão própria.
+    const cabecalhoTravado = contaCancelada || (contaQuitada && !podeEditarPagamento);
+    // Valor total e parcelas: travados em QUITADA/CANCELADA, sempre (já foram pagos).
+    const valorParcelasTravados = contaQuitada || contaCancelada;
 
     const [fornecedorId, setFornecedorId] = useState(conta?.fornecedor?.id || molde?.fornecedor?.id || '');
     const [descricao, setDescricao] = useState(conta?.descricao || molde?.descricao || '');
     const [categoria, setCategoria] = useState(conta?.categoria || molde?.categoria || '');
     const [numeroNota, setNumeroNota] = useState(conta?.numeroNota || '');
-    const [competencia, setCompetencia] = useState(conta?.competencia || '');
+    // Input "month" quer YYYY-MM; o backend devolve a data completa.
+    const competenciaOriginal = conta?.competencia ? toYMD(conta.competencia).slice(0, 7) : '';
+    const [competencia, setCompetencia] = useState(competenciaOriginal);
     const [observacoes, setObservacoes] = useState(conta?.observacoes || molde?.observacoes || '');
     const [enviarCA, setEnviarCA] = useState(true);
     const [valorTotal, setValorTotal] = useState(conta?.valorTotal != null ? fmt(conta.valorTotal) : (molde?.valorTotal != null ? fmt(molde.valorTotal) : ''));
@@ -942,8 +953,8 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
     // Condição de pagamento (forma + banco) — obrigatória ao enviar ao CA (só na criação).
     // "Já paguei" (ex.: dinheiro do caixinha) marca a despesa como quitada no Conta Azul.
     const [modoPagamento, setModoPagamento] = useState('DDA'); // 'DDA' (ainda vou pagar) | 'PAGO' (já paguei)
-    const [metodoPagamento, setMetodoPagamento] = useState('');
-    const [contaFinanceiraCaId, setContaFinanceiraCaId] = useState('');
+    const [metodoPagamento, setMetodoPagamento] = useState(conta?.metodoPagamentoCA || '');
+    const [contaFinanceiraCaId, setContaFinanceiraCaId] = useState(conta?.contaFinanceiraCaId || '');
     const [dataPagamento, setDataPagamento] = useState(hojeYMD());
     const [opcoesBaixa, setOpcoesBaixa] = useState({ contasFinanceiras: [], metodosPagamento: [] });
     const [opcoesCarregadas, setOpcoesCarregadas] = useState(false);
@@ -952,7 +963,9 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
 
     // Carrega bancos + formas do CA quando a despesa vai ao CA (forma+banco são obrigatórios).
     useEffect(() => {
-        if (editando || !enviarCA || opcoesCarregadas || loadingOpcoes) return;
+        // Criação (enviando ao CA) e edição com cabeçalho liberado precisam das opções.
+        const precisa = editando ? !cabecalhoTravado : enviarCA;
+        if (!precisa || opcoesCarregadas || loadingOpcoes) return;
         setLoadingOpcoes(true);
         contasPagarService.opcoesBaixa()
             .then(op => {
@@ -960,12 +973,12 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
                 const mp = Array.isArray(op?.metodosPagamento) ? op.metodosPagamento : [];
                 setOpcoesBaixa({ contasFinanceiras: cf, metodosPagamento: mp });
                 const padrao = cf.find(c => c.padrao) || cf[0];
-                setContaFinanceiraCaId(prev => prev || padrao?.id || '');
+                if (!editando) setContaFinanceiraCaId(prev => prev || padrao?.id || '');
                 setOpcoesCarregadas(true);
             })
             .catch(() => toast.error('Não consegui carregar os bancos do Conta Azul.'))
             .finally(() => setLoadingOpcoes(false));
-    }, [editando, enviarCA, opcoesCarregadas, loadingOpcoes]);
+    }, [editando, enviarCA, opcoesCarregadas, loadingOpcoes, cabecalhoTravado]);
 
     // Parcelas: em edição, parcelas pagas ficam travadas
     const [parcelas, setParcelas] = useState(() => {
@@ -987,11 +1000,18 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
     });
 
     // Opções do combobox de fornecedor (nome + fantasia/CNPJ na linha de baixo, tudo buscável)
-    const opcoesFornecedor = useMemo(() => fornecedores.map(f => ({
-        value: f.id,
-        label: f.razaoSocial || f.nomeFantasia || 'Sem nome',
-        sub: [f.razaoSocial && f.nomeFantasia ? f.nomeFantasia : null, f.cnpjCpf].filter(Boolean).join(' · ')
-    })), [fornecedores]);
+    // O fornecedor atual da despesa entra sempre nas opções (a lista pode não trazê-lo,
+    // e o campo apareceria vazio mesmo com fornecedor gravado).
+    const opcoesFornecedor = useMemo(() => {
+        const lista = [...fornecedores];
+        const atual = conta?.fornecedor;
+        if (atual?.id && !lista.some(f => String(f.id) === String(atual.id))) lista.unshift(atual);
+        return lista.map(f => ({
+            value: f.id,
+            label: f.razaoSocial || f.nomeFantasia || 'Sem nome',
+            sub: [f.razaoSocial && f.nomeFantasia ? f.nomeFantasia : null, f.cnpjCpf].filter(Boolean).join(' · ')
+        }));
+    }, [fornecedores, conta]);
 
     // ── Produtos comprados: dão entrada no estoque e atualizam o custo ──
     // Ao CRIAR, entram junto com a despesa (POST /). Na EDIÇÃO (08/2026) podem ser
@@ -1015,7 +1035,6 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
     // Mexer nos produtos de uma despesa JÁ lançada mexe em estoque e custo (às vezes de mês
     // fechado): mesma permissão da correção de entrada de nota. Chave IDÊNTICA à do backend
     // (contasPagar.js → checkEditarItens) — se divergir, o botão aparece e a API devolve 403.
-    const { hasPermission } = useAuth();
     // A rota PUT /:id/itens exige as DUAS chaves (contasPagar.js → checkEscrita +
     // checkEditarItens). O gate da tela tem que ser o mesmo "e": faltando qualquer uma,
     // o botão apareceria e a API devolveria 403.
@@ -1213,7 +1232,7 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
     const emEnvioCA = editando && (statusEnvioModal === 'ENVIANDO' || statusEnvioModal === 'AGUARDANDO_PROTOCOLO');
     // Não pode adicionar/remover parcela (já foi ao CA, está em trânsito, ou a despesa
     // está quitada/cancelada — nesses dois últimos o backend recusa qualquer edição)
-    const parcelasTravadas = enviadaCA || emEnvioCA || cabecalhoTravado;
+    const parcelasTravadas = enviadaCA || emEnvioCA || valorParcelasTravados;
 
     const somaParcelas = parcelas.reduce((s, p) => s + parseNum(p.valor), 0);
     const totalInformado = parseNum(valorTotal);
@@ -1272,6 +1291,8 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
         if (!cabecalhoTravado) {
             if (!fornecedorId) { toast.error('Selecione o fornecedor.'); return; }
             if (!descricao.trim()) { toast.error('Informe a descrição.'); return; }
+        }
+        if (!valorParcelasTravados) {
             if (parcelas.length === 0 || parcelas.some(p => !p.paga && (!p.dataVencimento || parseNum(p.valor) <= 0))) {
                 toast.error('Preencha data e valor de todas as parcelas.');
                 return;
@@ -1314,7 +1335,8 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
             const payload = {
                 fornecedorId,
                 descricao: descricao.trim(),
-                categoria: categoria || undefined,
+                // vazio só vai como '' se o usuário esvaziou de fato (tinha categoria); senão não envia
+                ...(categoria ? { categoria } : (editando && conta?.categoria ? { categoria: '' } : {})),
                 numeroNota: numeroNota.trim() || undefined,
                 competencia: competencia || undefined,
                 observacoes: observacoes.trim() || undefined,
@@ -1334,6 +1356,22 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
                     valorTotal: parseNum(it.valorTotal)
                 }));
             }
+            if (editando) {
+                // Competência: só vai se o usuário mexeu (o backend regrava a data de emissão com ela).
+                if (competencia === competenciaOriginal) delete payload.competencia;
+                else payload.competencia = competencia ? `${competencia}-01` : null;
+                // Vazio de propósito = limpar o campo
+                payload.numeroNota = numeroNota.trim();
+                payload.observacoes = observacoes.trim();
+                if (metodoPagamento) payload.metodoPagamentoCA = metodoPagamento;
+                if (contaFinanceiraCaId) payload.contaFinanceiraCaId = contaFinanceiraCaId;
+                // Categoria: só vai se o usuário mexeu; '' = limpou de propósito
+                if (categoria !== (conta?.categoria || '')) payload.categoria = categoria;
+                else delete payload.categoria;
+                if (conta?.fornecedorTravado) delete payload.fornecedorId;
+                // Quitada: valor e parcelas não vão (o backend recusa com 400)
+                if (valorParcelasTravados) { delete payload.parcelas; delete payload.enviarCA; }
+            }
             let contaId = conta?.id;
             if (editando) {
                 // Cada parte é salva por uma rota diferente. O usuário TEM que sair sabendo
@@ -1348,11 +1386,13 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
                 //    que o backend recusa de saída (400).
                 if (!cabecalhoTravado) {
                     try {
-                        await contasPagarService.atualizar(conta.id, payload);
-                        despesaSalvaRef.current = true; // fechar o modal agora recarrega a lista
-                        salvos.push('os dados e as parcelas');
+                        const ra = await contasPagarService.atualizar(conta.id, payload);
+                        if (ra?.alterado !== false) {
+                            despesaSalvaRef.current = true; // fechar o modal agora recarrega a lista
+                            salvos.push(valorParcelasTravados ? 'os dados' : 'os dados e as parcelas');
+                        }
                     } catch (e) {
-                        naoSalvos.push('os dados e as parcelas');
+                        naoSalvos.push(valorParcelasTravados ? 'os dados' : 'os dados e as parcelas');
                         motivo = e.response?.data?.error || 'não consegui falar com o servidor.';
                     }
                 }
@@ -1475,7 +1515,7 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
                     {/* Despesa quitada/cancelada: o backend não deixa mais mexer nos dados nem
                         nas parcelas — mas a CORREÇÃO DOS PRODUTOS continua possível (rota
                         separada). Sem esta explicação o usuário acha que a tela travou. */}
-                    {cabecalhoTravado && (
+                    {(contaQuitada || contaCancelada) && (
                         <div className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
                             {contaCancelada ? (
                                 <><b>Despesa cancelada</b> — não é mais possível alterar nada por aqui. Os produtos já voltaram do estoque.</>
@@ -1483,8 +1523,10 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
                                 // Quitada, mas sem nada editável (sem a permissão, ou os produtos vieram
                                 // de nota fiscal): dizer isso na cara, senão o usuário procura o que salvar.
                                 <><b>Despesa quitada</b> — esta tela está só para consulta: os dados, as parcelas e os produtos não podem mais ser alterados aqui. Você ainda pode anexar um PDF.</>
-                            ) : (
+                            ) : cabecalhoTravado ? (
                                 <><b>Despesa quitada</b> — dá para corrigir os produtos, mas os dados e as parcelas não podem mais ser alterados.</>
+                            ) : (
+                                <><b>Despesa quitada</b> — você pode corrigir fornecedor, descrição, categoria, nota, competência, forma/banco e os produtos <b>sem estornar</b>. O valor e as parcelas ficam travados (já foram pagos). Para mudar data, forma ou banco de um pagamento, use <b>Editar</b> ao lado dele nos detalhes da despesa.</>
                             )}
                         </div>
                     )}
@@ -1492,7 +1534,7 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
                     {/* Fornecedor com busca */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Fornecedor *</label>
-                        {cabecalhoTravado ? (
+                        {(cabecalhoTravado || conta?.fornecedorTravado) ? (
                             <input
                                 value={opcoesFornecedor.find(o => String(o.value) === String(fornecedorId))?.label
                                     || conta?.fornecedor?.razaoSocial || conta?.fornecedor?.nomeFantasia || '—'}
@@ -1508,6 +1550,9 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
                                 buscaPlaceholder="Digite o nome ou CNPJ…"
                                 vazioTexto="Nenhum fornecedor encontrado — cadastre na tela Fornecedores."
                             />
+                        )}
+                        {conta?.fornecedorTravado && !cabecalhoTravado && (
+                            <p className="text-xs text-gray-500 mt-1">O fornecedor vem da nota fiscal e não pode ser trocado.</p>
                         )}
                     </div>
 
@@ -1841,7 +1886,7 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
                                     <input
                                         type="date"
                                         value={p.dataVencimento}
-                                        disabled={p.paga || emEnvioCA || cabecalhoTravado}
+                                        disabled={p.paga || emEnvioCA || valorParcelasTravados}
                                         onChange={e => setParcela(idx, 'dataVencimento', e.target.value)}
                                         className="border border-gray-300 rounded px-2 py-2 text-sm text-gray-700 focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none disabled:bg-gray-100 disabled:text-gray-400"
                                     />
@@ -1849,7 +1894,7 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
                                         <span className="text-sm text-gray-500">R$</span>
                                         <input
                                             value={p.valor}
-                                            disabled={p.paga || emEnvioCA || cabecalhoTravado}
+                                            disabled={p.paga || emEnvioCA || valorParcelasTravados}
                                             onChange={e => setParcela(idx, 'valor', e.target.value)}
                                             placeholder="0,00"
                                             className="w-28 border border-gray-300 rounded px-2 py-2 text-sm text-right focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none disabled:bg-gray-100 disabled:text-gray-400"
@@ -1876,7 +1921,7 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Valor total da despesa (opcional, para conferência)</label>
                                 <div className="flex items-center border border-gray-300 rounded overflow-hidden focus-within:border-primary focus-within:ring-1 focus-within:ring-primary bg-white">
                                     <span className="px-3 py-2 bg-gray-50 border-r border-gray-300 text-sm text-gray-500">R$</span>
-                                    <input value={valorTotal} onChange={e => setValorTotal(e.target.value)} disabled={cabecalhoTravado} placeholder="0,00" className="flex-1 px-3 py-2 text-sm outline-none disabled:bg-gray-100 disabled:text-gray-500" />
+                                    <input value={valorTotal} onChange={e => setValorTotal(e.target.value)} disabled={valorParcelasTravados} placeholder="0,00" className="flex-1 px-3 py-2 text-sm outline-none disabled:bg-gray-100 disabled:text-gray-500" />
                                 </div>
                             </div>
                             <div className={`text-sm rounded-lg px-3 py-2 border ${somaDiverge ? 'bg-red-50 border-red-200 text-red-700 font-medium' : 'bg-gray-50 border-gray-200 text-gray-600'}`}>
@@ -1948,6 +1993,29 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
                         </div>
                     )}
 
+                    {/* Edição: forma de pagamento e banco/caixa da despesa (aberta, ou quitada com permissão) */}
+                    {editando && !cabecalhoTravado && (
+                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                            <div className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-2">Forma de pagamento e banco</div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-600 mb-1">Forma de pagamento</label>
+                                    <SelectBusca value={metodoPagamento} onChange={e => setMetodoPagamento(e.target.value)} className="w-full">
+                                        <option value="">{loadingOpcoes ? 'Carregando…' : 'Selecionar…'}</option>
+                                        {opcoesBaixa.metodosPagamento.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                                    </SelectBusca>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-600 mb-1">Banco / caixa</label>
+                                    <SelectBusca value={contaFinanceiraCaId} onChange={e => setContaFinanceiraCaId(e.target.value)} className="w-full">
+                                        <option value="">{loadingOpcoes ? 'Carregando…' : 'Selecionar…'}</option>
+                                        {opcoesBaixa.contasFinanceiras.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                                    </SelectBusca>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Campo PDF opcional (nova despesa e edição). Em despesa CANCELADA o
                         salvar recusa tudo de saída — oferecer o campo seria só frustração. */}
                     {!contaCancelada && (
@@ -2001,7 +2069,7 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
                     {podeSalvar && (
                         <button
                             onClick={salvar}
-                            disabled={salvando || contaCancelada || (!cabecalhoTravado && somaDiverge)}
+                            disabled={salvando || contaCancelada || (!valorParcelasTravados && somaDiverge)}
                             className="flex-1 px-4 py-2 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm min-h-[44px] disabled:opacity-50"
                         >
                             {salvando
@@ -2010,7 +2078,7 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
                                     ? 'Criar despesa'
                                     : modalSomenteLeitura
                                         ? 'Salvar PDF'
-                                        : contaQuitada ? 'Salvar correção dos produtos' : 'Salvar alterações'}
+                                        : (contaQuitada && cabecalhoTravado) ? 'Salvar correção dos produtos' : 'Salvar alterações'}
                         </button>
                     )}
                 </div>
@@ -2376,6 +2444,147 @@ const BaixaLoteModal = ({ parcelaIds, valorTotal, onClose, onSuccess }) => {
 };
 
 // ═══════════════════════════════════════════════════════════
+// MODAL EDITAR PAGAMENTO (corrige data/forma/banco/observação sem estornar)
+// ═══════════════════════════════════════════════════════════
+const EditarPagamentoModal = ({ conta, parcela, pagamento, onClose, onSuccess }) => {
+    // Baixa travada (veio do Conta Azul/DDA/importada, tem baixa lá ou já foi enviada): o backend
+    // devolve `baixaTravada`; banco e data não mudam aqui — só forma e observação.
+    const veioDoCA = !!pagamento.baixaTravada || !!pagamento.temBaixaCA;
+    const dataOriginal = toYMD(pagamento.dataPagamento);
+    const [data, setData] = useState(dataOriginal);
+    const [forma, setForma] = useState(String(pagamento.formaPagamento || '').toUpperCase());
+    const [banco, setBanco] = useState(pagamento.contaFinanceiraCaId || '');
+    const [obs, setObs] = useState(pagamento.observacao || '');
+    const [opcoes, setOpcoes] = useState({ contasFinanceiras: [], metodosPagamento: [] });
+    const [carregando, setCarregando] = useState(true);
+    const [salvando, setSalvando] = useState(false);
+    const [erro, setErro] = useState('');
+    const salvandoRef = useRef(false);
+
+    useEffect(() => {
+        let vivo = true;
+        contasPagarService.opcoesBaixa()
+            .then(op => {
+                if (!vivo) return;
+                setOpcoes({
+                    contasFinanceiras: Array.isArray(op?.contasFinanceiras) ? op.contasFinanceiras : [],
+                    metodosPagamento: Array.isArray(op?.metodosPagamento) ? op.metodosPagamento : []
+                });
+            })
+            .catch(() => { if (vivo) setErro('Não consegui carregar os bancos e formas de pagamento.'); })
+            .finally(() => { if (vivo) setCarregando(false); });
+        return () => { vivo = false; };
+    }, []);
+
+    // Banco atual fora da lista carregada: mostra o nome que o servidor mandou (pagamento.banco)
+    const bancoForaDaLista = !!banco && !carregando && !opcoes.contasFinanceiras.some(c => String(c.id) === String(banco));
+    // Aviso (não bloqueia): data nova em mês anterior ao atual pode mexer em caixa/relatório já fechado.
+    const mesAtual = hojeYMD().slice(0, 7);
+    const avisoMesAnterior = !veioDoCA && data && data !== dataOriginal && data.slice(0, 7) < mesAtual;
+
+    const salvar = async () => {
+        if (salvandoRef.current) return;
+        const dados = {};
+        if (!veioDoCA) {
+            if (!data) { setErro('Informe a data do pagamento.'); return; }
+            if (data !== dataOriginal) dados.dataPagamento = data;
+            if (banco && banco !== (pagamento.contaFinanceiraCaId || '')) dados.contaFinanceiraCaId = banco;
+        }
+        if (forma && forma !== String(pagamento.formaPagamento || '').toUpperCase()) dados.formaPagamento = forma;
+        if ((obs.trim() || '') !== (pagamento.observacao || '')) dados.observacao = obs.trim();
+        if (Object.keys(dados).length === 0) {
+            toast('Nada foi alterado.', { icon: 'ℹ️' });
+            return;
+        }
+        salvandoRef.current = true;
+        setSalvando(true);
+        setErro('');
+        try {
+            const r = await contasPagarService.editarPagamento(conta.id, parcela.id, pagamento.id, dados);
+            if (r?.alterado === false) toast('Nada foi alterado.', { icon: 'ℹ️' });
+            else toast.success(r?.message || 'Pagamento atualizado.');
+            onSuccess();
+        } catch (e) {
+            // 409 PAGAMENTO_CONCILIADO / 400: mostra o aviso do servidor, modal segue aberto
+            setErro(e.response?.data?.error || 'Não consegui falar com o servidor.');
+        } finally {
+            salvandoRef.current = false;
+            setSalvando(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/40 z-[60] flex items-end md:items-center justify-center md:p-4" onClick={onClose}>
+            <div className="bg-white rounded-t-2xl md:rounded-2xl shadow-xl max-w-md w-full max-h-[92vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+                <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white z-10">
+                    <h2 className="font-bold text-gray-900">Editar pagamento</h2>
+                    <button onClick={onClose} className="p-2 text-gray-500 hover:text-gray-700 rounded-full hover:bg-gray-100" aria-label="Fechar"><X className="w-5 h-5" /></button>
+                </div>
+                <div className="p-5 space-y-4">
+                    <p className="text-xs text-gray-600">
+                        Parcela {parcela.numeroParcela} · pago R$ {fmt(pagamento.valorPago)}. A parcela continua paga — nada é estornado.
+                    </p>
+                    {veioDoCA && (
+                        <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                            Esta baixa veio do Conta Azul ou já foi enviada para lá — só dá para mudar a <b>forma de pagamento</b> e a <b>observação</b>. Banco e data só mudam no Conta Azul.
+                        </p>
+                    )}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Data do pagamento</label>
+                        <input
+                            type="date"
+                            value={data}
+                            max={hojeYMD()}
+                            disabled={veioDoCA}
+                            onChange={e => setData(e.target.value)}
+                            className="w-full border border-gray-300 rounded px-3 py-2 text-sm min-h-[44px] focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none disabled:bg-gray-100 disabled:text-gray-500"
+                        />
+                        {avisoMesAnterior && (
+                            <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-2">
+                                Atenção: esta data é de um mês anterior ao atual. Isso muda o mês em que o pagamento aparece nos relatórios e no caixa.
+                            </p>
+                        )}
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Forma de pagamento</label>
+                        <SelectBusca value={forma} onChange={e => setForma(e.target.value)} className="w-full">
+                            <option value="">{carregando ? 'Carregando…' : 'Selecionar…'}</option>
+                            {opcoes.metodosPagamento.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                        </SelectBusca>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Banco / caixa</label>
+                        <SelectBusca value={banco} onChange={e => setBanco(e.target.value)} className="w-full" disabled={veioDoCA}>
+                            <option value="">{carregando ? 'Carregando…' : 'Selecionar…'}</option>
+                            {bancoForaDaLista && <option value={banco}>{pagamento.banco || 'Banco atual'}</option>}
+                            {opcoes.contasFinanceiras.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                        </SelectBusca>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Observação</label>
+                        <textarea
+                            rows={2}
+                            value={obs}
+                            onChange={e => setObs(e.target.value)}
+                            className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                        />
+                    </div>
+                    {erro && (
+                        <p role="alert" className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{erro}</p>
+                    )}
+                </div>
+                <div className="px-5 py-4 border-t border-gray-100 flex gap-3 sticky bottom-0 bg-white">
+                    <button onClick={onClose} className="flex-1 px-4 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-full font-medium text-sm min-h-[44px]">Cancelar</button>
+                    <button onClick={salvar} disabled={salvando || carregando} className="flex-1 px-4 py-2 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm min-h-[44px] disabled:opacity-50">
+                        {salvando ? 'Salvando…' : 'Salvar'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// ═══════════════════════════════════════════════════════════
 // MODAL DETALHES DA CONTA (cancelar / reenviar CA / estornar)
 // ═══════════════════════════════════════════════════════════
 const DetalheContaModal = ({ conta: contaInicial, podeBaixar, onClose, onEditar, onDuplicar, onBaixar, onChanged, onAnexosMudaram }) => {
@@ -2386,6 +2595,10 @@ const DetalheContaModal = ({ conta: contaInicial, podeBaixar, onClose, onEditar,
         qtdAnexosRef.current = l.length;
     }, [onAnexosMudaram]);
     const [executando, setExecutando] = useState(null); // 'cancelar' | 'reenviar' | pagamentoId
+    const { hasPermission } = useAuth();
+    // Espelha o backend (checkEscrita + checkEditarPagamento)
+    const podeEditarPagamento = hasPermission('Pode_Baixar_Contas_Pagar') && hasPermission('Pode_Editar_Pagamento_Pagar');
+    const [editandoPag, setEditandoPag] = useState(null); // { parcela, pagamento }
     // Estado local do PDF — atualizado sem recarregar toda a lista
     const [temPdf] = useState(contaInicial.temPdf);
     const [pdfNome] = useState(contaInicial.pdfNome);
@@ -2610,15 +2823,25 @@ const DetalheContaModal = ({ conta: contaInicial, podeBaixar, onClose, onEditar,
                                                         {pg.banco ? ` · ${pg.banco}` : ''}
                                                         {String(pg.origem || '').toUpperCase() === 'CA' || String(pg.origem || '').toUpperCase() === 'DDA' ? ' · via Conta Azul' : ''}
                                                     </span>
+                                                    <div className="shrink-0 flex flex-wrap justify-end gap-1.5">
+                                                    {podeEditarPagamento && !pg.estornado && conta.status !== 'CANCELADO' && (
+                                                        <button
+                                                            onClick={() => setEditandoPag({ parcela: p, pagamento: pg })}
+                                                            className="inline-flex items-center gap-1 px-3 py-1.5 min-h-[44px] md:min-h-[36px] text-xs text-primaryDark border border-primary rounded-full hover:bg-mint/40"
+                                                        >
+                                                            <Pencil className="h-3 w-3" /> Editar
+                                                        </button>
+                                                    )}
                                                     {podeBaixar && podeEstornarPag(pg) && (
                                                         <button
                                                             onClick={() => estornar(p, pg)}
                                                             disabled={executando === pg.id}
-                                                            className="shrink-0 inline-flex items-center gap-1 px-2 py-1 text-xs text-amber-700 border border-amber-300 rounded hover:bg-amber-50 disabled:opacity-50"
+                                                            className="inline-flex items-center gap-1 px-3 py-1.5 min-h-[44px] md:min-h-0 text-xs text-amber-700 border border-amber-300 rounded-full hover:bg-amber-50 disabled:opacity-50"
                                                         >
                                                             <Undo2 className="h-3 w-3" /> Estornar
                                                         </button>
                                                     )}
+                                                    </div>
                                                 </div>
                                             ))}
                                         </div>
@@ -2638,6 +2861,16 @@ const DetalheContaModal = ({ conta: contaInicial, podeBaixar, onClose, onEditar,
                         </div>
                     </div>
                 </div>
+
+                {editandoPag && (
+                    <EditarPagamentoModal
+                        conta={conta}
+                        parcela={editandoPag.parcela}
+                        pagamento={editandoPag.pagamento}
+                        onClose={() => setEditandoPag(null)}
+                        onSuccess={() => { setEditandoPag(null); onChanged(); }}
+                    />
+                )}
 
                 {podeBaixar && (
                     <div className="px-5 py-4 border-t border-gray-100 flex flex-col md:flex-row gap-2">
