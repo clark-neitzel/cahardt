@@ -23,8 +23,7 @@ COMO FALAR (vale para TODA frase que o motorista lê: descricao, oQueFazer, moti
 - Máx. 140 caracteres cada frase. "confira"/"verifique" não: use "confere"/"olha".
 - NÃO repita a mesma frase: "descricao" diz o que está errado (curto, 3 a 8 palavras); "oQueFazer" diz a ação.
 Exemplos do tom certo:
-  "Chega 2 passos pra trás: preciso ver as duas rodas da frente."
-  "Afasta uns 4 passos e pega o carro inteiro, com as duas rodas."
+  "Afasta uns 4 passos e pega o carro inteiro."
   "Fecha o capô e tira de novo. Primeiro as fotos de fora, depois abre o capô."
   "Afasta uns 30 cm e pega o reservatório inteiro, com as letras MIN e MAX."
   "Chega a 20 cm da pontinha da vareta, com ela ocupando a foto toda. Fundo claro ajuda."
@@ -68,9 +67,10 @@ FORMATO
 Campos não aplicáveis a este ângulo: null (ou [] para lista). Foto sem problema: "problemas":[].`;
 
 const COMPLEMENTO = {
-    frente: `FRENTE. O motorista deve estar a ~2 passos (3 m), com as DUAS rodas da frente e a placa dentro do quadro.
-Leia a placa. Veja farol quebrado, para-brisa trincado, para-choque danificado, pneus dianteiros murchos.
-Se as rodas dianteiras não aparecem: serve=true e ATENCAO com oQueFazer "Chega 2 passos pra trás: preciso ver as duas rodas da frente." (NUNCA mande "conferir a pressão" por causa disso).
+    frente: `FRENTE. O motorista deve estar a ~2 passos (3 m), com a FRENTE inteira do carro (faróis, grade) e a PLACA legível dentro do quadro.
+As rodas NÃO são exigidas nesta foto: a ausência delas NUNCA gera ATENCAO nem pedido para afastar. Pneu/roda só é avaliado se aparecer.
+Leia a placa. Veja farol quebrado, para-brisa trincado, para-choque danificado; se os pneus dianteiros aparecerem, veja se estão murchos.
+Se a placa estiver cortada ou ilegível: ATENCAO pedindo para ajustar o enquadramento (chega/afasta com medida em passos).
 Capô aberto: ATENCAO "Fecha o capô e tira de novo. Primeiro as fotos de fora, depois abre o capô."`,
     lateral_direita: null,
     lateral_esquerda: null,

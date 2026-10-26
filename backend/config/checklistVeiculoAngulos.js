@@ -8,7 +8,7 @@ const DICA_NOITE_EXTERNO = 'Pouca luz? Ligue o flash da câmera antes de bater a
 const ANGULOS = {
     frente: {
         rotulo: 'Frente com placa',
-        instrucao: 'Chega 2 passos (uns 3 m) de distância: as duas rodas da frente e a placa dentro do quadro. Capô fechado',
+        instrucao: 'Chega 2 passos (uns 3 m) de distância: a frente do carro inteira e a placa legível dentro do quadro. Capô fechado',
         dicaNoite: DICA_NOITE_EXTERNO,
     },
     lateral_direita: {
