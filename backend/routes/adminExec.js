@@ -64,7 +64,7 @@ router.get('/ping', (req, res) => {
         ok: true,
         // Marcador de deploy: bumpar a cada mudança de backend que precise de confirmação
         // em produção (não há outro jeito de saber de fora qual versão está no ar).
-        deployMarker: 'checklist-referencia-anterior-2026-10-26',
+        deployMarker: 'ajustar-competencia-2026-10-27',
         uptimeSegundos: Math.round(process.uptime()),
         timestamp: new Date().toISOString(),
         openaiConfigurada: !!process.env.OPENAI_API_KEY,
@@ -12730,6 +12730,88 @@ router.post('/indicadores-ajustes-dados', async (req, res) => {
         res.json(await svc.executar({ passos: lista, dry, de, ate, limite: req.query.limite }));
     } catch (err) {
         console.error('[indicadores-ajustes-dados]', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// POST /api/admin-exec/contas-pagar-ajustar-competencia?categoria=Salários&vencimentoDe=2026-08-05&vencimentoAte=2026-08-05&novaCompetencia=2026-07-31[&descricaoContem=x][&dry=0]
+// Move a COMPETÊNCIA de contas a pagar em lote (ex.: folha paga no dia 05 que é do mês anterior). dry=1 é o PADRÃO
+// (só simula); dry=0 grava. Seleciona contas não canceladas da categoria cuja MENOR data de vencimento cai no intervalo
+// (máx. 31 dias inclusivos); as que já estão na competência nova saem da lista e contam em `jaCertas`. Idempotente.
+router.post('/contas-pagar-ajustar-competencia', async (req, res) => {
+    try {
+        const YMD = /^\d{4}-\d{2}-\d{2}$/;
+        const q = req.query;
+        const dry = String(q.dry ?? '1') !== '0';
+        const categoria = q.categoria ? String(q.categoria) : '';
+        const vencimentoDe = q.vencimentoDe ? String(q.vencimentoDe) : '';
+        const vencimentoAte = q.vencimentoAte ? String(q.vencimentoAte) : '';
+        const novaCompetencia = q.novaCompetencia ? String(q.novaCompetencia) : '';
+        const descricaoContem = q.descricaoContem ? String(q.descricaoContem) : '';
+        if (!categoria) return res.status(400).json({ error: 'Informe a categoria (nome exato).' });
+        for (const [nome, v] of [['vencimentoDe', vencimentoDe], ['vencimentoAte', vencimentoAte], ['novaCompetencia', novaCompetencia]]) {
+            if (!v) return res.status(400).json({ error: `Informe ${nome} no formato YYYY-MM-DD.` });
+            if (!YMD.test(v) || Number.isNaN(new Date(`${v}T12:00:00Z`).getTime()) || new Date(`${v}T12:00:00Z`).toISOString().slice(0, 10) !== v) {
+                return res.status(400).json({ error: `${nome} inválido: use uma data real no formato YYYY-MM-DD.` });
+            }
+        }
+        const dDe = new Date(`${vencimentoDe}T12:00:00Z`), dAte = new Date(`${vencimentoAte}T12:00:00Z`);
+        if (dAte < dDe) return res.status(400).json({ error: 'vencimentoAte não pode ser anterior a vencimentoDe.' });
+        if ((dAte - dDe) / 86400000 >= 31) return res.status(400).json({ error: 'Intervalo de vencimento maior que 31 dias — reduza o período.' });
+
+        const ymd = (d) => (d ? new Date(d).toISOString().slice(0, 10) : null);
+        // mesmo padrão do PUT /:id de contasPagar.js (parseVencimento): meio-dia em Brasília
+        const novaData = new Date(`${novaCompetencia}T12:00:00-03:00`);
+
+        const where = { status: { not: 'CANCELADO' }, categoria };
+        if (descricaoContem) where.descricao = { contains: descricaoContem, mode: 'insensitive' };
+        const candidatas = await prisma.contaPagar.findMany({
+            where,
+            select: { id: true, descricao: true, valorTotal: true, competencia: true, origem: true, notaEntrada: { select: { id: true } }, parcelas: { select: { dataVencimento: true } } },
+        });
+
+        const contas = [];
+        let jaCertas = 0;
+        for (const c of candidatas) {
+            const venc = c.parcelas.map((p) => ymd(p.dataVencimento)).filter(Boolean).sort()[0];
+            if (!venc || venc < vencimentoDe || venc > vencimentoAte) continue;
+            if (ymd(c.competencia) === novaCompetencia) { jaCertas++; continue; }
+            contas.push({
+                id: c.id, descricao: c.descricao, valorTotal: Number(c.valorTotal), vencimento: venc,
+                competenciaAntes: ymd(c.competencia), competenciaDepois: novaCompetencia,
+                // mesma regra do PUT /:id de contasPagar.js: despesa de nota (NFE/NFSE ou com notaEntrada) mantém a dataEmissao da nota
+                veioDeNota: ['NFE', 'NFSE'].includes(c.origem) || !!c.notaEntrada,
+            });
+        }
+        const valorTotal = Math.round(contas.reduce((s, c) => s + c.valorTotal, 0) * 100) / 100;
+
+        let alteradas = 0, dataEmissaoAtualizadas = 0;
+        if (!dry && contas.length) {
+            const r = await prisma.contaPagar.updateMany({ where: { id: { in: contas.map((c) => c.id) } }, data: { competencia: novaData } });
+            alteradas = r.count;
+            // despesa que NÃO veio de nota: a emissão acompanha a competência (como no PUT /:id); a contabilidade filtra por dataEmissao
+            const idsSemNota = contas.filter((c) => !c.veioDeNota).map((c) => c.id);
+            if (idsSemNota.length) {
+                const re = await prisma.contaPagar.updateMany({ where: { id: { in: idsSemNota } }, data: { dataEmissao: novaData } });
+                dataEmissaoAtualizadas = re.count;
+            }
+            const resumo = { filtro: { categoria, vencimentoDe, vencimentoAte, novaCompetencia, descricaoContem: descricaoContem || null }, total: contas.length, valorTotal, alteradas, dataEmissaoAtualizadas, contas: contas.map((c) => ({ id: c.id, veioDeNota: c.veioDeNota, antes: c.competenciaAntes, depois: c.competenciaDepois })) };
+            console.log('[contas-pagar-ajustar-competencia]', JSON.stringify(resumo));
+            try {
+                await prisma.auditLog.create({
+                    data: {
+                        acao: 'AJUSTAR_COMPETENCIA_CONTAS_PAGAR', entidade: 'ContaPagar',
+                        entidadeId: contas.map((c) => c.id).join(','), detalhes: JSON.stringify(resumo),
+                        usuarioId: 'admin-exec', usuarioNome: 'Ajuste de competência (admin-exec)',
+                    },
+                });
+            } catch (logErr) {
+                console.error('[contas-pagar-ajustar-competencia] falha no audit log (ajuste já efetivado):', logErr.message);
+            }
+        }
+        res.json({ dry, filtro: { categoria, vencimentoDe, vencimentoAte, novaCompetencia, descricaoContem: descricaoContem || null }, total: contas.length, valorTotal, jaCertas, contas, alteradas, dataEmissaoAtualizadas });
+    } catch (err) {
+        console.error('[contas-pagar-ajustar-competencia]', err);
         res.status(500).json({ error: err.message });
     }
 });
