@@ -1,0 +1,316 @@
+<title>Hardt fora do Simples 2027</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap">
+<style>
+/* Layout: uma coluna de leitura (máx. 980px); calculadora em duas colunas no desktop (entradas | resultado), empilhada no celular. */
+:root{
+  --bg:#f2f0eb; --surface:#ffffff; --fg:rgba(0,0,0,.87); --muted:#5f6660; --line:#dcdad2;
+  --primary:#00754A; --primary-dark:#006241; --house:#1E3932; --mint:#d4e9e2; --gold:#cba258;
+  --bad:#b42318; --bad-bg:#fde8e6; --warn:#8a5a00; --warn-bg:#fff2cc; --ok:#1b6b3a; --ok-bg:#dcf2e4;
+  --font:'Manrope',-apple-system,'SF Pro Text','Segoe UI',sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#14201b; --surface:#1c2a24; --fg:#ecefea; --muted:#a9b3ac; --line:#2f3f37;
+  --primary:#3fb27f; --primary-dark:#5cc896; --house:#0f1a15; --mint:#24473a; --gold:#d8b46d;
+  --bad:#ff8a80; --bad-bg:#3a1e1c; --warn:#ffd36b; --warn-bg:#3a2f12; --ok:#7fd9a3; --ok-bg:#1d3a2a;
+  color-scheme:dark; } }
+:root[data-theme="dark"]{
+  --bg:#14201b; --surface:#1c2a24; --fg:#ecefea; --muted:#a9b3ac; --line:#2f3f37;
+  --primary:#3fb27f; --primary-dark:#5cc896; --house:#0f1a15; --mint:#24473a; --gold:#d8b46d;
+  --bad:#ff8a80; --bad-bg:#3a1e1c; --warn:#ffd36b; --warn-bg:#3a2f12; --ok:#7fd9a3; --ok-bg:#1d3a2a;
+  color-scheme:dark; }
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font);font-size:15px;line-height:1.55;letter-spacing:-0.01em;font-variant-numeric:tabular-nums;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 48px}
+.wrap{max-width:980px;margin:0 auto}
+header.hero{background:var(--house);color:#fff;margin:0 calc(-1 * max(16px,env(safe-area-inset-left,0px))) 28px calc(-1 * max(16px,env(safe-area-inset-right,0px)));
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:32px 28px}
+header.hero .wrap{display:flex;flex-direction:column;gap:10px}
+.eyebrow{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gold)}
+h1{font-size:clamp(24px,4vw,34px);font-weight:800;margin:0;line-height:1.15;text-wrap:balance}
+header p{margin:0;max-width:68ch;color:#d9e5df}
+h2{font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 12px}
+h3{font-size:17px;font-weight:700;margin:0 0 6px;text-wrap:balance}
+section{margin-bottom:28px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px 20px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:760px){.grid2{grid-template-columns:1fr}}
+.resposta{display:grid;gap:12px}
+.resposta .item{display:grid;grid-template-columns:36px 1fr;gap:12px;align-items:start}
+.num{width:32px;height:32px;border-radius:50%;background:var(--gold);color:#1E3932;font-weight:800;display:grid;place-items:center;font-size:14px}
+.item p{margin:4px 0 0;color:var(--muted)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);text-align:left;padding:8px 10px;border-bottom:1px solid var(--line)}
+td{padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+td.n,th.n{text-align:right;white-space:nowrap}
+tr.total td{font-weight:800;border-top:2px solid var(--fg)}
+tr.sub td{color:var(--muted)}
+.tbl{overflow-x:auto;min-width:0}
+.pill{display:inline-block;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:700}
+.pill.bad{background:var(--bad-bg);color:var(--bad)} .pill.ok{background:var(--ok-bg);color:var(--ok)} .pill.warn{background:var(--warn-bg);color:var(--warn)} .pill.mint{background:var(--mint);color:var(--primary-dark)}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px}
+@media (max-width:760px){.kpis{grid-template-columns:1fr}}
+.kpi{border:1px solid var(--line);border-radius:12px;padding:14px 16px;background:var(--surface)}
+.kpi .l{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.kpi .v{font-size:26px;font-weight:800;line-height:1.1;margin:4px 0 2px}
+.kpi .s{font-size:13px;color:var(--muted)}
+.kpi.dest{border-color:var(--primary);background:var(--mint)}
+form{display:grid;gap:10px}
+.campo{display:grid;grid-template-columns:1fr 130px;gap:8px;align-items:center}
+.campo label{font-size:13px;font-weight:600}
+.campo small{display:block;font-weight:400;color:var(--muted);font-size:12px}
+input[type=number]{width:100%;border:1px solid var(--line);border-radius:6px;padding:7px 9px;font:inherit;font-size:14px;text-align:right;background:var(--surface);color:var(--fg)}
+input[type=number]:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 2px var(--mint)}
+.chk{display:flex;gap:10px;align-items:flex-start;font-size:13px;font-weight:600}
+.chk input{margin-top:3px;accent-color:var(--primary)}
+.chk small{display:block;font-weight:400;color:var(--muted)}
+fieldset{border:1px solid var(--line);border-radius:10px;padding:10px 14px 12px;margin:0;display:grid;gap:10px}
+legend{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--primary-dark);padding:0 6px}
+button{font:inherit;font-weight:700;font-size:13px;border-radius:999px;padding:8px 16px;border:1px solid var(--primary);background:var(--surface);color:var(--primary);cursor:pointer}
+button:hover{background:var(--mint)} button:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+.nota{background:var(--warn-bg);color:var(--warn);border-radius:10px;padding:12px 14px;font-size:14px}
+.nota b{color:inherit}
+ul{padding-left:20px;margin:6px 0} li{margin:4px 0}
+.fonte{font-size:13px;color:var(--muted)}
+a{color:var(--primary-dark);font-weight:600}
+.check li{list-style:none;position:relative;padding-left:26px}
+.check li::before{content:"";position:absolute;left:0;top:7px;width:14px;height:14px;border:2px solid var(--primary);border-radius:4px}
+@media (prefers-reduced-motion:no-preference){input[type=number]{transition:box-shadow .15s}}
+</style>
+
+<header class="hero"><div class="wrap">
+  <div class="eyebrow">Hardt Doces e Salgados · simulação feita em 27/10/2026</div>
+  <h1>Sair do Simples custa de R$ 17 mil a R$ 23 mil por mês a mais. Se sair, o Lucro Real é mais barato que o Presumido.</h1>
+  <p>Comparação feita com os números reais do sistema (média de abril a setembro de 2026). Os campos da calculadora podem ser alterados; a contabilidade confirma as regras marcadas como "a confirmar".</p>
+</div></header>
+
+<div class="wrap">
+
+<section>
+  <h2>Resposta curta</h2>
+  <div class="card resposta">
+    <div class="item"><div class="num">1</div><div><h3>Primeiro: tentar não sair do Simples.</h3>
+      <p>No Simples a Hardt paga hoje cerca de <b>11,5% da receita com nota</b> (o DAS de R$ 26 mil bate com isso) e esse valor já inclui o INSS patronal. Fora do Simples a conta sobe para 19% a 21% da receita. Se o motivo da exclusão for dívida, regularizar (pagar ou parcelar) os débitos dentro do prazo do termo de exclusão costuma cancelar a exclusão. A contabilidade precisa confirmar o prazo exato e a lista de débitos impeditivos. Essa é a decisão que mais vale dinheiro: cerca de <b>R$ 200 a 270 mil por ano</b>.</p></div></div>
+    <div class="item"><div class="num">2</div><div><h3>Se sair mesmo: Lucro Real, não Presumido.</h3>
+      <p>O Presumido cobra IRPJ e CSLL de 2,28% da receita mesmo com prejuízo (cerca de R$ 5 mil por mês). No Real, cobra-se 24% a 34% do lucro de verdade. Pelos números atuais o lucro fiscal fica entre prejuízo e 2% da receita, bem abaixo dos 9,5% onde o Presumido passaria a compensar. O Real exige contabilidade completa, mas a Hardt já precisa dela de qualquer jeito: a "Antecipação de Lucros" de R$ 34 mil por mês só é isenta de imposto para os sócios se a contabilidade provar que existe lucro desse tamanho.</p></div></div>
+    <div class="item"><div class="num">3</div><div><h3>O que dói não é o IRPJ. É o ICMS.</h3>
+      <p>Hoje o ICMS dentro do DAS é 3,69% da venda (está impresso nas notas). Fora do Simples passa a 17% sobre a venda, menos os créditos das compras. Como a maior parte das compras tem pouco ou nenhum ICMS (frango, carne, farinha), o crédito é pequeno. Resultado: o ICMS sozinho sobe cerca de <b>R$ 23 mil por mês</b>. A CBS fica pequena porque os salgados (NCM 1902.20.00) têm redução de 60%.</p></div></div>
+    <div class="item"><div class="num">4</div><div><h3>Preço: precisa subir de 9% a 13% para manter o mesmo líquido.</h3>
+      <p>Clientes que são empresas no regime normal (mercados maiores, redes) passam a aproveitar crédito de 17% de ICMS e da CBS, então para eles o aumento real é menor. Para cliente do Simples e consumidor final, o aumento é integral. A calculadora abaixo mostra o percentual conforme os campos.</p></div></div>
+  </div>
+</section>
+
+<section>
+  <h2>Os números usados (média mensal, abril a setembro de 2026)</h2>
+  <div class="card tbl"><table>
+    <thead><tr><th>Item</th><th class="n">R$ / mês</th><th>De onde veio</th></tr></thead>
+    <tbody>
+      <tr><td>Receita com nota (pedidos faturados)</td><td class="n">228.319</td><td>685 a 710 pedidos por mês no app</td></tr>
+      <tr><td>Receita de pedidos especiais (sem nota)</td><td class="n">46.636</td><td>17% da receita; não entra na base de imposto hoje</td></tr>
+      <tr><td>Devoluções ativas (com NF de devolução)</td><td class="n">7.718</td><td>Conferência do Caixa</td></tr>
+      <tr><td>Compras de matéria-prima, embalagens e revenda</td><td class="n">85.931</td><td>Contas a Pagar (categorias de compra de estoque)</td></tr>
+      <tr><td>Folha registrada (salários)</td><td class="n">31.000</td><td>7 funcionários CLT ativos (base de R$ 27 mil + extras)</td></tr>
+      <tr><td>Encargos e benefícios atuais (FGTS, vales, férias, rescisões)</td><td class="n">16.000</td><td>Contas a Pagar; não mudam com o regime</td></tr>
+      <tr><td>Pró-labore</td><td class="n">1.780</td><td>Contas a Pagar</td></tr>
+      <tr><td>Demais despesas operacionais (energia, combustível, serviços, manutenção…)</td><td class="n">66.113</td><td>Contas a Pagar, sem empréstimos, sem Antecipação de Lucros, sem parcelamentos antigos</td></tr>
+      <tr><td>Juros de empréstimos (estimativa: 30% das parcelas de R$ 29 mil)</td><td class="n">8.700</td><td>Só os juros são despesa; o principal não. A confirmar nos contratos</td></tr>
+      <tr><td>DAS do Simples pago</td><td class="n">26.000</td><td>Ago, set e out de 2026 (11,4% da receita com nota)</td></tr>
+      <tr class="sub"><td>Antecipação de Lucros (retirada dos sócios)</td><td class="n">34.548</td><td>Não é despesa dedutível. Ver nota abaixo</td></tr>
+      <tr class="sub"><td>Parcelas de empréstimos + parcelamentos de imposto antigo</td><td class="n">39.368</td><td>Caixa, não resultado. A dívida continua igual em qualquer regime</td></tr>
+    </tbody></table></div>
+  <p class="nota" style="margin-top:12px"><b>Sobre a folha sem registro.</b> Quem recebe sem registro não aparece em nenhum lançamento como salário, então hoje não entra no custo nem na comparação. Há dois jeitos de considerar: (a) continuar como está, e então o valor fica dentro da "Antecipação de Lucros" ou do dinheiro dos especiais, e não é dedutível no Lucro Real; (b) registrar, e então vira custo dedutível, mas paga INSS patronal de cerca de 28% em cima. O campo "Folha sem registro" na calculadora mostra os dois efeitos.</p>
+</section>
+
+<section>
+  <h2>Calculadora: imposto por mês em cada regime</h2>
+  <div class="grid2">
+    <div class="card" style="min-width:0">
+      <form id="f" onsubmit="return false">
+        <fieldset><legend>Vendas</legend>
+          <div class="campo"><label for="rNota">Receita com nota<small>R$ por mês</small></label><input type="number" id="rNota" value="228319" step="1000"></div>
+          <div class="campo"><label for="rSem">Receita sem nota (especiais)<small>R$ por mês</small></label><input type="number" id="rSem" value="46636" step="1000"></div>
+          <label class="chk"><input type="checkbox" id="incSem"><span>Incluir os especiais na base de imposto<small>Simula "tudo com nota"</small></span></label>
+          <div class="campo"><label for="dev">Devoluções com NF<small>R$ por mês</small></label><input type="number" id="dev" value="7718" step="500"></div>
+        </fieldset>
+        <fieldset><legend>Compras e despesas</legend>
+          <div class="campo"><label for="compras">Compras de insumos e embalagens<small>R$ por mês</small></label><input type="number" id="compras" value="85931" step="1000"></div>
+          <div class="campo"><label for="pctIcms">Parte das compras com ICMS destacado<small>% (frango, carne e farinha costumam ter pouco ou zero)</small></label><input type="number" id="pctIcms" value="60" step="5"></div>
+          <div class="campo"><label for="aliqCred">Alíquota média desse ICMS<small>%</small></label><input type="number" id="aliqCred" value="12" step="1"></div>
+          <div class="campo"><label for="pctCesta">Parte das compras na cesta básica (CBS zero, sem crédito)<small>% — a confirmar por NCM</small></label><input type="number" id="pctCesta" value="50" step="5"></div>
+          <div class="campo"><label for="despCred">Despesas com crédito pleno de CBS<small>energia, gás, combustível, serviços, manutenção, aluguel de veículo</small></label><input type="number" id="despCred" value="45000" step="1000"></div>
+          <div class="campo"><label for="demais">Demais despesas operacionais<small>R$ por mês (total, inclui as de cima)</small></label><input type="number" id="demais" value="66113" step="1000"></div>
+          <div class="campo"><label for="juros">Juros de empréstimos<small>R$ por mês</small></label><input type="number" id="juros" value="8700" step="500"></div>
+        </fieldset>
+        <fieldset><legend>Folha</legend>
+          <div class="campo"><label for="folha">Salários registrados<small>R$ por mês</small></label><input type="number" id="folha" value="31000" step="1000"></div>
+          <div class="campo"><label for="encAt">Encargos e benefícios atuais<small>FGTS, vales, férias (não mudam)</small></label><input type="number" id="encAt" value="16000" step="500"></div>
+          <div class="campo"><label for="prol">Pró-labore<small>R$ por mês</small></label><input type="number" id="prol" value="1780" step="100"></div>
+          <div class="campo"><label for="folhaSem">Folha sem registro<small>R$ por mês (hoje não está em lugar nenhum)</small></label><input type="number" id="folhaSem" value="0" step="1000"></div>
+          <label class="chk"><input type="checkbox" id="formalizar"><span>Registrar essa folha<small>Vira custo dedutível e paga INSS patronal</small></span></label>
+          <div class="campo"><label for="cpp">INSS patronal + RAT + terceiros<small>% (20 + 2 + 5,8). RAT depende do CNAE e do FAP</small></label><input type="number" id="cpp" value="27.8" step="0.1"></div>
+        </fieldset>
+        <fieldset><legend>Alíquotas</legend>
+          <div class="campo"><label for="simples">Simples: alíquota efetiva<small>% (Anexo II; DAS atual ÷ receita = 11,4%)</small></label><input type="number" id="simples" value="11.5" step="0.1"></div>
+          <div class="campo"><label for="icms">ICMS de saída em SC<small>% (17% geral; a confirmar se há benefício p/ NCM 1902.20.00)</small></label><input type="number" id="icms" value="17" step="1"></div>
+          <div class="campo"><label for="cbs">CBS 2027 (alíquota cheia)<small>% — ainda não publicada; estimativas 8,8% a 9,3%</small></label><input type="number" id="cbs" value="8.8" step="0.1"></div>
+          <label class="chk"><input type="checkbox" id="red60" checked><span>Redução de 60% da CBS/IBS nos salgados<small>NCM 1902.20.00 está no Anexo VII da LC 214</small></span></label>
+        </fieldset>
+        <div style="display:flex;gap:10px;flex-wrap:wrap"><button type="button" id="reset">Voltar aos números do sistema</button></div>
+      </form>
+    </div>
+
+    <div style="min-width:0;display:grid;gap:14px;align-content:start">
+      <div class="kpis" style="margin:0">
+        <div class="kpi"><div class="l">Simples (hoje)</div><div class="v" id="kS">—</div><div class="s" id="kSp">— da receita</div></div>
+        <div class="kpi"><div class="l">Lucro Presumido 2027</div><div class="v" id="kP">—</div><div class="s" id="kPp">—</div></div>
+        <div class="kpi dest"><div class="l">Lucro Real 2027</div><div class="v" id="kR">—</div><div class="s" id="kRp">—</div></div>
+      </div>
+      <div class="card tbl"><table id="t">
+        <thead><tr><th>Imposto por mês</th><th class="n">Simples</th><th class="n">Presumido</th><th class="n">Real</th></tr></thead>
+        <tbody>
+          <tr><td>DAS (tudo junto, inclui INSS patronal)</td><td class="n" id="s_das"></td><td class="n">—</td><td class="n">—</td></tr>
+          <tr><td>ICMS líquido (17% da venda menos créditos)</td><td class="n">—</td><td class="n" id="p_icms"></td><td class="n" id="r_icms"></td></tr>
+          <tr><td>CBS líquida (débito menos créditos) + IBS 0,1%</td><td class="n">—</td><td class="n" id="p_cbs"></td><td class="n" id="r_cbs"></td></tr>
+          <tr><td>INSS patronal, RAT e terceiros sobre a folha</td><td class="n">—</td><td class="n" id="p_cpp"></td><td class="n" id="r_cpp"></td></tr>
+          <tr><td>IRPJ + CSLL</td><td class="n">—</td><td class="n" id="p_ir"></td><td class="n" id="r_ir"></td></tr>
+          <tr class="total"><td>Total por mês</td><td class="n" id="s_tot"></td><td class="n" id="p_tot"></td><td class="n" id="r_tot"></td></tr>
+          <tr><td>Diferença contra o Simples</td><td class="n">—</td><td class="n" id="p_dif"></td><td class="n" id="r_dif"></td></tr>
+          <tr><td>Diferença por ano</td><td class="n">—</td><td class="n" id="p_ano"></td><td class="n" id="r_ano"></td></tr>
+          <tr><td>Quanto de cada R$ 100 vendidos vai para imposto</td><td class="n" id="s_100"></td><td class="n" id="p_100"></td><td class="n" id="r_100"></td></tr>
+          <tr><td>Aumento de preço para manter o mesmo líquido</td><td class="n">—</td><td class="n" id="p_preco"></td><td class="n" id="r_preco"></td></tr>
+          <tr class="sub"><td>Lucro fiscal estimado antes do IRPJ (base do Real)</td><td class="n">—</td><td class="n">—</td><td class="n" id="r_lucro"></td></tr>
+          <tr class="sub"><td>Margem de lucro onde o Presumido passa a compensar</td><td class="n">—</td><td class="n" colspan="2" id="r_bk"></td></tr>
+        </tbody></table></div>
+      <div class="card" id="exemplo"></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Por que o Real e não o Presumido</h2>
+  <div class="card">
+    <ul>
+      <li><b>No Presumido o imposto não olha o lucro.</b> IRPJ de 1,2% e CSLL de 1,08% da receita, todo trimestre, mesmo em mês de prejuízo. Com caixa apertado e dívida, isso é dinheiro saindo sem lastro.</li>
+      <li><b>No Real o imposto segue o resultado.</b> 15% de IRPJ (mais 10% sobre o que passar de R$ 20 mil de lucro no mês) e 9% de CSLL sobre o lucro fiscal. Prejuízo de um período abate até 30% do lucro dos períodos seguintes.</li>
+      <li><b>Ponto de virada: cerca de 9,5% de margem.</b> Abaixo disso, o Real paga menos. Pelos números do sistema a Hardt está entre prejuízo e 2% de margem fiscal (depende de incluir ou não os especiais).</li>
+      <li><b>A contabilidade completa é necessária de qualquer forma.</b> Para os sócios retirarem lucro sem imposto, nos dois regimes é preciso balanço provando o lucro. No Presumido sem contabilidade, a retirada isenta fica limitada a cerca de 5,7% da receita (uns R$ 13 mil por mês), bem abaixo dos R$ 34 mil retirados hoje.</li>
+      <li><b>Cuidado:</b> no Real a escrituração precisa ser impecável (ECD, ECF, LALUR). Compras sem nota e pagamentos sem registro não entram como custo. Isso pesa ainda mais a favor de ficar no Simples enquanto for possível.</li>
+    </ul>
+  </div>
+</section>
+
+<section>
+  <h2>O que fazer agora</h2>
+  <div class="card">
+    <ul class="check">
+      <li><b>Até esta semana:</b> pedir à contabilidade o termo de exclusão, a data em que vale e a lista dos débitos impeditivos. Perguntar diretamente: "se eu parcelar tudo dentro do prazo, a exclusão cai?"</li>
+      <li><b>Se der para ficar no Simples:</b> parcelar e manter o DAS do mês em dia. Esse é o regime que custa menos, por larga margem.</li>
+      <li><b>Se a saída for inevitável:</b> optar pelo Lucro Real (trimestral ou anual com balancetes, a contabilidade escolhe) já em janeiro de 2027. A opção se faz no primeiro pagamento do ano e não muda mais.</li>
+      <li><b>Novembro, no sistema:</b> preparar a emissão para CRT 3 (regime normal) com vigência em 01/01/2027: CST de ICMS no lugar de CSOSN, destaque de ICMS 17%, CBS/IBS por item, remover a frase "optante pelo Simples" da nota, testar venda, devolução, bonificação e entrada. Os produtos de venda são 99,8% NCM 1902.20.00, então a regra fiscal é praticamente uma só.</li>
+      <li><b>ST em SC:</b> salgados 1902.20.00 vendidos para bares, restaurantes e padarias que revendem têm substituição tributária. Quem usa para preparar refeições (frita e serve) fica fora. Vai ser preciso marcar no cadastro do cliente qual é o caso.</li>
+      <li><b>Dezembro:</b> inventário de 31/12/2026 com quantidade, custo e nota de compra de cada item (o app já tem o inventário e as notas de entrada). Santa Catarina dá crédito de ICMS do estoque na saída do Simples.</li>
+      <li><b>Preços:</b> separar a lista entre clientes com crédito (regime normal) e sem crédito (Simples e consumidor). Reajuste de 9% a 13% no segundo grupo; no primeiro, pode ser menor porque eles recuperam parte.</li>
+      <li><b>Folha:</b> decidir sobre o registro de quem está sem carteira antes de janeiro. Registrado custa cerca de 28% a mais, mas vira custo dedutível; sem registro não abate imposto nenhum no Real.</li>
+    </ul>
+  </div>
+</section>
+
+<section>
+  <h2>O que a contabilidade precisa confirmar</h2>
+  <div class="card">
+    <ul>
+      <li>Data em que a exclusão vale e se a regularização dos débitos dentro do prazo cancela a exclusão.</li>
+      <li>Alíquota da CBS de 2027 (Senado fixa até 15/12/2026; teto de 26,5% somando IBS) e se 1902.20.00 continua no Anexo VII (redução de 60%) no texto vigente da LC 214.</li>
+      <li>ICMS em SC para 1902.20.00: alíquota de 17% sem benefício, ou existe redução de base ou crédito presumido para a indústria? Isso muda a conta em até R$ 20 mil por mês.</li>
+      <li>Quais insumos geram crédito de ICMS e de CBS (frango e carne costumam ter alíquota zero ou diferimento; farinha é cesta básica).</li>
+      <li>RAT e FAP da empresa (o cálculo usa 2%) e as contribuições a terceiros (5,8%).</li>
+      <li>Como tratar a "Antecipação de Lucros" de R$ 34 mil por mês: com balanço mostrando lucro é isenta; sem isso, parte pode ser tributada nos sócios.</li>
+      <li>Juros reais dos empréstimos (o cálculo estima 30% das parcelas).</li>
+    </ul>
+  </div>
+</section>
+
+<section>
+  <h2>Fontes</h2>
+  <div class="card fonte">
+    <ul>
+      <li>Números da Hardt: banco de produção de 27/10/2026 (pedidos faturados, devoluções, Contas a Pagar por categoria, funcionários, notas de entrada, NF-e emitidas).</li>
+      <li>CBS 2027 ainda sem alíquota; Senado define até 15/12: <a href="https://www12.senado.leg.br/radio/1/noticia/2026/10/27/reforma-tributaria-aliquota-da-cbs-sera-definida-pelo-senado">Rádio Senado, 27/10/2026</a>; <a href="https://conjur.com.br/2026-out-15/aliquota-da-cbs-para-2027-e-anterioridade-nonagesimal-uma-controversia-constitucional-em-formacao/">ConJur, 15/10/2026</a>; <a href="https://hopecont.com/blog/aliquota-ibs-cbs-2026-2027/">alíquota de referência menos 0,1 ponto em 2027</a>.</li>
+      <li>NCM 1902.20.00 com redução de 60% (Anexo VII da LC 214/2025): <a href="https://www.normaslegais.com.br/legislacao/anexos-VI-a-X-lc214.htm">Anexos VI a X</a>; <a href="https://www.planalto.gov.br/ccivil_03/leis/lcp/lcp214.htm">LC 214/2025 no Planalto</a>; <a href="https://taxradar.app/blog/ncm/ncm-para-alimentos-guia-completo-classificacao">guia de NCM de alimentos</a>.</li>
+      <li>ST em SC para salgados 1902.20.00 vendidos a bares, restaurantes e padarias: <a href="https://legislacao.sef.sc.gov.br/html/consultas/2015/con_15_073.htm">Consulta COPAT 73/2015</a>; exceção para uso na produção de refeições: <a href="https://legislacao.sef.sc.gov.br/html/consultas/2014/con_14_104.htm">Consulta COPAT 104/2014</a>.</li>
+      <li>Lucro Presumido (8% e 12% de presunção, 15% + 9%, adicional de 10%): Lei 9.249/1995 e 9.430/1996. INSS patronal de 20%: Lei 8.212/1991, art. 22.</li>
+      <li>Crédito de ICMS do estoque na saída do Simples e mudança CSOSN para CST: texto do consultor anterior (RICMS-SC) a confirmar.</li>
+    </ul>
+  </div>
+</section>
+
+</div>
+
+<script>
+(function(){
+  const $=id=>document.getElementById(id);
+  const ids=['rNota','rSem','incSem','dev','compras','pctIcms','aliqCred','pctCesta','despCred','demais','juros','folha','encAt','prol','folhaSem','formalizar','cpp','simples','icms','cbs','red60'];
+  const padrao={rNota:228319,rSem:46636,incSem:false,dev:7718,compras:85931,pctIcms:60,aliqCred:12,pctCesta:50,despCred:45000,demais:66113,juros:8700,folha:31000,encAt:16000,prol:1780,folhaSem:0,formalizar:false,cpp:27.8,simples:11.5,icms:17,cbs:8.8,red60:true};
+  const num=id=>parseFloat($(id).value)||0, chk=id=>$(id).checked;
+  const brl=v=>'R$ '+Math.round(v).toLocaleString('pt-BR');
+  const pct=v=>(v*100).toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})+'%';
+  const sinal=v=>(v>=0?'+':'−')+brl(Math.abs(v));
+
+  function calcular(){
+    const receita=num('rNota')+(chk('incSem')?num('rSem'):0);
+    const base=Math.max(0,receita-num('dev'));
+    const fatorRed=chk('red60')?0.4:1;
+    const cbsAliq=num('cbs')/100, ibsAliq=0.001;
+    // Simples
+    const das=receita*num('simples')/100;
+    // ICMS
+    const icmsDeb=base*num('icms')/100;
+    const icmsCred=num('compras')*num('pctIcms')/100*num('aliqCred')/100;
+    const icms=Math.max(0,icmsDeb-icmsCred);
+    // CBS + IBS (2027): débito reduzido; créditos: despesas com crédito pleno + compras fora da cesta (também reduzidas a 60%)
+    const cbsDeb=base*fatorRed*(cbsAliq+ibsAliq);
+    const cbsCred=num('despCred')*(cbsAliq+ibsAliq)+num('compras')*(1-num('pctCesta')/100)*0.4*(cbsAliq+ibsAliq);
+    const cbs=Math.max(0,cbsDeb-cbsCred);
+    // Folha
+    const folhaSemReg=num('folhaSem'), formal=chk('formalizar');
+    const folhaBase=num('folha')+(formal?folhaSemReg:0);
+    const cpp=folhaBase*1.111*num('cpp')/100+num('prol')*0.20;
+    // Presumido
+    const irPres=base*(0.08*0.15+0.12*0.09);
+    const adicPres=Math.max(0,(0.08*base*3-60000))/3*0.10;
+    const irP=irPres+adicPres;
+    // Real
+    const lucro=base-icms-cbs-num('compras')-num('folha')-num('encAt')-num('prol')-cpp-num('demais')-num('juros')-(formal?folhaSemReg:0);
+    const irR=lucro>0?lucro*0.15+Math.max(0,lucro-20000)*0.10+lucro*0.09:0;
+    const totS=das, totP=icms+cbs+cpp+irP, totR=icms+cbs+cpp+irR;
+    // aumento de preço p/ manter o mesmo líquido (impostos proporcionais à venda)
+    const taxaP=num('icms')/100+fatorRed*(cbsAliq+ibsAliq)+0.0228;
+    const taxaR=num('icms')/100+fatorRed*(cbsAliq+ibsAliq)+(lucro>0?0.24*0.0:0);
+    const precoP=(totP-totS)/(receita*(1-taxaP)), precoR=(totR-totS)/(receita*(1-taxaR));
+    const bk=(0.08*0.15+0.12*0.09)/0.24;
+    const set=(id,v)=>{$(id).textContent=v};
+    set('kS',brl(totS)); set('kSp',pct(totS/receita)+' da receita');
+    set('kP',brl(totP)); set('kPp',sinal(totP-totS)+' por mês');
+    set('kR',brl(totR)); set('kRp',sinal(totR-totS)+' por mês');
+    set('s_das',brl(das)); set('p_icms',brl(icms)); set('r_icms',brl(icms));
+    set('p_cbs',brl(cbs)); set('r_cbs',brl(cbs)); set('p_cpp',brl(cpp)); set('r_cpp',brl(cpp));
+    set('p_ir',brl(irP)); set('r_ir',brl(irR)+(lucro<=0?' (prejuízo)':''));
+    set('s_tot',brl(totS)); set('p_tot',brl(totP)); set('r_tot',brl(totR));
+    set('p_dif',sinal(totP-totS)); set('r_dif',sinal(totR-totS));
+    set('p_ano',sinal((totP-totS)*12)); set('r_ano',sinal((totR-totS)*12));
+    set('s_100',brl(totS/receita*100)); set('p_100',brl(totP/receita*100)); set('r_100',brl(totR/receita*100));
+    set('p_preco',pct(precoP)); set('r_preco',pct(precoR));
+    set('r_lucro',brl(lucro)+' ('+pct(lucro/receita)+')');
+    set('r_bk',pct(bk)+' da receita. Hoje: '+pct(lucro/receita));
+    // exemplo por pacote
+    const preco=28.93;
+    const hoje=preco*num('simples')/100;
+    const fora=preco*(num('icms')/100+fatorRed*(cbsAliq+ibsAliq))+preco*0.0228;
+    $('exemplo').innerHTML='<h3>Exemplo: Mini Coxinha de Frango c/50, vendida a R$ 28,93</h3><p style="margin:0;color:var(--muted)">Imposto embutido hoje (Simples): <b>R$ '+hoje.toFixed(2).replace('.',',')+'</b>. Fora do Simples, antes dos créditos: ICMS R$ '+(preco*num('icms')/100).toFixed(2).replace('.',',')+' + CBS/IBS R$ '+(preco*fatorRed*(cbsAliq+ibsAliq)).toFixed(2).replace('.',',')+' + IRPJ/CSLL (Presumido) R$ '+(preco*0.0228).toFixed(2).replace('.',',')+' = <b>R$ '+fora.toFixed(2).replace('.',',')+'</b>. Um cliente do regime normal recupera o ICMS e a CBS como crédito; o do Simples e o consumidor final, não.</p>';
+  }
+  ids.forEach(id=>$(id).addEventListener('input',calcular));
+  $('reset').addEventListener('click',()=>{ids.forEach(id=>{const el=$(id); if(el.type==='checkbox') el.checked=padrao[id]; else el.value=padrao[id];}); calcular();});
+  calcular();
+})();
+</script>
