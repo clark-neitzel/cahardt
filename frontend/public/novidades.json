@@ -1,5 +1,11 @@
 [
   {
+    "slug": "matriz-filial",
+    "titulo": "Clientes: selo Matriz / Filial",
+    "resumo": "A lista e o cadastro de clientes agora mostram um selo Matriz ou Filial ao lado do nome e do CNPJ. É automático, deduzido pelo número do CNPJ (0001 = Matriz).",
+    "data": "2026-10-27"
+  },
+  {
     "slug": "rota-pedido-recente",
     "titulo": "Rota: pedido dos últimos 2 dias, pausar visitas e lead sem duplicar",
     "resumo": "Cliente que comprou hoje, ontem ou anteontem vai para Atendidos. Dá para pausar as visitas de um cliente até uma data. Ao criar lead, o app avisa se já existe cadastro parecido.",

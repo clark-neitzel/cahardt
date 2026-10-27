@@ -366,3 +366,7 @@ Cada vez que o endereço do cliente é salvo, o sistema guarda **quem mudou, qua
   - O ponto restaurado passa pelas mesmas travas do ponto: não pode ser o mesmo de outro cliente nem ficar na empresa; a menos de 30 m de outro cliente só com autorização por senha da logística. Se o ponto for barrado, dá para restaurar só o endereço escrito.
   - Versão que não tinha ponto restaura o endereço escrito e **mantém o ponto atual** (não apaga ponto bom).
   - Clicar duas vezes no Restaurar não duplica: a segunda resposta é "já estava assim".
+
+## Selo Matriz / Filial (10/2026)
+
+Na lista de clientes (tabela no computador e cartão no celular) e no cabeçalho do cadastro do cliente aparece, ao lado do nome/CNPJ, um selo pequeno: **Matriz** (verde) ou **Filial** (âmbar). Não é um campo cadastrado: o sistema olha a **ordem do CNPJ** (os 4 caracteres depois da barra, ex.: 08.766.459/**0001**-02). Ordem **0001 = Matriz**; qualquer outra (0002, 0003…) = **Filial**. Cliente com CPF, sem documento ou com CNPJ inválido não mostra selo. Para mudar, só corrigindo o CNPJ do cadastro.

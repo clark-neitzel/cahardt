@@ -19,6 +19,7 @@ import CampoCidade from '../../components/CampoCidade';
 import ModalCidadeReceita from '../../components/ModalCidadeReceita';
 import { resolverCidadeDaReceita, erroCidadeNaoCadastrada } from '../../services/cidadeService';
 import CampoWhatsapps from '../../components/CampoWhatsapps';
+import SeloMatrizFilial from '../../components/SeloMatrizFilial';
 import { normalizarDoc, formatarDoc, mascaraDoc, validarDoc } from '../../utils/documento'; // inclui CNPJ ALFANUMÉRICO
 import toast from 'react-hot-toast';
 import gpsClientesService from '../../services/gpsClientesService';
@@ -547,6 +548,7 @@ const DetalheCliente = () => {
                             <span className="font-medium text-gray-600">
                                 {String(cliente.Tipo_Pessoa).toUpperCase().includes('JUR') ? 'CNPJ' : 'CPF'}:
                             </span> {formatarDoc(cliente.Documento)}
+                            <SeloMatrizFilial documento={cliente.Documento} className="ml-2 align-middle" />
                         </p>
                     </div>
                     <span className={`px-3 py-1 rounded-full font-medium text-sm ${cliente.Ativo ? 'bg-green-100 text-green-800' : (cliente.tambemFornecedor ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700')}`}>

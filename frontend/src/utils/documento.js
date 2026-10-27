@@ -110,3 +110,13 @@ export function mascaraDoc(v) {
   }
   return out;
 }
+
+/**
+ * Matriz ou filial pela ORDEM do CNPJ (posições 9-12 do CNPJ de 14 caracteres).
+ * "0001" = MATRIZ; qualquer outra ordem = FILIAL. CPF, vazio ou inválido => null (sem selo).
+ */
+export function tipoEstabelecimentoPorCnpj(v) {
+  const d = normalizarDoc(v);
+  if (d.length !== 14 || !validarCnpj(d)) return null;
+  return d.slice(8, 12) === '0001' ? 'MATRIZ' : 'FILIAL';
+}

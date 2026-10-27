@@ -1,5 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
+import SeloMatrizFilial from '../../components/SeloMatrizFilial';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import clienteService from '../../services/clienteService';
 import vendedorService from '../../services/vendedorService';
@@ -722,7 +723,7 @@ const ListaClientes = () => {
                                         />
                                     </td>
                                     <td className="px-3 py-2">
-                                        <div className="font-semibold text-gray-900 text-sm leading-tight">{cliente.Nome}</div>
+                                        <div className="font-semibold text-gray-900 text-sm leading-tight">{cliente.Nome} <SeloMatrizFilial documento={cliente.Documento} className="ml-1 align-middle" /></div>
                                         {cliente.NomeFantasia && cliente.NomeFantasia !== cliente.Nome && (
                                             <div className="text-xs text-gray-500 leading-tight mt-0.5 truncate max-w-xs">{cliente.NomeFantasia}</div>
                                         )}
@@ -843,6 +844,7 @@ const ListaClientes = () => {
                             <div className="pr-8">
                                 <h3 className="font-bold text-gray-900 text-sm leading-tight">
                                     {cliente.NomeFantasia || cliente.Nome}
+                                    <SeloMatrizFilial documento={cliente.Documento} className="ml-1.5 align-middle" />
                                 </h3>
                                 {cliente.NomeFantasia && cliente.NomeFantasia !== cliente.Nome && (
                                     <p className="text-[11px] text-gray-400 mt-0.5 truncate">{cliente.Nome}</p>
