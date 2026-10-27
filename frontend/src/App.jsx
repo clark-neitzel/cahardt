@@ -5,6 +5,7 @@ import { BrowserRouter as Router, Routes, Route, Link, NavLink, Navigate, useLoc
 // um deploy, a aba antiga pede arquivos que já não existem — ele recarrega sozinho.
 import { lazyComRetry } from './utils/lazyComRetry';
 const Catalogo = lazyComRetry(() => import('./pages/Produtos/Catalogo'));
+const TabelaNova2027 = lazyComRetry(() => import('./pages/Produtos/TabelaNova2027'));
 const DetalheProduto = lazyComRetry(() => import('./pages/Produtos/DetalheProduto'));
 const ListaProdutos = lazyComRetry(() => import('./pages/Admin/Produtos/ListaProdutos'));
 const GerenciarProduto = lazyComRetry(() => import('./pages/Admin/Produtos/GerenciarProduto'));
@@ -873,6 +874,7 @@ function App() {
               <Route path="/dashboard-vendedor" element={<PrivateRoute><DashboardVendedorPessoal /></PrivateRoute>} />
 
               {/* Tarefas da Equipe (agenda com alertas) — toda a equipe logada */}
+              <Route path="/tabela-nova" element={<PrivateRoute><TabelaNova2027 /></PrivateRoute>} />
               <Route path="/tarefas" element={<PrivateRoute><TarefasAgenda /></PrivateRoute>} />
  {/* Como Fazer — manuais, treinamento e rotinas (toda a equipe logada) */}
               <Route path="/como-fazer/*" element={<PrivateRoute><ComoFazerApp /></PrivateRoute>} />

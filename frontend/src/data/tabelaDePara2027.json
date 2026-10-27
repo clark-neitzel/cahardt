@@ -1,0 +1,513 @@
+{
+ "geradoEm": "2026-10-27",
+ "aumento": 0.25,
+ "categorias": [
+  {
+   "categoria": "Mini Salgados para Fritar",
+   "produtos": [
+    {
+     "nome": "4-MINI COXINHA FRANGO C/50 30GR",
+     "de": 29.99,
+     "para": 37.49,
+     "unidades": 50,
+     "tipoUnidade": "un"
+    },
+    {
+     "nome": "4-MINI BOLINHA DE QUEIJO C/50 30GR",
+     "de": 29.99,
+     "para": 37.49,
+     "unidades": 50,
+     "tipoUnidade": "un"
+    },
+    {
+     "nome": "4-MINI TRAVESSEIRO PIZZA C/50 30GR",
+     "de": 29.99,
+     "para": 37.49,
+     "unidades": 50,
+     "tipoUnidade": "un"
+    },
+    {
+     "nome": "4-MINI CROQUETE DE CARNE C/50 30GR",
+     "de": 29.99,
+     "para": 37.49,
+     "unidades": 50,
+     "tipoUnidade": "un"
+    },
+    {
+     "nome": "4-MINI KIBE CARNE C/50 28GR",
+     "de": 34.99,
+     "para": 43.99,
+     "unidades": 50,
+     "tipoUnidade": "un"
+    },
+    {
+     "nome": "4-MINI CHURROS DOCE LEITE C/50 30GR",
+     "de": 29.99,
+     "para": 37.49,
+     "unidades": 50,
+     "tipoUnidade": "un"
+    },
+    {
+     "nome": "4-MINI SALSICHA C/50 25GR",
+     "de": 29.99,
+     "para": 37.49,
+     "unidades": 50,
+     "tipoUnidade": "un"
+    },
+    {
+     "nome": "4-MINI BOCADINHO DE PALMITO C/50 30GR",
+     "de": 29.99,
+     "para": 37.49,
+     "unidades": 50,
+     "tipoUnidade": "un"
+    },
+    {
+     "nome": "4-MINI COXINHA LING.BLUMEN.C/50 30GR",
+     "de": 34.99,
+     "para": 43.99,
+     "unidades": 50,
+     "tipoUnidade": "un"
+    }
+   ]
+  },
+  {
+   "categoria": "Produtos para Fritar",
+   "produtos": [
+    {
+     "nome": "7-M-COXINHA AIPIM FRANGO C/30 60GR",
+     "de": 37.99,
+     "para": 47.49,
+     "unidades": 30,
+     "tipoUnidade": "un"
+    },
+    {
+     "nome": "1-G-COXINHA TRADICIONAL FRANGO C/20 130GR",
+     "de": 44.99,
+     "para": 56.49,
+     "unidades": 20,
+     "tipoUnidade": "un"
+    },
+    {
+     "nome": "1-G-COXINHA AIPIM FRANGO C/20 130GR",
+     "de": 44.99,
+     "para": 56.49,
+     "unidades": 20,
+     "tipoUnidade": "un"
+    },
+    {
+     "nome": "1-GG-COXINHA FRANGO C/10 170GR",
+     "de": 29.99,
+     "para": 37.49,
+     "unidades": 10,
+     "tipoUnidade": "un"
+    },
+    {
+     "nome": "7-M-BOLINHA QUEIJO C/30 60GR",
+     "de": 37.99,
+     "para": 47.49,
+     "unidades": 30,
+     "tipoUnidade": "un"
+    },
+    {
+     "nome": "7-M-TRAVESSEIRO PIZZA C/30 60GR",
+     "de": 37.99,
+     "para": 47.49,
+     "unidades": 30,
+     "tipoUnidade": "un"
+    },
+    {
+     "nome": "1-G-EMPANADO SALSICHA C/10 140GR",
+     "de": 24.99,
+     "para": 31.49,
+     "unidades": 10,
+     "tipoUnidade": "un"
+    },
+    {
+     "nome": "1-G-RISOLES CARNE C/10 140GR",
+     "de": 24.99,
+     "para": 31.49,
+     "unidades": 10,
+     "tipoUnidade": "un"
+    },
+    {
+     "nome": "1-G-RISOLES PIZZA C/10 140GR",
+     "de": 24.99,
+     "para": 31.49,
+     "unidades": 10,
+     "tipoUnidade": "un"
+    },
+    {
+     "nome": "7-M-CROQUETE CARNE C/30 60GR",
+     "de": 37.99,
+     "para": 47.49,
+     "unidades": 30,
+     "tipoUnidade": "un"
+    },
+    {
+     "nome": "7-M-COXINHA LING.BLUMEN.C/30 65GR",
+     "de": 39.99,
+     "para": 49.99,
+     "unidades": 30,
+     "tipoUnidade": "un"
+    }
+   ]
+  },
+  {
+   "categoria": "Produtos Assados para Aquecer",
+   "produtos": [
+    {
+     "nome": "4-MINI EMPADA FRANGO C/50 32GR",
+     "de": 45.95,
+     "para": 57.49,
+     "unidades": 50,
+     "tipoUnidade": "un"
+    },
+    {
+     "nome": "3-DOGUINHO 2.SALSICHAS C/08 220GR",
+     "de": 46.5,
+     "para": 58.49,
+     "unidades": 8,
+     "tipoUnidade": "un"
+    },
+    {
+     "nome": "3-HAMBURGAO CHEEDAR/CEBOLA C/05 280GR",
+     "de": 34.12,
+     "para": 42.99,
+     "unidades": 5,
+     "tipoUnidade": "un"
+    },
+    {
+     "nome": "3-ENROLADINHO FRANGO C/08 140GR",
+     "de": 35.9,
+     "para": 44.99,
+     "unidades": 8,
+     "tipoUnidade": "un"
+    },
+    {
+     "nome": "4-MINI EMPADA PALMITO C/50 32GR",
+     "de": 45.95,
+     "para": 57.49,
+     "unidades": 50,
+     "tipoUnidade": "un"
+    },
+    {
+     "nome": "3-ENROLADINHO PIZZA C/08 140GR",
+     "de": 35.9,
+     "para": 44.99,
+     "unidades": 8,
+     "tipoUnidade": "un"
+    },
+    {
+     "nome": "3-ENROLADINHO CALABRESA C/08 140GR",
+     "de": 35.9,
+     "para": 44.99,
+     "unidades": 8,
+     "tipoUnidade": "un"
+    }
+   ]
+  },
+  {
+   "categoria": "Produtos Fritos para Aquecer",
+   "produtos": [
+    {
+     "nome": "2-FR-G-COXINHA-AIPIM-FRANGO C/20 130GR",
+     "de": 48.99,
+     "para": 61.49,
+     "unidades": 20,
+     "tipoUnidade": "un"
+    },
+    {
+     "nome": "2-FR-GG-COXINHA FRANGO C/10 170GR",
+     "de": 34.99,
+     "para": 43.99,
+     "unidades": 10,
+     "tipoUnidade": "un"
+    },
+    {
+     "nome": "2-FR-M-COXINHA FRANGO C/AIPIM C/30 60GR",
+     "de": 42.99,
+     "para": 53.99,
+     "unidades": 30,
+     "tipoUnidade": "un"
+    },
+    {
+     "nome": "2-FR-ESPETINHO FRANGO C/BAC. C/10",
+     "de": 55.0,
+     "para": 68.99,
+     "unidades": 10,
+     "tipoUnidade": "un"
+    },
+    {
+     "nome": "2-FR-BOLINHO DE CARNE C/10",
+     "de": 55.0,
+     "para": 68.99,
+     "unidades": 10,
+     "tipoUnidade": "un"
+    },
+    {
+     "nome": "2-FR-M-COXINHA LING.BLUMEN.C/30 65GR",
+     "de": 45.99,
+     "para": 57.49,
+     "unidades": 30,
+     "tipoUnidade": "un"
+    },
+    {
+     "nome": "2-FR-EMPANADO SALSICHA C/10 140GR",
+     "de": 29.99,
+     "para": 37.49,
+     "unidades": 10,
+     "tipoUnidade": "un"
+    },
+    {
+     "nome": "2-FR-RISOLES DE CARNE C/10",
+     "de": 29.99,
+     "para": 37.49,
+     "unidades": 10,
+     "tipoUnidade": "un"
+    },
+    {
+     "nome": "2-FR-RISOLES DE PIZZA C/10",
+     "de": 29.99,
+     "para": 37.49,
+     "unidades": 10,
+     "tipoUnidade": "un"
+    }
+   ]
+  },
+  {
+   "categoria": "Tortinhas",
+   "produtos": [
+    {
+     "nome": "6-TORTINHA FRANGO C/REQ C/08 130GR",
+     "de": 45.99,
+     "para": 57.49,
+     "unidades": 8,
+     "tipoUnidade": "un"
+    },
+    {
+     "nome": "6-TORTINHA PALMITO C/REQ.C/08 130GR",
+     "de": 45.99,
+     "para": 57.49,
+     "unidades": 8,
+     "tipoUnidade": "un"
+    },
+    {
+     "nome": "6-TORTINHA CAMARAO C/REQ C/08 135GR",
+     "de": 52.99,
+     "para": 66.49,
+     "unidades": 8,
+     "tipoUnidade": "un"
+    },
+    {
+     "nome": "6-TORTINHA FRANGO PALMITO C/REQ.C/08 135GR",
+     "de": 45.99,
+     "para": 57.49,
+     "unidades": 8,
+     "tipoUnidade": "un"
+    },
+    {
+     "nome": "6-TORTINHA CARNE C/08 130GR",
+     "de": 45.99,
+     "para": 57.49,
+     "unidades": 8,
+     "tipoUnidade": "un"
+    }
+   ]
+  },
+  {
+   "categoria": "H22 Mini",
+   "produtos": [
+    {
+     "nome": "H22 - MINI COXINHA FRANGO 2KG",
+     "de": 40.99,
+     "para": 51.49,
+     "unidades": 2,
+     "tipoUnidade": "kg"
+    },
+    {
+     "nome": "H22 - MINI BOLINHA QUEIJO 2KG",
+     "de": 40.99,
+     "para": 51.49,
+     "unidades": 2,
+     "tipoUnidade": "kg"
+    },
+    {
+     "nome": "H22 - MINI CROQUETE CARNE 2KG",
+     "de": 40.99,
+     "para": 51.49,
+     "unidades": 2,
+     "tipoUnidade": "kg"
+    },
+    {
+     "nome": "H22 - MINI TRAVESSEIRO PIZZA 2KG",
+     "de": 40.99,
+     "para": 51.49,
+     "unidades": 2,
+     "tipoUnidade": "kg"
+    },
+    {
+     "nome": "H22 - MINI BOCADINHO PALMITO 2KG",
+     "de": 40.99,
+     "para": 51.49,
+     "unidades": 2,
+     "tipoUnidade": "kg"
+    },
+    {
+     "nome": "H22 - MINI COXINHA LINGUICA BLUMENAU 2KG",
+     "de": 30.0,
+     "para": 37.99,
+     "unidades": 2,
+     "tipoUnidade": "kg"
+    }
+   ]
+  },
+  {
+   "categoria": "Produtos para Assar",
+   "produtos": [
+    {
+     "nome": "5-CALZONE FRANGO C/REQ.C/08 160GR",
+     "de": 32.99,
+     "para": 41.49,
+     "unidades": 8,
+     "tipoUnidade": "un"
+    },
+    {
+     "nome": "5-CALZONE CARNE C/REQUEIJAO C/08 160GR",
+     "de": 32.99,
+     "para": 41.49,
+     "unidades": 8,
+     "tipoUnidade": "un"
+    }
+   ]
+  },
+  {
+   "categoria": "Kit festa",
+   "produtos": [
+    {
+     "nome": "COXINHA FRANGO C/25-HF",
+     "de": 25.0,
+     "para": 31.49,
+     "unidades": 25,
+     "tipoUnidade": "un"
+    },
+    {
+     "nome": "MINI PASTEL CARNE C/25-HF",
+     "de": 35.0,
+     "para": 43.99,
+     "unidades": 25,
+     "tipoUnidade": "un"
+    },
+    {
+     "nome": "BOLINHA QUEIJO C/25-HF",
+     "de": 25.0,
+     "para": 31.49,
+     "unidades": 25,
+     "tipoUnidade": "un"
+    },
+    {
+     "nome": "COXINHA LING.BLUMENAU C/25-HF",
+     "de": 25.0,
+     "para": 31.49,
+     "unidades": 25,
+     "tipoUnidade": "un"
+    },
+    {
+     "nome": "TRAVESSEIRO PIZZA C/25-HF",
+     "de": 25.0,
+     "para": 31.49,
+     "unidades": 25,
+     "tipoUnidade": "un"
+    },
+    {
+     "nome": "BOCADINHO PALMITO C/25-HF",
+     "de": 25.0,
+     "para": 31.49,
+     "unidades": 25,
+     "tipoUnidade": "un"
+    },
+    {
+     "nome": "CROQUETE CARNE C/25-HF",
+     "de": 25.0,
+     "para": 31.49,
+     "unidades": 25,
+     "tipoUnidade": "un"
+    },
+    {
+     "nome": "CHURROS D. LEITE C/25-HF",
+     "de": 25.0,
+     "para": 31.49,
+     "unidades": 25,
+     "tipoUnidade": "un"
+    },
+    {
+     "nome": "MINI SALSICHA C/25-HF",
+     "de": 25.0,
+     "para": 31.49,
+     "unidades": 25,
+     "tipoUnidade": "un"
+    },
+    {
+     "nome": "MINI KIBE CARNE C/25-HF",
+     "de": 30.0,
+     "para": 37.99,
+     "unidades": 25,
+     "tipoUnidade": "un"
+    },
+    {
+     "nome": "EMPADINHA FRANGO C/24-HF",
+     "de": 35.0,
+     "para": 43.99,
+     "unidades": 24,
+     "tipoUnidade": "un"
+    },
+    {
+     "nome": "EMPADINHA PALMITO C/24-HF",
+     "de": 35.0,
+     "para": 43.99,
+     "unidades": 24,
+     "tipoUnidade": "un"
+    }
+   ]
+  },
+  {
+   "categoria": "Produtos para Ilha",
+   "produtos": [
+    {
+     "nome": "G-MINI COXINHA FRANGO 500GR",
+     "de": 9.9,
+     "para": 12.49,
+     "unidades": 0.5,
+     "tipoUnidade": "kg"
+    },
+    {
+     "nome": "G-MINI BOLINHA QUEIJO 500GR",
+     "de": 9.9,
+     "para": 12.49,
+     "unidades": 0.5,
+     "tipoUnidade": "kg"
+    },
+    {
+     "nome": "G-MINI EMPADA FRANGO 500GR",
+     "de": 9.9,
+     "para": 12.49,
+     "unidades": 0.5,
+     "tipoUnidade": "kg"
+    },
+    {
+     "nome": "G-MINI TRAVESSEIRO PIZZA 500GR",
+     "de": 9.9,
+     "para": 12.49,
+     "unidades": 0.5,
+     "tipoUnidade": "kg"
+    },
+    {
+     "nome": "G-MINI EMPADA PALMITO 500GR",
+     "de": 9.9,
+     "para": 12.49,
+     "unidades": 0.5,
+     "tipoUnidade": "kg"
+    }
+   ]
+  }
+ ]
+}
