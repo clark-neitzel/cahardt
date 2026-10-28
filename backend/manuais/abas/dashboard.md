@@ -26,7 +26,7 @@ No topo há:
 - **Seletor de categoria** (padrão: Produto Acabado): filtra as abas Visão Geral, Vendas e a margem. A escolha fica salva por usuário.
 
 ### Aba Visão Geral
-- O mês até agora: vendas líquidas, meta da equipe, **projeção de fechamento** (verde quando bate a meta), ticket médio, margem bruta e devoluções
+- O mês até agora: vendas (-) devoluções, meta da equipe, **projeção de fechamento** (verde quando bate a meta), ticket médio, margem bruta e devoluções
 - **Como a projeção é calculada (desde 08/2026):** é a mesma conta da comissão — usa os **dias de trabalho** cadastrados na meta de cada vendedor (sábado, domingo e feriado não trabalhado ficam de fora) e estima cada dia que falta pela média das últimas 4 ocorrências daquele dia da semana (segunda se compara com segundas). Por isso a projeção **não cai no fim de semana** nem em feriado. Vendedor sem meta cadastrada entra pelo ritmo linear dos dias corridos até a meta ser cadastrada. Com filtro de categoria, o "que falta" é aplicado na proporção da categoria nas vendas do mês.
 - O dia de hoje: vendas, pedidos, atendimentos (% que virou pedido) e clientes atendidos
 - **Precisa de atenção**: clientes em recompra crítica, retornos vencidos, clientes com parcela vencida, pedidos com erro de envio ao Conta Azul

@@ -233,7 +233,7 @@ const AbaVisaoGeral = ({ d, irPara }) => {
                 <div className="flex flex-wrap items-center gap-4 md:gap-6">
                     <Gauge percent={v.pctMeta ?? 0} />
                     <div className="flex-1 min-w-[220px] grid grid-cols-2 sm:grid-cols-3 gap-3">
-                        <div><p className="text-xs font-bold text-gray-500">Vendas líquidas</p><p className="text-base md:text-lg font-extrabold text-gray-900 tabular-nums">{fmtRS0(v.liquida)}</p></div>
+                        <div><p className="text-xs font-bold text-gray-500">Vendas (-) Devoluções</p><p className="text-base md:text-lg font-extrabold text-gray-900 tabular-nums">{fmtRS0(v.liquida)}</p></div>
                         <div><p className="text-xs font-bold text-gray-500">Meta do mês</p><p className="text-base md:text-lg font-extrabold text-gray-900 tabular-nums">{v.meta > 0 ? fmtRS0(v.meta) : '—'}</p></div>
                         <div>
                             <p className="text-xs font-bold text-gray-500">{ehAtual ? 'Projeção*' : 'Atingimento'}</p>
