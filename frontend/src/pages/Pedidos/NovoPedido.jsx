@@ -32,6 +32,16 @@ import CampoNumero from '../../components/CampoNumero'; // só devolve foco à b
 
 const DIA_SEMANA_MAP = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
 
+// Unidades de medida que aceitam fração em pedido ESPECIAL (interno; lista matéria-prima sem categoria comercial)
+const UNIDADES_FRACIONAVEIS_ESPECIAL = ['KG', 'KILOGRAMA', 'QUILOGRAMA', 'G', 'GR', 'GRAMA', 'GRAMAS', 'L', 'LT', 'LITRO', 'LITROS', 'ML', 'MILILITRO', 'MILILITROS'];
+// Fração: pela categoria comercial; no pedido especial, também pela unidade de medida do produto
+const produtoPermiteFracao = (produto, ehEspecial) => {
+    if (produto?.categoriaProduto?.permiteFracao) return true;
+    if (!ehEspecial) return false;
+    const un = String(produto?.unidade || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase();
+    return UNIDADES_FRACIONAVEIS_ESPECIAL.includes(un);
+};
+
 // Componente de input de quantidade que suporta frações (0,200 / 0.5 etc)
 const QuantidadeInput = ({ value, permiteFracao, onChange, onEnterFoco }) => {
     const [text, setText] = useState(String(value));
@@ -1626,7 +1636,7 @@ const NovoPedido = () => {
                                 <button
                                     onMouseDown={e => e.preventDefault()}
                                     onClick={() => {
-                                        const step = produto.categoriaProduto?.permiteFracao ? 0.1 : 1;
+                                        const step = produtoPermiteFracao(produto, especial) ? 0.1 : 1;
                                         const next = Math.round((qtd - step) * 1000) / 1000;
                                         setQuantidade(produto.id, next > 0 ? next : 0);
                                     }}
@@ -1638,7 +1648,7 @@ const NovoPedido = () => {
                             {qtd > 0 && (
                                 <QuantidadeInput
                                     value={qtd}
-                                    permiteFracao={!!produto.categoriaProduto?.permiteFracao}
+                                    permiteFracao={produtoPermiteFracao(produto, especial)}
                                     onChange={v => setQuantidade(produto.id, v)}
                                     onEnterFoco={() => { if (temTecladoFisico()) searchInputRef.current?.focus(); }}
                                 />
@@ -2494,7 +2504,7 @@ const NovoPedido = () => {
                             const prod = produtos.find(p => p.id === pid);
                             const nome = prod?.nome || pid;
                             const linha = Number(it.valorUnitario) * Number(it.quantidade);
-                            const permiteFracao = !!prod?.categoriaProduto?.permiteFracao;
+                            const permiteFracao = produtoPermiteFracao(prod, especial);
                             return (
                                 <div key={pid} className="px-4 py-2.5">
                                     <div className="flex items-start justify-between gap-2">
