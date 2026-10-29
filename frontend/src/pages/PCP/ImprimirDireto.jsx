@@ -11,7 +11,7 @@ import useEnvioBitmap from './useEnvioBitmap';
 // Usado nos 3 pontos: EtiquetaImprimir, PrintModal (EtiquetasList) e PainelEtiquetas (Kit Festa/Delivery).
 //
 // Props:
-//  origem        'PRODUTO' | 'KIT_FESTA' | 'DELIVERY'
+//  origem        'PRODUTO' | 'KIT_FESTA' | 'DELIVERY' | 'FUNCIONARIO_PASTA' | 'FUNCIONARIO_ARQUIVO'
 //  preparar      async () => ({ bitmaps, sequencia? })  — rasteriza (só roda no clique)
 //  copias        número (PRODUTO: vai no corpo; caixas: não usa)
 //  referencia    { tipo, id, rotulo }
@@ -53,7 +53,7 @@ export default function ImprimirDireto({
         if (confirmar && !confirmar()) return;
         envio.enviar({
             origem, nome, referencia, impressoraId: lista.length > 1 ? impressora.id : undefined,
-            copias: origem === 'PRODUTO' ? Math.max(1, Math.min(999, parseInt(copias, 10) || 1)) : undefined,
+            copias: (origem === 'PRODUTO' || origem === 'FUNCIONARIO_PASTA') ? Math.max(1, Math.min(999, parseInt(copias, 10) || 1)) : undefined,
             montar: preparar,
         });
     };
@@ -68,7 +68,7 @@ export default function ImprimirDireto({
     const fase = envio.fase;
     // teto do servidor: 3 trabalhos × 40 formulários (2 colunas = 240 etiquetas, 1 coluna = 120)
     const teto = (impressora?.colunas || 1) >= 2 ? 240 : 120;
-    const bloqueioTeto = origem !== 'PRODUTO' && impressora && total > teto
+    const bloqueioTeto = origem !== 'PRODUTO' && origem !== 'FUNCIONARIO_PASTA' && impressora && total > teto
         ? `Mais de ${teto} etiquetas: divida em dois envios ou use "Imprimir pelo navegador".` : null;
     const emAndamento = fase === 'fila' || fase === 'imprimindo'; // 2º clique aqui criaria trabalho novo = etiqueta em dobro
     const desabilitaZebra = envio.ocupado || emAndamento || !!bloqueio || !!bloqueioTeto || !impressora;
@@ -85,7 +85,7 @@ export default function ImprimirDireto({
                 {impressora && (
                     <>
                         {lista.length > 1 ? (
-                            <SelectBusca value={impressora.id} onChange={(e) => setEscolhida(e.target.value)} className="w-full md:w-56">
+                            <SelectBusca value={impressora.id} onChange={(e) => setEscolhida(e.target.value)} className="w-full md:w-56 h-11 md:h-auto">
                                 {lista.map((i) => <option key={i.id} value={i.id}>{i.nome}</option>)}
                             </SelectBusca>
                         ) : <span className="font-semibold text-gray-700 inline-flex items-center gap-1"><Printer className="h-3.5 w-3.5" /> {impressora.nome}</span>}

@@ -81,7 +81,7 @@ export default function FuncionariosLista() {
                     <span className="font-semibold text-gray-900">{f.nome}</span>
                     <SeloPonto f={f} />
                   </div>
-                  <div className="text-sm text-gray-500">{f.cargo || 'Sem cargo'}{f.desde ? ` · desde ${f.desde}` : ''}</div>
+                  <div className="text-sm text-gray-500">{f.cargo || 'Sem cargo'}{f.desde ? ` · desde ${f.desde}` : ''}{saiuEm(f)}</div>
                   {f.alertaAso && <div className="text-xs text-amber-700 mt-1">⚠ {f.alertaAso.texto}</div>}
                 </button>
               ))}
@@ -103,7 +103,7 @@ export default function FuncionariosLista() {
                   {lista.map((f) => (
                     <tr key={f.id} onClick={() => navigate(`/rh/funcionarios/${f.id}`)} className="hover:bg-gray-50 cursor-pointer">
                       <td className="px-5 py-3 font-medium text-gray-900">{f.nome}</td>
-                      <td className="px-5 py-3 text-gray-600">{f.cargo || '—'}</td>
+                      <td className="px-5 py-3 text-gray-600">{f.cargo || '—'}{saiuEm(f)}</td>
                       <td className="px-5 py-3">
                         <SeloPonto f={f} comHora />
                       </td>
@@ -123,6 +123,12 @@ export default function FuncionariosLista() {
       </div>
     </div>
   );
+}
+
+// "Saiu em dd/mm/aaaa" (ISO cortado, sem new Date: não perde um dia por fuso)
+function saiuEm(f) {
+  const s = String(f?.dataDemissao || '').slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(s) ? ` · Saiu em ${s.slice(8, 10)}/${s.slice(5, 7)}/${s.slice(0, 4)}` : '';
 }
 
 // Status do ponto de hoje — quem bate no relógio (ou não bate) não mostra

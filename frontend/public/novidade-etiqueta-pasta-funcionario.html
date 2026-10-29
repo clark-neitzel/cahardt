@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Etiqueta da pasta do funcionário — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<meta property="og:title" content="🏷️ Novidade no Hardt App: etiqueta da pasta do funcionário">
+<meta property="og:description" content="O app imprime a etiqueta do saco/pasta de desligamento, a do armário (só o nome) e a da aba da pasta suspensa, dobrável. Veja como funciona.">
+<meta property="og:type" content="website">
+<style>
+  :root { --primary:#00754A; --primary-dark:#006241; --house:#1E3932; --mint:#d4e9e2; --cream:#f2f0eb; --gold:#cba258; --ink:rgba(0,0,0,.87); --ink-soft:#5f6b66; letter-spacing:-0.01em; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--cream); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; line-height:1.55; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:620px; margin:0 auto; padding:0 16px 56px; }
+  .hero { background:linear-gradient(168deg,var(--house) 0%,#16302a 100%); color:#fff; padding:40px 16px 70px; }
+  .hero-inner { max-width:620px; margin:0 auto; text-align:center; }
+  .hero .tag { display:inline-block; background:rgba(203,162,88,.2); color:var(--gold); font-size:12px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; padding:5px 12px; border-radius:99px; }
+  .hero h1 { margin:14px 0 8px; font-size:27px; line-height:1.2; }
+  .hero p { margin:0 auto; max-width:460px; color:#cfe0da; font-size:15.5px; }
+  .acc { background:#fff; border:1px solid #e3e0d8; border-radius:14px; margin-top:14px; overflow:hidden; }
+  .acc:first-of-type { margin-top:-40px; }
+  .acc-head { width:100%; display:flex; align-items:center; gap:10px; background:none; border:0; padding:14px 16px; min-height:48px; text-align:left; cursor:pointer; font:inherit; }
+  .acc-head strong { flex:1; font-size:15.5px; font-weight:700; }
+  .acc-seta { color:#9aa5a0; transition:transform .2s; font-size:13px; }
+  .acc.aberto .acc-seta { transform:rotate(180deg); }
+  .acc-corpo { display:none; padding:0 16px 16px; font-size:14.5px; }
+  .acc.aberto .acc-corpo { display:block; }
+  .acc-corpo p { margin:8px 0; }
+  .tela { background:#f7f6f2; border:1px solid #e3e0d8; border-radius:12px; padding:12px; margin:10px 0; }
+  .app-card { background:#fff; border:1px solid #e5e5e5; border-radius:12px; padding:12px; margin-bottom:8px; }
+  .app-h { font-size:11px; font-weight:800; letter-spacing:.14em; text-transform:uppercase; color:#555; margin-bottom:8px; }
+  .campo { border:1px solid #ccc; border-radius:6px; padding:7px 10px; font-size:13px; background:#fff; margin-bottom:6px; position:relative; }
+  .campo small { display:block; color:#777; font-size:11px; }
+  .btn { display:inline-block; border-radius:99px; padding:9px 16px; font-size:13px; font-weight:700; background:var(--primary); color:#fff; margin:2px 4px 2px 0; position:relative; }
+  .btn.sec { background:#fff; color:var(--primary); border:1px solid var(--primary); }
+  .pin { display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; border-radius:50%; background:var(--gold); color:#000; font-size:11px; font-weight:800; vertical-align:middle; margin-left:6px; }
+  .legenda { list-style:none; padding:0; margin:8px 0 0; }
+  .legenda li { display:flex; gap:8px; margin:6px 0; font-size:13.5px; }
+  .legenda .pin { margin:2px 0 0 0; flex:none; }
+  .zebra { background:#fff; border:1px solid #bbb; margin:8px auto; text-align:center; color:#000; font-weight:700; }
+  .zebra.g { width:200px; padding:0 0 8px; }
+  .zebra .faixa { background:#000; color:#fff; font-size:10px; letter-spacing:.1em; padding:6px 0; }
+  .zebra .nm { font-size:19px; font-weight:800; line-height:1.05; padding:8px 6px 4px; }
+  .zebra .dd { display:flex; gap:4px; padding:0 8px; }
+  .zebra .dd div { flex:1; border:1.5px solid #000; font-size:11px; padding:2px; }
+  .zebra .dd i { display:block; font-style:normal; font-size:6px; letter-spacing:.1em; }
+  .zebra .sm { font-size:8px; font-weight:600; margin-top:4px; }
+  .zebra .mt { font-size:8px; border-top:1px solid #000; margin:5px 8px 0; padding-top:3px; }
+  .zebra.p { width:150px; padding:6px 6px; }
+  .zebra.p .nm { font-size:10px; padding:0; }
+  .zebra.p .sm { font-size:8px; }
+  ol.passos { padding-left:20px; } ol.passos li { margin:6px 0; }
+</style>
+</head>
+<body>
+<div class="hero"><div class="hero-inner">
+  <span class="tag">Novidade · RH</span>
+  <h1>Etiqueta da pasta do funcionário</h1>
+  <p>Quando alguém sai, o app imprime três etiquetas prontas: a do saco/pasta com admissão, demissão e motivo, a do armário e a da aba da pasta suspensa — só preto no branco, legíveis de longe.</p>
+</div></div>
+
+<div class="wrap">
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true"><span>📌</span><strong>O que mudou</strong><span class="acc-seta">▲</span></button>
+    <div class="acc-corpo">
+      <p>Na ficha do funcionário (RH → Funcionários), a aba <b>Dados</b> ganhou o bloco <b>Contrato e desligamento</b>: admissão, demissão, motivo, aviso prévio e observação.</p>
+      <p>Ali também estão três botões: <b>Etiqueta da pasta</b> (grande, 100×120, para o saco do desligado), <b>Etiqueta do armário</b> (grande, só o nome) e <b>Etiqueta da aba (pasta suspensa)</b> (pequena, 40×25, dobrável). Em todas dá para imprimir direto na Zebra ou pelo navegador. A do armário e a da aba servem também para funcionário ativo.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true"><span>🖥️</span><strong>As telas do app</strong><span class="acc-seta">▲</span></button>
+    <div class="acc-corpo">
+      <p><b>Tela 1 — Ficha, aba Dados</b></p>
+      <div class="tela">
+        <div class="app-card">
+          <div class="app-h">Contrato e desligamento</div>
+          <div class="campo"><small>Admissão</small>02/02/2026 <span class="pin">1</span></div>
+          <div class="campo"><small>Demissão</small>12/06/2026 <span class="pin">2</span></div>
+          <div class="campo"><small>Motivo do desligamento</small>Dispensa pela empresa, sem justa causa <span class="pin">3</span></div>
+          <div class="campo"><small>Aviso prévio</small>Indenizado <span class="pin">4</span></div>
+          <span class="btn">Etiqueta da pasta<span class="pin">5</span></span>
+          <span class="btn sec">Etiqueta do armário<span class="pin">6</span></span>
+          <span class="btn sec">Etiqueta da aba (pasta suspensa)<span class="pin">9</span></span>
+        </div>
+      </div>
+      <ul class="legenda">
+        <li><span class="pin">1</span><span>Datas de início e fim do contrato. Lembre de clicar em <b>Salvar</b> no fim da aba.</span></li>
+        <li><span class="pin">2</span><span>Sem a data de demissão a etiqueta sai com um traço no lugar.</span></li>
+        <li><span class="pin">3</span><span>Motivo por extenso: dispensa sem justa causa, pedido de demissão, justa causa, término de experiência, acordo ou outro.</span></li>
+        <li><span class="pin">4</span><span>Trabalhado, indenizado, dispensado ou não se aplica.</span></li>
+        <li><span class="pin">5</span><span>Abre a prévia da etiqueta grande do saco/pasta.</span></li>
+        <li><span class="pin">6</span><span>Etiqueta grande só com o nome, para o armário. Qualquer funcionário.</span></li>
+        <li><span class="pin">9</span><span>Etiqueta pequena dobrável para a aba da pasta suspensa (veja a Tela 3).</span></li>
+      </ul>
+
+      <p style="margin-top:18px"><b>Tela 2 — Prévia e impressão</b></p>
+      <div class="tela">
+        <div class="zebra g">
+          <div class="faixa">PASTA DE FUNCIONÁRIO</div>
+          <div class="nm">SOLANGE APARECIDA DE OLIVEIRA</div>
+          <div class="dd"><div><i>ADMISSÃO</i>02/02/2026</div><div><i>DEMISSÃO</i>12/06/2026</div></div>
+          <div class="sm">Tempo de casa: 4 meses e 10 dias</div>
+          <div class="mt">DISPENSA PELA EMPRESA, SEM JUSTA CAUSA<br>Aviso prévio: indenizado</div>
+        </div>
+        <div style="text-align:center"><span class="btn">Imprimir na Zebra<span class="pin">7</span></span><span class="btn sec">Imprimir pelo navegador<span class="pin">8</span></span></div>
+      </div>
+      <ul class="legenda">
+        <li><span class="pin">7</span><span>Manda a etiqueta para a fila da Zebra (a impressora precisa estar ligada).</span></li>
+        <li><span class="pin">8</span><span>Imprime pelo navegador/iPad, na própria tela, se a Zebra não estiver disponível.</span></li>
+      </ul>
+      <p style="margin-top:18px"><b>Tela 3 — Etiqueta da aba (pasta suspensa), dobrável</b></p>
+      <div class="tela">
+        <div class="zebra p"><div class="nm" style="padding:6px 0 5px;font-size:13px">CLARKSON<br>JUNIOR</div><div style="border-top:1px dashed #000;margin:0 2px"></div><div class="nm" style="padding:5px 0 6px;font-size:13px;transform:rotate(180deg)">CLARKSON<br>JUNIOR</div></div>
+        <div style="text-align:center;font-size:13px">Dobre na linha tracejada <span class="pin">10</span></div>
+      </div>
+      <ul class="legenda">
+        <li><span class="pin">10</span><span>O nome sai duas vezes, o de baixo de cabeça para baixo. Dobre no tracejado, passe cola entre as metades e coloque na aba de plástico da pasta suspensa: dos dois lados o nome fica certo.</span></li>
+      </ul>
+      <p>Se faltar demissão ou motivo, a prévia da etiqueta da pasta avisa — mas ainda deixa imprimir o que já tem. As etiquetas são só preto no branco.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true"><span>🚀</span><strong>Para começar a usar</strong><span class="acc-seta">▲</span></button>
+    <div class="acc-corpo">
+      <ol class="passos">
+        <li>Abra RH → Funcionários e toque no nome da pessoa.</li>
+        <li>Na aba Dados, preencha demissão, motivo e aviso prévio e clique em Salvar.</li>
+        <li>Toque em Etiqueta da pasta (e, se quiser, na do armário e na da aba) e imprima.</li>
+      </ol>
+      <p>Na lista de funcionários, quem tem data de demissão mostra "Saiu em dd/mm/aaaa". Preencher a demissão não inativa a pessoa sozinha.</p>
+    </div>
+  </div>
+</div>
+<script>
+  function alternar(btn) {
+    var acc = btn.parentElement;
+    var abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>

@@ -5,7 +5,7 @@ import SelectBusca from '../../../components/SelectBusca';
 import impressaoService from '../../../services/impressaoService';
 import { Card, BadgeTrabalho, btnSec, btnPerigo, erroDe, formatarDataHora } from './comuns';
 
-const TIPOS = { TESTE: 'Teste de impressão', ETIQUETA_COZINHA: 'Cozinha', ETIQUETA_PRODUTO: 'Etiqueta de produto', CAIXA_KIT_FESTA: 'Caixa Kit Festa/Delivery', OUTRO: 'Outro' };
+const TIPOS = { TESTE: 'Teste de impressão', ETIQUETA_COZINHA: 'Cozinha', ETIQUETA_PRODUTO: 'Etiqueta de produto', CAIXA_KIT_FESTA: 'Caixa Kit Festa/Delivery', ETIQUETA_FUNCIONARIO: 'Etiqueta de funcionário', OUTRO: 'Outro' };
 // "COXINHA [ETIQUETA_PRODUTO:5569]" -> mostra só o rótulo legível
 const refLegivel = (r) => (r ? String(r).replace(/\s*\[[A-Z_]+:[^\]]*\]\s*$/, '').trim() : '');
 

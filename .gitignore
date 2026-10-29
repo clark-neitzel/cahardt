@@ -35,3 +35,10 @@ backend/backups/
 *.gsheet
 *.gslides
 docs/qa/
+
+# Arquivos enviados pelos usuários (documentos de funcionário, fotos, anexos) — dados
+# pessoais; vivem só no volume do servidor. Mantém apenas os .gitkeep/.gitignore das pastas.
+backend/uploads/**
+!backend/uploads/**/
+!backend/uploads/**/.gitkeep
+!backend/uploads/**/.gitignore

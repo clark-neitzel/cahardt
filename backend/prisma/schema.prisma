@@ -1112,6 +1112,11 @@ model Funcionario {
   cargo        String?
   dataAdmissao DateTime? @map("data_admissao")
   dataDemissao DateTime? @map("data_demissao")
+
+  // Desligamento (etiqueta da pasta) — 10/2026
+  motivoDesligamento     String? @map("motivo_desligamento") // DISPENSA_SEM_JUSTA_CAUSA | PEDIDO_DEMISSAO | JUSTA_CAUSA | TERMINO_EXPERIENCIA | ACORDO | OUTRO
+  avisoPrevio            String? @map("aviso_previo") // TRABALHADO | INDENIZADO | DISPENSADO | NAO_SE_APLICA
+  observacaoDesligamento String? @map("observacao_desligamento") @db.Text
   salario      Decimal   @default(0) @map("salario") @db.Decimal(12, 2)
 
   // Regras de jornada/folha

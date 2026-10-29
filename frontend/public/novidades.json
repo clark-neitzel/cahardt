@@ -1,5 +1,11 @@
 [
   {
+    "slug": "etiqueta-pasta-funcionario",
+    "titulo": "RH: etiqueta da pasta do funcionário",
+    "resumo": "Na ficha do funcionário, registre demissão, motivo e aviso prévio e imprima a etiqueta do saco/pasta e a etiqueta de arquivo.",
+    "data": "2026-10-28"
+  },
+  {
     "slug": "matriz-filial",
     "titulo": "Clientes: selo Matriz / Filial",
     "resumo": "A lista e o cadastro de clientes agora mostram um selo Matriz ou Filial ao lado do nome e do CNPJ. É automático, deduzido pelo número do CNPJ (0001 = Matriz).",

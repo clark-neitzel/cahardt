@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, Copy, MessageCircle, RefreshCw, Loader2, Upload, Trash2, Plus, Lock, Printer, DollarSign } from 'lucide-react';
+import { ChevronLeft, Copy, MessageCircle, RefreshCw, Loader2, Upload, Trash2, Plus, Lock, Printer, DollarSign, FileText, Tag } from 'lucide-react';
 import toast from 'react-hot-toast';
 import funcionarioService from '../../services/funcionarioService';
 import configService from '../../services/configService';
@@ -12,6 +12,9 @@ import CampoNumero from '../../components/CampoNumero';
 import { useSetores, opcoesSetores } from '../../hooks/useSetores';
 import FotoPessoa from '../../components/ComoFazer/FotoPessoa';
 import { reduzirImagem } from '../../components/ComoFazer/imagem';
+import { useAuth } from '../../contexts/AuthContext';
+import EtiquetaFuncionarioModal from './EtiquetaFuncionarioModal';
+import { MOTIVOS, AVISOS, isoDia } from './etiquetasFuncionario';
 
 const DIAS = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
 const CATS_DOC = ['RG', 'CPF', 'CTPS', 'RESIDENCIA', 'CONTRATO', 'OUTRO'];
@@ -90,8 +93,14 @@ function AbaDados({ f, onSaved }) {
     registraPontoEm: f.registraPontoEm || 'APP',
     tipoContrato: f.tipoContrato || 'CLT', valorHora: f.valorHora ?? '',
     jornadaMovel: f.jornadaMovel, ativo: f.ativo,
-    setor: f.setor || ''
+    setor: f.setor || '',
+    dataAdmissao: isoDia(f.dataAdmissao), dataDemissao: isoDia(f.dataDemissao),
+    motivoDesligamento: f.motivoDesligamento || '', avisoPrevio: f.avisoPrevio || '',
+    observacaoDesligamento: f.observacaoDesligamento || ''
   });
+  const { user, hasPermission } = useAuth();
+  const podeEtiqueta = user?.permissoes?.admin === true || hasPermission('Pode_Ver_Ponto') === true || hasPermission('Pode_Editar_Ponto') === true;
+  const [etiqueta, setEtiqueta] = useState(null); // 'pasta' | 'armario' | 'aba' | null
   const ehPrestador = form.tipoContrato === 'PRESTADOR';
   const [jornadas, setJornadas] = useState(() => {
     const map = {};
@@ -143,7 +152,12 @@ function AbaDados({ f, onSaved }) {
   const salvar = async () => {
     setSalvando(true);
     try {
-      await funcionarioService.atualizar(f.id, form);
+      await funcionarioService.atualizar(f.id, {
+        ...form,
+        dataAdmissao: form.dataAdmissao || null, dataDemissao: form.dataDemissao || null,
+        motivoDesligamento: form.motivoDesligamento || null, avisoPrevio: form.avisoPrevio || null,
+        observacaoDesligamento: form.observacaoDesligamento.trim() || null,
+      });
       await funcionarioService.salvarJornada(f.id, { jornadas, jornadaMovel: form.jornadaMovel });
       toast.success('Dados salvos!');
       onSaved();
@@ -207,6 +221,51 @@ function AbaDados({ f, onSaved }) {
               : 'Bate pelo link pessoal, no celular, com GPS.'}
         </span>
       </label>
+
+      {/* contrato e desligamento + etiquetas da pasta */}
+      <div className="border border-gray-200 rounded-lg">
+        <div className="flex items-center gap-2 px-4 py-2.5 bg-gray-50 border-b border-gray-100">
+          <FileText className="h-4 w-4 text-blue-600" />
+          <span className="text-xs font-bold uppercase tracking-widest text-gray-600">Contrato e desligamento</span>
+        </div>
+        <div className="p-4 space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <label className="block"><span className="text-sm font-medium text-gray-700">Admissão</span>
+              <input type="date" value={form.dataAdmissao} onChange={set('dataAdmissao')} className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
+            </label>
+            <label className="block"><span className="text-sm font-medium text-gray-700">Demissão</span>
+              <input type="date" value={form.dataDemissao} onChange={set('dataDemissao')} className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
+            </label>
+            <label className="block"><span className="text-sm font-medium text-gray-700">Motivo do desligamento</span>
+              <SelectBusca value={form.motivoDesligamento} onChange={set('motivoDesligamento')} className="mt-1 w-full">
+                <option value="">Não informado</option>
+                {Object.entries(MOTIVOS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              </SelectBusca>
+            </label>
+            <label className="block"><span className="text-sm font-medium text-gray-700">Aviso prévio</span>
+              <SelectBusca value={form.avisoPrevio} onChange={set('avisoPrevio')} className="mt-1 w-full">
+                <option value="">Não informado</option>
+                {Object.entries(AVISOS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              </SelectBusca>
+            </label>
+          </div>
+          <label className="block"><span className="text-sm font-medium text-gray-700">Observação do desligamento</span>
+            <textarea rows={2} maxLength={300} value={form.observacaoDesligamento} onChange={set('observacaoDesligamento')} className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
+          </label>
+          {podeEtiqueta && (
+            <div className="border-t border-gray-100 pt-3">
+              <p className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-2">Etiquetas</p>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <button type="button" onClick={() => setEtiqueta('pasta')} data-acao="etiqueta-pasta" className="inline-flex items-center justify-center gap-2 px-4 py-2 min-h-[44px] bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm"><Tag className="h-4 w-4" /> Etiqueta da pasta</button>
+                <button type="button" onClick={() => setEtiqueta('armario')} data-acao="etiqueta-armario" className="inline-flex items-center justify-center gap-2 px-4 py-2 min-h-[44px] bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-sm"><Tag className="h-4 w-4" /> Etiqueta do armário</button>
+                <button type="button" onClick={() => setEtiqueta('aba')} data-acao="etiqueta-aba" className="inline-flex items-center justify-center gap-2 px-4 py-2 min-h-[44px] bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-sm"><Tag className="h-4 w-4" /> Etiqueta da aba (pasta suspensa)</button>
+              </div>
+              <p className="text-xs text-gray-500 mt-2">A etiqueta usa os dados que estão na tela. Clique em Salvar para guardá-los.</p>
+            </div>
+          )}
+        </div>
+      </div>
+      {etiqueta && <EtiquetaFuncionarioModal tipo={etiqueta} f={{ ...f, ...form, dataAdmissao: form.dataAdmissao, dataDemissao: form.dataDemissao }} onClose={() => setEtiqueta(null)} />}
 
       {/* Como Fazer: setor e foto para o tablet */}
       <div className="border border-gray-200 rounded-lg p-4">

@@ -7,6 +7,9 @@ const pontoService = require('../services/pontoService');
 const acertoService = require('../services/pontoAcertoService');
 const setoresService = require('../services/setoresService');
 
+const MOTIVOS_DESLIGAMENTO = ['DISPENSA_SEM_JUSTA_CAUSA', 'PEDIDO_DEMISSAO', 'JUSTA_CAUSA', 'TERMINO_EXPERIENCIA', 'ACORDO', 'OUTRO'];
+const AVISOS_PREVIOS = ['TRABALHADO', 'INDENIZADO', 'DISPENSADO', 'NAO_SE_APLICA'];
+
 const soDigitos = (s) => String(s || '').replace(/\D/g, '');
 
 // Escala padrão sugerida ao ativar (seg–sex 07:30–11:30 / 13:00–17:48, sáb 07:30–11:30)
@@ -84,6 +87,8 @@ const funcionarioController = {
                     setor: f.setor || null,
                     senhaNumerica: !!f.senhaNumerica,
                     ativo: f.ativo,
+                    dataDemissao: f.dataDemissao,
+                    motivoDesligamento: f.motivoDesligamento,
                     pontoToken: f.pontoToken,
                     registraPontoEm: f.registraPontoEm || 'APP',
                     trabalhando,
@@ -205,8 +210,23 @@ const funcionarioController = {
     atualizar: async (req, res) => {
         try {
             const { nome, cpf, telefone, email, endereco, cargo, dataAdmissao, dataDemissao, salario, tipoHoraExtra, jornadaMovel, ativo, observacao,
-                percentualHoraExtra, divisorHoras, descontarDsrFalta, registraPontoEm, setor } = req.body || {};
+                percentualHoraExtra, divisorHoras, descontarDsrFalta, registraPontoEm, setor,
+                motivoDesligamento, avisoPrevio, observacaoDesligamento } = req.body || {};
             const data = {};
+            if (motivoDesligamento !== undefined) {
+                const m = motivoDesligamento === null || motivoDesligamento === '' ? null : String(motivoDesligamento);
+                if (m !== null && !MOTIVOS_DESLIGAMENTO.includes(m)) return res.status(400).json({ erro: 'Motivo de desligamento inválido.' });
+                data.motivoDesligamento = m;
+            }
+            if (avisoPrevio !== undefined) {
+                const a = avisoPrevio === null || avisoPrevio === '' ? null : String(avisoPrevio);
+                if (a !== null && !AVISOS_PREVIOS.includes(a)) return res.status(400).json({ erro: 'Aviso prévio inválido.' });
+                data.avisoPrevio = a;
+            }
+            if (observacaoDesligamento !== undefined) {
+                const o = observacaoDesligamento === null ? '' : String(observacaoDesligamento).trim();
+                data.observacaoDesligamento = o || null;
+            }
             if (setor !== undefined) {
                 const cod = String(setor || '').toUpperCase();
                 if (cod) {
