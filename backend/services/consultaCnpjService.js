@@ -84,18 +84,30 @@ async function _consultarCnpja(cnpj) {
     };
 }
 
-async function consultarReceita(cnpj) {
+// Devolve { dados, motivo }. motivo (só quando dados é null):
+//  'recente_ou_inexistente' — BrasilAPI 404 e CNPJá 402/404: os serviços estão no ar,
+//                             o CNPJ é que não consta (empresa recém-aberta ou inexistente);
+//  'indisponivel'           — qualquer outra falha (timeout, 5xx, rede, 429...).
+async function _consultarReceitaDetalhado(cnpj) {
     try {
-        return await _consultarBrasilApi(cnpj);
+        return { dados: await _consultarBrasilApi(cnpj), motivo: null };
     } catch (e1) {
-        console.warn(`[ConsultaCNPJ] BrasilAPI falhou (${e1.response?.status || e1.message}), tentando CNPJá...`);
+        const s1 = e1.response?.status;
+        console.warn(`[ConsultaCNPJ] BrasilAPI falhou (${s1 || e1.message}), tentando CNPJá...`);
         try {
-            return await _consultarCnpja(cnpj);
+            return { dados: await _consultarCnpja(cnpj), motivo: null };
         } catch (e2) {
-            console.warn(`[ConsultaCNPJ] CNPJá também falhou (${e2.response?.status || e2.message})`);
-            return null;
+            const s2 = e2.response?.status;
+            console.warn(`[ConsultaCNPJ] CNPJá também falhou (${s2 || e2.message})`);
+            const naoConsta = s1 === 404 && (s2 === 402 || s2 === 404);
+            return { dados: null, motivo: naoConsta ? 'recente_ou_inexistente' : 'indisponivel' };
         }
     }
+}
+
+// Contrato preservado: devolve os dados ou null.
+async function consultarReceita(cnpj) {
+    return (await _consultarReceitaDetalhado(cnpj)).dados;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -218,9 +230,12 @@ async function consultarCnpj(documento) {
         return { encontrado: false, erro: 'CNPJ alfanumérico: preencha os dados manualmente' };
     }
 
-    const receita = await consultarReceita(cnpj);
+    const { dados: receita, motivo } = await _consultarReceitaDetalhado(cnpj);
     if (!receita) {
-        return { encontrado: false, erro: 'Não foi possível consultar o CNPJ agora (serviços da Receita indisponíveis). Preencha manualmente.' };
+        if (motivo === 'recente_ou_inexistente') {
+            return { encontrado: false, motivo, erro: 'CNPJ não encontrado nas bases públicas. Se a empresa foi aberta recentemente, ainda pode não constar — preencha os dados manualmente.' };
+        }
+        return { motivo: 'indisponivel', encontrado: false, erro: 'Não foi possível consultar o CNPJ agora (serviços da Receita indisponíveis). Preencha manualmente.' };
     }
 
     const sefaz = await consultarIeSefaz(cnpj, receita.endereco.uf);
