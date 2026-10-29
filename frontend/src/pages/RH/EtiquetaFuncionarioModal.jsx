@@ -4,19 +4,25 @@ import ImprimirDireto from '../PCP/ImprimirDireto';
 import { useEscalaPreview } from '../PCP/OrientacaoEtiqueta';
 import { imprimirNaPagina } from '../../utils/imprimirNaPagina';
 import CampoNumero from '../../components/CampoNumero';
-import { montarPasta, montarArmario, montarAba, prepararPasta, prepararArmario, prepararAba, carregarFontesFuncionario } from './etiquetasFuncionario';
+import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
+import { montarPasta, montarArmario, montarArmarioGrande, montarAba, prepararPasta, prepararArmario, prepararArmarioGrande, prepararAba, carregarFontesFuncionario } from './etiquetasFuncionario';
 
-// Modal das etiquetas do funcionário. tipo: 'pasta' (100×120, desligamento) | 'armario' (100×120, só o nome)
+// Modal das etiquetas do funcionário. tipo: 'pasta' (100×120, desligamento) | 'armario' (40×25, só o nome)
 // | 'aba' (40×25 dobrável, pasta suspensa). `f` = dados do funcionário (com o que está na tela da aba Dados).
 const CFG = {
     pasta:   { titulo: 'Etiqueta da pasta · 100 × 120 mm', grande: true,  origem: 'FUNCIONARIO_PASTA',   rotulo: 'Pasta de funcionário' },
-    armario: { titulo: 'Etiqueta do armário · 100 × 120 mm', grande: true,  origem: 'FUNCIONARIO_PASTA',   rotulo: 'Armário' },
+    armario: { titulo: 'Etiqueta do armário · 40 × 25 mm', grande: false, origem: 'FUNCIONARIO_ARQUIVO', rotulo: 'Armário' },
     aba:     { titulo: 'Etiqueta da aba (pasta suspensa) · 40 × 25 mm', grande: false, origem: 'FUNCIONARIO_ARQUIVO', rotulo: 'Aba da pasta' },
 };
 const BTN_MAIS_MENOS = 'min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-full border border-gray-300 hover:bg-gray-50';
 
 export default function EtiquetaFuncionarioModal({ tipo, f, onClose }) {
-    const cfg = CFG[tipo] || CFG.pasta;
+    // armário: 2 tamanhos (a última escolha fica salva por usuário)
+    const [tamArmario, setTamArmario] = useFiltroSalvo('etiqueta-funcionario:armarioTamanho', '40x25');
+    const armGrande = tipo === 'armario' && tamArmario === '100x120';
+    const cfg = armGrande
+        ? { titulo: 'Etiqueta do armário · 100 × 120 mm', grande: true, origem: 'FUNCIONARIO_PASTA', rotulo: 'Armário' }
+        : (CFG[tipo] || CFG.pasta);
     const [copias, setCopias] = useState(1);
     const [fontesOk, setFontesOk] = useState(false);
     useEffect(() => { let vivo = true; carregarFontesFuncionario().then(() => vivo && setFontesOk(true)); return () => { vivo = false; }; }, []);
@@ -26,8 +32,8 @@ export default function EtiquetaFuncionarioModal({ tipo, f, onClose }) {
     // aba: a prévia mostra UMA etiqueta (a 2ª coluna do rolo fica em branco quando a quantidade é ímpar)
     const montada = useMemo(() => {
         const d = { nome: fNome, cpf: fCpf, cargo: fCargo, dataAdmissao: fAdm, dataDemissao: fDem, motivoDesligamento: fMot, avisoPrevio: fAv };
-        return tipo === 'armario' ? montarArmario(d) : tipo === 'aba' ? montarAba(d, 1, 1) : montarPasta(d);
-    }, [tipo, fNome, fCpf, fCargo, fAdm, fDem, fMot, fAv, fontesOk]); // eslint-disable-line react-hooks/exhaustive-deps
+        return tipo === 'armario' ? (armGrande ? montarArmarioGrande(d) : montarArmario(d, 1, 1)) : tipo === 'aba' ? montarAba(d, 1, 1) : montarPasta(d);
+    }, [tipo, armGrande, fNome, fCpf, fCargo, fAdm, fDem, fMot, fAv, fontesOk]); // eslint-disable-line react-hooks/exhaustive-deps
     const larg = cfg.grande ? 100 : 40;
     const [refPrev, escala] = useEscalaPreview(larg, cfg.grande ? 1.25 : 3.2);
 
@@ -55,7 +61,7 @@ export default function EtiquetaFuncionarioModal({ tipo, f, onClose }) {
             `;
             imprimirNaPagina(estilos, Array.from({ length: qtd }, () => `<div class="pg">${montada.corpo}</div>`).join(''));
         } else {
-            const m = montarAba({ nome: fNome }, qtd, 2);
+            const m = tipo === 'armario' ? montarArmario({ nome: fNome }, qtd, 2) : montarAba({ nome: fNome }, qtd, 2);
             imprimirNaPagina(m.estilos, m.corpo);
         }
     };
@@ -85,6 +91,15 @@ export default function EtiquetaFuncionarioModal({ tipo, f, onClose }) {
                         </div>
                     )}
 
+                    {tipo === 'armario' && (
+                        <div className="flex flex-wrap gap-1.5" data-seletor-tamanho>
+                            {[['40x25', 'Pequena · 40 × 25'], ['100x120', 'Grande · 100 × 120']].map(([v, r]) => (
+                                <button key={v} type="button" onClick={() => setTamArmario(v)}
+                                    className={`px-4 py-2 min-h-[44px] rounded-full text-xs font-semibold border transition-all ${(armGrande ? '100x120' : '40x25') === v ? 'bg-primary text-white border-primary shadow-sm' : 'bg-white text-gray-600 border-gray-300 hover:border-primary hover:text-primary'}`}>{r}</button>
+                            ))}
+                        </div>
+                    )}
+
                     <div ref={refPrev} className="bg-gray-100 rounded-xl p-2 md:p-4 flex justify-center overflow-hidden">
                         <div style={{ width: `${larg * (96 / 25.4) * escala}px`, height: `${(cfg.grande ? 120 : 25) * (96 / 25.4) * escala}px` }}>
                             <div style={{ transform: `scale(${escala})`, transformOrigin: 'top left', width: `${larg}mm` }}>
@@ -95,7 +110,7 @@ export default function EtiquetaFuncionarioModal({ tipo, f, onClose }) {
                     </div>
                     <p className="text-xs text-gray-500 text-center -mt-2">
                         {tipo === 'aba' ? 'Dobre na linha tracejada, cola com cola, e coloque na aba da pasta. O lado de baixo sai de cabeça para baixo de propósito.'
-                            : tipo === 'armario' ? 'Prévia do tamanho da etiqueta (100 × 120 mm): só o nome.'
+                            : tipo === 'armario' ? (armGrande ? 'Prévia do tamanho da etiqueta (100 × 120 mm): só o nome.' : 'Prévia da etiqueta (40 × 25 mm): só o nome. O padrão é 1 cópia; a segunda coluna do rolo fica em branco.')
                             : 'Prévia do tamanho da etiqueta (100 × 120 mm).'}
                     </p>
 
@@ -110,6 +125,7 @@ export default function EtiquetaFuncionarioModal({ tipo, f, onClose }) {
                     </div>
 
                     <ImprimirDireto
+                        key={cfg.origem}
                         origem={cfg.origem}
                         copias={qtd}
                         nome={`${cfg.rotulo} — ${nome}`}
@@ -118,7 +134,7 @@ export default function EtiquetaFuncionarioModal({ tipo, f, onClose }) {
                         onNavegador={imprimirNavegador}
                         preparar={() => {
                             const d = { nome: fNome, cpf: fCpf, cargo: fCargo, dataAdmissao: fAdm, dataDemissao: fDem, motivoDesligamento: fMot, avisoPrevio: fAv };
-                            return tipo === 'armario' ? prepararArmario(d) : tipo === 'aba' ? prepararAba(d, qtd) : prepararPasta(d);
+                            return tipo === 'armario' ? (armGrande ? prepararArmarioGrande(d) : prepararArmario(d, qtd)) : tipo === 'aba' ? prepararAba(d, qtd) : prepararPasta(d);
                         }}
                     />
                     <p className="text-xs text-gray-500">

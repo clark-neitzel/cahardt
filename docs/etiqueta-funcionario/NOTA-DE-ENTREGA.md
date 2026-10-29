@@ -14,7 +14,7 @@ Caminho na tela: **RH → Funcionários → abrir a ficha → aba Dados → card
      admissão e demissão lado a lado, tempo de casa, motivo e aviso prévio. Se faltar demissão ou motivo, avisa, mas imprime.
    - **Etiqueta da aba (40×25)** — para a aba da pasta suspensa: nome em cima e o mesmo nome de cabeça para baixo
      embaixo, com linha tracejada no meio. Dobra, cola com cola, enfia no plástico da aba: lê certo dos dois lados.
-   - **Etiqueta do armário (100×120)** — só o nome, grande, no centro. Serve para qualquer funcionário, ativo ou não.
+   - **Etiqueta do armário** — só o nome, no centro, uma face. Serve para qualquer funcionário, ativo ou não. No modal há dois chips: **Pequena 40×25** (padrão, Zebra pequena) e **Grande 100×120** (Zebra grande); o app lembra a última escolha.
 3. Cada botão abre a **prévia em tamanho real**, com controle de **Cópias**, e dois jeitos de imprimir:
    **Imprimir na Zebra** (vai para a fila da impressora, 100×120 ou 40×25) ou **Imprimir pelo navegador**
    (na própria tela, sem abrir aba nova — funciona no iPad).
@@ -43,11 +43,11 @@ Na **Zebra** (com o agente de impressão ligado):
 2. Clicar **Etiqueta da pasta** → Imprimir na Zebra. Conferir: nome, cargo, CPF, datas, motivo e aviso prévio legíveis, nada cortado.
 3. Clicar **Etiqueta da aba** → 1 cópia → Imprimir na Zebra. **Dobrar na linha tracejada, colar e enfiar no plástico da aba**
    da pasta suspensa: o nome tem que ler certo dos dois lados (não espelhado).
-4. Clicar **Etiqueta do armário** → Imprimir na Zebra. Só o nome, grande.
+4. Clicar **Etiqueta do armário** → (padrão **Pequena 40×25**) → Imprimir na Zebra pequena. Só o nome, uma face, sem dobra. Se quiser, trocar o chip para **Grande 100×120** e imprimir na Zebra grande.
 
 No **iPad** (app instalado na tela inicial):
 5. Mesmo caminho → **Imprimir pelo navegador** na etiqueta da pasta. O app não pode abrir aba nova nem sair em branco.
-   Na tela de impressão do iPad, escolher o papel **120×100 paisagem** (as grandes) — a da aba usa 84×25.
+   Na tela de impressão do iPad, escolher o papel **120×100 paisagem** (as grandes) — as pequenas (aba e armário) usam 84×25. ("84×25" é só o papel de 2 colunas no navegador: duas etiquetas de 40 mm lado a lado; a etiqueta em si continua 40×25.)
 
 ## Pendências e o que ficou de fora
 
@@ -64,7 +64,7 @@ No **iPad** (app instalado na tela inicial):
 Agora na *ficha do funcionário* (aba Dados → bloco *Contrato e desligamento*) dá para registrar *demissão, motivo e aviso prévio* e imprimir direto:
 📄 *Etiqueta da pasta* (100×120) — saco de documentos de quem saiu
 🏷️ *Etiqueta da aba* (40×25) — dobra no meio e vai no plástico da pasta suspensa
-🔒 *Etiqueta do armário* — só o nome
+🔒 *Etiqueta do armário* — só o nome (40×25 ou 100×120)
 
 Imprime na Zebra ou pelo navegador (funciona no iPad). Veja como usar:
 https://cahardt-github.xrqvlq.easypanel.host/novidade-etiqueta-pasta-funcionario.html

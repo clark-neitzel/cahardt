@@ -1,4 +1,4 @@
-// Etiquetas do funcionário: PASTA de desligamento (100 × 120), ARMÁRIO (100 × 120, só o nome) e ABA da pasta suspensa (40 × 25 dobrável).
+// Etiquetas do funcionário: PASTA de desligamento (100 × 120), ARMÁRIO (40 × 25 ou 100 × 120, só o nome) e ABA da pasta suspensa (40 × 25 dobrável).
 // Só preto no branco (impressora térmica). O texto é MEDIDO com canvas ao montar o HTML — por isso as
 // fontes precisam estar carregadas antes (carregarFontesFuncionario). Nada de cor, nada de ícone.
 import { escaparHtml } from '../../utils/imprimirNaPagina';
@@ -226,19 +226,45 @@ export function montarAba(f, copias = 1, colunas = 2) {
     return { estilos, corpo: paginas.join(''), dados: d, cortou: !!n.cortou };
 }
 
-// ─── ARMÁRIO — 100 × 120 mm, só o nome ────────────────────────────────────────
-export function montarArmario(f) {
+// ─── ARMÁRIO — 40 × 25 mm, só o nome (uma face, sem dobra) ───────────────────
+export function montarArmario(f, copias = 1, colunas = 2) {
+    const d = dadosEtiqueta(f);
+    const base = { larguraMm: 36.4, alturaMm: 21, entrelinha: 1.05 };
+    let n = ajustarTexto(d.nome, { ...base, maxLinhas: 2, tetoPt: 24, minPt: 7 });
+    if (n.cortou) n = ajustarTexto(d.nome, { ...base, maxLinhas: 3, tetoPt: 24, minPt: 4.5 });
+    const etq = `<div class="etq armario"><div class="nome" style="font-size:${n.pt}pt">${n.linhas.map((l) => `<div class="ln">${escaparHtml(l)}</div>`).join('')}</div></div>`;
+    const cols = Number(colunas) === 1 ? 1 : 2;
+    const qtd = Math.max(1, Math.min(99, parseInt(copias, 10) || 1));
+    const paginas = [];
+    for (let i = 0; i < qtd; i += cols) paginas.push(`<div class="pag">${Array.from({ length: Math.min(cols, qtd - i) }, () => etq).join('')}</div>`);
+    const largPag = cols === 2 ? '84mm' : '40mm';
+    const estilos = `
+        @page { size: ${largPag} 25mm; margin: 0; }
+        html.modo-impressao #area-impressao { width: ${largPag} !important; max-width: none !important; margin: 0 !important; }
+        #area-impressao { color: #000; }
+        #area-impressao .pag { width: ${largPag}; height: 25mm; display: flex; overflow: hidden; ${cols === 2 ? 'padding-left: 2mm; gap: 2mm;' : ''} page-break-after: always; break-after: page; }
+        #area-impressao .pag:last-child { page-break-after: auto; break-after: auto; }
+        #area-impressao .etq.armario { width: 40mm; height: 25mm; flex: none; box-sizing: border-box; background: #fff; color: #000; overflow: hidden;
+            font-family: ${PILHA}; display: flex; align-items: center; justify-content: center; text-align: center; padding: 1.8mm; }
+        #area-impressao .armario .nome { font-weight: 800; line-height: 1.05; }
+        #area-impressao .armario .ln { white-space: nowrap; }
+    `;
+    return { estilos, corpo: paginas.join(''), dados: d, cortou: !!n.cortou };
+}
+
+// ─── ARMÁRIO GRANDE — 100 × 120 mm, só o nome ────────────────────────────────
+export function montarArmarioGrande(f) {
     const d = dadosEtiqueta(f);
     const base = { larguraMm: 90, alturaMm: 104, entrelinha: 1.05 };
     let n = ajustarTexto(d.nome, { ...base, maxLinhas: 3, tetoPt: 80, minPt: 14 });
     if (n.cortou) n = ajustarTexto(d.nome, { ...base, maxLinhas: 4, tetoPt: 80, minPt: 8 });
-    const corpo = `<div class="etq armario"><div class="nome" style="font-size:${n.pt}pt">${n.linhas.map((l) => `<div class="ln">${escaparHtml(l)}</div>`).join('')}</div></div>`;
+    const corpo = `<div class="etq armariog"><div class="nome" style="font-size:${n.pt}pt">${n.linhas.map((l) => `<div class="ln">${escaparHtml(l)}</div>`).join('')}</div></div>`;
     const estilos = `
         #area-impressao { color: #000; }
-        #area-impressao .etq.armario { width: 100mm; height: 120mm; box-sizing: border-box; background: #fff; color: #000; overflow: hidden;
+        #area-impressao .etq.armariog { width: 100mm; height: 120mm; box-sizing: border-box; background: #fff; color: #000; overflow: hidden;
             font-family: ${PILHA}; display: flex; align-items: center; justify-content: center; text-align: center; padding: 3mm 5mm; }
-        #area-impressao .armario .nome { font-weight: 800; line-height: 1.05; letter-spacing: -0.01em; }
-        #area-impressao .armario .ln { white-space: nowrap; }
+        #area-impressao .armariog .nome { font-weight: 800; line-height: 1.05; letter-spacing: -0.01em; }
+        #area-impressao .armariog .ln { white-space: nowrap; }
     `;
     return { estilos, corpo, dados: d, cortou: !!n.cortou };
 }
@@ -256,8 +282,19 @@ async function rasterizar100x120(montada) {
 }
 /** Pasta → { bitmaps:[1] } (800×960). */
 export const prepararPasta = async (f) => rasterizar100x120(montarPasta(f));
-/** Armário → { bitmaps:[1] } (800×960). */
-export const prepararArmario = async (f) => rasterizar100x120(montarArmario(f));
+/** Armário grande → { bitmaps:[1] } (800×960). */
+export const prepararArmarioGrande = async (f) => rasterizar100x120(montarArmarioGrande(f));
+/** Armário (40×25, uma face) → 1 bitmap 320×200 + `sequencia` repetida por cópia. */
+export async function prepararArmario(f, copias = 1) {
+    await carregarFontesFuncionario();
+    const R = await import('../PCP/etiquetaRaster');
+    const m = montarArmario(f, 1, 1);
+    const r = await R.rasterizarEtiquetas({ itens: [{ html: m.corpo, estilos: m.estilos, seletorCelula: '.etq', larguraMm: 40, alturaMm: 25 }] });
+    const bm = r.bitmaps[0];
+    if (!bm || r.indices.length !== 1 || bm.larguraDots !== 320 || bm.alturaDots !== 200) throw erroLocal('A imagem da etiqueta saiu com tamanho inesperado. Use "Imprimir pelo navegador".');
+    const n = Math.max(1, Math.min(99, parseInt(copias, 10) || 1));
+    return { bitmaps: [await R.empacotarParaEnvio(bm)], sequencia: Array(n).fill(0) };
+}
 
 /** Só a metade de cima da aba (40 × 12,5 mm), sem transform: é o que vai para o rasterizador. */
 function montarMetadeAba(f) {
