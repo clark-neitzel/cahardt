@@ -8,16 +8,16 @@ permissao: admin
 
 ## O que é
 
-Lista de contas financeiras (bancos e meios de recebimento) sincronizados do Conta Azul. Esses registros são usados na Tabela de Preços para definir o banco padrão de cada condição de pagamento, e nas baixas de contas a receber. Esta tela é somente leitura — os dados vêm do CA.
+Lista de contas financeiras (bancos e meios de recebimento) do app. Esses registros são usados na Tabela de Preços para definir o banco padrão de cada condição de pagamento, e nas baixas de contas a receber. Esta tela é somente leitura.
 
 ---
 
 ## O que dá pra fazer aqui
 
-- Ver todas as contas financeiras cadastradas (sincronizadas do Conta Azul)
+- Ver todas as contas financeiras cadastradas
 - Ver: ID interno, nome do banco, tipo de uso, opção de condição, fonte de venda e status (ativo/inativo)
 
-> Esta tela não permite criar ou editar contas. O cadastro é feito no Conta Azul e importado pelo Sync.
+> Esta tela não permite criar ou editar contas.
 
 ---
 
@@ -26,10 +26,10 @@ Lista de contas financeiras (bancos e meios de recebimento) sincronizados do Con
 | Campo | Significado |
 |-------|-------------|
 | ID | Identificador interno no sistema |
-| Banco | Nome da conta financeira no CA |
+| Banco | Nome da conta financeira |
 | Tipo Uso | Como a conta é usada (ex: recebimento, pagamento) |
-| Opção Condição | Código de condição associado no CA |
-| Fonte Venda ID | ID da fonte de venda no CA (UUID) |
+| Opção Condição | Identificador interno legado (código de condição) |
+| Fonte Venda ID | Identificador interno legado (UUID) |
 | Status | Ativo ou Inativo |
 
 ---
@@ -45,7 +45,6 @@ Lista de contas financeiras (bancos e meios de recebimento) sincronizados do Con
 ## Depende de / Interfere em
 
 - **Config: Tabela de Preços** — o "Banco Padrão" de cada condição usa os registros desta tela
-- **Sincronizar** — os dados desta tela são atualizados pelo Sync Geral do CA
 
 ---
 

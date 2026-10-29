@@ -8,7 +8,7 @@ permissao: admin
 
 ## O que é
 
-Tela **"Categorias de Estoque"** (o título mudou em 08/2026 — antes se chamava "Categorias de Produto", que era o nome de outra tela e confundia quem procurava onde marcar o imobilizado). Controla as categorias dos produtos (desde 08/2026 elas são do app — o Conta Azul não manda mais categoria) e define, por categoria, três chaves: se **controla estoque**, se **conta no flex** e se **vende**. Somente produtos das categorias com Estoque ativado terão os campos de estoque calculados (reservado, disponível).
+Tela **"Categorias de Estoque"** (o título mudou em 08/2026 — antes se chamava "Categorias de Produto", que era o nome de outra tela e confundia quem procurava onde marcar o imobilizado). Controla as categorias dos produtos (elas são do app) e define, por categoria, três chaves: se **controla estoque**, se **conta no flex** e se **vende**. Somente produtos das categorias com Estoque ativado terão os campos de estoque calculados (reservado, disponível).
 
 No rodapé da tela há o card **"O que cada chave faz"** — uma legenda curta explicando as três chaves, para não precisar abrir este manual na hora de decidir.
 

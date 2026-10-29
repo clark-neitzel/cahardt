@@ -182,7 +182,6 @@ const BoletosAsaasModal = ({ conta, onClose, onAtualizado }) => {
                                             <span>
                                                 Pago em {p.boleto.recebidoEm ? new Date(p.boleto.recebidoEm).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '—'}
                                                 {' · '}baixa no app {p.boleto.baixaAppOk ? 'OK' : 'pendente'}
-                                                {' · '}baixa no CA {p.boleto.baixaCaOk ? 'OK' : 'pendente'}
                                             </span>
                                         </div>
                                     )}
@@ -266,7 +265,7 @@ const BoletosAsaasModal = ({ conta, onClose, onAtualizado }) => {
                             ))}
 
                             <p className="text-xs text-gray-500 px-1">
-                                Quando o cliente pagar, o Asaas avisa o sistema e a baixa acontece sozinha — aqui e no Conta Azul (conta ASAAS).
+                                Quando o cliente pagar, o Asaas avisa o sistema e a baixa acontece sozinha.
                             </p>
                         </>
                     )}

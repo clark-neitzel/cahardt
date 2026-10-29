@@ -1028,7 +1028,7 @@ router.get('/pacote-mes', verificarAuth, checkAcesso, async (req, res) => {
                 let doc = resolverDocumento(conta);
                 if (extra?.nfNumero) doc = { tipo: 'NF_CA', numero: extra.nfNumero };
                 return [
-                    conta.pedido?.numero ? `#${conta.pedido.numero}` : (extra?.numeroVendaCA ? `CA #${extra.numeroVendaCA}` : ''),
+                    conta.pedido?.numero ? `#${conta.pedido.numero}` : (extra?.numeroVendaCA ? `#${extra.numeroVendaCA}` : ''),
                     cData(conta.createdAt), cCampo(conta.cliente?.Nome), cCampo(conta.cliente?.Documento),
                     doc.tipo, doc.numero || '', p.numeroParcela, cData(p.dataVencimento), cNum(p.valor), cNum(p.valorPago),
                     cCampo(p.formaPagamento), cCampo(p.contaFinanceiraCaId ? nomeBanco.get(p.contaFinanceiraCaId) : ''), cData(p.dataPagamento), p.status

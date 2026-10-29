@@ -48,10 +48,10 @@ const COLS_PADRAO = ['pedido', 'criacao', 'cliente', 'documento', 'vencimento', 
 const ORDEM_PADRAO = COLUNAS.map((c) => c.id);
 
 const DOC_BADGE = {
-    NF_CA: { label: 'NF-e CA', cls: 'bg-blue-100 text-blue-800' },
+    NF_CA: { label: 'NF-e antiga (importada)', cls: 'bg-blue-100 text-blue-800' },
     NF_APP: { label: 'NF-e app', cls: 'bg-mint text-primaryDark' },
     ESPECIAL: { label: 'Especial — sem nota', cls: 'bg-purple-100 text-purple-700' },
-    IMPORTADA: { label: 'Importada do CA', cls: 'bg-gray-100 text-gray-700' },
+    IMPORTADA: { label: 'Importada (antiga)', cls: 'bg-gray-100 text-gray-700' },
     SEM_NF: { label: 'Sem NF registrada', cls: 'bg-amber-100 text-amber-700' },
 };
 const STATUS_BADGE = {
@@ -70,7 +70,7 @@ const fmtNumCsv = (v) => (v == null ? '' : Number(v).toFixed(2).replace('.', ','
 function valorColuna(l, id) {
     switch (id) {
         case 'pedido': return l.especial && l.pedidoNumero ? `ZZ#${l.pedidoNumero}`
-            : (l.pedidoNumero ? `#${l.pedidoNumero}` : (l.numeroVendaCA ? `CA #${l.numeroVendaCA}` : '—'));
+            : (l.pedidoNumero ? `#${l.pedidoNumero}` : (l.numeroVendaCA ? `Venda antiga #${l.numeroVendaCA}` : '—'));
         case 'criacao': return l.criacao;
         case 'cliente': return l.clienteNome;
         case 'documento': {
@@ -431,10 +431,10 @@ export default function ContabilidadePage() {
                             <label className="block text-sm font-medium text-gray-700 mb-1">Documento fiscal</label>
                             <SelectBusca value={filtros.documento} onChange={(e) => setFiltros({ ...filtros, documento: e.target.value })} className="w-full">
                                 <option value="todos">Todos</option>
-                                <option value="NF_CA">NF-e do Conta Azul</option>
+                                <option value="NF_CA">NF-e antiga (importada)</option>
                                 <option value="NF_APP">NF-e do app</option>
                                 <option value="ESPECIAL">Especial — sem nota</option>
-                                <option value="IMPORTADA">Importada do CA</option>
+                                <option value="IMPORTADA">Importada (antiga)</option>
                                 <option value="SEM_NF">Sem NF registrada</option>
                             </SelectBusca>
                         </div>
@@ -471,7 +471,7 @@ export default function ContabilidadePage() {
                                     <option value="todos">Todas</option>
                                     <option value="FATURADO_CA">Faturada (com pedido)</option>
                                     <option value="ESPECIAL">Especial</option>
-                                    <option value="IMPORTADO_CA">Importada do CA</option>
+                                    <option value="IMPORTADO_CA">Importada (antiga)</option>
                                 </SelectBusca>
                             </div>
                         </div>

@@ -86,10 +86,10 @@ Na tela de detalhe da receita o sistema mostra automaticamente:
 
 **De onde vem o custo de cada ingrediente:**
 
-- **Matéria-prima / embalagem (MP, EMB)**: usa o **custo médio do Conta Azul** do produto. Se o CA ainda não tiver custo, usa o **custo manual** digitado no cadastro do produto (aba Produtos → abrir o produto → campo "Custo Manual"). Assim que o CA passar a ter custo, o do CA assume automaticamente.
+- **Matéria-prima / embalagem (MP, EMB)**: usa o **custo médio** do produto. Se o produto ainda não tiver custo médio, usa o **custo manual** digitado no cadastro do produto (aba Produtos → abrir o produto → campo "Custo Manual"). Assim que o produto passar a ter custo médio (por compras), ele assume automaticamente.
 - **Subproduto (SUB)**: o custo é calculado **a partir da própria receita do subproduto** — custo da receita dele dividido pelo rendimento dele (custo por KG). Esse valor é multiplicado pela quantidade usada. Funciona em **cascata**: uma receita usa o custo por KG do subproduto, que por sua vez vem da receita dele, e assim por diante.
 
-> Se aparecer "sem custo" em algum ingrediente (ou um aviso amarelo), é porque aquele produto não tem custo no CA nem custo manual, ou o subproduto ainda não tem receita ativa. Cadastre o custo para o total ficar completo.
+> Se aparecer "sem custo" em algum ingrediente (ou um aviso amarelo), é porque aquele produto não tem custo médio nem custo manual, ou o subproduto ainda não tem receita ativa. Cadastre o custo para o total ficar completo.
 
 ### Simular o escalonamento
 
@@ -157,7 +157,7 @@ Admin (`admin: true`) tem acesso sem precisar de `pcp.receitas`.
 ## Depende de / Interfere em
 
 - **Itens PCP**: os ingredientes e o item produzido precisam existir como itens PCP (ou ser importados do catálogo).
-- **Nome do produto**: o nome do ingrediente que aparece na receita acompanha o nome do produto no catálogo. Se o nome do produto mudar (pela sincronização com a Conta Azul), o nome passa a refletir automaticamente nas receitas.
+- **Nome do produto**: o nome do ingrediente que aparece na receita acompanha o nome do produto no catálogo. Se o nome do produto mudar (editando o cadastro), o nome passa a refletir automaticamente nas receitas.
 - **Ordens de Produção**: só receitas com status "ativa" aparecem ao criar uma nova ordem. Cada ordem registra qual versão da receita foi usada.
 - **Simulador**: usa os dados de estoque atual de cada item para indicar se o estoque é suficiente.
 

@@ -957,7 +957,7 @@ const pedidoService = {
             throw new Error("Não é possível excluir: pedido já foi entregue ou devolvido.");
         }
         if (['FATURADO', 'EM_ABERTO'].includes(pedido.situacaoCA)) {
-            throw new Error("Não é possível excluir: pedido já foi faturado no Conta Azul.");
+            throw new Error("Não é possível excluir: pedido já foi faturado.");
         }
         if (pedido.contaReceber && pedido.contaReceber.status === 'QUITADO') {
             throw new Error("Não é possível excluir: conta a receber já foi quitada.");
@@ -975,7 +975,7 @@ const pedidoService = {
                 : 'Não é possível excluir: a NF-e deste pedido está em processamento na SEFAZ. Aguarde o retorno.');
         }
         if (pedido.nfeChave) {
-            throw new Error(`Não é possível excluir: este pedido já tem NF-e emitida no Conta Azul (nº ${pedido.nfeNumero || '—'}).`);
+            throw new Error(`Não é possível excluir: este pedido já tem NF-e emitida (nº ${pedido.nfeNumero || '—'}).`);
         }
         // Cobrança Asaas paga trava a exclusão (dinheiro entrou); pendente só é desvinculada.
         if (pedido.cobrancasAsaas?.some(c => c.status === 'RECEBIDO')) {
@@ -1111,7 +1111,7 @@ const pedidoService = {
                 : 'Não é possível cancelar: a NF-e deste pedido está em processamento na SEFAZ. Aguarde o retorno e tente de novo.');
         }
         if (pedido.nfeChave) {
-            throw new Error(`Não é possível cancelar: este pedido já tem NF-e emitida no Conta Azul (nº ${pedido.nfeNumero || '—'}).`);
+            throw new Error(`Não é possível cancelar: este pedido já tem NF-e emitida (nº ${pedido.nfeNumero || '—'}).`);
         }
         // Dinheiro já recebido: estornar antes
         if (pedido.contaReceber?.status === 'QUITADO') {

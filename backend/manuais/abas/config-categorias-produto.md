@@ -10,7 +10,7 @@ permissao: configuracoes (ver) · admin ou Pode_Editar_Categorias_Produto (alter
 
 Cadastro das categorias comerciais de produto. Estas categorias são usadas para organizar produtos do ponto de vista de vendas (ex: "Linha Premium", "Festas", "Produtos Orgânicos") e para controlar o acesso de vendedores: um vendedor pode ter permissão para vender apenas certas categorias.
 
-> **Atenção:** estas são categorias comerciais criadas no sistema, diferentes das categorias fiscais do Conta Azul.
+> **Atenção:** estas são categorias comerciais criadas no sistema, diferentes das categorias fiscais.
 
 ---
 

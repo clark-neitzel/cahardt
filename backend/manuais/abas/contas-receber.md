@@ -8,9 +8,9 @@ permissao: Pode_Acessar_Contas_Receber
 
 ## O que é
 
-Gestão financeira de todas as contas a receber. **Desde 23/07/2026 o app é o dono do financeiro** (o Conta Azul virou somente leitura): cada pedido finalizado gera a conta com parcelas aqui mesmo, e as baixas acontecem só no app. Esta tela mostra o estado de cada parcela (pendente, parcial, pago, vencido), permite dar baixa manual — total, parcial ou com desconto (inclusive 100%) — e gerar relatórios de inadimplência.
+Gestão financeira de todas as contas a receber. **Desde 23/07/2026 o app é o dono do financeiro** (o sistema anterior foi desligado): cada pedido finalizado gera a conta com parcelas aqui mesmo, e as baixas acontecem só no app. Esta tela mostra o estado de cada parcela (pendente, parcial, pago, vencido), permite dar baixa manual — total, parcial ou com desconto (inclusive 100%) — e gerar relatórios de inadimplência.
 
-Também existem **contas importadas do Conta Azul** (origem IMPORTADO_CA): são cobranças antigas que viviam lá e foram trazidas para cá na migração — aparecem sem pedido vinculado, com a descrição original do CA.
+Também existem **contas importadas (antigas)** (origem de importação antiga): são cobranças antigas trazidas na migração — aparecem sem pedido vinculado, com a descrição original.
 
 ---
 
@@ -22,8 +22,6 @@ Também existem **contas importadas do Conta Azul** (origem IMPORTADO_CA): são 
 - Selecionar parcelas em lote e dar baixa coletiva (sempre pelo valor cheio de cada parcela) — precisa da permissão de baixa manual
 - Dar baixa em uma parcela individual — pode ser o valor total, um valor parcial (o restante fica pendente como PARCIAL) e/ou um desconto (em R$ ou %, incluindo 100% do saldo, sem precisar receber nada)
 - Ver o histórico de cada pagamento recebido numa parcela (data, valor, desconto, quem registrou) e estornar um pagamento específico sem mexer nos outros
-- Sincronizar situação de uma conta específica ou de todas as contas com o Conta Azul
-- Acompanhar progresso de sincronização em tempo real (log de sync)
 - Abrir popup do cliente para ver histórico e inadimplência
 - Abrir popup do pedido para ver detalhes
 - Gerar relatório de inadimplência agrupado por pedido, cliente, vendedor ou sem agrupamento
@@ -79,7 +77,7 @@ régua de cobrança.
    - **Cliente**: busca por texto (aperte Enter ou clique em Filtrar)
    - **Status da conta**: Aberto, Quitado, Cancelado
    - **Status da parcela**: Pendente, Parcial, Pago, Vencido, Cancelado
-   - **Origem**: de onde a conta veio (Faturado CA, Especial)
+   - **Origem**: de onde a conta veio (Faturado, Especial)
    - **Vendedor**: filtra contas dos clientes de um ou mais vendedores. A lista traz **também os vendedores inativos** (quem saiu da empresa), no fim e marcados "(inativo)" — título antigo continua no nome de quem vendeu na época, então dá para cobrar/consultar a carteira de um ex-vendedor
    - **Categoria de cliente**: segmento do cliente
    - **Condição de pagamento**: a condição exata do pedido (ex: 14 dias - Boleto, À vista - Pix)
@@ -109,7 +107,7 @@ Desconto sem dinheiro (perdoar saldo) continua na mesma permissão de desconto e
 
 **Especial entregue aparece na aba "Aberto":** desde 08/2026 a entrega não quita mais o título sozinha, então o especial entregue fica em **Aberto** até a baixa na conferência do Caixa. Se o cliente já pagou em dinheiro na entrega, ele **não** é tratado como devedor nesse intervalo (não bloqueia venda nova, não entra na régua nem na inadimplência das telas).
 
-**Aguardando conciliação bancária (Pix comum e cartão, 09/2026):** quando o Caixa processa um pagamento em Pix comum ou cartão — na conferência (especial ou normal/Faturado CA) ou numa Cobrança em Rota —, esse dinheiro **não quita mais sozinho**. Só Dinheiro e PIX Asaas continuam quitando na hora, porque só eles já têm um banco de verdade no momento do clique. O título fica com o selo **"Aguardando conciliação"**:
+**Aguardando conciliação bancária (Pix comum e cartão, 09/2026):** quando o Caixa processa um pagamento em Pix comum ou cartão — na conferência (especial ou normal/Faturado) ou numa Cobrança em Rota —, esse dinheiro **não quita mais sozinho**. Só Dinheiro e PIX Asaas continuam quitando na hora, porque só eles já têm um banco de verdade no momento do clique. O título fica com o selo **"Aguardando conciliação"**:
 - a informação (valor, forma, quando, quem processou) fica **registrada e visível** — não se perde;
 - a parcela continua **PENDENTE/VENCIDO** (ou **PARCIAL**, se só parte foi confirmada por outra forma) pelo valor **cheio**, sem contar esse Pix/cartão como recebido;
 - **não é dívida do cliente** — ele já pagou, só falta o banco confirmar. Por isso esse título **não bloqueia venda nova, não entra na régua de cobrança nem aparece como inadimplente** (mesmo caso do especial entregue aguardando conferência, ver acima — a partir de 09/2026 vale também para pedido **normal**);
@@ -179,11 +177,6 @@ A baixa continua sendo dada **aqui**, em Contas a Receber, quando o valor for de
 7. **Se o vencimento da parcela mudar depois do boleto emitido**, o sistema **atualiza o boleto no Asaas sozinho** — ao abrir o modal de boletos ou ao imprimir — e o PDF e a linha digitável passam a valer a data nova. Se esse ajuste automático falhar, o modal mostra um aviso amarelo ("boleto com vencimento diferente da parcela"); nesse caso, cancele o boleto e emita de novo antes de enviar ao cliente
 8. **Boleto que passou do vencimento** aparece com o badge vermelho **"Boleto vencido"** — ele **continua pagável** no banco do cliente (com juros/multa, se configurados), então o sistema **não emite outro sozinho** (evita duas cobranças vivas e pagamento em dobro). As ações (PDF, linha digitável, WhatsApp, cancelar) continuam disponíveis. Para gerar um boleto com vencimento novo, **cancele o vencido primeiro** e depois emita outro
 
-### Sincronizar com o Conta Azul (transição — só contas antigas)
-- O Conta Azul é **somente leitura** desde 23/07/2026: o app não registra mais nada lá
-- O sync continua existindo apenas para **puxar** baixas de contas antigas (da era CA) que ainda sejam registradas por lá — pedidos novos não têm nada no CA
-- Clique no ícone de atualização (reload) em uma conta específica, ou em **Sync Todas**
-
 ### Gerar relatório de inadimplência
 1. No topo da tela "Contas a Receber — Tabela", abra o menu **"⋯"** (ao lado do botão verde principal) e clique em **Relatório**
 2. Defina o período de vencimento e opcionalmente a categoria de cliente
@@ -205,15 +198,14 @@ A baixa continua sendo dada **aqui**, em Contas a Receber, quando o valor for de
 | Ver a tela e estornar (tudo ou um pagamento específico) | `Pode_Baixar_Contas_Receber` ou `admin` |
 | **Dar baixa manual** (individual ou em lote) — só dinheiro/cheque, entra no caixa do dia de quem baixou | `Pode_Baixar_Contas_Receber_Manual` ou `admin` (além de `Pode_Baixar_Contas_Receber`) |
 | Aplicar desconto numa baixa (parcial ou 100%) | `Pode_Dar_Desconto_Baixa` ou `admin` (além de ter `Pode_Baixar_Contas_Receber`) |
-| Sincronizar com o CA | `Pode_Acessar_Contas_Receber` (acesso à tela permite sync) |
 | Ver contas de todos os vendedores | Qualquer usuário com acesso à tela (a tela não filtra por vendedor automaticamente) |
 
 ---
 
 ## Depende de / Interfere em
 
-- **Pedidos** — cada pedido finalizado gera a conta com parcelas aqui (tudo no app; nada vai ao CA)
-- **Conta Azul (legado)** — contas antigas da era CA foram importadas para cá (origem IMPORTADO_CA). Baixa dada **no Conta Azul** numa dessas contas importadas é espelhada no app sozinha (a cada 3 horas): a parcela é quitada com o banco/forma de lá e o crédito aparece na Conciliação Bancária e nos Saldos por Conta
+- **Pedidos** — cada pedido finalizado gera a conta com parcelas aqui (tudo no app)
+- **Contas importadas (antigas)** — contas antigas foram importadas para cá (origem de importação antiga); a baixa delas é dada no app
 - **Notas Fiscais** — a NF-e do pedido é emitida pelo app (Focus NFe)
 - **Régua de Cobrança** — título de pedido **especial** (fiado local), **bonificação** e conta de origem ESPECIAL **nunca entram na cobrança automática** (decisão do dono, 08/2026): quem cobra especial é o escritório/vendedor, na mão. Amostra não gera título
 - **Caixa Diário** — é a conferência do caixa que baixa as parcelas do que foi recebido na rua. Desde 08/2026 a entrega **não quita mais nenhum título sozinha** (nem de pedido especial): ela só registra o que o motorista recebeu, e o título fica **em aberto** aqui até a baixa no Caixa. Recebendo menos que o valor, a parcela fica **PARCIAL** e o saldo continua em aberto para cobrança. Desde 09/2026, Pix comum/cartão processados pelo Caixa (conferência ou Cobrança em Rota) não quitam mais sozinhos — ficam "Aguardando conciliação" (ver acima)
@@ -226,7 +218,7 @@ A baixa continua sendo dada **aqui**, em Contas a Receber, quando o valor for de
 
 | Caminho | Papel |
 |---------|-------|
-| `frontend/src/pages/Financeiro/ContasReceberTabela.jsx` | Tela completa com tabela, filtros, baixa, sync e relatório |
+| `frontend/src/pages/Financeiro/ContasReceberTabela.jsx` | Tela completa com tabela, filtros, baixa e relatório |
 | `frontend/src/services/contasReceberService.js` | Chamadas de API para contas a receber |
 | `backend/src/routes/contasReceber.js` | Rotas do backend |
 

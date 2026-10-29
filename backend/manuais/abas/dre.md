@@ -14,8 +14,8 @@ A **demonstração de resultado** mês a mês: faturamento − custos e despesas
 
 | Linha | Fonte |
 |-------|-------|
-| Vendas faturadas | Pedidos **FATURADOS** no Conta Azul (soma dos itens, sem bonificação) — mesma regra do Dashboard |
-| Vendas especiais (sem NF) | Pedidos **especiais** (que não vão ao CA), sem bonificação |
+| Vendas faturadas | Pedidos **FATURADOS** (soma dos itens, sem bonificação) — mesma regra do Dashboard |
+| Vendas especiais (sem NF) | Pedidos **especiais** (sem nota fiscal), sem bonificação |
 | (−) Devoluções | Devoluções **ativas** pela data da devolução |
 | = Receita líquida | Soma das linhas acima |
 | (−) Blocos de despesa | **Contas a Pagar** por competência (data da nota; sem ela, o 1º vencimento), agrupadas nos **blocos da DRE** (Impostos sobre vendas, Custos variáveis, Pessoal, Veículos e entregas, Administrativas, Financeiras, Sócios — e os que o usuário criar). Cada bloco mostra o **subtotal** e **abre ao clicar**, revelando as categorias (ordenadas da maior para a menor, com etiqueta **V**=variável, **F**=fixa, **?**=sem definição). O rateio da nota divide sozinho quando a nota tem mais de uma categoria |
@@ -61,7 +61,7 @@ Isso evita que a DRE mostre "prejuízo" falso por causa de retiradas de lucro ou
 
 ## Limitações honestas (importante ao interpretar)
 
-- Despesa que **não está no app** (lançada só no Conta Azul e nunca importada) **não aparece** — quanto mais contas entrarem pelo app (notas capturadas, despesas manuais), mais completa a DRE
+- Despesa que **não está no app** (nunca lançada no app) **não aparece** — quanto mais contas entrarem pelo app (notas capturadas, despesas manuais), mais completa a DRE
 - Despesa sem categoria aparece como **"Sem categoria"** — vale voltar na conta e classificar
 - Impostos sobre venda não são destacados em linha própria (entram como categoria de despesa, se lançados)
 
@@ -75,7 +75,7 @@ Isso evita que a DRE mostre "prejuízo" falso por causa de retiradas de lucro ou
 ## Depende de / Interfere em
 
 - **Pedidos** (faturamento) e **Devoluções** — receita
-- **Contas a Pagar** (com categorias/rateio do Conta Azul) — despesas
+- **Contas a Pagar** (com categorias/rateio) — despesas
 - **Fluxo de Caixa** — visão complementar (caixa, não competência)
 
 ## Arquivos no código

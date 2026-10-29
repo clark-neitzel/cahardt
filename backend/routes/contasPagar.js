@@ -767,7 +767,7 @@ router.post('/', verificarAuth, checkEscrita, async (req, res) => {
             if (!fornecedor) return res.status(400).json({ error: 'Fornecedor não encontrado.' });
         }
         if (enviarCA && !fornecedorId) {
-            return res.status(400).json({ error: 'Para enviar ao Conta Azul é obrigatório informar o fornecedor.' });
+            return res.status(400).json({ error: 'Informe o fornecedor.' });
         }
 
         // ── Condição de pagamento (forma + banco) — OBRIGATÓRIA ao enviar ao Conta Azul.
@@ -1024,7 +1024,7 @@ router.put('/:id', verificarAuth, checkEscrita, async (req, res) => {
             const preEnvio = ['NAO_ENVIAR', 'ENVIAR', 'ERRO'].includes(conta.statusEnvioCA);
             const enviadaCA = ['ENVIADO', 'SINCRONIZADO'].includes(conta.statusEnvioCA);
             if (!preEnvio && !enviadaCA) {
-                return res.status(400).json({ error: 'Conta em envio para o Conta Azul — aguarde terminar (alguns minutos) para alterar as parcelas.' });
+                return res.status(400).json({ error: 'Conta em processamento — aguarde terminar (alguns minutos) para alterar as parcelas.' });
             }
             const erroParcelas = validarParcelasBody(parcelas);
             if (erroParcelas) return res.status(400).json({ error: erroParcelas });
@@ -1040,11 +1040,11 @@ router.put('/:id', verificarAuth, checkEscrita, async (req, res) => {
 
                 // Pós-envio não permite adicionar nem remover parcelas — só editar as existentes em aberto.
                 if (parcelas.some((p) => !p.id)) {
-                    return res.status(400).json({ error: 'Esta despesa já foi enviada ao Conta Azul — não dá para adicionar parcelas novas por aqui, só ajustar o vencimento/valor das que estão em aberto.' });
+                    return res.status(400).json({ error: 'Despesa antiga (importada): não dá para adicionar parcelas novas, só ajustar o vencimento/valor das que estão em aberto.' });
                 }
                 for (const id of abertasIds) {
                     if (!enviadosIds.has(id)) {
-                        return res.status(400).json({ error: 'Esta despesa já foi enviada ao Conta Azul — não dá para excluir parcelas por aqui.' });
+                        return res.status(400).json({ error: 'Despesa antiga (importada): não dá para excluir parcelas.' });
                     }
                 }
                 for (const p of parcelas) {
@@ -1070,18 +1070,18 @@ router.put('/:id', verificarAuth, checkEscrita, async (req, res) => {
                 const preparadas = [];
                 for (const alt of alteracoes) {
                     if (!alt.atual.idParcelaCA) {
-                        return res.status(400).json({ error: `A parcela ${alt.atual.numeroParcela} ainda não terminou de sincronizar com o Conta Azul — tente de novo em alguns minutos.` });
+                        return res.status(400).json({ error: `A parcela ${alt.atual.numeroParcela} ainda está em processamento — tente de novo em alguns minutos.` });
                     }
                     let detalhe;
                     try {
                         detalhe = await contaAzulService.buscarParcelaDetalhe(alt.atual.idParcelaCA);
                     } catch (e) {
                         console.error('[ContasPagar] Falha ao consultar parcela no CA:', e.response?.data || e.message);
-                        return res.status(502).json({ error: 'Não consegui consultar a parcela no Conta Azul agora. Tente novamente em instantes.' });
+                        return res.status(502).json({ error: 'Não consegui consultar a parcela agora. Tente novamente em instantes.' });
                     }
                     const statusCA = String(detalhe?.status || detalhe?.status_traduzido || '').toUpperCase();
                     if (['RECEBIDO', 'RECEBIDO_PARCIAL', 'PAGO', 'PAGO_PARCIAL'].includes(statusCA)) {
-                        return res.status(409).json({ error: `A parcela ${alt.atual.numeroParcela} já está paga no Conta Azul — não dá para alterar o vencimento/valor por aqui.` });
+                        return res.status(409).json({ error: `A parcela ${alt.atual.numeroParcela} já está paga — não dá para alterar o vencimento/valor.` });
                     }
                     const payloadCA = { versao: detalhe.versao };
                     if (alt.vencMudou) {
@@ -1101,7 +1101,7 @@ router.put('/:id', verificarAuth, checkEscrita, async (req, res) => {
                         await contaAzulService.atualizarParcela(alt.atual.idParcelaCA, payloadCA);
                     } catch (e) {
                         console.error('[ContasPagar] Falha ao atualizar parcela no CA:', e.response?.data || e.message);
-                        return res.status(502).json({ error: `Não consegui atualizar a parcela ${alt.atual.numeroParcela} no Conta Azul. As parcelas anteriores desta lista que já mudaram foram salvas; refaça a edição das restantes.` });
+                        return res.status(502).json({ error: `Não consegui atualizar a parcela ${alt.atual.numeroParcela} agora. As parcelas anteriores desta lista que já mudaram foram salvas; refaça a edição das restantes.` });
                     }
                     await prisma.parcelaPagar.update({
                         where: { id: alt.atual.id },
@@ -1124,7 +1124,7 @@ router.put('/:id', verificarAuth, checkEscrita, async (req, res) => {
                         parcelas: { orderBy: { numeroParcela: 'asc' }, include: { pagamentos: { orderBy: { dataPagamento: 'asc' } } } }
                     }
                 });
-                return res.json({ message: 'Despesa atualizada e sincronizada com o Conta Azul!', conta: formatarConta(atualizada, await mapaBancos(), await anexoService.resumoPorContas([atualizada.id])) });
+                return res.json({ message: 'Despesa atualizada!', conta: formatarConta(atualizada, await mapaBancos(), await anexoService.resumoPorContas([atualizada.id])) });
             }
 
             await prisma.$transaction(async (tx) => {
@@ -1367,10 +1367,10 @@ router.post('/:id/reenviar-ca', verificarAuth, checkEscrita, async (req, res) =>
             where: { id: conta.id },
             data: { statusEnvioCA: 'ENVIAR', erroEnvioCA: null }
         });
-        res.json({ message: 'Conta recolocada na fila de envio ao Conta Azul.' });
+        res.json({ message: 'Conta reprocessada.' });
     } catch (error) {
         console.error('Erro ao reenviar conta ao CA:', error);
-        res.status(500).json({ error: 'Erro ao reenviar conta ao CA.' });
+        res.status(500).json({ error: 'Erro ao reprocessar a conta.' });
     }
 });
 
@@ -1567,7 +1567,7 @@ router.put('/:id/parcelas/:parcelaId/pagamentos/:pagamentoId', verificarAuth, ch
 
         if (mudaBancoOuData) {
             if (baixaTravada(pagamento)) {
-                return res.status(400).json({ error: 'Esta baixa veio do Conta Azul (ou já foi enviada a ele): aqui só dá para mudar a forma de pagamento e a observação. Banco e data só mudam no Conta Azul — o Conta Azul não é atualizado por esta tela.' });
+                return res.status(400).json({ error: 'Baixa importada (antiga): aqui só dá para mudar a forma de pagamento e a observação.' });
             }
             const conciliadoExtrato = await prisma.extratoLancamento.findFirst({ where: { pagamentoParcelaPagarId: pagamentoId }, select: { id: true } });
             const conciliadoGrupo = conciliadoExtrato ? null : await prisma.conciliacaoGrupoItem.findFirst({ where: { pagamentoParcelaPagarId: pagamentoId }, select: { id: true } });
@@ -1645,14 +1645,14 @@ router.post('/:id/parcelas/:parcelaId/estorno', verificarAuth, checkEscrita, asy
         // Só estorna localmente depois que o CA confirmar a exclusão (404 = já não existe lá).
         if (pagamento.origem === 'CA') {
             if (!pagamento.idBaixaCA) {
-                return res.status(400).json({ error: 'Esta baixa veio do Conta Azul sem vínculo rastreável. Exclua a baixa lá no CA e me avise para ajustar aqui.' });
+                return res.status(400).json({ error: 'Baixa importada (antiga) sem vínculo rastreável — não dá para excluir por aqui.' });
             }
             try {
                 await contaAzulService.excluirBaixaFinanceira(pagamento.idBaixaCA);
             } catch (e) {
                 if (e?.response?.status !== 404) {
                     console.error('[ContasPagar] Falha ao excluir baixa no CA:', e?.response?.status, e?.response?.data || e.message);
-                    return res.status(400).json({ error: 'O Conta Azul não deixou excluir a baixa (ela pode estar conciliada com o extrato lá). Desfaça a conciliação no CA e tente de novo.' });
+                    return res.status(400).json({ error: 'Não foi possível excluir a baixa importada (antiga). Desfaça a conciliação e tente de novo.' });
                 }
             }
         }

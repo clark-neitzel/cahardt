@@ -12,7 +12,7 @@ permissao: admin
 
 Gerenciamento de todos os usuários do sistema (chamados de "vendedores", mas incluem motoristas, escritório e qualquer pessoa com acesso). Aqui se configura: limites de Flex, alerta de faturamento, formas de atendimento visíveis, permissões detalhadas e status ativo/inativo.
 
-> **Desde 25/07/2026 os usuários são criados 100% pelo app** (botão "Novo Usuário"). A importação de vendedores do Conta Azul foi desligada — o "Sincronizar Tudo" não traz mais usuários. Cada usuário novo nasce **vinculado a uma pessoa do cadastro de clientes** (futuro cadastro de pessoas); usuários antigos (vindos do CA) podem ser vinculados aos poucos pelo link "Vincular cadastro" sob o nome.
+> **Desde 25/07/2026 os usuários são criados 100% pelo app** (botão "Novo Usuário"). Cada usuário novo nasce **vinculado a uma pessoa do cadastro de clientes** (futuro cadastro de pessoas); usuários antigos (importados) podem ser vinculados aos poucos pelo link "Vincular cadastro" sob o nome.
 
 ---
 
@@ -105,7 +105,7 @@ O que muda com a caixinha marcada:
 
 ### Ligar/desligar alerta de faturamento
 - Clique no ícone de sino na linha do vendedor
-- Quando ativo, o vendedor recebe notificação por WhatsApp quando um pedido é faturado no CA
+- Quando ativo, o vendedor recebe notificação por WhatsApp quando um pedido é faturado
 
 ---
 

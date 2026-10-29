@@ -94,7 +94,7 @@ async function criar(dados, usuario, db = prisma) {
     } else {
         if (db !== prisma) {
             // Ver comentário do topo do arquivo: nunca rede dentro de transação.
-            const erro = new Error('Criação de produto com envio à Conta Azul não pode rodar dentro de uma transação. Desligue CA_SOMENTE_LEITURA só quando este fluxo também for ajustado.');
+            const erro = new Error('Criação de produto com sincronização externa não pode rodar dentro de uma transação.');
             erro.status = 500;
             throw erro;
         }
@@ -110,7 +110,7 @@ async function criar(dados, usuario, db = prisma) {
             });
         } catch (e) {
             console.error('[ProdutoService] Falha ao criar produto no CA:', e.message);
-            const erro = new Error(`Não consegui criar o produto na Conta Azul: ${e.message}`);
+            const erro = new Error(`Não consegui criar o produto: ${e.message}`);
             erro.status = 502;
             throw erro;
         }

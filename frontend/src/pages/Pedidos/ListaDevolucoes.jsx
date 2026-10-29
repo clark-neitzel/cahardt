@@ -170,7 +170,7 @@ const ListaDevolucoes = ({ filtros }) => {
                                                 DEV#{dev.numero}
                                             </span>
                                             <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${ehBonif ? 'bg-purple-100 text-purple-700' : TIPO_BADGE[dev.tipo]}`}>
-                                                {ehBonif ? 'BONIF.' : dev.tipo === 'CONTA_AZUL' ? 'CA' : 'ESPECIAL'}
+                                                {ehBonif ? 'BONIF.' : dev.tipo === 'CONTA_AZUL' ? 'NORMAL' : 'ESPECIAL'}
                                             </span>
                                             <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${STATUS_BADGE[dev.status]}`}>
                                                 {dev.status}
@@ -244,7 +244,7 @@ const ListaDevolucoes = ({ filtros }) => {
                                         </div>
                                     )}
 
-                                    {/* CA info */}
+                                    {/* Nota de devolução antiga (importada) */}
                                     {dev.tipo === 'CONTA_AZUL' && (
                                         <div className="p-2 bg-blue-50 rounded border border-blue-200 text-xs space-y-1">
                                             <div><span className="font-bold text-blue-700">Nota Devolução:</span> {dev.notaDevolucaoCA || '-'}</div>
@@ -259,7 +259,7 @@ const ListaDevolucoes = ({ filtros }) => {
                                                 </a>
                                             )}
                                             {dev.processadoCA && (
-                                                <div className="text-green-700 font-medium">Processado no CA</div>
+                                                <div className="text-green-700 font-medium">Processada</div>
                                             )}
                                         </div>
                                     )}

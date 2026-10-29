@@ -515,7 +515,7 @@ function AprovarModal({ pedido, onClose, onDone, onAtualizarFila }) {
         {['NORMAL', 'ESPECIAL'].map(t => (
           <label key={t} className={`flex items-center gap-2 border rounded-lg px-3 py-2 cursor-pointer ${tipo === t ? 'border-sky-400 bg-sky-50' : 'border-gray-200'}`}>
             <input type="radio" name="tipo" checked={tipo === t} onChange={() => setTipo(t)} />
-            <span className="text-sm font-medium text-gray-700">{t === 'NORMAL' ? 'Pedido normal (com nota / vai ao Conta Azul)' : 'Pedido especial (sem nota)'}</span>
+            <span className="text-sm font-medium text-gray-700">{t === 'NORMAL' ? 'Pedido normal (com nota)' : 'Pedido especial (sem nota)'}</span>
           </label>
         ))}
       </div>
@@ -575,7 +575,7 @@ function VincularModal({ pedido, onClose, onDone }) {
   };
   return (
     <Modal onClose={onClose} title={`Vincular cliente · pedido #${pedido.numero}`}>
-      <p className="text-sm text-gray-500 mb-3">Procure o cadastro do cliente no sistema (Conta Azul) e vincule. Depois você poderá aprovar.</p>
+      <p className="text-sm text-gray-500 mb-3">Procure o cadastro do cliente no sistema e vincule. Depois você poderá aprovar.</p>
       <input value={q} onChange={e => setQ(e.target.value)} autoFocus placeholder="Nome, documento ou código…"
         className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm mb-3 focus:ring-2 focus:ring-sky-200" />
       {erro && <p className="text-sm text-red-600 mb-2">{erro}</p>}

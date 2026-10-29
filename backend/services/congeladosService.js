@@ -1451,7 +1451,7 @@ const congeladosService = {
             const c = await prisma.cliente.findFirst({ where: { Documento: { contains: cp.documentoCliente } }, select: { UUID: true } });
             cId = c?.UUID;
         }
-        if (!cId) throw new Error('Cliente sem cadastro no app. Cadastre no Conta Azul e vincule antes de aprovar.');
+        if (!cId) throw new Error('Cliente sem cadastro no app. Cadastre o cliente em Clientes → Novo e vincule antes de aprovar.');
 
         const cliente = await prisma.cliente.findUnique({ where: { UUID: cId }, select: { idVendedor: true, Dia_de_entrega: true } });
 

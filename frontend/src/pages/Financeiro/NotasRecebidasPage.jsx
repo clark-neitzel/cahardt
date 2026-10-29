@@ -1764,7 +1764,7 @@ const PainelVincularParcelas = ({ nota, onCancelar, onChanged }) => {
             <div className="p-4 md:p-5 space-y-4">
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-900 leading-relaxed">
                     Use quando a despesa <b>já está lançada</b> no Contas a Pagar (ex.: contrato parcelado) e a nota chegou depois.
-                    A nota é <b>anexada</b> à(s) parcela(s) — <b>não gera despesa nova</b> e <b>nada é enviado à Conta Azul</b>.
+                    A nota é <b>anexada</b> à(s) parcela(s) — <b>não gera despesa nova</b>.
                 </div>
 
                 {/* Busca de parcelas */}
@@ -4094,9 +4094,6 @@ const DetalheNota = ({ nota, podeOperar, itensPcp = [], onChanged, onRecarregar 
         try {
             const r = await notasEntradaService.cancelarConferencia(nota.id);
             toast.success(r?.message || 'Entrada cancelada. A nota voltou para conferência.');
-            if (r?.avisoCA) {
-                toast('Atenção: esta despesa já pode ter chegado à Conta Azul. Se aparecer lá, exclua-a manualmente no CA.', { icon: '⚠️', duration: 8000 });
-            }
             // Avisos do estorno de estoque (raiz ou dentro de `estoque`, conforme a rota)
             for (const aviso of [...(r?.avisos || []), ...(r?.estoque?.avisos || [])]) {
                 toast(aviso, { icon: '⚠️', duration: 8000 });

@@ -5,7 +5,7 @@
 
 ## Para que serve
 
-As despesas vêm com uma **categoria** do Conta Azul (Matéria Prima, Combustíveis, Salários, Antecipação de Lucros...). Esta tela é onde o usuário faz as **duas escolhas** que montam a DRE:
+As despesas têm uma **categoria** (Matéria Prima, Combustíveis, Salários, Antecipação de Lucros...). Esta tela é onde o usuário faz as **duas escolhas** que montam a DRE:
 
 1. **Bloco** — em qual grupo da DRE a categoria aparece (Custos variáveis, Pessoal, Administrativas...), ou **Fora da DRE** para o que não é resultado.
 2. **Fixa ou Variável** — a natureza da despesa, que calcula a **Margem de Contribuição** na DRE.
@@ -79,10 +79,9 @@ Cada linha tem o botão **"Compra de estoque"** (fica âmbar e com ✓ quando li
 ## De onde vêm as categorias
 
 - **Criadas à mão** no card "Nova categoria" desta tela (ver acima).
-- São criadas sozinhas conforme as contas entram (lançamento manual, nota fiscal ou **Importar do Conta Azul**).
+- São criadas sozinhas conforme as contas entram (lançamento manual ou nota fiscal).
 - Toda categoria nova nasce com um **palpite** de bloco + natureza (para as categorias conhecidas); as desconhecidas nascem "a classificar" (sinalizadas) para o usuário revisar. O palpite **nunca sobrescreve** o que o usuário já escolheu.
 
 ## Relacionado
 
-- **Importar do Conta Azul** (dentro de *Contas a Pagar*): traz o histórico de despesas do CA por CSV.
 - **DRE — Resultado**: usa blocos e natureza; mostra a matriz por blocos, o quadro Fixo × Variável e avisa quando há categorias a classificar.

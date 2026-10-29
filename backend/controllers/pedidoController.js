@@ -558,7 +558,7 @@ const pedidoController = {
             const situacoesCABloqueadas = ['APROVADO', 'FATURADO', 'EM_ABERTO'];
             if (pedidoAtual.statusEnvio === 'RECEBIDO' || situacoesCABloqueadas.includes(pedidoAtual.situacaoCA)) {
                 return res.status(403).json({
-                    error: 'Este pedido já foi recebido pelo Conta Azul e não pode ser editado por aqui. Faça as alterações diretamente no ERP.'
+                    error: 'Este pedido já foi faturado e não pode ser editado por aqui.'
                 });
             }
 
@@ -1745,7 +1745,7 @@ const pedidoController = {
             const pedido = await prisma.pedido.findUnique({ where: { id } });
             if (!pedido) return res.status(404).json({ error: 'Pedido não encontrado' });
             if (!pedido.idVendaContaAzul) {
-                return res.status(400).json({ error: 'Pedido ainda não foi enviado ao CA (sem ID de venda).' });
+                return res.status(400).json({ error: 'Pedido sem venda de faturamento antigo vinculada.' });
             }
 
             const token = await contaAzulService.getAccessToken();
@@ -1838,10 +1838,10 @@ const pedidoController = {
                         }
                     }
                 } catch (_) { }
-                return res.json({ message: 'Pedido não existe mais no CA — marcado como EXCLUIDO.', situacaoCA: 'EXCLUIDO', statusEnvio: 'EXCLUIDO' });
+                return res.json({ message: 'Pedido não existe mais no faturamento antigo — marcado como EXCLUIDO.', situacaoCA: 'EXCLUIDO', statusEnvio: 'EXCLUIDO' });
             }
             console.error('Erro ao consultar CA:', error.message);
-            res.status(500).json({ error: error.message || 'Erro ao consultar CA' });
+            res.status(500).json({ error: error.message || 'Erro ao consultar faturamento antigo' });
         }
     },
 
@@ -1920,7 +1920,7 @@ const pedidoController = {
             return { chave_acesso: pedido.nfeChave, numero_nota: pedido.nfeNumero, status: 'EMITIDA', cache: true };
         }
         if (!pedido.idVendaContaAzul) {
-            const e = new Error('Pedido sem venda no Conta Azul.');
+            const e = new Error('Pedido sem venda de faturamento antigo.');
             e.statusCode = 400;
             throw e;
         }
@@ -1944,7 +1944,7 @@ const pedidoController = {
             ini = new Date(fim.getTime() + 24 * 3600 * 1000);
         }
         if (!nota) {
-            const e = new Error('NF-e não encontrada no Conta Azul — a nota pode ainda não ter sido emitida.');
+            const e = new Error('NF-e não encontrada — a nota pode ainda não ter sido emitida.');
             e.statusCode = 404;
             throw e;
         }
@@ -2011,10 +2011,10 @@ const pedidoController = {
                 include: { cliente: { select: { UUID: true } } }
             });
             if (!pedido) return res.status(404).json({ error: 'Pedido não encontrado' });
-            if (!pedido.idVendaContaAzul) return res.status(400).json({ error: 'Pedido sem ID de venda no CA' });
+            if (!pedido.idVendaContaAzul) return res.status(400).json({ error: 'Pedido sem venda de faturamento antigo vinculada' });
 
             const clienteCAId = pedido.cliente?.UUID;
-            if (!clienteCAId) return res.status(400).json({ error: 'Cliente sem ID no CA' });
+            if (!clienteCAId) return res.status(400).json({ error: 'Cliente sem vínculo de faturamento antigo' });
 
             const dataVendaStr = new Date(pedido.dataVenda).toISOString().split('T')[0];
             const parcelas = await contaAzulService.encontrarParcelasDeVenda(

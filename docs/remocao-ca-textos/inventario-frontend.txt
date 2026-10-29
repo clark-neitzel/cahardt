@@ -1,0 +1,172 @@
+frontend/src/components/AlertaFaturamento.jsx:119:                                        {!p.especial && p.situacaoCA && <span className="ml-2 text-amber-600 font-medium">CA: {p.situacaoCA}</span>}
+frontend/src/components/AlertaPedidoConvertido.jsx:117:                                {a.situacaoCA === 'FATURADO' ? 'Já faturado no CA ✓' : 'Enviado ao Conta Azul — falta emitir a NF-e'}
+frontend/src/components/Diario/DiarioGateway.jsx:177:            <p className="mt-8 text-gray-400 text-sm font-medium">Controle de Frota Integrado — Conta Azul App</p>
+frontend/src/pages/Pedidos/ListaDevolucoes.jsx:173:                                                {ehBonif ? 'BONIF.' : dev.tipo === 'CONTA_AZUL' ? 'CA' : 'ESPECIAL'}
+frontend/src/pages/Pedidos/ListaDevolucoes.jsx:247:                                    {/* CA info */}
+frontend/src/pages/Pedidos/ListaDevolucoes.jsx:262:                                                <div className="text-green-700 font-medium">Processado no CA</div>
+frontend/src/pages/Pedidos/WizardProcessarCA.jsx:20:            { key: 'buscar-parcela', label: 'Buscar parcela no CA', tipo: 'auto' },
+frontend/src/pages/Pedidos/WizardProcessarCA.jsx:21:            { key: 'cancelar-cobranca', label: 'Cancelar cobranca/boleto no CA', tipo: 'manual' },
+frontend/src/pages/Pedidos/WizardProcessarCA.jsx:25:            steps.push({ key: 'gerar-cobranca', label: 'Gerar nova cobranca no CA', tipo: 'manual' });
+frontend/src/pages/Pedidos/WizardProcessarCA.jsx:28:        steps.push({ key: 'verificar', label: 'Verificar resultado no CA', tipo: 'auto' });
+frontend/src/pages/Pedidos/WizardProcessarCA.jsx:91:            toast.success('Devolucao processada no Conta Azul com sucesso!');
+frontend/src/pages/Pedidos/WizardProcessarCA.jsx:125:                        <h2 className="text-sm font-bold text-gray-900">Processar no Conta Azul</h2>
+frontend/src/pages/Pedidos/WizardProcessarCA.jsx:185:                                                    <p className="font-bold mb-1">Acao necessaria no painel do Conta Azul:</p>
+frontend/src/pages/Pedidos/WizardProcessarCA.jsx:217:                                                    <p className="font-bold mb-1">Acao necessaria no painel do Conta Azul:</p>
+frontend/src/pages/Pedidos/WizardProcessarCA.jsx:236:                                                <p className="text-xs text-gray-600">Baixe o PDF do novo boleto no CA e anexe aqui.</p>
+frontend/src/pages/Pedidos/WizardProcessarCA.jsx:273:                                                <div><span className="text-gray-500">Status CA:</span> <span className={`font-bold ${verificacaoData.status === 'QUITADO' || verificacaoData.status === 'RECEBIDO' ? 'text-green-700' : 'text-amber-700'}`}>{verificacaoData.status}</span></div>
+frontend/src/pages/Atendimentos/ModalPedidoConsulta.jsx:205:                                    {p.especial ? '' : 'CA: '}{p.situacaoCA}
+frontend/src/pages/Atendimentos/ModalPedidoConsulta.jsx:467:                                            NF-e emitida no Conta Azul{p.nfeNumero != null ? <> — nº <b>{p.nfeNumero}</b></> : null}
+frontend/src/pages/Atendimentos/ModalPedidoConsulta.jsx:531:                                                {dev.tipo === 'CONTA_AZUL' ? 'CA' : 'ESPECIAL'}
+frontend/src/pages/Pedidos/PixAvulsoModal.jsx:151:                                novo na sequência, vai para o Conta Azul e a <b>NF-e deverá ser emitida</b>.
+frontend/src/pages/Pedidos/NovoPedido.jsx:2243:                                            <p className="text-[11px] text-gray-400 mt-0.5">Se informado, será enviado ao Conta Azul como frete da venda.</p>
+frontend/src/pages/Pedidos/NovoPedido.jsx:3075:                                             ped.statusEnvio === 'RECEBIDO' ? 'Recebido CA' :
+frontend/src/pages/Admin/Contabilidade/AbaPagar.jsx:15:    IMPORTADO_CA: { label: 'Importada do CA', cls: 'bg-gray-100 text-gray-700' },
+frontend/src/pages/Admin/Contabilidade/AbaPagar.jsx:170:                                <option value="IMPORTADO_CA">Importada do CA</option>
+frontend/src/pages/Pedidos/ListaPedidos.jsx:88:            fontFamily="system-ui, sans-serif" fill="#fff" letterSpacing="-0.5">CA</text>
+frontend/src/pages/Pedidos/ListaPedidos.jsx:824:            toast.error(e.response?.data?.error || 'Erro ao buscar cobranças no CA');
+frontend/src/pages/Pedidos/ListaPedidos.jsx:831:            toast.error('Pedido ainda não foi enviado ao CA.');
+frontend/src/pages/Pedidos/ListaPedidos.jsx:843:            toast.error(e.response?.data?.error || 'Erro ao consultar CA');
+frontend/src/pages/Pedidos/ListaPedidos.jsx:1544:                                                    {pedido.especial ? '' : 'CA: '}{pedido.situacaoCA}
+frontend/src/pages/Pedidos/ListaPedidos.jsx:1575:                                                    title="Consultar situação no Conta Azul"
+frontend/src/pages/Pedidos/ListaPedidos.jsx:1578:                                                    <span className="hidden lg:inline">Sync CA</span>
+frontend/src/pages/Pedidos/ListaPedidos.jsx:1581:                                            {/* Pílula CA — boleto/cobrança no Conta Azul. Check ✓ = tem boleto lá
+frontend/src/pages/Pedidos/ListaPedidos.jsx:1582:                                                (o check vem do cache, atualizado ao imprimir em lote ou no Sync CA) */}
+frontend/src/pages/Pedidos/ListaPedidos.jsx:1589:                                                        title={pedido.caBoletoStatus === 'PENDENTE' ? 'Boleto emitido no Conta Azul' : pedido.caBoletoStatus === 'PAGO' ? 'Boleto do CA já pago' : 'Cobranças no Conta Azul'}
+frontend/src/pages/Pedidos/ListaPedidos.jsx:1592:                                                        <span className="hidden lg:inline">CA</span>
+frontend/src/pages/Pedidos/ListaPedidos.jsx:1613:                                                                            <p className="text-[10px] font-bold text-gray-500 uppercase">Cobranças CA</p>
+frontend/src/pages/Pedidos/ListaPedidos.jsx:2037:                                <p className="text-[10px] text-gray-500 mt-1">Ajuste apenas no app — não altera o pedido no Conta Azul.</p>
+frontend/src/pages/Pedidos/ListaPedidos.jsx:2213:                                                    {dev.tipo === 'CONTA_AZUL' ? 'CA' : 'ESPECIAL'}
+frontend/src/pages/Pedidos/ListaPedidos.jsx:2266:                                        title="Consultar situação no Conta Azul"
+frontend/src/pages/Pedidos/ListaPedidos.jsx:2277:                                            title="Links de cobrança (PIX/Boleto) no CA"
+frontend/src/pages/Pedidos/ListaPedidos.jsx:2297:                                                                <p className="text-[10px] font-bold text-gray-500 uppercase">Cobranças CA</p>
+frontend/src/pages/Pedidos/ImprimirLoteModal.jsx:65:    const caIndisponivel = validos.filter(i => i.caErro);                   // não deu p/ consultar o CA
+frontend/src/pages/Pedidos/ImprimirLoteModal.jsx:174:                                Conferindo boletos (CA e Asaas)
+frontend/src/pages/Pedidos/ImprimirLoteModal.jsx:180:                                        title="Consultar o Conta Azul de novo (ignora a conferência recente)">
+frontend/src/pages/Pedidos/ImprimirLoteModal.jsx:202:                                            <Sinal estado={sinalCA(i)} rotulo="CA" />
+frontend/src/pages/Pedidos/ImprimirLoteModal.jsx:211:                                    Consultando o Conta Azul do pedido {checandoIdx + 1}...
+frontend/src/pages/Pedidos/ImprimirLoteModal.jsx:235:                                        Sai na sequência (Conta Azul e Asaas) — quem fatura só junta e grampeia.
+frontend/src/pages/Pedidos/ImprimirLoteModal.jsx:247:                                    <p className="text-xs text-red-700 mt-1">{semNF.map(i => `#${i.numero}`).join(', ')} — emita a nota no Conta Azul primeiro.</p>
+frontend/src/pages/Pedidos/ImprimirLoteModal.jsx:253:                                        <AlertTriangle className="h-4 w-4 shrink-0" /> Não consegui consultar o Conta Azul em {caIndisponivel.length} pedido(s)
+frontend/src/pages/Pedidos/ImprimirLoteModal.jsx:256:                                        {caIndisponivel.map(i => `#${i.numero}`).join(', ')} — se houver boleto do CA neles, <b>não sairá</b> nesta impressão. Feche e tente de novo, ou imprima esses pelo Conta Azul.
+frontend/src/pages/Pedidos/ImprimirLoteModal.jsx:268:                                        <AlertTriangle className="h-4 w-4 shrink-0" /> {semBoleto.length} pedido(s) a prazo sem boleto (nem no CA, nem no Asaas)
+frontend/src/pages/Admin/Vendedores/PermissoesModal.jsx:1030:                    label="Reatribuir Vendedor em Pedidos" sublabel="Trocar o vendedor de pedidos existentes (ajuste apenas no app, não afeta o Conta Azul)" />
+frontend/src/pages/Admin/Vendedores/PermissoesModal.jsx:1296:                        label="Baixar no Caixa (Quitar CA)" sublabel="Dar baixa de entregas à vista (dinheiro/pix/cartão) no Conta Azul" />
+frontend/src/pages/Pedidos/ModalDevolucao.jsx:132:                    toast.success('Devolução registrada e processada no Conta Azul.');
+frontend/src/pages/Pedidos/ModalDevolucao.jsx:136:                        ? '⚠️ Parcela já estava paga no CA'
+frontend/src/pages/Pedidos/ModalDevolucao.jsx:138:                            ? '⚠️ Parcela não encontrada no CA'
+frontend/src/pages/Pedidos/ModalDevolucao.jsx:139:                            : '⚠️ Auto-processamento no CA falhou';
+frontend/src/pages/Pedidos/ModalDevolucao.jsx:145:                    toast('Devolução registrada. Verifique manualmente no CA.', { icon: '⚠️' });
+frontend/src/pages/Pedidos/ModalDevolucao.jsx:315:                                <p className="text-xs font-bold text-blue-700 uppercase">Dados da Nota de Devolução (Conta Azul)</p>
+frontend/src/pages/Pedidos/ModalDevolucao.jsx:360:                                <p>Apos registrar a devolucao, um assistente guiado ajudara a processar no Conta Azul (cancelar cobranca, aplicar desconto, gerar novo boleto).</p>
+frontend/src/pages/Pedidos/ModalDevolucao.jsx:372:                                ? `Registrar e Processar no CA · R$ ${valorTotalDevolucao.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+frontend/src/pages/Pedidos/ModalDevolucao.jsx:381:                {/* Wizard Processar CA (boleto) */}
+frontend/src/pages/Admin/Contabilidade/ContabilidadePage.jsx:51:    NF_CA: { label: 'NF-e CA', cls: 'bg-blue-100 text-blue-800' },
+frontend/src/pages/Admin/Contabilidade/ContabilidadePage.jsx:54:    IMPORTADA: { label: 'Importada do CA', cls: 'bg-gray-100 text-gray-700' },
+frontend/src/pages/Admin/Contabilidade/ContabilidadePage.jsx:73:            : (l.pedidoNumero ? `#${l.pedidoNumero}` : (l.numeroVendaCA ? `CA #${l.numeroVendaCA}` : '—'));
+frontend/src/pages/Admin/Contabilidade/ContabilidadePage.jsx:434:                                <option value="NF_CA">NF-e do Conta Azul</option>
+frontend/src/pages/Admin/Contabilidade/ContabilidadePage.jsx:437:                                <option value="IMPORTADA">Importada do CA</option>
+frontend/src/pages/Admin/Contabilidade/ContabilidadePage.jsx:474:                                    <option value="IMPORTADO_CA">Importada do CA</option>
+frontend/src/pages/Admin/Contabilidade/AbaPacote.jsx:15:    ['XMLs de saída', 'NF-e de venda e devolução (app e Conta Azul)'],
+frontend/src/pages/Atendimentos/linhaDoTempoPedido.js:476:                ? 'aprovado dentro do app — bonificação e especial não vão ao Conta Azul'
+frontend/src/pages/Atendimentos/linhaDoTempoPedido.js:554:            titulo: `Baixa registrada no Conta Azul${p.baixaCaValor != null ? ` · ${fmtMoeda(p.baixaCaValor)}` : ''}`,
+frontend/src/pages/Admin/Embarques/AuditoriaEntregas.jsx:287:                            placeholder="Nome ou número CA"
+frontend/src/pages/Admin/Embarques/AuditoriaEntregas.jsx:358:                                        <span className="text-xs text-gray-500 font-mono">Ped CA: {entrega.numero || 'S/N'}</span>
+frontend/src/pages/Admin/Embarques/AuditoriaEntregas.jsx:508:                                {editandoEntrega.cliente?.NomeFantasia || editandoEntrega.cliente?.Nome} — Ped CA: {editandoEntrega.numero}
+frontend/src/pages/Admin/Embarques/AdicionarPedidosModal.jsx:10:    return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-sky-100 text-sky-700 border border-sky-200">CA</span>;
+frontend/src/pages/Admin/Embarques/AdicionarPedidosModal.jsx:219:                                <option value="normal">CA — Normal</option>
+frontend/src/pages/Admin/Produtos/GerenciarProduto.jsx:1323:                        <div className="font-medium mt-0.5" style={{ fontSize: 11.5, color: '#9AA0B4' }}>Exclusivo do app — não altera a Conta Azul</div>
+frontend/src/pages/Admin/Produtos/GerenciarProduto.jsx:1655:                                        <div className="font-medium mt-0.5" style={{ fontSize: 12, color: '#9AA0B4' }}>Ajustes exclusivos do app — não alteram a Conta Azul</div>
+frontend/src/pages/Admin/Configuracoes/NotasCertificadoConfig.jsx:638:            {/* ── Conexão Conta Azul (informativo) ── */}
+frontend/src/pages/Admin/Configuracoes/SecaoAsaas.jsx:111:                            <StatusItem emoji="🔗" titulo="Conta no Conta Azul" detalhe='baixas entram na conta "ASAAS"'
+frontend/src/pages/Admin/Configuracoes/SecaoAsaas.jsx:118:                            3️⃣ o Asaas avisa o app em segundos → 4️⃣ o app dá baixa na parcela <b>aqui e no Conta Azul</b>.
+frontend/src/pages/KitFesta/AbaPedidos.jsx:252:                <Phone className="h-3.5 w-3.5" /> O cliente informou/corrigiu o celular ({pedido.telefoneCliente}). Atualize no cadastro do app/CA.
+frontend/src/pages/KitFesta/AbaPedidos.jsx:303:              <p className="text-xs text-gray-500 mb-2">Este cliente ainda não tem cadastro. Cadastre no Conta Azul, sincronize, e então busque e vincule aqui antes de aprovar.</p>
+frontend/src/pages/Caixa/CaixaDiarioPage.jsx:603:        if (!confirm(`Quitar ${ids.length} entrega(s) no Conta Azul (caixinha)?\n\n${nomes}`)) return;
+frontend/src/pages/Caixa/CaixaDiarioPage.jsx:641:            toast.error(error.response?.data?.error || 'Erro ao quitar no CA.');
+frontend/src/pages/Caixa/CaixaDiarioPage.jsx:1023:                                {/* Resultado da última Baixa CA (parcial / sem baixa / erro) */}
+frontend/src/pages/Caixa/CaixaDiarioPage.jsx:1027:                                {/* Barra de seleção para baixa CA */}
+frontend/src/pages/Caixa/CaixaDiarioPage.jsx:1031:                                        <span className="text-xs font-medium text-indigo-700">Baixa CA:</span>
+frontend/src/pages/Caixa/CaixaDiarioPage.jsx:1060:                                                {podeBaixarCaixa && <th className="py-2 px-2 text-center w-10" title="Selecionar para baixa CA">CA</th>}
+frontend/src/pages/Caixa/CaixaDiarioPage.jsx:1291:                                                                Baixa CA
+frontend/src/pages/SiteAdmin/SiteAdmin.jsx:518:            <span className="text-sm font-medium text-gray-700">{t === 'NORMAL' ? 'Pedido normal (com nota / vai ao Conta Azul)' : 'Pedido especial (sem nota)'}</span>
+frontend/src/pages/SiteAdmin/SiteAdmin.jsx:578:      <p className="text-sm text-gray-500 mb-3">Procure o cadastro do cliente no sistema (Conta Azul) e vincule. Depois você poderá aprovar.</p>
+frontend/src/pages/PCP/ReceitaDetalhe.jsx:805:                        Alguns itens estão sem custo cadastrado — o valor acima pode estar incompleto. Cadastre o custo do produto (no Conta Azul ou manualmente no app) ou crie a receita do subproduto.
+frontend/src/pages/Dashboard/AbaUsoIA.jsx:421:                Mostra só o que o CA-Hardt chamou; é uma estimativa, não a fatura da OpenAI.
+frontend/src/pages/Dashboard/DashboardGeral.jsx:300:                                titulo="Pedidos com erro de envio ao Conta Azul"
+frontend/src/pages/Financeiro/ContasBancosPage.jsx:326:                    Lançamentos antigos importados podem aparecer em <span className="font-semibold">“Não informado”</span> (o Conta Azul não guardava o banco). Clique numa conta para ver o extrato — lá dá para <span className="font-semibold">mover um lançamento para a conta certa</span> (ícone de setas) e <span className="font-semibold">registrar ajuste manual de saldo</span>. Ajustes valem só aqui no app (não vão ao Conta Azul).
+frontend/src/pages/Financeiro/CanhotosTab.jsx:991:                        Nas notas antigas do Conta Azul o botão não aparece (a DANFE delas não é gerada pelo app) — baixe pela aba <b>Emitidas</b>.
+frontend/src/pages/Financeiro/FluxoCaixaPage.jsx:312:                    <span className="font-semibold">realizado</span> = pagamentos registrados pela <span className="font-semibold">data em que aconteceram</span> (incluindo as baixas vindas do Conta Azul). Dias futuros mostram só o previsto.
+frontend/src/pages/Financeiro/BoletosAsaasModal.jsx:185:                                                {' · '}baixa no CA {p.boleto.baixaCaOk ? 'OK' : 'pendente'}
+frontend/src/pages/Financeiro/BoletosAsaasModal.jsx:269:                                Quando o cliente pagar, o Asaas avisa o sistema e a baixa acontece sozinha — aqui e no Conta Azul (conta ASAAS).
+frontend/src/pages/Financeiro/ContasReceberTabela.jsx:594:        if (!window.confirm(`Verificar ${contasUnicas.length} conta(s) visíveis no Conta Azul? Uma por uma, com log detalhado.`)) return;
+frontend/src/pages/Financeiro/ContasReceberTabela.jsx:642:        if (!idVendaCA) { toast.error('Pedido ainda não foi ao CA'); return; }
+frontend/src/pages/Financeiro/ContasReceberTabela.jsx:649:            toast.error(e.response?.data?.error || 'Erro na sincronização CA');
+frontend/src/pages/Financeiro/ContasReceberTabela.jsx:955:                                title="Verifica no Conta Azul todas as contas abertas e aplica as baixas que já foram pagas lá"
+frontend/src/pages/Financeiro/ContasReceberTabela.jsx:959:                                {syncingTodas ? 'Baixando...' : 'Baixar parcelas do CA'}
+frontend/src/pages/Financeiro/ContasReceberTabela.jsx:1093:                            options={[{ valor: 'FATURADO_CA', label: 'Faturado CA' }, { valor: 'ESPECIAL', label: 'Especial' }]}
+frontend/src/pages/Financeiro/ContasReceberTabela.jsx:1382:                                                        title="Verificar baixas no Conta Azul"
+frontend/src/pages/Financeiro/ContasReceberTabela.jsx:1404:                                                <span title="Origem"><span className="text-gray-400">Orig.:</span> {l.origem === 'FATURADO_CA' ? 'CA' : 'Esp.'}</span>
+frontend/src/pages/Financeiro/ContasReceberTabela.jsx:1482:            {/* Modal log sync CA */}
+frontend/src/pages/Financeiro/ContasReceberTabela.jsx:1488:                                Sync CA — {syncLog.progresso}/{syncLog.total}
+frontend/src/pages/Financeiro/ContasReceberTabela.jsx:1834:                                                                {pc.observacao && pc.observacao.startsWith('CA:') && (
+frontend/src/pages/Financeiro/ContasReceberTabela.jsx:1850:                                                    <RefreshCw className={`w-3.5 h-3.5 ${syncing === p.contaReceber.id ? 'animate-spin' : ''}`} /> Sync CA
+frontend/src/pages/Financeiro/ContasReceberTabela.jsx:2185:                        <Field label="Origem" value={l.origem === 'FATURADO_CA' ? 'Faturado CA' : 'Especial'} />
+frontend/src/pages/Financeiro/ContasReceberTabela.jsx:2188:                        <Field label="ID CA" value={l.idVendaContaAzul ? '✓ Sincronizado' : 'Não enviado'} />
+frontend/src/pages/Financeiro/ContasReceberTabela.jsx:2306:                            <RefreshCw className={`w-4 h-4 ${syncing === l.contaId ? 'animate-spin' : ''}`} /> Sync CA
+frontend/src/pages/Financeiro/ConciliacaoBancariaPage.jsx:232:        if (!window.confirm(`Esta baixa está em "${p.outraConta.nome}". Mover para a conta deste extrato (no app e no Conta Azul, quando vinculada)?`)) return;
+frontend/src/pages/Financeiro/ConciliacaoBancariaPage.jsx:400:                    {/* Janela de vencimento + busca — como no Conta Azul */}
+frontend/src/pages/Financeiro/ConciliacaoBancariaPage.jsx:479:                                                {!p.vaiAoCA && ' · importada do CA (baixa fica só no app)'}
+frontend/src/pages/Financeiro/ConciliacaoBancariaPage.jsx:535:                                                        {corrigindo === p.id ? 'Corrigindo…' : 'Corrigir para esta conta (app + CA)'}
+frontend/src/pages/Financeiro/ConciliacaoBancariaPage.jsx:614:                                    + Tarifa do boleto CA (R$ 1,50)
+frontend/src/pages/Financeiro/ConciliacaoBancariaPage.jsx:887:                                A despesa é criada <strong>já paga</strong> em {fmtData(lancamento.data)}, no banco deste extrato, e vai para o Conta Azul.
+frontend/src/pages/Financeiro/ConciliacaoBancariaPage.jsx:996:                                conciliada</strong> no banco deste extrato — e vai para o Conta Azul.
+frontend/src/pages/Financeiro/ConciliacaoBancariaPage.jsx:1592:                            <div className="text-xs text-amber-700">Conciliar dá a baixa neste boleto (data e banco do extrato){escolhido.detalhe?.vaiAoCA === false ? ' — fica só no app (importada do CA)' : ' e envia ao Conta Azul'}.</div>
+frontend/src/pages/Financeiro/ConciliacaoBancariaPage.jsx:1596:                                Boleto do Conta Azul: crédito líquido da tarifa de R$ {fmt(escolhido.tarifa)} — ao Conciliar, a tarifa fica registrada como motivo da diferença.
+frontend/src/pages/Financeiro/ConciliacaoBancariaPage.jsx:1861:                                    title='Descobre no Conta Azul de quem é cada "Pagamento de Boleto para Nome não encontrado" (fornecedor, despesa, nº da nota)'
+frontend/src/pages/Financeiro/ConciliacaoBancariaPage.jsx:1864:                                    Identificar débitos no CA ({debitosSemNome})
+frontend/src/pages/Financeiro/ConciliacaoBancariaPage.jsx:1965:                                    : 'Nenhum lançamento do extrato neste período. Importe o arquivo OFX do banco — ou o PDF do extrato do Conta Azul — pelo botão verde no topo.'}
+frontend/src/pages/Financeiro/ConciliacaoBancariaPage.jsx:2085:                            Como funciona: exporte o extrato do banco em OFX — ou, na Conta PJ do Conta Azul (que não gera OFX), o próprio PDF do extrato — e importe aqui (importar de novo não duplica —
+frontend/src/pages/Financeiro/ConciliacaoBancariaPage.jsx:2088:                            Contas a Pagar (aí Conciliar dá a baixa na hora, com a data e o banco do extrato, e envia ao Conta Azul).
+frontend/src/pages/Financeiro/CategoriasDespesaPage.jsx:446:                                Nenhuma categoria ainda. Importe as contas do Conta Azul para elas aparecerem aqui.
+frontend/src/pages/Financeiro/NotasRecebidasPage.jsx:1767:                    A nota é <b>anexada</b> à(s) parcela(s) — <b>não gera despesa nova</b> e <b>nada é enviado à Conta Azul</b>.
+frontend/src/pages/Financeiro/NotasRecebidasPage.jsx:4098:                toast('Atenção: esta despesa já pode ter chegado à Conta Azul. Se aparecer lá, exclua-a manualmente no CA.', { icon: '⚠️', duration: 8000 });
+frontend/src/pages/Financeiro/ContasPagarPage.jsx:312:                title={conta?.erroEnvioCA || 'Erro ao enviar para a Conta Azul'}
+frontend/src/pages/Financeiro/ContasPagarPage.jsx:322:                title="Na fila para a Conta Azul. Se houver fornecedor novo, ele é criado lá primeiro; pode levar alguns minutos."
+frontend/src/pages/Financeiro/ContasPagarPage.jsx:638:                        {/* Período por vencimento — FiltroPeriodo (padrão do sistema, estilo CA) */}
+frontend/src/pages/Financeiro/ContasPagarPage.jsx:772:                                    <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Conta Azul</th>
+frontend/src/pages/Financeiro/ContasPagarPage.jsx:846:                    lance a despesa (manual ou da nota fiscal) e dê a <span className="font-semibold">baixa</span> aqui quando pagar — uma parcela ou várias em lote. Marque as pagas para <span className="font-semibold">imprimir os recibos</span> (um por folha). O Conta Azul entra só para o histórico: despesas antigas pagas por lá (DDA) têm a baixa refletida aqui sozinha.
+frontend/src/pages/Financeiro/ContasPagarPage.jsx:979:            .catch(() => toast.error('Não consegui carregar os bancos do Conta Azul.'))
+frontend/src/pages/Financeiro/ContasPagarPage.jsx:1874:                                Despesa já enviada ao Conta Azul. Você pode ajustar o <b>vencimento</b> e o <b>valor</b> das parcelas em aberto — a mudança é aplicada também no Conta Azul. Não é possível adicionar, excluir ou mexer em parcela já paga.
+frontend/src/pages/Financeiro/ContasPagarPage.jsx:1879:                                Esta despesa ainda está sendo enviada ao Conta Azul. Aguarde alguns minutos para poder ajustar as parcelas.
+frontend/src/pages/Financeiro/ContasPagarPage.jsx:2320:                        <p className="text-xs text-gray-400 mt-1">{vaiAoCA ? 'Conta que vai ao Conta Azul: a baixa é lançada nesse banco.' : 'De onde saiu o dinheiro (aparece no relatório por conta).'}</p>
+frontend/src/pages/Financeiro/ContasPagarPage.jsx:2370:            .catch(() => toast.error('Não consegui carregar os bancos do Conta Azul.'))
+frontend/src/pages/Financeiro/ContasPagarPage.jsx:2409:                                Cada parcela é quitada pelo <span className="font-medium">saldo restante</span>, na mesma data, forma e banco. As despesas já enviadas ao Conta Azul recebem a baixa lá também.
+frontend/src/pages/Financeiro/ContasPagarPage.jsx:2529:                            Esta baixa veio do Conta Azul ou já foi enviada para lá — só dá para mudar a <b>forma de pagamento</b> e a <b>observação</b>. Banco e data só mudam no Conta Azul.
+frontend/src/pages/Financeiro/ContasPagarPage.jsx:2654:            toast.success('Reenvio à Conta Azul solicitado.');
+frontend/src/pages/Financeiro/ContasPagarPage.jsx:2664:        const veioDoCA = String(pagamento.origem || '').toUpperCase() === 'CA';
+frontend/src/pages/Financeiro/ContasPagarPage.jsx:2666:            ? 'Esta baixa veio do Conta Azul (DDA). Estornar aqui EXCLUI a baixa também lá no CA e a parcela volta a ficar em aberto nos dois. Continuar?'
+frontend/src/pages/Financeiro/ContasPagarPage.jsx:2686:        if (origem === 'CA' || origem === 'DDA' || origem === 'CONTA_AZUL') return !!p.temBaixaCA;
+frontend/src/pages/Financeiro/ContasPagarPage.jsx:2716:                            <span className="font-semibold">Erro no envio à Conta Azul:</span> {conta.erroEnvioCA}
+frontend/src/pages/Financeiro/ContasPagarPage.jsx:2824:                                                        {String(pg.origem || '').toUpperCase() === 'CA' || String(pg.origem || '').toUpperCase() === 'DDA' ? ' · via Conta Azul' : ''}
+frontend/src/pages/Financeiro/ContasPagarPage.jsx:2899:                                Reenviar à Conta Azul
+frontend/src/pages/Financeiro/NotasFiscais.jsx:73:        return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700">Emitida no CA</span>;
+frontend/src/pages/Financeiro/NotasFiscais.jsx:255:            if (p.notaCA) continue; // notas antigas do CA não entram na fila de emissão
+frontend/src/pages/Relatorios/RelatorioPedidos.jsx:115:            'Tipo', 'Status', 'Situação CA', 'Entrega', 'Data Entrega', 'Condição Pgto',
+frontend/src/pages/Relatorios/RelatorioPedidos.jsx:244:                            <label className="text-xs text-gray-500 font-medium">Situação CA</label>
+frontend/src/pages/Relatorios/RelatorioPedidos.jsx:447:                                                <span className="text-gray-400">Situação CA</span>
+frontend/src/pages/Delivery/DeliveryKanban.jsx:107:            toast.error('Este pedido ainda não foi faturado no Conta Azul. Fature primeiro para movimentar no Delivery.', {
+frontend/src/pages/Delivery/DeliveryKanban.jsx:393:                    <span>Não faturado no CA — não pode movimentar</span>
+frontend/src/pages/Delivery/DeliveryKanban.jsx:484:                        title={naoFaturado ? 'Fature o pedido no CA para movimentar' : `Voltar para ${LABELS[ant]}`}
+frontend/src/pages/Delivery/DeliveryKanban.jsx:514:                            title={naoFaturado ? 'Fature o pedido no CA para movimentar' : ''}
+frontend/src/pages/Delivery/DeliveryKanban.jsx:595:                                <strong>Pedido ainda não foi faturado no Conta Azul.</strong> Fature primeiro para movimentar pelo Delivery.
+frontend/src/pages/Delivery/DeliveryKanban.jsx:669:                            <p className="text-[10px] uppercase font-semibold text-gray-400 mb-0.5">Situação CA</p>
+frontend/src/pages/Ponto/BaterPonto.jsx:177:          <div><p className="text-xs text-blue-100 leading-none">Registro de Ponto</p><p className="text-base font-bold leading-tight">CA-Hardt</p></div>
+frontend/src/pages/Clientes/DetalheCliente.jsx:767:                                                {dev.tipo === 'CONTA_AZUL' && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">CA</span>}
+frontend/src/pages/Clientes/DetalheCliente.jsx:787:                                            {dev.notaDevolucaoCA && <p className="text-[10px] text-blue-600 mt-1">Nota CA: {dev.notaDevolucaoCA}</p>}
+frontend/src/pages/Estoque/HistoricoEstoque.jsx:49:            {/* Selo de sincronização com o Conta Azul removido (09/2026): desde 23/07 o CA é
+frontend/src/pages/Estoque/HistoricoEstoque.jsx:51:                todos. O selo "CA pendente" aparecia em 100% das linhas e fazia o usuário achar
+frontend/src/pages/Estoque/HistoricoEstoque.jsx:59:            {item.erroCA && <p className="text-[11px] text-red-500 mt-0.5">Erro CA: {item.erroCA}</p>}
+frontend/src/pages/Configuracoes/Cidades.jsx:17:const ORIGEM_LABEL = { CA_SYNC: 'Conta Azul', IA_LEAD: 'IA (WhatsApp)', CA_FORNECEDOR: 'CA · fornecedor' };
+frontend/src/pages/Configuracoes/Cidades.jsx:340:                            Vieram da Conta Azul ou da IA do WhatsApp com um nome que não está no cadastro. O registro de origem já foi gravado; aqui você decide: <b>cadastrar</b> a cidade ou <b>apontar</b> para uma que já existe (o sistema reescreve os registros).
+frontend/src/pages/Configuracoes/TabelaPrecos.jsx:816:                            {/* Regras por Categoria CA (para Pedidos Especiais) */}
+frontend/src/pages/Configuracoes/TabelaPrecos.jsx:821:                                        <p className="text-[11px] text-gray-500">Define preço base e acréscimo diferenciados por categoria do CA para pedidos especiais.</p>

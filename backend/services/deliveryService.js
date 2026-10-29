@@ -325,7 +325,7 @@ const deliveryService = {
             throw new Error('Pedido com devolução finalizada não pode ser movimentado no Delivery.');
         }
         if (pedido?.situacaoCA !== 'FATURADO') {
-            throw new Error('Pedido ainda não foi faturado no Conta Azul. Fature primeiro para movimentar no Delivery.');
+            throw new Error('Pedido ainda não foi faturado. Fature primeiro para movimentar no Delivery.');
         }
 
         const atualizado = await prisma.deliveryStatus.update({

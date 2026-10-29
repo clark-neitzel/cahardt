@@ -70,7 +70,7 @@ const MarcadaPor = ({ pedido }) => {
 const BadgeNota = ({ pedido }) => {
     const { nota, notaCA } = pedido;
     if (notaCA) {
-        return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700">Emitida no CA</span>;
+        return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700">NF-e antiga (importada)</span>;
     }
     if (!nota) {
         return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700">Sem nota</span>;

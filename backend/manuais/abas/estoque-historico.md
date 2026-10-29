@@ -19,7 +19,7 @@ Registro completo de todas as movimentações de estoque (entradas e saídas), c
 - Nos títulos das colunas Entradas/Saídas: nº de lançamentos e total de caixas de cada lado
 - Filtrar por **produto escolhendo da lista** (menu com busca — não é mais texto digitado solto). A lista inclui os produtos do **imobilizado** (categorias com "Vende" desligado), para dar para auditar a movimentação de um freezer ou painel LED
 - Filtrar por: tipo (entrada/saída), motivo e **período no padrão do sistema** (pílula com presets: Hoje · 7 dias · 30 dias · Este mês · Este ano · Todo o período · Personalizado, com setas ‹ › para pular de período; a escolha fica salva por usuário; padrão: todo o período)
-- Ver para cada movimentação: produto, tipo, quantidade, responsável, motivo, data, estoque antes/depois e status de sync com CA
+- Ver para cada movimentação: produto, tipo, quantidade, responsável, motivo, data, estoque antes/depois
 - Carregar mais registros (paginação infinita — 60 por vez)
 
 ---
@@ -31,14 +31,14 @@ Registro completo de todas as movimentações de estoque (entradas e saídas), c
 | AJUSTE_MANUAL | Ajuste feito manualmente na tela de Estoque |
 | PEDIDO_ESPECIAL | Baixa automática ao aprovar pedido especial (desde jul/2026) |
 | PEDIDO_BONIFICACAO | Baixa automática ao aprovar bonificação (desde jul/2026) |
-| FATURAMENTO | Baixa automática ao faturar pedido no CA |
+| FATURAMENTO | Baixa automática ao faturar pedido |
 | PRODUCAO | Entrada de produto acabado vinda da produção (PCP) |
 | COMPRA | Entrada por nota recebida conferida — observação "Entrada NF-e {número} — {fornecedor}". Desde 07/2026 TODA nota conferida em Notas Recebidas soma no estoque: tanto "Gerar conta a pagar" (com atualização de custo) quanto "Registrar entrada sem pagamento" (bonificação/amostra — só quantidade, custo intocado) |
 | ESTORNO_COMPRA | Saída quando uma entrada de compra é desfeita. Quatro origens, cada uma com a SUA observação: **(1)** cancelar conferência / desfazer registro de entrada da nota → `Estorno entrada NF-e ...`; **(2)** corrigir a conversão de um item da nota → `Correção — retirada do lançamento errado NF-e ...`; **(3)** **cancelar a despesa** (Contas a Pagar → Cancelar) → `Estorno da compra (nota 777771 · MUSSARELA CAIXA 10KG) — entrada cancelada`, trazendo o número da nota e/ou a descrição do item entre parênteses quando existirem (só o item: `Estorno da compra (PALMITO PUPUNHA) — entrada cancelada`; sem nota e sem descrição sai sem parênteses: `Estorno da compra — entrada cancelada`) — 08/2026: antes saía sempre sem o detalhe, com espaço duplo, sem dizer de qual item era; **(4)** **trocar os produtos de uma despesa já lançada** (Contas a Pagar → Editar → "Produtos desta despesa") → `Correção da despesa "Compra de mercadoria — Frigorífico São Jorge" — retirada do lançamento anterior`, onde entre aspas vai a descrição da despesa (ou o número da nota, quando ela não tem descrição). Nessa origem (4) cada produto sai por esta saída de estorno e volta logo em seguida como entrada COMPRA nova, com a observação `Correção da despesa "..." — {fornecedor}` — é assim que se reconhece uma correção no histórico: o par saída + entrada com o mesmo texto "Correção da despesa" |
 | DEVOLUCAO | Entrada por devolução de cliente |
 | REVERSAO_DEVOLUCAO | Estorno de devolução |
 | CANCELAMENTO | Estorno quando a aprovação de especial/bonificação é revertida |
-| CANCELAMENTO_CA | Estorno quando o pedido faturado é cancelado/excluído no Conta Azul |
+| Cancelamento (época antiga) | Estorno quando o pedido faturado é cancelado/excluído |
 | EXCLUSAO | Estoque liberado por exclusão de pedido |
 
 **Trava contra duplicidade (jul/2026):** a baixa por pedido é idempotente — se duas rotinas tentarem faturar o mesmo pedido, a segunda não desconta de novo. Antes disso alguns pedidos baixavam em dobro; os casos antigos foram corrigidos com movimentações marcadas "Correção de baixa em dobro" / "Baixa retroativa".
@@ -81,16 +81,6 @@ Registro completo de todas as movimentações de estoque (entradas e saídas), c
 | Antes → Depois | Estoque antes e depois da movimentação |
 | Observação | O que a pessoa escreveu ao lançar (nas saídas manuais é obrigatório desde 09/2026) |
 
-### O selo "CA pendente" saiu da tela (09/2026)
-Cada linha mostrava um selo amarelo **"CA pendente"** (ou verde "CA ✓") dizendo se a movimentação
-tinha sido enviada ao Conta Azul. Desde 23/07/2026 o Conta Azul é **somente leitura** e nenhuma
-movimentação é mais enviada para lá — resultado: o selo amarelo aparecia em **100% das linhas**,
-para sempre. Isso fazia o usuário achar que o lançamento dele "não tinha registrado", quando na
-verdade estava registrado e correto. O selo foi removido; nada mais mudou na tela.
-
-**Como saber se o lançamento entrou:** ele aparece nesta lista, com a coluna Antes → Depois
-mostrando o saldo mudando. Se está aqui, está registrado.
-
 ---
 
 ## Permissões necessárias
@@ -104,7 +94,7 @@ mostrando o saldo mudando. Se está aqui, está registrado.
 ## Depende de / Interfere em
 
 - **Estoque — Ajuste** — todas as movimentações manuais aparecem aqui
-- **Pedidos / Conta Azul** — movimentações automáticas por faturamento também são registradas
+- **Pedidos** — movimentações automáticas por faturamento também são registradas
 
 ---
 

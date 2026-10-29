@@ -154,7 +154,7 @@ Apenas usuários com a permissão `Pode_Executar_Entregas` ou `admin` e com stat
 
 ## Depende de / Interfere em
 
-- **Pedidos** — só entram no embarque pedidos FATURADOS (ou especial/bonificação **já aprovados** — pendente de aprovação não embarca; a aprovação é o "faturamento" do especial/bonificação). Pedido **cancelado** fica fora da lista de disponíveis e é recusado se alguém tentar atrelar (cancelar não muda a situação no CA, então antes ele aparecia como se estivesse livre)
+- **Pedidos** — só entram no embarque pedidos FATURADOS (ou especial/bonificação **já aprovados** — pendente de aprovação não embarca; a aprovação é o "faturamento" do especial/bonificação). Pedido **cancelado** fica fora da lista de disponíveis e é recusado se alguém tentar atrelar
 - **Devoluções** — nascem sempre de uma carga: só é possível registrar devolução de pedido que o motorista marcou como `ENTREGUE_PARCIAL` ou `DEVOLVIDO`, e esse pedido não pode mais ser removido do romaneio
 - **Entregas (Rota e Minhas Entregas)** — após criado, cada pedido do embarque se torna uma entrega pendente para o motorista
 - **Caixa Diário** — as baixas de entrega (pagamentos recebidos) registradas pelo motorista alimentam o caixa do dia; as **cobranças da rota** cobradas em dinheiro somam no valor a prestar e são baixadas no cartão "Cobranças da Rota"

@@ -8,7 +8,7 @@ permissao: pedidos (view)
 
 ## O que é
 
-Central de consulta e gerenciamento de todos os pedidos lançados no sistema. Aqui você vê, filtra, imprime e acompanha o ciclo de vida de cada pedido — desde que foi criado até o faturamento. **Desde 23/07/2026 o faturamento é feito pelo próprio app** (numeração da venda, conta a receber, estoque e NF-e via Focus NFe) — nada mais é enviado ao Conta Azul.
+Central de consulta e gerenciamento de todos os pedidos lançados no sistema. Aqui você vê, filtra, imprime e acompanha o ciclo de vida de cada pedido — desde que foi criado até o faturamento. **Desde 23/07/2026 o faturamento é feito pelo próprio app** (numeração da venda, conta a receber, estoque e NF-e via Focus NFe).
 
 > **Atenção:** criar um pedido novo **não começa aqui**. Começa na aba **Rota**, no card do cliente, clicando em "Novo Pedido". Esta tela é de gestão, não de criação.
 
@@ -30,11 +30,9 @@ Central de consulta e gerenciamento de todos os pedidos lançados no sistema. Aq
 - Imprimir pedido individual ou vários ao mesmo tempo (seleção em lote)
 - Enviar comprovante do pedido via WhatsApp para o cliente
 - Aprovar ou reverter pedidos Especiais e Bonificações (quem tem permissão)
-- Consultar situação atualizada no Conta Azul (pílula **Sync CA**) — também atualiza o check do boleto do CA
-- Pílula **CA** (ícone do Conta Azul): cobranças/boletos gerados no CA. **Check verde ✓** = tem boleto no CA (cinza = já pago). O boleto do CA só é gerado manualmente dentro do Conta Azul
 - Pílula **Asaas**: gerar/gerenciar **boleto pelo Asaas** (por parcela, com envio por WhatsApp). **Check verde ✓** = boleto emitido (cinza = pago). Só em pedido a prazo faturado; não aparece em especial, bonificação nem à vista
 - Pílula **PIX Asaas** (pedidos à vista e especiais): gerar cobrança PIX / link de pagamento
-- Baixar a **DANFE (PDF da NF-e)** de pedido faturado (ícone de recibo) — o app busca o XML autorizado na API do Conta Azul e gera o PDF na hora, sem precisar entrar no CA
+- Baixar a **DANFE (PDF da NF-e)** de pedido faturado (ícone de recibo) — o app usa o XML autorizado guardado e gera o PDF na hora
 - Reatribuir pedido para outro vendedor (quem tem permissão)
 - Excluir pedidos (quem tem permissão específica por tipo)
 - **Cancelar pedido** (pílula âmbar **Cancelar**) — quando a venda não vai acontecer (cliente baixado na Receita, desistência) mas o registro precisa continuar no histórico
@@ -87,7 +85,7 @@ Central de consulta e gerenciamento de todos os pedidos lançados no sistema. Aq
 - Quem **não** tem `admin` nem **Pode_Vender_Inadimplente**: a venda **a prazo é recusada** ("Este cliente possui contas em aberto"). Venda **à vista** passa, mas o pedido sai com um carimbo na observação dizendo quem se responsabilizou e quanto o cliente deve.
 - Quem **tem** a permissão vende normalmente — o carimbo de responsabilidade ("se responsabiliza pela venda") na observação continua sendo gravado.
 - O valor considerado é o **saldo** (parcela paga pela metade conta só o que falta), e o mesmo número aparece no popup de inadimplência da tela Clientes e na ficha do cliente.
-- **Não conta como atraso:** pedido **cancelado/excluído no Conta Azul**, pagamento em dinheiro/Pix/cartão ainda dentro do prazo de espera, compra de funcionário e especial ainda não entregue.
+- **Não conta como atraso:** pedido **cancelado/excluído**, pagamento em dinheiro/Pix/cartão ainda dentro do prazo de espera, compra de funcionário e especial ainda não entregue.
 - **Corrigido em 08/2026:** os títulos de pedidos **faturados aqui no app** estavam sendo ignorados por esse controle; agora contam. Se um vendedor for barrado indevidamente, o caminho é dar baixa no título (ou conferir o caixa) — não desligar o controle.
 - **Aprovar/faturar e converter pedido ESPECIAL de cliente em atraso (desde 10/2026):** o botão "Aprovar agora/Faturar" e o "Converter em pedido c/ NF" também passam pela trava — o servidor recusa (erro `CLIENTE_EM_ATRASO`, mostrando quanto o cliente deve e há quantos dias) quando o cliente está com a venda travada e o usuário não tem `Pode_Vender_Inadimplente` nem é admin. Quem tem a permissão aprova normalmente e a observação do pedido ganha "[Nome se responsabiliza pela aprovação — cliente com R$ X em atraso]". A conta do próprio especial não conta contra ele. **Bonificação não é travada.** A conversão automática por PIX não é travada (não é decisão humana).
 - A lista de Pedidos (aba paginada) traz o selo de inadimplência de cada cliente e o filtro "Só clientes em atraso" (aplicado no servidor; as contagens dos chips não mudam).
@@ -101,9 +99,9 @@ Central de consulta e gerenciamento de todos os pedidos lançados no sistema. Aq
 - Rascunho antigo com data já passada abre **sem data** — o vendedor escolhe de novo.
 - Na **edição**, manter a data que o pedido já tinha é permitido (pedidos antigos têm datas antigas); só não dá para **mudar** para uma data passada.
 
-### Faturar pedido (antes: "enviar ao Conta Azul")
+### Faturar pedido
 - Pedidos com status **ABERTO** precisam ser marcados como **ENVIAR** (fluxo igual ao de sempre)
-- O worker fatura sozinho em até ~1 minuto: gera o **número da venda no próprio app** (continua a sequência), muda o status para **RECEBIDO** e baixa o estoque — nada é enviado ao Conta Azul (somente leitura desde 23/07/2026)
+- O worker fatura sozinho em até ~1 minuto: gera o **número da venda no próprio app** (continua a sequência), muda o status para **RECEBIDO** e baixa o estoque
 - A NF-e é emitida pelo app na aba **Notas Fiscais**
 
 ### Cancelar um pedido (a venda não vai acontecer)
@@ -121,7 +119,7 @@ O que o cancelamento faz:
 - **Cancela cobranças PIX/boleto do Asaas** que ainda estavam em aberto (para o cliente não pagar um pedido cancelado)
 
 Quando **não** é possível cancelar (o app avisa e explica):
-- A **NF-e já foi emitida** (autorizada ou em processamento na SEFAZ, do app ou do Conta Azul) → o caminho é cancelar a nota na SEFAZ ou registrar uma **devolução**
+- A **NF-e já foi emitida** (autorizada ou em processamento na SEFAZ) → o caminho é cancelar a nota na SEFAZ ou registrar uma **devolução**
 - A conta a receber está **quitada** ou há **parcela paga** / cobrança Asaas paga → estorne a baixa antes
 - O pedido está numa **carga/embarque** ou já foi **entregue** → tire da carga, ou registre uma devolução
 
@@ -135,9 +133,9 @@ Quando **não** é possível cancelar (o app avisa e explica):
 ### Imprimir em lote (DANFEs + boletos / recibos)
 1. Marque os pedidos pelos checkboxes (ou clique **"Selecionar faturados"**) → clique **Imprimir N**
 2. Na janela, escolha: **2 vias de cada documento** (uma p/ assinatura, outra p/ cliente) e **boleto logo após as vias** (sai na sequência, pronto p/ grampear)
-3. **Imprime boleto do Conta Azul E do Asaas** — ao clicar em Imprimir, o app consulta o CA de cada pedido; se achar boleto lá, baixa o PDF e inclui na sequência (junto com os do Asaas). Condição com 2 parcelas = 2 boletos, na ordem
+3. **Imprime os boletos do Asaas** — ao clicar em Imprimir, o app baixa o PDF do boleto de cada pedido e inclui na sequência. Condição com 2 parcelas = 2 boletos, na ordem
 4. **Boleto já quitado NÃO é impresso** (não faz sentido). Se precisar imprimir um boleto pago (p/ o cliente conferir), faça pelo **Contas a Receber**
-5. Avisos automáticos: pedidos **a prazo sem boleto (nem no CA, nem no Asaas)** aparecem em destaque com o botão **"Gerar boletos agora"** (gera no Asaas — o do CA só é gerado manualmente lá dentro); pedidos **sem NF-e emitida** são pulados (emita a nota no CA primeiro); pedidos **à vista** saem sem boleto (não há o que cobrar)
+5. Avisos automáticos: pedidos **a prazo sem boleto** aparecem em destaque com o botão **"Gerar boletos agora"** (gera no Asaas); pedidos **sem NF-e emitida** são pulados (emita a nota na aba Notas Fiscais primeiro); pedidos **à vista** saem sem boleto (não há o que cobrar)
 6. Pedido **ESPECIAL (ZZ#)** e **BONIFICAÇÃO (BN#)** saem no **recibo de conferência** (modelo sem a marca da Hardt, com itens, total e linha de assinatura) — eles só imprimem pelo lote. Bonificação também é selecionável pelo checkbox quando faturada. O recibo traz o quadro **"Dados do cliente · Local de entrega"** (estilo do quadro de destinatário da nota fiscal): nome, CNPJ/CPF, fone, endereço completo (rua, número, complemento, bairro, CEP, município, UF) e a data de entrega — o entregador sabe aonde ir; campo sem cadastro sai como "—". No **canto direito da faixa verde** do recibo há uma **etiqueta branca com código de barras** do número do documento (`ZZ4821` / `BN233`) e, embaixo, o número legível (`ZZ#4821`) — dá para **bipar o recibo** com o leitor em vez de digitar o número. No recibo da **bonificação** há ainda uma faixa dizendo **"COM NOTA FISCAL (NF-e nº …)"** ou **"SEM NOTA FISCAL"** — quem recebe a mercadoria vê no papel se vem DANFE junto
 7. **AMOSTRAS (AM#)**: na aba Amostras também há checkboxes (e o "Selecionar todas") — saem no **recibo de conferência sem valores** (produto e quantidade + faixa "AMOSTRA — SEM VALOR COMERCIAL"), com o mesmo quadro de dados do cliente/local de entrega (amostra de **lead** sai só com o nome do estabelecimento; o resto "—"); amostra não passa pela conferência de boletos. O recibo da amostra também traz a etiqueta com **código de barras** no cabeçalho (`AM17`, legível como `AM#17`)
 8. Sai **um único PDF** com as folhas na ordem certa; as opções ficam lembradas para a próxima
@@ -174,13 +172,9 @@ Ao clicar em qualquer pedido, além dos itens e valores, o app mostra (desde jul
 - **O que aconteceu com este pedido**: linha do tempo completa — criação (e por quem), faturamento, saída na carga, entrega, pagamentos (PIX/boleto/parcelas), conversão de especial (bolinhas douradas), devoluções e NF-e emitidas
 - Se o pedido nasceu especial, uma **faixa âmbar** no topo mostra o ZZ# de origem, quando foi convertido e quanto já tinha sido recebido
 
-### Consultar situação no Conta Azul
-- Clique no botão de reload ao lado do pedido que já tem `idVendaContaAzul`
-- O sistema consulta o CA e atualiza `situacaoCA` e `statusEnvio`
-
 ### Ver link de cobrança (PIX/Boleto)
 - Clique no ícone de cifrão ao lado do pedido faturado
-- O sistema busca as cobranças ativas no CA e exibe os links
+- O sistema busca as cobranças ativas do pedido e exibe os links
 - Há botão **Copiar** para copiar todos os links formatados
 
 ---
@@ -197,11 +191,11 @@ Lista todos os pedidos normais (`especial = false`, `bonificacao = false`). Incl
 - Seleção em lote para impressão (pedidos FATURADO)
 
 ### Especiais
-Lista pedidos do tipo **Especial** (`ZZ#`). São pedidos com condições diferenciadas de preço ou prazo, que requerem aprovação antes de ir ao CA.
+Lista pedidos do tipo **Especial** (`ZZ#`). São pedidos com condições diferenciadas de preço ou prazo, que requerem aprovação antes de serem faturados.
 
 - Exibe botão **Aprovar** (para aprovadores) e **Reverter** (para quem pode reverter)
 - **Reverter só antes da entrega** (desde 08/2026): reverter cancela o título e devolve a mercadoria ao estoque, então o app recusa a reversão de pedido já **ENTREGUE/ENTREGUE PARCIAL** ou com qualquer baixa (total ou parcial) no financeiro. Para desfazer uma entrega, use o estorno em Auditoria de Entregas; para anular a venda depois de entregue, registre a **devolução**
-- Após aprovação, o status muda e o pedido é faturado no CA automaticamente
+- Após aprovação, o status muda e o pedido é faturado automaticamente
 - Botão **Converter em pedido c/ NF** (⚡, para quem aprova especial): transforma o especial em pedido normal com nota — em aberto ou já faturado, pago em qualquer forma. O pedido sai desta aba e vai para a aba Pedidos com o selo "Especial convertido" (ver seção própria acima)
 
 ### Bonificação
@@ -246,7 +240,7 @@ Visível apenas para quem tem `Pode_Fazer_Devolucao` ou `admin`. Renderiza o com
 
 Mostra todas as devoluções registradas (parciais ou totais) com motivo, motorista, data, valor e status (ATIVA ou REVERTIDA).
 
-Desde 23/07/2026 o acerto financeiro da devolução acontece **nas parcelas do próprio app**: o valor devolvido vira **desconto** nas parcelas em aberto do pedido (histórico "Devolução TOTAL/PARCIAL #N") — nada é ajustado no Conta Azul. Se as parcelas já estiverem pagas, o app avisa que o acerto precisa ser manual em Contas a Receber (estorno + desconto).
+Desde 23/07/2026 o acerto financeiro da devolução acontece **nas parcelas do próprio app**: o valor devolvido vira **desconto** nas parcelas em aberto do pedido (histórico "Devolução TOTAL/PARCIAL #N"). Se as parcelas já estiverem pagas, o app avisa que o acerto precisa ser manual em Contas a Receber (estorno + desconto).
 
 **Devolução de pedido que já tinha dinheiro recebido (08/2026):** a devolução **nunca apaga um recebimento**. Se o cliente já havia pago (todo ou em parte — típico do especial baixado no Caixa) e devolve a mercadoria, a parcela **não é cancelada**: ela passa a valer exatamente o que já foi recebido e fica quitada, para o dinheiro continuar batendo com o histórico de recebimento e com Saldos por Conta. O que o cliente pagou a mais vira **crédito dele**, e a devolução ganha um aviso na observação:
 
@@ -273,7 +267,7 @@ acompanhar e reemitir:
   errada. Junte as linhas repetidas desse produto na devolução e clique em "Emitir novamente" —
   ou emita pelo contador.
 - Pela mesma regra, e também só a partir de 05/10/2026, poderá aparecer *"Não foi possível ler os
-  itens da NF-e nº Y"*: é nota antiga do Conta Azul cujo XML não está guardado no app. Avise o
+  itens da NF-e nº Y"*: é nota antiga (anterior ao app) cujo XML não está guardado no app. Avise o
   escritório.
 - **A devolução em si continua valendo em qualquer um desses casos** — estoque, parcelas e boletos
   já foram ajustados. O que falta é só o papel da nota.
@@ -287,7 +281,7 @@ financeiro** — bonificação nunca teve conta a receber, boleto ou cobrança, 
 também não mexe em nada disso; só o **estoque** volta (uma única vez, no registro da devolução).
 
 - Na aba Devoluções, a devolução de BN# aparece com o número no formato **BN#61** e o selo roxo
-  **BONIF.** (no lugar de CA/ESPECIAL). Quando a bonificação tem NF-e autorizada, a linha traz o
+  **BONIF.** (no lugar de NORMAL/ESPECIAL). Quando a bonificação tem NF-e autorizada, a linha traz o
   **mesmo bloco verde** das devoluções de venda: selo *"✓ NF devolução N"* com o botão **DANFE**
   quando a nota saiu, *"⏳ processando"* enquanto a SEFAZ responde, *"✕ Rejeitada: motivo"* com o
   botão **"Emitir novamente"** se falhou, ou só o botão **"Emitir NF de devolução"** se ainda não
@@ -336,12 +330,12 @@ completo.
 
 | Status | Significado |
 |--------|-------------|
-| ABERTO | Criado, ainda não enviado ao CA |
+| ABERTO | Criado, ainda não faturado |
 | ENVIAR | Marcado para envio na próxima sincronização |
 | SINCRONIZANDO | Sendo processado pelo worker de sync |
-| RECEBIDO | Faturado — número de venda gerado pelo app (até 23/07/2026 significava "aceito pelo CA") |
+| RECEBIDO | Faturado — número de venda gerado pelo app |
 | ERRO | Falha no envio; o motivo aparece em vermelho |
-| FATURADO | Confirmado/faturado pelo CA |
+| FATURADO | Faturado (NF-e autorizada) |
 
 ---
 
@@ -371,10 +365,10 @@ completo.
 ## Depende de / Interfere em
 
 - **Rota** — é onde pedidos novos são criados (botão "Novo Pedido" no card do cliente)
-- **Conta Azul (legado)** — pedidos antigos (era CA) ainda têm venda lá; pedidos novos são 100% do app. A NF-e do app é quem marca FATURADO
+- **Pedidos antigos** — pedidos anteriores ao app aparecem como importados; pedidos novos são 100% do app. A NF-e do app é quem marca FATURADO
 - **Embarque** — pedidos faturados são adicionados a embarques na aba Embarque
 - **Entregas** — após o embarque, o status de entrega aparece no card do pedido
-- **Contas a Receber** — faturamento no CA gera contas a receber; reverter especial cancela a conta no CA
+- **Contas a Receber** — o faturamento gera as contas a receber; reverter especial cancela a conta
 
 ---
 

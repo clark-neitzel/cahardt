@@ -225,11 +225,8 @@ const ContasReceberTabela = () => {
     const [erroLista, setErroLista] = useState(null);
     const [indicadores, setIndicadores] = useState({});
     const [loading, setLoading] = useState(false);
-    const [syncing, setSyncing] = useState(null);
-    const [syncingTodas, setSyncingTodas] = useState(false);
     const [menuAcoesAberto, setMenuAcoesAberto] = useState(false);
     const menuAcoesRef = useRef(null);
-    const [syncLog, setSyncLog] = useState(null); // { progresso, total, itens: [{pedido, status, msg, aplicadas}], ativo }
     const [pedidoPopup, setPedidoPopup] = useState(null); // pedido completo
     const [pedidoLoading, setPedidoLoading] = useState(false);
     const [clientePopup, setClientePopup] = useState(null);
@@ -579,77 +576,6 @@ const ContasReceberTabela = () => {
         } catch (e) { toast.error(e.response?.data?.error || 'Erro'); }
     };
 
-    const handleSyncCATodas = async () => {
-        // Itera pelas contas VISÍVEIS na tela (únicas), uma por uma, com log detalhado.
-        const contasUnicas = [];
-        const seen = new Set();
-        for (const l of linhasOrdenadas) {
-            if (seen.has(l.contaId)) continue;
-            if (!l.idVendaContaAzul) continue;
-            if (l.statusConta === 'QUITADO' || l.statusConta === 'CANCELADO') continue;
-            seen.add(l.contaId);
-            contasUnicas.push(l);
-        }
-        if (contasUnicas.length === 0) { toast('Nenhuma conta elegível visível na tela.'); return; }
-        if (!window.confirm(`Verificar ${contasUnicas.length} conta(s) visíveis no Conta Azul? Uma por uma, com log detalhado.`)) return;
-
-        setSyncingTodas(true);
-        setSyncLog({ progresso: 0, total: contasUnicas.length, itens: [], ativo: true, totalAplicadas: 0, erros: 0 });
-
-        let totalAplicadas = 0;
-        let erros = 0;
-        const itens = [];
-        for (let i = 0; i < contasUnicas.length; i++) {
-            const l = contasUnicas[i];
-            const label = l.pedidoNumero ? `#${l.pedidoNumero}` : l.contaId.slice(0, 8);
-            try {
-                const r = await contasReceberService.syncCA(l.contaId);
-                const aplicadas = r.aplicadas || 0;
-                const vencAt = r.vencimentosAtualizados || 0;
-                totalAplicadas += aplicadas;
-                itens.push({
-                    pedido: label,
-                    cliente: l.clienteNome,
-                    status: (aplicadas > 0 || vencAt > 0) ? 'ok' : 'semmudanca',
-                    msg: r.message || r.mensagem || 'Sem alterações',
-                    aplicadas,
-                    debug: r.debug || null,
-                    raw: r
-                });
-            } catch (e) {
-                erros++;
-                itens.push({
-                    pedido: label,
-                    cliente: l.clienteNome,
-                    status: 'erro',
-                    msg: e.response?.data?.error || e.message || 'Erro desconhecido',
-                    aplicadas: 0,
-                    debug: e.response?.data?.detalhe || null,
-                    raw: e.response?.data || { error: e.message }
-                });
-            }
-            setSyncLog({ progresso: i + 1, total: contasUnicas.length, itens: [...itens], ativo: i + 1 < contasUnicas.length, totalAplicadas, erros });
-            // throttle entre contas pra evitar rate limit do CA (10 req/s)
-            if (i + 1 < contasUnicas.length) await new Promise(r => setTimeout(r, 800));
-        }
-
-        toast.success(`Concluído: ${totalAplicadas} parcela(s) baixadas em ${contasUnicas.length} conta(s). ${erros} erro(s).`, { duration: 6000 });
-        fetchData();
-        setSyncingTodas(false);
-    };
-
-    const handleSyncCA = async (contaId, idVendaCA) => {
-        if (!idVendaCA) { toast.error('Pedido ainda não foi ao CA'); return; }
-        setSyncing(contaId);
-        try {
-            const r = await contasReceberService.syncCA(contaId);
-            toast.success(r.message);
-            fetchData();
-        } catch (e) {
-            toast.error(e.response?.data?.error || 'Erro na sincronização CA');
-        } finally { setSyncing(null); }
-    };
-
     const handleBaixaLote = async () => {
         if (sel.size === 0) return;
         setSalvando(true);
@@ -948,17 +874,6 @@ const ContasReceberTabela = () => {
                 className="!p-0 mb-4"
                 acoes={
                     <>
-                        {podeBaixar && (
-                            <button
-                                onClick={handleSyncCATodas}
-                                disabled={syncingTodas}
-                                title="Verifica no Conta Azul todas as contas abertas e aplica as baixas que já foram pagas lá"
-                                className="px-3 py-1.5 md:px-4 md:py-2 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-xs md:text-sm disabled:opacity-60 inline-flex items-center gap-1.5"
-                            >
-                                <RefreshCw className={`w-4 h-4 ${syncingTodas ? 'animate-spin' : ''}`} />
-                                {syncingTodas ? 'Baixando...' : 'Baixar parcelas do CA'}
-                            </button>
-                        )}
                         <div className="relative" ref={menuAcoesRef}>
                             <button
                                 onClick={() => setMenuAcoesAberto(v => !v)}
@@ -1090,7 +1005,7 @@ const ContasReceberTabela = () => {
                         <label className="block text-sm font-medium text-gray-700 mb-1">Origem</label>
                         <FiltroMulti
                             label="Todas"
-                            options={[{ valor: 'FATURADO_CA', label: 'Faturado CA' }, { valor: 'ESPECIAL', label: 'Especial' }]}
+                            options={[{ valor: 'FATURADO_CA', label: 'Faturado' }, { valor: 'ESPECIAL', label: 'Especial' }]}
                             value={filtros.origem}
                             onChange={(v) => setFiltros(f => ({ ...f, origem: v }))}
                         />
@@ -1375,16 +1290,6 @@ const ContasReceberTabela = () => {
                                                         <FileText className="w-4 h-4" />
                                                     </button>
                                                 )}
-                                                {podeBaixar && l.idVendaContaAzul && l.statusConta !== 'CANCELADO' && (
-                                                    <button
-                                                        onClick={() => handleSyncCA(l.contaId, l.idVendaContaAzul)}
-                                                        disabled={syncing === l.contaId}
-                                                        title="Verificar baixas no Conta Azul"
-                                                        className="p-1 rounded hover:bg-blue-100 text-blue-700 disabled:opacity-40"
-                                                    >
-                                                        <RefreshCw className={`w-4 h-4 ${syncing === l.contaId ? 'animate-spin' : ''}`} />
-                                                    </button>
-                                                )}
                                                 <button onClick={() => setDetalheLinha(l)} title="Ver detalhes" className="p-1 rounded hover:bg-gray-100 text-gray-600">
                                                     <Eye className="w-4 h-4" />
                                                 </button>
@@ -1401,7 +1306,7 @@ const ContasReceberTabela = () => {
                                         <td colSpan={6} className="px-2 pt-0 pb-3 text-xs text-gray-500">
                                             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                                                 <span title="Condição"><span className="text-gray-400">Cond.:</span> {l.condicaoPagamento || '-'}</span>
-                                                <span title="Origem"><span className="text-gray-400">Orig.:</span> {l.origem === 'FATURADO_CA' ? 'CA' : 'Esp.'}</span>
+                                                <span title="Origem"><span className="text-gray-400">Orig.:</span> {l.origem === 'FATURADO_CA' ? 'Faturado' : 'Esp.'}</span>
                                                 <span className="inline-flex items-center gap-1"><span className="text-gray-400">Conta:</span>
                                                     <span className={`px-2 py-1 text-xs font-semibold rounded-full ${STATUS_CONTA[l.statusConta] || ''}`}>{l.statusConta}</span>
                                                 </span>
@@ -1479,69 +1384,6 @@ const ContasReceberTabela = () => {
                 </div>
             )}
 
-            {/* Modal log sync CA */}
-            {syncLog && (
-                <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] flex flex-col">
-                        <div className="px-4 py-3 border-b flex items-center justify-between">
-                            <h3 className="font-bold">
-                                Sync CA — {syncLog.progresso}/{syncLog.total}
-                                {syncLog.ativo && <RefreshCw className="inline w-4 h-4 ml-2 animate-spin text-blue-600" />}
-                            </h3>
-                            {!syncLog.ativo && (
-                                <button onClick={() => setSyncLog(null)} className="p-1 rounded hover:bg-gray-100"><X className="w-5 h-5" /></button>
-                            )}
-                        </div>
-                        <div className="px-4 py-2 border-b bg-gray-50 text-xs text-gray-600 flex gap-4">
-                            <span>✅ Baixadas: <strong>{syncLog.totalAplicadas}</strong> parcela(s)</span>
-                            <span>⚠️ Erros: <strong className={syncLog.erros > 0 ? 'text-red-600' : ''}>{syncLog.erros}</strong></span>
-                        </div>
-                        <div className="overflow-y-auto flex-1 divide-y">
-                            {syncLog.itens.map((it, idx) => (
-                                <details key={idx} className="px-4 py-2 text-sm">
-                                    <summary className="flex items-start gap-2 cursor-pointer list-none">
-                                        <span className="flex-shrink-0 mt-0.5">
-                                            {it.status === 'ok' && <span className="text-green-600">✅</span>}
-                                            {it.status === 'semmudanca' && <span className="text-gray-400">➖</span>}
-                                            {it.status === 'erro' && <span className="text-red-600">❌</span>}
-                                        </span>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="font-medium text-gray-900">
-                                                {it.pedido} <span className="text-gray-500 font-normal">— {it.cliente}</span>
-                                            </div>
-                                            <div className={`text-xs ${it.status === 'erro' ? 'text-red-600' : 'text-gray-600'}`}>{it.msg}</div>
-                                        </div>
-                                        {(it.debug || it.raw) && <span className="text-[10px] text-blue-600">▸ debug</span>}
-                                    </summary>
-                                    {(it.debug || it.raw) && (
-                                        <pre className="mt-2 ml-6 p-2 bg-gray-50 border rounded text-[10px] text-gray-700 overflow-x-auto">
-{JSON.stringify(it.debug || it.raw, null, 2)}
-                                        </pre>
-                                    )}
-                                </details>
-                            ))}
-                            {syncLog.ativo && syncLog.itens.length < syncLog.total && (
-                                <div className="px-4 py-2 text-sm text-gray-400 italic">Processando...</div>
-                            )}
-                        </div>
-                        {!syncLog.ativo && (
-                            <div className="px-4 py-3 border-t flex justify-end gap-2">
-                                <button
-                                    onClick={() => {
-                                        navigator.clipboard.writeText(JSON.stringify(syncLog.itens, null, 2));
-                                        toast.success('Log copiado');
-                                    }}
-                                    className="px-3 py-2 rounded border text-sm hover:bg-gray-50"
-                                >
-                                    Copiar log
-                                </button>
-                                <button onClick={() => setSyncLog(null)} className="px-4 py-2 rounded bg-blue-600 text-white text-sm hover:bg-blue-700">Fechar</button>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            )}
-
             {/* Modal detalhes parcela */}
             {detalheLinha && (
                 <DetalheParcelaModal
@@ -1551,8 +1393,6 @@ const ContasReceberTabela = () => {
                     podeBaixaManual={podeBaixaManual}
                     onBaixar={(l) => { setDetalheLinha(null); handleBaixar(l); }}
                     onEstornarTudo={(l) => { handleEstornar(l); setDetalheLinha(null); }}
-                    onSyncCA={(contaId, idCA) => { handleSyncCA(contaId, idCA); setDetalheLinha(null); }}
-                    syncing={syncing}
                     onAbrirPedido={(id) => { abrirPedido(id); setDetalheLinha(null); }}
                     onEstornoPagamento={fetchData}
                     elegivelBaixa={elegivelBaixa}
@@ -1831,8 +1671,8 @@ const ContasReceberTabela = () => {
                                                             <td className="px-5 py-2 tabular-nums">{fmtData(pc.dataPagamento)}</td>
                                                             <td className="px-5 py-2">
                                                                 <div>{pc.formaPagamento || '-'}</div>
-                                                                {pc.observacao && pc.observacao.startsWith('CA:') && (
-                                                                    <div className="text-[10px] text-gray-400 mt-0.5">{pc.observacao}</div>
+                                                                {pc.observacao && /^CA:/.test(pc.observacao) && (
+                                                                    <div className="text-[10px] text-gray-400 mt-0.5">{pc.observacao.replace(/^CA:\s*/, '')}</div>
                                                                 )}
                                                             </td>
                                                         </tr>
@@ -1840,17 +1680,6 @@ const ContasReceberTabela = () => {
                                                 </tbody>
                                             </table>
                                         </div>
-                                        {podeBaixar && p.idVendaContaAzul && p.contaReceber.status !== 'CANCELADO' && (
-                                            <div className="flex justify-end px-5 py-3">
-                                                <button
-                                                    onClick={() => { handleSyncCA(p.contaReceber.id, p.idVendaContaAzul); close(); }}
-                                                    disabled={syncing === p.contaReceber.id}
-                                                    className="px-3 py-1.5 text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-md text-xs font-semibold inline-flex items-center gap-1.5 disabled:opacity-50"
-                                                >
-                                                    <RefreshCw className={`w-3.5 h-3.5 ${syncing === p.contaReceber.id ? 'animate-spin' : ''}`} /> Sync CA
-                                                </button>
-                                            </div>
-                                        )}
                                     </div>
                                 )}
 
@@ -2063,7 +1892,7 @@ const ContasReceberTabela = () => {
 
 // ── Modal de detalhes da parcela (histórico de pagamentos + ações) ──
 const DetalheParcelaModal = ({
-    linha, onClose, podeBaixar, podeBaixaManual, onBaixar, onEstornarTudo, onSyncCA, syncing,
+    linha, onClose, podeBaixar, podeBaixaManual, onBaixar, onEstornarTudo,
     onAbrirPedido, onEstornoPagamento, elegivelBaixa, saldoRestante, fmt, fmtData, vendedorPorId
 }) => {
     const l = linha;
@@ -2182,10 +2011,9 @@ const DetalheParcelaModal = ({
                         <Field label="Cliente" value={l.clienteNome} />
                         <Field label="Vendedor" value={l.vendedorNome} />
                         <Field label="Condição" value={l.condicaoPagamento} />
-                        <Field label="Origem" value={l.origem === 'FATURADO_CA' ? 'Faturado CA' : 'Especial'} />
+                        <Field label="Origem" value={l.origem === 'FATURADO_CA' ? 'Faturado' : 'Especial'} />
                         <Field label="Vencimento" value={fmtData(l.dataVencimento)} valueClass={l.statusParcela === 'VENCIDO' ? 'text-red-600 font-medium' : ''} />
                         <Field label="Pagamento" value={fmtData(l.dataPagamento)} valueClass={l.dataPagamento ? 'text-green-700 font-medium' : ''} />
-                        <Field label="ID CA" value={l.idVendaContaAzul ? '✓ Sincronizado' : 'Não enviado'} />
                     </div>
 
                     {temHistorico && (
@@ -2295,15 +2123,6 @@ const DetalheParcelaModal = ({
                     {l.pedidoId && (
                         <button onClick={() => onAbrirPedido(l.pedidoId)} className="px-3 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-md text-sm inline-flex items-center gap-1.5 font-medium">
                             <LinkIcon className="w-4 h-4" /> Ver pedido
-                        </button>
-                    )}
-                    {podeBaixar && l.idVendaContaAzul && l.statusConta !== 'CANCELADO' && (
-                        <button
-                            onClick={() => onSyncCA(l.contaId, l.idVendaContaAzul)}
-                            disabled={syncing === l.contaId}
-                            className="px-3 py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-md text-sm inline-flex items-center gap-1.5 font-semibold disabled:opacity-50"
-                        >
-                            <RefreshCw className={`w-4 h-4 ${syncing === l.contaId ? 'animate-spin' : ''}`} /> Sync CA
                         </button>
                     )}
                     {podeBaixar && (l.statusParcela === 'PAGO' || l.statusParcela === 'PARCIAL') && (

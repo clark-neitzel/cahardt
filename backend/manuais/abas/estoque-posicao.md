@@ -68,7 +68,7 @@ Visão completa da posição atual de estoque de todos os produtos. Mostra o est
 - **Estoque — Ajuste** — para entrada/saída manual, use aquela aba
 - **Estoque — Histórico** — para ver todas as movimentações
 - **Config: Categorias Estoque** — define quais categorias têm controle de estoque ativo
-- **Pedidos** — pedidos faturados baixam o estoque automaticamente via sync com CA
+- **Pedidos** — pedidos faturados baixam o estoque automaticamente
 
 ---
 

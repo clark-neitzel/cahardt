@@ -135,7 +135,7 @@ WhatsApp → WHATSAPP, Ligação → TELEFONE, Kit Festa/site → SITE.
 - Clique na linha do atendimento para expandir
 - Você vê: hora, observações, ação registrada, data de retorno (se houver) e dados do cliente
 - Na linha de **pedido**: número, valor, condição de pagamento, tipo de atendimento informado na
-  venda, status de envio ao Conta Azul e GPS de onde a venda foi lançada
+  venda, situação de faturamento e GPS de onde a venda foi lançada
 
 ### Abrir a ficha do cliente (barra lateral)
 - Clique no **nome do cliente** na linha (no celular, botão **Ver detalhes do cliente**)
@@ -176,7 +176,7 @@ que tem a popup completa com todos esses botões.
 - Cabeçalho: número do pedido, cliente, e o selo **Consulta**. O número sai com o mesmo prefixo
   da lista (`#`, `ZZ#` para especial, `BN#` para bonificação); pedido que ainda **não tem número**
   aparece como **"(sem número)"**, exatamente como na pílula do painel
-- Situação: status de envio, situação no Conta Azul, e os selos ESPECIAL / BONIFICAÇÃO / CANCELADO
+- Situação: situação de faturamento e os selos ESPECIAL / BONIFICAÇÃO / CANCELADO
 - Faixa vermelha quando o pedido foi cancelado (quem cancelou, quando e o motivo)
 - Faixa âmbar quando o pedido nasceu especial e foi convertido em pedido com nota
 - Dados do pedido: data de entrega, data de emissão, condição de pagamento, vendedor, quem
@@ -222,7 +222,7 @@ que tem a popup completa com todos esses botões.
   depois; e quando a conta a receber ainda não foi criada, ele diz isso — nunca afirma dívida que
   não existe.
 - **Nota fiscal**: as NF-e emitidas pelo app (número, série e situação) e, quando existir, a nota
-  emitida no Conta Azul com a chave de acesso
+  antiga (importada) com a chave de acesso
 - **Entrega**: situação, data/hora, carga e motorista, observação do motorista, motivo da devolução
   e o botão **Ver no mapa onde foi entregue** (quando o GPS foi registrado)
 - **Devoluções** do pedido: número, tipo, escopo, valor, itens devolvidos e motivo
@@ -233,8 +233,8 @@ o que o sistema registrou com data — quando existe, também mostra quem fez:
 criação do pedido (quem registrou, vendedor e canal de origem) · conta a receber criada ·
 **aprovação** de pedido especial ou de bonificação · conversão de pedido especial · NF-e enviada
 para a SEFAZ e depois "consta como autorizada / recusada / cancelada" · boleto/PIX do Asaas gerado
-e pago · baixa de cada parcela ("Parcela N quitada" ou "com baixa parcial") · baixa registrada no
-Conta Azul pela conferência do Caixa · o que o motorista registrou na entrega, em cinco rótulos
+e pago · baixa de cada parcela ("Parcela N quitada" ou "com baixa parcial") · baixa registrada
+pela conferência do Caixa · o que o motorista registrou na entrega, em cinco rótulos
 diferentes (**"Registrado como pago na hora"**, **"PIX Asaas confirmado pelo banco"**,
 **"Ficou a cobrar na entrega"**, **"Registrado sem dinheiro na hora"**; e, quando a linha veio sem
 forma nenhuma, **"Linha sem forma registrada"** — aí o app não afirma nem que houve dinheiro nem
@@ -269,13 +269,13 @@ evento esconderia o erro em vez de corrigi-lo. Nada disso inventa hora.
   **Contas a Receber**; a popup só enxerga a última baixa gravada na parcela
 - **Detalhe da conversa com a SEFAZ** (mensagem de erro, chave da nota do app) — fica em
   **Notas Fiscais**
-- **Data de emissão da NF-e emitida no Conta Azul** — o app guarda a chave e o número dessa nota,
+- **Data de emissão da NF-e antiga (importada)** — o app guarda a chave e o número dessa nota,
   mas não a data em que ela foi emitida; por isso ela aparece na seção Nota fiscal e não na linha
   do tempo
-- **A data em que o pedido virou FATURADO** — o app grava a *situação* (o selo "CA: FATURADO"), mas
+- **A data em que o pedido virou FATURADO** — o app grava a *situação* (o selo "FATURADO"), mas
   não o momento em que ela mudou. Quando o pedido está faturado sem essa data, a linha do tempo
   avisa isso no rodapé em vez de inventar um evento. Só pedido **especial** e **bonificação** têm
-  data própria, que é a da **aprovação dentro do app** (e nem um nem outro vai ao Conta Azul)
+  data própria, que é a da **aprovação dentro do app**
 - **A hora exata da autorização da NF-e** — o evento usa a data da última mudança daquele registro
   no app; por isso o texto diz "consta como autorizada", e não "foi autorizada às tantas horas"
 

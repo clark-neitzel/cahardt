@@ -144,7 +144,7 @@ const asaasBaixaService = {
                 } else if (!pedido.idVendaContaAzul) {
                     // Pedido normal ainda sem venda no CA (ex.: especial recém-convertido) —
                     // fica pendente; o worker de retentativa fecha depois que a venda existir.
-                    resultado.erros.push('baixa CA: aguardando a venda ser criada no Conta Azul (retentará sozinho)');
+                    resultado.erros.push('baixa: aguardando o faturamento do pedido (retentará sozinho)');
                 } else {
                     const dataVendaStr = pedido.dataVenda
                         ? new Date(pedido.dataVenda).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
@@ -158,7 +158,7 @@ const asaasBaixaService = {
                     const caPar = (parcelasCA || []).find(p => (p.numero_parcela || 0) === parcela.numeroParcela)
                         || (parcelasCA || []).find(p => p.data_vencimento === vencLocal)
                         || ((parcelasCA || []).length === 1 ? parcelasCA[0] : null);
-                    if (!caPar) throw new Error('Parcela correspondente não encontrada no Conta Azul.');
+                    if (!caPar) throw new Error('Parcela correspondente não encontrada.');
 
                     const jaPagaCA = ['RECEBIDO', 'QUITADO', 'ACQUITTED', 'PAID'].includes(caPar.status);
                     if (!jaPagaCA) {
@@ -205,7 +205,7 @@ const asaasBaixaService = {
                 }
             } catch (e) {
                 console.error(`[Asaas baixa] Falha na baixa CA da cobrança ${cobranca.asaasPaymentId}:`, e.message);
-                resultado.erros.push(`baixa CA: ${e.message}`);
+                resultado.erros.push(`baixa: ${e.message}`);
             }
         } else {
             resultado.baixaCa = true;
@@ -338,16 +338,16 @@ const asaasBaixaService = {
                 const caPar = (parcelasCA || []).find(p => (p.numero_parcela || 0) === cobranca.parcela.numeroParcela)
                     || (parcelasCA || []).find(p => p.data_vencimento === vencLocal)
                     || ((parcelasCA || []).length === 1 ? parcelasCA[0] : null);
-                if (!caPar) throw new Error('Parcela não encontrada no CA.');
+                if (!caPar) throw new Error('Parcela não encontrada.');
                 const det = await contaAzulService.buscarParcelaDetalhe(caPar.id);
                 const baixaAsaas = (det?.baixas || []).find(b => (b?.observacao || '').includes(cobranca.asaasPaymentId));
-                if (!baixaAsaas?.id) throw new Error('Baixa correspondente não encontrada no CA (excluir manualmente).');
+                if (!baixaAsaas?.id) throw new Error('Baixa correspondente não encontrada (excluir manualmente).');
                 await contaAzulService.excluirBaixa(baixaAsaas.id);
                 await prisma.cobrancaAsaas.update({ where: { id: cobranca.id }, data: { baixaCaOk: false } });
                 resultado.estornoCa = true;
             } catch (e) {
                 console.error(`[Asaas estorno] Falha ao excluir baixa CA de ${cobranca.asaasPaymentId}:`, e.message);
-                resultado.erros.push(`estorno CA: ${e.message}`);
+                resultado.erros.push(`estorno: ${e.message}`);
             }
         }
 

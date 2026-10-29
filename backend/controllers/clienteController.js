@@ -1168,7 +1168,7 @@ const clienteController = {
         res.json({
             success: false,
             desativado: true,
-            message: 'Sincronização de clientes com o Conta Azul foi desativada — o cadastro agora é feito e mantido pelo próprio app.'
+            message: 'Sincronização de clientes foi desativada — o cadastro é feito e mantido pelo próprio app.'
         });
     },
 

@@ -56,7 +56,6 @@ const MovimentacaoCard = ({ item, compact }) => (
                 </span>
             </div>
             {item.observacao && <p className="text-[11px] text-gray-500 mt-0.5 italic">{item.observacao}</p>}
-            {item.erroCA && <p className="text-[11px] text-red-500 mt-0.5">Erro CA: {item.erroCA}</p>}
         </div>
     </div>
 );

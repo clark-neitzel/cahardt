@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import configNotasService from '../../../services/configNotasService';
-import { ShieldCheck, Upload, Lock, RefreshCw, Link2, Loader2, Receipt, Save, RotateCcw, Undo2, CalendarClock, Check } from 'lucide-react';
+import { ShieldCheck, Upload, Lock, RefreshCw, Loader2, Receipt, Save, RotateCcw, Undo2, CalendarClock, Check } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const fmtData = (d) => d ? new Date(d).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '—';
@@ -632,24 +632,6 @@ const NotasCertificadoConfig = () => {
                             </div>
                         </>
                     )}
-                </div>
-            </div>
-
-            {/* ── Conexão Conta Azul (informativo) ── */}
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
-                <div className="flex items-center gap-2 px-5 py-3.5 border-b border-gray-100">
-                    <Link2 className="h-4 w-4 text-blue-600" />
-                    <span className="text-xs font-bold uppercase tracking-widest text-gray-600">CONEXÃO CONTA AZUL</span>
-                </div>
-                <div className="p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                    <div>
-                        <div className="flex items-center gap-2">
-                            <span className="h-2.5 w-2.5 rounded-full bg-green-500 shrink-0"></span>
-                            <span className="text-sm font-medium text-gray-900">Conectado (mesma conexão dos pedidos)</span>
-                        </div>
-                        <div className="text-xs text-gray-500 mt-1">Despesas confirmadas são enviadas automaticamente · baixas conferidas a cada 30 minutos</div>
-                    </div>
-                    <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 self-start md:self-auto">Ativo</span>
                 </div>
             </div>
         </div>

@@ -637,7 +637,7 @@ async function emitirVenda(pedidoId) {
     if (!pedido) throw new Error('Pedido não encontrado.');
     if (pedido.cancelado) throw new Error('Pedido cancelado — não é possível emitir NF-e.');
     if (pedido.statusEnvio === 'EXCLUIDO' || ['CANCELADO', 'EXCLUIDO'].includes(pedido.situacaoCA)) {
-        throw new Error('Pedido cancelado/excluído na época do Conta Azul — não é possível emitir NF-e.');
+        throw new Error('Pedido cancelado/excluído (faturamento antigo) — não é possível emitir NF-e.');
     }
     if (pedido.especial) throw new Error('Pedido especial não gera nota fiscal.');
     // Bonificação COM NOTA (09/2026): só emite a BN# que quem criou marcou "com nota"
@@ -647,7 +647,7 @@ async function emitirVenda(pedidoId) {
         if (pedido.statusEnvio !== 'RECEBIDO') throw new Error('Bonificação ainda não aprovada — aprove a bonificação antes de emitir a nota.');
     }
     if (!pedido.numero) throw new Error('Pedido ainda sem número de venda.');
-    if (pedido.nfeChave) throw new Error(`Este pedido já tem NF-e emitida pelo Conta Azul (nº ${pedido.nfeNumero || '—'}).`);
+    if (pedido.nfeChave) throw new Error(`Este pedido já tem NF-e antiga emitida (nº ${pedido.nfeNumero || '—'}).`);
 
     // Pedido da era Conta Azul (anterior a hoje) sem chave em cache: conferir no CA antes de
     // emitir — o app só guardava a chave quando alguém imprimia a DANFE, então "sem nota" aqui
@@ -659,7 +659,7 @@ async function emitirVenda(pedidoId) {
             const pedidoController = require('../controllers/pedidoController');
             const notaCA = await pedidoController._localizarNotaFiscal(pedido);
             if (notaCA?.chave_acesso) {
-                throw new Error(`Este pedido já tem NF-e emitida pelo Conta Azul (nº ${notaCA.numero_nota || '—'}) — encontrada agora na conferência.`);
+                throw new Error(`Este pedido já tem NF-e antiga emitida (nº ${notaCA.numero_nota || '—'}) — encontrada agora na conferência.`);
             }
         } catch (e) {
             if (!e.statusCode || (e.statusCode !== 404 && e.statusCode !== 400)) throw e;
@@ -1032,7 +1032,7 @@ async function emitirDevolucaoBonificacao(dev) {
     if (!pedido) throw new Error('Devolução sem pedido de origem.');
     if (pedido.especial) throw new Error('Devolução de pedido especial não gera nota fiscal (pedido sem nota).');
     if (dev.notaDevolucaoCA) {
-        throw new Error(`Esta devolução já tem NF de devolução do Conta Azul (nº ${dev.notaDevolucaoCA}).`);
+        throw new Error(`Esta devolução já tem NF de devolução antiga (nº ${dev.notaDevolucaoCA}).`);
     }
 
     // NF-e da BONIFICAÇÃO (tipo BONIFICACAO, AUTORIZADO, ambiente atual) — obrigatória
@@ -1118,7 +1118,7 @@ async function emitirDevolucao(devolucaoId) {
         throw new Error('Devolução de pedido especial não gera nota fiscal (pedido sem nota).');
     }
     if (dev.notaDevolucaoCA) {
-        throw new Error(`Esta devolução já tem NF de devolução do Conta Azul (nº ${dev.notaDevolucaoCA}).`);
+        throw new Error(`Esta devolução já tem NF de devolução antiga (nº ${dev.notaDevolucaoCA}).`);
     }
     const pedido = dev.pedidoOriginal;
 

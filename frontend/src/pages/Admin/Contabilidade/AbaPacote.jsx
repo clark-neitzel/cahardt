@@ -12,7 +12,7 @@ const ITENS = [
     ['Extrato de cada conta', 'com a identificação da conciliação linha a linha'],
     ['Transferências entre contas e ajustes de saldo', 'não entram na DRE — explicam o extrato'],
     ['Devoluções com NF-e própria', 'abatem o faturamento'],
-    ['XMLs de saída', 'NF-e de venda e devolução (app e Conta Azul)'],
+    ['XMLs de saída', 'NF-e de venda e devolução (app e notas antigas)'],
     ['XMLs de entrada', 'NF-e de produto e NFS-e de serviço dos fornecedores'],
 ];
 

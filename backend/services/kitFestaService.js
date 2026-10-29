@@ -1112,7 +1112,7 @@ const kitFestaService = {
             clienteId = c?.UUID;
         }
         if (!clienteId) {
-            throw new Error('Cliente sem cadastro no app. Cadastre no Conta Azul e vincule antes de aprovar.');
+            throw new Error('Cliente sem cadastro no app. Cadastre o cliente em Clientes → Novo e vincule antes de aprovar.');
         }
 
         // Monta itens do Pedido (precisa do produtoId do app)

@@ -22,7 +22,7 @@ Pedido do dono: *"não quero cidades repetidas, isso bagunça tudo. Se a Receita
 - **Inativar** uma cidade que não é mais usada. Cidade **em uso não pode ser inativada** — primeiro funda-a em outra.
 - **Reativar** uma cidade inativa
 - **Fundir** duas cidades (A → B): tudo que estava em A passa a ficar em B (clientes, leads, fornecedores, bairros, catálogos e metas). Antes de fundir de verdade, o botão **Simular** mostra quantas linhas mudam em cada tabela e se alguma meta por cidade vai ser somada (mesma meta mensal com linha em A e em B: os valores são **somados** e os dias de visita **unidos**, igual à regra da tela de Metas). Depois da fusão, A fica inativa e "aponta" para B — se alguém ainda mandar "A", o sistema grava "B" sozinho.
-- **Pendências**: cidades que chegaram por caminho automático (sincronização do Conta Azul, IA de atendimento no WhatsApp) e **não existem na lista**. O registro foi gravado normalmente (o automático nunca trava), e a cidade ficou aqui para você decidir: **Cadastrar** (vira cidade nova) ou **Apontar para…** (era erro de grafia: escolhe a cidade certa e os registros são corrigidos).
+- **Pendências**: cidades que chegaram por caminho automático (IA de atendimento no WhatsApp) e **não existem na lista**. O registro foi gravado normalmente (o automático nunca trava), e a cidade ficou aqui para você decidir: **Cadastrar** (vira cidade nova) ou **Apontar para…** (era erro de grafia: escolhe a cidade certa e os registros são corrigidos).
 
 ---
 
@@ -53,7 +53,7 @@ Ao buscar o CNPJ no cadastro de cliente, a cidade que a Receita devolve é confe
 
 ### Resolver pendências
 
-1. Aba **Pendências**: cada linha mostra como a cidade chegou (Conta Azul / IA), quantas vezes, e sugestões parecidas
+1. Aba **Pendências**: cada linha mostra como a cidade chegou, quantas vezes, e sugestões parecidas
 2. **Cadastrar** → cria a cidade com o nome e a UF que você confirmar
 3. **Apontar para…** → escolhe a cidade certa; os registros que estavam com a grafia da pendência são corrigidos
 
@@ -81,7 +81,7 @@ Ao buscar o CNPJ no cadastro de cliente, a cidade que a Receita devolve é confe
 **Digitei a cidade e o sistema disse "não está no cadastro". E agora?**
 Use **"Cadastrar nova cidade…"** no próprio campo (ou peça ao escritório se você não tem permissão). Antes, confira as sugestões: na maioria das vezes a cidade já existe com outra grafia.
 
-**O Conta Azul trouxe um cliente com cidade estranha. Deu erro?**
+**Um cliente antigo ficou com cidade estranha. Deu erro?**
 Não. O cliente entrou normalmente e a cidade ficou em **Pendências** nesta tela, para o escritório cadastrar ou apontar para a certa.
 
 **Fundi errado. Dá para desfazer?**

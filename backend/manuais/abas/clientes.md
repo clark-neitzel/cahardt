@@ -8,7 +8,7 @@ permissao: clientes (view)
 
 ## O que é
 
-Cadastro completo de clientes da empresa — **o cadastro agora é 100% do app** (desde 07/2026 os dados de cliente NÃO vêm mais do Conta Azul nem são enviados para lá). Permite cadastrar cliente novo com busca automática de dados pelo CNPJ, consultar, filtrar, editar todos os dados de cada cliente e realizar ações em lote como reatribuir vendedor, mudar dia de entrega ou dia de venda.
+Cadastro completo de clientes da empresa — **o cadastro agora é 100% do app**. Permite cadastrar cliente novo com busca automática de dados pelo CNPJ, consultar, filtrar, editar todos os dados de cada cliente e realizar ações em lote como reatribuir vendedor, mudar dia de entrega ou dia de venda.
 
 ---
 
@@ -36,12 +36,12 @@ Cadastro completo de clientes da empresa — **o cadastro agora é 100% do app**
 2. Clique no ícone de alerta (triângulo vermelho) na linha do cliente
 3. O modal abre com total vencido, parcelas e detalhes de cada nota
 
-> **Corrigido em 08/2026 — o selo estava escondendo devedor.** O selo de inadimplente da lista e o popup ignoravam os títulos de pedidos **faturados aqui no app** (que são a maioria hoje): o cliente devia e aparecia limpo, e a venda a prazo não era barrada. Agora esses títulos contam, então **mais clientes aparecem marcados** — e o mesmo número passa a valer no bloqueio de venda (aba Pedidos). Continuam **fora** da conta: pedido cancelado/excluído no Conta Azul e especial já pago em dinheiro na entrega que só aguarda a conferência do Caixa.
+> **Corrigido em 08/2026 — o selo estava escondendo devedor.** O selo de inadimplente da lista e o popup ignoravam os títulos de pedidos **faturados aqui no app** (que são a maioria hoje): o cliente devia e aparecia limpo, e a venda a prazo não era barrada. Agora esses títulos contam, então **mais clientes aparecem marcados** — e o mesmo número passa a valer no bloqueio de venda (aba Pedidos). Continuam **fora** da conta: pedido cancelado/excluído e especial já pago em dinheiro na entrega que só aguarda a conferência do Caixa.
 
 ### Cadastrar um cliente novo (ou fornecedor)
 1. Na lista de clientes, clique em **Novo Cliente** (botão verde no topo — precisa da permissão `clientes.edit` ou admin)
 2. Escolha o tipo de cadastro: **Cliente**, **Fornecedor** ou **Cliente + Fornecedor**. Fornecedor vai para a lista de Fornecedores (usada no Contas a Pagar e Notas de Entrada); "Cliente + Fornecedor" grava nos dois lugares
-3. Digite o CNPJ. Assim que ele fica completo e válido, o app consulta a Receita Federal e a SEFAZ e preenche razão social, fantasia, endereço, telefone, e-mail e Inscrição Estadual automaticamente
+3. Digite o CNPJ. Assim que ele fica completo e válido, o app consulta a Receita Federal e a SEFAZ e preenche razão social, fantasia, endereço, telefone, e-mail e Inscrição Estadual automaticamente. Se aparecer "CNPJ não encontrado nas bases públicas", normalmente é empresa aberta há pouco tempo (ainda não consta nas bases gratuitas) — preencha os dados na mão; se aparecer "serviços da Receita indisponíveis", o problema é a consulta fora do ar, tente de novo depois
 4. Confira/edite os campos (todos são editáveis). Endereço completo é obrigatório para emitir NF-e depois. CNPJ/CPF é **obrigatório** e o dígito verificador é validado
 4b. **WhatsApp (campo Celular)** — vira **campo obrigatório em cadastro de cliente quando a exigência estiver LIGADA** na tela Pendências de WhatsApp (é o mesmo interruptor do bloqueio de envio de pedido; ele vem desligado de fábrica). **Enquanto estiver desligado, o cadastro continua salvando sem o número, como sempre foi.** É por esse número que sai a confirmação do pedido, o boleto/PIX e a cobrança, e é como o escritório fala com o cliente quando o vendedor falta. Com a exigência ligada, antes de salvar o app ainda **pergunta ao WhatsApp da empresa se o número existe** (é uma consulta — **nenhuma mensagem é enviada ao cliente**): se a resposta for que não existe, o cadastro é recusado com "Esse número não tem WhatsApp. Confira com o cliente."; se não der para perguntar na hora (WhatsApp da empresa fora do ar), **o cadastro salva normalmente** e fica marcado como "não deu para perguntar". Cadastro que é **só fornecedor** nunca pede WhatsApp
 5. Clique em **Cadastrar**. Para cliente, o código sequencial é gerado automaticamente e a tela abre no detalhe; fornecedor puro leva à tela de Fornecedores
@@ -51,7 +51,7 @@ Cadastro completo de clientes da empresa — **o cadastro agora é 100% do app**
 ### Editar um cliente
 1. Clique na linha do cliente para abrir o detalhe (`/clientes/:uuid`)
 2. Navegue pelas sub-abas: Cadastro, Admin ou Histórico
-3. Edite os campos desejados e clique em **Salvar Alterações** — tudo fica gravado só no app (nada vai para o Conta Azul)
+3. Edite os campos desejados e clique em **Salvar Alterações** — tudo fica gravado no app
 4. No card "Informações do Cadastro" há o botão **Atualizar pela Receita/SEFAZ**: re-consulta o CNPJ e preenche o formulário com os dados atuais (endereço novo, IE etc.) — nada é salvo até clicar em Salvar
 
 ### Alterar dados em lote
@@ -142,7 +142,7 @@ Aba padrão ao abrir o detalhe. Contém tudo que é editável pelo time comercia
 - Endereço completo editável (logradouro, número, complemento, bairro, cidade, UF, CEP) — obrigatório para emitir NF-e
 - Botão **Atualizar pela Receita/SEFAZ** (re-consulta o CNPJ e preenche o formulário; salva só ao clicar em Salvar)
 - Tipo de pessoa, código e perfis (somente leitura)
-- Financeiro: atrasos de pagamento e recebimento (histórico da época do Conta Azul)
+- Financeiro: atrasos de pagamento e recebimento (histórico antigo)
 - Auditoria: data de criação, última alteração e UUID
 
 A barra de ações fica fixada no rodapé com os botões **Descartar** e **Salvar Alterações**.
@@ -173,7 +173,7 @@ A barra de ações fica fixada no rodapé com os botões **Descartar** e **Salva
 > `Joinvlle`, `Noinville`, `Joinvillevile` → `Joinville`), e `São Francisco` incompleto vira
 > `São Francisco do Sul`. Você **não precisa** se preocupar com maiúscula/minúscula ou acento —
 > digite como preferir. Isso vale também para a cidade que vem da consulta por CNPJ (a Receita
-> devolve tudo em MAIÚSCULA) e para o que chega do Conta Azul. Cidade que chega do Conta Azul ou da
+> devolve tudo em MAIÚSCULA) e para os cadastros antigos. Cidade que chega da
 > IA de atendimento e **não está no cadastro** é gravada mesmo assim e vira uma **pendência** em
 > Configurações → Cidades (o automático nunca trava) — ver [config-cidades.md](config-cidades.md).
 > **Por que isso importa:** metas por cidade, comissão e dashboards casam a cidade pelo nome
@@ -240,7 +240,7 @@ Exibe os leads que foram associados a este cliente — geralmente leads converti
 - **Config: Categorias de Cliente** — as categorias definem ciclo padrão e regras de flex/desconto
 - **Análise IA** — os insights do cliente são recalculados automaticamente e exibidos na sub-aba Admin
 
-> **Conta Azul:** a sincronização de clientes com o CA foi **desativada em 07/2026**. Nada é puxado nem enviado — o app é a fonte única do cadastro de clientes.
+> O app é a fonte única do cadastro de clientes.
 
 ---
 
@@ -310,7 +310,7 @@ Ao escolher uma situação, aparece logo abaixo dos filtros uma **linha de ajuda
 - **Ter justificativa não tira o cliente de "WhatsApp em uso".** Quem tem número no cadastro é classificado pelo número; a justificativa só conta para quem está sem número. É a mesma regra da tela de Pendências — as duas telas dão sempre o mesmo resultado para o mesmo cliente.
 - **A conta é a mesma da tela de Pendências — na aba Ativos.** Estando na aba **Ativos**, se a tela de Pendências diz ⟨N⟩ sem número e ⟨M⟩ dispensados, o filtro aqui traz exatamente ⟨N⟩ e ⟨M⟩ clientes. Se divergirem, é defeito — avise. Na aba **Inativos** os números são outros de propósito: a tela de Pendências só olha clientes ativos, e o filtro daqui vale nas duas abas.
 - **Quando a situação muda:** salvar o cadastro com o número preenchido (ou apagado) muda a situação **na hora**. Já **WhatsApp em uso** e **Número com problema** vêm da varredura que roda **uma vez por dia, de madrugada** — um envio de hoje só aparece amanhã.
-- **Cadastro criado por fora da tela de Clientes** (o cliente novo que aparece junto com um pedido vindo do Conta Azul, ou o fornecedor promovido a cliente) nasce **sem** o campo Celular/WhatsApp preenchido — então cai corretamente em "Sem número" desde o primeiro minuto. Basta preencher o número na ficha e ele muda de situação na hora.
+- **Cadastro criado por fora da tela de Clientes** (o fornecedor promovido a cliente, por exemplo) nasce **sem** o campo Celular/WhatsApp preenchido — então cai corretamente em "Sem número" desde o primeiro minuto. Basta preencher o número na ficha e ele muda de situação na hora.
 - É ferramenta de **gestão de cadastro**, não trava de operação: nada aqui bloqueia pedido, e nada aqui manda mensagem para ninguém.
 
 **A marca na linha do cliente depende de outra chave.** Além do filtro, cada cliente pode mostrar a sua situação **na própria linha** (no computador) ou **no card** (no celular) — é o mesmo selo das listas de campo (Rota, Atendimentos, Entregas), com uma legenda curta acima da lista. Isso só aparece com a chave **"Mostrar o selo nas listas de campo"** ligada, na tela **Pendências de WhatsApp**. Com ela desligada, **o filtro continua funcionando igual** — só não desenha nada na linha. Se alguém reclamar que "filtrou mas não vejo marca nenhuma nos clientes", é esta chave.

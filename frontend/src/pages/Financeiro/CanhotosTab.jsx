@@ -988,7 +988,7 @@ const CanhotosTab = ({ periodo, onTotal }) => {
                     <span>
                         <b>{c.devolucaoAReimprimir} nota(s) de devolução</b> ainda não estão no arquivo.
                         Use o botão <b>Reimprimir DANFE</b> na linha e guarde o papel junto na pasta do mês.
-                        Nas notas antigas do Conta Azul o botão não aparece (a DANFE delas não é gerada pelo app) — baixe pela aba <b>Emitidas</b>.
+                        Nas notas antigas (anteriores ao app) o botão não aparece (a DANFE delas não é gerada pelo app) — baixe pela aba <b>Emitidas</b>.
                     </span>
                 </div>
             )}

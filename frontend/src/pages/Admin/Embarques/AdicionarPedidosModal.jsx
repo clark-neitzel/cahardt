@@ -7,7 +7,7 @@ import SelectBusca from '../../../components/SelectBusca';
 const TipoBadge = ({ pedido }) => {
     if (pedido.bonificacao) return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-700 border border-green-200">BN</span>;
     if (pedido.especial) return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-purple-100 text-purple-700 border border-purple-200">ZZ</span>;
-    return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-sky-100 text-sky-700 border border-sky-200">CA</span>;
+    return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-sky-100 text-sky-700 border border-sky-200">NF</span>;
 };
 
 const fmtData = (d) => {
@@ -216,7 +216,7 @@ const AdicionarPedidosModal = ({ embarqueId, onClose, onSuccess }) => {
                                 onChange={(e) => setFiltroTipo(e.target.value)}
                             >
                                 <option value="todos">Todos os tipos</option>
-                                <option value="normal">CA — Normal</option>
+                                <option value="normal">Normal</option>
                                 <option value="especial">ZZ — Especial</option>
                                 <option value="bonificacao">BN — Bonificação</option>
                             </SelectBusca>

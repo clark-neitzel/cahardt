@@ -506,7 +506,7 @@ const asaasService = {
         if (parcela.contaReceber?.pedido) {
             const ped = parcela.contaReceber.pedido;
             if (ped.situacaoCA !== 'FATURADO') {
-                const err = new Error('O pedido ainda não está FATURADO no Conta Azul — emita a NF-e antes de gerar o boleto.');
+                const err = new Error('O pedido ainda não está FATURADO — emita a NF-e antes de gerar o boleto.');
                 err.statusCode = 400;
                 throw err;
             }
@@ -517,7 +517,7 @@ const asaasService = {
                 try {
                     await pedidoController._localizarNotaFiscal(pedidoFull);
                 } catch (e) {
-                    const err = new Error('NF-e do pedido não encontrada no Conta Azul — emita a nota antes de gerar o boleto.');
+                    const err = new Error('NF-e do pedido não encontrada — emita a nota antes de gerar o boleto.');
                     err.statusCode = 400;
                     throw err;
                 }

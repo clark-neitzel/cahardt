@@ -560,7 +560,7 @@ async function saldosPorConta(de, ate, comSaldoCA = false) {
         const info = l.id ? mapa.get(l.id) : null;
         return {
             id: l.id,
-            nome: l.id ? (info?.nome || 'Conta do CA') : 'Não informado',
+            nome: l.id ? (info?.nome || 'Conta antiga') : 'Não informado',
             tipo: info?.tipo || null,
             entradas: l.entradas,
             saidas: l.saidas,
@@ -694,7 +694,7 @@ async function extratoPorConta(contaId, de, ate) {
     const info = contaId ? mapa.get(contaId) : null;
 
     return {
-        conta: { id: contaId || null, nome: contaId ? (info?.nome || 'Conta do CA') : 'Não informado' },
+        conta: { id: contaId || null, nome: contaId ? (info?.nome || 'Conta antiga') : 'Não informado' },
         de, ate,
         totalEntradas, totalSaidas, resultado: round2(totalEntradas - totalSaidas),
         lancamentos

@@ -65,16 +65,16 @@
 | Caixa Diário | `/caixa` | Resumo financeiro diário do motorista com baixas, despesas e fechamento | [caixa.md](caixa.md) |
 | Despesas | `/caixa/despesas` | Registro de despesas operacionais do dia (combustível, pedágio, hotel, etc.) | [despesas.md](despesas.md) |
 | Auditoria de Entregas | `/admin/auditoria-entregas` | Revisão e correção de pagamentos registrados pelos motoristas | [auditoria-entregas.md](auditoria-entregas.md) |
-| Contas a Receber | `/financeiro/contas-receber` | Gestão de parcelas, baixas manuais e sincronização com o Conta Azul | [contas-receber.md](contas-receber.md) |
+| Contas a Receber | `/financeiro/contas-receber` | Gestão de parcelas, baixas manuais e relatórios de inadimplência | [contas-receber.md](contas-receber.md) |
 | Cobranças sob responsabilidade | `/financeiro/cobrancas-responsavel` | Fechamento do dia 01: títulos em aberto agrupados por vendedor/escritório responsável, com folha A4 assinável para o vale | [cobrancas-sob-responsabilidade.md](cobrancas-sob-responsabilidade.md) |
 | Notas Fiscais (emissão e canhotos) | `/notas-fiscais` | Emissão de NF-e pelo app via Focus NFe (fila do dia, emitir uma/selecionadas/todas, DANFE/XML, reemissão após rejeição) + aba **Canhotos**: bipar o código de barras da DANFE para controlar quais canhotos assinados já voltaram e estão na pasta do mês, com **Desfazer** de um passo para o bipe errado | [notas-fiscais.md](notas-fiscais.md) |
 | Régua de Cobrança | `/financeiro/cobranca` | Cobrança automática de inadimplentes por WhatsApp/e-mail/SMS com régua por forma de recebimento e tarefa automática em falha | [regua-cobranca.md](regua-cobranca.md) |
-| Contas a Pagar | `/contas-pagar` | Despesas com parcelas, envio ao Conta Azul e baixa automática quando pagas lá (DDA/conciliação) | [contas-a-pagar.md](contas-a-pagar.md) |
-| Fornecedores | `/fornecedores` | Cadastro de fornecedores sincronizado com o Conta Azul (envio automático + importação) | [fornecedores.md](fornecedores.md) |
+| Contas a Pagar | `/contas-pagar` | Despesas com parcelas, baixa e conciliação | [contas-a-pagar.md](contas-a-pagar.md) |
+| Fornecedores | `/fornecedores` | Cadastro de fornecedores | [fornecedores.md](fornecedores.md) |
 | Notas Recebidas | `/notas-recebidas` | Caixa de entrada das NF-e capturadas automaticamente na SEFAZ, com geração de conta a pagar a partir da nota e **manifestação do destinatário** (confirmar o recebimento ou recusar a nota na Receita) | [notas-recebidas.md](notas-recebidas.md) |
 | Financeiro — Visão Geral | `/financeiro/dashboard` | Painel de abertura: a receber/pagar, resultado do mês, fluxo 30 dias, inadimplência por idade, contas e margens (gerencial) | [financeiro-visao-geral.md](financeiro-visao-geral.md) |
 | Fluxo de Caixa | `/financeiro/fluxo-caixa` | Previsto × realizado de entradas e saídas por dia/mês, com saldo acumulado (gerencial) | [fluxo-caixa.md](fluxo-caixa.md) |
-| Saldos por Conta | `/financeiro/por-conta` | Entradas, saídas e resultado por banco/caixa no período + saldo atual no CA + extrato por conta (gerencial) | [saldos-por-conta.md](saldos-por-conta.md) |
+| Saldos por Conta | `/financeiro/por-conta` | Entradas, saídas e resultado por banco/caixa no período + extrato por conta (gerencial) | [saldos-por-conta.md](saldos-por-conta.md) |
 | DRE — Resultado | `/financeiro/dre` | Demonstração de resultado mês a mês: receita − despesas por categoria = lucro e margem (gerencial) | [dre.md](dre.md) |
 | Categorias de Despesa | `/financeiro/categorias-despesa` | Classifica cada categoria em "baldes" (Operação, Financeiro, Fora da DRE) para a DRE mostrar o lucro certo | [categorias-despesa.md](categorias-despesa.md) |
 | Margem por Produto | `/financeiro/margem-produtos` | Custo (ficha técnica/compras) × preço × vendas por produto: margem em R$ e %, com fonte do custo (gerencial) | [margem-produtos.md](margem-produtos.md) |
@@ -141,12 +141,12 @@
 |-----|------|-----------|--------|
 | Config — Gerais | `/admin/configuracoes` | Tipos de atendimento, ações, origens de lead e parâmetros gerais | [config-gerais.md](config-gerais.md) |
 | Config — Tabela de Preços | `/configuracoes/precos` | Condições de pagamento com parcelas, acréscimos e regras de uso | [config-precos.md](config-precos.md) |
-| Config — Bancos | `/configuracoes/bancos` | Contas financeiras sincronizadas do Conta Azul (somente leitura) | [config-bancos.md](config-bancos.md) |
+| Config — Bancos | `/configuracoes/bancos` | Contas financeiras (bancos e caixas) usadas nas baixas | [config-bancos.md](config-bancos.md) |
 | Config — Metas | `/configuracoes/metas` | Definição de metas mensais por vendedor com produtos, cidades e promoções | [config-metas.md](config-metas.md) |
 | Config — Comissões | `/config/comissoes` | Configuração e apuração de comissões por vendedor: faixas e bônus | [config-comissoes.md](config-comissoes.md) |
 | Config — Cat. Produto | `/config/categorias-produto` | Categorias comerciais de produto — ver é livre; criar/editar/excluir só admin ou `Pode_Editar_Categorias_Produto` | [config-categorias-produto.md](config-categorias-produto.md) |
 | Config — Cat. Cliente | `/configuracoes/categorias-cliente` | Segmentos de cliente com ciclo padrão e regras de desconto | [config-categorias-cliente.md](config-categorias-cliente.md) |
-| Config — Cidades | `/config/cidades` | Cadastro oficial de cidades: todo campo Cidade só aceita da lista; cadastrar nova (com "você quis dizer"), editar, fundir com simulação e snapshot, pendências vindas do Conta Azul/IA | [config-cidades.md](config-cidades.md) |
+| Config — Cidades | `/config/cidades` | Cadastro oficial de cidades: todo campo Cidade só aceita da lista; cadastrar nova (com "você quis dizer"), editar, fundir com simulação e snapshot, pendências vindas da IA | [config-cidades.md](config-cidades.md) |
 | Config — Setores | `/config/setores` | Cadastro de setores (Cozinha, Estoque…): criar, renomear (vale em todo lugar), ordenar, desativar e excluir (só sem uso) | [config-setores.md](config-setores.md) |
 | Config — Inteligência artificial | `/config/ia` | Liga/desliga a IA do Como Fazer, escolhe modelo e limite por dia, cadastra preço e mostra o uso e o custo do mês (por enquanto só ChatGPT) | [config-ia.md](config-ia.md) |
 | Config — Impressoras | `/config/impressoras` | Impressão direta de etiquetas (só admin): agente do PC da cozinha, impressoras Zebra, testes de impressão e fila | [configuracoes-impressoras.md](configuracoes-impressoras.md) |

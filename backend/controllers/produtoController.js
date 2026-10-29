@@ -298,7 +298,7 @@ const produtoController = {
         try {
             const { CA_SOMENTE_LEITURA } = require('../config/contaAzulModo');
             const { produto } = await produtoService.criar(req.body || {}, req.user);
-            res.status(201).json({ ...produto, message: CA_SOMENTE_LEITURA ? 'Produto criado no app!' : 'Produto criado no app e na Conta Azul!' });
+            res.status(201).json({ ...produto, message: CA_SOMENTE_LEITURA ? 'Produto criado no app!' : 'Produto criado!' });
         } catch (error) {
             if (error.status) return res.status(error.status).json({ error: error.message });
             console.error('Erro ao criar produto:', error);
@@ -540,7 +540,7 @@ const produtoController = {
             res.json(produto);
         } catch (error) {
             console.error(error);
-            res.status(500).json({ error: 'Erro ao alterar o custo do CA' });
+            res.status(500).json({ error: 'Erro ao alterar o custo' });
         }
     },
 

@@ -32,7 +32,7 @@ async function garantirContaFinanceira(id, tx = prisma) {
         await tx.contaFinanceira.create({
             data: {
                 id: chave,
-                nomeBanco: `Conta CA ${chave.slice(0, 8)}…`,
+                nomeBanco: `Conta antiga ${chave.slice(0, 8)}…`,
                 tipoUso: 'DESCONHECIDA',
                 ativo: false,
                 obs: 'Criada automaticamente: apareceu numa baixa/extrato antes de existir no cadastro. Se for uma conta real, renomeie e ative.'

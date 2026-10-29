@@ -293,7 +293,7 @@ router.post('/sync-produto/:produtoId', async (req, res) => {
             select: { contaAzulId: true, nome: true, estoqueDisponivel: true }
         });
         if (!produto) return res.status(404).json({ error: 'Produto não encontrado.' });
-        if (!produto.contaAzulId) return res.json({ sincCA: false, motivo: 'Produto sem vínculo CA.' });
+        if (!produto.contaAzulId) return res.json({ sincCA: false, motivo: 'Produto sem vínculo de sincronização antiga.' });
 
         const contaAzulService = require('../services/contaAzulService');
         const resultado = await contaAzulService.syncProdutoIndividual(produto.contaAzulId);

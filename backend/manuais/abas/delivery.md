@@ -8,9 +8,9 @@ permissao: delivery (view + etapas por permissão)
 
 ## O que é
 
-Kanban de acompanhamento de pedidos de entrega (Kit Festa). Os pedidos faturados no Conta Azul são organizados em colunas (etapas) e avançados manualmente conforme o fluxo de produção e entrega. O sistema também envia mensagens automáticas via WhatsApp ao cliente quando o pedido avança de etapa.
+Kanban de acompanhamento de pedidos de entrega (Kit Festa). Os pedidos faturados são organizados em colunas (etapas) e avançados manualmente conforme o fluxo de produção e entrega. O sistema também envia mensagens automáticas via WhatsApp ao cliente quando o pedido avança de etapa.
 
-> **Atenção:** apenas pedidos já **FATURADOS** no Conta Azul aparecem no Kanban e podem ser movidos entre etapas. Pedido **cancelado**, **excluído** ou com **devolução finalizada** nunca aparece aqui, mesmo que já tenha entrado no fluxo antes — some assim que qualquer uma dessas situações acontece (regra reforçada em 17/09/2026).
+> **Atenção:** apenas pedidos já **FATURADOS** aparecem no Kanban e podem ser movidos entre etapas. Pedido **cancelado**, **excluído** ou com **devolução finalizada** nunca aparece aqui, mesmo que já tenha entrado no fluxo antes — some assim que qualquer uma dessas situações acontece (regra reforçada em 17/09/2026).
 
 ---
 
@@ -44,7 +44,7 @@ Kanban de acompanhamento de pedidos de entrega (Kit Festa). Os pedidos faturados
 1. Localize o card na coluna atual
 2. Clique no botão de avançar (seta) no card
 3. Selecione a etapa destino
-4. O sistema verifica se o pedido está faturado no CA — se não estiver, bloqueia
+4. O sistema verifica se o pedido está faturado — se não estiver, bloqueia
 5. Uma mensagem de WhatsApp é enviada automaticamente ao cliente (salvo se silenciado)
 
 ### Silenciar WhatsApp de um pedido
@@ -113,7 +113,7 @@ Exemplo em uso: o usuário **Produção** foi liberado em 15/10/2026 para ver a 
 
 ## Depende de / Interfere em
 
-- **Pedidos** — somente pedidos FATURADOS no CA aparecem aqui
+- **Pedidos** — somente pedidos FATURADOS aparecem aqui
 - **WhatsApp** — a movimentação de etapa dispara envio automático de mensagem
 - **Config: Categorias de Produto** — determina quais pedidos entram no Kanban
 

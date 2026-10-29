@@ -818,7 +818,7 @@ const TabelaPrecos = () => {
                                 <div className="flex items-center justify-between mb-2">
                                     <div>
                                         <label className="block text-sm font-semibold text-gray-700">Regras por Categoria (Especiais)</label>
-                                        <p className="text-[11px] text-gray-500">Define preço base e acréscimo diferenciados por categoria do CA para pedidos especiais.</p>
+                                        <p className="text-[11px] text-gray-500">Define preço base e acréscimo diferenciados por categoria para pedidos especiais.</p>
                                     </div>
                                     <button
                                         type="button"

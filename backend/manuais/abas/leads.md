@@ -53,7 +53,7 @@ Gestão completa dos leads (prospecções) do sistema. Um lead é um potencial c
 > `Joinvlle`, `Noinville`, `Joinvillevile` → `Joinville`), e `São Francisco` incompleto vira
 > `São Francisco do Sul`. Você **não precisa** se preocupar com maiúscula/minúscula ou acento —
 > digite como preferir. Isso vale também para a cidade que vem da consulta por CNPJ (a Receita
-> devolve tudo em MAIÚSCULA) e para o que chega do Conta Azul. Cidade que chega do Conta Azul ou da
+> devolve tudo em MAIÚSCULA) e para cadastros antigos. Cidade que chega da
 > IA de atendimento e **não está no cadastro** é gravada mesmo assim e vira uma **pendência** em
 > Configurações → Cidades (o automático nunca trava) — ver [config-cidades.md](config-cidades.md).
 > **Por que isso importa:** metas por cidade, comissão e dashboards casam a cidade pelo nome

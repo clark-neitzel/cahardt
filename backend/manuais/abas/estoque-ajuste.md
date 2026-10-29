@@ -138,7 +138,6 @@ O admin configura as regras em Configurações. Cada regra define:
 
 - **Estoque — Posição** — os saldos são atualizados imediatamente após o ajuste
 - **Estoque — Histórico** — cada ajuste fica registrado no histórico
-- **Conta Azul** — o sistema tenta sincronizar o ajuste de estoque com o CA (campo `sincCA`)
 
 ---
 

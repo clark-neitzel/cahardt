@@ -1,5 +1,11 @@
 [
   {
+    "slug": "sem-conta-azul",
+    "titulo": "App sem Conta Azul: telas mais limpas",
+    "resumo": "Saíram da tela os botões e avisos do Conta Azul (Sync CA, coluna Conta Azul, Reenviar…). Faturamento, NF-e, boleto e baixa funcionam igual — já eram 100% no app.",
+    "data": "2026-10-29"
+  },
+  {
     "slug": "etiqueta-pasta-funcionario",
     "titulo": "RH: etiqueta da pasta do funcionário",
     "resumo": "Na ficha do funcionário, registre demissão, motivo e aviso prévio e imprima a etiqueta do saco/pasta e a etiqueta de arquivo.",

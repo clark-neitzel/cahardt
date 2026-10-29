@@ -229,7 +229,7 @@ const BuscarModal = ({ lancamento, pendentes, contaId, onClose, onSuccess, onCri
     // Baixa que está em OUTRA conta (banco errado): corrige (app + CA quando possível) e recarrega
     const [corrigindo, setCorrigindo] = useState(null);
     const corrigirConta = async (p) => {
-        if (!window.confirm(`Esta baixa está em "${p.outraConta.nome}". Mover para a conta deste extrato (no app e no Conta Azul, quando vinculada)?`)) return;
+        if (!window.confirm(`Esta baixa está em "${p.outraConta.nome}". Mover para a conta deste extrato?`)) return;
         setCorrigindo(p.id);
         try {
             const r = await conciliacaoService.corrigirContaBaixa(p.outraConta.tipo, p.id, contaId);
@@ -397,7 +397,7 @@ const BuscarModal = ({ lancamento, pendentes, contaId, onClose, onSuccess, onCri
                 </div>
 
                 <div className="p-5 space-y-4 overflow-y-auto">
-                    {/* Janela de vencimento + busca — como no Conta Azul */}
+                    {/* Janela de vencimento + busca */}
                     <div className="flex flex-col md:flex-row gap-2">
                         <div className="flex gap-1.5 overflow-x-auto hide-scrollbar">
                             {[['15', '±15 dias'], ['30', '±30 dias'], ['60', '±60 dias'], ['365', 'Tudo']].map(([v, label]) => (
@@ -476,7 +476,7 @@ const BuscarModal = ({ lancamento, pendentes, contaId, onClose, onSuccess, onCri
                                             </div>
                                             <div className="text-xs text-gray-500 truncate">
                                                 {p.descricao}{p.numeroNota ? ` · NF ${p.numeroNota}` : ''} · vence {fmtData(p.vencimento)}
-                                                {!p.vaiAoCA && ' · importada do CA (baixa fica só no app)'}
+                                                {!p.vaiAoCA && ' · importada (antiga)'}
                                             </div>
                                         </div>
                                     </label>
@@ -532,7 +532,7 @@ const BuscarModal = ({ lancamento, pendentes, contaId, onClose, onSuccess, onCri
                                                         disabled={corrigindo === p.id}
                                                         className="px-3 py-1 bg-white border border-amber-400 text-amber-800 hover:bg-amber-100 rounded-full text-xs font-semibold disabled:opacity-50"
                                                     >
-                                                        {corrigindo === p.id ? 'Corrigindo…' : 'Corrigir para esta conta (app + CA)'}
+                                                        {corrigindo === p.id ? 'Corrigindo…' : 'Corrigir para esta conta'}
                                                     </button>
                                                 </div>
                                             </div>
@@ -611,7 +611,7 @@ const BuscarModal = ({ lancamento, pendentes, contaId, onClose, onSuccess, onCri
                             <div className="flex items-center justify-between gap-2">
                                 <p className="text-xs font-bold uppercase tracking-widest text-gray-600">Decompor a diferença</p>
                                 <button type="button" onClick={() => setDif(d => ({ ...d, tarifa: '1,50' }))} className="text-xs font-medium text-primary hover:underline">
-                                    + Tarifa do boleto CA (R$ 1,50)
+                                    + Tarifa do boleto (R$ 1,50)
                                 </button>
                             </div>
                             <div className="grid grid-cols-3 gap-3">
@@ -884,7 +884,7 @@ const DespesaModal = ({ lancamento, onClose, onSuccess }) => {
                             </div>
 
                             <p className="text-xs text-gray-500">
-                                A despesa é criada <strong>já paga</strong> em {fmtData(lancamento.data)}, no banco deste extrato, e vai para o Conta Azul.
+                                A despesa é criada <strong>já paga</strong> em {fmtData(lancamento.data)}, no banco deste extrato.
                                 Depois de salvar, a linha volta com a baixa como sugestão — aí é só clicar em <strong>Conciliar</strong>.
                             </p>
                         </>
@@ -993,7 +993,7 @@ const DespesaLoteModal = ({ lancamentos, onClose, onSuccess }) => {
                             <p className="text-sm text-gray-600">
                                 O fornecedor, a categoria e a forma de pagamento abaixo valem para <strong>todas</strong>. Cada linha
                                 vira sua própria despesa (mantendo a descrição e o nº do documento do banco), já <strong>paga e
-                                conciliada</strong> no banco deste extrato — e vai para o Conta Azul.
+                                conciliada</strong> no banco deste extrato.
                             </p>
 
                             {/* Fornecedor (uma vez para todas) */}
@@ -1464,18 +1464,6 @@ const ConciliacaoBancariaPage = () => {
 
     // Créditos identificados prontos para confirmar em lote (Venda = pedido, valor fechando)
     const identificaveis = lancamentos.filter(l => l.status === 'PENDENTE' && l.identificado?.fecha).length;
-    // Débitos "Nome não encontrado" — dá para descobrir no CA de quem são
-    const debitosSemNome = lancamentos.filter(l => l.status === 'PENDENTE' && l.tipo === 'DEBITO' && !l.detalhes?.nome).length;
-
-    const identificarDebitos = async () => {
-        try {
-            const r = await conciliacaoService.identificarDebitosCA(contaId, periodo.de, periodo.ate);
-            toast.success(r.aviso || r.motivo || 'Identificação iniciada.');
-        } catch (e) {
-            toast.error(e.response?.data?.error || 'Erro ao identificar débitos');
-        }
-    };
-
     // Seleção em lote: TODO pendente pode ser selecionado (crédito ou débito).
     // Ações por tipo: Ignorar (todos) · Conciliar sugeridas/identificadas (as que têm par)
     // · Lançar despesas e conciliar (só as saídas — tarifas repetidas).
@@ -1589,11 +1577,11 @@ const ConciliacaoBancariaPage = () => {
                         {/* Os dados do boleto/nota — conferir ANTES de conciliar */}
                         <DetalheBaixa p={escolhido} />
                         {escolhido.origem === 'ABERTO' && (
-                            <div className="text-xs text-amber-700">Conciliar dá a baixa neste boleto (data e banco do extrato){escolhido.detalhe?.vaiAoCA === false ? ' — fica só no app (importada do CA)' : ' e envia ao Conta Azul'}.</div>
+                            <div className="text-xs text-amber-700">Conciliar dá a baixa neste boleto (data e banco do extrato).</div>
                         )}
                         {escolhido.tarifa > 0 && (
                             <div className="text-xs text-amber-700">
-                                Boleto do Conta Azul: crédito líquido da tarifa de R$ {fmt(escolhido.tarifa)} — ao Conciliar, a tarifa fica registrada como motivo da diferença.
+                                Boleto: crédito líquido da tarifa de R$ {fmt(escolhido.tarifa)} — ao Conciliar, a tarifa fica registrada como motivo da diferença.
                             </div>
                         )}
                     </>
@@ -1853,17 +1841,6 @@ const ConciliacaoBancariaPage = () => {
                                     Conciliar automático (casos com 1 só candidato)
                                 </button>
                             )}
-                            {debitosSemNome > 0 && (
-                                <button
-                                    onClick={identificarDebitos}
-                                    disabled={autoRodando || loading}
-                                    className="px-4 py-2 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-sm inline-flex items-center gap-1.5 disabled:opacity-50"
-                                    title='Descobre no Conta Azul de quem é cada "Pagamento de Boleto para Nome não encontrado" (fornecedor, despesa, nº da nota)'
-                                >
-                                    <Search className="h-4 w-4" />
-                                    Identificar débitos no CA ({debitosSemNome})
-                                </button>
-                            )}
                         </div>
 
                         {/* Barra de seleção em lote — qualquer pendente marcado */}
@@ -1962,7 +1939,7 @@ const ConciliacaoBancariaPage = () => {
                             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-8 text-center text-sm text-gray-500">
                                 {ehContaAsaas
                                     ? 'Nenhum lançamento do extrato neste período. O extrato do Asaas entra sozinho a cada 30 minutos — ou clique em "Buscar do Asaas" no topo.'
-                                    : 'Nenhum lançamento do extrato neste período. Importe o arquivo OFX do banco — ou o PDF do extrato do Conta Azul — pelo botão verde no topo.'}
+                                    : 'Nenhum lançamento do extrato neste período. Importe o arquivo OFX do banco — ou o PDF do extrato — pelo botão verde no topo.'}
                             </div>
                         )}
 
@@ -2082,10 +2059,10 @@ const ConciliacaoBancariaPage = () => {
                         <ImportacoesCard contaId={contaId} recarregarExtrato={carregar} />
 
                         <p className="text-xs text-gray-500">
-                            Como funciona: exporte o extrato do banco em OFX — ou, na Conta PJ do Conta Azul (que não gera OFX), o próprio PDF do extrato — e importe aqui (importar de novo não duplica —
+                            Como funciona: exporte o extrato do banco em OFX — ou, para banco que não gera OFX, o próprio PDF do extrato — e importe aqui (importar de novo não duplica —
                             só atualiza a descrição das linhas que já existiam). O sistema <strong>sugere</strong> quando data e
                             valor batem: com uma baixa já registrada (aí Conciliar só amarra) ou com um boleto em aberto do
-                            Contas a Pagar (aí Conciliar dá a baixa na hora, com a data e o banco do extrato, e envia ao Conta Azul).
+                            Contas a Pagar (aí Conciliar dá a baixa na hora, com a data e o banco do extrato).
                             "Conciliar automático" fecha sozinho os casos sem ambiguidade. Para todo o resto, <strong>"Buscar…"</strong>:
                             lista os boletos em aberto numa janela de ±15 dias (ajustável) e as baixas sem par, com busca por fornecedor —
                             dá para marcar vários, registrar juros/multa/desconto, cadastrar uma despesa que nunca foi lançada,

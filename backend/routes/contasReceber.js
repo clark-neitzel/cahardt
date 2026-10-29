@@ -1835,7 +1835,7 @@ router.post('/:id/sync-ca', verificarAuth, checkBaixa, async (req, res) => {
         });
     } catch (error) {
         console.error('Erro ao sincronizar com CA:', error?.response?.data || error);
-        res.status(400).json({ error: error.message || 'Erro ao sincronizar com Conta Azul.', detalhe: error?.response?.data });
+        res.status(400).json({ error: error.message || 'Erro ao sincronizar.', detalhe: error?.response?.data });
     }
 });
 
@@ -1846,7 +1846,7 @@ router.post('/sync-ca/todas', verificarAuth, checkBaixa, async (req, res) => {
         res.json({ message: `Sync concluído: ${r.totalParcelasBaixadas} parcela(s) baixadas em ${r.totalContasAtualizadas} conta(s).`, ...r });
     } catch (error) {
         console.error('Erro ao sincronizar todas com CA:', error);
-        res.status(500).json({ error: 'Erro ao sincronizar com Conta Azul.' });
+        res.status(500).json({ error: 'Erro ao sincronizar.' });
     }
 });
 

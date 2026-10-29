@@ -1754,7 +1754,7 @@ router.post('/:id/gerar-conta', verificarAuth, checkEscrita, async (req, res) =>
             }
         }
         if (enviarCA && !fornecedor) {
-            return res.status(400).json({ error: 'Para enviar ao Conta Azul é obrigatório a nota ter fornecedor identificado.' });
+            return res.status(400).json({ error: 'A nota precisa ter o fornecedor identificado.' });
         }
 
         // ── Condição de pagamento (forma + banco) — OBRIGATÓRIA ao enviar ao Conta Azul.
@@ -1812,7 +1812,7 @@ router.post('/:id/gerar-conta', verificarAuth, checkEscrita, async (req, res) =>
             if (gruposSemCa.length > 0) {
                 const nomes = gruposSemCa.map((g) => g.categoria || '(sem categoria)').join(', ');
                 return res.status(400).json({
-                    error: `Para enviar à Conta Azul, defina a categoria (da lista da Conta Azul) dos itens: ${nomes}`
+                    error: `Defina a categoria dos itens: ${nomes}`
                 });
             }
         }
@@ -1936,10 +1936,10 @@ router.post('/:id/gerar-conta', verificarAuth, checkEscrita, async (req, res) =>
         const resposta = {
             message: pagto
                 ? (enviarCAefetivo
-                    ? 'Conta a pagar criada como PAGA — será marcada como quitada no Conta Azul!'
+                    ? 'Conta a pagar criada como PAGA!'
                     : 'Conta a pagar criada e já quitada!')
                 : (enviarCAefetivo
-                    ? 'Conta a pagar criada e colocada na fila de envio ao Conta Azul!'
+                    ? 'Conta a pagar criada!'
                     : 'Conta a pagar criada!'),
             contaPagarId: contaCriada.id,
             notaStatus: 'CONFERIDA',

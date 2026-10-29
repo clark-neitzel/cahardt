@@ -11,7 +11,7 @@ permissao: Pode_Acessar_Financeiro_Gerencial
 Visão gerencial de **quanto dinheiro entra e sai**, comparando **previsto × realizado** por período. É montada automaticamente a partir de Contas a Receber e Contas a Pagar — nada precisa ser digitado aqui.
 
 - **Previsto** = parcelas (a receber e a pagar) pelo **vencimento** — o que DEVE entrar/sair em cada dia.
-- **Realizado** = pagamentos registrados pela **data em que aconteceram** (baixas manuais e as que chegam do Conta Azul) — o que DE FATO entrou/saiu.
+- **Realizado** = pagamentos registrados pela **data em que aconteceram** (baixas registradas no app) — o que DE FATO entrou/saiu.
 - Dias futuros mostram só o previsto (marcados como "prev.").
 
 ## O que dá pra fazer aqui
@@ -31,11 +31,11 @@ Visão gerencial de **quanto dinheiro entra e sai**, comparando **previsto × re
 | Número | Fonte |
 |--------|-------|
 | Entradas previstas | Parcelas de **Contas a Receber** pelo vencimento (menos canceladas) |
-| Entradas realizadas | Pagamentos recebidos (inclusive baixas parciais e as puxadas do Conta Azul) |
+| Entradas realizadas | Pagamentos recebidos (inclusive baixas parciais) |
 | Saídas previstas | Parcelas de **Contas a Pagar** pelo vencimento (menos canceladas) |
-| Saídas realizadas | Pagamentos feitos (baixas manuais, "já paguei" e as puxadas do Conta Azul) |
+| Saídas realizadas | Pagamentos feitos (baixas manuais, "já paguei") |
 
-> **Limitação:** o fluxo mostra o que está registrado no app. Despesa paga só dentro do Conta Azul aparece assim que a baixa é puxada pelo sync (a cada 30 min); despesa que nunca entrou no app não aparece.
+> **Limitação:** o fluxo mostra o que está registrado no app. Despesa que nunca foi lançada no app não aparece.
 
 > **Pix comum/cartão do Caixa "Aguardando conciliação" (09/2026) NÃO entram no realizado.** Desde que o Caixa deixou de quitar Pix comum/cartão sozinho (ver `caixa.md`), essas linhas existem no ledger mas ainda não são dinheiro confirmado pelo banco — contá-las aqui inflaria o "entradas realizadas" com título que ainda pode não bater na Conciliação Bancária. Elas só entram no realizado no dia em que a Conciliação Bancária as confirma (mesma data do lançamento do extrato).
 

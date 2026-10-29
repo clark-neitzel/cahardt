@@ -764,7 +764,7 @@ const DetalheCliente = () => {
                                                 <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-200 text-red-800">DEVOLUÇÃO DEV#{dev.numero}</span>
                                                 <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-gray-200 text-gray-700">{dev.escopo}</span>
                                                 <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${dev.status === 'ATIVA' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-500'}`}>{dev.status}</span>
-                                                {dev.tipo === 'CONTA_AZUL' && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">CA</span>}
+                                                {dev.tipo === 'CONTA_AZUL' && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">NORMAL</span>}
                                             </div>
                                             <p className="text-sm font-semibold text-red-900">
                                                 Pedido {numPedido} · R$ {Number(dev.valorTotal).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
@@ -784,7 +784,7 @@ const DetalheCliente = () => {
                                                 <span>Registrado por: {dev.registradoPor?.nome || '-'}</span>
                                                 <span>{new Date(dev.dataDevolucao).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</span>
                                             </div>
-                                            {dev.notaDevolucaoCA && <p className="text-[10px] text-blue-600 mt-1">Nota CA: {dev.notaDevolucaoCA}</p>}
+                                            {dev.notaDevolucaoCA && <p className="text-[10px] text-blue-600 mt-1">Nota de devolução antiga: {dev.notaDevolucaoCA}</p>}
                                             {dev.status === 'REVERTIDA' && (
                                                 <p className="text-[10px] text-amber-600 mt-1">Revertida por {dev.revertidoPor?.nome || '-'} em {new Date(dev.revertidoEm).toLocaleDateString('pt-BR')}</p>
                                             )}

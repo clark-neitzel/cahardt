@@ -162,7 +162,7 @@ const RESULTADO_BAIXA_ESTILO = {
     ERRO: { rotulo: 'ERRO', badge: 'bg-red-100 text-red-700', box: 'bg-red-50 border-red-200' }
 };
 
-// Painel com o resultado da Baixa CA. Existe porque o backend passou a devolver
+// Painel com o resultado da Baixa. Existe porque o backend passou a devolver
 // situações que o operador precisa LER inteiras (baixa parcial com saldo em aberto,
 // valor de responsável que não quita, condição recusada com a lista de formas
 // liberadas) — texto longo demais para toast, que some antes de ser lido.
@@ -600,7 +600,7 @@ const CaixaDiarioPage = () => {
         }
         const ids = Array.from(selectedBaixa);
         const nomes = resumo.entregas?.filter(e => ids.includes(e.pedidoId)).map(e => e.clienteNome).join(', ');
-        if (!confirm(`Quitar ${ids.length} entrega(s) no Conta Azul (caixinha)?\n\n${nomes}`)) return;
+        if (!confirm(`Quitar ${ids.length} entrega(s) no caixa?\n\n${nomes}`)) return;
 
         try {
             setQuitandoCA(true);
@@ -638,7 +638,7 @@ const CaixaDiarioPage = () => {
             setSelectedBaixa(new Set());
             aoMudarStatusCaixa();
         } catch (error) {
-            toast.error(error.response?.data?.error || 'Erro ao quitar no CA.');
+            toast.error(error.response?.data?.error || 'Erro ao quitar.');
         } finally {
             setQuitandoCA(false);
         }
@@ -1028,7 +1028,7 @@ const CaixaDiarioPage = () => {
                                 {podeBaixarCaixa && (
                                     <div className="flex flex-wrap items-center gap-2 mb-3 p-2 bg-indigo-50 rounded-lg border border-indigo-200">
                                         <DollarSign className="h-4 w-4 text-indigo-600" />
-                                        <span className="text-xs font-medium text-indigo-700">Baixa CA:</span>
+                                        <span className="text-xs font-medium text-indigo-700">Baixa:</span>
                                         <button
                                             onClick={handleSelectAllDinheiro}
                                             className="text-xs px-2 py-1 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200 font-medium"
@@ -1057,7 +1057,7 @@ const CaixaDiarioPage = () => {
                                         <thead>
                                             <tr className="text-xs text-gray-500 uppercase border-b bg-gray-50/50">
                                                 {isAdmin && <th className="py-2 px-2 text-center w-10">✓</th>}
-                                                {podeBaixarCaixa && <th className="py-2 px-2 text-center w-10" title="Selecionar para baixa CA">CA</th>}
+                                                {podeBaixarCaixa && <th className="py-2 px-2 text-center w-16" title="Selecionar para baixa">Baixa</th>}
                                                 <th className="py-2 px-2 text-left w-14">Nº</th>
                                                 <th className="py-2 px-2 text-left">Cliente</th>
                                                 <th className="py-2 px-2 text-left hidden lg:table-cell whitespace-nowrap">Cond. Pgto</th>
@@ -1288,7 +1288,7 @@ const CaixaDiarioPage = () => {
                                                                     onChange={() => handleToggleBaixa(e.pedidoId)}
                                                                     className="h-4 w-4 text-indigo-600 rounded"
                                                                 />
-                                                                Baixa CA
+                                                                Baixa
                                                             </label>
                                                         )}
                                                     </div>

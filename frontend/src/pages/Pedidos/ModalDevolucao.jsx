@@ -3,7 +3,6 @@ import { X, Loader, Package, Upload, FileText } from 'lucide-react';
 import devolucaoService from '../../services/devolucaoService';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
-import WizardProcessarCA from './WizardProcessarCA';
 import CampoNumero from '../../components/CampoNumero';
 
 const ModalDevolucao = ({ entrega, onClose, onSalvo }) => {
@@ -19,9 +18,8 @@ const ModalDevolucao = ({ entrega, onClose, onSalvo }) => {
     // local (23/07/2026) pedido novo NÃO tem idVendaContaAzul — usar isso como critério
     // mandava pedido normal pro caminho ESPECIAL, que nunca emite a NF de devolução.
     const isCA = !entrega.especial && !entrega.bonificacao;
-    // Wizard de boleto só para pedido da era CA (a parcela a cancelar vive no CA);
-    // boleto local (Asaas) não tem o que processar lá.
-    const isBoleto = isCA && !!entrega.idVendaContaAzul && (entrega.condicaoPagamento || '').toLowerCase().includes('boleto');
+    // Não existe mais assistente de boleto: o boleto/PIX do Asaas é cancelado pelo próprio
+    // backend ao registrar a devolução (isBoleto era sempre falso na prática; removido).
     // Bonificação COM NOTA (09/2026): BN# cuja NF-e de bonificação está AUTORIZADA ganha
     // NF-e de devolução automática (espelho da venda, sem cobrança). `nfBonificacaoAutorizada`
     // vem do GET /pedidos/:id — null/undefined = sem nota ou nota ainda não autorizada →
@@ -30,7 +28,6 @@ const ModalDevolucao = ({ entrega, onClose, onSalvo }) => {
     const numeroNfBonif = pedido?.nfBonificacaoAutorizada?.numero ?? null;
     const [notaDevolucaoCA, setNotaDevolucaoCA] = useState('');
     const [pdfFile, setPdfFile] = useState(null);
-    const [wizardDevolucao, setWizardDevolucao] = useState(null); // devolução criada, abre wizard
 
     useEffect(() => {
         carregarPedido();
@@ -120,29 +117,22 @@ const ModalDevolucao = ({ entrega, onClose, onSalvo }) => {
                         { icon: '⚠️', duration: 10000, style: { maxWidth: '480px', whiteSpace: 'pre-line', overflowWrap: 'anywhere', wordBreak: 'break-word' } });
                 }
 
-                if (isBoleto) {
-                    // Abrir wizard para processar boleto no CA
-                    setWizardDevolucao(devCriada);
-                    setSaving(false);
-                    return;
-                }
-
-                // Não-boleto: backend tenta auto-processar no CA. Avisar resultado.
+                // Avisar resultado do processamento da cobrança.
                 if (devCriada?.processadoCA) {
-                    toast.success('Devolução registrada e processada no Conta Azul.');
+                    toast.success('Devolução registrada e processada.');
                 } else if (devCriada?.avisoCA) {
                     const { status, mensagem, sugestao } = devCriada.avisoCA;
                     const titulo = status === 'PARCELA_PAGA'
-                        ? '⚠️ Parcela já estava paga no CA'
+                        ? '⚠️ Parcela já estava paga'
                         : status === 'PARCELA_NAO_ENCONTRADA'
-                            ? '⚠️ Parcela não encontrada no CA'
-                            : '⚠️ Auto-processamento no CA falhou';
+                            ? '⚠️ Parcela não encontrada'
+                            : '⚠️ Processamento automático falhou';
                     toast(
                         `${titulo}\n\n${mensagem}${sugestao ? `\n\n${sugestao}` : ''}`,
                         { icon: '⚠️', duration: 12000, style: { maxWidth: '480px', whiteSpace: 'pre-line', overflowWrap: 'anywhere', wordBreak: 'break-word' } }
                     );
                 } else {
-                    toast('Devolução registrada. Verifique manualmente no CA.', { icon: '⚠️' });
+                    toast.success('Devolução registrada.');
                 }
             } else {
                 const devCriada = await devolucaoService.criarEspecial({
@@ -312,7 +302,7 @@ const ModalDevolucao = ({ entrega, onClose, onSalvo }) => {
                         )}
                         {false && (
                             <div className="space-y-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                                <p className="text-xs font-bold text-blue-700 uppercase">Dados da Nota de Devolução (Conta Azul)</p>
+                                <p className="text-xs font-bold text-blue-700 uppercase">Dados da Nota de Devolução</p>
                                 <div>
                                     <label className="text-sm font-medium text-gray-700">Número da Nota *</label>
                                     <input
@@ -353,14 +343,6 @@ const ModalDevolucao = ({ entrega, onClose, onSalvo }) => {
                             </div>
                         )}
 
-                        {/* Aviso boleto */}
-                        {isBoleto && itensParaDevolver.length > 0 && (
-                            <div className="p-2.5 bg-amber-50 rounded-lg border border-amber-200 text-xs text-amber-800">
-                                <p className="font-bold">Pedido com boleto detectado</p>
-                                <p>Apos registrar a devolucao, um assistente guiado ajudara a processar no Conta Azul (cancelar cobranca, aplicar desconto, gerar novo boleto).</p>
-                            </div>
-                        )}
-
                         {/* Botão confirmar */}
                         <button
                             onClick={handleSalvar}
@@ -368,30 +350,13 @@ const ModalDevolucao = ({ entrega, onClose, onSalvo }) => {
                             className="w-full bg-red-600 text-white font-bold py-3.5 rounded-xl text-[15px] flex items-center justify-center gap-2 disabled:opacity-50 hover:bg-red-700 transition"
                         >
                             {saving ? <Loader className="h-5 w-5 animate-spin" /> : null}
-                            {saving ? 'Registrando...' : isBoleto
-                                ? `Registrar e Processar no CA · R$ ${valorTotalDevolucao.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
-                                : `Confirmar Devolução · R$ ${valorTotalDevolucao.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
-                            }
+                            {saving ? 'Registrando...' : `Registrar devolução · R$ ${valorTotalDevolucao.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
                         </button>
 
                         <div className="h-4" />
                     </div>
                 )}
 
-                {/* Wizard Processar CA (boleto) */}
-                {wizardDevolucao && (
-                    <WizardProcessarCA
-                        devolucao={wizardDevolucao}
-                        onClose={() => {
-                            setWizardDevolucao(null);
-                            onSalvo(); // Fechar tudo — devolução já foi criada
-                        }}
-                        onConcluido={() => {
-                            setWizardDevolucao(null);
-                            onSalvo();
-                        }}
-                    />
-                )}
             </div>
         </div>
     );

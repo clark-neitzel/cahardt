@@ -29,7 +29,7 @@ Cadastro das condições de pagamento disponíveis no sistema. Cada "condição"
 |-------|-------------|
 | Nome | Nome exibido no app (ex: "Boleto 30 dias") |
 | Tipo Pagamento | BOLETO, PIX, DINHEIRO, etc. |
-| Opção Condição | Código interno usado no Conta Azul |
+| Opção Condição | Código interno da condição |
 | Qtd Parcelas | Número de parcelas |
 | Dias entre Parcelas | Intervalo em dias |
 | Exige Banco | Obriga seleção de banco ao criar pedido |

@@ -6,10 +6,10 @@ Confere o **extrato do banco** contra o que o app registrou: cada entrada/saída
 
 A lógica da tela é uma pergunta só: **"este lançamento do banco é O QUÊ no sistema?"** Cada linha pendente tem no máximo **dois botões**:
 
-- **Conciliar** — aparece quando o sistema encontrou algo com **data E valor batendo exatos**: uma baixa já registrada (aí só amarra) **ou um boleto em aberto do Contas a Pagar** (aí a baixa é criada na hora, com a data e o banco do extrato, e vai para o Conta Azul). Os dados do boleto/nota (fornecedor, NF, parcela, vencimento) aparecem antes de confirmar.
+- **Conciliar** — aparece quando o sistema encontrou algo com **data E valor batendo exatos**: uma baixa já registrada (aí só amarra) **ou um boleto em aberto do Contas a Pagar** (aí a baixa é criada na hora, com a data e o banco do extrato). Os dados do boleto/nota (fornecedor, NF, parcela, vencimento) aparecem antes de confirmar.
 - **Buscar…** — para todo o resto. Abre a janela única de busca (ver abaixo).
 
-> **Entradas (crédito) também dão baixa por aqui** desde 07/2026: o Buscar… de um crédito lista as **contas a receber em aberto** e a baixa é criada na conta do próprio extrato, já conciliada (ver seção da janela Buscar…). O que pagou na **entrega** continua baixando pelo Caixa ("Baixa CA"), como sempre.
+> **Entradas (crédito) também dão baixa por aqui** desde 07/2026: o Buscar… de um crédito lista as **contas a receber em aberto** e a baixa é criada na conta do próprio extrato, já conciliada (ver seção da janela Buscar…). O que pagou na **entrega** continua baixando pelo Caixa ("Baixa"), como sempre.
 
 ## Conta Asaas: o extrato entra SOZINHO (sem OFX)
 
@@ -22,19 +22,19 @@ Para a conta do **Asaas** (onde caem os PIX da entrega e os boletos emitidos pel
 ## Fluxo de uso (demais bancos — via arquivo OFX ou PDF)
 
 1. **Exportar o extrato do banco em OFX** — todo internet banking tem essa opção (às vezes "Money/OFX" ou "Extensão .ofx"), geralmente em Extrato → Exportar/Salvar como.
-   - **Conta PJ do Conta Azul:** de 07/2026 a 09/2026 o extrato dela entrava sozinho (o sistema gerava as linhas a cada 3 horas a partir dos movimentos sincronizados do Conta Azul). **Isso foi desligado em 09/2026** (plano de remoção do CA) — hoje é **só upload manual de OFX ou PDF**, igual a qualquer outro banco. Linhas automáticas geradas antes do corte continuam no histórico (não somem); ao importar um OFX/PDF novo dessa conta, linha que já existe como linha automática antiga **não duplica** (mesmo sentido/valor em ±2 dias é reconhecido — inclusive **crédito de boleto líquido**, que vem R$ 1,50 menor que a baixa por causa da tarifa do CA).
-2. Na tela, **escolher o banco/caixa** (mesmas contas do Conta Azul usadas nas baixas) e clicar **Importar OFX/PDF**.
+   - **Conta PJ:** de 07/2026 a 09/2026 o extrato dela entrava sozinho (importação automática a cada 3 horas). **Isso foi desligado em 09/2026** — hoje é **só upload manual de OFX ou PDF**, igual a qualquer outro banco. Linhas automáticas geradas antes do corte continuam no histórico (não somem); ao importar um OFX/PDF novo dessa conta, linha que já existe como linha automática antiga **não duplica** (mesmo sentido/valor em ±2 dias é reconhecido — inclusive **crédito de boleto líquido**, que vem R$ 1,50 menor que a baixa por causa da tarifa do boleto).
+2. Na tela, **escolher o banco/caixa** (as mesmas contas usadas nas baixas) e clicar **Importar OFX/PDF**.
    - Importar o mesmo arquivo (ou períodos sobrepostos) de novo **não duplica** (identidade FITID; no PDF, uma identidade estável calculada de data+descrição+valor); só **atualiza a descrição** das linhas que já existiam.
    - **O sistema não deixa importar o extrato de um banco na conta de outro** (desde 07/2026) — ver seção "Trava de conta errada" abaixo.
 
 ## Trava de conta errada (desde 07/2026)
 
-O arquivo OFX diz, nele mesmo, de qual banco e de qual conta ele é. O sistema lê isso: cada conta **aprende** sua identidade na importação e, da próxima vez, **recusa arquivo de outra conta** — nada é gravado. Aparece uma janela vermelha explicando o motivo e, quando o sistema reconhece o arquivo, dizendo **de qual conta ele parece ser** ("Pelo jeito este arquivo é da conta Conta PJ Conta Azul IP").
+O arquivo OFX diz, nele mesmo, de qual banco e de qual conta ele é. O sistema lê isso: cada conta **aprende** sua identidade na importação e, da próxima vez, **recusa arquivo de outra conta** — nada é gravado. Aparece uma janela vermelha explicando o motivo e, quando o sistema reconhece o arquivo, dizendo **de qual conta ele parece ser** ("Pelo jeito este arquivo é da conta Conta PJ").
 
 São três conferências (basta uma para barrar):
 - **Identidade diferente** — banco/conta do arquivo ≠ o que já foi importado nessa conta. (O mesmo número escrito de formas diferentes, com hífen ou zeros à esquerda, é reconhecido como a mesma conta — isso não barra.)
 - **Arquivo repetido** — este mesmo arquivo já foi importado em outra conta.
-- **Lançamentos de outra conta** — boa parte dos movimentos do arquivo já existe em outra conta (pega o PDF do CA e o OFX que não informa a conta).
+- **Lançamentos de outra conta** — boa parte dos movimentos do arquivo já existe em outra conta (pega o PDF do extrato e o OFX que não informa a conta).
 
 Para insistir (banco trocou o número da conta, por exemplo) é preciso marcar **"Conferi e o arquivo é mesmo desta conta"** e clicar em **Importar mesmo assim** — o padrão da janela é cancelar.
 
@@ -53,7 +53,7 @@ Card recolhível no rodapé da tela: lista os arquivos já importados naquela co
 
 ## A janela "Buscar…" (o que é este lançamento?)
 
-Modelo do Conta Azul. Mostra, para o lançamento clicado:
+Mostra, para o lançamento clicado:
 
 - **Janela de período**: boletos com vencimento até **±15 dias** da data do débito (padrão), ajustável para ±30, ±60 ou Tudo.
 - **Busca** por fornecedor, descrição ou nº da nota — vale para as duas listas.
@@ -67,23 +67,18 @@ Modelo do Conta Azul. Mostra, para o lançamento clicado:
 
 ## Créditos IDENTIFICADOS (Venda NNNN = pedido NNNN) — certeza, não sugestão
 
-No extrato da Conta PJ do CA (PDF), as linhas "Recebimento de cobrança - **Venda 1557** - 1/1" trazem o número da venda — e a numeração é **compartilhada** com o app (Venda 1557 = pedido 1557). O sistema usa isso como **identificação com certeza**:
+No extrato da Conta PJ (PDF), as linhas "Recebimento de cobrança - **Venda 1557** - 1/1" trazem o número da venda — e a numeração é **compartilhada** com o app (Venda 1557 = pedido 1557). O sistema usa isso como **identificação com certeza**:
 
-- A linha mostra um painel **verde**: **"✓ Venda 1557 · parcela 1/1 · Conciliado no CA"** + pedido, cliente e a baixa correspondente. O botão vira **"Confirmar"** (não é palpite por valor).
+- A linha mostra um painel **verde**: **"✓ Venda 1557 · parcela 1/1"** + pedido, cliente e a baixa correspondente. O botão vira **"Confirmar"** (não é palpite por valor).
 - Se a baixa é R$ 1,50 maior que o crédito, é o **boleto com tarifa**: ao confirmar, a diferença fica registrada e a **despesa da tarifa é gerada** automaticamente.
 - Se a venda foi identificada mas o **valor não fecha** (nem com a tarifa), o painel fica **âmbar** com o motivo — nada é conciliado sem conferência.
-- O selo **"Conciliado no CA" / "Não conciliado no CA"** é o status da conciliação DO Conta Azul (contexto: lá já estava pronto ou não).
 - Botão **"Confirmar identificadas (N)"** no topo: confirma de uma vez todas as identificadas que fecham (exato ou com tarifa) — um clique do usuário; as que não fecham ficam para análise. Nada roda sozinho.
 - Sem identificação (ex.: PIX de cliente, sem nº de venda), vale a **sugestão** por valor/data como sempre — claramente separada das identificadas.
 - Se os lançamentos foram importados antes desse recurso, **reimporte o mesmo PDF** (não duplica) — a identificação é preenchida nas linhas existentes.
 
 ## Diferença composta (juros E tarifa juntos) — decompor
 
-Quando o crédito não fecha com a baixa por **mais de um motivo** (ex.: cliente pagou boleto com **juros de R$ 16,64** e o CA descontou a **tarifa de R$ 1,50** → diferença de R$ 15,14), use o quadro **"Decompor a diferença"** no Buscar…: campos **Tarifa / Juros-multa / Desconto**, com atalho **"+ Tarifa do boleto CA (R$ 1,50)"**. Ao digitar a tarifa, o app **recalcula o restante** e oferece **"usar R$ X como juros/multa"** com um clique. Fecha quando `banco = baixa + juros − tarifa − desconto`; a tarifa decomposta **gera a despesa automaticamente**. O motivo composto fica registrado na linha ("Juros/multa R$ 16,64 · Tarifa R$ 1,50"). Para diferença de motivo único, o seletor simples continua disponível.
-
-## Débitos "Nome não encontrado" — identificar no CA
-
-Os pagamentos de boleto na Conta PJ vêm sem nome ("Pagamento de Boleto para Nome não encontrado (Do…"). O botão **"Identificar débitos no CA (N)"** varre as contas a pagar do Conta Azul e descobre, pelo par exato **data + valor da baixa nesta conta**, de quem é cada débito — preenchendo **fornecedor, descrição da despesa e nº da nota** nas linhas (aí a busca por fornecedor funciona). Roda em segundo plano (~1–2 min; recarregue a tela). Só grava quando o match é **único** — ambíguo fica de fora, sem chute.
+Quando o crédito não fecha com a baixa por **mais de um motivo** (ex.: cliente pagou boleto com **juros de R$ 16,64** e o banco descontou a **tarifa de R$ 1,50** → diferença de R$ 15,14), use o quadro **"Decompor a diferença"** no Buscar…: campos **Tarifa / Juros-multa / Desconto**, com atalho **"+ Tarifa do boleto (R$ 1,50)"**. Ao digitar a tarifa, o app **recalcula o restante** e oferece **"usar R$ X como juros/multa"** com um clique. Fecha quando `banco = baixa + juros − tarifa − desconto`; a tarifa decomposta **gera a despesa automaticamente**. O motivo composto fica registrado na linha ("Juros/multa R$ 16,64 · Tarifa R$ 1,50"). Para diferença de motivo único, o seletor simples continua disponível.
 
 ## Pix comum/cartão "Aguardando conciliação" — confirmar um título informado no Caixa (09/2026)
 
@@ -97,9 +92,9 @@ Desde 09/2026, Pix comum e cartão informados no **Caixa** (conferência de entr
 - Se o título tiver **mais de uma** forma aguardando (ex.: parte em Pix, parte em cartão, cada uma num lançamento diferente do extrato), cada uma é confirmada separadamente, no seu próprio lançamento — a parcela vai virando PARCIAL e depois PAGO conforme cada uma bate.
 - **Enquanto não confirmado**, o título aparece em **Financeiro → Contas a Receber** com o selo "Aguardando conciliação" e **não é tratado como inadimplente** em nenhuma tela (não bloqueia venda, não entra na régua) — ver [contas-receber.md](contas-receber.md).
 
-## Baixa no banco errado — ver e corrigir sem ir ao CA
+## Baixa no banco errado — ver e corrigir
 
-Se uma baixa foi lançada em **outra conta** (ex.: despesa baixada "no Sicoob" mas o dinheiro saiu da Conta PJ), ela não aparece na conciliação da conta certa. Ao **buscar** no Buscar… (fornecedor, valor, pedido…), o app mostra a seção âmbar **"Achadas em OUTRAS contas (banco errado?)"** com o banco onde a baixa está. O botão **"Corrigir para esta conta (app + CA)"** move a baixa para a conta do extrato **no app e no Conta Azul** (quando a baixa tem vínculo lá — senão corrige só no app e avisa para conferir no CA). Depois é só marcar a baixa e Conciliar. Não precisa estornar na mão.
+Se uma baixa foi lançada em **outra conta** (ex.: despesa baixada "no Sicoob" mas o dinheiro saiu da Conta PJ), ela não aparece na conciliação da conta certa. Ao **buscar** no Buscar… (fornecedor, valor, pedido…), o app mostra a seção âmbar **"Achadas em OUTRAS contas (banco errado?)"** com o banco onde a baixa está. O botão **"Corrigir para esta conta"** move a baixa para a conta do extrato. Depois é só marcar a baixa e Conciliar. Não precisa estornar na mão.
 
 ## Lançar tarifas em lote (várias despesas de uma vez) e já conciliar
 
@@ -108,7 +103,7 @@ Para **tarifas repetidas** — taxa de boleto, taxa de PIX do Asaas, cada uma co
 - Todo lançamento **pendente** (entrada ou saída) tem uma **caixinha de seleção** (há um "selecionar todos" no cabeçalho). Com linhas marcadas, a barra verde oferece: **Conciliar com o par (N)** — fecha as que têm identificação ou sugestão; **Lançar despesas (N)** — só as saídas, vira despesa paga+conciliada (tarifas repetidas); **Ignorar (N)** — pede UM motivo e aplica em todas.
 - Aparece a barra **"N saída(s) selecionada(s)"** → botão **"Lançar despesas e conciliar"**.
 - No pop-up, escolha **uma vez só**: o **fornecedor** (ex.: Asaas), a **categoria da DRE** (ex.: Tarifas de Boletos) e a **forma de pagamento** (ex.: Depósito bancário). A prévia lista todas as linhas com valor e total.
-- Ao confirmar, **cada linha vira sua própria despesa** já **paga e conciliada**, no banco deste extrato — mantendo a descrição e o nº do documento do banco (cada tarifa fica identificável) — e vai para o Conta Azul. Não precisa clicar em "Conciliar" depois.
+- Ao confirmar, **cada linha vira sua própria despesa** já **paga e conciliada**, no banco deste extrato — mantendo a descrição e o nº do documento do banco (cada tarifa fica identificável). Não precisa clicar em "Conciliar" depois.
 - Se alguma falhar (ex.: já tinha sido tratada), as demais são lançadas normalmente e o pop-up mostra a lista das que não deram certo. Máximo de 200 por vez.
 - Só **saídas pendentes** entram no lote (as entradas/"cobranças recebidas" não têm caixinha).
 
@@ -121,24 +116,23 @@ Para lançamentos que são dinheiro **da própria empresa trocando de conta** (e
 - A transferência aparece na tela **Saldos por Conta**: coluna própria **"Transf. ±"** por conta (entra no Resultado) e linha roxa **"transferência"** no extrato da conta — separada de recebimentos e pagamentos, do jeito que a contabilidade espera.
 - Linhas pendentes cujo texto do banco indica transferência ("MESMA TIT.", "TRANSF") mostram uma dica roxa apontando esse botão.
 - Filtro de status da tela tem a opção **"Transferências"**; o cartão do topo mostra **Ignorados / Transf.**
-- Nada disso é enviado ao Conta Azul — vale só para os relatórios do app.
 
-Ao confirmar com boleto em aberto marcado: a baixa é criada com a **data e o banco do próprio extrato**, entra na fila de envio ao Conta Azul (igual ao botão "Baixar" do Contas a Pagar) e o lançamento já fica conciliado. **Exceção:** despesa **importada do CA** não tem para onde empurrar a baixa — fica só no app (a tela avisa antes).
+Ao confirmar com boleto em aberto marcado: a baixa é criada com a **data e o banco do próprio extrato** (igual ao botão "Baixar" do Contas a Pagar) e o lançamento já fica conciliado.
 
 ## Cadastrar despesa (a saída nunca foi lançada)
 
-Acessível pelo rodapé da janela Buscar…. O pop-up vem preenchido com o que o banco mandou (data, valor, beneficiário quando houver, nº do documento) e pede: **fornecedor** (escolher ou cadastrar na hora), **descrição**, categoria da DRE, **forma de pagamento**, vencimento, nº da nota e **juros/multa** (o sistema separa do total). A despesa é criada **já paga** no banco do extrato e vai para o Conta Azul; a linha volta com a baixa como sugestão — é só clicar em Conciliar.
+Acessível pelo rodapé da janela Buscar…. O pop-up vem preenchido com o que o banco mandou (data, valor, beneficiário quando houver, nº do documento) e pede: **fornecedor** (escolher ou cadastrar na hora), **descrição**, categoria da DRE, **forma de pagamento**, vencimento, nº da nota e **juros/multa** (o sistema separa do total). A despesa é criada **já paga** no banco do extrato; a linha volta com a baixa como sugestão — é só clicar em Conciliar.
 
 ## O que a tela mostra
 
 - **KPIs**: Pendentes (com valor a conferir), Conciliados (valor batido), Ignorados, e **"Só no app"** — baixas registradas nesta conta que não bateram com nenhum lançamento do extrato.
-- **Filtros**: conta (obrigatório), período e status. O período usa o seletor único em pílula padrão do sistema (estilo Conta Azul), com presets **Hoje · Últimos 7 dias · Últimos 30 dias · Este mês · Este ano · Período personalizado** (De/Até dentro do menu) e **setas ‹ ›** que pulam o período inteiro. Aqui **não existe "Todo o período"** (o extrato sempre precisa de um intervalo de datas). Fica lembrado por usuário o **preset** escolhido (recalculado a partir de hoje a cada abertura); padrão: Últimos 30 dias.
+- **Filtros**: conta (obrigatório), período e status. O período usa o seletor único em pílula padrão do sistema, com presets **Hoje · Últimos 7 dias · Últimos 30 dias · Este mês · Este ano · Período personalizado** (De/Até dentro do menu) e **setas ‹ ›** que pulam o período inteiro. Aqui **não existe "Todo o período"** (o extrato sempre precisa de um intervalo de datas). Fica lembrado por usuário o **preset** escolhido (recalculado a partir de hoje a cada abertura); padrão: Últimos 30 dias.
 - **Filtro da lista** (desde 10/2026, roda em cima do que já foi carregado — não busca de novo no servidor):
   - Botões em pílula **Todos / Créditos / Débitos** para separar entrada de saída (fica lembrado por usuário).
   - **Campo de busca**: procura na descrição do banco, no nome identificado, no documento/CNPJ e no texto da conciliação, **sem diferenciar maiúscula/minúscula nem acento**; também reconhece **valor** digitado em qualquer formato (`330,10`, `330.10`, `1.250,00`, `1.250`, `330`) e acha o lançamento daquele valor exato (tolerância de 1 centavo). Não fica salvo ao reabrir a tela.
   - **"Mais filtros" → faixa de valor** (De R$ / Até R$), para casos tipo "tudo acima de R$ 500". Também não persiste.
   - Contador **"Mostrando X de Y lançamentos"**, soma dos valores filtrados (verde = entradas, vermelho = saídas) e botão **Limpar**.
-  - **"Selecionar todos"** e as ações em lote (Conciliar com o par / Lançar despesas / Ignorar) valem só para o que está **visível** com o filtro aplicado — mudar o filtro com algo marcado zera a seleção. Já **"Conciliar automático"**, **"Confirmar identificadas"** e **"Identificar débitos no CA"** continuam agindo sobre **todo o período** (ignoram o filtro da lista), e a janela **Buscar…** de qualquer linha sempre enxerga todos os pendentes do período, filtrados ou não.
+  - **"Selecionar todos"** e as ações em lote (Conciliar com o par / Lançar despesas / Ignorar) valem só para o que está **visível** com o filtro aplicado — mudar o filtro com algo marcado zera a seleção. Já **"Conciliar automático"** e **"Confirmar identificadas"** continuam agindo sobre **todo o período** (ignoram o filtro da lista), e a janela **Buscar…** de qualquer linha sempre enxerga todos os pendentes do período, filtrados ou não.
 - **Lista do extrato**: data, descrição do banco, valor (verde = entrou, vermelho = saiu), status e a coluna de conciliação. Conciliação automática aparece com 🪄.
 - **"De quem é esse lançamento?"** — abaixo da descrição, tudo o que dá para saber:
   - **Beneficiário e nº do documento**, quando o arquivo do banco traz (nem todo banco traz).
@@ -158,6 +152,6 @@ Acessível pelo rodapé da janela Buscar…. O pop-up vem preenchido com o que o
 - **Um débito pagando vários boletos**: Buscar… → marcar os boletos (a soma aparece ao vivo). Todos menos o último precisam ser cobertos por inteiro; o último pode ficar parcial ou ser quitado com desconto.
 - **2 PIX pagando 1 boleto**: Buscar… → "+ Somar outro lançamento do banco".
 - **Tarifas e rendimentos**: não são contas do sistema — Buscar… → Ignorar (o motivo fica registrado).
-- **Boleto da Conta PJ do Conta Azul (crédito líquido da tarifa de R$ 1,50)**: o crédito no extrato vem R$ 1,50 menor que a baixa (tarifa do CA descontada). A conciliação **reconhece sozinha** esse padrão: a sugestão aparece com o aviso da tarifa e, ao **Conciliar**, o sistema registra a diferença como "Tarifa/taxa do banco" **e gera automaticamente a despesa da tarifa** (R$ 1,50, fornecedor Conta Azul, categoria Tarifas de Boletos, já paga na Conta PJ, **só no app** — não vai ao CA, onde o crédito já entra líquido). **Desfazer** a conciliação cancela a despesa da tarifa junto.
+- **Boleto da Conta PJ (crédito líquido da tarifa de R$ 1,50)**: o crédito no extrato vem R$ 1,50 menor que a baixa (tarifa descontada). A conciliação **reconhece sozinha** esse padrão: a sugestão aparece com o aviso da tarifa e, ao **Conciliar**, o sistema registra a diferença como "Tarifa/taxa do banco" **e gera automaticamente a despesa da tarifa** (R$ 1,50, fornecedor do boleto, categoria Tarifas de Boletos, já paga na Conta PJ, **só no app**). **Desfazer** a conciliação cancela a despesa da tarifa junto.
 - **Dinheiro movido entre as contas da empresa** (mesma titularidade): Buscar… → **Transferência entre contas** (não usar Ignorar — assim o movimento aparece em Saldos por Conta).
 - **Nada aparece na janela**: aumente a janela de período (±30/±60/Tudo) ou confira se a despesa foi lançada; se nunca foi, "Cadastrar despesa" ali mesmo.

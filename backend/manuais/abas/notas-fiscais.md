@@ -9,19 +9,19 @@
 
 ## O que é
 
-Desde 23/07/2026 a NF-e de venda é emitida **pelo próprio app**, via Focus NFe (a emissão pelo Conta Azul foi descontinuada — o CA bloqueou o acesso). A nota continua sendo autorizada pela SEFAZ normalmente, com a mesma numeração de sempre (série 1, continuando da última nota do CA, 84843 → 84844 em diante), os mesmos impostos (Simples Nacional) e a mesma DANFE.
+Desde 23/07/2026 a NF-e de venda é emitida **pelo próprio app**, via Focus NFe. A nota é autorizada pela SEFAZ normalmente, com a mesma numeração de sempre (série 1, continuando da última nota antiga, 84843 → 84844 em diante), os mesmos impostos (Simples Nacional) e a mesma DANFE.
 
 ## A tela (fila de emissão)
 
 - **Cartões no topo:** Sem nota · Processando · Autorizadas · Com erro (contagens do período filtrado).
-- **Filtro de período** (pílula "Hoje", com presets) e **filtro de status**: "A emitir" (sem nota + com erro + processando), "Emitidas" (autorizadas pelo app + as antigas "Emitida no CA" — o número da aba conta as duas), "Todas". Os filtros ficam salvos por usuário — a tela reabre do jeito que a pessoa deixou. Padrão: Hoje + A emitir.
+- **Filtro de período** (pílula "Hoje", com presets) e **filtro de status**: "A emitir" (sem nota + com erro + processando), "Emitidas" (autorizadas pelo app + as antigas "NF-e antiga (importada)" — o número da aba conta as duas), "Todas". Os filtros ficam salvos por usuário — a tela reabre do jeito que a pessoa deixou. Padrão: Hoje + A emitir.
 - A lista mostra **todos os pedidos do período** (um mês inteiro cabe com folga). Só num período gigante (ex.: "Todo o período" com milhares de pedidos) a tela corta nos mais recentes — e nesse caso aparece um **aviso amarelo** pedindo para escolher um período menor.
 - **Lista de pedidos** com cliente (badge CPF/CNPJ), valor e status da nota:
   - **Sem nota** (cinza) — ainda não emitida; botão "Emitir NF-e" (e, ao lado, **"Cancelar pedido"** para quem tem permissão de excluir pedido).
   - **⏳ Processando** (azul) — enviada, aguardando a SEFAZ (segundos); a tela atualiza sozinha a cada 10s; botão "Atualizar" força a consulta.
   - **✓ NF 84xxx** (verde) — autorizada; botões **DANFE** (PDF) e **XML**.
   - **✕ Rejeitada** (vermelho) — a SEFAZ recusou; o motivo oficial aparece embaixo, com o link **"O que fazer?"** ao lado (ver seção própria). Corrigiu a causa → clicar "Reemitir NF-e" (não duplica). Se a nota **nunca vai passar** (CNPJ baixado, por exemplo), use **"Cancelar pedido"** para tirar o pedido da fila.
-  - **Emitida no CA** (cinza) — nota antiga da era Conta Azul; sem ações aqui (imprime pela tela de Pedidos).
+  - **NF-e antiga (importada)** (cinza) — nota anterior ao app; sem ações aqui (imprime pela tela de Pedidos).
 
 ## Como emitir
 
@@ -35,13 +35,12 @@ Quando a nota é **autorizada**, o pedido correspondente vira **FATURADO** na ab
 
 ## Proteções automáticas (importante)
 
-- **Nunca emite em dobro:** pedido com nota já autorizada (do app ou do CA) é bloqueado. Para pedidos antigos da era CA sem registro local, o app **confere no Conta Azul antes** de emitir.
+- **Nunca emite em dobro:** pedido com nota já autorizada (do app ou antiga) é bloqueado.
 - **Pedido especial não aparece** na fila (não gera nota). Ele passa a aparecer quando é **convertido** em pedido normal — manualmente ou automaticamente (Pix comum na entrega / crédito confirmado no extrato do banco, desde 10/2026; cancelado, excluído ou devolvido nunca converte). A conversão só coloca o pedido na fila: **a NF-e nunca é emitida sozinha**; confira o Pix no extrato antes de emitir. **Pedido convertido de especial e ainda sem nota aparece SEMPRE na fila, no topo, mesmo que a data da venda esteja fora do período filtrado** (a tela abre em "Hoje" e ele não some). A resposta traz `convertidoDeEspecial` e `numeroEspecialOrigem` (o ZZ# de origem).
 - **Bonificação (BN#)**: só aparece na fila a que foi marcada **"com nota"** por quem criou o pedido (09/2026). A marcada "sem nota" nunca entra aqui — não é o escritório que decide o que o vendedor já decidiu. A linha da bonificação vem com o selo **Bonificação** e o rótulo `BN#61`, além de **quem marcou "com nota" e quando**.
 - **Bonificação ainda não aprovada** aparece na fila com o aviso *"aguardando aprovação"* e o botão de emitir recusa — aprove a BN# na aba Pedidos → Bonificação primeiro.
-- **Pedido cancelado não aparece** na fila e a emissão é recusada ("Pedido cancelado — não é possível emitir NF-e"). Vale tanto para o cancelamento feito pelo app quanto para pedidos **cancelados/excluídos na época do Conta Azul** — venda que não aconteceu não gera nota.
+- **Pedido cancelado não aparece** na fila e a emissão é recusada ("Pedido cancelado — não é possível emitir NF-e"). Vale tanto para o cancelamento feito pelo app quanto para pedidos **cancelados/excluídos antes do app** — venda que não aconteceu não gera nota.
 - Nota rejeitada pode ser reenviada à vontade — a referência única na Focus impede duplicidade.
-- Pedido faturado pelo app fica **imune ao sync do Conta Azul** (o status FATURADO não é revertido).
 - **NF-e de bonificação (09/2026):** perfil fiscal próprio, diferente da nota de venda — natureza de operação **"Remessa em bonificacao"**, **CFOP 5910** (dentro de SC) ou **6910** (outro estado), **ICMS CSOSN 102** (sem crédito para o cliente, por isso a nota **não** traz a frase de aproveitamento de crédito), forma de pagamento **"90 – sem pagamento"** e **nenhuma fatura/duplicata**. Nas Informações Complementares sai *"MERCADORIA ENTREGUE EM BONIFICACAO - SEM COBRANCA AO DESTINATARIO."* e a referência ao `BN#`. O valor da nota é o **preço de tabela** dos itens (a SEFAZ não aceita nota zerada) — o cliente continua **não pagando nada**.
 
 - **Venda para outro estado (interestadual):** o app ajusta a nota sozinho pela UF do cliente — usa **CFOP 6101/6102** e marca a operação como **interestadual** (dentro de SC continua 5101/5102). Para sair certa, o cliente precisa estar cadastrado com a **UF correta** e, se for contribuinte de ICMS, com a **Inscrição Estadual** preenchida. Os impostos do Simples (CSOSN 101 + crédito) e os demais campos são os mesmos da venda interna.
@@ -60,27 +59,27 @@ Quando o motivo tem a ver com o cadastro do cliente (documento, inscrição esta
 ## Erros comuns e o que fazer
 
 - **"Cliente ... sem CPF/CNPJ"** ou **"cadastro incompleto: falta CEP/rua/número..."** → completar o cadastro do cliente (aba Clientes) e emitir de novo.
-- **"IE do destinatário não informada"** → cliente PJ contribuinte sem inscrição estadual no cadastro; preencher a IE do cliente (ou rodar o sync do CA que puxa a IE) e reemitir.
+- **"IE do destinatário não informada"** → cliente PJ contribuinte sem inscrição estadual no cadastro; preencher a IE do cliente (a busca por CNPJ no cadastro traz a IE) e reemitir.
 - **"Destinatário bloqueado na UF"** (rejeição 305) → **não é falta de IE nem erro de UF**; o cadastro do cliente está bloqueado na SEFAZ do estado dele. Usar o botão "Conferir na Receita/SEFAZ" (acima) para ver se o CNPJ foi baixado.
 - **Nota presa em "Processando"** por mais de alguns minutos → o sistema já consulta sozinho, a cada 5 minutos, toda nota parada nesse status, e destrava assim que a SEFAZ responde (não é preciso ficar clicando). O botão "Atualizar" serve para conferir na hora. Se passar de ~1 hora assim, a nota está travada do lado da SEFAZ/Focus, não do app: avisar o suporte informando o número do pedido.
 
 ## XMLs para a contabilidade
 
-Botão **"XMLs (contabilidade)"** na barra de filtros da fila: baixa um **ZIP com todos os XMLs do período** filtrado (notas de venda e devolução emitidas pelo app + notas antigas do CA disponíveis), com nomes amigáveis (`nfe-84844-venda-pedido-2269.xml`). Requer período com início e fim (ex.: "Este mês"). Se algum XML não puder ser incluído, vai um `_avisos.txt` dentro do ZIP explicando.
+Botão **"XMLs (contabilidade)"** na barra de filtros da fila: baixa um **ZIP com todos os XMLs do período** filtrado (notas de venda e devolução emitidas pelo app + notas antigas disponíveis), com nomes amigáveis (`nfe-84844-venda-pedido-2269.xml`). Requer período com início e fim (ex.: "Este mês"). Se algum XML não puder ser incluído, vai um `_avisos.txt` dentro do ZIP explicando.
 
 **O botão não aparece na aba Canhotos** — e é de propósito. Ele exporta o período das abas de emissão (que abrem em "Hoje"), enquanto na aba Canhotos o período visível na tela é o dela (que abre no mês). Se o botão ficasse ali, você veria "Este mês" na tela e receberia o ZIP de **um dia só**, mandando um mês incompleto para a contabilidade sem nada denunciar. Para exportar os XMLs, mude para **A emitir**, **Emitidas** ou **Todas**, confira o período e baixe por lá.
 
-## Notas antigas (era Conta Azul)
+## Notas antigas (anteriores ao app)
 
-Continuam disponíveis: a DANFE sai pela aba Pedidos (botão DANFE) como sempre. Os XMLs estão sendo copiados para dentro do app em segundo plano — impressão não depende mais do CA depois disso.
+Continuam disponíveis: a DANFE sai pela aba Pedidos (botão DANFE) como sempre. Os XMLs estão sendo copiados para dentro do app em segundo plano — a impressão fica 100% dentro do app depois disso.
 
 ## NF-e de DEVOLUÇÃO de venda
 
-Na aba **Pedidos → Devoluções**, ao expandir uma devolução de pedido **com nota** (tipo Conta Azul/normal), aparece o bloco verde da NF de devolução:
+Na aba **Pedidos → Devoluções**, ao expandir uma devolução de pedido **com nota** (tipo normal), aparece o bloco verde da NF de devolução:
 - Botão **"Emitir NF de devolução"** (permissão `Pode_Emitir_NF`) — o app monta tudo sozinho: itens e valores da devolução registrada, cliente, e a **referência à NF-e original da venda** (exigência da SEFAZ). CFOP 1201 (produção própria) / 1202 (revenda) dentro de SC — ou **2201/2202** quando a devolução é de cliente de outro estado (ajuste automático pela UF), sem pagamento.
 - Status igual ao da venda: Processando → ✓ Autorizada (com botão **DANFE**) ou ✕ Rejeitada (motivo + "Emitir novamente").
 - **Devolução de pedido ESPECIAL não gera nota** (pedido sem nota) — o botão nem aparece; o fluxo especial segue como sempre.
-- Devolução que já teve nota emitida pelo CA (campo "Nota Devolução" preenchido) também não emite de novo.
+- Devolução que já tem nota de devolução antiga (campo "Nota Devolução" preenchido) também não emite de novo.
 - **Referência por item (prazo da SEFAZ: 05/10/2026):** a partir dessa data a SEFAZ exige que a nota de devolução aponte, **dentro de cada item**, de qual item da nota original o produto veio. O sistema já faz isso; o interruptor fica em **Configurações → NF-e de devolução — referência por item** (Automático / Sempre / Nunca), e no **Automático** liga sozinho na data — não é preciso fazer nada. **Nesta aba, e no Caixa, não há aviso do estado da chave**: para conferir como ela está é preciso abrir essa seção das Configurações, que só aparece para quem tem `admin` ou `configuracoes.edit`.
 
 ### NF-e de DEVOLUÇÃO de bonificação (09/2026)
@@ -178,7 +177,7 @@ Bipou a folha errada, bipou uma cujo canhoto estava em branco, ou clicou em **"V
 
 **Quem pode:** as mesmas pessoas que já bipam e arquivam — quem entra no Caixa ou nas Notas Fiscais. Não há permissão nova. Quem desfez e quando fica **registrado** na própria nota e no histórico de auditoria do sistema.
 
-**Notas bipadas antes de este botão existir** (o mutirão de agosto/2026) não têm o passo anterior guardado. Nelas o Desfazer devolve a nota ao **estado de origem**: nota de venda do mês corrente que saiu com o motorista volta para "⏳ Na rua"; o resto — mês passado, nota antiga do Conta Azul e **toda devolução** — volta para "? Estado desconhecido", que é a verdade (ninguém sabe onde o papel está). Nesses casos o aviso na tela explica isso com todas as letras.
+**Notas bipadas antes de este botão existir** (o mutirão de agosto/2026) não têm o passo anterior guardado. Nelas o Desfazer devolve a nota ao **estado de origem**: nota de venda do mês corrente que saiu com o motorista volta para "⏳ Na rua"; o resto — mês passado, nota antiga e **toda devolução** — volta para "? Estado desconhecido", que é a verdade (ninguém sabe onde o papel está). Nesses casos o aviso na tela explica isso com todas as letras.
 
 > O Desfazer também **não** mexe no estado "✕ Sem canhoto" (nota liberada com justificativa). Como nenhuma tela cria esse estado, na prática isso não aparece no seu dia a dia.
 
@@ -207,7 +206,7 @@ A NF-e de devolução **não precisa de assinatura de ninguém**, mas o papel de
 
 Se a DANFE da devolução não estiver no arquivo, use o botão **"Reimprimir DANFE"** na linha: ele gera o PDF na hora, você imprime e guarda junto.
 
-**Por que o botão não aparece em algumas notas:** ele só existe nas notas emitidas **pelo próprio app**. Nas notas antigas da era **Conta Azul**, o app não gera a DANFE — nesses casos, baixe pela aba **Emitidas**. O rodapé da tela avisa isso quando há devoluções pendentes.
+**Por que o botão não aparece em algumas notas:** ele só existe nas notas emitidas **pelo próprio app**. Nas notas antigas (anteriores ao app), o app não gera a DANFE — nesses casos, baixe pela aba **Emitidas**. O rodapé da tela avisa isso quando há devoluções pendentes.
 
 ## As mensagens que você pode ver
 
@@ -226,7 +225,7 @@ Se a DANFE da devolução não estiver no arquivo, use o botão **"Reimprimir DA
 
 - **Pedido especial** — não gera nota fiscal, então não tem canhoto.
 - **Pedido bonificação marcado "sem nota"** — não gera nota fiscal, então não tem canhoto. A bonificação **"com nota"** ENTRA nesta aba normalmente: a mercadoria foi entregue, o canhoto assinado volta e é bipado como o das vendas.
-- **Pedido cancelado** (no app ou na era do Conta Azul) — venda que não aconteceu.
+- **Pedido cancelado** (no app ou antes dele) — venda que não aconteceu.
 - Notas de **teste/homologação** — só notas de produção entram.
 
 Se você bipar uma nota desse tipo, a resposta é *"não encontrada no sistema"* — está correto, ela não deveria estar aqui. **Guarde o papel na pasta do mesmo jeito**: ele só não é cobrado por esta lista.

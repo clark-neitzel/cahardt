@@ -1027,7 +1027,7 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
             <div className="border-t mt-3 pt-3">
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 px-2">Ajustes em Pedidos</p>
                 <Toggle checked={!!permissoes.Pode_Reatribuir_Vendedor} onChange={() => toggleBool('Pode_Reatribuir_Vendedor')}
-                    label="Reatribuir Vendedor em Pedidos" sublabel="Trocar o vendedor de pedidos existentes (ajuste apenas no app, não afeta o Conta Azul)" />
+                    label="Reatribuir Vendedor em Pedidos" sublabel="Trocar o vendedor de pedidos existentes" />
             </div>
 
             {/* Exclusão de pedidos */}
@@ -1293,7 +1293,7 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                     <Toggle checked={!!permissoes.Pode_Editar_Caixa} onChange={() => toggleBool('Pode_Editar_Caixa')}
                         label="Auditor Financeiro do Caixa" sublabel="Confere caixas de outros usuários, edita despesas alheias" danger />
                     <Toggle checked={!!permissoes.Pode_Baixar_Caixa} onChange={() => toggleBool('Pode_Baixar_Caixa')}
-                        label="Baixar no Caixa (Quitar CA)" sublabel="Dar baixa de entregas à vista (dinheiro/pix/cartão) no Conta Azul" />
+                        label="Baixar no Caixa (Quitar)" sublabel="Dar baixa de entregas à vista (dinheiro/pix/cartão) no caixa" />
                     <Toggle checked={!!permissoes.Pode_Fechar_Caixa} onChange={() => toggleBool('Pode_Fechar_Caixa')}
                         label="Fechar Caixa" sublabel="Fechar o caixa do dia com snapshot dos totais" />
                     <Toggle checked={!!permissoes.Pode_Definir_Adiantamento} onChange={() => toggleBool('Pode_Definir_Adiantamento')}

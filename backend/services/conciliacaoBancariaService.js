@@ -588,7 +588,7 @@ async function parsePdfExtratoCA(buffer) {
         // o próximo número lá). Guardamos o nº da venda em checkNum e a parcela em
         // refNum; o status da conciliação DO CA vai para memo (contexto na tela).
         const mVenda = descricao.match(/Venda\s+(\d+)\s*-\s*(\d+)\/(\d+)/i);
-        const statusCa = mStatus ? (/n[ãa]o/i.test(mStatus[0]) ? 'Não conciliado no CA' : 'Conciliado no CA') : null;
+        const statusCa = mStatus ? (/n[ãa]o/i.test(mStatus[0]) ? 'Não conciliado' : 'Conciliado') : null;
 
         lancamentos.push({
             fitId, data, valor, tipo, descricao,
@@ -600,7 +600,7 @@ async function parsePdfExtratoCA(buffer) {
     }
 
     if (lancamentos.length === 0) {
-        avisos.unshift('Nenhum lançamento reconhecido no PDF — confira se é o "Extrato Conta Azul" exportado do CA (não um scan/foto).');
+        avisos.unshift('Nenhum lançamento reconhecido no PDF — confira se é o extrato em PDF original do banco (não um scan/foto).');
         // DIAGNÓSTICO: guarda o que o servidor extraiu (primeiras linhas) para inspecionar
         // via admin-exec/diag-pdf-ultimo — sem isso, impossível saber o que veio do PDF real.
         try {
@@ -1222,12 +1222,13 @@ let _refTarifaCache = { em: 0, fornecedorId: null, categoria: null };
 async function _referenciasTarifaCA() {
     if (_refTarifaCache.fornecedorId && Date.now() - _refTarifaCache.em < 3600000) return _refTarifaCache;
     let fornecedor = await prisma.fornecedor.findFirst({
-        where: { razaoSocial: { contains: 'conta azul', mode: 'insensitive' } },
+        where: { OR: [{ razaoSocial: { contains: 'conta azul', mode: 'insensitive' } }, { razaoSocial: 'Tarifas bancárias' }] }, // 'conta azul' = fornecedor antigo já existente
+        orderBy: { criadoEm: 'asc' },
         select: { id: true }
     });
     if (!fornecedor) {
         fornecedor = await prisma.fornecedor.create({
-            data: { razaoSocial: 'Conta Azul (tarifas)', ativo: true, origem: 'APP', statusEnvioCA: 'NAO_ENVIAR' },
+            data: { razaoSocial: 'Tarifas bancárias', ativo: true, origem: 'APP', statusEnvioCA: 'NAO_ENVIAR' },
             select: { id: true }
         });
     }
@@ -1262,7 +1263,7 @@ async function _vincularComTarifaCA(lanc, pagamentoId, valorBaixa, userId, auto)
                 valor: round2(num(lanc.valor)),
                 valorBaixas: round2(num(valorBaixa)),
                 diferenca: round2(num(lanc.valor) - num(valorBaixa)), // negativa: entrou menos que a baixa
-                motivoDiferenca: `Tarifa/taxa do banco — boleto Conta Azul (R$ ${TARIFA_BOLETO_CA.toFixed(2)})`,
+                motivoDiferenca: `Tarifa/taxa do banco — boleto (R$ ${TARIFA_BOLETO_CA.toFixed(2)})`,
                 criadoPorId: userId || null
             }
         });
@@ -1288,7 +1289,7 @@ async function _criarDespesaTarifaTx(tx, lanc, valorTarifa, grupoId, userId, ref
     const conta = await tx.contaPagar.create({
         data: {
             fornecedorId: refs.fornecedorId,
-            descricao: `Tarifa de boleto Conta Azul — ${String(lanc.descricao || 'recebimento').slice(0, 180)}`,
+            descricao: `Tarifa de boleto — ${String(lanc.descricao || 'recebimento').slice(0, 180)}`,
             categoria: refs.categoria?.nome || 'Tarifas de Boletos',
             categoriaCaId: null, // refs.categoria agora é da tabela local — id local não entra aqui
             categoriaDespesaId: refs.categoria?.id || await categoriaDespesaService.idPorNome('Tarifas de Boletos', tx),
@@ -1314,7 +1315,7 @@ async function _criarDespesaTarifaTx(tx, lanc, valorTarifa, grupoId, userId, ref
             contaFinanceiraCaId: lanc.contaFinanceiraCaId,
             statusEnvioCA: 'NAO_ENVIAR',
             origem: 'MANUAL',
-            observacao: 'Tarifa do boleto Conta Azul (descontada do crédito no extrato).',
+            observacao: 'Tarifa do boleto (descontada do crédito no extrato).',
             registradoPorId: userId || null
         }
     });
@@ -1591,7 +1592,7 @@ let _identDebitos = { rodando: false, progresso: null };
  * CA no período, lê as baixas feitas NESTA conta e casa cada débito por
  * (data do pagamento, valor total). No match, grava no lançamento: nome do
  * FORNECEDOR (nome), descrição da despesa (payee), nº da nota (refNum) e
- * memo 'Identificado via Conta Azul' — aí a busca por fornecedor/nota funciona.
+ * memo 'Identificado' — aí a busca por fornecedor/nota funciona.
  * Ambíguo (dois candidatos no mesmo dia/valor) fica de fora, sem chute.
  * Roda em segundo plano (consulta o CA parcela a parcela, com throttle).
  */
@@ -1678,7 +1679,7 @@ async function identificarDebitosViaCA({ contaFinanceiraCaId, de, ate }) {
                         nome: a.fornecedor ? String(a.fornecedor).slice(0, 200) : null,
                         payee: a.descricao ? String(a.descricao).slice(0, 200) : null,
                         refNum: a.nota ? String(a.nota).slice(0, 60) : null,
-                        memo: 'Identificado via Conta Azul'
+                        memo: 'Identificado'
                     }
                 });
                 _identDebitos.progresso.identificados++;
@@ -1690,7 +1691,7 @@ async function identificarDebitosViaCA({ contaFinanceiraCaId, de, ate }) {
             _identDebitos.rodando = false;
         }
     })();
-    return { ok: true, iniciado: true, totalDebitos: debitos.length, aviso: 'Identificando no Conta Azul em segundo plano — recarregue a tela em 1–2 minutos.' };
+    return { ok: true, iniciado: true, totalDebitos: debitos.length, aviso: 'Identificando em segundo plano — recarregue a tela em 1–2 minutos.' };
 }
 
 async function ignorar({ lancamentoId, obs, userId }) {
@@ -2029,9 +2030,7 @@ async function corrigirContaBaixa({ tipo, pagamentoId, novaContaId, userId }) {
         }
         await prisma.pagamentoParcelaPagar.update({ where: { id: pg.id }, data: { contaFinanceiraCaId: novaContaId } });
         return {
-            message: caOk
-                ? `Baixa movida para ${conta.nomeBanco} (no app e no Conta Azul).`
-                : `Baixa movida para ${conta.nomeBanco} no app. Ela não tem vínculo com o CA — confira o banco da baixa lá.`,
+            message: `Baixa movida para ${conta.nomeBanco} no app.`,
             caAtualizado: !!caOk
         };
     }
@@ -2069,7 +2068,7 @@ async function corrigirContaBaixa({ tipo, pagamentoId, novaContaId, userId }) {
     return {
         message: (eraAguardando
             ? `Confirmado! O Pix/cartão informado no Caixa bateu com o extrato — vinculado a ${conta.nomeBanco} e a parcela foi atualizada.`
-            : `Baixa movida para ${conta.nomeBanco} no app. Confira o banco do recebimento no Conta Azul (o app não guarda o vínculo dessa baixa lá).`) + avisoConversao,
+            : `Baixa movida para ${conta.nomeBanco} no app.`) + avisoConversao,
         caAtualizado: false
     };
 }
@@ -2529,7 +2528,7 @@ async function conciliarUnificado({
         ? (temDecomposicao
             ? [
                 dec.juros > 0 ? `Juros/multa recebidos R$ ${dec.juros.toFixed(2)}` : null,
-                dec.tarifa > 0 ? `Tarifa boleto CA R$ ${dec.tarifa.toFixed(2)}` : null,
+                dec.tarifa > 0 ? `Tarifa do boleto R$ ${dec.tarifa.toFixed(2)}` : null,
                 dec.desconto > 0 ? `Desconto R$ ${dec.desconto.toFixed(2)}` : null
             ].filter(Boolean).join(' · ')
             : [MOTIVOS_DIFERENCA.find((m) => m.value === motivo)?.label, obs].filter(Boolean).join(' — '))
@@ -2633,8 +2632,7 @@ async function conciliarUnificado({
         const quitadas = alocacoes.length - (sobraUltima > 0.01 ? 1 : 0);
         if (quitadas > 0) partes.push(`${quitadas} boleto(s) baixado(s)`);
         if (sobraUltima > 0.01) partes.push(`1 baixa parcial (faltam R$ ${sobraUltima.toFixed(2)})`);
-        if (alocacoes.some((a) => a.naCA)) partes.push('baixa vai ao Conta Azul');
-        if (alocacoes.some((a) => !a.naCA)) partes.push('despesa importada do CA fica só no app');
+        if (alocacoes.some((a) => !a.naCA)) partes.push('despesa importada (antiga)');
     }
     if (alocacoesReceber.length > 0) {
         const quitadas = alocacoesReceber.length - (sobraUltima > 0.01 ? 1 : 0);
@@ -2682,7 +2680,7 @@ async function criarDespesaDoLancamento({
     if (!contasPagarCaSyncService.METODOS_BAIXA_VALIDOS.has(metodo)) throw erro('Escolha a forma de pagamento.');
 
     const nomeNovo = String(fornecedorNovo || '').trim();
-    if (!fornecedorId && !nomeNovo) throw erro('Informe o fornecedor (a despesa vai para o Conta Azul).');
+    if (!fornecedorId && !nomeNovo) throw erro('Informe o fornecedor (a despesa precisa de fornecedor).');
 
     // Rateio do que saiu do banco: total = boleto + juros + multa.
     const total = round2(num(l.valor));
@@ -2785,7 +2783,7 @@ async function criarDespesasLoteEConciliar({
     if (!contasPagarCaSyncService.METODOS_BAIXA_VALIDOS.has(metodo)) throw erro('Escolha a forma de pagamento.');
 
     const nomeNovo = String(fornecedorNovo || '').trim();
-    if (!fornecedorId && !nomeNovo) throw erro('Informe o fornecedor (as despesas vão para o Conta Azul).');
+    if (!fornecedorId && !nomeNovo) throw erro('Informe o fornecedor (as despesas precisam de fornecedor).');
 
     // Resolve/cria o fornecedor UMA vez (fora do loop) — todas as tarifas usam o mesmo.
     let idFornecedor = fornecedorId || null;

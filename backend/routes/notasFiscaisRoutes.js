@@ -240,7 +240,7 @@ router.get('/xmls-zip', checkVer, async (req, res) => {
                 const xml = await xmlNfeService.obterXmlNotaCA(p.nfeChave);
                 zip.addFile(`nfe-${p.nfeNumero || p.nfeChave}-venda-ca-pedido-${p.numero || ''}.xml`, Buffer.from(xml, 'utf8'));
             } catch (e) {
-                erros.push(`NF CA ${p.nfeNumero || ''} (pedido ${p.numero}): ${e.message}`);
+                erros.push(`NF antiga ${p.nfeNumero || ''} (pedido ${p.numero}): ${e.message}`);
             }
         }
 

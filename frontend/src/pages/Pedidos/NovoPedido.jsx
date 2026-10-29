@@ -2240,7 +2240,6 @@ const NovoPedido = () => {
                                                     onChange={e => setValorFrete(e.target.value)}
                                                 />
                                             </div>
-                                            <p className="text-[11px] text-gray-400 mt-0.5">Se informado, será enviado ao Conta Azul como frete da venda.</p>
                                         </div>
                                     </div>
                                 )}
@@ -3072,7 +3071,7 @@ const NovoPedido = () => {
                                             {ped.statusEnvio === 'ABERTO' ? 'Rascunho' :
                                              ped.statusEnvio === 'ENVIAR' ? 'Enviado' :
                                              ped.statusEnvio === 'SINCRONIZANDO' ? 'Sincronizando' :
-                                             ped.statusEnvio === 'RECEBIDO' ? 'Recebido CA' :
+                                             ped.statusEnvio === 'RECEBIDO' ? 'Recebido' :
                                              ped.statusEnvio}
                                         </span>
                                     </div>

@@ -114,7 +114,7 @@ const AlertaPedidoConvertido = () => {
                             </p>
                             <p className="text-xs text-gray-500 mt-0.5">
                                 {a.valorPago != null ? `PIX recebido: R$ ${Number(a.valorPago).toFixed(2)} · ` : ''}
-                                {a.situacaoCA === 'FATURADO' ? 'Já faturado no CA ✓' : 'Enviado ao Conta Azul — falta emitir a NF-e'}
+                                {a.situacaoCA === 'FATURADO' ? 'Já faturado ✓' : 'Falta emitir a NF-e'}
                             </p>
                         </div>
                     ))}

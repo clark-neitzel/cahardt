@@ -308,14 +308,14 @@ const impressaoLoteService = {
                     // ── Boletos do Conta Azul (PDF público da fatura) ──
                     const { boletos: boletosCA, erro: caErro } = await boletosCaDoPedido(pedido);
                     if (caErro) {
-                        erros.push({ numero: rotulo, erro: `não consegui consultar os boletos no Conta Azul (${caErro})` });
+                        erros.push({ numero: rotulo, erro: `não consegui consultar os boletos (${caErro})` });
                     }
                     for (const b of boletosCA.filter(x => !x.pago)) {
                         try {
                             const pdfCA = await pdfBoletoCA(b.id); // cache em disco
                             await anexar(pdfCA, 1);
                         } catch (e) {
-                            erros.push({ numero: rotulo, erro: `boleto do CA não baixou (${e.message}) — imprima pelo Conta Azul` });
+                            erros.push({ numero: rotulo, erro: `boleto não baixou (${e.message})` });
                         }
                     }
                     // ── Boletos do Asaas ──

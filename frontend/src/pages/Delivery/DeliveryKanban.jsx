@@ -104,7 +104,7 @@ export default function DeliveryKanban() {
     const mover = async (card, novaEtapa) => {
         if (!novaEtapa) return;
         if (card.situacaoCA !== 'FATURADO') {
-            toast.error('Este pedido ainda não foi faturado no Conta Azul. Fature primeiro para movimentar no Delivery.', {
+            toast.error('Este pedido ainda não foi faturado. Fature primeiro para movimentar no Delivery.', {
                 duration: 5000,
                 style: { maxWidth: '480px' }
             });
@@ -390,7 +390,7 @@ function Card({ card, perm, moving, onMover, onReenviar, onToggleSilenciar, onAb
             {naoFaturado && (
                 <div className="flex items-center gap-1.5 text-[10px] font-bold text-amber-800 bg-amber-100 border border-amber-300 rounded px-1.5 py-1">
                     <AlertCircle className="h-3 w-3 shrink-0" />
-                    <span>Não faturado no CA — não pode movimentar</span>
+                    <span>Não faturado — não pode movimentar</span>
                 </div>
             )}
             <div className="flex items-start justify-between gap-2">
@@ -481,7 +481,7 @@ function Card({ card, perm, moving, onMover, onReenviar, onToggleSilenciar, onAb
                     <button
                         onClick={() => onMover(card, ant)}
                         disabled={!naoFaturado && (!podeVoltar || moving)}
-                        title={naoFaturado ? 'Fature o pedido no CA para movimentar' : `Voltar para ${LABELS[ant]}`}
+                        title={naoFaturado ? 'Fature o pedido para movimentar' : `Voltar para ${LABELS[ant]}`}
                         className={`px-2 py-1.5 rounded-md text-xs transition-colors ${
                             naoFaturado
                                 ? 'bg-gray-50 text-gray-400 border border-dashed border-gray-400'
@@ -511,7 +511,7 @@ function Card({ card, perm, moving, onMover, onReenviar, onToggleSilenciar, onAb
                                         ? 'bg-primary text-white hover:opacity-90'
                                         : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                             }`}
-                            title={naoFaturado ? 'Fature o pedido no CA para movimentar' : ''}
+                            title={naoFaturado ? 'Fature o pedido para movimentar' : ''}
                         >
                             {moving ? '...' : <><Move className="h-3 w-3" /> Movimentar <ChevronDown className="h-3 w-3" /></>}
                         </button>
@@ -592,7 +592,7 @@ function ModalDetalhes({ card, onClose }) {
                         <div className="flex items-start gap-2 bg-amber-50 border border-amber-300 rounded-md p-2 text-xs text-amber-900">
                             <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
                             <div>
-                                <strong>Pedido ainda não foi faturado no Conta Azul.</strong> Fature primeiro para movimentar pelo Delivery.
+                                <strong>Pedido ainda não foi faturado.</strong> Fature primeiro para movimentar pelo Delivery.
                             </div>
                         </div>
                     )}
@@ -666,7 +666,7 @@ function ModalDetalhes({ card, onClose }) {
                             )}
                         </div>
                         <div>
-                            <p className="text-[10px] uppercase font-semibold text-gray-400 mb-0.5">Situação CA</p>
+                            <p className="text-[10px] uppercase font-semibold text-gray-400 mb-0.5">Faturamento</p>
                             <p className={naoFaturado ? 'text-amber-700 font-semibold' : 'text-green-700 font-semibold'}>
                                 {card.situacaoCA || '—'}
                             </p>

@@ -45,7 +45,7 @@ Abre no lugar, com:
   1. **Ficha técnica** (produção própria) — custo por unidade da receita ativa do item no PCP; acompanha as compras de insumo sozinho.
   1b. **Custo de referência** (produto sem ficha própria) — usa o custo da ficha de **outro produto fabricado** multiplicado por um **fator**. Aparece na tela como fonte "ficha de referência" e conta como produção própria. Veja a seção abaixo.
   2. **Compras** (revenda) — média das notas de entrada do produto.
-  3. **Conta Azul** — custo médio sincronizado do CA.
+  3. **Custo médio do cadastro** do produto.
   4. **Sem custo** — nenhuma fonte; fica fora da margem, marcado para cadastrar.
 - **Margem = (preço − custo) ÷ preço** · **Markup = preço ÷ custo**. Preço = preço de venda do cadastro.
 - **Preço praticado por mês** (no gráfico) vem das vendas reais (FATURADO ou especial, sem bonificação).

@@ -148,7 +148,7 @@ const PixAvulsoModal = ({ pedido, onClose }) => {
                             <p className="text-[13px] text-red-900 mt-2">
                                 O pedido <b>ZZ#{pedido.numero}</b> é ESPECIAL (sem nota). PIX é pagamento rastreado —
                                 ao receber qualquer valor, ele será <b>convertido em pedido normal</b>: ganha número
-                                novo na sequência, vai para o Conta Azul e a <b>NF-e deverá ser emitida</b>.
+                                novo na sequência e a <b>NF-e deverá ser emitida</b>.
                             </p>
                             <label className="flex items-start gap-2 mt-3 cursor-pointer">
                                 <input type="checkbox" checked={cienteConversao} onChange={e => setCienteConversao(e.target.checked)}

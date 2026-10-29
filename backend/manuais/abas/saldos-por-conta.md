@@ -8,7 +8,7 @@ permissao: Pode_Acessar_Financeiro_Gerencial
 
 ## O que é
 
-Visão gerencial de **por qual banco/caixa o dinheiro entrou e saiu**. Mostra, no período escolhido, quanto **entrou** (recebimentos) e quanto **saiu** (pagamentos) em cada conta financeira (Sicoob, Caixinha, Conta Azul IP, etc.) e o **resultado** (entradas − saídas). O saldo é sempre calculado localmente (ledger do app) — o botão de consultar o saldo em tempo real no Conta Azul foi removido em 09/2026 (o app é o dono do financeiro).
+Visão gerencial de **por qual banco/caixa o dinheiro entrou e saiu**. Mostra, no período escolhido, quanto **entrou** (recebimentos) e quanto **saiu** (pagamentos) em cada conta financeira (Sicoob, Caixinha, conta PJ, etc.) e o **resultado** (entradas − saídas). O saldo é sempre calculado pelo próprio app (ledger do app).
 
 É montada automaticamente a partir das baixas de Contas a Receber e Contas a Pagar. As únicas coisas editáveis aqui são as **correções**: mover um lançamento para a conta certa e registrar **ajustes manuais de saldo**.
 
@@ -18,8 +18,8 @@ Visão gerencial de **por qual banco/caixa o dinheiro entrou e saiu**. Mostra, n
 - Ver os 4 indicadores do topo: **Entradas**, **Saídas**, **Transferências** (entre contas da empresa) e **Resultado** do período (somando todas as contas)
 - Ver a **tabela por banco/caixa** (no celular, cards): entradas, saídas, a coluna **"Transf. ±"** (transferências entre as contas da empresa — não são receita nem despesa, mas entram no Resultado da conta) e resultado
 - **Clicar numa conta** para abrir o **extrato**: a lista de todas as entradas e saídas daquela conta no período, com quem (cliente/fornecedor), a origem e a data
-- **Mover um lançamento para outra conta** (dentro do extrato): clique no ícone de **setas (⇄)** na linha do lançamento e escolha a conta certa — útil para corrigir lançamentos que caíram em "Não informado" ou no banco errado. Só muda a conta; valor, data e baixa ficam intactos (e nada muda no Conta Azul)
-- **Registrar um ajuste manual de saldo** (botão **"Ajustar saldo"** no topo do extrato): cria uma entrada ou saída avulsa na conta, com valor, data e motivo — para acertar diferenças (ex.: dinheiro contado na caixinha não bate). O ajuste aparece no extrato com a etiqueta **"ajuste"** e pode ser **excluído** pelo ícone de lixeira. Ajustes existem só no app — **não são enviados ao Conta Azul**
+- **Mover um lançamento para outra conta** (dentro do extrato): clique no ícone de **setas (⇄)** na linha do lançamento e escolha a conta certa — útil para corrigir lançamentos que caíram em "Não informado" ou no banco errado. Só muda a conta; valor, data e baixa ficam intactos
+- **Registrar um ajuste manual de saldo** (botão **"Ajustar saldo"** no topo do extrato): cria uma entrada ou saída avulsa na conta, com valor, data e motivo — para acertar diferenças (ex.: dinheiro contado na caixinha não bate). O ajuste aparece no extrato com a etiqueta **"ajuste"** e pode ser **excluído** pelo ícone de lixeira. Ajustes existem só no app
 
 ## De onde vêm os números
 
@@ -28,13 +28,13 @@ Visão gerencial de **por qual banco/caixa o dinheiro entrou e saiu**. Mostra, n
 | Entradas por conta | Recebimentos (parcelas de **Contas a Receber** pagas) agrupados pelo banco em que o dinheiro entrou |
 | Saídas por conta | Pagamentos (baixas de **Contas a Pagar**, não estornadas) agrupados pelo banco de onde o dinheiro saiu |
 | Ajustes manuais | Ajustes de saldo criados nesta tela: valor positivo soma nas entradas, negativo nas saídas da conta |
-| Transferências (Transf. ±) | Marcadas na **Conciliação Bancária** (Buscar… → "Transferência entre contas"). Saem da conta de origem e entram na de destino; no extrato aparecem com etiqueta roxa **"transferência"**. (Até 09/2026 também importava sozinho as transferências feitas no Conta Azul a cada 3h — desligado junto com a saída do CA; o histórico importado continua aqui, só não chega mais gente nova por essa via.) |
+| Transferências (Transf. ±) | Marcadas na **Conciliação Bancária** (Buscar… → "Transferência entre contas"). Saem da conta de origem e entram na de destino; no extrato aparecem com etiqueta roxa **"transferência"**. (Transferências antigas importadas continuam no histórico.) |
 
 A conta (banco/caixa) de cada baixa é capturada automaticamente:
-- **Recebimentos:** vêm da sincronização do Conta Azul (onde o recebimento é dado).
-- **Pagamentos:** vêm da baixa — ao dar baixa no app você escolhe o banco; nas baixas feitas no Conta Azul (DDA/contadora), o banco é puxado junto.
+- **Recebimentos:** vêm das baixas feitas no app, no Caixa e na Conciliação Bancária.
+- **Pagamentos:** vêm das baixas feitas no app — ao dar baixa você escolhe o banco.
 
-> **Limitação:** lançamentos **antigos importados** do Conta Azul podem aparecer em **"Não informado"** — na época a importação não trouxe o banco. Os novos já vêm com a conta certa. Para corrigir um antigo, abra o extrato de "Não informado" e **mova o lançamento** para a conta certa (ícone ⇄).
+> **Limitação:** lançamentos **antigos importados** podem aparecer em **"Não informado"** — na época a importação não trouxe o banco. Os novos já vêm com a conta certa. Para corrigir um antigo, abra o extrato de "Não informado" e **mova o lançamento** para a conta certa (ícone ⇄).
 
 ## Permissões necessárias
 
@@ -53,7 +53,7 @@ A conta (banco/caixa) de cada baixa é capturada automaticamente:
 | Caminho | Papel |
 |---------|-------|
 | `backend/services/financeiroGerencialService.js` | Agregação por conta (saldosPorConta, extratoPorConta, inclui ajustes) |
-| `backend/services/caExtratoService.js` | Legado (09/2026): fazia a importação automática do Conta Azul (transferências, despesas) a cada 3h — desligada (worker removido do scheduler); arquivo continua no repo sem consumidor ativo |
+| `backend/services/caExtratoService.js` | Legado/importação antiga desligada (worker removido do scheduler); arquivo continua no repo sem consumidor ativo |
 | `backend/routes/financeiroGerencial.js` | Rotas GET /por-conta e /por-conta/extrato; PUT lancamento-banco; POST/DELETE ajuste |
 | `backend/prisma/schema.prisma` | Modelos `AjusteSaldoConta` (tabela `ajustes_saldo_conta`) e `TransferenciaConta` (tabela `transferencias_conta`) |
 | `frontend/src/pages/Financeiro/ContasBancosPage.jsx` | Tela |

@@ -5,11 +5,11 @@ import pedidoService from '../../services/pedidoService';
 import asaasService from '../../services/asaasService';
 import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 
-// Impressão em lote (aprovada 07/2026): DANFE em 2 vias + boletos (Conta Azul e Asaas)
+// Impressão em lote (aprovada 07/2026): DANFE em 2 vias + boletos (Asaas)
 // na sequência; especiais (ZZ#) e bonificações (BN#) saem no recibo de conferência;
 // amostras (AM#) saem no recibo sem valores.
 // A checagem consulta o CA de UM PEDIDO POR VEZ, mostrando o progresso ao vivo
-// (pedido do dono: não mandar várias consultas de uma vez ao Conta Azul).
+// (pedido do dono: não mandar várias consultas de uma vez).
 const ImprimirLoteModal = ({ pedidoIds = [], amostraIds = [], onClose, onConferido }) => {
     const [itens, setItens] = useState([]);           // já checados
     const [checandoIdx, setChecandoIdx] = useState(0); // quantos já foram
@@ -21,7 +21,7 @@ const ImprimirLoteModal = ({ pedidoIds = [], amostraIds = [], onClose, onConferi
     const [pdfUrl, setPdfUrl] = useState(null); // PDF pronto, aguardando o clique p/ abrir
     const cancelado = useRef(false);
 
-    // Checa um por vez, em sequência (não martelar o CA com várias consultas juntas).
+    // Checa um por vez, em sequência (não martelar o servidor com várias consultas juntas).
     // Amostras não passam pela conferência: não têm NF nem boleto, só recibo.
     const checarTodos = async (ids, forcar = false) => {
         if (!ids.length) { setChecando(false); return; }
@@ -44,7 +44,7 @@ const ImprimirLoteModal = ({ pedidoIds = [], amostraIds = [], onClose, onConferi
             setChecandoIdx(i + 1);
         }
         setChecando(false);
-        // avisa a lista: os checks do CA já foram gravados nos pedidos
+        // avisa a lista (callback opcional)
         onConferido?.(novos);
     };
 
@@ -62,7 +62,6 @@ const ImprimirLoteModal = ({ pedidoIds = [], amostraIds = [], onClose, onConferi
     const semNF = normais.filter(i => !i.temNF);
     const semBoleto = validos.filter(i => i.boleto === 'SEM_BOLETO');       // conferido: não tem em lugar nenhum
     const boletoPago = validos.filter(i => i.boleto === 'PAGO');            // existe, mas quitado → não imprime
-    const caIndisponivel = validos.filter(i => i.caErro);                   // não deu p/ consultar o CA
     const aVista = normais.filter(i => !i.aPrazo);
     const totalBoletos = validos.reduce((s, i) => s + (i.boletosCA || 0) + (i.boletosAsaas || 0), 0);
 
@@ -134,12 +133,6 @@ const ImprimirLoteModal = ({ pedidoIds = [], amostraIds = [], onClose, onConferi
         );
     };
 
-    const sinalCA = (i) => {
-        if (i.caErro) return 'erro';
-        if (i.boletosCA > 0) return 'sim';
-        if (i.caPago) return 'pago';
-        return 'nao';
-    };
     const sinalAsaas = (i) => {
         if (i.boletosAsaas > 0) return 'sim';
         if (i.asaasPago) return 'pago';
@@ -171,13 +164,13 @@ const ImprimirLoteModal = ({ pedidoIds = [], amostraIds = [], onClose, onConferi
                     <div className="bg-gray-50 border border-gray-200 rounded-xl p-3">
                         <div className="flex items-center justify-between mb-2">
                             <p className="text-[11px] font-bold uppercase tracking-wide text-gray-600">
-                                Conferindo boletos (CA e Asaas)
+                                Conferindo boletos (Asaas)
                             </p>
                             <div className="flex items-center gap-2">
                                 {!checando && (
                                     <button onClick={() => checarTodos(pedidoIds, true)}
                                         className="flex items-center gap-1 text-[10.5px] font-bold text-primary hover:text-primaryDark"
-                                        title="Consultar o Conta Azul de novo (ignora a conferência recente)">
+                                        title="Conferir de novo (ignora a conferência recente)">
                                         <RefreshCw className="h-3 w-3" /> Reconsultar
                                     </button>
                                 )}
@@ -199,7 +192,6 @@ const ImprimirLoteModal = ({ pedidoIds = [], amostraIds = [], onClose, onConferi
                                         <span className="text-[10px] text-gray-400 font-semibold shrink-0">sem boleto</span>
                                     ) : (
                                         <span className="flex gap-1 shrink-0">
-                                            <Sinal estado={sinalCA(i)} rotulo="CA" />
                                             <Sinal estado={sinalAsaas(i)} rotulo="Asaas" />
                                         </span>
                                     )}
@@ -208,7 +200,7 @@ const ImprimirLoteModal = ({ pedidoIds = [], amostraIds = [], onClose, onConferi
                             {checando && (
                                 <div className="flex items-center gap-2 text-xs text-gray-500 px-2.5 py-1.5">
                                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                    Consultando o Conta Azul do pedido {checandoIdx + 1}...
+                                    Conferindo o pedido {checandoIdx + 1}...
                                 </div>
                             )}
                         </div>
@@ -232,7 +224,7 @@ const ImprimirLoteModal = ({ pedidoIds = [], amostraIds = [], onClose, onConferi
                                 <span>
                                     <span className="text-sm font-bold text-gray-900">Boleto logo após as vias</span>
                                     <p className="text-xs text-gray-500 mt-0.5">
-                                        Sai na sequência (Conta Azul e Asaas) — quem fatura só junta e grampeia.
+                                        Sai na sequência — quem fatura só junta e grampeia.
                                         {totalBoletos > 0 && <b> {totalBoletos} boleto(s) neste lote.</b>}
                                     </p>
                                 </span>
@@ -244,17 +236,7 @@ const ImprimirLoteModal = ({ pedidoIds = [], amostraIds = [], onClose, onConferi
                                     <p className="flex items-center gap-2 text-sm font-bold text-red-800">
                                         <AlertTriangle className="h-4 w-4 shrink-0" /> {semNF.length} pedido(s) sem NF-e emitida — vão ser pulados
                                     </p>
-                                    <p className="text-xs text-red-700 mt-1">{semNF.map(i => `#${i.numero}`).join(', ')} — emita a nota no Conta Azul primeiro.</p>
-                                </div>
-                            )}
-                            {incluirBoletos && caIndisponivel.length > 0 && (
-                                <div className="bg-red-50 border border-red-300 rounded-xl px-4 py-3">
-                                    <p className="flex items-center gap-2 text-sm font-bold text-red-800">
-                                        <AlertTriangle className="h-4 w-4 shrink-0" /> Não consegui consultar o Conta Azul em {caIndisponivel.length} pedido(s)
-                                    </p>
-                                    <p className="text-xs text-red-700 mt-1">
-                                        {caIndisponivel.map(i => `#${i.numero}`).join(', ')} — se houver boleto do CA neles, <b>não sairá</b> nesta impressão. Feche e tente de novo, ou imprima esses pelo Conta Azul.
-                                    </p>
+                                    <p className="text-xs text-red-700 mt-1">{semNF.map(i => `#${i.numero}`).join(', ')} — emita a NF-e primeiro.</p>
                                 </div>
                             )}
                             {incluirBoletos && boletoPago.length > 0 && (
@@ -265,7 +247,7 @@ const ImprimirLoteModal = ({ pedidoIds = [], amostraIds = [], onClose, onConferi
                             {incluirBoletos && semBoleto.length > 0 && (
                                 <div className="bg-amber-50 border border-amber-400 rounded-xl px-4 py-3">
                                     <p className="flex items-center gap-2 text-sm font-bold text-amber-900">
-                                        <AlertTriangle className="h-4 w-4 shrink-0" /> {semBoleto.length} pedido(s) a prazo sem boleto (nem no CA, nem no Asaas)
+                                        <AlertTriangle className="h-4 w-4 shrink-0" /> {semBoleto.length} pedido(s) a prazo sem boleto (Asaas)
                                     </p>
                                     <ul className="text-xs text-amber-800 mt-1 pl-5 list-disc">
                                         {semBoleto.slice(0, 6).map(i => (

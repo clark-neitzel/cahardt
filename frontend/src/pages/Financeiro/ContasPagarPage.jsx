@@ -296,38 +296,6 @@ const parcelaVencida = (p) => {
     return emAberto && toYMD(p.dataVencimento) !== '' && toYMD(p.dataVencimento) < hojeYMD();
 };
 
-// Badge da coluna "Conta Azul" (envio da conta + baixa via DDA da parcela)
-const BadgeCA = ({ conta, parcela }) => {
-    if (parcela?.baixadoViaCA) {
-        return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 whitespace-nowrap">Baixado via DDA ✓</span>;
-    }
-    const s = String(conta?.statusEnvioCA || '').toUpperCase();
-    if (s === 'ENVIADO' || s === 'SINCRONIZADO') {
-        return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 whitespace-nowrap">Enviado ✓</span>;
-    }
-    if (s === 'ERRO') {
-        return (
-            <span
-                className="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-700 whitespace-nowrap cursor-help"
-                title={conta?.erroEnvioCA || 'Erro ao enviar para a Conta Azul'}
-            >
-                Erro
-            </span>
-        );
-    }
-    if (s === 'ENVIAR' || s === 'ENVIANDO' || s === 'PENDENTE' || s === 'AGUARDANDO_PROTOCOLO') {
-        return (
-            <span
-                className="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800 whitespace-nowrap cursor-help"
-                title="Na fila para a Conta Azul. Se houver fornecedor novo, ele é criado lá primeiro; pode levar alguns minutos."
-            >
-                Enviando…
-            </span>
-        );
-    }
-    return <span className="text-gray-500 text-xs">—</span>;
-};
-
 const BadgeStatusParcela = ({ parcela }) => {
     const status = parcelaVencida(parcela) ? 'VENCIDO' : (parcela?.status || 'ABERTO');
     const cfg = STATUS_PARCELA[status] || STATUS_PARCELA.ABERTO;
@@ -730,7 +698,6 @@ const ContasPagarPage = () => {
                                             <FileText className="h-3 w-3" />{conta.qtdAnexos > 0 ? conta.qtdAnexos : 'PDF'}
                                         </span>
                                     )}
-                                    <BadgeCA conta={conta} parcela={parcela} />
                                     {podeBaixarParcela(conta, parcela) && (
                                         <button
                                             onClick={() => abrirBaixa(conta, parcela)}
@@ -769,13 +736,12 @@ const ContasPagarPage = () => {
                                     <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Vencimento</th>
                                     <th className="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Valor</th>
                                     <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
-                                    <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Conta Azul</th>
                                     <th className="px-5 py-3"></th>
                                 </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200 text-sm">
                                 {linhas.length === 0 && !loading && (
-                                    <tr><td colSpan={10} className="px-5 py-8 text-center text-gray-500">Nenhuma parcela encontrada.</td></tr>
+                                    <tr><td colSpan={9} className="px-5 py-8 text-center text-gray-500">Nenhuma parcela encontrada.</td></tr>
                                 )}
                                 {linhas.map(({ conta, parcela, totalParcelas }) => (
                                     <tr
@@ -806,7 +772,6 @@ const ContasPagarPage = () => {
                                         </td>
                                         <td className="px-5 py-3 text-right font-semibold text-gray-900">R$ {fmt(parcela.valor)}</td>
                                         <td className="px-5 py-3"><BadgeStatusParcela parcela={parcela} /></td>
-                                        <td className="px-5 py-3"><BadgeCA conta={conta} parcela={parcela} /></td>
                                         <td className="px-5 py-3 text-right whitespace-nowrap" onClick={e => e.stopPropagation()}>
                                             {podeBaixarParcela(conta, parcela) && (
                                                 <button
@@ -843,7 +808,7 @@ const ContasPagarPage = () => {
                 {/* Banner explicativo */}
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-900">
                     <span className="font-semibold">Contas a pagar é tudo no app:</span>{' '}
-                    lance a despesa (manual ou da nota fiscal) e dê a <span className="font-semibold">baixa</span> aqui quando pagar — uma parcela ou várias em lote. Marque as pagas para <span className="font-semibold">imprimir os recibos</span> (um por folha). O Conta Azul entra só para o histórico: despesas antigas pagas por lá (DDA) têm a baixa refletida aqui sozinha.
+                    lance a despesa (manual ou da nota fiscal) e dê a <span className="font-semibold">baixa</span> aqui quando pagar — uma parcela ou várias em lote. Marque as pagas para <span className="font-semibold">imprimir os recibos</span> (um por folha).
                 </div>
             </div>
 
@@ -976,7 +941,7 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
                 if (!editando) setContaFinanceiraCaId(prev => prev || padrao?.id || '');
                 setOpcoesCarregadas(true);
             })
-            .catch(() => toast.error('Não consegui carregar os bancos do Conta Azul.'))
+            .catch(() => toast.error('Não consegui carregar os bancos.'))
             .finally(() => setLoadingOpcoes(false));
     }, [editando, enviarCA, opcoesCarregadas, loadingOpcoes, cabecalhoTravado]);
 
@@ -1871,12 +1836,7 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
                         )}
                         {enviadaCA && (
                             <div className="mb-2 text-xs text-blue-800 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
-                                Despesa já enviada ao Conta Azul. Você pode ajustar o <b>vencimento</b> e o <b>valor</b> das parcelas em aberto — a mudança é aplicada também no Conta Azul. Não é possível adicionar, excluir ou mexer em parcela já paga.
-                            </div>
-                        )}
-                        {emEnvioCA && (
-                            <div className="mb-2 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                                Esta despesa ainda está sendo enviada ao Conta Azul. Aguarde alguns minutos para poder ajustar as parcelas.
+                                Despesa antiga (importada): dá para ajustar o <b>vencimento</b> e o <b>valor</b> das parcelas em aberto. Não é possível adicionar, excluir ou mexer em parcela já paga.
                             </div>
                         )}
                         <div className="space-y-2">
@@ -2317,7 +2277,7 @@ const BaixaParcelaModal = ({ conta, parcela, onClose, onSuccess }) => {
                             <option value="">{vaiAoCA ? 'Escolha o banco/caixa…' : 'Não informar'}</option>
                             {contasFinanceiras.map(c => <option key={c.id} value={c.id}>{c.nome}{c.padrao ? ' (padrão)' : ''}</option>)}
                         </SelectBusca>
-                        <p className="text-xs text-gray-400 mt-1">{vaiAoCA ? 'Conta que vai ao Conta Azul: a baixa é lançada nesse banco.' : 'De onde saiu o dinheiro (aparece no relatório por conta).'}</p>
+                        <p className="text-xs text-gray-400 mt-1">De onde saiu o dinheiro (aparece no relatório por conta).</p>
                     </div>
 
                     <div>
@@ -2367,7 +2327,7 @@ const BaixaLoteModal = ({ parcelaIds, valorTotal, onClose, onSuccess }) => {
                 const padrao = cf.find(c => c.padrao) || cf[0];
                 if (padrao) setContaFinanceiraCaId(padrao.id);
             })
-            .catch(() => toast.error('Não consegui carregar os bancos do Conta Azul.'))
+            .catch(() => toast.error('Não consegui carregar os bancos.'))
             .finally(() => setCarregando(false));
     }, []);
 
@@ -2406,7 +2366,7 @@ const BaixaLoteModal = ({ parcelaIds, valorTotal, onClose, onSuccess }) => {
                     ) : (
                         <>
                             <p className="text-sm text-gray-600">
-                                Cada parcela é quitada pelo <span className="font-medium">saldo restante</span>, na mesma data, forma e banco. As despesas já enviadas ao Conta Azul recebem a baixa lá também.
+                                Cada parcela é quitada pelo <span className="font-medium">saldo restante</span>, na mesma data, forma e banco.
                             </p>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Data do pagamento</label>
@@ -2526,7 +2486,7 @@ const EditarPagamentoModal = ({ conta, parcela, pagamento, onClose, onSuccess })
                     </p>
                     {veioDoCA && (
                         <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                            Esta baixa veio do Conta Azul ou já foi enviada para lá — só dá para mudar a <b>forma de pagamento</b> e a <b>observação</b>. Banco e data só mudam no Conta Azul.
+                            Esta baixa é antiga (importada) — só dá para mudar a <b>forma de pagamento</b> e a <b>observação</b>.
                         </p>
                     )}
                     <div>
@@ -2647,24 +2607,8 @@ const DetalheContaModal = ({ conta: contaInicial, podeBaixar, onClose, onEditar,
         }
     };
 
-    const reenviarCA = async () => {
-        setExecutando('reenviar');
-        try {
-            await contasPagarService.reenviarCA(conta.id);
-            toast.success('Reenvio à Conta Azul solicitado.');
-            onChanged();
-        } catch (e) {
-            toast.error(e.response?.data?.error || 'Erro ao reenviar');
-        } finally {
-            setExecutando(null);
-        }
-    };
-
     const estornar = async (parcela, pagamento) => {
-        const veioDoCA = String(pagamento.origem || '').toUpperCase() === 'CA';
-        const msg = veioDoCA
-            ? 'Esta baixa veio do Conta Azul (DDA). Estornar aqui EXCLUI a baixa também lá no CA e a parcela volta a ficar em aberto nos dois. Continuar?'
-            : 'Estornar este pagamento? A parcela volta a ficar em aberto.';
+        const msg = 'Estornar este pagamento? A parcela volta a ficar em aberto.';
         if (!window.confirm(msg)) return;
         setExecutando(pagamento.id);
         try {
@@ -2706,16 +2650,10 @@ const DetalheContaModal = ({ conta: contaInicial, podeBaixar, onClose, onEditar,
                     <div className="flex flex-wrap items-center gap-2 text-sm">
                         <span className="text-gray-500">Total:</span>
                         <span className="font-bold text-gray-900">R$ {fmt(conta.valorTotal)}</span>
-                        <BadgeCA conta={conta} />
                         {conta.status === 'CANCELADO' && (
                             <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700">Cancelado</span>
                         )}
                     </div>
-                    {statusEnvio === 'ERRO' && conta.erroEnvioCA && (
-                        <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-xs text-red-700">
-                            <span className="font-semibold">Erro no envio à Conta Azul:</span> {conta.erroEnvioCA}
-                        </div>
-                    )}
                     {conta.observacoes && (
                         <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-xs text-gray-600">
                             <span className="font-semibold text-gray-500">Observação: </span>{conta.observacoes}
@@ -2821,7 +2759,6 @@ const DetalheContaModal = ({ conta: contaInicial, podeBaixar, onClose, onEditar,
                                                         Pago R$ {fmt(pg.valorPago)} em {fmtData(pg.dataPagamento)}
                                                         {pg.formaPagamento ? ` · ${labelFormaPgto(pg.formaPagamento)}` : ''}
                                                         {pg.banco ? ` · ${pg.banco}` : ''}
-                                                        {String(pg.origem || '').toUpperCase() === 'CA' || String(pg.origem || '').toUpperCase() === 'DDA' ? ' · via Conta Azul' : ''}
                                                     </span>
                                                     <div className="shrink-0 flex flex-wrap justify-end gap-1.5">
                                                     {podeEditarPagamento && !pg.estornado && conta.status !== 'CANCELADO' && (
@@ -2889,16 +2826,6 @@ const DetalheContaModal = ({ conta: contaInicial, podeBaixar, onClose, onEditar,
                         >
                             <Copy className="h-4 w-4" /> Duplicar
                         </button>
-                        {statusEnvio === 'ERRO' && (
-                            <button
-                                onClick={reenviarCA}
-                                disabled={executando === 'reenviar'}
-                className="w-full md:w-auto px-4 py-2 min-h-[44px] md:min-h-0 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-md font-medium text-sm inline-flex items-center justify-center gap-1.5 disabled:opacity-50"
-                            >
-                                <RefreshCw className={`h-4 w-4 ${executando === 'reenviar' ? 'animate-spin' : ''}`} />
-                                Reenviar à Conta Azul
-                            </button>
-                        )}
                         {conta.status !== 'CANCELADO' && (
                             <button
                                 onClick={cancelarConta}

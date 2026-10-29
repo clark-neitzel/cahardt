@@ -249,7 +249,7 @@ function ModalPedido({ pedido, isAdmin, onClose, onChanged }) {
             )}
             {pedido.celularAlterado && (
               <div className="mt-1.5 text-xs bg-amber-50 text-amber-700 rounded-lg px-2.5 py-1.5 flex items-center gap-1.5">
-                <Phone className="h-3.5 w-3.5" /> O cliente informou/corrigiu o celular ({pedido.telefoneCliente}). Atualize no cadastro do app/CA.
+                <Phone className="h-3.5 w-3.5" /> O cliente informou/corrigiu o celular ({pedido.telefoneCliente}). Atualize no cadastro do cliente.
               </div>
             )}
           </div>
@@ -300,7 +300,7 @@ function ModalPedido({ pedido, isAdmin, onClose, onChanged }) {
               <div className="text-sm font-medium text-red-700 flex items-center gap-1.5 mb-2">
                 <UserPlus className="h-4 w-4" /> Vincular a um cliente do app
               </div>
-              <p className="text-xs text-gray-500 mb-2">Este cliente ainda não tem cadastro. Cadastre no Conta Azul, sincronize, e então busque e vincule aqui antes de aprovar.</p>
+              <p className="text-xs text-gray-500 mb-2">Este cliente ainda não tem cadastro. Cadastre o cliente em Clientes → Novo e vincule aqui antes de aprovar.</p>
               <div className="relative">
                 <Search className="h-4 w-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input className="w-full border border-gray-300 rounded-lg pl-9 pr-3 py-2 text-sm" placeholder="Buscar cliente por nome ou CPF..."

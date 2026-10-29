@@ -108,14 +108,12 @@ const SecaoAsaas = () => {
                                 falhaTexto={status?.erro || 'Não configurada'} />
                             <StatusItem emoji="📥" titulo="Aviso de pagamento" detalhe="webhook: o Asaas avisa o app na hora"
                                 ok={!!status?.webhookAtivo} okTexto="Ativo ✓" falhaTexto="Não confirmado" />
-                            <StatusItem emoji="🔗" titulo="Conta no Conta Azul" detalhe='baixas entram na conta "ASAAS"'
-                                ok={!!status?.contaCaVinculada} okTexto="Vinculada ✓" falhaTexto="Não vinculada" />
                             <StatusItem emoji="🔁" titulo="Vigia de segurança" detalhe="reprocessa baixas pendentes a cada 10 min"
                                 ok okTexto="Rodando ✓" falhaTexto="" />
                         </div>
                         <div className="mt-3 bg-mint rounded-xl px-4 py-3 text-[13px] text-primaryDark leading-relaxed">
                             <b>Como o dinheiro vira baixa:</b> 1️⃣ o app emite a cobrança no Asaas → 2️⃣ o cliente paga →
-                            3️⃣ o Asaas avisa o app em segundos → 4️⃣ o app dá baixa na parcela <b>aqui e no Conta Azul</b>.
+                            3️⃣ o Asaas avisa o app em segundos → 4️⃣ o app dá baixa na parcela <b>no app</b>.
                             Se o aviso falhar, o vigia de 10 min busca o pagamento sozinho.
                         </div>
                     </div>

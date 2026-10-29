@@ -121,7 +121,7 @@ O aviso some de vez quando a chave é acionada (escolha gravada) ou quando a ref
 passa a valer.
 
 ### Configurar a integração Asaas (Boleto e PIX) — só admin
-1. Na seção **Asaas — Boleto e PIX**, o topo mostra o **status da integração**: chave da conta (produção/sandbox), webhook de pagamento (o Asaas avisa o app na hora do pagamento), conta "ASAAS" vinculada no Conta Azul e o vigia de segurança (reprocessa baixas pendentes a cada 10 min)
+1. Na seção **Asaas — Boleto e PIX**, o topo mostra o **status da integração**: chave da conta (produção/sandbox), webhook de pagamento (o Asaas avisa o app na hora do pagamento) e o vigia de segurança (reprocessa baixas pendentes a cada 10 min)
 2. **Boleto — multa e juros**: interruptor + porcentagem para multa por atraso (única, máx. legal 2%) e juros por atraso (por mês, proporcional aos dias, máx. legal 1% ao mês). O banco calcula e cobra sozinho; a baixa entra com o valor extra registrado
 3. **Mensagem impressa no boleto**: texto configurável com variáveis `{pedido}`, `{parcela}`, `{cliente}`, `{vencimento}` — o app troca pelo dado real de cada boleto
 4. **PIX**: validade padrão do QR Code (Hoje/Amanhã/3/7 dias — é a pré-seleção da tela de gerar PIX, dá pra mudar na hora) e descrição do PIX (aparece no comprovante do cliente; variáveis `{pedido}`, `{cliente}`). PIX não tem multa/juros — vencido, o QR para de funcionar

@@ -1320,7 +1320,7 @@ const GerenciarProduto = () => {
                       </span>
                       <div>
                         <div className="font-extrabold" style={{ fontSize: 15, color: '#16192B', lineHeight: 1.2 }}>Inteligência Comercial</div>
-                        <div className="font-medium mt-0.5" style={{ fontSize: 11.5, color: '#9AA0B4' }}>Exclusivo do app — não altera a Conta Azul</div>
+                        <div className="font-medium mt-0.5" style={{ fontSize: 11.5, color: '#9AA0B4' }}>Exclusivo do app</div>
                       </div>
                     </div>
                     <div className="px-4 py-4 flex flex-col gap-4">
@@ -1652,7 +1652,7 @@ const GerenciarProduto = () => {
                                     </span>
                                     <div className="flex-1 min-w-0">
                                         <div className="font-extrabold" style={{ fontSize: 16, color: '#16192B', lineHeight: 1.2 }}>Inteligência Comercial</div>
-                                        <div className="font-medium mt-0.5" style={{ fontSize: 12, color: '#9AA0B4' }}>Ajustes exclusivos do app — não alteram a Conta Azul</div>
+                                        <div className="font-medium mt-0.5" style={{ fontSize: 12, color: '#9AA0B4' }}>Ajustes exclusivos do app</div>
                                     </div>
                                     <span className="flex-shrink-0 font-bold rounded-full" style={{ fontSize: 11, color: '#7C3AED', background: '#F1EAFF', padding: '5px 11px' }}>EXCLUSIVO APP</span>
                                 </div>

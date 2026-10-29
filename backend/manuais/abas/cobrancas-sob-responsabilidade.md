@@ -8,7 +8,7 @@ Mostra, agrupado por pessoa, **tudo que está em aberto no nome de cada vendedor
 
 Quando o motorista fecha a entrega e o cliente não paga, quem confere marca **"Vendedor responsável"** ou **"Escritório responsável"** na linha de pagamento. Essa marcação não é recebimento — é o registro de **quem ficou encarregado de cobrar** aquele valor. Esta tela lê exatamente essa marcação (não o nome da forma de pagamento), então título registrado como "Dinheiro" com a caixinha marcada também aparece aqui.
 
-**Só entra o que está em aberto.** Parcela já baixada some da lista — o que foi pago não é mais cobrança de ninguém. Pedido cancelado/excluído no Conta Azul e bonificação também ficam de fora.
+**Só entra o que está em aberto.** Parcela já baixada some da lista — o que foi pago não é mais cobrança de ninguém. Pedido cancelado/excluído e bonificação também ficam de fora.
 
 ## Filtros e ordenação
 

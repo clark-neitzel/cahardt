@@ -284,7 +284,7 @@ const AuditoriaEntregas = () => {
                         <label className="block text-[10px] uppercase font-semibold text-gray-500 mb-1">Cliente / Nº Pedido</label>
                         <input
                             type="text"
-                            placeholder="Nome ou número CA"
+                            placeholder="Nome ou número do pedido"
                             className="w-full px-2 py-2 border border-gray-300 rounded-md text-sm shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500"
                             value={clienteFilter}
                             onChange={(e) => setClienteFilter(e.target.value)}
@@ -355,7 +355,7 @@ const AuditoriaEntregas = () => {
                                 <td className="px-4 py-4">
                                     <div className="flex flex-col">
                                         <span className="font-bold text-gray-900 break-words">{entrega.cliente?.NomeFantasia || entrega.cliente?.Nome || <span className="text-gray-400 italic font-normal">Sem cadastro</span>}</span>
-                                        <span className="text-xs text-gray-500 font-mono">Ped CA: {entrega.numero || 'S/N'}</span>
+                                        <span className="text-xs text-gray-500 font-mono">Pedido: {entrega.numero || 'S/N'}</span>
                                     </div>
                                     {entrega.gpsEntrega && (
                                         <a href={`https://www.google.com/maps?q=${entrega.gpsEntrega}`} target="_blank" rel="noreferrer" className="text-[10px] text-sky-600 hover:underline inline-block mt-1">
@@ -505,7 +505,7 @@ const AuditoriaEntregas = () => {
                         <div>
                             <h2 className="text-sm font-bold text-gray-900">Editar Pagamentos</h2>
                             <p className="text-xs text-gray-500 mt-0.5">
-                                {editandoEntrega.cliente?.NomeFantasia || editandoEntrega.cliente?.Nome} — Ped CA: {editandoEntrega.numero}
+                                {editandoEntrega.cliente?.NomeFantasia || editandoEntrega.cliente?.Nome} — Pedido: {editandoEntrega.numero}
                             </p>
                         </div>
                         <button onClick={() => setEditandoEntrega(null)} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors">

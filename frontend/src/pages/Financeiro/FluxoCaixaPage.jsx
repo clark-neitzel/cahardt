@@ -309,7 +309,7 @@ const FluxoCaixaPage = () => {
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-900">
                     <span className="font-semibold">Como ler:</span>{' '}
                     <span className="font-semibold">previsto</span> = parcelas de contas a receber/pagar pelo <span className="font-semibold">vencimento</span>;{' '}
-                    <span className="font-semibold">realizado</span> = pagamentos registrados pela <span className="font-semibold">data em que aconteceram</span> (incluindo as baixas vindas do Conta Azul). Dias futuros mostram só o previsto.
+                    <span className="font-semibold">realizado</span> = pagamentos registrados pela <span className="font-semibold">data em que aconteceram</span>. Dias futuros mostram só o previsto.
                 </div>
             </div>
         </div>

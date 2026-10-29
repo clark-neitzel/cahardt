@@ -1,0 +1,189 @@
+backend/controllers/funcionarioController.js:574:            const de = desde.toLocaleDateString('en-CA');
+backend/controllers/clienteController.js:1171:            message: 'Sincronização de clientes com o Conta Azul foi desativada — o cadastro agora é feito e mantido pelo próprio app.'
+backend/routes/entregas.js:266:        const hojeStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+backend/routes/roteirizacao.js:295:            const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }); // "YYYY-MM-DD"
+backend/controllers/produtoController.js:301:            res.status(201).json({ ...produto, message: CA_SOMENTE_LEITURA ? 'Produto criado no app!' : 'Produto criado no app e na Conta Azul!' });
+backend/controllers/produtoController.js:543:            res.status(500).json({ error: 'Erro ao alterar o custo do CA' });
+backend/routes/contabilidadeRoutes.js:1031:                    conta.pedido?.numero ? `#${conta.pedido.numero}` : (extra?.numeroVendaCA ? `CA #${extra.numeroVendaCA}` : ''),
+backend/routes/contabilidadeRoutes.js:1175:            `Pacote da contabilidade — ${mes}\nGerado pelo sistema CA-Hardt em ${new Date().toLocaleString('pt-BR')}\n\n` +
+backend/routes/notasEntrada.js:1757:            return res.status(400).json({ error: 'Para enviar ao Conta Azul é obrigatório a nota ter fornecedor identificado.' });
+backend/routes/notasEntrada.js:1815:                    error: `Para enviar à Conta Azul, defina a categoria (da lista da Conta Azul) dos itens: ${nomes}`
+backend/routes/notasEntrada.js:1939:                    ? 'Conta a pagar criada como PAGA — será marcada como quitada no Conta Azul!'
+backend/routes/notasEntrada.js:1942:                    ? 'Conta a pagar criada e colocada na fila de envio ao Conta Azul!'
+backend/controllers/pedidoController.js:52:    try { return new Date(d).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }); }
+backend/controllers/pedidoController.js:271:            const hojeSP = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+backend/controllers/pedidoController.js:408:                    const hojeStr = agora.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+backend/controllers/pedidoController.js:424:                        const amanhaStr = amanha.toLocaleDateString('en-CA');
+backend/controllers/pedidoController.js:480:                const hojeSP = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+backend/controllers/pedidoController.js:561:                    error: 'Este pedido já foi recebido pelo Conta Azul e não pode ser editado por aqui. Faça as alterações diretamente no ERP.'
+backend/controllers/pedidoController.js:579:                const hojeSP = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+backend/controllers/pedidoController.js:1748:                return res.status(400).json({ error: 'Pedido ainda não foi enviado ao CA (sem ID de venda).' });
+backend/controllers/pedidoController.js:1796:                    const dataVendaStr = new Date(pedido.dataVenda).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+backend/controllers/pedidoController.js:1841:                return res.json({ message: 'Pedido não existe mais no CA — marcado como EXCLUIDO.', situacaoCA: 'EXCLUIDO', statusEnvio: 'EXCLUIDO' });
+backend/controllers/pedidoController.js:1844:            res.status(500).json({ error: error.message || 'Erro ao consultar CA' });
+backend/controllers/pedidoController.js:1923:            const e = new Error('Pedido sem venda no Conta Azul.');
+backend/controllers/pedidoController.js:1947:            const e = new Error('NF-e não encontrada no Conta Azul — a nota pode ainda não ter sido emitida.');
+backend/controllers/pedidoController.js:2014:            if (!pedido.idVendaContaAzul) return res.status(400).json({ error: 'Pedido sem ID de venda no CA' });
+backend/controllers/pedidoController.js:2017:            if (!clienteCAId) return res.status(400).json({ error: 'Cliente sem ID no CA' });
+backend/routes/dashboards.js:36:const isoNowTZ = () => new Date().toLocaleDateString('en-CA', { timeZone: TZ });
+backend/routes/dashboards.js:42:    return d.toLocaleDateString('en-CA', { timeZone: TZ });
+backend/routes/dashboards.js:53:    return d.toLocaleDateString('en-CA', { timeZone: TZ });
+backend/routes/contasPagar.js:140:    ['CA', 'IMPORTADO_CA', 'DDA'].includes(pg.origem) || !!pg.idBaixaCA || ['ENVIADO', 'ENVIANDO'].includes(pg.statusEnvioCA);
+backend/routes/contasPagar.js:770:            return res.status(400).json({ error: 'Para enviar ao Conta Azul é obrigatório informar o fornecedor.' });
+backend/routes/contasPagar.js:1027:                return res.status(400).json({ error: 'Conta em envio para o Conta Azul — aguarde terminar (alguns minutos) para alterar as parcelas.' });
+backend/routes/contasPagar.js:1043:                    return res.status(400).json({ error: 'Esta despesa já foi enviada ao Conta Azul — não dá para adicionar parcelas novas por aqui, só ajustar o vencimento/valor das que estão em aberto.' });
+backend/routes/contasPagar.js:1047:                        return res.status(400).json({ error: 'Esta despesa já foi enviada ao Conta Azul — não dá para excluir parcelas por aqui.' });
+backend/routes/contasPagar.js:1073:                        return res.status(400).json({ error: `A parcela ${alt.atual.numeroParcela} ainda não terminou de sincronizar com o Conta Azul — tente de novo em alguns minutos.` });
+backend/routes/contasPagar.js:1080:                        return res.status(502).json({ error: 'Não consegui consultar a parcela no Conta Azul agora. Tente novamente em instantes.' });
+backend/routes/contasPagar.js:1084:                        return res.status(409).json({ error: `A parcela ${alt.atual.numeroParcela} já está paga no Conta Azul — não dá para alterar o vencimento/valor por aqui.` });
+backend/routes/contasPagar.js:1104:                        return res.status(502).json({ error: `Não consegui atualizar a parcela ${alt.atual.numeroParcela} no Conta Azul. As parcelas anteriores desta lista que já mudaram foram salvas; refaça a edição das restantes.` });
+backend/routes/contasPagar.js:1127:                return res.json({ message: 'Despesa atualizada e sincronizada com o Conta Azul!', conta: formatarConta(atualizada, await mapaBancos(), await anexoService.resumoPorContas([atualizada.id])) });
+backend/routes/contasPagar.js:1370:        res.json({ message: 'Conta recolocada na fila de envio ao Conta Azul.' });
+backend/routes/contasPagar.js:1373:        res.status(500).json({ error: 'Erro ao reenviar conta ao CA.' });
+backend/routes/contasPagar.js:1570:                return res.status(400).json({ error: 'Esta baixa veio do Conta Azul (ou já foi enviada a ele): aqui só dá para mudar a forma de pagamento e a observação. Banco e data só mudam no Conta Azul — o Conta Azul não é atualizado por esta tela.' });
+backend/routes/contasPagar.js:1646:        if (pagamento.origem === 'CA') {
+backend/routes/contasPagar.js:1648:                return res.status(400).json({ error: 'Esta baixa veio do Conta Azul sem vínculo rastreável. Exclua a baixa lá no CA e me avise para ajustar aqui.' });
+backend/routes/contasPagar.js:1655:                    return res.status(400).json({ error: 'O Conta Azul não deixou excluir a baixa (ela pode estar conciliada com o extrato lá). Desfaça a conciliação no CA e tente de novo.' });
+backend/routes/estoqueRoutes.js:296:        if (!produto.contaAzulId) return res.json({ sincCA: false, motivo: 'Produto sem vínculo CA.' });
+backend/routes/devolucaoRoutes.js:125:            return { ok: true, status: 'PROCESSADO', mensagem: 'Devolução já estava processada no CA.' };
+backend/routes/devolucaoRoutes.js:137:            return { ok: false, status: 'ERRO', mensagem: 'Pedido não possui venda vinculada ao Conta Azul.' };
+backend/routes/devolucaoRoutes.js:153:                mensagem: 'Parcela do pedido não foi encontrada no Conta Azul.',
+backend/routes/devolucaoRoutes.js:154:                sugestao: 'Verifique manualmente no CA se o pedido foi realmente faturado e se a parcela existe.'
+backend/routes/devolucaoRoutes.js:174:                ? `Recomendado: no Conta Azul, abra a parcela do pedido #${pedido.numero}, EXCLUA a baixa atual (${baixasResumo}), depois aplique nova baixa com desconto de R$ ${(parseFloat(parcela.valor_composicao?.valor_bruto || 0) - 0.01).toFixed(2)} e R$ 0,01 na conta CAIXINHA.`
+backend/routes/devolucaoRoutes.js:175:                : `Recomendado: no Conta Azul, abra a parcela do pedido #${pedido.numero}, EXCLUA a baixa atual (${baixasResumo}), reduza o valor bruto em R$ ${parseFloat(devolucao.valorTotal).toFixed(2)} e refaça a baixa com o novo valor mantendo o mesmo método/conta.`;
+backend/routes/devolucaoRoutes.js:181:                mensagem: `A parcela do pedido #${pedido.numero} já está paga no Conta Azul (${statusParcela}). A devolução foi registrada localmente, mas o ajuste no CA precisa ser feito manualmente.`,
+backend/routes/devolucaoRoutes.js:244:            mensagem: `Devolução ${devolucao.escopo} processada com sucesso no Conta Azul.`
+backend/routes/devolucaoRoutes.js:262:            mensagem: `Erro ao processar devolução no CA: ${detalhe}`,
+backend/routes/devolucaoRoutes.js:263:            sugestao: 'Verifique a parcela manualmente no Conta Azul e refaça os ajustes se necessário.'
+backend/routes/devolucaoRoutes.js:412:        if (devolucao.tipo !== 'CONTA_AZUL') return res.status(400).json({ error: 'Wizard CA só para devoluções do tipo CONTA_AZUL.' });
+backend/routes/devolucaoRoutes.js:413:        if (devolucao.processadoCA) return res.status(400).json({ error: 'Devolução já foi processada no CA.' });
+backend/routes/devolucaoRoutes.js:425:        if (!pedido.idVendaContaAzul) return res.status(400).json({ error: 'Pedido não possui venda vinculada ao Conta Azul.' });
+backend/routes/devolucaoRoutes.js:435:                return res.status(404).json({ error: 'Parcela não encontrada no Conta Azul para este pedido.' });
+backend/routes/devolucaoRoutes.js:465:            if (!parcela) return res.status(404).json({ error: 'Parcela não encontrada no CA.' });
+backend/routes/devolucaoRoutes.js:480:                    ? `Recomendado: no Conta Azul, abra a parcela do pedido, EXCLUA a baixa atual (${baixasResumo}) e refaça com desconto de R$ ${(valorBruto - 0.01).toFixed(2)} + R$ 0,01 na conta CAIXINHA.`
+backend/routes/devolucaoRoutes.js:481:                    : `Recomendado: no Conta Azul, EXCLUA a baixa atual (${baixasResumo}), reduza o valor bruto em R$ ${valorDevolucao.toFixed(2)} e refaça a baixa com o novo valor mantendo o mesmo método/conta.`;
+backend/routes/devolucaoRoutes.js:483:                    error: `A parcela já está paga no Conta Azul (${statusParcelaWizard}). Ajuste manual necessário.`,
+backend/routes/devolucaoRoutes.js:609:            if (!parcela) return res.status(404).json({ error: 'Parcela não encontrada no CA.' });
+backend/routes/devolucaoRoutes.js:649:            error: `Erro CA (${caStatus || 'sem status'}): ${detalhe}`
+backend/routes/cobrancasRota.js:62:const hojeSP = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+backend/routes/contasReceber.js:251:    const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+backend/routes/contasReceber.js:1838:        res.status(400).json({ error: error.message || 'Erro ao sincronizar com Conta Azul.', detalhe: error?.response?.data });
+backend/routes/contasReceber.js:1849:        res.status(500).json({ error: 'Erro ao sincronizar com Conta Azul.' });
+backend/services/asaasService.js:27:        'User-Agent': 'CA-Hardt-App',
+backend/services/asaasService.js:61:    return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+backend/services/asaasService.js:228:            .toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+backend/services/asaasService.js:509:                const err = new Error('O pedido ainda não está FATURADO no Conta Azul — emita a NF-e antes de gerar o boleto.');
+backend/services/asaasService.js:520:                    const err = new Error('NF-e do pedido não encontrada no Conta Azul — emita a nota antes de gerar o boleto.');
+backend/services/asaasService.js:565:                const dataVendaStr = new Date(conta.pedido.dataVenda).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+backend/services/asaasService.js:589:            ? new Date(vencOficial).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
+backend/services/asaasService.js:685:        const diaSP = (d) => new Date(d).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+backend/services/asaasService.js:816:            name: 'CA-Hardt App',
+backend/routes/caixa.js:319:    const dataRef = tresMesesAtras.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+backend/routes/caixa.js:1098:        const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+backend/routes/caixa.js:2979:        const dataPgto = dataPagamento || new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+backend/routes/caixa.js:3072:                    tipo: pedido.especial ? 'ESPECIAL' : 'CA',
+backend/routes/caixa.js:3091:                    tipo: 'CA',
+backend/routes/caixa.js:3093:                    erro: `Baixa já realizada no CA em ${pedido.baixaCaEm ? new Date(pedido.baixaCaEm).toLocaleDateString('pt-BR') : '?'} — R$ ${Number(pedido.baixaCaValor || 0).toFixed(2)}`
+backend/routes/caixa.js:3391:                        tipo: 'CA',
+backend/routes/caixa.js:3393:                        erro: `Erro ao buscar conta Caixinha no CA: ${err.message}`
+backend/routes/caixa.js:3452:                            tipo: 'CA', status: 'JA_QUITADO', erro: 'Parcelas já quitadas no app'
+backend/routes/caixa.js:3652:                        tipo: 'CA', status: 'OK', valor: pedido._valorElegivel,
+backend/routes/caixa.js:3663:                        tipo: 'CA', status: 'ERRO', erro: err.message
+backend/routes/caixa.js:3680:                            tipo: 'CA',
+backend/routes/caixa.js:3682:                            erro: 'Pedido sem venda no Conta Azul (idVendaContaAzul ausente)'
+backend/routes/caixa.js:3688:                        ? new Date(pedido.dataVenda).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
+backend/routes/caixa.js:3702:                            tipo: 'CA',
+backend/routes/caixa.js:3704:                            erro: `Parcela não encontrada no CA para venda ${pedido.idVendaContaAzul}`
+backend/routes/caixa.js:3714:                            tipo: 'CA',
+backend/routes/caixa.js:3716:                            erro: 'Parcela já quitada no CA'
+backend/routes/caixa.js:3835:                        tipo: 'CA',
+backend/routes/caixa.js:3849:                        tipo: 'CA',
+backend/services/iaProdutoSerializer.js:18:const dataSP = (d) => (d ? new Date(d).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }) : null);
+backend/routes/adminDashboard.js:26:const isoNowTZ = () => new Date().toLocaleDateString('en-CA', { timeZone: TZ });
+backend/services/iaPedidoService.js:26:const hojeSP = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+backend/services/indicadoresGestaoService.js:31:const ymdSP = (d) => new Date(d).toLocaleDateString('en-CA', { timeZone: TZ });
+backend/routes/notasFiscaisRoutes.js:243:                erros.push(`NF CA ${p.nfeNumero || ''} (pedido ${p.numero}): ${e.message}`);
+backend/services/manifestacaoHomologacaoService.js:430:    const attrs = [{ name: 'commonName', value: 'TESTE HOMOLOGACAO CA-HARDT' }];
+backend/services/manifestacaoHomologacaoService.js:442:        titular: 'TESTE HOMOLOGACAO CA-HARDT',
+backend/services/pendenciasService.js:44:    const dataStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(agora);
+backend/services/impressaoService.js:360:        'title Instalador do Agente de Impressao - CA-Hardt',
+backend/services/impressaoService.js:366:        'echo  ===== Agente de impressao CA-Hardt =====',
+backend/services/impressaoService.js:433:        'title Remover o Agente de Impressao - CA-Hardt',
+backend/services/focusNfeEmissaoService.js:83:    if (v instanceof Date) return v.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+backend/services/focusNfeEmissaoService.js:87:    return new Date(s).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+backend/services/focusNfeEmissaoService.js:640:        throw new Error('Pedido cancelado/excluído na época do Conta Azul — não é possível emitir NF-e.');
+backend/services/focusNfeEmissaoService.js:650:    if (pedido.nfeChave) throw new Error(`Este pedido já tem NF-e emitida pelo Conta Azul (nº ${pedido.nfeNumero || '—'}).`);
+backend/services/focusNfeEmissaoService.js:662:                throw new Error(`Este pedido já tem NF-e emitida pelo Conta Azul (nº ${notaCA.numero_nota || '—'}) — encontrada agora na conferência.`);
+backend/services/focusNfeEmissaoService.js:1035:        throw new Error(`Esta devolução já tem NF de devolução do Conta Azul (nº ${dev.notaDevolucaoCA}).`);
+backend/services/focusNfeEmissaoService.js:1121:        throw new Error(`Esta devolução já tem NF de devolução do Conta Azul (nº ${dev.notaDevolucaoCA}).`);
+backend/services/pedidoService.js:960:            throw new Error("Não é possível excluir: pedido já foi faturado no Conta Azul.");
+backend/services/pedidoService.js:978:            throw new Error(`Não é possível excluir: este pedido já tem NF-e emitida no Conta Azul (nº ${pedido.nfeNumero || '—'}).`);
+backend/services/pedidoService.js:1114:            throw new Error(`Não é possível cancelar: este pedido já tem NF-e emitida no Conta Azul (nº ${pedido.nfeNumero || '—'}).`);
+backend/services/contaFinanceiraGuardService.js:35:                nomeBanco: `Conta CA ${chave.slice(0, 8)}…`,
+backend/services/etiquetaCozinhaRender.js:312:        'A20,20,0,3,1,1,N,"TESTE CA-HARDT"',
+backend/services/etiquetaCozinhaRender.js:323:        '^FO30,30^A0N,60,60^FDTESTE CA-HARDT^FS',
+backend/services/financeiroGerencialService.js:35:const ymdSP = (d) => new Date(d).toLocaleDateString('en-CA', { timeZone: TZ });
+backend/services/financeiroGerencialService.js:563:            nome: l.id ? (info?.nome || 'Conta do CA') : 'Não informado',
+backend/services/financeiroGerencialService.js:697:        conta: { id: contaId || null, nome: contaId ? (info?.nome || 'Conta do CA') : 'Não informado' },
+backend/services/canhotoService.js:102:const isoBrasilia = (data) => new Date(data).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+backend/services/canhotoService.js:339:        origem: 'CA',
+backend/services/canhotoService.js:859:        if (chave.length === 44) candidatos.push({ chave, origem: 'CA', pedido: p, pedidoId: p.id });
+backend/services/canhotoService.js:907:                origem: 'CA',
+backend/services/conciliacaoBancariaService.js:35:const ymd = (d) => new Date(d).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+backend/services/conciliacaoBancariaService.js:591:        const statusCa = mStatus ? (/n[ãa]o/i.test(mStatus[0]) ? 'Não conciliado no CA' : 'Conciliado no CA') : null;
+backend/services/conciliacaoBancariaService.js:603:        avisos.unshift('Nenhum lançamento reconhecido no PDF — confira se é o "Extrato Conta Azul" exportado do CA (não um scan/foto).');
+backend/services/conciliacaoBancariaService.js:1230:            data: { razaoSocial: 'Conta Azul (tarifas)', ativo: true, origem: 'APP', statusEnvioCA: 'NAO_ENVIAR' },
+backend/services/conciliacaoBancariaService.js:1265:                motivoDiferenca: `Tarifa/taxa do banco — boleto Conta Azul (R$ ${TARIFA_BOLETO_CA.toFixed(2)})`,
+backend/services/conciliacaoBancariaService.js:1291:            descricao: `Tarifa de boleto Conta Azul — ${String(lanc.descricao || 'recebimento').slice(0, 180)}`,
+backend/services/conciliacaoBancariaService.js:1317:            observacao: 'Tarifa do boleto Conta Azul (descontada do crédito no extrato).',
+backend/services/conciliacaoBancariaService.js:1681:                        memo: 'Identificado via Conta Azul'
+backend/services/conciliacaoBancariaService.js:1693:    return { ok: true, iniciado: true, totalDebitos: debitos.length, aviso: 'Identificando no Conta Azul em segundo plano — recarregue a tela em 1–2 minutos.' };
+backend/services/conciliacaoBancariaService.js:2033:                ? `Baixa movida para ${conta.nomeBanco} (no app e no Conta Azul).`
+backend/services/conciliacaoBancariaService.js:2034:                : `Baixa movida para ${conta.nomeBanco} no app. Ela não tem vínculo com o CA — confira o banco da baixa lá.`,
+backend/services/conciliacaoBancariaService.js:2072:            : `Baixa movida para ${conta.nomeBanco} no app. Confira o banco do recebimento no Conta Azul (o app não guarda o vínculo dessa baixa lá).`) + avisoConversao,
+backend/services/conciliacaoBancariaService.js:2532:                dec.tarifa > 0 ? `Tarifa boleto CA R$ ${dec.tarifa.toFixed(2)}` : null,
+backend/services/conciliacaoBancariaService.js:2636:        if (alocacoes.some((a) => a.naCA)) partes.push('baixa vai ao Conta Azul');
+backend/services/conciliacaoBancariaService.js:2637:        if (alocacoes.some((a) => !a.naCA)) partes.push('despesa importada do CA fica só no app');
+backend/services/conciliacaoBancariaService.js:2685:    if (!fornecedorId && !nomeNovo) throw erro('Informe o fornecedor (a despesa vai para o Conta Azul).');
+backend/services/conciliacaoBancariaService.js:2788:    if (!fornecedorId && !nomeNovo) throw erro('Informe o fornecedor (as despesas vão para o Conta Azul).');
+backend/services/asaasExtratoService.js:21:const hojeSP = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+backend/services/comoFazerIaService.js:124:    const d = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+backend/services/comoFazerIaService.js:662:    else { const [a, mm] = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }).split('-'); ano = Number(a); m = Number(mm); }
+backend/services/iaUsoService.js:41:function hojeSP() { return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }); }
+backend/services/indicadoresMetasService.js:140:    const hojeYm = new Date().toLocaleDateString('en-CA', { timeZone: TZ }).slice(0, 7);
+backend/services/impressaoLoteService.js:138:    const diaSP = (d) => new Date(d).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+backend/services/impressaoLoteService.js:180:        const dataVendaStr = new Date(pedido.dataVenda).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+backend/services/impressaoLoteService.js:311:                        erros.push({ numero: rotulo, erro: `não consegui consultar os boletos no Conta Azul (${caErro})` });
+backend/services/impressaoLoteService.js:318:                            erros.push({ numero: rotulo, erro: `boleto do CA não baixou (${e.message}) — imprima pelo Conta Azul` });
+backend/services/asaasBaixaService.js:147:                    resultado.erros.push('baixa CA: aguardando a venda ser criada no Conta Azul (retentará sozinho)');
+backend/services/asaasBaixaService.js:150:                        ? new Date(pedido.dataVenda).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
+backend/services/asaasBaixaService.js:151:                        : new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+backend/services/asaasBaixaService.js:161:                    if (!caPar) throw new Error('Parcela correspondente não encontrada no Conta Azul.');
+backend/services/asaasBaixaService.js:194:                                data_pagamento: new Date(dataPgto).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }),
+backend/services/asaasBaixaService.js:208:                resultado.erros.push(`baixa CA: ${e.message}`);
+backend/services/asaasBaixaService.js:333:                const dataVendaStr = new Date(cobranca.pedido.dataVenda).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+backend/services/asaasBaixaService.js:341:                if (!caPar) throw new Error('Parcela não encontrada no CA.');
+backend/services/asaasBaixaService.js:344:                if (!baixaAsaas?.id) throw new Error('Baixa correspondente não encontrada no CA (excluir manualmente).');
+backend/services/asaasBaixaService.js:350:                resultado.erros.push(`estorno CA: ${e.message}`);
+backend/services/produtoService.js:97:            const erro = new Error('Criação de produto com envio à Conta Azul não pode rodar dentro de uma transação. Desligue CA_SOMENTE_LEITURA só quando este fluxo também for ajustado.');
+backend/services/produtoService.js:113:            const erro = new Error(`Não consegui criar o produto na Conta Azul: ${e.message}`);
+backend/services/gpsClientesService.js:41:const diaSP = (d) => new Date(d).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+backend/services/backupService.js:45:    const p = new Intl.DateTimeFormat('en-CA', {
+backend/services/produtoMargemService.js:42:const ymNowSP = () => new Date().toLocaleDateString('en-CA', { timeZone: TZ }).slice(0, 7);
+backend/services/produtoMargemService.js:63:    if (fonteCusto === 'COMPRA' || fonteCusto === 'CA') return 'revenda';
+backend/services/produtoMargemService.js:133:        else if (ca > 0) mapa.set(id, { custoUnitario: round4(ca), fonteCusto: 'CA' });
+backend/services/produtoMargemService.js:477:        const mesYm = compra.dataCompra.toLocaleDateString('en-CA', { timeZone: TZ }).slice(0, 7);
+backend/services/kitFestaService.js:1115:            throw new Error('Cliente sem cadastro no app. Cadastre no Conta Azul e vincule antes de aprovar.');
+backend/services/pontoService.js:260:        dias.push(d.toLocaleDateString('en-CA'));
+backend/services/pontoService.js:356:        ate = new Date(ano, mm, 0).toLocaleDateString('en-CA');
+backend/services/pontoService.js:477:            semanasComFalta.add(dt.toLocaleDateString('en-CA'));
+backend/services/pontoService.js:584:    const ultimoDoMes = new Date(anoDe, mesDe, 0).toLocaleDateString('en-CA');
+backend/services/deliveryService.js:328:            throw new Error('Pedido ainda não foi faturado no Conta Azul. Fature primeiro para movimentar no Delivery.');
+backend/services/indicadoresCustoService.js:19:const ymdSP = (d) => new Date(d).toLocaleDateString('en-CA', { timeZone: TZ });
+backend/services/indicadoresCustoService.js:277:        else if (ca > 0) mapa.set(p.id, { custo: round4(ca), fonte: 'CA' });
+backend/services/xmlNfeService.js:134:                            await vincularXmlAoPedido(chave, xml); // marca o pedido como "já tem nota do CA"
+backend/services/inadimplenciaService.js:50:const hojeSPStr = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+backend/services/inadimplenciaService.js:51:const dataSP = (d) => (d ? new Date(d).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }) : null);
+backend/services/congeladosService.js:1020:            const hojeStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+backend/services/congeladosService.js:1454:        if (!cId) throw new Error('Cliente sem cadastro no app. Cadastre no Conta Azul e vincule antes de aprovar.');
+backend/services/congeladosService.js:1490:        const hojeStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });

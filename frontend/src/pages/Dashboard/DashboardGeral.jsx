@@ -297,7 +297,7 @@ const AbaVisaoGeral = ({ d, irPara }) => {
                             <ItemAlerta
                                 numero={fmtInt(a.pedidosErroEnvio)}
                                 cor="bg-gray-200 text-gray-700"
-                                titulo="Pedidos com erro de envio ao Conta Azul"
+                                titulo="Pedidos com erro de faturamento"
                                 sub="reenviar para não travar o faturamento"
                                 acao={<Link to="/pedidos" className="text-primary text-xs font-bold whitespace-nowrap">resolver →</Link>}
                             />

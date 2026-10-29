@@ -25,7 +25,7 @@ De cada nota dá para gerar a **conta a pagar** com um clique, já com as parcel
 3. O sistema então registra automaticamente a **Ciência da Operação** (manifestação do destinatário) — é isso que libera o XML completo.
 4. Na consulta seguinte vem o **XML completo** (itens, quantidades, duplicatas) → a nota vira **NOVA** e está pronta para conferência.
 5. Se o fornecedor **cancelar** a nota depois, ela muda sozinha para **CANCELADA PELO EMITENTE**.
-6. Fornecedor que ainda não existe no app é **criado automaticamente** pelo CNPJ da nota (origem NFE, sem enviar ao Conta Azul).
+6. Fornecedor que ainda não existe no app é **criado automaticamente** pelo CNPJ da nota (origem NFE).
 
 > A manifestação de "Ciência da Operação" é neutra: só diz à SEFAZ "estou sabendo da nota". **Não é aceite comercial** — o aceite (Confirmação da Operação) e as recusas são feitos à mão na tela, ver a seção "Manifestação do Destinatário".
 
@@ -65,7 +65,7 @@ De cada nota dá para gerar a **conta a pagar** com um clique, já com as parcel
   - **"Recusadas"** junta tudo que a empresa recusou na Receita: as notas com status **RECUSADA** **e também** as que foram recusadas e **depois canceladas pelo fornecedor** (essas ficam com a etiqueta "Cancelada pelo emitente", mas seguem na aba). Nota cancelada pelo emitente que a empresa **nunca** recusou **não** aparece aqui
   - **Dois defeitos corrigidos em 08/2026:** a aba **"Sem pagamento"** vinha devolvendo **todas** as notas (o servidor não conhecia esse filtro e o ignorava em silêncio); e a aba **"Despesa gerada"** mostrava só as notas **conferidas**, escondendo as **vinculadas** a parcela já lançada — que também já viraram despesa. Agora "Despesa gerada" traz **Conferida + Vinculada**, e "Sem pagamento" traz só as de **entrada registrada**. Se você estranhar as contagens mudarem, é isso: antes estavam erradas
 - **Filtrar por tipo de nota**: alternar entre **Todas / NF-e (produto) / NFS-e (serviço)**
-- **Filtrar por período de emissão**: seletor único em pílula (padrão do sistema, estilo Conta Azul) com presets **Hoje · Últimos 7 dias · Últimos 30 dias · Este mês · Este ano · Todo o período · Período personalizado** (De/Até dentro do próprio menu). As **setas ‹ ›** ao lado pulam o período inteiro (mês anterior/seguinte etc.); em "Todo o período" ficam desligadas
+- **Filtrar por período de emissão**: seletor único em pílula (padrão do sistema) com presets **Hoje · Últimos 7 dias · Últimos 30 dias · Este mês · Este ano · Todo o período · Período personalizado** (De/Até dentro do próprio menu). As **setas ‹ ›** ao lado pulam o período inteiro (mês anterior/seguinte etc.); em "Todo o período" ficam desligadas
 - **Todos os filtros ficam lembrados por usuário** (situação, tipo e período): ao reabrir a tela, voltam do jeito que você deixou. No período o que fica salvo é o **preset** ("Últimos 30 dias" recalcula a partir de hoje — você não fica preso numa data velha); só o personalizado guarda as datas exatas. A navegação pelas setas não é salva
 - A **data de emissão** aparece em **destaque** (etiqueta verde) em cada nota da lista
 - A lista carrega **50 notas por vez** e mostra um botão **Carregar mais** no fim (com "Mostrando X de Y") — deixa a tela leve e rápida. A aba (situação), a busca, o tipo e o período continuam valendo sobre **todas** as notas, não só as que já apareceram
@@ -82,14 +82,13 @@ De cada nota dá para gerar a **conta a pagar** com um clique, já com as parcel
 - **Confirmar a operação** ou **recusar a nota na Receita** (Manifestação do Destinatário — ver seção própria abaixo). O filtro por situação ganhou o chip **"Recusadas"**, entre "Ignoradas" e "Todas"
 - **Registrar entrada (sem pagamento)** — para nota de **bonificação, amostra grátis, simples remessa/troca, comodato ou outro** motivo que entra no CNPJ mas **não gera dívida** (ver seção própria abaixo). O motivo já vem **sugerido automaticamente** pela natureza da operação e pelos CFOPs da nota
 - **Gerar a conta a pagar** a partir da nota:
-  - As **parcelas vêm sugeridas pelas duplicatas** da nota (pode ajustar; a soma precisa bater com o total da nota). Quando a nota **não tem boleto/duplicata no XML** (compra à vista e toda NFS-e), a parcela já vem com a **data de emissão da nota** (não a data de hoje), para a despesa aparecer no Conta Azul com a data certa.
+  - As **parcelas vêm sugeridas pelas duplicatas** da nota (pode ajustar; a soma precisa bater com o total da nota). Quando a nota **não tem boleto/duplicata no XML** (compra à vista e toda NFS-e), a parcela já vem com a **data de emissão da nota** (não a data de hoje), para a despesa ficar com a data certa.
   - **Parcelamento manual inteligente** (para notas **sem** boleto no XML): ao clicar **"+ Adicionar parcela"**, o valor é **dividido igualmente** entre todas (a 1ª absorve os centavos) e as datas entram em **sequência**; o campo **"a cada N dias"** define o intervalo entre as parcelas (ex.: 30 → 08/07, 07/08, 06/09). Ao **digitar um valor** numa parcela, o **saldo se redistribui automaticamente** nas parcelas seguintes. Qualquer **data** pode ser editada manualmente. **Notas que já têm parcelas no XML continuam vindo do XML** (sem redividir).
-  - **Forma de pagamento e banco (registro local).** Ao marcar "Registrar forma de pagamento e banco", você escolhe a **forma de pagamento** (Pix, dinheiro, boleto, cartão etc.) e o **banco/caixa** (o padrão já vem pré-selecionado) — usado nos **Saldos por conta** do app. *(A despesa fica só no app; desde 07/2026 não é mais enviada ao Conta Azul.)* Se a lista de bancos/formas não carregar, aparece uma tarja âmbar com o botão **"Tentar de novo"** — o app **não** fica tentando sozinho. Dá para seguir sem isso: basta desmarcar "Registrar forma de pagamento e banco" e gerar a despesa normalmente.
+  - **Forma de pagamento e banco (registro local).** Ao marcar "Registrar forma de pagamento e banco", você escolhe a **forma de pagamento** (Pix, dinheiro, boleto, cartão etc.) e o **banco/caixa** (o padrão já vem pré-selecionado) — usado nos **Saldos por conta** do app. Se a lista de bancos/formas não carregar, aparece uma tarja âmbar com o botão **"Tentar de novo"** — o app **não** fica tentando sozinho. Dá para seguir sem isso: basta desmarcar "Registrar forma de pagamento e banco" e gerar a despesa normalmente.
   - **Observações vão para a descrição da despesa.** O que você digitar no campo **Observações** é anexado à **descrição** da despesa (fica `NF-e 123 — Fornecedor — sua observação`), mantendo o número da nota e o fornecedor na frente.
   - **"Ainda vou pagar" ou "Já paguei"**:
     - **Ainda vou pagar** — a despesa entra **em aberto**, já com a forma/banco definidos, para pagar depois.
     - **Já paguei** — para compras à vista (PIX, dinheiro, transferência etc.). Além da forma/banco, você informa **a data do pagamento** (vem preenchida com a emissão da nota). A despesa entra **já quitada** (o app registra a baixa no banco/caixa escolhido).
-  - **Conciliação (não duplica)**: se você **já tinha lançado essa mesma nota manualmente** no Conta Azul (inclusive como "Compra de produto"), ao gerar a conta o sistema **procura pelo número da nota + valor** e, se encontrar, **vincula à despesa que já existe** lá em vez de criar outra. **Não depende do cadastro do fornecedor** — funciona mesmo que a Conta Azul tenha o fornecedor com nome/CNPJ duplicado ou desatualizado.
   - **Categoria da despesa por item (Contas a Pagar / DRE)**: pode escolher uma **categoria padrão** para a nota inteira e, se quiser, uma **categoria diferente item a item**. Itens sem categoria própria usam a padrão. **Não confundir com a categoria do PRODUTO** — essa é outra coisa, escolhida dentro do modal "Criar produto novo" (ver abaixo).
   - Quando a nota tem **mais de uma categoria**, o sistema faz o **rateio automático** — divide o total da nota entre as categorias, **proporcional ao valor dos itens** de cada uma (o último grupo absorve os centavos para a soma bater exatamente com o total da nota). A conta a pagar fica com categoria "Vários" e guarda o rateio.
   - Cada categoria usada deve estar cadastrada em **Categorias de Despesa** (é o que classifica a despesa na DRE).
@@ -101,10 +100,10 @@ De cada nota dá para gerar a **conta a pagar** com um clique, já com as parcel
   - A marcação "não é estoque" fica **registrada na nota**: motivo, explicação, **quem marcou e quando** — reabrindo a nota você vê tudo. Se depois o item receber um vínculo (reconferência ou correção), a marcação é **apagada** automaticamente. Item marcado **não** soma estoque nem custo (é isso que ele quer dizer), mas a decisão passa a ser rastreável em vez de invisível.
   - O sistema também **lembra a categoria da despesa escolhida por produto do fornecedor** (e por prestador, na NFS-e), mesmo sem vínculo de produto — na próxima nota do mesmo fornecedor a categoria já vem sugerida
   - **Entrada de estoque respeita a categoria do produto (09/2026):** produto de categoria que **não controla estoque** (ex.: Uso e Consumo) vira **só despesa** ao ser conferido — não soma quantidade nem mexe em custo médio, mas o histórico de compras (fornecedor/preço) é gravado do mesmo jeito. Produto de categoria que controla estoque continua somando normal. Produto sem categoria é tratado como "não controla" e o app avisa na tela para você conferir a categoria dele.
-  - **NFS-e tem conferência simplificada**: serviço não vira estoque, então não há vínculo de produto nem conversão — é só conferir a categoria, as parcelas e enviar ao Conta Azul.
+  - **NFS-e tem conferência simplificada**: serviço não vira estoque, então não há vínculo de produto nem conversão — é só conferir a categoria, as parcelas e gerar a despesa.
   - A nota vira **CONFERIDA** e fica ligada à conta criada
   - **O XML é salvo automaticamente no Google Drive da Contabilidade** (ver seção abaixo)
-- **Cancelar entrada e refazer** (nota CONFERIDA): cancela a conta a pagar gerada e devolve a nota para conferência (se a despesa já chegou ao Conta Azul, o app avisa para excluí-la lá manualmente; com baixa registrada, é preciso estornar antes)
+- **Cancelar entrada e refazer** (nota CONFERIDA): cancela a conta a pagar gerada e devolve a nota para conferência (com baixa registrada, é preciso estornar antes)
 - **TODA nota conferida SOMA no estoque** (decisão do dono, 07/2026): ao gerar a conta, cada item com vínculo dá **ENTRADA automática no estoque** (do Produto do catálogo ou do insumo PCP, já na quantidade convertida pelo fator) e o **custo é recalculado pela regra das compras recentes** (Produto → custo manual; insumo → custo unitário usado nas receitas). **Como o custo é calculado (desde 08/2026):** é a **média das compras válidas mais recentes que cobrem o estoque atual** — parte-se da compra mais nova para a mais antiga, somando as quantidades até cobrir o estoque; a compra que fecha a conta entra **inteira**. Compras antigas que já saíram do estoque não puxam mais o custo para baixo. Se **não houver compra válida**, o custo é **mantido** (não zera). A compra também entra no **histórico de compras** do produto (fornecedor, nota, quantidade, custo). A movimentação aparece no Histórico de Estoque como "Entrada NF-e {número} — {fornecedor}". **Item sem vínculo não soma** — e desde 08/2026 não dá mais para deixar item em branco: ou vincula, ou marca como "não é estoque" com motivo (ver acima).
 - **Cancelar entrada e refazer** também **estorna o estoque** (saída na mesma quantidade, na mesma operação) e **recalcula o custo pela regra das compras válidas restantes** (não "volta ao valor de antes": o custo passa a valer a média das compras recentes que ainda cobrem o estoque). Se não sobrar nenhuma compra válida, o custo é **mantido** e o app **avisa** para conferir o Custo Manual.
 
@@ -137,7 +136,7 @@ Antes de gravar, o app confere cada item vinculado e **abre um aviso** quando al
 
 **O que a correção NÃO faz (de propósito):**
 - **Não altera o valor da nota nem da despesa.** O valor de cada item vem do XML; o formulário só diz *para onde* vai e *em que conversão*. Por isso o custo apenas se espalha pela quantidade certa.
-- **Não mexe** na conta a pagar, nas parcelas, nas baixas/pagamentos nem no envio ao Conta Azul.
+- **Não mexe** na conta a pagar, nas parcelas, nas baixas/pagamentos.
 - **Não muda a categoria de despesa** (isso alteraria o rateio e a DRE) — para trocar categoria, o caminho continua sendo "Cancelar entrada e refazer".
 - Não vale para **NFS-e** (serviço não movimenta estoque) nem para nota **sem estoque aplicado** (nenhum item vinculado a produto/insumo).
 
@@ -182,7 +181,7 @@ O sistema **pergunta o que fazer** e só registra a sua escolha:
 | **Ajustar a parcela** | O valor das parcelas **ainda não pagas** passa a ser o valor vinculado que você informou; o total da despesa e o status dela são recalculados. **Parcela já paga não é alterada** — o sistema avisa quais ficaram de fora |
 | **Desconto** / **Acréscimo** | Só registra a **natureza** da diferença (mais a observação que você escrever), sem alterar valores |
 
-> **Nada disso vai para a Conta Azul.** O vínculo e o eventual ajuste valem **só dentro do app**.
+> O vínculo e o eventual ajuste valem **só dentro do app**.
 
 ### Desvincular
 
@@ -322,7 +321,7 @@ Envio Contabilidade
 ## Depende de / Interfere em
 
 - **Configurações → Certificado Digital** — sem certificado A1 válido não há captura (nem NF-e nem NFS-e)
-- **Contas a Pagar** — a conta gerada aparece lá com origem NF-e/NFS-e (e pode ir ao Conta Azul)
+- **Contas a Pagar** — a conta gerada aparece lá com origem NF-e/NFS-e
 - **Fornecedores** — fornecedores/prestadores novos são criados automaticamente pelo CNPJ da nota
 - **Produtos** e **PCP → Itens** — o de-para liga itens da NF-e aos produtos do catálogo ou a itens PCP criados na hora; é ele que faz a nota **somar no estoque** ao ser conferida (com custo no "gerar conta"; sem custo no "registrar entrada")
 - **Estoque → Histórico** e **PCP → Estoque** — cada entrada/estorno de nota aparece lá como movimentação ("Entrada NF-e ..." / "Estorno entrada NF-e ..."); a correção de produto/conversão aparece como "Correção — retirada do lançamento errado ..." seguida de "Correção da entrada NF-e ..."

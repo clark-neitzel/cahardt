@@ -122,7 +122,7 @@ const processarDevolucaoCAAutomatico = async (devolucaoId) => {
             return { ok: false, status: 'ERRO', mensagem: 'Devolução inválida ou não é do tipo CONTA_AZUL.' };
         }
         if (devolucao.processadoCA) {
-            return { ok: true, status: 'PROCESSADO', mensagem: 'Devolução já estava processada no CA.' };
+            return { ok: true, status: 'PROCESSADO', mensagem: 'Devolução já estava processada.' };
         }
         const pedido = devolucao.pedidoOriginal;
 
@@ -134,7 +134,7 @@ const processarDevolucaoCAAutomatico = async (devolucaoId) => {
 
         if (!pedido?.idVendaContaAzul) {
             console.warn(`[Auto-CA] Devolução ${devolucao.numero} sem idVendaContaAzul, pulando.`);
-            return { ok: false, status: 'ERRO', mensagem: 'Pedido não possui venda vinculada ao Conta Azul.' };
+            return { ok: false, status: 'ERRO', mensagem: 'Pedido não possui venda de faturamento antigo vinculada.' };
         }
 
         console.log(`[Auto-CA] Iniciando processamento automático da devolução #${devolucao.numero} (${devolucao.escopo})`);
@@ -150,8 +150,8 @@ const processarDevolucaoCAAutomatico = async (devolucaoId) => {
             return {
                 ok: false,
                 status: 'PARCELA_NAO_ENCONTRADA',
-                mensagem: 'Parcela do pedido não foi encontrada no Conta Azul.',
-                sugestao: 'Verifique manualmente no CA se o pedido foi realmente faturado e se a parcela existe.'
+                mensagem: 'Parcela de faturamento antigo não encontrada.',
+                sugestao: 'Verifique se o pedido foi realmente faturado e se a parcela existe.'
             };
         }
 
@@ -171,14 +171,14 @@ const processarDevolucaoCAAutomatico = async (devolucaoId) => {
             ).join(' + ') || 'sem baixas listadas';
 
             const sugestao = devolucao.escopo === 'TOTAL'
-                ? `Recomendado: no Conta Azul, abra a parcela do pedido #${pedido.numero}, EXCLUA a baixa atual (${baixasResumo}), depois aplique nova baixa com desconto de R$ ${(parseFloat(parcela.valor_composicao?.valor_bruto || 0) - 0.01).toFixed(2)} e R$ 0,01 na conta CAIXINHA.`
-                : `Recomendado: no Conta Azul, abra a parcela do pedido #${pedido.numero}, EXCLUA a baixa atual (${baixasResumo}), reduza o valor bruto em R$ ${parseFloat(devolucao.valorTotal).toFixed(2)} e refaça a baixa com o novo valor mantendo o mesmo método/conta.`;
+                ? `Recomendado: abra a parcela do pedido #${pedido.numero}, EXCLUA a baixa atual (${baixasResumo}), depois aplique nova baixa com desconto de R$ ${(parseFloat(parcela.valor_composicao?.valor_bruto || 0) - 0.01).toFixed(2)} e R$ 0,01 na conta CAIXINHA.`
+                : `Recomendado: abra a parcela do pedido #${pedido.numero}, EXCLUA a baixa atual (${baixasResumo}), reduza o valor bruto em R$ ${parseFloat(devolucao.valorTotal).toFixed(2)} e refaça a baixa com o novo valor mantendo o mesmo método/conta.`;
 
             console.warn(`[Auto-CA] ⚠️ Devolução #${devolucao.numero}: parcela já paga no CA (${statusParcela}). NÃO foi processada automaticamente.`);
             return {
                 ok: false,
                 status: 'PARCELA_PAGA',
-                mensagem: `A parcela do pedido #${pedido.numero} já está paga no Conta Azul (${statusParcela}). A devolução foi registrada localmente, mas o ajuste no CA precisa ser feito manualmente.`,
+                mensagem: `A parcela do pedido #${pedido.numero} já está paga (${statusParcela}). A devolução foi registrada, mas o ajuste da baixa precisa ser feito manualmente.`,
                 sugestao,
                 detalhes: { statusParcela, baixas: parcela.baixas }
             };
@@ -241,7 +241,7 @@ const processarDevolucaoCAAutomatico = async (devolucaoId) => {
         return {
             ok: true,
             status: 'PROCESSADO',
-            mensagem: `Devolução ${devolucao.escopo} processada com sucesso no Conta Azul.`
+            mensagem: `Devolução ${devolucao.escopo} processada com sucesso.`
         };
     } catch (error) {
         const caData = error.response?.data;
@@ -259,8 +259,8 @@ const processarDevolucaoCAAutomatico = async (devolucaoId) => {
         return {
             ok: false,
             status: 'ERRO',
-            mensagem: `Erro ao processar devolução no CA: ${detalhe}`,
-            sugestao: 'Verifique a parcela manualmente no Conta Azul e refaça os ajustes se necessário.'
+            mensagem: `Erro ao processar devolução: ${detalhe}`,
+            sugestao: 'Verifique a parcela manualmente e refaça os ajustes se necessário.'
         };
     }
 };
@@ -409,8 +409,8 @@ router.post('/:id/processar-ca', checkPermissao('Pode_Fazer_Devolucao'), async (
         });
 
         if (!devolucao) return res.status(404).json({ error: 'Devolução não encontrada.' });
-        if (devolucao.tipo !== 'CONTA_AZUL') return res.status(400).json({ error: 'Wizard CA só para devoluções do tipo CONTA_AZUL.' });
-        if (devolucao.processadoCA) return res.status(400).json({ error: 'Devolução já foi processada no CA.' });
+        if (devolucao.tipo !== 'CONTA_AZUL') return res.status(400).json({ error: 'Fluxo só para devoluções de faturamento antigo.' });
+        if (devolucao.processadoCA) return res.status(400).json({ error: 'Devolução já foi processada.' });
 
         const pedido = devolucao.pedidoOriginal;
 
@@ -422,7 +422,7 @@ router.post('/:id/processar-ca', checkPermissao('Pode_Fazer_Devolucao'), async (
             return res.json({ etapa: 'concluido', resultado: { baixaRealizada: true, local: true, mensagem: r.mensagem } });
         }
 
-        if (!pedido.idVendaContaAzul) return res.status(400).json({ error: 'Pedido não possui venda vinculada ao Conta Azul.' });
+        if (!pedido.idVendaContaAzul) return res.status(400).json({ error: 'Pedido não possui venda de faturamento antigo vinculada.' });
 
         // ── Etapa: buscar-parcela ──
         if (etapa === 'buscar-parcela') {
@@ -432,7 +432,7 @@ router.post('/:id/processar-ca', checkPermissao('Pode_Fazer_Devolucao'), async (
             );
 
             if (!parcela) {
-                return res.status(404).json({ error: 'Parcela não encontrada no Conta Azul para este pedido.' });
+                return res.status(404).json({ error: 'Parcela de faturamento antigo não encontrada para este pedido.' });
             }
 
             // Salvar parcelaCAId na devolução
@@ -462,7 +462,7 @@ router.post('/:id/processar-ca', checkPermissao('Pode_Fazer_Devolucao'), async (
             if (!devolucao.parcelaCAId) return res.status(400).json({ error: 'Busque a parcela primeiro.' });
 
             const parcela = await contaAzulService.buscarParcelaDetalhe(devolucao.parcelaCAId);
-            if (!parcela) return res.status(404).json({ error: 'Parcela não encontrada no CA.' });
+            if (!parcela) return res.status(404).json({ error: 'Parcela de faturamento antigo não encontrada.' });
 
             const valorBruto = parseFloat(parcela.valor_composicao?.valor_bruto || 0);
             const descontoExistente = parseFloat(parcela.valor_composicao?.desconto || 0);
@@ -477,10 +477,10 @@ router.post('/:id/processar-ca', checkPermissao('Pode_Fazer_Devolucao'), async (
                     `${b.metodo_pagamento || 'OUTRO'} R$ ${Number(b.valor_composicao?.valor_bruto || 0).toFixed(2)} (${b.data_pagamento})`
                 ).join(' + ') || 'sem baixas listadas';
                 const sugestao = devolucao.escopo === 'TOTAL'
-                    ? `Recomendado: no Conta Azul, abra a parcela do pedido, EXCLUA a baixa atual (${baixasResumo}) e refaça com desconto de R$ ${(valorBruto - 0.01).toFixed(2)} + R$ 0,01 na conta CAIXINHA.`
-                    : `Recomendado: no Conta Azul, EXCLUA a baixa atual (${baixasResumo}), reduza o valor bruto em R$ ${valorDevolucao.toFixed(2)} e refaça a baixa com o novo valor mantendo o mesmo método/conta.`;
+                    ? `Recomendado: abra a parcela do pedido, EXCLUA a baixa atual (${baixasResumo}) e refaça com desconto de R$ ${(valorBruto - 0.01).toFixed(2)} + R$ 0,01 na conta CAIXINHA.`
+                    : `Recomendado: EXCLUA a baixa atual (${baixasResumo}), reduza o valor bruto em R$ ${valorDevolucao.toFixed(2)} e refaça a baixa com o novo valor mantendo o mesmo método/conta.`;
                 return res.status(409).json({
-                    error: `A parcela já está paga no Conta Azul (${statusParcelaWizard}). Ajuste manual necessário.`,
+                    error: `A parcela já está paga (${statusParcelaWizard}). Ajuste manual necessário.`,
                     parcelaPaga: true,
                     statusParcela: statusParcelaWizard,
                     sugestao
@@ -606,7 +606,7 @@ router.post('/:id/processar-ca', checkPermissao('Pode_Fazer_Devolucao'), async (
             if (!devolucao.parcelaCAId) return res.status(400).json({ error: 'Parcela não definida.' });
 
             const parcela = await contaAzulService.buscarParcelaDetalhe(devolucao.parcelaCAId);
-            if (!parcela) return res.status(404).json({ error: 'Parcela não encontrada no CA.' });
+            if (!parcela) return res.status(404).json({ error: 'Parcela de faturamento antigo não encontrada.' });
 
             return res.json({
                 etapa: 'verificacao',
@@ -646,7 +646,7 @@ router.post('/:id/processar-ca', checkPermissao('Pode_Fazer_Devolucao'), async (
             else detalhe = JSON.stringify(caData);
         }
         res.status(500).json({
-            error: `Erro CA (${caStatus || 'sem status'}): ${detalhe}`
+            error: `Erro (${caStatus || 'sem status'}): ${detalhe}`
         });
     }
 });

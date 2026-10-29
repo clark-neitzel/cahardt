@@ -473,7 +473,7 @@ export function montarLinhaDoTempo(p, atendimentosDoPedido) {
                 : p.especial ? 'Pedido especial aprovado'
                     : 'Pedido liberado no app',
             sub: p.bonificacao || p.especial
-                ? 'aprovado dentro do app — bonificação e especial não vão ao Conta Azul'
+                ? 'aprovado dentro do app'
                 : 'liberação registrada no app',
         });
     }
@@ -547,11 +547,11 @@ export function montarLinhaDoTempo(p, atendimentosDoPedido) {
         }
     });
 
-    // 8. Baixa no Conta Azul feita pela conferência do Caixa
+    // 8. Baixa feita pela conferência do Caixa
     if (p.baixaCaEm) {
         ev.push({
             t: p.baixaCaEm,
-            titulo: `Baixa registrada no Conta Azul${p.baixaCaValor != null ? ` · ${fmtMoeda(p.baixaCaValor)}` : ''}`,
+            titulo: `Baixa registrada${p.baixaCaValor != null ? ` · ${fmtMoeda(p.baixaCaValor)}` : ''}`,
             sub: 'conferência do Caixa',
         });
     }

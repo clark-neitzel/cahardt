@@ -14,12 +14,12 @@ Relatório detalhado de pedidos com filtros avançados. Diferente da aba Pedidos
 
 ## O que dá pra fazer aqui
 
-- Filtrar pedidos por data de criação, data de venda, vendedor, status de envio, tipo (normal/especial), situação no Conta Azul, status de entrega e **flex (positivo/negativo/sem flex)**
+- Filtrar pedidos por data de criação, data de venda, vendedor, status de envio, tipo (normal/especial), situação de faturamento, status de entrega e **flex (positivo/negativo/sem flex)**
 - O menu de vendedor traz **também os vendedores inativos** (quem saiu da empresa), no fim da lista e marcados "(inativo)" — é assim que se levanta o que um ex-vendedor vendeu
 - Buscar por nome do cliente ou CNPJ/CPF
 - Ver resumo quantitativo no topo: total de pedidos, itens, valor e ticket médio
 - Expandir um pedido para ver:
-  - Dados gerais (condição, situação CA, canal, conta a receber, entrega)
+  - Dados gerais (condição, faturamento, canal, conta a receber, entrega)
   - Data de entrega (quando houver)
   - Pagamentos registrados na entrega (forma + valor)
   - Observações do pedido e da entrega
@@ -65,7 +65,7 @@ Relatório detalhado de pedidos com filtros avançados. Diferente da aba Pedidos
 | Vendedor | Nome do vendedor |
 | Tipo | Normal ou Especial |
 | Status | Status de envio |
-| Situação CA | Situação no Conta Azul |
+| Faturamento | Situação de faturamento do pedido |
 | Entrega | Status de entrega |
 | Data Entrega | Data real da entrega (se registrada) |
 | Condição Pgto | Condição de pagamento usada |
@@ -86,7 +86,6 @@ Relatório detalhado de pedidos com filtros avançados. Diferente da aba Pedidos
 ## Depende de / Interfere em
 
 - **Pedidos** — os dados vêm da mesma base; este relatório é somente leitura
-- **Conta Azul** — o campo "Situação CA" é atualizado pela sincronização
 - **Entregas** — o campo "Status Entrega" e "Pagamentos na Entrega" vêm da baixa logística
 
 ---

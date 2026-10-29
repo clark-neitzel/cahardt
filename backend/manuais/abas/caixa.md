@@ -18,7 +18,7 @@ Resumo financeiro diário do motorista/vendedor. Mostra tudo que aconteceu em um
 - Navegar pelos dias com as setas `‹ ›`, o botão **Hoje** ou o calendário, e trocar de vendedor com um toque na **faixa de pílulas** do topo (ver seção própria abaixo)
 - Selecionar data e vendedor (admin pode ver qualquer um; usuário comum vê sempre o próprio)
 - Ver lista de entregas do dia com status de cada uma (PENDENTE, ENTREGUE, ENTREGUE_PARCIAL, DEVOLVIDO)
-- Registrar baixa de pagamento no Conta Azul — seleção individual ou em lote por checkbox
+- Registrar baixa de pagamento — seleção individual ou em lote por checkbox
 - Marcar entregas como "conferidas" (assinatura verificada pelo admin)
 - Registrar uma nova despesa do dia (combustível, pedágio, hotel, manutenção, etc.)
 - Ver amostras entregues no dia
@@ -113,14 +113,14 @@ No cabeçalho da faixa fica um resumo contando quantas pílulas há de cada stat
 **Aviso de dias anteriores pendentes:** se existir algum caixa de um dia **diferente** do que está na tela ainda esperando conferência (A conferir ou Devolução pendente), aparece uma faixa amarela avisando, com a data e a quantidade — tocar na data pula direto para aquele dia. Sem `admin`/`Pode_Editar_Caixa`, esse aviso conta só os caixas do próprio usuário.
 
 ### Registrar baixa dos recebimentos (individual)
-> Desde 23/07/2026 a baixa é registrada **nas parcelas do próprio app** (o Conta Azul virou somente leitura). O botão continua o mesmo.
+> Desde 23/07/2026 a baixa é registrada **nas parcelas do próprio app**. O botão continua o mesmo.
 1. Na lista de entregas, localize a entrega com pagamento em Dinheiro, PIX ou Cartão
-2. Marque o checkbox na coluna "CA" daquela entrega
+2. Marque o checkbox na coluna de baixa daquela entrega
 3. Clique em **Processar selecionada(s)** — o sistema registra o recebimento nas parcelas do pedido em Contas a Receber (com histórico de pagamento por forma: dinheiro, PIX, cartão)
 
 ### Registrar baixa em lote
 1. Marque os checkboxes de várias entregas de uma vez
-2. A barra azul "Baixa CA" aparece no topo da lista com o total selecionado
+2. A barra azul "Baixa" aparece no topo da lista com o total selecionado
 3. Clique em **Processar N selecionada(s)** — todas as baixas são registradas de uma vez
 
 **Como a baixa local funciona:** dinheiro entra na conta "Caixinha", PIX Asaas entra na conta financeira do Asaas (alimenta o relatório Saldos por Conta). Se o valor acertado na entrega for menor que a parcela por causa de devolução de mercadoria, a diferença fecha como **desconto** ("Devolução de mercadoria — conferência do caixa"). Valores marcados como responsável (**motorista**, vendedor ou escritório) **não baixam** — a parcela fica em aberto para essa parte.
@@ -143,9 +143,9 @@ No cabeçalho da faixa fica um resumo contando quantas pílulas há de cada stat
 - se a entrega só tiver valores de responsável, o resultado da baixa vem como **"Não quita: só há valor de responsável"**, e isso **não trava** o fechamento do caixa;
 - **desde 19/08/2026 são TRÊS papéis, e o texto diz qual é.** Além de "vendedor" e "escritório" existe **"motorista"** — o mais comum, porque quem fecha a entrega na rua costuma assumir a cobrança. Na observação que o sistema grava na baixa parcial, cada valor sai com o papel entre parênteses: `(motorista)`, `(vendedor)` ou `(escritório)`. **Antes, dívida de motorista era escrita como "vendedor"** — quem lê a observação de uma baixa antiga deve ter isso em mente. Marcação feita antes dessa data continua aparecendo como vendedor/escritório, sem reclassificação.
 
-**Selo "A CONFERIR" na lista de entregas:** o especial entregue e ainda não baixado aparece marcado como **A CONFERIR** — é o aviso de que aquele dinheiro já foi recebido pelo motorista e falta a baixa. Some assim que a baixa é feita. **Pedido cuja devolução foi TOTAL não aparece mais como A CONFERIR nem oferece a caixinha de Baixa CA**: a conta ficou marcada como devolvida e não há mais nada a fazer nessa linha (antes ela voltava pedindo conferência e o Processar respondia "JÁ QUITADO"). Devolução **parcial** é diferente: sobrou saldo, então o título continua precisando de baixa e o selo permanece.
+**Selo "A CONFERIR" na lista de entregas:** o especial entregue e ainda não baixado aparece marcado como **A CONFERIR** — é o aviso de que aquele dinheiro já foi recebido pelo motorista e falta a baixa. Some assim que a baixa é feita. **Pedido cuja devolução foi TOTAL não aparece mais como A CONFERIR nem oferece a caixinha de Baixa**: a conta ficou marcada como devolvida e não há mais nada a fazer nessa linha (antes ela voltava pedindo conferência e o Processar respondia "JÁ QUITADO"). Devolução **parcial** é diferente: sobrou saldo, então o título continua precisando de baixa e o selo permanece.
 
-**Painel de resultado da Baixa CA:** depois de clicar em Processar, o resultado de cada pedido fica na tela até você fechar (não é um aviso que some sozinho). Cinco estados:
+**Painel de resultado da Baixa:** depois de clicar em Processar, o resultado de cada pedido fica na tela até você fechar (não é um aviso que some sozinho). Cinco estados:
 
 | Estado | O que significa | O que fazer |
 |---|---|---|
@@ -162,12 +162,12 @@ No cabeçalho da faixa fica um resumo contando quantas pílulas há de cada stat
 - o painel de resultado mostra **"informado, aguardando conciliação bancária"** para cada forma que entrou assim — não é erro, é o novo funcionamento normal;
 - **o caixa NÃO trava** por causa disso: um pedido só com Pix/cartão informado sai das pendências do fechamento mesmo sem estar quitado — a conta ganha um selo interno "aguardando conciliação" que o fechamento já reconhece como resolvido;
 - o cliente **não vira inadimplente** nem é bloqueado em venda nova enquanto o valor está nessa espera — o app sabe que ele já pagou, só falta o banco confirmar;
-- a mesma regra vale para pedido **normal** (Faturado CA) processado aqui e para **Cobrança em Rota** (ver abaixo) — Pix/cartão cobrado na rua também entra em espera; só Dinheiro cobrado na rua quita e agora sempre com a conta Caixinha vinculada (antes nenhuma forma em rota tinha conta — corrigido junto);
+- a mesma regra vale para pedido **normal** (Faturado) processado aqui e para **Cobrança em Rota** (ver abaixo) — Pix/cartão cobrado na rua também entra em espera; só Dinheiro cobrado na rua quita e agora sempre com a conta Caixinha vinculada (antes nenhuma forma em rota tinha conta — corrigido junto);
 - clicar duas vezes não duplica a linha "aguardando", igual à baixa normal.
 
 > Onde acompanhar e confirmar: **Financeiro → Contas a Receber** mostra o selo de "aguardando conciliação" no título; **Financeiro → Conciliação Bancária** é onde o Pix/cartão informado é casado com o lançamento do extrato — a partir daí ele vira baixa de verdade e a parcela é atualizada.
 
-**O QR PIX morre quando a conferência fecha o título.** Quando a Baixa CA quita a conta do pedido, o sistema **cancela no Asaas** o QR PIX da entrega (e qualquer boleto ainda aberto daquele pedido). É o que impede o cliente de pagar de novo um QR que continuou vivo — o QR PIX com vencimento fica pagável por até 12 meses, mesmo com o pedido já pago em dinheiro ou por chave PIX. Quando isso acontece, o painel de resultado mostra a linha **"QR PIX cancelado no Asaas"**.
+**O QR PIX morre quando a conferência fecha o título.** Quando a Baixa quita a conta do pedido, o sistema **cancela no Asaas** o QR PIX da entrega (e qualquer boleto ainda aberto daquele pedido). É o que impede o cliente de pagar de novo um QR que continuou vivo — o QR PIX com vencimento fica pagável por até 12 meses, mesmo com o pedido já pago em dinheiro ou por chave PIX. Quando isso acontece, o painel de resultado mostra a linha **"QR PIX cancelado no Asaas"**.
 
 - **Baixa parcial NÃO cancela**: sobrou saldo, então o QR **continua vivo** de propósito — o cliente ainda pode pagar o resto por ele.
 - **SEM BAIXA e ERRO também não cancelam** — nada foi quitado.
@@ -299,11 +299,11 @@ A virada do dia confere, antes de enfileirar, se o caixa teve **algum** destes:
 
 > **Título devolvido não é pendência (corrigido em 08/2026).** Quando a devolução zera o título (a conta fica marcada como **devolvida**, ou cancelada), não existe mais dinheiro a prestar naquela linha — ela sai da lista de "baixas de recebimento pendentes" e **não trava mais o fechamento**. Antes disso, um pedido devolvido continuava contando como pendência e o botão Fechar Caixa ficava desabilitado sem que houvesse nada a fazer. **Especial com dinheiro de verdade ainda em aberto continua travando**, como sempre.
 
-> **Baixa parcial não trava mais o fechamento (corrigido em 08/2026).** Quando o motorista traz menos do que o valor do especial e o caixa processa a Baixa CA, o título fica **parcial** (o saldo continua em aberto no Contas a Receber, para cobrar depois). Essa linha já foi baixada no caixa — não há mais dinheiro daquele dia a prestar — então ela **sai das pendências** e o botão Fechar Caixa continua liberado. Antes, o botão ficava desabilitado para sempre nesse caso, sem nenhuma ação possível na tela.
+> **Baixa parcial não trava mais o fechamento (corrigido em 08/2026).** Quando o motorista traz menos do que o valor do especial e o caixa processa a Baixa, o título fica **parcial** (o saldo continua em aberto no Contas a Receber, para cobrar depois). Essa linha já foi baixada no caixa — não há mais dinheiro daquele dia a prestar — então ela **sai das pendências** e o botão Fechar Caixa continua liberado. Antes, o botão ficava desabilitado para sempre nesse caso, sem nenhuma ação possível na tela.
 
 > **Pix comum/cartão aguardando conciliação também não trava (09/2026).** Desde que Pix comum e cartão passaram a só "informar" em vez de quitar, um pedido processado assim fica com o título tecnicamente ABERTO — mas ele **não é mais dinheiro pendente de baixa**, é dinheiro **já processado, esperando o banco confirmar**. Por isso essa linha some das pendências do fechamento assim que o Processar é clicado, mesmo sem ter virado PAGO/PARCIAL. Quem quiser saber quanto ainda está "aguardando" acompanha pelo selo em Contas a Receber ou na Conciliação Bancária, não pelo Caixa.
 
-> **O que a tela mostra é o que o servidor aceita.** A contagem de **"baixa(s) de recebimento pendente(s)"** (nome novo — antes dizia "dinheiro", mas a conta sempre incluiu mais que dinheiro) usa exatamente a mesma regra do fechamento: entram as entregas com **dinheiro, PIX ou cartão** recebidos pelo motorista que ainda não foram baixados (Baixa CA / quitação do especial). **Não contam** como pendência: título já baixado, **baixa parcial** (o que falta vira cobrança normal, não prende o caixa), título devolvido ou cancelado, e a **linha de responsável pela cobrança** (escritório ou vendedor ficou de cobrar depois). A mensagem de recusa do servidor usa exatamente esse mesmo texto, para a tela e o toast não falarem duas línguas.
+> **O que a tela mostra é o que o servidor aceita.** A contagem de **"baixa(s) de recebimento pendente(s)"** (nome novo — antes dizia "dinheiro", mas a conta sempre incluiu mais que dinheiro) usa exatamente a mesma regra do fechamento: entram as entregas com **dinheiro, PIX ou cartão** recebidos pelo motorista que ainda não foram baixados (Baixa / quitação do especial). **Não contam** como pendência: título já baixado, **baixa parcial** (o que falta vira cobrança normal, não prende o caixa), título devolvido ou cancelado, e a **linha de responsável pela cobrança** (escritório ou vendedor ficou de cobrar depois). A mensagem de recusa do servidor usa exatamente esse mesmo texto, para a tela e o toast não falarem duas línguas.
 
 > **Caixa fechado não se altera.** Depois de fechado, aquele dia não aceita despesa, baixa, devolução nem mudança de adiantamento — nem para o admin. Para mexer, é preciso reabrir.
 
@@ -389,7 +389,7 @@ para guardar o texto:
 - **NF-e original da venda não encontrada** — o pedido não tem a nota de venda vinculada, e a
   devolução precisa apontar para ela.
 - **Casos que nunca geram nota, por regra:** devolução já revertida, devolução de pedido especial
-  (pedido sem nota de origem) e devolução que já tem NF de devolução do Conta Azul.
+  (pedido sem nota de origem) e devolução que já tem NF de devolução antiga.
 - **"Esta bonificação não tem NF-e autorizada — a devolução fica registrada só no estoque, sem
   nota fiscal."** — a BN# saiu **sem nota** (ou a nota dela ainda está processando/deu erro).
   Não é falha: bonificação sem nota nunca teve nota de devolução. Se a nota da bonificação for
@@ -415,7 +415,7 @@ original**. Estas três mensagens ficam guardadas em vermelho na aba Devoluçõe
   errada só se desfaz com cancelamento em 24h). Junte as linhas repetidas desse produto na
   devolução e emita de novo, ou emita pelo contador.
 - **"Não foi possível ler os itens da NF-e nº Y"** — o app não conseguiu recuperar a nota de venda
-  original (nota antiga do Conta Azul cujo XML não está guardado). Avise o escritório.
+  original (nota antiga (anterior ao app) cujo XML não está guardado). Avise o escritório.
 
 ### Imprimir a NF de devolução (DANFE) no próprio Caixa
 - Assim que a NF-e de devolução é **autorizada** pela SEFAZ (leva segundos), aparece na linha da entrega o botão verde **"🧾 NF dev. `<número>`"** — clique para abrir o PDF da DANFE, imprimir e arquivar junto com o caixa do dia
@@ -468,7 +468,7 @@ Quando a falta não é culpa do motorista (ex.: o produto não foi carregado de 
 | Fechar conferência com diferença até o limite | o próprio conferente, pela **quebra de caixa** definida no usuário (motivo obrigatório) |
 | Autorizar diferença acima da quebra | `Pode_Autorizar_Diferenca_Caixa` ou `admin` — autoriza com a **própria senha** |
 | Ligar/desligar a regra da conferência | `admin`, em Configurações → Caixa |
-| Registrar baixa no Conta Azul | `Pode_Baixar_Caixa` ou `Pode_Editar_Caixa` ou `admin` |
+| Registrar baixa | `Pode_Baixar_Caixa` ou `Pode_Editar_Caixa` ou `admin` |
 | Baixar cobranças da rota | `Pode_Baixar_Caixa` ou `Pode_Editar_Caixa` ou `admin` (com o caixa ABERTO) |
 | Conferir e reverter conferência | `Pode_Reverter_Caixa` ou `admin` (reverter); `admin` ou `Pode_Editar_Caixa` (conferir) |
 | Reabrir caixa fechado | `Pode_Reverter_Caixa` ou `admin` |
@@ -484,7 +484,7 @@ Quando a falta não é culpa do motorista (ex.: o produto não foi carregado de 
 
 - **Embarque / Entregas** — as entregas do caixa vêm dos embarques criados para aquele motorista
 - **Despesas** — são acessíveis também pela aba própria (`/despesas`)
-- **Contas a Receber** — a baixa registra o recebimento na parcela correspondente do app (dinheiro → Caixinha, PIX Asaas → conta Asaas; nada vai mais ao Conta Azul desde 23/07/2026). A baixa das **cobranças da rota** também sai daqui, na parcela que o motorista cobrou na rua
+- **Contas a Receber** — a baixa registra o recebimento na parcela correspondente do app (dinheiro → Caixinha, PIX Asaas → conta Asaas). A baixa das **cobranças da rota** também sai daqui, na parcela que o motorista cobrou na rua
 - **Minhas Entregas (aba Cobranças)** — as cobranças deste cartão vêm do que o motorista/vendedor registrou na rua
 - **Embarque** — o escritório pendura os títulos a cobrar na carga (seção "Cobranças na Carga")
 - **Veículos** — o KM inicial/final e a ficha do veículo do dia são acessíveis dentro do caixa; a correção de KM feita aqui pode propagar para o KM final do dia anterior do mesmo veículo (ver "Editar KM" no início deste manual)

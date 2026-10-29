@@ -323,7 +323,7 @@ const ContasBancosPage = () => {
                     <span className="font-semibold text-red-700">Saídas</span> = pagamentos e{' '}
                     <span className="font-semibold text-purple-700">Transf. ±</span> = transferências entre as contas da empresa
                     (marcadas na Conciliação Bancária — não são receita nem despesa), agrupados pela conta (banco/caixa) usada, no período.
-                    Lançamentos antigos importados podem aparecer em <span className="font-semibold">“Não informado”</span> (o Conta Azul não guardava o banco). Clique numa conta para ver o extrato — lá dá para <span className="font-semibold">mover um lançamento para a conta certa</span> (ícone de setas) e <span className="font-semibold">registrar ajuste manual de saldo</span>. Ajustes valem só aqui no app (não vão ao Conta Azul).
+                    Lançamentos antigos importados podem aparecer em <span className="font-semibold">“Não informado”</span>. Clique numa conta para ver o extrato — lá dá para <span className="font-semibold">mover um lançamento para a conta certa</span> (ícone de setas) e <span className="font-semibold">registrar ajuste manual de saldo</span>.
                 </div>
             </div>
 

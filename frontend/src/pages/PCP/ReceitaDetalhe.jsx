@@ -802,7 +802,7 @@ export default function ReceitaDetalhe() {
                 </div>
                 {custo?.temCustoFaltando && (
                     <p className="mt-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                        Alguns itens estão sem custo cadastrado — o valor acima pode estar incompleto. Cadastre o custo do produto (no Conta Azul ou manualmente no app) ou crie a receita do subproduto.
+                        Alguns itens estão sem custo cadastrado — o valor acima pode estar incompleto. Cadastre o custo do produto (manualmente no app) ou crie a receita do subproduto.
                     </p>
                 )}
 

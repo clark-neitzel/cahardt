@@ -12,7 +12,7 @@ import { fmtData, fmtVal, fmtNumCsv, STATUS_BADGE, baixarCsv, csvTexto, imprimir
 const DOC_BADGE = {
     NFE: { label: 'NF-e', cls: 'bg-blue-100 text-blue-800' },
     NFSE: { label: 'NFS-e', cls: 'bg-mint text-primaryDark' },
-    IMPORTADO_CA: { label: 'Importada do CA', cls: 'bg-gray-100 text-gray-700' },
+    IMPORTADO_CA: { label: 'Importada (antiga)', cls: 'bg-gray-100 text-gray-700' },
     SEM_DOC: { label: 'Sem nota', cls: 'bg-amber-100 text-amber-700' },
 };
 const CLASSIF_BADGE = {
@@ -167,7 +167,7 @@ export default function AbaPagar() {
                                 <option value="todos">Todos</option>
                                 <option value="NFE">NF-e (produto)</option>
                                 <option value="NFSE">NFS-e (serviço)</option>
-                                <option value="IMPORTADO_CA">Importada do CA</option>
+                                <option value="IMPORTADO_CA">Importada (antiga)</option>
                                 <option value="SEM_DOC">Sem nota</option>
                             </SelectBusca>
                         </div>

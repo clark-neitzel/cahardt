@@ -202,7 +202,7 @@ const ModalPedidoConsulta = ({ pedidoId, resumo, onClose }) => {
                             )}
                             {p.situacaoCA && (
                                 <span className={`px-2 py-1 text-[10px] leading-tight font-semibold rounded-full ${p.situacaoCA === 'FATURADO' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}`}>
-                                    {p.especial ? '' : 'CA: '}{p.situacaoCA}
+                                    {p.situacaoCA}
                                 </span>
                             )}
                             {p.especial && <span className="px-2 py-1 text-[10px] font-semibold rounded-full bg-purple-100 text-purple-700">ESPECIAL</span>}
@@ -464,7 +464,7 @@ const ModalPedidoConsulta = ({ pedidoId, resumo, onClose }) => {
                                 {p.nfeChave && (
                                     <div className="space-y-0.5">
                                         <p className="text-gray-700">
-                                            NF-e emitida no Conta Azul{p.nfeNumero != null ? <> — nº <b>{p.nfeNumero}</b></> : null}
+                                            NF-e antiga (importada){p.nfeNumero != null ? <> — nº <b>{p.nfeNumero}</b></> : null}
                                         </p>
                                         <p className="text-[11px] text-gray-500 break-all">Chave: {p.nfeChave}</p>
                                         <p className="text-[11px] text-gray-500">O app não guarda a data de emissão dessa nota, por isso ela não aparece na linha do tempo.</p>
@@ -528,7 +528,7 @@ const ModalPedidoConsulta = ({ pedidoId, resumo, onClose }) => {
                                         <div className="flex items-center gap-2 flex-wrap">
                                             <span className="text-[10px] font-bold text-red-700 bg-red-100 px-2 py-0.5 rounded-full">DEV#{dev.numero}</span>
                                             <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${dev.tipo === 'CONTA_AZUL' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-700'}`}>
-                                                {dev.tipo === 'CONTA_AZUL' ? 'CA' : 'ESPECIAL'}
+                                                {dev.tipo === 'CONTA_AZUL' ? 'NORMAL' : 'ESPECIAL'}
                                             </span>
                                             <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-gray-100 text-gray-700">{dev.escopo}</span>
                                             {dev.status === 'REVERTIDA' && (

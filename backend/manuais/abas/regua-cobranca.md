@@ -9,7 +9,7 @@ Cobra automaticamente os clientes inadimplentes por **WhatsApp** (bot), **e-mail
 ## Como os envios saem (fila e proteções)
 
 - Os envios saem em **fila, 1 mensagem por minuto** — proteção para o número de WhatsApp não ser bloqueado por rajada.
-- **Antes de cada envio o sistema confere no próprio app** se o título ainda está em aberto (relê a parcela no banco local — não depende mais do Conta Azul desde 09/2026). Se o cliente já foi baixado nesse meio-tempo, o envio é pulado e o painel se atualiza.
+- **Antes de cada envio o sistema confere no próprio app** se o título ainda está em aberto (relê a parcela no banco local). Se o cliente já foi baixado nesse meio-tempo, o envio é pulado e o painel se atualiza.
 - A régua só roda nos **dias da semana marcados** (padrão: segunda a sexta — não cobra em fim de semana).
 - **Vencimento que cai em sábado/domingo** conta como vencido só na segunda (opção "prorrogar fim de semana", ligada por padrão). Ex.: venceu sábado + 1 dia de carência → 1º aviso sai na terça.
 - Horários são sempre no **horário de São Paulo**.
@@ -24,7 +24,7 @@ Cobra automaticamente os clientes inadimplentes por **WhatsApp** (bot), **e-mail
 
 ## Aba Régua (configuração por forma de recebimento)
 
-Um cartão por forma de recebimento (ex.: Boleto 28 dias, PIX à vista). A linha **PADRÃO** vale para qualquer forma sem régua própria (inclusive contas importadas do Conta Azul sem pedido). Em cada cartão:
+Um cartão por forma de recebimento (ex.: Boleto 28 dias, PIX à vista). A linha **PADRÃO** vale para qualquer forma sem régua própria (inclusive contas antigas importadas, sem pedido). Em cada cartão:
 
 - **1º aviso**: quantos dias **após o vencimento** sai a primeira mensagem.
 - **Horário de envio próprio** (opcional): cada forma pode disparar num horário diferente; vazio usa o horário geral.
@@ -63,7 +63,7 @@ Todos os envios (automáticos, lembretes e manuais) com data, cliente, canal, ti
 - **Pedido especial** (e qualquer conta com origem ESPECIAL, mesmo sem pedido vinculado) — é fiado local: a cobrança é do escritório/vendedor, feita na mão. A parcela do especial nasce vencida no dia da venda e só é baixada na conferência do Caixa; sem essa trava, cliente que pagou em dinheiro na entrega receberia cobrança no dia seguinte
 - **Pedido bonificação** — não é venda
 - **Amostra** — não gera título nenhum (não tem conta a receber)
-- Pedido excluído/cancelado no Conta Azul (regra que já existia)
+- Pedido excluído/cancelado (regra que já existia)
 
 **O painel e o botão "Cobrar agora" continuam enxergando o especial.** A trava vale só para o **envio automático** da régua: no painel de inadimplentes o escritório vê tudo, e pode disparar a cobrança na mão quando decidir.
 
@@ -73,7 +73,7 @@ Todos os envios (automáticos, lembretes e manuais) com data, cliente, canal, ti
 
 O painel de inadimplentes e o botão **"Cobrar agora"** enxergam **todos** os títulos em aberto do cliente — inclusive de **pedido especial**, de propósito, porque é o escritório que cobra o especial na mão. Só o **envio automático** da régua é que nunca cobra especial, bonificação nem amostra.
 
-Até 08/2026 um defeito escondia do painel os títulos de **pedido faturado direto no app** (que ainda não tinha situação registrada no Conta Azul): eles não apareciam na lista de inadimplentes nem entravam na régua. Corrigido — esses títulos voltaram a ser enxergados. Efeito prático: podem aparecer no painel alguns clientes que antes não apareciam, e eles passam a receber **lembrete de vencimento** normalmente.
+Até 08/2026 um defeito escondia do painel os títulos de **pedido faturado direto no app** (que ainda não tinha situação de faturamento registrada): eles não apareciam na lista de inadimplentes nem entravam na régua. Corrigido — esses títulos voltaram a ser enxergados. Efeito prático: podem aparecer no painel alguns clientes que antes não apareciam, e eles passam a receber **lembrete de vencimento** normalmente.
 
 ## Quem é "inadimplente" no painel e no "Cobrar agora" (atualizado em 10/2026)
 

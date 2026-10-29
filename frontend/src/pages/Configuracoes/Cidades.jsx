@@ -14,7 +14,7 @@ import { chaveBusca } from '../../utils/cidade';
 // fundir com dryRun, pendentes). Listar/buscar sem acento, editar nome/UF, inativar,
 // fundir A→B com simulação e confirmação, aba Pendências (cidades vindas do CA/IA).
 
-const ORIGEM_LABEL = { CA_SYNC: 'Conta Azul', IA_LEAD: 'IA (WhatsApp)', CA_FORNECEDOR: 'CA · fornecedor' };
+const ORIGEM_LABEL = { CA_SYNC: 'Importação antiga', IA_LEAD: 'IA (WhatsApp)', CA_FORNECEDOR: 'Fornecedor' };
 
 const btnPrim = 'px-4 py-2 min-h-[44px] md:min-h-0 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm disabled:opacity-50 inline-flex items-center justify-center gap-1.5';
 const btnSec = 'px-4 py-2 min-h-[44px] md:min-h-0 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-sm disabled:opacity-50 inline-flex items-center justify-center gap-1.5';
@@ -337,7 +337,7 @@ const Cidades = () => {
                             <span className="text-xs font-bold uppercase tracking-widest text-gray-600">Cidades que chegaram sozinhas</span>
                         </div>
                         <div className="px-3 md:px-5 pt-3 text-sm text-gray-600">
-                            Vieram da Conta Azul ou da IA do WhatsApp com um nome que não está no cadastro. O registro de origem já foi gravado; aqui você decide: <b>cadastrar</b> a cidade ou <b>apontar</b> para uma que já existe (o sistema reescreve os registros).
+                            Vieram de importação antiga ou da IA do WhatsApp com um nome que não está no cadastro. O registro de origem já foi gravado; aqui você decide: <b>cadastrar</b> a cidade ou <b>apontar</b> para uma que já existe (o sistema reescreve os registros).
                         </div>
                         {loadingPend ? (
                             <div className="p-8 text-center text-gray-500 text-sm"><Loader2 className="h-5 w-5 animate-spin inline mr-2" />Carregando…</div>

@@ -174,7 +174,7 @@ const DiarioGateway = () => {
                 )}
             </div>
 
-            <p className="mt-8 text-gray-400 text-sm font-medium">Controle de Frota Integrado — Conta Azul App</p>
+            <p className="mt-8 text-gray-400 text-sm font-medium">Controle de Frota Integrado</p>
         </div>
     );
 };

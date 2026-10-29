@@ -80,15 +80,6 @@ const AsaasIcon = ({ className }) => (
     </svg>
 );
 
-// Marca do Conta Azul para o botão de cobrança/boleto do CA
-const CaIcon = ({ className }) => (
-    <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
-        <rect x="1" y="1" width="22" height="22" rx="6" fill="#1466d6" />
-        <text x="12" y="16.4" textAnchor="middle" fontSize="10.5" fontWeight="800"
-            fontFamily="system-ui, sans-serif" fill="#fff" letterSpacing="-0.5">CA</text>
-    </svg>
-);
-
 const ListaPedidos = () => {
     const navigate = useNavigate();
     const location = useLocation();
@@ -803,51 +794,6 @@ const ListaPedidos = () => {
     // Não misturar seleção de pedidos com amostras ao trocar de aba
     useEffect(() => { setSelecionados(new Set()); }, [abaAtiva]);
 
-    const [consultandoCA, setConsultandoCA] = useState(new Set());
-    const [cobrancasCA, setCobrancasCA] = useState({});
-    // { [pedidoId]: { loading, links: [{label, url, tipo, raw}], error, open } }
-    const [clickedCobrancaLinks, setClickedCobrancaLinks] = useState(new Set());
-
-    const handleBuscarCobrancasCA = async (pedido) => {
-        const atual = cobrancasCA[pedido.id];
-        if (atual?.links) {
-            setCobrancasCA(prev => ({ ...prev, [pedido.id]: { ...prev[pedido.id], open: !prev[pedido.id].open } }));
-            return;
-        }
-        setCobrancasCA(prev => ({ ...prev, [pedido.id]: { loading: true, open: false } }));
-        try {
-            // Sincroniza com CA antes de buscar cobranças para garantir dados atualizados
-            try { await pedidoService.consultarCA(pedido.id); } catch (_) {}
-            const data = await pedidoService.buscarCobrancasCA(pedido.id);
-            setCobrancasCA(prev => ({ ...prev, [pedido.id]: { loading: false, links: data.cobrancas, open: true } }));
-        } catch (e) {
-            toast.error(e.response?.data?.error || 'Erro ao buscar cobranças no CA');
-            setCobrancasCA(prev => ({ ...prev, [pedido.id]: { loading: false, error: true, open: false } }));
-        }
-    };
-
-    const handleConsultarCA = async (pedido) => {
-        if (!pedido?.idVendaContaAzul) {
-            toast.error('Pedido ainda não foi enviado ao CA.');
-            return;
-        }
-        setConsultandoCA(prev => new Set(prev).add(pedido.id));
-        try {
-            const res = await pedidoService.consultarCA(pedido.id);
-            toast.success(res.message || 'Situação atualizada');
-            setPedidos(prev => prev.map(p => p.id === pedido.id ? { ...p, situacaoCA: res.situacaoCA, statusEnvio: res.statusEnvio } : p));
-            if (selectedPedido?.id === pedido.id) {
-                setSelectedPedido(prev => ({ ...prev, situacaoCA: res.situacaoCA, statusEnvio: res.statusEnvio }));
-            }
-        } catch (e) {
-            toast.error(e.response?.data?.error || 'Erro ao consultar CA');
-        } finally {
-            setConsultandoCA(prev => {
-                const n = new Set(prev); n.delete(pedido.id); return n;
-            });
-        }
-    };
-
     const handlePrintPedido = async (pedido) => {
         try {
             await pedidoService.registrarImpressao(pedido.id);
@@ -1541,7 +1487,7 @@ const ListaPedidos = () => {
                                             )}
                                             {pedido.situacaoCA && (
                                                 <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase border shadow-sm ${pedido.situacaoCA === 'FATURADO' ? 'text-green-700 bg-green-50 border-green-200' : 'text-blue-700 bg-blue-50 border-blue-100'}`}>
-                                                    {pedido.especial ? '' : 'CA: '}{pedido.situacaoCA}
+                                                    {pedido.situacaoCA}
                                                 </span>
                                             )}
                                             {pedido.avisosConversao?.length > 0 && (
@@ -1567,88 +1513,6 @@ const ListaPedidos = () => {
                                                 {getWsStatus(pedido.id) === 'enviando' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : getWsStatus(pedido.id) === 'ok' ? <CheckCircle className="h-3.5 w-3.5" /> : getWsStatus(pedido.id) === 'erro' ? <XCircle className="h-3.5 w-3.5" /> : <MessageCircle className="h-3.5 w-3.5" />}
                                                 <span className="hidden lg:inline">WhatsApp</span>
                                             </button>
-                                            {pedido.idVendaContaAzul && (
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); handleConsultarCA(pedido); }}
-                                                    disabled={consultandoCA.has(pedido.id)}
-                                                    className="flex items-center gap-1 px-2 lg:px-2.5 py-1.5 rounded-full text-[10.5px] font-bold bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors disabled:opacity-50"
-                                                    title="Consultar situação no Conta Azul"
-                                                >
-                                                    {consultandoCA.has(pedido.id) ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-                                                    <span className="hidden lg:inline">Sync CA</span>
-                                                </button>
-                                            )}
-                                            {/* Pílula CA — boleto/cobrança no Conta Azul. Check ✓ = tem boleto lá
-                                                (o check vem do cache, atualizado ao imprimir em lote ou no Sync CA) */}
-                                            {pedido.idVendaContaAzul && !pedido.especial && pedido.tipoPagamento === 'BOLETO_BANCARIO' && (
-                                                <div className="relative">
-                                                    <button
-                                                        onClick={(e) => { e.stopPropagation(); handleBuscarCobrancasCA(pedido); }}
-                                                        disabled={cobrancasCA[pedido.id]?.loading}
-                                                        className={`relative flex items-center gap-1 px-2 lg:px-2.5 py-1 rounded-full text-[10.5px] font-bold transition-colors disabled:opacity-50 ${cobrancasCA[pedido.id]?.open ? 'bg-[#d3e3fb] text-[#1466d6]' : 'bg-[#e7f0fd] text-[#1466d6] hover:bg-[#d3e3fb]'}`}
-                                                        title={pedido.caBoletoStatus === 'PENDENTE' ? 'Boleto emitido no Conta Azul' : pedido.caBoletoStatus === 'PAGO' ? 'Boleto do CA já pago' : 'Cobranças no Conta Azul'}
-                                                    >
-                                                        {cobrancasCA[pedido.id]?.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CaIcon className="h-4 w-4" />}
-                                                        <span className="hidden lg:inline">CA</span>
-                                                        {(pedido.caBoletoStatus === 'PENDENTE' || pedido.caBoletoStatus === 'PAGO') && (
-                                                            <span className={`absolute -top-1.5 -right-1 h-4 w-4 rounded-full border-2 border-white flex items-center justify-center text-white text-[9px] font-black ${pedido.caBoletoStatus === 'PAGO' ? 'bg-gray-400' : 'bg-green-600'}`}>✓</span>
-                                                        )}
-                                                    </button>
-                                                    {cobrancasCA[pedido.id]?.open && (
-                                                        <div
-                                                            className="absolute right-0 bottom-full mb-1 bg-white border border-gray-200 rounded-lg shadow-lg p-2 z-20 min-w-[160px]"
-                                                            onClick={e => e.stopPropagation()}
-                                                        >
-                                                            {(() => {
-                                                                const links = cobrancasCA[pedido.id].links || [];
-                                                                const comUrl = links.filter(c => c.url);
-                                                                const valorTotal = Number((pedido.itens?.reduce((acc, i) => acc + (Number(i.valor) * Number(i.quantidade)), 0) || 0) + Number(pedido.valorFrete || 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
-                                                                const linhasCob = comUrl.length === 1
-                                                                    ? `Cobrança - ${comUrl[0].url}`
-                                                                    : comUrl.map((c, i) => `Cobrança ${i + 1} - ${c.url}`).join('\n');
-                                                                const textoParaCopiar = `Pedido #${pedido.numero} - R$ ${valorTotal}\n${linhasCob}`;
-                                                                return (
-                                                                    <>
-                                                                        <div className="flex items-center justify-between mb-1">
-                                                                            <p className="text-[10px] font-bold text-gray-500 uppercase">Cobranças CA</p>
-                                                                            {comUrl.length > 0 && (
-                                                                                <button
-                                                                                    onClick={() => { navigator.clipboard.writeText(textoParaCopiar); }}
-                                                                                    className="text-[10px] text-indigo-500 hover:text-indigo-700 font-medium ml-2"
-                                                                                    title="Copiar links"
-                                                                                >Copiar</button>
-                                                                            )}
-                                                                        </div>
-                                                                        {links.length === 0 ? (
-                                                                            <p className="text-[11px] text-gray-500">Sem cobranças ativas</p>
-                                                                        ) : (
-                                                                            links.map(cob => (
-                                                                                cob.url ? (
-                                                                                    <a
-                                                                                        key={cob.label}
-                                                                                        href={cob.url}
-                                                                                        target="_blank"
-                                                                                        rel="noreferrer"
-                                                                                        onClick={() => setClickedCobrancaLinks(prev => new Set(prev).add(`${pedido.id}-${cob.label}`))}
-                                                                                        className={`flex items-center gap-1.5 text-[11px] hover:underline py-0.5 ${clickedCobrancaLinks.has(`${pedido.id}-${cob.label}`) ? 'text-green-600 hover:text-green-800' : 'text-indigo-600 hover:text-indigo-800'}`}
-                                                                                    >
-                                                                                        <ExternalLink className="h-3 w-3 shrink-0" />
-                                                                                        {cob.label}{cob.tipo ? ` (${cob.tipo})` : ''}
-                                                                                    </a>
-                                                                                ) : (
-                                                                                    <span key={cob.label} className="flex items-center gap-1.5 text-[11px] text-gray-500 py-0.5">
-                                                                                        {cob.label}{cob.tipo ? ` (${cob.tipo})` : ''} — sem link
-                                                                                    </span>
-                                                                                )
-                                                                            ))
-                                                                        )}
-                                                                    </>
-                                                                );
-                                                            })()}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            )}
                                             {/* Boleto Asaas (a prazo, faturado) — check verde = boleto já emitido */}
                                             {asaasDisponivel && podeBoletoAsaas && !pedido.bonificacao && !pedido.especial && !pedido.cancelado
                                                 && pedido.situacaoCA === 'FATURADO' && pedido.tipoPagamento === 'BOLETO_BANCARIO' && (
@@ -2034,7 +1898,7 @@ const ListaPedidos = () => {
                                         </button>
                                     </div>
                                 )}
-                                <p className="text-[10px] text-gray-500 mt-1">Ajuste apenas no app — não altera o pedido no Conta Azul.</p>
+                                <p className="text-[10px] text-gray-500 mt-1">Ajuste apenas no app.</p>
                             </div>
 
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
@@ -2210,7 +2074,7 @@ const ListaPedidos = () => {
                                             <div className="flex items-center gap-2 flex-wrap">
                                                 <span className="text-xs font-bold text-red-700 bg-red-100 px-1.5 py-0.5 rounded">DEV#{dev.numero}</span>
                                                 <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${dev.tipo === 'CONTA_AZUL' ? 'bg-blue-100 text-blue-700' : 'bg-violet-100 text-violet-700'}`}>
-                                                    {dev.tipo === 'CONTA_AZUL' ? 'CA' : 'ESPECIAL'}
+                                                    {dev.tipo === 'CONTA_AZUL' ? 'NORMAL' : 'ESPECIAL'}
                                                 </span>
                                                 <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-gray-200 text-gray-600">{dev.escopo}</span>
                                                 <span className="text-sm font-bold text-red-700">R$ {Number(dev.valorTotal).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
@@ -2258,81 +2122,6 @@ const ListaPedidos = () => {
                                 >
                                     {getWsStatus(selectedPedido.id) === 'enviando' ? <Loader2 className="h-5 w-5 animate-spin" /> : getWsStatus(selectedPedido.id) === 'ok' ? <CheckCircle className="h-5 w-5" /> : getWsStatus(selectedPedido.id) === 'erro' ? <XCircle className="h-5 w-5" /> : <MessageCircle className="h-5 w-5" />}
                                 </button>
-                                {selectedPedido.idVendaContaAzul && (
-                                    <button
-                                        onClick={() => handleConsultarCA(selectedPedido)}
-                                        disabled={consultandoCA.has(selectedPedido.id)}
-                                        className="sm:hidden p-2 border border-blue-300 bg-blue-50 text-blue-700 rounded hover:bg-blue-100 disabled:opacity-50 flex items-center gap-1.5"
-                                        title="Consultar situação no Conta Azul"
-                                    >
-                                        {consultandoCA.has(selectedPedido.id) ? <Loader2 className="h-5 w-5 animate-spin" /> : <RefreshCw className="h-5 w-5" />}
-                                    </button>
-                                )}
-                                {selectedPedido.idVendaContaAzul && (
-                                    <div className="relative sm:hidden">
-                                        <button
-                                            onClick={() => handleBuscarCobrancasCA(selectedPedido)}
-                                            disabled={cobrancasCA[selectedPedido.id]?.loading}
-                                            className={`p-2 border rounded flex items-center gap-1.5 disabled:opacity-50 ${cobrancasCA[selectedPedido.id]?.open ? 'border-indigo-400 bg-indigo-100 text-indigo-700' : 'border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100'}`}
-                                            title="Links de cobrança (PIX/Boleto) no CA"
-                                        >
-                                            {cobrancasCA[selectedPedido.id]?.loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <CircleDollarSign className="h-5 w-5" />}
-                                        </button>
-                                        {cobrancasCA[selectedPedido.id]?.open && (
-                                            <div
-                                                className="absolute right-0 bottom-full mb-2 bg-white border border-gray-200 rounded-lg shadow-lg p-2 z-20 min-w-[180px]"
-                                                onClick={e => e.stopPropagation()}
-                                            >
-                                                {(() => {
-                                                    const links = cobrancasCA[selectedPedido.id].links || [];
-                                                    const comUrl = links.filter(c => c.url);
-                                                    const valorTotal = Number((selectedPedido.itens?.reduce((acc, i) => acc + (Number(i.valor) * Number(i.quantidade)), 0) || 0) + Number(selectedPedido.valorFrete || 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
-                                                    const linhasCob = comUrl.length === 1
-                                                        ? `Cobrança - ${comUrl[0].url}`
-                                                        : comUrl.map((c, i) => `Cobrança ${i + 1} - ${c.url}`).join('\n');
-                                                    const textoParaCopiar = `Pedido #${selectedPedido.numero} - R$ ${valorTotal}\n${linhasCob}`;
-                                                    return (
-                                                        <>
-                                                            <div className="flex items-center justify-between mb-1">
-                                                                <p className="text-[10px] font-bold text-gray-500 uppercase">Cobranças CA</p>
-                                                                {comUrl.length > 0 && (
-                                                                    <button
-                                                                        onClick={() => { navigator.clipboard.writeText(textoParaCopiar); }}
-                                                                        className="text-[10px] text-indigo-500 hover:text-indigo-700 font-medium ml-2"
-                                                                        title="Copiar links"
-                                                                    >Copiar</button>
-                                                                )}
-                                                            </div>
-                                                            {links.length === 0 ? (
-                                                                <p className="text-[11px] text-gray-500">Sem cobranças ativas</p>
-                                                            ) : (
-                                                                links.map(cob => (
-                                                                    cob.url ? (
-                                                                        <a
-                                                                            key={cob.label}
-                                                                            href={cob.url}
-                                                                            target="_blank"
-                                                                            rel="noreferrer"
-                                                                            onClick={() => setClickedCobrancaLinks(prev => new Set(prev).add(`${selectedPedido.id}-${cob.label}`))}
-                                                                            className={`flex items-center gap-1.5 text-[11px] hover:underline py-0.5 ${clickedCobrancaLinks.has(`${selectedPedido.id}-${cob.label}`) ? 'text-green-600 hover:text-green-800' : 'text-indigo-600 hover:text-indigo-800'}`}
-                                                                        >
-                                                                            <ExternalLink className="h-3 w-3 shrink-0" />
-                                                                            {cob.label}{cob.tipo ? ` (${cob.tipo})` : ''}
-                                                                        </a>
-                                                                    ) : (
-                                                                        <span key={cob.label} className="flex items-center gap-1.5 text-[11px] text-gray-500 py-0.5">
-                                                                            {cob.label}{cob.tipo ? ` (${cob.tipo})` : ''} — sem link
-                                                                        </span>
-                                                                    )
-                                                                ))
-                                                            )}
-                                                        </>
-                                                    );
-                                                })()}
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
                                 <button onClick={() => setSelectedPedido(null)} className="px-6 py-2 bg-gray-900 text-white rounded font-bold text-sm">Fechar</button>
                             </div>
                         </div>
@@ -2428,18 +2217,6 @@ const ListaPedidos = () => {
                     pedidoIds={loteModal.pedidoIds || []}
                     amostraIds={loteModal.amostraIds || []}
                     onClose={() => setLoteModal(null)}
-                    onConferido={(itens) => {
-                        // pinta o check do CA nos cartões sem recarregar a lista inteira
-                        const mapa = {};
-                        (itens || []).forEach(i => {
-                            mapa[i.id] = i.caErro ? undefined
-                                : i.boletosCA > 0 ? 'PENDENTE'
-                                    : i.caPago ? 'PAGO' : 'SEM';
-                        });
-                        setPedidos(prev => prev.map(p => (
-                            mapa[p.id] !== undefined ? { ...p, caBoletoStatus: mapa[p.id] } : p
-                        )));
-                    }}
                 />
             )}
         </div>

@@ -3090,7 +3090,7 @@ router.post('/quitar-ca', async (req, res) => {
                     cliente: clienteNome,
                     tipo: 'CA',
                     status: 'JA_QUITADO',
-                    erro: `Baixa já realizada no CA em ${pedido.baixaCaEm ? new Date(pedido.baixaCaEm).toLocaleDateString('pt-BR') : '?'} — R$ ${Number(pedido.baixaCaValor || 0).toFixed(2)}`
+                    erro: `Baixa já realizada em ${pedido.baixaCaEm ? new Date(pedido.baixaCaEm).toLocaleDateString('pt-BR') : '?'} — R$ ${Number(pedido.baixaCaValor || 0).toFixed(2)}`
                 });
                 continue;
             }
@@ -3390,7 +3390,7 @@ router.post('/quitar-ca', async (req, res) => {
                         cliente: pedido.cliente?.NomeFantasia || pedido.cliente?.Nome || 'N/A',
                         tipo: 'CA',
                         status: 'ERRO',
-                        erro: `Erro ao buscar conta Caixinha no CA: ${err.message}`
+                        erro: `Erro ao buscar conta Caixinha: ${err.message}`
                     });
                 }
             }
@@ -3679,7 +3679,7 @@ router.post('/quitar-ca', async (req, res) => {
                             cliente: clienteNome,
                             tipo: 'CA',
                             status: 'ERRO',
-                            erro: 'Pedido sem venda no Conta Azul (idVendaContaAzul ausente)'
+                            erro: 'Pedido sem venda de faturamento antigo vinculada'
                         });
                         continue;
                     }
@@ -3701,7 +3701,7 @@ router.post('/quitar-ca', async (req, res) => {
                             cliente: clienteNome,
                             tipo: 'CA',
                             status: 'ERRO',
-                            erro: `Parcela não encontrada no CA para venda ${pedido.idVendaContaAzul}`
+                            erro: `Parcela de faturamento antigo não encontrada (venda ${pedido.idVendaContaAzul})`
                         });
                         continue;
                     }
@@ -3713,7 +3713,7 @@ router.post('/quitar-ca', async (req, res) => {
                             cliente: clienteNome,
                             tipo: 'CA',
                             status: 'JA_QUITADO',
-                            erro: 'Parcela já quitada no CA'
+                            erro: 'Parcela já quitada'
                         });
                         continue;
                     }

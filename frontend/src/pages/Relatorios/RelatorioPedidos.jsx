@@ -112,7 +112,7 @@ const RelatorioPedidos = () => {
 
         const headers = [
             'Nº', 'Data Criação', 'Data Venda', 'Cliente', 'CNPJ/CPF', 'Vendedor',
-            'Tipo', 'Status', 'Situação CA', 'Entrega', 'Data Entrega', 'Condição Pgto',
+            'Tipo', 'Status', 'Faturamento', 'Entrega', 'Data Entrega', 'Condição Pgto',
             'Qtd Itens', 'Valor Total (R$)', 'Flex Total', 'Canal', 'Observações'
         ];
 
@@ -241,7 +241,7 @@ const RelatorioPedidos = () => {
                             </SelectBusca>
                         </div>
                         <div>
-                            <label className="text-xs text-gray-500 font-medium">Situação CA</label>
+                            <label className="text-xs text-gray-500 font-medium">Faturamento</label>
                             <SelectBusca value={situacaoCA} onChange={(e) => setSituacaoCA(e.target.value)}
                                 className="w-full mt-1">
                                 <option value="">Todas</option>
@@ -444,7 +444,7 @@ const RelatorioPedidos = () => {
                                                 <p className="text-gray-700 font-medium">{p.condicaoPagamento}</p>
                                             </div>
                                             <div>
-                                                <span className="text-gray-400">Situação CA</span>
+                                                <span className="text-gray-400">Faturamento</span>
                                                 <p className="text-gray-700 font-medium">{p.situacaoCA || '-'}</p>
                                             </div>
                                             <div>

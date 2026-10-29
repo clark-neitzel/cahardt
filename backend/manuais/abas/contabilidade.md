@@ -14,11 +14,11 @@ A área tem 5 abas: **Contas a Receber**, **Contas a Pagar**, **Extratos**, **No
 ## Aba Contas a Pagar
 - **Três visões**: Contas (competência, pela data de emissão), Pagamentos (caixa — uma linha por baixa, com **juros, multa e desconto**) e **Por categoria (DRE)** — totais por categoria calculados SEMPRE pelo rateio da nota (matéria-prima × uso e consumo), com a classificação (Operacional/Financeiro/Fora da DRE) e o grupo da DRE.
 - Conta com itens de categorias diferentes aparece como **RATEADA** e abre as linhas do rateio logo abaixo.
-- Coluna Documento: NF-e (produto), NFS-e (serviço), importada do CA ou sem nota; 📎 indica PDF anexado.
+- Coluna Documento: NF-e (produto), NFS-e (serviço), importada (antiga) ou sem nota; 📎 indica PDF anexado.
 - Filtros: emissão/vencimento/pagamento (presets), fornecedor, documento, forma, banco do pagamento, status. Exporta CSV e imprime.
 
 ## Aba Extratos
-- O extrato importado de cada conta (OFX dos bancos, Asaas, Conta Azul) com a coluna **Identificação**: cada linha diz de qual pedido/cliente/nota/fornecedor veio, se é grupo (1 PIX pagando vários títulos, com a diferença e o motivo), transferência interna (não entra na DRE) ou ignorado (com o motivo).
+- O extrato importado de cada conta (OFX dos bancos, Asaas) com a coluna **Identificação**: cada linha diz de qual pedido/cliente/nota/fornecedor veio, se é grupo (1 PIX pagando vários títulos, com a diferença e o motivo), transferência interna (não entra na DRE) ou ignorado (com o motivo).
 - Exporta **CSV com conciliação** e **OFX** (formato que sistemas contábeis importam).
 
 ## Aba Notas de Entrada
@@ -32,7 +32,7 @@ A área tem 5 abas: **Contas a Receber**, **Contas a Pagar**, **Extratos**, **No
 - **Duas visões do Contas a Receber** (botão no topo dos filtros):
   - **Títulos (competência)** — uma linha por parcela, filtrada pela **data de criação** do título: responde "o que foi lançado no período".
   - **Recebimentos (caixa)** — uma linha por baixa (recebimento), filtrada pela data do pagamento: responde "o que entrou de dinheiro, por qual forma e em qual banco". Uma parcela paga metade em PIX e metade em dinheiro aparece em duas linhas, cada uma no banco certo.
-- **Coluna "Nota fiscal"** — diz se o título tem NF-e do Conta Azul, NF-e emitida pelo app, se é **Especial (sem nota)**, importado do CA ou sem NF registrada; mostra número e final da chave.
+- **Coluna "Nota fiscal"** — diz se o título tem NF-e antiga (importada), NF-e emitida pelo app, se é **Especial (sem nota)**, importado (antigo) ou sem NF registrada; mostra número e final da chave.
 - **Escolher colunas** — pílulas acima da tabela ligam/desligam colunas (pedido, criação, cliente/CNPJ, vencimento, valor, recebido, desconto, forma, banco da baixa, data da baixa, baixado por, conciliado?, status, origem, condição, vendedor). Arrastar a pílula muda a ordem. A escolha fica salva por usuário.
 - **Filtros** — período de criação, vencimento e pagamento (presets ‹ Este mês ›), cliente, documento fiscal, forma de recebimento, banco da baixa, status e origem. Ficam salvos por usuário.
 - **Ordenar** — clique no cabeçalho da coluna (alterna crescente/decrescente).

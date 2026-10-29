@@ -443,7 +443,7 @@ const CategoriasDespesaPage = () => {
                         })}
                         {linhas.length === 0 && (
                             <div className="text-center text-gray-500 py-12 text-sm">
-                                Nenhuma categoria ainda. Importe as contas do Conta Azul para elas aparecerem aqui.
+                                Nenhuma categoria ainda.
                             </div>
                         )}
                     </div>
