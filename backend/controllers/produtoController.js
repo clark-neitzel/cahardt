@@ -84,7 +84,7 @@ const produtoController = {
                             take: 1
                         },
                         categoriaProduto: {
-                            select: { id: true, nome: true, corTag: true }
+                            select: { id: true, nome: true, corTag: true, permiteFracao: true }
                         }
                     },
                     orderBy: { nome: 'asc' }
@@ -227,7 +227,7 @@ const produtoController = {
                 where: { id },
                 include: {
                     imagens: { orderBy: [{ principal: 'desc' }, { ordem: 'asc' }] },
-                    categoriaProduto: { select: { id: true, nome: true, corTag: true } }
+                    categoriaProduto: { select: { id: true, nome: true, corTag: true, permiteFracao: true } }
                 }
             });
             if (!p) return res.status(404).json({ error: 'Produto não encontrado' });
