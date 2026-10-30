@@ -33,10 +33,10 @@ const diarioController = {
             const vendedorId = req.user.id;
             if (!vendedorId) return res.status(403).json({ error: 'Acesso negado. Usuário sem ID na sessão.' });
 
-            const diario = await diarioService.assumirVeiculo(vendedorId, req.body);
+            const diario = await diarioService.assumirVeiculo(vendedorId, req.body, req.user.permissoes);
             res.json(diario);
         } catch (error) {
-            res.status(400).json({ error: error.message });
+            res.status(400).json({ error: error.message, ...(error.codigo ? { codigo: error.codigo } : {}) });
         }
     },
 
@@ -45,7 +45,7 @@ const diarioController = {
             const vendedorId = req.user.id;
             if (!vendedorId) return res.status(403).json({ error: 'Acesso negado. Usuário sem ID na sessão.' });
 
-            const diarioFinalizado = await diarioService.encerrarDia(vendedorId, req.body);
+            const diarioFinalizado = await diarioService.encerrarDia(vendedorId, req.body, req.user.permissoes);
             res.json(diarioFinalizado);
         } catch (error) {
             res.status(400).json({ error: error.message, ...(error.codigo ? { codigo: error.codigo } : {}) });

@@ -63,10 +63,17 @@ FORMATO
 {"serve":bool,"motivoRefazer":string|null,
  "problemas":[{"gravidade":"ATENCAO"|"REPROVA"|"PERGUNTA","descricao":string,"oQueFazer":string,
                "pergunta":string (só PERGUNTA),"seNao":"ATENCAO"|"REPROVA" (só PERGUNTA)}],
- "leituras":{"placa":string|null,"km":int|null,"combustivel":string|null,
+ "leituras":{"placa":string|null,"km":int|null,"kmConfianca":"ALTA"|"BAIXA"|null,"combustivel":string|null,
              "luzesAviso":[string]  (use só: freio, porta, cinto, oleo, temperatura, bateria, motor, airbag, abs, direcao, reserva, outra),"nivelAgua":"ABAIXO_MIN"|"OK"|"ACIMA_MAX"|null,
              "nivelOleo":"ABAIXO_MIN"|"OK"|"ACIMA_MAX"|null}}
 Campos não aplicáveis a este ângulo: null (ou [] para lista). Foto sem problema: "problemas":[].`;
+
+// Leitura do odômetro: erro conhecido da IA é PERDER ou TROCAR um dígito (ex.: 273577 lido 73577; 160681 lido 16068).
+const REGRA_ODOMETRO = `LEITURA DO ODÔMETRO (importante): leia o número TOTAL de quilometragem (o maior, com 5 ou 6 dígitos na maioria dos carros),
+NUNCA o parcial/trip (A/B, "TRIP"), nem o relógio, nem a temperatura. Leia DÍGITO A DÍGITO, da esquerda para a direita, e conte os dígitos:
+não pule o primeiro nem o último (o primeiro dígito costuma ficar colado na borda do visor). Se o visor é analógico (roletes), leia cada rolete.
+Se algum dígito está cortado, borrado ou com reflexo e você não tem certeza, devolva km=null (melhor sem número do que um número errado).
+Preencha leituras.kmConfianca: "ALTA" se leu todos os dígitos com clareza; "BAIXA" se teve dúvida em algum dígito.`;
 
 const COMPLEMENTO = {
     frente: `FRENTE. O motorista deve estar a ~3 passos (4 m), com a FRENTE TODA do carro dentro do quadro: capô, faróis, grade, PLACA legível, para-choque e o PARA-BRISA inteiro visível.
@@ -81,6 +88,7 @@ Capô aberto: ATENCAO "Fecha o capô e tira de novo. Primeiro as fotos de fora, 
 Leia a placa. Veja lanternas quebradas, para-choque, porta do baú aberta (ATENCAO "Fecha a porta do baú e tira de novo.").
 Pintura raspada ou risco pequeno antigo: ATENCAO com PERGUNTA "Já era assim?" (seNao "ATENCAO"), nunca "confira se as peças estão firmes".`,
     painel: `PAINEL. Leia o odômetro total (KM, número inteiro; se não dá para ler, km=null e NÃO é problema),
+${REGRA_ODOMETRO}
 o combustível e todas as luzes acesas (leituras.luzesAviso). Lembre: carro parado, freio de mão e porta aberta são normais.
 Só óleo, temperatura, bateria, motor, airbag, ABS, direção acesas = REPROVA. Freio/porta/cinto = uma PERGUNTA no máximo.
 Combustível: ATENCAO "Abastece antes da rota." SÓ se o ponteiro está claramente no E/reserva ou a luz de reserva acesa; na dúvida combustivel=null e nada de ATENCAO. Sem flash: reflexo no vidro atrapalha;
@@ -123,6 +131,7 @@ const COMPLEMENTO_VOLTA = {
     traseira: `TRASEIRA NA VOLTA. O motorista deve estar a ~2 passos, placa e lanternas no quadro, porta do baú FECHADA.
 Leia a placa. Veja lanternas quebradas, para-choque amassado, porta do baú aberta (ATENCAO "Fecha a porta do baú e tira de novo.").`,
     painel: `PAINEL NA VOLTA. A tarefa principal é LER o odômetro total (KM, número inteiro; se não dá para ler, km=null e NÃO é problema).
+${REGRA_ODOMETRO}
 Anote também as luzes acesas em leituras.luzesAviso. Só óleo, temperatura, bateria, motor, airbag, ABS, direção acesas = REPROVA.
 Freio/porta/cinto = uma PERGUNTA no máximo. NÃO fale de combustível. Se o reflexo cobre o painel, serve=false com "Inclina um pouco o celular pra tirar o reflexo."`,
 };
@@ -268,6 +277,7 @@ function validarResposta(obj, angulo) {
     const kmNum = Number(l.km);
     const leituras = {
         placa: typeof l.placa === 'string' && l.placa.trim() ? l.placa.trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8) : null,
+        kmConfianca: l.kmConfianca === 'ALTA' || l.kmConfianca === 'BAIXA' ? l.kmConfianca : null,
         km: Number.isFinite(kmNum) && kmNum >= 0 && kmNum < 10000000 && l.km !== null && l.km !== '' ? Math.round(kmNum) : null,
         combustivel: typeof l.combustivel === 'string' && l.combustivel.trim() ? l.combustivel.trim().slice(0, 20) : null,
         luzesAviso: normalizarLuzes(l.luzesAviso),
@@ -347,6 +357,12 @@ async function analisarFoto(p) {
         if (p.referencia?.caminho && ANGULOS_COM_REFERENCIA.includes(p.angulo)) {
             const m = await prepararReferencia(p.referencia.caminho);
             if (m) { imagens.push(m); linhas.push(textoReferencia(p.referencia)); usouReferencia = true; }
+        }
+        if (p.angulo === 'painel' && Number.isInteger(p.ultimoKmFinal) && p.ultimoKmFinal > 0) {
+            const u = p.ultimoKmFinal;
+            linhas.push(`DICA (não copie, leia a foto): o último KM registrado deste carro foi ${u} (${String(u).length} dígitos). O odômetro de hoje deve ser IGUAL ou um pouco MAIOR, com o mesmo número de dígitos. `
+                + 'Se o que você leu é MENOR ou tem menos dígitos, releia a foto com calma: provavelmente perdeu o primeiro ou o último dígito. '
+                + 'Se mesmo assim a foto mostra outro número, devolva o que você vê com kmConfianca "BAIXA" (ou km=null se não tem certeza).');
         }
         if (p.angulo === 'painel' && p.luzOleoAcesa) linhas.push('O motorista informou que a luz de óleo está acesa.');
         const r = await aiProvider.analisarImagem({

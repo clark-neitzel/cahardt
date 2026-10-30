@@ -46,6 +46,13 @@ const veiculoController = {
     ultimoKmFinal: async (req, res) => {
         try {
             const resultado = await veiculoService.ultimoKmFinal(req.params.id);
+            // Campo NOVO e aditivo: kmConhecido = maior KM confirmado do carro (diários + checklists). Contrato antigo intacto.
+            if (resultado) {
+                try {
+                    const conhecido = await veiculoService.ultimoKmConhecido(req.params.id);
+                    return res.json({ ...resultado, kmConhecido: conhecido?.km ?? null });
+                } catch (e) { console.error('[Veiculo] kmConhecido indisponível:', e.message); }
+            }
             res.json(resultado);
         } catch (error) {
             console.error('Erro ao buscar último KM:', error);

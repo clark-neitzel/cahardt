@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: KM do carro não volta pra trás — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<meta property="og:title" content="🚗 Novidade no Hardt App: KM do carro não volta pra trás">
+<meta property="og:description" content="O app não deixa registrar KM menor que o último do carro, avisa quando não leu o painel e tem botão Tentar de novo nas fotos.">
+<meta property="og:type" content="website">
+<style>
+  :root{--primary:#00754A;--primary-dark:#006241;--house:#1E3932;--mint:#d4e9e2;--cream:#f2f0eb;--gold:#cba258;--ink:rgba(0,0,0,.87);--ink-soft:#5f6b66;letter-spacing:-0.01em}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--cream);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;line-height:1.55;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:620px;margin:0 auto;padding:0 16px 56px}
+  .hero{background:linear-gradient(168deg,var(--house) 0%,#16302a 100%);color:#fff;padding:40px 16px 48px}
+  .hero-inner{max-width:620px;margin:0 auto;text-align:center}
+  .eyebrow{display:inline-block;background:var(--gold);color:#2b230f;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.14em;padding:6px 14px;border-radius:999px;margin-bottom:18px}
+  .hero h1{font-size:clamp(28px,7vw,40px);font-weight:800;line-height:1.12;margin:0 0 12px;text-wrap:balance}
+  .hero p{color:rgba(255,255,255,.75);font-size:16px;max-width:46ch;margin:0 auto;text-wrap:balance}
+  .sec-label{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.16em;color:var(--primary-dark);margin:34px 4px 12px}
+  .acc{background:#fff;border:1px solid #e3e1da;border-radius:16px;margin-bottom:10px;overflow:hidden;box-shadow:0 1px 2px rgba(30,57,50,.05)}
+  .acc-head{width:100%;display:flex;align-items:center;gap:12px;padding:14px 16px;min-height:44px;background:none;border:0;font:inherit;color:var(--ink);text-align:left;cursor:pointer}
+  .acc-head:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+  .acc-ico{width:38px;height:38px;border-radius:11px;background:var(--mint);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+  .acc-head strong{flex:1;font-size:15.5px;font-weight:700}
+  .acc-seta{color:#9aa5a0;transition:transform .2s;font-size:13px}
+  .acc.aberto .acc-seta{transform:rotate(180deg)}
+  .acc-corpo{display:none;padding:0 16px 16px 66px}
+  .acc.aberto .acc-corpo{display:block}
+  .acc-corpo p,.acc-corpo li{font-size:14px;color:var(--ink-soft)}
+  .acc-corpo p{margin:0 0 10px}
+  .acc-corpo ul{margin:0;padding-left:18px}
+  .acc-corpo li{margin-bottom:7px}
+  .acc-corpo b{color:var(--ink)}
+  @media(max-width:420px){.acc-corpo{padding-left:16px}}
+  .tela{background:#fff;border:1px solid #e3e1da;border-radius:16px;overflow:hidden;margin-bottom:12px;box-shadow:0 1px 2px rgba(30,57,50,.05)}
+  .tela-titulo{background:var(--house);color:#fff;padding:12px 16px;font-size:13px;font-weight:800;display:flex;align-items:center;gap:8px}
+  .tela-corpo{padding:16px;background:#f7f6f2}
+  .app-card{background:#fff;border:1px solid #e5e3dc;border-radius:12px;overflow:hidden;margin-bottom:10px}
+  .app-card-head{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #f0efe9;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:#6b756f}
+  .app-card-body{padding:12px}
+  .aviso{background:#fffbeb;border:1px solid #fcd34d;color:#78350f;border-radius:8px;padding:9px 11px;font-size:12.5px}
+  .erro{color:#b91c1c;font-size:12px;font-weight:700;margin-top:6px}
+  .km{border:1px solid #d8d5cc;border-radius:8px;background:#fff;text-align:center;font:700 26px ui-monospace,Menlo,monospace;padding:8px;margin-top:8px;color:#b9b5aa}
+  .km.err{border-color:#dc2626;color:var(--ink)}
+  .app-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;background:#fff;border:1.5px solid var(--primary);color:var(--primary);font-size:12.5px;font-weight:700;padding:10px 16px;border-radius:999px;min-height:44px;width:100%;margin-top:8px}
+  .pin{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gold);color:#2b230f;font-size:11px;font-weight:800;flex-shrink:0;vertical-align:2px;margin-left:6px}
+  .legenda{padding:12px 16px 16px}
+  .legenda div{display:flex;gap:8px;font-size:13px;color:var(--ink-soft);margin-bottom:7px;align-items:flex-start}
+  .legenda .pin{margin:1px 0 0}
+  .legenda b{color:var(--ink)}
+  .rodape{text-align:center;font-size:13px;color:var(--ink-soft);margin-top:40px}
+  .rodape strong{color:var(--primary-dark)}
+</style>
+</head>
+<body>
+<header class="hero"><div class="hero-inner">
+  <span class="eyebrow">Novidade</span>
+  <h1>KM do carro não volta pra trás</h1>
+  <p>Mais segurança no KM do dia e avisos claros quando a foto do painel não ajuda.</p>
+</div></header>
+<main class="wrap">
+  <div class="sec-label">O que mudou</div>
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true"><span class="acc-ico">🚫</span><strong>O KM não volta mais pra trás</strong><span class="acc-seta">▼</span></button>
+    <div class="acc-corpo"><p>Se o carro é o mesmo, o KM <b>não pode ser menor</b> do que o de quem usou por último. O app agora confere isso na hora de <b>iniciar o dia</b>, <b>pegar o veículo</b> e <b>encerrar o dia</b>.</p><p>Se o número estiver baixo demais, aparece um aviso vermelho e o campo continua aberto para você corrigir. É só olhar o painel e digitar o certo.</p></div>
+  </div>
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true"><span class="acc-ico">📷</span><strong>Leitura errada do painel não reprova mais</strong><span class="acc-seta">▼</span></button>
+    <div class="acc-corpo"><p>Às vezes a foto do painel sai torta e o app lê um número errado (tipo faltando um dígito). Antes isso virava reprovação sem explicação.</p><p>Agora aparece um <b>aviso amarelo</b>: "Não consegui ler o painel direito… digita o KM que aparece no painel". Você só digita o KM e segue o dia.</p></div>
+  </div>
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true"><span class="acc-ico">🔄</span><strong>Fotos não abriram? Tem botão Tentar de novo</strong><span class="acc-seta">▼</span></button>
+    <div class="acc-corpo"><p>Se as fotos não carregarem (internet fraca, por exemplo), o app avisa em vez de pular sozinho para o KM digitado.</p><ul><li>Aperte <b>"Tentar de novo"</b> para refazer.</li><li>Se não der, digite o KM — o <b>escritório fica sabendo</b> que o dia foi sem fotos.</li></ul></div>
+  </div>
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true"><span class="acc-ico">🏢</span><strong>Para o escritório: carro travado</strong><span class="acc-seta">▼</span></button>
+    <div class="acc-corpo"><p>Se um carro ficou com um KM errado lá atrás e agora trava os motoristas, corrija o KM do dia na <b>ficha do veículo</b>. Quem edita veículo (admin) <b>não é barrado</b> por essa regra.</p></div>
+  </div>
+
+  <div class="sec-label">As telas do app</div>
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 1 · Painel lido errado</div>
+    <div class="tela-corpo"><div class="app-card"><div class="app-card-head">Quilometragem final</div><div class="app-card-body"><div class="aviso">⚠️ Não consegui ler o painel direito: deu 2.735, e o último KM deste carro foi 273.577. Digita o KM que aparece no painel.<span class="pin">1</span></div><div class="km">Último: 273.577<span class="pin">2</span></div></div></div></div>
+    <div class="legenda"><div><span class="pin">1</span><span>O <b>aviso amarelo</b> explica o que aconteceu e qual foi o último KM do carro.</span></div><div><span class="pin">2</span><span>O campo vem <b>vazio</b> (só mostra o último KM de dica). Olhe o painel e digite o número certo.</span></div></div>
+  </div>
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 2 · KM menor que o último</div>
+    <div class="tela-corpo"><div class="app-card"><div class="app-card-head">Quilometragem inicial</div><div class="app-card-body"><div class="km err">273.000</div><div class="erro">O KM não pode ser menor que o último deste carro: 273.577<span class="pin">1</span></div></div></div></div>
+    <div class="legenda"><div><span class="pin">1</span><span>A <b>mensagem vermelha</b> aparece embaixo do campo, que continua editável. Corrija e siga.</span></div></div>
+  </div>
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 3 · Fotos não abriram</div>
+    <div class="tela-corpo"><div class="aviso">Não consegui abrir as fotos da volta agora. Tenta de novo; se não der, digita o KM — o escritório vai ficar sabendo.<span class="pin">1</span></div><div class="app-btn">🔄 Tentar de novo<span class="pin">2</span></div></div>
+    <div class="legenda"><div><span class="pin">1</span><span>O <b>aviso amarelo</b> aparece no lugar das fotos.</span></div><div><span class="pin">2</span><span>O botão <b>"Tentar de novo"</b> refaz a abertura das fotos sem perder o que você já fez.</span></div></div>
+  </div>
+
+  <div class="rodape"><strong>Hardt App</strong> · qualquer dúvida, fale com o escritório.</div>
+</main>
+<script>
+  function alternar(btn) {
+    const acc = btn.parentElement;
+    const abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>

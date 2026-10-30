@@ -52,7 +52,7 @@ const ChecklistFotos = ({ veiculoId, config, onEstado, onFalha, momento = 'SAIDA
             .then(r => { if (!cancelado) setChecklist(r); })
             .catch(err => {
                 console.error('Checklist: falha ao criar rascunho', err);
-                if (!cancelado) onFalhaRef.current?.();
+                if (!cancelado) onFalhaRef.current?.(err);
             });
         return () => { cancelado = true; };
     }, [veiculoId, diarioId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -85,10 +85,14 @@ const ChecklistFotos = ({ veiculoId, config, onEstado, onFalha, momento = 'SAIDA
     const kmPainel = kmLidoDoPainel(checklist?.fotos);
     const kmLido = kmPainel?.km ?? null;
     const kmLidoRev = kmPainel?.fotoId ?? null;
+    const kmDuvidoso = kmPainel?.duvidoso?.mensagem
+        ? { mensagem: kmPainel.duvidoso.mensagem, ultimoKm: kmPainel.duvidoso.ultimoKm ?? null }
+        : null;
+    const kmDuvidosoMsg = kmDuvidoso?.mensagem || null;
 
     useEffect(() => {
-        if (checklist) onEstado?.({ checklistId: checklist.id, faltam, luzOleoAcesa: luzOleo, kmLido, kmLidoRev });
-    }, [checklist?.id, faltam, luzOleo, kmLido, kmLidoRev]); // eslint-disable-line react-hooks/exhaustive-deps
+        if (checklist) onEstado?.({ checklistId: checklist.id, faltam, luzOleoAcesa: luzOleo, kmLido, kmLidoRev, kmDuvidoso });
+    }, [checklist?.id, faltam, luzOleo, kmLido, kmLidoRev, kmDuvidosoMsg]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const limparPreview = (angulo) => {
         if (previewsRef.current[angulo]) {

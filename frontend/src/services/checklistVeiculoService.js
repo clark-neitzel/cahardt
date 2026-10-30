@@ -9,7 +9,19 @@ export const urlImagem = (caminho) => {
     return /^https?:/i.test(caminho) ? caminho : `${API_URL}${caminho}`;
 };
 
+// Versão do app que está rodando (hash do bundle principal): ajuda a achar "quem está com app velho"
+const appVersao = () => {
+    try { return (document.querySelector('script[src*="/assets/index"]')?.getAttribute('src') || '').match(/index-([\w-]+)/)?.[1] || 'dev'; }
+    catch { return 'desconhecida'; }
+};
+
 const checklistVeiculoService = {
+    // Telemetria: avisa o servidor que o checklist por foto não rodou. Fire-and-forget: NUNCA lança nem bloqueia.
+    telemetria: (dados) => {
+        try {
+            api.post('/checklists-veiculo/telemetria', { ...dados, appVersao: appVersao() }, { timeout: 8000 }).catch(() => {});
+        } catch { /* nunca atrapalha o motorista */ }
+    },
     // 5.1
     config: async (veiculoId, momento) =>
         (await api.get(`/veiculos/${veiculoId}/checklist-config`, momento && momento !== 'SAIDA' ? { params: { momento } } : undefined)).data,

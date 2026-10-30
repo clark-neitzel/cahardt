@@ -1,5 +1,11 @@
 [
   {
+    "slug": "km-nao-retrocede",
+    "titulo": "KM do carro não volta pra trás",
+    "resumo": "O app não deixa registrar KM menor que o último do carro, avisa quando não leu o painel e tem botão Tentar de novo quando as fotos não abrem.",
+    "data": "2026-10-30"
+  },
+  {
     "slug": "sem-conta-azul",
     "titulo": "App sem Conta Azul: telas mais limpas",
     "resumo": "Saíram da tela os botões e avisos do Conta Azul (Sync CA, coluna Conta Azul, Reenviar…). Faturamento, NF-e, boleto e baixa funcionam igual — já eram 100% no app.",

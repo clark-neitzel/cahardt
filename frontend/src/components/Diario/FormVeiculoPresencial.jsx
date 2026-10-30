@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MapPin, CheckCircle, FileText } from 'lucide-react';
+import { MapPin, CheckCircle, FileText, AlertTriangle, RefreshCw } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import api from '../../services/api';
 import SelectBusca from '../SelectBusca';
@@ -44,6 +44,8 @@ const FormVeiculoPresencial = ({ titulo = 'Visitação (Rota)', onConfirmar, onV
     // Checklist por foto: config do veículo escolhido ('carregando' | 'erro' | objeto)
     const [config, setConfig] = useState(null);
     const [rascunhoFalhou, setRascunhoFalhou] = useState(false);
+    const [tentativa, setTentativa] = useState(0);     // "Tentar de novo" refaz a montagem das fotos
+    const [falhaInfo, setFalhaInfo] = useState(null);  // { etapa, motivo, httpStatus } quando as fotos não abriram
     const [estadoFotos, setEstadoFotos] = useState({ checklistId: null, faltam: 0 });
     const [resultado, setResultado] = useState(null); // resposta do /avaliar quando há problema
     const [seguindo, setSeguindo] = useState(false);
@@ -68,7 +70,8 @@ const FormVeiculoPresencial = ({ titulo = 'Visitação (Rota)', onConfirmar, onV
         api.get(`/veiculos/${veiculoId}/ultimo-km`)
             .then(res => {
                 setUltimoKm(res.data);
-                if (res.data?.kmFinal) setKmInicial(String(res.data.kmFinal));
+                const piso = Math.max(res.data?.kmFinal || 0, res.data?.kmConhecido || 0);
+                if (piso > 0) setKmInicial(String(piso));
             })
             .catch(() => { setUltimoKm(null); setUltimoKmErro(true); }) // erro: não sabemos o KM anterior, sem cartão "Confirma?"
             .finally(() => setUltimoKmCarregado(true));
@@ -78,6 +81,7 @@ const FormVeiculoPresencial = ({ titulo = 'Visitação (Rota)', onConfirmar, onV
     useEffect(() => {
         setResultado(null);
         setRascunhoFalhou(false);
+        setFalhaInfo(null);
         setEstadoFotos({ checklistId: null, faltam: 0 });
         if (!veiculoId) { setConfig(null); return undefined; }
         let cancelado = false;
@@ -86,21 +90,52 @@ const FormVeiculoPresencial = ({ titulo = 'Visitação (Rota)', onConfirmar, onV
             .then(c => { if (!cancelado) setConfig(c); })
             .catch(err => {
                 console.error('Checklist: falha ao ler a configuração, usando as caixinhas', err);
-                if (!cancelado) setConfig('erro');
+                if (!cancelado) {
+                    setConfig('erro');
+                    setFalhaInfo({ etapa: 'config', motivo: err?.response?.data?.error || err?.message || 'erro ao ler a configuração', httpStatus: err?.response?.status || null });
+                }
             });
         return () => { cancelado = true; };
-    }, [veiculoId]);
+    }, [veiculoId, tentativa]);
 
     // Modo foto = config válida, com slots e não desligada, e rascunho criado com sucesso.
     // Qualquer falha (rede, 500, DESLIGADO) cai nas 6 caixinhas antigas.
     const configOk = config && typeof config === 'object';
     const modoFoto = !!(configOk && config.modo !== 'DESLIGADO' && (config.slots || []).length > 0 && !rascunhoFalhou);
     const carregandoConfig = !!veiculoId && config === 'carregando';
+
+    // Fotos configuradas mas lista vazia: também é falha
+    useEffect(() => {
+        if (configOk && config.modo !== 'DESLIGADO' && (config.slots || []).length === 0 && !falhaInfo) {
+            setFalhaInfo({ etapa: 'sem_fotos', motivo: 'configuração sem nenhuma foto na lista', httpStatus: null });
+        }
+    }, [config]); // eslint-disable-line react-hooks/exhaustive-deps
+    // Avisa o servidor (uma vez por falha); nunca bloqueia
+    useEffect(() => {
+        if (!falhaInfo) return;
+        checklistVeiculoService.telemetria({ etapa: falhaInfo.etapa, momento: 'SAIDA', diarioId: null, veiculoId, motivo: falhaInfo.motivo, httpStatus: falhaInfo.httpStatus });
+    }, [falhaInfo]); // eslint-disable-line react-hooks/exhaustive-deps
+    const fotosFalharam = !!veiculoId && !carregandoConfig && !!falhaInfo;
+    const tentarDeNovo = () => {
+        setFalhaInfo(null);
+        setRascunhoFalhou(false);
+        setEstadoFotos({ checklistId: null, faltam: 0 });
+        setTentativa(t => t + 1);
+    };
     const rotulos = Object.fromEntries((configOk ? config.slots || [] : []).map(s => [s.angulo, s.rotulo]));
 
     // KM que a IA leu do painel (só vale se não for menor que o último KM registrado)
     const kmLido = modoFoto && Number.isFinite(estadoFotos.kmLido) ? estadoFotos.kmLido : null;
-    const kmFinalAnterior = ultimoKm?.kmFinal || 0;
+    // Piso: maior KM conhecido do carro (diários + checklists); cai no último KM final se o servidor não mandar
+    const kmFinalAnterior = Math.max(ultimoKm?.kmFinal || 0, ultimoKm?.kmConhecido || 0);
+    const kmDuvidoso = modoFoto && kmLido == null ? (estadoFotos.kmDuvidoso || null) : null;
+    const kmDigitadoNum = parseInt(kmInicial, 10);
+    // Leitura duvidosa: o campo não pode ficar preenchido com o piso, o motorista tem que olhar o painel e digitar
+    const kmDuvidosoMsg = kmDuvidoso?.mensagem || null;
+    useEffect(() => {
+        if (kmDuvidosoMsg && kmFinalAnterior > 0) setKmInicial(atual => (String(atual) === String(kmFinalAnterior) ? '' : atual));
+    }, [kmDuvidosoMsg]); // eslint-disable-line react-hooks/exhaustive-deps
+    const kmAbaixoDoPiso = kmFinalAnterior > 0 && Number.isFinite(kmDigitadoNum) && kmDigitadoNum < kmFinalAnterior;
     const kmPodeConfirmar = ultimoKmCarregado && !ultimoKmErro && kmLido != null && kmLido >= kmFinalAnterior;
     const kmMenorQueUltimo = ultimoKmCarregado && !ultimoKmErro && kmLido != null && kmLido < kmFinalAnterior;
     const mostraCartaoKm = kmPodeConfirmar && kmModo !== 'corrigir';
@@ -109,6 +144,15 @@ const FormVeiculoPresencial = ({ titulo = 'Visitação (Rota)', onConfirmar, onV
 
     // Trava síncrona contra duplo toque (state só atualiza no próximo render)
     const travaRef = useRef(false);
+
+    // 400 KM_MENOR_QUE_ANTERIOR: mostra a mensagem do servidor e deixa o campo de KM editável
+    const tratarKmMenor = (err) => {
+        const d = err?.response?.data;
+        if (d?.codigo !== 'KM_MENOR_QUE_ANTERIOR') return false;
+        toast.error(d.error || 'O KM não pode ser menor que o último deste carro.', { duration: 6000 });
+        setKmModo('corrigir');
+        return true;
+    };
 
     const handleChecklist = (campo) => setChecklist(prev => ({ ...prev, [campo]: !prev[campo] }));
     const checklistCompleto = Object.values(checklist).every(v => v === true);
@@ -122,6 +166,7 @@ const FormVeiculoPresencial = ({ titulo = 'Visitação (Rota)', onConfirmar, onV
         }
         const km = mostraCartaoKm && kmModo === 'confirmado' ? kmLido : parseInt(kmInicial);
         if (!Number.isFinite(km) || km < 0) return toast.error('Informe o KM inicial.');
+        if (kmFinalAnterior > 0 && km < kmFinalAnterior) return toast.error(`O KM não pode ser menor que o último deste carro: ${kmFinalAnterior.toLocaleString('pt-BR')}`);
         if (carregandoConfig) return toast('Aguarde, preparando o checklist...');
 
         if (!modoFoto) {
@@ -151,11 +196,13 @@ const FormVeiculoPresencial = ({ titulo = 'Visitação (Rota)', onConfirmar, onV
                     kmDigitado: km, kmOrigem: mostraCartaoKm && kmModo === 'confirmado' ? 'PAINEL_CONFIRMADO' : 'DIGITADO',
                 });
             } catch (err) {
+                if (tratarKmMenor(err)) return;
                 console.error('Checklist: não gravou a origem do KM, seguindo', err);
             }
             try {
                 r = await checklistVeiculoService.avaliar(estadoFotos.checklistId, km);
             } catch (err) {
+                if (tratarKmMenor(err)) return;
                 // A conferência nunca pode impedir o início do dia (modo teste): segue sem veredito.
                 console.error('Checklist: falha ao avaliar, seguindo sem veredito', err);
             }
@@ -312,6 +359,12 @@ const FormVeiculoPresencial = ({ titulo = 'Visitação (Rota)', onConfirmar, onV
                                         Não consegui ver o último KM deste veículo agora. Digite o KM do painel.
                                     </p>
                                 )}
+                                {kmDuvidoso && (
+                                    <p className="mb-2 text-sm bg-amber-50 border border-amber-300 text-amber-900 rounded-md px-3 py-2 flex items-start gap-1.5">
+                                        <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-amber-600" />
+                                        <span>{kmDuvidoso.mensagem}</span>
+                                    </p>
+                                )}
                                 {kmMenorQueUltimo && (
                                     <p className="mb-2 text-xs bg-amber-50 border border-amber-200 text-amber-900 rounded-md px-3 py-2">
                                         Painel marca {kmLido.toLocaleString('pt-BR')} km, mas o último KM registrado foi {kmFinalAnterior.toLocaleString('pt-BR')}. Digite o KM.
@@ -321,16 +374,14 @@ const FormVeiculoPresencial = ({ titulo = 'Visitação (Rota)', onConfirmar, onV
                                 required
                                 className="mt-1 flex-1 block w-full bg-gray-50 focus:bg-white rounded-md border-gray-300 flex text-center text-3xl font-mono h-14 font-bold focus:border-green-500 focus:ring-green-500"
                                 value={kmInicial}
-                                onChange={(e) => {
-                                    const val = parseInt(e.target.value);
-                                    if (ultimoKm?.kmFinal && val < ultimoKm.kmFinal) return; // bloqueia valor menor
-                                    setKmInicial(e.target.value);
-                                }}
-                                min={ultimoKm?.kmFinal || 0}
-                                placeholder="00000"
+                                onChange={(e) => setKmInicial(e.target.value)}
+                                min={kmFinalAnterior || 0}
+                                placeholder={kmDuvidoso && kmFinalAnterior > 0 ? `Último: ${kmFinalAnterior.toLocaleString('pt-BR')}` : '00000'}
                             />
-                            {ultimoKm?.kmFinal && (
-                                <p className="text-xs text-amber-600 mt-1">⚠️ O odômetro não pode retroceder. Mínimo: {ultimoKm.kmFinal.toLocaleString('pt-BR')} km</p>
+                            {kmAbaixoDoPiso ? (
+                                <p className="text-xs font-semibold text-red-700 mt-1">O KM não pode ser menor que o último deste carro: {kmFinalAnterior.toLocaleString('pt-BR')}</p>
+                            ) : kmFinalAnterior > 0 && (
+                                <p className="text-xs text-amber-600 mt-1">⚠️ O odômetro não pode retroceder. Mínimo: {kmFinalAnterior.toLocaleString('pt-BR')} km</p>
                             )}
                             </>
                         )}
@@ -341,14 +392,29 @@ const FormVeiculoPresencial = ({ titulo = 'Visitação (Rota)', onConfirmar, onV
                 {carregandoConfig && (
                     <p className="pt-2 text-sm text-gray-500">Preparando o checklist do veículo...</p>
                 )}
+                {fotosFalharam && (
+                    <div className="bg-amber-50 border border-amber-300 rounded-xl p-3 space-y-2">
+                        <p className="flex items-start gap-1.5 text-sm text-amber-900">
+                            <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-amber-600" />
+                            <span>Não consegui abrir as fotos do carro agora. Tenta de novo; se não der, marca o checklist e digita o KM — o escritório vai ficar sabendo.</span>
+                        </p>
+                        <button type="button" onClick={tentarDeNovo}
+                            className="w-full min-h-[44px] bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-semibold text-sm inline-flex items-center justify-center gap-2">
+                            <RefreshCw className="h-4 w-4" /> Tentar de novo
+                        </button>
+                    </div>
+                )}
                 {modoFoto && (
                     <div className="pt-2">
                         <ChecklistFotos
-                            key={veiculoId}
+                            key={`${veiculoId}-${tentativa}`}
                             veiculoId={veiculoId}
                             config={config}
                             onEstado={setEstadoFotos}
-                            onFalha={() => setRascunhoFalhou(true)}
+                            onFalha={(err) => {
+                                setRascunhoFalhou(true);
+                                setFalhaInfo({ etapa: 'rascunho', motivo: err?.response?.data?.error || err?.message || 'não criou o rascunho', httpStatus: err?.response?.status || null });
+                            }}
                         />
                     </div>
                 )}

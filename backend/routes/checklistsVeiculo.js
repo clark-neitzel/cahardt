@@ -56,8 +56,19 @@ router.post('/pendencias/ok', rota(async (req, res) => {
     res.json(await pendSvc.darOk(req.body, req.user));
 }));
 
+// Telemetria: o app avisa quando o checklist por foto não rodou (declarar ANTES de /:id)
+router.post('/telemetria', rota(async (req, res) => {
+    res.json(await svc.registrarFalhaFluxo(req.user, req.body || {}));
+}));
+
 router.post('/', rota(async (req, res) => {
-    res.json(await svc.criarRascunho(req.user, req.body));
+    try {
+        res.json(await svc.criarRascunho(req.user, req.body));
+    } catch (e) {
+        // Rastro: falha ao criar rascunho faz o app cair em "KM digitado" sem avisar o motorista
+        console.error(`[ChecklistVeiculo] criarRascunho FALHOU ${req.body?.momento === 'VOLTA' ? 'VOLTA' : 'SAIDA'} vendedor=${req.user?.nome || '?'}(${req.user?.id || '?'}) diario=${req.body?.diarioId || '-'} veiculo=${req.body?.veiculoId || '-'} codigo=${e.codigo || 'ERRO'} msg="${e.message}"`);
+        throw e;
+    }
 }));
 
 router.get('/:id', rota(async (req, res) => {

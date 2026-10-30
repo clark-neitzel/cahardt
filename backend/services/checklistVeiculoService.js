@@ -21,7 +21,8 @@ const FOTO_MAX_BYTES = 6 * 1024 * 1024;
 const REGRAS = {
     kmOk: 30,           // até 30 km de diferença: ok (erro de digitação)
     kmReprovaAcima: 1000, // acima disso: REPROVA
-    kmFinalOntemFolga: 5,
+    kmFinalOntemFolga: 5, // legado: a regra nova (leituraKmSuspeita) é estrita, sem folga
+    kmSaltoSuspeito: 20000, // leitura da IA mais de 20 mil km acima do último KM conhecido também é suspeita
     placaDistanciaIgnora: 1,
 };
 
@@ -85,6 +86,71 @@ function parseKm(v, campo = 'kmDigitado') {
 
 function fmtKm(n) {
     return Number(n).toLocaleString('pt-BR');
+}
+
+/**
+ * Sanidade do KM lido pela IA contra o último KM CONFIRMADO do mesmo veículo.
+ * Regra do dono: se o carro é o mesmo, o KM não pode ser menor do que o de quem usou por último.
+ * Devolve null (leitura plausível / sem referência) ou { motivo, ultimoKm, mensagem }.
+ * Não bloqueia hodômetro que virou (carro >= 900 mil km que volta a número pequeno).
+ */
+function leituraKmSuspeita(kmLido, ultimoKm) {
+    if (!Number.isInteger(kmLido) || !Number.isInteger(ultimoKm) || ultimoKm <= 0) return null;
+    if (ultimoKm >= 900000 && kmLido < ultimoKm * 0.2) return null; // hodômetro virou
+    if (kmLido < ultimoKm) {
+        const menosDigitos = String(kmLido).length < String(ultimoKm).length;
+        return {
+            motivo: 'MENOR_QUE_ULTIMO', ultimoKm,
+            mensagem: `Não consegui ler o painel direito${menosDigitos ? ' (faltou algum número)' : ''}: deu ${fmtKm(kmLido)}, e o último KM deste carro foi ${fmtKm(ultimoKm)}. Digita o KM que aparece no painel.`,
+        };
+    }
+    if (kmLido - ultimoKm > REGRAS.kmSaltoSuspeito) {
+        return {
+            motivo: 'SALTO_GRANDE', ultimoKm,
+            mensagem: `Não consegui ler o painel direito: deu ${fmtKm(kmLido)}, muito acima do último KM deste carro (${fmtKm(ultimoKm)}). Digita o KM que aparece no painel.`,
+        };
+    }
+    return null;
+}
+
+/** Último KM confirmado do carro. Nunca lança: sem referência a regra simplesmente não se aplica. */
+async function ultimoKmDoVeiculo(veiculoId, opcoes = {}) {
+    try {
+        return await require('./veiculoService').ultimoKmConhecido(veiculoId, opcoes);
+    } catch (e) {
+        console.error('[ChecklistVeiculo] ultimoKmConhecido:', e.message);
+        return null;
+    }
+}
+
+/** Opções do piso de KM de um checklist. Na VOLTA (com diário) só contam diários anteriores ao do motorista,
+ *  igual ao encerrarDia — senão quem assumiu o carro depois, no mesmo dia, barraria o primeiro. Saída: só a data. */
+async function opcoesPisoDe(c) {
+    const base = { ateData: c.dataReferencia };
+    if (c.momento !== 'VOLTA' || !c.diarioId) return base;
+    try {
+        const d = await prisma.diarioVendedor.findUnique({ where: { id: c.diarioId }, select: { id: true, inicioHora: true } });
+        if (d) return { ...base, excluirDiarioId: d.id, antesDe: d.inicioHora };
+    } catch (e) { console.error('[ChecklistVeiculo] opcoesPisoDe:', e.message); }
+    return base;
+}
+
+/** Lança 400 se o KM DIGITADO é menor que o último KM conhecido do carro. Admin/quem edita veículo pode (válvula de escape). */
+async function exigirKmNaoMenor(veiculoId, km, opcoes = {}, user = null) {
+    if (!Number.isInteger(km)) return;
+    if (user && pode(user, 'Pode_Editar_Veiculos')) return; // admin já entra em pode()
+    const u = await ultimoKmDoVeiculo(veiculoId, opcoes);
+    if (u && require('./veiculoService').kmAbaixoDoPiso(km, u.km)) {
+        throw new ErroChecklist(400, 'KM_MENOR_QUE_ANTERIOR', `O KM não pode ser menor que o último registrado deste carro: ${fmtKm(u.km)}. Confere o número do painel. Se o painel realmente marca isso, chama o escritório: eles corrigem o KM do dia na ficha do veículo.`);
+    }
+}
+
+/** Aplica a sanidade nas leituras de uma foto de painel: leitura suspeita vira km=null (a bruta fica em kmIa). */
+function sanearLeituraPainel(leituras, ultimoKm) {
+    if (!leituras || typeof leituras !== 'object' || leituras.km == null) return leituras;
+    const susp = leituraKmSuspeita(leituras.km, ultimoKm);
+    if (!susp) return leituras;
+    return { ...leituras, km: null, kmIa: leituras.km, kmDuvidoso: susp };
 }
 
 function varetaHoje(dataRef) {
@@ -365,6 +431,9 @@ async function criarRascunho(user, body = {}) {
         where: whereRascunho,
         orderBy: { criadoEm: 'desc' },
     });
+    if (kmDigitado !== undefined && kmDigitado !== null) {
+        await exigirKmNaoMenor(v.id, kmDigitado, diarioVolta ? { ateData: dataReferencia, excluirDiarioId: diarioVolta.id, antesDe: diarioVolta.inicioHora } : { ateData: dataReferencia }, user);
+    }
     const dados = {};
     if (kmDigitado !== undefined) dados.kmDigitado = kmDigitado;
     if (typeof body.luzOleoAcesa === 'boolean') dados.luzOleoAcesa = body.luzOleoAcesa;
@@ -385,6 +454,7 @@ async function atualizarRascunho(id, user, body = {}) {
     exigirAberto(c);
     const dados = {};
     const km = parseKm(body.kmDigitado);
+    if (km !== undefined && km !== null) await exigirKmNaoMenor(c.veiculoId, km, await opcoesPisoDe(c), user);
     if (km !== undefined) dados.kmDigitado = km;
     if (typeof body.luzOleoAcesa === 'boolean') dados.luzOleoAcesa = body.luzOleoAcesa;
     if (body.bateuOuRaspou !== undefined && body.bateuOuRaspou !== null) {
@@ -466,6 +536,9 @@ async function enviarFoto(id, user, angulo, file, opcoes = {}) {
         } catch (e) { console.error('[ChecklistVeiculo] falha ao buscar foto anterior:', e.message); }
     }
 
+    // Painel: o último KM conhecido do carro vai como DICA para a IA e depois valida a leitura (sanidade do servidor)
+    const ultimoKm = angulo === 'painel' ? await ultimoKmDoVeiculo(c.veiculoId, await opcoesPisoDe(c)) : null;
+
     // IA fora de qualquer transação; nunca lança
     const r = await iaService.analisarFoto({
         buffer: file.buffer,
@@ -474,6 +547,7 @@ async function enviarFoto(id, user, angulo, file, opcoes = {}) {
         veiculo,
         tipo: c.tipoVeiculo,
         kmDigitado: c.kmDigitado,
+        ultimoKmFinal: ultimoKm?.km ?? null,
         luzOleoAcesa: c.luzOleoAcesa,
         ultimaTentativa: refazeres >= MAX_REFAZER_POR_ANGULO,
         momento: c.momento,
@@ -481,6 +555,11 @@ async function enviarFoto(id, user, angulo, file, opcoes = {}) {
         usuarioId: user?.id || null, usuarioNome: user?.nome || null, checklistId: id,
     });
 
+    if (angulo === 'painel' && r.leituras) {
+        const antes = r.leituras.km;
+        r.leituras = sanearLeituraPainel(r.leituras, ultimoKm?.km);
+        if (r.leituras.kmDuvidoso) console.warn(`[ChecklistVeiculo] KM do painel duvidoso (IA leu ${antes}, último do carro ${ultimoKm.km}) checklist=${id} vendedor=${user?.id || '?'}`);
+    }
     await prisma.checklistVeiculoFoto.updateMany({ where: { checklistId: id, angulo, ativa: true, complemento: false }, data: { ativa: false } });
     const foto = await prisma.checklistVeiculoFoto.create({
         data: {
@@ -638,8 +717,16 @@ async function avaliar(id, user, body = {}) {
         }
     }
 
-    // Regra: KM lido × digitado × KM final de ontem
-    const kmLido = porAngulo.painel?.leituras?.km ?? null;
+    // Regra: KM lido × digitado × último KM conhecido do carro.
+    // Leitura da IA menor que o último KM do carro (ou salto absurdo) NÃO é confiável: não reprova, não vira "KM lido";
+    // o app pede para o motorista digitar. O que o motorista DIGITA menor que o último KM é recusado (400).
+    const ultimoKm = await ultimoKmDoVeiculo(c.veiculoId, await opcoesPisoDe(c));
+    if (kmDigitado !== null && kmDigitado !== undefined) await exigirKmNaoMenor(c.veiculoId, kmDigitado, await opcoesPisoDe(c), user);
+    const leiturasPainel = sanearLeituraPainel(porAngulo.painel?.leituras || null, ultimoKm?.km);
+    const kmDuvidoso = leiturasPainel?.kmDuvidoso
+        ? { lidoPelaIa: leiturasPainel.kmIa, ultimoKm: leiturasPainel.kmDuvidoso.ultimoKm, motivo: leiturasPainel.kmDuvidoso.motivo, mensagem: leiturasPainel.kmDuvidoso.mensagem }
+        : null;
+    const kmLido = leiturasPainel?.km ?? null;
     if (kmLido !== null && kmDigitado !== null && kmDigitado !== undefined) {
         const dif = Math.abs(kmLido - kmDigitado);
         if (dif > REGRAS.kmOk) {
@@ -673,15 +760,6 @@ async function avaliar(id, user, body = {}) {
             }
         } catch (e) { console.error('[ChecklistVeiculo] km da volta:', e.message); }
     }
-    if (kmLido !== null && !volta) {
-        try {
-            const ultimo = await require('./veiculoService').ultimoKmFinal(c.veiculoId);
-            if (ultimo?.kmFinal != null && kmLido < ultimo.kmFinal - REGRAS.kmFinalOntemFolga) {
-                problemas.push({ angulo: 'painel', gravidade: 'ATENCAO', descricao: `Painel marca ${fmtKm(kmLido)}, menos que o último KM registrado (${fmtKm(ultimo.kmFinal)}).`, oQueFazer: 'Confere a foto do painel e o carro escolhido.', origem: 'REGRA' });
-            }
-        } catch (e) { console.error('[ChecklistVeiculo] ultimoKmFinal:', e.message); }
-    }
-
     const gravOrd = (p) => ordemGrav[iaService.gravEfetiva(p) || 'PERGUNTA'];
     problemas.sort((a, b) => gravOrd(a) - gravOrd(b));
 
@@ -719,6 +797,8 @@ async function avaliar(id, user, body = {}) {
         podeSeguir,
         podePedirLiberacao: false,
         kmLido,
+        kmDuvidoso,
+        ultimoKmConhecido: ultimoKm?.km ?? null,
         kmRodado,
         kmExcessivo,
         aceitosPeloMotorista: aceitosPeloMotorista.filter((x, i, arr2) => arr2.findIndex((y) => y.angulo === x.angulo) === i),
@@ -900,7 +980,38 @@ async function amarrarAoDiario(checklistId, diarioId, vendedorId, veiculoId) {
     return r.count > 0;
 }
 
+
+// ───────────── telemetria do fluxo (por que a tela caiu no "sem fotos") ─────────────
+const ETAPAS_TELEMETRIA = ['rascunho', 'config', 'sem_fotos', 'outro'];
+const corta = (t, n) => String(t == null ? '' : t).slice(0, n);
+
+/**
+ * O app avisa o servidor quando o checklist por foto não rodou e caiu no KM digitado.
+ * Deixa rastro no log do servidor ([ChecklistVeiculo]) E no audit_logs (acao CHECKLIST_FALLBACK), com motorista, diário e motivo.
+ * Nunca lança: telemetria não pode atrapalhar o motorista.
+ */
+async function registrarFalhaFluxo(user, body = {}) {
+    try {
+        const etapa = ETAPAS_TELEMETRIA.includes(body.etapa) ? body.etapa : 'outro';
+        const momento = body.momento === 'VOLTA' ? 'VOLTA' : 'SAIDA';
+        const diarioId = corta(body.diarioId, 64);
+        const veiculoId = corta(body.veiculoId, 64);
+        const motivo = corta(body.motivo, 300);
+        const status = Number.isInteger(body.httpStatus) ? body.httpStatus : null;
+        console.error(`[ChecklistVeiculo] FALLBACK ${momento}/${etapa} vendedor=${user?.nome || '?'}(${user?.id || '?'}) diario=${diarioId || '-'} veiculo=${veiculoId || '-'} http=${status ?? '-'} motivo="${motivo}"`);
+        await prisma.auditLog.create({
+            data: {
+                acao: 'CHECKLIST_FALLBACK', entidade: 'DiarioVendedor', entidadeId: diarioId || veiculoId || 'sem-id',
+                detalhes: JSON.stringify({ momento, etapa, veiculoId, httpStatus: status, motivo, appVersao: corta(body.appVersao, 40) }),
+                usuarioId: String(user?.id || ''), usuarioNome: corta(user?.nome || '', 120),
+            },
+        });
+    } catch (e) { console.error('[ChecklistVeiculo] registrarFalhaFluxo:', e.message); }
+    return { ok: true };
+}
+
 module.exports = {
+    registrarFalhaFluxo, leituraKmSuspeita, sanearLeituraPainel, exigirKmNaoMenor,
     ErroChecklist, getModo, setModo, montarConfig,
     listarFotosModelo, salvarFotoModelo,
     criarRascunho, atualizarRascunho, enviarFoto, aceitarFoto, pularFoto, avaliar, responderPergunta, registrarDecisao,

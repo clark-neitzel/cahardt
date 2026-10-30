@@ -27,6 +27,25 @@ async function amarrarChecklist(checklistId, diarioId, vendedorId, veiculoId) {
     }
 }
 
+// Regra do dono: "se o carro é o mesmo, o KM não pode ser menor do que quem usou por último".
+// Falha de leitura do histórico NÃO barra o dia (só loga). Recusa com mensagem clara quando o KM é menor.
+async function exigirKmNaoMenorQueUltimo(veiculoId, km, rotulo, opcoes = {}, permissoes = null) {
+    const n = Number(km);
+    if (!veiculoId || !Number.isInteger(n)) return;
+    // Válvula de escape: admin ou quem edita veículo pode registrar KM menor (o escritório corrige o dia)
+    const perms = typeof permissoes === 'string' ? (() => { try { return JSON.parse(permissoes); } catch { return {}; } })() : (permissoes || {});
+    if (perms.admin || perms.Pode_Editar_Veiculos) return;
+    const vsvc = require('./veiculoService');
+    let u = null;
+    try { u = await vsvc.ultimoKmConhecido(veiculoId, opcoes); }
+    catch (e) { console.error('[Diario] ultimoKmConhecido (segue sem a conferência):', e.message); return; }
+    if (u && vsvc.kmAbaixoDoPiso(n, u.km)) {
+        const err = new Error(`${rotulo} não pode ser menor que o último KM registrado deste carro: ${u.km.toLocaleString('pt-BR')}. Confere o número do painel. Se o painel realmente marca isso, chama o escritório: eles corrigem o KM do dia na ficha do veículo.`);
+        err.codigo = 'KM_MENOR_QUE_ANTERIOR';
+        throw err;
+    }
+}
+
 const diarioService = {
     // 1. Validar Status Atual do Usuário (Se ele tem que fechar o dia anterior, ou se já abriu hoje)
     statusDoDia: async (vendedorId) => {
@@ -128,6 +147,8 @@ const diarioService = {
                 throw new Error('Para o modo presencial, informe Veículo, KM Inicial e Checklist.');
             }
 
+            await exigirKmNaoMenorQueUltimo(veiculoId, kmInicial, 'O KM inicial', { ateData: hojeDateRef }, permsNorm);
+
             // Bloqueia veículo já em uso por outro motorista hoje
             const veiculoEmUso = await prisma.diarioVendedor.findFirst({
                 where: {
@@ -162,7 +183,7 @@ const diarioService = {
     // (motorista abre o app em casa, chega na empresa e só então assume o carro).
     // Converte o MESMO registro do dia para PRESENCIAL — todos os relatórios que
     // olham `modo === 'PRESENCIAL' && veiculoId` (Caixa, Veículos) passam a enxergá-lo.
-    assumirVeiculo: async (vendedorId, dados) => {
+    assumirVeiculo: async (vendedorId, dados, permissoes) => {
         const { veiculoId, kmInicial, obs } = dados;
         let { checklist } = dados;
         const checklistId = dados.checklistId || null;
@@ -181,6 +202,8 @@ const diarioService = {
         if (!veiculoId || kmInicial === undefined || kmInicial === null || !checklist) {
             throw new Error('Informe Veículo, KM Inicial e Checklist.');
         }
+
+        await exigirKmNaoMenorQueUltimo(veiculoId, kmInicial, 'O KM inicial', { ateData: hojeDateRef }, permissoes);
 
         const veiculoEmUso = await prisma.diarioVendedor.findFirst({
             where: {
@@ -220,7 +243,7 @@ const diarioService = {
     // Com `checklistId` (foto de volta, Dia 3) o SERVIDOR decide o KM: se o motorista confirmou o painel, vale o KM lido
     // pela IA. Sem checklistId (ou checklist inválido) vale o KM digitado (D11: sempre dá para encerrar o dia).
     // Idempotente: se o diário já tem KM final, devolve o registro atual (repetir não sobrescreve KM nem observação).
-    encerrarDia: async (vendedorId, dados) => {
+    encerrarDia: async (vendedorId, dados, permissoes) => {
         const { diarioId, kmFinal, obsFinal, checklistId } = dados;
 
         const diario = await prisma.diarioVendedor.findUnique({
@@ -283,6 +306,12 @@ const diarioService = {
         if (km < diario.kmInicial) {
             throw new Error('A quilometragem final não pode ser menor que a inicial.');
         }
+        // Só fontes até o dia deste diário: encerrar um dia antigo não pode ser barrado por quem usou o carro depois
+        await exigirKmNaoMenorQueUltimo(diario.veiculoId, km, 'A quilometragem final', { ateData: diario.dataReferencia, excluirDiarioId: diario.id, antesDe: diario.inicioHora }, permissoes);
+
+        // Rastro: dia encerrado sem foto de volta (app antigo, falha de rascunho/config ou "Não consegui tirar as fotos")
+        const semFoto = !volta;
+        const motivoSemFoto = semFoto && typeof dados.semFotoMotivo === 'string' ? dados.semFotoMotivo.slice(0, 120) : null;
 
         let novaObs = diario.obs || '';
         if (obsFinal) {
@@ -303,6 +332,16 @@ const diarioService = {
             }
             return d;
         }, { timeout: 20000, maxWait: 10000 });
+        if (semFoto) {
+            console.warn(`[ChecklistVeiculo] dia encerrado SEM checklist de volta: diario=${diarioId} vendedor=${vendedorId} checklistIdRecebido=${checklistId || '-'} motivo="${motivoSemFoto || 'não informado'}"`);
+            try {
+                await prisma.auditLog.create({ data: {
+                    acao: 'CHECKLIST_VOLTA_SEM_FOTO', entidade: 'DiarioVendedor', entidadeId: diarioId,
+                    detalhes: JSON.stringify({ checklistIdRecebido: checklistId || null, motivo: motivoSemFoto, kmFinal: km }),
+                    usuarioId: String(vendedorId), usuarioNome: '',
+                } });
+            } catch (e) { console.error('[Diario] falha ao registrar volta sem foto (dia já encerrado):', e.message); }
+        }
         return atualizado;
     }
 };

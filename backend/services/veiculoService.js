@@ -101,6 +101,41 @@ const veiculoService = {
         return ultimo || null;
     },
 
+    /**
+     * Piso de KM do veículo (regra do dono: "o KM não pode ser menor que o de quem usou por último").
+     * Fonte: SOMENTE diários (kmFinal e kmInicial) — é o único dado que o escritório consegue corrigir na ficha do veículo.
+     * Checklist (KM digitado) e leitura da IA NÃO entram, para um erro ali nunca travar o carro.
+     * opcoes: { ateData: 'YYYY-MM-DD' (só diários até esse dia),
+     *           excluirDiarioId, antesDe: Date (só diários que começaram ANTES desse instante — troca de motorista no mesmo dia) }.
+     * Devolve { km, fonte, dataReferencia } ou null quando o carro não tem histórico.
+     */
+    ultimoKmConhecido: async (veiculoId, opcoes = {}) => {
+        if (!veiculoId) return null;
+        const filtro = {
+            veiculoId,
+            ...(opcoes.ateData ? { dataReferencia: { lte: opcoes.ateData } } : {}),
+            ...(opcoes.excluirDiarioId ? { id: { not: String(opcoes.excluirDiarioId) } } : {}),
+            ...(opcoes.antesDe ? { inicioHora: { lt: opcoes.antesDe } } : {}),
+        };
+        const ordem = [{ dataReferencia: 'desc' }, { inicioHora: 'desc' }];
+        const [dFinal, dInicial] = await Promise.all([
+            prisma.diarioVendedor.findFirst({ where: { ...filtro, kmFinal: { not: null } }, orderBy: ordem, select: { kmFinal: true, dataReferencia: true } }),
+            prisma.diarioVendedor.findFirst({ where: { ...filtro, kmInicial: { not: null } }, orderBy: ordem, select: { kmInicial: true, dataReferencia: true } }),
+        ]);
+        const cands = [];
+        if (dFinal?.kmFinal != null) cands.push({ km: dFinal.kmFinal, fonte: 'diario_km_final', dataReferencia: dFinal.dataReferencia });
+        if (dInicial?.kmInicial != null) cands.push({ km: dInicial.kmInicial, fonte: 'diario_km_inicial', dataReferencia: dInicial.dataReferencia });
+        if (!cands.length) return null;
+        return cands.reduce((a, b) => (b.km > a.km ? b : a));
+    },
+
+    // KM abaixo do piso? Exceção: hodômetro que virou (piso >= 900 mil e KM < 20% dele) não conta como menor.
+    kmAbaixoDoPiso: (km, piso) => {
+        if (!Number.isInteger(km) || !Number.isInteger(piso) || piso <= 0) return false;
+        if (piso >= 900000 && km < piso * 0.2) return false;
+        return km < piso;
+    },
+
     // Retorna o KM do abastecimento mais recente para validação ao registrar novo
     ultimoKmAbastecimento: async (veiculoId) => {
         const resultado = await prisma.despesa.findFirst({

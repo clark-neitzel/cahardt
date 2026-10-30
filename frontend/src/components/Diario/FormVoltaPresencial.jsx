@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { CheckCircle, Camera, AlertTriangle, Loader2 } from 'lucide-react';
+import { CheckCircle, Camera, AlertTriangle, Loader2, RefreshCw } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import api from '../../services/api';
 import CampoNumero from '../CampoNumero';
@@ -32,6 +32,8 @@ const FormVoltaPresencial = ({ diario, atrasada = false, onEncerrado }) => {
     const [config, setConfig] = useState(veiculoId ? 'carregando' : 'erro');
     const [rascunhoFalhou, setRascunhoFalhou] = useState(false);
     const [semFotos, setSemFotos] = useState(false);     // escolheu digitar o KM
+    const [tentativa, setTentativa] = useState(0);       // "Tentar de novo" refaz a montagem das fotos
+    const [falhaInfo, setFalhaInfo] = useState(null);    // { etapa, motivo, httpStatus } quando as fotos não abriram
     const [bateu, setBateu] = useState(null);            // null | true | false
     const [estadoFotos, setEstadoFotos] = useState({ checklistId: null, faltam: 0 });
     const [kmModo, setKmModo] = useState(null);          // null | 'confirmado' | 'corrigir'
@@ -51,15 +53,50 @@ const FormVoltaPresencial = ({ diario, atrasada = false, onEncerrado }) => {
             .then(c => { if (!cancelado) setConfig(c); })
             .catch(err => {
                 console.error('Checklist da volta: falha ao ler a configuração, KM digitado', err);
-                if (!cancelado) setConfig('erro');
+                if (!cancelado) {
+                    setConfig('erro');
+                    setFalhaInfo({ etapa: 'config', motivo: err?.response?.data?.error || err?.message || 'erro ao ler a configuração', httpStatus: err?.response?.status || null });
+                }
             });
         return () => { cancelado = true; };
-    }, [veiculoId]);
+    }, [veiculoId, tentativa]);
 
     const configOk = config && typeof config === 'object';
     const slotsBase = configOk ? (config.slots || []) : [];
     const modoFoto = !!(configOk && config.modo !== 'DESLIGADO' && slotsBase.length > 0 && !rascunhoFalhou && !semFotos);
     const carregando = config === 'carregando';
+
+    // Fotos configuradas, mas a lista veio vazia: também é falha (o motorista cairia no KM digitado sem saber)
+    useEffect(() => {
+        if (configOk && config.modo !== 'DESLIGADO' && slotsBase.length === 0 && !falhaInfo) {
+            setFalhaInfo({ etapa: 'sem_fotos', motivo: 'configuração sem nenhuma foto na lista', httpStatus: null });
+        }
+    }, [config]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Avisa o servidor (uma vez por falha) para o escritório saber por que o dia caiu no KM digitado
+    useEffect(() => {
+        if (!falhaInfo) return;
+        checklistVeiculoService.telemetria({
+            etapa: falhaInfo.etapa, momento: 'VOLTA', diarioId: diario?.id || null, veiculoId,
+            motivo: falhaInfo.motivo, httpStatus: falhaInfo.httpStatus,
+        });
+    }, [falhaInfo]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const fotosFalharam = !semFotos && !carregando && (config === 'erro' || rascunhoFalhou || falhaInfo?.etapa === 'sem_fotos');
+    const tentarDeNovo = () => {
+        setFalhaInfo(null);
+        setRascunhoFalhou(false);
+        setEstadoFotos({ checklistId: null, faltam: 0 });
+        setTentativa(t => t + 1);
+    };
+    const motivoSemFoto = () => {
+        if (semFotos) return 'motorista_sem_fotos';
+        if (rascunhoFalhou) return 'rascunho_falhou';
+        if (config === 'erro') return 'config_erro';
+        if (falhaInfo?.etapa === 'sem_fotos') return 'slots_vazios';
+        if (configOk && config.modo === 'DESLIGADO') return 'modo_desligado';
+        return 'sem_fotos';
+    };
 
     // Laterais só entram se a pessoa disse que bateu/raspou
     const configVolta = useMemo(() => {
@@ -86,6 +123,17 @@ const FormVoltaPresencial = ({ diario, atrasada = false, onEncerrado }) => {
     // foto do painel refeita: a confirmação anterior não vale mais
     useEffect(() => { setKmModo(null); }, [estadoFotos.kmLidoRev]);
 
+    const kmDuvidoso = modoFoto && kmLido == null ? (estadoFotos.kmDuvidoso || null) : null;
+
+    // 400 KM_MENOR_QUE_ANTERIOR: mostra a mensagem do servidor e deixa o campo de KM editável
+    const tratarKmMenor = (err) => {
+        const d = err?.response?.data;
+        if (d?.codigo !== 'KM_MENOR_QUE_ANTERIOR') return false;
+        toast.error(d.error || 'O KM não pode ser menor que o último deste carro.', { duration: 6000 });
+        setKmModo('corrigir');
+        return true;
+    };
+
     const kmFinalEscolhido = () => (mostraCartaoKm && kmModo === 'confirmado' ? kmLido : parseInt(kmDigitado, 10));
 
     const encerrar = async (km, checklistId) => {
@@ -96,13 +144,14 @@ const FormVoltaPresencial = ({ diario, atrasada = false, onEncerrado }) => {
                 diarioId: diario.id,
                 kmFinal: km,
                 obsFinal,
-                ...(checklistId ? { checklistId } : {}),
+                ...(checklistId ? { checklistId } : { semFotoMotivo: motivoSemFoto() }),
             });
             toast.success(atrasada ? 'Dia anterior encerrado. Obrigado!' : 'Dia encerrado. Bom descanso!');
             await onEncerrado?.();
             return true;
         } catch (error) {
             const dados = error.response?.data;
+            if (tratarKmMenor(error)) return false;
             if (dados?.codigo === 'KM_DIVERGE_DO_PAINEL') {
                 toast.error(dados.error || 'O KM não bate com o painel da foto. Confira o número.');
                 setKmModo('corrigir');
@@ -182,20 +231,30 @@ const FormVoltaPresencial = ({ diario, atrasada = false, onEncerrado }) => {
             travaRef.current = true;
             setEnviando(true);
             let r = null;
+            let kmRecusado = false;
             try {
                 try {
                     await checklistVeiculoService.atualizar(estadoFotos.checklistId, {
                         kmDigitado: km, kmOrigem: mostraCartaoKm && kmModo === 'confirmado' ? 'PAINEL_CONFIRMADO' : 'DIGITADO',
                         ...(bateu !== null ? { bateuOuRaspou: bateu } : {}),
                     });
-                } catch (err) { console.error('Volta: não gravou a origem do KM, seguindo', err); }
-                try {
-                    r = await checklistVeiculoService.avaliar(estadoFotos.checklistId, km);
-                } catch (err) { console.error('Volta: falha ao avaliar, seguindo sem veredito', err); }
+                } catch (err) {
+                    if (tratarKmMenor(err)) kmRecusado = true;
+                    else console.error('Volta: não gravou a origem do KM, seguindo', err);
+                }
+                if (!kmRecusado) {
+                    try {
+                        r = await checklistVeiculoService.avaliar(estadoFotos.checklistId, km);
+                    } catch (err) {
+                        if (tratarKmMenor(err)) kmRecusado = true;
+                        else console.error('Volta: falha ao avaliar, seguindo sem veredito', err);
+                    }
+                }
             } finally {
                 travaRef.current = false;
                 setEnviando(false);
             }
+            if (kmRecusado) return;
             excessoServidorRef.current = r?.kmExcessivo === true;
             const temPergunta = Array.isArray(r?.problemas) && r.problemas.some(p => p.gravidade === 'PERGUNTA' && !p.resposta);
             if (temPergunta) { setResultado(r); return; }
@@ -255,7 +314,20 @@ const FormVoltaPresencial = ({ diario, atrasada = false, onEncerrado }) => {
                 </div>
             )}
 
-            {!carregando && !modoFoto && (
+            {fotosFalharam && (
+                <div className="bg-amber-50 border border-amber-300 rounded-xl p-3 space-y-2">
+                    <p className="flex items-start gap-1.5 text-sm text-amber-900">
+                        <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-amber-600" />
+                        <span>Não consegui abrir as fotos da volta agora. Tenta de novo; se não der, digita o KM — o escritório vai ficar sabendo.</span>
+                    </p>
+                    <button type="button" onClick={tentarDeNovo}
+                        className="w-full min-h-[44px] bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-semibold text-sm inline-flex items-center justify-center gap-2">
+                        <RefreshCw className="h-4 w-4" /> Tentar de novo
+                    </button>
+                </div>
+            )}
+
+            {!carregando && !modoFoto && !fotosFalharam && (
                 <p className="flex items-start gap-1.5 text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-2">
                     <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" />
                     <span>{semFotos ? 'Sem fotos hoje: digite o KM do painel. O escritório vai ficar sabendo.' : 'As fotos de volta não estão disponíveis agora. Digite o KM do painel para encerrar.'}</span>
@@ -282,14 +354,17 @@ const FormVoltaPresencial = ({ diario, atrasada = false, onEncerrado }) => {
                     </div>
 
                     <ChecklistFotos
-                        key={veiculoId}
+                        key={`${veiculoId}-${tentativa}`}
                         veiculoId={veiculoId}
                         config={configVolta}
                         momento="VOLTA"
                         diarioId={diario.id}
                         atrasada={atrasada}
                         onEstado={setEstadoFotos}
-                        onFalha={() => setRascunhoFalhou(true)}
+                        onFalha={(err) => {
+                            setRascunhoFalhou(true);
+                            setFalhaInfo({ etapa: 'rascunho', motivo: err?.response?.data?.error || err?.message || 'não criou o rascunho', httpStatus: err?.response?.status || null });
+                        }}
                     />
                 </>
             )}
@@ -331,7 +406,13 @@ const FormVoltaPresencial = ({ diario, atrasada = false, onEncerrado }) => {
                                     Painel marca {kmLido.toLocaleString('pt-BR')} km, menos que a saída ({kmInicial.toLocaleString('pt-BR')}). Digite o KM certo.
                                 </p>
                             )}
-                            {modoFoto && !kmLidoMenor && kmLido == null && (
+                            {kmDuvidoso && (
+                                <p className="mb-2 text-sm bg-amber-50 border border-amber-300 text-amber-900 rounded-md px-3 py-2 flex items-start gap-1.5">
+                                    <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-amber-600" />
+                                    <span>{kmDuvidoso.mensagem}</span>
+                                </p>
+                            )}
+                            {modoFoto && !kmLidoMenor && kmLido == null && !kmDuvidoso && (
                                 <p className="mb-2 text-xs text-gray-600">Tire a foto do painel. O KM aparece aqui para você confirmar.</p>
                             )}
                             <CampoNumero

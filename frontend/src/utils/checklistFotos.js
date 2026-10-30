@@ -177,9 +177,12 @@ export function montarSlides(fotos, slots, { editavel = false, modo = 'motorista
     return slides;
 }
 
-/** KM lido pela IA no painel (foto principal), ou null. */
+/** KM lido pela IA no painel (foto principal), ou null. Se o servidor desconfiou da leitura, devolve { km: null, fotoId, duvidoso: {mensagem,...} }. */
 export function kmLidoDoPainel(fotos) {
     const f = fotoPrincipal(fotos, 'painel');
     const km = Number(f?.leituras?.km);
-    return Number.isFinite(km) && km > 0 ? { km, fotoId: f.id } : null;
+    if (Number.isFinite(km) && km > 0) return { km, fotoId: f.id };
+    const d = f?.leituras?.kmDuvidoso;
+    if (d && f.leituras.km == null) return { km: null, fotoId: f.id, duvidoso: d };
+    return null;
 }
