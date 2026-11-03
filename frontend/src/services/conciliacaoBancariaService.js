@@ -108,6 +108,32 @@ const conciliacaoBancariaService = {
         const response = await api.get('/conciliacao-bancaria/parcelas-receber-abertas', { params: { valor, busca, de, ate } });
         return response.data;
     },
+    // ---- Vários títulos + parcial (novo fluxo de DÉBITO) ----
+    // Títulos do Contas a Pagar em aberto (por vencimento). params: { de, ate, condicoes(CSV), q, valor, tol }
+    titulosPagarAbertos: async (params) => {
+        const response = await api.get('/conciliacao-bancaria/titulos-pagar-abertos', { params });
+        return response.data;
+    },
+    // { condicoes:[{value,label}], categorias, metodosPagamento:[{value,label}] }
+    opcoesVarios: async () => {
+        const response = await api.get('/conciliacao-bancaria/opcoes-varios');
+        return response.data;
+    },
+    // Baixa o saldo inteiro de cada título marcado. valorConciliadoEsperado = o que a tela viu (0 na 1ª rodada).
+    conciliarVarios: async (lancamentoId, dados) => {
+        const response = await api.post(`/conciliacao-bancaria/${lancamentoId}/conciliar-varios`, dados);
+        return response.data;
+    },
+    // Títulos já conciliados nesta linha (bloco "Já conciliado")
+    parciais: async (lancamentoId) => {
+        const response = await api.get(`/conciliacao-bancaria/${lancamentoId}/parciais`);
+        return response.data;
+    },
+    // Estorna a baixa daquele título (ele volta a ficar em aberto) e recalcula a linha
+    desfazerTitulo: async (lancamentoId, pagamentoId) => {
+        const response = await api.post(`/conciliacao-bancaria/${lancamentoId}/desfazer-titulo`, { pagamentoId });
+        return response.data;
+    },
     // Extrato automático do Asaas: { configurado, contaFinanceiraCaId, ultimaSync }
     asaasInfo: async () => {
         const response = await api.get('/conciliacao-bancaria/asaas-info');

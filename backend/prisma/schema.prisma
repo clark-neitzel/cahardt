@@ -4251,7 +4251,10 @@ model ExtratoLancamento {
   refNum   String? @map("ref_num") // <REFNUM>
   trnType  String? @map("trn_type") // DEBIT | CREDIT | XFER | PAYMENT | FEE…
 
-  status String @default("PENDENTE") // PENDENTE | CONCILIADO | IGNORADO
+  status String @default("PENDENTE") // PENDENTE | PARCIAL | CONCILIADO | IGNORADO  (PARCIAL = conciliada por rodadas de vários títulos, ainda falta valor)
+
+  // Quanto do valor já foi conciliado por rodadas "vários títulos" (só débito). 0 = nada.
+  valorConciliado Decimal @default(0) @map("valor_conciliado") @db.Decimal(12, 2)
 
   // Vínculo com o lançamento do app quando CONCILIADO (exatamente um dos dois):
   pagamentoParcelaId      String?   @map("pagamento_parcela_id") // entrada — baixa de contas a receber
@@ -4290,9 +4293,13 @@ model ConciliacaoGrupo {
   criadoPorId String?  @map("criado_por_id")
   criadoEm    DateTime @default(now()) @map("criado_em")
 
+  // Rodada "Conciliar vários/parcial": id da linha do extrato (sem FK; nulo nos grupos normais)
+  extratoParcialId String? @map("extrato_parcial_id")
+
   itens ConciliacaoGrupoItem[]
 
   @@index([contaFinanceiraCaId])
+  @@index([extratoParcialId])
   @@map("conciliacao_grupos")
 }
 

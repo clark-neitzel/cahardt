@@ -51,6 +51,33 @@ Card recolhível no rodapé da tela: lista os arquivos já importados naquela co
 5. **Desfazer** (ícone de seta) volta qualquer conciliado/ignorado para pendente. Num lançamento conciliado **em grupo**, o desfazer **dissolve o grupo inteiro** (a baixa criada na conciliação NÃO é estornada — se preciso, estorne no Contas a Pagar).
 6. **Estornou uma baixa que estava conciliada?** O caminho inverso é automático: ao estornar uma baixa (no Contas a Pagar, no Contas a Receber ou por estorno de cobrança Asaas), a linha do extrato que estava presa nela **volta sozinha para pendente** (se era grupo, o grupo inteiro é desfeito). Assim o extrato nunca fica "Conciliado" apontando para uma baixa morta — é só conciliar de novo com a baixa/conta certa.
 
+## Conciliar VÁRIOS títulos de uma vez e conciliação PARCIAL (saída/débito) — 11/2026
+
+Vale só para linha de **saída (débito)** do extrato com títulos do **Contas a Pagar**. Uma saída do banco pode pagar vários boletos/títulos de uma vez (ou só parte deles agora e o resto depois).
+
+- **Como funciona:** marque os títulos em aberto (filtros: vencimento, condição de pagamento incluindo "Não informado" e "Outros", busca por fornecedor/descrição/nº da nota/categoria, e valor aproximado com tolerância 0/5/10/25%) e clique em Conciliar. Cada título marcado é baixado pelo **saldo inteiro** (valor diferente, juros, multa, desconto → "modo avançado", o modal antigo). A baixa nasce com a data e o banco do extrato.
+- **Se a soma for MENOR que a linha:** a linha vira **Parcial** ("Já conciliado R$ X · falta R$ Y") e continua aceitando novas rodadas até fechar; ao completar vira **Conciliado**.
+- **Se a soma PASSAR do valor que falta** (tolerância R$ 0,01): o sistema recusa ("Passou do valor") e não grava nada.
+- **Duplo clique / duas abas:** gera no máximo **uma baixa por título**; o segundo pedido é recusado ("recarregue a tela").
+- **Desfazer UM título** (botão no bloco "Já conciliado"): **estorna a baixa** que a própria conciliação criou — o título volta a "em aberto" no Contas a Pagar — e a linha continua Parcial (ou volta a Pendente se foi o último). Fica registrado no histórico de auditoria.
+- **Desfazer a linha inteira** (botão Desfazer na linha Parcial ou conciliada por várias rodadas): estorna TODAS as baixas criadas pela conciliação e volta a linha para Pendente.
+- **Estornar a baixa em Contas a Pagar** (em vez de desfazer pela conciliação): só aquele título sai da conciliação; a linha continua Parcial com o valor reduzido (ou volta a Pendente), sem desfazer os outros títulos.
+- Linha **Parcial** não aceita conciliar 1↔1, ignorar nem transferência — primeiro conclua por "vários títulos" ou desfaça. Ela entra na contagem de pendências do painel Financeiro e na aba Parcial/"Parciais" do resumo. Reimportar o OFX **não** mexe em linha Parcial; **remover a importação** fica bloqueado enquanto houver Parcial.
+- Na Contabilidade (extrato conciliado), essas linhas aparecem como "Vários títulos" (Parcial: mostra quanto já foi conciliado).
+- Títulos sem condição de pagamento cadastrada exigem escolher a forma de pagamento na hora (a baixa precisa de uma forma).
+
+### As telas do "vários títulos" (o que você vê e onde clicar)
+
+- **Como abrir:** numa linha de **saída** Pendente ou Parcial, clique em **Buscar…** (ou **Continuar**, na Parcial). Abre uma janela grande (no celular ocupa a tela toda). Entrada (crédito) continua abrindo a janela de sempre.
+- **Topo da janela (sempre à vista):** Extrato, Já conciliado (só quando continuando), Marcado, **Falta**/Passou/Fechou, barra de progresso e os botões. O botão muda: **Conciliar** (fecha o valor), **Conciliar parcial** (falta valor — pede confirmação mostrando quanto vai faltar) e **Passou do valor** (bloqueado; desmarque algum título).
+- **Sugestão:** quando um grupo de títulos fecha exatamente o valor, aparece "Sugerido: N títulos fecham o valor — Marcar". É só ajuda; nada é marcado sozinho.
+- **Filtros (numa linha; no celular ficam atrás do botão "Filtros"):** Vencimento (seletor em pílula padrão, com setas), Condição (marcar várias — inclui "Não informado" e "Outros"), busca por texto, Valor aproximado com tolerância (Exato/±5%/±10%/±25%). Período e condição/tolerância ficam lembrados por usuário; busca e valor, não. "Limpar filtros" zera tudo.
+- **Lista:** vencimento, fornecedor + nota, categoria, condição, parcela, origem (Importada antiga / DDA) e valor (= saldo do título). No celular vira cards. "Marcar todos os filtrados" e "Desmarcar tudo". A marcação **é mantida ao trocar o filtro**; o topo avisa "N marcados fora do filtro". A lista mostra até 500 títulos (avisa quando corta — refine o filtro).
+- **Forma de pagamento da baixa:** só aparece se algum título marcado não tem forma de pagamento cadastrada; vem com PIX escolhido, troque se precisar.
+- **Já conciliado nesta linha:** ao reabrir uma linha Parcial, os títulos já baixados aparecem travados, cada um com **Desfazer** (pede confirmação: a baixa é estornada e o título volta a ficar em aberto).
+- **Rodapé da janela:** Cadastrar despesa · Transferência entre contas · Ignorar · **Modo avançado** (janela antiga: juros/multa/desconto, baixa já registrada, somar outro lançamento do banco). Na janela antiga há o link "Conciliar vários títulos de uma vez" para voltar.
+- **Na lista do extrato:** a linha Parcial tem selo amarelo "Parcial", "Já conciliado R$ X (N títulos) · falta R$ Y", botão **Continuar** e **Desfazer** (aviso de que estorna as baixas). Há o card **Parciais** no topo (quantidade e quanto falta completar) e a opção **Parciais** no filtro de status. Linha conciliada por várias rodadas mostra "Vários títulos: N baixa(s)"; o Desfazer dela também avisa que estorna as baixas.
+
 ## A janela "Buscar…" (o que é este lançamento?)
 
 Mostra, para o lançamento clicado:

@@ -12,6 +12,7 @@ import { fmtData, fmtVal, fmtNumCsv, baixarCsv, csvTexto, imprimirTabela, baixar
 const SIT_BADGE = {
     CONCILIADO: 'bg-green-100 text-green-800',
     PENDENTE: 'bg-yellow-100 text-yellow-800',
+    PARCIAL: 'bg-amber-100 text-amber-800',
     IGNORADO: 'bg-gray-100 text-gray-700',
     TRANSFERENCIA: 'bg-blue-100 text-blue-800',
 };
@@ -126,6 +127,7 @@ export default function AbaExtratos() {
                             <option value="todas">Todas</option>
                             <option value="CONCILIADO">Conciliado</option>
                             <option value="PENDENTE">Pendente</option>
+                            <option value="PARCIAL">Parcial</option>
                             <option value="IGNORADO">Ignorado</option>
                         </SelectBusca>
                     </div>

@@ -6,6 +6,7 @@ import { Landmark, Loader2, RefreshCw, Upload, Wand2, Check, X, Undo2, ChevronDo
 import toast from 'react-hot-toast';
 import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 import FiltroPeriodo, { usePeriodoSalvo } from '../../components/FiltroPeriodo';
+import ConciliarVariosModal from './ConciliarVariosModal';
 
 const fmt = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 const fmtData = (ymd) => `${ymd.slice(8)}/${ymd.slice(5, 7)}/${ymd.slice(0, 4)}`;
@@ -42,14 +43,18 @@ const parseValorBR = (str) => {
 
 const STATUS_BADGE = {
     PENDENTE: 'bg-yellow-100 text-yellow-800',
+    PARCIAL: 'bg-amber-100 text-amber-800',
     CONCILIADO: 'bg-green-100 text-green-800',
     TRANSFERENCIA: 'bg-purple-100 text-purple-700',
     IGNORADO: 'bg-gray-100 text-gray-700'
 };
-const STATUS_LABEL = { PENDENTE: 'Pendente', CONCILIADO: 'Conciliado', TRANSFERENCIA: 'Transferência', IGNORADO: 'Ignorado' };
+const STATUS_LABEL = { PENDENTE: 'Pendente', PARCIAL: 'Parcial', CONCILIADO: 'Conciliado', TRANSFERENCIA: 'Transferência', IGNORADO: 'Ignorado' };
 
-const KpiCard = ({ titulo, valor, cor = 'text-gray-900', sub, subCor = 'text-gray-500' }) => (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+const KpiCard = ({ titulo, valor, cor = 'text-gray-900', sub, subCor = 'text-gray-500', className = '', onClick, ativo = false }) => (
+    <div
+        className={`bg-white rounded-xl border shadow-sm p-4 ${ativo ? 'border-primary ring-1 ring-primary' : 'border-gray-200'} ${onClick ? 'cursor-pointer hover:bg-gray-50' : ''} ${className}`}
+        {...(onClick ? { onClick, role: 'button', tabIndex: 0, onKeyDown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } } } : {})}
+    >
         <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{titulo}</div>
         <div className={`text-lg md:text-2xl font-bold mt-1 ${cor}`}>{valor}</div>
         {sub && <div className={`text-xs mt-0.5 ${subCor}`}>{sub}</div>}
@@ -164,7 +169,7 @@ const TransferenciaModal = ({ lancamento, contas, contaId, onClose, onSuccess })
     );
 };
 
-const BuscarModal = ({ lancamento, pendentes, contaId, onClose, onSuccess, onCriarDespesa, onIgnorar, onTransferir }) => {
+const BuscarModal = ({ lancamento, pendentes, contaId, onClose, onSuccess, onCriarDespesa, onIgnorar, onTransferir, onVarios }) => {
     const ehSaida = lancamento.tipo === 'DEBITO';
     const [janela, setJanela] = useState('15'); // dias p/ cada lado ('15'|'30'|'60'|'365')
     const [busca, setBusca] = useState('');
@@ -392,6 +397,11 @@ const BuscarModal = ({ lancamento, pendentes, contaId, onClose, onSuccess, onCri
                             {fmtData(lancamento.data)} · <span className={`font-semibold ${ehSaida ? 'text-red-700' : 'text-green-700'}`}>{ehSaida ? '−' : '+'} R$ {fmt(lancamento.valor)}</span> · {lancamento.descricao || 'sem descrição'}
                         </p>
                         <h2 className="font-bold text-gray-900">O que é este lançamento no sistema?</h2>
+                        {onVarios && (
+                            <button type="button" onClick={onVarios} className="text-xs font-bold text-primary hover:text-primaryDark underline min-h-[44px] md:min-h-0">
+                                Conciliar vários títulos de uma vez
+                            </button>
+                        )}
                     </div>
                     <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"><X className="w-5 h-5" /></button>
                 </div>
@@ -1271,7 +1281,9 @@ const ConciliacaoBancariaPage = () => {
     const [autoRodando, setAutoRodando] = useState(false);
     const [escolhas, setEscolhas] = useState({}); // lancamentoId → id do pagamento escolhido
     const [mostrarSoNoApp, setMostrarSoNoApp] = useState(false);
-    const [buscarModal, setBuscarModal] = useState(null); // lançamento que abriu a busca ("o que é isto?")
+    const [gruposAbertos, setGruposAbertos] = useState(() => new Set()); // lançamentos com a lista de títulos expandida
+    const [buscarModal, setBuscarModal] = useState(null); // lançamento que abriu a busca ("o que é isto?") — modo avançado
+    const [variosModal, setVariosModal] = useState(null); // débito: conciliar vários títulos / parcial
     const [transfModal, setTransfModal] = useState(null); // lançamento marcado como transferência entre contas
     const [despesaModal, setDespesaModal] = useState(null); // lançamento que abriu o modal de nova despesa
     const [selecionados, setSelecionados] = useState(new Set()); // ids de saídas pendentes marcadas p/ lote
@@ -1405,7 +1417,16 @@ const ConciliacaoBancariaPage = () => {
         agir(l.id, () => conciliacaoService.ignorar(l.id, obs), 'Ignorado.');
     };
 
-    const desfazerLinha = (l) => agir(l.id, () => conciliacaoService.desfazer(l.id), 'Voltou para pendente.');
+    // Débito → modal novo (vários títulos / parcial); crédito → busca de sempre
+    const abrirBusca = (l) => { if (l.tipo === 'DEBITO') setVariosModal(l); else setBuscarModal(l); };
+
+    const desfazerLinha = (l) => {
+        if (l.status === 'PARCIAL' || /^Vários títulos/.test(l.conciliadoCom || '')) {
+            const ok = window.confirm('Desfazer esta linha vai ESTORNAR as baixas que a conciliação deu nos títulos: todos voltam a ficar em aberto no Contas a Pagar e a linha volta para Pendente. Continuar?');
+            if (!ok) return;
+        }
+        agir(l.id, () => conciliacaoService.desfazer(l.id), 'Voltou para pendente.');
+    };
 
     // Confirma de uma vez os créditos IDENTIFICADOS que fecham (com o seu clique — nada roda sozinho)
     const confirmarIdentificadasLote = async () => {
@@ -1550,7 +1571,7 @@ const ConciliacaoBancariaPage = () => {
                             </button>
                         )}
                         <button
-                            onClick={() => setBuscarModal(l)}
+                            onClick={() => abrirBusca(l)}
                             disabled={agindo === l.id}
                             className="px-3 py-1.5 rounded-full text-xs inline-flex items-center gap-1 disabled:opacity-50 bg-white border border-gray-300 text-gray-600 hover:bg-gray-50 font-medium"
                         >
@@ -1601,7 +1622,7 @@ const ConciliacaoBancariaPage = () => {
                         </button>
                     )}
                     <button
-                        onClick={() => setBuscarModal(l)}
+                        onClick={() => abrirBusca(l)}
                         disabled={agindo === l.id}
                         className={`px-3 py-1.5 rounded-full text-xs inline-flex items-center gap-1 disabled:opacity-50 ${escolhido ? 'bg-white border border-gray-300 text-gray-600 hover:bg-gray-50 font-medium' : 'bg-white border border-primary text-primary hover:bg-mint/40 font-semibold'}`}
                         title="Procurar o boleto/baixa certo, juntar vários, cadastrar despesa ou ignorar"
@@ -1663,17 +1684,57 @@ const ConciliacaoBancariaPage = () => {
 
     const AcoesLinha = ({ l }) => {
         if (l.status === 'PENDENTE') return <AcoesPendente l={l} />;
+        if (l.status === 'PARCIAL') return (
+            <div className="flex flex-col gap-1.5 min-w-0">
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs break-words">
+                    <span className="inline-block px-2 py-0.5 font-semibold rounded-full bg-amber-100 text-amber-800 mr-1">Parcial</span>
+                    <span className="text-gray-700">Já conciliado <b>R$ {fmt(l.valorConciliado)}</b>{l.qtdTitulos != null ? ` (${l.qtdTitulos} título${l.qtdTitulos !== 1 ? 's' : ''})` : ''} · falta <b className="text-amber-700">R$ {fmt(l.falta)}</b></span>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                    <button
+                        onClick={() => setVariosModal(l)}
+                        disabled={agindo === l.id}
+                        className="px-3 py-1.5 bg-primary hover:bg-primaryDark text-white rounded-full text-xs font-semibold inline-flex items-center gap-1 disabled:opacity-50"
+                    >
+                        <Search className="h-3.5 w-3.5" /> Continuar
+                    </button>
+                    <button
+                        onClick={() => desfazerLinha(l)}
+                        disabled={agindo === l.id}
+                        className="px-3 py-1.5 rounded-full text-xs inline-flex items-center gap-1 disabled:opacity-50 bg-white border border-gray-300 text-gray-600 hover:bg-gray-50 font-medium"
+                        title="Desfaz tudo e estorna as baixas dadas por esta conciliação"
+                    >
+                        <Undo2 className="h-3.5 w-3.5" /> Desfazer
+                    </button>
+                </div>
+            </div>
+        );
         if (l.status === 'CONCILIADO') return (
-            <div className="flex items-center gap-2 min-w-0">
-                <div className="min-w-0">
-                    <span className="text-xs text-gray-600 truncate block" title={l.conciliadoCom}>
+            <div className="flex items-start gap-2 min-w-0">
+                <div className="min-w-0 flex-1">
+                    <span className="text-xs text-gray-600 line-clamp-2 break-words block" title={l.conciliadoCom}>
                         {l.conciliadoAuto ? '🪄 ' : ''}{l.conciliadoCom}
                     </span>
-                    {(l.grupoBaixas || []).length > 0 && (
-                        <span className="text-xs text-gray-500 truncate block" title={l.grupoBaixas.join(' · ')}>
-                            {l.grupoBaixas.join(' · ')}
-                        </span>
-                    )}
+                    {(l.grupoBaixas || []).length > 0 && (() => {
+                        const aberto = gruposAbertos.has(l.id);
+                        const n = l.grupoBaixas.length;
+                        return (
+                            <div className="text-xs text-gray-500 min-w-0">
+                                {aberto
+                                    ? l.grupoBaixas.map((b, i) => <span key={i} className="block break-words">{b}</span>)
+                                    : <span className="block truncate" title={l.grupoBaixas.join(' · ')}>{l.grupoBaixas[0]}</span>}
+                                {n > 1 && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setGruposAbertos(prev => { const x = new Set(prev); if (x.has(l.id)) x.delete(l.id); else x.add(l.id); return x; })}
+                                        className="font-bold text-primary hover:text-primaryDark py-1 min-h-[32px]"
+                                    >
+                                        {aberto ? 'recolher' : `ver ${n} títulos`}
+                                    </button>
+                                )}
+                            </div>
+                        );
+                    })()}
                     {/* Grupo fechado com diferença declarada: fica sempre visível, não some */}
                     {Math.abs(l.grupoDiferenca || 0) > 0.01 && (
                         <span className="text-xs text-amber-700 truncate block" title={l.grupoMotivoDiferenca || ''}>
@@ -1769,6 +1830,7 @@ const ConciliacaoBancariaPage = () => {
                         <SelectBusca value={statusFiltro} onChange={e => setStatusFiltro(e.target.value)} className="w-full md:w-44">
                             <option value="todos">Todos os status</option>
                             <option value="PENDENTE">Pendentes</option>
+                            <option value="PARCIAL">Parciais</option>
                             <option value="CONCILIADO">Conciliados</option>
                             <option value="TRANSFERENCIA">Transferências</option>
                             <option value="IGNORADO">Ignorados</option>
@@ -1792,12 +1854,20 @@ const ConciliacaoBancariaPage = () => {
                 {contaId && (
                     <>
                         {/* KPIs */}
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                             <KpiCard
                                 titulo="Pendentes"
                                 valor={String(resumo?.pendentes ?? '—')}
                                 cor={Number(resumo?.pendentes) > 0 ? 'text-amber-700' : 'text-gray-900'}
                                 sub={`R$ ${fmt(resumo?.valorPendente)} a conferir`}
+                            />
+                            <KpiCard
+                                titulo="Parciais"
+                                onClick={() => setStatusFiltro(statusFiltro === 'PARCIAL' ? 'todos' : 'PARCIAL')}
+                                ativo={statusFiltro === 'PARCIAL'}
+                                valor={String(resumo?.parciais ?? 0)}
+                                cor={Number(resumo?.parciais) > 0 ? 'text-amber-700' : 'text-gray-900'}
+                                sub={`R$ ${fmt(resumo?.valorParcialFalta)} a completar`}
                             />
                             <KpiCard
                                 titulo="Conciliados"
@@ -1811,6 +1881,7 @@ const ConciliacaoBancariaPage = () => {
                                 sub="tarifas · transferências entre contas"
                             />
                             <KpiCard
+                                className="col-span-2 md:col-span-1"
                                 titulo="Só no app"
                                 valor={String(totalSoNoApp)}
                                 cor={totalSoNoApp > 0 ? 'text-amber-700' : 'text-gray-900'}
@@ -1996,7 +2067,7 @@ const ConciliacaoBancariaPage = () => {
                                                 <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Descrição no banco</th>
                                                 <th className="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Valor</th>
                                                 <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
-                                                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide w-96">Conciliação</th>
+                                                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Conciliação</th>
                                             </tr>
                                         </thead>
                                         <tbody className="bg-white divide-y divide-gray-200 text-sm">
@@ -2011,7 +2082,7 @@ const ConciliacaoBancariaPage = () => {
                                                     <td className="px-5 py-3 max-w-xs"><DescricaoBanco l={l} /></td>
                                                     <td className="px-5 py-3 text-right whitespace-nowrap"><ValorCell tipo={l.tipo} valor={l.valor} /></td>
                                                     <td className="px-5 py-3"><span className={`px-2 py-1 text-xs font-semibold rounded-full ${STATUS_BADGE[l.status]}`}>{STATUS_LABEL[l.status]}</span></td>
-                                                    <td className="px-5 py-3 w-96"><AcoesLinha l={l} /></td>
+                                                    <td className="px-5 py-3"><div className="w-80 max-w-[20rem] min-w-0"><AcoesLinha l={l} /></div></td>
                                                 </tr>
                                             ))}
                                         </tbody>
@@ -2089,6 +2160,21 @@ const ConciliacaoBancariaPage = () => {
                     onCriarDespesa={() => { setDespesaModal(buscarModal); setBuscarModal(null); }}
                     onTransferir={() => { setTransfModal(buscarModal); setBuscarModal(null); }}
                     onIgnorar={() => { const l = buscarModal; setBuscarModal(null); ignorarLinha(l); }}
+                    onVarios={buscarModal.tipo === 'DEBITO' ? () => { setVariosModal(buscarModal); setBuscarModal(null); } : null}
+                />
+            )}
+
+            {/* Débito: conciliar VÁRIOS títulos (pode ficar Parcial) */}
+            {variosModal && (
+                <ConciliarVariosModal
+                    lancamento={variosModal}
+                    onClose={() => setVariosModal(null)}
+                    onSuccess={() => { setVariosModal(null); carregar(); }}
+                    onAlterou={() => carregar()}
+                    onAvancado={() => { setBuscarModal(variosModal); setVariosModal(null); }}
+                    onCriarDespesa={() => { setDespesaModal(variosModal); setVariosModal(null); }}
+                    onTransferir={() => { setTransfModal(variosModal); setVariosModal(null); }}
+                    onIgnorar={() => { const l = variosModal; setVariosModal(null); ignorarLinha(l); }}
                 />
             )}
 

@@ -143,7 +143,7 @@ router.get('/lancamentos', verificarAuth, checkAcesso, async (req, res) => {
             contaFinanceiraCaId: contaId,
             de: periodo.de,
             ate: periodo.ate,
-            status: ['PENDENTE', 'CONCILIADO', 'IGNORADO'].includes(status) ? status : 'todos'
+            status: ['PENDENTE', 'PARCIAL', 'CONCILIADO', 'IGNORADO'].includes(status) ? status : 'todos'
         });
         res.json(dados);
     } catch (error) {
@@ -339,11 +339,77 @@ router.post('/:id/transferencia', verificarAuth, checkAcesso, async (req, res) =
 // ── POST /:id/desfazer — volta para pendente ──
 router.post('/:id/desfazer', verificarAuth, checkAcesso, async (req, res) => {
     try {
-        const r = await conciliacaoService.desfazer({ lancamentoId: req.params.id });
+        const r = await conciliacaoService.desfazer({ lancamentoId: req.params.id, user: req.user });
         res.json(r);
     } catch (error) {
         console.error('Erro ao desfazer lançamento:', error);
         res.status(error.status || 500).json({ error: error.status ? error.message : 'Erro ao desfazer.' });
+    }
+});
+
+// ── Vários títulos / parcial (só saída do extrato ↔ Contas a Pagar) ──
+const respErro = (res, error, msg) => res.status(error.status || 500).json({ error: error.status ? error.message : msg });
+
+// GET /titulos-pagar-abertos?de&ate&condicoes&q&valor&tol — títulos em aberto (venc.)
+router.get('/titulos-pagar-abertos', verificarAuth, checkAcesso, async (req, res) => {
+    try {
+        res.json(await conciliacaoService.titulosPagarAbertos({
+            de: req.query.de, ate: req.query.ate, condicoes: req.query.condicoes,
+            q: req.query.q, valor: req.query.valor, tol: req.query.tol
+        }));
+    } catch (error) {
+        console.error('Erro ao listar títulos a pagar em aberto:', error);
+        respErro(res, error, 'Erro ao listar os títulos em aberto.');
+    }
+});
+
+// GET /opcoes-varios — condições (com "Não informado"/"Outros") e categorias dos filtros
+router.get('/opcoes-varios', verificarAuth, checkAcesso, async (req, res) => {
+    try {
+        res.json(await conciliacaoService.opcoesVarios());
+    } catch (error) {
+        console.error('Erro ao montar opções do conciliar vários:', error);
+        respErro(res, error, 'Erro ao carregar as opções.');
+    }
+});
+
+// POST /:id/conciliar-varios { parcelaPagarIds, metodoPagamento?, valorConciliadoEsperado }
+router.post('/:id/conciliar-varios', verificarAuth, checkAcesso, async (req, res) => {
+    try {
+        const r = await conciliacaoService.conciliarVarios({
+            lancamentoId: req.params.id,
+            parcelaPagarIds: req.body.parcelaPagarIds,
+            metodoPagamento: req.body.metodoPagamento,
+            valorConciliadoEsperado: req.body.valorConciliadoEsperado,
+            userId: req.user.id,
+            user: req.user
+        });
+        res.json(r);
+    } catch (error) {
+        console.error('Erro ao conciliar vários títulos:', error);
+        respErro(res, error, 'Erro ao conciliar os títulos.');
+    }
+});
+
+// GET /:id/parciais — títulos já conciliados na linha (bloco "Já conciliado")
+router.get('/:id/parciais', verificarAuth, checkAcesso, async (req, res) => {
+    try {
+        res.json(await conciliacaoService.parciaisDaLinha({ lancamentoId: req.params.id }));
+    } catch (error) {
+        console.error('Erro ao listar parciais:', error);
+        respErro(res, error, 'Erro ao listar o que já foi conciliado.');
+    }
+});
+
+// POST /:id/desfazer-titulo { pagamentoId } — estorna a baixa daquele título e recalcula a linha
+router.post('/:id/desfazer-titulo', verificarAuth, checkAcesso, async (req, res) => {
+    try {
+        res.json(await conciliacaoService.desfazerTitulo({
+            lancamentoId: req.params.id, pagamentoId: req.body.pagamentoId, user: req.user
+        }));
+    } catch (error) {
+        console.error('Erro ao desfazer título:', error);
+        respErro(res, error, 'Erro ao desfazer o título.');
     }
 });
 

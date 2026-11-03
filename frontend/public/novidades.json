@@ -1,5 +1,11 @@
 [
   {
+    "slug": "conciliacao-varios",
+    "titulo": "Conciliação: vários títulos e parcial",
+    "resumo": "Uma saída do banco agora pode pagar vários títulos de uma vez. Se não fechar o valor, a linha fica Parcial e você continua depois.",
+    "data": "2026-11-03"
+  },
+  {
     "slug": "contas-pagar-tipo-pagamento",
     "titulo": "Contas a Pagar: filtro por tipo de pagamento",
     "resumo": "Novo filtro para ver só os boletos e tirar da lista as contas de cartão, com etiqueta Boleto/Cartão/Pix em cada conta.",

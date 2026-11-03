@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Conciliação com vários títulos — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp (sem imagem de propósito: cartão compacto) -->
+<meta property="og:title" content="🏦 Novidade no Hardt App: conciliar vários títulos de uma vez">
+<meta property="og:description" content="Uma saída do banco pode pagar vários títulos. Se não fechar o valor, fica Parcial e você continua depois. Veja as telas.">
+<meta property="og:type" content="website">
+<style>
+  :root { --primary:#00754A; --primary-dark:#006241; --house:#1E3932; --mint:#d4e9e2; --cream:#f2f0eb; --gold:#cba258; --ink:rgba(0,0,0,.87); --ink-soft:#5f6b66; letter-spacing:-0.01em; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--cream); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; line-height:1.55; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:620px; margin:0 auto; padding:0 16px 56px; }
+  .hero { background:linear-gradient(168deg,var(--house) 0%,#16302a 100%); color:#fff; padding:40px 16px 40px; }
+  .hero-inner { max-width:620px; margin:0 auto; text-align:center; }
+  .eyebrow { display:inline-block; background:var(--gold); color:#2b230f; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.14em; padding:6px 14px; border-radius:999px; margin-bottom:18px; }
+  .hero h1 { font-size:clamp(26px,7vw,38px); font-weight:800; line-height:1.12; margin:0 0 12px; text-wrap:balance; }
+  .hero p { color:rgba(255,255,255,.75); font-size:16px; max-width:46ch; margin:0 auto; text-wrap:balance; }
+  .sec-label { font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.16em; color:var(--primary-dark); margin:34px 4px 12px; }
+  .acc { background:#fff; border:1px solid #e3e1da; border-radius:16px; margin-bottom:10px; overflow:hidden; box-shadow:0 1px 2px rgba(30,57,50,.05); }
+  .acc-head { width:100%; display:flex; align-items:center; gap:12px; background:none; border:none; font:inherit; text-align:left; padding:15px 16px; cursor:pointer; min-height:56px; }
+  .acc-head:focus-visible { outline:3px solid var(--gold); outline-offset:2px; }
+  .acc-ico { width:38px; height:38px; border-radius:11px; background:var(--mint); display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
+  .acc-head strong { flex:1; font-size:15.5px; font-weight:700; }
+  .acc-seta { color:#9aa5a0; transition:transform .2s; font-size:13px; }
+  .acc.aberto .acc-seta { transform:rotate(180deg); }
+  .acc-corpo { display:none; padding:0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display:block; }
+  .acc-corpo p, .acc-corpo li { font-size:14px; color:var(--ink-soft); }
+  .acc-corpo p { margin:0 0 10px; }
+  .acc-corpo ul { margin:0; padding-left:18px; }
+  .acc-corpo li { margin-bottom:7px; }
+  .acc-corpo b { color:var(--ink); }
+  @media (max-width:420px) { .acc-corpo { padding-left:16px; } }
+
+  /* mockups das telas do app */
+  .tela { background:#fff; border:1px solid #e3e1da; border-radius:16px; padding:12px; margin-bottom:6px; box-shadow:0 8px 24px rgba(20,40,34,.10); }
+  .tela-tit { font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.12em; color:var(--primary-dark); margin:0 0 8px; }
+  .app-card { border:1px solid #e5e7eb; border-radius:12px; overflow:hidden; background:#fff; font-size:12px; }
+  .m-hd { padding:8px 10px; border-bottom:1px solid #eee; font-size:11px; color:#666; }
+  .m-hd b { display:block; font-size:13px; color:#111; }
+  .m-res { background:#f7faf8; padding:8px 10px; border-bottom:1px solid #e3ece8; position:relative; }
+  .m-nums { display:flex; flex-wrap:wrap; gap:6px 14px; font-size:10.5px; color:#555; }
+  .m-nums b { display:block; font-size:13px; color:#111; }
+  .m-nums .falta b { color:#b45309; } .m-nums .ok b { color:var(--primary); }
+  .barra { height:6px; background:#e5e7eb; border-radius:99px; margin:7px 0; overflow:hidden; }
+  .barra i { display:block; height:100%; background:var(--primary); }
+  .btns { display:flex; gap:6px; flex-wrap:wrap; position:relative; }
+  .bt { border-radius:999px; padding:7px 12px; font-size:11px; font-weight:700; }
+  .bt.p { background:var(--primary); color:#fff; } .bt.s { border:1px solid var(--primary); color:var(--primary); background:#fff; }
+  .m-fil { padding:8px 10px; border-bottom:1px solid #eee; display:flex; flex-wrap:wrap; gap:5px; position:relative; }
+  .pill { border:1px solid #d1d5db; border-radius:999px; padding:4px 9px; font-size:10.5px; background:#fff; }
+  .lin { display:flex; gap:8px; padding:7px 10px; border-bottom:1px solid #f1f1f1; align-items:center; font-size:11px; }
+  .lin.sel { background:var(--mint); } .lin .t { flex:1; min-width:0; } .lin .t b { display:block; font-size:11.5px; } .lin .t span { color:#6b7280; font-size:10px; }
+  .lin .v { font-weight:700; white-space:nowrap; }
+  .ck { width:13px; height:13px; border:1.5px solid #9ca3af; border-radius:3px; flex:none; } .ck.on { background:var(--primary); border-color:var(--primary); }
+  .bdg { display:inline-block; padding:1px 7px; border-radius:99px; font-size:9.5px; font-weight:700; }
+  .b-am { background:#fef3c7; color:#92400e; } .b-vd { background:#dcfce7; color:#166534; } .b-cz { background:#f3f4f6; color:#374151; } .b-az { background:#dbeafe; color:#1e40af; }
+  .kp { display:grid; grid-template-columns:repeat(2,1fr); gap:6px; padding:8px 10px; }
+  .kp div { border:1px solid #e5e7eb; border-radius:10px; padding:6px 8px; font-size:9.5px; font-weight:700; color:#666; text-transform:uppercase; }
+  .kp div b { display:block; font-size:16px; color:#111; } .kp .am { border-color:#fcd34d; background:#fffbeb; }
+  .pin { display:inline-flex; width:19px; height:19px; border-radius:50%; background:var(--gold); color:#fff; font-size:10.5px; font-weight:800; align-items:center; justify-content:center; flex:none; }
+  .pin.f { position:absolute; right:6px; top:6px; }
+  .legenda { margin:10px 2px 4px; }
+  .legenda div { display:flex; gap:8px; font-size:13px; color:var(--ink-soft); margin:7px 0; }
+  .rodape { text-align:center; font-size:13px; color:var(--ink-soft); margin-top:40px; }
+  .rodape strong { color:var(--primary-dark); }
+  .passos { background:#fff; border:1px solid #e3e1da; border-radius:16px; padding:18px 16px; }
+  .passo { display:flex; gap:14px; padding:10px 0; } .passo + .passo { border-top:1px dashed #e3e1da; }
+  .passo-n { width:30px; height:30px; flex-shrink:0; border-radius:50%; background:var(--primary); color:#fff; font-weight:800; font-size:14px; display:flex; align-items:center; justify-content:center; }
+  .passo div { font-size:14px; color:var(--ink-soft); } .passo b { color:var(--ink); }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">Novidade · Financeiro</span>
+    <h1>Conciliação: vários títulos de uma vez</h1>
+    <p>Uma saída do banco que pagou várias contas agora é conciliada num só lugar. Se o valor ainda não fecha, a linha fica “Parcial” e você continua depois.</p>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <div class="sec-label">O que mudou</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🧾</span><strong>Marque todos os títulos que a saída pagou</strong><span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Clique em <b>Buscar…</b> numa saída do extrato. A janela mostra os títulos em aberto do Contas a Pagar; é só marcar. No topo você vê, o tempo todo, quanto <b>falta</b> para fechar o valor do extrato.</p>
+      <ul>
+        <li>Cada título marcado é baixado <b>pelo valor inteiro</b>, com a data e o banco do extrato.</li>
+        <li>Se um grupo de títulos fecha o valor exato, o sistema <b>sugere</b> e você só confirma a marcação.</li>
+        <li>Passou do valor? O botão trava e avisa. Nada é gravado errado.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🟡</span><strong>Parcial: fecha uma parte agora, o resto depois</strong><span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Se a soma marcada é menor que o extrato, o botão vira <b>Conciliar parcial</b>. A linha não some: fica com o selo amarelo <b>Parcial</b>, mostrando quanto já foi conciliado e quanto falta. Quando faltar R$ 0,00, ela vira <b>Conciliado</b> sozinha.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">↩️</span><strong>Desfazer: um título ou a linha inteira</strong><span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Marcou um título errado? Na linha Parcial, cada título já conciliado tem <b>Desfazer</b>. Atenção: isso <b>estorna a baixa</b> — o título volta a ficar em aberto no Contas a Pagar. Os outros continuam conciliados.</p>
+      <p>Já o <b>Desfazer da linha inteira</b> (na linha do extrato) estorna <b>todas</b> as baixas daquela linha de uma vez. Todos os títulos dela voltam a ficar em aberto.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">💳</span><strong>Forma de pagamento da baixa</strong><span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Se algum título marcado <b>não tem forma de pagamento cadastrada</b> (ou tem uma forma antiga que a baixa não aceita), aparece o campo <b>Forma de pagamento da baixa</b>. O botão de conciliar só <b>habilita depois que você escolher</b> uma forma. Se todos os títulos já têm forma válida, o campo nem aparece.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🛡️</span><strong>Aviso antes de perder a marcação</strong><span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Marcou títulos e vai fechar a janela por engano? O sistema pergunta <b>“Descartar N títulos marcados?”</b>. Isso vale ao fechar ou cancelar, e também ao sair para <b>Ignorar</b>, <b>Transferência</b>, <b>Cadastrar despesa</b> ou <b>Modo avançado</b>. Escolha voltar para manter a marcação.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🔎</span><strong>Card “Parciais” filtra a lista</strong><span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>O card <b>Parciais</b> no topo é clicável: ao tocar, a lista mostra só as linhas parciais. Toque de novo e volta para <b>Todos</b>.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">📱</span><strong>No celular</strong><span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>O botão principal da linha muda conforme o caso: <b>Parcial</b>, <b>Conciliar</b> ou <b>Passou</b>. As ações extras (Ignorar, Transferência, Cadastrar despesa, Modo avançado) ficam no menu <b>⋯ Mais</b>. Os filtros abrem numa folha por cima da tela, com o botão <b>Ver N títulos</b> para aplicar.</p>
+    </div>
+  </div>
+
+  <div class="sec-label">As telas do app</div>
+
+  <!-- TELA 1 -->
+  <div class="tela">
+    <p class="tela-tit">Tela 1 · Buscar e marcar vários</p>
+    <div class="app-card">
+      <div class="m-hd">03/11/2026 · − R$ 4.536,71 · Fatura cartão<b>O que é este lançamento no sistema?</b></div>
+      <div class="m-res">
+        <div class="m-nums"><span>Extrato<b>R$ 4.536,71</b></span><span>Marcado<b>R$ 2.538,75</b></span><span class="falta">Falta<b>R$ 1.997,96</b></span></div>
+        <div class="barra"><i style="width:56%"></i></div>
+        <div class="btns"><span class="bt p">Conciliar parcial</span><span class="bt s">Cancelar</span></div>
+        <span class="pin f">1</span>
+      </div>
+      <div class="m-fil"><span class="pill">‹ Vencimento: Este mês ›</span><span class="pill">Condição: Cartão</span><span class="pill">🔍 Fornecedor…</span><span class="pill">Valor ≈ ±10%</span><span class="pin f" style="top:-9px">2</span></div>
+      <div class="lin sel"><span class="ck on"></span><div class="t"><b>Posto Ipiranga</b><span>Combustível · vence 03/11 · 1/1</span></div><span class="v">412,30</span></div>
+      <div class="lin sel"><span class="ck on"></span><div class="t"><b>Kalunga</b><span>Escritório · vence 03/11 · 1/1</span></div><span class="v">236,50</span></div>
+      <div class="lin sel"><span class="ck on"></span><div class="t"><b>Atacadão Embalagens</b><span>NF 88123 · vence 03/11 · 1/3</span></div><span class="v">1.280,00</span></div>
+      <div class="lin" style="background:#fffbeb;border-top:1px solid #fcd34d"><div class="t"><b>Forma de pagamento da baixa</b><span>Há título sem forma cadastrada</span></div><span class="pill" style="position:relative">Escolher… ▾ <span class="pin" style="position:absolute;right:-8px;top:-10px">3</span></span></div>
+      <div class="lin"><span class="ck"></span><div class="t"><b>Uber</b><span>Viagens · vence 03/11 · 1/1</span></div><span class="v">156,40</span></div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Resumo e botões <b>no topo</b>: Extrato, Marcado, Falta e a barra. O botão muda: Conciliar, Conciliar parcial ou “Passou do valor”.</span></div>
+      <div><span class="pin">2</span><span>Filtros numa linha: vencimento, condição (marque várias, tem “Não informado”), busca e valor aproximado. A sua última escolha fica salva.</span></div>
+      <div><span class="pin">3</span><span>Aparece só quando algum título marcado está sem forma de pagamento (ou com forma antiga). O botão de conciliar fica desligado até você escolher.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 2 -->
+  <div class="tela">
+    <p class="tela-tit">Tela 2 · A linha fica “Parcial” no extrato</p>
+    <div class="app-card">
+      <div class="kp"><div>Pendentes<b>13</b></div><div class="am" style="cursor:pointer;outline:2px solid var(--gold)">Parciais<b>1</b>R$ 1.917,91 a completar</div></div>
+      <div class="lin" style="background:#fffbeb">
+        <div class="t"><b>Fatura cartão — 03/11</b><span>Já conciliado <b>R$ 2.618,80</b> (4 títulos) · falta <b style="color:#b45309">R$ 1.917,91</b></span></div>
+        <div style="text-align:right"><span class="v">− 4.536,71</span><br><span class="bdg b-am">Parcial</span> <span class="bt s" style="padding:3px 9px">Continuar</span><br><span style="color:#b91c1c;font-weight:700;font-size:10px">Desfazer</span></div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">4</span><span>Selo amarelo <b>Parcial</b> com o que já foi conciliado e o que falta. <b>Continuar</b> reabre a janela.</span></div>
+      <div><span class="pin">5</span><span>Card <b>Parciais</b> no topo: <b>clique para filtrar</b> só as parciais; clique de novo e volta a Todos. Também existe a opção “Parciais” no filtro de status.</span></div>
+      <div><span class="pin">6</span><span><b>Desfazer</b> na linha inteira estorna todas as baixas dela; os títulos voltam a ficar em aberto.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 3 -->
+  <div class="tela">
+    <p class="tela-tit">Tela 3 · Continuar depois</p>
+    <div class="app-card">
+      <div class="m-res">
+        <div class="m-nums"><span>Extrato<b>R$ 4.536,71</b></span><span>Já conciliado<b>R$ 2.618,80</b></span><span>Novos<b>R$ 1.917,91</b></span><span class="ok">Fechou<b>R$ 0,00</b></span></div>
+        <div class="barra"><i style="width:100%"></i></div>
+        <div class="btns"><span class="bt p">✓ Conciliar</span></div>
+      </div>
+      <div class="lin" style="opacity:.75"><span class="ck on"></span><div class="t"><b>Posto Ipiranga <span class="bdg b-vd">Já conciliado</span></b><span>Combustível</span></div><span class="v">412,30</span><span style="color:#b91c1c;font-weight:700;font-size:10px">Desfazer</span></div>
+      <div class="lin sel"><span class="ck on"></span><div class="t"><b>Marwell Industrial</b><span>NF 1044214 · <span class="bdg b-az">Boleto</span></span></div><span class="v">82,89</span></div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">7</span><span>Títulos já conciliados ficam <b>travados</b>, cada um com <b>Desfazer</b> (que estorna só a baixa daquele título, que volta a ficar em aberto).</span></div>
+      <div><span class="pin">8</span><span>A conta parte do que já foi conciliado: só os <b>novos</b> marcados entram. Quando fecha, vira Conciliado.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 4 -->
+  <div class="tela">
+    <p class="tela-tit">Tela 4 · Aviso “Descartar títulos marcados?”</p>
+    <div class="app-card" style="padding:14px;background:#f3f4f6">
+      <div style="background:#fff;border-radius:14px;padding:14px;box-shadow:0 6px 18px rgba(0,0,0,.15)">
+        <b style="font-size:13px">Descartar 3 títulos marcados?</b>
+        <p style="margin:6px 0 10px;font-size:11px;color:#555">Se sair agora, a marcação será perdida.</p>
+        <div class="btns"><span class="bt p" style="background:#dc2626">Descartar</span><span class="bt s">Voltar</span></div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">9</span><span>Aparece ao fechar, cancelar ou sair para Ignorar, Transferência, Cadastrar despesa ou Modo avançado. <b>Voltar</b> mantém tudo marcado.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 5 -->
+  <div class="tela">
+    <p class="tela-tit">Tela 5 · No celular</p>
+    <div class="app-card">
+      <div class="lin"><div class="t"><b>Fatura cartão — 03/11</b><span>− R$ 4.536,71 · <span class="bdg b-am">Parcial</span></span></div></div>
+      <div class="btns" style="padding:8px 10px"><span class="bt p" style="min-height:30px">Parcial</span><span class="bt s">⋯ Mais</span><span class="pin" style="margin-left:2px">10</span></div>
+      <div style="background:#f9fafb;border-top:1px solid #eee;padding:8px 10px;font-size:10.5px;color:#555">Menu <b>⋯ Mais</b>: Ignorar · Transferência · Cadastrar despesa · Modo avançado</div>
+      <div style="border-top:2px solid var(--primary);padding:10px;background:#fff">
+        <b style="font-size:11.5px">Filtros</b>
+        <div class="m-fil" style="padding:6px 0;border:0"><span class="pill">Vencimento: Este mês</span><span class="pill">Condição: Cartão</span></div>
+        <div class="btns"><span class="bt p" style="width:100%;text-align:center">Ver 12 títulos</span></div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">10</span><span>O botão principal vira <b>Parcial</b>, <b>Conciliar</b> ou <b>Passou</b>; o resto das ações fica em <b>⋯ Mais</b>.</span></div>
+      <div><span class="pin">11</span><span>Os filtros abrem numa folha; o botão <b>Ver N títulos</b> aplica e volta para a lista.</span></div>
+    </div>
+  </div>
+
+  <div class="sec-label">Para começar a usar</div>
+  <div class="passos">
+    <div class="passo"><span class="passo-n">1</span><div>Abra <b>Financeiro → Conciliação Bancária</b> e escolha o banco.</div></div>
+    <div class="passo"><span class="passo-n">2</span><div>Numa linha de <b>saída</b>, clique em <b>Buscar…</b> e marque os títulos que ela pagou.</div></div>
+    <div class="passo"><span class="passo-n">3</span><div>Clique em <b>Conciliar</b> (ou <b>Conciliar parcial</b>). Para o caso com juros, multa ou desconto, use o link <b>Modo avançado</b> (no celular, em <b>⋯ Mais</b>).</div></div>
+  </div>
+
+  <div class="rodape"><strong>Hardt App</strong> · Dúvidas? Pergunte ao Clippy.</div>
+</div>
+
+<script>
+  function alternar(btn) {
+    var acc = btn.parentElement;
+    var aberto = acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', aberto ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>

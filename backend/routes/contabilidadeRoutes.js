@@ -53,6 +53,7 @@ const checkAcesso = async (req, res, next) => {
 // "2026-08-01" → Date no início/fim do dia em SP (mesmo padrão do resto do financeiro)
 const diaIni = (ymd) => (/^\d{4}-\d{2}-\d{2}$/.test(String(ymd || '')) ? new Date(`${ymd}T00:00:00-03:00`) : null);
 const diaFim = (ymd) => (/^\d{4}-\d{2}-\d{2}$/.test(String(ymd || '')) ? new Date(`${ymd}T23:59:59.999-03:00`) : null);
+const brl = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const round2 = (v) => Math.round(Number(v || 0) * 100) / 100;
 const toList = (v) => String(v || '').split(',').map((s) => s.trim()).filter(Boolean);
 
@@ -649,7 +650,7 @@ async function montarExtratoConciliado(bancoId, de, ate, situacao) {
         orderBy: { data: 'asc' },
         select: {
             id: true, data: true, valor: true, tipo: true, descricao: true, checkNum: true,
-            status: true, obs: true, conciliadoAuto: true,
+            status: true, obs: true, conciliadoAuto: true, valorConciliado: true,
             pagamentoParcelaId: true, pagamentoParcelaPagarId: true
         }
     });
@@ -705,6 +706,15 @@ async function montarExtratoConciliado(bancoId, de, ate, situacao) {
         }),
         prisma.contaFinanceira.findMany({ select: { id: true, nomeBanco: true } })
     ]);
+    // Linhas conciliadas por rodadas "vários títulos" (PARCIAL ou fechadas por rodadas): grupos por extratoParcialId
+    const gruposParciais = await prisma.conciliacaoGrupo.findMany({
+        where: { extratoParcialId: { in: ids } },
+        select: { extratoParcialId: true, itens: { select: { pagamentoParcelaPagarId: true } } }
+    });
+    const parcialPorLinha = new Map();
+    for (const g of gruposParciais) {
+        parcialPorLinha.set(g.extratoParcialId, (parcialPorLinha.get(g.extratoParcialId) || 0) + g.itens.filter((i) => i.pagamentoParcelaPagarId).length);
+    }
     const nomeBanco = new Map(contasFin.map((c) => [c.id, c.nomeBanco]));
     const mapaRec = new Map(pgsReceber.map((p) => [p.id, p]));
     const mapaPag = new Map(pgsPagar.map((p) => [p.id, p]));
@@ -739,7 +749,13 @@ async function montarExtratoConciliado(bancoId, de, ate, situacao) {
             const nBaixas = grupo.itens.filter((i) => i.pagamentoParcelaId || i.pagamentoParcelaPagarId).length;
             const dif = Number(grupo.diferenca || 0);
             identificacao = `Grupo: ${nBaixas} baixa(s) conciliada(s) em conjunto`
-                + (Math.abs(dif) > 0.009 ? ` · diferença R$ ${dif.toFixed(2)}${grupo.motivoDiferenca ? ` (${grupo.motivoDiferenca})` : ''}` : ' · diferença R$ 0,00');
+                + (Math.abs(dif) > 0.009 ? ` · diferença R$ ${brl(dif)}${grupo.motivoDiferenca ? ` (${grupo.motivoDiferenca})` : ''}` : ' · diferença R$ 0,00');
+        } else if (parcialPorLinha.has(l.id) || l.status === 'PARCIAL') {
+            identTipo = l.status === 'PARCIAL' ? 'PARCIAL' : 'GRUPO';
+            const n = parcialPorLinha.get(l.id) || 0;
+            identificacao = l.status === 'PARCIAL'
+                ? `Vários títulos (parcial): ${n} baixa(s) já conciliada(s) — R$ ${brl(l.valorConciliado)} de R$ ${brl(l.valor)}`
+                : `Vários títulos: ${n} baixa(s) conciliada(s) em conjunto · diferença R$ 0,00`;
         } else if (l.status === 'IGNORADO') {
             identTipo = 'IGNORADO';
             identificacao = l.obs ? `Ignorado: ${l.obs}` : 'Ignorado';
@@ -758,7 +774,7 @@ async function montarExtratoConciliado(bancoId, de, ate, situacao) {
         linhas: linhas.length,
         creditos: round2(linhas.filter((l) => l.tipo === 'CREDITO').reduce((s, l) => s + l.valor, 0)),
         debitos: round2(linhas.filter((l) => l.tipo === 'DEBITO').reduce((s, l) => s + l.valor, 0)),
-        conciliados: linhas.filter((l) => l.status !== 'PENDENTE').length
+        conciliados: linhas.filter((l) => l.status !== 'PENDENTE' && l.status !== 'PARCIAL').length
     };
     return { linhas, resumo };
 }

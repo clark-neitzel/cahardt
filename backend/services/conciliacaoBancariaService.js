@@ -27,10 +27,27 @@ const BASE = 'https://api-v2.contaazul.com';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // CNPJ ALFANUMÉRICO: validar candidato extraído do extrato (evita falso-positivo em texto livre).
 const { validarCnpj } = require('../utils/documento');
+const { montarFiltroMetodo } = require('../utils/filtroMetodoPagamento');
+const { Prisma } = require('@prisma/client');
 
 const TZ_OFFSET = '-03:00';
 const round2 = (v) => Math.round(Number(v) * 100) / 100;
 const num = (v) => Number(v || 0);
+const brl = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const _ROTULO_FORMA = {
+    PIX: 'Pix', PIX_PAGAMENTO_INSTANTANEO: 'Pix', DINHEIRO: 'Dinheiro', BOLETO: 'Boleto', BOLETO_BANCARIO: 'Boleto',
+    CARTAO: 'Cartão', CARTAO_CREDITO: 'Cartão de crédito', CARTAO_DEBITO: 'Cartão de débito',
+    CARTAO_CREDITO_VIA_LINK: 'Cartão de crédito', TRANSFERENCIA_BANCARIA: 'Transferência', DEPOSITO_BANCARIO: 'Depósito',
+    CHEQUE: 'Cheque', CARTEIRA_DIGITAL: 'Carteira digital', OUTRO: 'Outro', OUTROS: 'Outro'
+};
+/** Rótulo legível da forma de pagamento (nunca mostra o código cru). */
+const rotuloForma = (f) => {
+    if (!f) return '';
+    const k = String(f).toUpperCase();
+    if (_ROTULO_FORMA[k]) return _ROTULO_FORMA[k];
+    const t = k.replace(/_/g, ' ').toLowerCase();
+    return t.charAt(0).toUpperCase() + t.slice(1);
+};
 const dataSP = (ymd) => new Date(`${ymd}T12:00:00${TZ_OFFSET}`); // meio-dia SP: imune a virada de fuso
 const ymd = (d) => new Date(d).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
 const somaDias = (s, n) => {
@@ -387,7 +404,7 @@ async function carregarPools(contaFinanceiraCaId, deYmd, ateYmd) {
             id: r.id,
             valor: round2(r.valorRecebido),
             data: ymd(r.dataPagamento),
-            label: `${nome} — parcela ${r.parcela?.numeroParcela ?? '?'}${r.formaPagamento ? ` (${r.formaPagamento})` : ''}`,
+            label: `${nome} — parcela ${r.parcela?.numeroParcela ?? '?'}${r.formaPagamento ? ` (${rotuloForma(r.formaPagamento)})` : ''}`,
             // Dados para o usuário conferir "no que estou mexendo" antes de conciliar:
             detalhe: {
                 nome,
@@ -411,7 +428,7 @@ async function carregarPools(contaFinanceiraCaId, deYmd, ateYmd) {
             id: p.id,
             valor: total,
             data: ymd(p.dataPagamento),
-            label: `${nome}${p.formaPagamento ? ` (${p.formaPagamento})` : ''}`,
+            label: `${nome}${p.formaPagamento ? ` (${rotuloForma(p.formaPagamento)})` : ''}`,
             detalhe: {
                 nome,
                 descricao: cp?.descricao || null,
@@ -1096,6 +1113,28 @@ async function listar({ contaFinanceiraCaId, de, ate, status }) {
         }
     }
 
+    // Linhas conciliadas por rodadas "vários títulos" (PARCIAL, ou CONCILIADO fechado por rodadas):
+    // os grupos apontam para a linha por extratoParcialId (a linha não tem item no grupo).
+    const idsParciais = linhas
+        .filter((l) => l.tipo === 'DEBITO' && (l.status === 'PARCIAL' || (l.status === 'CONCILIADO' && !l.pagamentoParcelaId && !l.pagamentoParcelaPagarId)))
+        .map((l) => l.id);
+    const parcialDaLinha = new Map(); // lancamentoId → { qtd, labels }
+    if (idsParciais.length > 0) {
+        const gruposParciais = await prisma.conciliacaoGrupo.findMany({
+            where: { extratoParcialId: { in: idsParciais } },
+            select: { extratoParcialId: true, itens: { select: { pagamentoParcelaPagarId: true } } }
+        });
+        for (const g of gruposParciais) {
+            const atual = parcialDaLinha.get(g.extratoParcialId) || { qtd: 0, labels: [] };
+            for (const it of g.itens) {
+                if (!it.pagamentoParcelaPagarId) continue;
+                atual.qtd++;
+                atual.labels.push(labelPorId.get(it.pagamentoParcelaPagarId) || 'Baixa do app');
+            }
+            parcialDaLinha.set(g.extratoParcialId, atual);
+        }
+    }
+
     // Identificação determinística (Venda NNNN do PDF do CA = pedido NNNN)
     const identMapa = await _identificarPendentes(linhas, usados);
 
@@ -1123,6 +1162,10 @@ async function listar({ contaFinanceiraCaId, de, ate, status }) {
             status: l.status,
             obs: l.obs,
             conciliadoAuto: l.conciliadoAuto,
+            // Rodadas "vários títulos": quanto já foi conciliado e quanto falta (0 em PENDENTE/outros)
+            valorConciliado: num(l.valorConciliado),
+            falta: l.status === 'PARCIAL' ? Math.max(0, round2(num(l.valor) - num(l.valorConciliado))) : 0,
+            qtdTitulos: parcialDaLinha.get(l.id)?.qtd || 0,
             // Detalhes crus do banco (o que existir): beneficiário, nº do documento, tipo.
             // O MEMO só repete a descrição quando não há mais nada — some da tela nesse caso.
             detalhes: {
@@ -1132,9 +1175,21 @@ async function listar({ contaFinanceiraCaId, de, ate, status }) {
                 memo: l.memo && l.memo !== l.descricao ? l.memo : null
             }
         };
+        if (l.status === 'PARCIAL') {
+            const par = parcialDaLinha.get(l.id);
+            return {
+                ...base,
+                conciliadoCom: `Vários títulos: ${par?.qtd || 0} baixa(s)`,
+                grupoBaixas: par?.labels || []
+            };
+        }
         if (l.status === 'CONCILIADO') {
             const pagId = l.pagamentoParcelaId || l.pagamentoParcelaPagarId;
             if (pagId) return { ...base, conciliadoCom: labelPorId.get(pagId) || 'Baixa do app' };
+            const parc = parcialDaLinha.get(l.id);
+            if (parc) {
+                return { ...base, conciliadoCom: `Vários títulos: ${parc.qtd} baixa(s)`, grupoBaixas: parc.labels, grupoDiferenca: 0, grupoMotivoDiferenca: null };
+            }
             const grupo = grupoDoLancamento.get(l.id);
             return {
                 ...base,
@@ -1200,6 +1255,8 @@ async function listar({ contaFinanceiraCaId, de, ate, status }) {
         pendentes: conta((l) => l.status === 'PENDENTE'),
         conciliados: conta((l) => l.status === 'CONCILIADO'),
         ignorados: conta((l) => l.status === 'IGNORADO'),
+        parciais: conta((l) => l.status === 'PARCIAL'),
+        valorParcialFalta: round2(lancamentos.filter((l) => l.status === 'PARCIAL').reduce((s, l) => s + l.falta, 0)),
         transferencias: conta((l) => l.status === 'TRANSFERENCIA'),
         valorPendente: soma(lancamentos, (l) => l.status === 'PENDENTE'),
         valorConciliado: soma(lancamentos, (l) => l.status === 'CONCILIADO'),
@@ -1482,7 +1539,8 @@ async function conciliarAutomatico({ contaFinanceiraCaId, de, ate, userId }) {
 async function conciliar({ lancamentoId, pagamentoParcelaId, pagamentoParcelaPagarId, userId }) {
     const l = await prisma.extratoLancamento.findUnique({ where: { id: lancamentoId } });
     if (!l) { const e = new Error('Lançamento do extrato não encontrado.'); e.status = 404; throw e; }
-    if (l.status === 'CONCILIADO') { const e = new Error('Este lançamento já está conciliado.'); e.status = 400; throw e; }
+    if (l.status === 'PARCIAL') { const e = new Error('Este lançamento está conciliado em parte (vários títulos). Continue por "Conciliar vários" ou desfaça antes.'); e.status = 400; throw e; }
+    if (l.status !== 'PENDENTE') { const e = new Error('Este lançamento já foi conciliado, ignorado ou transferido — recarregue a tela.'); e.status = 400; throw e; }
 
     const pagId = l.tipo === 'CREDITO' ? pagamentoParcelaId : pagamentoParcelaPagarId;
     if (!pagId) {
@@ -1756,7 +1814,23 @@ async function transferir({ lancamentoId, outraContaId, obs, userId }) {
  * Se ele estiver num GRUPO, o grupo inteiro é dissolvido (todos os lançamentos
  * do grupo voltam a pendente e as baixas ficam livres de novo).
  */
-async function desfazer({ lancamentoId }) {
+async function desfazer({ lancamentoId, user = null }) {
+    // Linha conciliada por rodadas "vários títulos" (PARCIAL ou fechada por rodadas): desfaz tudo.
+    const gruposParciais = await prisma.conciliacaoGrupo.findMany({
+        where: { extratoParcialId: lancamentoId },
+        select: { id: true, itens: { select: { pagamentoParcelaPagarId: true } } }
+    });
+    if (gruposParciais.length > 0) return _desfazerParciais({ lancamentoId, gruposParciais, user });
+    const linhaAtual = await prisma.extratoLancamento.findUnique({ where: { id: lancamentoId }, select: { status: true } });
+    if (linhaAtual?.status === 'PARCIAL') {
+        // PARCIAL sem grupos (já foram todos desfeitos por estorno): só volta para pendente
+        await prisma.extratoLancamento.updateMany({
+            where: { id: lancamentoId, status: 'PARCIAL' },
+            data: { status: 'PENDENTE', valorConciliado: 0, conciliadoAuto: false, conciliadoPorId: null, conciliadoEm: null }
+        });
+        return { message: 'Lançamento voltou para pendente.' };
+    }
+
     const item = await prisma.conciliacaoGrupoItem.findUnique({ where: { extratoLancamentoId: lancamentoId } });
     if (item) {
         const irmaos = await prisma.conciliacaoGrupoItem.findMany({
@@ -1820,6 +1894,30 @@ async function desfazer({ lancamentoId }) {
  */
 async function desconciliarPorBaixa({ pagamentoParcelaId = null, pagamentoParcelaPagarId = null }) {
     const chave = pagamentoParcelaId ? { pagamentoParcelaId } : { pagamentoParcelaPagarId };
+    // Baixa criada por rodada "vários títulos": tira SÓ esse título da rodada e recalcula a
+    // linha (PARCIAL/PENDENTE). Não desfaz as outras baixas da mesma linha.
+    if (pagamentoParcelaPagarId) {
+        const itemParcial = await prisma.conciliacaoGrupoItem.findFirst({
+            where: { pagamentoParcelaPagarId, grupo: { extratoParcialId: { not: null } } },
+            select: { id: true, grupo: { select: { id: true, extratoParcialId: true } } }
+        });
+        if (itemParcial) {
+            const lancId = itemParcial.grupo.extratoParcialId;
+            let novo = null;
+            const pagRef = await prisma.pagamentoParcelaPagar.findUnique({ where: { id: pagamentoParcelaPagarId }, select: { parcelaPagarId: true } });
+            await prisma.$transaction(async (tx) => {
+                if (pagRef?.parcelaPagarId) await tx.$queryRaw`SELECT id FROM parcelas_pagar WHERE id = ${pagRef.parcelaPagarId} FOR UPDATE`;
+                await _travarLinha(tx, lancId);
+                await tx.conciliacaoGrupoItem.deleteMany({ where: { id: itemParcial.id } });
+                novo = await _recalcularLinhaParcialTx(tx, lancId);
+            }, { timeout: 20000, maxWait: 10000 });
+            console.log(`🏦 [Conciliação] Estorno de baixa tirou 1 título da conciliação parcial da linha ${lancId} (agora ${novo?.status}).`);
+            await _audit('CONCILIACAO_TITULO_DESFEITO', 'ExtratoLancamento', lancId, {
+                motivo: 'estorno da baixa em Contas a Pagar', pagamentoId: pagamentoParcelaPagarId, novoStatus: novo?.status, valorConciliado: novo?.valorConciliado
+            }, null);
+            return { linhasSoltas: 0, parcial: true };
+        }
+    }
     const r = await prisma.extratoLancamento.updateMany({
         where: { ...chave, status: 'CONCILIADO' },
         data: {
@@ -1843,6 +1941,431 @@ async function desconciliarPorBaixa({ pagamentoParcelaId = null, pagamentoParcel
     }
     if (linhasSoltas > 0) console.log(`🏦 [Conciliação] Estorno de baixa soltou ${linhasSoltas} vínculo(s) do extrato (voltaram para pendente).`);
     return { linhasSoltas };
+}
+
+// ─────────────────────────────────────────────────────────────
+// Conciliar VÁRIOS títulos / PARCIAL (só DÉBITO ↔ Contas a Pagar)
+// ─────────────────────────────────────────────────────────────
+
+/** Registro de auditoria — SEMPRE fora da transação; falha aqui nunca derruba a operação. */
+async function _audit(acao, entidade, entidadeId, detalhes, user) {
+    try {
+        await prisma.auditLog.create({
+            data: {
+                acao, entidade, entidadeId: String(entidadeId),
+                detalhes: JSON.stringify(detalhes || {}),
+                usuarioId: String(user?.id || 'sistema'),
+                usuarioNome: String(user?.nome || user?.login || 'sistema')
+            }
+        });
+    } catch (e) { console.error('[Conciliação] falha no audit log (operação já efetivada):', e.message); }
+}
+
+/** SELECT ... FOR UPDATE na linha do extrato. Ordem global de locks: títulos (id asc) -> linha. */
+async function _travarLinha(tx, lancamentoId) {
+    await tx.$queryRaw`SELECT id FROM extrato_lancamentos WHERE id = ${lancamentoId} FOR UPDATE`;
+}
+
+/**
+ * Recalcula, DENTRO da transação, a linha do extrato conciliada por rodadas: soma as baixas
+ * vivas dos grupos `extratoParcialId`, acerta valor/valorBaixas de cada grupo (apaga o vazio)
+ * e põe a linha em PENDENTE (0), PARCIAL (>0) ou CONCILIADO (fechou).
+ */
+async function _recalcularLinhaParcialTx(tx, lancamentoId) {
+    // Trava a linha ANTES de ler grupos/soma (serializa com conciliarVarios e outros desfazeres).
+    // Reentrante na mesma transação: quem já travou só repete sem custo.
+    await _travarLinha(tx, lancamentoId);
+    const linha = await tx.extratoLancamento.findUnique({ where: { id: lancamentoId } });
+    if (!linha) return null;
+    const grupos = await tx.conciliacaoGrupo.findMany({
+        where: { extratoParcialId: lancamentoId },
+        select: { id: true, itens: { select: { id: true, pagamentoParcelaPagarId: true } } }
+    });
+    const idsPag = grupos.flatMap((g) => g.itens.map((i) => i.pagamentoParcelaPagarId)).filter(Boolean);
+    const pags = idsPag.length
+        ? await tx.pagamentoParcelaPagar.findMany({ where: { id: { in: idsPag }, estornado: false }, select: { id: true, valorPago: true } })
+        : [];
+    const valorPag = new Map(pags.map((p) => [p.id, num(p.valorPago)]));
+    let total = 0;
+    for (const g of grupos) {
+        // item cuja baixa foi estornada não conta mais — sai do grupo
+        const mortos = g.itens.filter((i) => !valorPag.has(i.pagamentoParcelaPagarId)).map((i) => i.id);
+        if (mortos.length) await tx.conciliacaoGrupoItem.deleteMany({ where: { id: { in: mortos } } });
+        const vivos = g.itens.filter((i) => valorPag.has(i.pagamentoParcelaPagarId));
+        if (vivos.length === 0) { await tx.conciliacaoGrupo.delete({ where: { id: g.id } }); continue; }
+        const soma = round2(vivos.reduce((s, i) => s + valorPag.get(i.pagamentoParcelaPagarId), 0));
+        await tx.conciliacaoGrupo.update({ where: { id: g.id }, data: { valor: soma, valorBaixas: soma, diferenca: 0 } });
+        total = round2(total + soma);
+    }
+    const valorLinha = num(linha.valor);
+    let status = 'PARCIAL';
+    if (total <= 0.009) status = 'PENDENTE';
+    else if (round2(valorLinha - total) < 0.01) status = 'CONCILIADO';
+    const limpa = status === 'PENDENTE'
+        ? { conciliadoAuto: false, conciliadoPorId: null, conciliadoEm: null }
+        : {};
+    await tx.extratoLancamento.update({
+        where: { id: lancamentoId },
+        data: { status, valorConciliado: status === 'PENDENTE' ? 0 : total, ...limpa }
+    });
+    return { status, valorConciliado: status === 'PENDENTE' ? 0 : total, falta: Math.max(0, round2(valorLinha - total)) };
+}
+
+/** Desfaz TODAS as rodadas de uma linha: estorna as baixas criadas e volta a linha para PENDENTE. */
+async function _desfazerParciais({ lancamentoId, gruposParciais, user }) {
+    // Pré-leitura só para travar os títulos na ordem global (títulos -> linha); a leitura
+    // valendo é a refeita DENTRO da transação, com a linha travada.
+    const idsPre = gruposParciais.flatMap((g) => g.itens.map((i) => i.pagamentoParcelaPagarId)).filter(Boolean);
+    const pagsPre = idsPre.length
+        ? await prisma.pagamentoParcelaPagar.findMany({ where: { id: { in: idsPre } }, select: { parcelaPagarId: true } })
+        : [];
+    const parcelasPre = [...new Set(pagsPre.map((p) => p.parcelaPagarId))].sort();
+    let pagamentos = [];
+    await prisma.$transaction(async (tx) => {
+        if (parcelasPre.length) await tx.$queryRaw`SELECT id FROM parcelas_pagar WHERE id IN (${Prisma.join(parcelasPre)}) ORDER BY id FOR UPDATE`;
+        await _travarLinha(tx, lancamentoId);
+        const grupos = await tx.conciliacaoGrupo.findMany({
+            where: { extratoParcialId: lancamentoId },
+            select: { id: true, itens: { select: { pagamentoParcelaPagarId: true } } }
+        });
+        const idsPag = grupos.flatMap((g) => g.itens.map((i) => i.pagamentoParcelaPagarId)).filter(Boolean);
+        pagamentos = idsPag.length
+            ? await tx.pagamentoParcelaPagar.findMany({ where: { id: { in: idsPag }, estornado: false }, select: { id: true, parcelaPagarId: true, valorPago: true } })
+            : [];
+        const parcelaIds = [...new Set(pagamentos.map((p) => p.parcelaPagarId))];
+        if (pagamentos.length) {
+            await tx.pagamentoParcelaPagar.updateMany({
+                where: { id: { in: pagamentos.map((p) => p.id) }, estornado: false },
+                data: { estornado: true, estornadoEm: new Date(), estornadoPorId: user?.id || null }
+            });
+        }
+        for (const pid of parcelaIds) await contasPagarCaSyncService.recalcularParcelaEConta(tx, pid);
+        await tx.conciliacaoGrupo.deleteMany({ where: { extratoParcialId: lancamentoId } }); // itens caem em cascata
+        await tx.extratoLancamento.updateMany({
+            where: { id: lancamentoId },
+            data: { status: 'PENDENTE', valorConciliado: 0, conciliadoAuto: false, conciliadoPorId: null, conciliadoEm: null, obs: null }
+        });
+    }, { timeout: 20000, maxWait: 10000 });
+    await _audit('CONCILIACAO_PARCIAL_DESFEITA', 'ExtratoLancamento', lancamentoId, {
+        baixasEstornadas: pagamentos.map((p) => ({ pagamentoId: p.id, valor: num(p.valorPago) }))
+    }, user);
+    return { message: `Conciliação desfeita — ${pagamentos.length} baixa(s) estornada(s) e o lançamento voltou para pendente.` };
+}
+
+/**
+ * Títulos a pagar EM ABERTO para a conciliação "vários títulos".
+ * Filtros: de/ate (VENCIMENTO), condicoes (CSV; aceita NAO_INFORMADO/OUTROS), q (fornecedor/
+ * descrição/nº nota/categoria), valor + tol (0|5|10|25 %, aplicado no servidor sobre o saldo).
+ */
+async function titulosPagarAbertos({ de, ate, condicoes, q, valor, tol } = {}) {
+    const LIMITE = 500;
+    const termo = String(q || '').trim();
+    const contaWhere = [];
+    const fm = montarFiltroMetodo(condicoes);
+    if (fm) contaWhere.push(fm);
+    if (termo) {
+        contaWhere.push({
+            OR: [
+                { descricao: { contains: termo, mode: 'insensitive' } },
+                { numeroNota: { contains: termo, mode: 'insensitive' } },
+                { categoria: { contains: termo, mode: 'insensitive' } },
+                { categoriaDespesa: { nome: { contains: termo, mode: 'insensitive' } } },
+                { fornecedor: { razaoSocial: { contains: termo, mode: 'insensitive' } } },
+                { fornecedor: { nomeFantasia: { contains: termo, mode: 'insensitive' } } }
+            ]
+        });
+    }
+    const YMD_RE = /^\d{4}-\d{2}-\d{2}$/;
+    const venc = {};
+    if (de && YMD_RE.test(String(de))) venc.gte = dataSP(String(de));
+    if (ate && YMD_RE.test(String(ate))) venc.lte = dataSP(String(ate));
+
+    // Filtro de valor/tolerância já na consulta: saldo <= valor da parcela, então o valor da parcela
+    // tem que ser >= (alvo - margem). O corte exato pelo saldo continua abaixo (precisão do centavo).
+    const alvo = valor != null && String(valor).trim() !== '' ? round2(Number(String(valor).replace(',', '.'))) : null;
+    const tolPct = [0, 5, 10, 25].includes(Number(tol)) ? Number(tol) : 0;
+    const filtraValor = alvo != null && Number.isFinite(alvo) && alvo > 0;
+    const margem = filtraValor ? round2(alvo * tolPct / 100) + 0.01 : 0;
+    const TETO_LEITURA = 20000; // trava de sanidade; totais abaixo valem sobre tudo que foi lido
+
+    const parcelas = await prisma.parcelaPagar.findMany({
+        where: {
+            status: { in: ['PENDENTE', 'PARCIAL'] },
+            ...(filtraValor ? { valor: { gte: Math.max(0, round2(alvo - margem)) } } : {}),
+            ...(Object.keys(venc).length ? { dataVencimento: venc } : {}),
+            ...(contaWhere.length ? { contaPagar: { AND: contaWhere } } : {})
+        },
+        include: {
+            pagamentos: { where: { estornado: false }, select: { valorPago: true, desconto: true, estornado: true } },
+            contaPagar: {
+                select: {
+                    descricao: true, numeroNota: true, categoria: true, origem: true, metodoPagamentoCA: true, statusEnvioCA: true,
+                    categoriaDespesa: { select: { nome: true } },
+                    fornecedor: { select: { razaoSocial: true, nomeFantasia: true } }
+                }
+            }
+        },
+        orderBy: [{ dataVencimento: 'asc' }, { numeroParcela: 'asc' }],
+        take: TETO_LEITURA
+    });
+    const totalParcelasPorConta = new Map();
+    const contaIds = [...new Set(parcelas.map((p) => p.contaPagarId))];
+    if (contaIds.length) {
+        const cont = await prisma.parcelaPagar.groupBy({ by: ['contaPagarId'], where: { contaPagarId: { in: contaIds } }, _count: { _all: true } });
+        cont.forEach((c) => totalParcelasPorConta.set(c.contaPagarId, c._count._all));
+    }
+
+    let titulos = parcelas.map((p) => {
+        const cp = p.contaPagar;
+        return {
+            parcelaPagarId: p.id,
+            saldo: saldoParcelaPagar(p),
+            valorParcela: num(p.valor),
+            numeroParcela: p.numeroParcela,
+            totalParcelas: totalParcelasPorConta.get(p.contaPagarId) || 1,
+            vencimento: ymd(p.dataVencimento),
+            fornecedor: cp?.fornecedor?.nomeFantasia || cp?.fornecedor?.razaoSocial || null,
+            descricao: cp?.descricao || null,
+            numeroNota: cp?.numeroNota || null,
+            categoria: cp?.categoriaDespesa?.nome ?? cp?.categoria ?? null,
+            metodoPagamentoCA: cp?.metodoPagamentoCA || null,
+            origem: cp?.origem || null,
+            vaiAoCA: !!(cp?.statusEnvioCA && cp.statusEnvioCA !== 'NAO_ENVIAR')
+        };
+    }).filter((t) => t.saldo > 0);
+    if (filtraValor) {
+        titulos = titulos.filter((t) => Math.abs(t.saldo - alvo) <= margem);
+    }
+    const total = titulos.length;
+    const somaTotal = round2(titulos.reduce((s, t) => s + t.saldo, 0));
+    return { titulos: titulos.slice(0, LIMITE), total, somaTotal, truncado: total > LIMITE || parcelas.length >= TETO_LEITURA };
+}
+
+/** Opções dos filtros da tela "vários títulos": condições (com "Não informado"/"Outros") e categorias. */
+async function opcoesVarios() {
+    // Leve: só tabela local (sem fornecedores nem API do CA).
+    const categorias = await prisma.categoriaDespesa.findMany({ select: { id: true, nome: true }, orderBy: { nome: 'asc' } });
+    return {
+        condicoes: [
+            { value: 'BOLETO', label: 'Boleto' },
+            { value: 'PIX', label: 'Pix' },
+            { value: 'CARTAO', label: 'Cartão' },
+            { value: 'OUTROS', label: 'Outros' },
+            { value: 'NAO_INFORMADO', label: 'Não informado' }
+        ],
+        categorias,
+        metodosPagamento: contasPagarCaSyncService.METODOS_PAGAMENTO_BAIXA
+    };
+}
+
+/**
+ * Concilia uma linha de DÉBITO com VÁRIOS títulos de uma vez (cada um baixado pelo SALDO
+ * inteiro). Se a soma não cobre a linha, ela vira PARCIAL e aceita novas rodadas.
+ * Concorrência: títulos travados com FOR UPDATE + updateMany condicionado ao valorConciliado
+ * esperado → duplo clique/2 abas geram no máximo 1 baixa por título.
+ */
+async function conciliarVarios({ lancamentoId, parcelaPagarIds, metodoPagamento, valorConciliadoEsperado, userId, user = null }) {
+    const ids = [...new Set((parcelaPagarIds || []).filter(Boolean))].sort();
+    if (ids.length === 0) throw erro('Marque ao menos um título.');
+    if (ids.length > 300) throw erro('Muitos títulos de uma vez (máximo 300).');
+    const esperado = round2(num(valorConciliadoEsperado));
+    const metodoBody = String(metodoPagamento || '').toUpperCase();
+    if (metodoBody && !contasPagarCaSyncService.METODOS_BAIXA_VALIDOS.has(metodoBody)) throw erro('Forma de pagamento inválida.');
+
+    let resultado;
+    const criadas = [];
+    await prisma.$transaction(async (tx) => {
+        // 1) trava os títulos (ordem fixa) — quem chegar depois relê o saldo já baixado
+        await tx.$queryRaw`SELECT id FROM parcelas_pagar WHERE id IN (${Prisma.join(ids)}) ORDER BY id FOR UPDATE`;
+        await _travarLinha(tx, lancamentoId); // depois dos títulos: mesma ordem dos desfazeres
+
+        const l = await tx.extratoLancamento.findUnique({ where: { id: lancamentoId } });
+        if (!l) throw erro('Lançamento do extrato não encontrado.', 404);
+        if (l.tipo !== 'DEBITO') throw erro('Vários títulos só vale para saída (débito) do extrato.');
+        if (!['PENDENTE', 'PARCIAL'].includes(l.status)) throw erro('Este lançamento já foi conciliado, ignorado ou transferido — recarregue a tela.');
+        const jaConciliado = round2(num(l.valorConciliado));
+        if (Math.abs(jaConciliado - esperado) > 0.009) throw erro('Este lançamento mudou desde que você abriu a tela (outra pessoa conciliou?). Recarregue e confira.');
+        const falta = round2(num(l.valor) - jaConciliado);
+        if (falta < 0.01) throw erro('Este lançamento já está totalmente conciliado.');
+
+        const parcelas = await tx.parcelaPagar.findMany({
+            where: { id: { in: ids } },
+            include: {
+                pagamentos: { where: { estornado: false }, select: { valorPago: true, desconto: true, estornado: true } },
+                contaPagar: { select: { statusEnvioCA: true, metodoPagamentoCA: true, descricao: true } }
+            }
+        });
+        if (parcelas.length !== ids.length) throw erro('Um dos títulos não foi encontrado.', 404);
+        const ruim = parcelas.find((p) => !['PENDENTE', 'PARCIAL'].includes(p.status));
+        if (ruim) throw erro('Um dos títulos já foi pago ou cancelado — recarregue a lista.');
+        const aloc = parcelas.map((p) => ({ p, saldo: saldoParcelaPagar(p) }));
+        if (aloc.some((a) => a.saldo <= 0)) throw erro('Um dos títulos já não tem saldo em aberto — recarregue a lista.');
+        const soma = round2(aloc.reduce((s, a) => s + a.saldo, 0));
+        if (soma > falta + 0.01) {
+            throw erro(`Passou do valor: os títulos marcados somam R$ ${brl(soma)} e faltam só R$ ${brl(falta)} neste lançamento.`);
+        }
+        // forma de pagamento: a do próprio título; se não tiver, a escolhida na tela
+        const formas = new Map();
+        for (const a of aloc) {
+            const doTitulo = a.p.contaPagar?.metodoPagamentoCA;
+            const forma = (doTitulo && contasPagarCaSyncService.METODOS_BAIXA_VALIDOS.has(doTitulo)) ? doTitulo : (metodoBody || null);
+            if (!forma) throw erro('Há título sem condição de pagamento cadastrada: escolha a forma de pagamento para a baixa.');
+            formas.set(a.p.id, forma);
+        }
+
+        // 2) reserva a linha (guarda contra duplo clique): só passa quem viu o mesmo valorConciliado
+        const novoTotal = round2(jaConciliado + soma);
+        const fechou = round2(num(l.valor) - novoTotal) < 0.01;
+        const novoStatus = fechou ? 'CONCILIADO' : 'PARCIAL';
+        const r = await tx.extratoLancamento.updateMany({
+            where: { id: lancamentoId, status: { in: ['PENDENTE', 'PARCIAL'] }, valorConciliado: jaConciliado },
+            data: { status: novoStatus, valorConciliado: novoTotal, conciliadoAuto: false, conciliadoPorId: userId || null, conciliadoEm: new Date() }
+        });
+        if (r.count === 0) throw erro('O lançamento mudou enquanto você conciliava — recarregue a tela e confira.');
+
+        // 3) baixas (saldo inteiro de cada título)
+        for (const a of aloc) {
+            const naCA = !!(a.p.contaPagar?.statusEnvioCA && a.p.contaPagar.statusEnvioCA !== 'NAO_ENVIAR');
+            const pag = await tx.pagamentoParcelaPagar.create({
+                data: {
+                    parcelaPagarId: a.p.id,
+                    valorPago: a.saldo,
+                    juros: 0, multa: 0, desconto: 0,
+                    dataPagamento: new Date(l.data),
+                    formaPagamento: formas.get(a.p.id),
+                    contaFinanceiraCaId: l.contaFinanceiraCaId, // o banco do extrato é a verdade
+                    statusEnvioCA: naCA ? 'ENVIAR' : 'NAO_ENVIAR',
+                    origem: 'MANUAL',
+                    observacao: 'Baixa dada pela conciliação bancária.',
+                    registradoPorId: userId || null
+                }
+            });
+            criadas.push({ pagamentoId: pag.id, parcelaPagarId: a.p.id, valor: a.saldo });
+            await contasPagarCaSyncService.recalcularParcelaEConta(tx, a.p.id);
+        }
+        const grupo = await tx.conciliacaoGrupo.create({
+            data: {
+                contaFinanceiraCaId: l.contaFinanceiraCaId,
+                tipo: 'DEBITO',
+                valor: soma,
+                valorBaixas: soma,
+                diferenca: 0,
+                extratoParcialId: lancamentoId,
+                criadoPorId: userId || null
+            }
+        });
+        await tx.conciliacaoGrupoItem.createMany({
+            data: criadas.map((c) => ({ grupoId: grupo.id, pagamentoParcelaPagarId: c.pagamentoId }))
+        });
+        resultado = { status: novoStatus, valorConciliado: novoTotal, falta: Math.max(0, round2(num(l.valor) - novoTotal)), soma, grupoId: grupo.id };
+    }, { timeout: 20000, maxWait: 10000 });
+
+    await _audit('CONCILIACAO_VARIOS', 'ExtratoLancamento', lancamentoId, {
+        grupoId: resultado.grupoId, titulos: criadas, somaRodada: resultado.soma, statusResultante: resultado.status
+    }, user || (userId ? { id: userId } : null));
+
+    return {
+        ok: true,
+        status: resultado.status,
+        valorConciliado: resultado.valorConciliado,
+        falta: resultado.falta,
+        message: resultado.status === 'CONCILIADO'
+            ? `Conciliado! ${criadas.length} título(s) baixado(s).`
+            : `Conciliado em parte: ${criadas.length} título(s) baixado(s). Ainda faltam R$ ${brl(resultado.falta)}.`
+    };
+}
+
+/** Títulos já conciliados (rodadas) de uma linha — alimenta o bloco "Já conciliado" da tela. */
+async function parciaisDaLinha({ lancamentoId }) {
+    const l = await prisma.extratoLancamento.findUnique({ where: { id: lancamentoId } });
+    if (!l) throw erro('Lançamento do extrato não encontrado.', 404);
+    const grupos = await prisma.conciliacaoGrupo.findMany({
+        where: { extratoParcialId: lancamentoId },
+        orderBy: { criadoEm: 'asc' },
+        select: { id: true, criadoEm: true, criadoPorId: true, itens: { select: { pagamentoParcelaPagarId: true } } }
+    });
+    const idsPag = grupos.flatMap((g) => g.itens.map((i) => i.pagamentoParcelaPagarId)).filter(Boolean);
+    const [pags, usuarios] = await Promise.all([
+        idsPag.length ? prisma.pagamentoParcelaPagar.findMany({
+            where: { id: { in: idsPag } },
+            select: {
+                id: true, valorPago: true, estornado: true, parcelaPagarId: true,
+                parcelaPagar: {
+                    select: { contaPagar: { select: { descricao: true, fornecedor: { select: { razaoSocial: true, nomeFantasia: true } } } } }
+                }
+            }
+        }) : [],
+        prisma.vendedor.findMany({ where: { id: { in: [...new Set(grupos.map((g) => g.criadoPorId).filter(Boolean))] } }, select: { id: true, nome: true } })
+    ]);
+    const pagPorId = new Map(pags.map((p) => [p.id, p]));
+    const nomePorId = new Map(usuarios.map((u) => [u.id, u.nome]));
+    const titulos = [];
+    for (const g of grupos) {
+        for (const it of g.itens) {
+            const p = pagPorId.get(it.pagamentoParcelaPagarId);
+            if (!p || p.estornado) continue;
+            const cp = p.parcelaPagar?.contaPagar;
+            titulos.push({
+                pagamentoId: p.id,
+                grupoId: g.id,
+                parcelaPagarId: p.parcelaPagarId,
+                fornecedor: cp?.fornecedor?.nomeFantasia || cp?.fornecedor?.razaoSocial || null,
+                descricao: cp?.descricao || null,
+                valor: num(p.valorPago),
+                conciliadoEm: g.criadoEm,
+                conciliadoPor: nomePorId.get(g.criadoPorId) || null
+            });
+        }
+    }
+    const jaConc = round2(num(l.valorConciliado));
+    return { valor: num(l.valor), valorConciliado: jaConc, falta: Math.max(0, round2(num(l.valor) - jaConc)), status: l.status, titulos };
+}
+
+/**
+ * Desfaz UM título de uma conciliação parcial: estorna a baixa que a conciliação criou
+ * (idempotente), tira o item da rodada e recalcula a linha (PENDENTE/PARCIAL).
+ * NÃO chama desconciliarPorBaixa (aqui o vínculo é tratado por inteiro).
+ */
+async function desfazerTitulo({ lancamentoId, pagamentoId, user = null }) {
+    if (!pagamentoId) throw erro('Informe o título (pagamentoId) a desfazer.');
+    let info = null;
+    let novo = null;
+    const pagPre = await prisma.pagamentoParcelaPagar.findUnique({ where: { id: pagamentoId }, select: { parcelaPagarId: true } });
+    await prisma.$transaction(async (tx) => {
+        // ordem de locks igual à do conciliarVarios: título primeiro, depois a linha
+        if (pagPre?.parcelaPagarId) await tx.$queryRaw`SELECT id FROM parcelas_pagar WHERE id = ${pagPre.parcelaPagarId} FOR UPDATE`;
+        await _travarLinha(tx, lancamentoId);
+        const item = await tx.conciliacaoGrupoItem.findFirst({
+            where: { pagamentoParcelaPagarId: pagamentoId, grupo: { extratoParcialId: lancamentoId } },
+            select: { id: true }
+        });
+        if (!item) throw erro('Este título não faz parte da conciliação deste lançamento (talvez já tenha sido desfeito) — recarregue.');
+        const del = await tx.conciliacaoGrupoItem.deleteMany({ where: { id: item.id } });
+        if (del.count === 0) throw erro('Este título já foi desfeito — recarregue.');
+        const pag = await tx.pagamentoParcelaPagar.findUnique({ where: { id: pagamentoId }, select: { id: true, parcelaPagarId: true, valorPago: true, estornado: true } });
+        info = pag;
+        if (pag && !pag.estornado) {
+            await tx.pagamentoParcelaPagar.updateMany({
+                where: { id: pagamentoId, estornado: false },
+                data: { estornado: true, estornadoEm: new Date(), estornadoPorId: user?.id || null }
+            });
+            await contasPagarCaSyncService.recalcularParcelaEConta(tx, pag.parcelaPagarId);
+        }
+        novo = await _recalcularLinhaParcialTx(tx, lancamentoId);
+    }, { timeout: 20000, maxWait: 10000 });
+
+    await _audit('CONCILIACAO_TITULO_DESFEITO', 'ExtratoLancamento', lancamentoId, {
+        pagamentoId, parcelaPagarId: info?.parcelaPagarId, valor: num(info?.valorPago), novoStatus: novo?.status
+    }, user);
+    return {
+        ok: true,
+        status: novo?.status,
+        valorConciliado: novo?.valorConciliado,
+        falta: novo?.falta,
+        message: novo?.status === 'PENDENTE'
+            ? 'Título desfeito: a baixa foi estornada e o lançamento voltou para pendente.'
+            : 'Título desfeito: a baixa foi estornada e o título voltou para "em aberto".'
+    };
 }
 
 /**
@@ -1907,7 +2430,7 @@ async function baixasDisponiveis({ contaFinanceiraCaId, de, ate, tipo, busca }) 
                 id: p.id,
                 valor: round2(num(p.valorPago) + num(p.juros) + num(p.multa)),
                 data: ymd(p.dataPagamento),
-                label: `${nome}${p.formaPagamento ? ` (${p.formaPagamento})` : ''}`,
+                label: `${nome}${p.formaPagamento ? ` (${rotuloForma(p.formaPagamento)})` : ''}`,
                 outraConta: { id: p.contaFinanceiraCaId, nome: p.contaFinanceiraCaId ? (nomesContas.get(p.contaFinanceiraCaId) || 'conta desconhecida') : 'SEM banco', tipo: 'PAGAR' },
                 detalhe: {
                     nome,
@@ -1962,7 +2485,7 @@ async function baixasDisponiveis({ contaFinanceiraCaId, de, ate, tipo, busca }) 
                 id: r.id,
                 valor: round2(num(r.valorRecebido)),
                 data: ymd(r.dataPagamento),
-                label: `${nome} — parcela ${r.parcela?.numeroParcela ?? '?'}${r.formaPagamento ? ` (${r.formaPagamento})` : ''}`,
+                label: `${nome} — parcela ${r.parcela?.numeroParcela ?? '?'}${r.formaPagamento ? ` (${rotuloForma(r.formaPagamento)})` : ''}`,
                 confirmado: r.confirmado !== false,
                 outraConta: { id: r.contaFinanceiraCaId, nome: r.contaFinanceiraCaId ? (nomesContas.get(r.contaFinanceiraCaId) || 'conta desconhecida') : rotuloSemConta, tipo: 'RECEBER' },
                 detalhe: {
@@ -2995,6 +3518,11 @@ module.exports = {
     parcelasPagarEmAberto,
     parcelasReceberEmAberto,
     conciliarUnificado,
+    titulosPagarAbertos,
+    opcoesVarios,
+    conciliarVarios,
+    parciaisDaLinha,
+    desfazerTitulo,
     MOTIVOS_DIFERENCA,
     // puras (testáveis offline)
     decodificarOfx,

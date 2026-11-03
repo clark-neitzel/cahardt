@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Proposta — Conciliar vários + parcial (v3)</title>
+<style>
+:root{--p:#00754A;--pd:#006241;--house:#1E3932;--mint:#d4e9e2;--bg:#f2f0eb;--gold:#cba258}
+*{box-sizing:border-box}
+body{margin:0;font-family:Manrope,-apple-system,"SF Pro Text",sans-serif;background:var(--bg);color:#222;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+.top{position:sticky;top:0;z-index:50;background:var(--house);color:#fff;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+.top h1{font-size:15px;margin:0}
+.seg{display:flex;background:rgba(255,255,255,.12);border-radius:999px;padding:3px}
+.seg button{border:0;background:none;color:#fff;padding:7px 14px;border-radius:999px;font:600 13px inherit;cursor:pointer}
+.seg button.on{background:#fff;color:var(--house)}
+.wrap{max-width:1240px;margin:0 auto;padding:16px}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.tabs button{border:1px solid var(--p);background:#fff;color:var(--p);padding:8px 14px;border-radius:999px;font:600 13px inherit;cursor:pointer}
+.tabs button.on{background:var(--p);color:#fff}
+.nota{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:12px 16px;font-size:13px;color:#444;margin-bottom:14px;line-height:1.5}
+.nota b{color:var(--pd)}
+.stage{display:flex;justify-content:center;background:#d9d6cf;border-radius:16px;padding:20px 10px}
+.frame{width:100%;max-width:1160px;background:#fff;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.18);transition:max-width .2s;position:relative}
+.frame.m{max-width:375px}
+.hd{padding:14px 20px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:flex-start;gap:10px;border-radius:16px 16px 0 0}
+.hd small{color:#666;font-size:12px}.hd h2{margin:2px 0 0;font-size:17px}
+.x{font-size:20px;color:#888;line-height:1}
+.resumo{background:#f7faf8;border-bottom:1px solid #e3ece8;padding:12px 20px}
+.rl{display:flex;gap:22px;font-size:12px;color:#555;flex-wrap:wrap;align-items:flex-end}
+.m .rl{gap:10px 16px}
+.rl b{display:block;font-size:16px;color:#111}
+.falta b{color:#b45309}.ok b{color:var(--p)}.estoura b{color:#b91c1c}
+.bar{height:8px;background:#e5e7eb;border-radius:99px;margin:10px 0;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--p);transition:width .2s}
+.acoes{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.btn{border:0;border-radius:999px;padding:10px 20px;font:700 13px inherit;cursor:pointer;min-height:44px}
+.m .btn{flex:1}
+.btn.pri{background:var(--p);color:#fff}.btn.pri:disabled{background:#9db9ad;cursor:not-allowed}
+.btn.sec{background:#fff;border:1px solid var(--p);color:var(--p)}
+.hint{font-size:12px;color:#666}
+/* filtros numa linha só */
+.filtros{padding:10px 20px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;border-bottom:1px solid #eee;position:relative}
+.m .filtros{flex-direction:column;align-items:stretch}
+.pill{display:inline-flex;align-items:center;gap:8px;border:1px solid #d1d5db;background:#fff;border-radius:999px;height:42px;padding:0 14px;font-size:13px;cursor:pointer;white-space:nowrap;position:relative}
+.pill.on{border-color:var(--p);background:#f2f8f5}
+.pill b{font-weight:700}
+.per{display:inline-flex;border:1px solid #d1d5db;border-radius:999px;height:42px;align-items:stretch;background:#fff;position:relative}
+.per>span{display:flex;align-items:center;padding:0 12px;cursor:pointer;font-size:13px}
+.per>span.a{width:34px;justify-content:center;color:#666}
+.per>span.mid{border-left:1px solid #e5e7eb;border-right:1px solid #e5e7eb;gap:8px}
+.m .per{justify-content:space-between}.m .per>span.mid{flex:1;justify-content:center}
+.menu{position:absolute;top:48px;left:0;z-index:30;background:#fff;border:1px solid #e5e7eb;border-radius:14px;box-shadow:0 12px 30px rgba(0,0,0,.18);padding:6px;min-width:230px}
+.menu div{padding:9px 12px;border-radius:10px;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:8px}
+.menu div:hover{background:#f3f4f6}.menu div.on{background:var(--mint);font-weight:700}
+.menu hr{border:0;border-top:1px solid #eee;margin:4px 0}
+.menu input[type=checkbox]{width:17px;height:17px;accent-color:var(--p)}
+.in{border:1px solid #d1d5db;border-radius:999px;height:42px;padding:0 14px;font-size:13px;background:#fff;min-width:0}
+.busca{flex:1;min-width:170px}
+.valor{display:inline-flex;border:1px solid #d1d5db;border-radius:999px;height:42px;overflow:hidden;background:#fff}
+.valor input{border:0;padding:0 12px;width:120px;font-size:13px;outline:none}
+.valor select{border:0;border-left:1px solid #e5e7eb;background:#f9fafb;padding:0 10px;font-size:12px;outline:none}
+.m .valor input{flex:1;width:auto}
+.lnk{font-size:12px;color:var(--p);font-weight:700;cursor:pointer;white-space:nowrap}
+.selall{display:flex;justify-content:space-between;align-items:center;padding:8px 20px;background:#fafafa;border-bottom:1px solid #eee;font-size:12px;flex-wrap:wrap;gap:6px}
+.lista{max-height:430px;overflow:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{position:sticky;top:0;background:#f9fafb;text-align:left;font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.04em;padding:9px 12px;border-bottom:1px solid #e5e7eb}
+td{padding:10px 12px;border-bottom:1px solid #f1f1f1;vertical-align:middle}
+tr.sel td{background:var(--mint)}tr.row{cursor:pointer}tr.row:hover td{background:#f7f7f7}tr.sel:hover td{background:var(--mint)}
+td.v{text-align:right;font-weight:700;white-space:nowrap}th.v{text-align:right}
+td small{display:block;color:#6b7280;font-size:11px;margin-top:1px}
+input[type=checkbox]{width:18px;height:18px;accent-color:var(--p)}
+.badge{display:inline-block;padding:2px 9px;border-radius:99px;font-size:11px;font-weight:600;white-space:nowrap}
+.c-Boleto{background:#dbeafe;color:#1e40af}.c-Cartão{background:#ede9fe;color:#6d28d9}.c-Dinheiro{background:#dcfce7;color:#166534}.c-PIX{background:#d4e9e2;color:#006241}.c-Transf{background:#f3f4f6;color:#374151}
+.o-imp{background:#f3f4f6;color:#374151}.o-dda{background:#fef3c7;color:#92400e}
+.card{display:flex;gap:10px;padding:12px 14px;border-bottom:1px solid #eee;cursor:pointer;align-items:flex-start}
+.card.sel{background:var(--mint)}.card .t{flex:1;min-width:0}.card .t b{display:block;font-size:13px}.card .t span{font-size:11px;color:#666}
+.card .v{font-weight:700;font-size:13px;white-space:nowrap}
+.rod{padding:12px 20px;font-size:12px;color:#555;border-top:1px solid #eee}.rod a{color:var(--p);font-weight:600}
+.ln{padding:12px 20px;border-bottom:1px solid #eee;display:grid;grid-template-columns:100px 1fr auto;gap:10px;align-items:center;font-size:13px}
+.m .ln{grid-template-columns:1fr}
+.b-p{background:#fef3c7;color:#92400e}.b-c{background:#dcfce7;color:#166534}.b-n{background:#f3f4f6;color:#374151}
+.mini{font-size:11px;color:#666;margin-top:3px}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:12px 20px}.m .kpis{grid-template-columns:repeat(2,1fr)}
+.kpi{border:1px solid #e5e7eb;border-radius:12px;padding:10px 12px;font-size:11px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:.05em}.kpi b{display:block;font-size:20px;color:#111;margin-top:2px}.kpi.am{border-color:#fcd34d;background:#fffbeb}
+.pin{display:inline-flex;width:20px;height:20px;border-radius:50%;background:var(--gold);color:#fff;font-size:11px;font-weight:800;align-items:center;justify-content:center;flex:none}
+.pinabs{position:absolute;z-index:5}
+.leg{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:14px 16px;margin-top:14px}
+.leg div{display:flex;gap:8px;font-size:13px;margin:7px 0;line-height:1.4}
+.regras{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:14px 16px;margin-top:14px;font-size:13px;line-height:1.55}
+.regras b.h{font-size:12px;letter-spacing:.08em}
+</style>
+</head>
+<body>
+<div class="top">
+  <h1>Conciliação · vários lançamentos + parcial · v3</h1>
+  <div class="seg" id="dev"><button class="on" data-d="d">💻 Computador</button><button data-d="m">📱 Celular</button></div>
+</div>
+<div class="wrap">
+  <div class="tabs" id="tabs">
+    <button class="on" data-s="1">1 · Buscar e marcar vários</button>
+    <button data-s="2">2 · Fica "Parcial" no extrato</button>
+    <button data-s="3">3 · Continuar depois</button>
+  </div>
+  <div class="nota" id="nota"></div>
+  <div class="stage"><div class="frame" id="frame"></div></div>
+  <div class="leg" id="leg"></div>
+  <div class="regras" id="regras"></div>
+</div>
+
+<script>
+const HOJE=new Date(2026,10,3);
+const d=(m,dd)=>new Date(2026,m-1,dd);
+const COND=['Boleto','Cartão de crédito','Dinheiro','PIX','Transferência'];
+const ck=c=>c.startsWith('Cartão')?'Cartão':c.startsWith('Transf')?'Transf':c;
+const itens=[
+ {id:1,f:'Marwell Industrial Ltda',d:'NF 1044214',cat:'Embalagens',c:'Boleto',venc:d(11,3),par:'1/1',o:'imp',v:82.89},
+ {id:2,f:'Ecomxpress Ltda',d:'NF 669409',cat:'Frete',c:'Boleto',venc:d(11,3),par:'1/1',o:'imp',v:19.07},
+ {id:3,f:'Posto Ipiranga',d:'Combustível',cat:'Combustível',c:'Cartão de crédito',venc:d(11,3),par:'1/1',o:'',v:412.30},
+ {id:4,f:'Kalunga',d:'Material escritório',cat:'Escritório',c:'Cartão de crédito',venc:d(11,3),par:'1/1',o:'',v:236.50},
+ {id:5,f:'Atacadão Embalagens',d:'NF 88123',cat:'Embalagens',c:'Cartão de crédito',venc:d(11,3),par:'1/3',o:'',v:1280.00},
+ {id:6,f:'Mercado Livre',d:'Peças balança',cat:'Manutenção',c:'Cartão de crédito',venc:d(11,3),par:'2/4',o:'',v:690.00},
+ {id:7,f:'Auto Peças Silva',d:'Pneu Fiorino',cat:'Veículos',c:'Cartão de crédito',venc:d(11,3),par:'1/1',o:'',v:1815.95},
+ {id:8,f:'Uber',d:'Corridas 31/10',cat:'Viagens',c:'Cartão de crédito',venc:d(11,3),par:'1/1',o:'',v:156.40},
+ {id:9,f:'Padaria do Zé',d:'Lanche equipe',cat:'Alimentação',c:'Dinheiro',venc:d(11,2),par:'1/1',o:'',v:48.00},
+ {id:10,f:'Telefônica',d:'Fatura outubro',cat:'Telefonia',c:'PIX',venc:d(11,5),par:'1/1',o:'dda',v:389.90},
+ {id:11,f:'Posto Ipiranga',d:'Combustível',cat:'Combustível',c:'Cartão de crédito',venc:d(10,28),par:'1/1',o:'',v:305.10},
+ {id:12,f:'Kalunga',d:'Toner',cat:'Escritório',c:'Cartão de crédito',venc:d(11,18),par:'1/1',o:'',v:540.00}
+];
+const TOTAL=4536.71;
+const PRESETS=[['hoje','Hoje'],['semana','Esta semana'],['7d','Últimos 7 dias'],['30d','Últimos 30 dias'],['mes','Este mês'],['ano','Este ano'],['todo','Todo o período']];
+const fmtD=x=>x.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
+function faixa(p){
+ const t=HOJE;
+ if(p==='hoje')return[t,t];
+ if(p==='semana')return[d(11,2),d(11,8)];
+ if(p==='7d')return[d(10,28),t];
+ if(p==='30d')return[d(10,5),t];
+ if(p==='mes')return[d(11,1),d(11,30)];
+ if(p==='ano')return[d(1,1),d(12,31)];
+ return[null,null];
+}
+const F={preset:'mes',conds:new Set(['Cartão de crédito']),forn:'',val:'',tol:10};
+let sel=new Set([3,4,5,6]),cena=1,pop=null;
+const R=n=>'R$ '+n.toLocaleString('pt-BR',{minimumFractionDigits:2});
+function ativos(){return cena===3?itens.filter(i=>![3,4,5,6].includes(i.id)):itens}
+function filtrados(){
+ const[a,b]=faixa(F.preset);
+ const vv=parseFloat((F.val||'').replace(/\./g,'').replace(',','.'));
+ return ativos().filter(i=>(F.conds.size===0||F.conds.has(i.c))
+  &&(!a||(i.venc>=a&&i.venc<=b))
+  &&(!F.forn||(i.f+' '+i.d+' '+i.cat).toLowerCase().includes(F.forn.toLowerCase()))
+  &&(!vv||Math.abs(i.v-vv)<=vv*F.tol/100));
+}
+const notas={
+ 1:'<b>v3 — usa os padrões do sistema:</b> período no <b>mesmo seletor em pílula</b> das outras telas (com setas ‹ ›), condições num <b>menu de marcar várias</b>, tudo <b>numa linha só</b>. O modal agora ocupa a largura da tela e mostra mais dados de cada título (categoria, parcela, origem). No celular vira lista de cards.',
+ 2:'<b>Conciliar parcial:</b> se o marcado é menor que o extrato, o botão vira "Conciliar parcial". A linha NÃO some: fica <b>Parcial</b> com o quanto falta e entra no filtro/card "Parciais".',
+ 3:'<b>Continuar depois:</b> ao reabrir a linha parcial, o que já foi conciliado aparece travado (com "Desfazer") e só os novos entram na conta. Quando "Falta" zera, vira Conciliado.'
+};
+function legenda(){
+ const L={
+ 1:['Resumo e botão no TOPO: Extrato, Já conciliado, Marcado e Falta, com barra de progresso. Botão muda: "Conciliar" (fecha) / "Conciliar parcial" (falta) / bloqueado (passou).',
+    'Período: o mesmo FiltroPeriodo do sistema (Hoje, Esta semana, Últimos 7/30 dias, Este mês, Este ano, Todo o período, Personalizado De/Até dentro do menu). Setas pulam o período.',
+    'Condição de pagamento: pílula com menu de marcar várias (Boleto, Cartão, Dinheiro, PIX…). Mostra "Cartão +1" quando há mais de uma.',
+    'Fornecedor/descrição/categoria e Valor aproximado (exato, ±5%, ±10%, ±25%) — tudo na mesma linha. A última escolha fica salva por usuário.',
+    'Tabela larga: vencimento, fornecedor + NF, categoria, condição, parcela, origem (importada/DDA) e valor. "Marcar todos os filtrados" mantém a seleção ao trocar filtro.'],
+ 2:['Linha do extrato com selo amarelo "Parcial", quanto já foi conciliado e quanto falta. O botão "Continuar" reabre o modal.',
+    'Card novo "Parciais" no topo da tela e opção no filtro de status, para achar o que ficou faltando.'],
+ 3:['Itens já conciliados nesta linha: travados, com "Desfazer".','O resumo parte do que já foi conciliado; só soma os novos marcados.','Quando falta = R$ 0,00, a linha vira Conciliado sozinha.']
+ }[cena];
+ document.getElementById('leg').innerHTML='<b style="font-size:12px;letter-spacing:.08em">LEGENDA</b>'+L.map((t,i)=>`<div><span class="pin">${i+1}</span><span>${t}</span></div>`).join('');
+}
+document.getElementById('regras').innerHTML=`<b class="h">REGRAS DO SISTEMA APLICADAS NESTA TELA</b><br>
+✓ Período = <code>FiltroPeriodo</code> (pílula única, setas, presets, personalizado dentro do menu) · ✓ Condições = <code>MultiSelect</code> · ✓ Valor aproximado = <code>SelectBusca</code> · ✓ Filtros lembrados por usuário (<code>useFiltrosSalvos</code>; busca por texto e valor não são salvos) · ✓ Botões e filtros em pílula, tema Starbucks · ✓ Badges com as cores de status do sistema · ✓ Tabela no desktop, <b>cards no celular</b>, toques de 44px · ✓ Modal grande (<code>rounded-2xl</code>) usando a largura útil · ✓ Barra de ações no TOPO (não some atrás do Clippy) · ✓ Gravação sem <code>$transaction</code> lenta: timeout 20s, log fora da transação · ✓ Manual da aba + Clippy atualizados · ✓ Página de novidade para o grupo do WhatsApp.<br><br>
+<b class="h">MELHORIAS QUE EU JÁ APLIQUEI POR CONTA PRÓPRIA</b><br>
+• Sugestão automática: se um conjunto de títulos fecha exatamente o valor do extrato, aparece "Sugerido: 7 títulos fecham R$ 4.536,71 — Marcar".<br>
+• Aviso antes de conciliar parcial mostrando o que vai ficar faltando; trava (com mensagem) se passar do valor.<br>
+• "Desfazer" por título na linha parcial, com registro de quem fez e quando (histórico/auditoria).<br>
+• Seleção mantida mesmo trocando o filtro; contador "N marcados fora do filtro".`;
+
+function pop_per(){
+ return `<div class="menu" onclick="event.stopPropagation()">${PRESETS.map(([k,n])=>`<div class="${F.preset===k?'on':''}" onclick="F.preset='${k}';pop=null;render()">${n}</div>`).join('')}<hr><div onclick="pop=null;render()">Período personalizado…</div></div>`;
+}
+function pop_cond(){
+ return `<div class="menu" onclick="event.stopPropagation()">${COND.map(c=>`<div onclick="togCond('${c}')"><input type="checkbox" ${F.conds.has(c)?'checked':''}>${c}</div>`).join('')}<hr><div onclick="F.conds=new Set();render()">Limpar (todas)</div></div>`;
+}
+function condTxt(){const a=[...F.conds];return a.length===0?'Todas':a.length===1?a[0]:a[0].replace(' de crédito','')+' +'+(a.length-1)}
+function perTxt(){const[a,b]=faixa(F.preset);const n=PRESETS.find(p=>p[0]===F.preset)[1];return a?`<b>${n}</b> <span style="color:#666">${fmtD(a)} – ${fmtD(b)}</span>`:`<b>${n}</b>`}
+function linhasHtml(vis){
+ if(!vis.length)return '<div style="padding:26px;text-align:center;color:#666;font-size:13px">Nenhum título com esses filtros.</div>';
+ const m=document.getElementById('frame')&&document.getElementById('frame').classList.contains('m');
+ if(m)return vis.map(i=>`<div class="card ${sel.has(i.id)?'sel':''}" onclick="tog(${i.id})"><input type="checkbox" ${sel.has(i.id)?'checked':''}><div class="t"><b>${i.f}</b><span>${i.d} · ${i.cat}<br>vence ${fmtD(i.venc)} · parcela ${i.par}</span><br><span class="badge c-${ck(i.c)}">${i.c}</span></div><div class="v">${R(i.v)}</div></div>`).join('');
+ return `<table><thead><tr><th style="width:36px"></th><th>Vencimento</th><th>Fornecedor / descrição</th><th>Categoria</th><th>Condição</th><th>Parcela</th><th>Origem</th><th class="v">Valor</th></tr></thead><tbody>${vis.map(i=>`<tr class="row ${sel.has(i.id)?'sel':''}" onclick="tog(${i.id})"><td><input type="checkbox" ${sel.has(i.id)?'checked':''}></td><td>${i.venc.toLocaleDateString('pt-BR')}</td><td><b>${i.f}</b><small>${i.d}</small></td><td>${i.cat}</td><td><span class="badge c-${ck(i.c)}">${i.c}</span></td><td>${i.par}</td><td>${i.o==='imp'?'<span class="badge o-imp">Importada (antiga)</span>':i.o==='dda'?'<span class="badge o-dda">DDA</span>':'—'}</td><td class="v">${R(i.v)}</td></tr>`).join('')}</tbody></table>`;
+}
+function modal(){
+ const cont=cena===3;
+ const ja=cont?[3,4,5,6].reduce((s,i)=>s+itens.find(x=>x.id===i).v,0):0;
+ const novos=[...sel].filter(i=>!cont||![3,4,5,6].includes(i)).reduce((s,i)=>s+itens.find(x=>x.id===i).v,0);
+ const aplicado=ja+novos,falta=TOTAL-aplicado,pct=Math.min(100,aplicado/TOTAL*100);
+ const estoura=falta<-0.005,fecha=Math.abs(falta)<0.005;
+ const cls=estoura?'estoura':fecha?'ok':'falta';
+ const btn=estoura?'Passou do valor':fecha?'✓ Conciliar':'Conciliar parcial';
+ const vis=filtrados();
+ const fora=[...sel].filter(i=>!vis.find(v=>v.id===i)&&(!cont||![3,4,5,6].includes(i))).length;
+ const bloq=cont?[3,4,5,6].map(id=>itens.find(x=>x.id===id)):[];
+ return `
+ <div class="hd"><div><small>03/11/2026 · − ${R(TOTAL)} · Fatura do cartão de crédito · conta Cartão Itaú</small><h2>O que é este lançamento no sistema?</h2></div><span class="x">✕</span></div>
+ <div class="resumo"><span class="pin pinabs" style="right:50px;margin-top:-4px">1</span>
+  <div class="rl"><span>Extrato<b>${R(TOTAL)}</b></span>${cont?`<span>Já conciliado<b>${R(ja)}</b></span>`:''}<span>${cont?'Novos marcados':'Marcado'}<b>${R(novos)}</b></span><span class="${cls}">${estoura?'Passou':fecha?'Fechou':'Falta'}<b>${R(Math.abs(falta))}</b></span>${!fecha&&!estoura?'<span class="lnk" style="margin-left:auto" onclick="alert(\'Mock: marca os títulos que fecham exatamente o valor\')">💡 Sugerido: 7 títulos fecham o valor — Marcar</span>':''}</div>
+  <div class="bar"><i style="width:${pct}%"></i></div>
+  <div class="acoes"><button class="btn pri" ${estoura||novos===0?'disabled':''} onclick="alert('Mock: ${fecha?'concilia e fecha a linha':'concilia parcial — a linha fica Parcial, falta '+R(Math.abs(falta))}')">${btn}</button><button class="btn sec">Cancelar</button>
+  <span class="hint">${fecha?'Valor fechado.':estoura?'Desmarque algum item.':'O restante continua pendente nesta linha.'}${fora?` · ${fora} marcado(s) fora do filtro`:''}</span></div>
+ </div>
+ <div class="filtros"><span class="pin pinabs" style="right:10px;top:-10px">2</span>
+  <div class="per"><span class="a">‹</span><span class="mid" onclick="event.stopPropagation();pop=pop==='per'?null:'per';render()">${perTxt()} ▾</span><span class="a">›</span>${pop==='per'?pop_per():''}</div>
+  <div style="position:relative"><span class="pill ${F.conds.size?'on':''}" onclick="event.stopPropagation();pop=pop==='cond'?null:'cond';render()">Condição: <b>${condTxt()}</b> ▾</span>${pop==='cond'?pop_cond():''}</div>
+  <input class="in busca" placeholder="🔍 Fornecedor, descrição ou categoria" value="${F.forn}" oninput="F.forn=this.value;listaUp()">
+  <div class="valor"><input placeholder="Valor ≈ 412,30" value="${F.val}" oninput="F.val=this.value;listaUp()"><select onchange="F.tol=+this.value;listaUp()">${[[0,'exato'],[5,'±5%'],[10,'±10%'],[25,'±25%']].map(([v,n])=>`<option value="${v}" ${F.tol==v?'selected':''}>${n}</option>`).join('')}</select></div>
+  <span class="lnk" onclick="F.preset='mes';F.conds=new Set();F.forn='';F.val='';render()">Limpar</span>
+ </div>
+ <div class="selall"><span id="cnt">${vis.length} títulos · ${R(vis.reduce((s,i)=>s+i.v,0))}</span><span><span class="lnk" onclick="marcarTodos()">Marcar todos os filtrados</span> &nbsp; <span class="lnk" onclick="sel=new Set(cena===3?[3,4,5,6]:[]);render()">Desmarcar tudo</span></span></div>
+ <div class="lista" id="lista">${bloq.map(i=>`<div class="card" style="opacity:.65;cursor:default"><input type="checkbox" checked disabled><div class="t"><b>${i.f} <span class="badge b-c">Já conciliado</span></b><span>${i.d} · ${i.c}</span></div><div class="v">${R(i.v)}</div><span class="lnk" style="color:#b91c1c">Desfazer</span></div>`).join('')}${linhasHtml(vis)}</div>
+ <div class="rod">Não está no sistema? <a>Cadastrar despesa</a> · <a>Transferência entre contas</a> · <a>Ignorar (tarifa…)</a></div>`;
+}
+function extrato(){
+ const ja=2618.80;
+ return `<div class="hd"><div><small>Conta: Cartão Itaú · extrato</small><h2>Conciliação bancária</h2></div></div>
+ <div class="kpis"><div class="kpi">Pendentes<b>13</b></div><div class="kpi am">Parciais<b>1</b><span style="font-weight:600;text-transform:none;letter-spacing:0">${R(TOTAL-ja)} a completar</span></div><div class="kpi">Conciliados<b>8</b></div><div class="kpi">Ignorados<b>0</b></div></div>
+ <div class="ln" style="background:#fffbeb"><span>03/11/2026</span><div><b>Fatura cartão — vencimento 03/11</b><div class="mini">Já conciliado <b>${R(ja)}</b> (4 títulos) · falta <b style="color:#b45309">${R(TOTAL-ja)}</b></div></div><div style="text-align:right"><b>− ${R(TOTAL)}</b><br><span class="badge b-p">Parcial</span> <button class="btn sec" style="padding:6px 14px;min-height:36px;margin-top:4px">Continuar</button></div></div>
+ <div class="ln"><span>03/11/2026</span><div><b>Taxa de boleto — fatura 943828780</b><div class="mini">doc pay_txihsjv2sy9uet58</div></div><div style="text-align:right"><b>− R$ 1,79</b><br><span class="badge b-n">Pendente</span></div></div>
+ <div class="ln"><span>02/11/2026</span><div><b>Pagamento Atacadão</b></div><div style="text-align:right"><b>− ${R(980)}</b><br><span class="badge b-c">Conciliado</span></div></div>
+ <div class="rod"><span class="pin">2</span> Novo: card "Parciais" e opção "Parciais" no filtro de status.</div>`;
+}
+function render(){
+ document.getElementById('nota').innerHTML=notas[cena];legenda();
+ document.getElementById('frame').innerHTML=cena===2?extrato():modal();
+}
+function listaUp(){
+ const el=document.getElementById('lista');if(!el)return;render2();
+}
+function render2(){ // atualiza só lista e contadores, sem perder o foco dos campos
+ const vis=filtrados();const el=document.getElementById('lista');
+ const bloq=el.querySelectorAll('.card[style]');const keep=[...bloq].map(x=>x.outerHTML).join('');
+ el.innerHTML=keep+linhasHtml(vis);
+ document.getElementById('cnt').textContent=vis.length+' títulos · '+R(vis.reduce((s,i)=>s+i.v,0));
+}
+function tog(id){sel.has(id)?sel.delete(id):sel.add(id);const y=document.getElementById('lista').scrollTop;render();document.getElementById('lista').scrollTop=y}
+function togCond(c){F.conds.has(c)?F.conds.delete(c):F.conds.add(c);render()}
+function marcarTodos(){filtrados().forEach(i=>sel.add(i.id));render()}
+document.addEventListener('click',()=>{if(pop){pop=null;render()}});
+document.getElementById('tabs').onclick=e=>{const b=e.target.closest('button');if(!b)return;
+ document.querySelectorAll('#tabs button').forEach(x=>x.classList.toggle('on',x===b));cena=+b.dataset.s;pop=null;
+ if(cena===3){sel=new Set([3,4,5,6,1,2,7]);F.conds=new Set(['Cartão de crédito','Boleto'])}
+ else{sel=new Set([3,4,5,6]);F.conds=new Set(['Cartão de crédito'])}
+ render()};
+document.getElementById('dev').onclick=e=>{const b=e.target.closest('button');if(!b)return;
+ document.querySelectorAll('#dev button').forEach(x=>x.classList.toggle('on',x===b));
+ document.getElementById('frame').classList.toggle('m',b.dataset.d==='m');render()};
+render();
+</script>
+</body>
+</html>

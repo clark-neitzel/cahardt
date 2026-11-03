@@ -911,7 +911,7 @@ async function dashboardFinanceiro() {
         agingRecebiveis(),
         margemProdutos(`${mes}-01`, hoje),
         dre(mes, mes),
-        prisma.extratoLancamento.count({ where: { status: 'PENDENTE' } })
+        prisma.extratoLancamento.count({ where: { status: { in: ['PENDENTE', 'PARCIAL'] } } }) // PARCIAL ainda falta conciliar
     ]);
 
     const pioresMargens = (margem.linhas || [])
