@@ -1770,7 +1770,10 @@ const ListaPedidos = () => {
                                         {podeAprovar && (
                                             <button onClick={() => handleAprovarEspecial(selectedPedido.id)} disabled={travadoParaMim || aprovando === selectedPedido.id} className={`px-4 py-2 rounded font-bold text-sm shadow-sm ${classeBtnInad('bg-purple-600 text-white')}`}>{rotuloInad('Aprovar agora', 'aprovar')}</button>
                                         )}
-                                        {podeAprovar && (
+                                        {podeAprovar && selectedPedido.podeConverterEspecial === false && (
+                                            <span className="text-xs text-gray-500 self-center">Pedido interno — não converte em nota fiscal</span>
+                                        )}
+                                        {podeAprovar && selectedPedido.podeConverterEspecial !== false && (
                                             <button onClick={() => handleConverterEspecial(selectedPedido)} disabled={convertendo === selectedPedido.id || travadoParaMim}
                                                 className={`px-4 py-2 rounded font-bold text-sm shadow-sm flex items-center gap-1 disabled:opacity-50 ${classeBtnInad('bg-primary hover:bg-primaryDark text-white')}`}>
                                                 <Zap className="h-4 w-4" /> {convertendo === selectedPedido.id ? 'Convertendo…' : rotuloInad('Converter em pedido c/ NF', 'converter')}
@@ -1793,7 +1796,10 @@ const ListaPedidos = () => {
                                                 <RotateCcw className="h-4 w-4" /> {revertendo === selectedPedido.id ? 'Revertendo...' : 'Reverter para Aberto'}
                                             </button>
                                         )}
-                                        {podeAprovar && (
+                                        {podeAprovar && selectedPedido.podeConverterEspecial === false && (
+                                            <span className="text-xs text-gray-500 self-center">Pedido interno — não converte em nota fiscal</span>
+                                        )}
+                                        {podeAprovar && selectedPedido.podeConverterEspecial !== false && (
                                             <button onClick={() => handleConverterEspecial(selectedPedido)} disabled={convertendo === selectedPedido.id || travadoParaMim}
                                                 className={`px-4 py-2 rounded font-bold text-sm shadow-sm flex items-center gap-1 disabled:opacity-50 ${classeBtnInad('bg-primary hover:bg-primaryDark text-white')}`}>
                                                 <Zap className="h-4 w-4" /> {convertendo === selectedPedido.id ? 'Convertendo…' : rotuloInad('Converter em pedido c/ NF', 'converter')}
@@ -1815,7 +1821,10 @@ const ListaPedidos = () => {
                                                 <CheckCircle className="h-4 w-4" /> {rotuloInad('Faturar', 'faturar')}
                                             </button>
                                         )}
-                                        {podeAprovar && (
+                                        {podeAprovar && selectedPedido.podeConverterEspecial === false && (
+                                            <span className="text-xs text-gray-500 self-center">Pedido interno — não converte em nota fiscal</span>
+                                        )}
+                                        {podeAprovar && selectedPedido.podeConverterEspecial !== false && (
                                             <button onClick={() => handleConverterEspecial(selectedPedido)} disabled={convertendo === selectedPedido.id || travadoParaMim}
                                                 className={`px-4 py-2 rounded font-bold text-sm shadow-sm flex items-center gap-1 disabled:opacity-50 ${classeBtnInad('bg-primary hover:bg-primaryDark text-white')}`}>
                                                 <Zap className="h-4 w-4" /> {convertendo === selectedPedido.id ? 'Convertendo…' : rotuloInad('Converter em pedido c/ NF', 'converter')}

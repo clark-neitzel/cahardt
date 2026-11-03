@@ -584,6 +584,23 @@ const pedidoService = {
         // Campo ausente = não mexe na escolha que já está gravada.
         if (nfBonificacao === true && clienteId) await exigirClienteAptoParaNota(clienteId);
 
+        // TRAVA: desmarcar "especial" numa edição É uma conversão. Não pode escapar da regra da condição
+        // que não permite pedido comum (a do pedido ou a nova, se estiver sendo trocada). Leitura, fora da transação.
+        if (especial !== undefined && !especial) {
+            const antes = await prisma.pedido.findUnique({ where: { id }, select: { especial: true, nomeCondicaoPagamento: true } });
+            if (antes?.especial) {
+                const conv = require('./pedidoConversaoService');
+                const nomes = [...new Set([antes.nomeCondicaoPagamento, nomeCondicaoPagamento].filter(Boolean))];
+                for (const n of nomes) {
+                    if (await conv.condicaoBloqueiaConversao(n)) {
+                        const err = new Error(conv.MSG_CONDICAO_BLOQUEADA(n));
+                        err.statusHttp = 409;
+                        throw err;
+                    }
+                }
+            }
+        }
+
         return await prisma.$transaction(async (tx) => {
             const pedidoAntigo = await tx.pedido.findUnique({
                 where: { id },

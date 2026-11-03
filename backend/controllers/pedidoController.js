@@ -158,6 +158,20 @@ const pedidoController = {
                 console.error('Falha ao anexar inadimplência na listagem (segue sem):', e.message);
             }
 
+            // Botão "Converter" do especial: false quando a condição não permite pedido comum (só ADICIONA campo).
+            try {
+                const lista = Array.isArray(pedidos) ? pedidos : (pedidos?.items || pedidos?.pedidos || []);
+                if (lista.some(p => p.especial)) {
+                    const conv = require('../services/pedidoConversaoService');
+                    const bloqueados = await conv.carregarNomesCondicaoSemPedidoComum();
+                    for (const p of lista) {
+                        p.podeConverterEspecial = !(p.especial && await conv.condicaoBloqueiaConversao(p.nomeCondicaoPagamento, bloqueados));
+                    }
+                }
+            } catch (e) {
+                console.error('Falha ao calcular podeConverterEspecial na listagem (segue sem):', e.message);
+            }
+
             res.json(pedidos);
         } catch (error) {
             console.error('Erro ao listar pedidos:', error);
@@ -628,7 +642,7 @@ const pedidoController = {
             res.json(pedidoAtualizado);
         } catch (error) {
             console.error('Erro ao atualizar pedido:', error);
-            res.status(400).json({ error: error.message });
+            res.status(error.statusHttp || 400).json({ error: error.message });
         }
     },
 
@@ -639,6 +653,12 @@ const pedidoController = {
             if (!pedido) {
                 return res.status(404).json({ error: 'Pedido não encontrado' });
             }
+            try {
+                if (pedido.especial) {
+                    const conv = require('../services/pedidoConversaoService');
+                    pedido.podeConverterEspecial = !(await conv.condicaoBloqueiaConversao(pedido.nomeCondicaoPagamento));
+                }
+            } catch (e) { console.error('Falha ao calcular podeConverterEspecial (segue sem):', e.message); }
             res.json(pedido);
         } catch (error) {
             console.error('Erro ao detalhar pedido:', error);
@@ -886,6 +906,7 @@ const pedidoController = {
     // PIX — é o MESMO registro que muda de aba (nada duplica; entrega/carga ficam).
     converterEspecial: async (req, res) => {
         try {
+            const pedidoConversaoService = require('../services/pedidoConversaoService');
             const permissoes = req.user?.permissoes || {};
             if (!permissoes.Pode_Aprovar_Especial && !permissoes.admin) {
                 return res.status(403).json({ error: 'Você não tem permissão para converter pedidos especiais.' });
@@ -893,7 +914,11 @@ const pedidoController = {
 
             // Trava de inadimplência: só a conversão HUMANA (a automática por PIX não passa por aqui).
             // Ignora a conta do próprio especial (já faturado, a parcela nasce vencida).
-            const alvo = await prisma.pedido.findUnique({ where: { id: req.params.id }, select: { id: true, clienteId: true, observacoes: true, especial: true } });
+            const alvo = await prisma.pedido.findUnique({ where: { id: req.params.id }, select: { id: true, clienteId: true, observacoes: true, especial: true, nomeCondicaoPagamento: true } });
+            // Condição que não permite pedido comum: recusa ANTES de qualquer pergunta de inadimplência.
+            if (alvo?.especial && await pedidoConversaoService.condicaoBloqueiaConversao(alvo.nomeCondicaoPagamento)) {
+                return res.status(409).json({ error: pedidoConversaoService.MSG_CONDICAO_BLOQUEADA(alvo.nomeCondicaoPagamento) });
+            }
             let obsResp = '';
             if (alvo?.especial) {
                 const trava = await travaInadimplenciaAprovacao(req, res, alvo);
@@ -901,7 +926,6 @@ const pedidoController = {
                 obsResp = trava.obs;
             }
 
-            const pedidoConversaoService = require('../services/pedidoConversaoService');
             const resultado = await pedidoConversaoService.converterManual(req.params.id, req.user?.id || null);
 
             // Quem assumiu a responsabilidade fica registrado nas observações (fora da conversão).
@@ -936,7 +960,7 @@ const pedidoController = {
             });
         } catch (error) {
             console.error('Erro ao converter pedido especial:', error);
-            res.status(400).json({ error: error.message || 'Erro ao converter pedido especial.' });
+            res.status(error.statusHttp || 400).json({ error: error.message || 'Erro ao converter pedido especial.' });
         }
     },
 

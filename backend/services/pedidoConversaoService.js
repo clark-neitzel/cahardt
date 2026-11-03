@@ -20,10 +20,67 @@ const JA_CONVERTIDO = Symbol('pedido-ja-convertido');
 // Chave do advisory lock que serializa a OBTENÇÃO do número local (max+1; Pedido.numero não é unique).
 const LOCK_NUMERO_PEDIDO = 74200771;
 
+
+// ── TRAVA: condição que NÃO permite pedido comum (TabelaPreco.permitePedido = false) ──
+// Regra do dono (11/2026): pedido ESPECIAL numa condição assim (ex.: "À vista - Funcionário") NUNCA
+// vira pedido normal/NF — por nenhum caminho (botão ou automático). O pedido casa com a condição pelo
+// NOME (Pedido.nomeCondicaoPagamento = TabelaPreco.nomeCondicao), igual validarCondicaoLiberada.
+// Condição não encontrada => NÃO bloqueia (comportamento anterior).
+// Se há várias condições com o mesmo nome, só bloqueia quando NENHUMA delas permite pedido comum.
+// Normaliza nome para comparar: sem espaços sobrando, sem caixa, sem acento.
+function _normNome(n) {
+    return String(n || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+// NÃO filtra `ativo`: condição desativada continua bloqueando (o pedido antigo ainda carrega o nome dela).
+async function carregarNomesCondicaoSemPedidoComum() {
+    const rows = await prisma.tabelaPreco.findMany({
+        select: { nomeCondicao: true, permitePedido: true }
+    });
+    const permite = new Map(); // nome normalizado => algum permite?
+    for (const r of rows) {
+        const k = _normNome(r.nomeCondicao);
+        if (!k) continue;
+        permite.set(k, (permite.get(k) || false) || r.permitePedido !== false);
+    }
+    const bloqueados = new Set();
+    for (const [nome, ok] of permite) if (!ok) bloqueados.add(nome);
+    return bloqueados;
+}
+
+// Set de nomes (normalizados) bloqueados. FAIL-CLOSED: se a consulta falhar, BLOQUEIA (fiscal: na dúvida, não converte).
+async function condicaoBloqueiaConversao(nomeCondicao, bloqueados = null) {
+    if (!nomeCondicao) return false;
+    try {
+        const set = bloqueados || await carregarNomesCondicaoSemPedidoComum();
+        return set.has(_normNome(nomeCondicao));
+    } catch (e) {
+        console.error('[Conversão] Falha ao checar condição — BLOQUEANDO por segurança:', e.message);
+        return true;
+    }
+}
+
+const MSG_CONDICAO_BLOQUEADA = (nome) =>
+    `Este pedido usa a condição "${nome}", que não permite pedido comum/nota fiscal. Ele não pode ser convertido.`;
+
+// Log sem spam: no máximo uma linha por pedido a cada 6 horas (a varredura roda de tempos em tempos).
+const _logBloqueio = new Map();
+function _logarBloqueio(pedido) {
+    const agora = Date.now();
+    const ultimo = _logBloqueio.get(pedido.id) || 0;
+    if (agora - ultimo < 6 * 3600 * 1000) return;
+    _logBloqueio.set(pedido.id, agora);
+    console.log(`[Conversão] pedido #${pedido.numero ?? '?'} não convertido: condição não permite pedido comum`);
+}
+
 // Núcleo compartilhado: executa a conversão de um pedido especial já carregado.
 // Retorna { numeroAntigo, numeroNovo } ou { jaConvertido: true } (idempotência real: só converte
 // quem AINDA é especial, decidido no UPDATE). LANÇA erro se algo falhar (quem chama decide tratar).
-async function executarConversao(pedido, { valorPago = null, criadoPorId = null, comoConverteu = 'PIX recebido' } = {}) {
+async function executarConversao(pedido, { valorPago = null, criadoPorId = null, comoConverteu = 'PIX recebido', bloqueados = null } = {}) {
+    // TRAVA (vale para TODOS os caminhos, antes de qualquer mudança ou chamada de rede).
+    if (await condicaoBloqueiaConversao(pedido.nomeCondicaoPagamento, bloqueados)) {
+        return { bloqueado: true, motivo: MSG_CONDICAO_BLOQUEADA(pedido.nomeCondicaoPagamento) };
+    }
     const { CA_SOMENTE_LEITURA } = require('../config/contaAzulModo');
     const numeroAntigo = pedido.numero;
     // Modo CA (não somente-leitura): número vem da API do CA — rede, então fica FORA da transação.
@@ -172,12 +229,16 @@ async function _registrarAuditoriaConversao(pedido, r, { usuarioId, usuarioNome,
 }
 
 const pedidoConversaoService = {
+    // Para o controller/listagem: Set com nomes de condição que não permitem pedido comum.
+    carregarNomesCondicaoSemPedidoComum,
+    condicaoBloqueiaConversao,
+    MSG_CONDICAO_BLOQUEADA,
     /**
      * Converte um pedido pelo id, se (e só se) ele for especial e não for bonificação.
      * NUNCA lança. Idempotente (ver executarConversao).
      * @returns {{convertido:boolean, numeroAntigo?, numeroNovo?, erro?}}
      */
-    converterPorPedidoId: async (pedidoId, { valorPago = null, criadoPorId = null, criadoPorNome = null, comoConverteu = 'PIX recebido', auditar = false } = {}) => {
+    converterPorPedidoId: async (pedidoId, { valorPago = null, criadoPorId = null, criadoPorNome = null, comoConverteu = 'PIX recebido', auditar = false, bloqueados = null } = {}) => {
         try {
             if (!pedidoId) return { convertido: false };
             const pedido = await prisma.pedido.findUnique({
@@ -195,8 +256,9 @@ const pedidoConversaoService = {
                 return { convertido: false };
             }
 
-            const r = await executarConversao(pedido, { valorPago, criadoPorId, comoConverteu });
+            const r = await executarConversao(pedido, { valorPago, criadoPorId, comoConverteu, bloqueados });
             if (r.jaConvertido) return { convertido: false };
+            if (r.bloqueado) { _logarBloqueio(pedido); return { convertido: false, bloqueado: true }; }
             if (auditar) await _registrarAuditoriaConversao(pedido, r, { usuarioId: criadoPorId, usuarioNome: criadoPorNome, comoConverteu });
             return { convertido: true, numeroAntigo: r.numeroAntigo, numeroNovo: r.numeroNovo };
         } catch (e) {
@@ -224,7 +286,7 @@ const pedidoConversaoService = {
      * se o pedido é especial, não foi devolvido e há linha de recebimento próprio (não de
      * responsável) com valor > 0 que seja Pix (ou ligada a cobrança Asaas — retry). Nunca lança.
      */
-    converterSePixNaEntrega: async (pedidoId, { criadoPorId = null, criadoPorNome = null, comoConverteu = 'Pix na entrega' } = {}) => {
+    converterSePixNaEntrega: async (pedidoId, { criadoPorId = null, criadoPorNome = null, comoConverteu = 'Pix na entrega', bloqueados = null } = {}) => {
         try {
             const { classificarFormaApontada } = require('./inadimplenciaService');
             const { ehRecebimentoProprio } = require('./recebimentoEntregaService');
@@ -248,7 +310,7 @@ const pedidoConversaoService = {
             if (linhasPix.length === 0) return { convertido: false };
             const valorPago = Math.round(linhasPix.reduce((s, l) => s + Number(l.valor), 0) * 100) / 100;
             return await pedidoConversaoService.converterPorPedidoId(pedidoId, {
-                valorPago, criadoPorId, criadoPorNome, comoConverteu, auditar: true
+                valorPago, criadoPorId, criadoPorNome, comoConverteu, auditar: true, bloqueados
             });
         } catch (e) {
             console.error('[Conversão] Erro no gatilho Pix da entrega:', e.message);
@@ -260,7 +322,7 @@ const pedidoConversaoService = {
      * GATILHO B — baixas amarradas a crédito do extrato. Converte cada pedido especial dono dessas
      * baixas. Nunca lança. @returns {Array<{pedidoId, numeroAntigo, numeroNovo}>} só os convertidos
      */
-    converterEspeciaisDasBaixas: async (pagamentoIds, { userId = null, userNome = null, comoConverteu = 'crédito confirmado no extrato do banco' } = {}) => {
+    converterEspeciaisDasBaixas: async (pagamentoIds, { userId = null, userNome = null, comoConverteu = 'crédito confirmado no extrato do banco', bloqueados = null } = {}) => {
         const convertidos = [];
         try {
             const ids = [...new Set((pagamentoIds || []).filter(Boolean))];
@@ -280,7 +342,7 @@ const pedidoConversaoService = {
             }
             for (const [pedidoId, valor] of porPedido) {
                 const r = await pedidoConversaoService.converterPorPedidoId(pedidoId, {
-                    valorPago: Math.round(valor * 100) / 100, criadoPorId: userId, criadoPorNome: userNome, comoConverteu, auditar: true
+                    valorPago: Math.round(valor * 100) / 100, criadoPorId: userId, criadoPorNome: userNome, comoConverteu, auditar: true, bloqueados
                 });
                 if (r.convertido) convertidos.push({ pedidoId, numeroAntigo: r.numeroAntigo, numeroNovo: r.numeroNovo });
             }
@@ -298,6 +360,7 @@ const pedidoConversaoService = {
         const desde = new Date(Math.max(CORTE_VARREDURA.getTime(), Date.now() - JANELA_VARREDURA_DIAS * 24 * 3600 * 1000));
         let n = 0;
         try {
+            const bloqueados = await carregarNomesCondicaoSemPedidoComum(); // uma vez por varredura
             // (a) Pix comum na entrega
             const cand = await prisma.pedido.findMany({
                 where: {
@@ -309,7 +372,7 @@ const pedidoConversaoService = {
                 select: { id: true }, take: 200
             });
             for (const c of cand) {
-                const r = await pedidoConversaoService.converterSePixNaEntrega(c.id, { comoConverteu: 'Pix na entrega (varredura de segurança)' });
+                const r = await pedidoConversaoService.converterSePixNaEntrega(c.id, { comoConverteu: 'Pix na entrega (varredura de segurança)', bloqueados });
                 if (r.convertido) { n++; console.log(`[Conversão/varredura] Pix de entrega → pedido #${r.numeroNovo}`); }
             }
             // (b) crédito de extrato (banco de verdade, nunca a Caixinha) casado a baixa
@@ -333,7 +396,7 @@ const pedidoConversaoService = {
                     })
                     : [];
                 const pagIds = [...lancs.map(l => l.pagamentoParcelaId), ...doGrupo.map(i => i.pagamentoParcelaId)].filter(Boolean);
-                const conv = await pedidoConversaoService.converterEspeciaisDasBaixas(pagIds, { comoConverteu: 'crédito confirmado no extrato do banco (varredura de segurança)' });
+                const conv = await pedidoConversaoService.converterEspeciaisDasBaixas(pagIds, { comoConverteu: 'crédito confirmado no extrato do banco (varredura de segurança)', bloqueados });
                 for (const c of conv) { n++; console.log(`[Conversão/varredura] conciliação → pedido #${c.numeroNovo}`); }
             }
         } catch (e) {
@@ -372,6 +435,7 @@ const pedidoConversaoService = {
             criadoPorId: usuarioId,
             comoConverteu: 'conversão manual'
         });
+        if (r.bloqueado) { const err = new Error(r.motivo); err.statusHttp = 409; throw err; }
         if (r.jaConvertido) throw new Error('Este pedido não é especial (talvez já tenha sido convertido).');
         return { convertido: true, numeroAntigo: r.numeroAntigo, numeroNovo: r.numeroNovo };
     }
