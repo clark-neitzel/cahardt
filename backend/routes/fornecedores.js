@@ -50,6 +50,40 @@ const checkEscrita = async (req, res, next) => {
 const { normalizarDoc, validarDoc } = require('../utils/documento');
 const normDoc = (v) => normalizarDoc(v) || null;
 
+// ── Opções do campo Fornecedor da DESPESA (Cadastro único de pessoas, Fase 2) ──
+// Permissão: admin OU acesso à aba Clientes (permissoes.clientes.view, a mesma do menu) OU acesso
+// a Contas a Pagar / Fornecedores. Criar (da-pessoa) usa: admin OU Clientes.view OU Pode_Baixar_Contas_Pagar
+// (a mesma que o POST /contas-pagar exige — quem lança a despesa precisa conseguir criar o fornecedor).
+const permView = (p) => p.admin || p.clientes?.view === true || p.Pode_Acessar_Contas_Pagar || p.Pode_Acessar_Fornecedores;
+const permCriar = (p) => p.admin || p.clientes?.view === true || p.Pode_Baixar_Contas_Pagar;
+const checkOpcoesDespesa = (fn, msg) => async (req, res, next) => {
+    const perms = req._perms || await getPerms(req.user.id);
+    req._perms = perms;
+    if (!fn(perms)) return res.status(403).json({ error: msg });
+    next();
+};
+const servicoPessoa = require('../services/fornecedorPessoaService');
+
+router.get('/opcoes-despesa', verificarAuth, checkOpcoesDespesa(permView, 'Sem permissão para buscar fornecedores.'), async (req, res) => {
+    try {
+        res.json(await servicoPessoa.opcoesDespesa(req.query.busca));
+    } catch (error) {
+        console.error('Erro em opcoes-despesa:', error);
+        res.status(500).json({ error: 'Erro ao buscar fornecedores.' });
+    }
+});
+
+router.post('/da-pessoa/:clienteUUID', verificarAuth, checkOpcoesDespesa(permCriar, 'Sem permissão para cadastrar fornecedor a partir de uma pessoa.'), async (req, res) => {
+    try {
+        const { fornecedor, jaExistia } = await servicoPessoa.garantirFornecedorDaPessoa(req.params.clienteUUID);
+        res.status(jaExistia ? 200 : 201).json({ fornecedor, jaExistia });
+    } catch (error) {
+        if (error.status) return res.status(error.status).json({ error: error.message });
+        console.error('Erro em da-pessoa:', error);
+        res.status(500).json({ error: 'Erro ao cadastrar o fornecedor a partir da pessoa.' });
+    }
+});
+
 // ── GET /?busca= — listar ──
 router.get('/', verificarAuth, checkAcesso, async (req, res) => {
     try {

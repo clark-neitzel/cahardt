@@ -967,16 +967,55 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
     // Opções do combobox de fornecedor (nome + fantasia/CNPJ na linha de baixo, tudo buscável)
     // O fornecedor atual da despesa entra sempre nas opções (a lista pode não trazê-lo,
     // e o campo apareceria vazio mesmo com fornecedor gravado).
+    // Fonte: busca nova (inclui pessoas marcadas como Fornecedor em Clientes, `existe:false`);
+    // se o servidor negar (403), cai para a lista antiga de fornecedores.
+    const [opcoesApi, setOpcoesApi] = useState(null);
+    const [criandoPessoa, setCriandoPessoa] = useState(false);
+    const criandoPessoaRef = useRef(false);
+    // Mesma regra do backend (POST /fornecedores/da-pessoa): só quem pode criar vê "cadastra ao escolher".
+    const podeCriarDaPessoa = hasPermission('clientes') || hasPermission('Pode_Baixar_Contas_Pagar');
+    const carregarOpcoes = () =>
+        fornecedorService.opcoesDespesa()
+            .then(l => { setOpcoesApi(Array.isArray(l) ? l : []); return l; })
+            .catch(() => fornecedorService.listar()
+                .then(l => setOpcoesApi((Array.isArray(l) ? l : []).map(f => ({ ...f, clienteId: null, existe: true }))))
+                .catch(() => {}));
+    useEffect(() => { carregarOpcoes(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
     const opcoesFornecedor = useMemo(() => {
-        const lista = [...fornecedores];
+        const lista = (opcoesApi || fornecedores || [])
+            .map(f => ({ ...f, existe: f.existe !== false }))
+            .filter(f => f.existe || podeCriarDaPessoa);
         const atual = conta?.fornecedor;
-        if (atual?.id && !lista.some(f => String(f.id) === String(atual.id))) lista.unshift(atual);
+        if (atual?.id && !lista.some(f => f.existe && String(f.id) === String(atual.id))) lista.unshift({ ...atual, existe: true });
         return lista.map(f => ({
-            value: f.id,
+            value: f.existe ? f.id : `pessoa:${f.clienteId}`,
             label: f.razaoSocial || f.nomeFantasia || 'Sem nome',
-            sub: [f.razaoSocial && f.nomeFantasia ? f.nomeFantasia : null, f.cnpjCpf].filter(Boolean).join(' · ')
+            sub: [
+                f.existe ? null : 'Pessoa de Clientes (cadastra ao escolher)',
+                f.razaoSocial && f.nomeFantasia ? f.nomeFantasia : null,
+                f.cnpjCpf
+            ].filter(Boolean).join(' · ')
         }));
-    }, [fornecedores, conta]);
+    }, [opcoesApi, fornecedores, conta, podeCriarDaPessoa]);
+
+    // Escolha no combo: pessoa sem linha em fornecedores é cadastrada na hora (idempotente no servidor).
+    const escolherFornecedor = async (valor) => {
+        if (!String(valor || '').startsWith('pessoa:')) { setFornecedorId(valor || ''); return; }
+        if (criandoPessoaRef.current) return;
+        criandoPessoaRef.current = true; setCriandoPessoa(true);
+        try {
+            const { fornecedor } = await fornecedorService.daPessoa(String(valor).slice(7));
+            if (!fornecedor?.id) throw new Error('Resposta sem fornecedor.');
+            setFornecedorId(fornecedor.id);
+            await carregarOpcoes();
+            if (onFornecedoresChanged) onFornecedoresChanged();
+        } catch (err) {
+            toast.error(err?.response?.data?.error || 'Não foi possível cadastrar o fornecedor a partir desta pessoa.');
+        } finally {
+            criandoPessoaRef.current = false; setCriandoPessoa(false);
+        }
+    };
 
     // ── Produtos comprados: dão entrada no estoque e atualizam o custo ──
     // Ao CRIAR, entram junto com a despesa (POST /). Na EDIÇÃO (08/2026) podem ser
@@ -1254,7 +1293,8 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
         // Numa despesa quitada nada disso é enviado (o backend recusa) — validar seria
         // impedir o usuário de corrigir os produtos por causa de um campo que nem vai.
         if (!cabecalhoTravado) {
-            if (!fornecedorId) { toast.error('Selecione o fornecedor.'); return; }
+            if (criandoPessoaRef.current) { toast.error('Aguarde: cadastrando o fornecedor…'); return; }
+            if (!fornecedorId || String(fornecedorId).startsWith('pessoa:')) { toast.error('Selecione o fornecedor.'); return; }
             if (!descricao.trim()) { toast.error('Informe a descrição.'); return; }
         }
         if (!valorParcelasTravados) {
@@ -1510,8 +1550,8 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
                             <ComboBusca
                                 value={fornecedorId}
                                 options={opcoesFornecedor}
-                                onChange={setFornecedorId}
-                                placeholder="Selecionar fornecedor…"
+                                onChange={escolherFornecedor}
+                                placeholder={criandoPessoa ? 'Cadastrando fornecedor…' : 'Selecionar fornecedor…'}
                                 buscaPlaceholder="Digite o nome ou CNPJ…"
                                 vazioTexto="Nenhum fornecedor encontrado — cadastre na tela Fornecedores."
                             />

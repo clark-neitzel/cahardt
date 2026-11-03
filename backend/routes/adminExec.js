@@ -12912,18 +12912,7 @@ router.post('/fornecedores-espelhar-de-clientes', async (req, res) => {
         for (const { c, doc, info } of aCriar) {
             if (!aplicar) { criados.push({ ...info, simulado: true }); continue; }
             const f = await prisma.fornecedor.create({
-                data: {
-                    razaoSocial: c.Nome.trim(),
-                    nomeFantasia: c.NomeFantasia || null,
-                    cnpjCpf: doc || null,
-                    email: c.Email || null,
-                    telefone: c.Telefone || null,
-                    cidade: c.End_Cidade || null,
-                    uf: c.End_Estado || null,
-                    ativo: true,
-                    origem: 'APP',
-                    statusEnvioCA: 'NAO_ENVIAR',
-                },
+                data: require('../services/fornecedorPessoaService').dadosFornecedorDeCliente(c, doc),
             });
             criados.push({ ...info, fornecedorId: f.id });
             if (doc) porDoc.set(doc, f); else porNome.set(semAcento(c.Nome), f);

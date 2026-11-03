@@ -44,6 +44,9 @@ Cadastro de fornecedores da empresa, usado pelo módulo de Contas a Pagar. Os fo
 
 ---
 
+## Pessoas de Clientes com perfil Fornecedor
+Quem foi marcado como **Fornecedor** em Clientes (com CPF/CNPJ) não precisa ser recadastrado aqui: ao lançar uma despesa em Contas a Pagar, a pessoa já aparece no campo Fornecedor e, ao ser escolhida, o fornecedor é criado automaticamente (uma vez só — mesmo documento nunca gera dois fornecedores). Sem CPF/CNPJ, a pessoa não entra nesse fluxo.
+
 ## Fornecedores antigos
 
 Fornecedores antigos importados continuam no cadastro normalmente.

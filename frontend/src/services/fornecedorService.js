@@ -5,6 +5,17 @@ const fornecedorService = {
         const response = await api.get('/fornecedores', { params: busca ? { busca } : {} });
         return response.data;
     },
+    // Opções do campo Fornecedor da despesa: fornecedores + pessoas marcadas como Fornecedor em Clientes
+    // que ainda não têm linha em fornecedores (existe:false, id:null, clienteId preenchido).
+    opcoesDespesa: async (busca = '') => {
+        const response = await api.get('/fornecedores/opcoes-despesa', { params: busca ? { busca } : {} });
+        return response.data;
+    },
+    // Garante o fornecedor desta pessoa (idempotente). Retorna { fornecedor, jaExistia }.
+    daPessoa: async (clienteId) => {
+        const response = await api.post(`/fornecedores/da-pessoa/${encodeURIComponent(clienteId)}`);
+        return response.data;
+    },
     criar: async (dados) => {
         const response = await api.post('/fornecedores', dados);
         return response.data;
