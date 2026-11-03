@@ -4,6 +4,7 @@ const path = require('path');
 const pcpReceitaService = require('../services/pcpReceitaService');
 const categoriaEstoqueService = require('../services/categoriaEstoqueService');
 const produtoService = require('../services/produtoService');
+const estoqueService = require('../services/estoqueService');
 
 // Moeda em português para os textos que o usuário lê (log de auditoria).
 // Mesmo padrão de uma linha já usado em cobrancaService.js e reciboEspecialPdf.js.
@@ -209,7 +210,11 @@ const produtoController = {
                 console.error('Vínculos de fornecedor indisponíveis (segue sem):', e.message);
             }
 
-            res.json({ ...produto, custoReceita, notaOrigem, vinculosFornecedor });
+            let controlaEstoqueEfetivo = false;
+            try { controlaEstoqueEfetivo = await estoqueService.produtoControlaEstoque(produto); }
+            catch (e) { console.error('controlaEstoqueEfetivo indisponível:', e.message); }
+
+            res.json({ ...produto, controlaEstoqueEfetivo, custoReceita, notaOrigem, vinculosFornecedor });
         } catch (error) {
             console.error(error);
             res.status(500).json({ error: 'Erro ao buscar produto' });
@@ -297,8 +302,9 @@ const produtoController = {
     criar: async (req, res) => {
         try {
             const { CA_SOMENTE_LEITURA } = require('../config/contaAzulModo');
-            const { produto } = await produtoService.criar(req.body || {}, req.user);
-            res.status(201).json({ ...produto, message: CA_SOMENTE_LEITURA ? 'Produto criado no app!' : 'Produto criado!' });
+            const { produto: produtoCriado, estoqueInicialErro } = await produtoService.criar(req.body || {}, req.user);
+            const produto = produtoCriado;
+            res.status(201).json({ ...produto, ...(estoqueInicialErro ? { estoqueInicialErro } : {}), message: CA_SOMENTE_LEITURA ? 'Produto criado no app!' : 'Produto criado!' });
         } catch (error) {
             if (error.status) return res.status(error.status).json({ error: error.message });
             console.error('Erro ao criar produto:', error);
@@ -319,7 +325,7 @@ const produtoController = {
             // partir de uma nota (Entrada de Notas) precisa editar os dois quando o XML
             // veio incompleto ou trocado (plano Etapa 1, contrato item 1).
             const CAMPOS_PERMITIDOS = [
-                'ativo', 'descricao', 'estoqueMinimo', 'unidade', 'custoManual',
+                'ativo', 'descricao', 'estoqueMinimo', 'estoqueMaximo', 'unidade', 'custoManual',
                 'categoria', 'categoriaProdutoId', 'produtoSubstitutoId',
                 'permiteRecomendacao', 'prioridadeRecomendacao', 'controlaEstoque',
                 'validadeDias', 'quantidadePorCaixa', 'valorVenda', 'ncm', 'ean',
@@ -332,7 +338,7 @@ const produtoController = {
                 if (body[campo] !== undefined) data[campo] = body[campo];
             }
             // Produto atual (404 se não existe; base para saber se o nome mudou)
-            const produtoAtual = await prisma.produto.findUnique({ where: { id }, select: { id: true, nome: true, valorVenda: true } });
+            const produtoAtual = await prisma.produto.findUnique({ where: { id }, select: { id: true, nome: true, valorVenda: true, categoria: true, controlaEstoque: true, estoqueMinimo: true, estoqueMaximo: true } });
             if (!produtoAtual) return res.status(404).json({ error: 'Produto não encontrado.' });
 
             // Nome: trim, obrigatório, máx. 120 (limite da NF-e), único sem diferenciar caixa.
@@ -459,6 +465,38 @@ const produtoController = {
                     data.precoLocal = true;
                     precoAnterior = anterior;
                     precoNovo = n;
+                }
+            }
+
+            // Estoque mínimo/máximo: só faz sentido se o produto CONTROLA estoque. Avalia com os
+            // valores NOVOS de categoria/controlaEstoque do body (se vierem) — senão os atuais.
+            // Virou "não controla" => zera os dois. Nunca grava estoqueTotal por aqui.
+            if (data.estoqueMinimo !== undefined || data.estoqueMaximo !== undefined || data.categoria !== undefined || data.controlaEstoque !== undefined) {
+                const controlaFinal = await estoqueService.produtoControlaEstoque({
+                    controlaEstoque: data.controlaEstoque !== undefined ? data.controlaEstoque : produtoAtual.controlaEstoque,
+                    categoria: data.categoria !== undefined ? data.categoria : produtoAtual.categoria
+                });
+                try {
+                    const lim = estoqueService.validarLimites({ min: data.estoqueMinimo, max: data.estoqueMaximo });
+                    if (!controlaFinal) {
+                        // (valor legado igual ao já gravado, reenviado pela tela, não é recusado: só zera)
+                        if ((lim.min || 0) > 0 && lim.min !== Number(produtoAtual.estoqueMinimo) || (lim.max || 0) > 0 && lim.max !== Number(produtoAtual.estoqueMaximo)) {
+                            return res.status(400).json({ error: 'Este produto não controla estoque: estoque mínimo e máximo só podem ser definidos em produto que controla estoque.' });
+                        }
+                        // mudou para "não controla" (ou já era): zera os limites
+                        data.estoqueMinimo = 0;
+                        data.estoqueMaximo = 0;
+                    } else {
+                        if (lim.min !== null) data.estoqueMinimo = lim.min; else delete data.estoqueMinimo;
+                        if (lim.max !== null) data.estoqueMaximo = lim.max; else delete data.estoqueMaximo;
+                        estoqueService.validarParMinMax(
+                            data.estoqueMinimo !== undefined ? data.estoqueMinimo : Number(produtoAtual.estoqueMinimo),
+                            data.estoqueMaximo !== undefined ? data.estoqueMaximo : Number(produtoAtual.estoqueMaximo)
+                        );
+                    }
+                } catch (e) {
+                    if (e.status) return res.status(e.status).json({ error: e.message });
+                    throw e;
                 }
             }
 

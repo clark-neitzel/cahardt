@@ -18,6 +18,7 @@ const MOTIVO_LABEL = {
     CANCELAMENTO: 'Cancelamento',
     EXCLUSAO: 'Exclusão',
     INVENTARIO: 'Inventário',
+    ESTOQUE_INICIAL: 'Estoque inicial',
 };
 
 const formatDate = (d) => {

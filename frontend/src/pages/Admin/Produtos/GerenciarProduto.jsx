@@ -16,6 +16,7 @@ import {
     Star, ArrowUp, ArrowDown, Upload, ShoppingCart, Power
 } from 'lucide-react';
 import CampoNumero from '../../../components/CampoNumero';
+import ProdutoEstoqueCard from './ProdutoEstoqueCard';
 
 // Componente autocomplete de produto por nome
 const BuscaProduto = ({ value, onChange, todosOsProdutos, desabilitado = false }) => {
@@ -753,7 +754,9 @@ const GerenciarProduto = () => {
         prioridadeRecomendacao: 1,
         controlaEstoque: '', // '' = segue a categoria | 'true' | 'false'
         validadeDias: '', // dias de validade p/ etiquetas (vazio = usa a da etiqueta)
-        quantidadePorCaixa: '' // un. por caixa fechada (vazio = produto sem caixa)
+        quantidadePorCaixa: '', // un. por caixa fechada (vazio = produto sem caixa)
+        estoqueMinimo: '',
+        estoqueMaximo: ''
     });
 
     useEffect(() => {
@@ -792,7 +795,9 @@ const GerenciarProduto = () => {
                     prioridadeRecomendacao: data.prioridadeRecomendacao || 1,
                     controlaEstoque: data.controlaEstoque === true ? 'true' : data.controlaEstoque === false ? 'false' : '',
                     validadeDias: data.validadeDias != null ? String(data.validadeDias) : '',
-                    quantidadePorCaixa: data.quantidadePorCaixa != null ? String(data.quantidadePorCaixa) : ''
+                    quantidadePorCaixa: data.quantidadePorCaixa != null ? String(data.quantidadePorCaixa) : '',
+                    estoqueMinimo: data.estoqueMinimo != null ? String(Number(data.estoqueMinimo)) : '',
+                    estoqueMaximo: data.estoqueMaximo != null ? String(Number(data.estoqueMaximo)) : ''
                 });
             } catch (error) {
                 console.error('Erro ao carregar produto:', error);
@@ -853,11 +858,33 @@ const GerenciarProduto = () => {
         toast.success(`Categoria "${limpo}" selecionada — clique em Salvar para confirmar.`);
     };
 
+    // Controla estoque considerando a escolha em edição ('' = segue a categoria)
+    const controlaEstoqueAgora = () => formData.controlaEstoque === 'true' ? true
+        : formData.controlaEstoque === 'false' ? false
+        : (produto ? produto.controlaEstoqueEfetivo !== false : true);
+
+    // Recarrega só os números do produto (após ajuste de estoque), sem mexer no formulário
+    const recarregarProduto = async () => {
+        try {
+            const data = await produtoService.detalhar(id);
+            setProduto(data);
+        } catch (e) { toast.error('Ajuste lançado, mas não consegui atualizar a tela. Recarregue a página.'); }
+    };
+
+    // Ao escolher "não controlar", avisa que mín/máx serão zerados
+    const mudarControleEstoque = (valor) => {
+        if (valor === 'false' && controlaEstoqueAgora() && (Number(formData.estoqueMinimo) > 0 || Number(formData.estoqueMaximo) > 0)) {
+            toast('Sem controle de estoque, o mínimo e o máximo serão zerados ao salvar.', { icon: '⚠️', duration: 6000 });
+        }
+        setFormData(prev => ({ ...prev, controlaEstoque: valor }));
+    };
+
     const handleSaveComercial = async () => {
         if (!podeEditar) { toast.error('Você não tem permissão para editar produtos.'); return; }
         setSalvandoComercial(true);
         try {
             const unidadeLimpa = (formData.unidade || '').trim();
+            const controlaAgora = controlaEstoqueAgora();
             if (!unidadeLimpa) {
                 toast.error('Informe a unidade do produto (ex.: UN, KG, CX).');
                 setSalvandoComercial(false);
@@ -917,7 +944,9 @@ const GerenciarProduto = () => {
                 prioridadeRecomendacao: parseInt(formData.prioridadeRecomendacao) || 1,
                 controlaEstoque: formData.controlaEstoque === '' ? null : formData.controlaEstoque === 'true',
                 validadeDias: String(formData.validadeDias ?? '').trim() === '' ? null : parseInt(formData.validadeDias),
-                quantidadePorCaixa: qtdCaixaVal === '' ? null : parseInt(qtdCaixaVal)
+                quantidadePorCaixa: qtdCaixaVal === '' ? null : parseInt(qtdCaixaVal),
+                estoqueMinimo: controlaAgora ? (String(formData.estoqueMinimo ?? '').trim() === '' ? 0 : formData.estoqueMinimo) : 0,
+                estoqueMaximo: controlaAgora ? (String(formData.estoqueMaximo ?? '').trim() === '' ? 0 : formData.estoqueMaximo) : 0
             });
             // O servidor manda de volta o produto salvo — conferir que o preço mudou
             // mesmo (200 não é prova: uma versão antiga do backend descarta o campo).
@@ -1165,6 +1194,12 @@ const GerenciarProduto = () => {
                     ))}
                   </div>
 
+                  <ProdutoEstoqueCard produto={produto} controla={controlaEstoqueAgora()} podeEditar={podeEditar}
+                    minimo={formData.estoqueMinimo} maximo={formData.estoqueMaximo}
+                    onMinimo={v => setFormData(prev => ({ ...prev, estoqueMinimo: v }))}
+                    onMaximo={v => setFormData(prev => ({ ...prev, estoqueMaximo: v }))}
+                    onAjustado={recarregarProduto} />
+
                   {/* Imagens card */}
                   <div className="bg-white rounded-2xl border overflow-hidden" style={{ borderColor: '#E7E9F2' }}>
                     <div className="flex items-center justify-between px-4 border-b" style={{ height: 52, borderColor: '#EEF0F7' }}>
@@ -1329,7 +1364,7 @@ const GerenciarProduto = () => {
                           input: <div className="flex items-center gap-2.5 rounded-xl border" style={{height:52,padding:'0 16px',borderColor:'#D8C9FB',background:'#fff'}}>
                             <span className="text-sm font-medium" style={{color:'#3A3F52'}}>R$</span>
                             <CampoNumero disabled={!podeEditar} step="0.01" min="0" value={formData.custoManual} onChange={e=>setFormData({...formData,custoManual:e.target.value})} placeholder="0,00" className="flex-1 bg-transparent outline-none font-medium font-mono" style={{fontSize:15,color:'#16192B'}}/>
-                            <select disabled={!podeEditar} value={formData.controlaEstoque} onChange={e=>setFormData({...formData,controlaEstoque:e.target.value})}
+                            <select disabled={!podeEditar} value={formData.controlaEstoque} onChange={e=>mudarControleEstoque(e.target.value)}
                                 className="w-full mt-2 rounded-xl border px-3 text-sm bg-white" style={{height:44,borderColor:'#E4E7F2',color:'#16192B'}}>
                                 <option value="">Estoque: seguir a categoria (padrão)</option>
                                 <option value="true">Estoque: controlar SEMPRE</option>
@@ -1479,6 +1514,12 @@ const GerenciarProduto = () => {
 
                             {/* LEFT: Images + Dados */}
                             <div className="flex flex-col gap-4">
+
+                                <ProdutoEstoqueCard produto={produto} controla={controlaEstoqueAgora()} podeEditar={podeEditar}
+                                    minimo={formData.estoqueMinimo} maximo={formData.estoqueMaximo}
+                                    onMinimo={v => setFormData(prev => ({ ...prev, estoqueMinimo: v }))}
+                                    onMaximo={v => setFormData(prev => ({ ...prev, estoqueMaximo: v }))}
+                                    onAjustado={recarregarProduto} />
 
                                 {/* IMAGES */}
                                 <div className="bg-white rounded-2xl border overflow-hidden" style={{ borderColor: '#E7E9F2' }}>
@@ -1681,7 +1722,7 @@ const GerenciarProduto = () => {
                                             </div>
                                             <div className="flex items-center rounded-xl border" style={{ height: 50, padding: '0 12px', borderColor: '#D8C9FB', background: '#fff' }}>
                                                 <select disabled={!podeEditar} value={formData.controlaEstoque}
-                                                    onChange={(e) => setFormData({ ...formData, controlaEstoque: e.target.value })}
+                                                    onChange={(e) => mudarControleEstoque(e.target.value)}
                                                     className="flex-1 bg-transparent outline-none font-medium"
                                                     style={{ fontSize: 14, color: '#16192B' }}>
                                                     <option value="">Seguir a categoria (padrão)</option>

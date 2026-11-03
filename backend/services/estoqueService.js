@@ -148,11 +148,63 @@ async function validarVendaSemEstoque(itens, pedidoIdEdicao) {
     return detectarEstoqueInsuficiente(itens, mapaProdutos, reservaPropria);
 }
 
+// Converte "1,5" / 1.5 / "" em número. Vazio/null/undefined => null (não informado).
+// Qualquer coisa que não seja número de verdade => NaN (quem chama recusa com 400).
+function numeroDecimal(v) {
+    if (v === undefined || v === null) return null;
+    if (typeof v === 'number') return v;
+    if (typeof v !== 'string') return NaN;
+    const t = v.trim().replace(',', '.');
+    if (t === '') return null;
+    return /^-?\d+(\.\d+)?$/.test(t) ? Number(t) : NaN;
+}
+
+// Valida estoque mínimo/máximo. Devolve { min, max } normalizados (null = não veio)
+// ou lança Error com .status = 400 e mensagem clara.
+// Regras: finitos, >= 0, <= 999999999.999, máximo 3 casas; se max > 0 então max >= min.
+function validarLimites({ min, max } = {}) {
+    const falha = (msg) => { const e = new Error(msg); e.status = 400; throw e; };
+    const out = { min: null, max: null };
+    for (const [chave, bruto, rotulo] of [['min', min, 'mínimo'], ['max', max, 'máximo']]) {
+        const n = numeroDecimal(bruto);
+        if (n === null) continue;
+        if (!Number.isFinite(n)) falha(`Estoque ${rotulo} inválido: informe um número.`);
+        if (n < 0) falha(`Estoque ${rotulo} inválido: não pode ser negativo.`);
+        if (n > 999999999.999) falha(`Estoque ${rotulo} inválido: valor muito grande.`);
+        if (Math.round(n * 1000) / 1000 !== n) falha(`Estoque ${rotulo} inválido: use no máximo 3 casas decimais.`);
+        out[chave] = n;
+    }
+    return out;
+}
+
+// Confere min x max já com os valores FINAIS (os que vão ficar gravados).
+function validarParMinMax(min, max) {
+    if (Number(max) > 0 && Number(max) < Number(min)) {
+        const e = new Error('O estoque máximo não pode ser menor que o estoque mínimo.');
+        e.status = 400;
+        throw e;
+    }
+}
+
+// Lista fechada de motivos do ajuste manual (rótulos gravados na observação).
+const MOTIVOS_AJUSTE = {
+    PERDA_QUEBRA: 'Perda/quebra',
+    AMOSTRA: 'Amostra',
+    USO_INTERNO: 'Uso interno',
+    CORRECAO_CONTAGEM: 'Correção de contagem',
+    COMPRA_AVULSA: 'Compra avulsa',
+    OUTRO: 'Outro'
+};
+
 const estoqueService = {
 
     recalcularEstoqueProduto,
     produtoControlaEstoque,
     saldoBaixadoPorProduto,
+    validarLimites,
+    validarParMinMax,
+    numeroDecimal,
+    MOTIVOS_AJUSTE,
     validarVendaSemEstoque,
     detectarEstoqueInsuficiente,
 

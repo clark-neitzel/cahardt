@@ -25,7 +25,10 @@ Painel de ajuste manual de estoque. Usado para registrar entradas (compras, devo
 - **(10/2026)** **Confirmar antes de lançar:** toda entrada/saída abre uma janela de confirmação (verde = entrada, vermelha = saída)
 - **(10/2026)** **Bipar o código de barras** com leitor USB para escolher o produto (e somar +1 a cada bipe do mesmo produto)
 - **(10/2026)** Vincular um código de barras novo ao produto escolhido, direto do aviso de "código não encontrado"
-- Editar o estoque mínimo do produto (admin)
+- **(11/2026)** O **seletor de motivo** (Perda/quebra, Amostra, Uso interno, Correção de contagem, Compra avulsa, Outro) existe **só no botão "Ajustar estoque" da ficha do produto** (Produtos). Esta tela (Estoque → Ajuste) continua só com o campo de observação/motivo escrito. O backend aceita `motivoCodigo` opcional (grava o rótulo no começo da observação do histórico); sem ele funciona como antes, e na saída o texto do motivo (mín. 3 letras) continua obrigatório
+- **(11/2026)** Produto que **não controla estoque não aceita ajuste**: o servidor responde *"Este produto não controla estoque."*
+- **(11/2026)** Estoque mínimo e máximo: na **ficha do produto** (Produtos) podem ser alterados por **administrador OU quem tem Produtos → editar**; só vale para produto que controla estoque, e o máximo não pode ser menor que o mínimo. Aqui no painel de Estoque o lápis do **mínimo continua só para administrador** (o máximo não é editado nesta tela)
+- **(11/2026)** O *estoque inicial* informado ao **cadastrar** um produto exige apenas **Produtos → editar**; já o botão "Ajustar estoque" da ficha segue a permissão de estoque da categoria (não a de Produtos → editar) — decisão assumida
 - Ir para o histórico de movimentações
 
 ---

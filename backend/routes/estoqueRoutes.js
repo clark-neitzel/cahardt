@@ -26,7 +26,8 @@ function verificarPermissaoEstoque(permissoes, categoriasProduto, tipo) {
 // POST /api/estoque/ajuste — ajuste manual de estoque
 router.post('/ajuste', async (req, res) => {
     try {
-        const { produtoId, tipo, quantidade, observacao } = req.body;
+        const { produtoId, tipo, quantidade, observacao: observacaoBruta, motivoCodigo } = req.body;
+        let observacao = observacaoBruta;
         const vendedorId = req.user?.id;
         const permissoes = await getPermsFromDB(req.user.id);
 
@@ -52,22 +53,36 @@ router.post('/ajuste', async (req, res) => {
         if (observacao !== undefined && observacao !== null && typeof observacao !== 'string') {
             return res.status(400).json({ error: 'A observação deve ser um texto.' });
         }
-        // Saída manual SEMPRE precisa de motivo — saída sem rastro já deixou produto negativo
-        // sem ninguém conseguir explicar depois. ENTRADA continua sem exigir observação.
+        // Texto digitado da saída (>= 3 letras) é checado ANTES de compor "<rótulo>: <texto>",
+        // senão só o rótulo já bastaria.
         if (tipo === 'SAIDA' && String(observacao || '').trim().length < 3) {
             return res.status(400).json({ error: 'Informe o motivo da saída (mínimo 3 caracteres).' });
         }
-
-        // Verifica permissão de estoque
+        // Motivo estruturado (opcional, lista fechada): grava "<rótulo>: <texto>" na observação.
+        if (motivoCodigo !== undefined && motivoCodigo !== null && motivoCodigo !== '') {
+            const rotulo = typeof motivoCodigo === 'string' && Object.prototype.hasOwnProperty.call(estoqueService.MOTIVOS_AJUSTE, motivoCodigo)
+                ? estoqueService.MOTIVOS_AJUSTE[motivoCodigo] : null;
+            if (!rotulo) {
+                return res.status(400).json({ error: 'Motivo inválido.' });
+            }
+            const txt = String(observacao || '').trim();
+            observacao = txt ? `${rotulo}: ${txt}` : rotulo;
+        }
+        // Permissão de estoque primeiro (sem permissão => 403, nunca 400)
+        const prodCtl = await prisma.produto.findUnique({
+            where: { id: produtoId },
+            select: { categoria: true, controlaEstoque: true }
+        });
         if (!permissoes.admin) {
-            const produto = await prisma.produto.findUnique({
-                where: { id: produtoId },
-                select: { categoria: true }
-            });
-            const categorias = produto?.categoria ? [produto.categoria] : [];
+            const categorias = prodCtl?.categoria ? [prodCtl.categoria] : [];
             if (!verificarPermissaoEstoque(permissoes, categorias, tipo)) {
                 return res.status(403).json({ error: 'Você não tem permissão para realizar este tipo de ajuste nesta categoria.' });
             }
+        }
+
+        // Produto que não controla estoque não aceita ajuste manual (nasce e fica em 0)
+        if (prodCtl && !(await estoqueService.produtoControlaEstoque(prodCtl))) {
+            return res.status(400).json({ error: 'Este produto não controla estoque.' });
         }
 
         const resultado = await estoqueService.ajustar({
@@ -304,25 +319,51 @@ router.post('/sync-produto/:produtoId', async (req, res) => {
     }
 });
 
-// PATCH /api/estoque/produto/:produtoId/minimo — atualiza estoqueMinimo
+// PATCH /api/estoque/produto/:produtoId/minimo — atualiza estoqueMinimo (e estoqueMaximo, opcional)
+// Admin OU produtos.edit (mesma regra do PUT /produtos/:id). Só produto que controla estoque.
 router.patch('/produto/:produtoId/minimo', async (req, res) => {
     try {
         const permissoes = await getPermsFromDB(req.user.id);
-        if (!permissoes.admin) return res.status(403).json({ error: 'Apenas administradores podem alterar o estoque mínimo.' });
+        const { ligado } = require('../middlewares/permissaoProdutos');
+        const podeEditar = ligado(permissoes.admin) || ligado(permissoes.produtos?.edit);
+        if (!podeEditar) return res.status(403).json({ error: 'Você não tem permissão para alterar o estoque mínimo/máximo.' });
 
-        const { estoqueMinimo } = req.body;
-        if (estoqueMinimo === undefined || isNaN(parseFloat(estoqueMinimo))) {
+        const { estoqueMinimo, estoqueMaximo } = req.body || {};
+        if (estoqueMinimo === undefined && estoqueMaximo === undefined) {
+            return res.status(400).json({ error: 'Informe estoqueMinimo e/ou estoqueMaximo.' });
+        }
+        let lim;
+        try { lim = estoqueService.validarLimites({ min: estoqueMinimo, max: estoqueMaximo }); }
+        catch (e) { return res.status(e.status || 400).json({ error: e.message }); }
+        if (lim.min === null && lim.max === null) {
             return res.status(400).json({ error: 'estoqueMinimo inválido.' });
         }
+
+        const atual = await prisma.produto.findUnique({
+            where: { id: req.params.produtoId },
+            select: { id: true, categoria: true, controlaEstoque: true, estoqueMinimo: true, estoqueMaximo: true }
+        });
+        if (!atual) return res.status(404).json({ error: 'Produto não encontrado.' });
+        if (!(await estoqueService.produtoControlaEstoque(atual))) {
+            return res.status(400).json({ error: 'Este produto não controla estoque: não há estoque mínimo/máximo para definir.' });
+        }
+        const minFinal = lim.min !== null ? lim.min : Number(atual.estoqueMinimo);
+        const maxFinal = lim.max !== null ? lim.max : Number(atual.estoqueMaximo);
+        try { estoqueService.validarParMinMax(minFinal, maxFinal); }
+        catch (e) { return res.status(400).json({ error: e.message }); }
+
+        const data = {};
+        if (lim.min !== null) data.estoqueMinimo = lim.min;
+        if (lim.max !== null) data.estoqueMaximo = lim.max;
         const produto = await prisma.produto.update({
             where: { id: req.params.produtoId },
-            data: { estoqueMinimo: parseFloat(estoqueMinimo) },
-            select: { id: true, nome: true, estoqueMinimo: true, estoqueDisponivel: true, estoqueTotal: true, estoqueReservado: true }
+            data,
+            select: { id: true, nome: true, estoqueMinimo: true, estoqueMaximo: true, estoqueDisponivel: true, estoqueTotal: true, estoqueReservado: true }
         });
         return res.json(produto);
     } catch (err) {
         console.error('[Estoque] Erro ao atualizar estoqueMinimo:', err.message);
-        return res.status(500).json({ error: err.message });
+        return res.status(500).json({ error: 'Não foi possível atualizar o estoque mínimo/máximo.' });
     }
 });
 

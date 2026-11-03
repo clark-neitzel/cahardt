@@ -10,6 +10,7 @@ import toast from 'react-hot-toast';
 import MultiSelect from '../../../components/MultiSelect';
 import ComboBusca from '../../../components/ComboBusca';
 import SelectBusca from '../../../components/SelectBusca';
+import CampoNumero from '../../../components/CampoNumero';
 import { useFiltroSalvo } from '../../../hooks/useFiltrosSalvos';
 import { useAuth } from '../../../contexts/AuthContext';
 
@@ -49,7 +50,7 @@ const ListaProdutos = () => {
 
     // Criar produto novo (nasce direto no app — o CA não recebe mais cadastros)
     const [modalNovo, setModalNovo] = useState(false);
-    const [novoProduto, setNovoProduto] = useState({ nome: '', codigo: '', ean: '', unidade: 'UN', categoria: '', valorVenda: '' });
+    const [novoProduto, setNovoProduto] = useState({ nome: '', codigo: '', ean: '', unidade: 'UN', categoria: '', valorVenda: '', estoqueInicial: '', estoqueMinimo: '', estoqueMaximo: '' });
     const [criando, setCriando] = useState(false);
 
     // Categoria nova: basta digitar o nome — ela passa a existir junto com o produto
@@ -71,14 +72,23 @@ const ListaProdutos = () => {
             // Bem do imobilizado (freezer, painel) não tem preço de venda — o campo fica em
             // branco e o backend recusava com "Valor de venda inválido." (parseFloat('') = NaN).
             // Em branco = 0; quem digitar um preço continua igual.
+            const controla = categoriaControla(novoProduto.categoria) !== false;
+            const vazioZero = (v) => (String(v ?? '').trim() === '' || !controla ? 0 : v);
             const payload = {
                 ...novoProduto,
-                valorVenda: String(novoProduto.valorVenda).trim() === '' ? 0 : novoProduto.valorVenda
+                valorVenda: String(novoProduto.valorVenda).trim() === '' ? 0 : novoProduto.valorVenda,
+                estoqueInicial: vazioZero(novoProduto.estoqueInicial),
+                estoqueMinimo: vazioZero(novoProduto.estoqueMinimo),
+                estoqueMaximo: vazioZero(novoProduto.estoqueMaximo)
             };
             const criado = await produtoService.criar(payload);
-            toast.success('Produto criado!');
+            if (criado?.estoqueInicialErro) {
+                toast(`Produto criado, mas o estoque inicial não foi lançado: ${criado.estoqueInicialErro}. Lance pelo botão "Ajustar estoque".`, { icon: '⚠️', duration: 9000 });
+            } else {
+                toast.success('Produto criado!');
+            }
             setModalNovo(false);
-            setNovoProduto({ nome: '', codigo: '', ean: '', unidade: 'UN', categoria: '', valorVenda: '' });
+            setNovoProduto({ nome: '', codigo: '', ean: '', unidade: 'UN', categoria: '', valorVenda: '', estoqueInicial: '', estoqueMinimo: '', estoqueMaximo: '' });
             navigate(`/admin/produtos/${criado.id}`);
         } catch (e) {
             toast.error(e.response?.data?.error || 'Erro ao criar o produto');
@@ -90,6 +100,9 @@ const ListaProdutos = () => {
     // Categorias marcadas como "não vende" (ex.: Imobilizado). Aqui no cadastro elas
     // TÊM que aparecer — é onde o freezer/painel é editado — só que sinalizadas.
     const [catsNaoVendaveis, setCatsNaoVendaveis] = useState([]);
+    // Flag "controla estoque" por categoria (nome -> boolean). Só orienta a tela; o servidor decide.
+    const [catsControle, setCatsControle] = useState({});
+    const categoriaControla = (nome) => (nome && Object.prototype.hasOwnProperty.call(catsControle, nome) ? catsControle[nome] : undefined);
 
     // Load filter options
     useEffect(() => {
@@ -106,6 +119,7 @@ const ListaProdutos = () => {
             .then(r => {
                 const lista = Array.isArray(r?.data) ? r.data : [];
                 setCatsNaoVendaveis(lista.filter(c => c?.vendavel === false).map(c => c.nome));
+                setCatsControle(Object.fromEntries(lista.filter(c => c?.nome).map(c => [c.nome, c.controlaEstoque === true])));
             })
             .catch(() => setCatsNaoVendaveis([]));
     }, []);
@@ -225,10 +239,10 @@ const ListaProdutos = () => {
             {/* Modal: novo produto (criado direto no app) */}
             {modalNovo && (
                 <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/40 p-0 md:p-4" onClick={() => !criando && setModalNovo(false)}>
-                    <div className="bg-white rounded-t-2xl md:rounded-2xl w-full max-w-lg p-5 space-y-4" onClick={e => e.stopPropagation()}>
+                    <div className="bg-white rounded-t-2xl md:rounded-2xl w-full max-w-lg p-5 space-y-4 max-h-[92vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
                         <div className="flex items-center justify-between">
                             <h2 className="text-lg font-bold text-gray-900">Novo produto</h2>
-                            <button onClick={() => !criando && setModalNovo(false)} className="p-1.5 text-gray-400 hover:text-gray-600 rounded hover:bg-gray-100"><X className="h-5 w-5" /></button>
+                            <button onClick={() => !criando && setModalNovo(false)} className="p-2.5 min-w-[44px] min-h-[44px] inline-flex items-center justify-center text-gray-500 hover:text-gray-700 rounded-full hover:bg-gray-100" aria-label="Fechar"><X className="h-5 w-5" /></button>
                         </div>
                         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-900">
                             O produto é criado <span className="font-semibold">direto no app</span> — já sai pronto para vender e para receber compras.
@@ -276,6 +290,24 @@ const ListaProdutos = () => {
                                     <small className="text-xs text-gray-500">Obrigatória — define se o produto controla estoque.</small>
                                     <button type="button" onClick={criarCategoriaNova} className="text-xs text-primary hover:underline whitespace-nowrap">+ Criar categoria nova…</button>
                                 </div>
+                            </div>
+                            <div className="md:col-span-2 grid grid-cols-3 gap-3">
+                                {[['estoqueInicial', 'Estoque inicial'], ['estoqueMinimo', 'Mínimo'], ['estoqueMaximo', 'Máximo']].map(([campo, rotulo]) => {
+                                    const semControle = categoriaControla(novoProduto.categoria) === false;
+                                    return (
+                                        <div key={campo} className="min-w-0">
+                                            <label className="text-sm font-medium text-gray-700">{rotulo}</label>
+                                            <CampoNumero step="0.001" min="0" disabled={semControle} value={semControle ? '0' : novoProduto[campo]}
+                                                onChange={e => setNovoProduto(prev => ({ ...prev, [campo]: e.target.value }))} placeholder="0"
+                                                className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm min-h-[44px] text-right font-mono focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none disabled:bg-gray-100 disabled:text-gray-500" />
+                                        </div>
+                                    );
+                                })}
+                                <small className="col-span-3 text-xs text-gray-500">
+                                    {categoriaControla(novoProduto.categoria) === false
+                                        ? 'Esta categoria não controla estoque — fica tudo em 0.'
+                                        : 'O estoque inicial entra no histórico como “Estoque inicial”. Em branco = 0.'}
+                                </small>
                             </div>
                         </div>
                         <div className="flex flex-col md:flex-row gap-3 pt-1">

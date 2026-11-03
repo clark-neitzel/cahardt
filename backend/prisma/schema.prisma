@@ -27,6 +27,7 @@ model Produto {
   estoqueReservado  Decimal @default(0) @map("estoque_reservado") @db.Decimal(12, 3)
   estoqueTotal      Decimal @default(0) @map("estoque_total") @db.Decimal(12, 3)
   estoqueMinimo     Decimal @default(0) @map("estoque_minimo") @db.Decimal(12, 3)
+  estoqueMaximo     Decimal @default(0) @map("estoque_maximo") @db.Decimal(12, 3) // 0 = sem máximo definido
 
   // Detalhes
   categoria String?

@@ -1,6 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 import produtoService from '../../services/produtoService';
 import configService from '../../services/configService';
 import { API_URL } from '../../services/api';
@@ -8,6 +9,8 @@ import { ArrowLeft, Loader, AlertCircle, Camera, Tag, DollarSign, FileText, Laye
 
 const DetalheProduto = () => {
     const { id } = useParams();
+    const { hasPermission } = useAuth();
+    const podeEditarProduto = hasPermission('produtos', 'edit');
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -196,6 +199,19 @@ const DetalheProduto = () => {
                                     <p className="text-xs text-blue-700 font-semibold uppercase tracking-wide">Total</p>
                                     <p className="text-2xl font-bold text-blue-800 mt-0.5">{produto.estoqueTotal}</p>
                                 </div>
+                                <div className="bg-gray-50 rounded-lg border border-gray-200 p-3 text-center">
+                                    <p className="text-xs text-gray-600 font-semibold uppercase tracking-wide">Mínimo</p>
+                                    <p className="text-xl font-bold text-gray-800 mt-0.5">{Number(produto.estoqueMinimo || 0)}</p>
+                                </div>
+                                <div className="bg-gray-50 rounded-lg border border-gray-200 p-3 text-center">
+                                    <p className="text-xs text-gray-600 font-semibold uppercase tracking-wide">Máximo</p>
+                                    <p className="text-xl font-bold text-gray-800 mt-0.5">{Number(produto.estoqueMaximo || 0)}</p>
+                                </div>
+                                {podeEditarProduto && (
+                                    <Link to={`/admin/produtos/${id}`} className="col-span-2 min-h-[44px] inline-flex items-center justify-center px-4 py-2 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-semibold text-sm">
+                                        Ajustar estoque
+                                    </Link>
+                                )}
                             </div>
                         </div>
                     </div>

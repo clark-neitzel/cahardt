@@ -26,9 +26,12 @@ Registro completo de todas as movimentações de estoque (entradas e saídas), c
 
 ## Motivos de movimentação
 
+> **(11/2026)** Nos ajustes manuais, a observação começa pelo motivo escolhido na tela: *Perda/quebra, Amostra, Uso interno, Correção de contagem, Compra avulsa* ou *Outro* (ex.: `Perda/quebra: caiu no chão`).
+
 | Motivo | Quando ocorre |
 |--------|---------------|
 | AJUSTE_MANUAL | Ajuste feito manualmente na tela de Estoque |
+| ESTOQUE_INICIAL | **(11/2026)** Entrada criada sozinha quando o produto é cadastrado com "Estoque inicial" maior que zero (observação "Estoque inicial no cadastro") |
 | PEDIDO_ESPECIAL | Baixa automática ao aprovar pedido especial (desde jul/2026) |
 | PEDIDO_BONIFICACAO | Baixa automática ao aprovar bonificação (desde jul/2026) |
 | FATURAMENTO | Baixa automática ao faturar pedido |

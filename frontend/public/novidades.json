@@ -1,5 +1,11 @@
 [
   {
+    "slug": "estoque-no-produto",
+    "titulo": "Estoque direto na ficha do produto",
+    "resumo": "Ajuste o estoque com motivo, informe o estoque inicial ao criar produto novo e edite o mínimo e o máximo na própria ficha do produto.",
+    "data": "2026-11-03"
+  },
+  {
     "slug": "km-nao-retrocede",
     "titulo": "KM do carro não volta pra trás",
     "resumo": "O app não deixa registrar KM menor que o último do carro, avisa quando não leu o painel e tem botão Tentar de novo quando as fotos não abrem.",
