@@ -12863,4 +12863,76 @@ router.post('/etiquetas-cozinha-classificar', async (req, res) => {
     }
 });
 
+// POST /api/admin-exec/fornecedores-espelhar-de-clientes[?nome=...&aplicar=1]
+// Pessoa marcada como FORNECEDOR em `clientes` (Perfis) mas sem cadastro em `fornecedores` não aparece
+// no campo Fornecedor do Contas a Pagar. Esta rota cria o espelho em `fornecedores`. Sem aplicar=1
+// só SIMULA. Idempotente (casa por documento; sem documento, por razão social sem acento/caixa).
+// Não apaga nada. statusEnvioCA='NAO_ENVIAR' (CA somente leitura: não entra na fila de envio).
+router.post('/fornecedores-espelhar-de-clientes', async (req, res) => {
+    try {
+        const { normalizarDoc } = require('../utils/documento');
+        const q = { ...(req.body || {}), ...req.query };
+        const aplicar = ['1', 'true', true].includes(q.aplicar);
+        const nome = q.nome ? String(q.nome).trim() : '';
+        const semAcento = (v) => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+
+        const where = { Perfis: { contains: 'FORNECEDOR', mode: 'insensitive' } };
+        if (nome) where.OR = [
+            { Nome: { contains: nome, mode: 'insensitive' } },
+            { NomeFantasia: { contains: nome, mode: 'insensitive' } },
+        ];
+        const clientes = await prisma.cliente.findMany({
+            where,
+            select: { UUID: true, Nome: true, NomeFantasia: true, Documento: true, Email: true, Telefone: true, End_Cidade: true, End_Estado: true, Perfis: true },
+        });
+        const temPerfilFornecedor = (perfis) => {
+            try {
+                const arr = JSON.parse(perfis || '[]');
+                return Array.isArray(arr) && arr.some(p => String(typeof p === 'string' ? p : p?.perfil || '').toUpperCase() === 'FORNECEDOR');
+            } catch { return false; }
+        };
+        const candidatos = clientes.filter(c => temPerfilFornecedor(c.Perfis));
+
+        const fornecedores = await prisma.fornecedor.findMany({ select: { id: true, cnpjCpf: true, razaoSocial: true } });
+        const porDoc = new Map(), porNome = new Map();
+        for (const f of fornecedores) {
+            if (f.cnpjCpf) porDoc.set(normalizarDoc(f.cnpjCpf), f);
+            porNome.set(semAcento(f.razaoSocial), f);
+        }
+
+        const criados = [], ignorados = [], aCriar = [];
+        for (const c of candidatos) {
+            const doc = c.Documento ? normalizarDoc(c.Documento) : '';
+            const info = { clienteId: c.UUID, nome: c.Nome, documento: doc || null };
+            const existente = doc ? porDoc.get(doc) : porNome.get(semAcento(c.Nome));
+            if (existente) { ignorados.push({ ...info, motivo: 'JA_EXISTE_FORNECEDOR', fornecedorId: existente.id }); continue; }
+            if (!c.Nome || !c.Nome.trim()) { ignorados.push({ ...info, motivo: 'SEM_NOME' }); continue; }
+            aCriar.push({ c, doc, info });
+        }
+        for (const { c, doc, info } of aCriar) {
+            if (!aplicar) { criados.push({ ...info, simulado: true }); continue; }
+            const f = await prisma.fornecedor.create({
+                data: {
+                    razaoSocial: c.Nome.trim(),
+                    nomeFantasia: c.NomeFantasia || null,
+                    cnpjCpf: doc || null,
+                    email: c.Email || null,
+                    telefone: c.Telefone || null,
+                    cidade: c.End_Cidade || null,
+                    uf: c.End_Estado || null,
+                    ativo: true,
+                    origem: 'APP',
+                    statusEnvioCA: 'NAO_ENVIAR',
+                },
+            });
+            criados.push({ ...info, fornecedorId: f.id });
+            if (doc) porDoc.set(doc, f); else porNome.set(semAcento(c.Nome), f);
+        }
+        res.json({ simulacao: !aplicar, candidatos: candidatos.length, criados, ignorados });
+    } catch (err) {
+        console.error('[AdminExec] fornecedores-espelhar-de-clientes:', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 module.exports = router;
