@@ -1,5 +1,11 @@
 [
   {
+    "slug": "contas-pagar-tipo-pagamento",
+    "titulo": "Contas a Pagar: filtro por tipo de pagamento",
+    "resumo": "Novo filtro para ver só os boletos e tirar da lista as contas de cartão, com etiqueta Boleto/Cartão/Pix em cada conta.",
+    "data": "2026-11-03"
+  },
+  {
     "slug": "estoque-no-produto",
     "titulo": "Estoque direto na ficha do produto",
     "resumo": "Ajuste o estoque com motivo, informe o estoque inicial ao criar produto novo e edite o mínimo e o máximo na própria ficha do produto.",

@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Contas a Pagar por tipo de pagamento — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<meta property="og:title" content="💳 Novidade no Hardt App: filtre os boletos em Contas a Pagar">
+<meta property="og:description" content="Novo filtro 'Tipo de pagamento': veja só os boletos e tire da lista as contas de cartão, que caem sozinhas no vencimento.">
+<meta property="og:type" content="website">
+<style>
+  :root { --primary:#00754A; --primary-dark:#006241; --house:#1E3932; --mint:#d4e9e2; --cream:#f2f0eb; --gold:#cba258; --ink:rgba(0,0,0,.87); --ink-soft:#5f6b66; letter-spacing:-0.01em; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--cream); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; line-height:1.55; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:620px; margin:0 auto; padding:0 16px 56px; }
+  .hero { background:linear-gradient(168deg,var(--house) 0%,#16302a 100%); color:#fff; padding:40px 16px 48px; }
+  .hero-inner { max-width:620px; margin:0 auto; text-align:center; }
+  .eyebrow { display:inline-block; background:var(--gold); color:#2b230f; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.14em; padding:6px 14px; border-radius:999px; margin-bottom:18px; }
+  .hero h1 { font-size:clamp(28px,7vw,40px); font-weight:800; line-height:1.12; margin:0 0 12px; text-wrap:balance; }
+  .hero p { color:rgba(255,255,255,.75); font-size:16px; max-width:46ch; margin:0 auto; text-wrap:balance; }
+  .secao { font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.16em; color:var(--primary-dark); margin:34px 4px 12px; }
+  .acc { background:#fff; border:1px solid #e3e1da; border-radius:16px; margin-bottom:10px; overflow:hidden; box-shadow:0 1px 2px rgba(30,57,50,.05); }
+  .acc-head { width:100%; display:flex; align-items:center; gap:12px; background:none; border:none; font:inherit; text-align:left; padding:15px 16px; cursor:pointer; min-height:44px; }
+  .acc-head:focus-visible { outline:3px solid var(--gold); outline-offset:2px; }
+  .acc-ico { width:36px; height:36px; border-radius:10px; background:var(--mint); display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
+  .acc-head strong { flex:1; font-size:15.5px; font-weight:700; }
+  .acc-seta { color:#9aa5a0; transition:transform .2s; font-size:13px; }
+  .acc.aberto .acc-seta { transform:rotate(180deg); }
+  .acc-corpo { display:none; padding:0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display:block; }
+  .acc-corpo p, .acc-corpo li { font-size:14px; color:var(--ink-soft); }
+  .acc-corpo p { margin:0 0 10px; }
+  .acc-corpo ul { margin:0; padding-left:18px; }
+  .acc-corpo li { margin-bottom:7px; }
+  .acc-corpo b { color:var(--ink); }
+  @media (max-width:420px) { .acc-corpo { padding-left:16px; } }
+  .passos { background:#fff; border:1px solid #e3e1da; border-radius:16px; padding:18px 16px; }
+  .passo { display:flex; gap:14px; padding:10px 0; }
+  .passo + .passo { border-top:1px dashed #e3e1da; }
+  .passo-n { width:30px; height:30px; flex-shrink:0; border-radius:50%; background:var(--primary); color:#fff; font-weight:800; font-size:14px; display:flex; align-items:center; justify-content:center; }
+  .passo div { font-size:14px; color:var(--ink-soft); }
+  .passo b { color:var(--ink); }
+  .rodape { text-align:center; font-size:13px; color:var(--ink-soft); margin-top:40px; }
+  .rodape strong { color:var(--primary-dark); }
+  .tela { background:#fff; border:1px solid #e3e1da; border-radius:16px; overflow:hidden; margin-bottom:12px; box-shadow:0 1px 2px rgba(30,57,50,.05); }
+  .tela-titulo { background:var(--house); color:#fff; padding:12px 16px; font-size:13px; font-weight:800; }
+  .tela-corpo { padding:16px; background:#f7f6f2; }
+  .app-card { background:#fff; border:1px solid #e5e3dc; border-radius:12px; overflow:hidden; margin-bottom:10px; }
+  .app-card-body { padding:12px; }
+  .app-input { border:1px solid #d8d5cc; border-radius:8px; padding:9px 10px; font-size:12.5px; color:var(--ink); background:#fff; margin-bottom:8px; display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:38px; }
+  .app-input.on { border-color:var(--primary); background:#f1f8f5; font-weight:700; }
+  .menu { border:1px solid #d8d5cc; border-radius:10px; background:#fff; box-shadow:0 4px 14px rgba(0,0,0,.08); margin-bottom:8px; }
+  .opc { display:flex; align-items:center; gap:8px; padding:9px 12px; font-size:13px; border-bottom:1px solid #f0efe9; }
+  .opc:last-child { border-bottom:none; }
+  .ck { width:16px; height:16px; border:1.5px solid #c9c5ba; border-radius:4px; flex-shrink:0; display:inline-flex; align-items:center; justify-content:center; font-size:11px; color:#fff; }
+  .ck.on { background:var(--primary); border-color:var(--primary); }
+  .chip { display:inline-block; background:var(--mint); color:var(--primary-dark); font-weight:700; font-size:12px; padding:3px 10px; border-radius:999px; }
+  .aviso { font-size:11.5px; color:#6b756f; }
+  .linha { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .linha b { font-size:13.5px; }
+  .linha small { display:block; color:#6b756f; font-size:12px; }
+  .bdg { padding:3px 9px; font-size:11.5px; font-weight:700; border-radius:999px; white-space:nowrap; }
+  .bdg.bol { background:#fef3c7; color:#b45309; }
+  .bdg.car { background:#f3e8ff; color:#7e22ce; }
+  .bdg.pix { background:#dcfce7; color:#166534; }
+  .pin { display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:50%; background:var(--gold); color:#2b230f; font-size:11px; font-weight:800; flex-shrink:0; vertical-align:2px; margin-left:6px; }
+  .legenda { padding:12px 16px 16px; }
+  .legenda div { display:flex; gap:8px; font-size:13px; color:var(--ink-soft); margin-bottom:7px; align-items:flex-start; }
+  .legenda .pin { margin:1px 0 0; }
+  .legenda b { color:var(--ink); }
+</style>
+</head>
+<body>
+<div class="hero"><div class="hero-inner">
+  <span class="eyebrow">Novidade · Financeiro</span>
+  <h1>Veja só os boletos em Contas a Pagar</h1>
+  <p>Novo filtro "Tipo de pagamento": tire da lista as contas de cartão, que caem sozinhas no vencimento.</p>
+</div></div>
+
+<div class="wrap">
+  <div class="secao">O que mudou</div>
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true"><span class="acc-ico">💳</span><strong>Filtro "Tipo de pagamento"</strong><span class="acc-seta">▼</span></button>
+    <div class="acc-corpo">
+      <p>Ao lado dos outros filtros da tela <b>Contas a Pagar</b> há um novo: <b>Tipo de pagamento</b>. Dá para marcar mais de um.</p>
+      <ul>
+        <li><b>Boleto</b>, <b>Cartão</b> (crédito e débito), <b>Pix</b>, <b>Outros</b> e <b>Não informado</b>.</li>
+        <li>Os cartões <b>Vencidas</b> e <b>Próximos 7 dias</b> no topo também respeitam o filtro.</li>
+        <li>O app lembra a sua escolha na próxima vez que abrir a tela. "Limpar filtros" volta a mostrar tudo.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true"><span class="acc-ico">🏷️</span><strong>Etiqueta na linha da conta</strong><span class="acc-seta">▼</span></button>
+    <div class="acc-corpo">
+      <p>Cada conta que tem tipo cadastrado mostra uma etiqueta: <b>Boleto</b> (âmbar), <b>Cartão</b> (roxo) ou <b>Pix</b> (verde). No celular ela aparece no card.</p>
+    </div>
+  </div>
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true"><span class="acc-ico">⚠️</span><strong>Atenção com as contas antigas</strong><span class="acc-seta">▼</span></button>
+    <div class="acc-corpo">
+      <p>A maioria das contas antigas <b>não tem o tipo preenchido</b>. Se você marcar só "Boleto", elas somem da lista. Por isso o app avisa e, para vê-las, basta marcar também <b>"Não informado"</b>.</p>
+    </div>
+  </div>
+
+  <div class="secao">As telas do app</div>
+  <div class="tela">
+    <div class="tela-titulo">Tela 1 · Financeiro › Contas a Pagar — o filtro</div>
+    <div class="tela-corpo">
+      <div class="app-input on"><span>Tipo de pagamento</span><span class="chip">2 tipos</span><span class="pin">1</span></div>
+      <div class="menu">
+        <div class="opc"><span class="ck on">✓</span> Boleto</div>
+        <div class="opc"><span class="ck"></span> Cartão</div>
+        <div class="opc"><span class="ck"></span> Pix</div>
+        <div class="opc"><span class="ck on">✓</span> Não informado <span class="pin">2</span></div>
+        <div class="opc"><span class="ck"></span> Outros</div>
+      </div>
+      <div class="aviso">Contas antigas sem tipo ficam de fora — marque "Não informado" para vê-las. <span class="pin">3</span></div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Filtro novo</b>, junto da busca, status, categoria e período. Mostra "N tipos" quando há marcados.</span></div>
+      <div><span class="pin">2</span><span><b>Não informado</b> traz as contas antigas, sem tipo cadastrado.</span></div>
+      <div><span class="pin">3</span><span><b>Aviso</b> que aparece só quando há tipo marcado sem "Não informado".</span></div>
+    </div>
+  </div>
+  <div class="tela">
+    <div class="tela-titulo">Tela 2 · Etiquetas nas contas</div>
+    <div class="tela-corpo">
+      <div class="app-card"><div class="app-card-body">
+        <div class="linha"><div><b>Distribuidora Sul</b><small>Farinha · parc. 1/1</small></div><span class="bdg bol">Boleto</span><span class="pin">4</span></div>
+      </div></div>
+      <div class="app-card"><div class="app-card-body">
+        <div class="linha"><div><b>Posto Central</b><small>Combustível · parc. 1/1</small></div><span class="bdg car">Cartão</span></div>
+      </div></div>
+      <div class="app-card"><div class="app-card-body">
+        <div class="linha"><div><b>Embalagens Ltda</b><small>Caixas · parc. 1/2</small></div><span class="bdg pix">Pix</span></div>
+      </div></div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">4</span><span><b>Etiqueta do tipo</b> ao lado da conta. Conta sem tipo cadastrado fica sem etiqueta.</span></div>
+    </div>
+  </div>
+
+  <div class="secao">Para começar a usar</div>
+  <div class="passos">
+    <div class="passo"><span class="passo-n">1</span><div>Abra <b>Financeiro › Contas a Pagar</b>.</div></div>
+    <div class="passo"><span class="passo-n">2</span><div>Toque em <b>Tipo de pagamento</b> e marque <b>Boleto</b> para ver só o que precisa pagar.</div></div>
+    <div class="passo"><span class="passo-n">3</span><div>Quer ver também as contas antigas? Marque <b>"Não informado"</b> junto.</div></div>
+    <div class="passo"><span class="passo-n">4</span><div>Para voltar a ver tudo, toque em <b>Limpar filtros</b>.</div></div>
+  </div>
+  <div class="rodape"><strong>Hardt App</strong> · atualize o app se a novidade ainda não apareceu.</div>
+</div>
+<script>
+  function alternar(btn) {
+    var acc = btn.parentElement;
+    var abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>

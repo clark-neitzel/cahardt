@@ -8,6 +8,7 @@ import {
 import toast from 'react-hot-toast';
 import ComboBusca from '../../components/ComboBusca';
 import SelectBusca from '../../components/SelectBusca';
+import MultiSelect from '../../components/MultiSelect';
 import AnexosEntidade, { AbrirAnexos } from '../../components/Anexos/AnexosEntidade';
 import FiltroPeriodo, { usePeriodoSalvo } from '../../components/FiltroPeriodo';
 import { useFiltrosSalvos } from '../../hooks/useFiltrosSalvos';
@@ -344,6 +345,26 @@ const rotuloPeriodo = (de, ate) => {
 // ═══════════════════════════════════════════════════════════
 // PÁGINA
 // ═══════════════════════════════════════════════════════════
+const METODO_OPCOES = [
+    { value: 'BOLETO', label: 'Boleto' },
+    { value: 'CARTAO', label: 'Cartão' },
+    { value: 'PIX', label: 'Pix' },
+    { value: 'NAO_INFORMADO', label: 'Não informado' },
+    { value: 'OUTROS', label: 'Outros' },
+];
+// Etiqueta só para os três tipos principais (cores do design system)
+const tipoPagamento = (conta) => {
+    const m = String(conta?.metodoPagamentoCA || '').toUpperCase();
+    if (m.startsWith('BOLETO')) return { rotulo: 'Boleto', cls: 'bg-amber-100 text-amber-700' };
+    if (m.includes('CARTAO')) return { rotulo: 'Cartão', cls: 'bg-purple-100 text-purple-700' };
+    if (m.startsWith('PIX')) return { rotulo: 'Pix', cls: 'bg-green-100 text-green-800' };
+    return null;
+};
+const BadgeMetodo = ({ conta }) => {
+    const t = tipoPagamento(conta);
+    return t ? <span className={`px-2 py-1 text-xs font-semibold rounded-full whitespace-nowrap ${t.cls}`}>{t.rotulo}</span> : null;
+};
+
 const ContasPagarPage = () => {
     const { hasPermission } = useAuth();
     const podeBaixar = hasPermission('Pode_Baixar_Contas_Pagar');
@@ -358,12 +379,13 @@ const ContasPagarPage = () => {
     // Filtros persistem POR USUÁRIO (padrão do sistema): status/categoria salvos
     // direto; o período pelo PRESET via usePeriodoSalvo ("Este mês" é recalculado
     // a cada abertura — só o personalizado salva datas exatas). Busca não persiste.
-    const [filtrosSalvos, setFiltrosSalvos] = useFiltrosSalvos('contas-pagar', { status: '', categoria: '' });
+    const [filtrosSalvos, setFiltrosSalvos] = useFiltrosSalvos('contas-pagar', { status: '', categoria: '', metodos: [] });
     const [periodo, periodoCtl] = usePeriodoSalvo('contas-pagar'); // preset padrão: 'mes'
     const [filtros, setFiltros] = useState({
         busca: '',
         status: filtrosSalvos.status,
         categoria: filtrosSalvos.categoria,
+        metodos: Array.isArray(filtrosSalvos.metodos) ? filtrosSalvos.metodos : [],
         dataDe: periodo.de,  // '' = sem início (mais antigo)
         dataAte: periodo.ate // '' = sem fim (mais novo). Ambos '' = todas as datas
     });
@@ -371,8 +393,8 @@ const ContasPagarPage = () => {
 
     // Espelha no armazenamento só a parte persistível dos filtros
     useEffect(() => {
-        setFiltrosSalvos({ status: filtros.status, categoria: filtros.categoria });
-    }, [filtros.status, filtros.categoria]); // eslint-disable-line react-hooks/exhaustive-deps
+        setFiltrosSalvos({ status: filtros.status, categoria: filtros.categoria, metodos: filtros.metodos });
+    }, [filtros.status, filtros.categoria, filtros.metodos]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // O período resolvido do FiltroPeriodo alimenta dataDe/dataAte — o resto da
     // tela (fetch, linhas, rótulos) continua olhando só filtros.dataDe/dataAte.
@@ -387,6 +409,7 @@ const ContasPagarPage = () => {
         if (filtros.busca) n++;
         if (filtros.status) n++;
         if (filtros.categoria) n++;
+        if (filtros.metodos.length > 0) n++;
         if (!periodo.padrao) n++; // período diferente do padrão ("Este mês")
         return n;
     }, [filtros, periodo.padrao]);
@@ -399,7 +422,7 @@ const ContasPagarPage = () => {
 
     const limparFiltros = () => {
         periodoCtl.limpar();
-        setFiltros({ busca: '', status: '', categoria: '', dataDe: primeiroDiaMesAtual(), dataAte: ultimoDiaMesAtual() });
+        setFiltros({ busca: '', status: '', categoria: '', metodos: [], dataDe: primeiroDiaMesAtual(), dataAte: ultimoDiaMesAtual() });
         setBuscaInput('');
     };
 
@@ -428,6 +451,9 @@ const ContasPagarPage = () => {
             if (filtros.busca) params.busca = filtros.busca;
             if (filtros.status) params.status = filtros.status;
             if (filtros.categoria) params.categoria = filtros.categoria;
+            if (filtros.metodos.length > 0) {
+                params.metodo = filtros.metodos.join(',');
+            }
             if (filtros.dataDe) params.de = filtros.dataDe;
             if (filtros.dataAte) params.ate = filtros.dataAte;
             const data = await contasPagarService.listar(params);
@@ -603,9 +629,26 @@ const ContasPagarPage = () => {
                             <option value="">Categoria: Todas</option>
                             {categorias.map(c => <option key={c.id} value={c.nome}>{c.nome}</option>)}
                         </SelectBusca>
+                        <div className="w-full md:w-52">
+                            <MultiSelect
+                                options={METODO_OPCOES}
+                                valueKey="value"
+                                labelKey="label"
+                                selected={filtros.metodos}
+                                onChange={v => setFiltros(f => ({ ...f, metodos: v }))}
+                                placeholder="Tipo de pagamento"
+                                summary
+                                summaryNoun="tipo"
+                            />
+                        </div>
                         {/* Período por vencimento — FiltroPeriodo (padrão do sistema, estilo CA) */}
                         <FiltroPeriodo periodo={periodo} controle={periodoCtl} className="w-full md:w-auto" />
                     </div>
+                    {filtros.metodos.length > 0 && !filtros.metodos.includes('NAO_INFORMADO') && (
+                        <p className="text-xs text-gray-500">
+                            Contas antigas sem tipo ficam de fora — marque "Não informado" para vê-las.
+                        </p>
+                    )}
                     {filtrosAtivos > 0 && (
                         <div className="flex items-center gap-2 pt-0.5">
                             <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
@@ -683,6 +726,9 @@ const ContasPagarPage = () => {
                                 {textoNota(conta, parcela) ? ` · Nota ${textoNota(conta, parcela)}` : ''}
                                 {` · parc. ${parcela.numeroParcela}/${totalParcelas}`}
                             </div>
+                            {tipoPagamento(conta) && (
+                                <div className="mt-1.5"><BadgeMetodo conta={conta} /></div>
+                            )}
                             <div className="flex items-center justify-between mt-2">
                                 <div>
                                     <div className={`text-xs ${parcelaVencida(parcela) ? 'text-red-600 font-medium' : 'text-gray-500'}`}>
@@ -764,6 +810,7 @@ const ContasPagarPage = () => {
                                         <td className="px-5 py-3 text-gray-600">
                                             {conta.descricao || '—'}
                                             {conta.categoria ? <span className="text-gray-500"> · {conta.categoria}</span> : null}
+                                            {tipoPagamento(conta) && <span className="ml-2 align-middle"><BadgeMetodo conta={conta} /></span>}
                                         </td>
                                         <td className="px-5 py-3 text-gray-600">{textoNota(conta, parcela) || <span className="text-gray-500">—</span>}</td>
                                         <td className="px-5 py-3 text-gray-600">{parcela.numeroParcela}/{totalParcelas}</td>

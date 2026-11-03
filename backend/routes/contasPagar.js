@@ -276,10 +276,42 @@ router.get('/produtos-opcoes', verificarAuth, checkAcesso, async (req, res) => {
     }
 });
 
+// Grupos de tipo de pagamento aceitos em GET /?metodo=
+const GRUPOS_METODO = {
+    BOLETO: ['BOLETO_BANCARIO'],
+    CARTAO: ['CARTAO_CREDITO', 'CARTAO_DEBITO', 'CARTAO_CREDITO_VIA_LINK'],
+    PIX: ['PIX_PAGAMENTO_INSTANTANEO']
+};
+// Devolve um pedaço de `where` do Prisma (ou null se nada filtrar).
+const montarFiltroMetodo = (param) => {
+    if (!param) return null;
+    const itens = String(param).split(',').map((x) => x.trim().toUpperCase()).filter(Boolean);
+    if (!itens.length) return null;
+    const valores = new Set();
+    let incluiNulo = false;
+    let incluiOutros = false;
+    for (const it of itens) {
+        if (it === 'NAO_INFORMADO') incluiNulo = true;
+        else if (it === 'OUTROS') incluiOutros = true;
+        else if (GRUPOS_METODO[it]) GRUPOS_METODO[it].forEach((v) => valores.add(v));
+        else valores.add(it);
+    }
+    const or = [];
+    if (valores.size) or.push({ metodoPagamentoCA: { in: [...valores] } });
+    if (incluiNulo) or.push({ metodoPagamentoCA: null });
+    // OUTROS = tem tipo (não nulo) e não pertence a nenhum grupo Boleto/Cartão/Pix
+    // (carteira digital, dinheiro, cheque, valores legados...). AND explícito: `notIn` sozinho não cobre null.
+    if (incluiOutros) {
+        const todos = Object.values(GRUPOS_METODO).flat();
+        or.push({ AND: [{ metodoPagamentoCA: { not: null } }, { metodoPagamentoCA: { notIn: todos } }] });
+    }
+    return or.length === 1 ? or[0] : { OR: or };
+};
+
 // ── GET / — listar contas com KPIs ──
 router.get('/', verificarAuth, checkAcesso, async (req, res) => {
     try {
-        const { busca, status, categoria, mes, de, ate } = req.query;
+        const { busca, status, categoria, mes, de, ate, metodo } = req.query;
 
         const hoje = new Date();
         hoje.setHours(0, 0, 0, 0);
@@ -310,6 +342,11 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
         // Filtrar aqui por conta.status esconderia parcelas (ex.: "Vencido"/"Pago" não
         // são status de conta). Então não pré-filtramos por status no backend.
         if (categoria) where.categoria = { equals: categoria, mode: 'insensitive' };
+        // Tipo de pagamento (metodoPagamentoCA): aceita vários separados por vírgula.
+        // Grupos: BOLETO, CARTAO (crédito+débito+link), PIX, NAO_INFORMADO (null), OUTROS (demais tipos); ou o valor cru do enum do CA.
+        // Atenção: `in`/`not` do Prisma ignoram null — o "Não informado" entra por OR explícito.
+        const filtroMetodo = montarFiltroMetodo(metodo);
+        if (filtroMetodo) where.AND = [filtroMetodo];
         if (busca) {
             where.OR = [
                 { descricao: { contains: busca, mode: 'insensitive' } },
@@ -348,7 +385,7 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
             where: {
                 status: { in: ['PENDENTE', 'PARCIAL'] },
                 dataVencimento: { lt: hoje },
-                contaPagar: { status: { notIn: ['CANCELADO'] } }
+                contaPagar: { status: { notIn: ['CANCELADO'] }, ...(filtroMetodo || {}) }
             },
             include: { pagamentos: { where: { estornado: false } } }
         });
@@ -362,7 +399,7 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
             where: {
                 status: { in: ['PENDENTE', 'PARCIAL'] },
                 dataVencimento: { gte: hoje, lte: em7dias },
-                contaPagar: { status: { notIn: ['CANCELADO'] } }
+                contaPagar: { status: { notIn: ['CANCELADO'] }, ...(filtroMetodo || {}) }
             },
             include: { pagamentos: { where: { estornado: false } } }
         });
