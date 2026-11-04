@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { ChevronDown, Search } from 'lucide-react';
 import { chaveBusca } from '../utils/cidade';
 
@@ -15,6 +16,20 @@ const ComboBusca = ({
     const [hi, setHi] = useState(0);
     const boxRef = useRef(null);
     const inputRef = useRef(null);
+    const menuRef = useRef(null);
+    const [coords, setCoords] = useState(null);
+
+    // Menu em PORTAL (position:fixed): não é cortado por card/modal com overflow-hidden.
+    const posicionar = useCallback(() => {
+        const el = boxRef.current;
+        if (!el) return;
+        const r = el.getBoundingClientRect();
+        const abaixo = window.innerHeight - r.bottom - 8;
+        const acima = r.top - 8;
+        const abrirCima = abaixo < 320 && acima > abaixo;
+        const maxH = Math.max(200, Math.min(430, abrirCima ? acima : abaixo));
+        setCoords({ left: r.left, width: r.width, top: r.bottom + 4, bottom: window.innerHeight - r.top + 4, abrirCima, maxH });
+    }, []);
 
     const selecionado = options.find(o => String(o.value) === String(value));
 
@@ -39,10 +54,21 @@ const ComboBusca = ({
     useEffect(() => { setHi(0); }, [query, open]);
     useEffect(() => {
         if (!open) return;
-        const onDoc = (e) => { if (boxRef.current && !boxRef.current.contains(e.target)) { setOpen(false); setQuery(''); } };
+        posicionar();
+        const onDoc = (e) => {
+            if (boxRef.current?.contains(e.target) || menuRef.current?.contains(e.target)) return;
+            setOpen(false); setQuery('');
+        };
+        const onScroll = (e) => { if (menuRef.current?.contains(e.target)) return; posicionar(); };
         document.addEventListener('mousedown', onDoc);
-        return () => document.removeEventListener('mousedown', onDoc);
-    }, [open]);
+        window.addEventListener('scroll', onScroll, true);
+        window.addEventListener('resize', posicionar);
+        return () => {
+            document.removeEventListener('mousedown', onDoc);
+            window.removeEventListener('scroll', onScroll, true);
+            window.removeEventListener('resize', posicionar);
+        };
+    }, [open, posicionar]);
     useEffect(() => { if (open && inputRef.current) inputRef.current.focus(); }, [open]);
 
     const escolher = (o) => { onChange(o.value); setOpen(false); setQuery(''); };
@@ -71,8 +97,11 @@ const ComboBusca = ({
                 </span>
                 <ChevronDown className="h-4 w-4 text-gray-400 shrink-0" />
             </button>
-            {open && (
-                <div className="absolute z-30 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg">
+            {open && coords && createPortal(
+                <div
+                    ref={menuRef}
+                    style={{ position: 'fixed', left: coords.left, width: coords.width, ...(coords.abrirCima ? { bottom: coords.bottom } : { top: coords.top }) }}
+                    className="z-[9999] bg-white border border-gray-200 rounded-lg shadow-lg">
                     <div className="p-2 border-b border-gray-100">
                         <div className="relative">
                             <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
@@ -86,7 +115,7 @@ const ComboBusca = ({
                             />
                         </div>
                     </div>
-                    <div className="max-h-64 overflow-y-auto py-1">
+                    <div className="overflow-y-auto py-1" style={{ maxHeight: Math.max(120, coords.maxH - 150) }}>
                         {allowClear && selecionado && (
                             <button type="button" onClick={() => { onChange(''); setOpen(false); setQuery(''); }}
                                 className="w-full text-left px-3 py-2 text-xs text-gray-500 hover:bg-gray-50">Limpar seleção</button>
@@ -127,7 +156,8 @@ const ComboBusca = ({
                                 className="w-full text-left px-2 py-2 text-sm text-primary font-medium hover:bg-blue-50 rounded">{extraAction.label}</button>
                         </div>
                     )}
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );
