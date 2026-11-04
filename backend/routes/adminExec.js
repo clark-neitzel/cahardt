@@ -154,6 +154,63 @@ router.post('/etiquetas-sincronizar-ean', async (req, res) => {
     }
 });
 
+// POST /api/admin-exec/qr-pix-conceder-permissao[?aplicar=1]
+// Concede Pode_Cancelar_QR_Pix (cancelar QR PIX do pedido) a: login 'Atendimento', login
+// 'Leticia' e o usuário de nome contendo 'Piske'. Sem ?aplicar=1 só SIMULA. Se algum dos três
+// critérios achar ≠ 1 usuário, NÃO aplica e devolve as listas. Idempotente (quem já tem não muda).
+// Grava o histórico de permissões (VendedorPermissoesHistorico), como o painel de permissões.
+router.post('/qr-pix-conceder-permissao', async (req, res) => {
+    try {
+        const aplicar = req.query.aplicar === '1';
+        const sel = { id: true, nome: true, login: true, ativo: true, permissoes: true };
+        const criterios = [
+            { criterio: "login = 'Atendimento'", where: { login: { equals: 'Atendimento', mode: 'insensitive' } } },
+            { criterio: "login = 'Leticia'", where: { login: { equals: 'Leticia', mode: 'insensitive' } } },
+            { criterio: "nome contém 'Piske'", where: { nome: { contains: 'Piske', mode: 'insensitive' } } },
+        ];
+        const achados = [];
+        for (const c of criterios) {
+            const lista = await prisma.vendedor.findMany({ where: c.where, select: sel });
+            achados.push({ criterio: c.criterio, encontrados: lista });
+        }
+        const resumo = (v) => ({ id: v.id, nome: v.nome, login: v.login, ativo: v.ativo });
+        const ambiguos = achados.filter(a => a.encontrados.length !== 1);
+        if (ambiguos.length) {
+            return res.status(409).json({
+                ok: false, aplicado: false, simulacao: !aplicar,
+                erro: 'Algum critério não achou exatamente 1 usuário — nada foi alterado.',
+                criterios: achados.map(a => ({ criterio: a.criterio, encontrados: a.encontrados.map(resumo) }))
+            });
+        }
+        const alvos = new Map();
+        achados.forEach(a => alvos.set(a.encontrados[0].id, a.encontrados[0]));
+        const resultado = [];
+        for (const v of alvos.values()) {
+            let perms = v.permissoes;
+            if (typeof perms === 'string') { try { perms = JSON.parse(perms); } catch { perms = {}; } }
+            perms = perms || {};
+            const jaTem = perms.Pode_Cancelar_QR_Pix === true;
+            if (aplicar && !jaTem) {
+                const depois = { ...perms, Pode_Cancelar_QR_Pix: true };
+                await prisma.vendedor.update({ where: { id: v.id }, data: { permissoes: depois } });
+                try {
+                    await prisma.vendedorPermissoesHistorico.create({
+                        data: {
+                            vendedorId: v.id, alteradoPorId: null, alteradoPorNome: 'admin-exec (QR PIX)',
+                            permissoesAntes: perms, permissoesDepois: depois
+                        }
+                    });
+                } catch (h) { console.error('[AdminExec] histórico de permissões (permissão já gravada):', h.message); }
+            }
+            resultado.push({ ...resumo(v), jaTinha: jaTem, concedida: aplicar && !jaTem });
+        }
+        res.json({ ok: true, simulacao: !aplicar, aplicado: aplicar, usuarios: resultado });
+    } catch (err) {
+        console.error('[AdminExec] qr-pix-conceder-permissao:', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // GET /api/admin-exec/diag-impressao
 // Impressão direta (Etiquetas da Cozinha): agentes (SEM token/hash), impressoras e últimos trabalhos.
 router.get('/diag-impressao', async (req, res) => {

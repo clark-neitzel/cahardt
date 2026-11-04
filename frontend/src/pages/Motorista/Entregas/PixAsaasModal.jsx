@@ -4,31 +4,57 @@ import toast from 'react-hot-toast';
 import asaasService from '../../../services/asaasService';
 import { cobrancaAindaPagavel } from '../../../utils/statusCobrancaAsaas';
 import CampoNumero from '../../../components/CampoNumero';
+import ConfirmarCancelarQr from '../../../components/ConfirmarCancelarQr';
+import { quandoGerado } from '../../../utils/horaQrPix';
 
 // Modal de cobrança PIX na entrega (Asaas):
 // motorista define o valor → QR Code na tela → cliente paga →
 // confirmação automática em segundos (poll no backend, que confere no Asaas).
+const brl = (v) => Number(v || 0).toFixed(2).replace('.', ',');
 const PixAsaasModal = ({ pedido, valorSugerido, valorMaximo, onRecebido, onClose }) => {
     const [valor, setValor] = useState(Number(valorSugerido || 0).toFixed(2));
     const [cobranca, setCobranca] = useState(null); // cobrança PENDENTE/RECEBIDA em tela
     const [gerando, setGerando] = useState(false);
     const [copiado, setCopiado] = useState(false);
+    const [carregando, setCarregando] = useState(true);   // procurando QR já existente do pedido
+    const [jaExistia, setJaExistia] = useState(false);    // o QR em tela é um que já existia (nenhum novo foi criado)
+    const [podeCancelar, setPodeCancelar] = useState(false);
+    const [continuarVencido, setContinuarVencido] = useState(false); // vencido-ainda-pagável: usuário escolheu seguir com ele
+    const [conflito, setConflito] = useState(null);       // QR aberto com valor diferente do digitado
+    const [confirmaCancelar, setConfirmaCancelar] = useState(false);
+    const [cancelando, setCancelando] = useState(false);
     const pollRef = useRef(null);
     const recebidoRef = useRef(false);
 
     // Poll de status a cada 3,5s enquanto houver cobrança pendente na tela
     useEffect(() => {
-        if (!cobranca || cobranca.status !== 'PENDENTE') return undefined;
+        // Vencido (EXPIRADO) continua pagável: segue conferindo também
+        if (!cobranca || !['PENDENTE', 'EXPIRADO'].includes(cobranca.status)) return undefined;
         pollRef.current = setInterval(async () => {
             try {
                 const atual = await asaasService.consultar(cobranca.id);
-                if (atual.status !== 'PENDENTE') {
+                if (atual.status !== cobranca.status) {
                     setCobranca(atual);
                 }
             } catch (_) { /* sem rede agora — tenta de novo no próximo ciclo */ }
         }, 3500);
         return () => clearInterval(pollRef.current);
     }, [cobranca]);
+
+    // Ao abrir: se o pedido já tem QR vivo, mostra ESSE (não cria outro — cada QR custa R$ 1,90)
+    useEffect(() => {
+        let vivo = true;
+        (async () => {
+            try {
+                const r = await asaasService.pixAtivoDoPedido(pedido.id);
+                if (!vivo) return;
+                setPodeCancelar(!!r?.podeCancelar);
+                if (r?.cobranca) { setCobranca(r.cobranca); setJaExistia(true); }
+            } catch (_) { /* sem permissão de ver ou sem rede: segue para criar normalmente */ }
+            finally { if (vivo) setCarregando(false); }
+        })();
+        return () => { vivo = false; };
+    }, [pedido.id]);
 
     // Quando confirmar o recebimento, avisa a tela de pagamentos (uma vez só)
     useEffect(() => {
@@ -38,7 +64,7 @@ const PixAsaasModal = ({ pedido, valorSugerido, valorMaximo, onRecebido, onClose
         }
     }, [cobranca]);
 
-    const handleGerar = async () => {
+    const handleGerar = async (substituirPendente = false) => {
         const v = Number(String(valor).replace(',', '.'));
         if (!v || v <= 0) return toast.error('Informe um valor maior que zero.');
         if (valorMaximo != null && v > Number(valorMaximo) + 0.05) {
@@ -49,13 +75,49 @@ const PixAsaasModal = ({ pedido, valorSugerido, valorMaximo, onRecebido, onClose
             const nova = await asaasService.criarPix({
                 pedidoId: pedido.id,
                 valor: v,
-                descricao: `Pedido #${pedido.numero || 's/n'} - entrega`
+                descricao: `Pedido #${pedido.numero || 's/n'} - entrega`,
+                ...(substituirPendente ? { substituirPendente: true } : {})
             });
+            setConflito(null);
+            setJaExistia(false);
+            if (nova?.status === 'RECEBIDO') toast.success('Este PIX já estava pago.');
             setCobranca(nova);
         } catch (error) {
-            toast.error(error.response?.data?.error || 'Erro ao gerar o PIX. Tente novamente.');
+            const d = error.response?.data;
+            if (error.response?.status === 409 && (d?.codigo === 'PIX_PENDENTE_VALOR_DIFERENTE' || d?.codigo === 'PIX_FLUXO_DIFERENTE')) {
+                setConflito({ ...(d.pendente || {}), _mensagem: d.codigo === 'PIX_FLUXO_DIFERENTE' ? (d.error || 'Já existe um QR deste pedido gerado por outro fluxo.') : null, _fluxo: d.codigo === 'PIX_FLUXO_DIFERENTE' });
+                try { const r = await asaasService.pixAtivoDoPedido(pedido.id); setPodeCancelar(!!r?.podeCancelar); } catch (_) { /* mantém */ }
+            } else {
+                toast.error(d?.error || 'Erro ao gerar o PIX. Tente novamente.');
+            }
         } finally {
             setGerando(false);
+        }
+    };
+
+    // "Usar este QR": traz o QR completo (com imagem) que já existe
+    const handleUsarExistente = async () => {
+        try {
+            const r = await asaasService.pixAtivoDoPedido(pedido.id);
+            setCobranca(r?.cobranca || conflito);
+        } catch (_) { setCobranca(conflito); }
+        setJaExistia(true);
+        setConflito(null);
+    };
+
+    const handleCancelarQr = async () => {
+        try {
+            setCancelando(true);
+            const r = await asaasService.cancelarPix(cobranca.id);
+            toast.success('QR cancelado.');
+            setConfirmaCancelar(false);
+            setCobranca(r);
+            setJaExistia(false);
+        } catch (error) {
+            toast.error(error.response?.data?.error || 'Não consegui cancelar o QR.');
+            setConfirmaCancelar(false);
+        } finally {
+            setCancelando(false);
         }
     };
 
@@ -70,15 +132,11 @@ const PixAsaasModal = ({ pedido, valorSugerido, valorMaximo, onRecebido, onClose
         }
     };
 
-    const handleFecharSemPagar = async () => {
-        if (cobranca && cobranca.status === 'PENDENTE') {
-            try { await asaasService.cancelar(cobranca.id); } catch (_) { /* melhor esforço */ }
-        }
-        onClose();
-    };
-
+    // O X só FECHA. O QR continua valendo e reabre igual (cancelar é botão explícito).
+    const handleFecharSemPagar = () => onClose();
     const recebido = cobranca?.status === 'RECEBIDO';
-    const problema = cobranca && ['CANCELADO', 'EXPIRADO'].includes(cobranca.status);
+    const vencidoPagavel = cobranca?.status === 'EXPIRADO' && !continuarVencido;
+    const problema = cobranca && (cobranca.status === 'CANCELADO' || vencidoPagavel);
 
     return (
         <div className="fixed inset-0 z-[70] bg-black/60 flex items-end md:items-center justify-center" role="dialog">
@@ -95,7 +153,7 @@ const PixAsaasModal = ({ pedido, valorSugerido, valorMaximo, onRecebido, onClose
                         </div>
                     </div>
                     {!recebido && (
-                        <button onClick={handleFecharSemPagar} className="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 min-h-[44px] min-w-[44px] flex items-center justify-center">
+                        <button onClick={handleFecharSemPagar} aria-label="Fechar" className="p-2 text-gray-500 hover:text-gray-600 rounded-full hover:bg-gray-100 min-h-[44px] min-w-[44px] flex items-center justify-center">
                             <X className="h-5 w-5" />
                         </button>
                     )}
@@ -103,7 +161,13 @@ const PixAsaasModal = ({ pedido, valorSugerido, valorMaximo, onRecebido, onClose
 
                 <div className="p-5 flex-1">
                     {/* Etapa 1: definir o valor */}
-                    {!cobranca && (
+                    {(carregando && !cobranca) && (
+                        <div className="flex items-center justify-center gap-2 py-10 text-gray-500 text-sm">
+                            <Loader2 className="h-5 w-5 animate-spin" /> Verificando se já existe QR...
+                        </div>
+                    )}
+
+                    {!cobranca && !carregando && !conflito && (
                         <div className="space-y-4">
                             {/* Pedido ESPECIAL: PIX converte em pedido com NF (regra do dono) */}
                             {pedido.especial && (
@@ -129,12 +193,12 @@ const PixAsaasModal = ({ pedido, valorSugerido, valorMaximo, onRecebido, onClose
                                 />
                                 {valorMaximo != null && (
                                     <p className="text-xs text-gray-500 mt-1">
-                                        Saldo a receber: R$ {Number(valorMaximo).toFixed(2)}. Pode ser menor se parte for em dinheiro.
+                                        Saldo a receber: R$ {brl(valorMaximo)}. Pode ser menor se parte for em dinheiro.
                                     </p>
                                 )}
                             </div>
                             <button
-                                onClick={handleGerar}
+                                onClick={() => handleGerar(false)}
                                 disabled={gerando}
                                 className="w-full py-4 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-base flex items-center justify-center gap-2 disabled:opacity-60"
                             >
@@ -144,10 +208,51 @@ const PixAsaasModal = ({ pedido, valorSugerido, valorMaximo, onRecebido, onClose
                         </div>
                     )}
 
+                    {/* Já existe QR aberto com outro valor: nunca cria às escondidas */}
+                    {!cobranca && conflito && (
+                        <div className="space-y-4 text-center py-2">
+                            <div className="bg-amber-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto">
+                                <AlertTriangle className="h-8 w-8 text-amber-600" />
+                            </div>
+                            <p className="text-lg font-bold text-gray-900">
+                                Já existe QR{conflito.valor != null ? ` de R$ ${brl(conflito.valor)}` : ''} neste pedido
+                            </p>
+                            <p className="text-sm text-gray-600 break-words">
+                                {conflito._mensagem || `Cada QR custa R$ 1,90 e o cliente pode pagar por qualquer um deles. Use o que já existe${podeCancelar ? ' ou cancele-o para criar outro com o novo valor' : ''}.`}
+                            </p>
+                            <button onClick={handleUsarExistente}
+                                className="w-full py-3 min-h-[44px] bg-primary hover:bg-primaryDark text-white rounded-full font-semibold text-sm">
+                                Usar este QR
+                            </button>
+                            {podeCancelar && !conflito._fluxo && (
+                                <button onClick={() => handleGerar(true)} disabled={gerando}
+                                    className="w-full py-3 min-h-[44px] bg-white border border-red-600 text-red-700 hover:bg-red-50 rounded-full font-medium text-sm flex items-center justify-center gap-2 disabled:opacity-60">
+                                    {gerando && <Loader2 className="h-4 w-4 animate-spin" />}
+                                    Cancelar e criar com o novo valor
+                                </button>
+                            )}
+                            <button onClick={() => setConflito(null)}
+                                className="w-full py-3 min-h-[44px] text-gray-600 hover:bg-gray-100 rounded-full font-medium text-sm">
+                                Voltar
+                            </button>
+                        </div>
+                    )}
+
                     {/* Etapa 2: QR na tela, aguardando pagamento */}
                     {cobranca && !recebido && !problema && (
                         <div className="space-y-4 text-center">
-                            <p className="text-3xl font-black text-gray-900 font-mono">R$ {Number(cobranca.valor).toFixed(2)}</p>
+                            {jaExistia && (
+                                <div className="text-left text-xs text-primaryDark bg-mint/60 border border-mint rounded-lg px-3 py-2 break-words">
+                                    <b>Já existe:</b> este é o mesmo QR, nenhum novo foi criado{quandoGerado(cobranca.createdAt) ? ` · gerado ${quandoGerado(cobranca.createdAt)}` : ''}.
+                                </div>
+                            )}
+                            <p className="text-3xl font-black text-gray-900 font-mono">R$ {brl(cobranca.valor)}</p>
+                            {jaExistia && valorMaximo != null && Number(cobranca.valor) > Number(valorMaximo) + 0.05 && (
+                                <div className="flex items-start gap-2 text-left text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                                    <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                                    <span className="break-words">Este QR é de <b>R$ {brl(cobranca.valor)}</b>, maior que o saldo desta entrega de <b>R$ {brl(valorMaximo)}</b>. Você pode ver e mostrar o QR, mas confira o valor antes de o cliente pagar.</span>
+                                </div>
+                            )}
                             {cobranca.pixQrCodeBase64 ? (
                                 <img
                                     src={`data:image/png;base64,${cobranca.pixQrCodeBase64}`}
@@ -173,6 +278,14 @@ const PixAsaasModal = ({ pedido, valorSugerido, valorMaximo, onRecebido, onClose
                                     {copiado ? 'Copiado!' : 'Copiar código PIX (copia e cola)'}
                                 </button>
                             )}
+                            {podeCancelar && (
+                                <button
+                                    onClick={() => setConfirmaCancelar(true)}
+                                    className="w-full py-3 min-h-[44px] text-red-700 hover:bg-red-50 rounded-full font-medium text-sm"
+                                >
+                                    Cancelar este QR
+                                </button>
+                            )}
                         </div>
                     )}
 
@@ -185,7 +298,7 @@ const PixAsaasModal = ({ pedido, valorSugerido, valorMaximo, onRecebido, onClose
                             <div>
                                 <h4 className="text-2xl font-black text-green-700">PIX Recebido!</h4>
                                 <p className="text-3xl font-black text-gray-900 font-mono mt-2">
-                                    R$ {Number(cobranca.valorRecebido ?? cobranca.valor).toFixed(2)}
+                                    R$ {brl(cobranca.valorRecebido ?? cobranca.valor)}
                                 </p>
                                 <p className="text-sm text-gray-500 mt-2">Pagamento confirmado pelo banco. Pode entregar tranquilo.</p>
                             </div>
@@ -213,25 +326,38 @@ const PixAsaasModal = ({ pedido, valorSugerido, valorMaximo, onRecebido, onClose
                                     ? 'Este QR Code venceu, mas o cliente ainda consegue pagar por ele.'
                                     : 'Esta cobrança foi cancelada. Gere um novo para cobrar.'}
                             </p>
-                            {cobrancaAindaPagavel(cobranca.status) && (
-                                <div className="flex items-start gap-2 text-left text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                                    <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
-                                    <span className="break-words">
-                                        Se gerar outro, ficam <b>dois QR Codes vivos</b> e o cliente pode
-                                        pagar em dobro. Confirme com o escritório antes.
-                                    </span>
-                                </div>
+                            {cobrancaAindaPagavel(cobranca.status) ? (
+                                <>
+                                    <div className="flex items-start gap-2 text-left text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                                        <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                                        <span className="break-words">
+                                            Não gere outro por cima: ficariam <b>dois QR Codes vivos</b> e o cliente
+                                            poderia pagar em dobro. Continue com este.
+                                        </span>
+                                    </div>
+                                    <button
+                                        onClick={() => setContinuarVencido(true)}
+                                        className="w-full py-3 min-h-[44px] bg-primary hover:bg-primaryDark text-white rounded-full font-semibold text-sm"
+                                    >
+                                        Continuar com este QR
+                                    </button>
+                                </>
+                            ) : (
+                                <button
+                                    onClick={() => { setCobranca(null); setJaExistia(false); }}
+                                    className="w-full py-3 min-h-[44px] bg-primary hover:bg-primaryDark text-white rounded-full font-semibold text-sm"
+                                >
+                                    Gerar novo PIX
+                                </button>
                             )}
-                            <button
-                                onClick={() => { setCobranca(null); }}
-                                className="w-full py-3 min-h-[44px] bg-primary hover:bg-primaryDark text-white rounded-full font-semibold text-sm"
-                            >
-                                Gerar novo PIX
-                            </button>
                         </div>
                     )}
                 </div>
             </div>
+            {confirmaCancelar && cobranca && (
+                <ConfirmarCancelarQr valor={cobranca.valor} cancelando={cancelando}
+                    onConfirmar={handleCancelarQr} onVoltar={() => setConfirmaCancelar(false)} />
+            )}
         </div>
     );
 };

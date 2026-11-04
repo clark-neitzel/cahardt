@@ -1,5 +1,11 @@
 [
   {
+    "slug": "qr-pix-unico",
+    "titulo": "Um QR PIX por pedido",
+    "resumo": "Fechar a janela do PIX não cancela mais o QR. O QR aparece no histórico do pedido e dá para rever sem gerar outro (cada QR custa R$ 1,90).",
+    "data": "2026-11-04"
+  },
+  {
     "slug": "conciliacao-varios",
     "titulo": "Conciliação: vários títulos e parcial",
     "resumo": "Uma saída do banco agora pode pagar vários títulos de uma vez. Se não fechar o valor, a linha fica Parcial e você continua depois.",

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Search, X, AlertCircle, AlertTriangle, Package, ChevronDown, ChevronUp, Printer, CheckSquare, Square, Trash2, Calendar, User, Filter, Pencil, CheckCircle, RotateCcw, MessageCircle, XCircle, Loader2, List, FileEdit, Send, RefreshCw, FileCheck, Receipt, Bell, FileText, ExternalLink, Truck, CircleDollarSign, Zap, MapPin, Clock, Ban } from 'lucide-react';
+import { Search, X, AlertCircle, AlertTriangle, Package, ChevronDown, ChevronUp, Printer, CheckSquare, Square, Trash2, Calendar, User, Filter, Pencil, CheckCircle, RotateCcw, MessageCircle, XCircle, Loader2, List, FileEdit, Send, RefreshCw, FileCheck, Receipt, Bell, FileText, ExternalLink, Truck, CircleDollarSign, Zap, MapPin, Clock, Ban, QrCode } from 'lucide-react';
 import pedidoService from '../../services/pedidoService';
 import api, { API_URL } from '../../services/api';
 import amostraService from '../../services/amostraService';
@@ -15,6 +15,7 @@ import ListaDevolucoes from './ListaDevolucoes';
 import ClientePopup from '../Rota/ClientePopup';
 import asaasService from '../../services/asaasService';
 import BoletosAsaasModal from '../Financeiro/BoletosAsaasModal';
+import { eventosCobrancaPix } from '../Atendimentos/linhaDoTempoPedido';
 import PixAvulsoModal from './PixAvulsoModal';
 import ImprimirLoteModal from './ImprimirLoteModal';
 import PageHeader from '../../components/PageHeader';
@@ -1539,12 +1540,12 @@ const ListaPedidos = () => {
                                                         setPixModal({ id: pedido.id, numero: pedido.numero, especial: pedido.especial, clienteNome: pedido.cliente?.NomeFantasia || pedido.cliente?.Nome, valorSugerido: total });
                                                     }}
                                                     className="relative flex items-center gap-1 px-2 lg:px-2.5 py-1 rounded-full text-[10.5px] font-bold bg-[#eef1ff] text-[#0030b9] hover:bg-[#dee4ff] transition-colors"
-                                                    title={pedido.especial ? 'Gerar PIX (converte o especial em pedido com NF)' : 'Gerar PIX / link de pagamento (Asaas)'}
+                                                    title={pedido.asaasPix === 'RECEBIDO' ? 'PIX deste pedido já foi pago' : pedido.asaasPix === 'PENDENTE' ? 'Já existe QR PIX neste pedido (abre o mesmo QR)' : pedido.especial ? 'Gerar PIX (converte o especial em pedido com NF)' : 'Gerar PIX / link de pagamento (Asaas)'}
                                                 >
                                                     <AsaasIcon className="h-4 w-4" />
                                                     <span className="hidden lg:inline">PIX</span>
-                                                    {pedido.asaasPix === 'RECEBIDO' && (
-                                                        <span className="absolute -top-1.5 -right-1 h-4 w-4 rounded-full bg-green-600 border-2 border-white flex items-center justify-center text-white text-[9px] font-black">✓</span>
+                                                    {pedido.asaasPix && (
+                                                        <span className={`absolute -top-1.5 -right-1 h-4 w-4 rounded-full border-2 border-white flex items-center justify-center text-white text-[9px] font-black ${pedido.asaasPix === 'RECEBIDO' ? 'bg-green-600' : 'bg-amber-500'}`}>{pedido.asaasPix === 'RECEBIDO' ? '✓' : '•'}</span>
                                                     )}
                                                 </button>
                                             )}
@@ -2024,8 +2025,10 @@ const ListaPedidos = () => {
                                 if (d.enviadoEm) eventos.push({ t: d.enviadoEm, titulo: 'Faturado', sub: null });
                                 if (d.embarque?.dataSaida) eventos.push({ t: d.embarque.dataSaida, titulo: `Saiu na carga Emb. #${d.embarque.numero}`, sub: d.embarque.responsavel?.nome ? `motorista ${d.embarque.responsavel.nome}` : null });
                                 if (d.dataEntrega) eventos.push({ t: d.dataEntrega, titulo: d.statusEntrega === 'ENTREGUE_PARCIAL' ? 'Entregue parcialmente' : d.statusEntrega === 'DEVOLVIDO' ? 'Entrega devolvida' : 'Entregue', sub: d.gpsEntrega ? 'GPS registrado' : null });
-                                (d.cobrancasAsaas || []).filter(c => c.status === 'RECEBIDO').forEach(c =>
-                                    eventos.push({ t: c.recebidoEm || c.createdAt, gold: true, titulo: `${c.tipo === 'BOLETO' ? 'Boleto' : 'PIX'} Asaas pago · ${fmtMoeda(c.valorRecebido ?? c.valor)}`, sub: null }));
+                                (d.cobrancasAsaas || []).filter(c => c.tipo === 'BOLETO' && c.status === 'RECEBIDO').forEach(c =>
+                                    eventos.push({ t: c.recebidoEm || c.createdAt, gold: true, titulo: `Boleto Asaas pago · ${fmtMoeda(c.valorRecebido ?? c.valor)}`, sub: null }));
+                                // PIX: um evento por QR (inclusive cancelados), baixa do Caixa e aviso — mesma função da Consulta do pedido
+                                eventosCobrancaPix(d).forEach(e => eventos.push({ ...e, gold: e.cor === 'ouro' }));
                                 ((d.contaReceber?.parcelas) || []).filter(p => p.dataPagamento && Number(p.valorPago) > 0).forEach(p =>
                                     eventos.push({ t: p.dataPagamento, titulo: `Parcela ${p.numeroParcela} paga · ${fmtMoeda(p.valorPago)}`, sub: p.formaPagamento || null }));
                                 if (conv) eventos.push({ t: conv.createdAt, gold: true, titulo: `Convertido no pedido #${conv.numeroNovo ?? d.numero}`, sub: 'nasceu especial e ganhou NF' });
@@ -2039,9 +2042,30 @@ const ListaPedidos = () => {
                                         <ol className="relative border-l-2 border-gray-200 ml-1.5 space-y-2">
                                             {eventos.map((ev, i) => (
                                                 <li key={i} className="pl-3 relative">
-                                                    <span className={`absolute -left-[5px] top-1.5 h-2 w-2 rounded-full ${ev.gold ? 'bg-[#cba258]' : 'bg-primary'}`}></span>
-                                                    <p className="text-xs font-bold text-gray-800">{ev.titulo}</p>
-                                                    <p className="text-[10px] text-gray-500">{fmtDataHora(ev.t)}{ev.sub ? ` · ${ev.sub}` : ''}</p>
+                                                    <span className={`absolute -left-[5px] top-1.5 h-2 w-2 rounded-full ${ev.destaque === 'aviso' ? 'bg-amber-500' : ev.cor === 'vermelho' ? 'bg-red-500' : ev.gold ? 'bg-[#cba258]' : 'bg-primary'}`}></span>
+                                                    {ev.destaque === 'aviso' ? (
+                                                        <div className="bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-2">
+                                                            <p className="text-xs font-bold text-amber-900 break-words">{ev.titulo}</p>
+                                                            {ev.sub && <p className="text-[11px] text-amber-900 mt-1 break-words">{ev.sub}</p>}
+                                                        </div>
+                                                    ) : (<>
+                                                        <div className="flex items-start justify-between gap-2">
+                                                            <p className="text-xs font-bold text-gray-800 min-w-0 break-words">{ev.titulo}</p>
+                                                            {ev.badge && <span className={`shrink-0 px-2 py-0.5 text-[10px] font-semibold rounded-full ${ev.badge.classe}`}>{ev.badge.texto}</span>}
+                                                        </div>
+                                                        <p className="text-[10px] text-gray-500 break-words">{fmtDataHora(ev.t)}{ev.sub ? ` · ${ev.sub}` : ''}</p>
+                                                        {ev.verQr && (
+                                                            <button
+                                                                onClick={() => {
+                                                                    const total = (selectedPedido.itens?.reduce((acc, i) => acc + (Number(i.valor) * Number(i.quantidade)), 0) || 0) + Number(selectedPedido.valorFrete || 0);
+                                                                    setPixModal({ id: selectedPedido.id, numero: selectedPedido.numero, especial: selectedPedido.especial, clienteNome: selectedPedido.cliente?.NomeFantasia || selectedPedido.cliente?.Nome, valorSugerido: total, cobrancaId: ev.verQr.cobrancaId });
+                                                                }}
+                                                                className="mt-1.5 min-h-[44px] px-3 py-1.5 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full text-xs font-medium inline-flex items-center gap-1.5"
+                                                            >
+                                                                <QrCode className="h-3.5 w-3.5" /> Ver QR novamente
+                                                            </button>
+                                                        )}
+                                                    </>)}
                                                 </li>
                                             ))}
                                         </ol>
@@ -2151,6 +2175,7 @@ const ListaPedidos = () => {
             {pixModal && (
                 <PixAvulsoModal
                     pedido={pixModal}
+                    cobrancaId={pixModal.cobrancaId || null}
                     onClose={() => setPixModal(null)}
                 />
             )}

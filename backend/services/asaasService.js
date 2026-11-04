@@ -104,6 +104,195 @@ function mapearStatus(statusAsaas) {
     return 'PENDENTE';
 }
 
+// ── Criar PIX do pedido: implementação (ver comentário em asaasService.criarPixPedido) ──
+const pixEmAndamento = new Map(); // pedidoId → Promise (camada 1 da trava de concorrência)
+
+// PIX "vivo" do pedido: PENDENTE, ou EXPIRADO (vencido, mas ainda pagável no Asaas).
+// De propósito SEM filtrar por valor nem por pixExpiraEm. RECEBIDO parcial não conta.
+function buscarPixVivo(db, pedidoId) {
+    return db.cobrancaAsaas.findFirst({
+        where: { pedidoId, tipo: 'PIX', status: { in: ['PENDENTE', 'EXPIRADO'] }, ambiente: AMBIENTE },
+        orderBy: { createdAt: 'desc' }
+    });
+}
+
+async function criarPixPedidoInterno({ pedidoId, valor, descricao, criadoPorId, validadeDias = 0, vincularParcela = false, substituirPendente = false, usuario = null }) {
+    exigirConfig();
+
+    const pedido = await prisma.pedido.findUnique({
+        where: { id: pedidoId },
+        include: {
+            cliente: { select: { UUID: true, Nome: true } },
+            contaReceber: { include: { parcelas: { orderBy: { numeroParcela: 'asc' } } } }
+        }
+    });
+    if (!pedido) throw new Error('Pedido não encontrado.');
+    if (pedido.bonificacao) {
+        const err = new Error('Bonificação não gera cobrança.');
+        err.statusCode = 400;
+        throw err;
+    }
+
+    // Valor: informado, ou o saldo em aberto das parcelas
+    let valorNum = valor != null ? Math.round(Number(valor) * 100) / 100 : null;
+    const parcelasAbertas = (pedido.contaReceber?.parcelas || [])
+        .filter(p => ['PENDENTE', 'VENCIDO', 'PARCIAL'].includes(p.status));
+    if (valorNum == null) {
+        const saldo = parcelasAbertas.reduce(
+            (s, p) => s + Number(p.valor) - Number(p.valorPago || 0) - Number(p.valorDescontoTotal || 0), 0);
+        valorNum = Math.round(saldo * 100) / 100;
+    }
+    if (!valorNum || valorNum <= 0) {
+        const err = new Error('Valor do PIX inválido (pedido sem saldo em aberto?).');
+        err.statusCode = 400;
+        throw err;
+    }
+
+    const parcelaId = vincularParcela ? (parcelasAbertas[0]?.id || null) : null;
+    if (vincularParcela && !parcelaId) {
+        const err = new Error('Pedido sem parcela em aberto para vincular a cobrança.');
+        err.statusCode = 400;
+        throw err;
+    }
+
+    // ── Já existe um QR vivo neste pedido? ──
+    let vivo = await buscarPixVivo(prisma, pedidoId);
+    if (vivo && vivo.status === 'EXPIRADO') {
+        // Vencido no app, mas pode ter sido pago/cancelado no Asaas sem o webhook chegar: confere.
+        try {
+            const resp = await http.get(`/payments/${vivo.asaasPaymentId}`);
+            const pay = resp.data || {};
+            const st = mapearStatus(pay.status);
+            if (st === 'RECEBIDO') {
+                // Já foi pago: NÃO cria outro QR (seria cobrar em dobro)
+                return asaasService.marcarRecebida(vivo.id, {
+                    valorRecebido: pay.value,
+                    recebidoEm: pay.paymentDate || pay.clientPaymentDate || null
+                });
+            }
+            if (st === 'CANCELADO') {
+                await prisma.cobrancaAsaas.update({
+                    where: { id: vivo.id },
+                    data: { status: 'CANCELADO', canceladoEm: new Date(), canceladoMotivo: 'ASAAS' }
+                });
+                vivo = null; // morto no Asaas → segue e cria um novo
+            }
+            // OVERDUE (ou qualquer outro): continua pagável → reaproveita
+        } catch (e) {
+            console.error('[Asaas] Não conseguiu conferir PIX expirado no Asaas (reaproveitando o existente):', e.message);
+        }
+    }
+    if (vivo) {
+        const mesmoValor = Math.round(Number(vivo.valor) * 100) === Math.round(valorNum * 100);
+        if (mesmoValor) {
+            // Nunca mexe no parcelaId da existente (risco de baixa dobrada). Se o QR vivo foi
+            // criado por OUTRO fluxo (financeiro = vinculado à parcela, entrega = sem vínculo),
+            // reaproveitar em silêncio mudaria quem dá a baixa → avisa em vez de devolver.
+            if (Boolean(vivo.parcelaId) !== Boolean(vincularParcela)) {
+                const err = new Error(vivo.parcelaId
+                    ? 'Já existe um QR deste pedido gerado pelo financeiro: o pagamento dele dá baixa automática na parcela. Use o mesmo QR (não gere outro na entrega).'
+                    : 'Já existe um QR deste pedido gerado pela entrega (a baixa é feita no Caixa, não é automática). Use o mesmo QR.');
+                err.statusCode = 409;
+                err.codigo = 'PIX_FLUXO_DIFERENTE';
+                err.pendente = vivo;
+                throw err;
+            }
+            return vivo;
+        }
+        if (!substituirPendente) {
+            const err = new Error('Este pedido já tem um QR PIX aberto com outro valor. Cancele o QR atual ou substitua por um novo.');
+            err.statusCode = 409;
+            err.codigo = 'PIX_PENDENTE_VALOR_DIFERENTE';
+            err.pendente = vivo;
+            throw err;
+        }
+        await asaasService.cancelarCobranca(vivo.id, { motivo: 'VALOR_ALTERADO', usuario });
+    }
+
+    const customerId = await asaasService.ensureCustomer(pedido.cliente.UUID);
+
+    // Vencimento = hoje + validadeDias (o QR/link vale até o fim desse dia)
+    const dias = Math.max(0, Math.min(30, parseInt(validadeDias, 10) || 0));
+    const venc = new Date(Date.now() + dias * 24 * 3600 * 1000)
+        .toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+
+    // Descrição do PIX: modelo configurável (Configurações → Asaas)
+    const cfgPix = await obterConfigAsaas();
+    const numeroExib = `${pedido.especial ? 'ZZ#' : '#'}${pedido.numero || 's/n'}`;
+    const descPix = descricao
+        || preencherMsg(cfgPix.msgPix, { pedido: numeroExib, cliente: pedido.cliente?.Nome || '' })
+        || `Pedido ${numeroExib} - Hardt`;
+
+    let payment;
+    try {
+        const resp = await http.post('/payments', {
+            customer: customerId,
+            billingType: 'PIX',
+            value: valorNum,
+            dueDate: venc,
+            description: descPix.slice(0, 500),
+            externalReference: pedidoId
+        });
+        payment = resp.data;
+    } catch (e) {
+        throw erroAsaas(e, 'criar cobrança PIX');
+    }
+
+    let qr = {};
+    try {
+        const respQr = await http.get(`/payments/${payment.id}/pixQrCode`);
+        qr = respQr.data || {};
+    } catch (e) {
+        // QR falhou → cancela a cobrança órfã no Asaas para não sobrar lixo
+        try { await http.delete(`/payments/${payment.id}`); } catch (_) { /* melhor esforço */ }
+        throw erroAsaas(e, 'gerar QR Code');
+    }
+
+    // Camada 2: lock por pedido (só banco, sem rede). Reconsulta o vivo e só grava se
+    // ninguém (outro processo) criou um enquanto falávamos com o Asaas.
+    let resTx;
+    try {
+        resTx = await prisma.$transaction(async (tx) => {
+            await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'pix-pedido:' + pedidoId}))`;
+            const outro = await buscarPixVivo(tx, pedidoId);
+            if (outro) return { gravada: outro, jaExistia: true };
+            const criada = await tx.cobrancaAsaas.create({
+                data: {
+                    asaasPaymentId: payment.id,
+                    tipo: 'PIX',
+                    status: 'PENDENTE',
+                    valor: valorNum,
+                    descricao: descricao || null,
+                    clienteId: pedido.cliente.UUID,
+                    pedidoId,
+                    parcelaId,
+                    boletoUrl: payment.invoiceUrl || null, // link da fatura Asaas (dá p/ pagar pelo link)
+                    vencimento: new Date(venc + 'T12:00:00-03:00'),
+                    pixPayload: qr.payload || null,
+                    pixQrCodeBase64: qr.encodedImage || null,
+                    pixExpiraEm: qr.expirationDate ? new Date(qr.expirationDate) : null,
+                    criadoPorId: criadoPorId || null,
+                    ambiente: AMBIENTE
+                }
+            });
+            return { gravada: criada, jaExistia: false };
+        }, { timeout: 20000, maxWait: 10000 });
+    } catch (e) {
+        // Banco falhou depois de criar o QR no Asaas: não deixa QR órfão vivo (melhor esforço)
+        try { await http.delete(`/payments/${payment.id}`); }
+        catch (e2) { console.error(`[Asaas] Não apagou o PIX órfão ${payment.id}:`, e2.message); }
+        throw e;
+    }
+    const { gravada, jaExistia } = resTx;
+
+    if (jaExistia) {
+        // Perdemos a corrida: apaga o QR recém-criado no Asaas (melhor esforço, fora da transação)
+        try { await http.delete(`/payments/${payment.id}`); }
+        catch (e) { console.error(`[Asaas] Não apagou o PIX duplicado ${payment.id} (corrida):`, e.message); }
+    }
+    return gravada;
+}
+
 const asaasService = {
     configurado,
     AMBIENTE,
@@ -163,121 +352,25 @@ const asaasService = {
     },
 
     // ── Criar cobrança PIX de um pedido (QR na entrega ou cobrança do financeiro) ──
-    // Idempotente por clique: se já existe PIX PENDENTE do mesmo pedido e valor
-    // (e não expirado), devolve o existente em vez de criar outro.
+    // UM QR VIVO POR PEDIDO (11/2026): se o pedido já tem PIX PENDENTE (ou EXPIRADO ainda
+    // pagável no Asaas), devolve o existente — fechar a janela NÃO cancela o QR.
+    //  • valor igual            → devolve o existente (sem rede);
+    //  • valor diferente        → erro 409 PIX_PENDENTE_VALOR_DIFERENTE (com `pendente`);
+    //  • substituirPendente:true → cancela o pendente (VALOR_ALTERADO) e cria o novo.
+    // Chamadas simultâneas do mesmo pedido compartilham a mesma Promise (camada 1) e,
+    // entre processos, o lock de banco (camada 2) impede dois QRs vivos.
     // validadeDias: 0 = vale até o fim de hoje; N = fim do dia hoje+N.
     // vincularParcela: true (financeiro) = amarra na 1ª parcela em aberto → baixa
     // automática (app + CA) quando pagar. false (entrega) = baixa via fluxo do Caixa.
-    criarPixPedido: async ({ pedidoId, valor, descricao, criadoPorId, validadeDias = 0, vincularParcela = false }) => {
-        exigirConfig();
-
-        const pedido = await prisma.pedido.findUnique({
-            where: { id: pedidoId },
-            include: {
-                cliente: { select: { UUID: true, Nome: true } },
-                contaReceber: { include: { parcelas: { orderBy: { numeroParcela: 'asc' } } } }
-            }
+    // `usuario` = { id, nome } de quem pediu (grava quem cancelou ao substituir).
+    criarPixPedido: (args) => {
+        const chave = args && args.pedidoId;
+        if (chave && pixEmAndamento.has(chave)) return pixEmAndamento.get(chave);
+        const promessa = criarPixPedidoInterno(args).finally(() => {
+            if (pixEmAndamento.get(chave) === promessa) pixEmAndamento.delete(chave);
         });
-        if (!pedido) throw new Error('Pedido não encontrado.');
-        if (pedido.bonificacao) {
-            const err = new Error('Bonificação não gera cobrança.');
-            err.statusCode = 400;
-            throw err;
-        }
-
-        // Valor: informado, ou o saldo em aberto das parcelas
-        let valorNum = valor != null ? Math.round(Number(valor) * 100) / 100 : null;
-        const parcelasAbertas = (pedido.contaReceber?.parcelas || [])
-            .filter(p => ['PENDENTE', 'VENCIDO', 'PARCIAL'].includes(p.status));
-        if (valorNum == null) {
-            const saldo = parcelasAbertas.reduce(
-                (s, p) => s + Number(p.valor) - Number(p.valorPago || 0) - Number(p.valorDescontoTotal || 0), 0);
-            valorNum = Math.round(saldo * 100) / 100;
-        }
-        if (!valorNum || valorNum <= 0) {
-            const err = new Error('Valor do PIX inválido (pedido sem saldo em aberto?).');
-            err.statusCode = 400;
-            throw err;
-        }
-
-        const parcelaId = vincularParcela ? (parcelasAbertas[0]?.id || null) : null;
-        if (vincularParcela && !parcelaId) {
-            const err = new Error('Pedido sem parcela em aberto para vincular a cobrança.');
-            err.statusCode = 400;
-            throw err;
-        }
-
-        const existente = await prisma.cobrancaAsaas.findFirst({
-            where: {
-                pedidoId,
-                tipo: 'PIX',
-                status: 'PENDENTE',
-                valor: valorNum,
-                ambiente: AMBIENTE,
-                OR: [{ pixExpiraEm: null }, { pixExpiraEm: { gt: new Date() } }]
-            },
-            orderBy: { createdAt: 'desc' }
-        });
-        if (existente) return existente;
-
-        const customerId = await asaasService.ensureCustomer(pedido.cliente.UUID);
-
-        // Vencimento = hoje + validadeDias (o QR/link vale até o fim desse dia)
-        const dias = Math.max(0, Math.min(30, parseInt(validadeDias, 10) || 0));
-        const venc = new Date(Date.now() + dias * 24 * 3600 * 1000)
-            .toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
-
-        // Descrição do PIX: modelo configurável (Configurações → Asaas)
-        const cfgPix = await obterConfigAsaas();
-        const numeroExib = `${pedido.especial ? 'ZZ#' : '#'}${pedido.numero || 's/n'}`;
-        const descPix = descricao
-            || preencherMsg(cfgPix.msgPix, { pedido: numeroExib, cliente: pedido.cliente?.Nome || '' })
-            || `Pedido ${numeroExib} - Hardt`;
-
-        let payment;
-        try {
-            const resp = await http.post('/payments', {
-                customer: customerId,
-                billingType: 'PIX',
-                value: valorNum,
-                dueDate: venc,
-                description: descPix.slice(0, 500),
-                externalReference: pedidoId
-            });
-            payment = resp.data;
-        } catch (e) {
-            throw erroAsaas(e, 'criar cobrança PIX');
-        }
-
-        let qr = {};
-        try {
-            const respQr = await http.get(`/payments/${payment.id}/pixQrCode`);
-            qr = respQr.data || {};
-        } catch (e) {
-            // QR falhou → cancela a cobrança órfã no Asaas para não sobrar lixo
-            try { await http.delete(`/payments/${payment.id}`); } catch (_) { /* melhor esforço */ }
-            throw erroAsaas(e, 'gerar QR Code');
-        }
-
-        return prisma.cobrancaAsaas.create({
-            data: {
-                asaasPaymentId: payment.id,
-                tipo: 'PIX',
-                status: 'PENDENTE',
-                valor: valorNum,
-                descricao: descricao || null,
-                clienteId: pedido.cliente.UUID,
-                pedidoId,
-                parcelaId,
-                boletoUrl: payment.invoiceUrl || null, // link da fatura Asaas (dá p/ pagar pelo link)
-                vencimento: new Date(venc + 'T12:00:00-03:00'),
-                pixPayload: qr.payload || null,
-                pixQrCodeBase64: qr.encodedImage || null,
-                pixExpiraEm: qr.expirationDate ? new Date(qr.expirationDate) : null,
-                criadoPorId: criadoPorId || null,
-                ambiente: AMBIENTE
-            }
-        });
+        if (chave) pixEmAndamento.set(chave, promessa);
+        return promessa;
     },
 
     // ── Consultar uma cobrança (poll do motorista) ──
@@ -337,7 +430,7 @@ const asaasService = {
                 } catch (e) {
                     if (e.response?.status !== 404) throw e; // 404 = já não existe lá, cancela local
                 }
-                await prisma.cobrancaAsaas.update({ where: { id: cob.id }, data: { status: 'CANCELADO' } });
+                await prisma.cobrancaAsaas.update({ where: { id: cob.id }, data: { status: 'CANCELADO', canceladoEm: new Date(), canceladoMotivo: /devolu/i.test(motivo) ? 'DEVOLUCAO' : 'PARCELA_QUITADA' } });
                 canceladas++;
                 console.log(`[Asaas] Cobrança ${cob.asaasPaymentId} (${cob.tipo}) cancelada — ${motivo}.`);
             } catch (e) {
@@ -374,7 +467,7 @@ const asaasService = {
                 } catch (e) {
                     if (e.response?.status !== 404) throw e; // 404 = já não existe lá, cancela local
                 }
-                await prisma.cobrancaAsaas.update({ where: { id: cob.id }, data: { status: 'CANCELADO' } });
+                await prisma.cobrancaAsaas.update({ where: { id: cob.id }, data: { status: 'CANCELADO', canceladoEm: new Date(), canceladoMotivo: /devolu/i.test(motivo) ? 'DEVOLUCAO' : 'PEDIDO_QUITADO' } });
                 canceladas++;
                 console.log(`[Asaas] Cobrança ${cob.asaasPaymentId} (${cob.tipo}) do pedido cancelada — ${motivo}.`);
             } catch (e) {
@@ -386,7 +479,9 @@ const asaasService = {
         return { canceladas, erros };
     },
 
-    cancelarCobranca: async (cobrancaId) => {
+    // { motivo, usuario:{id,nome} } opcional: grava quem/quando/por quê. Sem o 2º argumento
+    // mantém o comportamento antigo (grava só canceladoEm).
+    cancelarCobranca: async (cobrancaId, { motivo, usuario } = {}) => {
         exigirConfig();
         const cobranca = await prisma.cobrancaAsaas.findUnique({ where: { id: cobrancaId } });
         if (!cobranca) throw new Error('Cobrança não encontrada.');
@@ -406,7 +501,13 @@ const asaasService = {
         }
         return prisma.cobrancaAsaas.update({
             where: { id: cobrancaId },
-            data: { status: 'CANCELADO' }
+            data: {
+                status: 'CANCELADO',
+                canceladoEm: new Date(),
+                ...(motivo ? { canceladoMotivo: motivo } : {}),
+                ...(usuario?.id ? { canceladoPorId: usuario.id } : {}),
+                ...(usuario?.nome ? { canceladoPorNome: usuario.nome } : {})
+            }
         });
     },
 
@@ -771,8 +872,13 @@ const asaasService = {
                 resultado = { ok: true, motivo: 'cobrança estornada (baixas desfeitas)' };
             } else if (evento === 'PAYMENT_DELETED') {
                 if (cobranca.status !== 'RECEBIDO') {
-                    await prisma.cobrancaAsaas.update({
-                        where: { id: cobranca.id },
+                    // Carimba o motivo ASAAS só se ninguém (app) carimbou antes
+                    await prisma.cobrancaAsaas.updateMany({
+                        where: { id: cobranca.id, canceladoEm: null },
+                        data: { canceladoEm: new Date(), canceladoMotivo: 'ASAAS' }
+                    });
+                    await prisma.cobrancaAsaas.updateMany({
+                        where: { id: cobranca.id, status: { in: ['PENDENTE', 'EXPIRADO'] } },
                         data: { status: 'CANCELADO' }
                     });
                 }

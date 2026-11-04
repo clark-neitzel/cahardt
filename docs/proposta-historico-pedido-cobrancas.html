@@ -1,0 +1,225 @@
+<title>Cobranças no pedido</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap">
+<style>
+/* Layout: 1 diagnóstico, 2 regra do QR único, 3 mapa de telas, 4 telas propostas com pinos, 5 decisões. Tema Starbucks do app. */
+:root{
+  --bg:#f2f0eb; --card:#ffffff; --fg:rgba(0,0,0,.87); --muted:#5b6560; --line:#e3e0d8;
+  --primary:#00754a; --primary-dark:#006241; --house:#1e3932; --mint:#d4e9e2; --gold:#cba258;
+  --ok-bg:#dcfce7; --ok-fg:#166534; --warn-bg:#fef3c7; --warn-fg:#92400e;
+  --bad-bg:#fee2e2; --bad-fg:#b91c1c; --gray-bg:#f3f4f6; --gray-fg:#374151;
+  --font:'Manrope','SF Pro Text',system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#14201c; --card:#1c2b26; --fg:rgba(255,255,255,.9); --muted:#a3b3ac; --line:#2e4038;
+  --primary:#3fb68b; --primary-dark:#5fd0a6; --house:#0f1a17; --mint:#24473b; --gold:#d9b872;
+  --ok-bg:#14532d; --ok-fg:#bbf7d0; --warn-bg:#5a3a0a; --warn-fg:#fde68a;
+  --bad-bg:#5f1d1d; --bad-fg:#fecaca; --gray-bg:#2a3a34; --gray-fg:#d1d9d5; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#14201c; --card:#1c2b26; --fg:rgba(255,255,255,.9); --muted:#a3b3ac; --line:#2e4038;
+  --primary:#3fb68b; --primary-dark:#5fd0a6; --house:#0f1a17; --mint:#24473b; --gold:#d9b872;
+  --ok-bg:#14532d; --ok-fg:#bbf7d0; --warn-bg:#5a3a0a; --warn-fg:#fde68a;
+  --bad-bg:#5f1d1d; --bad-fg:#fecaca; --gray-bg:#2a3a34; --gray-fg:#d1d9d5; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--font);font-size:15px;line-height:1.55;letter-spacing:-.01em;font-variant-numeric:tabular-nums;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 56px}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+.wrap{max-width:980px;margin:0 auto}
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding:10px 0;display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;border-bottom:1px solid var(--line)}
+.bar b{font-size:13px;color:var(--muted);font-weight:600}
+.seg{display:inline-flex;border:1px solid var(--primary);border-radius:999px;overflow:hidden}
+.seg button{font:inherit;font-size:13px;font-weight:600;padding:8px 16px;min-height:40px;border:0;background:transparent;color:var(--primary);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--primary);color:#fff}
+.seg button:focus-visible{outline:2px solid var(--gold);outline-offset:-2px}
+h1{font-size:28px;line-height:1.15;margin:28px 0 8px;text-wrap:balance;font-weight:800}
+h2{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:40px 0 12px;font-weight:700}
+h3{font-size:16px;margin:0 0 6px;font-weight:700}
+p{margin:0 0 10px;max-width:70ch}
+.lead{color:var(--muted);font-size:16px}
+.band{background:var(--house);color:#fff;border-radius:16px;padding:18px 20px;margin-top:18px}
+.band p{margin:0;color:#e7efeb}.band strong{color:#fff}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;min-width:0}
+.card-h{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--line);font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.card-b{padding:16px}
+.card-b p{font-size:14px}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.stage{display:flex;justify-content:center;background:var(--mint);border-radius:16px;padding:20px 12px}
+.tela{width:100%;max-width:880px;transition:max-width .2s}
+.tela.cel{max-width:380px}
+.tela.cel .tl li{grid-template-columns:48px 1fr}
+.pedido-h{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;justify-content:space-between;margin-bottom:12px}
+.pedido-h b{font-size:18px}
+.pill{display:inline-block;font-size:12px;font-weight:600;padding:3px 10px;border-radius:999px;white-space:nowrap}
+.ok{background:var(--ok-bg);color:var(--ok-fg)}.warn{background:var(--warn-bg);color:var(--warn-fg)}.bad{background:var(--bad-bg);color:var(--bad-fg)}.gray{background:var(--gray-bg);color:var(--gray-fg)}
+.pin{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--gold);color:#1e3932;font-size:11px;font-weight:800;flex:none}
+.tl{list-style:none;margin:0;padding:0}
+.tl li{display:grid;grid-template-columns:62px 1fr;gap:10px;padding:10px 0;border-bottom:1px dashed var(--line)}
+.tl li:last-child{border-bottom:0}
+.hora{font-size:12px;color:var(--muted);font-weight:600}.hora small{display:block;font-weight:500}
+.ev{min-width:0}
+.ev .t{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-weight:600;font-size:14px}
+.ev .d{font-size:13px;color:var(--muted)}
+.alert{display:flex;gap:10px;align-items:flex-start;background:var(--warn-bg);color:var(--warn-fg);border-radius:10px;padding:12px 14px;font-size:13px;margin-top:12px}
+.alert strong{display:block}
+.btn{display:inline-flex;align-items:center;gap:6px;font:inherit;font-size:13px;font-weight:600;padding:8px 14px;min-height:40px;border-radius:999px;border:1px solid var(--primary);background:var(--card);color:var(--primary);cursor:default}
+.btn.sol{background:var(--primary);color:#fff}
+.btn.perigo{border-color:var(--bad-fg);color:var(--bad-fg)}
+.leg{display:grid;gap:10px;margin-top:16px}
+.leg div{display:grid;grid-template-columns:24px 1fr;gap:8px;align-items:start;font-size:14px}
+ul.reg{margin:0;padding-left:18px;display:grid;gap:8px}
+ul.reg li{max-width:72ch;font-size:14px}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:620px;font-size:13px}
+th{background:var(--gray-bg);color:var(--muted);text-align:left;font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:9px 12px}
+td{padding:10px 12px;border-top:1px solid var(--line);vertical-align:top}
+.fluxo{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.fluxo .passo{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;font-size:13px;min-width:0}
+.fluxo .passo b{display:block;margin-bottom:4px;font-size:13px}
+.qr{width:96px;height:96px;border-radius:8px;background:
+ conic-gradient(var(--fg) 25%,transparent 0 50%,var(--fg) 0 75%,transparent 0) 0 0/16px 16px;opacity:.85;border:6px solid var(--card);outline:1px solid var(--line)}
+.qrbox{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.mini{max-width:420px;margin:0 auto}
+@media(max-width:700px){.cols,.fluxo{grid-template-columns:1fr}h1{font-size:23px}.stage{padding:12px 6px}}
+</style>
+
+<div class="wrap">
+  <div class="bar">
+    <b>Proposta · cobranças PIX no pedido</b>
+    <div class="seg" role="group" aria-label="Tamanho da tela">
+      <button type="button" id="b-pc" aria-pressed="true">Computador</button>
+      <button type="button" id="b-cel" aria-pressed="false">Celular</button>
+    </div>
+  </div>
+
+  <h1>Um QR code por pedido, visível no histórico</h1>
+  <p class="lead">Dois problemas na mesma raiz: o app cria QR codes demais e não deixa rever o que já existe. A proposta resolve os dois e mostra tudo na tela do pedido.</p>
+
+  <h2>1. O que descobri no código</h2>
+  <div class="band">
+    <p><strong>O X da janela "Receber com PIX" cancela o QR.</strong> O motorista abre a janela, o QR é criado, ele fecha (para conferir algo, ou o cliente não pagou na hora) e o app cancela essa cobrança no Asaas. Ao abrir de novo, não existe nada pendente para reaproveitar, e um QR novo é criado.</p>
+  </div>
+  <div class="cols" style="margin-top:14px">
+    <div class="card"><div class="card-h">Prova no pedido #3014</div><div class="card-b">
+      <ul class="reg">
+        <li>09:37:13: QR criado, depois cancelado.</li>
+        <li>09:37:28: outro QR, 15 segundos depois, também cancelado.</li>
+        <li>09:38:43: terceiro QR, que expirou sem ser pago.</li>
+        <li>Mesmo cliente, pedido #3243 (18/09): mais 2 QR cancelados com 1 minuto de diferença. O padrão se repete.</li>
+      </ul></div></div>
+    <div class="card"><div class="card-h">O que já funciona</div><div class="card-b">
+      <ul class="reg">
+        <li>O app já reaproveita um QR pendente do mesmo pedido, com o mesmo valor, ainda dentro da validade.</li>
+        <li>Mas o X cancela o QR antes de qualquer reaproveitamento acontecer.</li>
+        <li>Não existe tela para rever um QR que ficou pendente.</li>
+        <li>Se o valor mudar, o app cria outro sem avisar que há um pendente com valor diferente.</li>
+      </ul></div></div>
+  </div>
+  <div class="card" style="margin-top:14px"><div class="card-b">
+    <h3>Sobre o custo</h3>
+    <p>Não consegui confirmar no código quanto o Asaas cobra por QR criado. Pelo que o sistema registra, cada QR é uma cobrança separada no Asaas, e os cancelados continuam na conta. Antes de decidir, vale conferir a tabela de tarifas no painel do Asaas para saber se a taxa é só no pagamento ou também na criação. Mesmo sem custo direto, vários QR por pedido bagunçam a conciliação e aumentam o risco de o cliente pagar um QR velho.</p>
+  </div></div>
+
+  <h2>2. A regra proposta: um QR por pedido</h2>
+  <div class="fluxo">
+    <div class="passo"><b>1. Abrir o PIX</b>Se já existe QR pendente do pedido, mostra esse mesmo QR. Só cria um novo se não existir nenhum.</div>
+    <div class="passo"><b>2. Fechar a janela</b>Apenas fecha. O QR continua valendo e pode ser reaberto pelo histórico do pedido ou pelo botão do motorista.</div>
+    <div class="passo"><b>3. Cancelar</b>Só com botão explícito "Cancelar este QR", com confirmação. Cancelar também é registrado: quem e quando.</div>
+    <div class="passo"><b>4. Pago por fora</b>Quando o Caixa dá baixa por outro meio, o QR pendente é cancelado automaticamente. Essa proteção já existe e continua.</div>
+  </div>
+  <div class="card" style="margin-top:14px"><div class="card-b">
+    <h3>Casos de borda</h3>
+    <ul class="reg">
+      <li><b>Valor diferente do QR pendente</b> (cliente vai pagar só parte): o app avisa "já existe QR de R$ 234,91" e oferece reaproveitar ou cancelar e criar outro com o novo valor. Nunca cria às escondidas.</li>
+      <li><b>QR marcado "Expirado"</b>: aparece no histórico com o aviso. Antes de criar outro, o app confere no Asaas se ele ainda aceita pagamento. A regra do Asaas para PIX vencido precisa ser confirmada no teste.</li>
+      <li><b>Clique duplo / rede lenta:</b> o servidor trava duas criações simultâneas do mesmo pedido, para não nascerem dois QR no mesmo segundo.</li>
+    </ul></div></div>
+
+  <h2>3. Onde essa informação abrange</h2>
+  <div class="card"><div class="tbl"><table>
+    <thead><tr><th>Tela</th><th>Quem usa</th><th>Hoje</th><th>Proposta</th></tr></thead>
+    <tbody>
+      <tr><td><b>Entrega: Receber com PIX</b><br>(janela do motorista)</td><td>Motorista</td><td>Criar QR. O X cancela.</td><td>Abre o QR existente. O X só fecha. Botão "Cancelar este QR".</td></tr>
+      <tr><td><b>Pedidos: PIX avulso</b><br>(botão na lista)</td><td>Escritório, financeiro</td><td>Cria QR; tem check ✓ na lista quando existe.</td><td>Mesma regra de QR único. O check ✓ abre o QR existente.</td></tr>
+      <tr><td><b>Histórico do pedido</b><br>(tela proposta)</td><td>Todos que abrem o pedido</td><td>Não mostra cobranças.</td><td>Mostra cada QR, a baixa do Caixa e o aviso de divergência. Botão "Ver QR".</td></tr>
+      <tr><td><b>Cobranças da rota</b><br>(aba do motorista e card do Caixa)</td><td>Motorista, Caixa</td><td>Lista pendentes da rota.</td><td>Mostra o QR e abre direto no mesmo QR. Sem criar outro.</td></tr>
+      <tr><td><b>Atendimento: consulta do pedido</b></td><td>Atendimento</td><td>Mostra "PIX confirmado" quando pago.</td><td>Mostra também o QR pendente, para reenviar ao cliente.</td></tr>
+      <tr><td><b>Aviso de pagamento em dobro</b></td><td>Financeiro</td><td>Já existe quando um QR vivo é pago depois da baixa.</td><td>Continua igual. Com QR único, o risco diminui.</td></tr>
+    </tbody></table></div></div>
+  <p style="margin-top:10px;color:var(--muted);font-size:13px">Nenhum dado novo precisa ser gravado: tudo o que a proposta mostra já fica na tabela de cobranças do Asaas. Muda a regra de quando cancelar e criar, e entra a tela.</p>
+
+  <h2>4. As telas propostas</h2>
+  <h3>4.1 Histórico do pedido</h3>
+  <div class="stage">
+    <div class="tela" id="tela">
+      <div class="card">
+        <div class="card-h">Histórico do pedido</div>
+        <div class="card-b">
+          <div class="pedido-h"><b>Pedido #3014 · Jerry Adriano dos Santos</b><span class="pill ok">Entregue</span></div>
+          <ol class="tl">
+            <li><div class="hora">04/09<small>09:37</small></div><div class="ev"><div class="t"><span class="pin">1</span> QR code PIX gerado <span class="pill gray">R$ 234,91</span> <span class="pill bad">Cancelado</span></div><div class="d">Gerado por (nome de quem criou) · cancelado ao fechar a janela</div></div></li>
+            <li><div class="hora">04/09<small>09:37</small></div><div class="ev"><div class="t"><span class="pin">1</span> QR code PIX gerado <span class="pill gray">R$ 234,91</span> <span class="pill bad">Cancelado</span></div><div class="d">Gerado por (nome de quem criou) · cancelado ao fechar a janela</div></div></li>
+            <li><div class="hora">04/09<small>09:38</small></div><div class="ev"><div class="t"><span class="pin">1</span> QR code PIX gerado <span class="pill gray">R$ 234,91</span> <span class="pill warn">Expirou sem pagamento</span></div><div class="d">Gerado por (nome de quem criou)</div>
+              <div style="margin-top:8px"><span class="btn"><span class="pin">2</span> Ver QR novamente</span></div></div></li>
+            <li><div class="hora">04/09<small>09:41</small></div><div class="ev"><div class="t">Entregue ao cliente</div><div class="d">Pagamento informado: À vista · PIX · R$ 234,91</div></div></li>
+            <li><div class="hora">04/09<small>14:06</small></div><div class="ev"><div class="t"><span class="pin">3</span> Baixa dada no Caixa <span class="pill gray">R$ 234,91</span></div><div class="d">Por Atendimento · caixa do dia 04/09 · motorista Patrik</div></div></li>
+          </ol>
+          <div class="alert"><span class="pin">4</span><div><strong>Atenção: baixa de PIX sem QR pago e sem crédito no extrato</strong>Nenhum QR deste pedido recebeu pagamento e o banco não mostra entrada de R$ 234,91. Confirme com o motorista como o cliente pagou.</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="leg">
+    <div><span class="pin">1</span><span>Cada QR vira uma linha: data, hora, valor, quem gerou e situação. Com a regra nova, um pedido normal terá uma linha só.</span></div>
+    <div><span class="pin">2</span><span>"Ver QR novamente" aparece em todo QR ainda pagável (pendente, ou expirado que o Asaas ainda aceita). Abre a tela 4.2.</span></div>
+    <div><span class="pin">3</span><span>A baixa do Caixa entra na mesma linha do tempo, para ver a ordem dos fatos.</span></div>
+    <div><span class="pin">4</span><span>Aviso automático quando a baixa foi PIX e nada foi pago pelo QR nem apareceu no extrato. É o caso do #3014.</span></div>
+  </div>
+
+  <h3 style="margin-top:28px">4.2 Rever o QR sem criar outro</h3>
+  <div class="stage">
+    <div class="tela mini">
+      <div class="card">
+        <div class="card-h">Receber com PIX · Pedido #3014</div>
+        <div class="card-b">
+          <div class="pedido-h" style="margin-bottom:4px"><b style="font-size:20px">R$ 234,91</b><span class="pill warn">Aguardando pagamento</span></div>
+          <div class="qrbox"><div class="qr" role="img" aria-label="Exemplo de QR code"></div>
+            <div style="font-size:13px;min-width:0"><b>QR criado hoje às 09:38</b><br><span style="color:var(--muted)">Já existe: este é o mesmo QR, nenhum novo foi criado.</span></div></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
+            <span class="btn sol"><span class="pin">1</span> Copiar código PIX</span>
+            <span class="btn"><span class="pin">2</span> Enviar por WhatsApp</span>
+            <span class="btn"><span class="pin">3</span> Fechar</span>
+            <span class="btn perigo"><span class="pin">4</span> Cancelar este QR</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="leg">
+    <div><span class="pin">1</span><span>Copia o código PIX para colar no banco do cliente.</span></div>
+    <div><span class="pin">2</span><span>Reenvia o QR pelo WhatsApp do cliente (transacional, ligado a este pedido).</span></div>
+    <div><span class="pin">3</span><span>Fechar apenas fecha. O QR continua pendente e volta a aparecer aqui.</span></div>
+    <div><span class="pin">4</span><span>Única forma de cancelar. Pede confirmação e registra quem cancelou e quando.</span></div>
+  </div>
+
+  <h2>5. Decisões que dependem de você</h2>
+  <div class="card"><div class="card-b">
+    <ul class="reg">
+      <li><b>Aviso de divergência (pino 4):</b> aparece para todos que abrem o pedido, ou só para financeiro e administração?</li>
+      <li><b>Quem pode cancelar um QR:</b> o motorista que criou, ou só escritório e financeiro?</li>
+      <li><b>Cobranças canceladas:</b> mostrar sempre no histórico, ou recolhidas atrás de "ver canceladas"?</li>
+      <li><b>Custo do Asaas:</b> você confere a tarifa no painel, ou peço ao financeiro?</li>
+    </ul>
+  </div></div>
+  <div style="margin-top:20px;display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center">
+    <span class="pill warn">Porte médio, mexe em cobrança</span>
+    <span style="color:var(--muted);font-size:13px">Passa pela equipe: desenvolvimento, teste na tela, revisão e conferência final, com teste de um PIX real. Nada foi alterado no sistema ainda.</span>
+  </div>
+</div>
+
+<script>
+(function(){
+  var tela=document.getElementById('tela'),pc=document.getElementById('b-pc'),cel=document.getElementById('b-cel');
+  function set(c){tela.classList.toggle('cel',c);pc.setAttribute('aria-pressed',String(!c));cel.setAttribute('aria-pressed',String(c));}
+  pc.onclick=function(){set(false)};cel.onclick=function(){set(true)};
+})();
+</script>

@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Um QR PIX por pedido — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<meta property="og:title" content="Novidade no Hardt App: um QR PIX por pedido">
+<meta property="og:description" content="Fechar a janela do PIX não cancela mais o QR. Agora o QR aparece no histórico do pedido e dá para rever sem gerar outro.">
+<meta property="og:type" content="website">
+<style>
+  :root { --primary:#00754A; --primary-dark:#006241; --house:#1E3932; --mint:#d4e9e2; --cream:#f2f0eb; --gold:#cba258; --ink:rgba(0,0,0,.87); --ink-soft:#5f6b66; letter-spacing:-0.01em; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--cream); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; line-height:1.55; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:620px; margin:0 auto; padding:0 16px 56px; }
+  .hero { background:linear-gradient(168deg,var(--house) 0%,#16302a 100%); color:#fff; padding:40px 16px 56px; }
+  .hero-inner { max-width:620px; margin:0 auto; text-align:center; }
+  .eyebrow { display:inline-block; background:var(--gold); color:#2b230f; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.14em; padding:6px 14px; border-radius:999px; margin-bottom:18px; }
+  .hero h1 { font-size:clamp(28px,7vw,40px); font-weight:800; line-height:1.12; margin:0 0 12px; text-wrap:balance; }
+  .hero p { color:rgba(255,255,255,.75); font-size:16px; max-width:46ch; margin:0 auto; text-wrap:balance; }
+  h2 { font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.14em; color:var(--primary-dark); margin:30px 4px 12px; }
+  .acc { background:#fff; border:1px solid #e3e1da; border-radius:16px; margin-bottom:10px; overflow:hidden; box-shadow:0 1px 2px rgba(30,57,50,.05); }
+  .acc-head { width:100%; display:flex; align-items:center; gap:12px; background:none; border:none; font:inherit; text-align:left; padding:15px 16px; cursor:pointer; min-height:56px; }
+  .acc-head:focus-visible { outline:3px solid var(--gold); outline-offset:2px; }
+  .acc-ico { width:38px; height:38px; border-radius:11px; background:var(--mint); display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
+  .acc-head strong { flex:1; font-size:15.5px; font-weight:700; }
+  .acc-seta { color:#9aa5a0; transition:transform .2s; font-size:13px; }
+  .acc.aberto .acc-seta { transform:rotate(180deg); }
+  .acc-corpo { display:none; padding:0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display:block; }
+  .acc-corpo p, .acc-corpo li { font-size:14px; color:var(--ink-soft); }
+  .acc-corpo p { margin:0 0 10px; }
+  .acc-corpo ul { margin:0; padding-left:18px; }
+  .acc-corpo li { margin-bottom:7px; }
+  .acc-corpo b { color:var(--ink); }
+  @media (max-width:420px) { .acc-corpo { padding-left:16px; } }
+
+  /* mockups das telas */
+  .tela { background:#fff; border:1px solid #e3e1da; border-radius:18px; overflow:hidden; margin-bottom:14px; box-shadow:0 1px 2px rgba(30,57,50,.05); }
+  .tela-titulo { background:var(--house); color:#fff; font-size:12px; font-weight:700; padding:10px 16px; }
+  .tela-corpo { padding:14px; background:#f7f6f2; }
+  .app-card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:12px; }
+  .ev { position:relative; padding:0 0 12px 14px; border-left:2px solid #e5e7eb; margin-left:6px; }
+  .ev:last-child { padding-bottom:0; }
+  .ev::before { content:""; position:absolute; left:-6px; top:4px; width:10px; height:10px; border-radius:50%; background:var(--primary); }
+  .ev.ouro::before { background:var(--gold); }
+  .ev.aviso::before { background:#f59e0b; }
+  .ev-t { font-size:12.5px; font-weight:700; display:flex; justify-content:space-between; gap:8px; align-items:flex-start; }
+  .ev-s { font-size:11.5px; color:#6b7280; margin-top:1px; }
+  .badge { font-size:10px; font-weight:700; padding:2px 8px; border-radius:999px; white-space:nowrap; }
+  .b-cinza { background:#f3f4f6; color:#374151; } .b-verm { background:#fee2e2; color:#b91c1c; } .b-verde { background:#dcfce7; color:#166534; } .b-azul { background:#dbeafe; color:#1e40af; }
+  .btn { display:inline-block; margin-top:6px; padding:7px 14px; border-radius:999px; font-size:12px; font-weight:600; border:1px solid var(--primary); color:var(--primary); background:#fff; }
+  .btn-cheio { background:var(--primary); color:#fff; display:block; text-align:center; padding:11px; margin-top:8px; font-size:13px; }
+  .btn-perigo { border-color:#fff; color:#b91c1c; border:none; display:block; text-align:center; padding:9px; margin-top:4px; font-size:12.5px; font-weight:600; }
+  .caixa-aviso { background:#fffbeb; border:1px solid #fde68a; border-radius:10px; padding:9px 11px; font-size:11.5px; color:#78350f; }
+  .caixa-aviso b { display:block; font-size:12px; margin-bottom:2px; }
+  .faixa { background:rgba(212,233,226,.6); border:1px solid var(--mint); color:var(--primary-dark); font-size:11.5px; border-radius:9px; padding:8px 10px; margin-bottom:10px; }
+  .qr { width:120px; height:120px; margin:8px auto; border:1px solid #e5e7eb; border-radius:10px; background:
+      conic-gradient(#222 25%,#fff 0 50%,#222 0 75%,#fff 0) 0 0/20px 20px; }
+  .valor { text-align:center; font-size:26px; font-weight:900; font-family:ui-monospace,Menlo,monospace; }
+  .pin { display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; border-radius:50%; background:var(--gold); color:#2b230f; font-size:11px; font-weight:800; flex-shrink:0; margin-left:6px; vertical-align:middle; }
+  .legenda { padding:12px 16px 16px; }
+  .legenda div { display:flex; gap:8px; font-size:13px; color:var(--ink-soft); margin-bottom:7px; align-items:flex-start; }
+  .legenda .pin { margin:1px 0 0; }
+  .legenda b { color:var(--ink); }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">Novidade</span>
+    <h1>Um QR PIX por pedido</h1>
+    <p>Fechar a janela do PIX não cancela mais o QR. E agora dá para rever o QR a qualquer hora, sem gerar outro.</p>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <h2>O que mudou</h2>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🔁</span><strong>Por que mudamos</strong><span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Cada QR PIX criado custa <b>R$ 1,90</b>. Antes, ao fechar a janela no X, o app cancelava o QR — e quem abria de novo gerava outro. Em alguns pedidos saíam 3 QRs para um pagamento só.</p>
+      <p>Agora a regra é simples: <b>um QR por pedido</b>.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">❌</span><strong>O X só fecha a janela</strong><span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Fechou a janela? O QR <b>continua valendo</b>. Ao abrir o PIX do pedido de novo, aparece o mesmo QR, com o aviso <b>“Já existe: nenhum novo foi criado”</b>.</li>
+        <li>Quem tem permissão vê o botão <b>“Cancelar este QR”</b>. Ele pede confirmação e fica registrado quem cancelou e quando.</li>
+        <li>QR <b>vencido</b> ainda pode ser pago pelo cliente: o app oferece <b>“Continuar com este QR”</b> e não deixa gerar outro por cima.</li>
+        <li>Quer cobrar um valor diferente do QR que já existe? O app avisa <b>“Já existe QR de R$ …”</b>. Dá para usar o que existe ou, com permissão, cancelar e criar com o novo valor.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🕘</span><strong>QRs aparecem no histórico do pedido</strong><span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Cada QR vira uma linha: data, hora, valor, quem gerou e a situação. Os cancelados também aparecem, com quem cancelou e por quê.</li>
+        <li>A baixa dada no Caixa entra na mesma linha do tempo, para ver a ordem dos fatos.</li>
+        <li>Financeiro e administração veem um <b>aviso amarelo</b> quando a baixa foi em PIX mas nenhum QR foi pago e o valor não apareceu no extrato do banco.</li>
+        <li>Na lista de Pedidos, o botão PIX ganha uma bolinha quando já existe QR no pedido.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🔐</span><strong>Quem pode cancelar</strong><span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Só administradores e quem tiver a permissão nova <b>“Cancelar QR PIX de pedido”</b>. O motorista continua podendo abrir, mostrar e copiar o QR normalmente.</p>
+    </div>
+  </div>
+
+  <h2>As telas do app</h2>
+
+  <div class="tela">
+    <div class="tela-titulo">Tela 1 · Histórico do pedido</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="ev">
+          <div class="ev-t"><span>QR code PIX gerado · R$ 234,91</span><span class="badge b-cinza">Cancelado</span></div>
+          <div class="ev-s">04/09 09:37 · gerado por Patrik · cancelado por Leticia <span class="pin">1</span></div>
+        </div>
+        <div class="ev">
+          <div class="ev-t"><span>QR code PIX gerado · R$ 234,91</span><span class="badge b-azul">Aguardando</span></div>
+          <div class="ev-s">04/09 09:38 · gerado por Patrik</div>
+          <span class="btn">Ver QR novamente</span> <span class="pin">2</span>
+        </div>
+        <div class="ev ouro">
+          <div class="ev-t"><span>Baixa dada no Caixa · R$ 234,91</span></div>
+          <div class="ev-s">04/09 14:06 · por Atendimento · caixa do dia 04/09 <span class="pin">3</span></div>
+        </div>
+        <div class="ev aviso">
+          <div class="caixa-aviso"><b>Atenção: baixa de PIX sem QR pago e sem crédito no extrato</b>Confirme com o motorista como o cliente pagou. <span class="pin">4</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Um QR por linha</b>, com a situação. Se foi cancelado, mostra quem e por quê.</span></div>
+      <div><span class="pin">2</span><span><b>Ver QR novamente</b> aparece enquanto o cliente ainda pode pagar. Abre o mesmo QR (tela 2), sem criar outro.</span></div>
+      <div><span class="pin">3</span><span>A <b>baixa do Caixa</b> aparece na mesma linha do tempo.</span></div>
+      <div><span class="pin">4</span><span>O <b>aviso amarelo</b> só aparece para financeiro e administração.</span></div>
+    </div>
+  </div>
+
+  <div class="tela">
+    <div class="tela-titulo">Tela 2 · Rever o QR sem criar outro</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="faixa">Já existe: este é o mesmo QR, nenhum novo foi criado · gerado hoje às 09:38 <span class="pin">1</span></div>
+        <div class="valor">R$ 234,91</div>
+        <div class="qr"></div>
+        <div style="text-align:center;font-size:12.5px;color:var(--primary-dark);font-weight:700">Aguardando pagamento...</div>
+        <span class="btn btn-cheio" style="background:#fff;color:var(--primary);border:1px solid var(--primary)">Copiar código PIX <span class="pin">2</span></span>
+        <span class="btn btn-cheio">Enviar link por WhatsApp <span class="pin">3</span></span>
+        <span class="btn-perigo">Cancelar este QR <span class="pin">4</span></span>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Faixa verde avisando que é o <b>mesmo QR</b>.</span></div>
+      <div><span class="pin">2</span><span><b>Copiar código</b> para colar no banco do cliente.</span></div>
+      <div><span class="pin">3</span><span><b>Enviar por WhatsApp</b> o link do QR ao cliente (na janela do escritório).</span></div>
+      <div><span class="pin">4</span><span><b>Cancelar este QR</b>: só aparece para quem tem permissão, pede confirmação e registra quem cancelou. O X no canto só fecha.</span></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  function alternar(btn) {
+    var acc = btn.parentElement;
+    var abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>

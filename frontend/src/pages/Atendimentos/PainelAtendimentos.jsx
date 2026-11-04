@@ -595,7 +595,7 @@ const PainelAtendimentosLista = () => {
                                                         type="button"
                                                         onClick={(e) => { e.stopPropagation(); setPedidoPopup(a); }}
                                                         title="Ver os detalhes deste pedido"
-                                                        className="inline-flex items-center gap-1 max-w-full text-[10px] font-bold text-green-800 bg-green-100 hover:bg-green-200 px-2 py-1 rounded-full transition-colors cursor-pointer"
+                                                        className="inline-flex items-center gap-1 max-w-full min-h-[44px] text-[10px] font-bold text-green-800 bg-green-100 hover:bg-green-200 px-2 py-1 rounded-full transition-colors cursor-pointer"
                                                     >
                                                         <span className="truncate">Pedido {a.rotuloPedido}</span>
                                                         <Eye className="h-3 w-3 shrink-0" />

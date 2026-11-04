@@ -158,3 +158,6 @@ O que muda com a caixinha marcada:
 | `frontend/src/pages/Admin/Vendedores/PermissoesModal.jsx` | Modal de permissões |
 | `frontend/src/services/vendedorService.js` | Chamadas de API |
 | `backend/routes/vendedorRoutes.js` | Rotas do backend (GET, POST, PUT) |
+
+## Permissão: Cancelar QR PIX (11/2026)
+`Pode_Cancelar_QR_Pix` — permite **cancelar o QR PIX de um pedido** (botão "Cancelar este QR" no pedido/entrega) e **substituir** um QR aberto por outro de valor diferente. Fechar a janela do QR não cancela mais. Sem essa permissão o usuário só vê/copia o QR. Admin sempre pode. O cancelamento registra quem, quando e o motivo.

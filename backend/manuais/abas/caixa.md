@@ -125,6 +125,8 @@ No cabeçalho da faixa fica um resumo contando quantas pílulas há de cada stat
 
 **Como a baixa local funciona:** dinheiro entra na conta "Caixinha", PIX Asaas entra na conta financeira do Asaas (alimenta o relatório Saldos por Conta). Se o valor acertado na entrega for menor que a parcela por causa de devolução de mercadoria, a diferença fecha como **desconto** ("Devolução de mercadoria — conferência do caixa"). Valores marcados como responsável (**motorista**, vendedor ou escritório) **não baixam** — a parcela fica em aberto para essa parte.
 
+**Aviso de divergência de PIX (11/2026, só financeiro/admin):** ao abrir o pedido, se a baixa foi registrada no Caixa (rota ou Baixa CA) como **PIX comum**, sem QR Asaas pago e sem lançamento no extrato, aparece um aviso para conferir se o PIX entrou na conta. Não bloqueia a baixa.
+
 **Pagamentos "PIX Asaas":** o dinheiro desse PIX **não** fica com o motorista — não entra no valor a prestar.
 
 **Pedido ESPECIAL (desde 08/2026):** o título do especial **não é mais quitado sozinho na entrega**. O motorista só registra o que recebeu; a baixa acontece **aqui**, quando alguém confere o caixa e clica em Processar. Por isso:

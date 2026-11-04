@@ -35,6 +35,8 @@ const checkPodeCobrar = async (req, res, next) => {
     }
 };
 
+const { podeCancelarQr, podeVerPix } = require('../utils/permissoesPix');
+
 const mapCobranca = (c) => c && ({
     id: c.id,
     status: c.status,
@@ -49,7 +51,13 @@ const mapCobranca = (c) => c && ({
     linkPagamento: c.boletoUrl || null, // fatura Asaas (PIX gerado p/ enviar ao cliente)
     vencimento: c.vencimento,
     ambiente: c.ambiente,
-    createdAt: c.createdAt
+    createdAt: c.createdAt,
+    parcelaId: c.parcelaId || null,
+    vinculadaParcela: !!c.parcelaId,
+    criadoPorNome: c.criadoPor?.nome || c.criadoPorNome || null,
+    canceladoEm: c.canceladoEm || null,
+    canceladoPorNome: c.canceladoPorNome || null,
+    canceladoMotivo: c.canceladoMotivo || null
 });
 
 // ── POST /webhook — chamado pelo Asaas quando o status de uma cobrança muda ──
@@ -105,8 +113,16 @@ router.put('/config', verificarAuth, async (req, res) => {
 // ── POST /pix — gerar QR Code PIX para um pedido (entrega ou cobrança do financeiro) ──
 router.post('/pix', verificarAuth, checkPodeCobrar, async (req, res) => {
     try {
-        const { pedidoId, valor, descricao, validadeDias, vincularParcela } = req.body;
+        const { pedidoId, valor, descricao, validadeDias, vincularParcela, substituirPendente } = req.body;
         if (!pedidoId) return res.status(400).json({ error: 'Informe o pedido.' });
+
+        // Substituir o QR pendente = cancelar o antigo → exige a permissão de cancelar
+        if (substituirPendente) {
+            const perms = await getPerms(req.user.id);
+            if (!podeCancelarQr(perms)) {
+                return res.status(403).json({ error: 'Você não tem permissão para cancelar o QR PIX atual. Peça a quem tem a permissão.' });
+            }
+        }
 
         const cobranca = await asaasService.criarPixPedido({
             pedidoId,
@@ -114,10 +130,15 @@ router.post('/pix', verificarAuth, checkPodeCobrar, async (req, res) => {
             descricao,
             validadeDias,
             vincularParcela: !!vincularParcela,
-            criadoPorId: req.user.id
+            substituirPendente: !!substituirPendente,
+            criadoPorId: req.user.id,
+            usuario: { id: req.user.id, nome: req.user.nome || null }
         });
         res.json(mapCobranca(cobranca));
     } catch (e) {
+        if (e.codigo === 'PIX_PENDENTE_VALOR_DIFERENTE' || e.codigo === 'PIX_FLUXO_DIFERENTE') {
+            return res.status(409).json({ error: e.message, codigo: e.codigo, pendente: mapCobranca(e.pendente) });
+        }
         console.error('[Asaas] Erro ao criar PIX:', e.message);
         res.status(e.statusCode || 500).json({ error: e.message || 'Erro ao gerar PIX.' });
     }
@@ -174,9 +195,54 @@ router.get('/cobrancas/:id', verificarAuth, async (req, res) => {
     }
 });
 
-// ── DELETE /cobrancas/:id — cancelar PIX pendente (desistiu / valor errado) ──
+// ── GET /pedidos/:pedidoId/pix-ativo — o QR PIX vivo do pedido (ou null) ──
+// Vivo = PENDENTE, ou EXPIRADO ainda pagável no Asaas. Devolve o QR completo para reabrir
+// a janela do mesmo QR; `podeCancelar` diz se o usuário vê o botão "Cancelar este QR".
+router.get('/pedidos/:pedidoId/pix-ativo', verificarAuth, async (req, res) => {
+    try {
+        const perms = await getPerms(req.user.id);
+        if (!podeVerPix(perms)) return res.status(403).json({ error: 'Sem permissão para ver cobrança PIX.' });
+        const cobranca = await prisma.cobrancaAsaas.findFirst({
+            where: { pedidoId: req.params.pedidoId, tipo: 'PIX', status: { in: ['PENDENTE', 'EXPIRADO'] }, ambiente: asaasService.AMBIENTE },
+            orderBy: { createdAt: 'desc' },
+            include: { criadoPor: { select: { id: true, nome: true } } }
+        });
+        res.json({ cobranca: mapCobranca(cobranca) || null, podeCancelar: podeCancelarQr(perms) });
+    } catch (e) {
+        console.error('[Asaas] Erro ao buscar PIX ativo do pedido:', e.message);
+        res.status(500).json({ error: 'Erro ao buscar o QR PIX do pedido.' });
+    }
+});
+
+// ── POST /cobrancas/:id/cancelar — ÚNICA forma de cancelar um QR PIX (ação explícita) ──
+router.post('/cobrancas/:id/cancelar', verificarAuth, async (req, res) => {
+    try {
+        const perms = await getPerms(req.user.id);
+        if (!podeCancelarQr(perms)) {
+            return res.status(403).json({ error: 'Você não tem permissão para cancelar o QR PIX.' });
+        }
+        const existente = await prisma.cobrancaAsaas.findUnique({ where: { id: req.params.id }, select: { id: true, tipo: true } });
+        if (!existente) return res.status(404).json({ error: 'Cobrança não encontrada.' });
+        const cobranca = await asaasService.cancelarCobranca(req.params.id, {
+            motivo: 'MANUAL',
+            usuario: { id: req.user.id, nome: req.user.nome || null }
+        });
+        res.json(mapCobranca(cobranca));
+    } catch (e) {
+        console.error('[Asaas] Erro ao cancelar QR PIX:', e.message);
+        res.status(e.statusCode || 500).json({ error: e.message || 'Erro ao cancelar o QR PIX.' });
+    }
+});
+
+// ── DELETE /cobrancas/:id — ANTIGO "cancelar ao fechar a janela" ──
+// Fechar a janela do QR NÃO cancela mais. Versões antigas do app (em cache) ainda chamam
+// isto no X: para PIX responde 409 e nada é cancelado. Para cancelar: POST /cobrancas/:id/cancelar.
 router.delete('/cobrancas/:id', verificarAuth, checkPodeCobrar, async (req, res) => {
     try {
+        const existente = await prisma.cobrancaAsaas.findUnique({ where: { id: req.params.id }, select: { tipo: true } });
+        if (existente?.tipo === 'PIX') {
+            return res.status(409).json({ error: 'Fechar a janela não cancela mais o QR PIX. Para cancelar, use "Cancelar este QR".' });
+        }
         const cobranca = await asaasService.cancelarCobranca(req.params.id);
         res.json(mapCobranca(cobranca));
     } catch (e) {

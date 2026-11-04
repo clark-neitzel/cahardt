@@ -21,7 +21,7 @@ import { ehLinhaResponsavel, rotuloResponsavel } from '../../utils/responsavelCo
 // Mesma ideia para o status da cobrança Asaas: o rótulo sai do ponto único
 // (`utils/statusCobrancaAsaas.js`), senão esta linha volta a escrever "expirado" para
 // uma cobrança que o cliente ainda consegue pagar.
-import { rotuloCobrancaAsaas } from '../../utils/statusCobrancaAsaas';
+import { rotuloCobrancaAsaas, badgeCobrancaAsaas } from '../../utils/statusCobrancaAsaas';
 
 export const fmtMoeda = (v) => `R$ ${Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -421,6 +421,88 @@ export const ordemDoEvento = (e) => {
 /** Texto de data que a linha do tempo escreve para um evento. */
 export const textoDataDoEvento = (e) => e.soData ? fmtDiaSemHora(e.t) : fmtDataHora(e.t);
 
+
+// ─────────────────────────────────────────────────────────────────────────────
+// QR PIX DO PEDIDO NO HISTÓRICO (11/2026) — um evento por QR, a baixa do Caixa e o aviso
+// de divergência. Fonte ÚNICA para as duas telas que mostram a linha do tempo
+// (Consulta do pedido / Atendimentos e a lista de Pedidos). Os dados vêm de
+// GET /api/pedidos/:id: cobrancasAsaas[], baixasCaixa[], permissoesPix, avisoDivergenciaPix.
+// A regra de quem vê/cancela é do BACKEND (permissoesPix); aqui só se desenha o que veio.
+// ─────────────────────────────────────────────────────────────────────────────
+const MOTIVO_CANCELAMENTO_PIX = {
+    VALOR_ALTERADO: 'cancelado para criar QR com outro valor',
+    PEDIDO_QUITADO: 'cancelado automaticamente (pedido quitado)',
+    PEDIDO_CANCELADO: 'cancelado automaticamente (pedido cancelado)',
+    PEDIDO_EXCLUIDO: 'cancelado automaticamente (pedido excluído)',
+    PARCELA_QUITADA: 'cancelado automaticamente (parcela quitada)',
+    DEVOLUCAO: 'cancelado automaticamente (devolução registrada)',
+    ASAAS: 'cancelado direto no Asaas',
+};
+
+/** Texto de quem/quando/por que o QR foi cancelado. Nunca inventa motivo que não foi gravado. */
+export function textoCancelamentoPix(c) {
+    const quando = c.canceladoEm ? ` em ${fmtDataHora(c.canceladoEm)}` : '';
+    if (!c.canceladoEm && !c.canceladoMotivo) return 'Cancelado (sem registro de quem)';
+    if (c.canceladoMotivo === 'MANUAL') {
+        return c.canceladoPorNome ? `cancelado por ${c.canceladoPorNome}${quando}` : `cancelado${quando} (sem registro de quem)`;
+    }
+    const motivo = MOTIVO_CANCELAMENTO_PIX[c.canceladoMotivo];
+    if (motivo) return `${motivo}${quando}`;
+    return c.canceladoPorNome ? `cancelado por ${c.canceladoPorNome}${quando}` : `cancelado${quando} (sem registro de quem)`;
+}
+
+export function eventosCobrancaPix(p) {
+    if (!p) return [];
+    const ev = [];
+    const podeVer = !!p.permissoesPix?.ver;
+    (p.cobrancasAsaas || []).filter(c => c.tipo !== 'BOLETO').forEach(c => {
+        const partes = [];
+        const quem = c.criadoPor?.nome || c.criadoPorNome;
+        if (quem) partes.push(`gerado por ${quem}`);
+        let badge = null;
+        if (c.status === 'CANCELADO') {
+            partes.push(textoCancelamentoPix(c));
+            badge = { texto: 'Cancelado', classe: 'bg-gray-100 text-gray-700' };
+        } else if (c.status) {
+            badge = { texto: rotuloCobrancaAsaas(c.status), classe: badgeCobrancaAsaas(c.status) };
+        }
+        ev.push({
+            t: c.createdAt,
+            titulo: `QR code PIX gerado · ${fmtMoeda(c.valor)}`,
+            sub: partes.length ? partes.join(' · ') : null,
+            badge,
+            verQr: (c.qrDisponivel && podeVer) ? { cobrancaId: c.id } : null,
+        });
+        if (c.status === 'RECEBIDO' && c.recebidoEm) {
+            ev.push({ t: c.recebidoEm, cor: 'ouro', titulo: `PIX Asaas pago · ${fmtMoeda(c.valorRecebido ?? c.valor)}`, sub: null });
+        }
+    });
+    (p.baixasCaixa || []).forEach(b => {
+        if (!b?.em) return;
+        const partes = [];
+        if (b.forma) partes.push(b.forma);
+        if (b.porNome) partes.push(`por ${b.porNome}`);
+        if (b.caixaData) partes.push(`caixa do dia ${fmtDataCampo(b.caixaData)}`);
+        if (b.estornado) partes.push('estornada');
+        ev.push({
+            t: b.em,
+            cor: b.estornado ? 'vermelho' : undefined,
+            titulo: `Baixa dada no Caixa · ${fmtMoeda(b.valor)}`,
+            sub: partes.length ? partes.join(' · ') : null,
+        });
+    });
+    const av = p.avisoDivergenciaPix;
+    if (av?.mensagem) {
+        ev.push({
+            t: av.baixadoEm || p.createdAt,
+            titulo: 'Atenção: baixa de PIX sem QR pago e sem crédito no extrato',
+            sub: av.mensagem,
+            destaque: 'aviso',
+        });
+    }
+    return ev;
+}
+
 /**
  * Monta a linha do tempo do pedido a partir do que o backend REALMENTE devolve.
  * Cada evento: { t, soData, ancora, titulo, sub, cor }.
@@ -511,10 +593,14 @@ export function montarLinhaDoTempo(p, atendimentosDoPedido) {
     //    de o mesmo valor aparecer três vezes sem ninguém avisar.
     const pagosAsaas = new Set();
     (p.cobrancasAsaas || []).forEach(c => {
-        const tipo = c.tipo === 'BOLETO' ? 'Boleto' : 'PIX';
+        if (c.tipo !== 'BOLETO') {
+            // PIX: eventos vêm de `eventosCobrancaPix` (um por QR, com cancelamento e "Ver QR")
+            if (c.status === 'RECEBIDO' && c.recebidoEm) pagosAsaas.add(c.id);
+            return;
+        }
         ev.push({
             t: c.createdAt,
-            titulo: `${tipo} Asaas gerado · ${fmtMoeda(c.valor)}`,
+            titulo: `Boleto Asaas gerado · ${fmtMoeda(c.valor)}`,
             // Rótulo do ponto único: `EXPIRADO` vira "vencido — ainda pagável", não
             // "expirado". Status desconhecido continua caindo no valor cru minúsculo,
             // exatamente como era antes (nunca "undefined" na tela).
@@ -522,9 +608,10 @@ export function montarLinhaDoTempo(p, atendimentosDoPedido) {
         });
         if (c.status === 'RECEBIDO' && c.recebidoEm) {
             pagosAsaas.add(c.id);
-            ev.push({ t: c.recebidoEm, cor: 'ouro', titulo: `${tipo} Asaas pago · ${fmtMoeda(c.valorRecebido ?? c.valor)}`, sub: null });
+            ev.push({ t: c.recebidoEm, cor: 'ouro', titulo: `Boleto Asaas pago · ${fmtMoeda(c.valorRecebido ?? c.valor)}`, sub: null });
         }
     });
+    eventosCobrancaPix(p).forEach(e => ev.push(e));
 
     // 7. Baixa das parcelas.
     //    A parcela guarda o ACUMULADO (`valorPago`) e a data da ÚLTIMA baixa

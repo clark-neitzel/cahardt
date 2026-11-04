@@ -4570,6 +4570,13 @@ model CobrancaAsaas {
   criadoPor   Vendedor? @relation("CobrancasAsaasCriadas", fields: [criadoPorId], references: [id])
   ambiente    String    @default("PRODUCAO") // PRODUCAO | SANDBOX
 
+  // Cancelamento (04/11/2026): quem/quando/por quê. Sem FK de propósito (histórico sobrevive a usuário apagado).
+  // Motivos: MANUAL | VALOR_ALTERADO | PEDIDO_QUITADO | PEDIDO_CANCELADO | PEDIDO_EXCLUIDO | PARCELA_QUITADA | DEVOLUCAO | ASAAS
+  canceladoEm      DateTime? @map("cancelado_em")
+  canceladoPorId   String?   @map("cancelado_por_id")
+  canceladoPorNome String?   @map("cancelado_por_nome")
+  canceladoMotivo  String?   @map("cancelado_motivo")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 

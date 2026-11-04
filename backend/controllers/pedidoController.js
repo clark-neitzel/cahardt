@@ -127,7 +127,7 @@ const pedidoController = {
                 const ids = lista.map(p => p.id).filter(Boolean);
                 if (ids.length > 0) {
                     const cobrancas = await prisma.cobrancaAsaas.findMany({
-                        where: { pedidoId: { in: ids }, status: { in: ['PENDENTE', 'RECEBIDO'] } },
+                        where: { pedidoId: { in: ids }, status: { in: ['PENDENTE', 'EXPIRADO', 'RECEBIDO'] } },
                         select: { pedidoId: true, tipo: true, status: true },
                         orderBy: { createdAt: 'asc' }
                     });
@@ -136,7 +136,8 @@ const pedidoController = {
                         const m = mapa[c.pedidoId] || (mapa[c.pedidoId] = {});
                         const chave = c.tipo === 'BOLETO' ? 'asaasBoleto' : 'asaasPix';
                         // RECEBIDO tem prioridade sobre PENDENTE
-                        if (m[chave] !== 'RECEBIDO') m[chave] = c.status;
+                        // EXPIRADO = QR vencido mas ainda pagável: conta como PENDENTE no selo
+                        if (m[chave] !== 'RECEBIDO') m[chave] = c.status === 'EXPIRADO' ? 'PENDENTE' : c.status;
                     }
                     // caBoletoStatus já vem do pedido (cache) — o front usa nos dois checks
                     lista.forEach(p => Object.assign(p, mapa[p.id] || {}));
@@ -659,6 +660,34 @@ const pedidoController = {
                     pedido.podeConverterEspecial = !(await conv.condicaoBloqueiaConversao(pedido.nomeCondicaoPagamento));
                 }
             } catch (e) { console.error('Falha ao calcular podeConverterEspecial (segue sem):', e.message); }
+            // PIX do pedido (11/2026): só ADIÇÃO de campos. Falha aqui nunca derruba o detalhe.
+            try {
+                const perms = req.user?.permissoes || {};
+                const pp = require('../utils/permissoesPix');
+                const podeVerEnviarPix = pp.podeVerPix(perms);
+                const podeCancelarQr = pp.podeCancelarQr(perms);
+                const ehFinanceiro = pp.ehFinanceiro(perms);
+                pedido.cobrancasAsaas = (pedido.cobrancasAsaas || []).map(c => ({
+                    ...c,
+                    qrDisponivel: c.tipo === 'PIX' && ['PENDENTE', 'EXPIRADO'].includes(c.status)
+                }));
+                const pixDiv = require('../services/pixDivergenciaService');
+                // Baixas do Caixa (e lastro no extrato) só para o financeiro; os demais recebem []
+                const baixas = ehFinanceiro
+                    ? await pixDiv.carregarBaixasDoPedido(prisma, pedido.id, pedido.embarque?.responsavel?.nome || null)
+                    : [];
+                pedido.baixasCaixa = baixas.map(b => ({
+                    valor: b.valor, em: b.em, porNome: b.porNome, origem: b.origem, forma: b.forma,
+                    caixaData: b.caixaData, temLastro: b.temLastro, estornado: b.estornado
+                }));
+                pedido.permissoesPix = { ver: podeVerEnviarPix, enviar: podeVerEnviarPix, cancelar: podeCancelarQr };
+                pedido.avisoDivergenciaPix = ehFinanceiro ? pixDiv.calcularAvisoDivergencia(baixas, pedido.cobrancasAsaas) : null;
+            } catch (e) {
+                console.error('Falha ao montar dados de PIX do pedido (segue sem):', e.message);
+                pedido.baixasCaixa = pedido.baixasCaixa || [];
+                pedido.permissoesPix = pedido.permissoesPix || { ver: false, enviar: false, cancelar: false };
+                pedido.avisoDivergenciaPix = null;
+            }
             res.json(pedido);
         } catch (error) {
             console.error('Erro ao detalhar pedido:', error);

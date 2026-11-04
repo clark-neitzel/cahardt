@@ -337,3 +337,5 @@ No topo do painel há três abas: **Atendimentos** (histórico, padrão), **Lead
 ## Pausar visitas e retomar (out/2026)
 - Ação **"Pausar visitas até..."** no atendimento de cliente: exige a data de retomada (depois de hoje). Enquanto a data não chega, o cliente sai da Rota do vendedor e da pendência de rota. Qualquer usuário que registra atendimento pode pausar e retomar.
 - Pedido feito nos últimos 2 dias (calendário) conta como atendido para a pendência de rota; pedido cancelado não conta.
+
+**Cobranças PIX/boleto no popup do pedido (11/2026):** a popup lista todas as cobranças do pedido, inclusive as **canceladas** (com quem cancelou, quando e o motivo). Se há um QR PIX vivo, dá para reabri-lo e copiar o código; o botão **Cancelar este QR** só aparece para quem tem a permissão Pode_Cancelar_QR_Pix. O aviso de **divergência de PIX** (baixa em PIX comum sem lastro no extrato) aparece **só para financeiro e admin**.

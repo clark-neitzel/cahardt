@@ -919,7 +919,13 @@ const pedidoService = {
                     select: { numeroAntigo: true, numeroNovo: true, valorPago: true, createdAt: true }
                 },
                 cobrancasAsaas: {
-                    select: { id: true, tipo: true, status: true, valor: true, valorRecebido: true, recebidoEm: true, createdAt: true },
+                    select: {
+                        id: true, tipo: true, status: true, valor: true, valorRecebido: true, recebidoEm: true, createdAt: true,
+                        // histórico completo do QR (SEM pixPayload/QR em base64 — peso; o QR vem de /api/asaas/pedidos/:id/pix-ativo)
+                        parcelaId: true, pixExpiraEm: true, vencimento: true,
+                        criadoPor: { select: { id: true, nome: true } },
+                        canceladoEm: true, canceladoPorNome: true, canceladoMotivo: true
+                    },
                     orderBy: { createdAt: 'asc' }
                 },
                 notasFiscaisApp: {
@@ -1086,7 +1092,7 @@ const pedidoService = {
         for (const cob of (pedido.cobrancasAsaas || [])) {
             if (!['PENDENTE', 'EXPIRADO'].includes(cob.status)) continue;
             try {
-                await require('./asaasService').cancelarCobranca(cob.id);
+                await require('./asaasService').cancelarCobranca(cob.id, { motivo: 'PEDIDO_EXCLUIDO' });
             } catch (err) {
                 console.error(`[Asaas] Não cancelou a cobrança ${cob.id} do pedido excluído ${id}:`, err.message);
             }
@@ -1181,7 +1187,7 @@ const pedidoService = {
         for (const cob of (pedido.cobrancasAsaas || [])) {
             if (!['PENDENTE', 'EXPIRADO'].includes(cob.status)) continue;
             try {
-                await require('./asaasService').cancelarCobranca(cob.id);
+                await require('./asaasService').cancelarCobranca(cob.id, { motivo: 'PEDIDO_CANCELADO' });
             } catch (err) {
                 console.error(`[Asaas] Não cancelou a cobrança ${cob.id} do pedido cancelado ${id}:`, err.message);
             }

@@ -15,8 +15,8 @@ const asaasService = {
     },
     // Gera (ou reaproveita) um QR Code PIX para o pedido.
     // validadeDias: até quando o QR/link vale. vincularParcela: baixa automática ao pagar (financeiro).
-    criarPix: async ({ pedidoId, valor, descricao, validadeDias, vincularParcela }) => {
-        const response = await api.post('/asaas/pix', { pedidoId, valor, descricao, validadeDias, vincularParcela });
+    criarPix: async ({ pedidoId, valor, descricao, validadeDias, vincularParcela, substituirPendente }) => {
+        const response = await api.post('/asaas/pix', { pedidoId, valor, descricao, validadeDias, vincularParcela, substituirPendente });
         return response.data;
     },
     // Envia o link/código PIX ao cliente pelo WhatsApp
@@ -29,9 +29,15 @@ const asaasService = {
         const response = await api.get(`/asaas/cobrancas/${cobrancaId}`);
         return response.data;
     },
-    // Cancela um PIX pendente (desistiu / valor errado)
-    cancelar: async (cobrancaId) => {
-        const response = await api.delete(`/asaas/cobrancas/${cobrancaId}`);
+    // QR PIX já existente do pedido (pendente ou vencido ainda pagável) — reaproveitar em vez de criar outro.
+    // Devolve { cobranca: {...}|null, podeCancelar: bool }
+    pixAtivoDoPedido: async (pedidoId) => {
+        const response = await api.get(`/asaas/pedidos/${pedidoId}/pix-ativo`);
+        return response.data;
+    },
+    // Cancela o QR PIX por ação explícita (só quem tem permissão; fechar a janela NÃO cancela)
+    cancelarPix: async (cobrancaId, motivo) => {
+        const response = await api.post(`/asaas/cobrancas/${cobrancaId}/cancelar`, { motivo });
         return response.data;
     },
 

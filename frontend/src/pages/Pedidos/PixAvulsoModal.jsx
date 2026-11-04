@@ -3,6 +3,8 @@ import { X, QrCode, Copy, Send, CheckCircle, Loader2, AlertTriangle } from 'luci
 import toast from 'react-hot-toast';
 import asaasService from '../../services/asaasService';
 import CampoNumero from '../../components/CampoNumero';
+import ConfirmarCancelarQr from '../../components/ConfirmarCancelarQr';
+import { quandoGerado } from '../../utils/horaQrPix';
 
 // PIX gerado pelo escritório/faturamento a partir do pedido:
 // escolhe a validade, mostra o QR + copia-e-cola e envia o link por WhatsApp.
@@ -15,8 +17,11 @@ const VALIDADES = [
     { dias: 7, rotulo: '7 dias' }
 ];
 
-const PixAvulsoModal = ({ pedido, onClose }) => {
+const brl = (v) => Number(v || 0).toFixed(2).replace('.', ',');
+
+const PixAvulsoModal = ({ pedido, cobrancaId = null, onClose }) => {
     // pedido: { id, numero, especial, clienteNome, valorSugerido }
+    // cobrancaId (opcional): abre direto nesse QR (vindo do histórico do pedido)
     const [valor, setValor] = useState(Number(pedido.valorSugerido || 0).toFixed(2));
     const [validade, setValidade] = useState(1);
     const [cienteConversao, setCienteConversao] = useState(false);
@@ -25,6 +30,12 @@ const PixAvulsoModal = ({ pedido, onClose }) => {
     const [enviando, setEnviando] = useState(false);
     const [copiado, setCopiado] = useState(false);
     const [msgCopiada, setMsgCopiada] = useState(false);
+    const [carregando, setCarregando] = useState(true);
+    const [jaExistia, setJaExistia] = useState(false);
+    const [podeCancelar, setPodeCancelar] = useState(false);
+    const [conflito, setConflito] = useState(null);
+    const [confirmaCancelar, setConfirmaCancelar] = useState(false);
+    const [cancelando, setCancelando] = useState(false);
     const pollRef = useRef(null);
 
     // Validade pré-selecionada vem de Configurações → Asaas (padrão do sistema)
@@ -39,19 +50,39 @@ const PixAvulsoModal = ({ pedido, onClose }) => {
         })();
     }, []);
 
+    // Ao abrir: mostra o QR que já existe (o do histórico, ou o vivo do pedido) em vez de criar outro
+    useEffect(() => {
+        let vivo = true;
+        (async () => {
+            try {
+                const r = await asaasService.pixAtivoDoPedido(pedido.id);
+                if (!vivo) return;
+                setPodeCancelar(!!r?.podeCancelar);
+                if (cobrancaId) {
+                    const c = (r?.cobranca && r.cobranca.id === cobrancaId) ? r.cobranca : await asaasService.consultar(cobrancaId);
+                    if (vivo && c) { setCobranca(c); setJaExistia(true); }
+                } else if (r?.cobranca) {
+                    setCobranca(r.cobranca); setJaExistia(true);
+                }
+            } catch (_) { /* sem QR para mostrar: segue para o formulário */ }
+            finally { if (vivo) setCarregando(false); }
+        })();
+        return () => { vivo = false; };
+    }, [pedido.id, cobrancaId]);
+
     // Poll de status enquanto pendente (o backend confere direto no Asaas)
     useEffect(() => {
-        if (!cobranca || cobranca.status !== 'PENDENTE') return undefined;
+        if (!cobranca || !['PENDENTE', 'EXPIRADO'].includes(cobranca.status)) return undefined;
         pollRef.current = setInterval(async () => {
             try {
                 const atual = await asaasService.consultar(cobranca.id);
-                if (atual.status !== 'PENDENTE') setCobranca(atual);
+                if (atual.status !== cobranca.status) setCobranca(atual);
             } catch (_) { /* tenta no próximo ciclo */ }
         }, 4000);
         return () => clearInterval(pollRef.current);
     }, [cobranca]);
 
-    const handleGerar = async () => {
+    const handleGerar = async (substituirPendente = false) => {
         const v = Number(String(valor).replace(',', '.'));
         if (!v || v <= 0) return toast.error('Informe um valor maior que zero.');
         if (pedido.especial && !cienteConversao) {
@@ -64,13 +95,47 @@ const PixAvulsoModal = ({ pedido, onClose }) => {
                 valor: v,
                 validadeDias: validade,
                 vincularParcela: true, // cobrança do financeiro: baixa automática ao pagar
-                descricao: `Pedido ${pedido.especial ? 'ZZ#' : '#'}${pedido.numero || 's/n'} - cobrança`
+                descricao: `Pedido ${pedido.especial ? 'ZZ#' : '#'}${pedido.numero || 's/n'} - cobrança`,
+                ...(substituirPendente ? { substituirPendente: true } : {})
             });
+            setConflito(null);
+            setJaExistia(false);
+            if (nova?.status === 'RECEBIDO') toast.success('Este PIX já estava pago.');
             setCobranca(nova);
         } catch (error) {
-            toast.error(error.response?.data?.error || 'Erro ao gerar o PIX.');
+            const d = error.response?.data;
+            if (error.response?.status === 409 && (d?.codigo === 'PIX_PENDENTE_VALOR_DIFERENTE' || d?.codigo === 'PIX_FLUXO_DIFERENTE')) {
+                setConflito({ ...(d.pendente || {}), _mensagem: d.codigo === 'PIX_FLUXO_DIFERENTE' ? (d.error || 'Já existe um QR deste pedido gerado por outro fluxo.') : null, _fluxo: d.codigo === 'PIX_FLUXO_DIFERENTE' });
+                try { const r = await asaasService.pixAtivoDoPedido(pedido.id); setPodeCancelar(!!r?.podeCancelar); } catch (_) { /* mantém */ }
+            } else {
+                toast.error(d?.error || 'Erro ao gerar o PIX.');
+            }
         } finally {
             setGerando(false);
+        }
+    };
+
+    const handleUsarExistente = async () => {
+        try {
+            const r = await asaasService.pixAtivoDoPedido(pedido.id);
+            setCobranca(r?.cobranca || conflito);
+        } catch (_) { setCobranca(conflito); }
+        setJaExistia(true);
+        setConflito(null);
+    };
+
+    const handleCancelarQr = async () => {
+        try {
+            setCancelando(true);
+            const r = await asaasService.cancelarPix(cobranca.id);
+            toast.success('QR cancelado.');
+            setCobranca(r);
+            setJaExistia(false);
+        } catch (error) {
+            toast.error(error.response?.data?.error || 'Não consegui cancelar o QR.');
+        } finally {
+            setConfirmaCancelar(false);
+            setCancelando(false);
         }
     };
 
@@ -119,6 +184,8 @@ const PixAvulsoModal = ({ pedido, onClose }) => {
     };
 
     const recebido = cobranca?.status === 'RECEBIDO';
+    const cancelada = cobranca?.status === 'CANCELADO';
+    const mostraQr = cobranca && !recebido && !cancelada;
 
     return (
         <div className="fixed inset-0 z-[70] bg-black/60 flex items-end md:items-center justify-center" role="dialog">
@@ -127,20 +194,20 @@ const PixAvulsoModal = ({ pedido, onClose }) => {
                     <div className="flex items-center gap-2 min-w-0">
                         <div className="bg-mint p-2 rounded-lg shrink-0"><QrCode className="h-5 w-5 text-primary" /></div>
                         <div className="min-w-0">
-                            <h3 className="font-bold text-gray-900 leading-tight">Gerar PIX</h3>
+                            <h3 className="font-bold text-gray-900 leading-tight">{jaExistia && cobranca ? 'QR PIX do pedido' : 'Gerar PIX'}</h3>
                             <p className="text-xs text-gray-500 truncate">
                                 Pedido {pedido.especial ? 'ZZ#' : '#'}{pedido.numero || 's/n'}{pedido.clienteNome ? ` · ${pedido.clienteNome}` : ''}
                             </p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 min-h-[44px] min-w-[44px] flex items-center justify-center shrink-0">
+                    <button onClick={onClose} aria-label="Fechar" className="p-2 text-gray-500 hover:text-gray-600 rounded-full hover:bg-gray-100 min-h-[44px] min-w-[44px] flex items-center justify-center shrink-0">
                         <X className="h-5 w-5" />
                     </button>
                 </div>
 
                 <div className="p-5 flex-1 space-y-4">
                     {/* Aviso de conversão do pedido especial */}
-                    {pedido.especial && !recebido && (
+                    {pedido.especial && !cobranca && !carregando && !conflito && (
                         <div className="bg-red-50 border-2 border-red-600 rounded-xl p-4">
                             <p className="flex items-center gap-2 font-bold text-red-800 text-sm">
                                 <AlertTriangle className="h-5 w-5 shrink-0" /> Este pedido vai virar NOTA FISCAL
@@ -158,7 +225,52 @@ const PixAvulsoModal = ({ pedido, onClose }) => {
                         </div>
                     )}
 
-                    {!cobranca && (
+                    {carregando && !cobranca && (
+                        <div className="flex items-center justify-center gap-2 py-10 text-gray-500 text-sm">
+                            <Loader2 className="h-5 w-5 animate-spin" /> Verificando se já existe QR...
+                        </div>
+                    )}
+
+                    {!cobranca && conflito && (
+                        <div className="space-y-4 text-center py-2">
+                            <div className="bg-amber-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto">
+                                <AlertTriangle className="h-8 w-8 text-amber-600" />
+                            </div>
+                            <p className="text-lg font-bold text-gray-900">
+                                Já existe QR{conflito.valor != null ? ` de R$ ${brl(conflito.valor)}` : ''} neste pedido
+                            </p>
+                            <p className="text-sm text-gray-600 break-words">
+                                {conflito._mensagem || `Cada QR custa R$ 1,90 e o cliente pode pagar por qualquer um deles. Use o que já existe${podeCancelar ? ' ou cancele-o para criar outro com o novo valor' : ''}.`}
+                            </p>
+                            <button onClick={handleUsarExistente}
+                                className="w-full py-3 min-h-[44px] bg-primary hover:bg-primaryDark text-white rounded-full font-semibold text-sm">
+                                Usar este QR
+                            </button>
+                            {podeCancelar && !conflito._fluxo && (
+                                <button onClick={() => handleGerar(true)} disabled={gerando}
+                                    className="w-full py-3 min-h-[44px] bg-white border border-red-600 text-red-700 hover:bg-red-50 rounded-full font-medium text-sm flex items-center justify-center gap-2 disabled:opacity-60">
+                                    {gerando && <Loader2 className="h-4 w-4 animate-spin" />}
+                                    Cancelar e criar com o novo valor
+                                </button>
+                            )}
+                            <button onClick={() => setConflito(null)}
+                                className="w-full py-3 min-h-[44px] text-gray-600 hover:bg-gray-100 rounded-full font-medium text-sm">
+                                Voltar
+                            </button>
+                        </div>
+                    )}
+
+                    {cancelada && (
+                        <div className="text-center space-y-4 py-4">
+                            <p className="text-sm text-gray-600 break-words">Este QR foi cancelado e não recebe mais pagamento.</p>
+                            <button onClick={() => { setCobranca(null); setJaExistia(false); }}
+                                className="w-full py-3 min-h-[44px] bg-primary hover:bg-primaryDark text-white rounded-full font-semibold text-sm">
+                                Gerar novo PIX
+                            </button>
+                        </div>
+                    )}
+
+                    {!cobranca && !carregando && !conflito && (
                         <>
                             <div>
                                 <label className="text-sm font-medium text-gray-700">Valor do PIX (R$)</label>
@@ -181,7 +293,7 @@ const PixAvulsoModal = ({ pedido, onClose }) => {
                                 <p className="text-xs text-gray-500 mt-1.5">O QR e o link valem até o fim do dia escolhido. Venceu? Gere outro em 2 toques.</p>
                             </div>
                             <button
-                                onClick={handleGerar}
+                                onClick={() => handleGerar(false)}
                                 disabled={gerando || (pedido.especial && !cienteConversao)}
                                 className={`w-full py-4 text-white rounded-full shadow-sm font-semibold text-base flex items-center justify-center gap-2 disabled:opacity-50 ${pedido.especial ? 'bg-red-600 hover:bg-red-700' : 'bg-primary hover:bg-primaryDark'}`}
                             >
@@ -191,19 +303,24 @@ const PixAvulsoModal = ({ pedido, onClose }) => {
                         </>
                     )}
 
-                    {cobranca && !recebido && (
+                    {mostraQr && (
                         <div className="text-center space-y-3">
-                            <p className="text-3xl font-black text-gray-900 font-mono">R$ {Number(cobranca.valor).toFixed(2)}</p>
+                            {jaExistia && (
+                                <div className="text-left text-xs text-primaryDark bg-mint/60 border border-mint rounded-lg px-3 py-2 break-words">
+                                    <b>Já existe:</b> este é o mesmo QR, nenhum novo foi criado{quandoGerado(cobranca.createdAt) ? ` · gerado ${quandoGerado(cobranca.createdAt)}` : ''}.
+                                </div>
+                            )}
+                            <p className="text-3xl font-black text-gray-900 font-mono">R$ {brl(cobranca.valor)}</p>
                             {cobranca.pixQrCodeBase64 && (
                                 <img src={`data:image/png;base64,${cobranca.pixQrCodeBase64}`} alt="QR Code PIX"
                                     className="mx-auto w-56 h-56 max-w-full border border-gray-200 rounded-xl" />
                             )}
                             <div className="flex items-center justify-center gap-2 text-primaryDark">
                                 <Loader2 className="h-4 w-4 animate-spin" />
-                                <span className="text-sm font-semibold">Aguardando pagamento...</span>
+                                <span className="text-sm font-semibold">{cobranca.status === 'EXPIRADO' ? 'Vencido, mas ainda pode ser pago...' : 'Aguardando pagamento...'}</span>
                             </div>
                             {cobranca.vencimento && (
-                                <p className="text-xs text-gray-500">Válido até {new Date(cobranca.vencimento).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })} · baixa automática ao pagar</p>
+                                <p className="text-xs text-gray-500">Válido até {new Date(cobranca.vencimento).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })} · {cobranca.vinculadaParcela ? 'baixa automática ao pagar' : 'a baixa será feita pelo Caixa'}</p>
                             )}
                             <button onClick={handleCopiar}
                                 className="w-full py-3 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-sm flex items-center justify-center gap-2">
@@ -220,6 +337,12 @@ const PixAvulsoModal = ({ pedido, onClose }) => {
                                 {msgCopiada ? <CheckCircle className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                                 {msgCopiada ? 'Mensagem copiada!' : 'Copiar mensagem (colar no WhatsApp)'}
                             </button>
+                            {podeCancelar && (
+                                <button onClick={() => setConfirmaCancelar(true)}
+                                    className="w-full py-3 min-h-[44px] text-red-700 hover:bg-red-50 rounded-full font-medium text-sm">
+                                    Cancelar este QR
+                                </button>
+                            )}
                         </div>
                     )}
 
@@ -231,10 +354,10 @@ const PixAvulsoModal = ({ pedido, onClose }) => {
                             <div>
                                 <h4 className="text-2xl font-black text-green-700">PIX Recebido!</h4>
                                 <p className="text-3xl font-black text-gray-900 font-mono mt-2">
-                                    R$ {Number(cobranca.valorRecebido ?? cobranca.valor).toFixed(2)}
+                                    R$ {brl(cobranca.valorRecebido ?? cobranca.valor)}
                                 </p>
                                 <p className="text-sm text-gray-500 mt-2">
-                                    Baixa automática feita.{pedido.especial ? ' O pedido foi convertido — o faturamento será avisado para emitir a NF-e.' : ''}
+                                    {cobranca.vinculadaParcela ? 'Baixa automática feita.' : 'A baixa será feita pelo Caixa.'}{pedido.especial ? ' O pedido foi convertido — o faturamento será avisado para emitir a NF-e.' : ''}
                                 </p>
                             </div>
                             <button onClick={onClose}
@@ -245,6 +368,10 @@ const PixAvulsoModal = ({ pedido, onClose }) => {
                     )}
                 </div>
             </div>
+            {confirmaCancelar && cobranca && (
+                <ConfirmarCancelarQr valor={cobranca.valor} cancelando={cancelando}
+                    onConfirmar={handleCancelarQr} onVoltar={() => setConfirmaCancelar(false)} />
+            )}
         </div>
     );
 };

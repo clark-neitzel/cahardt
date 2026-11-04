@@ -26,9 +26,10 @@
 import React, { useState, useEffect } from 'react';
 import {
     X, Clock, Truck, CircleDollarSign, MapPin, Ban, Zap, FileText,
-    Package, User, Loader2, AlertTriangle, ClipboardList, RefreshCw
+    Package, User, Loader2, AlertTriangle, ClipboardList, RefreshCw, QrCode
 } from 'lucide-react';
 import pedidoService from '../../services/pedidoService';
+import PixAvulsoModal from '../Pedidos/PixAvulsoModal';
 import atendimentoService from '../../services/atendimentoService';
 import { abrirLinkExterno } from '../../utils/linkExterno';
 
@@ -74,6 +75,7 @@ const ModalPedidoConsulta = ({ pedidoId, resumo, onClose }) => {
     const [atendimentosDoPedido, setAtendimentosDoPedido] = useState([]);
     const [carregando, setCarregando] = useState(true);
     const [erro, setErro] = useState(null);
+    const [verQr, setVerQr] = useState(null); // { cobrancaId } — reabre o MESMO QR do histórico (não cria outro)
     const [tentativa, setTentativa] = useState(0);
 
     useEffect(() => {
@@ -127,10 +129,10 @@ const ModalPedidoConsulta = ({ pedidoId, resumo, onClose }) => {
     // ESC fecha a popup (mesmo padrão de `pages/PCP/ReceitaForm.jsx:50-56`).
     // O clique no fundo escuro também fecha, como no `pages/Rota/ClientePopup.jsx:332`.
     useEffect(() => {
-        const onKey = (e) => { if (e.key === 'Escape') onClose?.(); };
+        const onKey = (e) => { if (e.key === 'Escape' && !verQr) onClose?.(); };
         document.addEventListener('keydown', onKey);
         return () => document.removeEventListener('keydown', onKey);
-    }, [onClose]);
+    }, [onClose, verQr]);
 
     const p = pedido;
     const nomeCliente = p?.cliente?.NomeFantasia || p?.cliente?.Nome
@@ -564,16 +566,33 @@ const ModalPedidoConsulta = ({ pedidoId, resumo, onClose }) => {
                                     <ol className="relative border-l-2 border-gray-200 ml-1.5 space-y-2.5">
                                         {linhaDoTempo.map((e, i) => (
                                             <li key={i} className="pl-3 relative">
-                                                <span className={`absolute -left-[5px] top-1.5 h-2 w-2 rounded-full ${e.cor === 'ouro' ? 'bg-[#cba258]'
+                                                <span className={`absolute -left-[5px] top-1.5 h-2 w-2 rounded-full ${e.destaque === 'aviso' ? 'bg-amber-500'
+                                                    : e.cor === 'ouro' ? 'bg-[#cba258]'
                                                     : e.cor === 'vermelho' ? 'bg-red-500'
                                                         : e.cor === 'azul' ? 'bg-sky-500'
                                                             : 'bg-primary'}`} />
-                                                <p className="text-xs font-bold text-gray-900">{e.titulo}</p>
+                                                {e.destaque === 'aviso' ? (
+                                                    <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                                                        <p className="text-xs font-bold text-amber-900 flex items-start gap-1.5"><AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" /> <span className="break-words">{e.titulo}</span></p>
+                                                        {e.sub && <p className="text-[11px] text-amber-900 mt-1 break-words">{e.sub}</p>}
+                                                    </div>
+                                                ) : (<>
+                                                <div className="flex items-start justify-between gap-2">
+                                                    <p className="text-xs font-bold text-gray-900 min-w-0 break-words">{e.titulo}</p>
+                                                    {e.badge && <span className={`shrink-0 px-2 py-0.5 text-[10px] font-semibold rounded-full ${e.badge.classe}`}>{e.badge.texto}</span>}
+                                                </div>
                                                 {/* Evento cujo campo só tem DATA sai sem hora — o app não sabe a hora,
                                                     e escrever "12:00" ou "21:00" era inventar. */}
-                                                <p className="text-[11px] text-gray-500">
+                                                <p className="text-[11px] text-gray-500 break-words">
                                                     {textoDataDoEvento(e)}{e.soData ? ' · sem hora registrada' : ''}{e.sub ? ` · ${e.sub}` : ''}
                                                 </p>
+                                                {e.verQr && (
+                                                    <button onClick={() => setVerQr({ cobrancaId: e.verQr.cobrancaId })}
+                                                        className="mt-1.5 min-h-[44px] px-3 py-1.5 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full text-xs font-medium inline-flex items-center gap-1.5">
+                                                        <QrCode className="h-3.5 w-3.5" /> Ver QR novamente
+                                                    </button>
+                                                )}
+                                                </>)}
                                             </li>
                                         ))}
                                     </ol>
@@ -621,6 +640,13 @@ const ModalPedidoConsulta = ({ pedidoId, resumo, onClose }) => {
                     </button>
                 </div>
             </div>
+            {verQr && p && (
+                <PixAvulsoModal
+                    pedido={{ id: p.id, numero: p.numero, especial: !!p.especial, clienteNome: nomeCliente, valorSugerido: totalGeral }}
+                    cobrancaId={verQr.cobrancaId}
+                    onClose={() => setVerQr(null)}
+                />
+            )}
         </div>
     );
 };
