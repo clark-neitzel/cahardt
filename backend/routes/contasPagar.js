@@ -282,7 +282,7 @@ const { montarFiltroMetodo } = require('../utils/filtroMetodoPagamento');
 // ── GET / — listar contas com KPIs ──
 router.get('/', verificarAuth, checkAcesso, async (req, res) => {
     try {
-        const { busca, status, categoria, mes, de, ate, metodo } = req.query;
+        const { busca, descricao, status, categoria, mes, de, ate, metodo } = req.query;
 
         const hoje = new Date();
         hoje.setHours(0, 0, 0, 0);
@@ -320,11 +320,15 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
         if (filtroMetodo) where.AND = [filtroMetodo];
         if (busca) {
             where.OR = [
-                { descricao: { contains: busca, mode: 'insensitive' } },
                 { numeroNota: { contains: busca, mode: 'insensitive' } },
                 { fornecedor: { razaoSocial: { contains: busca, mode: 'insensitive' } } },
                 { fornecedor: { nomeFantasia: { contains: busca, mode: 'insensitive' } } }
             ];
+        }
+
+        // Filtro separado de descrição (AND com busca/fornecedor e demais filtros)
+        if (descricao && String(descricao).trim()) {
+            where.AND = [...(where.AND || []), { descricao: { contains: String(descricao).trim(), mode: 'insensitive' } }];
         }
 
         const contas = await prisma.contaPagar.findMany({

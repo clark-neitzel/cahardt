@@ -383,6 +383,7 @@ const ContasPagarPage = () => {
     const [periodo, periodoCtl] = usePeriodoSalvo('contas-pagar'); // preset padrão: 'mes'
     const [filtros, setFiltros] = useState({
         busca: '',
+        descricao: '',
         status: filtrosSalvos.status,
         categoria: filtrosSalvos.categoria,
         metodos: Array.isArray(filtrosSalvos.metodos) ? filtrosSalvos.metodos : [],
@@ -390,6 +391,7 @@ const ContasPagarPage = () => {
         dataAte: periodo.ate // '' = sem fim (mais novo). Ambos '' = todas as datas
     });
     const [buscaInput, setBuscaInput] = useState('');
+    const [descricaoInput, setDescricaoInput] = useState('');
 
     // Espelha no armazenamento só a parte persistível dos filtros
     useEffect(() => {
@@ -407,6 +409,7 @@ const ContasPagarPage = () => {
     const filtrosAtivos = useMemo(() => {
         let n = 0;
         if (filtros.busca) n++;
+        if (filtros.descricao) n++;
         if (filtros.status) n++;
         if (filtros.categoria) n++;
         if (filtros.metodos.length > 0) n++;
@@ -422,8 +425,9 @@ const ContasPagarPage = () => {
 
     const limparFiltros = () => {
         periodoCtl.limpar();
-        setFiltros({ busca: '', status: '', categoria: '', metodos: [], dataDe: primeiroDiaMesAtual(), dataAte: ultimoDiaMesAtual() });
+        setFiltros({ busca: '', descricao: '', status: '', categoria: '', metodos: [], dataDe: primeiroDiaMesAtual(), dataAte: ultimoDiaMesAtual() });
         setBuscaInput('');
+        setDescricaoInput('');
     };
 
     // Modais
@@ -440,15 +444,21 @@ const ContasPagarPage = () => {
 
     // Debounce da busca
     useEffect(() => {
-        const t = setTimeout(() => setFiltros(f => ({ ...f, busca: buscaInput })), 400);
+        const t = setTimeout(() => setFiltros(f => (f.busca === buscaInput.trim() ? f : { ...f, busca: buscaInput.trim() })), 400);
         return () => clearTimeout(t);
     }, [buscaInput]);
+
+    useEffect(() => {
+        const t = setTimeout(() => setFiltros(f => (f.descricao === descricaoInput.trim() ? f : { ...f, descricao: descricaoInput.trim() })), 400);
+        return () => clearTimeout(t);
+    }, [descricaoInput]);
 
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
             const params = {};
             if (filtros.busca) params.busca = filtros.busca;
+            if (filtros.descricao) params.descricao = filtros.descricao;
             if (filtros.status) params.status = filtros.status;
             if (filtros.categoria) params.categoria = filtros.categoria;
             if (filtros.metodos.length > 0) {
@@ -611,7 +621,7 @@ const ContasPagarPage = () => {
                         <input
                             value={buscaInput}
                             onChange={e => setBuscaInput(e.target.value)}
-                            placeholder="Buscar fornecedor ou descrição…"
+                            placeholder="Fornecedor ou nota…"
                             className={`w-full md:w-64 border rounded px-3 py-2 text-sm focus:ring-1 focus:ring-primary focus:outline-none ${filtros.busca ? '!border-primary bg-blue-50/60' : 'border-gray-300 focus:border-primary'}`}
                         />
                         <SelectBusca

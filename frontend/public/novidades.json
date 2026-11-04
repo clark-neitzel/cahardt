@@ -1,5 +1,11 @@
 [
   {
+    "slug": "filtro-descricao",
+    "titulo": "Contas a Pagar: filtro por Descrição",
+    "resumo": "Novo campo Descrição ao lado de Fornecedor ou nota. Os dois combinam: dá para ver só os vales de uma pessoa.",
+    "data": "2026-11-04"
+  },
+  {
     "slug": "qr-pix-unico",
     "titulo": "Um QR PIX por pedido",
     "resumo": "Fechar a janela do PIX não cancela mais o QR. O QR aparece no histórico do pedido e dá para rever sem gerar outro (cada QR custa R$ 1,90).",

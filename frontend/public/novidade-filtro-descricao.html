@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Filtro Descrição — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<meta property="og:title" content="🔎 Novidade no Contas a Pagar: filtro por Descrição">
+<meta property="og:description" content="Agora dá para achar só os vales de uma pessoa: digite o nome em um campo e a descrição no outro. Veja como fica.">
+<meta property="og:type" content="website">
+<style>
+  :root { --primary:#00754A; --primary-dark:#006241; --house:#1E3932; --mint:#d4e9e2; --cream:#f2f0eb; --gold:#cba258; --ink:rgba(0,0,0,.87); --ink-soft:#5f6b66; letter-spacing:-0.01em; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--cream); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; line-height:1.55; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:620px; margin:0 auto; padding:0 16px 56px; }
+  .hero { background:linear-gradient(168deg,var(--house) 0%,#16302a 100%); color:#fff; padding:40px 16px 48px; }
+  .hero-inner { max-width:620px; margin:0 auto; text-align:center; }
+  .eyebrow { display:inline-block; background:var(--gold); color:#2b230f; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.14em; padding:6px 14px; border-radius:999px; margin-bottom:18px; }
+  .hero h1 { font-size:clamp(28px,7vw,40px); font-weight:800; line-height:1.12; margin:0 0 12px; text-wrap:balance; }
+  .hero p { color:rgba(255,255,255,.75); font-size:16px; max-width:46ch; margin:0 auto; text-wrap:balance; }
+  .sec-label { font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.16em; color:var(--primary-dark); margin:34px 4px 12px; }
+  .acc { background:#fff; border:1px solid #e3e1da; border-radius:16px; margin-bottom:10px; overflow:hidden; box-shadow:0 1px 2px rgba(30,57,50,.05); }
+  .acc-head { width:100%; display:flex; align-items:center; gap:12px; background:none; border:none; font:inherit; text-align:left; padding:15px 16px; cursor:pointer; min-height:56px; }
+  .acc-head:focus-visible { outline:2px solid var(--primary); outline-offset:-2px; }
+  .acc-ico { width:38px; height:38px; border-radius:11px; background:var(--mint); display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
+  .acc-head strong { flex:1; font-size:15.5px; font-weight:700; }
+  .acc-seta { color:#9aa5a0; transition:transform .2s; font-size:13px; }
+  .acc.aberto .acc-seta { transform:rotate(180deg); }
+  .acc-corpo { display:none; padding:0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display:block; }
+  .acc-corpo p, .acc-corpo li { font-size:14px; color:var(--ink-soft); }
+  .acc-corpo p { margin:0 0 10px; }
+  .acc-corpo ul { margin:0; padding-left:18px; }
+  .acc-corpo li { margin-bottom:7px; }
+  .acc-corpo b { color:var(--ink); }
+  @media (max-width:420px) { .acc-corpo { padding-left:16px; } }
+  .rodape { text-align:center; font-size:13px; color:var(--ink-soft); margin-top:40px; }
+  .rodape strong { color:var(--primary-dark); }
+  .tela { background:#fff; border:1px solid #e3e1da; border-radius:16px; overflow:hidden; margin-bottom:12px; box-shadow:0 1px 2px rgba(30,57,50,.05); }
+  .tela-titulo { background:var(--house); color:#fff; padding:12px 16px; font-size:13px; font-weight:800; display:flex; align-items:center; gap:8px; }
+  .tela-corpo { padding:16px; background:#f7f6f2; }
+  .app-card { background:#fff; border:1px solid #e5e3dc; border-radius:12px; padding:12px; margin-bottom:10px; }
+  .app-input { border:1px solid #d1d5db; border-radius:4px; padding:10px 12px; font-size:13px; background:#fff; color:#444; margin-bottom:8px; }
+  .app-input.ativo { border-color:var(--primary); }
+  .app-sel { display:inline-block; border:1px solid #d1d5db; border-radius:999px; padding:8px 14px; font-size:12px; color:#666; background:#fff; margin:0 6px 6px 0; }
+  .app-chip { display:inline-block; background:var(--mint); color:var(--primary-dark); border-radius:999px; padding:4px 12px; font-size:12px; font-weight:700; }
+  .app-link { font-size:12px; color:#666; margin-left:10px; }
+  .app-linha { border:1px solid #e5e3dc; border-radius:12px; background:#fff; padding:10px 12px; margin-bottom:8px; font-size:12.5px; color:#555; }
+  .app-linha b { color:var(--ink); display:block; font-size:13px; }
+  .app-linha div { display:flex; justify-content:space-between; gap:8px; margin-top:3px; }
+  .badge-pago { background:#dcfce7; color:#166534; border-radius:999px; padding:2px 9px; font-size:11px; font-weight:700; }
+  .pin { display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:50%; background:var(--gold); color:#2b230f; font-size:11px; font-weight:800; flex-shrink:0; vertical-align:2px; margin-left:6px; }
+  .legenda { padding:12px 16px 16px; }
+  .legenda div { display:flex; gap:8px; font-size:13px; color:var(--ink-soft); margin-bottom:7px; align-items:flex-start; }
+  .legenda .pin { margin:1px 0 0; }
+  .legenda b { color:var(--ink); }
+  .passos { background:#fff; border:1px solid #e3e1da; border-radius:16px; padding:18px 16px; }
+  .passo { display:flex; gap:14px; padding:10px 0; }
+  .passo + .passo { border-top:1px dashed #e3e1da; }
+  .passo-n { width:28px; height:28px; border-radius:50%; background:var(--primary); color:#fff; font-weight:800; font-size:14px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .passo div { font-size:14px; color:var(--ink-soft); }
+  .passo b { color:var(--ink); }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>Contas a Pagar: filtro por Descrição</h1>
+    <p>Quer ver só os vales de uma pessoa? Agora tem um campo novo para a descrição, separado do campo de fornecedor. Os dois trabalham juntos.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="sec-label">O que mudou</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🔎</span>
+      <strong>Um campo novo: "Descrição"</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Na aba <b>Contas a Pagar</b>, ao lado de <b>"Fornecedor ou nota"</b>, apareceu o campo <b>"Descrição"</b>.</li>
+        <li>Ele procura no texto que está na descrição da conta, como <b>vale</b>, <b>aluguel</b> ou <b>frete</b>.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🤝</span>
+      <strong>Os dois campos combinam</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Preencha os dois e a lista mostra só o que bate com <b>os dois ao mesmo tempo</b>.</li>
+        <li>Exemplo: nome da pessoa em cima + <b>vale</b> embaixo = só os vales daquela pessoa.</li>
+        <li>O campo de cima <b>não procura mais na descrição</b>: ele serve só para fornecedor/pessoa ou número da nota. Isso acaba com a mistura de resultados.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🧹</span>
+      <strong>Limpar filtros limpa os dois</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>O botão <b>"Limpar filtros"</b> esvazia o campo de fornecedor e o de descrição de uma vez. O contador "filtros ativos" também conta o campo novo.</p>
+    </div>
+  </div>
+
+  <div class="sec-label">As telas do app</div>
+
+  <div class="tela">
+    <div class="tela-titulo">💸 Contas a Pagar — filtros</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-input ativo">Fornecedor ou nota: clarkson neitzel<span class="pin">1</span></div>
+        <div class="app-input ativo">Descrição: vale<span class="pin">2</span></div>
+        <span class="app-sel">Pago ▾</span><span class="app-sel">Salários ▾</span><span class="app-sel">Todo o período ▾</span>
+        <div style="margin-top:6px;"><span class="app-chip">3 filtros ativos</span><span class="app-link">Limpar filtros<span class="pin">3</span></span></div>
+      </div>
+      <div class="app-linha"><b>CLARKSON NEITZEL JUNIOR</b><div><span>VALE · Salários</span><span class="badge-pago">Pago</span></div><div><span>01/06/2026</span><b style="display:inline">R$ 100,00</b></div></div>
+      <div class="app-linha"><b>CLARKSON NEITZEL JUNIOR</b><div><span>VALE · Salários</span><span class="badge-pago">Pago</span></div><div><span>09/06/2026</span><b style="display:inline">R$ 20,00</b></div></div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Fornecedor ou nota:</b> procura só pelo nome da pessoa/fornecedor ou pelo número da nota.</span></div>
+      <div><span class="pin">2</span><span><b>Descrição (novo):</b> procura no texto da descrição. Junto com o campo de cima, mostra só os vales dessa pessoa.</span></div>
+      <div><span class="pin">3</span><span><b>Limpar filtros:</b> esvazia os dois campos e volta os demais filtros ao normal.</span></div>
+    </div>
+  </div>
+
+  <div class="sec-label">Para começar a usar</div>
+  <div class="passos">
+    <div class="passo"><span class="passo-n">1</span><div><b>Atualize o app:</b> toque no ícone de atualizar ↻ (ou feche e abra o app).</div></div>
+    <div class="passo"><span class="passo-n">2</span><div>Abra <b>Contas a Pagar</b> e digite no novo campo <b>"Descrição"</b>.</div></div>
+    <div class="passo"><span class="passo-n">3</span><div>Quer afinar mais? Escreva também o nome no campo de cima.</div></div>
+  </div>
+
+  <div class="rodape"><strong>Hardt App</strong> · novidade de 04/11/2026</div>
+</div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.parentElement;
+    const abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>
