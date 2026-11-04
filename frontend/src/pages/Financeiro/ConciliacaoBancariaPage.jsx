@@ -125,7 +125,7 @@ const TransferenciaModal = ({ lancamento, contas, contaId, onClose, onSuccess })
 
     return (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-end md:items-center justify-center md:p-4" onClick={onClose}>
-            <div className="bg-white rounded-t-2xl md:rounded-2xl shadow-xl max-w-md w-full" onClick={e => e.stopPropagation()}>
+            <div className="bg-white rounded-t-2xl md:rounded-2xl shadow-xl max-w-full md:max-w-xl w-full" onClick={e => e.stopPropagation()}>
                 <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
                     <div className="min-w-0">
                         <p className="text-xs text-gray-500">
@@ -133,7 +133,7 @@ const TransferenciaModal = ({ lancamento, contas, contaId, onClose, onSuccess })
                         </p>
                         <h2 className="font-bold text-gray-900">Transferência entre contas</h2>
                     </div>
-                    <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"><X className="w-5 h-5" /></button>
+                    <button onClick={onClose} className="p-3 -m-2 md:p-1.5 md:m-0 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 shrink-0"><X className="w-5 h-5" /></button>
                 </div>
                 <div className="p-5 space-y-3">
                     <p className="text-sm text-gray-600">
@@ -141,7 +141,7 @@ const TransferenciaModal = ({ lancamento, contas, contaId, onClose, onSuccess })
                         {ehSaida ? 'foi para' : 'veio de'} outra conta da empresa. Não é receita nem despesa — vira um
                         movimento próprio nos relatórios por conta.
                     </p>
-                    <div>
+                    <div className="[&_button]:min-h-[44px] md:[&_button]:min-h-0">
                         <label className="text-sm font-medium text-gray-700 block mb-1">
                             {ehSaida ? 'Para qual conta foi?' : 'De qual conta veio?'}
                         </label>
@@ -157,9 +157,9 @@ const TransferenciaModal = ({ lancamento, contas, contaId, onClose, onSuccess })
                     </div>
                 </div>
                 <div className="px-5 py-4 border-t border-gray-100 flex justify-end gap-2">
-                    <button onClick={onClose} className="px-4 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-full font-medium text-sm">Cancelar</button>
+                    <button onClick={onClose} className="px-4 py-2 min-h-[44px] md:min-h-0 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-full font-medium text-sm">Cancelar</button>
                     <button onClick={confirmar} disabled={salvando}
-                        className="px-4 py-2 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm inline-flex items-center gap-1.5 disabled:opacity-50">
+                        className="px-4 py-2 min-h-[44px] md:min-h-0 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm inline-flex items-center justify-center gap-1.5 disabled:opacity-50">
                         {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowLeftRight className="h-4 w-4" />}
                         Registrar transferência
                     </button>
@@ -390,7 +390,7 @@ const BuscarModal = ({ lancamento, pendentes, contaId, onClose, onSuccess, onCri
 
     return (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-end md:items-center justify-center md:p-4" onClick={onClose}>
-            <div className="bg-white rounded-t-2xl md:rounded-2xl shadow-xl max-w-2xl w-full max-h-[92vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="bg-white rounded-t-2xl md:rounded-2xl shadow-xl w-full max-w-full md:max-w-5xl 2xl:max-w-6xl max-h-[92dvh] md:max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
                 <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between shrink-0">
                     <div className="min-w-0">
                         <p className="text-xs text-gray-500">
@@ -403,7 +403,7 @@ const BuscarModal = ({ lancamento, pendentes, contaId, onClose, onSuccess, onCri
                             </button>
                         )}
                     </div>
-                    <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"><X className="w-5 h-5" /></button>
+                    <button onClick={onClose} className="p-3 -m-2 md:p-1.5 md:m-0 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 shrink-0"><X className="w-5 h-5" /></button>
                 </div>
 
                 <div className="p-5 space-y-4 overflow-y-auto">
@@ -414,7 +414,7 @@ const BuscarModal = ({ lancamento, pendentes, contaId, onClose, onSuccess, onCri
                                 <button
                                     key={v}
                                     onClick={() => setJanela(v)}
-                                    className={`shrink-0 px-3 py-1.5 rounded-full text-xs transition-colors ${janela === v ? 'bg-primary text-white font-semibold' : 'bg-white border border-gray-300 text-gray-700 font-medium hover:bg-gray-50'}`}
+                                    className={`shrink-0 px-3 py-1.5 min-h-[44px] md:min-h-0 rounded-full text-xs transition-colors ${janela === v ? 'bg-primary text-white font-semibold' : 'bg-white border border-gray-300 text-gray-700 font-medium hover:bg-gray-50'}`}
                                 >
                                     {label}
                                 </button>
@@ -556,7 +556,7 @@ const BuscarModal = ({ lancamento, pendentes, contaId, onClose, onSuccess, onCri
                     {/* Raro: 2 PIX pagando 1 boleto — somar outros lançamentos do banco */}
                     {outrosPendentes.length > 0 && (
                         <div>
-                            <button type="button" onClick={() => setMostrarExtras(v => !v)} className="text-xs font-medium text-primary hover:underline">
+                            <button type="button" onClick={() => setMostrarExtras(v => !v)} className="text-xs font-medium text-primary hover:underline min-h-[44px] md:min-h-0 text-left">
                                 {mostrarExtras ? '− Esconder outros lançamentos do banco' : '+ Somar outro lançamento do banco (ex.: 2 PIX pagando 1 boleto)'}
                             </button>
                             {mostrarExtras && (
@@ -665,16 +665,16 @@ const BuscarModal = ({ lancamento, pendentes, contaId, onClose, onSuccess, onCri
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                         <div className="text-xs text-gray-500">
                             Não está no sistema?{' '}
-                            {ehSaida && <button type="button" onClick={onCriarDespesa} className="font-medium text-primary hover:underline">Cadastrar despesa</button>}
+                            {ehSaida && <button type="button" onClick={onCriarDespesa} className="font-medium text-primary hover:underline inline-flex items-center min-h-[44px] md:min-h-0 px-1">Cadastrar despesa</button>}
                             {ehSaida && ' · '}
-                            <button type="button" onClick={onTransferir} className="font-medium text-primary hover:underline">Transferência entre contas</button>
+                            <button type="button" onClick={onTransferir} className="font-medium text-primary hover:underline inline-flex items-center min-h-[44px] md:min-h-0 px-1">Transferência entre contas</button>
                             {' · '}
-                            <button type="button" onClick={onIgnorar} className="font-medium text-gray-600 hover:underline">Ignorar (tarifa…)</button>
+                            <button type="button" onClick={onIgnorar} className="font-medium text-gray-600 hover:underline inline-flex items-center min-h-[44px] md:min-h-0 px-1">Ignorar (tarifa…)</button>
                         </div>
                         <div className="ml-auto flex gap-2">
-                            <button onClick={onClose} className="px-4 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-full font-medium text-sm">Cancelar</button>
+                            <button onClick={onClose} className="px-4 py-2 min-h-[44px] md:min-h-0 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-full font-medium text-sm">Cancelar</button>
                             <button onClick={confirmar} disabled={!podeConfirmar}
-                                className="px-4 py-2 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm inline-flex items-center gap-1.5 disabled:opacity-50">
+                                className="px-4 py-2 min-h-[44px] md:min-h-0 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm inline-flex items-center justify-center gap-1.5 disabled:opacity-50">
                                 {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
                                 Conciliar
                             </button>
@@ -756,13 +756,13 @@ const DespesaModal = ({ lancamento, onClose, onSuccess }) => {
 
     return (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-end md:items-center justify-center md:p-4" onClick={onClose}>
-            <div className="bg-white rounded-t-2xl md:rounded-2xl shadow-xl max-w-lg w-full max-h-[92vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="bg-white rounded-t-2xl md:rounded-2xl shadow-xl w-full max-w-full md:max-w-4xl max-h-[92dvh] md:max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
                 <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between shrink-0">
                     <div className="min-w-0">
                         <p className="text-xs text-gray-500">Saída do banco sem despesa lançada</p>
                         <h2 className="font-bold text-gray-900">Cadastrar a despesa</h2>
                     </div>
-                    <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"><X className="w-5 h-5" /></button>
+                    <button onClick={onClose} className="p-3 -m-2 md:p-1.5 md:m-0 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 shrink-0"><X className="w-5 h-5" /></button>
                 </div>
 
                 <div className="p-5 space-y-4 overflow-y-auto">
@@ -790,7 +790,7 @@ const DespesaModal = ({ lancamento, onClose, onSuccess }) => {
                                     <button
                                         type="button"
                                         onClick={() => setNovoFornecedor(v => !v)}
-                                        className="text-xs font-medium text-primary hover:underline"
+                                        className="text-xs font-medium text-primary hover:underline min-h-[44px] md:min-h-0 px-1"
                                     >
                                         {novoFornecedor ? 'Escolher um já cadastrado' : '+ Cadastrar novo'}
                                     </button>
@@ -822,7 +822,7 @@ const DespesaModal = ({ lancamento, onClose, onSuccess }) => {
                                 />
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                 <div>
                                     <label className="text-sm font-medium text-gray-700 block mb-1">Categoria (DRE)</label>
                                     <SelectBusca value={form.categoriaCaId} onChange={set('categoriaCaId')} className="w-full">
@@ -831,7 +831,7 @@ const DespesaModal = ({ lancamento, onClose, onSuccess }) => {
                                     </SelectBusca>
                                 </div>
                                 <div>
-                                    <label className="text-sm font-medium text-gray-700 block mb-1">Forma de pagamento *</label>
+                                    <label className="text-sm font-medium text-gray-700 block mb-1"><span className="md:hidden">Forma de pagto *</span><span className="hidden md:inline">Forma de pagamento *</span></label>
                                     <SelectBusca value={form.metodoPagamento} onChange={set('metodoPagamento')} className="w-full">
                                         {(opcoes.metodosPagamento || []).map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
                                     </SelectBusca>
@@ -902,11 +902,11 @@ const DespesaModal = ({ lancamento, onClose, onSuccess }) => {
                 </div>
 
                 <div className="px-5 py-4 border-t border-gray-100 shrink-0 flex justify-end gap-2">
-                    <button onClick={onClose} className="px-4 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-full font-medium text-sm">Cancelar</button>
+                    <button onClick={onClose} className="px-4 py-2 min-h-[44px] md:min-h-0 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-full font-medium text-sm">Cancelar</button>
                     <button
                         onClick={salvar}
                         disabled={!podeSalvar}
-                        className="px-4 py-2 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm inline-flex items-center gap-1.5 disabled:opacity-50"
+                        className="px-4 py-2 min-h-[44px] md:min-h-0 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm inline-flex items-center justify-center gap-1.5 disabled:opacity-50"
                     >
                         {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
                         Cadastrar despesa
@@ -966,16 +966,16 @@ const DespesaLoteModal = ({ lancamentos, onClose, onSuccess }) => {
 
     return (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-end md:items-center justify-center md:p-4" onClick={onClose}>
-            <div className="bg-white rounded-t-2xl md:rounded-2xl shadow-xl max-w-lg w-full max-h-[92vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="bg-white rounded-t-2xl md:rounded-2xl shadow-xl w-full max-w-full md:max-w-5xl 2xl:max-w-6xl max-h-[92dvh] md:max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
                 <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between shrink-0">
                     <div className="min-w-0">
                         <p className="text-xs text-gray-500">{lancamentos.length} saída(s) selecionada(s) · R$ {fmt(total)}</p>
                         <h2 className="font-bold text-gray-900">Lançar despesas em lote e conciliar</h2>
                     </div>
-                    <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"><X className="w-5 h-5" /></button>
+                    <button onClick={onClose} className="p-3 -m-2 md:p-1.5 md:m-0 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 shrink-0"><X className="w-5 h-5" /></button>
                 </div>
 
-                <div className="p-5 space-y-4 overflow-y-auto">
+                <div className="p-4 md:p-5 space-y-4 overflow-y-auto flex-1 min-h-0 flex flex-col">
                     {resultado ? (
                         <div className="space-y-3">
                             <div className="rounded-xl border border-green-200 bg-green-50 p-3 text-sm text-green-800">
@@ -1000,41 +1000,40 @@ const DespesaLoteModal = ({ lancamentos, onClose, onSuccess }) => {
                         </div>
                     ) : (
                         <>
-                            <p className="text-sm text-gray-600">
+                            <p className="text-xs md:text-sm text-gray-600">
                                 O fornecedor, a categoria e a forma de pagamento abaixo valem para <strong>todas</strong>. Cada linha
                                 vira sua própria despesa (mantendo a descrição e o nº do documento do banco), já <strong>paga e
                                 conciliada</strong> no banco deste extrato.
                             </p>
 
                             {/* Fornecedor (uma vez para todas) */}
-                            <div>
-                                <div className="flex items-center justify-between mb-1">
-                                    <label className="text-sm font-medium text-gray-700">Fornecedor *</label>
-                                    <button type="button" onClick={() => setNovoFornecedor(v => !v)} className="text-xs font-medium text-primary hover:underline">
-                                        {novoFornecedor ? 'Escolher um já cadastrado' : '+ Cadastrar novo'}
-                                    </button>
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
+                                <div className="col-span-2 md:col-span-1">
+                                    <div className="flex items-center justify-between mb-1">
+                                        <label className="text-sm font-medium text-gray-700">Fornecedor *</label>
+                                        <button type="button" onClick={() => setNovoFornecedor(v => !v)} className="text-xs font-medium text-primary hover:underline min-h-[44px] md:min-h-0">
+                                            {novoFornecedor ? 'Escolher um já cadastrado' : '+ Cadastrar novo'}
+                                        </button>
+                                    </div>
+                                    {novoFornecedor ? (
+                                        <input value={form.fornecedorNovo} onChange={set('fornecedorNovo')} placeholder="Nome / razão social (ex.: Asaas)"
+                                            className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
+                                    ) : (
+                                        <SelectBusca value={form.fornecedorId} onChange={set('fornecedorId')} className="w-full">
+                                            <option value="">Escolha o fornecedor…</option>
+                                            {(opcoes.fornecedores || []).map(f => <option key={f.id} value={f.id}>{f.nomeFantasia || f.razaoSocial}</option>)}
+                                        </SelectBusca>
+                                    )}
                                 </div>
-                                {novoFornecedor ? (
-                                    <input value={form.fornecedorNovo} onChange={set('fornecedorNovo')} placeholder="Nome / razão social (ex.: Asaas)"
-                                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
-                                ) : (
-                                    <SelectBusca value={form.fornecedorId} onChange={set('fornecedorId')} className="w-full">
-                                        <option value="">Escolha o fornecedor…</option>
-                                        {(opcoes.fornecedores || []).map(f => <option key={f.id} value={f.id}>{f.nomeFantasia || f.razaoSocial}</option>)}
-                                    </SelectBusca>
-                                )}
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
+                                <div className="min-w-0">
                                     <label className="text-sm font-medium text-gray-700 block mb-1">Categoria (DRE)</label>
                                     <SelectBusca value={form.categoriaCaId} onChange={set('categoriaCaId')} className="w-full">
                                         <option value="">Sem categoria</option>
                                         {(opcoes.categorias || []).map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
                                     </SelectBusca>
                                 </div>
-                                <div>
-                                    <label className="text-sm font-medium text-gray-700 block mb-1">Forma de pagamento *</label>
+                                <div className="min-w-0">
+                                    <label className="text-sm font-medium text-gray-700 block mb-1"><span className="md:hidden">Forma de pagto *</span><span className="hidden md:inline">Forma de pagamento *</span></label>
                                     <SelectBusca value={form.metodoPagamento} onChange={set('metodoPagamento')} className="w-full">
                                         {(opcoes.metodosPagamento || []).map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
                                     </SelectBusca>
@@ -1042,40 +1041,68 @@ const DespesaLoteModal = ({ lancamentos, onClose, onSuccess }) => {
                             </div>
 
                             {/* Prévia das linhas selecionadas */}
-                            <div>
+                            <div className="flex flex-col flex-1 min-h-0">
                                 <p className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-2">Lançamentos ({lancamentos.length})</p>
-                                <div className="rounded-xl border border-gray-200 divide-y divide-gray-100 max-h-56 overflow-y-auto">
-                                    {lancamentos.map(l => (
-                                        <div key={l.id} className="flex items-center justify-between gap-2 px-3 py-2">
-                                            <div className="min-w-0">
-                                                <div className="text-sm text-gray-800 truncate">{l.descricao || '(sem descrição)'}</div>
-                                                <div className="text-xs text-gray-400">{fmtData(l.data)}{l.detalhes?.documento ? ` · doc ${l.detalhes.documento}` : ''}</div>
+                                <div className="rounded-xl border border-gray-200 overflow-y-auto flex-1 min-h-[max(12rem,30dvh)] md:min-h-[20rem] md:max-h-[50vh]">
+                                    {/* Mobile: cards */}
+                                    <div className="md:hidden divide-y divide-gray-100">
+                                        {lancamentos.map(l => (
+                                            <div key={l.id} className="px-3 py-1.5">
+                                                <div className="flex items-start justify-between gap-2">
+                                                    <div className="text-[13px] leading-snug text-gray-800 break-words min-w-0 line-clamp-2">{l.descricao || '(sem descrição)'}</div>
+                                                    <span className="text-[13px] font-semibold text-red-700 whitespace-nowrap">− R$ {fmt(l.valor)}</span>
+                                                </div>
+                                                <div className="text-xs text-gray-500 truncate">{fmtData(l.data)}{l.detalhes?.documento ? ` · doc ${l.detalhes.documento}` : ''}</div>
                                             </div>
-                                            <span className="text-sm font-semibold text-red-700 whitespace-nowrap">− R$ {fmt(l.valor)}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                                <div className="flex justify-between mt-2 text-sm font-semibold text-gray-800">
-                                    <span>Total</span><span>R$ {fmt(total)}</span>
+                                        ))}
+                                    </div>
+                                    {/* Desktop: tabela */}
+                                    <table className="hidden md:table min-w-full divide-y divide-gray-200">
+                                        <thead className="bg-gray-50 sticky top-0 z-10">
+                                            <tr>
+                                                <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide w-28">Data</th>
+                                                <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Descrição</th>
+                                                <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide w-44">Doc. do banco</th>
+                                                <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide w-36">Valor</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="bg-white divide-y divide-gray-100 text-sm">
+                                            {lancamentos.map(l => (
+                                                <tr key={l.id} className="hover:bg-gray-50">
+                                                    <td className="px-4 py-2 text-gray-700 whitespace-nowrap">{fmtData(l.data)}</td>
+                                                    <td className="px-4 py-2 text-gray-900 break-words">{l.descricao || '(sem descrição)'}</td>
+                                                    <td className="px-4 py-2 text-gray-600 break-all">{l.detalhes?.documento || '—'}</td>
+                                                    <td className="px-4 py-2 text-right font-semibold text-red-700 whitespace-nowrap">− R$ {fmt(l.valor)}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
                                 </div>
                             </div>
                         </>
                     )}
                 </div>
 
-                <div className="px-5 py-4 border-t border-gray-100 shrink-0 flex justify-end gap-2">
-                    {resultado ? (
-                        <button onClick={onSuccess} className="px-4 py-2 bg-primary hover:bg-primaryDark text-white rounded-full font-semibold text-sm">Fechar</button>
-                    ) : (
-                        <>
-                            <button onClick={onClose} className="px-4 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-full font-medium text-sm">Cancelar</button>
-                            <button onClick={salvar} disabled={!podeSalvar}
-                                className="px-4 py-2 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm inline-flex items-center gap-1.5 disabled:opacity-50">
-                                {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                                Lançar {lancamentos.length} e conciliar
-                            </button>
-                        </>
+                <div className="px-4 md:px-5 py-3 md:py-4 border-t border-gray-100 shrink-0 flex flex-col md:flex-row md:items-center md:justify-end gap-3">
+                    {!resultado && opcoes !== null && (
+                        <div className="flex justify-between md:mr-auto md:gap-3 text-sm font-semibold text-gray-800">
+                            <span>Total ({lancamentos.length})</span><span>R$ {fmt(total)}</span>
+                        </div>
                     )}
+                    <div className="flex gap-2 justify-end [&>button]:min-h-[44px] md:[&>button]:min-h-0 [&>button]:flex-1 md:[&>button]:flex-none">
+                        {resultado ? (
+                            <button onClick={onSuccess} className="px-4 py-2 min-h-[44px] md:min-h-0 bg-primary hover:bg-primaryDark text-white rounded-full font-semibold text-sm">Fechar</button>
+                        ) : (
+                            <>
+                                <button onClick={onClose} className="px-4 py-2 min-h-[44px] md:min-h-0 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-full font-medium text-sm">Cancelar</button>
+                                <button onClick={salvar} disabled={!podeSalvar}
+                                    className="px-4 py-2 min-h-[44px] md:min-h-0 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm inline-flex items-center justify-center gap-1.5 disabled:opacity-50">
+                                    {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                                    Lançar {lancamentos.length} e conciliar
+                                </button>
+                            </>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>
@@ -1092,7 +1119,7 @@ const BloqueioImportacaoModal = ({ info, onCancelar, onForcar, importando }) => 
     const [ciente, setCiente] = useState(false);
     return (
         <div className="fixed inset-0 bg-black/50 flex items-end md:items-center justify-center z-50 p-0 md:p-4">
-            <div className="bg-white rounded-t-2xl md:rounded-2xl w-full md:max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="bg-white rounded-t-2xl md:rounded-2xl w-full md:max-w-xl max-h-[92dvh] md:max-h-[90vh] overflow-y-auto">
                 <div className="flex items-start gap-3 p-5 border-b border-gray-100">
                     <div className="bg-red-100 p-2 rounded-lg shrink-0">
                         <AlertTriangle className="h-5 w-5 text-red-600" />
