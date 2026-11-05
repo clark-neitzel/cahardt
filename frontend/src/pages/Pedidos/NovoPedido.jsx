@@ -34,11 +34,16 @@ const DIA_SEMANA_MAP = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
 
 // Unidades de medida que aceitam fração em pedido ESPECIAL (interno; lista matéria-prima sem categoria comercial)
 const UNIDADES_FRACIONAVEIS_ESPECIAL = ['KG', 'KILOGRAMA', 'QUILOGRAMA', 'G', 'GR', 'GRAMA', 'GRAMAS', 'L', 'LT', 'LITRO', 'LITROS', 'ML', 'MILILITRO', 'MILILITROS'];
-// Fração: pela categoria comercial; no pedido especial, também pela unidade de medida do produto
+// Categorias de ESTOQUE (texto em produto.categoria) que aceitam fração no pedido especial, já normalizadas.
+// Necessário porque a unidade cadastrada veio bagunçada do Conta Azul (ex.: "BISTECA SUINA KG" está como "CX").
+const CATEGORIAS_ESTOQUE_FRACIONAVEIS_ESPECIAL = ['MATERIA-PRIMA', 'MATERIAL DE USO E CONSUMO'];
+const normalizarTexto = (v) => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase();
+// Fração: pela categoria comercial; no pedido especial, também pela categoria de estoque ou pela unidade de medida
 const produtoPermiteFracao = (produto, ehEspecial) => {
     if (produto?.categoriaProduto?.permiteFracao) return true;
     if (!ehEspecial) return false;
     const un = String(produto?.unidade || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase();
+    if (CATEGORIAS_ESTOQUE_FRACIONAVEIS_ESPECIAL.includes(normalizarTexto(produto?.categoria))) return true;
     return UNIDADES_FRACIONAVEIS_ESPECIAL.includes(un);
 };
 
