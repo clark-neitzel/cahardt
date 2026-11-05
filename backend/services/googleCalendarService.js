@@ -307,8 +307,10 @@ async function status() {
         }
         if (!cfg.calendarId) return { conectado: false, motivo: 'sem_calendar_id', temWebClient };
         const cal = await getCalendar();
-        const r = await cal.calendars.get({ calendarId: cfg.calendarId });
-        return { conectado: true, agenda: r.data.summary, calendarId: cfg.calendarId, temWebClient };
+        // events.list é coberto pelo escopo calendar.events (calendars.get NÃO é). A resposta traz o
+        // nome da agenda em `summary`; 404 = agenda não encontrada.
+        const r = await cal.events.list({ calendarId: cfg.calendarId, maxResults: 1 });
+        return { conectado: true, agenda: r.data.summary || null, calendarId: cfg.calendarId, temWebClient };
     } catch (e) {
         const st = e?.code || e?.response?.status;
         let motivo = 'erro';
