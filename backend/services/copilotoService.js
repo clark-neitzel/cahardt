@@ -57,6 +57,7 @@ const ABAS = [
     { slug: 'mapa-clientes',      nome: 'Mapa de Clientes',             rota: '/clientes/mapa',                      perm: 'clientes' },
     // ── Logística ───────────────────────────────
     { slug: 'embarque',           nome: 'Embarque',                     rota: '/admin/embarques',                    perm: 'Pode_Acessar_Embarque' },
+    { slug: 'mapa-camara-fria',  nome: 'Mapa da Câmara Fria',          rota: '/mapa-camara-fria.html',              perm: 'Pode_Ver_Mapa_Camara_Fria' },
     { slug: 'embarques-mapa',     nome: 'Mapa das Entregas',            rota: '/admin/embarques/mapa',               perm: 'Pode_Acessar_Embarque' },
     { slug: 'entregas',           nome: 'Entregas',                     rota: '/entregas',                           perm: ['Pode_Ver_Todas_Entregas', 'Pode_Executar_Entregas'] },
     { slug: 'minhas-entregas',    nome: 'Minhas Entregas (Motorista)',   rota: '/minhas-entregas',                    perm: 'Pode_Executar_Entregas' },

@@ -40,6 +40,7 @@ const ImpressaoPedido = lazyComRetry(() => import('./pages/Pedidos/ImpressaoPedi
 const RotaLeads = lazyComRetry(() => import('./pages/Rota/RotaLeads'));
 const ListaLeads = lazyComRetry(() => import('./pages/Leads/ListaLeads'));
 import Login from './pages/Login/Login';
+const CamaraFria = lazyComRetry(() => import('./pages/Admin/CamaraFria'));
 const PainelEmbarque = lazyComRetry(() => import('./pages/Admin/Embarques/PainelEmbarque'));
 const MapaExpedicao = lazyComRetry(() => import('./pages/Admin/Embarques/MapaExpedicao'));
 const AuditoriaEntregas = lazyComRetry(() => import('./pages/Admin/Embarques/AuditoriaEntregas'));
@@ -127,7 +128,7 @@ import {
   Settings, DollarSign, Building2, TrendingUp, FolderOpen, Warehouse,
   Package, BookOpen as BookOpenIcon, Factory, Play, ClipboardList as ClipboardListIcon, Calendar as CalendarIcon, Lightbulb, BarChart3, BarChart2, History, Sparkles, BellRing, UserCheck, Tag, DatabaseZap, Percent, Clock, Fingerprint, Inbox, Landmark, CalendarCheck, Star, AlertTriangle, ShoppingBag, MapPin, Gauge, Printer, ChefHat
 } from 'lucide-react';
-import { BookOpenCheck, Bot, CalendarDays } from 'lucide-react';
+import { BookOpenCheck, Bot, CalendarDays, Snowflake } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { useMenuFavoritos } from './hooks/useMenuFavoritos';
 import { usePerfil } from './hooks/usePerfil';
@@ -439,6 +440,7 @@ const Layout = ({ children }) => {
     ].filter(Boolean) },
     { label: 'Logística', icon: Truck, items: [
       hasPermission('Pode_Acessar_Embarque') && { to: '/admin/embarques', icon: PackageCheck, label: 'Embarque' },
+      hasPermission('Pode_Ver_Mapa_Camara_Fria') && { to: '/admin/camara-fria', icon: Snowflake, label: 'Câmara Fria' },
       hasPermission('Pode_Ver_Todas_Entregas') && { to: '/entregas', icon: Truck, label: 'Entregas' },
     ].filter(Boolean) },
     { label: 'Financeiro', icon: Wallet, twoCols: true, items: [
@@ -989,6 +991,7 @@ function App() {
               <Route path="/admin/produtos/:id" element={<PrivateRoute tab="produtos"><GerenciarProduto /></PrivateRoute>} />
 
               {/* Outros Admins */}
+              <Route path="/admin/camara-fria" element={<PrivateRoute tab="Pode_Ver_Mapa_Camara_Fria"><CamaraFria /></PrivateRoute>} />
               <Route path="/admin/embarques" element={<PrivateRoute tab="Pode_Acessar_Embarque"><PainelEmbarque /></PrivateRoute>} />
               <Route path="/admin/embarques/mapa" element={<PrivateRoute tab="Pode_Acessar_Embarque"><MapaExpedicao /></PrivateRoute>} />
               <Route path="/admin/auditoria-entregas" element={<PrivateRoute tab="Pode_Ver_Todas_Entregas"><AuditoriaEntregas /></PrivateRoute>} />

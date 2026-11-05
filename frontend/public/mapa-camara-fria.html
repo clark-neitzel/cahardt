@@ -115,12 +115,24 @@ hr{border:none;border-top:1px solid var(--linha);margin:14px 0}
 #printArea .regua{display:none} /* régua some na folha (encostava na legenda) */
 #printArea .porta span{right:14px;left:auto} /* PORTA para dentro da folha */
 #printArea .porta.esq span{left:14px;right:auto}
+
+/* trava de acesso: ferramenta escondida até a permissão ser conferida */
+body.trava .app{display:none!important}
+#gate{display:none;min-height:100vh;align-items:center;justify-content:center;padding:24px;text-align:center;font-family:system-ui,sans-serif;background:#f2f0eb;color:#1E3932}
+body.trava #gate{display:flex}
+#gate .cx{max-width:380px;background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:28px 22px;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+#gate h2{margin:0 0 8px;font-size:18px}
+#gate p{margin:0 0 18px;font-size:14px;line-height:1.45;color:#4b5563}
+#gate a,#gate button{display:inline-block;min-height:44px;line-height:44px;padding:0 22px;border-radius:999px;background:#00754A;color:#fff;font-weight:600;font-size:14px;text-decoration:none;border:0;cursor:pointer}
+.voltasis{display:none;font-size:12px;color:inherit;opacity:.8;text-decoration:none;margin-bottom:2px}
 </style>
 </head>
-<body>
+<body class="trava">
+<div id="gate"><div class="cx"><h2 id="gT">Conferindo acesso...</h2><p id="gP"></p><span id="gA"></span></div></div>
 <div class="app">
 <header>
   <div>
+    <a class="voltasis" id="voltaSis" href="/">← Sistema</a>
     <h1>🧊 Mapa da Câmara Fria</h1>
     <div class="sub" id="subDims"></div>
   </div>
@@ -510,6 +522,31 @@ carregar();
 })();
 render();
 window.addEventListener('resize',()=>{});
+
+/* ===== trava de acesso (permissão Pode_Ver_Mapa_Camara_Fria) ===== */
+(function(){
+  const B=document.body, gT=document.getElementById('gT'), gP=document.getElementById('gP'), gA=document.getElementById('gA');
+  function liberar(){ B.classList.remove('trava'); if(location.protocol!=='file:'){document.getElementById('voltaSis').style.display='inline-block';} }
+  function msg(t,p,acao){ B.classList.add('trava'); gT.textContent=t; gP.textContent=p; gA.innerHTML=acao; }
+  async function conferir(){
+    if(location.protocol==='file:'){ liberar(); return; }
+    let token=null; try{ token=localStorage.getItem('@HardtApp:token'); }catch(e){}
+    const negado=()=>msg('Acesso restrito','Entre no sistema e peça para liberar em Usuários → Permissões → Logística → Mapa da Câmara Fria.','<a href="/">Ir para o sistema</a>');
+    if(!token){ negado(); return; }
+    msg('Conferindo acesso...','','');
+    try{
+      const r=await fetch('/api/auth/me',{headers:{Authorization:'Bearer '+token}});
+      if(r.status===401||r.status===403){ negado(); return; }
+      if(!r.ok) throw new Error('http '+r.status);
+      const u=await r.json(), pm=(u&&u.permissoes)||{};
+      if(pm.admin===true || pm.Pode_Ver_Mapa_Camara_Fria===true) liberar(); else negado();
+    }catch(e){
+      msg('Não deu para conferir o acesso','Pode ser a internet ou o servidor. Tente de novo em instantes.','<button type="button" id="gRetry">Tentar de novo</button>');
+      document.getElementById('gRetry').onclick=conferir;
+    }
+  }
+  conferir();
+})();
 </script>
 </body>
 </html>
