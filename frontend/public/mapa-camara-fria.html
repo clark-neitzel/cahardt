@@ -100,6 +100,21 @@ hr{border:none;border-top:1px solid var(--linha);margin:14px 0}
 .legenda th{text-align:left;border-bottom:1.5px solid #000;padding:3px 6px;font-size:9.5px;text-transform:uppercase;letter-spacing:.06em}
 .legenda td{border-bottom:1px solid #ccc;padding:3px 6px}
 .legenda td:first-child{font-weight:800;font-variant-numeric:tabular-nums}
+/* folha única: container de pé à esquerda + legenda ao lado */
+.pwrap{display:flex;gap:12px}
+.pcol{flex-shrink:0}
+.plegenda{flex:1;min-width:0}
+.plegenda h1{font-size:15px;margin:0 0 2px;color:#000}
+.plista{column-width:150px;column-gap:12px;font-size:10px;margin-top:6px}
+.pitem{break-inside:avoid;padding:1.5px 0;border-bottom:1px solid #e3e3e3}
+.pitem b{display:inline-block;min-width:17px;font-variant-numeric:tabular-nums}
+.pitem span{color:#555}
+.ptot{margin-top:12px;font-size:10px;column-width:150px;column-gap:12px}
+.ptot>b{display:block;font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;border-bottom:1.5px solid #000;margin-bottom:3px;column-span:all}
+#printArea .num{font-size:12px;opacity:.9;transform:rotate(-90deg)} /* nº legível com o container de pé */
+#printArea .regua{display:none} /* régua some na folha (encostava na legenda) */
+#printArea .porta span{right:14px;left:auto} /* PORTA para dentro da folha */
+#printArea .porta.esq span{left:14px;right:auto}
 </style>
 </head>
 <body>
@@ -160,7 +175,8 @@ hr{border:none;border-top:1px solid var(--linha);margin:14px 0}
         <div class="campo"><label>Caixa padrão larg. (cm)</label><input id="iDW" type="number" min="10" step="1"></div>
         <div class="campo"><label>Caixa padrão fundo (cm)</label><input id="iDD" type="number" min="10" step="1"></div>
       </div>
-      <div class="campo"><label>Lado da porta</label><button class="btn btn-o" id="bPorta" style="width:100%">Porta: direita</button></div>
+      <div class="campo"><label>Lado da porta (ou toque na faixa PORTA no mapa)</label><button class="btn btn-o" id="bPorta" style="width:100%">Porta: direita</button></div>
+      <div class="campo"><label>Começou pelo lado errado?</label><button class="btn btn-o" id="bEspelhar" style="width:100%">⇄ Espelhar o mapa</button></div>
       <div class="mini">Reefer 12 m (40 pés): interno ≈ 1156 × 228 cm. Caixa plástica 60 L empilhável (tipo hortifruti): base 55 × 36 cm, 31 cm de altura.</div>
       <hr>
       <div class="acoes">
@@ -203,7 +219,7 @@ function sanitizar(d){ // valida qualquer JSON vindo de fora (localStorage ou ar
     if(!q||typeof q!=='object')continue;
     s2.piles.push({id:s2.seq++,x:n(q.x)||0,y:n(q.y)||0,
       w:Math.max(10,n(q.w)||s2.defW),d:Math.max(10,n(q.d)||s2.defD),
-      ang:[0,45,90].includes(n(q.ang))?n(q.ang):0,
+      ang:[0,45,90,135].includes(n(q.ang))?n(q.ang):0,
       produto:String(q.produto??'').slice(0,120),
       caixas:Math.max(1,Math.round(n(q.caixas))||1)});
   }
@@ -244,7 +260,10 @@ function render(){
     const r=document.createElement('div');r.className='regua t';r.style.left=(m*100*z-6)+'px';r.textContent=m+'m';cv.appendChild(r);
   }
   const mid=document.createElement('div');mid.className='meiofio';mid.style.left=(st.L/2*z)+'px';cv.appendChild(mid);
-  const porta=document.createElement('div');porta.className='porta'+(st.porta==='esq'?' esq':'');porta.innerHTML='<span>PORTA</span>';cv.appendChild(porta);
+  const porta=document.createElement('div');porta.className='porta'+(st.porta==='esq'?' esq':'');porta.innerHTML='<span>PORTA</span>';
+  porta.style.cursor='pointer';porta.title='Tocar aqui troca a porta de lado';
+  porta.addEventListener('pointerdown',e=>{e.stopPropagation();st.porta=st.porta==='esq'?'dir':'esq';render();});
+  cv.appendChild(porta);
   const pa=document.createElement('div');pa.className='rotuloParede';pa.style.cssText='top:2px;left:4px';pa.textContent='Parede A';cv.appendChild(pa);
   const pb=document.createElement('div');pb.className='rotuloParede';pb.style.cssText='bottom:2px;left:4px';pb.textContent='Parede B';cv.appendChild(pb);
   // pilhas
@@ -380,7 +399,7 @@ function renderSoCanvas(){ // sem perder o foco do input
   salvar();
 }
 $('#bGirar').onclick=()=>{const p=pSel();if(p){p.ang=p.ang===90?0:90;clampar(p);render();}};
-$('#bGirar45').onclick=()=>{const p=pSel();if(p){p.ang=p.ang===45?0:45;clampar(p);render();}};
+$('#bGirar45').onclick=()=>{const p=pSel();if(p){p.ang=p.ang===45?0:(p.ang===135?45:45);clampar(p);render();}};
 $('#bDup').onclick=()=>{const p=pSel();if(!p)return;
   const{bw}=bbox(p);const c={...p,id:st.seq++,x:p.x+bw*2+2};clampar(c);st.piles.push(c);sel=c.id;render();};
 $('#bDel').onclick=()=>{if(sel==null)return;st.piles=st.piles.filter(p=>p.id!==sel);sel=null;render();};
@@ -406,6 +425,7 @@ $('#bParedeA').onclick=()=>addParede('A');
 $('#bParedeB').onclick=()=>addParede('B');
 $('#bConfig').onclick=()=>{const c=$('#pConfig');c.style.display=c.style.display==='none'?'':'none';};
 $('#bPorta').onclick=()=>{st.porta=st.porta==='esq'?'dir':'esq';render();};
+$('#bEspelhar').onclick=()=>{st.piles.forEach(p=>{p.x=st.L-p.x;if(p.ang===45)p.ang=135;else if(p.ang===135)p.ang=45;clampar(p);});render();};
 $('#zMais').onclick=()=>{z=Math.min(6,z*1.25);render();};
 $('#zMenos').onclick=()=>{z=Math.max(0.3,z/1.25);render();};
 for(const[id,campo]of[['iL','L'],['iCW','W'],['iDW','defW'],['iDD','defD']]){
@@ -452,32 +472,34 @@ document.addEventListener('keydown',e=>{
 $('#bPrint').onclick=()=>{
   const area=$('#printArea');
   const ord=ordem();
-  const alvoW=718; // ~190mm úteis do A4 retrato a 96dpi
-  const metadeCm=st.L/2;
-  const s=alvoW/(metadeCm*z);
-  const selAntes=sel;sel=null;render(); // tira a seleção do clone
-  let html=`<h1>Mapa da Câmara Fria — onde está cada produto</h1>
-    <div class="pdata">Container reefer ${(st.L/100).toFixed(2)} × ${(st.W/100).toFixed(2)} m (interno) · impresso em ${new Date().toLocaleDateString('pt-BR')} · porta no lado ${st.porta==='esq'?'esquerdo da metade 1':'direito da metade 2'}</div>`;
-  for(let i=0;i<2;i++){
-    html+=`<div class="ph" style="width:${alvoW}px;height:${st.W*z*s}px">
-      <div class="tag">Metade ${i+1} — ${(i===0)===(st.porta==='esq')?'porta':'fundo'}</div>
-      <div style="position:absolute;left:${-i*metadeCm*z*s}px;top:0;transform:scale(${s});transform-origin:0 0">${$('#canvas').outerHTML}</div>
-    </div>`;
-  }
-  // legenda
+  const selAntes=sel,zAntes=z;
+  try{
+  sel=null;z=1;render(); // clone em escala fixa, sem seleção
+  const cv=$('#canvas');
+  const w0=cv.offsetWidth,h0=cv.offsetHeight; // com bordas
+  const pageH=1040;                 // ~275mm úteis do A4 retrato a 96dpi
+  const s=pageH/w0;                 // container de pé, na ALTURA inteira da folha
+  const contW=Math.ceil(h0*s),contH=Math.ceil(w0*s);
+  let html=`<div class="pwrap">
+    <div class="pcol" style="width:${contW}px;height:${contH}px;position:relative">
+      <div style="position:absolute;left:0;top:0;transform:translate(${(h0*s).toFixed(1)}px,0) rotate(90deg) scale(${s});transform-origin:0 0">${cv.outerHTML}</div>
+    </div>
+    <div class="plegenda">
+      <h1>Mapa da Câmara Fria</h1>
+      <div class="pdata">${(st.L/100).toFixed(2)} × ${(st.W/100).toFixed(2)} m (interno) · ${new Date().toLocaleDateString('pt-BR')} · porta ${st.porta==='esq'?'no TOPO':'EMBAIXO'} da página · o nº da pilha está no mapa</div>
+      <div class="plista">`;
   const porProduto={};
-  html+=`<table class="legenda"><tr><th>Nº</th><th>Produto</th><th>Caixas</th><th style="text-align:right">Posição (m da porta → fundo)</th></tr>`;
   ord.forEach((p,i)=>{
     const nome=p.produto||'(sem nome)';
     porProduto[nome]=(porProduto[nome]||0)+(+p.caixas||0);
-    html+=`<tr><td>${i+1}</td><td>${esc(nome)}</td><td>${+p.caixas||1} cx</td><td style="text-align:right">${((st.porta==='esq'?p.x:st.L-p.x)/100).toFixed(1)} m · parede ${p.y<st.W/2?'A':'B'}</td></tr>`;
+    html+=`<div class="pitem"><b>${i+1}</b> ${esc(nome)} <span>· ${+p.caixas||1} cx</span></div>`;
   });
-  html+=`</table><table class="legenda" style="margin-top:8px"><tr><th>Total por produto</th><th style="text-align:right">Caixas</th></tr>`;
-  Object.entries(porProduto).sort((a,b)=>b[1]-a[1]).forEach(([n,q])=>{html+=`<tr><td>${esc(n)}</td><td style="text-align:right;font-weight:800">${q}</td></tr>`;});
-  html+='</table>';
+  html+=`</div><div class="ptot"><b>Total por produto</b>`;
+  Object.entries(porProduto).sort((a,b)=>b[1]-a[1]).forEach(([n,q])=>{html+=`<div class="pitem">${esc(n)} <span>· ${q} cx</span></div>`;});
+  html+=`</div></div></div>`;
   area.innerHTML=html;
   window.print();
-  sel=selAntes;render();
+  }finally{sel=selAntes;z=zAntes;render();}
 };
 
 /* ===== início ===== */
