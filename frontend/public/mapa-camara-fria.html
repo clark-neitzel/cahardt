@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mapa da Câmara Fria</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap">
+<style>
+:root{
+  /* Layout: ferramenta de mapa — barra de comandos no topo, prancheta rolável, painel da pilha à direita (embaixo no touch) */
+  --primary:#00754A; --primaryDark:#006241; --house:#1E3932; --mint:#d4e9e2;
+  --bg:#f2f0eb; --surface:#ffffff; --ink:rgba(0,0,0,.87); --ink2:#5f6b66;
+  --linha:#d9d5cc; --piso:#eef1ee;
+  font-family:'Manrope',-apple-system,"SF Pro Text",sans-serif; letter-spacing:-0.01em;
+}
+*{box-sizing:border-box} html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--ink);font-size:14px;overflow:hidden}
+button{font:inherit;cursor:pointer;border:none;min-height:38px}
+input,select{font:inherit}
+.app{display:flex;flex-direction:column;height:100%}
+
+/* ===== topo ===== */
+header{background:var(--house);color:#fff;padding:10px 14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+header h1{font-size:15px;margin:0;font-weight:800;letter-spacing:.02em;white-space:nowrap}
+header .sub{font-size:11px;opacity:.75;white-space:nowrap}
+.barra{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-left:auto}
+.btn{padding:0 14px;border-radius:999px;font-weight:700;font-size:13px}
+.btn-p{background:var(--primary);color:#fff}.btn-p:hover{background:var(--primaryDark)}
+.btn-s{background:rgba(255,255,255,.12);color:#fff}.btn-s:hover{background:rgba(255,255,255,.22)}
+.btn-d{background:#b3261e;color:#fff}
+.zoombox{display:flex;align-items:center;gap:2px;background:rgba(255,255,255,.12);border-radius:999px}
+.zoombox button{background:none;color:#fff;width:34px;font-size:16px;font-weight:800}
+.zoombox span{font-size:11px;min-width:40px;text-align:center;font-variant-numeric:tabular-nums}
+
+/* ===== corpo ===== */
+.corpo{flex:1;display:flex;min-height:0}
+.palco{flex:1;overflow:auto;padding:34px 24px 24px;min-width:0;-webkit-overflow-scrolling:touch}
+#canvasWrap{position:relative;margin:14px auto 0;width:max-content}
+#canvas{position:relative;box-sizing:content-box;background:var(--piso);border:3px solid var(--house);border-radius:4px;
+  background-image:linear-gradient(to right,rgba(30,57,50,.07) 1px,transparent 1px),linear-gradient(to bottom,rgba(30,57,50,.07) 1px,transparent 1px);
+  touch-action:none}
+.regua{position:absolute;font-size:10px;color:var(--ink2);font-variant-numeric:tabular-nums}
+.regua.t{top:-20px}.regua.l{left:-8px;transform:translateX(-100%)}
+.meiofio{position:absolute;top:0;bottom:0;border-left:1px dashed rgba(30,57,50,.3)}
+.porta{position:absolute;right:-3px;top:0;bottom:0;width:10px;background:repeating-linear-gradient(45deg,var(--house),var(--house) 4px,#fff 4px,#fff 8px)}
+.porta span{position:absolute;right:-22px;top:50%;transform:translateY(-50%) rotate(90deg);font-size:10px;font-weight:800;color:var(--house);letter-spacing:.15em}
+.rotuloParede{position:absolute;font-size:10px;font-weight:700;color:var(--ink2);letter-spacing:.1em;text-transform:uppercase}
+
+/* ===== pilha ===== */
+.pilha{position:absolute;display:flex;align-items:center;justify-content:center;border-radius:4px;
+  border:2px solid;user-select:none;-webkit-user-select:none;cursor:grab;overflow:hidden;
+  box-shadow:0 1px 2px rgba(0,0,0,.12);touch-action:none}
+.pilha.sel{outline:3px solid var(--primary);outline-offset:2px;z-index:5;cursor:grabbing}
+.pilha .rot{font-weight:700;text-align:center;line-height:1.05;pointer-events:none;width:100%;padding:1px}
+.pilha .rot{line-height:1.08}
+.pilha .rot .qt{font-weight:800;opacity:.75;font-size:.85em;white-space:nowrap}
+.pilha .num{position:absolute;top:1px;left:2px;font-size:9px;font-weight:800;opacity:.65;pointer-events:none;font-variant-numeric:tabular-nums}
+
+/* ===== painel ===== */
+aside{width:250px;background:var(--surface);border-left:1px solid var(--linha);padding:14px;overflow:auto;flex-shrink:0}
+aside h2{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:var(--ink2);margin:0 0 10px}
+.campo{margin-bottom:10px}
+.campo label{display:block;font-size:11px;font-weight:700;color:var(--ink2);margin-bottom:3px}
+.campo input{width:100%;border:1px solid #c9c5bc;border-radius:8px;padding:8px 10px;font-size:14px;background:#fff}
+.campo input:focus{border-color:var(--primary);outline:2px solid var(--mint)}
+.duplo{display:flex;gap:8px}.duplo .campo{flex:1}
+.acoes{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px}
+.acoes .btn{min-height:40px}
+.btn-o{background:#fff;border:1.5px solid var(--primary);color:var(--primary)}
+.btn-o:hover{background:var(--mint)}
+.vazio{color:var(--ink2);font-size:13px;line-height:1.5;background:var(--mint);border-radius:10px;padding:12px}
+.dica{font-size:11px;color:var(--ink2);line-height:1.5;margin-top:14px;border-top:1px solid var(--linha);padding-top:10px}
+hr{border:none;border-top:1px solid var(--linha);margin:14px 0}
+.mini{font-size:11px;color:var(--ink2)}
+
+/* touch / telas estreitas: painel vira faixa embaixo */
+@media (max-width:900px){
+  .corpo{flex-direction:column}
+  aside{width:auto;border-left:none;border-top:1px solid var(--linha);max-height:44%}
+  .palco{padding:30px 12px 12px}
+}
+
+/* ===== impressão ===== */
+#printArea{display:none}
+@media print{
+  @page{size:A4 portrait;margin:10mm}
+  body{overflow:visible;background:#fff}
+  .app{display:none!important}
+  #printArea{display:block!important}
+  .pilha{box-shadow:none}
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+}
+#printArea h1{font-size:18px;margin:0 0 2px;color:#000}
+#printArea .pdata{font-size:11px;color:#444;margin-bottom:10px}
+.ph{position:relative;overflow:hidden;margin-bottom:14px;border:1px solid #999}
+.ph .tag{position:absolute;top:2px;left:4px;font-size:9px;font-weight:800;color:#555;z-index:9;background:rgba(255,255,255,.8);padding:0 3px;border-radius:3px}
+.legenda{width:100%;border-collapse:collapse;font-size:10.5px;margin-top:4px}
+.legenda th{text-align:left;border-bottom:1.5px solid #000;padding:3px 6px;font-size:9.5px;text-transform:uppercase;letter-spacing:.06em}
+.legenda td{border-bottom:1px solid #ccc;padding:3px 6px}
+.legenda td:first-child{font-weight:800;font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+  <div>
+    <h1>🧊 Mapa da Câmara Fria</h1>
+    <div class="sub" id="subDims"></div>
+  </div>
+  <div class="barra">
+    <button class="btn btn-p" id="bAdd">+ Pilha</button>
+    <button class="btn btn-s" id="bParedeA">+ Parede A</button>
+    <button class="btn btn-s" id="bParedeB">+ Parede B</button>
+    <div class="zoombox"><button id="zMenos">−</button><span id="zVal"></span><button id="zMais">+</button></div>
+    <button class="btn btn-s" id="bConfig">Medidas</button>
+    <button class="btn btn-p" id="bPrint">🖨 Imprimir</button>
+  </div>
+</header>
+
+<div class="corpo">
+  <div class="palco" id="palco">
+    <div id="canvasWrap">
+      <div id="canvas"></div>
+    </div>
+  </div>
+
+  <aside id="painel">
+    <div id="pSel" style="display:none">
+      <h2>Pilha selecionada</h2>
+      <div class="campo"><label>Produto (o que tem na pilha)</label><input id="iProduto" placeholder="Ex.: Coxinha de Frango"></div>
+      <div class="duplo">
+        <div class="campo"><label>Caixas na pilha</label><input id="iCaixas" type="number" min="1" step="1"></div>
+        <div class="campo"><label>Fileiras iguais</label><input id="iFileiras" type="number" min="1" step="1" title="Repete esta pilha para trás, em fileira"></div>
+      </div>
+      <div class="duplo">
+        <div class="campo"><label>Largura (cm)</label><input id="iW" type="number" min="10" step="1"></div>
+        <div class="campo"><label>Fundo (cm)</label><input id="iD" type="number" min="10" step="1"></div>
+      </div>
+      <div class="acoes">
+        <button class="btn btn-o" id="bGirar">⟳ Girar 90°</button>
+        <button class="btn btn-o" id="bGirar45">⟳ 45°</button>
+        <button class="btn btn-o" id="bDup">⧉ Duplicar</button>
+        <button class="btn btn-d" id="bDel">🗑 Excluir</button>
+      </div>
+    </div>
+    <div id="pVazio">
+      <h2>Como usar</h2>
+      <div class="vazio">Toque numa pilha para editar, ou arraste para mover.<br><br><b>+ Pilha</b> cria uma caixa nova.<br><b>+ Parede A/B</b> encosta uma pilha nova na parede, em fila.</div>
+    </div>
+    <hr>
+    <div id="pConfig" style="display:none">
+      <h2>Medidas</h2>
+      <div class="duplo">
+        <div class="campo"><label>Container compr. (cm)</label><input id="iL" type="number" min="200" step="1"></div>
+        <div class="campo"><label>Container larg. (cm)</label><input id="iCW" type="number" min="100" step="1"></div>
+      </div>
+      <div class="duplo">
+        <div class="campo"><label>Caixa padrão larg. (cm)</label><input id="iDW" type="number" min="10" step="1"></div>
+        <div class="campo"><label>Caixa padrão fundo (cm)</label><input id="iDD" type="number" min="10" step="1"></div>
+      </div>
+      <div class="mini">Reefer 12 m (40 pés): interno ≈ 1156 × 228 cm. Caixa plástica 60 L empilhável (tipo hortifruti): base 55 × 36 cm, 31 cm de altura.</div>
+      <hr>
+      <div class="acoes">
+        <button class="btn btn-o" id="bExport">⬇ Salvar arquivo</button>
+        <button class="btn btn-o" id="bImport">⬆ Abrir arquivo</button>
+        <button class="btn btn-d" id="bLimpar" style="grid-column:1/-1">Limpar tudo</button>
+      </div>
+      <input type="file" id="fImport" accept=".json" style="display:none">
+    </div>
+    <div class="dica">O mapa salva sozinho neste aparelho. Setas do teclado movem a pilha selecionada (Shift = passo maior). Tecla R gira. Delete exclui.</div>
+  </aside>
+</div>
+</div>
+
+<div id="printArea"></div>
+
+<script>
+'use strict';
+const KEY='camaraFria_layout_v1';
+const $=s=>document.querySelector(s);
+const SNAP=2.5;
+
+let st=null, z=0.8, sel=null;
+
+function padrao(){
+  const p=[];let id=1;
+  const prod=[['Coxinha de Frango',3],['Risoles de Carne',2],['Pão de Queijo',2]];
+  let x=31; // parede A (de cima)
+  for(const[nome,n]of prod){for(let i=0;i<n;i++){p.push({id:id++,x:x,y:20,w:55,d:36,ang:0,produto:nome,caixas:8});x+=57;}}
+  x=31;
+  for(const[nome,n]of[['Kibe',2],['Bolinha de Queijo',2]]){for(let i=0;i<n;i++){p.push({id:id++,x:x,y:208,w:55,d:36,ang:0,produto:nome,caixas:8});x+=57;}}
+  return {L:1156,W:228,defW:55,defD:36,seq:id,piles:p};
+}
+function sanitizar(d){ // valida qualquer JSON vindo de fora (localStorage ou arquivo importado)
+  if(!d||typeof d!=='object'||!Array.isArray(d.piles))return null;
+  const n=v=>+v;
+  const s2={L:Math.max(200,n(d.L)||1156),W:Math.max(100,n(d.W)||228),
+    defW:Math.max(10,n(d.defW)||55),defD:Math.max(10,n(d.defD)||36),seq:1,piles:[]};
+  for(const q of d.piles){
+    if(!q||typeof q!=='object')continue;
+    s2.piles.push({id:s2.seq++,x:n(q.x)||0,y:n(q.y)||0,
+      w:Math.max(10,n(q.w)||s2.defW),d:Math.max(10,n(q.d)||s2.defD),
+      ang:[0,45,90].includes(n(q.ang))?n(q.ang):0,
+      produto:String(q.produto??'').slice(0,120),
+      caixas:Math.max(1,Math.round(n(q.caixas))||1)});
+  }
+  return s2;
+}
+function carregar(){
+  try{const s=localStorage.getItem(KEY);if(s){const d=sanitizar(JSON.parse(s));if(d){st=d;st.piles.forEach(clampar);return;}}}catch(e){}
+  st=padrao();
+}
+let tSave=null;
+function salvar(){clearTimeout(tSave);tSave=setTimeout(()=>{try{localStorage.setItem(KEY,JSON.stringify(st))}catch(e){}},300);}
+
+function hash(s){let h=0;for(let i=0;i<s.length;i++){h=(h*31+s.charCodeAt(i))>>>0;}return h;}
+function corDe(nome){
+  if(!nome||!nome.trim())return{bg:'#e8e8e4',bd:'#9a9a92',tx:'#444'};
+  const h=hash(nome.trim().toLowerCase())%360;
+  return{bg:`hsl(${h} 45% 87%)`,bd:`hsl(${h} 42% 36%)`,tx:`hsl(${h} 55% 18%)`};
+}
+function bbox(p){const r=p.ang*Math.PI/180,c=Math.abs(Math.cos(r)),s=Math.abs(Math.sin(r));
+  return{bw:(p.w*c+p.d*s)/2,bh:(p.w*s+p.d*c)/2};}
+const MARGEM=2; // cm de folga da parede — caixa fica DENTRO da linha
+function clampar(p){const{bw,bh}=bbox(p);
+  p.x=Math.min(Math.max(p.x,bw+MARGEM),st.L-bw-MARGEM);p.y=Math.min(Math.max(p.y,bh+MARGEM),st.W-bh-MARGEM);}
+function snap(v){return Math.round(v/SNAP)*SNAP;}
+
+function ordem(){ // numeração estável da esquerda p/ direita, parede A antes da B
+  return [...st.piles].sort((a,b)=>(a.x-b.x)||(a.y-b.y));
+}
+
+/* ===== render ===== */
+function render(){
+  const cv=$('#canvas');
+  cv.style.width=st.L*z+'px';cv.style.height=st.W*z+'px';
+  cv.style.backgroundSize=(100*z)+'px '+(100*z)+'px';
+  cv.innerHTML='';
+  // réguas
+  for(let m=0;m<=st.L/100;m++){
+    const r=document.createElement('div');r.className='regua t';r.style.left=(m*100*z-6)+'px';r.textContent=m+'m';cv.appendChild(r);
+  }
+  const mid=document.createElement('div');mid.className='meiofio';mid.style.left=(st.L/2*z)+'px';cv.appendChild(mid);
+  const porta=document.createElement('div');porta.className='porta';porta.innerHTML='<span>PORTA</span>';cv.appendChild(porta);
+  const pa=document.createElement('div');pa.className='rotuloParede';pa.style.cssText='top:2px;left:4px';pa.textContent='Parede A';cv.appendChild(pa);
+  const pb=document.createElement('div');pb.className='rotuloParede';pb.style.cssText='bottom:2px;left:4px';pb.textContent='Parede B';cv.appendChild(pb);
+  // pilhas
+  const ord=ordem();
+  for(const p of st.piles){
+    cv.appendChild(elPilha(p,ord.indexOf(p)+1));
+  }
+  $('#subDims').textContent=`Interno ${(st.L/100).toFixed(2)} × ${(st.W/100).toFixed(2)} m · caixa ${st.defW}×${st.defD} cm · ${st.piles.length} pilhas`;
+  $('#zVal').textContent=Math.round(z*100)+'%';
+  atualizarPainel();
+  salvar();
+}
+function elPilha(p,num){
+  const d=document.createElement('div');
+  d.className='pilha'+(sel===p.id?' sel':'');
+  d.dataset.id=p.id;
+  posicionar(d,p);
+  const cor=corDe(p.produto);
+  d.style.background=cor.bg;d.style.borderColor=cor.bd;d.style.color=cor.tx;
+  const texto=(p.produto||'sem nome')+' · '+p.caixas+' cx';
+  const chars=Math.max(8,texto.length);
+  const area=Math.max(1,(p.w*z-6)*(p.d*z-6));
+  const fs=Math.max(6.5,Math.min(28,Math.sqrt(area*0.85/(chars*0.6))));
+  const rotV=p.d>p.w; // texto ao longo do lado maior da caixa
+  d.innerHTML=`<div class="num">${num}</div>
+    <div class="rot" style="font-size:${fs}px;${rotV?'transform:rotate(-90deg);width:'+(p.d*z-6)+'px;':''}">
+      ${esc(p.produto)||'<i>sem nome</i>'} <span class="qt">· ${+p.caixas||1} cx</span></div>`;
+  d.addEventListener('pointerdown',evDown);
+  return d;
+}
+function posicionar(el,p){
+  el.style.width=p.w*z+'px';el.style.height=p.d*z+'px';
+  el.style.left=(p.x-p.w/2)*z+'px';el.style.top=(p.y-p.d/2)*z+'px';
+  el.style.transform=p.ang?`rotate(${p.ang}deg)`:'';
+}
+function esc(s){return (s||'').replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));}
+
+/* ===== drag ===== */
+let drag=null;
+function evDown(e){
+  if(drag||(e.pointerType==='mouse'&&e.button!==0))return; // 1 arraste por vez, só botão esquerdo
+  const id=+e.currentTarget.dataset.id;
+  const p=st.piles.find(q=>q.id===id);
+  if(!p)return;
+  if(sel!==id){sel=id;render();}
+  const el=$('#canvas').querySelector(`[data-id="${id}"]`);
+  const rect=$('#canvas').getBoundingClientRect();
+  drag={p,el,dx:p.x-(e.clientX-rect.left)/z,dy:p.y-(e.clientY-rect.top)/z};
+  el.setPointerCapture(e.pointerId);
+  el.addEventListener('pointermove',evMove);
+  el.addEventListener('pointerup',evUp);
+  el.addEventListener('pointercancel',evUp);
+  e.preventDefault();
+}
+function evMove(e){
+  if(!drag)return;
+  const rect=$('#canvas').getBoundingClientRect();
+  drag.p.x=snap((e.clientX-rect.left)/z+drag.dx);
+  drag.p.y=snap((e.clientY-rect.top)/z+drag.dy);
+  clampar(drag.p);
+  posicionar(drag.el,drag.p);
+}
+function evUp(e){
+  if(!drag)return;
+  drag.el.removeEventListener('pointermove',evMove);
+  drag.el.removeEventListener('pointerup',evUp);
+  drag.el.removeEventListener('pointercancel',evUp);
+  drag=null;render();
+}
+$('#palco').addEventListener('pointerdown',e=>{
+  if(e.target.id==='palco'||e.target.id==='canvas'||e.target.id==='canvasWrap'){sel=null;render();}
+});
+
+/* ===== painel ===== */
+function pSel(){return st.piles.find(p=>p.id===sel)||null;}
+function atualizarPainel(){
+  const p=pSel();
+  $('#pSel').style.display=p?'':'none';
+  $('#pVazio').style.display=p?'none':'';
+  if(p){
+    if(document.activeElement!==$('#iProduto'))$('#iProduto').value=p.produto;
+    if(document.activeElement!==$('#iCaixas'))$('#iCaixas').value=p.caixas;
+    if(document.activeElement!==$('#iW'))$('#iW').value=p.w;
+    if(document.activeElement!==$('#iD'))$('#iD').value=p.d;
+    $('#iFileiras').value=1;
+  }
+  $('#iL').value=st.L;$('#iCW').value=st.W;$('#iDW').value=st.defW;$('#iDD').value=st.defD;
+}
+$('#iProduto').addEventListener('input',()=>{const p=pSel();if(p){p.produto=$('#iProduto').value;renderSoCanvas();}});
+$('#iCaixas').addEventListener('input',()=>{const p=pSel();if(p){p.caixas=Math.max(1,+$('#iCaixas').value||1);renderSoCanvas();}});
+$('#iW').addEventListener('change',()=>{const p=pSel();if(p){p.w=Math.max(10,+$('#iW').value||p.w);clampar(p);renderSoCanvas();}});
+$('#iD').addEventListener('change',()=>{const p=pSel();if(p){p.d=Math.max(10,+$('#iD').value||p.d);clampar(p);renderSoCanvas();}});
+$('#iFileiras').addEventListener('change',()=>{ // repete a pilha para trás (fileira)
+  const p=pSel();const n=Math.max(1,Math.min(20,+$('#iFileiras').value||1));
+  if(!p||n<2){return;}
+  const{bh}=bbox(p);const passo=bh*2+2;
+  const dir=p.y<st.W/2?1:-1;
+  for(let i=1;i<n;i++){
+    const c={...p,id:st.seq++,y:p.y+dir*passo*i};clampar(c);st.piles.push(c);
+  }
+  render();
+});
+function renderSoCanvas(){ // sem perder o foco do input
+  const cv=$('#canvas');const ord=ordem();
+  for(const p of st.piles){
+    const el=cv.querySelector(`[data-id="${p.id}"]`);
+    if(el){const novo=elPilha(p,ord.indexOf(p)+1);el.replaceWith(novo);}
+  }
+  salvar();
+}
+$('#bGirar').onclick=()=>{const p=pSel();if(p){p.ang=p.ang===90?0:90;clampar(p);render();}};
+$('#bGirar45').onclick=()=>{const p=pSel();if(p){p.ang=p.ang===45?0:45;clampar(p);render();}};
+$('#bDup').onclick=()=>{const p=pSel();if(!p)return;
+  const{bw}=bbox(p);const c={...p,id:st.seq++,x:p.x+bw*2+2};clampar(c);st.piles.push(c);sel=c.id;render();};
+$('#bDel').onclick=()=>{if(sel==null)return;st.piles=st.piles.filter(p=>p.id!==sel);sel=null;render();};
+
+/* ===== toolbar ===== */
+$('#bAdd').onclick=()=>{
+  const palco=$('#palco');
+  const cx=(palco.scrollLeft+palco.clientWidth/2)/z;
+  const p={id:st.seq++,x:snap(Math.min(cx,st.L-40)),y:st.W/2,w:st.defW,d:st.defD,ang:0,produto:'',caixas:8};
+  clampar(p);st.piles.push(p);sel=p.id;render();$('#iProduto').focus();
+};
+function addParede(parede){ // encosta na parede, depois da última pilha daquela fila
+  const p={id:st.seq++,x:0,y:0,w:st.defW,d:st.defD,ang:0,produto:'',caixas:8};
+  const{bw,bh}=bbox(p);
+  p.y=parede==='A'?bh+1:st.W-bh-1;
+  const naFila=st.piles.filter(q=>{const b=bbox(q);return parede==='A'?q.y-b.bh<20:q.y+b.bh>st.W-20;});
+  let x=1+bw;
+  if(naFila.length){x=Math.max(...naFila.map(q=>q.x+bbox(q).bw))+2+bw;}
+  p.x=snap(Math.min(x,st.L-bw));
+  st.piles.push(p);sel=p.id;render();$('#iProduto').focus();
+}
+$('#bParedeA').onclick=()=>addParede('A');
+$('#bParedeB').onclick=()=>addParede('B');
+$('#bConfig').onclick=()=>{const c=$('#pConfig');c.style.display=c.style.display==='none'?'':'none';};
+$('#zMais').onclick=()=>{z=Math.min(6,z*1.25);render();};
+$('#zMenos').onclick=()=>{z=Math.max(0.3,z/1.25);render();};
+for(const[id,campo]of[['iL','L'],['iCW','W'],['iDW','defW'],['iDD','defD']]){
+  $('#'+id).addEventListener('change',()=>{st[campo]=Math.max(10,+$('#'+id).value||st[campo]);st.piles.forEach(clampar);render();});
+}
+let limparArmado=false;
+$('#bLimpar').onclick=()=>{
+  if(!limparArmado){limparArmado=true;$('#bLimpar').textContent='Tem certeza? Toque de novo';setTimeout(()=>{limparArmado=false;$('#bLimpar').textContent='Limpar tudo';},3000);return;}
+  st.piles=[];sel=null;limparArmado=false;$('#bLimpar').textContent='Limpar tudo';render();
+};
+$('#bExport').onclick=()=>{
+  const blob=new Blob([JSON.stringify(st,null,1)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='camara-fria-'+new Date().toISOString().slice(0,10)+'.json';a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),5000);
+};
+$('#bImport').onclick=()=>$('#fImport').click();
+$('#fImport').addEventListener('change',e=>{
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{try{const d=sanitizar(JSON.parse(r.result));if(d){st=d;st.piles.forEach(clampar);sel=null;render();}else{alert('Arquivo inválido');}}catch(err){alert('Arquivo inválido');}};
+  r.readAsText(f);e.target.value='';
+});
+
+/* ===== teclado ===== */
+document.addEventListener('keydown',e=>{
+  if(e.ctrlKey||e.metaKey||e.altKey)return; // não sequestrar Cmd/Ctrl+R etc.
+  if(/input|select|textarea/i.test(document.activeElement.tagName))return;
+  const p=pSel();if(!p)return;
+  const passo=e.shiftKey?10:SNAP;let usado=true;
+  switch(e.key){
+    case 'ArrowLeft':p.x-=passo;break;
+    case 'ArrowRight':p.x+=passo;break;
+    case 'ArrowUp':p.y-=passo;break;
+    case 'ArrowDown':p.y+=passo;break;
+    case 'r':case 'R':p.ang=p.ang===90?0:90;break;
+    case 'Delete':case 'Backspace':st.piles=st.piles.filter(q=>q.id!==sel);sel=null;break;
+    default:usado=false;
+  }
+  if(usado){if(pSel())clampar(p);render();e.preventDefault();}
+});
+
+/* ===== impressão ===== */
+$('#bPrint').onclick=()=>{
+  const area=$('#printArea');
+  const ord=ordem();
+  const alvoW=718; // ~190mm úteis do A4 retrato a 96dpi
+  const metadeCm=st.L/2;
+  const s=alvoW/(metadeCm*z);
+  const selAntes=sel;sel=null;render(); // tira a seleção do clone
+  let html=`<h1>Mapa da Câmara Fria — onde está cada produto</h1>
+    <div class="pdata">Container reefer ${(st.L/100).toFixed(2)} × ${(st.W/100).toFixed(2)} m (interno) · impresso em ${new Date().toLocaleDateString('pt-BR')} · porta no lado direito da metade 2</div>`;
+  for(let i=0;i<2;i++){
+    html+=`<div class="ph" style="width:${alvoW}px;height:${st.W*z*s}px">
+      <div class="tag">Metade ${i+1} — ${i===0?'fundo':'porta'}</div>
+      <div style="position:absolute;left:${-i*metadeCm*z*s}px;top:0;transform:scale(${s});transform-origin:0 0">${$('#canvas').outerHTML}</div>
+    </div>`;
+  }
+  // legenda
+  const porProduto={};
+  html+=`<table class="legenda"><tr><th>Nº</th><th>Produto</th><th>Caixas</th><th style="text-align:right">Posição (m da porta → fundo)</th></tr>`;
+  ord.forEach((p,i)=>{
+    const nome=p.produto||'(sem nome)';
+    porProduto[nome]=(porProduto[nome]||0)+(+p.caixas||0);
+    html+=`<tr><td>${i+1}</td><td>${esc(nome)}</td><td>${+p.caixas||1} cx</td><td style="text-align:right">${((st.L-p.x)/100).toFixed(1)} m · parede ${p.y<st.W/2?'A':'B'}</td></tr>`;
+  });
+  html+=`</table><table class="legenda" style="margin-top:8px"><tr><th>Total por produto</th><th style="text-align:right">Caixas</th></tr>`;
+  Object.entries(porProduto).sort((a,b)=>b[1]-a[1]).forEach(([n,q])=>{html+=`<tr><td>${esc(n)}</td><td style="text-align:right;font-weight:800">${q}</td></tr>`;});
+  html+='</table>';
+  area.innerHTML=html;
+  window.print();
+  sel=selAntes;render();
+};
+
+/* ===== início ===== */
+carregar();
+(function fit(){
+  const palco=$('#palco');
+  z=Math.max(0.55,Math.min(1.6,(palco.clientWidth-60)/st.L));
+})();
+render();
+window.addEventListener('resize',()=>{});
+</script>
+</body>
+</html>
