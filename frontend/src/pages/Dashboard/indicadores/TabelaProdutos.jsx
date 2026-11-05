@@ -11,6 +11,18 @@ const rotuloExtra = (l) => {
 };
 import EstadoVazio from '../../../components/EstadoVazio';
 import { Package } from 'lucide-react';
+import PorQueSituacao from './PorQueSituacao';
+
+// Selo clicável quando o backend manda o detalhe do porquê; sem detalhe, fica só o selo.
+const SeloClicavel = ({ l, onAbrir }) => {
+    if (!l.situacao?.detalhe) return <Selo status={l.situacao.status} />;
+    return (
+        <button type="button" onClick={() => onAbrir(l)} title="Ver por quê" aria-label={`Ver por que ${l.nome} está em ${SEMAFORO[l.situacao.status]?.palavra || ''}`}
+            className="inline-flex items-center min-h-[44px] -my-2 px-1 cursor-pointer rounded-full hover:opacity-80 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+            <Selo status={l.situacao.status} className="underline decoration-dotted underline-offset-2" />
+        </button>
+    );
+};
 
 const LIMITE = 12;
 
@@ -55,6 +67,7 @@ const Etiquetas = ({ l }) => (
 // completa=true => visão Dono (colunas financeiras); false => visão produção (só custo/ficha).
 export default function TabelaProdutos({ linhas, completa, ordem }) {
     const [todos, setTodos] = useState(false);
+    const [aberto, setAberto] = useState(null);
     const ord = useMemo(() => ordenar(Array.isArray(linhas) ? linhas : [], ordem), [linhas, ordem]);
     const vis = todos ? ord : ord.slice(0, LIMITE);
     const maxMC = Math.max(1, ...ord.map((l) => Number(l.mcTotal) || 0));
@@ -68,7 +81,7 @@ export default function TabelaProdutos({ linhas, completa, ordem }) {
                     <div key={l.produtoId} className="rounded-xl border border-gray-200 p-3">
                         <div className="flex items-start justify-between gap-2">
                             <div className="font-bold text-gray-900 text-sm min-w-0">{l.nome}<Etiquetas l={l} /></div>
-                            {completa && l.situacao && <Selo status={l.situacao.status} />}
+                            {completa && l.situacao && <SeloClicavel l={l} onAbrir={setAberto} />}
                         </div>
                         {completa && rotuloExtra(l) && <div className="text-xs text-gray-600 mt-0.5">{rotuloExtra(l)}</div>}
                         <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 mt-2 text-xs">
@@ -129,12 +142,14 @@ export default function TabelaProdutos({ linhas, completa, ordem }) {
                                         </div>
                                     </td>
                                 </>}
-                                {completa && <td className="px-3 py-2.5">{l.situacao ? <Selo status={l.situacao.status} /> : <span className="text-gray-600">—</span>}</td>}
+                                {completa && <td className="px-3 py-2.5">{l.situacao ? <SeloClicavel l={l} onAbrir={setAberto} /> : <span className="text-gray-600">—</span>}</td>}
                             </tr>
                         ))}
                     </tbody>
                 </table>
             </div>
+
+            {aberto && <PorQueSituacao linha={aberto} onFechar={() => setAberto(null)} />}
 
             {ord.length > LIMITE && (
                 <div className="p-3 border-t border-gray-100 text-center">

@@ -66,3 +66,5 @@ Serve para produtos que ainda não têm ficha técnica mas são **o mesmo produt
 - **Travas:** o produto de referência precisa ter ficha técnica vigente; um produto não pode referenciar a si mesmo; produto que **já tem ficha própria** não usa referência (a ficha própria manda).
 - **É uma aproximação:** não considera diferença de embalagem, mão de obra ou perda. Quando o produto ganhar ficha própria, ela passa a valer sozinha e a referência deixa de ser usada.
 - O custo de referência também vale nos **Indicadores de Gestão** (custo do produto vendido, margem e cobertura de custo); vendas passadas só mudam quando o custo congelado delas é refeito pela equipe técnica.
+
+> **Ver também:** na tela **Indicadores de Gestão**, bloco "Custo e margem por produto", o selo de situação (no alvo / atenção / agir) é clicável e abre o painel "Por que está em atenção?" com a comparação da margem contra o período anterior e o que pesou (preço, custo, ficha). Veja o manual de Indicadores de Gestão.

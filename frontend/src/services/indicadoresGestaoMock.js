@@ -31,6 +31,21 @@ const PRODUTOS = [
     ['p6', 'Pastel pronto 400 g', 'REVENDA', 1180, 9.8, 6.1, 0.0, 0.64, 1.61, 3.06, 31.2, 3.6, 'atencao', 'revenda · margem fina'],
     ['p7', 'Mini churros 300 g', 'SEM_CLASSE', 640, 7.4, 4.8, 3.2, 0.48, 1.54, 2.12, 28.6, 1.4, 'agir', 'sem ficha e sem marca de revenda'],
 ];
+const detalheMock = (status, nome, q, pr, cv, mcp) => {
+    const v = status === 'agir' ? 7.8 : status === 'atencao' ? 3.4 : -0.6;
+    const mcAnt = Number((mcp / (1 - v / 100)).toFixed(1));
+    const cvAnt = Number((cv / (status === 'ok' ? 1 : 1.07)).toFixed(2));
+    const motivos = status === 'ok'
+        ? [{ tipo: 'estavel', texto: 'Preço e custo estáveis em relação ao período anterior.' }]
+        : [{ tipo: 'custo', texto: `O custo variável subiu de R$ ${String(cvAnt).replace('.', ',')} para R$ ${String(cv).replace('.', ',')} por unidade.` },
+           { tipo: 'preco', texto: 'O preço médio ficou parado, então o aumento do custo comeu a margem.' }];
+    return {
+        base: 'periodo_anterior', regra: { atencaoPct: 2, agirPct: 5 }, variacaoRelativaPct: v,
+        atual: { de: '2026-09-01', ate: '2026-09-30', quantidadeVendida: q, receita: q * pr, precoMedio: pr, custoVariavelUn: cv, mcPct: mcp },
+        anterior: { de: '2026-08-01', ate: '2026-08-31', quantidadeVendida: Math.round(q * 0.93), receita: q * pr * 0.93, precoMedio: pr, custoVariavelUn: cvAnt, mcPct: mcAnt },
+        motivos,
+    };
+};
 const produtos = (foco, completo) => {
     const lista = PRODUTOS.filter((p) => !(foco === 'producao' && p[2] !== 'FABRICADO'));
     return {
@@ -39,7 +54,7 @@ const produtos = (foco, completo) => {
             produtoId, nome, categoria: null, classe, unidade: 'un', quantidadeVendida: q,
             custoFichaUn: cf, custoFonte: classe === 'FABRICADO' ? 'FICHA' : 'COMPRA',
             variacaoCusto4sPct: dc, temCustoFaltando: false, fichaDesatualizada: produtoId === 'p5',
-            ...(completo ? { precoMedio: pr, custoVariavelUn: cv, markup: mk, mcUn: mc, mcPct: mcp, mcTotal: mct * 1000, situacao: { status, rotulo } } : {}),
+            ...(completo ? { precoMedio: pr, custoVariavelUn: cv, markup: mk, mcUn: mc, mcPct: mcp, mcTotal: mct * 1000, situacao: { status, rotulo, detalhe: detalheMock(status, nome, q, pr, cv, mcp) } } : {}),
         })),
     };
 };

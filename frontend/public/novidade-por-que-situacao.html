@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Por que o produto está em atenção? — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<meta property="og:title" content="🔎 Novidade no Hardt App: veja o porquê do selo atenção / agir">
+<meta property="og:description" content="Nos Indicadores de Gestão, toque no selo do produto e veja o que está levando a ele: margem, preço, custo e o que pesou.">
+<meta property="og:type" content="website">
+<style>
+
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 96px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 7vw, 40px);
+    font-weight: 800;
+    line-height: 1.12;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.75);
+    font-size: 16px;
+    max-width: 46ch;
+    margin: 0 auto;
+    text-wrap: balance;
+  }
+
+  /* mock do pop-up flutuando sobre o hero */
+  .mock {
+    max-width: 400px;
+    margin: -68px auto 28px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.28);
+    overflow: hidden;
+    text-align: left;
+  }
+  .mock-top {
+    background: var(--house);
+    color: #fff;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .mock-bell { font-size: 26px; animation: pulse 1.4s ease-in-out infinite; will-change: opacity; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .45; } }
+  @media (prefers-reduced-motion: reduce) { .mock-bell { animation: none; } }
+  .mock-top small {
+    display: block;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    color: rgba(255,255,255,.55);
+  }
+  .mock-top strong { font-size: 16px; line-height: 1.2; }
+  .mock-body { padding: 14px 18px 18px; }
+  .mock-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+  .chip {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: #f1f3f2;
+    color: #444;
+  }
+  .chip.verde { background: var(--mint); color: var(--primary-dark); }
+  .mock-body p { font-size: 13px; color: var(--ink-soft); margin: 0 0 14px; }
+  .mock-botoes { display: flex; gap: 8px; }
+  .mock-botoes span {
+    flex: 1;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 11px 6px;
+    border-radius: 999px;
+  }
+  .b-cheio { background: var(--primary); color: #fff; }
+  .b-vazio { border: 1.5px solid var(--primary); color: var(--primary); }
+
+  /* botão de demo */
+  .demo-cta {
+    display: block;
+    width: 100%;
+    max-width: 400px;
+    margin: 0 auto 8px;
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    font: inherit;
+    font-size: 16px;
+    font-weight: 800;
+    padding: 16px;
+    border-radius: 999px;
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(0,117,74,.35);
+  }
+  .demo-cta:hover { background: var(--primary-dark); }
+  .demo-cta:focus-visible, .acc-head:focus-visible, .pop button:focus-visible {
+    outline: 3px solid var(--gold);
+    outline-offset: 2px;
+  }
+  .demo-hint { text-align: center; font-size: 12px; color: var(--ink-soft); margin: 0 0 34px; }
+
+  /* ── SEÇÕES / ACCORDION ── */
+  .sec-label {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: var(--primary-dark);
+    margin: 34px 4px 12px;
+  }
+  .acc {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .acc-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: none;
+    border: none;
+    font: inherit;
+    text-align: left;
+    padding: 15px 16px;
+    cursor: pointer;
+    min-height: 56px;
+  }
+  .acc-ico {
+    width: 38px; height: 38px;
+    border-radius: 11px;
+    background: var(--mint);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+
+  /* ── MOCKUPS DAS TELAS DO APP ── */
+  .tela {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .tela-titulo {
+    background: var(--house);
+    color: #fff;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .app-card {
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .app-card-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    border-bottom: 1px solid #f0efe9;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: #6b756f;
+  }
+  .app-card-body { padding: 12px; }
+  .app-input {
+    border: 1px solid #d8d5cc;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 12.5px;
+    color: var(--ink);
+    background: #fff;
+    margin-bottom: 8px;
+  }
+  .app-input small { display: block; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: #9aa5a0; margin-bottom: 2px; }
+  .app-input.ok { background: var(--mint); border-color: rgba(0,117,74,.25); }
+  .app-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--primary);
+    color: #fff;
+    font-size: 12.5px;
+    font-weight: 700;
+    padding: 9px 16px;
+    border-radius: 999px;
+  }
+  .app-btn.claro { background: #fff; border: 1.5px solid var(--primary); color: var(--primary); }
+  .app-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+  .app-pill {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 7px 14px;
+    border-radius: 999px;
+    border: 1.5px solid #d8d5cc;
+    color: #6b756f;
+    background: #fff;
+  }
+  .app-pill.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .app-busca {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .app-busca .app-input { flex: 1; margin-bottom: 0; color: #9aa5a0; }
+  .app-toggle-linha {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: #f7f6f2;
+    border: 1px solid #edece6;
+    border-radius: 10px;
+    padding: 9px 12px;
+    font-size: 12.5px;
+  }
+  .app-toggle-linha small { display: block; font-size: 10.5px; color: #9aa5a0; }
+  .app-toggle {
+    width: 38px; height: 22px; flex-shrink: 0;
+    border-radius: 999px;
+    background: var(--primary);
+    position: relative;
+  }
+  .app-toggle::after {
+    content: '';
+    position: absolute;
+    top: 3px; right: 3px;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: #fff;
+  }
+  .pin {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    flex-shrink: 0;
+    vertical-align: 2px;
+    margin-left: 6px;
+  }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+
+  .rodape { text-align:center; font-size:13px; color:var(--ink-soft); margin-top:24px; }
+  .sec { font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.14em; color:#6b756f; margin:26px 0 10px; }
+  .selo { display:inline-flex; align-items:center; gap:5px; padding:2px 9px; border-radius:999px; font-size:11px; font-weight:800; }
+  .selo.ag { background:#fee2e2; color:#b91c1c; } .selo.at { background:#fef3c7; color:#b45309; } .selo.ok { background:#dcfce7; color:#166534; }
+  .selo.click { text-decoration: underline dotted; text-underline-offset:2px; }
+  .linha-prod { display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:12.5px; padding:8px 0; border-bottom:1px solid #f0efe9; }
+  .linha-prod:last-child { border:0; }
+  .painel { background:#fff; border:1px solid #e5e3dc; border-radius:14px; box-shadow:0 8px 24px rgba(0,0,0,.12); padding:12px; font-size:12.5px; }
+  .painel .ph { font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.12em; color:#6b756f; }
+  .painel table { width:100%; border-collapse:collapse; margin:10px 0; font-size:12px; }
+  .painel th { text-align:right; font-size:10.5px; color:#6b756f; padding:4px; background:#f7f6f2; }
+  .painel td { text-align:right; padding:5px 4px; border-top:1px solid #f0efe9; }
+  .painel td:first-child, .painel th:first-child { text-align:left; }
+  .pr { color:#b91c1c; font-weight:800; font-size:10.5px; display:block; }
+  .painel ul { margin:6px 0 0; padding-left:16px; } .painel li { margin-bottom:4px; }
+  .painel .reg { font-size:10.5px; color:#6b756f; border-top:1px solid #f0efe9; margin-top:8px; padding-top:6px; }
+
+</style>
+</head>
+<body>
+<div class="hero"><div class="hero-inner">
+  <span class="eyebrow">Novidade</span>
+  <h1>Por que o produto está em atenção?</h1>
+  <p>Agora o selo <b>no alvo / atenção / agir</b> abre e mostra o motivo, com números.</p>
+</div></div>
+<div class="wrap" style="margin-top:-56px">
+
+<div class="acc aberto"><button class="acc-head" type="button"><span class="acc-ico">🔎</span><strong>O que mudou</strong><span class="acc-seta">▲</span></button>
+<div class="acc-corpo">
+<p>Em <b>Indicadores de Gestão → Custo e margem por produto</b>, a coluna <b>Situação</b> agora é clicável. Toque no selo e o app explica por que o produto está naquela situação.</p>
+<ul><li>Compara a <b>margem (MC %)</b> deste período com a do período anterior.</li><li>Mostra lado a lado: quantidade vendida, preço médio, custo por unidade e MC %.</li><li>Lista <b>o que pesou</b>: custo subiu, preço parado, custo faltando, ficha desatualizada.</li></ul>
+</div></div>
+
+<div class="acc aberto"><button class="acc-head" type="button"><span class="acc-ico">📱</span><strong>As telas do app</strong><span class="acc-seta">▲</span></button>
+<div class="acc-corpo" style="padding-left:16px">
+
+<div class="tela"><div class="tela-titulo">Tela 1 — Selo clicável</div><div class="tela-corpo">
+<div class="app-card"><div class="app-card-head">Custo e margem por produto</div><div class="app-card-body">
+<div class="linha-prod"><b>Coxinha de frango 500 g</b><span><span class="selo ag click">● agir</span><span class="pin">1</span></span></div>
+<div class="linha-prod"><b>Kibe 500 g</b><span class="selo ok click">● no alvo</span></div>
+<div class="linha-prod"><b>Pão de queijo 1 kg</b><span class="selo at click">● atenção</span></div>
+</div></div></div>
+<div class="legenda"><div><span class="pin">1</span><span><b>Toque no selo.</b> Ele fica sublinhado em pontinhos para mostrar que abre. A palavra continua visível.</span></div></div></div>
+
+<div class="tela"><div class="tela-titulo">Tela 2 — Painel "Por que está em agir?"</div><div class="tela-corpo">
+<div class="painel">
+<div class="ph">Por que está em agir? <span class="pin">2</span></div>
+<div style="margin-top:4px"><b>Coxinha de frango 500 g</b> <span class="selo ag">● agir</span></div>
+<p style="margin:8px 0 0">A margem (MC %) ficou <b>7,8% abaixo</b> da do período anterior. <span class="pin">3</span></p>
+<table><tr><th></th><th>Anterior<br>01/08–31/08</th><th>Este período<br>01/09–30/09</th></tr>
+<tr><td>Qtde vendida</td><td>3.832</td><td><b>4.120</b></td></tr>
+<tr><td>Preço médio</td><td>13,90</td><td><b>13,90</b></td></tr>
+<tr><td>Custo variável/un</td><td>0,85</td><td><b>0,91</b><span class="pr">▲ 7,1%</span></td></tr>
+<tr><td>MC %</td><td>52,4%</td><td><b>48,3%</b><span class="pr">▼ 4,1 pp</span></td></tr></table>
+<span class="pin" style="margin:0 0 4px">4</span>
+<div class="ph">O que pesou <span class="pin">5</span></div>
+<ul><li>O custo variável subiu de R$ 0,85 para R$ 0,91 por unidade.</li><li>O preço médio ficou parado, então o aumento do custo comeu a margem.</li></ul>
+<div class="reg">Regra: atenção quando a MC % piora mais de 2%; agir acima de 5%. <span class="pin">6</span></div>
+</div></div>
+<div class="legenda">
+<div><span class="pin">2</span><span><b>Título</b> com a palavra da situação e o nome do produto. Fecha no X, no Esc ou tocando fora.</span></div>
+<div><span class="pin">3</span><span><b>Resumo</b> em uma frase: quanto a margem ficou acima ou abaixo do período anterior.</span></div>
+<div><span class="pin">4</span><span><b>Comparação</b> lado a lado. Seta vermelha = piorou a margem; verde = melhorou (preço subindo é bom, custo subindo é ruim).</span></div>
+<div><span class="pin">5</span><span><b>O que pesou:</b> os motivos escritos em português simples.</span></div>
+<div><span class="pin">6</span><span><b>Regra</b> usada para decidir atenção ou agir.</span></div>
+</div></div>
+
+</div></div>
+
+<div class="acc aberto"><button class="acc-head" type="button"><span class="acc-ico">✅</span><strong>Para começar a usar</strong><span class="acc-seta">▲</span></button>
+<div class="acc-corpo">
+<ul><li>Abra <b>Indicadores de Gestão</b> e role até <b>Custo e margem por produto</b>.</li><li>Toque no selo da coluna <b>Situação</b>. No celular o painel sobe de baixo.</li><li>Se o produto não vendeu no período anterior, o painel avisa que não há comparação.</li></ul>
+</div></div>
+
+<p class="rodape">Hardt App · dúvidas? Pergunte ao Clippy.</p>
+</div>
+<script>
+document.querySelectorAll('.acc-head').forEach(function(h){h.addEventListener('click',function(){h.parentElement.classList.toggle('aberto');});});
+</script>
+</body>
+</html>

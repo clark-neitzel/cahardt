@@ -621,6 +621,59 @@ async function entradasSemana({ semanaOffset = 0, reduzido }) {
     });
 }
 
+
+// ── Detalhe do selo de situação (por que a linha está em "agir/atenção/no alvo") ──
+const numOuNull = (v, casas) => (v != null && Number.isFinite(v) ? Number(v.toFixed(casas)) : null);
+const brl = (v) => 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const ddmm = (ymd) => `${String(ymd).slice(8, 10)}/${String(ymd).slice(5, 7)}`;
+
+function montarDetalheSituacao({ periodo, linha, receitaAtual, ant, mcPctP, mcPctAnt }) {
+    const anteriorOk = !!(ant && ant.qtd > 0 && ant.receita > 0);
+    const precoAnt = anteriorOk ? ant.receita / ant.qtd : null; // anteriorOk exige qtd > 0
+    const cvAnt = anteriorOk && ant.custo > 0 ? ant.custo / ant.qtd : null;
+    const comparavel = !!(anteriorOk && ant.custo > 0 && mcPctAnt != null && Number.isFinite(mcPctAnt) && mcPctP != null);
+    const relBruto = comparavel && mcPctP != null && mcPctAnt !== 0 ? (mcPctAnt - mcPctP) / Math.abs(mcPctAnt) : null;
+    const bloco = (de, ate, qtd, receita, preco, cv, mc) => ({
+        de, ate, quantidadeVendida: numOuNull(qtd, 2), receita: numOuNull(receita, 2),
+        precoMedio: numOuNull(preco, 2), custoVariavelUn: numOuNull(cv, 2), mcPct: numOuNull(mc, 1)
+    });
+    const detalhe = {
+        base: 'periodo_anterior',
+        regra: { atencaoPct: 2, agirPct: 5 },
+        variacaoRelativaPct: relBruto != null ? numOuNull(relBruto * 100, 1) : null,
+        atual: bloco(periodo.de, periodo.ate, linha.quantidadeVendida, receitaAtual, linha.precoMedio, linha.custoVariavelUn, mcPctP),
+        anterior: anteriorOk ? bloco(periodo.anterior.de, periodo.anterior.ate, ant.qtd, ant.receita, precoAnt, cvAnt, mcPctAnt) : null,
+        motivos: []
+    };
+    const m = detalhe.motivos;
+    if (!comparavel) {
+        const janela = `${ddmm(periodo.anterior.de)} a ${ddmm(periodo.anterior.ate)}`;
+        let texto;
+        if (!anteriorOk) texto = `Não houve venda deste produto no período anterior (${janela}), então não dá para comparar.`;
+        else if (!(ant.custo > 0)) texto = `O período anterior (${janela}) não tinha custo registrado, então não dá para comparar a margem.`;
+        else if (mcPctP == null) texto = 'Não dá para calcular a margem deste período porque falta custo em algum insumo.';
+        else texto = `Não houve venda deste produto no período anterior (${janela}), então não dá para comparar.`;
+        m.push({ tipo: 'sem_comparacao', texto });
+    } else {
+        const fmtPct = (d) => `${d >= 0 ? '+' : '−'}${Math.abs(d * 100).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
+        const compara = (atual, antes, tipo, nome) => {
+            if (atual == null || antes == null || !Number.isFinite(atual) || !(antes > 0)) return false;
+            const d = (atual - antes) / antes;
+            if (Math.abs(d) < 0.005) return false;
+            m.push({ tipo, texto: `${nome} ${d < 0 ? 'caiu' : 'subiu'} de ${brl(antes)} para ${brl(atual)} (${fmtPct(d)}).` });
+            return true;
+        };
+        const mudouPreco = compara(linha.precoMedio, precoAnt, 'preco', 'Preço médio de venda');
+        const mudouCusto = compara(linha.custoVariavelUn, cvAnt, 'custo', 'Custo variável por unidade');
+        if (!mudouPreco && !mudouCusto) {
+            m.push({ tipo: 'estavel', texto: 'Preço e custo praticamente iguais ao período anterior.' });
+        }
+    }
+    if (linha.temCustoFaltando) m.push({ tipo: 'custo_faltando', texto: 'Falta custo em algum insumo: a margem pode estar maior do que a real.' });
+    if (linha.fichaDesatualizada) m.push({ tipo: 'ficha_desatualizada', texto: 'Ficha técnica desatualizada: o custo da ficha difere mais de 5% do custo médio gravado.' });
+    return detalhe;
+}
+
 /** Linhas de produto (visão completa ou reduzida). */
 async function produtos({ de, ate, foco, completo, ordem }) {
     const periodo = resolverPeriodo(de, ate);
@@ -650,8 +703,8 @@ async function produtos({ de, ate, foco, completo, ordem }) {
         if (!reduzido) {
             const vAnt = await carregarVendas(periodo.anterior.de, periodo.anterior.ate);
             for (const r of vAnt) {
-                const a = antPorProduto.get(r.produtoId) || { receita: 0, custo: 0 };
-                a.receita += r.receita; a.custo += r.custoEf; antPorProduto.set(r.produtoId, a);
+                const a = antPorProduto.get(r.produtoId) || { qtd: 0, receita: 0, custo: 0 };
+                a.qtd += r.qtd; a.receita += r.receita; a.custo += r.custoEf; antPorProduto.set(r.produtoId, a);
             }
         }
 
@@ -682,7 +735,7 @@ async function produtos({ de, ate, foco, completo, ordem }) {
                 const mcUn = preco != null && cv != null ? preco - cv : null;
                 const mcPctP = preco > 0 && mcUn != null ? (mcUn / preco) * 100 : null;
                 const ant = antPorProduto.get(id);
-                const mcPctAnt = ant && ant.receita > 0 ? ((ant.receita - ant.custo) / ant.receita) * 100 : null;
+                const mcPctAnt = ant && ant.receita > 0 && ant.qtd > 0 && ant.custo > 0 ? ((ant.receita - ant.custo) / ant.receita) * 100 : null;
                 const s = semaforo(mcPctP, mcPctAnt);
                 linha.precoMedio = preco != null ? round2(preco) : null;
                 linha.custoVariavelUn = cv != null ? round4(cv) : null;
@@ -692,7 +745,8 @@ async function produtos({ de, ate, foco, completo, ordem }) {
                 linha.mcTotal = cv != null ? round2(a.receita - cv * a.qtd) : null;
                 linha.situacao = {
                     status: s.status,
-                    rotulo: s.status === 'sem_dado' ? 'sem comparação' : (s.status === 'ok' ? 'no alvo' : s.palavra)
+                    rotulo: s.status === 'sem_dado' ? 'sem comparação' : (s.status === 'ok' ? 'no alvo' : s.palavra),
+                    detalhe: montarDetalheSituacao({ periodo, linha, receitaAtual: a.receita, ant, mcPctP, mcPctAnt })
                 };
             }
             return linha;

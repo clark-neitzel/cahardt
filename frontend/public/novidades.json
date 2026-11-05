@@ -1,5 +1,11 @@
 [
   {
+    "slug": "por-que-situacao",
+    "titulo": "Por que o produto está em atenção?",
+    "resumo": "Nos Indicadores de Gestão, toque no selo no alvo / atenção / agir de um produto e veja o porquê: margem contra o período anterior, preço, custo e o que pesou.",
+    "data": "2026-11-04"
+  },
+  {
     "slug": "filtro-descricao",
     "titulo": "Contas a Pagar: filtro por Descrição",
     "resumo": "Novo campo Descrição ao lado de Fornecedor ou nota. Os dois combinam: dá para ver só os vales de uma pessoa.",
