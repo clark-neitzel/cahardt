@@ -562,6 +562,14 @@ function startSchedulers() {
     setTimeout(_runVarreduraEspeciais, 90 * 1000);
     setInterval(_runVarreduraEspeciais, 10 * 60 * 1000);
 
+    // === Agenda Google Produção: rede de segurança do quadro Delivery ===
+    // A cada 10 min confere os pedidos em andamento no quadro (cria o que faltou, atualiza a etapa, apaga o que
+    // saiu). Inerte sem agenda configurada; só loga quando faz algo.
+    setInterval(async () => {
+        try { await require('../services/googleCalendarService').reconciliarQuadroDelivery(); }
+        catch (err) { console.error('⚠️ Agenda Produção (reconciliar) Error:', err.message); }
+    }, 10 * 60 * 1000);
+
     // === Impressão direta (Etiquetas da Cozinha) ===
     // A cada 60 s: expira trabalho vencido (etiqueta velha NUNCA sai sozinha horas depois), devolve à fila o que
     // ficou "ENVIANDO" sem confirmação do agente (respeitando maxTentativas) e, 1x/dia, apaga conteúdo/linhas antigas.

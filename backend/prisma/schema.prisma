@@ -603,8 +603,9 @@ model Pedido {
   baixaCaValor         Decimal?                @map("baixa_ca_valor") @db.Decimal(12, 2) // Valor da baixa realizada
   baixaCaEm            DateTime?               @map("baixa_ca_em")
 
-  // legado — mantido para não dropar a coluna. Pedido de entrega NÃO vai mais para a agenda "Produção"
-  // (escopo reprovado em 11/2026); sincronizarExistentes apaga os eventos antigos e zera este campo.
+  // Id do evento do pedido na agenda Google "Produção". Só pedido que está no quadro Delivery (FATURADO, item de
+  // categoria delivery, com DeliveryStatus, sem vínculo com Kit Festa do site) ganha evento; ao sair do quadro o
+  // googleCalendarService apaga o evento e zera este campo.
   gcalEventId String? @map("gcal_event_id")
 
   createdAt DateTime @default(now()) @map("created_at")

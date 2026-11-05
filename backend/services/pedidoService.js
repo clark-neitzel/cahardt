@@ -1011,6 +1011,7 @@ const pedidoService = {
             : (await prisma.pedidoItem.findMany({ where: { pedidoId: id }, select: { produtoId: true } })).map(i => i.produtoId);
 
         const kitsDoPedido = await prisma.kitFestaPedido.findMany({ where: { pedidoId: id }, select: { id: true } }).catch(() => []);
+        const gcalEventIdPedido = (await prisma.pedido.findUnique({ where: { id }, select: { gcalEventId: true } }).catch(() => null))?.gcalEventId || null;
         const resultado = await prisma.$transaction(async (tx) => {
             // Busca movimentações de SAIDA deste pedido para criar entradas compensatórias
             const saidaMovs = await tx.movimentacaoEstoque.findMany({
@@ -1084,6 +1085,7 @@ const pedidoService = {
         try {
             const gcal = require('./googleCalendarService');
             kitsDoPedido.forEach(k => gcal.disparar(gcal.sincronizarKitFesta, k.id));
+            if (gcalEventIdPedido) gcal.disparar(gcal.removerEvento, gcalEventIdPedido); // evento do pedido no quadro Delivery
         } catch (gErr) { console.error('[Pedido] agenda Produção:', gErr.message); }
 
         // Recalcula estoqueReservado/estoqueDisponivel dos produtos afetados
@@ -1202,11 +1204,10 @@ const pedidoService = {
 
         // Agenda Google Produção: pedido de Kit Festa cancelado tira o evento da agenda (best-effort)
         try {
+            const gcal = require('./googleCalendarService');
             const kfs = await prisma.kitFestaPedido.findMany({ where: { pedidoId: id }, select: { id: true } });
-            if (kfs.length) {
-                const gcal = require('./googleCalendarService');
-                kfs.forEach(k => gcal.disparar(gcal.sincronizarKitFesta, k.id));
-            }
+            kfs.forEach(k => gcal.disparar(gcal.sincronizarKitFesta, k.id));
+            gcal.disparar(gcal.sincronizarPedidoDelivery, id); // cancelado → sai do quadro → apaga o evento do pedido
         } catch (gErr) { console.error('[Pedido] agenda Produção:', gErr.message); }
 
         return atualizado;

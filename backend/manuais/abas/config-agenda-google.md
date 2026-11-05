@@ -8,7 +8,7 @@ permissao: configuracoes (ver); admin ou configuracoes.edit (alterar)
 
 ## O que é
 
-A tela que liga o sistema à agenda **"Produção"** do Google Agenda. Depois de ligada, **Kit Festa (com o status da aba Delivery) e Amostras (desde a solicitação) aparecem sozinhos** na agenda, no dia certo, para a produção se organizar. Só quem é administrador ou tem permissão de editar Configurações consegue mexer aqui.
+A tela que liga o sistema à agenda **"Produção"** do Google Agenda. Depois de ligada, **os pedidos do quadro Delivery (com a etapa no título), o Kit Festa do site e as Amostras (desde a solicitação) aparecem sozinhos** na agenda, no dia certo, para a produção se organizar. Só quem é administrador ou tem permissão de editar Configurações consegue mexer aqui.
 
 ## Status da conexão
 
@@ -30,7 +30,7 @@ Abre a tela de login do Google para a conta dona da agenda. Entre, aceite as per
 
 ## Sincronizar agenda agora
 
-Manda para a agenda tudo que já existe e ainda vale: **Kit Festa aprovado** e **Amostras** (desde a solicitação), todos com data de hoje em diante. Também **limpa a agenda**: apaga eventos de pedidos de entrega que foram enviados por engano numa versão anterior e de amostras canceladas. Pode clicar quantas vezes quiser — não duplica. A contagem mostra:
+Manda para a agenda tudo que já existe e ainda vale: **pedidos do quadro Delivery** (em andamento, ou com data de hoje em diante), **Kit Festa aprovado** e **Amostras** (desde a solicitação, data de hoje em diante). Também **limpa a agenda**: apaga eventos de pedidos que não estão mais no quadro Delivery e de amostras canceladas. Pode clicar quantas vezes quiser — não duplica. A contagem mostra:
 - **Criados** — eventos novos colocados na agenda agora;
 - **Já existiam** — já estavam na agenda;
 - **Removidos** — eventos apagados da agenda na limpeza;
@@ -40,6 +40,6 @@ Manda para a agenda tudo que já existe e ainda vale: **Kit Festa aprovado** e *
 
 - **Kit Festa:** ao ser **aprovado**, vira um evento no dia e hora do pedido. O título termina com o **status da aba Delivery**, que acompanha o Kanban: **A produzir** (etapa Pedido), **Em produção**, **Saiu para entrega**, **Entregue**; logo que vira pedido já aparece **A produzir**; **Aprovado** só enquanto ainda não virou pedido. Ex.: `🎉 Kit Festa #35 · Maria · Retirada 14:30 · 3 caixas · Em produção`. Ao mover o cartão no Delivery, o evento é atualizado na hora. A descrição tem o status, itens, telefone e endereço da entrega. Se for **recusado, cancelado, excluído** ou se o pedido vinculado for **cancelado** ou **excluído**, o evento é apagado.
 - **Amostras:** entram na agenda **já na solicitação** e o evento acompanha o status: o título termina com **Solicitada**, **Em preparação**, **Liberada** ou **Entregue**. Amostra **cancelada**, sem data de entrega ou excluída sai da agenda.
-- **Pedidos de entrega comuns NÃO vão para a agenda** — só Kit Festa e amostras.
+- **Pedidos do quadro Delivery:** é o mesmo critério da aba Delivery (faturado, com item de categoria de delivery ativa). Título `📦 Pedido #3969 · Cliente · 12 un · A produzir` (`🎁 Bonificação BN#…`, `ZZ#…` para especial), no dia do pedido, com a etapa do quadro. Mudar a etapa só **troca o status** (Entregue também: o evento fica). O evento só sai se o pedido for **cancelado, excluído ou tiver devolução finalizada**. Pedido do site Kit Festa não duplica: vale o evento do Kit Festa. Pedido faturado que não tem item de delivery **não** entra. Uma conferência automática roda a cada 10 min.
 - Se o Google estiver fora do ar ou desconectado, o pedido/amostra **funciona normalmente** — só não aparece na agenda; use **Sincronizar agenda agora** depois.
 - Pedidos Kit Festa ainda **aguardando aprovação** não vão para a agenda.

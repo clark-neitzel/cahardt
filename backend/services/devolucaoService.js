@@ -408,6 +408,12 @@ const devolucaoService = {
         }
         devolucao.cobrancasCanceladas = cobrancasCanceladas.canceladas;
 
+        // Agenda Google Produção: pedido com devolução finalizada sai do quadro Delivery (best-effort)
+        try {
+            const gcal = require('./googleCalendarService');
+            gcal.disparar(gcal.sincronizarPedidoDelivery, pedidoId);
+        } catch (gErr) { console.error('[Devolucao] agenda Produção:', gErr.message); }
+
         // 6d. Creditar estoque (fora da transação principal pois estoqueService tem sua própria)
         try {
             await estoqueService.creditarDevolucao(
@@ -499,6 +505,12 @@ const devolucaoService = {
         } catch (err) {
             console.error(`[Devolucao] Erro ao debitar estoque na reversão ${devolucaoId}:`, err.message);
         }
+
+        // Agenda Google Produção: devolução revertida → o pedido VOLTA ao quadro Delivery; recria o evento (best-effort)
+        try {
+            const gcal = require('./googleCalendarService');
+            gcal.disparar(gcal.sincronizarPedidoDelivery, devolucao.pedidoOriginalId);
+        } catch (gErr) { console.error('[Devolucao] agenda Produção:', gErr.message); }
 
         return { success: true };
     }

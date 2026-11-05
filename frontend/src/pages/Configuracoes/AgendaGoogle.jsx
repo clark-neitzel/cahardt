@@ -150,7 +150,7 @@ export default function AgendaGoogle() {
                 <div className="bg-mint p-1.5 md:p-2 rounded-lg"><CalendarDays className="h-4 w-4 md:h-5 md:w-5 text-primaryDark" /></div>
                 <div className="min-w-0">
                     <h1 className="text-lg md:text-2xl font-bold text-gray-900 truncate">Agenda Google</h1>
-                    <p className="text-xs md:text-sm text-gray-600">Configurações · Kit Festa e Amostras na agenda “Produção”</p>
+                    <p className="text-xs md:text-sm text-gray-600">Configurações · Delivery, Kit Festa e Amostras na agenda “Produção”</p>
                 </div>
             </div>
 
@@ -227,7 +227,7 @@ export default function AgendaGoogle() {
                     <span className={TIT}>Sincronizar</span>
                 </div>
                 <div className="p-4 md:p-5 space-y-3">
-                    <p className="text-xs md:text-sm text-gray-600">Envia para a agenda os Kit Festa da aba Delivery (com a etapa atual no título) e as amostras (desde a solicitação) que ainda não estão nela. Também tira da agenda o que não deve estar. Pode demorar alguns instantes — não feche a tela.</p>
+                    <p className="text-xs md:text-sm text-gray-600">Envia para a agenda os pedidos do quadro Delivery (com a etapa no título), os Kit Festa do site e as amostras (desde a solicitação) que ainda não estão nela. Também tira da agenda o que não deve estar. Pode demorar alguns instantes — não feche a tela.</p>
                     <button type="button" onClick={sincronizar} disabled={!podeMexer || sincronizando || !conectado} className={`${btnPrim} w-full sm:w-auto`}>
                         {sincronizando ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                         {sincronizando ? `Sincronizando… ${enviados} enviados` : 'Sincronizar agenda agora'}

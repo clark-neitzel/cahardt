@@ -591,6 +591,12 @@ async function marcarPedidoFaturado(nota) {
     } catch (e) {
         console.error('[FocusNFe] Falha ao marcar pedido faturado:', e.message);
     }
+    // Agenda Google Produção: ao faturar o pedido pode entrar no quadro Delivery (best-effort; sem DeliveryStatus
+    // ainda, ele entra pelo backfill da próxima listagem do quadro)
+    try {
+        const gcal = require('./googleCalendarService');
+        gcal.disparar(gcal.sincronizarPedidoDelivery, nota.pedidoId);
+    } catch (gErr) { console.error('[FocusNFe] agenda Produção:', gErr.message); }
 }
 
 /**

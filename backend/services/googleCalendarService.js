@@ -1,5 +1,5 @@
 /**
- * Google Calendar — agenda "Produção" (Kit Festa + Amostras aparecem sozinhos).
+ * Google Calendar — agenda "Produção" (pedidos do quadro Delivery + Kit Festa do site + Amostras aparecem sozinhos).
  *
  * Reaproveita as credenciais OAuth do Google Drive (app_configs.gdrive_config:
  * clientId, clientSecret, refreshToken). O refresh token precisa ter sido autorizado
@@ -140,16 +140,18 @@ async function removerEvento(eventId) {
     }
 }
 
-// cria ou atualiza e devolve o id vigente (ou null)
-async function _upsert(eventId, dados) {
+// cria ou atualiza; devolve { id, ok }: id vigente (ou null) e ok=true só se o Google confirmou a chamada
+async function _upsertR(eventId, dados) {
     if (eventId) {
         const r = await atualizarEvento(eventId, dados);
-        if (r.ok) return eventId;
-        if (!r.naoExiste) return eventId;       // erro transitório: mantém o id, tenta de novo na próxima mudança
+        if (r.ok) return { id: eventId, ok: true };
+        if (!r.naoExiste) return { id: eventId, ok: false };   // erro transitório: mantém o id, tenta de novo na próxima mudança
     }
     const c = await criarEvento(dados);
-    return c.ok ? c.id : (eventId || null);
+    return c.ok ? { id: c.id, ok: true } : { id: eventId || null, ok: false };
 }
+// cria ou atualiza e devolve o id vigente (ou null)
+async function _upsert(eventId, dados) { return (await _upsertR(eventId, dados)).id; }
 
 // Evita criar o evento em duplicidade quando o gancho e a rotina de conferência
 // pegam o mesmo registro ao mesmo tempo (fila por chave, dentro deste processo).
@@ -285,6 +287,191 @@ async function _sincronizarAmostra(id) {
     }
 }
 
+// ── Pedidos do quadro Delivery ────────────────────────────────────────────────
+// Elegível = EXATAMENTE o que o kanban Delivery lista (deliveryService.listarPedidos): FATURADO,
+// _pedidoAtivoWhere(), item de categoria delivery ativa e registro em DeliveryStatus. Pedido que veio do
+// site Kit Festa (KitFestaPedido.pedidoId) NÃO ganha evento de pedido: o evento do kit já mostra a etapa.
+// Pedido.gcalEventId guarda o id do evento.
+
+const fmtQtd = (n) => {
+    const x = Number(n) || 0;
+    return Number.isInteger(x) ? String(x) : x.toLocaleString('pt-BR', { maximumFractionDigits: 3 });
+};
+
+/** Prefixo + número do título: 🎉 Kit Festa / 🎁 Bonificação BN# / ZZ# (especial) / 📦 Pedido # */
+function rotuloPedidoDelivery(p) {
+    const n = p.numero != null ? p.numero : 's/n';
+    if (p.canalOrigem === 'KIT_FESTA') return `🎉 Kit Festa #${n}`;
+    if (p.bonificacao) return `🎁 Bonificação BN#${n}`;
+    if (p.especial) return `📦 Pedido ZZ#${n}`;
+    return `📦 Pedido #${n}`;
+}
+
+function montarPedidoDelivery(p, etapa) {
+    const status = ROTULO_ETAPA_KIT[etapa] || ROTULO_ETAPA_KIT.PEDIDO;
+    const itens = p.itens || [];
+    const totalUn = itens.reduce((a, i) => a + (Number(i.quantidade) || 0), 0);
+    const cli = p.cliente || {};
+    const nome = cli.NomeFantasia || cli.Nome || 'Sem cliente';
+    const titulo = `${rotuloPedidoDelivery(p)} · ${nome} · ${fmtQtd(totalUn)} un · ${status}`;
+    const d = [`Status: ${status}`, '', 'Itens:', ...itens.map(i => `• ${fmtQtd(i.quantidade)}x ${i.produto?.nome || i.descricao || 'Item'}`)];
+    const tel = cli.Telefone_Celular || cli.Telefone || cli.Telefone_Comercial;
+    if (tel) d.push('', `Telefone: ${tel}`);
+    if (cli.End_Logradouro) {
+        d.push(`Endereço: ${[cli.End_Logradouro, cli.End_Numero, cli.End_Bairro, cli.End_Cidade].filter(Boolean).join(', ')}`);
+    }
+    if (p.vendedor?.nome) d.push(`Vendedor: ${p.vendedor.nome}`);
+    if (p.observacoes) d.push('', `Obs.: ${p.observacoes}`);
+    return { titulo, descricao: d.join('\n'), dataYmd: ymd(p.dataVenda), horario: null };
+}
+
+/** where do quadro Delivery (mesmas cláusulas do kanban) ou null se não há categoria ativa. Lazy require: sem ciclo. */
+async function _whereQuadroDelivery() {
+    const ds = require('./deliveryService');
+    const filtros = await ds._produtoWhereFiltros();
+    if (!filtros.length) return null;
+    return {
+        ...ds._pedidoAtivoWhere(),
+        situacaoCA: 'FATURADO', // depois do spread: não é sobrescrito pelo `not: 'CANCELADO'`
+        itens: { some: { OR: filtros.map(f => ({ produto: f })) } },
+    };
+}
+
+/** Dos ids dados, devolve o Set dos que estão HOJE no quadro e sem vínculo com Kit Festa do site. */
+async function _idsNoQuadro(ids) {
+    if (!ids.length) return new Set();
+    const base = await _whereQuadroDelivery();
+    if (!base) return new Set();
+    const [peds, dss, kits] = await Promise.all([
+        prisma.pedido.findMany({ where: { id: { in: ids }, ...base }, select: { id: true } }),
+        prisma.deliveryStatus.findMany({ where: { pedidoId: { in: ids } }, select: { pedidoId: true } }),
+        prisma.kitFestaPedido.findMany({ where: { pedidoId: { in: ids } }, select: { pedidoId: true } }),
+    ]);
+    const temDs = new Set(dss.map(x => x.pedidoId));
+    const ehKit = new Set(kits.map(x => x.pedidoId));
+    return new Set(peds.map(x => x.id).filter(id => temDs.has(id) && !ehKit.has(id)));
+}
+
+const _sigPedido = new Map(); // pedidoId -> assinatura do último conteúdo enviado (evita update sem mudança)
+
+/**
+ * Cria/atualiza o evento do pedido se ele está no quadro Delivery; se saiu do quadro (cancelado, excluído,
+ * devolução finalizada, não faturado, sem DeliveryStatus, virou kit do site) apaga o evento e zera
+ * Pedido.gcalEventId. Nunca lança.
+ */
+async function sincronizarPedidoDelivery(id) { return serializar('pd:' + id, () => _sincronizarPedidoDelivery(id)); }
+async function _sincronizarPedidoDelivery(id) {
+    try {
+        const atual = await prisma.pedido.findUnique({ where: { id }, select: { id: true, gcalEventId: true } });
+        if (!atual) { _sigPedido.delete(id); return { ok: true, nada: true }; }
+        const noQuadro = (await _idsNoQuadro([id])).has(id);
+        if (!noQuadro) {
+            _sigPedido.delete(id);
+            if (!atual.gcalEventId) return { ok: true, nada: true };
+            const r = await removerEvento(atual.gcalEventId);
+            if (r.ok) await prisma.pedido.update({ where: { id }, data: { gcalEventId: null } });
+            return r;
+        }
+        const [p, ds] = await Promise.all([
+            prisma.pedido.findUnique({
+                where: { id },
+                select: {
+                    id: true, numero: true, canalOrigem: true, bonificacao: true, especial: true, dataVenda: true, observacoes: true,
+                    cliente: { select: { Nome: true, NomeFantasia: true, Telefone: true, Telefone_Celular: true, Telefone_Comercial: true, End_Logradouro: true, End_Numero: true, End_Bairro: true, End_Cidade: true } },
+                    vendedor: { select: { nome: true } },
+                    itens: { select: { quantidade: true, descricao: true, produto: { select: { nome: true } } } },
+                },
+            }),
+            prisma.deliveryStatus.findUnique({ where: { pedidoId: id }, select: { etapa: true } }),
+        ]);
+        if (!p || !ds) return { ok: true, nada: true };
+        const dados = montarPedidoDelivery(p, ds.etapa);
+        if (!dados.dataYmd) return { ok: true, nada: true };
+        const sig = JSON.stringify([dados.titulo, dados.descricao, dados.dataYmd]);
+        if (atual.gcalEventId && _sigPedido.get(id) === sig) return { ok: true, nada: true, igual: true, id: atual.gcalEventId };
+        const { id: novoId, ok: enviou } = await _upsertR(atual.gcalEventId, dados);
+        if (novoId && enviou) _sigPedido.set(id, sig); // só memoriza se o Google confirmou: senão a próxima rodada tenta de novo
+        if (novoId !== atual.gcalEventId) await prisma.pedido.update({ where: { id }, data: { gcalEventId: novoId } });
+        return { ok: !!novoId && enviou, id: novoId };
+    } catch (e) {
+        console.error('[GoogleCalendar] sincronizarPedidoDelivery:', e?.message || e);
+        return { ok: false, motivo: 'erro', erro: e?.message };
+    }
+}
+
+/**
+ * Rede de segurança (scheduler, 10 min), em poucas consultas em lote e com teto (LIMITE_RECONCILIA):
+ *  1) pedido no quadro SEM evento → cria;
+ *  2) pedido no quadro (etapa != ENTREGUE) mexido nos últimos 30 min (DeliveryStatus ou Pedido) → sincroniza;
+ *  3) pedido COM evento que ficou indevido (cancelado, devolução finalizada, excluído, não faturado, sem
+ *     DeliveryStatus) → apaga. (Prisma `not` exclui null: situacaoCA null entra por OR explícito.)
+ * Não varre entregues antigos. Inerte sem agenda configurada; só loga quando faz algo. Nunca lança.
+ */
+const LIMITE_RECONCILIA = 300;
+const JANELA_RECONCILIA_MS = 30 * 60 * 1000;
+let _reconciliando = false;
+async function reconciliarQuadroDelivery() {
+    if (_reconciliando) return { ocupado: true };
+    _reconciliando = true;
+    const r = { criados: 0, atualizados: 0, removidos: 0, erros: 0 };
+    try {
+        const c = await _contexto();
+        if (!c.cal) return { ...r, motivo: c.motivo };
+        const desde = new Date(Date.now() - JANELA_RECONCILIA_MS);
+        const dss = await prisma.deliveryStatus.findMany({ select: { pedidoId: true, etapa: true, updatedAt: true } });
+        const todosDs = dss.map(x => x.pedidoId);
+        const abertos = dss.filter(x => x.etapa !== 'ENTREGUE');
+        const abertosIds = abertos.map(x => x.pedidoId);
+        const recentesDs = abertos.filter(x => x.updatedAt >= desde).map(x => x.pedidoId);
+        const base = await _whereQuadroDelivery();
+
+        let novos = [], mexidos = [];
+        if (base && abertosIds.length) {
+            [novos, mexidos] = await Promise.all([
+                prisma.pedido.findMany({ where: { ...base, id: { in: abertosIds }, gcalEventId: null }, select: { id: true }, take: LIMITE_RECONCILIA }),
+                prisma.pedido.findMany({
+                    where: { ...base, id: { in: abertosIds }, gcalEventId: { not: null }, OR: [{ updatedAt: { gte: desde } }, { id: { in: recentesDs } }] },
+                    select: { id: true }, take: LIMITE_RECONCILIA,
+                }),
+            ]);
+        }
+        const indevidos = await prisma.pedido.findMany({
+            where: {
+                gcalEventId: { not: null },
+                OR: [
+                    { cancelado: true }, { devolucaoFinalizada: true }, { statusEnvio: 'EXCLUIDO' },
+                    { situacaoCA: null }, { situacaoCA: { not: 'FATURADO' } },
+                    { id: { notIn: todosDs } },
+                ],
+            },
+            select: { id: true }, take: LIMITE_RECONCILIA,
+        });
+        const kitIds = new Set((await prisma.kitFestaPedido.findMany({
+            where: { pedidoId: { in: [...novos, ...mexidos].map(x => x.id) } }, select: { pedidoId: true },
+        })).map(x => x.pedidoId));
+
+        const fila = [
+            ...indevidos.map(x => ({ id: x.id, tipo: 'rem' })),
+            ...novos.filter(x => !kitIds.has(x.id)).map(x => ({ id: x.id, tipo: 'cri' })),
+            ...mexidos.filter(x => !kitIds.has(x.id)).map(x => ({ id: x.id, tipo: 'upd' })),
+        ];
+        const vistos = new Set();
+        for (const it of fila) {
+            if (vistos.has(it.id)) continue; vistos.add(it.id);
+            const x = await sincronizarPedidoDelivery(it.id); // decide sozinho criar/atualizar/apagar; pula se igual
+            if (x.nada) continue;
+            if (!x.ok) { r.erros++; continue; }
+            if (!x.id) r.removidos++; else if (it.tipo === 'cri') r.criados++; else r.atualizados++;
+            await pausa();
+        }
+        if (r.criados || r.atualizados || r.removidos || r.erros) console.log(`[GoogleCalendar] reconciliarQuadroDelivery: ${JSON.stringify(r)}`);
+        return r;
+    } catch (e) {
+        console.error('[GoogleCalendar] reconciliarQuadroDelivery:', e?.message || e);
+        return { ...r, erros: r.erros + 1 };
+    } finally { _reconciliando = false; }
+}
+
 // ── Sincronização dos já existentes (Kit Festa aprovado / amostras aprovadas) ─
 let _sincronizando = false;
 const LIMITE_LOTE = 50;
@@ -292,11 +479,11 @@ const pausa = () => new Promise(res => setTimeout(res, 150)); // respeita a cota
 
 /**
  * Manda para a agenda o que já existia antes da integração:
- *  Kit Festa aprovado (CONVERTIDO/APROVADO) e Amostra (SOLICITADA/PREPARACAO/LIBERADO), data >= hoje.
+ *  Kit Festa aprovado (CONVERTIDO/APROVADO) e Amostra (SOLICITADA/PREPARACAO/LIBERADO), data >= hoje;
+ *  pedidos do quadro Delivery (os que o kanban lista) em andamento ou com data >= hoje.
  *
  * Também FAZ A LIMPEZA do que não deve estar na agenda:
- *  - eventos de PEDIDO de entrega (Pedido.gcalEventId, escopo reprovado em 11/2026): apaga o evento no
- *    Google e zera a coluna (idempotente: depois de limpo, não encontra mais nada);
+ *  - Pedido com gcalEventId que não está (mais) no quadro Delivery: apaga o evento e zera a coluna;
  *  - amostras CANCELADAS que tenham evento.
  *
  * Idempotente e em LOTES: faz no máximo `limite` (padrão 50) operações de limpeza e `limite` criações
@@ -315,20 +502,18 @@ async function sincronizarExistentes({ limite = LIMITE_LOTE } = {}) {
         const lim = Math.max(1, limite);
         const erro = (rot, x) => { r.erros++; if (r.errosLista.length < 10) r.errosLista.push(`${rot}: ${x?.erro || x?.motivo || 'falha'}`); };
 
-        // 0) limpeza única: eventos de pedido de entrega (não fazem parte da agenda)
-        const pedidosComEvento = await prisma.pedido.findMany({
-            where: { gcalEventId: { not: null } },
-            select: { id: true, numero: true, gcalEventId: true }, orderBy: { createdAt: 'asc' }, take: lim,
+        // 0) pedido com evento que NÃO está mais no quadro Delivery (ou nunca devia estar): apaga o evento
+        const comEvento = await prisma.pedido.findMany({
+            where: { gcalEventId: { not: null } }, select: { id: true, numero: true }, orderBy: { createdAt: 'asc' },
         });
-        for (const p of pedidosComEvento) {
-            const x = await removerEvento(p.gcalEventId); // 404/410 já conta como ok
-            if (x.ok) {
-                await prisma.pedido.update({ where: { id: p.id }, data: { gcalEventId: null } });
-                r.removidos++;
-            } else erro(`Pedido #${p.numero ?? 's/n'}`, x);
+        const noQuadro = await _idsNoQuadro(comEvento.map(p => p.id));
+        const indevidos = comEvento.filter(p => !noQuadro.has(p.id));
+        for (const p of indevidos.slice(0, lim)) {
+            const x = await sincronizarPedidoDelivery(p.id); // não elegível → apaga e zera a coluna
+            if (x.ok && !x.nada) r.removidos++; else if (!x.ok) erro(`Pedido #${p.numero ?? 's/n'}`, x);
             await pausa();
         }
-        const pedidosFaltam = await prisma.pedido.count({ where: { gcalEventId: { not: null } } });
+        const pedidosFaltam = Math.max(0, indevidos.length - lim);
 
         // 0b) amostras CANCELADAS que ainda têm evento: apaga
         const amostrasIndevidas = await prisma.amostra.findMany({
@@ -349,6 +534,21 @@ async function sincronizarExistentes({ limite = LIMITE_LOTE } = {}) {
         r.jaExistiam += await prisma.kitFestaPedido.count({ where: { ...whereKit, gcalEventId: { not: null } } });
         r.jaExistiam += await prisma.amostra.count({ where: { ...whereAm, gcalEventId: { not: null } } });
 
+        // 1b) pedidos do quadro Delivery: em andamento, ou com data de hoje em diante (entregues antigos não entram)
+        const baseQuadro = await _whereQuadroDelivery();
+        let pedidosPend = [];
+        if (baseQuadro) {
+            const dss = await prisma.deliveryStatus.findMany({ select: { pedidoId: true, etapa: true } });
+            const abertos = dss.filter(x => x.etapa !== 'ENTREGUE').map(x => x.pedidoId);
+            const fechados = dss.filter(x => x.etapa === 'ENTREGUE').map(x => x.pedidoId);
+            const wherePed = { ...baseQuadro, OR: [{ id: { in: abertos } }, { id: { in: fechados }, dataVenda: { gte: hoje } }] };
+            const candidatos = await prisma.pedido.findMany({ where: wherePed, select: { id: true, numero: true, gcalEventId: true }, orderBy: { dataVenda: 'asc' } });
+            const kits = new Set((await prisma.kitFestaPedido.findMany({ where: { pedidoId: { in: candidatos.map(x => x.id) } }, select: { pedidoId: true } })).map(x => x.pedidoId));
+            const validos = candidatos.filter(x => !kits.has(x.id));
+            r.jaExistiam += validos.filter(x => x.gcalEventId).length;
+            pedidosPend = validos.filter(x => !x.gcalEventId);
+        }
+
         // 2) o que ainda NÃO tem evento (pendentes), em ordem de data, cortado em `limite`
         const kits = await prisma.kitFestaPedido.findMany({
             where: { ...whereKit, gcalEventId: null }, select: { id: true, numero: true }, orderBy: { data: 'asc' },
@@ -359,6 +559,7 @@ async function sincronizarExistentes({ limite = LIMITE_LOTE } = {}) {
         const pendentes = [
             ...kits.map(k => ({ rot: `Kit Festa #${k.numero}`, fn: () => sincronizarKitFesta(k.id) })),
             ...amostras.map(a => ({ rot: `Amostra AM#${a.numero}`, fn: () => sincronizarAmostra(a.id) })),
+            ...pedidosPend.map(p => ({ rot: `Pedido #${p.numero ?? 's/n'}`, fn: () => sincronizarPedidoDelivery(p.id) })),
         ];
         const lote = pendentes.slice(0, lim);
         r.restantes = (pendentes.length - lote.length) + pedidosFaltam + amostrasIndevidasFaltam;
@@ -429,6 +630,6 @@ async function status() {
 module.exports = {
     ESCOPO_CALENDAR, carregarConfig, limparCacheConfig,
     criarEvento, atualizarEvento, removerEvento,
-    sincronizarKitFesta, sincronizarAmostra, sincronizarExistentes, sincronizarExistentesTudo, disparar, status,
-    _montarKitFesta: montarKitFesta, _etapaDoKit: etapaDoKit, _kitSaiDaAgenda: kitSaiDaAgenda, _montarAmostra: montarAmostra, _quandoEvento: quandoEvento,
+    sincronizarKitFesta, sincronizarAmostra, sincronizarPedidoDelivery, reconciliarQuadroDelivery, sincronizarExistentes, sincronizarExistentesTudo, disparar, status,
+    _montarKitFesta: montarKitFesta, _etapaDoKit: etapaDoKit, _kitSaiDaAgenda: kitSaiDaAgenda, _montarAmostra: montarAmostra, _montarPedidoDelivery: montarPedidoDelivery, _idsNoQuadro, _quandoEvento: quandoEvento,
 };

@@ -163,6 +163,15 @@ const deliveryService = {
             data: faltantes.map(p => ({ pedidoId: p.id, etapa: 'PEDIDO' })),
             skipDuplicates: true
         });
+
+        // Agenda Google Produção: o pedido ENTRA no quadro agora — cria o evento (best-effort, fora de transação)
+        try {
+            const gcal = require('./googleCalendarService');
+            const ids = faltantes.map(p => p.id);
+            gcal.disparar(async () => { // em sequência, com pausa: respeita a cota do Google
+                for (const pid of ids) { await gcal.sincronizarPedidoDelivery(pid); await new Promise(res => setTimeout(res, 150)); }
+            });
+        } catch (gErr) { console.error('[Delivery] agenda Produção:', gErr.message); }
         return faltantes.length;
     },
 
@@ -335,11 +344,10 @@ const deliveryService = {
 
         // Agenda Google Produção: Kit Festa mostra a etapa do Delivery no título (best-effort, fora de transação)
         try {
+            const gcal = require('./googleCalendarService');
             const kf = await prisma.kitFestaPedido.findFirst({ where: { pedidoId }, select: { id: true } });
-            if (kf) {
-                const gcal = require('./googleCalendarService');
-                gcal.disparar(gcal.sincronizarKitFesta, kf.id);
-            }
+            if (kf) gcal.disparar(gcal.sincronizarKitFesta, kf.id);
+            gcal.disparar(gcal.sincronizarPedidoDelivery, pedidoId); // pedido comum do quadro (kit do site é ignorado lá)
         } catch (gErr) { console.error('[Delivery] agenda Produção:', gErr.message); }
 
         // Dispara webhook bot + WhatsApp cliente (detached, não trava a resposta)
