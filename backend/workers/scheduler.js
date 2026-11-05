@@ -97,16 +97,6 @@ function startSchedulers() {
         }, 60000);
     }, 120000);
 
-    // Agenda Google "Produção": rede de segurança dos pedidos de delivery (a cada 10 min).
-    // Pega qualquer mudança que os ganchos não cobrem (faturamento por sync, aprovação, edição fora do fluxo).
-    // Best-effort e inerte sem agenda configurada.
-    const _runGcalPedidos = () => {
-        require('../services/googleCalendarService').reconciliarPedidosRecentes(30)
-            .catch(err => console.error('⚠️ Worker Agenda Google Error:', err.message));
-    };
-    setTimeout(_runGcalPedidos, 120000);
-    setInterval(_runGcalPedidos, 600000); // 10 minutos
-
     // Conferência de baixas no CA (a cada 30min) — primeira execução 10min após o start
     const _runBaixasPagar = () => {
         contasPagarCaSync.conferirBaixasCA()

@@ -434,6 +434,3 @@ A confirmação do pedido que o cliente recebe no WhatsApp traz **todos os itens
 - Os dashboards e o aging usam a mesma regra de classificação, mas somam todos os títulos vencidos (inclusive de pedidos excluídos/cancelados e sem a tolerância de R$ 1), por isso o total deles pode ser maior que a soma dos selos por cliente.
 
 ---
-
-## Agenda Google "Produção"
-Pedidos de entrega aparecem sozinhos na agenda **Produção** do Google, num evento de dia inteiro na **data de entrega** (título `📦 Pedido #número · cliente · N un`; especial `ZZ#`; bonificação `🎁 BN#`). Entra: pedido normal **faturado**, e especial/bonificação já lançados. Não entra: cancelado, devolução total, cliente balcão e pedido vindo do Kit Festa. Mudou a data de entrega? O evento acompanha. Cancelou, excluiu ou fez devolução total? O evento some. As **observações do pedido** (ex.: "entregar às 08:30") vão na descrição do evento. Detalhes e botão "Sincronizar agora" em Configurações → Agenda Google.

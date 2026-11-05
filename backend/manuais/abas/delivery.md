@@ -132,3 +132,7 @@ Exemplo em uso: o usuário **Produção** foi liberado em 15/10/2026 para ver a 
 ## Pedido grande: mensagens em várias partes (novo — 10/2026)
 
 Nas etapas **Em Produção** (cliente e número interno da equipe) e no reenvio de **Pedido Criado**, o resumo lista todos os itens. Quando o pedido é grande, a mensagem sai **dividida em partes numeradas** ("*(1/2)*", "*(2/2)*"), com o total e as observações perto do fim. A observação sai **sempre inteira** (nunca resumida): se for enorme, o rodapé vai em mensagem(ns) própria(s) e a observação é repartida entre elas sem partir palavras. **Saindo para Entrega** e **Entregue** são sempre uma mensagem curta. A prévia da mensagem na tela continua mostrando o texto completo numa só peça. O reenvio manual de pedido grande pode demorar alguns segundos a mais.
+
+## Agenda Google "Produção" (Kit Festa)
+
+Pedido que veio do **Kit Festa** aparece na agenda Produção do Google com a **etapa do Kanban no título**: Pedido → "A produzir", Em Produção → "Em produção", Saindo para Entrega → "Saiu para entrega", Entregue → "Entregue". **Mover o cartão do Kit Festa de etapa atualiza o evento na agenda** na hora. Pedido Kit Festa cancelado sai da agenda. Pedidos comuns do Delivery não vão para a agenda. Configuração em Configurações → Agenda Google.

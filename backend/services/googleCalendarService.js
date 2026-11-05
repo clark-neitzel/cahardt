@@ -165,15 +165,27 @@ function serializar(chave, fn) {
 // ── Kit Festa ─────────────────────────────────────────────────────────────────
 const soDig = (s) => String(s || '').replace(/\D/g, '');
 
-function montarKitFesta(kp) {
+const ROTULO_ETAPA_KIT = { PEDIDO: 'A produzir', PRODUCAO: 'Em produção', SAINDO: 'Saiu para entrega', ENTREGUE: 'Entregue' };
+/** Status que aparece na agenda: etapa da aba Delivery; sem pedido/etapa ainda → "Aprovado". */
+function statusKitFesta(etapa) { return ROTULO_ETAPA_KIT[etapa] || 'Aprovado'; }
+
+/** Tem pedido mas ainda sem DeliveryStatus → está na 1ª coluna ("A produzir"); sem pedido → null ("Aprovado"). */
+function etapaDoKit(kp, etapaDelivery) { return kp.pedidoId ? (etapaDelivery || 'PEDIDO') : null; }
+/** Sai da agenda: recusado/cancelado, pedido vinculado cancelado, ou CONVERTIDO que perdeu o pedido (excluído). */
+function kitSaiDaAgenda(kp, pedidoCancelado) {
+    return ['RECUSADO', 'CANCELADO'].includes(kp.status) || !!pedidoCancelado || (kp.status === 'CONVERTIDO' && !kp.pedidoId);
+}
+
+function montarKitFesta(kp, etapa) {
     const entrega = String(kp.modo).toLowerCase() === 'entrega';
     const dataYmd = ymd(kp.data);
     const q = quandoEvento(dataYmd, kp.horario);
     const hora = q.hora || String(kp.horario || '').trim();
-    const titulo = `🎉 Kit Festa #${kp.numero} · ${kp.nomeCliente} · ${entrega ? 'Entrega' : 'Retirada'}${hora ? ' ' + hora : ''} · ${kp.totalCaixas} caixa${kp.totalCaixas === 1 ? '' : 's'}`;
+    const status = statusKitFesta(etapa);
+    const titulo = `🎉 Kit Festa #${kp.numero} · ${kp.nomeCliente} · ${entrega ? 'Entrega' : 'Retirada'}${hora ? ' ' + hora : ''} · ${kp.totalCaixas} caixa${kp.totalCaixas === 1 ? '' : 's'} · ${status}`;
     const linhas = [];
     (kp.itens || []).forEach(i => linhas.push(`• ${i.quantidade}x ${i.nomeProduto}${i.opcao ? ` (${i.opcao})` : ''}`));
-    const d = [`Itens:`, ...linhas];
+    const d = [`Status: ${status}`, '', `Itens:`, ...linhas];
     if (kp.telefoneCliente) d.push('', `Telefone: ${kp.telefoneCliente}`);
     if (entrega && kp.enderecoEntrega) d.push(`Endereço: ${kp.enderecoEntrega}`);
     if (kp.observacoes) d.push('', `Obs.: ${kp.observacoes}`);
@@ -182,7 +194,8 @@ function montarKitFesta(kp) {
 
 /**
  * Sincroniza o evento de um pedido Kit Festa com o estado atual:
- *  CONVERTIDO (aprovado) → cria/atualiza; RECUSADO/CANCELADO → apaga; outros → não mexe.
+ *  CONVERTIDO/APROVADO → cria/atualiza com o status da aba Delivery no título; RECUSADO/CANCELADO
+ *  (ou pedido vinculado cancelado) → apaga; outros → não mexe.
  * Nunca lança.
  */
 async function sincronizarKitFesta(id) { return serializar('kf:' + id, () => _sincronizarKitFesta(id)); }
@@ -193,18 +206,29 @@ async function _sincronizarKitFesta(id) {
             select: {
                 id: true, numero: true, status: true, modo: true, data: true, horario: true, nomeCliente: true,
                 telefoneCliente: true, enderecoEntrega: true, observacoes: true, totalCaixas: true, gcalEventId: true,
+                pedidoId: true,
                 itens: { select: { nomeProduto: true, opcao: true, quantidade: true } },
             },
         });
         if (!kp) return { ok: false, motivo: 'nao_encontrado' };
-        if (['RECUSADO', 'CANCELADO'].includes(kp.status)) {
+        // etapa da aba Delivery (se já virou pedido) e se o pedido foi cancelado
+        let etapa = null, pedidoCancelado = false;
+        if (kp.pedidoId) {
+            const [ds, ped] = await Promise.all([
+                prisma.deliveryStatus.findUnique({ where: { pedidoId: kp.pedidoId }, select: { etapa: true } }),
+                prisma.pedido.findUnique({ where: { id: kp.pedidoId }, select: { cancelado: true } }),
+            ]);
+            etapa = etapaDoKit(kp, ds?.etapa);
+            pedidoCancelado = !!ped?.cancelado;
+        }
+        if (kitSaiDaAgenda(kp, pedidoCancelado)) {
             if (!kp.gcalEventId) return { ok: true, nada: true };
             const r = await removerEvento(kp.gcalEventId);
             if (r.ok) await prisma.kitFestaPedido.update({ where: { id }, data: { gcalEventId: null } });
             return r;
         }
         if (kp.status !== 'CONVERTIDO' && kp.status !== 'APROVADO') return { ok: true, nada: true };
-        const novoId = await _upsert(kp.gcalEventId, montarKitFesta(kp));
+        const novoId = await _upsert(kp.gcalEventId, montarKitFesta(kp, etapa));
         if (novoId !== kp.gcalEventId) await prisma.kitFestaPedido.update({ where: { id }, data: { gcalEventId: novoId } });
         return { ok: !!novoId, id: novoId };
     } catch (e) {
@@ -214,10 +238,14 @@ async function _sincronizarKitFesta(id) {
 }
 
 // ── Amostras ──────────────────────────────────────────────────────────────────
+const ROTULO_STATUS_AMOSTRA = { SOLICITADA: 'Solicitada', PREPARACAO: 'Em preparação', LIBERADO: 'Liberada', ENTREGUE: 'Entregue' };
+const STATUS_AMOSTRA_NA_AGENDA = Object.keys(ROTULO_STATUS_AMOSTRA);
+
 function montarAmostra(a) {
+    const status = ROTULO_STATUS_AMOSTRA[a.status] || a.status;
     const quem = a.cliente ? (a.cliente.NomeFantasia || a.cliente.Nome) : (a.lead?.nomeEstabelecimento || 'Sem cliente');
-    const titulo = `🧪 Amostra AM#${a.numero} · ${quem} · ${a.solicitadoPor?.nome || 'Sem vendedor'}`;
-    const d = ['Itens:', ...(a.itens || []).map(i => `• ${Number(i.quantidade)}x ${String(i.nomeProduto).replace(/^Amostra - /, '')}`)];
+    const titulo = `🧪 Amostra AM#${a.numero} · ${quem} · ${a.solicitadoPor?.nome || 'Sem vendedor'} · ${status}`;
+    const d = [`Status: ${status}`, '', 'Itens:', ...(a.itens || []).map(i => `• ${Number(i.quantidade)}x ${String(i.nomeProduto).replace(/^Amostra - /, '')}`)];
     const tel = a.cliente?.Telefone_Celular || a.cliente?.Telefone_Comercial;
     if (tel) d.push('', `Telefone: ${tel}`);
     if (a.cliente?.End_Logradouro) {
@@ -227,7 +255,7 @@ function montarAmostra(a) {
     return { titulo, descricao: d.join('\n'), dataYmd: ymd(a.dataEntrega), horario: null };
 }
 
-/** CANCELADA ou sem data → apaga; senão cria/atualiza. Nunca lança. */
+/** SOLICITADA/PREPARACAO/LIBERADO/ENTREGUE com data entram; CANCELADA ou sem data → apaga. Nunca lança. */
 async function sincronizarAmostra(id) { return serializar('am:' + id, () => _sincronizarAmostra(id)); }
 async function _sincronizarAmostra(id) {
     try {
@@ -242,7 +270,7 @@ async function _sincronizarAmostra(id) {
             },
         });
         if (!a) return { ok: false, motivo: 'nao_encontrada' };
-        if (a.status === 'CANCELADA' || !a.dataEntrega) {
+        if (!STATUS_AMOSTRA_NA_AGENDA.includes(a.status) || !a.dataEntrega) {
             if (!a.gcalEventId) return { ok: true, nada: true };
             const r = await removerEvento(a.gcalEventId);
             if (r.ok) await prisma.amostra.update({ where: { id }, data: { gcalEventId: null } });
@@ -257,20 +285,23 @@ async function _sincronizarAmostra(id) {
     }
 }
 
-// ── Sincronização dos já existentes (pedidos aprovados / amostras em aberto) ──
+// ── Sincronização dos já existentes (Kit Festa aprovado / amostras aprovadas) ─
 let _sincronizando = false;
 const LIMITE_LOTE = 50;
+const pausa = () => new Promise(res => setTimeout(res, 150)); // respeita a cota da API
 
 /**
  * Manda para a agenda o que já existia antes da integração:
- *  Kit Festa aprovado (CONVERTIDO/APROVADO) e Amostra fora de ENTREGUE/CANCELADA (data >= hoje);
- *  Pedidos de delivery elegíveis (ver pedidoElegivel) com data de entrega >= hoje.
+ *  Kit Festa aprovado (CONVERTIDO/APROVADO) e Amostra (SOLICITADA/PREPARACAO/LIBERADO), data >= hoje.
  *
- * Idempotente e em LOTES: cria no máximo `limite` (padrão 50) eventos que ainda não existem por
- * chamada e devolve `restantes` (quantos faltam) — quem chama repete até restantes = 0.
- * Quem já tem evento NÃO volta a chamar o Google (os ganchos e a rotina de conferência mantêm
- * o evento atualizado): conta em `jaExistiam`. Pedido com evento que deixou de ser elegível
- * (devolução total, balcão, cancelado) é apagado da agenda e conta em `removidos`.
+ * Também FAZ A LIMPEZA do que não deve estar na agenda:
+ *  - eventos de PEDIDO de entrega (Pedido.gcalEventId, escopo reprovado em 11/2026): apaga o evento no
+ *    Google e zera a coluna (idempotente: depois de limpo, não encontra mais nada);
+ *  - amostras CANCELADAS que tenham evento.
+ *
+ * Idempotente e em LOTES: faz no máximo `limite` (padrão 50) operações de limpeza e `limite` criações
+ * por chamada e devolve `restantes` (quantas faltam) — quem chama repete até restantes = 0.
+ * Quem já tem evento NÃO volta a chamar o Google: conta em `jaExistiam`.
  * Nunca lança. Devolve { criados, jaExistiam, removidos, erros, errosLista, restantes }.
  */
 async function sincronizarExistentes({ limite = LIMITE_LOTE } = {}) {
@@ -281,65 +312,61 @@ async function sincronizarExistentes({ limite = LIMITE_LOTE } = {}) {
         const c = await _contexto();
         if (!c.cal) return { ...r, motivo: c.motivo, erros: 1, errosLista: [`agenda indisponível: ${c.motivo}`] };
         const hoje = new Date(); hoje.setUTCHours(0, 0, 0, 0);
-        const ontem = new Date(hoje); ontem.setUTCDate(ontem.getUTCDate() - 1); // folga de fuso; corte exato pela data de SP
-        const hojeStr = hojeSP();
-        
-        // 1) o que já tem evento: confere sem chamar o Google (só remove se deixou de valer)
-        const kitsComEvento = await prisma.kitFestaPedido.count({ where: { status: { in: ['CONVERTIDO', 'APROVADO'] }, data: { gte: hoje }, gcalEventId: { not: null } } });
-        const amostrasComEvento = await prisma.amostra.count({ where: { status: { notIn: ['ENTREGUE', 'CANCELADA'] }, dataEntrega: { gte: hoje }, gcalEventId: { not: null } } });
-        r.jaExistiam += kitsComEvento + amostrasComEvento;
+        const lim = Math.max(1, limite);
+        const erro = (rot, x) => { r.erros++; if (r.errosLista.length < 10) r.errosLista.push(`${rot}: ${x?.erro || x?.motivo || 'falha'}`); };
+
+        // 0) limpeza única: eventos de pedido de entrega (não fazem parte da agenda)
         const pedidosComEvento = await prisma.pedido.findMany({
-            where: { gcalEventId: { not: null }, dataVenda: { gte: ontem } },
-            select: { id: true, numero: true }, orderBy: { dataVenda: 'asc' },
+            where: { gcalEventId: { not: null } },
+            select: { id: true, numero: true, gcalEventId: true }, orderBy: { createdAt: 'asc' }, take: lim,
         });
         for (const p of pedidosComEvento) {
-            const x = await sincronizarPedido(p.id, { semAtualizar: true });
-            if (x.semMudanca) r.jaExistiam++;
-            else if (x.ok && !x.nada) { r.removidos++; await new Promise(res => setTimeout(res, 150)); }
-            else if (!x.ok) { r.erros++; if (r.errosLista.length < 10) r.errosLista.push(`Pedido #${p.numero ?? 's/n'}: ${x.erro || x.motivo || 'falha'}`); }
+            const x = await removerEvento(p.gcalEventId); // 404/410 já conta como ok
+            if (x.ok) {
+                await prisma.pedido.update({ where: { id: p.id }, data: { gcalEventId: null } });
+                r.removidos++;
+            } else erro(`Pedido #${p.numero ?? 's/n'}`, x);
+            await pausa();
         }
+        const pedidosFaltam = await prisma.pedido.count({ where: { gcalEventId: { not: null } } });
+
+        // 0b) amostras CANCELADAS que ainda têm evento: apaga
+        const amostrasIndevidas = await prisma.amostra.findMany({
+            where: { status: 'CANCELADA', gcalEventId: { not: null } },
+            select: { id: true, numero: true }, take: lim,
+        });
+        for (const a of amostrasIndevidas) {
+            const x = await sincronizarAmostra(a.id);
+            if (x.ok && !x.nada) r.removidos++; else if (!x.ok) erro(`Amostra AM#${a.numero}`, x);
+            await pausa();
+        }
+        const amostrasIndevidasFaltam = await prisma.amostra.count({ where: { status: 'CANCELADA', gcalEventId: { not: null } } });
+
+        // 1) o que já tem evento: não chama o Google (os ganchos mantêm o evento atualizado)
+        // CONVERTIDO sem pedido (excluído) não é elegível; APROVADO sem pedido é
+        const whereKit = { OR: [{ status: 'APROVADO' }, { status: 'CONVERTIDO', pedidoId: { not: null } }], data: { gte: hoje } };
+        const whereAm = { status: { in: ['SOLICITADA', 'PREPARACAO', 'LIBERADO'] }, dataEntrega: { gte: hoje } };
+        r.jaExistiam += await prisma.kitFestaPedido.count({ where: { ...whereKit, gcalEventId: { not: null } } });
+        r.jaExistiam += await prisma.amostra.count({ where: { ...whereAm, gcalEventId: { not: null } } });
 
         // 2) o que ainda NÃO tem evento (pendentes), em ordem de data, cortado em `limite`
         const kits = await prisma.kitFestaPedido.findMany({
-            where: { status: { in: ['CONVERTIDO', 'APROVADO'] }, data: { gte: hoje }, gcalEventId: null },
-            select: { id: true, numero: true }, orderBy: { data: 'asc' },
+            where: { ...whereKit, gcalEventId: null }, select: { id: true, numero: true }, orderBy: { data: 'asc' },
         });
         const amostras = await prisma.amostra.findMany({
-            where: { status: { notIn: ['ENTREGUE', 'CANCELADA'] }, dataEntrega: { gte: hoje }, gcalEventId: null },
-            select: { id: true, numero: true }, orderBy: { dataEntrega: 'asc' },
-        });
-        const pedidos = await prisma.pedido.findMany({
-            where: {
-                cancelado: false, gcalEventId: null, dataVenda: { gte: ontem },
-                // mesmos filtros de pedidoElegivel, para o lote avançar sem travar em inelegíveis
-                cliente: { OR: [{ gps: null }, { gps: { balcao: false } }] },
-                devolucoes: { none: { status: 'ATIVA', escopo: 'TOTAL' } },
-                AND: [
-                    { OR: [{ canalOrigem: null }, { canalOrigem: { not: 'KIT_FESTA' } }] },
-                    { OR: [{ situacaoCA: 'FATURADO' }, { especial: true, numero: { not: null } }, { bonificacao: true, numero: { not: null } }] },
-                ],
-            },
-            select: { id: true, numero: true, especial: true, bonificacao: true, dataVenda: true }, orderBy: { dataVenda: 'asc' },
+            where: { ...whereAm, gcalEventId: null }, select: { id: true, numero: true }, orderBy: { dataEntrega: 'asc' },
         });
         const pendentes = [
-            ...pedidos.filter(p => dataSP(p.dataVenda) >= hojeStr).map(p => ({
-                rot: `${p.bonificacao ? 'Bonificação BN#' : p.especial ? 'Pedido ZZ#' : 'Pedido #'}${p.numero ?? 's/n'}`,
-                fn: () => sincronizarPedido(p.id),
-            })),
             ...kits.map(k => ({ rot: `Kit Festa #${k.numero}`, fn: () => sincronizarKitFesta(k.id) })),
             ...amostras.map(a => ({ rot: `Amostra AM#${a.numero}`, fn: () => sincronizarAmostra(a.id) })),
         ];
-        const lote = pendentes.slice(0, Math.max(1, limite));
-        r.restantes = pendentes.length - lote.length;
+        const lote = pendentes.slice(0, lim);
+        r.restantes = (pendentes.length - lote.length) + pedidosFaltam + amostrasIndevidasFaltam;
         for (const it of lote) {
             const x = await it.fn();
             if (x && x.nada) continue; // ficou inelegível no meio do caminho: não conta
-            if (x && x.ok && x.id) r.criados++;
-            else {
-                r.erros++;
-                if (r.errosLista.length < 10) r.errosLista.push(`${it.rot}: ${x?.erro || x?.motivo || 'falha'}`);
-            }
-            await new Promise(res => setTimeout(res, 150)); // respeita a cota da API
+            if (x && x.ok && x.id) r.criados++; else erro(it.rot, x);
+            await pausa();
         }
         console.log(`[GoogleCalendar] sincronizarExistentes: ${JSON.stringify({ ...r, lote: lote.length })}`);
         return r;
@@ -362,119 +389,10 @@ async function sincronizarExistentesTudo() {
         total.criados += r.criados; total.removidos += r.removidos; total.erros += r.erros;
         total.errosLista = [...total.errosLista, ...r.errosLista].slice(0, 10);
         total.restantes = r.restantes;
-        if (!r.restantes || !r.criados || r.motivo) break;
+        if (!r.restantes || !(r.criados || r.removidos) || r.motivo) break;
     }
     console.log(`[GoogleCalendar] sincronizarExistentesTudo: ${JSON.stringify(total)}`);
     return total;
-}
-
-// ── Pedidos de delivery (normais, especiais e bonificações) ───────────────────
-const dataSP = (d) => (d ? new Date(d).toLocaleDateString('en-CA', { timeZone: TZ }) : null);
-const hojeSP = () => new Date().toLocaleDateString('en-CA', { timeZone: TZ });
-
-/**
- * Critério de elegibilidade (decisão do dono, 11/2026):
- *  - NÃO cancelado e SEM devolução TOTAL ativa;
- *  - NÃO vindo do Kit Festa (canalOrigem KIT_FESTA — o evento já existe pelo KitFestaPedido);
- *  - cliente NÃO é "balcão" (retira na empresa);
- *  - venda firme: situacaoCA = FATURADO, OU especial já lançado (tem número ZZ#),
- *    OU bonificação já lançada (tem número BN#).
- */
-function pedidoElegivel(p) {
-    if (!p || p.cancelado) return false;
-    if (p.canalOrigem === 'KIT_FESTA') return false;
-    if (p.cliente?.gps?.balcao) return false;
-    if ((p.devolucoes || []).length > 0) return false; // já filtradas: ATIVA + TOTAL
-    if (p.bonificacao) return p.numero != null;
-    if (p.especial) return p.numero != null;
-    return p.situacaoCA === 'FATURADO';
-}
-
-const fmtQtd = (n) => { n = Number(n) || 0; return Number.isInteger(n) ? String(n) : String(Math.round(n * 1000) / 1000).replace('.', ','); };
-
-function montarPedido(p) {
-    const cli = p.cliente?.NomeFantasia || p.cliente?.Nome || 'Sem cliente';
-    const un = (p.itens || []).reduce((s, i) => s + Number(i.quantidade || 0), 0);
-    const num = p.numero != null ? p.numero : 's/n';
-    const rot = p.bonificacao ? `🎁 Bonificação BN#${num}` : `📦 Pedido ${p.especial ? 'ZZ#' : '#'}${num}`;
-    const titulo = `${rot} · ${cli} · ${fmtQtd(un)} un`;
-    const d = ['Itens:', ...(p.itens || []).map(i => `• ${fmtQtd(i.quantidade)}x ${i.produto?.nome || i.descricao || 'Item'}`)];
-    const tel = p.cliente?.Telefone_Celular || p.cliente?.Telefone_Comercial;
-    if (tel) d.push('', `Telefone: ${tel}`);
-    const c = p.cliente || {};
-    if (c.End_Logradouro) d.push(`Endereço: ${[c.End_Logradouro, c.End_Numero, c.End_Bairro, c.End_Cidade].filter(Boolean).join(', ')}`);
-    if (p.vendedor?.nome) d.push(`Vendedor: ${p.vendedor.nome}`);
-    if (p.observacoes) d.push('', `Observações: ${p.observacoes}`);
-    return { titulo, descricao: d.join('\n'), dataYmd: dataSP(p.dataVenda), horario: null };
-}
-
-/**
- * Sincroniza o evento de um pedido com o estado atual: elegível → cria/atualiza (só cria se a
- * data de entrega é de hoje em diante); não elegível (cancelado, devolução total, balcão…) → apaga.
- * Nunca lança.
- */
-async function sincronizarPedido(id, opts = {}) { return serializar('pd:' + id, () => _sincronizarPedido(id, opts)); }
-async function _sincronizarPedido(id, opts = {}) {
-    try {
-        const p = await prisma.pedido.findUnique({
-            where: { id },
-            select: {
-                id: true, numero: true, especial: true, bonificacao: true, situacaoCA: true, cancelado: true,
-                canalOrigem: true, dataVenda: true, observacoes: true, gcalEventId: true,
-                vendedor: { select: { nome: true } },
-                cliente: { select: { NomeFantasia: true, Nome: true, Telefone_Celular: true, Telefone_Comercial: true, End_Logradouro: true, End_Numero: true, End_Bairro: true, End_Cidade: true, gps: { select: { balcao: true } } } },
-                itens: { select: { quantidade: true, descricao: true, produto: { select: { nome: true } } } },
-                devolucoes: { where: { status: 'ATIVA', escopo: 'TOTAL' }, select: { id: true }, take: 1 },
-            },
-        });
-        if (!p) return { ok: true, nada: true };
-        if (!pedidoElegivel(p)) {
-            if (!p.gcalEventId) return { ok: true, nada: true };
-            const r = await removerEvento(p.gcalEventId);
-            if (r.ok) await prisma.pedido.update({ where: { id }, data: { gcalEventId: null } });
-            return r;
-        }
-        if (opts.semAtualizar && p.gcalEventId) return { ok: true, id: p.gcalEventId, semMudanca: true }; // só conferência
-        const dia = dataSP(p.dataVenda);
-        if (!p.gcalEventId && (!dia || dia < hojeSP())) return { ok: true, nada: true }; // entrega passada: não cria
-        const novoId = await _upsert(p.gcalEventId, montarPedido(p));
-        if (novoId !== p.gcalEventId) await prisma.pedido.update({ where: { id }, data: { gcalEventId: novoId } });
-        return { ok: !!novoId, id: novoId };
-    } catch (e) {
-        console.error('[GoogleCalendar] sincronizarPedido:', e?.message || e);
-        return { ok: false, motivo: 'erro', erro: e?.message };
-    }
-}
-
-/** Remove o evento de um pedido que está sendo EXCLUÍDO (chamar com o gcalEventId lido antes do delete). */
-function removerEventoDePedidoExcluido(gcalEventId) {
-    if (gcalEventId) disparar(removerEvento, gcalEventId);
-}
-
-/**
- * Rede de segurança: reconcilia pedidos alterados há pouco (qualquer caminho que mexa em
- * situação/data/cancelamento, inclusive sincronizações), cobrindo o que os ganchos não pegam.
- */
-async function reconciliarPedidosRecentes(minutos = 30, limite = 300) {
-    try {
-        const c = await _contexto();
-        if (!c.cal) return { ok: false, motivo: c.motivo };
-        const desde = new Date(Date.now() - minutos * 60000);
-        const rows = await prisma.pedido.findMany({
-            where: { updatedAt: { gte: desde }, OR: [{ canalOrigem: null }, { canalOrigem: { not: 'KIT_FESTA' } }] },
-            select: { id: true }, orderBy: { updatedAt: 'desc' }, take: limite,
-        });
-        let feitos = 0;
-        for (const r of rows) {
-            const x = await sincronizarPedido(r.id);
-            if (!x.nada) { feitos++; await new Promise(res => setTimeout(res, 150)); }
-        }
-        if (feitos) console.log(`[GoogleCalendar] reconciliarPedidosRecentes: ${feitos} pedido(s) sincronizado(s)`);
-        return { ok: true, verificados: rows.length, sincronizados: feitos };
-    } catch (e) {
-        console.error('[GoogleCalendar] reconciliarPedidosRecentes:', e?.message || e);
-        return { ok: false, erro: e?.message };
-    }
 }
 
 // Disparo "esqueça e siga": nunca bloqueia nem propaga erro ao chamador.
@@ -511,6 +429,6 @@ async function status() {
 module.exports = {
     ESCOPO_CALENDAR, carregarConfig, limparCacheConfig,
     criarEvento, atualizarEvento, removerEvento,
-    sincronizarKitFesta, sincronizarAmostra, sincronizarPedido, removerEventoDePedidoExcluido, reconciliarPedidosRecentes, sincronizarExistentes, sincronizarExistentesTudo, disparar, status,
-    _montarKitFesta: montarKitFesta, _montarPedido: montarPedido, _pedidoElegivel: pedidoElegivel, _montarAmostra: montarAmostra, _quandoEvento: quandoEvento,
+    sincronizarKitFesta, sincronizarAmostra, sincronizarExistentes, sincronizarExistentesTudo, disparar, status,
+    _montarKitFesta: montarKitFesta, _etapaDoKit: etapaDoKit, _kitSaiDaAgenda: kitSaiDaAgenda, _montarAmostra: montarAmostra, _quandoEvento: quandoEvento,
 };

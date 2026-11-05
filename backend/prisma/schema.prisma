@@ -603,7 +603,8 @@ model Pedido {
   baixaCaValor         Decimal?                @map("baixa_ca_valor") @db.Decimal(12, 2) // Valor da baixa realizada
   baixaCaEm            DateTime?               @map("baixa_ca_em")
 
-  // ID do evento na agenda "Produção" do Google Calendar (null = sem evento)
+  // legado — mantido para não dropar a coluna. Pedido de entrega NÃO vai mais para a agenda "Produção"
+  // (escopo reprovado em 11/2026); sincronizarExistentes apaga os eventos antigos e zera este campo.
   gcalEventId String? @map("gcal_event_id")
 
   createdAt DateTime @default(now()) @map("created_at")

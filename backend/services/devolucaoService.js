@@ -1,5 +1,4 @@
 const prisma = require('../config/database');
-const gcal = require('./googleCalendarService'); // agenda Produção (best-effort)
 const estoqueService = require('./estoqueService');
 const { statusParcelaPos, recalcularStatusConta, round2 } = require('./recebimentoEntregaService');
 
@@ -420,7 +419,6 @@ const devolucaoService = {
             console.error(`[Devolucao] Erro ao creditar estoque para devolução ${devolucao.id}:`, err.message);
         }
 
-        gcal.disparar(gcal.sincronizarPedido, pedidoId); // devolução TOTAL apaga o evento (parcial não mexe)
         return devolucao;
     },
 
@@ -502,7 +500,6 @@ const devolucaoService = {
             console.error(`[Devolucao] Erro ao debitar estoque na reversão ${devolucaoId}:`, err.message);
         }
 
-        gcal.disparar(gcal.sincronizarPedido, devolucao.pedidoOriginalId); // reverteu: o evento pode voltar
         return { success: true };
     }
 };

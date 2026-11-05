@@ -1,5 +1,4 @@
 const prisma = require('../config/database');
-const gcal = require('./googleCalendarService'); // agenda Produção (best-effort)
 const { mapaFormaContaEfetiva } = require('./parcelaEfetivaService');
 const promocaoService = require('./promocaoService');
 const clienteInsightService = require('./clienteInsightService');
@@ -435,7 +434,7 @@ const pedidoService = {
         if (querNotaBonif) await exigirClienteAptoParaNota(clienteId);
 
         // A validação de Flex e atualização do vendedor ocorrerá dentro de uma transação
-        const criado = await prisma.$transaction(async (tx) => {
+        return await prisma.$transaction(async (tx) => {
             // Montar os itens com avaliação de promoção e regras de flex por categoria
             let { itensData, flexTotalPedido } = calcularItensComFlex(itens, promocoesAtivas, valorTotalEstimado, regrasCategoria);
 
@@ -569,8 +568,6 @@ const pedidoService = {
 
             return novoPedido;
         }, { timeout: 20000, maxWait: 10000 });
-        gcal.disparar(gcal.sincronizarPedido, criado.id); // agenda Produção: depois do commit, sem bloquear
-        return criado;
     },
 
     editar: async (id, dadosPedido) => {
@@ -604,7 +601,7 @@ const pedidoService = {
             }
         }
 
-        const editado = await prisma.$transaction(async (tx) => {
+        return await prisma.$transaction(async (tx) => {
             const pedidoAntigo = await tx.pedido.findUnique({
                 where: { id },
                 include: { itens: true }
@@ -806,8 +803,6 @@ const pedidoService = {
 
             return pedidoAtualizado;
         }, { timeout: 20000, maxWait: 10000 });
-        gcal.disparar(gcal.sincronizarPedido, id); // agenda Produção: data/estado pode ter mudado
-        return editado;
     },
 
     // 3. Buscar último preço de um produto vendido para um cliente
@@ -1015,7 +1010,7 @@ const pedidoService = {
             ? [...new Set(pedido.itens.map(i => i.produtoId))]
             : (await prisma.pedidoItem.findMany({ where: { pedidoId: id }, select: { produtoId: true } })).map(i => i.produtoId);
 
-        const gcalEventId = pedido.gcalEventId || null;
+        const kitsDoPedido = await prisma.kitFestaPedido.findMany({ where: { pedidoId: id }, select: { id: true } }).catch(() => []);
         const resultado = await prisma.$transaction(async (tx) => {
             // Busca movimentações de SAIDA deste pedido para criar entradas compensatórias
             const saidaMovs = await tx.movimentacaoEstoque.findMany({
@@ -1085,7 +1080,11 @@ const pedidoService = {
             return await tx.pedido.delete({ where: { id } });
         }, { timeout: 20000, maxWait: 10000 });
 
-        gcal.removerEventoDePedidoExcluido(gcalEventId); // agenda Produção (best-effort, fora da transação)
+        // Agenda Produção: Kit Festa que perdeu o pedido volta ao status "Aprovado" (best-effort)
+        try {
+            const gcal = require('./googleCalendarService');
+            kitsDoPedido.forEach(k => gcal.disparar(gcal.sincronizarKitFesta, k.id));
+        } catch (gErr) { console.error('[Pedido] agenda Produção:', gErr.message); }
 
         // Recalcula estoqueReservado/estoqueDisponivel dos produtos afetados
         for (const produtoId of produtosAfetados) {
@@ -1201,7 +1200,15 @@ const pedidoService = {
             }
         }
 
-        gcal.disparar(gcal.sincronizarPedido, id); // agenda Produção: cancelado apaga o evento
+        // Agenda Google Produção: pedido de Kit Festa cancelado tira o evento da agenda (best-effort)
+        try {
+            const kfs = await prisma.kitFestaPedido.findMany({ where: { pedidoId: id }, select: { id: true } });
+            if (kfs.length) {
+                const gcal = require('./googleCalendarService');
+                kfs.forEach(k => gcal.disparar(gcal.sincronizarKitFesta, k.id));
+            }
+        } catch (gErr) { console.error('[Pedido] agenda Produção:', gErr.message); }
+
         return atualizado;
     }
 };

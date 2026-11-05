@@ -513,6 +513,8 @@ router.post('/amostra/:id/concluir', verificarAuth, checkAcessoEntregador, async
                 observacaoEntrega: obsEntrega
             }
         });
+        // Agenda Google Produção: título passa a "Entregue" (best-effort, nunca bloqueia a entrega)
+        try { const gcal = require('../services/googleCalendarService'); gcal.disparar(gcal.sincronizarAmostra, id); } catch (_) { /* agenda é opcional */ }
 
         // Ponto do cadastro: mesma ideia da entrega de pedido.
         //  - CLIENTE sem ponto (ou entrega longe dele) → o app pergunta "está na porta?" e a

@@ -333,6 +333,15 @@ const deliveryService = {
             data: { etapa: novaEtapa, etapaAt: new Date() }
         });
 
+        // Agenda Google Produção: Kit Festa mostra a etapa do Delivery no título (best-effort, fora de transação)
+        try {
+            const kf = await prisma.kitFestaPedido.findFirst({ where: { pedidoId }, select: { id: true } });
+            if (kf) {
+                const gcal = require('./googleCalendarService');
+                gcal.disparar(gcal.sincronizarKitFesta, kf.id);
+            }
+        } catch (gErr) { console.error('[Delivery] agenda Produção:', gErr.message); }
+
         // Dispara webhook bot + WhatsApp cliente (detached, não trava a resposta)
         // Cliente é silenciado quando o card foi marcado para não notificar.
         const skipWhatsapp = !!atual.silenciarWhatsapp;

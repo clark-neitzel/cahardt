@@ -109,7 +109,7 @@ const amostraService = {
             where: { id },
             data: { status: novoStatus }
         });
-        if (novoStatus === 'CANCELADA') gcal.disparar(gcal.sincronizarAmostra, id); // apaga o evento
+        gcal.disparar(gcal.sincronizarAmostra, id); // agenda Produção: cria/atualiza (preparação/liberada) ou apaga (solicitada/cancelada)
         return atualizada;
     },
 

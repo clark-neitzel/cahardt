@@ -108,6 +108,7 @@ export default function AgendaGoogle() {
         setEnviados(0);
         const tot = { criados: 0, jaExistiam: 0, removidos: 0, erros: 0, errosLista: [] };
         let falhouHttp = false;
+        let stalled = false;
         try {
             // O servidor processa em lotes (até 50 por chamada); repete até não sobrar nada.
             for (let i = 0; i < 40; i++) {
@@ -121,8 +122,13 @@ export default function AgendaGoogle() {
                 setEnviados(tot.criados);
                 setResultado({ ...tot, errosLista: [...tot.errosLista] });
                 if (!(Number(d.restantes) > 0)) break;
+                if (!(Number(d.criados) > 0) && !(Number(d.removidos) > 0)) {
+                    toast.error('A sincronização parou: um lote não avançou. Veja os erros abaixo e tente de novo.');
+                    stalled = true;
+                    break;
+                }
             }
-            toast.success('Sincronização concluída.');
+            if (!stalled) toast.success('Sincronização concluída.');
         } catch (e) {
             falhouHttp = true;
             toast.error(e.response?.data?.error || 'A sincronização falhou. Tente novamente.');
@@ -221,7 +227,7 @@ export default function AgendaGoogle() {
                     <span className={TIT}>Sincronizar</span>
                 </div>
                 <div className="p-4 md:p-5 space-y-3">
-                    <p className="text-xs md:text-sm text-gray-600">Envia para a agenda os Kit Festa, amostras e pedidos de entrega que ainda não estão nela. Pode demorar alguns instantes — não feche a tela.</p>
+                    <p className="text-xs md:text-sm text-gray-600">Envia para a agenda os Kit Festa da aba Delivery (com a etapa atual no título) e as amostras (desde a solicitação) que ainda não estão nela. Também tira da agenda o que não deve estar. Pode demorar alguns instantes — não feche a tela.</p>
                     <button type="button" onClick={sincronizar} disabled={!podeMexer || sincronizando || !conectado} className={`${btnPrim} w-full sm:w-auto`}>
                         {sincronizando ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                         {sincronizando ? `Sincronizando… ${enviados} enviados` : 'Sincronizar agenda agora'}

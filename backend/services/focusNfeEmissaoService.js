@@ -588,8 +588,6 @@ async function marcarPedidoFaturado(nota) {
             where: { id: nota.pedidoId, bonificacao: false },
             data: { situacaoCA: 'FATURADO', nfeConsultadoEm: new Date() },
         });
-        // Agenda Produção: pedido faturado vira evento de entrega (best-effort, nunca bloqueia a NF)
-        try { const g = require('./googleCalendarService'); g.disparar(g.sincronizarPedido, nota.pedidoId); } catch (_) { /* segue */ }
     } catch (e) {
         console.error('[FocusNFe] Falha ao marcar pedido faturado:', e.message);
     }
