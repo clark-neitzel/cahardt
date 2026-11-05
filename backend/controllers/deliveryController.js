@@ -106,6 +106,20 @@ module.exports = {
         }
     },
 
+    setHoraEntrega: async (req, res) => {
+        try {
+            const out = await deliveryService.setHoraEntrega({
+                pedidoId: req.params.pedidoId,
+                horaEntrega: req.body?.horaEntrega,
+                user: req.user
+            });
+            res.json(out);
+        } catch (err) {
+            console.error('[Delivery] setHoraEntrega:', err.message);
+            res.status(err.statusHttp || 400).json({ error: err.message });
+        }
+    },
+
     diagnosticar: async (req, res) => {
         try {
             const out = await deliveryService.diagnosticar(req.params.numeroOuId);

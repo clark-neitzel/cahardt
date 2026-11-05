@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Proposta: horário de entrega no pedido</title>
+<style>
+  :root{--primary:#00754A;--primaryDark:#006241;--house:#1E3932;--mint:#d4e9e2;--bg:#f2f0eb;--gold:#cba258;--text:rgba(0,0,0,.87);--muted:#6b7280;--border:#e5e7eb}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Manrope,-apple-system,"SF Pro Text",system-ui,sans-serif;letter-spacing:-.01em;background:var(--bg);color:var(--text)}
+  .topo{position:sticky;top:0;z-index:5;background:var(--house);color:#fff;padding:12px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .topo h1{font-size:15px;margin:0 auto 0 0;font-weight:700}
+  .seg{display:flex;background:rgba(255,255,255,.12);border-radius:999px;padding:3px}
+  .seg button{border:0;background:transparent;color:#fff;padding:6px 14px;border-radius:999px;font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+  .seg button.on{background:#fff;color:var(--house)}
+  .wrap{max-width:1100px;margin:0 auto;padding:16px}
+  .intro{background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:16px;font-size:14px;line-height:1.5}
+  .intro b{color:var(--primaryDark)}
+  .telas{display:grid;gap:16px}
+  .tela{background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:0 1px 2px rgba(0,0,0,.05);overflow:hidden}
+  .tela>.hd{display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid #f3f4f6;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#4b5563}
+  .tela>.bd{padding:16px;background:var(--bg)}
+  .pin{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:999px;background:var(--gold);color:#fff;font-size:11px;font-weight:800;vertical-align:middle;margin-left:6px}
+  .legenda{list-style:none;margin:12px 0 0;padding:0;font-size:13px;color:#374151}
+  .legenda li{display:flex;gap:8px;margin:6px 0;line-height:1.4}.legenda .pin{margin:0;flex:none}
+  .app{background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px;margin:0 auto;transition:max-width .25s}
+  body.desk .app{max-width:720px} body.mob .app{max-width:375px}
+  .lbl{font-size:12px;font-weight:600;color:#374151;margin-bottom:4px}
+  .row{display:grid;gap:10px;grid-template-columns:1fr} body.desk .row{grid-template-columns:1fr 1fr}
+  .inp{border:1px solid #d1d5db;border-radius:6px;padding:8px 10px;font-size:14px;background:#fff;display:flex;justify-content:space-between;align-items:center}
+  .inp.vazio{color:#9ca3af;border-color:#93c5fd}
+  .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .chip{border:1px solid var(--primary);color:var(--primary);background:#fff;border-radius:999px;padding:4px 10px;font-size:12px;font-weight:600}
+  .chip.on{background:var(--primary);color:#fff}
+  .hint{font-size:12px;color:var(--muted);margin-top:6px}
+  .card{border:1px solid var(--border);border-radius:12px;padding:12px;background:#fff}
+  .card .t{font-weight:700;font-size:14px}.card .n{font-size:12px;color:var(--muted)}
+  .pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 10px;font-size:12px;font-weight:600;border:1px solid}
+  .pill.amanha{background:#fef3c7;color:#92400e;border-color:#fcd34d}
+  .pill.hoje{background:#d1fae5;color:#065f46;border-color:#6ee7b7}
+  .itens{font-size:12px;color:#374151;margin:8px 0;border-top:1px solid #f3f4f6;padding-top:8px}
+  .btn{display:block;width:100%;background:var(--house);color:#fff;border-radius:999px;padding:9px;text-align:center;font-weight:700;font-size:13px;margin-top:10px}
+  .relogio{float:right;color:var(--muted);font-size:16px}
+  .gcal{background:#1f1f1f;border-radius:12px;padding:12px;color:#e5e7eb;font-size:12px}
+  .gcal .dia{display:grid;grid-template-columns:52px 1fr;gap:6px}
+  .gcal .h{color:#9ca3af;text-align:right;padding-top:2px}
+  .gcal .slot{height:34px;border-top:1px solid #333}
+  .gcal .ev{background:#c58a35;color:#1f1f1f;border-radius:6px;padding:4px 8px;font-weight:700;font-size:12px;margin:2px 0}
+  .gcal .ev.dia{background:#b56a1f;color:#fff;display:block;margin-bottom:6px}
+  .gcal .ev small{display:block;font-weight:500}
+  .duas{display:grid;gap:12px;grid-template-columns:1fr} body.desk .duas{grid-template-columns:1fr 1fr}
+  .dec{background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-top:16px;font-size:14px}
+  .dec h2{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#4b5563;margin:0 0 8px}
+  .dec ol{margin:0;padding-left:20px;line-height:1.6}
+</style>
+</head>
+<body class="desk">
+<div class="topo">
+  <h1>Proposta · Horário de entrega no pedido</h1>
+  <div class="seg"><button class="on" onclick="modo('desk',this)">Computador</button><button onclick="modo('mob',this)">Celular</button></div>
+</div>
+<div class="wrap">
+  <div class="intro">Um campo <b>opcional</b> de horário no pedido. Quem souber o horário preenche; quem não souber deixa vazio e nada muda. O horário vai para o <b>cartão do Delivery</b>, para a <b>impressão</b> e para a <b>agenda do Google</b> (evento com hora em vez de dia inteiro).</div>
+
+  <div class="telas">
+    <div class="tela">
+      <div class="hd">Tela 1 · Novo pedido / Editar pedido</div>
+      <div class="bd">
+        <div class="app">
+          <div class="row">
+            <div><div class="lbl">Data de entrega <span class="pin">1</span></div><div class="inp">06/11/2026 <span>📅</span></div></div>
+            <div><div class="lbl">Horário (opcional) <span class="pin">2</span></div><div class="inp vazio">--:-- <span>🕒</span></div>
+              <div class="chips"><span class="chip">08:00</span><span class="chip">10:00</span><span class="chip">14:00</span><span class="chip">16:00</span><span class="chip">Outro…</span></div>
+              <div class="hint">Sem horário, a entrega vale o dia todo. <span class="pin">3</span></div>
+            </div>
+          </div>
+        </div>
+        <ul class="legenda">
+          <li><span class="pin">1</span>A data continua igual a hoje.</li>
+          <li><span class="pin">2</span>Campo novo ao lado da data. Atalhos de um toque ou hora livre. Nunca é obrigatório.</li>
+          <li><span class="pin">3</span>Vazio = nada muda em relação a hoje. Pedido do site Kit Festa já chega com o horário escolhido pelo cliente.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="tela">
+      <div class="hd">Tela 2 · Quadro Delivery (cartão)</div>
+      <div class="bd">
+        <div class="app" style="max-width:360px">
+          <div class="card">
+            <span class="relogio" title="Definir horário">🕒<span class="pin">5</span></span>
+            <div class="t">RUDIPEL RUDNICK PETROLEO LTDA</div>
+            <div class="n">Pedido #3969</div>
+            <div style="margin:8px 0"><span class="pill amanha">📅 06/11 · Amanhã · 08:30</span><span class="pin">4</span></div>
+            <div class="n">NORMA RUDNICK, 111, PIRABEIRABA, Joinville</div>
+            <div class="itens">6× BOCADINHO PALMITO C/25-HF<br>6× COXINHA FRANGO C/25-HF</div>
+            <div class="btn">✥ Movimentar ⌄</div>
+          </div>
+        </div>
+        <ul class="legenda">
+          <li><span class="pin">4</span>A pílula da data ganha o horário. Dentro do mesmo dia, os cartões ficam em ordem de horário (sem horário vão para o fim).</li>
+          <li><span class="pin">5</span>Relógio no cartão: a expedição define ou corrige o horário sem abrir o pedido. Salvar atualiza a agenda na hora.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="tela">
+      <div class="hd">Tela 3 · Agenda Produção no Google</div>
+      <div class="bd">
+        <div class="duas">
+          <div class="gcal">
+            <div style="color:#9ca3af;margin-bottom:6px">Hoje — pedido <b style="color:#fff">sem</b> horário</div>
+            <span class="ev dia">📦 Pedido #3981 · RB COMER · 20 un · A produzir</span>
+            <div class="dia"><div class="h">08:00</div><div class="slot"></div><div class="h">09:00</div><div class="slot"></div><div class="h">10:00</div><div class="slot"></div></div>
+          </div>
+          <div class="gcal">
+            <div style="color:#9ca3af;margin-bottom:6px">Depois — pedido <b style="color:#fff">com</b> horário <span class="pin">6</span></div>
+            <div class="dia"><div class="h">08:00</div><div class="slot"><div class="ev">📦 Pedido #3969 · RUDIPEL · 12 un · A produzir<small>08:30 – 09:30</small></div></div><div class="h">09:00</div><div class="slot"></div><div class="h">10:00</div><div class="slot"></div></div>
+          </div>
+        </div>
+        <ul class="legenda">
+          <li><span class="pin">6</span>Com horário o evento entra na hora certa (1 h de duração, como o Kit Festa). Sem horário continua "dia inteiro" no topo, como hoje. Mudar o horário no app move o evento.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="dec">
+    <h2>Decisões que preciso de você</h2>
+    <ol>
+      <li>Duração do evento com hora: <b>1 hora</b> (igual Kit Festa) ou 30 minutos?</li>
+      <li>Quem preenche: <b>qualquer vendedor</b> no pedido, ou só escritório/expedição pelo quadro?</li>
+      <li>Atalhos 08:00 · 10:00 · 14:00 · 16:00 servem, ou prefere outros?</li>
+    </ol>
+    <p style="margin:10px 0 0;color:var(--muted);font-size:13px">Porte médio, cerca de 2 horas da equipe. Nada é removido; pedidos antigos continuam como estão.</p>
+  </div>
+</div>
+<script>
+function modo(m,b){document.body.className=m;document.querySelectorAll('.seg button').forEach(x=>x.classList.remove('on'));b.classList.add('on')}
+</script>
+</body>
+</html>

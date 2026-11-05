@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { MessageCircle, ArrowLeft, Settings, RefreshCw, Send, MessageSquareOff, MessageSquare, Search, ChevronDown, Move, X, AlertCircle, Calendar, Printer } from 'lucide-react';
+import { MessageCircle, ArrowLeft, Settings, RefreshCw, Send, MessageSquareOff, MessageSquare, Search, ChevronDown, Move, X, AlertCircle, Calendar, Printer, Clock } from 'lucide-react';
+import CampoHorarioEntrega, { horaValida } from '../../components/CampoHorarioEntrega';
 import deliveryService from '../../services/deliveryService';
 import { useAuth } from '../../contexts/AuthContext';
 import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
@@ -175,6 +176,40 @@ export default function DeliveryKanban() {
         }
     };
 
+    // Horário de entrega (opcional): relógio no cartão -> PATCH -> atualiza só o card local
+    const [horaCard, setHoraCard] = useState(null);
+    const salvarHoraEntrega = async (card, horaEntrega) => {
+        const hora = horaValida(horaEntrega) ? horaEntrega : null;
+        try {
+            const r = await deliveryService.setHoraEntrega(card.id, hora);
+            const novo = r?.horaEntrega !== undefined ? r.horaEntrega : hora;
+            // Mesma ordem do backend: dia da entrega, depois horário (sem hora por último). ENTREGUE não é reordenada.
+            const dia = (c) => (c.dataVenda ? new Date(c.dataVenda).toISOString().slice(0, 10) : '');
+            const ordenar = (a, b) => {
+                if (dia(a) !== dia(b)) return dia(a) < dia(b) ? -1 : 1;
+                if (a.horaEntrega && b.horaEntrega) return a.horaEntrega.localeCompare(b.horaEntrega);
+                if (a.horaEntrega) return -1;
+                if (b.horaEntrega) return 1;
+                return 0;
+            };
+            setBuckets(prev => {
+                const copy = { ...prev };
+                for (const k of Object.keys(copy)) {
+                    const lista = copy[k].map(c => c.id === card.id ? { ...c, horaEntrega: novo } : c);
+                    // sort estável: empates (mesmo dia/hora) mantêm a ordem que o servidor deu
+                    copy[k] = k !== 'ENTREGUE' && lista.some(c => c.id === card.id) ? [...lista].sort(ordenar) : lista;
+                }
+                return copy;
+            });
+            setPedidoDetalhe(prev => (prev && prev.id === card.id ? { ...prev, horaEntrega: novo } : prev));
+            toast.success(novo ? `Horário ${novo} salvo` : 'Horário removido');
+            return true;
+        } catch (e) {
+            toast.error(e.response?.data?.error || 'Erro ao salvar o horário.');
+            return false;
+        }
+    };
+
     // Aplica filtros texto + data nas 4 colunas
     const filtrados = useMemo(() => {
         const termo = busca.trim().toLowerCase();
@@ -259,6 +294,13 @@ export default function DeliveryKanban() {
                 </div>
             )}
 
+            {horaCard && (
+                <ModalHoraEntrega
+                    card={horaCard}
+                    onClose={() => setHoraCard(null)}
+                    onSalvar={async (h) => { if (await salvarHoraEntrega(horaCard, h)) setHoraCard(null); }}
+                />
+            )}
             {pedidoDetalhe && (
                 <ModalDetalhes card={pedidoDetalhe} onClose={() => setPedidoDetalhe(null)} />
             )}
@@ -304,6 +346,7 @@ export default function DeliveryKanban() {
                                         onReenviar={setPreviaCard}
                                         onToggleSilenciar={toggleSilenciar}
                                         onEtiquetas={imprimirEtiquetas}
+                                        onHora={setHoraCard}
                                         onAbrirDetalhes={() => setPedidoDetalhe(card)}
                                     />
                                 ))}
@@ -321,7 +364,7 @@ export default function DeliveryKanban() {
     );
 }
 
-function Card({ card, perm, moving, onMover, onReenviar, onToggleSilenciar, onAbrirDetalhes, onEtiquetas }) {
+function Card({ card, perm, moving, onMover, onReenviar, onToggleSilenciar, onAbrirDetalhes, onEtiquetas, onHora }) {
     const tel = card.cliente?.Telefone_Celular || card.cliente?.Telefone;
     const wa = whatsappLink(tel);
     const end = [
@@ -356,13 +399,14 @@ function Card({ card, perm, moving, onMover, onReenviar, onToggleSilenciar, onAb
         Futuro: 'bg-gray-100 text-gray-700 border-gray-300'
     }[entrega.label] || 'bg-gray-100 text-gray-700 border-gray-300') : '';
 
-    const entregaTexto = entrega
+    const entregaBase = entrega
         ? entrega.label === 'Atrasado'
             ? `${entrega.dataStr} · Atrasado ${Math.abs(entrega.dias)}d`
             : entrega.label === 'Futuro'
                 ? entrega.dataStr
                 : `${entrega.dataStr} · ${entrega.label}`
         : null;
+    const entregaTexto = entregaBase && card.horaEntrega ? `${entregaBase} · ${card.horaEntrega}` : entregaBase;
 
     const pagBadge = {
         QUITADO: 'bg-green-100 text-green-800',
@@ -407,6 +451,14 @@ function Card({ card, perm, moving, onMover, onReenviar, onToggleSilenciar, onAb
                     )}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onHora(card); }}
+                        title={card.horaEntrega ? `Horário de entrega: ${card.horaEntrega} (clique para alterar)` : 'Definir horário de entrega'}
+                        aria-label="Horário de entrega"
+                        className={`${card.horaEntrega ? 'text-primary' : 'text-gray-500 hover:text-primary'} min-h-[44px] min-w-[44px] -m-3.5 inline-flex items-center justify-center rounded-full hover:bg-gray-100`}
+                    >
+                        <Clock className="h-4 w-4" />
+                    </button>
                     <button
                         onClick={(e) => { e.stopPropagation(); onEtiquetas(card); }}
                         title="Imprimir etiquetas das caixas (impressora de etiquetas)"
@@ -579,7 +631,7 @@ function ModalDetalhes({ card, onClose }) {
                             {cliente.NomeFantasia || cliente.Nome || 'Pedido'}
                         </h3>
                         <p className="text-xs text-gray-500">
-                            Pedido #{card.numero || '—'} · Entrega {dataVendaStr} · {LABELS[card.etapa]}
+                            Pedido #{card.numero || '—'} · Entrega {dataVendaStr}{card.horaEntrega ? ` · ${card.horaEntrega}` : ''} · {LABELS[card.etapa]}
                         </p>
                     </div>
                     <button onClick={onClose} className="text-gray-400 hover:text-gray-700 shrink-0 ml-2">
@@ -684,6 +736,50 @@ function ModalDetalhes({ card, onClose }) {
                 <div className="px-5 py-3 border-t bg-gray-50 flex justify-end">
                     <button onClick={onClose} className="px-4 py-1.5 text-sm border rounded-md bg-white hover:bg-gray-100">
                         Fechar
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// Popover pequeno (modal centralizado, funciona igual no celular) para acertar o horário da entrega
+function ModalHoraEntrega({ card, onClose, onSalvar }) {
+    const [hora, setHora] = useState(card.horaEntrega || '');
+    const [salvando, setSalvando] = useState(false);
+    const nome = card.cliente?.NomeFantasia || card.cliente?.Nome || 'Pedido';
+    const salvar = async (valor) => {
+        setSalvando(true);
+        try { await onSalvar(valor); } finally { setSalvando(false); }
+    };
+    return (
+        <div onClick={onClose} className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+            <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-xl shadow-xl w-full max-w-sm p-4">
+                <div className="flex items-start justify-between gap-2 mb-3">
+                    <div className="min-w-0">
+                        <h3 className="text-sm font-bold uppercase tracking-widest text-gray-600">Horário de entrega</h3>
+                        <p className="text-xs text-gray-500 truncate">{nome}{card.numero ? ` · Pedido #${card.numero}` : ''}</p>
+                    </div>
+                    <button onClick={onClose} aria-label="Fechar" className="text-gray-500 hover:text-gray-700 min-h-[44px] min-w-[44px] -m-3 inline-flex items-center justify-center shrink-0">
+                        <X className="h-5 w-5" />
+                    </button>
+                </div>
+                <CampoHorarioEntrega value={hora} onChange={setHora} />
+                <p className="text-xs text-gray-500 mt-2">Sem horário, a entrega vale o dia todo.</p>
+                <div className="flex gap-2 mt-4">
+                    <button
+                        onClick={() => salvar(null)}
+                        disabled={salvando || !card.horaEntrega}
+                        className="min-h-[44px] px-4 rounded-full border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-40"
+                    >
+                        Limpar
+                    </button>
+                    <button
+                        onClick={() => salvar(hora || null)}
+                        disabled={salvando || (hora || '') === (card.horaEntrega || '')}
+                        className="flex-1 min-h-[44px] px-4 rounded-full bg-primary hover:bg-primaryDark text-white text-sm font-semibold shadow-sm disabled:opacity-50"
+                    >
+                        {salvando ? 'Salvando...' : 'Salvar'}
                     </button>
                 </div>
             </div>

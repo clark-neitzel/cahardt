@@ -187,7 +187,7 @@ const PedidoCupom = ({ pedido, isLast }) => {
                     <p style={{ margin: '3px 0', fontSize: '12px' }}><strong>End.:</strong> {fmtEndereco(pedido.cliente)}</p>
                 )}
                 <p style={{ margin: '3px 0' }}><strong>Emissao:</strong> {fmtData(pedido.createdAt)}</p>
-                <p style={{ margin: '3px 0' }}><strong>Entrega:</strong> {fmtData(pedido.dataVenda)}</p>
+                <p style={{ margin: '3px 0' }}><strong>Entrega:</strong> {fmtData(pedido.dataVenda)}{pedido.horaEntrega ? ` ${pedido.horaEntrega}` : ''}</p>
                 <p style={{ margin: '3px 0' }}><strong>Vendedor:</strong> {pedido.vendedor?.nome || '-'}</p>
             </div>
 
@@ -487,7 +487,7 @@ const ImpressaoPedido = () => {
         // Dados do cliente
         dados.push(`Cliente: ${pedido.cliente?.NomeFantasia || pedido.cliente?.Nome || '-'}\n`);
         dados.push(`Emissao: ${fmtData(pedido.createdAt)}\n`);
-        dados.push(`Entrega: ${fmtData(pedido.dataVenda)}\n`);
+        dados.push(`Entrega: ${fmtData(pedido.dataVenda)}${pedido.horaEntrega ? ' ' + pedido.horaEntrega : ''}\n`);
         dados.push(`Vendedor: ${pedido.vendedor?.nome || '-'}\n`);
         dados.push(sep + '\n');
 

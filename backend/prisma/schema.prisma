@@ -501,6 +501,7 @@ model Pedido {
   id                     String    @id @default(uuid())
   numero                 Int? // Preenchido ao gerar número no CA
   dataVenda              DateTime  @map("data_venda") // Data para entrega (vendedor escolhe)
+  horaEntrega            String?   @map("hora_entrega") // horário de entrega opcional, "HH:MM" (agenda Google: o evento termina nele)
   observacoes            String?   @db.Text
   idContaFinanceira      String?   @map("id_conta_financeira")
   idCategoria            String?   @map("id_categoria")

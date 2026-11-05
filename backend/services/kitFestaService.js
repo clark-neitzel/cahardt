@@ -1140,6 +1140,7 @@ const kitFestaService = {
             clienteId,
             vendedorId: vendedorId || null,
             dataVenda: dataVenda || kp.data,
+            horaEntrega: /^([01]\d|2[0-3]):[0-5]\d$/.test(String(kp.horario || '').trim()) ? String(kp.horario).trim() : null, // horário do site = hora da entrega
             observacoes: `Kit Festa #${kp.numero}${kp.observacoes ? ` · ${kp.observacoes}` : ''}`,
             especial,
             bonificacao,

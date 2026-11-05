@@ -262,6 +262,7 @@ const deliveryService = {
                 situacaoCA: p.situacaoCA,
                 statusEnvio: p.statusEnvio,
                 dataVenda: p.dataVenda,
+                horaEntrega: p.horaEntrega || null,
                 cliente: p.cliente,
                 vendedor: p.vendedor,
                 itens: p.itens.map(i => ({
@@ -286,6 +287,15 @@ const deliveryService = {
             const aAtrasado = new Date(a.dataVenda) <= agora;
             const bAtrasado = new Date(b.dataVenda) <= agora;
             if (aAtrasado !== bAtrasado) return aAtrasado ? -1 : 1; // atrasados/hoje primeiro
+            // Dentro do MESMO dia de entrega, ordena pelo horário (HH:MM, texto compara certo);
+            // pedido sem horário vai por último do dia. (dataVenda é gravada às 12:00Z, então
+            // o "dia" é a parte YYYY-MM-DD — comparar o timestamp inteiro também serve.)
+            const diaA = new Date(a.dataVenda).toISOString().slice(0, 10);
+            const diaB = new Date(b.dataVenda).toISOString().slice(0, 10);
+            if (diaA !== diaB) return new Date(a.dataVenda) - new Date(b.dataVenda);
+            if (a.horaEntrega && b.horaEntrega) return a.horaEntrega.localeCompare(b.horaEntrega);
+            if (a.horaEntrega) return -1;
+            if (b.horaEntrega) return 1;
             return new Date(a.dataVenda) - new Date(b.dataVenda);
         };
 
@@ -450,6 +460,25 @@ const deliveryService = {
             where: { pedidoId },
             data: { silenciarWhatsapp: !!silenciar }
         });
+    },
+
+    // Ajusta só o horário de entrega do pedido (relógio no cartão do quadro). Mesma permissão de ver o quadro.
+    setHoraEntrega: async ({ pedidoId, horaEntrega, user }) => {
+        const perm = await deliveryService.permissaoDoUsuario(user);
+        if (!perm.podeVer) throw Object.assign(new Error('Sem permissão para Delivery.'), { statusHttp: 403 });
+        if (horaEntrega === undefined) throw Object.assign(new Error('Informe horaEntrega (ou null para limpar).'), { statusHttp: 400 });
+        const hora = require('./pedidoService').normalizarHoraEntrega(horaEntrega); // 400 se inválido
+        const existe = await prisma.pedido.findUnique({ where: { id: pedidoId }, select: { id: true } });
+        if (!existe) throw Object.assign(new Error('Pedido não encontrado.'), { statusHttp: 404 });
+        await prisma.pedido.update({ where: { id: pedidoId }, data: { horaEntrega: hora } });
+        // Agenda Produção (best-effort, fora de transação): o evento termina no novo horário
+        try {
+            const gcal = require('./googleCalendarService');
+            const kf = await prisma.kitFestaPedido.findFirst({ where: { pedidoId }, select: { id: true } });
+            if (kf) gcal.disparar(gcal.sincronizarKitFesta, kf.id);
+            gcal.disparar(gcal.sincronizarPedidoDelivery, pedidoId);
+        } catch (gErr) { console.error('[Delivery] agenda Produção (hora):', gErr.message); }
+        return { ok: true, horaEntrega: hora };
     },
 
     // Diagnóstico: por que esse pedido aparece (ou não) no Kanban?

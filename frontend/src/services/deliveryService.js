@@ -27,6 +27,8 @@ const deliveryService = {
         (await api.patch(`/delivery/pedidos/${pedidoId}/etapa`, { novaEtapa })).data,
     setSilenciarWhatsapp: async (pedidoId, silenciar) =>
         (await api.patch(`/delivery/pedidos/${pedidoId}/silenciar-whatsapp`, { silenciar })).data,
+    setHoraEntrega: async (pedidoId, horaEntrega) =>
+        (await api.patch(`/delivery/pedidos/${pedidoId}/hora-entrega`, { horaEntrega })).data,
     reenviar: async (pedidoId) =>
         (await api.post(`/delivery/pedidos/${pedidoId}/reenviar`)).data,
     previaMensagem: async (pedidoId) =>

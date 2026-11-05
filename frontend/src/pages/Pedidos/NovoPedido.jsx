@@ -28,6 +28,7 @@ import { rotuloFormaAConfirmar } from '../../components/SeloInadimplencia';
 import { normalizarDoc } from '../../utils/documento'; // busca por CPF/CNPJ (inclui alfanumérico)
 import { chaveBusca } from '../../utils/cidade'; // busca sem acento/caixa ("pao" acha "Pão")
 import { temTecladoFisico } from '../../utils/dispositivo';
+import CampoHorarioEntrega, { horaValida } from '../../components/CampoHorarioEntrega';
 import CampoNumero from '../../components/CampoNumero'; // só devolve foco à busca em dispositivo com mouse/teclado (toque abre teclado virtual e rola a tela)
 
 const DIA_SEMANA_MAP = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
@@ -42,8 +43,8 @@ const normalizarTexto = (v) => String(v || '').normalize('NFD').replace(/[\u0300
 const produtoPermiteFracao = (produto, ehEspecial) => {
     if (produto?.categoriaProduto?.permiteFracao) return true;
     if (!ehEspecial) return false;
-    const un = String(produto?.unidade || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase();
     if (CATEGORIAS_ESTOQUE_FRACIONAVEIS_ESPECIAL.includes(normalizarTexto(produto?.categoria))) return true;
+    const un = String(produto?.unidade || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase();
     return UNIDADES_FRACIONAVEIS_ESPECIAL.includes(un);
 };
 
@@ -189,6 +190,7 @@ const NovoPedido = () => {
     const [vendedorId, setVendedorId] = useState(null);
     const [condicaoPagamentoId, setCondicaoPagamentoId] = useState('');
     const [dataEntrega, setDataEntrega] = useState('');
+    const [horaEntrega, setHoraEntrega] = useState(''); // 'HH:MM' opcional
     const [valorFrete, setValorFrete] = useState('');
     const [dataSugerida, setDataSugerida] = useState('');
     const [isEncaixe, setIsEncaixe] = useState(false);
@@ -349,6 +351,7 @@ const NovoPedido = () => {
                             setDataEntrega(pd.dataVenda.split('T')[0]);
                             dataEntregaOriginalRef.current = pd.dataVenda.split('T')[0];
                         }
+                        if (pd.horaEntrega) setHoraEntrega(pd.horaEntrega);
                         if (pd.valorFrete != null) setValorFrete(String(pd.valorFrete));
                         if (pd.canalOrigem) setCanalOrigem(pd.canalOrigem);
                         // Reencontrar a condição pelo NOME gravado (tipo+opção não são únicos:
@@ -1294,6 +1297,7 @@ const NovoPedido = () => {
         const payload = {
             clienteId, vendedorId,
             dataVenda: new Date(dataEntrega + 'T12:00:00Z').toISOString(),
+            horaEntrega: horaValida(horaEntrega) ? horaEntrega : null,
             observacoes: obsFinal,
             tipoPagamento: condicaoSelecionada?.tipoPagamento,
             opcaoCondicaoPagamento: condicaoSelecionada?.opcaoCondicao,
@@ -2191,6 +2195,8 @@ const NovoPedido = () => {
                                                 </button>
                                             </p>
                                         )}
+<div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-start">
+<div>
                                         <div className="relative mt-0.5">
                                             <input
                                                 type="date"
@@ -2201,6 +2207,13 @@ const NovoPedido = () => {
                                                 onClick={e => { try { if (e.target.showPicker) e.target.showPicker(); } catch (err) { } }}
                                             />
                                         </div>
+</div>
+<div>
+<label className="text-xs text-gray-500 font-medium">Horário <span className="text-gray-500">(opcional)</span></label>
+<CampoHorarioEntrega value={horaEntrega} onChange={setHoraEntrega} className="mt-1" />
+</div>
+</div>
+<p className="text-xs text-gray-500 mt-1">Sem horário, a entrega vale o dia todo.</p>
                                         {dataEntrega && validarDataEntrega(dataEntrega) && (
                                             <p className="text-xs text-red-600 font-semibold mt-1 bg-red-50 rounded px-2 py-1 border border-red-200">
                                                 {validarDataEntrega(dataEntrega)}
@@ -2747,7 +2760,7 @@ const NovoPedido = () => {
                                 <div>
                                     <p className="text-[10px] text-gray-400 uppercase font-semibold tracking-wide mb-1">Entrega</p>
                                     <p className="text-sm font-semibold text-gray-900">
-                                        {dataEntrega ? new Date(dataEntrega + 'T12:00:00').toLocaleDateString('pt-BR') : '—'}
+                                        {dataEntrega ? new Date(dataEntrega + 'T12:00:00').toLocaleDateString('pt-BR') : '—'}{dataEntrega && horaValida(horaEntrega) ? ` ${horaEntrega}` : ''}
                                     </p>
                                 </div>
                                 <div>

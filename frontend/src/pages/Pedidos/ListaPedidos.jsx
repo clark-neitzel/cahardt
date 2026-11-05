@@ -1401,7 +1401,7 @@ const ListaPedidos = () => {
                                     {/* Linha 2: infos */}
                                     <div className="flex flex-col gap-0.5 text-[11px] text-gray-500 mb-2 pl-0">
                                         <div className="flex items-center gap-1 font-medium flex-wrap">
-                                            <span className="text-gray-800">Entrega: {pedido.dataVenda ? new Date(pedido.dataVenda).toLocaleDateString('pt-BR') : '-'}</span>
+                                            <span className="text-gray-800">Entrega: {pedido.dataVenda ? new Date(pedido.dataVenda).toLocaleDateString('pt-BR') : '-'}{pedido.dataVenda && pedido.horaEntrega ? ` ${pedido.horaEntrega}` : ''}</span>
                                             <span className="text-gray-300">|</span>
                                             <span>Criação: {new Date(pedido.createdAt).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })} {new Date(pedido.createdAt).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' })}</span>
                                             {pedido.usuarioLancamento?.nome && (
@@ -1912,7 +1912,7 @@ const ListaPedidos = () => {
                             </div>
 
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
-                                <div><p className="text-[10px] uppercase font-bold text-gray-500">Entrega</p><p className="font-bold">{new Date(selectedPedido.dataVenda).toLocaleDateString('pt-BR')}</p></div>
+                                <div><p className="text-[10px] uppercase font-bold text-gray-500">Entrega</p><p className="font-bold">{new Date(selectedPedido.dataVenda).toLocaleDateString('pt-BR')}{selectedPedido.horaEntrega ? ` ${selectedPedido.horaEntrega}` : ''}</p></div>
                                 <div><p className="text-[10px] uppercase font-bold text-gray-500">Emissão</p><p className="font-medium">{new Date(selectedPedido.createdAt).toLocaleDateString('pt-BR')}</p></div>
                                 <div className="col-span-2"><p className="text-[10px] uppercase font-bold text-gray-500">Pagamento</p><p className="font-medium">{selectedPedido.nomeCondicaoPagamento || 'N/D'}</p></div>
                             </div>

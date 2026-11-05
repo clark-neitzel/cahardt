@@ -18,6 +18,7 @@ router.get('/debug/:numeroOuId', ctrl.diagnosticar);
 router.get('/pedidos', ctrl.listarPedidos);
 router.patch('/pedidos/:pedidoId/etapa', ctrl.moverEtapa);
 router.patch('/pedidos/:pedidoId/silenciar-whatsapp', ctrl.setSilenciarWhatsapp);
+router.patch('/pedidos/:pedidoId/hora-entrega', ctrl.setHoraEntrega);
 router.post('/pedidos/:pedidoId/reenviar', ctrl.reenviar);
 router.get('/pedidos/:pedidoId/previa-mensagem', ctrl.previaMensagem);
 

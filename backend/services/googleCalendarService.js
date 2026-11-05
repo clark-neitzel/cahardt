@@ -17,7 +17,13 @@ const prisma = require('../config/database');
 const gdrive = require('./googleDriveService');
 
 const TZ = 'America/Sao_Paulo';
-const DURACAO_PADRAO_MIN = 60;
+// Regra da agenda Produção (decisão do dono, 05/11/2026): o evento TERMINA na hora da entrega e começa
+// `duracaoMin(unidades)` antes (= a hora de começar a produzir). Constantes num lugar só.
+const PREPARO_MIN = 20;        // preparo fixo, em minutos
+const MIN_POR_UNIDADE = 1.5;   // minutos por unidade (soma das quantidades dos itens)
+function duracaoMin(unidades) {
+    return PREPARO_MIN + Math.ceil((Number(unidades) || 0) * MIN_POR_UNIDADE);
+}
 const ESCOPO_CALENDAR = 'https://www.googleapis.com/auth/calendar.events';
 
 let _cfgCache = null;
@@ -60,25 +66,32 @@ function ymd(d) {
     return dt.toISOString().slice(0, 10); // colunas de data guardam meia-noite UTC
 }
 
-function somaMinutos(hhmm, min) {
-    const [h, m] = hhmm.split(':').map(Number);
-    const t = Math.min(h * 60 + m + min, 23 * 60 + 59);
-    return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`;
-}
+const hhmm = (t) => `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`;
 
-// Com hora → evento marcado (1h); sem hora → evento de dia inteiro.
-function quandoEvento(dataYmd, horario) {
+// Com hora → evento marcado que TERMINA nela e começa `duracao` min antes (travado em 00:00 do mesmo dia);
+// sem hora → evento de dia inteiro.
+function quandoEvento(dataYmd, horario, duracao = PREPARO_MIN) {
     const m = String(horario || '').match(/(\d{1,2}):(\d{2})/);
     if (m) {
-        const ini = `${m[1].padStart(2, '0')}:${m[2]}`;
+        const fim = `${m[1].padStart(2, '0')}:${m[2]}`;
+        const fimMin = Number(m[1]) * 60 + Number(m[2]);
+        const iniMin = Math.max(0, fimMin - Math.max(1, Math.round(Number(duracao) || PREPARO_MIN)));
+        const fimReal = fimMin > iniMin ? fim : hhmm(iniMin + 15); // 00:00 de entrega: evita evento de duração zero
+        const ini = hhmm(iniMin);
         return {
             start: { dateTime: `${dataYmd}T${ini}:00`, timeZone: TZ },
-            end: { dateTime: `${dataYmd}T${somaMinutos(ini, DURACAO_PADRAO_MIN)}:00`, timeZone: TZ },
-            hora: ini,
+            end: { dateTime: `${dataYmd}T${fimReal}:00`, timeZone: TZ },
+            hora: fim,      // hora da ENTREGA
+            inicio: ini,    // hora de começar a produzir
         };
     }
     const prox = new Date(`${dataYmd}T00:00:00Z`); prox.setUTCDate(prox.getUTCDate() + 1);
-    return { start: { date: dataYmd }, end: { date: prox.toISOString().slice(0, 10) }, hora: null };
+    return { start: { date: dataYmd }, end: { date: prox.toISOString().slice(0, 10) }, hora: null, inicio: null };
+}
+
+// Linha da descrição: "Entrega: 14:00 · Começar a produzir: 13:30" ou "Entrega: dia inteiro"
+function linhaEntrega(q, rotulo = 'Entrega') {
+    return q.hora ? `${rotulo}: ${q.hora} · Começar a produzir: ${q.inicio}` : `${rotulo}: dia inteiro`;
 }
 
 // ── Operações de baixo nível (nunca lançam) ───────────────────────────────────
@@ -91,11 +104,11 @@ async function _contexto() {
 }
 
 /** Cria o evento. Devolve { ok, id } */
-async function criarEvento({ titulo, descricao, dataYmd, horario }) {
+async function criarEvento({ titulo, descricao, dataYmd, horario, duracaoMin: dur }) {
     try {
         const c = await _contexto();
         if (!c.cal) return { ok: false, motivo: c.motivo };
-        const q = quandoEvento(dataYmd, horario);
+        const q = quandoEvento(dataYmd, horario, dur);
         const requestBody = { summary: titulo, description: descricao || '', start: q.start, end: q.end };
         console.log('[GoogleCalendar] events.insert', JSON.stringify({ calendarId: c.calendarId, summary: titulo }));
         const r = await c.cal.events.insert({ calendarId: c.calendarId, requestBody });
@@ -107,11 +120,11 @@ async function criarEvento({ titulo, descricao, dataYmd, horario }) {
 }
 
 /** Atualiza o evento. Se ele não existe mais na agenda (404/410), devolve { ok:false, naoExiste:true }. */
-async function atualizarEvento(eventId, { titulo, descricao, dataYmd, horario }) {
+async function atualizarEvento(eventId, { titulo, descricao, dataYmd, horario, duracaoMin: dur }) {
     try {
         const c = await _contexto();
         if (!c.cal) return { ok: false, motivo: c.motivo };
-        const q = quandoEvento(dataYmd, horario);
+        const q = quandoEvento(dataYmd, horario, dur);
         const requestBody = { summary: titulo, description: descricao || '', start: q.start, end: q.end };
         console.log('[GoogleCalendar] events.update', JSON.stringify({ calendarId: c.calendarId, eventId, summary: titulo }));
         const r = await c.cal.events.update({ calendarId: c.calendarId, eventId, requestBody });
@@ -181,17 +194,22 @@ function kitSaiDaAgenda(kp, pedidoCancelado) {
 function montarKitFesta(kp, etapa) {
     const entrega = String(kp.modo).toLowerCase() === 'entrega';
     const dataYmd = ymd(kp.data);
-    const q = quandoEvento(dataYmd, kp.horario);
-    const hora = q.hora || String(kp.horario || '').trim();
+    const totalUn = (kp.itens || []).reduce((a, i) => a + (Number(i.quantidade) || 0), 0);
+    const dur = duracaoMin(totalUn);
+    // Horário = FIM do evento. Se o kit já virou pedido, o horário do PEDIDO manda (relógio do Delivery/edição);
+    // pedido sem horário cai no horário escolhido no site.
+    const horarioEvento = (kp.pedido && kp.pedido.horaEntrega) || kp.horario;
+    const q = quandoEvento(dataYmd, horarioEvento, dur);
+    const hora = q.hora || String(horarioEvento || '').trim();
     const status = statusKitFesta(etapa);
     const titulo = `🎉 Kit Festa #${kp.numero} · ${kp.nomeCliente} · ${entrega ? 'Entrega' : 'Retirada'}${hora ? ' ' + hora : ''} · ${kp.totalCaixas} caixa${kp.totalCaixas === 1 ? '' : 's'} · ${status}`;
     const linhas = [];
     (kp.itens || []).forEach(i => linhas.push(`• ${i.quantidade}x ${i.nomeProduto}${i.opcao ? ` (${i.opcao})` : ''}`));
-    const d = [`Status: ${status}`, '', `Itens:`, ...linhas];
+    const d = [`Status: ${status}`, linhaEntrega(q, entrega ? 'Entrega' : 'Retirada'), '', `Itens:`, ...linhas];
     if (kp.telefoneCliente) d.push('', `Telefone: ${kp.telefoneCliente}`);
     if (entrega && kp.enderecoEntrega) d.push(`Endereço: ${kp.enderecoEntrega}`);
     if (kp.observacoes) d.push('', `Obs.: ${kp.observacoes}`);
-    return { titulo, descricao: d.join('\n'), dataYmd, horario: kp.horario };
+    return { titulo, descricao: d.join('\n'), dataYmd, horario: horarioEvento, duracaoMin: dur };
 }
 
 /**
@@ -209,6 +227,7 @@ async function _sincronizarKitFesta(id) {
                 id: true, numero: true, status: true, modo: true, data: true, horario: true, nomeCliente: true,
                 telefoneCliente: true, enderecoEntrega: true, observacoes: true, totalCaixas: true, gcalEventId: true,
                 pedidoId: true,
+                pedido: { select: { horaEntrega: true, cancelado: true } },
                 itens: { select: { nomeProduto: true, opcao: true, quantidade: true } },
             },
         });
@@ -313,8 +332,10 @@ function montarPedidoDelivery(p, etapa) {
     const totalUn = itens.reduce((a, i) => a + (Number(i.quantidade) || 0), 0);
     const cli = p.cliente || {};
     const nome = cli.NomeFantasia || cli.Nome || 'Sem cliente';
-    const titulo = `${rotuloPedidoDelivery(p)} · ${nome} · ${fmtQtd(totalUn)} un · ${status}`;
-    const d = [`Status: ${status}`, '', 'Itens:', ...itens.map(i => `• ${fmtQtd(i.quantidade)}x ${i.produto?.nome || i.descricao || 'Item'}`)];
+    const dur = duracaoMin(totalUn);
+    const q = quandoEvento(ymd(p.dataVenda), p.horaEntrega, dur);
+    const titulo = `${rotuloPedidoDelivery(p)} · ${nome} · ${fmtQtd(totalUn)} un${q.hora ? ' · ' + q.hora : ''} · ${status}`;
+    const d = [`Status: ${status}`, linhaEntrega(q), '', 'Itens:', ...itens.map(i => `• ${fmtQtd(i.quantidade)}x ${i.produto?.nome || i.descricao || 'Item'}`)];
     const tel = cli.Telefone_Celular || cli.Telefone || cli.Telefone_Comercial;
     if (tel) d.push('', `Telefone: ${tel}`);
     if (cli.End_Logradouro) {
@@ -322,7 +343,7 @@ function montarPedidoDelivery(p, etapa) {
     }
     if (p.vendedor?.nome) d.push(`Vendedor: ${p.vendedor.nome}`);
     if (p.observacoes) d.push('', `Obs.: ${p.observacoes}`);
-    return { titulo, descricao: d.join('\n'), dataYmd: ymd(p.dataVenda), horario: null };
+    return { titulo, descricao: d.join('\n'), dataYmd: ymd(p.dataVenda), horario: p.horaEntrega || null, duracaoMin: dur };
 }
 
 /** where do quadro Delivery (mesmas cláusulas do kanban) ou null se não há categoria ativa. Lazy require: sem ciclo. */
@@ -376,7 +397,7 @@ async function _sincronizarPedidoDelivery(id) {
             prisma.pedido.findUnique({
                 where: { id },
                 select: {
-                    id: true, numero: true, canalOrigem: true, bonificacao: true, especial: true, dataVenda: true, observacoes: true,
+                    id: true, numero: true, canalOrigem: true, bonificacao: true, especial: true, dataVenda: true, horaEntrega: true, observacoes: true,
                     cliente: { select: { Nome: true, NomeFantasia: true, Telefone: true, Telefone_Celular: true, Telefone_Comercial: true, End_Logradouro: true, End_Numero: true, End_Bairro: true, End_Cidade: true } },
                     vendedor: { select: { nome: true } },
                     itens: { select: { quantidade: true, descricao: true, produto: { select: { nome: true } } } },
@@ -387,7 +408,7 @@ async function _sincronizarPedidoDelivery(id) {
         if (!p || !ds) return { ok: true, nada: true };
         const dados = montarPedidoDelivery(p, ds.etapa);
         if (!dados.dataYmd) return { ok: true, nada: true };
-        const sig = JSON.stringify([dados.titulo, dados.descricao, dados.dataYmd]);
+        const sig = JSON.stringify([dados.titulo, dados.descricao, dados.dataYmd, dados.horario, dados.duracaoMin]);
         if (atual.gcalEventId && _sigPedido.get(id) === sig) return { ok: true, nada: true, igual: true, id: atual.gcalEventId };
         const { id: novoId, ok: enviou } = await _upsertR(atual.gcalEventId, dados);
         if (novoId && enviou) _sigPedido.set(id, sig); // só memoriza se o Google confirmou: senão a próxima rodada tenta de novo
@@ -631,5 +652,6 @@ module.exports = {
     ESCOPO_CALENDAR, carregarConfig, limparCacheConfig,
     criarEvento, atualizarEvento, removerEvento,
     sincronizarKitFesta, sincronizarAmostra, sincronizarPedidoDelivery, reconciliarQuadroDelivery, sincronizarExistentes, sincronizarExistentesTudo, disparar, status,
+    duracaoMin, PREPARO_MIN, MIN_POR_UNIDADE,
     _montarKitFesta: montarKitFesta, _etapaDoKit: etapaDoKit, _kitSaiDaAgenda: kitSaiDaAgenda, _montarAmostra: montarAmostra, _montarPedidoDelivery: montarPedidoDelivery, _idsNoQuadro, _quandoEvento: quandoEvento,
 };

@@ -389,6 +389,8 @@ const pedidoController = {
     criar: async (req, res) => {
         try {
             const dadosPedido = req.body;
+            try { pedidoService.normalizarHoraEntrega(dadosPedido.horaEntrega); }
+            catch (eHora) { return res.status(400).json({ error: eHora.message }); }
             if (req.user && req.user.id) {
                 dadosPedido.usuarioLancamentoId = req.user.id;
                 // Quem marcou "com nota / sem nota" — só o snapshot da bonificação,
@@ -578,6 +580,10 @@ const pedidoController = {
             }
 
             const dadosPedido = req.body;
+            if (dadosPedido.horaEntrega !== undefined) {
+                try { pedidoService.normalizarHoraEntrega(dadosPedido.horaEntrega); }
+                catch (eHora) { return res.status(400).json({ error: eHora.message }); }
+            }
 
             const erroCondicao = await validarCondicaoLiberada({
                 clienteId: dadosPedido.clienteId || pedidoAtual.clienteId,

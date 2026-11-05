@@ -96,6 +96,12 @@ Central de consulta e gerenciamento de todos os pedidos lançados no sistema. Aq
 - Quem tem pedido **ABERTO** (salvo e ainda não enviado) recebe um **popup com som a cada 30 minutos**, em qualquer tela do app (menos dentro da própria tela de criação de pedido), listando os pedidos e a data de entrega de cada um.
 - Botões: **"Ver pedidos"** (vai para a lista) e **"Lembrar em 30 min"** (fecha e volta a avisar depois). O aviso considera os pedidos em que a pessoa é o vendedor **ou** foi quem lançou.
 
+### Horário de entrega (opcional)
+- Todo pedido tem, ao lado da data de entrega, o campo **Horário (opcional)** no formato `HH:MM` (ex.: `14:00`). Vale para qualquer pedido, inclusive os lançados pelo Atendimentos e Kit Festa lançado pelo escritório. Vazio continua valendo: o pedido segue como "dia inteiro".
+- É **só informativo**: não bloqueia aprovação nem faturamento. Formato inválido (ex.: `25:99`) é recusado pelo servidor com aviso. Ao editar, deixar o campo em branco **limpa** o horário.
+- Kit Festa do site convertido em pedido **já traz o horário escolhido pelo cliente**.
+- O horário alimenta a **agenda Google Produção**: o evento **termina na hora da entrega** e começa antes (20 min de preparo + 1,5 min por unidade) — ver "Agenda Google". Mudar o horário atualiza o evento na hora.
+
 ### Data de entrega nunca no passado
 - Ao criar pedido, a **data de entrega não pode ser anterior a hoje** (vale para todos, inclusive admin). O campo de data já impede escolher datas passadas e o servidor valida de novo.
 - Rascunho antigo com data já passada abre **sem data** — o vendedor escolhe de novo.

@@ -7,6 +7,21 @@ const estoqueService = require('./estoqueService');
 const { calcularFlexDinamico, obterRegrasCategoria } = require('./flexService');
 const { camposFaltandoParaNota } = require('../utils/cadastroFiscal');
 
+// ── Horário de entrega (11/2026) ─────────────────────────────────────────────
+// Opcional, "HH:MM". null/""/undefined → sem horário (null). Formato inválido → erro 400.
+const REGEX_HORA_ENTREGA = /^([01]\d|2[0-3]):[0-5]\d$/;
+function normalizarHoraEntrega(v) {
+    if (v === undefined || v === null) return null;
+    const t = String(v).trim();
+    if (t === '') return null;
+    if (!REGEX_HORA_ENTREGA.test(t)) {
+        const e = new Error('Horário de entrega inválido. Use o formato HH:MM (ex.: 14:00).');
+        e.statusHttp = 400;
+        throw e;
+    }
+    return t;
+}
+
 // ── Bonificação COM NOTA (09/2026) ───────────────────────────────────────────
 // Prefixo da ref da NF-e do pedido no ambiente ATUAL ('nf-p-' | 'nf-h-'). Mesma ref
 // da venda (`focusNfeEmissaoService`) — a de devolução é 'nfd-…' e não colide.
@@ -388,8 +403,10 @@ const pedidoService = {
             nfBonificacao, // Bonificação COM NOTA (09/2026) — escolha de quem cria o pedido
             itens, // array de objetos
             statusEnvio, // ABERTO ou ENVIAR
-            valorFrete
+            valorFrete,
+            horaEntrega
         } = dadosPedido;
+        const horaEntregaNorm = normalizarHoraEntrega(horaEntrega); // valida antes de abrir a transação
 
         if (!clienteId || !itens || itens.length === 0) {
             throw new Error('Cliente e itens são obrigatórios');
@@ -472,6 +489,7 @@ const pedidoService = {
                     clienteId,
                     vendedorId,
                     dataVenda: new Date(dataVenda),
+                    horaEntrega: horaEntregaNorm,
                     observacoes,
                     especial: !!especial,
                     bonificacao: !!bonificacao,
@@ -571,7 +589,9 @@ const pedidoService = {
     },
 
     editar: async (id, dadosPedido) => {
-        const { clienteId, vendedorId, itens, statusEnvio, observacoes, dataVenda, opcaoCondicaoPagamento, nomeCondicaoPagamento, tipoPagamento, especial, bonificacao, nfBonificacao, valorFrete } = dadosPedido;
+        const { clienteId, vendedorId, itens, statusEnvio, observacoes, dataVenda, opcaoCondicaoPagamento, nomeCondicaoPagamento, tipoPagamento, especial, bonificacao, nfBonificacao, valorFrete, horaEntrega } = dadosPedido;
+        // undefined = não mexe; ''/null = limpa; inválido = 400
+        const horaEntregaNorm = horaEntrega === undefined ? undefined : normalizarHoraEntrega(horaEntrega);
 
         // Buscar isentoFlex do cliente antes da transação
         const clienteEditado = clienteId ? await prisma.cliente.findUnique({
@@ -601,7 +621,7 @@ const pedidoService = {
             }
         }
 
-        return await prisma.$transaction(async (tx) => {
+        const pedidoEditado = await prisma.$transaction(async (tx) => {
             const pedidoAntigo = await tx.pedido.findUnique({
                 where: { id },
                 include: { itens: true }
@@ -724,6 +744,7 @@ const pedidoService = {
                     idContaFinanceira: dadosPedido.idContaFinanceira,
                     erroEnvio: statusEnvio === 'ENVIAR' ? null : undefined,
                     dataVenda: dataVenda ? new Date(dataVenda) : new Date(),
+                    ...(horaEntregaNorm !== undefined ? { horaEntrega: horaEntregaNorm } : {}),
                     usuarioLancamentoId: dadosPedido.usuarioLancamentoId || undefined,
                     ...(valorFrete !== undefined ? { valorFrete: valorFrete != null && valorFrete !== '' ? Number(valorFrete) : null } : {}),
                     itens: {
@@ -803,6 +824,17 @@ const pedidoService = {
 
             return pedidoAtualizado;
         }, { timeout: 20000, maxWait: 10000 });
+
+        // Agenda Produção: horário (ou data) mudou → atualiza o evento. Fora da transação, já commitada.
+        if (horaEntregaNorm !== undefined || dataVenda) {
+            try {
+                const gcal = require('./googleCalendarService');
+                const kfs = await prisma.kitFestaPedido.findMany({ where: { pedidoId: id }, select: { id: true } });
+                kfs.forEach(k => gcal.disparar(gcal.sincronizarKitFesta, k.id)); // kit do site: evento é o do kit
+                gcal.disparar(gcal.sincronizarPedidoDelivery, id);
+            } catch (gErr) { console.error('[Agenda] sync após editar pedido:', gErr.message); }
+        }
+        return pedidoEditado;
     },
 
     // 3. Buscar último preço de um produto vendido para um cliente
@@ -1213,5 +1245,7 @@ const pedidoService = {
         return atualizado;
     }
 };
+
+pedidoService.normalizarHoraEntrega = normalizarHoraEntrega;
 
 module.exports = pedidoService;
