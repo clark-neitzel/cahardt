@@ -44,6 +44,7 @@ export default function AgendaGoogle() {
     const [autorizando, setAutorizando] = useState(false);
     const [sincronizando, setSincronizando] = useState(false);
     const [resultado, setResultado] = useState(null);
+    const [enviados, setEnviados] = useState(0);
 
     const podeMexer = editar && podeEditarSrv !== false;
 
@@ -104,13 +105,31 @@ export default function AgendaGoogle() {
     const sincronizar = async () => {
         setSincronizando(true);
         setResultado(null);
+        setEnviados(0);
+        const tot = { criados: 0, jaExistiam: 0, removidos: 0, erros: 0, errosLista: [] };
+        let falhouHttp = false;
         try {
-            const r = await api.post('/config-gcal/sincronizar', {}, { timeout: 300000 });
-            setResultado(r.data || {});
+            // O servidor processa em lotes (até 50 por chamada); repete até não sobrar nada.
+            for (let i = 0; i < 40; i++) {
+                const r = await api.post('/config-gcal/sincronizar', {}, { timeout: 300000 });
+                const d = r.data || {};
+                tot.criados += Number(d.criados) || 0;
+                tot.jaExistiam += Number(d.jaExistiam) || 0;
+                tot.removidos += Number(d.removidos) || 0;
+                tot.erros += Number(d.erros) || 0;
+                if (Array.isArray(d.errosLista)) tot.errosLista.push(...d.errosLista);
+                setEnviados(tot.criados);
+                setResultado({ ...tot, errosLista: [...tot.errosLista] });
+                if (!(Number(d.restantes) > 0)) break;
+            }
             toast.success('Sincronização concluída.');
         } catch (e) {
+            falhouHttp = true;
             toast.error(e.response?.data?.error || 'A sincronização falhou. Tente novamente.');
-        } finally { setSincronizando(false); }
+        } finally {
+            if (falhouHttp && (tot.criados || tot.jaExistiam || tot.removidos || tot.erros)) setResultado({ ...tot, errosLista: [...tot.errosLista] });
+            setSincronizando(false);
+        }
     };
 
     const conectado = status?.conectado === true;
@@ -202,17 +221,18 @@ export default function AgendaGoogle() {
                     <span className={TIT}>Sincronizar</span>
                 </div>
                 <div className="p-4 md:p-5 space-y-3">
-                    <p className="text-xs md:text-sm text-gray-600">Envia para a agenda os pedidos de Kit Festa e Amostras que ainda não estão nela. Pode demorar alguns instantes — não feche a tela.</p>
+                    <p className="text-xs md:text-sm text-gray-600">Envia para a agenda os Kit Festa, amostras e pedidos de entrega que ainda não estão nela. Pode demorar alguns instantes — não feche a tela.</p>
                     <button type="button" onClick={sincronizar} disabled={!podeMexer || sincronizando || !conectado} className={`${btnPrim} w-full sm:w-auto`}>
                         {sincronizando ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                        {sincronizando ? 'Sincronizando…' : 'Sincronizar agenda agora'}
+                        {sincronizando ? `Sincronizando… ${enviados} enviados` : 'Sincronizar agenda agora'}
                     </button>
                     {!conectado && !carregando && <p className="text-xs text-gray-600">Conecte o Google e salve o ID da agenda para liberar este botão.</p>}
                     {resultado && (
                         <div className="rounded-lg border border-gray-200 p-3 space-y-2">
-                            <div className="grid grid-cols-3 gap-2 text-center">
+                            <div className={`grid ${resultado.removidos > 0 ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-3'} gap-2 text-center`}>
                                 <div><p className="text-xl font-extrabold text-green-700">{resultado.criados ?? 0}</p><p className="text-xs text-gray-600">criados</p></div>
                                 <div><p className="text-xl font-extrabold text-gray-900">{resultado.jaExistiam ?? 0}</p><p className="text-xs text-gray-600">já existiam</p></div>
+                                {resultado.removidos > 0 && <div><p className="text-xl font-extrabold text-gray-900">{resultado.removidos}</p><p className="text-xs text-gray-600">removidos</p></div>}
                                 <div><p className={`text-xl font-extrabold ${(resultado.erros ?? 0) > 0 ? 'text-red-700' : 'text-gray-900'}`}>{resultado.erros ?? 0}</p><p className="text-xs text-gray-600">com erro</p></div>
                             </div>
                             {errosLista.length > 0 && (

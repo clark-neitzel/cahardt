@@ -603,6 +603,9 @@ model Pedido {
   baixaCaValor         Decimal?                @map("baixa_ca_valor") @db.Decimal(12, 2) // Valor da baixa realizada
   baixaCaEm            DateTime?               @map("baixa_ca_em")
 
+  // ID do evento na agenda "Produção" do Google Calendar (null = sem evento)
+  gcalEventId String? @map("gcal_event_id")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 

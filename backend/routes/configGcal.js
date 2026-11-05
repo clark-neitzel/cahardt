@@ -110,7 +110,7 @@ router.post('/auth-code', verificarAuth, checkConfig, async (req, res) => {
         await prisma.appConfig.update({ where: { key: 'gdrive_config' }, data: { value } });
         gdrive.limparCacheConfig(); gcal.limparCacheConfig();
         // Escopos validados acima: manda os já existentes para a agenda (em segundo plano).
-        gcal.disparar(gcal.sincronizarExistentes);
+        gcal.disparar(gcal.sincronizarExistentesTudo); // todos os lotes, em segundo plano
         res.json({ ok: true, escopo: tokens.scope || null, sincronizandoExistentes: true });
     } catch (e) {
         console.error('[GoogleCalendar] auth-code:', e?.message || e);

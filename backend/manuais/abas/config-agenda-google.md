@@ -30,7 +30,7 @@ Abre a tela de login do Google para a conta dona da agenda. Entre, aceite as per
 
 ## Sincronizar agenda agora
 
-Manda para a agenda tudo que já existe e ainda vale: **Kit Festa aprovado** com data de hoje em diante e **Amostras não entregues/não canceladas** com data de entrega de hoje em diante. Pode clicar quantas vezes quiser — não duplica. A contagem mostra:
+Manda para a agenda tudo que já existe e ainda vale: **Kit Festa aprovado**, **Amostras não entregues/não canceladas** e **Pedidos de entrega** (veja a regra abaixo), todos com data de hoje em diante. Pode clicar quantas vezes quiser — não duplica. A contagem mostra:
 - **Criados** — eventos novos colocados na agenda agora;
 - **Já existiam** — já estavam na agenda (apenas atualizados, se algo mudou);
 - **Erros** — itens que não foi possível enviar (a lista curta mostra qual e o motivo). Se persistir, confira o status da conexão.
@@ -39,5 +39,10 @@ Manda para a agenda tudo que já existe e ainda vale: **Kit Festa aprovado** com
 
 - **Kit Festa:** ao ser **aprovado**, vira um evento no dia e hora do pedido (título com número, cliente, retirada/entrega e caixas; descrição com itens, telefone e endereço da entrega). Se for **recusado, cancelado ou excluído**, o evento é apagado.
 - **Amostras:** ao ser **criada**, vira um evento no dia da entrega (título com AM#, cliente/lead e vendedor). Se for **cancelada ou excluída**, o evento é apagado.
+- **Pedidos (delivery):** cada pedido de entrega vira um evento de **dia inteiro** na data de entrega (a data que o vendedor escolheu), com título `📦 Pedido #número · cliente · N un` (especial: `ZZ#`; bonificação: `🎁 Bonificação BN#`). A descrição traz os itens, telefone, endereço, vendedor e as **observações do pedido** (é lá que costuma estar o horário combinado, ex.: "entregar às 08:30").
+  - **Entra quando a venda está firme:** pedido normal **faturado**; pedido **especial** e **bonificação** assim que são lançados (já têm número).
+  - **Não entra:** pedido **cancelado**, com **devolução total**, de **cliente balcão** (retira na empresa) e os que vieram do **Kit Festa** (esses já têm o evento do Kit Festa).
+  - O evento é **atualizado** se a data de entrega mudar e **apagado** ao cancelar, excluir ou fazer devolução total (devolução parcial não mexe; se a devolução total for revertida, o evento volta). Pedidos com data de entrega já passada não são criados.
+  - Além dos avisos na hora, o sistema confere a cada ~10 minutos os pedidos alterados, para pegar qualquer mudança que escapou.
 - Se o Google estiver fora do ar ou desconectado, o pedido/amostra **funciona normalmente** — só não aparece na agenda; use **Sincronizar agenda agora** depois.
-- Pedidos Kit Festa ainda **aguardando aprovação** não vão para a agenda.
+- Pedidos Kit Festa ainda **aguardando aprovação** não vão para a agenda. Pedido normal ainda **não faturado** também não.

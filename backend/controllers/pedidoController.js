@@ -1023,6 +1023,7 @@ const pedidoController = {
                 console.error(`[Bonificação] Falha ao baixar estoque do pedido ${id}:`, eEstoque.message);
             }
 
+            try { const g = require('../services/googleCalendarService'); g.disparar(g.sincronizarPedido, id); } catch (_) { /* agenda é best-effort */ }
             res.json({ message: 'Bonificação aprovada com sucesso.', pedido: pedidoAprovado });
         } catch (error) {
             console.error('Erro ao aprovar bonificação:', error);
