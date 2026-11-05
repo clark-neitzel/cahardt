@@ -93,3 +93,6 @@ No momento em que o pedido sai do estoque (faturamento), o sistema **congela o c
 - [DRE — Resultado](dre.md) e [Categorias de Despesa](categorias-despesa.md): de onde vêm as despesas fixas/variáveis.
 - [Margem por Produto](margem-produtos.md): custo e preço por produto, mês a mês.
 - [PCP — Receitas](pcp-receitas.md) e [Notas Recebidas](notas-recebidas.md): fichas técnicas e entradas de mercadoria que alimentam o custo dos insumos.
+
+## Filtro por categoria na tabela "Custo e margem por produto"
+Ao lado de "Ordenar" há o seletor **Todas as categorias**: dá para marcar **mais de uma categoria do cadastro de produtos** (ex.: Matéria Prima + Congelados) e a tabela mostra só elas. Produto sem categoria aparece como "Sem categoria". A escolha **fica salva** para cada usuário e volta ao reabrir a tela; para limpar, clique no X do selo azul. Só filtra a tabela (os totais dos cartões não mudam).

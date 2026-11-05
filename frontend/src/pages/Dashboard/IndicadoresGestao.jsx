@@ -4,6 +4,7 @@ import { Gauge, Settings, Target, Scale, LineChart, PackageCheck, Factory, Siren
 import PageHeader from '../../components/PageHeader';
 import FiltroPeriodo, { usePeriodoSalvo } from '../../components/FiltroPeriodo';
 import SelectBusca from '../../components/SelectBusca';
+import MultiSelect from '../../components/MultiSelect';
 import EstadoVazio from '../../components/EstadoVazio';
 import { useAuth } from '../../contexts/AuthContext';
 import { useFiltrosSalvos } from '../../hooks/useFiltrosSalvos';
@@ -55,7 +56,7 @@ export default function IndicadoresGestao() {
     const ehAdmin = !!user?.permissoes?.admin;
 
     const [periodo, periodoCtl] = usePeriodoSalvo('indicadores-gestao');
-    const [filtros, setFiltros] = useFiltrosSalvos('indicadores-gestao', { visao: 'dono', ordemDono: 'mcTotal', ordemProd: 'quantidadeVendida' });
+    const [filtros, setFiltros] = useFiltrosSalvos('indicadores-gestao', { visao: 'dono', ordemDono: 'mcTotal', ordemProd: 'quantidadeVendida', categorias: [] });
     const [semanaOffset, setSemanaOffset] = useState(0); // navegação pontual, não persiste
     const [modalImposto, setModalImposto] = useState(false);
     const [modalMetas, setModalMetas] = useState(false);
@@ -84,6 +85,19 @@ export default function IndicadoresGestao() {
     const algumExemplo = [resumo, cascata, equilibrio, clientes, insumos, entradas, produtos, producao, alertas].some((r) => r.exemplo);
     const contagem = useMemo(() => contarAlertas(alertas.dados?.itens), [alertas.dados]);
     const sparkIns = useMemo(() => sparkInsumos(insumos.dados), [insumos.dados]);
+    // Filtro por categoria do cadastro (multi-seleção, a escolha fica salva por usuário)
+    const SEM_CAT = 'Sem categoria';
+    const catsSel = Array.isArray(filtros.categorias) ? filtros.categorias : [];
+    const linhasProdutos = produtos.dados?.linhas;
+    const opcoesCategoria = useMemo(() => {
+        const set = new Set(catsSel);
+        (Array.isArray(linhasProdutos) ? linhasProdutos : []).forEach((l) => set.add(l.categoria || SEM_CAT));
+        return [...set].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    }, [linhasProdutos, catsSel]);
+    const linhasFiltradas = useMemo(() => {
+        const l = Array.isArray(linhasProdutos) ? linhasProdutos : [];
+        return catsSel.length ? l.filter((x) => catsSel.includes(x.categoria || SEM_CAT)) : l;
+    }, [linhasProdutos, catsSel]);
 
     if (!pode) {
         return <EstadoVazio icon={Gauge} titulo="Você não tem acesso aos Indicadores de Gestão" descricao="Peça ao administrador para liberar a permissão." />;
@@ -163,6 +177,13 @@ export default function IndicadoresGestao() {
             avisos.push({ k: `cob-${a}`, txt: a, link: /categoria/i.test(a) });
         });
     }
+
+    const categoriaSelect = (
+        <div className="w-full md:w-64">
+            <MultiSelect options={opcoesCategoria} selected={catsSel} summary searchable summaryNoun="categoria"
+                placeholder="Todas as categorias" onChange={(v) => setFiltros((f) => ({ ...f, categorias: v }))} />
+        </div>
+    );
 
     const ordemSelect = (
         <div className="w-56">
@@ -262,8 +283,8 @@ export default function IndicadoresGestao() {
                 </div>
 
                 <Bloco titulo={dono ? 'Custo e margem por produto' : 'Custo dos produtos fabricados'} icon={Package} estado={produtos} semPadding
-                    direita={<><Chip cls="bg-gray-100 text-gray-700">custo-base = ficha técnica</Chip>{ordemSelect}</>}>
-                    <TabelaProdutos linhas={produtos.dados?.linhas} completa={dono} ordem={ordemAtual} />
+                    direita={<><Chip cls="bg-gray-100 text-gray-700">custo-base = ficha técnica</Chip>{categoriaSelect}{ordemSelect}</>}>
+                    <TabelaProdutos linhas={linhasFiltradas} completa={dono} ordem={ordemAtual} />
                     <p className="px-4 md:px-5 py-3 text-xs text-gray-600 border-t border-gray-100">
                         {dono
                             ? <><b>MC total</b> diz quem mais paga a empresa; <b>MC %</b> diz a eficiência da venda. Itens de <Chip cls="bg-purple-100 text-purple-700">revenda</Chip> usam custo de compra (CMV), não ficha (CPV); <Chip cls="bg-gray-100 text-gray-700">sem ficha</Chip> ainda precisa ser classificado.</>
