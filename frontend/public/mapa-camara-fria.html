@@ -44,6 +44,8 @@ header .sub{font-size:11px;opacity:.75;white-space:nowrap}
 .meiofio{position:absolute;top:0;bottom:0;border-left:1px dashed rgba(30,57,50,.3)}
 .porta{position:absolute;right:-3px;top:0;bottom:0;width:10px;background:repeating-linear-gradient(45deg,var(--house),var(--house) 4px,#fff 4px,#fff 8px)}
 .porta span{position:absolute;right:-22px;top:50%;transform:translateY(-50%) rotate(90deg);font-size:10px;font-weight:800;color:var(--house);letter-spacing:.15em}
+.porta.esq{right:auto;left:-3px}
+.porta.esq span{right:auto;left:-22px;transform:translateY(-50%) rotate(-90deg)}
 .rotuloParede{position:absolute;font-size:10px;font-weight:700;color:var(--ink2);letter-spacing:.1em;text-transform:uppercase}
 
 /* ===== pilha ===== */
@@ -158,6 +160,7 @@ hr{border:none;border-top:1px solid var(--linha);margin:14px 0}
         <div class="campo"><label>Caixa padrão larg. (cm)</label><input id="iDW" type="number" min="10" step="1"></div>
         <div class="campo"><label>Caixa padrão fundo (cm)</label><input id="iDD" type="number" min="10" step="1"></div>
       </div>
+      <div class="campo"><label>Lado da porta</label><button class="btn btn-o" id="bPorta" style="width:100%">Porta: direita</button></div>
       <div class="mini">Reefer 12 m (40 pés): interno ≈ 1156 × 228 cm. Caixa plástica 60 L empilhável (tipo hortifruti): base 55 × 36 cm, 31 cm de altura.</div>
       <hr>
       <div class="acoes">
@@ -189,13 +192,13 @@ function padrao(){
   for(const[nome,n]of prod){for(let i=0;i<n;i++){p.push({id:id++,x:x,y:20,w:55,d:36,ang:0,produto:nome,caixas:8});x+=57;}}
   x=31;
   for(const[nome,n]of[['Kibe',2],['Bolinha de Queijo',2]]){for(let i=0;i<n;i++){p.push({id:id++,x:x,y:208,w:55,d:36,ang:0,produto:nome,caixas:8});x+=57;}}
-  return {L:1156,W:228,defW:55,defD:36,seq:id,piles:p};
+  return {L:1156,W:228,defW:55,defD:36,porta:'dir',seq:id,piles:p};
 }
 function sanitizar(d){ // valida qualquer JSON vindo de fora (localStorage ou arquivo importado)
   if(!d||typeof d!=='object'||!Array.isArray(d.piles))return null;
   const n=v=>+v;
   const s2={L:Math.max(200,n(d.L)||1156),W:Math.max(100,n(d.W)||228),
-    defW:Math.max(10,n(d.defW)||55),defD:Math.max(10,n(d.defD)||36),seq:1,piles:[]};
+    defW:Math.max(10,n(d.defW)||55),defD:Math.max(10,n(d.defD)||36),porta:d.porta==='esq'?'esq':'dir',seq:1,piles:[]};
   for(const q of d.piles){
     if(!q||typeof q!=='object')continue;
     s2.piles.push({id:s2.seq++,x:n(q.x)||0,y:n(q.y)||0,
@@ -241,7 +244,7 @@ function render(){
     const r=document.createElement('div');r.className='regua t';r.style.left=(m*100*z-6)+'px';r.textContent=m+'m';cv.appendChild(r);
   }
   const mid=document.createElement('div');mid.className='meiofio';mid.style.left=(st.L/2*z)+'px';cv.appendChild(mid);
-  const porta=document.createElement('div');porta.className='porta';porta.innerHTML='<span>PORTA</span>';cv.appendChild(porta);
+  const porta=document.createElement('div');porta.className='porta'+(st.porta==='esq'?' esq':'');porta.innerHTML='<span>PORTA</span>';cv.appendChild(porta);
   const pa=document.createElement('div');pa.className='rotuloParede';pa.style.cssText='top:2px;left:4px';pa.textContent='Parede A';cv.appendChild(pa);
   const pb=document.createElement('div');pb.className='rotuloParede';pb.style.cssText='bottom:2px;left:4px';pb.textContent='Parede B';cv.appendChild(pb);
   // pilhas
@@ -261,14 +264,14 @@ function elPilha(p,num){
   posicionar(d,p);
   const cor=corDe(p.produto);
   d.style.background=cor.bg;d.style.borderColor=cor.bd;d.style.color=cor.tx;
-  const texto=(p.produto||'sem nome')+' · '+p.caixas+' cx';
-  const chars=Math.max(8,texto.length);
+  const texto=(p.produto||'sem nome');
+  const chars=Math.max(6,texto.length);
   const area=Math.max(1,(p.w*z-6)*(p.d*z-6));
   const fs=Math.max(6.5,Math.min(28,Math.sqrt(area*0.85/(chars*0.6))));
   const rotV=p.d>p.w; // texto ao longo do lado maior da caixa
   d.innerHTML=`<div class="num">${num}</div>
     <div class="rot" style="font-size:${fs}px;${rotV?'transform:rotate(-90deg);width:'+(p.d*z-6)+'px;':''}">
-      ${esc(p.produto)||'<i>sem nome</i>'} <span class="qt">· ${+p.caixas||1} cx</span></div>`;
+      ${esc(p.produto)||'<i>sem nome</i>'}</div>`;
   d.addEventListener('pointerdown',evDown);
   return d;
 }
@@ -296,11 +299,34 @@ function evDown(e){
   el.addEventListener('pointercancel',evUp);
   e.preventDefault();
 }
+function magnet(p,nx,ny){ // ímã: encosta na vizinha e na parede, alinha fileiras
+  const A=bbox(p);const MAG=Math.min(20,Math.max(5,9/z)); // ~9px na tela, em cm
+  let mx=null,my=null;
+  for(const q of st.piles){
+    if(q.id===p.id)continue;
+    const B=bbox(q);
+    if(Math.abs(ny-q.y)<(A.bh+B.bh-1)){ // na mesma faixa horizontal → encosta de lado
+      if(Math.abs((nx-A.bw)-(q.x+B.bw))<MAG)mx=q.x+B.bw+A.bw;
+      else if(Math.abs((nx+A.bw)-(q.x-B.bw))<MAG)mx=q.x-B.bw-A.bw;
+    }
+    if(Math.abs(nx-q.x)<(A.bw+B.bw-1)){ // na mesma coluna → encosta na frente/atrás
+      if(Math.abs((ny-A.bh)-(q.y+B.bh))<MAG)my=q.y+B.bh+A.bh;
+      else if(Math.abs((ny+A.bh)-(q.y-B.bh))<MAG)my=q.y-B.bh-A.bh;
+    }
+    if(my==null&&Math.abs(ny-q.y)<MAG)my=q.y; // alinha o centro da fila
+    if(mx==null&&Math.abs(nx-q.x)<MAG)mx=q.x; // alinha o centro da coluna
+  }
+  if(Math.abs((ny-A.bh)-MARGEM)<MAG)my=A.bh+MARGEM;            // paredes
+  if(Math.abs((ny+A.bh)-(st.W-MARGEM))<MAG)my=st.W-A.bh-MARGEM;
+  if(Math.abs((nx-A.bw)-MARGEM)<MAG)mx=A.bw+MARGEM;
+  if(Math.abs((nx+A.bw)-(st.L-MARGEM))<MAG)mx=st.L-A.bw-MARGEM;
+  return{x:mx==null?snap(nx):mx,y:my==null?snap(ny):my};
+}
 function evMove(e){
   if(!drag)return;
   const rect=$('#canvas').getBoundingClientRect();
-  drag.p.x=snap((e.clientX-rect.left)/z+drag.dx);
-  drag.p.y=snap((e.clientY-rect.top)/z+drag.dy);
+  const m=magnet(drag.p,(e.clientX-rect.left)/z+drag.dx,(e.clientY-rect.top)/z+drag.dy);
+  drag.p.x=m.x;drag.p.y=m.y;
   clampar(drag.p);
   posicionar(drag.el,drag.p);
 }
@@ -329,6 +355,7 @@ function atualizarPainel(){
     $('#iFileiras').value=1;
   }
   $('#iL').value=st.L;$('#iCW').value=st.W;$('#iDW').value=st.defW;$('#iDD').value=st.defD;
+  $('#bPorta').textContent='Porta: '+(st.porta==='esq'?'esquerda':'direita');
 }
 $('#iProduto').addEventListener('input',()=>{const p=pSel();if(p){p.produto=$('#iProduto').value;renderSoCanvas();}});
 $('#iCaixas').addEventListener('input',()=>{const p=pSel();if(p){p.caixas=Math.max(1,+$('#iCaixas').value||1);renderSoCanvas();}});
@@ -378,6 +405,7 @@ function addParede(parede){ // encosta na parede, depois da última pilha daquel
 $('#bParedeA').onclick=()=>addParede('A');
 $('#bParedeB').onclick=()=>addParede('B');
 $('#bConfig').onclick=()=>{const c=$('#pConfig');c.style.display=c.style.display==='none'?'':'none';};
+$('#bPorta').onclick=()=>{st.porta=st.porta==='esq'?'dir':'esq';render();};
 $('#zMais').onclick=()=>{z=Math.min(6,z*1.25);render();};
 $('#zMenos').onclick=()=>{z=Math.max(0.3,z/1.25);render();};
 for(const[id,campo]of[['iL','L'],['iCW','W'],['iDW','defW'],['iDD','defD']]){
@@ -429,10 +457,10 @@ $('#bPrint').onclick=()=>{
   const s=alvoW/(metadeCm*z);
   const selAntes=sel;sel=null;render(); // tira a seleção do clone
   let html=`<h1>Mapa da Câmara Fria — onde está cada produto</h1>
-    <div class="pdata">Container reefer ${(st.L/100).toFixed(2)} × ${(st.W/100).toFixed(2)} m (interno) · impresso em ${new Date().toLocaleDateString('pt-BR')} · porta no lado direito da metade 2</div>`;
+    <div class="pdata">Container reefer ${(st.L/100).toFixed(2)} × ${(st.W/100).toFixed(2)} m (interno) · impresso em ${new Date().toLocaleDateString('pt-BR')} · porta no lado ${st.porta==='esq'?'esquerdo da metade 1':'direito da metade 2'}</div>`;
   for(let i=0;i<2;i++){
     html+=`<div class="ph" style="width:${alvoW}px;height:${st.W*z*s}px">
-      <div class="tag">Metade ${i+1} — ${i===0?'fundo':'porta'}</div>
+      <div class="tag">Metade ${i+1} — ${(i===0)===(st.porta==='esq')?'porta':'fundo'}</div>
       <div style="position:absolute;left:${-i*metadeCm*z*s}px;top:0;transform:scale(${s});transform-origin:0 0">${$('#canvas').outerHTML}</div>
     </div>`;
   }
@@ -442,7 +470,7 @@ $('#bPrint').onclick=()=>{
   ord.forEach((p,i)=>{
     const nome=p.produto||'(sem nome)';
     porProduto[nome]=(porProduto[nome]||0)+(+p.caixas||0);
-    html+=`<tr><td>${i+1}</td><td>${esc(nome)}</td><td>${+p.caixas||1} cx</td><td style="text-align:right">${((st.L-p.x)/100).toFixed(1)} m · parede ${p.y<st.W/2?'A':'B'}</td></tr>`;
+    html+=`<tr><td>${i+1}</td><td>${esc(nome)}</td><td>${+p.caixas||1} cx</td><td style="text-align:right">${((st.porta==='esq'?p.x:st.L-p.x)/100).toFixed(1)} m · parede ${p.y<st.W/2?'A':'B'}</td></tr>`;
   });
   html+=`</table><table class="legenda" style="margin-top:8px"><tr><th>Total por produto</th><th style="text-align:right">Caixas</th></tr>`;
   Object.entries(porProduto).sort((a,b)=>b[1]-a[1]).forEach(([n,q])=>{html+=`<tr><td>${esc(n)}</td><td style="text-align:right;font-weight:800">${q}</td></tr>`;});
