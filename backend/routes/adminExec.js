@@ -7809,6 +7809,49 @@ router.get('/gdrive-status', async (req, res) => {
     }
 });
 
+// POST /api/admin-exec/gcal-web-client
+// Grava as credenciais do cliente OAuth "Aplicativo da Web" em app_configs.gcal_config
+// (webClientId/webClientSecret), preservando o resto (calendarId). Nunca devolve o segredo.
+// Body: { clientId, clientSecret }
+router.post('/gcal-web-client', async (req, res) => {
+    try {
+        const { clientId, clientSecret } = req.body || {};
+        if (!clientId || !clientSecret) {
+            return res.status(400).json({ ok: false, error: 'clientId e clientSecret são obrigatórios.' });
+        }
+        const gcal = require('../services/googleCalendarService');
+        const row = await prisma.appConfig.findUnique({ where: { key: 'gcal_config' } });
+        const atual = (row?.value && typeof row.value === 'object') ? row.value : {};
+        const value = { ...atual, webClientId: String(clientId).trim(), webClientSecret: String(clientSecret).trim() };
+        await prisma.appConfig.upsert({ where: { key: 'gcal_config' }, update: { value }, create: { key: 'gcal_config', value } });
+        gcal.limparCacheConfig();
+        const mask = (s) => (s ? `${String(s).slice(0, 6)}…${String(s).slice(-4)}` : null);
+        res.json({ ok: true, salvo: { webClientId: mask(value.webClientId), calendarId: value.calendarId || '(não definido)' } });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
+// POST /api/admin-exec/gcal-sincronizar
+// Manda para a agenda "Produção" os Kit Festa aprovados e amostras em aberto (data >= hoje).
+// Idempotente. Resposta: { criados, jaExistiam, erros, errosLista }
+router.post('/gcal-sincronizar', async (req, res) => {
+    try {
+        res.json(await require('../services/googleCalendarService').sincronizarExistentes());
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
+// GET /api/admin-exec/gcal-status — conexão com a agenda (sem expor segredos)
+router.get('/gcal-status', async (req, res) => {
+    try {
+        res.json(await require('../services/googleCalendarService').status());
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
 // ═══════════════ RÉGUA DE COBRANÇA (diagnóstico/config em produção) ═══════════════
 
 // POST /api/admin-exec/cobranca-email-config

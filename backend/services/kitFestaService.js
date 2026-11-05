@@ -1,4 +1,5 @@
 const prisma = require('../config/database');
+const gcal = require('./googleCalendarService');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
@@ -732,6 +733,7 @@ const kitFestaService = {
         const kp = await prisma.kitFestaPedido.findUnique({ where: { id } });
         if (!kp) throw new Error('Pedido não encontrado.');
         await prisma.kitFestaPedido.delete({ where: { id } });
+        if (kp.gcalEventId) gcal.disparar(gcal.removerEvento, kp.gcalEventId);
         return { ok: true };
     },
 
@@ -1005,6 +1007,7 @@ const kitFestaService = {
         const cancelar = convertidos.filter(c => c.pedido?.statusEnvio === 'EXCLUIDO').map(c => c.id);
         if (cancelar.length) {
             await prisma.kitFestaPedido.updateMany({ where: { id: { in: cancelar } }, data: { status: 'CANCELADO' } });
+            cancelar.forEach(cid => gcal.disparar(gcal.sincronizarKitFesta, cid));
         }
 
         const where = {};
@@ -1040,10 +1043,12 @@ const kitFestaService = {
         if (kp?.creditoUsadoId) {
             await prisma.kitFestaCredito.update({ where: { id: kp.creditoUsadoId }, data: { status: 'DISPONIVEL', usadoPedidoId: null, usadoEm: null } }).catch(() => {});
         }
-        return prisma.kitFestaPedido.update({
+        const recusado = await prisma.kitFestaPedido.update({
             where: { id },
             data: { status: 'RECUSADO', motivoRecusa: motivo || null },
         });
+        gcal.disparar(gcal.sincronizarKitFesta, id); // apaga o evento da agenda Produção (se houver)
+        return recusado;
     },
 
     // Histórico de uso de cupons (todos ou de um cupom específico)
@@ -1155,6 +1160,9 @@ const kitFestaService = {
             },
             include: { pedido: true },
         });
+
+        // Agenda "Produção" (Google Calendar): fora de qualquer transação e sem bloquear a aprovação.
+        gcal.disparar(gcal.sincronizarKitFesta, id);
 
         // (uso do cupom já é registrado na criação do pedido — não incrementa aqui)
         return atualizado;

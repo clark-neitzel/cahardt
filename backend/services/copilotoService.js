@@ -121,6 +121,7 @@ const ABAS = [
     { slug: 'config-categorias-cliente',   nome: 'Configurações — Cat. Clientes', rota: '/config/categorias-cliente',         perm: 'configuracoes' },
     { slug: 'config-setores',             nome: 'Configurações — Setores',       rota: '/config/setores',                    perm: 'configuracoes' },
     { slug: 'config-ia',                  nome: 'Configurações — Inteligência artificial', rota: '/config/ia',          perm: 'configuracoes' },
+    { slug: 'config-agenda-google',       nome: 'Configurações — Agenda Google',           rota: '/config/agenda-google', perm: 'configuracoes' },
     { slug: 'config-cidades',              nome: 'Configurações — Cidades',       rota: '/config/cidades',                    perm: 'configuracoes' },
     { slug: 'configuracoes-impressoras',    nome: 'Configurações — Impressoras',   rota: '/config/impressoras',                perm: 'admin' },
     { slug: 'config-categorias-estoque',   nome: 'Configurações — Cat. Estoque',  rota: '/config/categorias-estoque',         perm: 'configuracoes' },

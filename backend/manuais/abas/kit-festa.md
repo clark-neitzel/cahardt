@@ -98,3 +98,8 @@ Tudo que aparece no site, editável sem programador:
 ## Botões do topo
 - **Abrir site:** abre a página pública do cliente numa nova aba.
 - **Copiar link do cliente:** copia o link `/kit-festa` para enviar por WhatsApp/redes.
+
+---
+
+## Agenda "Produção" (Google Calendar)
+Quando o pedido do Kit Festa é **aprovado**, um evento aparece sozinho na agenda **Produção** do Google, no dia e hora do pedido (título com número, cliente, retirada/entrega e nº de caixas; descrição com itens, telefone e endereço). Se o pedido for **recusado, cancelado ou excluído**, o evento é apagado. O mesmo vale para **Amostras** (evento no dia da entrega; some se a amostra for cancelada ou excluída). Se o Google estiver fora do ar ou não autorizado, o pedido/amostra funciona normalmente — só não aparece na agenda (a falha fica no log). A conexão com a agenda precisa ser autorizada pelo dono (Configurações → agenda Produção).

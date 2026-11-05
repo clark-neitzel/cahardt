@@ -1,9 +1,10 @@
 const prisma = require('../config/database');
+const gcal = require('./googleCalendarService');
 
 const amostraService = {
 
     criar: async ({ leadId, clienteId, dataEntrega, observacao, solicitadoPorId, itens }) => {
-        return await prisma.amostra.create({
+        const criada = await prisma.amostra.create({
             data: {
                 leadId: leadId || null,
                 clienteId: clienteId || null,
@@ -25,6 +26,9 @@ const amostraService = {
                 lead: { select: { nomeEstabelecimento: true, numero: true } },
             }
         });
+        // Agenda "Produção" (Google Calendar): best-effort, nunca bloqueia a criação.
+        gcal.disparar(gcal.sincronizarAmostra, criada.id);
+        return criada;
     },
 
     listar: async (filtros = {}) => {
@@ -101,10 +105,12 @@ const amostraService = {
         if (!statusValidos.includes(novoStatus)) {
             throw new Error(`Status inválido: ${novoStatus}`);
         }
-        return await prisma.amostra.update({
+        const atualizada = await prisma.amostra.update({
             where: { id },
             data: { status: novoStatus }
         });
+        if (novoStatus === 'CANCELADA') gcal.disparar(gcal.sincronizarAmostra, id); // apaga o evento
+        return atualizada;
     },
 
     excluir: async (id, { forceAdmin = false } = {}) => {
@@ -113,11 +119,13 @@ const amostraService = {
         if (amostra.status === 'ENTREGUE' && !forceAdmin) {
             throw new Error('Não é possível excluir uma amostra já entregue.');
         }
-        return await prisma.$transaction(async (tx) => {
+        const removida = await prisma.$transaction(async (tx) => {
             await tx.amostraItem.deleteMany({ where: { amostraId: id } });
             await tx.atendimento.updateMany({ where: { amostraId: id }, data: { amostraId: null } });
             return await tx.amostra.delete({ where: { id } });
         }, { timeout: 20000, maxWait: 10000 });
+        if (amostra.gcalEventId) gcal.disparar(gcal.removerEvento, amostra.gcalEventId); // fora da transação
+        return removida;
     },
 
     // Amostras com status LIBERADO e sem embarque (para embarcar)

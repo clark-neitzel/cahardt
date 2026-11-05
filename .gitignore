@@ -42,3 +42,5 @@ backend/uploads/**
 !backend/uploads/**/
 !backend/uploads/**/.gitkeep
 !backend/uploads/**/.gitignore
+.gcal-web-client.json
+backend/scripts/.gcal-web-client.json

@@ -28,6 +28,8 @@ const CategoriasEstoque = lazyComRetry(() => import('./pages/Configuracoes/Categ
 const ConfigCidades = lazyComRetry(() => import('./pages/Configuracoes/Cidades'));
 const ConfigSetores = lazyComRetry(() => import('./pages/Configuracoes/Setores'));
 const ConfigIA = lazyComRetry(() => import('./pages/Configuracoes/IA'));
+const AgendaGoogle = lazyComRetry(() => import('./pages/Configuracoes/AgendaGoogle'));
+const GoogleOAuthCallback = lazyComRetry(() => import('./pages/Configuracoes/GoogleOAuthCallback'));
 const ConfigImpressoras = lazyComRetry(() => import('./pages/Configuracoes/Impressoras'));
 const DashboardHome = lazyComRetry(() => import('./pages/Dashboard/DashboardHome'));
 const DashboardVendedorPessoal = lazyComRetry(() => import('./pages/Dashboard/DashboardVendedorPessoal'));
@@ -125,7 +127,7 @@ import {
   Settings, DollarSign, Building2, TrendingUp, FolderOpen, Warehouse,
   Package, BookOpen as BookOpenIcon, Factory, Play, ClipboardList as ClipboardListIcon, Calendar as CalendarIcon, Lightbulb, BarChart3, BarChart2, History, Sparkles, BellRing, UserCheck, Tag, DatabaseZap, Percent, Clock, Fingerprint, Inbox, Landmark, CalendarCheck, Star, AlertTriangle, ShoppingBag, MapPin, Gauge, Printer, ChefHat
 } from 'lucide-react';
-import { BookOpenCheck, Bot } from 'lucide-react';
+import { BookOpenCheck, Bot, CalendarDays } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { useMenuFavoritos } from './hooks/useMenuFavoritos';
 import { usePerfil } from './hooks/usePerfil';
@@ -506,6 +508,7 @@ const Layout = ({ children }) => {
       { to: '/config/cidades', icon: MapPin, label: 'Cidades' },
       { to: '/config/setores', icon: Tag, label: 'Setores' },
       { to: '/config/ia', icon: Bot, label: 'Inteligência artificial' },
+      { to: '/config/agenda-google', icon: CalendarDays, label: 'Agenda Google' },
       isAdmin && { to: '/config/impressoras', icon: Printer, label: 'Impressoras' },
     ].filter(Boolean) : []) },
   ].filter(s => s.items.length > 0);
@@ -1005,6 +1008,8 @@ function App() {
               <Route path="/config/cidades" element={<PrivateRoute tab="configuracoes"><ConfigCidades /></PrivateRoute>} />
               <Route path="/config/setores" element={<PrivateRoute tab="configuracoes"><ConfigSetores /></PrivateRoute>} />
               <Route path="/config/ia" element={<PrivateRoute tab="configuracoes"><ConfigIA /></PrivateRoute>} />
+              <Route path="/config/agenda-google" element={<PrivateRoute tab="configuracoes"><AgendaGoogle /></PrivateRoute>} />
+              <Route path="/google-oauth-callback" element={<PrivateRoute tab="configuracoes"><GoogleOAuthCallback /></PrivateRoute>} />
               <Route path="/config/impressoras" element={<PrivateRoute tab="configuracoes"><ConfigImpressoras /></PrivateRoute>} />
 
               {/* RH — Currículos */}
