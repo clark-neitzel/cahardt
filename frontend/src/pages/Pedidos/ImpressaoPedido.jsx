@@ -15,6 +15,15 @@ const fmtEndereco = (c) => {
     return parts ? `${parts}${c.End_Cidade ? ` - ${c.End_Cidade}` : ''}` : null;
 };
 
+// Fantasia só quando existe e é diferente da razão social (sem acento, caixa e espaços duplos)
+const normNome = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+const fantasiaDistinta = (c) => {
+    const f = c?.NomeFantasia;
+    if (!f || !String(f).trim()) return null;
+    if (c?.Nome && normNome(f) === normNome(c.Nome)) return null;
+    return f;
+};
+
 const DIGITAL_FONT = "'Share Tech Mono', 'Courier New', Courier, monospace";
 
 // Bonificação COM ou SEM nota fiscal — o motorista precisa saber, na folha, se leva DANFE.
@@ -38,7 +47,7 @@ const PedidoA4 = ({ pedido }) => {
     const f = (v) => ({ fontFamily: DIGITAL_FONT, ...v });
 
     const vendedor = pedido.vendedor?.nome || pedido.usuarioLancamento?.nome || '-';
-    const fone = pedido.cliente?.Celular || pedido.cliente?.Telefone;
+    const fone = pedido.cliente?.Telefone_Celular || pedido.cliente?.Telefone;
     const endereco = fmtEndereco(pedido.cliente);
     const tipo = pedido.bonificacao ? 'BONIFICACAO' : pedido.especial ? 'ESPECIAL' : 'PEDIDO';
 
@@ -69,7 +78,7 @@ const PedidoA4 = ({ pedido }) => {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div>
                         <div style={{ fontSize: '15px', fontWeight: 'bold' }}>{pedido.cliente?.NomeFantasia || pedido.cliente?.Nome || '-'}</div>
-                        {pedido.cliente?.NomeFantasia && pedido.cliente?.Nome && pedido.cliente.NomeFantasia !== pedido.cliente.Nome && (
+                        {fantasiaDistinta(pedido.cliente) && pedido.cliente?.Nome && (
                             <div style={{ fontSize: '11px', color: '#555' }}>{pedido.cliente.Nome}</div>
                         )}
                         {pedido.cliente?.CpfCnpj && (
@@ -182,7 +191,8 @@ const PedidoCupom = ({ pedido, isLast }) => {
             <p style={{ margin: '1mm 0', textAlign: 'center', fontSize: '11px' }}>{sep}</p>
 
             <div style={{ fontSize: '14px', marginBottom: '3mm' }}>
-                <p style={{ margin: '3px 0' }}><strong>Cliente:</strong> {pedido.cliente?.NomeFantasia || pedido.cliente?.Nome || '-'}</p>
+                <p style={{ margin: '3px 0' }}><strong>Cliente:</strong> {fantasiaDistinta(pedido.cliente) || pedido.cliente?.Nome || '-'}</p>
+                {fantasiaDistinta(pedido.cliente) && pedido.cliente?.Nome && <p style={{ margin: '0 0 3px', fontSize: '0.85em' }}>{pedido.cliente.Nome}</p>}
                 {fmtEndereco(pedido.cliente) && (
                     <p style={{ margin: '3px 0', fontSize: '12px' }}><strong>End.:</strong> {fmtEndereco(pedido.cliente)}</p>
                 )}
@@ -259,15 +269,16 @@ const AmostraA4 = ({ amostra }) => {
             </div>
 
             <div style={{ marginBottom: '4mm', fontSize: '10px' }}>
-                <p style={{ margin: '1px 0' }}><strong>Destinatário:</strong> {amostra.cliente?.NomeFantasia || amostra.cliente?.Nome || amostra.lead?.nomeEstabelecimento || '-'}</p>
+                <p style={{ margin: '1px 0' }}><strong>Destinatário:</strong> {fantasiaDistinta(amostra.cliente) || amostra.cliente?.Nome || amostra.lead?.nomeEstabelecimento || '-'}</p>
+                {fantasiaDistinta(amostra.cliente) && amostra.cliente?.Nome && <p style={{ margin: '0 0 1px', fontSize: '0.85em' }}>{amostra.cliente.Nome}</p>}
                 {fmtEndereco(amostra.cliente) && (
                     <p style={{ margin: '1px 0', fontSize: '9px', color: '#555' }}>
                         <strong>Endereço:</strong> {fmtEndereco(amostra.cliente)}
                     </p>
                 )}
-                {(amostra.cliente?.Celular || amostra.cliente?.Telefone) && (
+                {(amostra.cliente?.Telefone_Celular || amostra.cliente?.Telefone) && (
                     <p style={{ margin: '1px 0', fontSize: '9px', color: '#555' }}>
-                        <strong>Telefone:</strong> {amostra.cliente?.Celular || amostra.cliente?.Telefone}
+                        <strong>Telefone:</strong> {amostra.cliente?.Telefone_Celular || amostra.cliente?.Telefone}
                     </p>
                 )}
                 {amostra.observacao && <p style={{ margin: '3px 0', fontStyle: 'italic' }}><strong>Obs:</strong> {amostra.observacao}</p>}
@@ -315,7 +326,8 @@ const AmostraCupom = ({ amostra }) => {
             <p style={{ margin: '1mm 0', textAlign: 'center', fontSize: '10px', color: '#666' }}>{sep}</p>
 
             <div style={{ fontSize: '12px', marginBottom: '2mm' }}>
-                <p style={{ margin: '2px 0' }}><strong>Dest.:</strong> {amostra.cliente?.NomeFantasia || amostra.cliente?.Nome || amostra.lead?.nomeEstabelecimento || '-'}</p>
+                <p style={{ margin: '2px 0' }}><strong>Dest.:</strong> {fantasiaDistinta(amostra.cliente) || amostra.cliente?.Nome || amostra.lead?.nomeEstabelecimento || '-'}</p>
+                {fantasiaDistinta(amostra.cliente) && amostra.cliente?.Nome && <p style={{ margin: '0 0 2px', fontSize: '0.85em' }}>{amostra.cliente.Nome}</p>}
                 {fmtEndereco(amostra.cliente) && (
                     <p style={{ margin: '2px 0', fontSize: '11px' }}><strong>End.:</strong> {fmtEndereco(amostra.cliente)}</p>
                 )}

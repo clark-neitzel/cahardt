@@ -35,10 +35,18 @@ const montarEndereco = (c) => {
 };
 
 // Monta os dados do quadro a partir do cliente (campos ausentes viram null → "—")
+// Igual à nota fiscal: razão social em "NOME / RAZÃO SOCIAL" e o fantasia em destaque acima,
+// só quando existe e é diferente da razão (comparação sem acento, caixa e espaços duplos).
+const normNome = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ').trim().toLowerCase();
 const dadosQuadroCliente = (cliente, entrega, nomeFallback) => {
     const c = cliente || {};
+    const nome = c.Nome || nomeFallback || null;
+    const fant = (c.NomeFantasia || '').replace(/\s+/g, ' ').trim();
+    const fantasia = fant && normNome(fant) !== normNome(nome) ? fant : null;
     return {
-        nome: c.NomeFantasia || c.Nome || nomeFallback || null,
+        nome,
+        fantasia,
         documento: c.Documento || null,
         fone: c.Telefone_Celular || c.Telefone || c.Telefone_Comercial || null,
         endereco: montarEndereco(c),
@@ -116,7 +124,8 @@ function desenharQuadroCliente(doc, x0, largura, y, dados) {
     const soma = flex.reduce((a, b) => a + b, 0);
     const largs = flex.map(f => largura * f / soma);
     const xs = [x0, x0 + largs[0], x0 + largs[0] + largs[1]];
-    const alturaTotal = TITULO_H + LINHA_H * 3;
+    const FANT_H = dados.fantasia ? 30 : 0; // linha extra do nome fantasia (só quando existe)
+    const alturaTotal = TITULO_H + FANT_H + LINHA_H * 3;
 
     // Faixa de título
     doc.rect(x0, y, largura, TITULO_H).fill(VERDE_ESCURO);
@@ -124,9 +133,15 @@ function desenharQuadroCliente(doc, x0, largura, y, dados) {
         .text('DADOS DO CLIENTE · LOCAL DE ENTREGA', x0 + 8, y + 5.5, { characterSpacing: 1.5, lineBreak: false });
 
     // Células (rótulo pequeno maiúsculo + valor em negrito; valor longo sai com "…")
+    if (dados.fantasia) {
+        doc.font('Helvetica-Bold').fontSize(6).fillColor('#8a938f')
+            .text('NOME FANTASIA', x0 + 7, y + TITULO_H + 5, { characterSpacing: 1, width: largura - 14, height: 8, ellipsis: true });
+        doc.font('Helvetica-Bold').fontSize(12).fillColor('#000000')
+            .text(dados.fantasia, x0 + 7, y + TITULO_H + 13.5, { width: largura - 14, height: 14, ellipsis: true, lineBreak: false });
+    }
     const celula = (col, linha, rotulo, valor) => {
         const cx = xs[col] + 7;
-        const cy = y + TITULO_H + linha * LINHA_H;
+        const cy = y + TITULO_H + FANT_H + linha * LINHA_H;
         const larg = largs[col] - 14;
         doc.font('Helvetica-Bold').fontSize(6).fillColor('#8a938f')
             .text(rotulo, cx, cy + 5, { characterSpacing: 1, width: larg, height: 8, ellipsis: true });
@@ -145,12 +160,13 @@ function desenharQuadroCliente(doc, x0, largura, y, dados) {
 
     // Grade interna (bordas finas)
     doc.lineWidth(0.5).strokeColor(CINZA_CLARO);
-    for (let i = 1; i <= 2; i++) {
-        const ly = y + TITULO_H + LINHA_H * i;
+    for (let i = 0; i <= 2; i++) {
+        if (i === 0 && !FANT_H) continue;
+        const ly = y + TITULO_H + FANT_H + LINHA_H * i;
         doc.moveTo(x0, ly).lineTo(x0 + largura, ly).stroke();
     }
     for (let c = 1; c <= 2; c++) {
-        doc.moveTo(xs[c], y + TITULO_H).lineTo(xs[c], y + alturaTotal).stroke();
+        doc.moveTo(xs[c], y + TITULO_H + FANT_H).lineTo(xs[c], y + alturaTotal).stroke();
     }
 
     // Borda externa
