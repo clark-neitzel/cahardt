@@ -1,5 +1,11 @@
 [
   {
+    "slug": "carga-embarque",
+    "titulo": "Carga e embarque: valor, cidade e total",
+    "resumo": "Na carga agora aparece o valor de cada pedido e o total do caminhão. Para embarcar, os pedidos vêm agrupados por cidade, com subtotal e caixinha para marcar a cidade inteira.",
+    "data": "2026-11-10"
+  },
+  {
     "slug": "nf-informacoes-complementares",
     "titulo": "Nota fiscal mais legível",
     "resumo": "A DANFE agora mostra o nome fantasia do cliente e uma informação por linha (Pedido #N - observação). Confira o Nome Fantasia no cadastro dos clientes.",

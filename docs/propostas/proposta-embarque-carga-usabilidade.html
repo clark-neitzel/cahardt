@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Proposta: Carga e Embarque</title>
+<meta name="description" content="Gerenciamento da Carga com valor e razão social discretos; tela de embarcar pedidos agrupada por cidade, com a caixa de seleção ao lado do que a equipe olha.">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--primary:#00754A;--primaryDark:#006241;--house:#1E3932;--mint:#d4e9e2;--bg:#f2f0eb;--surface:#fff;--text:rgba(0,0,0,.87);--muted:#6b7280;--border:#e5e7eb;--gold:#cba258}
+*{box-sizing:border-box}
+html,body{max-width:100%;overflow-x:hidden}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Manrope,"SF Pro Text",system-ui,sans-serif;letter-spacing:-.01em;font-variant-numeric:tabular-nums;line-height:1.5}
+.wrap{max-width:1180px;margin:0 auto;padding:0 16px 64px;min-width:0}
+.card,.body,.palco,.modal{min-width:0;max-width:100%}
+.cardc .l1 span:first-child,.cardp .l1{min-width:0;overflow-wrap:anywhere}
+.cardc .l2,.cardp .l2{flex-wrap:wrap;gap:4px}
+.hero{background:var(--house);color:#fff;padding:36px 16px 28px}
+.hero h1{font-size:26px;margin:0 0 8px;font-weight:800}
+.hero p{margin:0;opacity:.85;max-width:760px}
+.tag{display:inline-block;background:var(--gold);color:#1a1a1a;font-weight:700;font-size:11px;letter-spacing:.08em;text-transform:uppercase;padding:4px 10px;border-radius:999px;margin-bottom:12px}
+section{margin-top:28px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 1px 2px rgba(0,0,0,.04);overflow:hidden}
+.card .head{display:flex;align-items:center;gap:10px;padding:14px 20px;border-bottom:1px solid #f1f1f1}
+.card .head .n{width:28px;height:28px;border-radius:999px;background:var(--primary);color:#fff;font-weight:800;display:grid;place-items:center;font-size:14px;flex-shrink:0}
+.card .head h2{margin:0;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:#4b5563}
+.card .body{padding:20px}
+p{margin:6px 0}ul{padding-left:20px;margin:6px 0}li{margin:4px 0}
+.muted{color:var(--muted);font-size:14px}
+.grid2{display:grid;grid-template-columns:1fr;gap:14px}
+@media(min-width:760px){.grid2{grid-template-columns:1fr 1fr}}
+.box{border:1px solid var(--border);border-radius:10px;padding:14px;background:#fafaf8}
+.box b{display:block;margin-bottom:4px}
+.pill{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700}
+.pill.g{background:#dcfce7;color:#166534}.pill.m{background:var(--mint);color:var(--house)}.pill.a{background:#fef3c7;color:#92400e}
+
+/* ===== alternador computador / celular ===== */
+.alt{position:sticky;top:0;z-index:20;background:var(--bg);padding:10px 0;display:flex;gap:8px;align-items:center;justify-content:center;border-bottom:1px solid var(--border)}
+.alt button{border:1px solid var(--primary);background:#fff;color:var(--primary);border-radius:999px;padding:8px 18px;font-weight:700;font-family:inherit;cursor:pointer;font-size:14px}
+.alt button.on{background:var(--primary);color:#fff}
+.palco{container-type:inline-size;margin:0 auto;transition:max-width .2s}
+body.mob .palco{max-width:390px;border:10px solid #1f2937;border-radius:28px;background:#fff;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.25)}
+body.mob .palco .modal{border-radius:0;border:0}
+
+/* ===== mock do app ===== */
+.modal{background:#fff;border:1px solid var(--border);border-radius:16px;overflow:hidden;font-size:14px;position:relative}
+.mtop{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.mtop .ic{width:34px;height:34px;border-radius:10px;background:var(--mint);display:grid;place-items:center;color:var(--primaryDark);font-weight:800;font-size:16px}
+.mtop h3{margin:0;font-size:16px;font-weight:800}
+.mtop .v{background:#eef2f7;color:#4b5563;border-radius:999px;padding:2px 8px;font-size:11px;font-weight:700}
+.mtop .sp{flex:1}
+.btn{border:0;border-radius:999px;padding:9px 16px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;white-space:nowrap}
+.btn.p{background:var(--primary);color:#fff}.btn.o{background:#fff;border:1px solid var(--primary);color:var(--primary)}
+.btn.dis{background:#c7d6cf;color:#fff}
+.btn.x{background:transparent;color:#9ca3af;font-size:18px;padding:4px 8px}
+.aviso{margin:14px 18px 0;background:#fffbe6;border:1px solid #f1e3a3;border-radius:10px;padding:10px 14px;font-size:13px}
+.info{display:flex;justify-content:space-between;align-items:flex-start;padding:14px 18px;gap:10px;flex-wrap:wrap}
+.info .lab{font-size:12px;color:var(--muted)}.info .mot{font-size:20px;font-weight:800;line-height:1.1}
+.tbl{margin:0 18px 18px;border:1px solid var(--border);border-radius:12px;overflow:hidden}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;padding:9px 12px;background:#f9fafb;border-bottom:1px solid var(--border);font-weight:600}
+td{padding:9px 12px;border-bottom:1px solid #f1f1f1;vertical-align:middle}
+tr:last-child td{border-bottom:0}
+.num{font-family:ui-monospace,Menlo,monospace;font-weight:700;font-size:13px}
+.zz{color:#7e22ce;background:#f3e8ff;border-radius:6px;padding:1px 6px}
+.bn{color:#166534;background:#dcfce7;border-radius:6px;padding:1px 6px}
+.fant{font-weight:700;color:#111}
+.rz{font-size:11px;color:#9ca3af;margin-top:1px;font-weight:500}
+.obs{font-size:11px;color:#b45309;font-style:italic;margin-top:2px}
+.cid{font-weight:600}
+.end{font-size:11px;color:#6b7280}
+.vol{text-align:center;font-weight:700;background:#f9fafb}
+.val{text-align:right;font-weight:700;color:var(--primaryDark);white-space:nowrap}
+.cond{font-size:11px;color:#9ca3af;font-weight:500;white-space:nowrap}
+.lix{text-align:right;color:#dc2626;width:48px}
+.tot td{background:#f9fafb;font-weight:800;border-top:2px solid var(--border)}
+.pin{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:999px;background:var(--gold);color:#1a1a1a;font-size:11px;font-weight:800;margin-left:6px;vertical-align:middle;box-shadow:0 1px 2px rgba(0,0,0,.3)}
+.legenda{margin-top:12px;display:grid;grid-template-columns:1fr;gap:6px;font-size:14px}
+@media(min-width:760px){.legenda{grid-template-columns:1fr 1fr}}
+.legenda div{display:flex;gap:8px;align-items:flex-start}.legenda .pin{margin:2px 0 0;flex-shrink:0}
+
+/* filtros tela 2 */
+.filt{display:flex;gap:8px;padding:12px 18px;border-bottom:1px solid var(--border);align-items:center;flex-wrap:wrap}
+.busca{flex:1;min-width:200px;border:1px solid #d1d5db;border-radius:999px;padding:8px 14px;color:#9ca3af;background:#fff;font-size:13px}
+.sel{border:1px solid #d1d5db;border-radius:999px;padding:7px 12px;background:#fff;font-size:13px;white-space:nowrap;display:flex;align-items:center;gap:6px}
+.sel b{font-weight:700}.sel .chev{color:#9ca3af;font-size:10px}
+.per{display:flex;align-items:center;border:1px solid #d1d5db;border-radius:999px;overflow:hidden;background:#fff;font-size:13px}
+.per span{padding:7px 10px;border-right:1px solid #e5e7eb}.per span:last-child{border:0}
+.per .arr{color:#6b7280;font-weight:700}
+.tabs{display:flex;gap:18px;padding:0 18px;border-bottom:1px solid var(--border)}
+.tabs div{padding:12px 0 10px;font-weight:700;color:#9ca3af;border-bottom:2px solid transparent}
+.tabs div.on{color:var(--primaryDark);border-color:var(--primary)}
+.tabs .c{background:#eef2f7;color:#4b5563;border-radius:999px;padding:1px 7px;font-size:11px;margin-left:4px}
+.tabs div.on .c{background:var(--mint);color:var(--house)}
+.ck{width:20px;height:20px;border:2px solid #cbd5e1;border-radius:6px;display:inline-block;vertical-align:middle;background:#fff}
+.ck.on{background:var(--primary);border-color:var(--primary);position:relative}
+.ck.on::after{content:"";position:absolute;left:5px;top:1px;width:5px;height:10px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}
+.ck.half{background:var(--mint);border-color:var(--primary);position:relative}
+.ck.half::after{content:"";position:absolute;left:4px;top:7px;width:8px;height:2px;background:var(--primary)}
+.gcid td{background:var(--mint);font-weight:800;color:var(--house);padding:7px 12px;font-size:13px}
+.gcid .sub{font-weight:600;color:#3f6b5a;font-size:12px;margin-left:8px}
+tr.sel-row td{background:#eef7f3}
+.resumo{display:flex;align-items:center;gap:10px;padding:10px 18px;background:var(--house);color:#fff;font-weight:700;font-size:13px;flex-wrap:wrap}
+.resumo .sp{flex:1}
+.resumo .btn.p{background:var(--gold);color:#1a1a1a}
+.cards{display:none}
+.cardp{border-bottom:1px solid #f1f1f1;padding:10px 14px;display:flex;gap:10px;align-items:flex-start}
+.cardp.sel-row{background:#eef7f3}
+.cardp .ck{margin-top:4px;flex-shrink:0}
+.cardp .l1{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.cardp .l2{display:flex;justify-content:space-between;align-items:center;margin-top:4px;font-size:12px;color:#6b7280}
+.cardc{border-bottom:1px solid #f1f1f1;padding:10px 14px}
+.cardc .l1{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.cardc .l2{display:flex;justify-content:space-between;align-items:center;margin-top:4px;font-size:12px;color:#6b7280}
+.gcid-m{background:var(--mint);color:var(--house);font-weight:800;padding:6px 14px;font-size:13px;display:flex;justify-content:space-between;align-items:center}
+
+/* ===== celular (container query) ===== */
+@container (max-width:760px){
+  .tbl table{display:none}
+  .cards{display:block}
+  .mtop h3{font-size:14px}
+  .info .mot{font-size:17px}
+  .filt{overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none}
+  .busca{min-width:170px}
+  .resumo{position:sticky;top:0;z-index:5}
+  .colcel{display:none}
+}
+</style>
+</head>
+<body>
+<div class="hero"><div class="wrap" style="padding-bottom:0">
+  <span class="tag">Proposta · Expedição</span>
+  <h1>Carga e Embarque: ver mais, procurar menos</h1>
+  <p>Duas telas da Expedição ganham o que faltava: no <b>Gerenciamento da Carga</b>, o valor de cada pedido e a razão social discreta; no <b>Embarcar Pedidos</b>, os pedidos agrupados por cidade, com a caixa de marcar ao lado do que a equipe olha. Nada foi alterado no app ainda. Aprove ou peça ajustes.</p>
+  <p style="margin-top:12px;font-size:13px;opacity:.7">10/11/2026 · Mock em HTML, dados de exemplo da carga #430</p>
+</div></div>
+
+<div class="alt">
+  <button class="on" onclick="modo('pc',this)">🖥 Computador</button>
+  <button onclick="modo('mob',this)">📱 Celular</button>
+</div>
+
+<div class="wrap">
+
+<!-- ================= TELA 1 ================= -->
+<section class="card">
+  <div class="head"><div class="n">1</div><h2>Tela 1 · Gerenciamento da Carga (proposta)</h2></div>
+  <div class="body">
+  <div class="palco">
+  <div class="modal">
+    <div class="mtop"><div class="ic">▣</div><h3>Gerenciamento da Carga #430</h3><span class="v">v3</span><div class="sp"></div><button class="btn o">🖨 Relatório / Imprimir</button><button class="btn x">✕</button></div>
+    <div class="aviso">⚠ <b>A folha impressa ficou para trás.</b> Última impressão foi da <b>v2</b> (10/11, 13:53) e a carga já está na <b>v3</b>.</div>
+    <div class="info">
+      <div><div class="lab">Motorista Responsável ✎</div><div class="mot">Jociel</div><div class="lab" style="margin-top:4px">Data de Saída: 10/11/2026</div></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn p">⌸ Conferir por bipagem</button><button class="btn o">+ Atrelar Notas "FATURADAS"</button></div>
+    </div>
+    <div class="tbl">
+      <table>
+        <thead><tr><th>Tipo / Nº</th><th>Cliente / Obs</th><th>Cidade</th><th class="colcel">Endereço</th><th style="text-align:center">Volumes</th><th style="text-align:right">Valor</th><th></th></tr></thead>
+        <tbody>
+          <tr><td><span class="num zz">ZZ#1166</span></td><td><div class="fant">BANCA GARUVA</div></td><td class="cid">Garuva</td><td class="end colcel">📍 ROD BR 101, SN, GARUVA ACIMA</td><td class="vol">5 itens</td><td class="val">R$ 312,40<div class="cond">À vista · Dinheiro</div></td><td class="lix">🗑</td></tr>
+          <tr><td><span class="num">4044</span></td><td><div class="fant">PANIFICADORA MENDES <span class="pin">1</span></div><div class="rz">PANIFICADORA E CONFEITARIA MENDES LTDA</div></td><td class="cid">Garuva</td><td class="end colcel">📍 R JOSE PATROCINIO, 419, GIORGIA PAULA</td><td class="vol">54 itens</td><td class="val">R$ 2.184,90 <span class="pin">2</span><div class="cond">Boleto 14 dias <span class="pin">3</span></div></td><td class="lix">🗑</td></tr>
+          <tr><td><span class="num">4050</span></td><td><div class="fant">PANIFICADORA E MERCEARIA RN</div></td><td class="cid">Garuva</td><td class="end colcel">📍 AV DICO PEREIRA, 84, SAO JOAO ABAIXO</td><td class="vol">4 itens</td><td class="val">R$ 186,20<div class="cond">À vista · Dinheiro</div></td><td class="lix">🗑</td></tr>
+          <tr><td><span class="num">4060</span></td><td><div class="fant">PAO CASEIRO</div><div class="rz">J. F. ARAUJO PANIFICACAO ME</div><div class="obs">Entregar pelos fundos, antes das 10h</div></td><td class="cid">Garuva</td><td class="end colcel">📍 RUA JOAO FRANCISCO DE ARAUJO, 151, JARDIM GARUVA</td><td class="vol">13 itens</td><td class="val">R$ 598,30<div class="cond">Boleto 7 dias</div></td><td class="lix">🗑</td></tr>
+          <tr><td><span class="num">4043</span></td><td><div class="fant">RESTAURANTE THEODORO</div></td><td class="cid">Garuva</td><td class="end colcel">📍 AVENIDA PARANA, 102, CENTRO</td><td class="vol">9 itens</td><td class="val">R$ 421,70<div class="cond">À vista · PIX</div></td><td class="lix">🗑</td></tr>
+          <tr><td><span class="num zz">ZZ#1174</span></td><td><div class="fant">RESTAURANTE VAZ</div></td><td class="cid">Garuva</td><td class="end colcel">📍 BR 101, 9701, URUBUQUARA</td><td class="vol">8 itens</td><td class="val">R$ 367,00<div class="cond">À vista · Dinheiro</div></td><td class="lix">🗑</td></tr>
+          <tr><td><span class="num">4054</span></td><td><div class="fant">POSTO 44</div><div class="rz">POSTO 44 RICHTER LTDA</div></td><td class="cid">Joinville</td><td class="end colcel">📍 RUA 15 DE OUTUBRO, 1000, RIO BONITO</td><td class="vol">14 itens</td><td class="val">R$ 640,15<div class="cond">Boleto 14 dias</div></td><td class="lix">🗑</td></tr>
+          <tr><td><span class="num bn">BN#1167</span></td><td><div class="fant">EDEMEDI ROTISSERIA</div><div class="rz">IDIONE APARECIDA DA SILVA NUNES</div></td><td class="cid">Garuva</td><td class="end colcel">📍 R OLIVIO NOBREGA, 281, CENTRO</td><td class="vol">5 itens</td><td class="val" style="color:#166534;font-size:11px">BONIFICAÇÃO <span class="pin">4</span></td><td class="lix">🗑</td></tr>
+          <tr><td><span class="num zz">ZZ#1172</span></td><td><div class="fant">CARAVAGGIO</div><div class="rz">CARAVAGGIO COMERCIO DE GENEROS ALIMENTICIOS LTDA</div></td><td class="cid">Garuva</td><td class="end colcel">📍 AVENIDA CELSO RAMOS, 1855, Urubuquara</td><td class="vol">9 itens</td><td class="val">R$ 455,80<div class="cond">À vista · Dinheiro</div></td><td class="lix">🗑</td></tr>
+          <tr class="tot"><td colspan="2">9 pedidos <span class="pin">5</span></td><td></td><td class="colcel"></td><td style="text-align:center">121 itens</td><td style="text-align:right">R$ 5.166,45</td><td></td></tr>
+        </tbody>
+      </table>
+      <div class="cards">
+        <div class="cardc"><div class="l1"><span><span class="num zz">ZZ#1166</span> <b>BANCA GARUVA</b></span><span style="color:#dc2626">🗑</span></div><div class="l2"><span>📍 Garuva · ROD BR 101, SN</span><span><b style="color:var(--primaryDark)">R$ 312,40</b> · 5 itens</span></div></div>
+        <div class="cardc"><div class="l1"><span><span class="num">4044</span> <b>PANIFICADORA MENDES</b></span><span style="color:#dc2626">🗑</span></div><div class="rz">PANIFICADORA E CONFEITARIA MENDES LTDA</div><div class="l2"><span>📍 Garuva · R JOSE PATROCINIO, 419</span><span><b style="color:var(--primaryDark)">R$ 2.184,90</b> · 54 itens</span></div><div class="cond">Boleto 14 dias</div></div>
+        <div class="cardc"><div class="l1"><span><span class="num">4060</span> <b>PAO CASEIRO</b></span><span style="color:#dc2626">🗑</span></div><div class="rz">J. F. ARAUJO PANIFICACAO ME</div><div class="obs">Entregar pelos fundos, antes das 10h</div><div class="l2"><span>📍 Garuva · RUA JOAO F. DE ARAUJO, 151</span><span><b style="color:var(--primaryDark)">R$ 598,30</b> · 13 itens</span></div></div>
+        <div class="cardc"><div class="l1"><span><span class="num">4054</span> <b>POSTO 44</b></span><span style="color:#dc2626">🗑</span></div><div class="rz">POSTO 44 RICHTER LTDA</div><div class="l2"><span>📍 Joinville · RUA 15 DE OUTUBRO, 1000</span><span><b style="color:var(--primaryDark)">R$ 640,15</b> · 14 itens</span></div></div>
+        <div class="cardc"><div class="l1"><span><span class="num bn">BN#1167</span> <b>EDEMEDI ROTISSERIA</b></span><span style="color:#dc2626">🗑</span></div><div class="l2"><span>📍 Garuva · R OLIVIO NOBREGA, 281</span><span><b style="color:#166534;font-size:11px">BONIFICAÇÃO</b> · 5 itens</span></div></div>
+        <div class="cardc" style="background:#f9fafb;font-weight:800"><div class="l1"><span>9 pedidos · 121 itens</span><span>R$ 5.166,45</span></div></div>
+      </div>
+    </div>
+  </div>
+  </div>
+  <div class="legenda">
+    <div><span class="pin">1</span><span><b>Nome fantasia em destaque, razão social discreta embaixo</b> (cinza pequeno, só quando é diferente). Hoje a linha mostra um nome só, às vezes a razão social inteira.</span></div>
+    <div><span class="pin">2</span><span><b>Coluna Valor</b> à direita, antes da lixeira, como pedido. Verde-escuro em negrito para bater o olho.</span></div>
+    <div><span class="pin">3</span><span><b>Condição de pagamento</b> em cinza discreto sob o valor: a expedição sabe na hora se o motorista cobra dinheiro, PIX ou boleto. Já está na folha impressa; agora aparece na tela também.</span></div>
+    <div><span class="pin">4</span><span><b>Bonificação</b> não mostra valor, mostra "BONIFICAÇÃO" (mesma regra da tela de embarcar).</span></div>
+    <div><span class="pin">5</span><span><b>Linha de total</b>: pedidos, volumes e valor da carga. Hoje não há total nenhum.</span></div>
+    <div><span class="pin" style="background:#9ca3af">📱</span><span><b>No celular</b> a tabela vira cards (hoje a tabela estoura a tela com rolagem lateral). Endereço encurtado, valor e itens na mesma linha.</span></div>
+  </div>
+  </div>
+</section>
+
+<!-- ================= TELA 2 ================= -->
+<section class="card">
+  <div class="head"><div class="n">2</div><h2>Tela 2 · Embarcar Pedidos e Amostras (proposta)</h2></div>
+  <div class="body">
+  <div class="palco">
+  <div class="modal">
+    <div class="mtop"><div class="ic">▣</div><h3>Embarcar na carga #430</h3><div class="sp"></div><button class="btn x">✕</button></div>
+    <div class="resumo"><span>2 pedidos selecionados · R$ 552,86 <span class="pin">1</span></span><div class="sp"></div><button class="btn o" style="border-color:#fff;color:#fff;background:transparent">Cancelar</button><button class="btn p">💾 Atrelar 2 à carga</button></div>
+    <div class="tabs"><div class="on">Pedidos <span class="c">6</span></div><div>Amostras <span class="c">1</span></div></div>
+    <div class="filt">
+      <div class="busca">🔍 Buscar cliente, nº, cidade…</div>
+      <div class="sel">Tipo: <b>Todos</b> <span class="chev">▼</span></div>
+      <div class="sel">Vendedores: <b>Todos</b> <span class="chev">▼</span> <span class="pin">2</span></div>
+      <div class="per"><span class="arr">‹</span><span>Todo o período ▾</span><span class="arr">›</span></div><span class="pin" style="margin-left:0">3</span>
+      <div class="sel"><span class="ck on" style="width:16px;height:16px"></span> Agrupar por cidade <span class="pin">4</span></div>
+    </div>
+    <div class="tbl" style="margin-top:12px">
+      <table>
+        <thead><tr><th style="width:36px"><span class="ck"></span></th><th>Nº</th><th>Cliente</th><th style="text-align:right">Valor</th><th class="colcel">Entrega</th><th class="colcel">Cond. pgto</th><th class="colcel">Vendedor</th></tr></thead>
+        <tbody>
+          <tr class="gcid"><td><span class="ck"></span></td><td colspan="6">Araquari <span class="sub">1 pedido · R$ 738,58</span> <span class="pin">5</span></td></tr>
+          <tr><td><span class="ck"></span></td><td><span class="num zz">ZZ#1176</span></td><td><div class="fant">PADARIA RAINHA</div><div class="rz">PADARIA E CONFEITARIA RAINHA</div></td><td class="val">R$ 738,58</td><td class="colcel" style="color:#4f46e5;font-weight:600">11/11/26</td><td class="colcel cond">À vista · Dinheiro</td><td class="colcel cond">Leticia Piske</td></tr>
+          <tr class="gcid"><td><span class="ck on"></span></td><td colspan="6">Guaramirim <span class="sub">2 pedidos · R$ 552,86</span></td></tr>
+          <tr class="sel-row"><td><span class="ck on"></span> <span class="pin" style="margin-left:2px">6</span></td><td><span class="num zz">ZZ#1177</span></td><td><div class="fant">PADARIA NUBIA</div><div class="rz">PADARIA E CONFEITARIA NUBIA</div></td><td class="val">R$ 282,94</td><td class="colcel" style="color:#4f46e5;font-weight:600">11/11/26</td><td class="colcel cond">À vista · Dinheiro</td><td class="colcel cond">Leticia Piske</td></tr>
+          <tr class="sel-row"><td><span class="ck on"></span></td><td><span class="num zz">ZZ#1178</span></td><td><div class="fant">PANIF FERNANDES</div></td><td class="val">R$ 269,92</td><td class="colcel" style="color:#4f46e5;font-weight:600">11/11/26</td><td class="colcel cond">À vista · Dinheiro</td><td class="colcel cond">Leticia Piske</td></tr>
+          <tr class="gcid"><td><span class="ck"></span></td><td colspan="6">Jaraguá do Sul <span class="sub">1 pedido · R$ 108,51</span></td></tr>
+          <tr><td><span class="ck"></span></td><td><span class="num zz">ZZ#1175</span></td><td><div class="fant">CANTINHO DO SABOR</div><div class="rz">LANCHONETE E RESTAURANTE CANTINHO DO SABOR SS LTDA</div></td><td class="val">R$ 108,51</td><td class="colcel" style="color:#4f46e5;font-weight:600">11/11/26</td><td class="colcel cond">À vista · Dinheiro</td><td class="colcel cond">Leticia Piske</td></tr>
+          <tr class="gcid"><td><span class="ck"></span></td><td colspan="6">Joinville <span class="sub">2 pedidos · R$ 307,87</span></td></tr>
+          <tr><td><span class="ck"></span></td><td><span class="num zz">ZZ#1052</span></td><td><div class="fant">LETICIA PISKE</div></td><td class="val">R$ 53,88</td><td class="colcel" style="color:#4f46e5;font-weight:600">07/11/26</td><td class="colcel cond">À vista · Funcionário</td><td class="colcel cond">Clarkson Neitzel</td></tr>
+          <tr><td><span class="ck"></span></td><td><span class="num zz">ZZ#1161</span></td><td><div class="fant">LETICIA PISKE</div></td><td class="val">R$ 253,99</td><td class="colcel" style="color:#4f46e5;font-weight:600">09/11/26</td><td class="colcel cond">À vista · Funcionário</td><td class="colcel cond">Clarkson Neitzel</td></tr>
+        </tbody>
+      </table>
+      <div class="cards">
+        <div class="gcid-m"><span><span class="ck" style="width:16px;height:16px"></span> Araquari</span><span style="font-size:12px;font-weight:600">1 · R$ 738,58</span></div>
+        <div class="cardp"><span class="ck"></span><div style="flex:1"><div class="l1"><span class="num zz">ZZ#1176</span><b>PADARIA RAINHA</b></div><div class="l2"><span>11/11 · À vista · Dinheiro</span><b style="color:var(--primaryDark)">R$ 738,58</b></div></div></div>
+        <div class="gcid-m"><span><span class="ck on" style="width:16px;height:16px"></span> Guaramirim</span><span style="font-size:12px;font-weight:600">2 · R$ 552,86</span></div>
+        <div class="cardp sel-row"><span class="ck on"></span><div style="flex:1"><div class="l1"><span class="num zz">ZZ#1177</span><b>PADARIA NUBIA</b></div><div class="l2"><span>11/11 · À vista · Dinheiro</span><b style="color:var(--primaryDark)">R$ 282,94</b></div></div></div>
+        <div class="cardp sel-row"><span class="ck on"></span><div style="flex:1"><div class="l1"><span class="num zz">ZZ#1178</span><b>PANIF FERNANDES</b></div><div class="l2"><span>11/11 · À vista · Dinheiro</span><b style="color:var(--primaryDark)">R$ 269,92</b></div></div></div>
+        <div class="gcid-m"><span><span class="ck" style="width:16px;height:16px"></span> Jaraguá do Sul</span><span style="font-size:12px;font-weight:600">1 · R$ 108,51</span></div>
+        <div class="cardp"><span class="ck"></span><div style="flex:1"><div class="l1"><span class="num zz">ZZ#1175</span><b>CANTINHO DO SABOR</b></div><div class="l2"><span>11/11 · À vista · Dinheiro</span><b style="color:var(--primaryDark)">R$ 108,51</b></div></div></div>
+        <div class="gcid-m"><span><span class="ck" style="width:16px;height:16px"></span> Joinville</span><span style="font-size:12px;font-weight:600">2 · R$ 307,87</span></div>
+        <div class="cardp"><span class="ck"></span><div style="flex:1"><div class="l1"><span class="num zz">ZZ#1052</span><b>LETICIA PISKE</b></div><div class="l2"><span>07/11 · À vista · Funcionário</span><b style="color:var(--primaryDark)">R$ 53,88</b></div></div></div>
+      </div>
+    </div>
+  </div>
+  </div>
+  <div class="legenda">
+    <div><span class="pin">1</span><span><b>Barra de ação no topo</b>, fixa: quantos pedidos e quanto em R$ está marcado, com o botão "Atrelar" ali mesmo. Hoje fica no rodapé e some quando a lista é longa.</span></div>
+    <div><span class="pin">2</span><span><b>Vendedores vira multi-escolha</b> (pode marcar 2 vendedores da mesma região). Tipo continua escolha única. Os filtros ficam numa linha só e são lembrados por usuário.</span></div>
+    <div><span class="pin">3</span><span><b>Período em pílula única</b> (padrão do sistema, com setas e presets) no lugar dos dois campos de data soltos. Padrão desta tela: "Todo o período", para nenhum pedido livre ficar escondido.</span></div>
+    <div><span class="pin">4</span><span><b>Agrupar por cidade</b> (ligado por padrão): a equipe monta a carga por região, então a cidade vira o cabeçalho, não uma informação perdida no meio da linha. Dá para desligar e voltar à lista corrida.</span></div>
+    <div><span class="pin">5</span><span><b>Cabeçalho da cidade</b> com contagem e soma, e uma caixa que marca a cidade inteira de uma vez.</span></div>
+    <div><span class="pin">6</span><span><b>Caixa, número, cliente e valor lado a lado</b>, na metade esquerda da linha, onde o olho e o mouse estão. Entrega, condição e vendedor ficam à direita, em cinza, para consulta. A linha inteira continua clicável.</span></div>
+    <div><span class="pin" style="background:#9ca3af">📱</span><span><b>No celular</b>: cards por cidade, caixa colada no número e valor na mesma linha da condição. O botão "Atrelar" fica sempre visível no topo.</span></div>
+  </div>
+  </div>
+</section>
+
+<section class="card">
+  <div class="head"><div class="n">3</div><h2>Regras do sistema já aplicadas e melhorias por conta</h2></div>
+  <div class="body grid2">
+    <div class="box"><b>Regras do sistema aplicadas</b><ul>
+      <li>Período: <code>FiltroPeriodo</code> em pílula única (tira o par de datas soltas).</li>
+      <li>Filtros lembrados por usuário (<code>useFiltrosSalvos</code>): tipo, vendedores, período e "agrupar por cidade". Busca por texto não é lembrada.</li>
+      <li>Multi-escolha de vendedores com <code>MultiSelect</code>; tipo com <code>SelectBusca</code>.</li>
+      <li>Barra de ações e total no topo (rodapé é do Clippy).</li>
+      <li>Desktop aproveita a largura: modal largo com tabela e mais colunas; celular vira cards.</li>
+      <li>Botões em pílula, verde do tema, badges de tipo nas cores já usadas (ZZ roxo, BN verde).</li>
+    </ul></div>
+    <div class="box"><b>Melhorias que incluí por conta</b><ul>
+      <li>Condição de pagamento discreta na carga (motorista cobra dinheiro, PIX ou boleto?).</li>
+      <li>Linha de total da carga (pedidos, volumes, R$).</li>
+      <li>Agrupar por cidade com "marcar a cidade inteira" e subtotal por cidade.</li>
+      <li>Soma em R$ do que está marcado, antes de atrelar.</li>
+      <li>Busca passa a achar também por cidade e vendedor (já funciona assim no código, só o texto do campo não dizia).</li>
+      <li>Cards no celular na tela 1, que hoje só tem tabela.</li>
+    </ul></div>
+    <div class="box"><b>O que NÃO muda</b><ul>
+      <li>Bipagem, atrelar notas, aviso de folha para trás, histórico e cobranças da carga.</li>
+      <li>Aba Amostras: ganha o mesmo formato de tabela (nº, destinatário, cidade, solicitante, itens), sem agrupamento.</li>
+      <li>Impressão do romaneio: já tem valor, razão social e condição; não é tocada.</li>
+    </ul></div>
+    <div class="box"><b>Para você decidir</b><ul>
+      <li><span class="pill a">1</span> A condição de pagamento sob o valor na tela 1: mantém ou tira?</li>
+      <li><span class="pill a">2</span> Agrupar por cidade ligado por padrão, ou desligado e a pessoa liga quando quer?</li>
+      <li><span class="pill a">3</span> Na tela 1, a razão social discreta embaixo serve, ou prefere só o nome fantasia?</li>
+    </ul><p class="muted" style="margin-top:8px">Esforço estimado depois de aprovado: meio dia de desenvolvimento + teste (equipe de agentes: dev-frontend → QA + revisor → gerente de entrega).</p></div>
+  </div>
+</section>
+
+</div>
+<script>
+function modo(m,btn){document.body.classList.toggle('mob',m==='mob');document.querySelectorAll('.alt button').forEach(b=>b.classList.remove('on'));btn.classList.add('on');try{localStorage.setItem('prop-modo',m)}catch(e){}}
+try{if(new URLSearchParams(location.search).get('modo')==='mob'||localStorage.getItem('prop-modo')==='mob'){modo('mob',document.querySelectorAll('.alt button')[1])}}catch(e){}
+</script>
+</body>
+</html>

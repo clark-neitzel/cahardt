@@ -20,6 +20,7 @@ Painel de expedição logística. Aqui são criados os "embarques" (cargas), que
 - Abrir o detalhe de uma carga para:
   - Ver os pedidos e amostras incluídos
   - Adicionar mais pedidos à carga (modal `AdicionarPedidosModal`)
+  - Ver o **valor de cada pedido** (coluna Valor, antes da lixeira; bonificação aparece como "BONIFICAÇÃO"), a **condição de pagamento** (letra discreta embaixo do valor), a **razão social** (letra discreta embaixo do nome fantasia, só quando for diferente) e a **linha de total da carga** (nº de pedidos, volumes e valor somado — bonificação conta zero). No celular a lista vira cartões
   - Remover pedidos ou amostras da carga (desde que a entrega ainda não foi realizada)
   - Editar data e motorista do embarque (quem tem `Pode_Editar_Embarque`)
   - Ver o status de entrega de cada pedido (PENDENTE, ENTREGUE, ENTREGUE_PARCIAL, DEVOLVIDO)
@@ -45,7 +46,12 @@ Painel de expedição logística. Aqui são criados os "embarques" (cargas), que
 1. Clique no embarque desejado (desktop: botão "Analisar / Imprimir"; mobile: toque no card)
 2. No modal de detalhes, clique em **+ Adicionar Pedidos** (ou equivalente)
 3. O modal `AdicionarPedidosModal` abre com a lista de pedidos FATURADOS disponíveis
-4. Selecione os pedidos e confirme — eles entram na carga
+4. Selecione os pedidos e confirme — eles entram na carga. Como é a janela:
+   - **Barra no topo** (verde-escura): "N pedidos [+ M amostras] selecionados · R$ soma" (bonificação conta zero), com **Cancelar** e **Atrelar N à carga**. Fica sempre à vista; não há mais botão no rodapé
+   - **Filtros numa linha**: busca (cliente, nº, cidade, vendedor, condição), Tipo, **Vendedores (vários ao mesmo tempo)**, **Período** (pílula `FiltroPeriodo`; padrão "Todo o período", filtra pela data de entrega) e **Agrupar por cidade**. Tipo, vendedores e agrupar por cidade são **lembrados** por usuário; a busca não. **Limpar** volta aos padrões
+   - **Agrupar por cidade** (ligado por padrão): um cabeçalho por cidade com "N pedidos · R$ subtotal" e uma **caixinha que marca/desmarca todos os pedidos da cidade** (fica "pela metade" quando só alguns estão marcados). Pedido sem cidade cai em "Sem cidade", no fim. Desligado, a lista vem corrida, ordenada por cidade e nº
+   - No computador a lista é uma tabela (caixa, nº, cliente com razão social discreta, valor, entrega, condição, vendedor) e a caixa do cabeçalho seleciona todos os filtrados; no celular são cartões por cidade
+   - Aba **Amostras**: tabela no computador (caixa, nº, destinatário, cidade, solicitante, itens) e cartões no celular; sem agrupamento
 5. **Não aparecem na lista** (e o sistema recusa se alguém tentar atrelar): pedido **cancelado**, pedido excluído, pedido que já está em outra carga, pedido que está no Kanban do Delivery (esse é entregue por outro fluxo) e **pedido especial (ZZ#) ou bonificação (BN#) ainda pendente de aprovação** — para especial/bonificação, a aprovação é o equivalente do faturamento: só depois de clicar **Aprovar agora** (na tela de Pedidos) o pedido pode entrar em carga. Se alguém tentar atrelar um pendente, o sistema recusa com o motivo ("especial pendente de aprovação" / "bonificação pendente de aprovação")
    - Pedido **devolvido não entra nessa conta**: a devolução só pode ser registrada depois que o motorista marcou a entrega (`ENTREGUE_PARCIAL` ou `DEVOLVIDO`), e a partir daí o pedido fica preso na carga — não sai mais dela nem volta para a lista de disponíveis. Reenvio de mercadoria devolvida é **pedido novo**, nunca o mesmo
 

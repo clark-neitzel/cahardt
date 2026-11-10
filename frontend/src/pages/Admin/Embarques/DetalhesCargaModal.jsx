@@ -763,81 +763,180 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                                 />
                             )}
 
-                            <div className="border border-gray-200 rounded-xl overflow-hidden">
-                                <table className="min-w-full divide-y divide-gray-200">
-                                    <thead className="bg-gray-50">
-                                        <tr>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo / Nº</th>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente / Obs</th>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cidade</th>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Endereço</th>
-                                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Volumes</th>
-                                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Retirar</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="bg-white divide-y divide-gray-200">
-                                        {embarque.pedidos.length === 0 ? (
-                                            <tr><td colSpan="6" className="px-6 py-8 text-center text-gray-500">Caminhão Vazio.</td></tr>
-                                        ) : embarque.pedidos.map(p => {
-                                            const nomeCliente = p.cliente?.NomeFantasia || p.cliente?.Nome || '—';
-                                            const prefixo = p.bonificacao ? 'BN#' : p.especial ? 'ZZ#' : '';
-                                            const numExibido = prefixo ? `${prefixo}${p.numero}` : (p.numero || 'S/N');
-                                            const tipoCor = p.bonificacao ? 'text-green-700 bg-green-50' : p.especial ? 'text-purple-700 bg-purple-50' : 'text-gray-700';
-                                            const enderecoCompleto = [
-                                                p.cliente?.End_Logradouro,
-                                                p.cliente?.End_Numero || 'SN',
-                                                p.cliente?.End_Bairro,
-                                            ].filter(Boolean).join(', ');
-                                            // Conferência da doca: a linha fica verde e mostra a hora do bipe.
-                                            const bipadoEm = conferencia[`pedido:${p.id}`]?.conferidaEm || null;
-                                            return (
-                                            <tr key={p.id} className={bipadoEm ? 'bg-green-50' : ''}>
-                                                <td className="px-4 py-3 whitespace-nowrap">
-                                                    <span className={`text-sm font-mono font-bold px-1.5 py-0.5 rounded ${tipoCor}`}>{numExibido}</span>
-                                                    {bipadoEm && (
-                                                        <div className="text-[11px] font-semibold text-green-700 mt-0.5">
-                                                            ✓ no caminhão {horaDoBipe(bipadoEm)}
+                            {(() => {
+                                const moeda = (n) => Number(n || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                                const valorPedido = (p) => (p.itens || []).reduce((acc, i) => acc + Number(i.valor || i.precoUnitario || 0) * Number(i.quantidade || 0), 0);
+                                const volumesPedido = (p) => (p.itens || []).reduce((acc, i) => acc + Number(i.quantidade || 0), 0);
+                                const totalPedidos = embarque.pedidos.length;
+                                const totalVolumes = embarque.pedidos.reduce((s, p) => s + volumesPedido(p), 0);
+                                const totalValor = embarque.pedidos.reduce((s, p) => s + (p.bonificacao ? 0 : valorPedido(p)), 0);
+                                const dadosLinha = (p) => {
+                                    const nomeCliente = p.cliente?.NomeFantasia || p.cliente?.Nome || '—';
+                                    const razaoSocial = p.cliente?.NomeFantasia && p.cliente?.Nome && p.cliente.NomeFantasia !== p.cliente.Nome ? p.cliente.Nome : null;
+                                    const prefixo = p.bonificacao ? 'BN#' : p.especial ? 'ZZ#' : '';
+                                    const numExibido = prefixo ? `${prefixo}${p.numero}` : (p.numero || 'S/N');
+                                    const tipoCor = p.bonificacao ? 'text-green-700 bg-green-50' : p.especial ? 'text-purple-700 bg-purple-50' : 'text-gray-700';
+                                    const enderecoCompleto = [
+                                        p.cliente?.End_Logradouro,
+                                        p.cliente?.End_Numero || 'SN',
+                                        p.cliente?.End_Bairro,
+                                    ].filter(Boolean).join(', ');
+                                    const enderecoCurto = [p.cliente?.End_Logradouro, p.cliente?.End_Numero || 'SN'].filter(Boolean).join(', ');
+                                    const condicao = p.nomeCondicaoPagamento || p.opcaoCondicaoPagamento || p.tipoPagamento || '';
+                                    const bipadoEm = conferencia[`pedido:${p.id}`]?.conferidaEm || null;
+                                    return { nomeCliente, razaoSocial, numExibido, tipoCor, enderecoCompleto, enderecoCurto, condicao, bipadoEm };
+                                };
+                                const ValorCell = ({ p, condicao }) => (
+                                    <>
+                                        {p.bonificacao
+                                            ? <div className="text-[11px] font-bold text-green-700">BONIFICAÇÃO</div>
+                                            : <div className="font-bold text-primaryDark">{moeda(valorPedido(p))}</div>}
+                                        {condicao && !p.bonificacao && <div className="text-[11px] text-gray-400 font-normal">{condicao}</div>}
+                                    </>
+                                );
+                                return (
+                                    <>
+                                        {/* Desktop: tabela */}
+                                        <div className="hidden md:block border border-gray-200 rounded-xl overflow-hidden">
+                                            <table className="min-w-full divide-y divide-gray-200">
+                                                <thead className="bg-gray-50">
+                                                    <tr>
+                                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo / Nº</th>
+                                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente / Obs</th>
+                                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cidade</th>
+                                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Endereço</th>
+                                                        <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Volumes</th>
+                                                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Valor</th>
+                                                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Retirar</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="bg-white divide-y divide-gray-200">
+                                                    {totalPedidos === 0 ? (
+                                                        <tr><td colSpan="7" className="px-6 py-8 text-center text-gray-500">Caminhão Vazio.</td></tr>
+                                                    ) : embarque.pedidos.map(p => {
+                                                        const { nomeCliente, razaoSocial, numExibido, tipoCor, enderecoCompleto, condicao, bipadoEm } = dadosLinha(p);
+                                                        return (
+                                                        <tr key={p.id} className={bipadoEm ? 'bg-green-50' : ''}>
+                                                            <td className="px-4 py-3 whitespace-nowrap">
+                                                                <span className={`text-sm font-mono font-bold px-1.5 py-0.5 rounded ${tipoCor}`}>{numExibido}</span>
+                                                                {bipadoEm && (
+                                                                    <div className="text-[11px] font-semibold text-green-700 mt-0.5">
+                                                                        ✓ no caminhão {horaDoBipe(bipadoEm)}
+                                                                    </div>
+                                                                )}
+                                                            </td>
+                                                            <td className="px-4 py-3 text-sm">
+                                                                <div className="font-bold text-gray-900 flex flex-wrap items-center gap-1.5">
+                                                                    <span>{nomeCliente}</span>
+                                                                    <SeloInadimplencia situacao={inadMapCarga[p.cliente?.UUID || p.clienteId]} compacto
+                                                                        onClick={() => setPopupInad({ id: p.cliente?.UUID || p.clienteId, nome: nomeCliente })} />
+                                                                </div>
+                                                                {razaoSocial && <div className="text-[11px] text-gray-400 leading-tight">{razaoSocial}</div>}
+                                                                {p.observacoes && (
+                                                                    <div className="text-xs text-amber-700 italic mt-0.5 leading-snug">{p.observacoes}</div>
+                                                                )}
+                                                            </td>
+                                                            <td className="px-4 py-3 text-sm font-semibold text-gray-800 whitespace-nowrap">
+                                                                {p.cliente?.End_Cidade || '—'}
+                                                            </td>
+                                                            <td className="px-4 py-3 text-xs text-gray-500 max-w-[200px]">
+                                                                <div className="flex items-start gap-1">
+                                                                    <MapPin className="h-3 w-3 mt-0.5 text-gray-400 flex-shrink-0" />
+                                                                    <span>{enderecoCompleto || 'N/A'}</span>
+                                                                </div>
+                                                            </td>
+                                                            <td className={`px-4 py-3 whitespace-nowrap text-center text-sm font-bold text-gray-700 ${bipadoEm ? 'bg-green-100' : 'bg-gray-50'}`}>
+                                                                {volumesPedido(p)} itens
+                                                            </td>
+                                                            <td className="px-4 py-3 whitespace-nowrap text-right text-sm">
+                                                                <ValorCell p={p} condicao={condicao} />
+                                                            </td>
+                                                            <td className="px-4 py-4 whitespace-nowrap text-right text-sm">
+                                                                <button type="button"
+                                                                    onClick={() => handleRemover(p)}
+                                                                    disabled={removerLoader === p.id}
+                                                                    className="text-red-500 hover:text-red-700 disabled:opacity-50"
+                                                                    title="Remover do Embarque (Volta pra doca)"
+                                                                >
+                                                                    {removerLoader === p.id ? '...' : <Trash2 className="h-5 w-5" />}
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                                {totalPedidos > 0 && (
+                                                    <tfoot className="bg-gray-50 font-bold text-sm text-gray-800">
+                                                        <tr>
+                                                            <td className="px-4 py-3" colSpan="4">{totalPedidos} pedido{totalPedidos > 1 ? 's' : ''}</td>
+                                                            <td className="px-4 py-3 text-center whitespace-nowrap">{totalVolumes} itens</td>
+                                                            <td className="px-4 py-3 text-right whitespace-nowrap text-primaryDark">{moeda(totalValor)}</td>
+                                                            <td></td>
+                                                        </tr>
+                                                    </tfoot>
+                                                )}
+                                            </table>
+                                        </div>
+
+                                        {/* Mobile: cards */}
+                                        <div className="md:hidden space-y-3">
+                                            {totalPedidos === 0 ? (
+                                                <div className="bg-white rounded-xl border border-gray-200 p-6 text-center text-gray-500 text-sm">Caminhão Vazio.</div>
+                                            ) : embarque.pedidos.map(p => {
+                                                const { nomeCliente, razaoSocial, numExibido, tipoCor, enderecoCurto, condicao, bipadoEm } = dadosLinha(p);
+                                                return (
+                                                    <div key={p.id} className={`rounded-xl border shadow-sm p-3 ${bipadoEm ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200'}`}>
+                                                        <div className="flex items-start gap-2">
+                                                            <span className={`text-sm font-mono font-bold px-1.5 py-0.5 rounded flex-shrink-0 ${tipoCor}`}>{numExibido}</span>
+                                                            <div className="flex-1 min-w-0 flex flex-wrap items-center gap-1.5 font-bold text-sm text-gray-900">
+                                                                <span className="break-words min-w-0">{nomeCliente}</span>
+                                                                <SeloInadimplencia situacao={inadMapCarga[p.cliente?.UUID || p.clienteId]} compacto
+                                                                    onClick={() => setPopupInad({ id: p.cliente?.UUID || p.clienteId, nome: nomeCliente })} />
+                                                            </div>
+                                                            <button type="button"
+                                                                onClick={() => handleRemover(p)}
+                                                                disabled={removerLoader === p.id}
+                                                                className="flex-shrink-0 p-2 -m-1 min-w-[44px] min-h-[44px] flex items-center justify-center text-red-500 hover:text-red-700 disabled:opacity-50"
+                                                                title="Remover do Embarque (Volta pra doca)"
+                                                            >
+                                                                {removerLoader === p.id ? '...' : <Trash2 className="h-5 w-5" />}
+                                                            </button>
                                                         </div>
-                                                    )}
-                                                </td>
-                                                <td className="px-4 py-3 text-sm">
-                                                    <div className="font-bold text-gray-900 flex flex-wrap items-center gap-1.5">
-                                                        <span>{nomeCliente}</span>
-                                                        <SeloInadimplencia situacao={inadMapCarga[p.cliente?.UUID || p.clienteId]} compacto
-                                                            onClick={() => setPopupInad({ id: p.cliente?.UUID || p.clienteId, nome: nomeCliente })} />
+                                                        {razaoSocial && <div className="text-[11px] text-gray-400 leading-tight">{razaoSocial}</div>}
+                                                        {p.observacoes && (
+                                                            <div className="text-xs text-amber-700 italic mt-0.5 leading-snug">{p.observacoes}</div>
+                                                        )}
+                                                        {bipadoEm && (
+                                                            <div className="text-[11px] font-semibold text-green-700 mt-1">✓ no caminhão {horaDoBipe(bipadoEm)}</div>
+                                                        )}
+                                                        <div className="flex items-start justify-between gap-3 mt-2">
+                                                            <div className="min-w-0 text-xs text-gray-500">
+                                                                <div className="font-semibold text-gray-800">{p.cliente?.End_Cidade || '—'}</div>
+                                                                {enderecoCurto && (
+                                                                    <div className="flex items-start gap-1">
+                                                                        <MapPin className="h-3 w-3 mt-0.5 text-gray-400 flex-shrink-0" />
+                                                                        <span className="break-words">{enderecoCurto}</span>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                            <div className="text-right flex-shrink-0 text-sm">
+                                                                <ValorCell p={p} condicao={condicao} />
+                                                                <div className="text-xs text-gray-500">{volumesPedido(p)} itens</div>
+                                                            </div>
+                                                        </div>
                                                     </div>
-                                                    {p.observacoes && (
-                                                        <div className="text-xs text-amber-700 italic mt-0.5 leading-snug">{p.observacoes}</div>
-                                                    )}
-                                                </td>
-                                                <td className="px-4 py-3 text-sm font-semibold text-gray-800 whitespace-nowrap">
-                                                    {p.cliente?.End_Cidade || '—'}
-                                                </td>
-                                                <td className="px-4 py-3 text-xs text-gray-500 max-w-[200px]">
-                                                    <div className="flex items-start gap-1">
-                                                        <MapPin className="h-3 w-3 mt-0.5 text-gray-400 flex-shrink-0" />
-                                                        <span>{enderecoCompleto || 'N/A'}</span>
-                                                    </div>
-                                                </td>
-                                                <td className={`px-4 py-3 whitespace-nowrap text-center text-sm font-bold text-gray-700 ${bipadoEm ? 'bg-green-100' : 'bg-gray-50'}`}>
-                                                    {p.itens.reduce((acc, i) => acc + Number(i.quantidade), 0)} itens
-                                                </td>
-                                                <td className="px-4 py-4 whitespace-nowrap text-right text-sm">
-                                                    <button type="button"
-                                                        onClick={() => handleRemover(p)}
-                                                        disabled={removerLoader === p.id}
-                                                        className="text-red-500 hover:text-red-700 disabled:opacity-50"
-                                                        title="Remover do Embarque (Volta pra doca)"
-                                                    >
-                                                        {removerLoader === p.id ? '...' : <Trash2 className="h-5 w-5" />}
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
-                            </div>
+                                                );
+                                            })}
+                                            {totalPedidos > 0 && (
+                                                <div className="bg-gray-50 rounded-xl border border-gray-200 p-3 flex items-center justify-between font-bold text-sm text-gray-800">
+                                                    <span>{totalPedidos} pedido{totalPedidos > 1 ? 's' : ''} · {totalVolumes} itens</span>
+                                                    <span className="text-primaryDark">{moeda(totalValor)}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </>
+                                );
+                            })()}
 
                             {/* Amostras na Carga */}
                             {embarque.amostras && embarque.amostras.length > 0 && (
