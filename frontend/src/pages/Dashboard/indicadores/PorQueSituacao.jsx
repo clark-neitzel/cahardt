@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom';
 import { X, TrendingDown, TrendingUp, AlertTriangle, Info } from 'lucide-react';
 import { Selo } from './Bloco';
 import { fmtNum, fmtPct, fmtInt, fmtData, temValor } from './formatos';
+import { useIndicador } from './useIndicador';
+import CausasNivel2 from './CausasNivel2';
 
 const ICONE_MOTIVO = {
     custo_faltando: AlertTriangle, ficha_desatualizada: AlertTriangle,
@@ -48,6 +50,9 @@ export default function PorQueSituacao({ linha, onFechar }) {
     const fecharRef = useRef(onFechar);
     fecharRef.current = onFechar;
 
+    // nível 2 carrega em separado: o nível 1 aparece na hora
+    const causas = useIndicador(`produtos/${linha.produtoId}/causas`, { de: atual?.de, ate: atual?.ate }, !!(linha.produtoId && atual?.de && atual?.ate));
+
     useEffect(() => {
         const onKey = (e) => { if (e.key === 'Escape') fecharRef.current(); };
         document.addEventListener('keydown', onKey);
@@ -78,7 +83,7 @@ export default function PorQueSituacao({ linha, onFechar }) {
     return createPortal(
         <div className="fixed inset-0 z-[1000] flex items-end md:items-center justify-center" role="dialog" aria-modal="true" aria-label={titulo}>
             <div className="absolute inset-0 bg-black/40" onClick={onFechar} />
-            <div className="relative bg-white w-full md:max-w-lg rounded-t-2xl md:rounded-2xl shadow-xl border border-gray-200 max-h-[90vh] overflow-y-auto">
+            <div className="relative bg-white w-full md:max-w-4xl rounded-t-2xl md:rounded-2xl shadow-xl border border-gray-200 max-h-[90vh] overflow-y-auto">
                 <div className="flex items-start justify-between gap-3 px-4 py-3.5 border-b border-gray-100 sticky top-0 bg-white">
                     <div className="min-w-0">
                         <div className="text-xs font-bold uppercase tracking-widest text-gray-600">{titulo}</div>
@@ -137,6 +142,8 @@ export default function PorQueSituacao({ linha, onFechar }) {
                             </ul>
                         </div>
                     )}
+
+                    {(linha.produtoId && atual?.de && atual?.ate) && <CausasNivel2 causas={causas} onFechar={onFechar} />}
 
                     {regra && (
                         <p className="text-xs text-gray-600 border-t border-gray-100 pt-3">

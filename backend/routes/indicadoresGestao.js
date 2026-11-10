@@ -43,7 +43,7 @@ const rota = (fn) => async (req, res) => {
     try {
         res.json(await fn(req));
     } catch (e) {
-        if (e.status === 400) return res.status(400).json({ error: e.message });
+        if (e.status === 400 || e.status === 404) return res.status(e.status).json({ error: e.message });
         console.error('[Indicadores] erro:', e);
         res.status(500).json({ error: 'Erro ao calcular os indicadores.' });
     }
@@ -65,6 +65,9 @@ router.get('/entradas-semana', verificarAuth, exigir('producao'), rota((req) =>
     gestao.entradasSemana({ semanaOffset: req.query.semanaOffset, reduzido: !completoEfetivo(req) })));
 router.get('/produtos', verificarAuth, exigir('producao'), rota((req) =>
     gestao.produtos({ de: req.query.de, ate: req.query.ate, foco: foco(req), completo: req._nivelIndicadores.completo, ordem: req.query.ordem })));
+// Nível 2 do selo "Por que está em atenção?" — traz preço/cliente/vendedor: só visão completa
+router.get('/produtos/:produtoId/causas', verificarAuth, exigir('completo'), rota((req) =>
+    gestao.causasProduto({ produtoId: req.params.produtoId, de: req.query.de, ate: req.query.ate })));
 router.get('/producao', verificarAuth, exigir('producao'), rota((req) => gestao.producao({ ...req.query, completo: completoEfetivo(req) })));
 router.get('/alertas', verificarAuth, exigir('producao'), rota((req) =>
     gestao.alertas({ de: req.query.de, ate: req.query.ate, completo: req._nivelIndicadores.completo, foco: foco(req) })));

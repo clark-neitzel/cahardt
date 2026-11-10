@@ -61,7 +61,79 @@ const produtos = (foco, completo) => {
 
 const sk = (palavra, status) => ({ status, palavra, base: 'media3m' });
 
+
+// ---- nível 2 do "Por quê?" (causas) — números da proposta; listas longas p/ exercitar "Mostrar todos" ----
+const NOMES_CLI = ['Mercado São José', 'Lanchonete Ponto Certo', 'Bar do Zé', 'Padaria Central', 'Supermercado Horizonte', 'Mercado Bela Vista', 'Conveniência Rota 101', 'Restaurante Sabor', 'Lanchonete Esquina', 'Empório Vila Nova', 'Mini Mercado Sol', 'Bar e Petiscos Lara', 'Cantina do Chico', 'Mercearia Dois Irmãos'];
+const dtMock = (d) => `2026-11-${String(d).padStart(2, '0')}`;
+function causasMock(params) {
+    const cli = (i) => ({ clienteId: `c${i}`, cliente: NOMES_CLI[i % NOMES_CLI.length] + (i >= NOMES_CLI.length ? ` ${i}` : ''), vendedorId: `v${i % 2}`, vendedor: i % 2 ? 'Josi' : 'Carlos' });
+    const comoLista = ['flex', 'desconto_manual', 'abaixo_custo'];
+    const precoItens = Array.from({ length: 13 }, (_, i) => {
+        const abaixo = i < 11, como = abaixo ? comoLista[i % 3] : 'tabela';
+        const pr = abaixo ? 29.9 - i * 0.4 : 32.16, qtd = 12 - (i % 5);
+        const perdido = abaixo ? Number(((32.16 - pr) * qtd).toFixed(2)) : 0;
+        return {
+            ...cli(i), qtd, qtdAbaixo: abaixo ? qtd : 0, precoTabela: 32.16, precoPraticado: Number(pr.toFixed(2)),
+            diferencaPct: abaixo ? Number((((pr - 32.16) / 32.16) * 100).toFixed(1)) : 0, perdidoRS: perdido, como,
+            flexRS: como === 'flex' ? perdido : 0, manualRS: como === 'flex' ? 0 : perdido, abaixoCustoQtd: como === 'abaixo_custo' ? qtd : 0,
+            pedidos: [{ id: `p${i}a`, numero: 2041 + i, rotulo: `#${2041 + i}` }, ...(i % 3 === 0 ? [{ id: `p${i}b`, numero: 2077 + i, rotulo: `#${2077 + i}` }] : [])],
+        };
+    });
+    const retornos = ['sem_retorno', 'comprou', 'dentro_prazo'];
+    const bonif = Array.from({ length: 12 }, (_, i) => {
+        const retorno = retornos[i % 3];
+        return { pedidoId: `b${i}`, numero: 118 + i, rotulo: `BN#${118 + i}`, data: dtMock(3 + i), ...cli(i), qtd: 2 + (i % 4), custoRS: Number(((2 + (i % 4)) * 5.91).toFixed(2)), semCusto: false,
+            comprouDepoisRS: retorno === 'comprou' ? 643.2 : 0, comprouDepoisQtd: retorno === 'comprou' ? 20 : 0, prazoAte: dtMock(28), dentroPrazo: retorno === 'dentro_prazo', retorno };
+    });
+    const sit = ['reduziu', 'parou', 'reduziu', 'cresceu'];
+    const vol = Array.from({ length: 12 }, (_, i) => {
+        const situacao = i < 8 ? sit[i % 3 === 1 ? 1 : (i % 2 ? 0 : 0)] : 'cresceu';
+        const ant = 40 - i * 2, atu = situacao === 'parou' ? 0 : (situacao === 'cresceu' ? ant + 6 : Math.round(ant * 0.3));
+        return { ...cli(i), qtdAnterior: ant, qtdAtual: atu, diferenca: atu - ant, variacaoPct: Number((((atu - ant) / ant) * 100).toFixed(1)),
+            ultimoPedido: { id: `u${i}`, numero: 2058 + i, rotulo: `#${2058 + i}`, data: dtMock(6 + i) }, diasSemComprar: situacao === 'parou' ? 17 : null, situacao };
+    });
+    const base = {
+        produtoId: 'mock', nome: 'Produto de exemplo', classe: 'FABRICADO', unidade: 'un',
+        periodo: { de: params.de, ate: params.ate }, anterior: { de: '2026-10-01', ate: '2026-10-31' },
+        decomposicao: {
+            comparavel: true, motivoSemComparacao: null, mcPctAntes: 84.0, mcPctAgora: 81.3, variacaoMcPp: -2.7, interacaoPp: -0.1,
+            mcTotalAntes: 3167.0, mcTotalAgora: 1141.0, variacaoMcTotal: -2026.0,
+            custo: { antes: 5.15, agora: 5.91, variacaoPct: 14.8, ppMargem: -2.3, impactoMcTotal: -33.44 },
+            preco: { antes: 32.16, agora: 31.59, variacaoPct: -1.8, ppMargem: -0.4, impactoMcTotal: -25.08 },
+            volume: { antes: 119, agora: 44, variacaoPct: -63.0, ppMargem: 0, impactoMcTotal: -1900 },
+            maiorCausa: 'custo',
+        },
+        insumos: [
+            { itemPcpId: 'i1', nome: 'SALSICHA HOT DOG KG', unidade: 'kg', qtdPorUn: 0.45, custoAntes: 14.9, custoAgora: 18.4, antesEstimado: false, variacaoPct: 23.5, impactoUn: 1.575, semCompra: false,
+                mudouEm: { numeroNota: '48213', fornecedor: 'Frigorífico Sul', data: '2026-11-12', compraAnterior: { fornecedor: 'Aurora', custo: 14.9, numeroNota: '47100', data: '2026-10-08' } } },
+            { itemPcpId: 'i2', nome: 'FARINHA DE ROSCA KG', unidade: 'kg', qtdPorUn: 0.12, custoAntes: 7.1, custoAgora: 7.6, antesEstimado: false, variacaoPct: 7.0, impactoUn: 0.06, semCompra: false,
+                mudouEm: { numeroNota: '48090', fornecedor: 'Atacadão', data: '2026-11-05', compraAnterior: null } },
+            { itemPcpId: 'i3', nome: 'OVO DÚZIA', unidade: 'dz', qtdPorUn: 0.3, custoAntes: 11, custoAgora: 11, antesEstimado: false, variacaoPct: 0, impactoUn: 0, mudouEm: null, semCompra: false },
+            { itemPcpId: 'i4', nome: 'ÓLEO DE SOJA L', unidade: 'L', qtdPorUn: 0.05, custoAntes: 7.4, custoAgora: 6.9, antesEstimado: false, variacaoPct: -6.8, impactoUn: -0.025, semCompra: false,
+                mudouEm: { numeroNota: '47980', fornecedor: 'Atacadão', data: '2026-11-02', compraAnterior: null } },
+            { itemPcpId: 'i5', nome: 'EMBALAGEM C/10', unidade: 'un', qtdPorUn: 1, custoAntes: 0.62, custoAgora: 0.62, antesEstimado: false, variacaoPct: 0, impactoUn: 0, mudouEm: null, semCompra: true },
+        ],
+        custoFichaAtual: 5.91, custoFichaAnterior: 5.15, custoMedioGravado: 5.15, fichaDeReferencia: false,
+        precoClientes: { itens: precoItens, resumo: { qtdAbaixo: 24, qtdTotal: 44, perdidoRS: 95.4, flexRS: 27.12, manualRS: 68.28, abaixoCustoQtd: 4 } },
+        bonificacoes: { itens: bonif, resumo: { pedidos: 12, qtd: 36, custoRS: 212.76, custoSemRetornoRS: 71 } },
+        volumeClientes: { itens: vol, resumo: { qtdAnterior: 119, qtdAtual: 44, unidadesAMenos: 75, clientesQueda: 8, unidadesQueda: 82.5, clientesAlta: 4, unidadesAlta: 7.5 } },
+        links: { fichaTecnica: '/pcp/receitas/mock', pedidos: null },
+    };
+    // ?semcomparacao=1 não existe na API real; no mock, produto p3 simula comparavel=false
+    return base;
+}
+
 export function mockIndicador(rota, params) {
+    const mc = /^produtos\/([^/]+)\/causas$/.exec(rota);
+    if (mc) {
+        const m = causasMock(params);
+        if (mc[1] === 'p3') {
+            m.decomposicao = { ...m.decomposicao, comparavel: false, motivoSemComparacao: 'Não houve venda deste produto no período anterior; não dá para comparar.', mcPctAntes: null, variacaoMcPp: null, interacaoPp: null, mcTotalAntes: null, variacaoMcTotal: null, maiorCausa: null,
+                custo: { antes: null, agora: 5.91, variacaoPct: null, ppMargem: null, impactoMcTotal: null }, preco: { antes: null, agora: 31.59, variacaoPct: null, ppMargem: null, impactoMcTotal: null }, volume: { antes: 0, agora: 44, variacaoPct: null, ppMargem: null, impactoMcTotal: null } };
+        }
+        return m;
+    }
+
     const foco = params.foco === 'producao' ? 'producao' : 'todos';
     const completo = foco === 'todos';
     switch (rota) {

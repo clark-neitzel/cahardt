@@ -288,7 +288,7 @@ async function custoAgora(produtoIds, ctx = null) {
  * Índice de compras não estornadas (e com estoque) por chave 'i:<itemPcpId>' / 'p:<produtoId>'.
  * Cada lista vem ordenada por dataCompra crescente.
  */
-async function carregarCompras({ itemPcpIds = [], produtoIds = [], ate = null } = {}) {
+async function carregarCompras({ itemPcpIds = [], produtoIds = [], ate = null, comOrigem = false } = {}) {
     const or = [];
     if (itemPcpIds.length) or.push({ itemPcpId: { in: itemPcpIds } });
     if (produtoIds.length) or.push({ produtoId: { in: produtoIds } });
@@ -297,11 +297,15 @@ async function carregarCompras({ itemPcpIds = [], produtoIds = [], ate = null } 
     const compras = await prisma.compraItem.findMany({
         where: { estornado: false, semEstoque: false, OR: or, ...(ate ? { dataCompra: { lte: ate } } : {}) },
         orderBy: { dataCompra: 'asc' },
-        select: { id: true, itemPcpId: true, produtoId: true, dataCompra: true, custoUnitario: true }
+        select: {
+            id: true, itemPcpId: true, produtoId: true, dataCompra: true, custoUnitario: true,
+            ...(comOrigem ? { numeroNota: true, fornecedorNome: true } : {})
+        }
     });
     const push = (k, c) => { if (!idx.has(k)) idx.set(k, []); idx.get(k).push(c); };
     for (const c of compras) {
         const reg = { id: c.id, t: new Date(c.dataCompra).getTime(), custo: Number(c.custoUnitario) };
+        if (comOrigem) { reg.numeroNota = c.numeroNota || null; reg.fornecedorNome = c.fornecedorNome || null; }
         if (c.itemPcpId) push(`i:${c.itemPcpId}`, reg);
         if (c.produtoId) push(`p:${c.produtoId}`, reg);
     }
@@ -317,8 +321,8 @@ function ultimoPrecoAte(lista, t) {
         const mid = (lo + hi) >> 1;
         if (lista[mid].t <= t) { achou = mid; lo = mid + 1; } else hi = mid - 1;
     }
-    if (achou >= 0) return { custo: lista[achou].custo, estimado: false };
-    return { custo: lista[0].custo, estimado: true };
+    if (achou >= 0) return { custo: lista[achou].custo, estimado: false, compra: lista[achou] };
+    return { custo: lista[0].custo, estimado: true, compra: lista[0] };
 }
 
 /** Mescla as listas de um ItemPcp (por itemPcpId e por produtoId do item) sem duplicar compras. */

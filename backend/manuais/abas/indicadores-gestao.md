@@ -47,6 +47,15 @@ Quem tem **só** a permissão de produção abre direto nessa visão, sem o bot�
 10. **Clientes** (Dono): os 6 que mais vendem, com receita, desconto médio, entregas, custo de entrega e margem. O **custo de entrega é estimado** e vem com selo: as despesas do bloco "Veículos e entregas" são divididas pelas **paradas** do período (uma parada = um cliente numa saída/embarque, mesmo que tenha vários pedidos na mesma carga). Pedido de retirada/balcão (sem embarque) não recebe custo de entrega. Depende de a entrega ser marcada no app. Se o período não tem embarques registrados, volta a dividir por pedido.
 11. **Guia de leitura** (no fim, já aberto): o mesmo texto do "?" dos cartões.
 
+## "Por quê?" nível 2 — as causas por trás do selo (só Dono)
+Dentro do painel do selo de situação, abaixo do resumo, o sistema mostra **as causas** daquele produto no mesmo período (carrega um instante depois; se der erro aparece a mensagem com "tentar de novo" e o resto do painel continua normal). **Só aparece para quem tem `Pode_Ver_Indicadores_Gestao` (ou administrador)** — quem tem só a permissão de produção não vê o selo clicável nem esses dados (preço, cliente, vendedor). Tudo é só leitura e nada é gravado.
+- **3 cartões — custo, preço, volume:** quanto cada um mexeu na margem. Mostram o valor antes e agora, a variação %, os **pontos percentuais da MC %** (custo e preço) e quantos **R$ de margem total** cada um tirou ou pôs; a soma dos três em R$ é exatamente a variação da MC total. O cartão **"maior causa"** marca o que mais piorou (custo ou preço, se tirou pelo menos 0,1 ponto; senão volume, se vendeu menos). Volume não muda a MC %, mas muda a MC total em R$. Quando o produto não vendeu no período anterior (ou não tinha custo), em vez dos cartões aparece o aviso "não dá para comparar" e os demais blocos continuam.
+- **1. Custo — insumos (fabricado) ou compra do produto (revenda):** para cada insumo da ficha, a quantidade por unidade, o preço de compra antes e agora (último preço pago até o fim de cada período), a variação e o efeito no custo da unidade, e **onde mudou**: nota fiscal, fornecedor, data e a compra anterior. "Sem compra registrada" = o preço vem do cadastro. No rodapé: custo da ficha com os últimos preços de compra, e o custo médio gravado hoje (podem diferir se a ficha estiver desatualizada).
+- **2. Preço por cliente:** para cada cliente, preço de tabela × preço praticado, quanto deixou de entrar (R$) e **como** foi o desconto: **flex** (dentro da regra de flex do vendedor), **desconto manual** (abaixo da tabela fora do flex) ou **abaixo do custo** (preço menor que o custo variável da unidade, sem contar frete). Flex + manual = total perdido. Lista os pedidos (#, ZZ# para especial).
+- **3. Bonificações (BN#):** cada bonificação do produto no período, o custo dela e se o cliente **voltou a comprar o mesmo produto em até 30 dias**: "comprou" (com quantidade e R$), "ainda dentro dos 30 dias" ou **"sem retorno"** (passou o prazo sem comprar). O rodapé soma o custo das bonificações sem retorno. Bonificação cancelada não entra; compra de outro produto não conta como retorno.
+- **4. Volume por cliente:** quem comprou menos que no período anterior — "parou" (com dias sem comprar e último pedido), "reduziu" (queda de 20% ou mais), "cresceu" (5% ou mais), "estável" ou "novo". A frase resume quantos clientes explicam as unidades a menos.
+- Os números de venda seguem o painel (**sem descontar devoluções** no nível do item). Listas longas mostram 10 linhas com "Mostrar todos". Não há botão para mandar aviso ao vendedor nem filtro de pedidos por produto nesta versão.
+
 ## Metas
 
 O administrador define a **meta** de cada indicador pelo botão **Metas** (no topo). Para cada um: a **meta**, "**atenção a partir de**" e "**agir a partir de**" (quantos pontos percentuais — ou dias — **pior** que a meta ainda é "atenção", e a partir de quanto vira "agir"). Quem tem a permissão completa e a gerente de produção **veem** o selo "meta X" e o semáforo, mas não editam. A gerente só vê as metas de produção.
@@ -85,7 +94,7 @@ No momento em que o pedido sai do estoque (faturamento), o sistema **congela o c
 
 ## Quem pode o quê
 
-- Ver a visão Dono, KPIs financeiros, cascata, equilíbrio, clientes: `Pode_Ver_Indicadores_Gestao` (ou administrador).
+- Ver a visão Dono, KPIs financeiros, cascata, equilíbrio, clientes e o detalhe "Por quê?" nível 2 do selo: `Pode_Ver_Indicadores_Gestao` (ou administrador).
 - Ver só produção (fabricados e insumos): `Pode_Ver_Indicadores_Producao`.
 - Mudar a alíquota (⚙) e cadastrar/alterar metas: somente administrador.
 

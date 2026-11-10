@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Por que caiu a margem? — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<meta property="og:title" content="🔎 Novidade no Hardt App: por que caiu a margem? Agora mostra quem e o quê">
+<meta property="og:description" content="No painel do selo (Indicadores de Gestão), agora aparecem os clientes e insumos por trás da queda: custo, preço, bonificações e volume.">
+<meta property="og:type" content="website">
+<style>
+
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 96px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 7vw, 40px);
+    font-weight: 800;
+    line-height: 1.12;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.75);
+    font-size: 16px;
+    max-width: 46ch;
+    margin: 0 auto;
+    text-wrap: balance;
+  }
+
+  /* mock do pop-up flutuando sobre o hero */
+  .mock {
+    max-width: 400px;
+    margin: -68px auto 28px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.28);
+    overflow: hidden;
+    text-align: left;
+  }
+  .mock-top {
+    background: var(--house);
+    color: #fff;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .mock-bell { font-size: 26px; animation: pulse 1.4s ease-in-out infinite; will-change: opacity; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .45; } }
+  @media (prefers-reduced-motion: reduce) { .mock-bell { animation: none; } }
+  .mock-top small {
+    display: block;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    color: rgba(255,255,255,.55);
+  }
+  .mock-top strong { font-size: 16px; line-height: 1.2; }
+  .mock-body { padding: 14px 18px 18px; }
+  .mock-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+  .chip {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: #f1f3f2;
+    color: #444;
+  }
+  .chip.verde { background: var(--mint); color: var(--primary-dark); }
+  .mock-body p { font-size: 13px; color: var(--ink-soft); margin: 0 0 14px; }
+  .mock-botoes { display: flex; gap: 8px; }
+  .mock-botoes span {
+    flex: 1;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 11px 6px;
+    border-radius: 999px;
+  }
+  .b-cheio { background: var(--primary); color: #fff; }
+  .b-vazio { border: 1.5px solid var(--primary); color: var(--primary); }
+
+  /* botão de demo */
+  .demo-cta {
+    display: block;
+    width: 100%;
+    max-width: 400px;
+    margin: 0 auto 8px;
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    font: inherit;
+    font-size: 16px;
+    font-weight: 800;
+    padding: 16px;
+    border-radius: 999px;
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(0,117,74,.35);
+  }
+  .demo-cta:hover { background: var(--primary-dark); }
+  .demo-cta:focus-visible, .acc-head:focus-visible, .pop button:focus-visible {
+    outline: 3px solid var(--gold);
+    outline-offset: 2px;
+  }
+  .demo-hint { text-align: center; font-size: 12px; color: var(--ink-soft); margin: 0 0 34px; }
+
+  /* ── SEÇÕES / ACCORDION ── */
+  .sec-label {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: var(--primary-dark);
+    margin: 34px 4px 12px;
+  }
+  .acc {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .acc-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: none;
+    border: none;
+    font: inherit;
+    text-align: left;
+    padding: 15px 16px;
+    cursor: pointer;
+    min-height: 56px;
+  }
+  .acc-ico {
+    width: 38px; height: 38px;
+    border-radius: 11px;
+    background: var(--mint);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+
+  /* ── MOCKUPS DAS TELAS DO APP ── */
+  .tela {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .tela-titulo {
+    background: var(--house);
+    color: #fff;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .app-card {
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .app-card-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    border-bottom: 1px solid #f0efe9;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: #6b756f;
+  }
+  .app-card-body { padding: 12px; }
+  .app-input {
+    border: 1px solid #d8d5cc;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 12.5px;
+    color: var(--ink);
+    background: #fff;
+    margin-bottom: 8px;
+  }
+  .app-input small { display: block; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: #9aa5a0; margin-bottom: 2px; }
+  .app-input.ok { background: var(--mint); border-color: rgba(0,117,74,.25); }
+  .app-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--primary);
+    color: #fff;
+    font-size: 12.5px;
+    font-weight: 700;
+    padding: 9px 16px;
+    border-radius: 999px;
+  }
+  .app-btn.claro { background: #fff; border: 1.5px solid var(--primary); color: var(--primary); }
+  .app-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+  .app-pill {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 7px 14px;
+    border-radius: 999px;
+    border: 1.5px solid #d8d5cc;
+    color: #6b756f;
+    background: #fff;
+  }
+  .app-pill.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .app-busca {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .app-busca .app-input { flex: 1; margin-bottom: 0; color: #9aa5a0; }
+  .app-toggle-linha {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: #f7f6f2;
+    border: 1px solid #edece6;
+    border-radius: 10px;
+    padding: 9px 12px;
+    font-size: 12.5px;
+  }
+  .app-toggle-linha small { display: block; font-size: 10.5px; color: #9aa5a0; }
+  .app-toggle {
+    width: 38px; height: 22px; flex-shrink: 0;
+    border-radius: 999px;
+    background: var(--primary);
+    position: relative;
+  }
+  .app-toggle::after {
+    content: '';
+    position: absolute;
+    top: 3px; right: 3px;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: #fff;
+  }
+  .pin {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    flex-shrink: 0;
+    vertical-align: 2px;
+    margin-left: 6px;
+  }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+
+  .rodape { text-align:center; font-size:13px; color:var(--ink-soft); margin-top:24px; }
+  .sec { font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.14em; color:#6b756f; margin:26px 0 10px; }
+  .selo { display:inline-flex; align-items:center; gap:5px; padding:2px 9px; border-radius:999px; font-size:11px; font-weight:800; }
+  .selo.ag { background:#fee2e2; color:#b91c1c; } .selo.at { background:#fef3c7; color:#b45309; } .selo.ok { background:#dcfce7; color:#166534; }
+  .selo.click { text-decoration: underline dotted; text-underline-offset:2px; }
+  .linha-prod { display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:12.5px; padding:8px 0; border-bottom:1px solid #f0efe9; }
+  .linha-prod:last-child { border:0; }
+  .painel { background:#fff; border:1px solid #e5e3dc; border-radius:14px; box-shadow:0 8px 24px rgba(0,0,0,.12); padding:12px; font-size:12.5px; }
+  .painel .ph { font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.12em; color:#6b756f; }
+  .painel table { width:100%; border-collapse:collapse; margin:10px 0; font-size:12px; }
+  .painel th { text-align:right; font-size:10.5px; color:#6b756f; padding:4px; background:#f7f6f2; }
+  .painel td { text-align:right; padding:5px 4px; border-top:1px solid #f0efe9; }
+  .painel td:first-child, .painel th:first-child { text-align:left; }
+  .pr { color:#b91c1c; font-weight:800; font-size:10.5px; display:block; }
+  .painel ul { margin:6px 0 0; padding-left:16px; } .painel li { margin-bottom:4px; }
+  .painel .reg { font-size:10.5px; color:#6b756f; border-top:1px solid #f0efe9; margin-top:8px; padding-top:6px; }
+
+
+  .chip2 { display:inline-block; font-size:10.5px; font-weight:800; padding:2px 8px; border-radius:999px; }
+  .c-az{background:#dbeafe;color:#1e40af}.c-am{background:#fef3c7;color:#b45309}.c-vm{background:#fee2e2;color:#b91c1c}.c-vd{background:#dcfce7;color:#166534}.c-cz{background:#eee;color:#444}
+  .tres { display:grid; grid-template-columns:1fr; gap:8px; margin:10px 0; }
+  .cart { border:1px solid #e5e3dc; border-radius:10px; padding:8px 10px; }
+  .cart.lider { border-color:#f87171; background:#fff8f8; }
+  .cart small { font-size:9.5px; font-weight:800; text-transform:uppercase; letter-spacing:.1em; color:#6b756f; display:block; }
+  .cart b { font-size:18px; display:block; }
+  .lin { display:flex; justify-content:space-between; gap:8px; font-size:12px; padding:6px 0; border-bottom:1px solid #f0efe9; align-items:flex-start; }
+  .lin:last-child{border:0} .lin span.s{display:block;font-size:10.5px;color:#6b756f}
+  .mais { text-align:center; margin-top:8px; }
+  .mais span { display:inline-block; border:1.5px solid var(--primary); color:var(--primary); font-weight:700; font-size:12px; padding:8px 16px; border-radius:999px; }
+</style>
+</head>
+<body>
+<div class="hero"><div class="hero-inner">
+  <span class="eyebrow">Novidade</span>
+  <h1>Por que caiu a margem? Agora mostra quem e o quê</h1>
+  <p>O painel do selo ganhou um segundo nível: os insumos que subiram, os clientes com preço baixo, as bonificações e quem parou de comprar.</p>
+</div></div>
+<div class="wrap" style="margin-top:-56px">
+
+<div class="acc aberto"><button class="acc-head" type="button"><span class="acc-ico">🔎</span><strong>O que mudou</strong><span class="acc-seta">▲</span></button>
+<div class="acc-corpo">
+<p>Em <b>Indicadores de Gestão → Custo e margem por produto</b>, toque no selo do produto. Além da explicação de sempre, o painel agora mostra <b>as causas</b>, com nomes e números:</p>
+<ul><li><b>3 cartões</b>: quanto da queda veio do custo, do preço e do volume. O cartão com "maior causa" diz por onde começar.</li><li><b>Custo</b>: qual insumo da ficha subiu, em qual nota, de qual fornecedor.</li><li><b>Preço</b>: quais clientes compraram abaixo da tabela (flex, desconto manual ou abaixo do custo) e em quais pedidos.</li><li><b>Bonificações</b>: quem ganhou produto e se comprou depois, em 30 dias.</li><li><b>Volume</b>: quais clientes pararam ou reduziram.</li></ul>
+<p>Listas grandes mostram 10 linhas e o botão <b>Mostrar todos</b>. Só quem tem a permissão de Indicadores de Gestão vê esse nível.</p>
+</div></div>
+
+<div class="acc aberto"><button class="acc-head" type="button"><span class="acc-ico">📱</span><strong>As telas do app</strong><span class="acc-seta">▲</span></button>
+<div class="acc-corpo" style="padding-left:16px">
+
+<div class="tela"><div class="tela-titulo">Tela 1 — Os 3 cartões de causa</div><div class="tela-corpo">
+<div class="painel">
+<div class="ph">Por que está em atenção?</div>
+<div style="margin-top:4px"><b>Empanado salsicha c/10</b> <span class="selo at">● atenção</span></div>
+<div class="tres">
+<div class="cart lider"><small>Custo por unidade <span class="chip2 c-vm">maior causa</span></small><b style="color:#b91c1c">+14,8%</b><span style="font-size:11px">R$ 5,15 → R$ 5,91 · tirou 2,3 pp da margem</span></div>
+<div class="cart"><small>Preço médio</small><b style="color:#b91c1c">-1,8%</b><span style="font-size:11px">R$ 32,16 → R$ 31,59 · tirou 0,4 pp</span></div>
+<div class="cart"><small>Volume</small><b style="color:#b91c1c">-63%</b><span style="font-size:11px">119 → 44 un · a MC total caiu R$ 1.900</span></div>
+</div><span class="pin" style="margin:0">1</span>
+</div></div>
+<div class="legenda"><div><span class="pin">1</span><span><b>Custo, preço e volume somam a queda.</b> Vermelho = piorou. O cartão "maior causa" é por onde começar. Volume não muda a MC %, mas mostra quanto de margem total sumiu.</span></div></div></div>
+
+<div class="tela"><div class="tela-titulo">Tela 2 — Custo e preço, com nomes</div><div class="tela-corpo">
+<div class="app-card"><div class="app-card-head">1 · Custo: qual insumo subiu <span class="pin">2</span></div><div class="app-card-body">
+<div class="lin"><div><b>SALSICHA HOT DOG KG</b><span class="s">NF 48213 · Frigorífico Sul · 12/11</span></div><div style="text-align:right"><b style="color:#b91c1c">▲ 23,5%</b><span class="s">R$ 14,90 → R$ 18,40</span></div></div>
+<div class="lin"><div><b>FARINHA DE ROSCA KG</b><span class="s">NF 48090 · Atacadão · 05/11</span></div><div style="text-align:right"><b style="color:#b91c1c">▲ 7,0%</b><span class="s">R$ 7,10 → R$ 7,60</span></div></div>
+<div class="app-btn claro" style="margin-top:8px">Abrir ficha técnica <span class="pin">3</span></div>
+</div></div>
+<div class="app-card"><div class="app-card-head">2 · Preço: quem comprou abaixo da tabela <span class="pin">4</span></div><div class="app-card-body">
+<div class="lin"><div><b>Mercado São José</b><span class="s">Josi · 12 un · #2041 · #2077</span></div><div style="text-align:right"><span class="chip2 c-az">flex</span><span class="s">▼ 7,0%</span></div></div>
+<div class="lin"><div><b>Lanchonete Ponto Certo</b><span class="s">Carlos · 8 un · #2058</span></div><div style="text-align:right"><span class="chip2 c-am">desconto manual</span><span class="s">▼ 11,4%</span></div></div>
+<div class="lin"><div><b>Bar do Zé</b><span class="s">Josi · 4 un · #2063</span></div><div style="text-align:right"><span class="chip2 c-vm">abaixo do custo</span><span class="s">▼ 25,4%</span></div></div>
+<div class="mais"><span>Mostrar todos (13)</span> <span class="pin">5</span></div>
+</div></div>
+<div class="legenda">
+<div><span class="pin">2</span><span><b>Insumos da ficha técnica</b> com custo antes e agora, a nota fiscal e o fornecedor da compra que mudou o preço.</span></div>
+<div><span class="pin">3</span><span><b>Abrir ficha técnica</b> leva para a receita do produto (só aparece para quem tem acesso ao PCP).</span></div>
+<div><span class="pin">4</span><span><b>Preço por cliente.</b> Flex = dentro da regra do vendedor. Desconto manual = preço digitado abaixo da tabela sem flex, é o que merece conversa.</span></div>
+<div><span class="pin">5</span><span><b>Mostrar todos:</b> a lista abre com 10 linhas; o botão traz o resto e volta com "Mostrar menos".</span></div>
+</div></div>
+
+<div class="tela"><div class="tela-titulo">Tela 3 — Bonificações e volume</div><div class="tela-corpo">
+<div class="app-card"><div class="app-card-head">3 · Bonificações e retorno <span class="pin">6</span></div><div class="app-card-body">
+<div class="lin"><div><b>Conveniência Rota 101</b><span class="s">Carlos · BN#118 · 6 un · custo R$ 35,46</span></div><span class="chip2 c-vm">sem retorno</span></div>
+<div class="lin"><div><b>Padaria Central</b><span class="s">Carlos · BN#121 · 2 un</span></div><span class="chip2 c-vd">comprou 20 un</span></div>
+<div class="lin"><div><b>Mercado Bela Vista</b><span class="s">Josi · BN#127 · 2 un</span></div><span class="chip2 c-cz">ainda dentro dos 30 d</span></div>
+</div></div>
+<div class="app-card"><div class="app-card-head">4 · Volume: quem parou ou reduziu <span class="pin">7</span></div><div class="app-card-body">
+<div class="lin"><div><b>Supermercado Horizonte</b><span class="s">Josi · 30 → 0 · último #1987 · 24/10</span></div><span class="chip2 c-vm">parou · 17 d</span></div>
+<div class="lin"><div><b>Lanchonete Ponto Certo</b><span class="s">Carlos · 40 → 8 · último #2058</span></div><span class="chip2 c-am">reduziu 80%</span></div>
+<div class="lin"><div><b>Padaria Central</b><span class="s">Carlos · 14 → 20</span></div><span class="chip2 c-vd">cresceu</span></div>
+</div></div>
+<p style="font-size:11px;color:#6b756f;margin:0">3 clientes explicam 75 das 75 unidades a menos. <span class="pin" style="margin:0 0 0 4px">8</span></p>
+</div>
+<div class="legenda">
+<div><span class="pin">6</span><span><b>Bonificação</b> (BN#): o custo do que foi dado e se o cliente comprou o mesmo produto nos 30 dias seguintes. "Sem retorno" é o que pede atenção.</span></div>
+<div><span class="pin">7</span><span><b>Volume por cliente:</b> quem comprou no período anterior e quanto mudou agora, com o último pedido e há quantos dias parou.</span></div>
+<div><span class="pin">8</span><span><b>Resumo</b> no rodapé de cada bloco: conta todos os clientes, não só os 10 que aparecem.</span></div>
+</div></div>
+
+</div></div>
+
+<div class="acc aberto"><button class="acc-head" type="button"><span class="acc-ico">✅</span><strong>Para começar a usar</strong><span class="acc-seta">▲</span></button>
+<div class="acc-corpo">
+<ul><li>Abra <b>Indicadores de Gestão</b> e vá em <b>Custo e margem por produto</b> (visão Dono).</li><li>Toque no selo da coluna <b>Situação</b>. O painel abre na hora e as causas carregam logo abaixo.</li><li>Comece pelo cartão "maior causa" e desça até o bloco correspondente.</li><li>Se o produto não vendeu no período anterior, o painel avisa que não dá para comparar, mas os blocos continuam.</li><li>Números sem descontar devoluções, iguais aos da tabela.</li></ul>
+</div></div>
+
+<p class="rodape">Hardt App · dúvidas? Pergunte ao Clippy.</p>
+</div>
+<script>
+document.querySelectorAll('.acc-head').forEach(function(h){h.addEventListener('click',function(){h.parentElement.classList.toggle('aberto');});});
+</script>
+</body>
+</html>

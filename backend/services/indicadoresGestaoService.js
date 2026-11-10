@@ -1060,8 +1060,318 @@ async function alertas({ de, ate, completo, foco }) {
     });
 }
 
+// ─────────────────────────────────────────────────────────────
+// "Por que está em atenção?" — nível 2 (causas de um produto)
+// Contrato: docs/plano-por-que-causas.md §1 · fórmulas §2. Somente LEITURA.
+// ─────────────────────────────────────────────────────────────
+const mcDe = (P, C) => (P > 0 && C != null && Number.isFinite(C) ? ((P - C) / P) * 100 : null);
+const varPct = (agora, antes) => (agora != null && antes != null && antes > 0 ? round1(((agora - antes) / antes) * 100) : null);
+const rotuloPedido = (numero, bonificacao, especial) => {
+    if (numero == null) return 'sem nº';
+    return bonificacao ? `BN#${numero}` : (especial ? `ZZ#${numero}` : `#${numero}`);
+};
+const nomeCliente = (c) => (c ? (c.NomeFantasia || c.Nome || '') : '');
+
+async function causasProduto({ produtoId, de, ate }) {
+    const periodo = resolverPeriodo(de, ate);
+    const prod = await prisma.produto.findUnique({ where: { id: String(produtoId) }, select: { id: true, nome: true, unidade: true } });
+    if (!prod) { const e = new Error('Produto não encontrado.'); e.status = 404; throw e; }
+    return custo.comCacheCompras(`causas:${prod.id}:${periodo.de}:${periodo.ate}`, TTL, async () => {
+        const id = prod.id;
+        const ant = periodo.anterior;
+        const hoje = ymdSP(new Date());
+        const agoraMs = Date.now();
+        const ctx = await ctxFichas();
+
+        // ── 1) Decomposição (reaproveita carregarVendas: mesmos números do painel) ──
+        const [vAtual, vAnt, classes, custosAgora] = await Promise.all([
+            carregarVendas(periodo.de, periodo.ate), carregarVendas(ant.de, ant.ate),
+            custo.classificarProdutos([id], ctx), custo.custoAgora([id], ctx)
+        ]);
+        const soma = (rows) => rows.filter((r) => r.produtoId === id).reduce((a, r) => ({ qtd: a.qtd + r.qtd, receita: a.receita + r.receita, custo: a.custo + r.custoEf }), { qtd: 0, receita: 0, custo: 0 });
+        const A = soma(vAtual), B = soma(vAnt);
+        const classe = classes.get(id) || 'SEM_CLASSE';
+        const ca = custosAgora.get(id) || { custo: null };
+        const custoFichaUn = ca.custo != null ? ca.custo : null;
+
+        const qn = A.qtd, Pn = qn > 0 ? A.receita / qn : null;
+        const Cn = qn > 0 && A.custo > 0 ? A.custo / qn : custoFichaUn;
+        const qa = B.qtd, Pa = qa > 0 && B.receita > 0 ? B.receita / qa : null;
+        const Ca = qa > 0 && B.custo > 0 ? B.custo / qa : null;
+        const mcAgora = Pn > 0 ? mcDe(Pn, Cn) : null;
+        const mcAntes = Pa != null && Ca != null ? mcDe(Pa, Ca) : null;
+        const comparavel = !!(qa > 0 && Pa > 0 && Ca > 0 && mcAgora != null && mcAntes != null);
+
+        let motivo = null;
+        if (!comparavel) {
+            const janela = `${ddmm(ant.de)} a ${ddmm(ant.ate)}`;
+            if (!(qa > 0 && B.receita > 0)) motivo = `Não houve venda deste produto no período anterior (${janela}), então não dá para comparar.`;
+            else if (!(Ca > 0)) motivo = `O período anterior (${janela}) não tinha custo registrado, então não dá para comparar a margem.`;
+            else motivo = 'Não dá para calcular a margem deste período porque falta custo em algum insumo.';
+        }
+        const card = (antes, agora, ppMargem, impacto) => ({
+            antes: numOuNull(antes, 2), agora: numOuNull(agora, 2),
+            variacaoPct: antes != null && agora != null ? varPct(agora, antes) : null,
+            ppMargem: ppMargem != null ? numOuNull(ppMargem, 1) : null,
+            impactoMcTotal: impacto != null ? numOuNull(impacto, 2) : null
+        });
+        const decomposicao = {
+            comparavel, motivoSemComparacao: motivo,
+            mcPctAntes: numOuNull(mcAntes, 1), mcPctAgora: numOuNull(mcAgora, 1),
+            variacaoMcPp: null, interacaoPp: null,
+            mcTotalAntes: null, mcTotalAgora: null, variacaoMcTotal: null,
+            // 'agora' arredonda em 2 etapas (round2/round4 → 2 casas) como o /produtos faz, para os cartões baterem com a tabela
+            custo: card(Ca, Cn != null ? round4(Cn) : null, null, null), preco: card(Pa, Pn != null ? round2(Pn) : null, null, null),
+            volume: card(qa > 0 ? qa : null, qn > 0 ? qn : null, qa > 0 && qn > 0 ? 0 : null, null),
+            maiorCausa: null
+        };
+        if (comparavel) {
+            const ppCusto = mcDe(Pa, Cn) - mcDe(Pa, Ca);
+            const ppPreco = mcDe(Pn, Ca) - mcDe(Pa, Ca);
+            const variacaoPp = mcAgora - mcAntes;
+            const totA = (Pa - Ca) * qa, totN = (Pn - Cn) * qn;
+            const iVol = round2((qn - qa) * (Pa - Ca));
+            const iPreco = round2((Pn - Pa) * qn);
+            const variacaoTot = round2(totN - totA);
+            const iCusto = round2(variacaoTot - iVol - iPreco); // fecha centavos: os 3 somam exatamente a variação
+            Object.assign(decomposicao, {
+                variacaoMcPp: numOuNull(variacaoPp, 1), interacaoPp: numOuNull(variacaoPp - (ppCusto + ppPreco), 1),
+                mcTotalAntes: round2(totA), mcTotalAgora: round2(totN), variacaoMcTotal: variacaoTot
+            });
+            decomposicao.custo.ppMargem = numOuNull(ppCusto, 1); decomposicao.custo.impactoMcTotal = iCusto;
+            decomposicao.preco.ppMargem = numOuNull(ppPreco, 1); decomposicao.preco.impactoMcTotal = iPreco;
+            decomposicao.volume.ppMargem = 0; decomposicao.volume.impactoMcTotal = iVol;
+            const menor = ppCusto <= ppPreco ? ['custo', ppCusto] : ['preco', ppPreco];
+            decomposicao.maiorCausa = menor[1] <= -0.1 ? menor[0] : (iVol < 0 ? 'volume' : null);
+        }
+
+        // ── 2) Custo: insumos (fabricado) ou compra do próprio produto (revenda) ──
+        const tA = fimDia(ant.ate).getTime();
+        const tN = Math.min(fimDia(periodo.ate).getTime(), agoraMs);
+        const origem = (reg) => (reg ? { numeroNota: reg.numeroNota || null, fornecedor: reg.fornecedorNome || '', custo: round4(reg.custo), data: ymdSP(new Date(reg.t)) } : null);
+        const linhaInsumo = (itemPcpId, nome, unidade, qtdPorUn, lista, fallbackAtual) => {
+            const rA = custo.ultimoPrecoAte(lista, tA), rN = custo.ultimoPrecoAte(lista, tN);
+            const okA = rA && rA.custo > 0, okN = rN && rN.custo > 0;
+            const semCompra = !(lista && lista.length);
+            const cAntes = okA ? rA.custo : fallbackAtual, cAgora = okN ? rN.custo : fallbackAtual;
+            let mudouEm = null;
+            if (okA && okN && rA.compra && rN.compra && rA.compra.id !== rN.compra.id) {
+                const o = origem(rN.compra);
+                mudouEm = {
+                    numeroNota: o.numeroNota, fornecedor: o.fornecedor, data: o.data,
+                    compraAnterior: rA.estimado ? null : (() => { const x = origem(rA.compra); return { fornecedor: x.fornecedor, custo: x.custo, numeroNota: x.numeroNota, data: x.data }; })()
+                };
+            }
+            const impacto = cAntes != null && cAgora != null ? (cAgora - cAntes) * qtdPorUn : null;
+            return {
+                itemPcpId, nome, unidade: unidade || '', qtdPorUn: round4(qtdPorUn),
+                custoAntes: cAntes != null ? round4(cAntes) : null, custoAgora: cAgora != null ? round4(cAgora) : null,
+                antesEstimado: !!(okA && rA.estimado), variacaoPct: cAntes != null && cAgora != null ? varPct(cAgora, cAntes) : null,
+                impactoUn: impacto != null ? round4(impacto) : null, mudouEm, semCompra
+            };
+        };
+        let insumos = [], custoFichaAtual = null, custoFichaAnterior = null, receitaId = null, fichaDeReferencia = false;
+        const fe = classe === 'FABRICADO' ? custo.fichaEfetiva(ctx, id) : null;
+        if (fe) {
+            const receita = ctx.receitaPorItemPcp.get(fe.itemPcpId);
+            fichaDeReferencia = !!fe.ref;
+            receitaId = receita ? receita.id : null;
+            const exp = custo.explodirFicha(receita, ctx, fe.fator);
+            const ips = [...exp.keys()].map((k) => ctx.itemPcpPorId.get(k)).filter(Boolean);
+            const idx = await custo.carregarCompras({
+                itemPcpIds: ips.map((i) => i.id), produtoIds: [...new Set(ips.map((i) => i.produtoId).filter(Boolean))], comOrigem: true
+            });
+            insumos = ips.map((ip) => linhaInsumo(ip.id, ip.nome, ip.unidade, exp.get(ip.id), custo.listaDoInsumo(idx, ip), custo.resolverAtual(ip)));
+            const resolver = custo.criarResolverNaData(idx);
+            const cF = (t) => { const c = custo.custoFicha(receita, ctx, resolver, new Date(t)).custoPorUnidade * fe.fator; return c > 0 ? round4(c) : null; };
+            custoFichaAtual = cF(tN); custoFichaAnterior = cF(tA);
+        } else {
+            const idx = await custo.carregarCompras({ produtoIds: [id], comOrigem: true });
+            const lista = idx.get(`p:${id}`);
+            if (lista && lista.length) {
+                insumos = [linhaInsumo(null, prod.nome, prod.unidade, 1, lista, null)];
+                custoFichaAtual = insumos[0].custoAgora; custoFichaAnterior = insumos[0].custoAntes;
+            }
+        }
+        insumos.sort((x, y) => {
+            const ax = x.impactoUn == null ? -1 : Math.abs(x.impactoUn), ay = y.impactoUn == null ? -1 : Math.abs(y.impactoUn);
+            return ay - ax || x.nome.localeCompare(y.nome);
+        });
+
+        // ── 3) Itens vendidos (mesma regra de receita; 1 produto só) para preço, bonificação e volume ──
+        const gteQ = inicioDia(ant.de), lteQ = fimDia(somaDias(periodo.ate, 30) < hoje ? somaDias(periodo.ate, 30) : hoje);
+        const itens = await prisma.$queryRaw`
+            SELECT p.id AS "pedidoId", p.numero, p.especial, p.cliente_id AS "clienteId", p.vendedor_id AS "vendedorId",
+                   p.data_venda AS "dataVenda", i.quantidade::float AS qtd, i.valor::float AS valor,
+                   i.valor_base::float AS "valorBase", i.flex_gerado::float AS flex,
+                   i.custo_unitario_snapshot::float AS custo, (i.custo_snapshot_em IS NOT NULL) AS tem
+            FROM pedidos p
+            JOIN pedido_itens i ON i.pedido_id = p.id
+            WHERE i.produto_id = ${id}
+              AND p.bonificacao = false
+              AND (p.situacao_ca = 'FATURADO' OR p.especial = true)
+              AND p.data_venda >= ${gteQ} AND p.data_venda <= ${lteQ}
+        `;
+        const bns = await prisma.$queryRaw`
+            SELECT p.id AS "pedidoId", p.numero, p.cliente_id AS "clienteId", p.vendedor_id AS "vendedorId",
+                   p.data_venda AS "dataVenda", i.quantidade::float AS qtd,
+                   i.custo_unitario_snapshot::float AS custo, (i.custo_snapshot_em IS NOT NULL) AS tem
+            FROM pedidos p
+            JOIN pedido_itens i ON i.pedido_id = p.id
+            WHERE i.produto_id = ${id}
+              AND p.bonificacao = true AND p.cancelado = false
+              AND p.data_venda >= ${inicioDia(periodo.de)} AND p.data_venda <= ${fimDia(periodo.ate)}
+        `;
+        for (const r of itens) r.ymd = ymdSP(r.dataVenda);
+        const doAtual = itens.filter((r) => r.ymd >= periodo.de && r.ymd <= periodo.ate);
+        const doAnterior = itens.filter((r) => r.ymd >= ant.de && r.ymd <= ant.ate);
+
+        const cliIds = [...new Set([...itens, ...bns].map((r) => r.clienteId))];
+        const vendIds = [...new Set([...itens, ...bns].map((r) => r.vendedorId).filter(Boolean))];
+        const [clientes, vendedores] = await Promise.all([
+            cliIds.length ? prisma.cliente.findMany({ where: { UUID: { in: cliIds } }, select: { UUID: true, Nome: true, NomeFantasia: true } }) : [],
+            vendIds.length ? prisma.vendedor.findMany({ where: { id: { in: vendIds } }, select: { id: true, nome: true } }) : []
+        ]);
+        const cliMap = new Map(clientes.map((c) => [c.UUID, c]));
+        const vendMap = new Map(vendedores.map((v) => [v.id, v.nome]));
+        const quem = (clienteId, vendedorId) => ({
+            clienteId, cliente: nomeCliente(cliMap.get(clienteId)),
+            vendedorId: vendedorId || null, vendedor: vendedorId ? (vendMap.get(vendedorId) || null) : null
+        });
+        const custoItem = (r) => (r.tem && r.custo > 0 ? r.custo : (custoFichaUn > 0 ? custoFichaUn : null));
+
+        // ── 4) Preço por cliente ──
+        const porCli = new Map();
+        for (const r of doAtual) {
+            const g = porCli.get(r.clienteId) || { qtd: 0, base: 0, prat: 0, qAb: 0, flex: 0, man: 0, abC: 0, ped: new Map(), pedAb: new Map(), ultima: null, vend: null };
+            g.qtd += r.qtd; g.base += r.valorBase * r.qtd; g.prat += r.valor * r.qtd;
+            const pedido = { id: r.pedidoId, numero: r.numero, rotulo: rotuloPedido(r.numero, false, r.especial) };
+            g.ped.set(r.pedidoId, pedido);
+            if (!g.ultima || r.dataVenda > g.ultima) { g.ultima = r.dataVenda; g.vend = r.vendedorId; }
+            if (r.valor < r.valorBase - 0.005) {
+                const perda = (r.valorBase - r.valor) * r.qtd;
+                g.qAb += r.qtd; g.pedAb.set(r.pedidoId, pedido);
+                if (r.flex < 0) g.flex += perda; else g.man += perda;
+            }
+            const c = custoItem(r);
+            if (c > 0 && r.valor < c) g.abC += r.qtd;
+            porCli.set(r.clienteId, g);
+        }
+        const itensPreco = [...porCli.entries()].map(([clienteId, g]) => {
+            const flexRS = round2(g.flex), manualRS = round2(g.man), perdidoRS = round2(flexRS + manualRS);
+            const precoTabela = g.qtd > 0 && g.base > 0 ? g.base / g.qtd : null, precoPraticado = g.qtd > 0 ? g.prat / g.qtd : null;
+            const como = g.abC > 0 ? 'abaixo_custo' : (g.qAb > 0 && perdidoRS > 0 ? (flexRS >= manualRS ? 'flex' : 'desconto_manual') : 'tabela');
+            return {
+                ...quem(clienteId, g.vend),
+                qtd: round2(g.qtd), qtdAbaixo: round2(g.qAb),
+                precoTabela: precoTabela != null ? round2(precoTabela) : null, precoPraticado: precoPraticado != null ? round2(precoPraticado) : null,
+                diferencaPct: precoTabela > 0 ? round1(((precoPraticado - precoTabela) / precoTabela) * 100) : null,
+                perdidoRS, como, flexRS, manualRS, abaixoCustoQtd: round2(g.abC),
+                pedidos: [...(g.qAb > 0 ? g.pedAb : g.ped).values()]
+            };
+        });
+        itensPreco.sort((x, y) => {
+            const ax = x.qtdAbaixo > 0 ? 1 : 0, ay = y.qtdAbaixo > 0 ? 1 : 0;
+            if (ax !== ay) return ay - ax;
+            return ax ? (y.perdidoRS - x.perdidoRS) : (y.qtd - x.qtd);
+        });
+        const somaPreco = (k) => itensPreco.reduce((s, x) => s + x[k], 0);
+        const resumoPreco = {
+            qtdAbaixo: round2(somaPreco('qtdAbaixo')), qtdTotal: round2(somaPreco('qtd')),
+            flexRS: round2(somaPreco('flexRS')), manualRS: round2(somaPreco('manualRS')), abaixoCustoQtd: round2(somaPreco('abaixoCustoQtd'))
+        };
+        resumoPreco.perdidoRS = round2(resumoPreco.flexRS + resumoPreco.manualRS);
+
+        // ── 5) Bonificações (BN#) e o que o cliente comprou depois ──
+        const bnPorPedido = new Map();
+        for (const r of bns) {
+            const b = bnPorPedido.get(r.pedidoId) || { ...r, qtd: 0, custo: 0, semCusto: false };
+            const c = r.tem && r.custo != null ? r.custo : custoFichaUn;
+            b.qtd += r.qtd;
+            if (c > 0) b.custo += r.qtd * c; else b.semCusto = true;
+            bnPorPedido.set(r.pedidoId, b);
+        }
+        const ordemRet = { sem_retorno: 0, dentro_prazo: 1, comprou: 2 };
+        const itensBn = [...bnPorPedido.values()].map((b) => {
+            const data = ymdSP(b.dataVenda), prazoAte = somaDias(data, 30);
+            let q = 0, rs = 0;
+            for (const r of itens) if (r.clienteId === b.clienteId && r.ymd > data && r.ymd <= prazoAte) { q += r.qtd; rs += r.valor * r.qtd; }
+            const dentroPrazo = hoje < prazoAte;
+            return {
+                pedidoId: b.pedidoId, numero: b.numero, rotulo: rotuloPedido(b.numero, true, false), data,
+                ...quem(b.clienteId, b.vendedorId), qtd: round2(b.qtd), custoRS: round2(b.custo), semCusto: b.semCusto,
+                comprouDepoisRS: round2(rs), comprouDepoisQtd: round2(q), prazoAte, dentroPrazo,
+                retorno: q > 0 ? 'comprou' : (dentroPrazo ? 'dentro_prazo' : 'sem_retorno')
+            };
+        });
+        itensBn.sort((x, y) => ordemRet[x.retorno] - ordemRet[y.retorno] || (x.data < y.data ? 1 : x.data > y.data ? -1 : 0));
+        const bonificacoes = {
+            itens: itensBn,
+            resumo: {
+                pedidos: itensBn.length, qtd: round2(itensBn.reduce((s, x) => s + x.qtd, 0)), custoRS: round2(itensBn.reduce((s, x) => s + x.custoRS, 0)),
+                custoSemRetornoRS: round2(itensBn.filter((x) => x.retorno === 'sem_retorno').reduce((s, x) => s + x.custoRS, 0))
+            }
+        };
+
+        // ── 6) Volume por cliente ──
+        const vol = new Map();
+        for (const [lista, campo] of [[doAnterior, 'qa'], [doAtual, 'qn']]) {
+            for (const r of lista) {
+                const g = vol.get(r.clienteId) || { qa: 0, qn: 0, ult: null };
+                g[campo] += r.qtd;
+                if (!g.ult || r.dataVenda > g.ult.dataVenda) g.ult = r;
+                vol.set(r.clienteId, g);
+            }
+        }
+        const itensVol = [];
+        for (const [clienteId, g] of vol) {
+            if (!(g.qa > 0 || g.qn > 0)) continue;
+            const v = g.qa > 0 ? (g.qn - g.qa) / g.qa : null;
+            let situacao = 'estavel';
+            if (g.qa <= 0 && g.qn > 0) situacao = 'novo';
+            else if (g.qa > 0 && g.qn <= 0) situacao = 'parou';
+            else if (v <= -0.2) situacao = 'reduziu';
+            else if (v >= 0.05) situacao = 'cresceu';
+            itensVol.push({
+                ...quem(clienteId, g.ult.vendedorId),
+                qtdAnterior: round2(g.qa), qtdAtual: round2(g.qn), diferenca: round2(g.qn - g.qa),
+                variacaoPct: v != null ? round1(v * 100) : null,
+                ultimoPedido: { id: g.ult.pedidoId, numero: g.ult.numero, rotulo: rotuloPedido(g.ult.numero, false, g.ult.especial), data: g.ult.ymd },
+                diasSemComprar: situacao === 'parou' ? diffDias(g.ult.ymd, hoje) : null,
+                situacao
+            });
+        }
+        itensVol.sort((x, y) => x.diferenca - y.diferenca || x.cliente.localeCompare(y.cliente));
+        const queda = itensVol.filter((x) => x.situacao === 'parou' || x.situacao === 'reduziu');
+        const sumA = round2(itensVol.reduce((s, x) => s + x.qtdAnterior, 0)), sumN = round2(itensVol.reduce((s, x) => s + x.qtdAtual, 0));
+        const volumeClientes = {
+            itens: itensVol,
+            resumo: {
+                qtdAnterior: sumA, qtdAtual: sumN, unidadesAMenos: round2(sumA - sumN),
+                // unidadesQueda/unidadesAlta somam TODA diferença negativa/positiva (inclusive 'estável'), então
+                // unidadesAlta - unidadesQueda = qtdAtual - qtdAnterior; clientesQueda/clientesAlta contam só as situações marcantes
+                clientesQueda: queda.length, unidadesQueda: round2(itensVol.filter((x) => x.diferenca < 0).reduce((s, x) => s - x.diferenca, 0)),
+                clientesAlta: itensVol.filter((x) => x.situacao === 'cresceu' || x.situacao === 'novo').length,
+                unidadesAlta: round2(itensVol.filter((x) => x.diferenca > 0).reduce((s, x) => s + x.diferenca, 0))
+            }
+        };
+
+        return {
+            produtoId: id, nome: prod.nome, classe, unidade: prod.unidade || '',
+            periodo: { de: periodo.de, ate: periodo.ate }, anterior: { de: ant.de, ate: ant.ate },
+            decomposicao,
+            insumos, custoFichaAtual, custoFichaAnterior,
+            custoMedioGravado: custoFichaUn != null ? round4(custoFichaUn) : null,
+            fichaDeReferencia,
+            precoClientes: { itens: itensPreco, resumo: resumoPreco },
+            bonificacoes, volumeClientes,
+            links: { fichaTecnica: receitaId ? `/pcp/receitas/${receitaId}` : null, pedidos: null }
+        };
+    });
+}
+
 module.exports = {
     resolverPeriodo, periodoAnterior, calcularPeriodo, carregarVendas, semaforo,
     resumo, cascata, equilibrio, insumosSemanal, entradasSemana, produtos, producao,
-    alertas, clientes, categoriasPendentes
+    alertas, clientes, categoriasPendentes, causasProduto
 };

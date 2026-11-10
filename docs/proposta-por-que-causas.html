@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hardt · Proposta: as causas por trás do selo</title>
+<style>
+:root{--green:#00754a;--hover:#006241;--house:#1e3932;--mint:#d4e9e2;--bg:#f2f0eb;--paper:#fff;--ink:#202923;--muted:#526059;--line:#dce1dc;--amber:#854d0e;--amberbg:#fff5d8;--red:#b91c1c;--redbg:#fee2e2;--success:#166534;--successbg:#dcfce7;--purple:#6b21a8;--purplebg:#f3e8ff;--gold:#cba258;font-family:Manrope,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:14px;line-height:1.5;font-variant-numeric:tabular-nums;letter-spacing:-.01em;color:var(--ink);background:var(--bg)}
+*{box-sizing:border-box}body{margin:0}h1,h2,h3,h4,p{margin:0}button{font:inherit;cursor:pointer;border:0;background:none;color:inherit;min-height:44px}
+.site-header{position:sticky;top:0;z-index:5;background:var(--house);color:#fff;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.site-header h1{font-size:16px;font-weight:800}.site-header p{font-size:12px;opacity:.8}
+.seg{display:inline-flex;background:rgba(255,255,255,.12);border-radius:999px;padding:3px}
+.seg button{padding:6px 16px;border-radius:999px;font-weight:700;font-size:13px;color:#fff;min-height:36px}
+.seg button[aria-pressed=true]{background:#fff;color:var(--house)}
+.wrap{max-width:1180px;margin:0 auto;padding:16px}
+.intro{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:16px 20px;margin-bottom:16px}
+.intro h2{font-size:15px;font-weight:800;margin-bottom:6px}.intro p{color:var(--muted)}
+.intro ol{margin:8px 0 0;padding-left:20px;color:var(--ink)}.intro li{margin:2px 0}
+.stage{display:flex;justify-content:center;background:#e6e3dc;border-radius:16px;padding:20px;overflow:auto}
+.frame{container-type:inline-size;width:100%;max-width:1040px;transition:max-width .25s}
+.frame.mobile{max-width:390px;border:10px solid #1a1a1a;border-radius:36px;background:#fff;padding:0;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,.25)}
+.frame.mobile .painel{border-radius:0;box-shadow:none;max-height:780px;overflow:auto}
+/* ---------- painel (mock do app) ---------- */
+.painel{background:var(--paper);border-radius:16px;box-shadow:0 10px 40px rgba(0,0,0,.18);overflow:hidden}
+.ptop{padding:16px 20px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.ptop .k{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.ptop .nome{font-size:17px;font-weight:800;margin-top:2px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.x{width:40px;height:40px;border-radius:999px;display:grid;place-items:center;color:var(--muted);font-size:22px;min-height:40px}
+.selo{display:inline-flex;align-items:center;gap:6px;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:800;white-space:nowrap}
+.selo::before{content:"";width:6px;height:6px;border-radius:999px;background:currentColor}
+.s-ok{background:var(--successbg);color:var(--success)}.s-at{background:var(--amberbg);color:var(--amber)}.s-ag{background:var(--redbg);color:var(--red)}.s-gr{background:#eee;color:#444}
+.chip{display:inline-flex;align-items:center;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:800;white-space:nowrap}
+.c-mint{background:var(--mint);color:var(--house)}.c-am{background:var(--amberbg);color:var(--amber)}.c-red{background:var(--redbg);color:var(--red)}.c-pu{background:var(--purplebg);color:var(--purple)}.c-gr{background:#eee;color:#444}
+.pbody{padding:16px 20px;display:grid;gap:18px}
+.resumo{font-size:15px}.resumo b{font-weight:800}
+/* decomposição */
+.decomp{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.dc{border:1px solid var(--line);border-radius:12px;padding:12px 14px;position:relative}
+.dc .t{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.dc .v{font-size:22px;font-weight:800;margin-top:2px}.dc .v.neg{color:var(--red)}.dc .v.pos{color:var(--success)}.dc .v.neu{color:var(--muted)}
+.dc .d{font-size:12px;color:var(--muted);margin-top:2px}
+.dc.lead{border-color:var(--red);background:#fff8f8}
+.dc.lead::after{content:"maior causa";position:absolute;top:-9px;right:10px;background:var(--red);color:#fff;font-size:10px;font-weight:800;padding:1px 8px;border-radius:999px;letter-spacing:.06em}
+/* seções */
+.sec{border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.sh{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 14px;background:#fafaf8;border-bottom:1px solid var(--line)}
+.sh h3{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:8px}
+.sh .num{width:20px;height:20px;border-radius:999px;background:var(--house);color:#fff;font-size:11px;display:grid;place-items:center;font-weight:800;letter-spacing:0}
+.sh .act{color:var(--green);font-weight:700;font-size:12px;text-decoration:underline;text-underline-offset:3px;min-height:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-align:left;padding:8px 12px;background:#fff;border-bottom:1px solid var(--line)}
+td{padding:9px 12px;border-bottom:1px solid #eee;vertical-align:top}
+tr:last-child td{border-bottom:0}
+.r{text-align:right}th.r{text-align:right}
+.up{color:var(--red);font-weight:700}.dn{color:var(--success);font-weight:700}.upg{color:var(--success);font-weight:700}.dng{color:var(--red);font-weight:700}
+tfoot td{background:#fafaf8;font-weight:800}
+.nota{padding:10px 14px;font-size:12px;color:var(--muted);background:#fafaf8;border-top:1px solid var(--line)}
+.sub{font-size:11px;color:var(--muted);display:block}
+.acoes{display:flex;gap:8px;flex-wrap:wrap;padding:4px 0 0}
+.btn{padding:9px 16px;border-radius:999px;font-weight:700;font-size:13px}
+.btn.p{background:var(--green);color:#fff}.btn.o{border:1px solid var(--green);color:var(--green);background:#fff}
+.regra{font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:10px}
+.pin{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:999px;background:var(--gold);color:#1a1a1a;font-size:11px;font-weight:800;margin-left:6px;vertical-align:middle}
+/* cards mobile (escondidos no desktop) */
+.cards{display:none;padding:10px 12px;gap:8px}
+.card{border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:grid;gap:4px}
+.card .h{display:flex;justify-content:space-between;align-items:center;gap:8px;font-weight:800}
+.card .l{display:flex;justify-content:space-between;font-size:12px;color:var(--muted)}
+.card .l b{color:var(--ink)}
+@container (max-width:760px){
+  .decomp{grid-template-columns:1fr}
+  table{display:none}.cards{display:grid}
+  .ptop{padding:14px 14px}.pbody{padding:12px 14px;gap:14px}.ptop .nome{font-size:15px}
+  .resumo{font-size:14px}
+  .sh{flex-wrap:wrap}
+}
+/* legendas */
+.legenda{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:16px 20px;margin-top:16px}
+.legenda h2{font-size:15px;font-weight:800;margin-bottom:8px}
+.legenda ol{margin:0;padding-left:0;list-style:none;display:grid;gap:8px}
+.legenda li{display:flex;gap:10px;align-items:flex-start}.legenda li .pin{margin:2px 0 0;flex-shrink:0}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:760px){.grid2{grid-template-columns:1fr}}
+.dec{background:var(--amberbg);border:1px solid #f3dca0;border-radius:12px;padding:16px 20px;margin-top:16px}
+.dec h2{font-size:15px;font-weight:800;margin-bottom:8px;color:var(--amber)}
+.dec ol{margin:0;padding-left:20px}.dec li{margin:4px 0}
+</style>
+</head>
+<body>
+<header class="site-header">
+  <div><h1>Proposta: as causas por trás do selo</h1><p>Indicadores de Gestão · Custo e margem por produto · nível 2 do painel "Por que…?"</p></div>
+  <div class="seg" role="group" aria-label="Ver como">
+    <button aria-pressed="true" data-v="desktop">Computador</button>
+    <button aria-pressed="false" data-v="mobile">Celular</button>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="intro">
+    <h2>O que muda em relação ao painel de hoje</h2>
+    <p>Hoje o painel diz <em>o quê</em> mudou (preço caiu, custo subiu). A proposta é responder <em>quem e por quê</em>, em 4 blocos abaixo da mesma frase-resumo. Os dados já existem no sistema, só não estão cruzados:</p>
+    <ol>
+      <li><b>Custo:</b> qual insumo da ficha técnica subiu, em qual compra e de qual fornecedor.</li>
+      <li><b>Preço:</b> quais clientes compraram abaixo da tabela, com flex ou com desconto manual, e em quais pedidos.</li>
+      <li><b>Bonificação:</b> quem recebeu produto de graça e não comprou depois (bonificação sem retorno).</li>
+      <li><b>Volume:</b> quais clientes pararam ou reduziram, para o vendedor agir.</li>
+    </ol>
+  </div>
+
+  <div class="stage"><div class="frame" id="frame">
+  <div class="painel" role="dialog" aria-label="Por que está em atenção?">
+    <div class="ptop">
+      <div>
+        <div class="k">Por que está em atenção?</div>
+        <div class="nome">1-G-EMPANADO SALSICHA C/10 140GR <span class="selo s-at">atenção</span> <span class="chip c-am">ficha desatualizada</span></div>
+      </div>
+      <button class="x" aria-label="Fechar">×</button>
+    </div>
+    <div class="pbody">
+      <p class="resumo">A margem de contribuição (MC %) ficou <b>3,2% abaixo</b> da do período anterior (84,0% → 81,3%). <span class="muted">Este período 01/11–30/11 · anterior 01/10–31/10.</span></p>
+
+      <div class="decomp">
+        <div class="dc lead"><div class="t">Custo por unidade</div><div class="v neg">+14,8%</div><div class="d">R$ 5,15 → R$ 5,91 · tirou <b>2,3 pp</b> da margem</div></div>
+        <div class="dc"><div class="t">Preço médio</div><div class="v neg">−1,8%</div><div class="d">R$ 32,16 → R$ 31,59 · tirou <b>0,4 pp</b> da margem</div></div>
+        <div class="dc"><div class="t">Volume</div><div class="v neu">−63%</div><div class="d">119 → 44 un · não muda a MC %, mas a MC total caiu <b>R$ 1,9 mil</b></div></div>
+      </div>
+      <p class="muted" style="font-size:12px;margin-top:-8px">Os três cartões somam a queda total. O vermelho é por onde começar.<span class="pin">1</span></p>
+
+      <!-- 1 CUSTO -->
+      <div class="sec">
+        <div class="sh"><h3><span class="num">1</span> Custo: qual insumo subiu <span class="pin">2</span></h3><button class="act">Abrir ficha técnica</button></div>
+        <table>
+          <thead><tr><th>Insumo da ficha</th><th class="r">Por unidade</th><th class="r">Custo antes</th><th class="r">Custo agora</th><th class="r">Variação</th><th class="r">Impacto/un</th><th>Onde mudou</th></tr></thead>
+          <tbody>
+            <tr><td><b>SALSICHA HOT DOG KG</b></td><td class="r">0,450 kg</td><td class="r">R$ 14,90</td><td class="r">R$ 18,40</td><td class="r up">▲ 23,5%</td><td class="r up">+R$ 1,58</td><td>NF 48.213 · Frigorífico Sul · 12/11<span class="sub">compra anterior: Aurora R$ 14,90</span></td></tr>
+            <tr><td><b>FARINHA DE ROSCA KG</b></td><td class="r">0,120 kg</td><td class="r">R$ 7,10</td><td class="r">R$ 7,60</td><td class="r up">▲ 7,0%</td><td class="r up">+R$ 0,06</td><td>NF 48.090 · Atacadão · 05/11</td></tr>
+            <tr><td>OVO DÚZIA</td><td class="r">0,30 dz</td><td class="r">R$ 11,00</td><td class="r">R$ 11,00</td><td class="r muted">=</td><td class="r muted">—</td><td class="muted">sem compra nova</td></tr>
+            <tr><td>ÓLEO DE SOJA L</td><td class="r">0,05 L</td><td class="r">R$ 7,40</td><td class="r">R$ 6,90</td><td class="r dn">▼ 6,8%</td><td class="r dn">−R$ 0,03</td><td>NF 47.980 · Atacadão · 02/11</td></tr>
+            <tr><td>EMBALAGEM C/10</td><td class="r">1 un</td><td class="r">R$ 0,62</td><td class="r">R$ 0,62</td><td class="r muted">=</td><td class="r muted">—</td><td class="muted">sem compra nova</td></tr>
+          </tbody>
+          <tfoot><tr><td colspan="5">Custo da ficha com os últimos preços</td><td class="r up">R$ 5,91</td><td>custo médio gravado: R$ 5,15</td></tr></tfoot>
+        </table>
+        <div class="cards">
+          <div class="card"><div class="h">SALSICHA HOT DOG KG <span class="up">▲ 23,5%</span></div><div class="l"><span>R$ 14,90 → R$ 18,40</span><b class="up">+R$ 1,58/un</b></div><div class="l"><span>NF 48.213 · Frigorífico Sul · 12/11</span></div></div>
+          <div class="card"><div class="h">FARINHA DE ROSCA KG <span class="up">▲ 7,0%</span></div><div class="l"><span>R$ 7,10 → R$ 7,60</span><b class="up">+R$ 0,06/un</b></div><div class="l"><span>NF 48.090 · Atacadão · 05/11</span></div></div>
+          <div class="card"><div class="h">ÓLEO DE SOJA L <span class="dn">▼ 6,8%</span></div><div class="l"><span>R$ 7,40 → R$ 6,90</span><b class="dn">−R$ 0,03/un</b></div></div>
+          <div class="card"><div class="h">Custo da ficha hoje <span class="up">R$ 5,91</span></div><div class="l"><span>custo médio gravado</span><b>R$ 5,15</b></div></div>
+        </div>
+        <div class="nota">A salsicha sozinha explica quase toda a alta. Troca de fornecedor em 12/11 (Aurora → Frigorífico Sul). Produto de <b>revenda</b> não tem ficha: aqui aparece só a compra do próprio produto.</div>
+      </div>
+
+      <!-- 2 PREÇO -->
+      <div class="sec">
+        <div class="sh"><h3><span class="num">2</span> Preço: quem comprou abaixo da tabela <span class="pin">3</span></h3><button class="act">Ver pedidos do produto</button></div>
+        <table>
+          <thead><tr><th>Cliente</th><th>Vendedor</th><th class="r">Qtd</th><th class="r">Tabela</th><th class="r">Praticado</th><th class="r">Diferença</th><th>Como</th><th>Pedidos</th></tr></thead>
+          <tbody>
+            <tr><td><b>Mercado São José</b></td><td>Josi</td><td class="r">12</td><td class="r">R$ 32,16</td><td class="r">R$ 29,90</td><td class="r dng">▼ 7,0%</td><td><span class="chip c-mint">flex −R$ 27,12</span></td><td>#2041 · #2077</td></tr>
+            <tr><td><b>Lanchonete Ponto Certo</b></td><td>Carlos</td><td class="r">8</td><td class="r">R$ 32,16</td><td class="r">R$ 28,50</td><td class="r dng">▼ 11,4%</td><td><span class="chip c-am">desconto manual, sem flex</span></td><td>#2058</td></tr>
+            <tr><td><b>Bar do Zé</b></td><td>Josi</td><td class="r">4</td><td class="r">R$ 32,16</td><td class="r">R$ 24,00</td><td class="r dng">▼ 25,4%</td><td><span class="chip c-red">abaixo do custo + frete</span></td><td>#2063</td></tr>
+            <tr><td>Padaria Central</td><td>Carlos</td><td class="r">20</td><td class="r">R$ 32,16</td><td class="r">R$ 32,16</td><td class="r muted">=</td><td class="muted">tabela</td><td>#2044 · #2070 · #2081</td></tr>
+          </tbody>
+          <tfoot><tr><td colspan="5">24 de 44 unidades saíram abaixo da tabela</td><td class="r dng">−R$ 95,40</td><td colspan="2">flex concedido: R$ 27,12 · desconto manual: R$ 68,28</td></tr></tfoot>
+        </table>
+        <div class="cards">
+          <div class="card"><div class="h">Mercado São José <span class="dng">▼ 7,0%</span></div><div class="l"><span>Josi · 12 un · #2041 #2077</span></div><div class="l"><span>R$ 32,16 → R$ 29,90</span><span class="chip c-mint">flex −R$ 27,12</span></div></div>
+          <div class="card"><div class="h">Lanchonete Ponto Certo <span class="dng">▼ 11,4%</span></div><div class="l"><span>Carlos · 8 un · #2058</span></div><div class="l"><span>R$ 32,16 → R$ 28,50</span><span class="chip c-am">desconto manual</span></div></div>
+          <div class="card"><div class="h">Bar do Zé <span class="dng">▼ 25,4%</span></div><div class="l"><span>Josi · 4 un · #2063</span></div><div class="l"><span>R$ 32,16 → R$ 24,00</span><span class="chip c-red">abaixo do custo</span></div></div>
+          <div class="card"><div class="h">Abaixo da tabela <span class="dng">−R$ 95,40</span></div><div class="l"><span>24 de 44 un</span><b>flex R$ 27 · manual R$ 68</b></div></div>
+        </div>
+        <div class="nota">"Flex" = preço reduzido usando o saldo flex do vendedor (já previsto na regra). "Desconto manual" = preço digitado abaixo da tabela sem flex — é o que merece pergunta. "Abaixo do custo" = praticado menor que custo variável + frete por unidade.</div>
+      </div>
+
+      <!-- 3 BONIFICAÇÃO -->
+      <div class="sec">
+        <div class="sh"><h3><span class="num">3</span> Bonificações sem retorno <span class="pin">4</span></h3><span class="chip c-pu">BN#</span></div>
+        <table>
+          <thead><tr><th>Cliente</th><th>Vendedor</th><th class="r">Bonificado</th><th class="r">Custo da bonificação</th><th class="r">Comprou depois (30 d)</th><th>Retorno</th><th>Pedido</th></tr></thead>
+          <tbody>
+            <tr><td><b>Conveniência Rota 101</b></td><td>Carlos</td><td class="r">6 un</td><td class="r">R$ 35,46</td><td class="r">R$ 0</td><td><span class="chip c-red">sem retorno</span></td><td>BN#118 · 03/11</td></tr>
+            <tr><td><b>Padaria Central</b></td><td>Carlos</td><td class="r">2 un</td><td class="r">R$ 11,82</td><td class="r">R$ 643,20</td><td><span class="chip c-mint">comprou 20 un</span></td><td>BN#121 · 08/11</td></tr>
+            <tr><td>Mercado Bela Vista</td><td>Josi</td><td class="r">2 un</td><td class="r">R$ 11,82</td><td class="r">R$ 0</td><td><span class="chip c-gr">ainda dentro dos 30 d</span></td><td>BN#127 · 22/11</td></tr>
+          </tbody>
+          <tfoot><tr><td colspan="3">10 un bonificadas no período</td><td class="r">R$ 59,10</td><td colspan="3">R$ 35,46 sem retorno até agora</td></tr></tfoot>
+        </table>
+        <div class="cards">
+          <div class="card"><div class="h">Conveniência Rota 101 <span class="chip c-red">sem retorno</span></div><div class="l"><span>Carlos · 6 un · BN#118</span><b>custo R$ 35,46</b></div></div>
+          <div class="card"><div class="h">Padaria Central <span class="chip c-mint">comprou 20 un</span></div><div class="l"><span>Carlos · 2 un · BN#121</span><b>R$ 643,20</b></div></div>
+          <div class="card"><div class="h">Mercado Bela Vista <span class="chip c-gr">aguardando</span></div><div class="l"><span>Josi · 2 un · BN#127 · 22/11</span></div></div>
+        </div>
+        <div class="nota">Bonificação não entra na receita nem na MC % (regra atual). Aqui ela aparece como <b>custo dado</b> e se o cliente comprou nos 30 dias seguintes. Prazo e critério são decisão sua (ver abaixo).</div>
+      </div>
+
+      <!-- 4 VOLUME -->
+      <div class="sec">
+        <div class="sh"><h3><span class="num">4</span> Volume: quem parou ou reduziu <span class="pin">5</span></h3><button class="act">Registrar atendimento</button></div>
+        <table>
+          <thead><tr><th>Cliente</th><th>Vendedor</th><th class="r">Anterior</th><th class="r">Este período</th><th class="r">Diferença</th><th>Último pedido</th><th>Situação</th></tr></thead>
+          <tbody>
+            <tr><td><b>Lanchonete Ponto Certo</b></td><td>Carlos</td><td class="r">40</td><td class="r">8</td><td class="r dng">▼ 32</td><td>#2058 · 06/11</td><td><span class="chip c-am">reduziu 80%</span></td></tr>
+            <tr><td><b>Supermercado Horizonte</b></td><td>Josi</td><td class="r">30</td><td class="r">0</td><td class="r dng">▼ 30</td><td>#1987 · 24/10</td><td><span class="chip c-red">parou · 17 d sem comprar</span></td></tr>
+            <tr><td>Mercado São José</td><td>Josi</td><td class="r">25</td><td class="r">12</td><td class="r dng">▼ 13</td><td>#2077 · 19/11</td><td><span class="chip c-am">reduziu 52%</span></td></tr>
+            <tr><td>Padaria Central</td><td>Carlos</td><td class="r">14</td><td class="r">20</td><td class="r upg">▲ 6</td><td>#2081 · 26/11</td><td><span class="chip c-mint">cresceu</span></td></tr>
+          </tbody>
+          <tfoot><tr><td colspan="2">119 → 44 unidades</td><td colspan="5">3 clientes explicam 75 das 75 unidades a menos</td></tr></tfoot>
+        </table>
+        <div class="cards">
+          <div class="card"><div class="h">Supermercado Horizonte <span class="chip c-red">parou</span></div><div class="l"><span>Josi · 30 → 0</span><b>último #1987 · 24/10</b></div></div>
+          <div class="card"><div class="h">Lanchonete Ponto Certo <span class="chip c-am">reduziu 80%</span></div><div class="l"><span>Carlos · 40 → 8</span><b>último #2058 · 06/11</b></div></div>
+          <div class="card"><div class="h">Mercado São José <span class="chip c-am">reduziu 52%</span></div><div class="l"><span>Josi · 25 → 12</span><b>último #2077 · 19/11</b></div></div>
+          <div class="card"><div class="h">Padaria Central <span class="chip c-mint">cresceu</span></div><div class="l"><span>Carlos · 14 → 20</span></div></div>
+        </div>
+      </div>
+
+      <div class="acoes"><button class="btn p">Abrir ficha técnica</button><button class="btn o">Ver pedidos do produto</button><button class="btn o">Mandar para o vendedor</button><span class="pin" style="align-self:center">6</span></div>
+      <p class="regra">Regra: atenção quando a MC % piora mais de 2% em relação ao período anterior; agir acima de 5%. Impacto em pp = quanto cada fator moveu a margem, mantendo os outros parados.</p>
+    </div>
+  </div>
+  </div></div>
+
+  <div class="legenda">
+    <h2>O que cada parte faz</h2>
+    <ol>
+      <li><span class="pin">1</span><div><b>Três cartões de causa.</b> Decompõem a queda da margem em custo, preço e volume. O cartão vermelho "maior causa" diz por onde começar. Volume não muda a MC %, mas mostra quanto de MC total sumiu.</div></li>
+      <li><span class="pin">2</span><div><b>Custo por insumo.</b> Lê a ficha técnica do produto (versão atual) e, para cada insumo, o último preço de compra do período anterior e deste. Mostra a nota, o fornecedor e a data. Multiplica pela quantidade da ficha para dizer quanto cada insumo pesou na unidade. Para revenda, mostra a compra do próprio produto.</div></li>
+      <li><span class="pin">3</span><div><b>Preço por cliente.</b> Cada item de pedido já guarda preço de tabela, preço praticado e flex gerado. Cruza por cliente e separa: flex (dentro da regra), desconto manual (preço digitado abaixo sem flex) e abaixo do custo. Lista os pedidos para abrir.</div></li>
+      <li><span class="pin">4</span><div><b>Bonificação sem retorno.</b> Pedidos BN# do produto no período, com custo do que foi dado e se o cliente comprou o produto nos 30 dias seguintes.</div></li>
+      <li><span class="pin">5</span><div><b>Volume por cliente.</b> Quem comprou no período anterior e quanto caiu agora, com o último pedido. "Parou" = zero neste período. Botão "Registrar atendimento" abre o atendimento já com o cliente e o motivo preenchidos.</div></li>
+      <li><span class="pin">6</span><div><b>Ações.</b> Abrir a ficha técnica (corrigir custo médio ou trocar insumo), ver os pedidos do produto filtrados pelo período e mandar o resumo ao vendedor responsável pela tarefa (módulo Tarefas).</div></li>
+    </ol>
+  </div>
+
+  <div class="grid2">
+    <div class="legenda">
+      <h2>De onde saem os dados (já existe no sistema)</h2>
+      <ol>
+        <li><span class="pin" style="background:var(--mint);color:var(--house)">✓</span><div><b>Custo:</b> ficha técnica (receita × insumos) e histórico de preço de compra por insumo, o mesmo que hoje calcula o "Δ custo 4 sem." e o aviso "ficha desatualizada".</div></li>
+        <li><span class="pin" style="background:var(--mint);color:var(--house)">✓</span><div><b>Preço e flex:</b> cada item de pedido guarda valor de tabela, valor praticado e flex gerado; o pedido guarda o flex total e o vendedor.</div></li>
+        <li><span class="pin" style="background:var(--mint);color:var(--house)">✓</span><div><b>Bonificação:</b> pedidos marcados como bonificação (BN#), com ou sem nota.</li>
+        <li><span class="pin" style="background:var(--mint);color:var(--house)">✓</span><div><b>Volume:</b> itens de pedido faturados por cliente, já usados na régua de venda.</div></li>
+        <li><span class="pin" style="background:var(--amberbg);color:var(--amber)">!</span><div><b>Falta criar:</b> uma rota nova no backend que cruza tudo isso por produto e período, e o painel com as 4 seções. Estimativa da equipe: 2 a 3 dias, sem mexer em fiscal nem financeiro.</div></li>
+      </ol>
+    </div>
+    <div class="dec">
+      <h2>3 decisões suas antes de construir</h2>
+      <ol>
+        <li><b>Bonificação sem retorno:</b> contar compra nos 30 dias seguintes? Ou 45? E vale compra de qualquer produto ou só o mesmo produto?</li>
+        <li><b>"Abaixo do custo":</b> comparar com custo variável só, ou custo variável + frete médio por unidade?</li>
+        <li><b>Quem vê o quê:</b> o painel completo é só gestão (permissão atual dos Indicadores). O vendedor recebe o resumo por Tarefa, ou ganha uma versão só com os clientes dele?</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<script>
+const frame=document.getElementById('frame');
+document.querySelectorAll('.seg button').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('.seg button').forEach(x=>x.setAttribute('aria-pressed',x===b));
+  frame.classList.toggle('mobile',b.dataset.v==='mobile');
+}));
+</script>
+</body>
+</html>
