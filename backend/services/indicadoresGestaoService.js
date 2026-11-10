@@ -1072,11 +1072,12 @@ const rotuloPedido = (numero, bonificacao, especial) => {
 };
 const nomeCliente = (c) => (c ? (c.NomeFantasia || c.Nome || '') : '');
 
-async function causasProduto({ produtoId, de, ate }) {
+async function causasProduto({ produtoId, de, ate, visao = 'completa' }) {
+    visao = visao === 'producao' ? 'producao' : 'completa';
     const periodo = resolverPeriodo(de, ate);
     const prod = await prisma.produto.findUnique({ where: { id: String(produtoId) }, select: { id: true, nome: true, unidade: true } });
     if (!prod) { const e = new Error('Produto não encontrado.'); e.status = 404; throw e; }
-    return custo.comCacheCompras(`causas:${prod.id}:${periodo.de}:${periodo.ate}`, TTL, async () => {
+    return custo.comCacheCompras(`causas:${visao}:${prod.id}:${periodo.de}:${periodo.ate}`, TTL, async () => {
         const id = prod.id;
         const ant = periodo.anterior;
         const hoje = ymdSP(new Date());
@@ -1197,6 +1198,23 @@ async function causasProduto({ produtoId, de, ate }) {
             const ax = x.impactoUn == null ? -1 : Math.abs(x.impactoUn), ay = y.impactoUn == null ? -1 : Math.abs(y.impactoUn);
             return ay - ax || x.nome.localeCompare(y.nome);
         });
+
+        // Visão Produção: só o bloco de custo/insumos — sem preço, cliente, vendedor, margem ou volume
+        if (visao === 'producao') {
+            return {
+                visao: 'producao',
+                produtoId: id, nome: prod.nome, classe, unidade: prod.unidade || '',
+                periodo: { de: periodo.de, ate: periodo.ate }, anterior: { de: ant.de, ate: ant.ate },
+                decomposicao: {
+                    comparavel, motivoSemComparacao: motivo,
+                    custo: { antes: decomposicao.custo.antes, agora: decomposicao.custo.agora, variacaoPct: decomposicao.custo.variacaoPct }
+                },
+                insumos, custoFichaAtual, custoFichaAnterior,
+                custoMedioGravado: custoFichaUn != null ? round4(custoFichaUn) : null,
+                fichaDeReferencia,
+                links: { fichaTecnica: receitaId ? `/pcp/receitas/${receitaId}` : null, pedidos: null }
+            };
+        }
 
         // ── 3) Itens vendidos (mesma regra de receita; 1 produto só) para preço, bonificação e volume ──
         const gteQ = inicioDia(ant.de), lteQ = fimDia(somaDias(periodo.ate, 30) < hoje ? somaDias(periodo.ate, 30) : hoje);
@@ -1357,6 +1375,7 @@ async function causasProduto({ produtoId, de, ate }) {
         };
 
         return {
+            visao: 'completa',
             produtoId: id, nome: prod.nome, classe, unidade: prod.unidade || '',
             periodo: { de: periodo.de, ate: periodo.ate }, anterior: { de: ant.de, ate: ant.ate },
             decomposicao,

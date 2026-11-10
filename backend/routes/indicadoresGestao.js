@@ -65,9 +65,11 @@ router.get('/entradas-semana', verificarAuth, exigir('producao'), rota((req) =>
     gestao.entradasSemana({ semanaOffset: req.query.semanaOffset, reduzido: !completoEfetivo(req) })));
 router.get('/produtos', verificarAuth, exigir('producao'), rota((req) =>
     gestao.produtos({ de: req.query.de, ate: req.query.ate, foco: foco(req), completo: req._nivelIndicadores.completo, ordem: req.query.ordem })));
-// Nível 2 do selo "Por que está em atenção?" — traz preço/cliente/vendedor: só visão completa
-router.get('/produtos/:produtoId/causas', verificarAuth, exigir('completo'), rota((req) =>
-    gestao.causasProduto({ produtoId: req.params.produtoId, de: req.query.de, ate: req.query.ate })));
+// Nível 2 do selo "Por que está em atenção?" — quem só tem a visão Produção recebe SÓ custo/insumos
+// (sem preço/cliente/vendedor/margem); mesma regra do /produtos: completo = admin OU Gestão.
+router.get('/produtos/:produtoId/causas', verificarAuth, exigir('producao'), rota((req) =>
+    gestao.causasProduto({ produtoId: req.params.produtoId, de: req.query.de, ate: req.query.ate,
+        visao: req._nivelIndicadores.completo ? 'completa' : 'producao' })));
 router.get('/producao', verificarAuth, exigir('producao'), rota((req) => gestao.producao({ ...req.query, completo: completoEfetivo(req) })));
 router.get('/alertas', verificarAuth, exigir('producao'), rota((req) =>
     gestao.alertas({ de: req.query.de, ate: req.query.ate, completo: req._nivelIndicadores.completo, foco: foco(req) })));

@@ -91,29 +91,29 @@ function Decomposicao({ d }) {
             </div>
         );
     }
-    const { custo = {}, preco = {}, volume = {} } = d;
+    const { custo, preco, volume } = d;
     const corVar = (v, bomSobe) => (!temValor(v) || Math.abs(Number(v)) < 0.05 ? 'text-gray-700' : ((Number(v) > 0) === bomSobe ? POS : NEG));
-    const impVol = volume.impactoMcTotal;
+    const impVol = volume?.impactoMcTotal;
     return (
         <div className="space-y-2">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <Cartao lider={d.maiorCausa === 'custo'} titulo="Custo por unidade" valor={fmtPctSinal(custo.variacaoPct)} cor={corVar(custo.variacaoPct, false)}
-                    detalhe={<>{fmtRS(custo.antes)} → {fmtRS(custo.agora)}{pp(custo.ppMargem) && <> · {pp(custo.ppMargem)}</>}</>} />
-                <Cartao lider={d.maiorCausa === 'preco'} titulo="Preço médio" valor={fmtPctSinal(preco.variacaoPct)} cor={corVar(preco.variacaoPct, true)}
-                    detalhe={<>{fmtRS(preco.antes)} → {fmtRS(preco.agora)}{pp(preco.ppMargem) && <> · {pp(preco.ppMargem)}</>}</>} />
-                <Cartao lider={d.maiorCausa === 'volume'} titulo="Volume" valor={fmtPctSinal(volume.variacaoPct, 0)} cor={corVar(volume.variacaoPct, true)}
-                    detalhe={<>{fmtQtd(volume.antes)} → {fmtQtd(volume.agora)} un · não muda a MC %{temValor(impVol) && Math.abs(Number(impVol)) >= 0.5 ? <>, mas a MC total {Number(impVol) < 0 ? 'caiu' : 'subiu'} <b className="text-gray-900">{fmtRS(Math.abs(Number(impVol)))}</b></> : ''}</>} />
+                {custo && (<Cartao lider={d.maiorCausa === 'custo'} titulo="Custo por unidade" valor={fmtPctSinal(custo.variacaoPct)} cor={corVar(custo.variacaoPct, false)}
+                    detalhe={<>{fmtRS(custo.antes)} → {fmtRS(custo.agora)}{pp(custo.ppMargem) && <> · {pp(custo.ppMargem)}</>}</>} />)}
+                {preco && (<Cartao lider={d.maiorCausa === 'preco'} titulo="Preço médio" valor={fmtPctSinal(preco.variacaoPct)} cor={corVar(preco.variacaoPct, true)}
+                    detalhe={<>{fmtRS(preco.antes)} → {fmtRS(preco.agora)}{pp(preco.ppMargem) && <> · {pp(preco.ppMargem)}</>}</>} />)}
+                {volume && (<Cartao lider={d.maiorCausa === 'volume'} titulo="Volume" valor={fmtPctSinal(volume.variacaoPct, 0)} cor={corVar(volume.variacaoPct, true)}
+                    detalhe={<>{fmtQtd(volume.antes)} → {fmtQtd(volume.agora)} un · não muda a MC %{temValor(impVol) && Math.abs(Number(impVol)) >= 0.5 ? <>, mas a MC total {Number(impVol) < 0 ? 'caiu' : 'subiu'} <b className="text-gray-900">{fmtRS(Math.abs(Number(impVol)))}</b></> : ''}</>} />)}
             </div>
-            <p className="text-xs text-gray-600">
+            {custo && preco && volume && <p className="text-xs text-gray-600">
                 Os três cartões somam a variação da margem total ({fmtRS(d.variacaoMcTotal)}).
                 {temValor(d.interacaoPp) && Math.abs(Number(d.interacaoPp)) >= 0.1 && <> Efeito combinado de custo e preço: {fmtNum(d.interacaoPp, 1)} pp.</>}
-            </p>
+            </p>}
         </div>
     );
 }
 
 // ---------- 1. Custo ----------
-function BlocoCusto({ dados, podeFicha, onFicha }) {
+export function BlocoCusto({ dados, podeFicha, onFicha }) {
     const insumos = dados.insumos || [];
     const revenda = dados.classe && dados.classe !== 'FABRICADO';
     const botao = dados.links?.fichaTecnica && podeFicha ? (
@@ -444,6 +444,14 @@ export default function CausasNivel2({ causas, onFechar }) {
     }
     const d = causas.dados;
     const abrirFicha = () => { onFechar(); navigate(d.links.fichaTecnica); };
+    if (d.visao === 'producao') {
+        return (
+            <div className="space-y-4">
+                <Decomposicao d={d.decomposicao} />
+                <BlocoCusto dados={d} podeFicha={podeFicha} onFicha={abrirFicha} />
+            </div>
+        );
+    }
     return (
         <div className="space-y-4">
             {causas.exemplo && <p className="text-xs font-semibold text-amber-700">Dados de exemplo (rota ainda não disponível no servidor).</p>}

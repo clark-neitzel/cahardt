@@ -284,7 +284,7 @@ export default function IndicadoresGestao() {
 
                 <Bloco titulo={dono ? 'Custo e margem por produto' : 'Custo dos produtos fabricados'} icon={Package} estado={produtos} semPadding
                     direita={<><Chip cls="bg-gray-100 text-gray-700">custo-base = ficha técnica</Chip>{categoriaSelect}{ordemSelect}</>}>
-                    <TabelaProdutos linhas={linhasFiltradas} completa={dono} ordem={ordemAtual} />
+                    <TabelaProdutos linhas={linhasFiltradas} completa={dono} ordem={ordemAtual} periodo={{ de: periodo.de, ate: periodo.ate }} />
                     <p className="px-4 md:px-5 py-3 text-xs text-gray-600 border-t border-gray-100">
                         {dono
                             ? <><b>MC total</b> diz quem mais paga a empresa; <b>MC %</b> diz a eficiência da venda. Itens de <Chip cls="bg-purple-100 text-purple-700">revenda</Chip> usam custo de compra (CMV), não ficha (CPV); <Chip cls="bg-gray-100 text-gray-700">sem ficha</Chip> ainda precisa ser classificado.</>

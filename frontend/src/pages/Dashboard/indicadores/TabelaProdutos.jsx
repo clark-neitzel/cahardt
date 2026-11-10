@@ -12,6 +12,7 @@ const rotuloExtra = (l) => {
 import EstadoVazio from '../../../components/EstadoVazio';
 import { Package } from 'lucide-react';
 import PorQueSituacao from './PorQueSituacao';
+import CausasCusto from './CausasCusto';
 
 // Selo clicável quando o backend manda o detalhe do porquê; sem detalhe, fica só o selo.
 const SeloClicavel = ({ l, onAbrir }) => {
@@ -65,7 +66,15 @@ const Etiquetas = ({ l }) => (
 );
 
 // completa=true => visão Dono (colunas financeiras); false => visão produção (só custo/ficha).
-export default function TabelaProdutos({ linhas, completa, ordem }) {
+// Visão produção: custo e variação viram botão que abre o painel de insumos.
+const BotaoCusto = ({ l, onAbrir, children }) => (
+    <button type="button" onClick={() => onAbrir(l)} title="Ver insumos" aria-label={`Ver insumos de ${l.nome}`}
+        className="inline-flex items-center justify-end min-h-[44px] -my-2 px-1 cursor-pointer rounded-full hover:opacity-80 underline decoration-dotted underline-offset-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+        {children}
+    </button>
+);
+
+export default function TabelaProdutos({ linhas, completa, ordem, periodo }) {
     const [todos, setTodos] = useState(false);
     const [aberto, setAberto] = useState(null);
     const ord = useMemo(() => ordenar(Array.isArray(linhas) ? linhas : [], ordem), [linhas, ordem]);
@@ -86,8 +95,8 @@ export default function TabelaProdutos({ linhas, completa, ordem }) {
                         {completa && rotuloExtra(l) && <div className="text-xs text-gray-600 mt-0.5">{rotuloExtra(l)}</div>}
                         <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 mt-2 text-xs">
                             <div><dt className="text-gray-600">Qtde vendida</dt><dd className="font-bold text-gray-900">{fmtInt(l.quantidadeVendida)}</dd></div>
-                            <div><dt className="text-gray-600">Custo ficha/un</dt><dd className="font-bold text-gray-900">{fmtNum(l.custoFichaUn)}</dd></div>
-                            <div><dt className="text-gray-600">Δ custo 4 sem.</dt><dd className="font-bold"><Delta v={l.variacaoCusto4sPct} /></dd></div>
+                            <div><dt className="text-gray-600">Custo ficha/un</dt><dd className="font-bold text-gray-900">{completa ? fmtNum(l.custoFichaUn) : <BotaoCusto l={l} onAbrir={setAberto}>{fmtNum(l.custoFichaUn)}</BotaoCusto>}</dd></div>
+                            <div><dt className="text-gray-600">Δ custo 4 sem.</dt><dd className="font-bold">{completa ? <Delta v={l.variacaoCusto4sPct} /> : <BotaoCusto l={l} onAbrir={setAberto}><Delta v={l.variacaoCusto4sPct} /></BotaoCusto>}</dd></div>
                             {completa && <>
                                 <div><dt className="text-gray-600">Preço médio</dt><dd className="font-bold text-gray-900">{fmtNum(l.precoMedio)}</dd></div>
                                 <div><dt className="text-gray-600">Markup</dt><dd className="font-bold text-gray-900">{temValor(l.markup) ? `${fmtNum(l.markup)}×` : '—'}</dd></div>
@@ -128,8 +137,8 @@ export default function TabelaProdutos({ linhas, completa, ordem }) {
                                 </td>
                                 <td className="px-3 py-2.5 text-right tabular-nums">{fmtInt(l.quantidadeVendida)}</td>
                                 {completa && <td className="px-3 py-2.5 text-right tabular-nums">{fmtNum(l.precoMedio)}</td>}
-                                <td className="px-3 py-2.5 text-right tabular-nums font-bold">{fmtNum(l.custoFichaUn)}</td>
-                                <td className="px-3 py-2.5 text-right tabular-nums"><Delta v={l.variacaoCusto4sPct} /></td>
+                                <td className="px-3 py-2.5 text-right tabular-nums font-bold">{completa ? fmtNum(l.custoFichaUn) : <BotaoCusto l={l} onAbrir={setAberto}>{fmtNum(l.custoFichaUn)}</BotaoCusto>}</td>
+                                <td className="px-3 py-2.5 text-right tabular-nums">{completa ? <Delta v={l.variacaoCusto4sPct} /> : <BotaoCusto l={l} onAbrir={setAberto}><Delta v={l.variacaoCusto4sPct} /></BotaoCusto>}</td>
                                 {completa && <>
                                     <td className="px-3 py-2.5 text-right tabular-nums">{fmtNum(l.custoVariavelUn)}</td>
                                     <td className="px-3 py-2.5 text-right tabular-nums font-bold">{temValor(l.markup) ? `${fmtNum(l.markup)}×` : '—'}</td>
@@ -149,7 +158,9 @@ export default function TabelaProdutos({ linhas, completa, ordem }) {
                 </table>
             </div>
 
-            {aberto && <PorQueSituacao linha={aberto} onFechar={() => setAberto(null)} />}
+            {aberto && (completa
+                ? <PorQueSituacao linha={aberto} onFechar={() => setAberto(null)} />
+                : <CausasCusto linha={aberto} periodo={periodo} onFechar={() => setAberto(null)} />)}
 
             {ord.length > LIMITE && (
                 <div className="p-3 border-t border-gray-100 text-center">

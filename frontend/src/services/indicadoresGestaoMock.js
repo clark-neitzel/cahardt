@@ -93,7 +93,7 @@ function causasMock(params) {
             ultimoPedido: { id: `u${i}`, numero: 2058 + i, rotulo: `#${2058 + i}`, data: dtMock(6 + i) }, diasSemComprar: situacao === 'parou' ? 17 : null, situacao };
     });
     const base = {
-        produtoId: 'mock', nome: 'Produto de exemplo', classe: 'FABRICADO', unidade: 'un',
+        visao: 'completa', produtoId: 'mock', nome: 'Produto de exemplo', classe: 'FABRICADO', unidade: 'un',
         periodo: { de: params.de, ate: params.ate }, anterior: { de: '2026-10-01', ate: '2026-10-31' },
         decomposicao: {
             comparavel: true, motivoSemComparacao: null, mcPctAntes: 84.0, mcPctAgora: 81.3, variacaoMcPp: -2.7, interacaoPp: -0.1,
