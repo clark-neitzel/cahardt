@@ -69,13 +69,13 @@ async function obterXmlNotaApp(notaAppId) {
     return xml;
 }
 
-// ── Vincular XML ao pedido: o infCpl das notas do app/CA diz "Referente ao pedido #N" ──
+// ── Vincular XML ao pedido: o infCpl das notas do app/CA diz "Pedido #N" (notas antigas: "Referente ao pedido #N") ──
 // Preenche pedido.nfeChave/nfeNumero dos pedidos que o app não sabia que já tinham nota
 // (o CA só era consultado quando alguém imprimia a DANFE). Evita emissão em dobro.
 async function vincularXmlAoPedido(chave, xml) {
     try {
         if (!xml.includes('<CNPJ>08766459000102</CNPJ>')) return false; // não é nota nossa
-        const mPed = xml.match(/Referente ao pedido #?(\d+)/);
+        const mPed = xml.match(/(?:^|[#>])\s*(?:Referente ao )?pedido\s*#?(\d+)/i);
         const mNum = xml.match(/<nNF>(\d+)<\/nNF>/);
         const mTpNF = xml.match(/<tpNF>(\d)<\/tpNF>/);
         if (!mPed || !mNum) return false;

@@ -61,6 +61,29 @@ async function getConfig() {
 const round2 = (n) => Math.round(n * 100) / 100;
 const fmtBR = (n) => n.toFixed(2).replace('.', ',');
 
+// ── Informações complementares da DANFE ──────────────────────────────────────
+// Separador '#' vai no XML (a Focus grava '\n' como literal); a DANFE do app (patch do
+// node-pdf-nfe) converte '#' NÃO seguido de dígito em quebra de linha. Por isso 'Pedido #4821',
+// 'BN#12' e 'DEV#3' (# + dígito) ficam inteiros e nenhum outro texto pode conter '#'.
+const _semAcentoMin = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+// Nome fantasia em MAIÚSCULAS (1ª linha das informações) — null se CPF, vazio ou igual à razão social.
+function linhaNomeFantasia(cliente, ehCPF) {
+    if (ehCPF || !cliente) return null;
+    const fant = String(cliente.NomeFantasia || '').replace(/#/g, ' ').replace(/\s+/g, ' ').trim();
+    if (!fant) return null;
+    if (_semAcentoMin(fant) === _semAcentoMin(cliente.Nome)) return null;
+    return fant.toUpperCase();
+}
+// Observação do pedido numa linha só (quebras viram espaço; '#' vira espaço — é o separador).
+function obsEmUmaLinha(obs) {
+    return String(obs || '').replace(/[\r\n#]+/g, ' ').replace(/\s+/g, ' ').trim();
+}
+// 'Pedido #N' + ' - observação' (mesma linha)
+function linhaComObs(base, obs) {
+    const o = obsEmUmaLinha(obs);
+    return o ? `${base} - ${o}` : base;
+}
+
 // Data/hora de Brasília REAL etiquetada -03:00 (UTC puro etiquetado dá rejeição 703).
 function agoraBrasilia() {
     return new Date(Date.now() - 3 * 3600 * 1000).toISOString().replace(/\.\d{3}Z$/, '-03:00');
@@ -245,19 +268,18 @@ async function montarNotaVenda(pedido) {
     });
 
     // Dados adicionais — mesmas partes de hoje (app) + textos legais (que o CA acrescentava).
-    // Separador '#': a Focus grava '\n' como literal no XML; a DANFE do app converte '#' em linha.
-    const linhas = [`Referente ao pedido #${pedido.numero}`];
-    if (pedido.observacoes) linhas.push(String(pedido.observacoes).replace(/\r?\n/g, '#').trim());
+    // Separador '#' (ver linhaNomeFantasia): a DANFE converte '#' não seguido de dígito em quebra.
+    const linhas = [linhaNomeFantasia(cliente, ehCPF), linhaComObs(`Pedido #${pedido.numero}`, pedido.observacoes)];
     const promos = itensValidos.filter(i => i.emPromocao && i.nomePromocao);
     if (promos.length) linhas.push(`PROMO - ${promos.map(i => i.produto?.nome).filter(Boolean).join('; ')}`);
     const cond = (pedido.nomeCondicaoPagamento || '').toLowerCase();
     if (cond.includes('vendedor respons')) linhas.push('Cobrança: Vendedor responsável');
     if (cond.includes('escrit') && cond.includes('respons')) linhas.push('Cobrança: Escritório responsável');
-    linhas.push(...cfg.textosLegais);
     if (!ehCPF) {
         const credTotal = round2(items.reduce((s, it) => s + (it.icms_valor_credito_simples || 0), 0));
         linhas.push(`PERMITE O APROVEITAMENTO DO CREDITO DE ICMS NO VALOR DE R$ ${fmtBR(credTotal)}, CORRESPONDENTE A ALIQUOTA DE ${String(cfg.aliquotaCreditoSimples).replace('.', ',')}%, NOS TERMOS DO ART. 23 DA LC 123/2006.`);
     }
+    linhas.push(...cfg.textosLegais); // textos legais DEPOIS da frase do crédito (ordem pedida pelo dono)
 
     // Cobrança (quadro FATURA/DUPLICATA) — só nas notas a prazo/boleto.
     // À vista (1 parcela, sem intervalo, sem boleto) → aPrazo=false → nota SEM esses
@@ -363,11 +385,9 @@ async function montarNotaBonificacao(pedido) {
         };
     });
 
-    // Dados adicionais. Separador '#': a Focus grava '\n' como literal no XML; a DANFE
-    // do app converte '#' em quebra de linha.
-    const linhas = ['MERCADORIA ENTREGUE EM BONIFICACAO - SEM COBRANCA AO DESTINATARIO.'];
-    linhas.push(`Referente à bonificação BN#${pedido.numero}`);
-    if (pedido.observacoes) linhas.push(String(pedido.observacoes).replace(/\r?\n/g, '#').trim());
+    // Dados adicionais. Separador '#': a DANFE do app converte '#' não seguido de dígito em quebra.
+    const linhas = [linhaNomeFantasia(cliente, ehCPF), 'MERCADORIA ENTREGUE EM BONIFICACAO - SEM COBRANCA AO DESTINATARIO.'];
+    linhas.push(linhaComObs(`Bonificação BN#${pedido.numero}`, pedido.observacoes));
     linhas.push(...cfg.textosLegais);
     // ⚠️ NÃO acrescentar a frase "PERMITE O APROVEITAMENTO DO CREDITO DE ICMS…": ela é do
     // CSOSN 101 e aqui o CSOSN é 102 (sem crédito) — seria informação falsa na nota.
@@ -519,10 +539,11 @@ async function montarNotaDevolucaoBonificacao({ dev, pedido, cliente, notaBonif,
     const cfopRemessa = String(notaBonif.payloadEnviado?.items?.[0]?.cfop || (interestadual ? '6910' : '5910'));
     const dataOrig = notaBonif.criadoEm || pedido.dataVenda;
     const dataOrigBR = dataOrig ? new Date(dataOrig).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : null;
-    // Separador '#': a Focus grava '\n' literal no XML; a DANFE do app converte '#' em quebra.
+    // Separador '#': a DANFE do app converte '#' não seguido de dígito em quebra.
     const linhas = [
+        linhaNomeFantasia(cliente, ehCPF),
         `DEVOLUCAO DE MERCADORIA RECEBIDA EM BONIFICACAO (REMESSA CFOP ${cfopRemessa}) - REFERENTE A NF-e N ${serieOriginal}-${numeroOriginal || ''}${dataOrigBR ? ` DE ${dataOrigBR}` : ''}`.trim(),
-        `Referente à bonificação BN#${pedido.numero} - devolução DEV#${dev.numero}`,
+        `Bonificação BN#${pedido.numero} - Devolução DEV#${dev.numero}`,
         'SEM COBRANCA E SEM EFEITO FINANCEIRO - MERCADORIA HAVIA SIDO REMETIDA SEM ONUS AO DESTINATARIO.',
         ...cfg.textosLegais,
     ];
@@ -1249,14 +1270,15 @@ async function emitirDevolucao(devolucaoId) {
     const dataOrig = notaVendaApp?.criadoEm || pedido.dataVenda;
     const dataOrigBR = dataOrig ? new Date(dataOrig).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : null;
     const linhas = [
+        linhaNomeFantasia(cliente, ehCPF),
         `DEVOLUCAO REFERENTE SUA NF N 1-${numeroOriginal || ''}${dataOrigBR ? ` DE ${dataOrigBR}` : ''}`.trim(),
-        `Referente ao pedido #${pedido.numero}`,
-        ...cfg.textosLegais,
+        `Pedido #${pedido.numero}`,
     ];
     if (!ehCPF) {
         const credTotal = round2(items.reduce((s, it) => s + (it.icms_valor_credito_simples || 0), 0));
         linhas.push(`PERMITE O APROVEITAMENTO DO CREDITO DE ICMS NO VALOR DE R$ ${fmtBR(credTotal)}, CORRESPONDENTE A ALIQUOTA DE ${String(cfg.aliquotaCreditoSimples).replace('.', ',')}%, NOS TERMOS DO ART. 23 DA LC 123/2006.`);
     }
+    linhas.push(...cfg.textosLegais); // textos legais DEPOIS da frase do crédito
 
     const agora = agoraBrasilia();
     const nota = {
@@ -1374,7 +1396,7 @@ function resumoNotaParaFront(nota) {
     return { id: nota.id, numero: nota.numero ?? null, serie: nota.serie ?? null, chave: nota.chave ?? null };
 }
 
-module.exports = { montarNotaVenda, montarNotaBonificacao, emitirVenda, emitirDevolucao, sincronizarEventos, consultarAtualizar, consultarPresas, getConfig, notaAutorizadaDoPedido,
+module.exports = { linhaNomeFantasia, linhaComObs, montarNotaVenda, montarNotaBonificacao, emitirVenda, emitirDevolucao, sincronizarEventos, consultarAtualizar, consultarPresas, getConfig, notaAutorizadaDoPedido,
     // devolução de BONIFICAÇÃO (09/2026)
     montarNotaDevolucaoBonificacao, emitirDevolucaoBonificacao,
     mapaNotasBonificacaoAutorizadas, notaBonificacaoAutorizada, resumoNotaParaFront,

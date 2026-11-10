@@ -15,35 +15,51 @@ index 55abdc6..f6d982b 100644
          return '';
      }
 diff --git a/node_modules/@alexssmusica/node-pdf-nfe/lib/application/helpers/generate-pdf/nfe/get-dados-adicionais.js b/node_modules/@alexssmusica/node-pdf-nfe/lib/application/helpers/generate-pdf/nfe/get-dados-adicionais.js
-index df4f2b7..1103836 100644
+index df4f2b7..c9a0649 100644
 --- a/node_modules/@alexssmusica/node-pdf-nfe/lib/application/helpers/generate-pdf/nfe/get-dados-adicionais.js
 +++ b/node_modules/@alexssmusica/node-pdf-nfe/lib/application/helpers/generate-pdf/nfe/get-dados-adicionais.js
-@@ -7,9 +7,13 @@ const secao_1 = require("./secao");
+@@ -7,11 +7,25 @@ const secao_1 = require("./secao");
  const titulo_1 = require("./titulo");
  function getDadosAdicionais({ doc, ajusteX, ajusteY, margemEsquerda, margemTopo, margemDireita, larguraDoFormulario, infAdic, finalEspacoDet, earlyClose, fecharAposConteudo }) {
      const maxBottom = 821.8;
 -    const text = infAdic?.infCpl ?? '';
-+    // PATCH CA-Hardt: inclui infAdFisco (MOC 3.1.8); o texto sai como vem no XML
-+    // (sem quebrar '#' em linhas — quebrar estourava o quadro e gerava folha 2 quase vazia)
++    // PATCH CA-Hardt: inclui infAdFisco (MOC 3.1.8). O separador '#' do app vira quebra de linha
++    // quando NAO seguido de digito ('Pedido #4821' / 'BN#12' / 'DEV#3' ficam inteiros).
 +    const text = ((infAdic?.infAdFisco ? infAdic.infAdFisco + '\n' : '') + (infAdic?.infCpl ?? ''))
++        .replace(/#(?!\d)/g, '\n')
++        .replace(/[ \t]*\n[ \t]*/g, '\n')
 +        .replace(/\n{2,}/g, '\n')
 +        .trim();
      const textWidth = 386;
 -    const textOpts = { width: textWidth, lineGap: -1.5 };
 +    const textOpts = { width: textWidth, lineGap: -1.2 };
      const availableHeight = maxBottom - finalEspacoDet - 17.5;
-     doc.font('normal').fillColor('black').fontSize(6);
+-    doc.font('normal').fillColor('black').fontSize(6);
++    // PATCH CA-Hardt: reduz a fonte (6 -> 5.5 -> 5 -> 4.5) antes de aceitar overflow/folha 2
++    let fontSize = 6;
++    doc.font('normal').fillColor('black');
++    for (const fs of [6, 5.5, 5, 4.5]) {
++        fontSize = fs;
++        doc.fontSize(fs);
++        if (doc.heightOfString(text, textOpts) <= availableHeight) break;
++    }
++    doc.fontSize(fontSize);
      const fullHeight = doc.heightOfString(text, textOpts);
-@@ -54,7 +58,7 @@ function getDadosAdicionais({ doc, ajusteX, ajusteY, margemEsquerda, margemTopo,
+     const hasOverflow = fullHeight > availableHeight;
+     const fecharCedo = (earlyClose || fecharAposConteudo) && !hasOverflow;
+@@ -53,8 +67,10 @@ function getDadosAdicionais({ doc, ajusteX, ajusteY, margemEsquerda, margemTopo,
+     });
      const textX = margemEsquerda + ajusteX + 1;
      const textY = margemTopo + ajusteY + finalEspacoDet + 17.5;
++    // PATCH CA-Hardt: titulo()/secao() mexem na fonte — reaplica a escolhida antes de medir/escrever
++    doc.font('normal').fillColor('black').fontSize(fontSize);
      if (!hasOverflow) {
 -        doc.text(text, textX, textY, { ...textOpts, align: 'justify' });
 +        doc.text(text, textX, textY, { ...textOpts, align: 'left' });
          return '';
      }
      const heightForText = availableHeight - 9;
-@@ -73,7 +77,7 @@ function getDadosAdicionais({ doc, ajusteX, ajusteY, margemEsquerda, margemTopo,
+@@ -73,7 +89,7 @@ function getDadosAdicionais({ doc, ajusteX, ajusteY, margemEsquerda, margemTopo,
      const splitAt = lastSpace > 0 ? lastSpace : lo;
      const page1Text = text.slice(0, splitAt).trimEnd();
      const remainingText = text.slice(splitAt).trimStart();

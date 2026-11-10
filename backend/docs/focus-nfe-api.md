@@ -625,22 +625,35 @@ Rate limit: **não documentado nas páginas baixadas** — ver doc online se nec
 Campo na Focus: **`informacoes_adicionais_contribuinte`** (vira o `infCpl` do XML). **Separador de
 linhas: usar `#`, igual ao CA.** Testado na prática (23/07): mandar `\n` de verdade faz a Focus
 gravar `\\n` LITERAL no XML (aparece "\n" escrito na DANFE do app); com `#` o XML fica idêntico ao
-padrão do CA e a DANFE do app já reconverte `#` em quebra de linha (patch da DANFE).
+padrão do CA. A DANFE do app (patch do `node-pdf-nfe`) converte em quebra de linha todo `#` **NÃO
+seguido de dígito** (`/#(?!\d)/`) — assim `Pedido #4821`, `BN#12` e `DEV#3` ficam inteiros. Por isso
+nenhum texto livre (observação, nome fantasia) pode conter `#` (o montador troca por espaço). Se o
+texto não couber no quadro, a DANFE reduz a fonte (6 → 5,5 → 5 → 4,5) antes de abrir a folha 2/2.
+
+**Formato (08/11/2026): UMA informação POR LINHA, sem linha em branco:**
+```
+PADARIA PAO QUENTE            <- nome fantasia em MAIÚSCULAS (só CNPJ; omitido se vazio ou igual à razão social)
+Pedido #4821 - Entregar na porta dos fundos   <- observação na MESMA linha, após " - "
+PERMITE O APROVEITAMENTO DO CREDITO DE ICMS NO VALOR DE R$ 12,34, CORRESPONDENTE A ALIQUOTA DE 1,25%, ...
+DOCUMENTO EMITIDO POR ME OU EPP OPTANTE PELO SIMPLES NACIONAL.
+NAO GERA DIREITO A CREDITO FISCAL DE IPI.
+```
+Ordem na venda: fantasia · `Pedido #N[ - obs]` · `PROMO - ...` · `Cobrança: ...` · crédito de ICMS (só CNPJ) · textos legais. Devolução de venda: fantasia · `DEVOLUCAO REFERENTE SUA NF...` · `Pedido #N` · crédito de ICMS (só CNPJ) · textos legais.
+(Quem lê o infCpl para achar o pedido usa `/(?:^|[#>])\s*(?:Referente ao )?pedido\s*#?(\d+)/i` — ancorada no início do infCpl ou logo após um separador `#`, casa a forma nova e a antiga `Referente ao pedido #N`/`pedido N`, mas NÃO casa um "pedido #12" escrito dentro da observação de uma bonificação.)
 
 O texto de hoje tem DUAS partes:
 
 **Parte 1 — vem do NOSSO app** (já existe pronta em `syncPedidosService.js:251-252`, enviada ao CA
 como `observacoes` da venda — na Focus é só reusar o mesmo montador):
-1. `Referente ao pedido #<numero>` (sempre)
-2. `pedido.observacoes` (quando houver — ex.: `ENCAIXE DE ENTREGA`, `Site Congelados #28 <endereço>`,
-   texto livre digitado no pedido)
-3. `PROMO - <nomes dos itens em promoção>` (quando houver item em promoção)
-4. `Cobrança: Vendedor responsável` / `Cobrança: Escritório responsável` (condições especiais)
+- Nome fantasia em MAIÚSCULAS (CNPJ, quando houver e diferente da razão social)
+- `Pedido #<numero>` + ` - <observação do pedido>` na MESMA linha (ex.: `ENCAIXE DE ENTREGA`, texto livre; `#` e quebras viram espaço)
+- `PROMO - <nomes dos itens em promoção>` (quando houver item em promoção)
+- `Cobrança: Vendedor responsável` / `Cobrança: Escritório responsável` (condições especiais)
 
 **Parte 2 — o CA acrescenta na emissão; com a Focus, o NOSSO montador passa a acrescentar:**
-1. Sempre: `DOCUMENTO EMITIDO POR ME OU EPP OPTANTE PELO SIMPLES NACIONAL.` +
+1. (depois do crédito de ICMS, abaixo) Sempre: `DOCUMENTO EMITIDO POR ME OU EPP OPTANTE PELO SIMPLES NACIONAL.` +
    `NAO GERA DIREITO A CREDITO FISCAL DE IPI.`
-2. Destinatário CNPJ (CSOSN 101): `PERMITE O APROVEITAMENTO DO CREDITO DE ICMS NO VALOR DE R$
+2. (vem ANTES dos textos legais) Destinatário CNPJ (CSOSN 101): `PERMITE O APROVEITAMENTO DO CREDITO DE ICMS NO VALOR DE R$
    <soma dos vCredICMSSN>, CORRESPONDENTE A ALIQUOTA DE 3,82%, NOS TERMOS DO ART. 23 DA LC
    123/2006.`
 3. Linha da Lei da Transparência (`Trib aprox R$: X Federal, Y Estadual ... Fonte:
@@ -650,7 +663,7 @@ como `observacoes` da venda — na Focus é só reusar o mesmo montador):
    homologação como a Focus posiciona a linha).
 
 Exemplo real completo (nota 84843, CNPJ): ver seção acima. Exemplo CPF (84787):
-`Referente ao pedido #2213` + `ENCAIXE DE ENTREGA` + `Site Congelados #28 ESTRADA DO OESTE, 476...`
+`Pedido #2213 - ENCAIXE DE ENTREGA ...` (formato antigo: `Referente ao pedido #2213` em linha separada)
 + linha IBPT + os dois textos do Simples (sem linha de crédito).
 
 ### ⚠️ Terceiro documento descoberto: NF-e de DEVOLUÇÃO de venda
@@ -937,7 +950,7 @@ implementação, marcar a flag `revenda` nesses dois.
 | `formas_pagamento` | 01/03/15/17 com o valor da nota | **`[{ forma_pagamento: '90', valor_pagamento: 0 }]`** (sem pagamento), **sem** `indicador_pagamento` |
 | Fatura / duplicatas | nas notas a prazo/boleto | **NUNCA** — `montarCobranca` não é chamada |
 | Valor | preço do item | preço de tabela do item (nota zerada a SEFAZ não aceita) |
-| `informacoes_adicionais_contribuinte` | `Referente ao pedido #N` + textos legais | `MERCADORIA ENTREGUE EM BONIFICACAO - SEM COBRANCA AO DESTINATARIO.` + `Referente à bonificação BN#N` + observações do pedido + textos legais |
+| `informacoes_adicionais_contribuinte` | fantasia + `Pedido #N[ - obs]` + PROMO/Cobrança + crédito (CNPJ) + textos legais | fantasia + `MERCADORIA ENTREGUE EM BONIFICACAO - SEM COBRANCA AO DESTINATARIO.` + `Bonificação BN#N[ - obs]` + textos legais |
 | Efeito no pedido | vira `situacaoCA = FATURADO` | **nenhum** — o status da BN# continua sendo de aprovar/reverter |
 
 **`ref`:** a mesma da venda — `nf-<p|h>-<pedidoId>` (DANFE, canhoto, ZIP de XMLs e a coluna da fila
@@ -981,7 +994,7 @@ e a gravada como ESPECIAL era barrada sem nota nenhuma. Agora a BN# tem caminho 
 | Valor | `DevolucaoItem.valorUnitario` × qtd | igual (preço de tabela gravado na BN#) |
 | Nota referenciada | NF-e da **venda** (`notaAutorizadaDoPedido` ou `pedido.nfeChave`) | NF-e da **bonificação** (`notaBonificacaoAutorizada`: `tipo BONIFICACAO` + `AUTORIZADO`, ref `nf-<amb>-<pedidoId>`) — cabeçalho `notas_referenciadas` **e** por item (`chave_acesso_dfe_referenciado` + `numero_item_dfe_referenciado`) com o mesmo interruptor `nfe_devolucao_ref_item` |
 | Fonte dos itens/nItem da origem | payload → xml-local → xml-ca | `payloadEnviado.items` da nota de bonificação (fonte `payload`, banco, sem rede) |
-| `informacoes_adicionais_contribuinte` | `DEVOLUCAO REFERENTE SUA NF N 1-N DE dd/mm/aaaa` + `Referente ao pedido #N` + textos legais + frase de crédito (CNPJ) | `DEVOLUCAO DE MERCADORIA RECEBIDA EM BONIFICACAO (REMESSA CFOP <5910|6910 lido de notaBonif.payloadEnviado.items[0].cfop>) - REFERENTE A NF-e N <serie>-<numero> DE <dd/mm/aaaa>` · `Referente à bonificação BN#N - devolução DEV#N` · `SEM COBRANCA E SEM EFEITO FINANCEIRO - MERCADORIA HAVIA SIDO REMETIDA SEM ONUS AO DESTINATARIO.` · textos legais. **NUNCA** a frase de aproveitamento de crédito de ICMS |
+| `informacoes_adicionais_contribuinte` | fantasia + `DEVOLUCAO REFERENTE SUA NF N 1-N DE dd/mm/aaaa` + `Pedido #N` + frase de crédito (CNPJ) + textos legais | fantasia + `DEVOLUCAO DE MERCADORIA RECEBIDA EM BONIFICACAO (REMESSA CFOP <5910|6910 lido de notaBonif.payloadEnviado.items[0].cfop>) - REFERENTE A NF-e N <serie>-<numero> DE <dd/mm/aaaa>` · `Bonificação BN#N - Devolução DEV#N` · `SEM COBRANCA E SEM EFEITO FINANCEIRO - MERCADORIA HAVIA SIDO REMETIDA SEM ONUS AO DESTINATARIO.` · textos legais. **NUNCA** a frase de aproveitamento de crédito de ICMS |
 | Efeito financeiro | parcelas/boletos ajustados no registro da devolução | **nenhum** (bonificação não tem conta a receber). Só o estoque, creditado UMA vez no registro da devolução (`estoqueService.creditarDevolucao`) — a emissão da nota não mexe em estoque |
 | `marcarPedidoFaturado` | não chama | **não chama** |
 

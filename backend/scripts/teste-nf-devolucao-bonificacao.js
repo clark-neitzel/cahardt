@@ -32,7 +32,7 @@ const focusNfe = require('../services/focusNfeService');
 const GERAR_FIXTURE = process.argv.includes('--gerar-fixture');
 const FIXTURE = path.join(__dirname, 'fixtures', 'nf-devolucao-venda-antes.json');
 const MARCA = 'TESTE-NFDEVBONIF';
-const NUMERO_VENDA_FIXTURE = 9890001; // nº fixo: entra na infoAdic ("Referente ao pedido #N")
+const NUMERO_VENDA_FIXTURE = 9890001; // nº fixo: entra na infoAdic ("Pedido #N")
 const ok = (m) => console.log('  ✓ ' + m);
 const info = (m) => console.log('  · ' + m);
 
@@ -249,10 +249,11 @@ function semDatas(payload) {
     checar(!Object.keys(p).some(k => /fatura|duplicata/.test(k)), 'sem fatura/duplicatas');
     console.log('    infoAdic:', p.informacoes_adicionais_contribuinte);
     // O separador de linha é '#', e os rótulos BN#/DEV# também levam '#' (mesma convenção
-    // do "Referente ao pedido #N" da venda) — por isso a conferência é por trecho, não por split.
+    // do "Pedido #N" da venda; a DANFE só quebra '#' NÃO seguido de dígito) — por isso a
+    // conferência é por trecho, não por split. A 1ª linha pode ser o nome fantasia do cliente.
     const infoAdic = p.informacoes_adicionais_contribuinte;
-    checar(infoAdic.startsWith('DEVOLUCAO DE MERCADORIA RECEBIDA EM BONIFICACAO (REMESSA CFOP 5910) - REFERENTE A NF-e N 1-880002 DE 01/09/2026#'), 'linha 1: CFOP de origem lido do payload + nº/série/data da nota original');
-    checar(infoAdic.includes(`#Referente à bonificação BN#9890102 - devolução DEV#${devSC.numero}#`), 'linha 2: BN# e DEV#');
+    checar(/^(?:[^#]*#)?DEVOLUCAO DE MERCADORIA RECEBIDA EM BONIFICACAO \(REMESSA CFOP 5910\) - REFERENTE A NF-e N 1-880002 DE 01\/09\/2026#/.test(infoAdic), 'linha 1: CFOP de origem lido do payload + nº/série/data da nota original');
+    checar(infoAdic.includes(`#Bonificação BN#9890102 - Devolução DEV#${devSC.numero}#`), 'linha 2: BN# e DEV#');
     checar(infoAdic.includes('#SEM COBRANCA E SEM EFEITO FINANCEIRO - MERCADORIA HAVIA SIDO REMETIDA SEM ONUS AO DESTINATARIO.#'), 'linha 3: sem cobrança e sem efeito financeiro');
     checar(!/APROVEITAMENTO DO CREDITO/.test(p.informacoes_adicionais_contribuinte), 'NUNCA a frase de aproveitamento de crédito de ICMS');
     checar(p.cnpj_destinatario === '98765432000110' && p.uf_destinatario === 'SC', 'destinatário = o cliente da bonificação');
@@ -410,7 +411,7 @@ function semDatas(payload) {
     const devCA = await devolucaoService.criarEspecial({ pedidoId: bnCA.id, motivo: `${MARCA} ca`, registradoPorId: vendedor.id, itens: [{ produtoId: prodA.id, quantidade: 1 }] });
     await prisma.devolucao.update({ where: { id: devCA.id }, data: { notaDevolucaoCA: '77777' } });
     try { await emissao.emitirDevolucao(devCA.id); checar(false, 'deveria recusar'); }
-    catch (e) { console.log('    erro:', e.message); checar(/já tem NF de devolução do Conta Azul \(nº 77777\)/.test(e.message), 'trava notaDevolucaoCA'); }
+    catch (e) { console.log('    erro:', e.message); checar(/já tem NF de devolução antiga \(nº 77777\)/.test(e.message), 'trava notaDevolucaoCA'); }
     await prisma.devolucao.update({ where: { id: devCA.id }, data: { notaDevolucaoCA: null, status: 'REVERTIDA' } });
     try { await emissao.emitirDevolucao(devCA.id); checar(false, 'deveria recusar'); }
     catch (e) { console.log('    erro:', e.message); checar(e.message === 'Devolução revertida não gera nota fiscal.', 'trava ATIVA vem antes do despacho'); }

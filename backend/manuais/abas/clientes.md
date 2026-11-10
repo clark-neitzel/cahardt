@@ -134,7 +134,7 @@ Aba padrão ao abrir o detalhe. Contém tudo que é editável pelo time comercia
 - Campo de texto livre com anotações sobre o cliente
 
 **Informações do Cadastro** (editável por quem tem `clientes.edit`/`Pode_Editar_GPS`/admin)
-- Razão social, nome fantasia e CNPJ/CPF (editáveis)
+- Razão social, nome fantasia e CNPJ/CPF (editáveis). O **Nome Fantasia** sai na 1ª linha das Informações Complementares da NF-e (só CNPJ, só quando diferente da razão social) — por isso vale conferir se está preenchido e correto
 - Toggle **"É cliente"**: liga/desliga o lado cliente do cadastro. Desligado, o cadastro some de TODAS as telas de venda (lista de clientes ativos, Rota, Novo Pedido, Catálogo, dashboards, metas do dia) — mas o histórico (pedidos, financeiro, atendimentos) fica preservado na ficha e dá para religar a qualquer momento
 - Toggle **"Também é fornecedor"**: liga/desliga o espelho deste cadastro na lista de Fornecedores (Contas a Pagar / Notas de Entrada)
 - **Combinações dos dois toggles**: os dois ligados = cadastro completo; só "fornecedor" = vira **SÓ FORNECEDOR** (selo âmbar no topo da ficha — caso do cliente que parou de comprar mas continua nos vendendo); só "cliente" = cliente normal; os dois desligados = cadastro **INATIVO** por completo (o app pede confirmação antes de salvar assim)

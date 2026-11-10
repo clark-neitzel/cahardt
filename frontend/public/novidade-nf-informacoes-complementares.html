@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Nota fiscal mais legível — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp (sem og:image: cartão compacto) -->
+<meta property="og:title" content="🧾 Novidade no Hardt App: nota fiscal mais legível">
+<meta property="og:description" content="A DANFE agora mostra o nome fantasia do cliente e uma informação por linha. Confira o Nome Fantasia no cadastro.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A; --primary-dark: #006241; --house: #1E3932; --mint: #d4e9e2;
+    --cream: #f2f0eb; --gold: #cba258; --ink: rgba(0,0,0,.87); --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--cream); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55; -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+  .hero { background: linear-gradient(168deg, var(--house) 0%, #16302a 100%); color: #fff; padding: 40px 16px 44px; }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow { display: inline-block; background: var(--gold); color: #2b230f; font-size: 11px; font-weight: 800;
+    text-transform: uppercase; letter-spacing: .14em; padding: 6px 14px; border-radius: 999px; margin-bottom: 18px; }
+  .hero h1 { font-size: clamp(28px, 7vw, 40px); font-weight: 800; line-height: 1.12; margin: 0 0 12px; text-wrap: balance; }
+  .hero p { color: rgba(255,255,255,.75); font-size: 16px; max-width: 46ch; margin: 0 auto; text-wrap: balance; }
+
+  .sec-label { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .16em;
+    color: var(--primary-dark); margin: 34px 4px 12px; }
+  .acc { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; margin-bottom: 10px; overflow: hidden;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05); }
+  .acc-head { width: 100%; display: flex; align-items: center; gap: 12px; background: none; border: none; font: inherit;
+    text-align: left; padding: 15px 16px; cursor: pointer; min-height: 56px; }
+  .acc-head:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .acc-ico { width: 38px; height: 38px; border-radius: 11px; background: var(--mint); display: flex;
+    align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  .tela { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; overflow: hidden; margin-bottom: 12px;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05); }
+  .tela-titulo { background: var(--house); color: #fff; padding: 12px 16px; font-size: 13px; font-weight: 800;
+    display: flex; align-items: center; gap: 8px; }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .quadro { background: #fff; border: 1px solid #bdb9ad; margin-bottom: 12px; }
+  .quadro-t { font-size: 9px; font-weight: 800; letter-spacing: .08em; color: #6b756f; padding: 4px 8px;
+    border-bottom: 1px solid #d8d5cc; text-transform: uppercase; display: flex; align-items: center; }
+  .quadro-c { padding: 8px; font-family: "Roboto Condensed", "Arial Narrow", Arial, sans-serif; font-size: 11px;
+    line-height: 1.35; color: #111; overflow-wrap: anywhere; }
+  .quadro-c div { margin: 0; }
+  .rot { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; margin: 4px 0 6px;
+    display: flex; align-items: center; }
+  .rot.antes { color: #8a3b3b; } .rot.depois { color: var(--primary-dark); }
+  .pin { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%;
+    background: var(--gold); color: #2b230f; font-size: 11px; font-weight: 800; flex-shrink: 0; vertical-align: 2px; margin-left: 6px; }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n { width: 30px; height: 30px; flex-shrink: 0; border-radius: 50%; background: var(--primary); color: #fff;
+    font-weight: 800; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+  .rodape { text-align: center; font-size: 12px; color: var(--ink-soft); margin-top: 40px; }
+  .rodape strong { color: var(--primary-dark); }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">Novidade</span>
+    <h1>Nota fiscal mais legível</h1>
+    <p>As informações da nota agora saem organizadas, uma por linha, com o nome fantasia do cliente no começo.</p>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <div class="sec-label">O que mudou</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🧾</span><strong>Informações Complementares da DANFE</strong><span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Na 1ª linha vai o <b>nome fantasia do cliente</b> (só para CNPJ, e só quando for diferente da razão social).</li>
+        <li><b>Uma informação por linha</b>, sem linhas em branco no meio.</li>
+        <li>O pedido e a observação ficam juntos: <b>"Pedido #4821 - Entregar na porta dos fundos"</b>.</li>
+        <li>Depois vêm, cada uma na sua linha, a frase do crédito de ICMS e os avisos do Simples Nacional.</li>
+        <li>Se o texto for grande, a letra diminui um pouco para a nota continuar em <b>uma folha só</b>.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="sec-label">As telas do app</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🖨️</span><strong>Quadro da nota: antes e depois</strong><span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo" style="padding-left:16px">
+      <div class="tela">
+        <div class="tela-titulo">🧾 DANFE — Dados adicionais</div>
+        <div class="tela-corpo">
+          <div class="rot antes">Antes</div>
+          <div class="quadro">
+            <div class="quadro-t">Informações complementares</div>
+            <div class="quadro-c">Referente ao pedido #4821 Entregar na porta dos fundos DOCUMENTO EMITIDO POR ME OU EPP OPTANTE PELO SIMPLES NACIONAL. NAO GERA DIREITO A CREDITO FISCAL DE IPI. PERMITE O APROVEITAMENTO DO CREDITO DE ICMS...</div>
+          </div>
+          <div class="rot depois">Depois</div>
+          <div class="quadro">
+            <div class="quadro-t">Informações complementares</div>
+            <div class="quadro-c">
+              <div>PADARIA PAO QUENTE <span class="pin">1</span></div>
+              <div>Pedido #4821 - Entregar na porta dos fundos <span class="pin">2</span></div>
+              <div>PERMITE O APROVEITAMENTO DO CREDITO DE ICMS NO VALOR DE R$ 12,34, CORRESPONDENTE A ALIQUOTA DE 1,25%, NOS TERMOS DO ART. 23 DA LC 123/2006. <span class="pin">3</span></div>
+              <div>DOCUMENTO EMITIDO POR ME OU EPP OPTANTE PELO SIMPLES NACIONAL.</div>
+              <div>NAO GERA DIREITO A CREDITO FISCAL DE IPI. <span class="pin">4</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="legenda">
+          <div><span class="pin">1</span><span><b>Nome fantasia</b> do cliente, em maiúsculas. Sai do campo Nome Fantasia do cadastro.</span></div>
+          <div><span class="pin">2</span><span><b>Pedido e observação na mesma linha.</b> Sem observação, sai só "Pedido #4821".</span></div>
+          <div><span class="pin">3</span><span><b>Crédito de ICMS</b> (só para cliente CNPJ).</span></div>
+          <div><span class="pin">4</span><span><b>Avisos do Simples Nacional</b>, um por linha, no fim.</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec-label">O que a equipe precisa fazer</div>
+
+  <div class="passos">
+    <div class="passo"><div class="passo-n">1</div><div>Abra o <b>cadastro do cliente</b> (Clientes) e confira o campo <b>Nome Fantasia</b> — é ele que sai na nota.</div></div>
+    <div class="passo"><div class="passo-n">2</div><div>Se estiver vazio ou errado, corrija e salve. <b>Cliente sem Nome Fantasia</b> ou com nome igual à razão social simplesmente não mostra essa linha.</div></div>
+    <div class="passo"><div class="passo-n">3</div><div>Cliente <b>CPF</b> não mostra nome fantasia. Notas já emitidas não mudam; vale para as próximas.</div></div>
+  </div>
+
+  <div class="rodape"><strong>Hardt App</strong> · novidade de 10/11/2026</div>
+</main>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.parentElement;
+    const abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>

@@ -1,5 +1,11 @@
 [
   {
+    "slug": "nf-informacoes-complementares",
+    "titulo": "Nota fiscal mais legível",
+    "resumo": "A DANFE agora mostra o nome fantasia do cliente e uma informação por linha (Pedido #N - observação). Confira o Nome Fantasia no cadastro dos clientes.",
+    "data": "2026-11-10"
+  },
+  {
     "slug": "agenda-producao",
     "titulo": "Agenda Produção no Google",
     "resumo": "Pedido agora tem horário de entrega (opcional): a agenda Produção mostra o evento com hora, terminando na entrega. Delivery, Kit Festa e amostras entram sozinhos.",

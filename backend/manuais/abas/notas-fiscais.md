@@ -47,6 +47,8 @@ Quando a nota é **autorizada**, o pedido correspondente vira **FATURADO** na ab
 
 - **Crédito de ICMS do Simples (`pCredSN`):** o percentual que o cliente CNPJ aproveita de crédito sai da configuração em **Configurações → Emissão de NF-e — Simples Nacional** (padrão 3,82%). Ele muda conforme a faixa do Simples da empresa; quem alterar deve confirmar o valor com a contabilidade. O mesmo lugar define o **NCM padrão** (usado só quando o produto não tem NCM próprio) e os **textos legais** das Informações Complementares. Vale para a próxima nota emitida — notas já autorizadas não mudam.
 
+- **Informações Complementares (quadro "Dados adicionais" da DANFE, 11/2026):** saem **uma informação por linha**, nesta ordem na venda: **nome fantasia do cliente em maiúsculas** (só cliente CNPJ, e só quando preenchido e diferente da razão social — a NF-e não tem campo próprio para fantasia, por isso vai aqui; a razão social continua no destinatário), `Pedido #N - observação do pedido` (na mesma linha; sem observação sai só `Pedido #N`), PROMO/Cobrança quando houver, a frase do crédito de ICMS (só CNPJ) e por último os textos legais do Simples. Na bonificação e nas devoluções a 1ª linha também é o nome fantasia. Se o texto for grande, a DANFE reduz a letra antes de abrir uma 2ª folha. Notas já autorizadas não mudam.
+
 ## Nota rejeitada: o link "O que fazer?"
 
 Toda linha **✕ Rejeitada** mostra a mensagem oficial da SEFAZ e, logo abaixo, o link **"O que fazer?"**. Ao abrir, aparece a orientação prática para aquele motivo específico: se o problema é do cadastro do cliente, do nosso cadastro, dos valores do pedido, ou se é caso de chamar o suporte. Se a SEFAZ mandar um motivo que o app ainda não conhece, aparece a orientação geral — nunca fica sem saída.

@@ -144,8 +144,8 @@ async function criarCliente({ nome, doc, uf, cidade, incompleto = false }) {
     const totalEsperado = Math.round(itensSC.reduce((s, i) => s + Number(i.quantidade) * Number(i.valor), 0) * 100) / 100;
     checar(payloadSC.valor_produtos === totalEsperado && payloadSC.valor_total === totalEsperado, `valor_produtos = valor_total = ${totalEsperado} (soma dos itens gravados)`);
     console.log('    infoAdic:', payloadSC.informacoes_adicionais_contribuinte);
-    checar(payloadSC.informacoes_adicionais_contribuinte.startsWith('MERCADORIA ENTREGUE EM BONIFICACAO - SEM COBRANCA AO DESTINATARIO.'), 'infoAdic começa com a frase da bonificação');
-    checar(payloadSC.informacoes_adicionais_contribuinte.includes(`Referente à bonificação BN#${gravSC.numero}`), 'infoAdic cita o BN# do pedido');
+    checar(/^(?:[^#]*#)?MERCADORIA ENTREGUE EM BONIFICACAO - SEM COBRANCA AO DESTINATARIO\./.test(payloadSC.informacoes_adicionais_contribuinte), 'infoAdic tem a frase da bonificação na 1ª linha (ou na 2ª, depois do nome fantasia)');
+    checar(payloadSC.informacoes_adicionais_contribuinte.includes(`Bonificação BN#${gravSC.numero}`), 'infoAdic cita o BN# do pedido');
     checar(payloadSC.informacoes_adicionais_contribuinte.includes(MARCA), 'infoAdic traz as observações do pedido');
     checar(!/PERMITE O APROVEITAMENTO DO CREDITO DE ICMS/.test(payloadSC.informacoes_adicionais_contribuinte), 'infoAdic NÃO tem a frase de crédito de ICMS (é do CSOSN 101)');
     checar(payloadSC.cnpj_destinatario === '98765432000110', 'destinatário CNPJ');

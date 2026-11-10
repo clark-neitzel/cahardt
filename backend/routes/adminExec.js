@@ -1272,8 +1272,8 @@ router.post('/focus-nfe-emitir-teste', async (req, res) => {
             valor_total: valor,
             formas_pagamento: [{ forma_pagamento: '01', valor_pagamento: valor }],
             // Separador '#' como o CA fazia: a Focus converte '\n' em '\\n' literal no XML,
-            // e a nossa DANFE já converte '#' em quebra de linha (patch da DANFE).
-            informacoes_adicionais_contribuinte: ['Referente ao pedido TESTE (nota de ensaio do app)', ...textosLegais].join('#'),
+            // e a nossa DANFE converte '#' (não seguido de dígito) em quebra de linha (patch da DANFE).
+            informacoes_adicionais_contribuinte: ['Pedido TESTE (nota de ensaio do app)', ...textosLegais].join('#'),
             items: [item],
         };
 
@@ -10009,7 +10009,7 @@ router.get('/contabilidade-diag-xml-nnf/:numero', async (req, res) => {
             const mVal = xml.match(/<vNF>([\d.]+)<\/vNF>/);
             const mData = xml.match(/<dhEmi>([\d-]{10})/) || xml.match(/<dEmi>([\d-]{10})/);
             const mTp = xml.match(/<tpNF>(\d)<\/tpNF>/);
-            const mRef = xml.match(/Referente ao pedido #?(\d+)/);
+            const mRef = xml.match(/(?:^|[#>])\s*(?:Referente ao )?pedido\s*#?(\d+)/i);
             const dono = await prisma.pedido.findFirst({ where: { nfeChave: chave }, select: { numero: true } });
             achados.push({
                 chave, tpNF: mTp?.[1] ?? null, destDoc: mDest?.[2] ?? null, destNome: mNome?.[1] ?? null,
@@ -10183,7 +10183,7 @@ router.get('/contabilidade-verifica-nfe-cache', async (req, res) => {
             const arq = path.join(DIR, `${p.nfeChave}.xml`);
             if (!fs.existsSync(arq)) { resultado.xmlAusente++; continue; }
             const xml = fs.readFileSync(arq, 'utf8');
-            const mPed = xml.match(/Referente ao pedido #?(\d+)/);
+            const mPed = xml.match(/(?:^|[#>])\s*(?:Referente ao )?pedido\s*#?(\d+)/i);
             if (!mPed) { resultado.semReferenciaNoXml++; continue; }
             if (parseInt(mPed[1], 10) === p.numero) resultado.conferidos++;
             else resultado.divergentes.push({ pedido: p.numero, nfeNumero: p.nfeNumero, xmlDizPedido: parseInt(mPed[1], 10) });
