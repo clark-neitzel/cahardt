@@ -553,6 +553,53 @@ async function blocoVeiculosPendencias(limite) {
     };
 }
 
+// ── Bloco: amostras_sem_carga ───────────────────────────────────────────────────
+// Amostras abertas (SOLICITADA/PREPARACAO/LIBERADO) que ainda não estão em nenhuma carga.
+// Régua de urgência ÚNICA em amostraService (vermelho = entrega hoje/atrasada, âmbar = amanhã).
+// Severidade do bloco = a PIOR entre TODAS (não só as do limite). Ação "Liberar" some se já LIBERADO.
+async function blocoAmostrasSemCarga(limite) {
+    const amostraService = require('./amostraService');
+    const { hoje, amostras } = await amostraService.listarAbertasSemCarga();
+    const vermelhas = amostras.filter(a => a.urgencia === 'vermelho').length;
+    const severidade = vermelhas > 0 ? 'vermelho' : (amostras.some(a => a.urgencia === 'ambar') ? 'ambar' : 'cinza');
+    const NOME_STATUS = { SOLICITADA: 'Solicitada', PREPARACAO: 'Em preparação', LIBERADO: 'Liberada' };
+    const amanha = amostraService.somarDias(hoje, 1);
+    const textoData = (a) => {
+        const d = a.dataEntregaDia;
+        if (!d) return 'Sem data de entrega';
+        if (d === hoje) return 'Entrega hoje';
+        if (d < hoje) return `Atrasada (${d.split('-').reverse().slice(0, 2).join('/')})`;
+        if (d === amanha) return 'Entrega amanhã';
+        return `Entrega ${d.split('-').reverse().slice(0, 2).join('/')}`;
+    };
+    const itens = amostras.slice(0, limite).map((a) => {
+        const rotaAbrir = `/pedidos?aba=amostras&semCarga=1&amostra=${a.id}`;
+        const item = {
+            id: a.id,
+            titulo: `${a.etiqueta} · ${a.destinatario}`,
+            subtitulo: `${textoData(a)} · ${NOME_STATUS[a.status] || a.status}${a.vendedor ? ` · vend. ${a.vendedor}` : ''}`,
+            dataRef: a.dataEntregaDia ? `${a.dataEntregaDia}T12:00:00-03:00` : null, // meio-dia de Brasília (o front não pode voltar um dia); sem data de entrega = null (não mostrar data de criação como se fosse entrega)
+            severidade: a.urgencia,
+            rota: rotaAbrir,
+            rotaAbrir,
+        };
+        if (a.status !== 'LIBERADO') {
+            item.acao = { tipo: 'liberar_amostra', label: 'Liberar', endpoint: `/api/amostras/${a.id}/liberar`, metodo: 'POST' };
+        }
+        return item;
+    });
+    return {
+        chave: 'amostras_sem_carga',
+        titulo: 'Amostras sem carga',
+        severidade,
+        contador: amostras.length,
+        vermelhas,
+        valorTotal: null,
+        itens,
+        rotaVerTodos: '/pedidos?aba=amostras&semCarga=1',
+    };
+}
+
 // ── Agregador ─────────────────────────────────────────────────────────────────
 const DEFINICOES = [
     { chave: 'pedidos_aprovar', fn: (l, u, c) => blocoPedidosAprovar(l, c) },
@@ -565,6 +612,7 @@ const DEFINICOES = [
     { chave: 'producao_sugerida', fn: (l, u) => blocoProducaoSugerida(l) },
     { chave: 'tarefas_atrasadas', fn: (l, u) => blocoTarefasAtrasadas(l, u) },
     { chave: 'veiculos_pendencias', fn: (l) => blocoVeiculosPendencias(l) },
+    { chave: 'amostras_sem_carga', fn: (l) => blocoAmostrasSemCarga(l) },
 ];
 
 const TITULOS = {
@@ -578,6 +626,7 @@ const TITULOS = {
     producao_sugerida: 'Ordens de produção sugeridas',
     tarefas_atrasadas: 'Tarefas atrasadas (minhas)',
     veiculos_pendencias: 'Veículos: volta sem foto',
+    amostras_sem_carga: 'Amostras sem carga',
 };
 
 const ROTAS_VER_TODOS = {
@@ -591,6 +640,7 @@ const ROTAS_VER_TODOS = {
     producao_sugerida: '/pcp/sugestoes',
     tarefas_atrasadas: '/tarefas',
     veiculos_pendencias: '/veiculos/pendencias',
+    amostras_sem_carga: '/pedidos?aba=amostras&semCarga=1',
 };
 
 const listarPendencias = async ({ usuario, limitePorBloco = 5 } = {}) => {
@@ -623,12 +673,15 @@ const listarPendencias = async ({ usuario, limitePorBloco = 5 } = {}) => {
     // parada há mais de 2 dias). "avisos" = precisa de atenção mas sem prazo estourado
     // por si só (NF rejeitada, faturado sem cobrança, sugestão de produção).
     const vencidas = (resultados.find(b => b.chave === 'tarefas_atrasadas')?.contador || 0)
-        + (resultados.find(b => b.chave === 'notas_sem_conta')?.contador || 0);
+        + (resultados.find(b => b.chave === 'notas_sem_conta')?.contador || 0)
+        + (resultados.find(b => b.chave === 'amostras_sem_carga')?.vermelhas || 0); // amostra hoje/atrasada sem carga = prazo estourado
+    const _amo = resultados.find(b => b.chave === 'amostras_sem_carga');
     const avisos = (resultados.find(b => b.chave === 'nfe_rejeitada')?.contador || 0)
         + (resultados.find(b => b.chave === 'liberacao_inadimplente')?.contador || 0)
         + (resultados.find(b => b.chave === 'boletos_nao_enviados')?.contador || 0)
         + (resultados.find(b => b.chave === 'producao_sugerida')?.contador || 0)
-        + (resultados.find(b => b.chave === 'veiculos_pendencias')?.contador || 0);
+        + (resultados.find(b => b.chave === 'veiculos_pendencias')?.contador || 0)
+        + Math.max(0, (_amo?.contador || 0) - (_amo?.vermelhas || 0));
 
     return {
         geradoEm: new Date().toISOString(),

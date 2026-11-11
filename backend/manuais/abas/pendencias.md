@@ -60,6 +60,8 @@ não derruba a tela toda).
    para o especial, em Pedidos Online → Site para os da fila). Esses pedidos **saem** do bloco "Pedidos
    aguardando aprovação" (não contam em dobro) e o contador do topo soma este bloco.
 
+10. **Amostras sem carga** — toda amostra aberta (solicitada, em preparação ou liberada) que ainda não está em nenhuma carga. Cada linha mostra a urgência pela data de entrega (**vermelho** = entrega hoje ou atrasada, **âmbar** = amanhã, **cinza** = resto ou sem data) e a cor do bloco é a **pior** entre todas as amostras. Botão **"Liberar"** (1 clique; não aparece se a amostra já está liberada) e botão **"Abrir"**, que leva a Pedidos → Amostras já filtrada em "Sem carga" com a amostra em destaque. Quem libera: admin, `Pode_Acessar_Embarque`, `Pode_Ver_Pendencias` ou `Pode_Acessar_Financeiro_Gerencial`.
+
 ## Como os números são calculados
 
 Cada bloco mostra um **contador real** (o total que existe, não só o que aparece na lista) e até 5
@@ -70,9 +72,9 @@ Os totais do topo:
 - **Total** — soma de todos os contadores.
 - **Dinheiro parado** — soma do valor esperado nos Caixas a conferir + valor dos pedidos faturados
   sem cobrança.
-- **Vencidas** — tarefas atrasadas + notas recebidas paradas há mais de 2 dias (pendências com prazo
+- **Vencidas** — tarefas atrasadas + notas recebidas paradas há mais de 2 dias + amostras sem carga com entrega hoje/atrasada (pendências com prazo
   já estourado).
-- **Avisos** — NF-e rejeitada + pedidos aguardando liberação (cliente em atraso) + faturados sem cobrança + sugestões de produção (precisa de atenção,
+- **Avisos** — NF-e rejeitada + pedidos aguardando liberação (cliente em atraso) + faturados sem cobrança + sugestões de produção + veículos sem foto de volta + amostras sem carga que não são vermelhas (precisa de atenção,
   mas sem um prazo específico estourado).
 
 ## Limitações conhecidas (ver contrato completo em `backend/docs/pendencias-api.md`)

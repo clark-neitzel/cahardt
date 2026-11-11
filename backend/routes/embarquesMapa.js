@@ -54,6 +54,9 @@ const whereElegivelNaCarga = () => {
 };
 const conferenciaCarga = require('../services/conferenciaCargaService');
 const osrm = require('../services/osrmService');
+const gcal = require('../services/googleCalendarService');
+const { diaEntrega, urgencia: urgenciaAmostra } = require('../services/amostraService');
+const { getDataReferencia } = require('../utils/dataReferenciaBrasilia');
 const { particionarParadas } = require('../services/divisaoCargasService');
 const { geocodeEndereco } = require('../services/gpsClientesService');
 
@@ -70,6 +73,9 @@ const duracaoAproxSeg = (a, b) => (kmAprox(a, b) / VELOCIDADE_MEDIA_KMH) * 3600;
 const TIPOS_VALIDOS = new Set(['pedido', 'amostra', 'cobranca']);
 // Amostra que pode entrar/sair de carga: só LIBERADA (mesma régua do POST /:id/amostras).
 const AMOSTRA_STATUS_MOVIVEL = 'LIBERADO';
+// Estados que o mapa deixa "liberar + embarcar" no Confirmar (amostra ainda não liberada).
+const AMOSTRA_STATUS_NAO_LIBERADA = ['SOLICITADA', 'PREPARACAO'];
+const AMOSTRA_STATUS_LIBERAVEIS = ['SOLICITADA', 'PREPARACAO', 'LIBERADO'];
 // Statuses de amostra que aparecem dentro das cargas do dia (CANCELADA fica fora,
 // como pedido cancelado; SOLICITADA/PREPARACAO nunca entram em carga).
 const AMOSTRA_STATUS_NA_CARGA = ['LIBERADO', 'ENTREGUE'];
@@ -111,7 +117,7 @@ const SELECT_PEDIDO_MAPA = {
 };
 
 const SELECT_AMOSTRA_MAPA = {
-    id: true, numero: true, status: true, embarqueId: true,
+    id: true, numero: true, status: true, embarqueId: true, dataEntrega: true,
     clienteId: true, leadId: true,
     cliente: { select: SELECT_CLIENTE_GPS },
     lead: { select: { nomeEstabelecimento: true, pontoGps: true, cidade: true } }
@@ -185,7 +191,11 @@ const montarAmostra = (a) => {
         origemGps: gps ? 'gps' : null,
         embarqueId: a.embarqueId || null,
         statusAmostra: a.status,
-        travado: a.status !== AMOSTRA_STATUS_MOVIVEL // ENTREGUE (ou outro) não se move mais
+        dataEntregaDia: diaEntrega(a.dataEntrega),
+        urgencia: !a.embarqueId && AMOSTRA_STATUS_LIBERAVEIS.includes(a.status) ? urgenciaAmostra(a.dataEntrega, getDataReferencia()) : null,
+        naoLiberada: AMOSTRA_STATUS_NAO_LIBERADA.includes(a.status),
+        // ENTREGUE (ou outro) não se move mais. Não liberada e SEM carga se move (liberar+embarcar no Confirmar).
+        travado: a.status !== AMOSTRA_STATUS_MOVIVEL && !(AMOSTRA_STATUS_NAO_LIBERADA.includes(a.status) && !a.embarqueId)
     };
 };
 
@@ -252,7 +262,7 @@ async function completarComGeocode(itens, clientePorItem, budgetMs = GEOCODE_BUD
 // Busca pedidos livres + pedidos/amostras/cobranças das cargas informadas,
 // monta os itens e resolve as posições (Ponto_GPS → geocode do endereço).
 // Compartilhado por /mapa e /sugerir-divisao.
-async function carregarItens(embarqueIds, periodoEntrega = null) {
+async function carregarItens(embarqueIds, periodoEntrega = null, { incluirNaoLiberadas = false } = {}) {
     const idsNoDelivery = await idsPedidosNoDelivery();
     // Livres: mesma régua do fluxo clássico (faturado, ou especial/bonificação
     // APROVADOS — pendente de aprovação não embarca nem aparece aqui).
@@ -284,6 +294,9 @@ async function carregarItens(embarqueIds, periodoEntrega = null) {
         where: {
             OR: [
                 { status: AMOSTRA_STATUS_MOVIVEL, embarqueId: null },
+                // Só o GET /mapa liga: amostra ainda não liberada aparece como pino livre.
+                // /sugerir-divisao NUNCA (a divisão automática não distribui amostra não preparada).
+                ...(incluirNaoLiberadas ? [{ status: { in: AMOSTRA_STATUS_NAO_LIBERADA }, embarqueId: null }] : []),
                 ...(embarqueIds.length
                     ? [{ embarqueId: { in: embarqueIds }, status: { in: AMOSTRA_STATUS_NA_CARGA } }]
                     : [])
@@ -523,7 +536,7 @@ router.get('/mapa', verificarAuth, checkAcessoEmbarque, async (req, res) => {
         });
 
         const { entregas, amostras, cobrancas, semGps } =
-            await carregarItens(cargasDb.map(c => c.id), { de: entregaDe, ate: entregaAte });
+            await carregarItens(cargasDb.map(c => c.id), { de: entregaDe, ate: entregaAte }, { incluirNaoLiberadas: true });
 
         res.json({
             cargas: cargasDb.map(c => ({
@@ -1136,7 +1149,8 @@ router.post('/aplicar-divisao', verificarAuth, checkAcessoEmbarque, async (req, 
             if (!TIPOS_VALIDOS.has(tipo)) return null;
             const id = a.id || a.pedidoId || a.amostraId || a.cobrancaRotaId || null;
             if (!id) return null;
-            return { tipo, id, [campoCarga]: a[campoCarga] || null };
+            // liberar: só tem efeito em amostra (liberar + embarcar no mesmo Confirmar)
+            return { tipo, id, [campoCarga]: a[campoCarga] || null, liberar: tipo === 'amostra' && a.liberar === true };
         };
         const chave = (i) => `${i.tipo}:${i.id}`;
 
@@ -1237,8 +1251,11 @@ router.post('/aplicar-divisao', verificarAuth, checkAcessoEmbarque, async (req, 
 
         // Motivo de bloqueio de amostra/cobrança (vale para entrar E sair — espelha
         // POST /:id/amostras e o DELETE /cobrancas-rota/:id do fluxo clássico).
-        const motivoBloqueioAmostra = (a) =>
+        // `m` (opcional) traz { liberar, embarqueId }: SOLICITADA/PREPARACAO só passa
+        // quando o pedido é "liberar + embarcar" COM destino. Mesma regra nos 3 lugares.
+        const motivoBloqueioAmostra = (a, m) =>
             a.status === AMOSTRA_STATUS_MOVIVEL ? null
+                : (m && m.liberar === true && !!m.embarqueId && AMOSTRA_STATUS_LIBERAVEIS.includes(a.status)) ? null
                 : a.status === 'ENTREGUE' ? 'amostra já entregue — não sai mais da carga'
                     : `amostra não está liberada (status ${a.status})`;
         const motivoBloqueioCobranca = (c) =>
@@ -1249,8 +1266,8 @@ router.post('/aplicar-divisao', verificarAuth, checkAcessoEmbarque, async (req, 
 
         // Situação do item mudou (não é regra de elegibilidade, é estado novo):
         // entrega que já saiu, amostra entregue, cobrança trabalhada na rua.
-        const motivoSituacao = (tipo, reg) =>
-            tipo === 'amostra' ? motivoBloqueioAmostra(reg)
+        const motivoSituacao = (tipo, reg, m) =>
+            tipo === 'amostra' ? motivoBloqueioAmostra(reg, m)
                 : tipo === 'cobranca' ? motivoBloqueioCobranca(reg)
                     : (reg.statusEntrega !== 'PENDENTE'
                         ? `entrega já ${reg.statusEntrega} — não sai mais da carga`
@@ -1333,6 +1350,8 @@ router.post('/aplicar-divisao', verificarAuth, checkAcessoEmbarque, async (req, 
             .map(a => ({
                 tipo: a.tipo, id: a.id,
                 embarqueId: a.embarqueId || null,
+                // liberar só vale com destino (nunca liberar ao tirar de carga)
+                liberar: a.tipo === 'amostra' && a.liberar === true && !!a.embarqueId,
                 atual: porChave.get(chave(a)).embarqueId || null
             }))
             .filter(a => a.embarqueId !== a.atual)
@@ -1357,7 +1376,7 @@ router.post('/aplicar-divisao', verificarAuth, checkAcessoEmbarque, async (req, 
         const conflitosSituacao = [];
         for (const m of mudancas) {
             const reg = porChave.get(chave(m));
-            const motivo = motivoSituacao(m.tipo, reg);
+            const motivo = motivoSituacao(m.tipo, reg, m);
             if (motivo) conflitosSituacao.push(conflitoSituacao(m.tipo, m.id, reg, motivo));
         }
         if (conflitosSituacao.length) {
@@ -1455,7 +1474,7 @@ router.post('/aplicar-divisao', verificarAuth, checkAcessoEmbarque, async (req, 
                 if ((agora.embarqueId || null) !== (esperadoPorChave.get(chave(m)) || null)) {
                     return erroConflito([conflitoCarga(m.tipo, m.id, agora)]);
                 }
-                const motivo = motivoSituacao(m.tipo, agora);
+                const motivo = motivoSituacao(m.tipo, agora, m);
                 if (motivo) return erroConflito([conflitoSituacao(m.tipo, m.id, agora, motivo)]);
                 return erroConflito([novoConflito({
                     tipo: m.tipo, id: m.id, reg: agora, embarqueIdAtual: agora.embarqueId,
@@ -1478,7 +1497,7 @@ router.post('/aplicar-divisao', verificarAuth, checkAcessoEmbarque, async (req, 
                     conflitosTx.push(conflitoCarga(m.tipo, m.id, reg));
                     continue;
                 }
-                const mudouSituacao = motivoSituacao(m.tipo, reg);
+                const mudouSituacao = motivoSituacao(m.tipo, reg, m);
                 if (mudouSituacao) {
                     conflitosTx.push(conflitoSituacao(m.tipo, m.id, reg, mudouSituacao));
                     continue;
@@ -1543,9 +1562,9 @@ router.post('/aplicar-divisao', verificarAuth, checkAcessoEmbarque, async (req, 
                     });
                 } else if (m.tipo === 'amostra') {
                     alterado = await tx.amostra.updateMany({
-                        where: { ...whereGuard, status: AMOSTRA_STATUS_MOVIVEL },
+                        where: { ...whereGuard, status: m.liberar ? { in: AMOSTRA_STATUS_LIBERAVEIS } : AMOSTRA_STATUS_MOVIVEL },
                         // // Mudou de carga → a conferência da doca não vale mais (senão chegaria já verde na carga nova).
-                        data: { embarqueId: m.embarqueId, ...conferenciaCarga.RESET_CONFERENCIA } // null = volta para "amostras livres"
+                        data: { embarqueId: m.embarqueId, ...(m.liberar ? { status: 'LIBERADO' } : {}), ...conferenciaCarga.RESET_CONFERENCIA } // null = volta para "amostras livres"
                     });
                 } else {
                     // cobranca: mover = trocar a carga; tirar da carga = APAGAR o
@@ -1569,6 +1588,11 @@ router.post('/aplicar-divisao', verificarAuth, checkAcessoEmbarque, async (req, 
                 }
             }
         }, { timeout: 20000, maxWait: 10000 });
+
+        // Agenda Produção (best-effort, fora da transação): amostras que foram liberadas junto com o embarque.
+        for (const m of mudancas) {
+            if (m.tipo === 'amostra' && m.liberar) gcal.disparar(gcal.sincronizarAmostra, m.id);
+        }
 
         // Versão + histórico das cargas afetadas (best-effort, fora da transação —
         // os helpers já engolem a própria falha sem afetar o remanejo aplicado).

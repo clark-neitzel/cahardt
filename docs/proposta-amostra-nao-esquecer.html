@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Proposta: amostra que não se esquece</title>
+<style>
+  :root{--primary:#00754A;--primaryDark:#006241;--house:#1E3932;--mint:#d4e9e2;--bg:#f2f0eb;--gold:#cba258;--text:rgba(0,0,0,.87);--muted:#6b7280;--border:#e5e7eb}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Manrope,-apple-system,"SF Pro Text",system-ui,sans-serif;letter-spacing:-.01em;background:var(--bg);color:var(--text)}
+  .topo{position:sticky;top:0;z-index:5;background:var(--house);color:#fff;padding:12px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .topo h1{font-size:15px;margin:0 auto 0 0;font-weight:700}
+  .seg{display:flex;background:rgba(255,255,255,.12);border-radius:999px;padding:3px}
+  .seg button{border:0;background:transparent;color:#fff;padding:6px 14px;border-radius:999px;font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+  .seg button.on{background:#fff;color:var(--house)}
+  .wrap{max-width:1100px;margin:0 auto;padding:16px}
+  .intro{background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:16px;font-size:14px;line-height:1.5}
+  .intro b{color:var(--primaryDark)}
+  .intro h2,.dec h2{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#4b5563;margin:0 0 8px}
+  .fluxo{display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:12px;margin:8px 0}
+  .fluxo span{background:#f3f4f6;border:1px solid var(--border);border-radius:999px;padding:4px 10px;font-weight:600}
+  .fluxo span.cego{background:#fee2e2;border-color:#fca5a5;color:#991b1b}
+  .fluxo i{color:var(--muted);font-style:normal}
+  .telas{display:grid;gap:16px}
+  .tela{background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:0 1px 2px rgba(0,0,0,.05);overflow:hidden}
+  .tela>.hd{display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid #f3f4f6;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#4b5563}
+  .tela>.bd{padding:16px;background:var(--bg)}
+  .pin{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:999px;background:var(--gold);color:#fff;font-size:11px;font-weight:800;vertical-align:middle;margin-left:6px;flex:none}
+  .legenda{list-style:none;margin:12px 0 0;padding:0;font-size:13px;color:#374151}
+  .legenda li{display:flex;gap:8px;margin:6px 0;line-height:1.4}.legenda .pin{margin:0}
+  .app{background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px;margin:0 auto;transition:max-width .25s;overflow:hidden}
+  body.desk .app{max-width:760px} body.mob .app{max-width:375px}
+  .pagehd{display:flex;align-items:center;gap:8px;padding-bottom:10px;border-bottom:1px solid #f3f4f6;margin-bottom:12px}
+  .ico{width:30px;height:30px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-size:15px}
+  .ico.sky{background:#e0f2fe}.ico.amb{background:#fef3c7}.ico.mint{background:var(--mint)}
+  .pagehd b{font-size:15px}
+  .btnp{background:var(--primary);color:#fff;border-radius:999px;padding:6px 12px;font-size:12px;font-weight:700;margin-left:auto;white-space:nowrap}
+  /* faixa de amostras */
+  .faixa{border:1px solid #fcd34d;background:#fffbeb;border-radius:12px;padding:10px 12px;margin-bottom:12px}
+  .faixa .ft{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:800;color:#92400e}
+  .faixa .ft .cnt{background:#f59e0b;color:#fff;border-radius:999px;padding:1px 8px;font-size:12px}
+  .lin{display:grid;gap:8px;align-items:center;background:#fff;border:1px solid var(--border);border-radius:10px;padding:8px 10px;margin-top:8px;grid-template-columns:1fr}
+  body.desk .lin{grid-template-columns:auto 1fr auto auto}
+  .lin.urg{border-left:4px solid #ef4444}.lin.amanha{border-left:4px solid #f59e0b}.lin.ok{border-left:4px solid #d1d5db}
+  .num{font-family:ui-monospace,Menlo,monospace;font-weight:800;font-size:13px}
+  .cli{font-size:13px}.cli b{display:block}.cli small{color:var(--muted);font-size:11px}
+  .tag{display:inline-flex;align-items:center;border-radius:999px;padding:2px 9px;font-size:11px;font-weight:700}
+  .tag.red{background:#fee2e2;color:#b91c1c}.tag.amb{background:#fef3c7;color:#b45309}.tag.gray{background:#f3f4f6;color:#374151}
+  .tag.blue{background:#dbeafe;color:#1e40af}.tag.yel{background:#fef9c3;color:#854d0e}.tag.em{background:#d1fae5;color:#065f46}
+  .acts{display:flex;gap:6px;flex-wrap:wrap}
+  .b2{border:1px solid var(--primary);color:var(--primary);background:#fff;border-radius:999px;padding:5px 10px;font-size:11px;font-weight:700;white-space:nowrap}
+  .b2.cheio{background:var(--primary);color:#fff}
+  .b2.cinza{border-color:#d1d5db;color:#4b5563}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th{text-align:left;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#6b7280;padding:6px 8px;background:#f9fafb}
+  td{padding:7px 8px;border-top:1px solid #f3f4f6}
+  body.mob table{display:none}
+  /* mapa */
+  .mapa{position:relative;height:230px;border-radius:10px;background:#e8efe9;background-image:linear-gradient(#dfe7e0 1px,transparent 1px),linear-gradient(90deg,#dfe7e0 1px,transparent 1px);background-size:28px 28px;overflow:hidden}
+  .pino{position:absolute;display:flex;align-items:center;gap:4px;font-size:11px;font-weight:700}
+  .pino .d{width:22px;height:22px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 1px 2px rgba(0,0,0,.3)}
+  .pino .d.p{background:#2563eb;color:#fff}.pino .d.a{background:#f59e0b;color:#fff}
+  .pino .d.g{background:#fff;color:#b45309;border:2px dashed #f59e0b}
+  .pino .lb{background:#fff;border-radius:6px;padding:1px 6px;box-shadow:0 1px 2px rgba(0,0,0,.15)}
+  .lado{position:absolute;right:8px;top:8px;background:#fff;border-radius:10px;padding:8px;font-size:11px;width:170px;box-shadow:0 1px 3px rgba(0,0,0,.15)}
+  body.mob .lado{width:140px}
+  .lado b{display:block;font-size:11px;margin-bottom:4px}
+  /* central */
+  .bloco{border:1px solid var(--border);border-radius:12px;background:#fff;margin-top:10px}
+  .bloco .bh{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid #f3f4f6;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#4b5563}
+  .bloco .bh .sev{margin-left:auto}
+  .item{display:flex;gap:8px;align-items:center;padding:8px 12px;border-top:1px solid #f9fafb;font-size:12px}
+  .item.v{border-left:4px solid #f87171}.item.a{border-left:4px solid #fbbf24}
+  .item .tt{flex:1}.item .tt b{display:block}.item .tt small{color:var(--muted)}
+  .kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:10px}
+  body.desk .kpis{grid-template-columns:repeat(4,1fr)}
+  .kpi{border:1px solid var(--border);border-radius:10px;padding:8px 10px}.kpi small{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;font-weight:700}.kpi b{display:block;font-size:18px}
+  /* pedidos abas */
+  .abas{display:flex;gap:14px;border-bottom:1px solid var(--border);font-size:13px;font-weight:600;color:#6b7280;margin-bottom:10px;overflow-x:auto}
+  .abas span{padding:6px 2px;white-space:nowrap}.abas span.on{color:var(--primary);border-bottom:2px solid var(--primary)}
+  .abas .n{background:#fee2e2;color:#b91c1c;border-radius:999px;padding:0 7px;font-size:11px;margin-left:4px}
+  .cardam{border:1px solid var(--border);border-radius:12px;padding:10px 12px;margin-top:8px;background:#fff}
+  .cardam.urg{border-color:#fca5a5;background:#fff7f7}
+  .cardam .l1{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .cardam .l1 .sp{margin-left:auto;display:flex;gap:6px;align-items:center}
+  .icb{width:26px;height:26px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;color:#9ca3af;font-size:13px;border:1px solid transparent}
+  .cardam .l2{font-size:12px;color:var(--muted);margin-top:4px}
+  .alerta{margin-top:8px;font-size:12px;font-weight:700;color:#b91c1c;display:flex;gap:6px;align-items:center}
+  .duas{display:grid;gap:12px;grid-template-columns:1fr} body.desk .duas{grid-template-columns:1fr 1fr}
+  .dec{background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-top:16px;font-size:14px}
+  .dec ol,.dec ul{margin:0;padding-left:20px;line-height:1.6}
+  .dec li b{color:var(--primaryDark)}
+  .wa{background:#e7ffdb;border-radius:12px;padding:10px 12px;font-size:13px;max-width:330px;line-height:1.45;box-shadow:0 1px 2px rgba(0,0,0,.1)}
+</style>
+</head>
+<body class="desk">
+<div class="topo">
+  <h1>Proposta · Amostra que ninguém esquece</h1>
+  <div class="seg"><button class="on" onclick="modo('desk',this)">Computador</button><button onclick="modo('mob',this)">Celular</button></div>
+</div>
+<div class="wrap">
+  <div class="intro">
+    <h2>Por que a amostra é esquecida hoje</h2>
+    A amostra nasce <b>"Solicitada"</b> e fica só dentro de Pedidos → sub-aba Amostras. Para a expedição enxergar, alguém precisa lembrar de abrir a sub-aba e clicar <b>"Avançar status" duas vezes</b> (Solicitada → Preparação → Liberado). Só a amostra <b>Liberada</b> aparece no "Embarcar pedidos e amostras" e no Mapa da Expedição. A Central de Pendências não lista amostra. Ou seja: <b>nenhuma tela grita</b>.
+    <div class="fluxo"><span>Vendedor pede</span><i>→</i><span class="cego">Solicitada (invisível)</span><i>→</i><span class="cego">Preparação (invisível)</span><i>→</i><span>Liberado</span><i>→</i><span>Embarque / Mapa</span><i>→</i><span>Entregue</span></div>
+    <b>A proposta:</b> a amostra aparece sozinha nos quatro lugares onde a equipe já olha todo dia, com cor de urgência pela data de entrega, e some de lá quando entra numa carga. Nada de tela nova.
+  </div>
+
+  <div class="telas">
+
+    <!-- TELA 1 -->
+    <div class="tela">
+      <div class="hd">Tela 1 · Expedição → Cargas (topo da tela)</div>
+      <div class="bd">
+        <div class="app">
+          <div class="pagehd"><span class="ico sky">🚚</span><b>Cargas</b><span class="btnp">+ Nova carga</span></div>
+          <div class="faixa">
+            <div class="ft">⚠️ Amostras fora de carga <span class="cnt">3</span><span class="pin">1</span></div>
+            <div class="lin urg">
+              <span class="num">AM#58</span>
+              <div class="cli"><b>Padaria Pão Quente</b><small>Blumenau · entrega <b style="display:inline;color:#b91c1c">HOJE 11/11</b> · vend. João</small></div>
+              <span><span class="tag blue">Solicitada</span><span class="pin">2</span></span>
+              <div class="acts"><span class="b2 cinza">🏷 Etiqueta</span><span class="b2">Liberar</span><span class="b2 cheio">Embarcar</span><span class="pin" style="align-self:center">3</span></div>
+            </div>
+            <div class="lin amanha">
+              <span class="num">AM#59</span>
+              <div class="cli"><b>Mercado Bom Preço</b><small>Gaspar · entrega amanhã 12/11 · vend. Carla</small></div>
+              <span class="tag yel">Preparação</span>
+              <div class="acts"><span class="b2 cinza">🏷 Etiqueta</span><span class="b2">Liberar</span><span class="b2 cheio">Embarcar</span></div>
+            </div>
+            <div class="lin ok">
+              <span class="num">AM#60</span>
+              <div class="cli"><b>Lead · Lanchonete da Praça</b><small>Indaial · entrega 14/11 · vend. João</small></div>
+              <span class="tag em">Liberado</span>
+              <div class="acts"><span class="b2 cinza">🏷 Etiqueta</span><span class="b2 cheio">Embarcar</span></div>
+            </div>
+          </div>
+          <table>
+            <thead><tr><th>Carga nº</th><th>Data</th><th>Motorista</th><th>Pedidos</th><th></th></tr></thead>
+            <tbody>
+              <tr><td class="num">#412</td><td>11/11/2026</td><td>Marcos</td><td>14 · <span class="tag amb">1 amostra</span><span class="pin">4</span></td><td style="color:#0284c7;font-weight:700">Analisar / Imprimir</td></tr>
+              <tr><td class="num">#411</td><td>11/11/2026</td><td>Paulo</td><td>9</td><td style="color:#0284c7;font-weight:700">Analisar / Imprimir</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <ul class="legenda">
+          <li><span class="pin">1</span><span>Faixa âmbar no topo com <b>toda amostra aberta que ainda não está em carga</b>, qualquer status. Só aparece quando existe alguma; some sozinha quando a última entra numa carga.</span></li>
+          <li><span class="pin">2</span><span>Borda <b>vermelha</b> = entrega hoje ou atrasada; <b>âmbar</b> = amanhã; cinza = tem tempo. O status atual continua visível (Solicitada / Preparação / Liberado).</span></li>
+          <li><span class="pin">3</span><span>Três toques: <b>Etiqueta</b> (a nova etiqueta 100×120), <b>Liberar</b> (pula direto para Liberado, sem passar duas vezes pelo botão) e <b>Embarcar</b> (abre "Embarcar pedidos e amostras" já com ela marcada).</span></li>
+          <li><span class="pin">4</span><span>Na lista de cargas, a coluna de pedidos mostra quantas amostras a carga leva, para conferir de relance.</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- TELA 2 -->
+    <div class="tela">
+      <div class="hd">Tela 2 · Mapa da Expedição</div>
+      <div class="bd">
+        <div class="app">
+          <div class="pagehd"><span class="ico sky">🗺️</span><b>Mapa · 11/11</b></div>
+          <div class="mapa">
+            <div class="pino" style="left:12%;top:22%"><span class="d p">P</span><span class="lb">Pedido #9871</span></div>
+            <div class="pino" style="left:38%;top:48%"><span class="d p">P</span><span class="lb">Pedido #9874</span></div>
+            <div class="pino" style="left:20%;top:70%"><span class="d a">A</span><span class="lb">AM#60</span></div>
+            <div class="pino" style="left:48%;top:18%"><span class="d g">A</span><span class="lb">AM#58 · falta preparar</span><span class="pin">1</span></div>
+            <div class="lado"><b>Fora de carga</b>
+              <div>⚠️ <b style="display:inline">AM#58</b> Padaria Pão Quente <span class="tag red">hoje</span></div>
+              <div style="margin-top:4px">AM#60 Lanchonete da Praça</div>
+              <div style="margin-top:6px;color:#6b7280">Arraste para a carga <span class="pin">2</span></div>
+            </div>
+          </div>
+        </div>
+        <ul class="legenda">
+          <li><span class="pin">1</span><span>Hoje o mapa só desenha amostra <b>Liberada</b>. Passa a desenhar também a Solicitada / Em preparação, com pino <b>tracejado</b> e a nota "falta preparar", na posição do cliente (ou do lead).</span></li>
+          <li><span class="pin">2</span><span>Arrastar uma amostra ainda não liberada para dentro de uma carga pergunta "Essa amostra ainda não foi liberada. Liberar e embarcar?" e faz os dois de uma vez.</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- TELA 3 -->
+    <div class="tela">
+      <div class="hd">Tela 3 · Central de Pendências (escritório / gerência)</div>
+      <div class="bd">
+        <div class="app">
+          <div class="pagehd"><span class="ico amb">📋</span><b>Pendências</b></div>
+          <div class="kpis"><div class="kpi"><small>Total</small><b>23</b></div><div class="kpi"><small>Vencidas</small><b style="color:#b91c1c">4</b></div><div class="kpi"><small>Dinheiro parado</small><b>R$ 8.420</b></div><div class="kpi"><small>Avisos</small><b>7</b></div></div>
+          <div class="bloco">
+            <div class="bh">🧪 Amostras sem carga <span class="pin">1</span><span class="tag red sev">3</span></div>
+            <div class="item v"><div class="tt"><b>AM#58 · Padaria Pão Quente</b><small>Entrega hoje · Solicitada · vend. João</small></div><span class="b2">Liberar</span><span class="b2 cinza">Abrir</span><span class="pin">2</span></div>
+            <div class="item a"><div class="tt"><b>AM#59 · Mercado Bom Preço</b><small>Entrega amanhã · Preparação · vend. Carla</small></div><span class="b2">Liberar</span><span class="b2 cinza">Abrir</span></div>
+            <div class="item"><div class="tt"><b>AM#60 · Lanchonete da Praça (lead)</b><small>Entrega 14/11 · Liberado · vend. João</small></div><span class="b2 cinza">Abrir</span></div>
+          </div>
+          <div class="bloco" style="opacity:.55"><div class="bh">Pedidos aguardando aprovação <span class="tag amb sev">2</span></div></div>
+        </div>
+        <ul class="legenda">
+          <li><span class="pin">1</span><span>Bloco novo na Central, com a mesma régua de cor dos outros: <b>vermelho</b> quando alguma está para hoje ou atrasada, âmbar quando é só amanhã. Conta no total de pendências.</span></li>
+          <li><span class="pin">2</span><span><b>Liberar</b> em um clique (igual ao "Aprovar" dos pedidos especiais). <b>Abrir</b> leva para Pedidos → Amostras com ela em destaque.</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- TELA 4 -->
+    <div class="tela">
+      <div class="hd">Tela 4 · Pedidos → sub-aba Amostras (vendedor e escritório)</div>
+      <div class="bd">
+        <div class="app">
+          <div class="pagehd"><span class="ico mint">🧾</span><b>Pedidos</b></div>
+          <div class="abas"><span>Pedidos</span><span>Especiais</span><span>Bonificação</span><span class="on">Amostras <span class="n">3</span><span class="pin">1</span></span><span>Devoluções</span></div>
+          <div class="cardam urg">
+            <div class="l1"><span class="num">AM#58</span><b style="font-size:13px">Padaria Pão Quente</b><span class="tag blue">Solicitada</span>
+              <span class="sp"><span class="icb">🏷</span><span class="icb">💬</span></span></div>
+            <div class="l2">Blumenau · entrega 11/11 · 3 itens · vend. João</div>
+            <div class="alerta">⚠️ Entrega é HOJE e a amostra ainda não está em nenhuma carga <span class="pin">2</span></div>
+          </div>
+          <div class="cardam">
+            <div class="l1"><span class="num">AM#57</span><b style="font-size:13px">Restaurante Sabor</b><span class="tag em">Liberado</span><span class="tag gray">Carga #412</span><span class="pin">3</span>
+              <span class="sp"><span class="icb">🏷</span><span class="icb">💬</span></span></div>
+            <div class="l2">Blumenau · entrega 11/11 · 2 itens · vend. Carla</div>
+          </div>
+        </div>
+        <ul class="legenda">
+          <li><span class="pin">1</span><span>O nome da sub-aba ganha um contador vermelho com as amostras <b>abertas sem carga</b>. Quem abre Pedidos vê o número sem precisar entrar na aba.</span></li>
+          <li><span class="pin">2</span><span>Card com borda vermelha e aviso quando a data de entrega chegou (ou passou) e ela ainda está fora de carga. O vendedor que pediu enxerga que a amostra dele está parada e cobra.</span></li>
+          <li><span class="pin">3</span><span>Amostra já embarcada mostra o número da carga no card. Hoje não dá para saber, pelo card, se ela entrou em alguma carga.</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- TELA 5 opcional -->
+    <div class="tela">
+      <div class="hd">Opcional · Aviso no WhatsApp da expedição (bot da Ana)</div>
+      <div class="bd">
+        <div class="duas">
+          <div class="wa">🧪 *Nova amostra AM#58*<br>Padaria Pão Quente · Blumenau<br>Entrega: *quarta 11/11*<br>Pediu: João · 3 itens<br>Obs.: "cliente quer provar a coxinha de frango"<br><br>Está em Expedição → Cargas, na faixa "Amostras fora de carga".</div>
+          <ul class="legenda" style="margin:0">
+            <li><span class="pin">1</span><span>Uma mensagem no WhatsApp de quem cuida da expedição, no momento em que o vendedor cria a amostra. É aviso interno provocado por um ato concreto (o pedido da amostra), permitido pela regra do bot.</span></li>
+            <li><span class="pin">2</span><span>Precisa definir <b>quem recebe</b> (um número ou dois). Se preferir, fica para uma segunda etapa.</span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="dec">
+    <h2>Detalhes que valem combinar</h2>
+    <ul>
+      <li><b>Imprimir a etiqueta já avança para "Preparação".</b> A etiqueta é o sinal de que alguém pegou a amostra para montar. Economiza um clique e deixa o status verdadeiro.</li>
+      <li><b>"Liberar" pula direto para Liberado</b> de qualquer status. O botão "Avançar status" de hoje continua existindo para quem gosta de ir passo a passo.</li>
+      <li><b>Amostra sem data de entrega</b> conta como "tem tempo" (cinza) e aparece com "sem data" para alguém definir.</li>
+      <li><b>Nenhuma tela nova, nenhuma permissão nova.</b> Quem já vê Cargas / Mapa / Central / Pedidos passa a ver a amostra ali.</li>
+    </ul>
+  </div>
+
+  <div class="dec">
+    <h2>O que você decide</h2>
+    <ol>
+      <li><b>Fazer as 4 telas</b> (recomendo) ou começar só pela Tela 1 (faixa na Expedição), que é a que resolve o "ninguém vê"?</li>
+      <li><b>Imprimir a etiqueta avança para "Preparação"</b>: sim ou não?</li>
+      <li><b>Aviso no WhatsApp</b> da expedição: agora, depois, ou não? Se sim, o número de quem recebe.</li>
+    </ol>
+    <p style="margin:10px 0 0;color:var(--muted);font-size:13px">Tamanho: as 4 telas são uma tarefa média (equipe completa: arquiteto, dev, QA, revisor, gerente). Prazo estimado de uma tarde de trabalho dos agentes, mais o seu teste. O WhatsApp acrescenta cerca de uma hora.</p>
+  </div>
+</div>
+<script>
+  if(location.search.includes('m')){document.body.className='mob';document.querySelectorAll('.seg button').forEach((x,i)=>x.classList.toggle('on',i===1));}
+  function modo(m,b){document.body.className=m;document.querySelectorAll('.seg button').forEach(x=>x.classList.toggle('on',x===b));}
+</script>
+</body>
+</html>

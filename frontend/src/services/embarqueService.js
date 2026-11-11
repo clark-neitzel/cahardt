@@ -29,8 +29,16 @@ const embarqueService = {
         const response = await api.get('/embarques/amostras-disponiveis');
         return response.data;
     },
-    inserirAmostras: async (id, amostrasIds) => {
-        const response = await api.post(`/embarques/${id}/amostras`, { amostrasIds });
+    // Faixa "Amostras fora de carga": { hoje, total, vermelhas, amostras[] }
+    listarAmostrasAbertas: async () => {
+        const response = await api.get('/embarques/amostras-abertas');
+        return response.data;
+    },
+    // liberar:true aceita também SOLICITADA/PREPARACAO (libera e embarca de uma vez)
+    inserirAmostras: async (id, amostrasIds, { liberar = false } = {}) => {
+        const body = { amostrasIds };
+        if (liberar) body.liberar = true;
+        const response = await api.post(`/embarques/${id}/amostras`, body);
         return response.data;
     },
     removerAmostra: async (id, amostraId) => {

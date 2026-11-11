@@ -26,6 +26,24 @@ const amostraService = {
         return response.data;
     },
 
+    // Vai direto a LIBERADO (idempotente). Quem pode: expedição / Central de Pendências.
+    liberar: async (id) => {
+        const response = await api.post(`/amostras/${id}/liberar`);
+        return response.data;
+    },
+
+    // Chamado depois de imprimir a etiqueta: SOLICITADA -> PREPARACAO (nunca regride)
+    marcarEtiquetaImpressa: async (id) => {
+        const response = await api.post(`/amostras/${id}/etiqueta-impressa`);
+        return response.data;
+    },
+
+    // Contador da sub-aba: { hoje, semCarga, vermelhas, ids }
+    resumoAbertas: async () => {
+        const response = await api.get('/amostras/resumo-abertas');
+        return response.data;
+    },
+
     excluir: async (id) => {
         const response = await api.delete(`/amostras/${id}`);
         return response.data;

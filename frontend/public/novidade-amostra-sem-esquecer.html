@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Amostra que ninguém esquece — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<meta property="og:title" content="📦 Novidade no Hardt App: amostra que ninguém esquece">
+<meta property="og:description" content="Amostra que ainda não está em nenhuma carga agora aparece sozinha em Cargas, no Mapa, na Central de Pendências e em Pedidos → Amostras, com cor de urgência.">
+<meta property="og:type" content="website">
+<style>
+  :root { --primary:#00754A; --primary-dark:#006241; --house:#1E3932; --mint:#d4e9e2; --cream:#f2f0eb; --gold:#cba258; --ink:rgba(0,0,0,.87); --ink-soft:#5f6b66; letter-spacing:-0.01em; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--cream); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; line-height:1.55; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:620px; margin:0 auto; padding:0 16px 56px; }
+  .hero { background:linear-gradient(168deg,var(--house) 0%,#16302a 100%); color:#fff; padding:40px 16px 96px; }
+  .hero-inner { max-width:620px; margin:0 auto; text-align:center; }
+  .eyebrow { display:inline-block; background:var(--gold); color:#2b230f; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.14em; padding:6px 14px; border-radius:999px; margin-bottom:18px; }
+  .hero h1 { font-size:clamp(28px,7vw,40px); font-weight:800; line-height:1.12; margin:0 0 12px; text-wrap:balance; }
+  .hero p { color:rgba(255,255,255,.75); font-size:16px; max-width:46ch; margin:0 auto; text-wrap:balance; }
+
+
+  .sec-label { font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.16em; color:var(--primary-dark); margin:34px 4px 12px; }
+  .acc { background:#fff; border:1px solid #e3e1da; border-radius:16px; margin-bottom:10px; overflow:hidden; box-shadow:0 1px 2px rgba(30,57,50,.05); }
+  .acc-head { width:100%; display:flex; align-items:center; gap:12px; background:none; border:none; font:inherit; text-align:left; padding:15px 16px; cursor:pointer; min-height:56px; }
+  .acc-ico { width:38px; height:38px; border-radius:11px; background:var(--mint); display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
+  .acc-head strong { flex:1; font-size:15.5px; font-weight:700; }
+  .acc-seta { color:#9aa5a0; transition:transform .2s; font-size:13px; }
+  .acc.aberto .acc-seta { transform:rotate(180deg); }
+  .acc-corpo { display:none; padding:0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display:block; }
+  .acc-corpo p, .acc-corpo li { font-size:14px; color:var(--ink-soft); }
+  .acc-corpo p { margin:0 0 10px; } .acc-corpo ul, .acc-corpo ol { margin:0; padding-left:18px; } .acc-corpo li { margin-bottom:7px; } .acc-corpo b { color:var(--ink); }
+  @media (max-width:420px) { .acc-corpo { padding-left:16px; } }
+
+  .tela { background:#fff; border:1px solid #e3e1da; border-radius:16px; overflow:hidden; margin-bottom:12px; box-shadow:0 1px 2px rgba(30,57,50,.05); }
+  .tela-titulo { background:var(--house); color:#fff; padding:12px 16px; font-size:13px; font-weight:800; display:flex; align-items:center; gap:8px; }
+  .tela-corpo { padding:16px; background:#f7f6f2; }
+  .app-card { background:#fff; border:1px solid #e5e3dc; border-radius:12px; overflow:hidden; margin-bottom:10px; }
+  .app-card-body { padding:12px; }
+  .app-btn { display:inline-flex; align-items:center; gap:6px; background:var(--primary); color:#fff; font-size:12.5px; font-weight:700; padding:9px 16px; border-radius:999px; }
+  .app-btn.claro { background:#fff; border:1.5px solid var(--primary); color:var(--primary); }
+  .pin { display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; border-radius:999px; background:var(--gold); color:#2b230f; font-size:11px; font-weight:800; margin-left:6px; flex-shrink:0; }
+  .legenda { padding:12px 16px 4px; background:#fff; border-top:1px solid #edece6; }
+  .legenda div { display:flex; gap:8px; font-size:13px; color:var(--ink-soft); margin-bottom:8px; }
+  .legenda .pin { margin:1px 0 0; }
+  .chip { font-size:10px; font-weight:800; padding:2px 6px; border-radius:4px; border:1px solid #fed7aa; background:#fff7ed; color:#c2410c; }
+  .ico { display:inline-flex; width:28px; height:28px; align-items:center; justify-content:center; border-radius:6px; color:#9ca3af; font-size:15px; }
+  .ico.novo { color:var(--primary); background:var(--mint); box-shadow:0 0 0 2px var(--gold); }
+  .status { font-size:10px; font-weight:800; padding:2px 8px; border-radius:999px; background:#fef3c7; color:#92400e; border:1px solid #fde68a; }
+  .copias { display:flex; align-items:center; gap:8px; font-size:13px; margin:10px 0; }
+  .copias span.b { width:34px; height:34px; border:1px solid #d8d5cc; border-radius:999px; display:inline-flex; align-items:center; justify-content:center; }
+  .copias span.v { width:48px; height:34px; border:1px solid #d8d5cc; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; font-weight:700; }
+  .aviso { background:#fff7ed; border:1px solid #fed7aa; border-radius:12px; padding:12px 14px; font-size:13.5px; color:#7c2d12; margin:0 0 10px; }
+
+  .faixa-am { background:#fffbeb; border:1px solid #fde68a; border-radius:12px; padding:10px; margin-bottom:10px; }
+  .faixa-am .cab { font-size:10px; font-weight:800; letter-spacing:.12em; color:#92400e; margin-bottom:8px; }
+  .linha-am { background:#fff; border:1px solid #e5e3dc; border-left:4px solid #d1d5db; border-radius:10px; padding:9px 10px; margin-bottom:6px; font-size:12px; }
+  .linha-am.verm { border-left-color:#ef4444; } .linha-am.ambar { border-left-color:#fbbf24; }
+  .linha-am b { font-size:13px; } .linha-am .sub { color:#6b756f; margin:3px 0 7px; }
+  .bt { display:inline-block; font-size:11px; font-weight:700; padding:6px 11px; border-radius:999px; border:1.5px solid var(--primary); color:var(--primary); background:#fff; margin-right:4px; }
+  .bt.cheio { background:var(--primary); color:#fff; }
+  .st { font-size:10px; font-weight:800; padding:2px 7px; border-radius:999px; }
+  .st.sol { background:#dbeafe; color:#1e40af; } .st.lib { background:#d1fae5; color:#065f46; } .st.prep { background:#fef9c3; color:#854d0e; }
+  .vm { font-size:10px; font-weight:800; padding:2px 7px; border-radius:999px; background:#fee2e2; color:#b91c1c; }
+  .aviso-verm { background:#fef2f2; border:1px solid #fecaca; color:#b91c1c; border-radius:8px; padding:6px 8px; font-size:11px; font-weight:700; margin-top:6px; }
+  .cont { display:inline-flex; min-width:18px; height:18px; padding:0 5px; align-items:center; justify-content:center; border-radius:999px; background:#dc2626; color:#fff; font-size:10px; font-weight:800; }
+  .pino { display:inline-block; width:26px; height:26px; border-radius:50%; background:#fff7ed; border:2.5px dashed #b45309; vertical-align:middle; }
+  .dialogo { background:#fff; border:1px solid #e5e3dc; border-radius:14px; padding:14px; }
+</style>
+</head>
+<body>
+
+<div class="hero"><div class="hero-inner">
+  <span class="eyebrow">Novidade · Expedição</span>
+  <h1>Amostra que ninguém esquece</h1>
+  <p>Toda amostra que ainda não entrou numa carga aparece sozinha, com cor de urgência, onde a equipe já trabalha.</p>
+</div></div>
+
+<div class="wrap">
+  <div class="sec-label">O que mudou</div>
+<div class="acc aberto"><button class="acc-head" type="button"><span class="acc-ico">📦</span><strong>O que é</strong><span class="acc-seta">▲</span></button>
+<div class="acc-corpo">
+<p>Antes, a amostra só ficava visível para a expedição depois que alguém avançava o status até <b>Liberado</b>. Se ninguém avançava, ela era esquecida. Agora ela <b>aparece sozinha</b> em 4 lugares enquanto não estiver em nenhuma carga:</p>
+<ul><li><b>Expedição → Cargas:</b> faixa no topo com Etiqueta, Liberar e Embarcar.</li>
+<li><b>Mapa das entregas:</b> pino tracejado "falta preparar".</li>
+<li><b>Central de Pendências:</b> bloco "Amostras sem carga".</li>
+<li><b>Pedidos → Amostras:</b> contador na aba, filtro "Só sem carga" e aviso no card.</li></ul>
+<p>A cor mostra a urgência pela data de entrega: <b>vermelho</b> = hoje ou atrasada, <b>âmbar</b> = amanhã, <b>cinza</b> = depois. Quando a amostra entra numa carga, ela sai desses avisos.</p>
+</div></div>
+<div class="acc aberto"><button class="acc-head" type="button"><span class="acc-ico">📱</span><strong>As telas do app</strong><span class="acc-seta">▲</span></button>
+<div class="acc-corpo" style="padding-left:16px">
+<div class="tela"><div class="tela-titulo">📱 Tela 1 · Expedição → Cargas</div><div class="tela-corpo"><div class="faixa-am"><div class="cab">AMOSTRAS FORA DE CARGA · 3 <span class="vm">1 para hoje<span class="pin" style="margin-left:4px">1</span></span></div>
+<div class="linha-am verm"><span class="chip">AM#58</span> <b>Padaria Pão Quente</b> <span class="st sol">Solicitada</span><div class="sub">Blumenau · Entrega <b style="color:#b91c1c">HOJE 11/11</b> · vend. João<span class="pin">2</span></div>
+<span class="bt">🏷️ Etiqueta</span><span class="bt">Liberar</span><span class="bt cheio">🚚 Embarcar</span><span class="pin">3</span></div>
+<div class="linha-am ambar"><span class="chip">AM#59</span> <b>Café Central</b> <span class="st lib">Liberado</span><div class="sub">Gaspar · Entrega amanhã 12/11 · vend. Ana</div><span class="bt">🏷️ Etiqueta</span><span class="bt cheio">🚚 Embarcar</span></div></div>
+<div class="app-card"><div class="app-card-body" style="font-size:12px;display:flex;justify-content:space-between;gap:6px;flex-wrap:wrap"><span><b>Carga #212</b> · 11/11 · Marcos</span><span style="background:#f3f4f6;border-radius:999px;padding:2px 9px;font-weight:700">14</span><span style="background:#fef3c7;color:#92400e;border-radius:999px;padding:2px 9px;font-weight:700">+ 2 amostras<span class="pin">4</span></span></div></div></div><div class="legenda"><div><span class="pin">1</span><span>Chip vermelho: quantas amostras são para <b>hoje ou estão atrasadas</b>. A faixa só aparece quando existe amostra fora de carga — sem nenhuma, ela some.</span></div><div><span class="pin">2</span><span>A borda da linha mostra a urgência: <b>vermelha</b> = entrega hoje/atrasada, <b>âmbar</b> = amanhã, <b>cinza</b> = depois.</span></div><div><span class="pin">3</span><span><b>Etiqueta</b> imprime a etiqueta (e avança Solicitada → Preparação sozinho). <b>Liberar</b> libera a amostra. <b>Embarcar</b> pergunta <i>em qual carga?</i> e deixa a amostra na carga escolhida (libera junto, se precisar).</span></div><div><span class="pin">4</span><span>Na lista de cargas, cada carga mostra quantas <b>amostras</b> leva, ao lado dos pedidos.</span></div></div></div>
+<div class="tela"><div class="tela-titulo">📱 Tela 2 · Mapa das entregas</div><div class="tela-corpo"><div class="app-card"><div class="app-card-body" style="font-size:12px"><span class="pino"></span><span class="pin">1</span> <b>Padaria Pão Quente</b> <span class="vm">PREPARAR</span><div style="color:#6b756f;margin-top:4px">AM#58 (falta preparar) · Blumenau</div></div></div>
+<div class="dialogo"><b style="font-size:14px">1 amostra ainda não foi liberada</b><div style="font-size:13px;color:#555;margin:2px 0 10px">Liberar e embarcar?<span class="pin">2</span></div><span class="bt">Cancelar</span><span class="bt cheio">Liberar e aplicar</span></div></div><div class="legenda"><div><span class="pin">1</span><span>A amostra que ainda não foi preparada aparece no mapa como <b>pino tracejado</b> com a marca <i>PREPARAR</i>. Dá para arrastar para uma carga como qualquer entrega.</span></div><div><span class="pin">2</span><span>Ao <b>Confirmar</b> a divisão, o sistema pergunta se pode liberar e embarcar. <b>Cancelar</b> não grava nada. A sugestão automática de divisão <b>não</b> mexe nessas amostras.</span></div></div></div>
+<div class="tela"><div class="tela-titulo">📱 Tela 3 · Central de Pendências</div><div class="tela-corpo"><div class="app-card" style="border-left:4px solid #ef4444"><div class="app-card-body"><div style="font-size:10px;font-weight:800;letter-spacing:.12em;color:#4b5563">AMOSTRAS SEM CARGA <span class="vm">3</span></div>
+<div style="font-size:13px;font-weight:700;margin-top:8px">AM#58 · Padaria Pão Quente</div><div style="font-size:11px;color:#6b756f;margin-bottom:6px">Entrega hoje · Solicitada · vend. João</div>
+<span class="bt cheio">Liberar</span><span class="pin">1</span><span class="bt">Abrir</span><span class="pin">2</span></div></div></div><div class="legenda"><div><span class="pin">1</span><span><b>Liberar</b> em um clique, sem sair da Central. Se a amostra já está liberada, o botão não aparece.</span></div><div><span class="pin">2</span><span><b>Abrir</b> leva para Pedidos → Amostras já com o filtro <i>Só sem carga</i> e a amostra em destaque.</span></div></div></div>
+<div class="tela"><div class="tela-titulo">📱 Tela 4 · Pedidos → Amostras</div><div class="tela-corpo"><div style="font-size:12px;font-weight:700;margin-bottom:8px">Pedidos · Especiais · Bonificação · <span style="color:#c2410c">Amostras</span> <span class="cont">3</span><span class="pin">1</span></div>
+<div style="margin-bottom:8px"><span class="bt" style="background:#fee2e2;border-color:#fca5a5;color:#991b1b">⚠ Só sem carga</span><span class="pin">2</span></div>
+<div class="app-card" style="border-left:4px solid #ef4444"><div class="app-card-body" style="font-size:12px"><span class="chip">AM#58</span> <b>Padaria Pão Quente</b> <span class="st sol">Solicitada</span>
+<div style="color:#6b756f;margin:4px 0">Entrega: 11/11/2026 | Criação: 09/11/2026</div>
+<div class="aviso-verm">Entrega é HOJE e a amostra ainda não está em nenhuma carga<span class="pin">3</span></div></div></div>
+<div class="app-card"><div class="app-card-body" style="font-size:12px"><span class="chip">AM#55</span> <b>Mercado Sol</b> <span class="st lib">Liberado</span> <span class="st" style="background:#e0f2fe;color:#075985">🚚 Carga #212</span><span class="pin">4</span></div></div></div><div class="legenda"><div><span class="pin">1</span><span>O número no nome da aba mostra quantas amostras abertas estão <b>sem carga</b> (vermelho se alguma é para hoje/atrasada, âmbar nos demais casos). Some quando zera.</span></div><div><span class="pin">2</span><span><b>Só sem carga</b> lista só essas amostras e <b>ignora o período</b> — assim a amostra antiga que foi esquecida aparece. A escolha fica salva.</span></div><div><span class="pin">3</span><span>Card com <b>borda vermelha</b> e aviso quando a entrega é hoje (ou está atrasada) e a amostra não está em carga.</span></div><div><span class="pin">4</span><span>Amostra já embarcada mostra a <b>carga</b> dela. A data de entrega agora sai correta (antes podia aparecer um dia a menos). Imprimir a etiqueta de uma amostra Solicitada a passa para <b>Preparação</b>.</span></div></div></div>
+
+</div></div>
+<div class="acc aberto"><button class="acc-head" type="button"><span class="acc-ico">✅</span><strong>Para começar a usar</strong><span class="acc-seta">▲</span></button>
+<div class="acc-corpo">
+<ol><li>Abra <b>Expedição → Cargas</b>: se houver amostra fora de carga, a faixa amarela aparece no topo.</li>
+<li>Toque em <b>Etiqueta</b> para imprimir e colar na caixa.</li>
+<li>Toque em <b>Embarcar</b>, escolha a carga e confirme.</li></ol>
+<div class="aviso">Não há aviso por WhatsApp nesta versão: o lembrete fica dentro do app.</div>
+<p>Não precisa de permissão nova: quem já acessa Cargas/Pendências/Pedidos vê o que já via.</p>
+</div></div>
+</div>
+
+<script>
+document.querySelectorAll('.acc-head').forEach(function(h){h.addEventListener('click',function(){h.parentElement.classList.toggle('aberto');});});
+</script>
+</body>
+</html>

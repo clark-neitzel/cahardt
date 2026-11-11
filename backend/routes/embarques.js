@@ -3,6 +3,8 @@ const router = express.Router();
 const prisma = require('../config/database'); // singleton compartilhado (pool único)
 const verificarAuth = require('../middlewares/authMiddleware');
 const conferenciaCarga = require('../services/conferenciaCargaService');
+const amostraService = require('../services/amostraService');
+const gcal = require('../services/googleCalendarService');
 
 const checkAcessoEmbarque = async (req, res, next) => {
     try {
@@ -107,6 +109,25 @@ router.get('/', verificarAuth, checkAcessoEmbarque, async (req, res) => {
     } catch (error) {
         console.error('Erro ao listar embarques:', error);
         res.status(500).json({ error: 'Erro ao processar a requisição.' });
+    }
+});
+
+// ==========================================
+// 2b. AMOSTRAS ABERTAS SEM CARGA (faixa "não esqueça" da tela de Cargas)
+// SOLICITADA/PREPARACAO/LIBERADO e sem embarque, com urgência pela data de entrega.
+// ==========================================
+router.get('/amostras-abertas', verificarAuth, checkAcessoEmbarque, async (req, res) => {
+    try {
+        const { hoje, amostras } = await amostraService.listarAbertasSemCarga();
+        res.json({
+            hoje,
+            total: amostras.length,
+            vermelhas: amostras.filter(a => a.urgencia === 'vermelho').length,
+            amostras,
+        });
+    } catch (error) {
+        console.error('Erro ao listar amostras abertas sem carga:', error);
+        res.status(500).json({ error: 'Erro ao buscar amostras abertas.' });
     }
 });
 
@@ -518,54 +539,93 @@ router.delete('/:id/pedidos/:pedidoId', verificarAuth, checkAcessoEmbarque, asyn
 // ==========================================
 router.post('/:id/amostras', verificarAuth, checkAcessoEmbarque, async (req, res) => {
     try {
-        const { amostrasIds } = req.body;
+        const { amostrasIds, liberar } = req.body;
         const embarqueId = req.params.id;
 
         if (!amostrasIds || !amostrasIds.length) {
             return res.status(400).json({ error: 'Forneça a lista de amostras a incluir.' });
         }
 
-        // Validar: só LIBERADO e sem embarque
-        const bloqueadas = await prisma.amostra.findMany({
-            where: {
-                id: { in: amostrasIds },
-                OR: [
-                    { embarqueId: { not: null } },
-                    { status: { not: 'LIBERADO' } }
-                ]
-            }
-        });
+        const liberarJunto = liberar === true;
+        let idsLiberadasAgora = [];
 
-        if (bloqueadas.length > 0) {
-            return res.status(400).json({
-                error: 'Uma ou mais amostras não estão LIBERADAS ou já pertencem a outro embarque.',
-                bloqueadas: bloqueadas.map(a => a.numero || a.id)
+        if (liberarJunto) {
+            // Liberar + embarcar: aceita SOLICITADA/PREPARACAO/LIBERADO sem carga.
+            // Um único updateMany guardado por status/embarqueId (atômico): se algo mudou no meio, 409 e nada fica pela metade.
+            const ids = [...new Set(amostrasIds)];
+            const antes = await prisma.amostra.findMany({
+                where: { id: { in: ids }, embarqueId: null, status: { in: amostraService.STATUS_ABERTOS } },
+                select: { id: true, status: true }
+            });
+            if (antes.length !== ids.length) {
+                return res.status(409).json({ error: 'Uma ou mais amostras mudaram (já embarcadas, entregues ou canceladas). Atualize a tela.' });
+            }
+            idsLiberadasAgora = antes.filter(a => a.status !== 'LIBERADO').map(a => a.id);
+            // Tudo-ou-nada: se a contagem não bater (alguém mexeu no meio), a transação
+            // inteira desfaz — nenhuma amostra fica liberada/embarcada pela metade.
+            const MUDARAM = 'AMOSTRAS_MUDARAM';
+            try {
+                await prisma.$transaction(async (tx) => {
+                    const r = await tx.amostra.updateMany({
+                        where: { id: { in: ids }, embarqueId: null, status: { in: amostraService.STATUS_ABERTOS } },
+                        // Item que ENTRA ou SAI de carga volta a "não conferido" — senão chegaria já verde na carga nova.
+                        data: { embarqueId, status: 'LIBERADO', ...conferenciaCarga.RESET_CONFERENCIA }
+                    });
+                    if (r.count !== ids.length) throw new Error(MUDARAM);
+                }, { timeout: 20000, maxWait: 10000 });
+            } catch (e) {
+                if (e.message === MUDARAM) {
+                    return res.status(409).json({ error: 'Uma ou mais amostras mudaram (já embarcadas, entregues ou canceladas). Atualize a tela.' });
+                }
+                throw e;
+            }
+        } else {
+            // Validar: só LIBERADO e sem embarque
+            const bloqueadas = await prisma.amostra.findMany({
+                where: {
+                    id: { in: amostrasIds },
+                    OR: [
+                        { embarqueId: { not: null } },
+                        { status: { not: 'LIBERADO' } }
+                    ]
+                }
+            });
+
+            if (bloqueadas.length > 0) {
+                return res.status(400).json({
+                    error: 'Uma ou mais amostras não estão LIBERADAS ou já pertencem a outro embarque.',
+                    bloqueadas: bloqueadas.map(a => a.numero || a.id)
+                });
+            }
+
+            await prisma.amostra.updateMany({
+                where: { id: { in: amostrasIds } },
+                // // Item que ENTRA ou SAI de carga volta a "não conferido" — senão chegaria já verde na carga nova.
+                data: { embarqueId, ...conferenciaCarga.RESET_CONFERENCIA }
             });
         }
 
-        await prisma.amostra.updateMany({
-            where: { id: { in: amostrasIds } },
-            // // Item que ENTRA ou SAI de carga volta a "não conferido" — senão chegaria já verde na carga nova.
-            data: { embarqueId, ...conferenciaCarga.RESET_CONFERENCIA }
-        });
+        // Agenda Produção (best-effort, fora de transação) para as que mudaram de status
+        for (const aid of idsLiberadasAgora) gcal.disparar(gcal.sincronizarAmostra, aid);
 
         // Versionamento (best-effort)
         try {
             const adicionadas = await prisma.amostra.findMany({
                 where: { id: { in: amostrasIds } },
-                select: { numero: true, cliente: { select: { NomeFantasia: true, Nome: true } }, lead: { select: { nomeEstabelecimento: true } } }
+                select: { id: true, numero: true, cliente: { select: { NomeFantasia: true, Nome: true } }, lead: { select: { nomeEstabelecimento: true } } }
             });
             await registrarVersaoEmbarque(embarqueId, 'AMOSTRAS_ADICIONADAS', {
                 amostras: adicionadas.map(a => ({
                     numero: `AM#${a.numero}`,
-                    destinatario: a.cliente?.NomeFantasia || a.cliente?.Nome || a.lead?.nomeEstabelecimento || null
+                    destinatario: a.cliente?.NomeFantasia || a.cliente?.Nome || a.lead?.nomeEstabelecimento || null,
+                    ...(idsLiberadasAgora.includes(a.id) ? { liberadaAgora: true } : {})
                 }))
             }, req.user.id);
         } catch (e) {
             console.error('[EmbarqueVersao] Erro no registro pós-inclusão de amostras (ignorado):', e.message);
         }
 
-        res.json({ message: `${amostrasIds.length} amostras atreladas ao embarque.` });
+        res.json({ message: `${amostrasIds.length} amostras atreladas ao embarque.`, liberadas: idsLiberadasAgora.length });
     } catch (error) {
         console.error('Erro ao adicionar amostras na carga:', error);
         res.status(500).json({ error: 'Erro ao atrelar amostras.' });

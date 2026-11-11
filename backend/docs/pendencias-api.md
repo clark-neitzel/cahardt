@@ -11,7 +11,7 @@ construí-la.
   falhar, os outros seguem e o bloco quebrado volta com `erro: true` (contador 0, itens vazios).
 - Medido no banco local (`hardt_local`, dados de teste — bem mais volumoso que produção em alguns
   blocos por causa de pedidos de teste antigos sem NF-e/cobrança): **33–84ms** para a chamada completa
-  (8 blocos), rodando local sem concorrência. **Não testado sob carga de produção** — ver "Riscos".
+  (8 blocos na época; hoje são 11), rodando local sem concorrência. **Não testado sob carga de produção** — ver "Riscos".
 
 ## Permissão
 
@@ -73,8 +73,8 @@ Authorization: Bearer <token>
 | `geradoEm` | string ISO | Timestamp de quando a agregação rodou (não é cacheado). |
 | `totais.total` | int | Soma dos `contador` de todos os blocos. |
 | `totais.dinheiroParado` | number | Soma de `valorTotal` de `caixas_conferir` + `boletos_nao_enviados`. |
-| `totais.vencidas` | int | Soma dos `contador` de `tarefas_atrasadas` + `notas_sem_conta` (pendências com prazo já estourado). |
-| `totais.avisos` | int | Soma dos `contador` de `nfe_rejeitada` + `boletos_nao_enviados` + `producao_sugerida` (precisa de atenção, sem prazo estourado por si só). |
+| `totais.vencidas` | int | Soma dos `contador` de `tarefas_atrasadas` + `notas_sem_conta` + as amostras **vermelhas** (`amostras_sem_carga.vermelhas`: entrega hoje/atrasada) — pendências com prazo já estourado. |
+| `totais.avisos` | int | Soma dos `contador` de `nfe_rejeitada` + `liberacao_inadimplente` + `boletos_nao_enviados` + `producao_sugerida` + `veiculos_pendencias` + as amostras não vermelhas (âmbar/cinza) (precisa de atenção, sem prazo estourado por si só). |
 | `blocos[].chave` | string | Identificador estável do bloco (usar para ícone/rota no front, nunca o `titulo`). |
 | `blocos[].titulo` | string | Rótulo pronto para exibir. |
 | `blocos[].severidade` | `'vermelho'\|'ambar'\|'cinza'` | Cor sugerida do card/badge. |
@@ -82,10 +82,13 @@ Authorization: Bearer <token>
 | `blocos[].valorTotal` | number? | Só nos blocos com valor monetário relevante (`caixas_conferir`, `notas_sem_conta`, `boletos_nao_enviados`). |
 | `blocos[].itens[]` | array | Até `limite` linhas, já formatadas para exibir direto (sem o front ter que remontar título). |
 | `blocos[].itens[].acao` | object? | Quando existe, é a AÇÃO DE 1 CLIQUE — mesmo endpoint que a tela original usa. `null`/ausente quando a ação exige decisão humana (ex.: contar dinheiro, revisar nota). |
+| `blocos[].itens[].severidade` | `'vermelho'\|'ambar'\|'cinza'`? | **Novo (aditivo).** Só no bloco `amostras_sem_carga`: cor de cada item (os demais blocos não têm; o front usa a do bloco). |
+| `blocos[].itens[].rotaAbrir` | string? | **Novo (aditivo).** Quando existe, o front mostra o botão "Abrir" **junto** com a `acao` (antes era uma ou outra). Só `amostras_sem_carga` traz. |
+| `blocos[].vermelhas` | int? | **Novo (aditivo).** Só em `amostras_sem_carga`: quantas amostras têm entrega hoje/atrasada. |
 | `blocos[].rotaVerTodos` | string | Rota do app para "ver todos" desse bloco. |
 | `blocos[].erro` | bool? | Só aparece quando o bloco falhou ao consultar — os outros blocos continuam normais. |
 
-## Os 9 blocos (o 9º, `liberacao_inadimplente`, entrou na Entrega 2 da Inadimplência visível — 10/2026)
+## Os 11 blocos (`liberacao_inadimplente` entrou em 10/2026; `veiculos_pendencias` em 10/2026; `amostras_sem_carga` em 11/2026)
 
 ### `pedidos_aprovar` — Pedidos aguardando aprovação
 - **Fonte:** mesmo critério de `ListaPedidos.jsx` (aba de aprovação) / `pedidoController.aprovarEspecial`
@@ -107,6 +110,20 @@ Authorization: Bearer <token>
 - `severidade: 'vermelho'`, `rotaVerTodos: '/pedidos'`. Os especiais de cliente bloqueado **saem** de `pedidos_aprovar`
   (não conta em dobro); `totais.total` soma o bloco e `totais.avisos` também.
 - Todos os itens dos demais blocos que têm cliente ganharam `clienteId` (aditivo).
+
+### `amostras_sem_carga` — Amostras sem carga ("amostra que ninguém esquece")
+- **Fonte:** `amostraService.listarAbertasSemCarga()` — `status IN (SOLICITADA, PREPARACAO, LIBERADO)` e `embarqueId IS NULL`.
+  ENTREGUE/CANCELADA nunca entram. Mesma lista da faixa da tela de Cargas (`GET /api/embarques/amostras-abertas`).
+- **Régua de urgência (única, no backend, hoje = fuso de Brasília):** `dataEntrega` (guardada como meia-noite UTC do dia) ->
+  dia <= hoje = `vermelho` (hoje ou atrasada); dia == amanhã = `ambar`; resto ou sem data = `cinza`.
+- **Severidade do bloco** = a **pior entre TODAS** as amostras abertas sem carga (não só as `limite` listadas):
+  vermelho se alguma vermelha, senão âmbar se alguma amanhã, senão cinza. Itens ordenados vermelho -> âmbar -> cinza, depois data, depois número.
+- **Item:** `{ id, titulo: "AM#58 · Destinatário", subtitulo: "Entrega hoje · Solicitada · vend. João", dataRef (meio-dia de Brasília do dia de entrega; sem data = `null`),
+  severidade, rota, rotaAbrir, acao? }`. `rota` e `rotaAbrir` = `/pedidos?aba=amostras&semCarga=1&amostra=<id>`.
+- **Ação de 1 clique** `{ tipo: 'liberar_amostra', label: 'Liberar', endpoint: '/api/amostras/<id>/liberar', metodo: 'POST' }` —
+  **ausente** quando a amostra já está LIBERADA (só "Abrir"). Permissão do endpoint: admin | `Pode_Acessar_Embarque` | `Pode_Ver_Pendencias` | `Pode_Acessar_Financeiro_Gerencial`.
+- `valorTotal: null`, `vermelhas` (int), `rotaVerTodos: '/pedidos?aba=amostras&semCarga=1'`. `totais.total` soma o bloco; vermelhas contam em `vencidas`, as demais em `avisos`.
+- Só leitura, sem `$transaction`.
 
 ### `nfe_emitir` — NF-e a emitir
 - **Fonte:** MESMO critério e MESMA lógica do chip "Sem nota" de
@@ -224,7 +241,7 @@ curl http://localhost:3000/api/pendencias -H "Authorization: Bearer $SEMPERM"
 
 # Com admin (usuário Clarkson)
 curl http://localhost:3000/api/pendencias -H "Authorization: Bearer $ADMIN"
-# → 200, geradoEm + totais + 8 blocos (ver exemplo acima)
+# → 200, geradoEm + totais + 11 blocos (ver exemplo acima)
 # tempo: 33-84ms em chamadas seguidas
 
 curl "http://localhost:3000/api/pendencias?limite=2" -H "Authorization: Bearer $ADMIN"

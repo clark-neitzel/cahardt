@@ -1,5 +1,11 @@
 [
   {
+    "slug": "amostra-sem-esquecer",
+    "titulo": "Amostra que ninguém esquece",
+    "resumo": "Amostra que ainda não está em nenhuma carga agora aparece sozinha em Cargas, no Mapa, na Central de Pendências e em Pedidos → Amostras, com cor de urgência.",
+    "data": "2026-11-11"
+  },
+  {
     "slug": "etiqueta-amostra",
     "titulo": "Etiqueta do pedido de amostra",
     "resumo": "Na aba Pedidos → Amostras, o ícone de etiqueta imprime a etiqueta grande (100 × 120) com cliente, entrega, itens e observação — direto na Zebra ou pelo navegador.",

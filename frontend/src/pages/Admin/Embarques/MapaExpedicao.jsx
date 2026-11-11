@@ -254,6 +254,7 @@ export default function MapaExpedicao() {
     const [recalculando, setRecalculando] = useState(false);
     const [aplicando, setAplicando] = useState(false);
     const [confirmandoApagar, setConfirmandoApagar] = useState(false); // aviso antes de apagar cobrança
+    const [confirmandoLiberar, setConfirmandoLiberar] = useState(false); // aviso antes de liberar+embarcar amostra não liberada
     const [selecionado, setSelecionado] = useState(null); // chave do CLIENTE do pino clicado
     const [sheetAberta, setSheetAberta] = useState(false); // bottom-sheet no celular
     const [fichaCliente, setFichaCliente] = useState(null); // { UUID, Nome } — ficha aberta pelo cartão do pino
@@ -392,6 +393,13 @@ export default function MapaExpedicao() {
     const mudancas = useMemo(
         () => todas.filter(p => temChave(rascunho, p.chave) && rascunho[p.chave] !== (p.embarqueId ?? null)),
         [todas, rascunho]
+    );
+
+    // Amostras ainda não liberadas (SOLICITADA/PREPARACAO) que o rascunho está colocando numa carga:
+    // o Confirmar pergunta se pode liberar e embarcar (vai `liberar:true` no aplicar).
+    const amostrasALiberar = useMemo(
+        () => mudancas.filter(p => p.tipoItem === 'amostra' && p.naoLiberada && rascunho[p.chave] != null),
+        [mudancas, rascunho]
     );
 
     // Marcar/desmarcar "participa da divisão".
@@ -618,6 +626,9 @@ export default function MapaExpedicao() {
             : ((dados?.cargas || []).find(c => String(c.id) === String(valorSel))?.id ?? null);
         // Mexeu à mão: a entrada passa a ser do operador, não da sugestão.
         chavesDaSugestao.current.delete(item.chave);
+        if (destino != null && item.tipoItem === 'amostra' && item.naoLiberada) {
+            toast(`${item.etiqueta || 'A amostra'} ainda não foi liberada — será liberada ao confirmar.`, { icon: 'ℹ️' });
+        }
         setRascunho(prev => {
             const nx = { ...prev };
             if (destino === (item.embarqueId ?? null)) delete nx[item.chave];
@@ -893,12 +904,20 @@ export default function MapaExpedicao() {
     const confirmar = () => {
         if (!mudancas.length || aplicando) return;
         if (cobrancasApagadas.length) { setConfirmandoApagar(true); return; }
+        if (amostrasALiberar.length) { setConfirmandoLiberar(true); return; }
+        aplicar();
+    };
+
+    // Depois do aviso de apagar cobrança, ainda pode haver amostra a liberar: pergunta em seguida.
+    const seguirDoAvisoApagar = () => {
+        if (amostrasALiberar.length) { setConfirmandoApagar(false); setConfirmandoLiberar(true); return; }
         aplicar();
     };
 
     const aplicar = async () => {
         if (!mudancas.length || aplicando) return;
         setConfirmandoApagar(false);
+        setConfirmandoLiberar(false);
         const nApagadas = cobrancasApagadas.length;
         setAplicando(true);
         try {
@@ -908,7 +927,9 @@ export default function MapaExpedicao() {
                     tipo: p.tipoPayload,
                     id: p.itemId,
                     ...(p.tipoPayload === 'pedido' ? { pedidoId: p.itemId } : {}),
-                    embarqueId: rascunho[p.chave]
+                    embarqueId: rascunho[p.chave],
+                    // amostra ainda não liberada indo para uma carga: o operador já confirmou "liberar e embarcar"
+                    ...(p.tipoPayload === 'amostra' && p.naoLiberada && rascunho[p.chave] != null ? { liberar: true } : {})
                 })),
                 esperado: mudancas.map(p => ({
                     tipo: p.tipoPayload,
@@ -1086,7 +1107,12 @@ export default function MapaExpedicao() {
             // "Sem carga" (eidPino null) nunca é afetado: continua sempre visível.
             if (eidPino != null && escondidasSet.has(eidPino)) return;
             // bolinha cheia = ponto GPS confirmado; anel tracejado com "≈" = posição pelo endereço
-            const estilo = aproximado
+            // amostra que ainda não foi preparada/liberada (só ela no pino): contorno tracejado âmbar
+            const soNaoLiberada = g.itens.every(i => i.naoLiberada);
+            const algumaNaoLiberada = g.itens.some(i => i.naoLiberada);
+            const estilo = soNaoLiberada
+                ? `background:#fff7ed;border:2.5px dashed #b45309;color:#b45309;`
+                : aproximado
                 ? `background:#fff;border:2.5px dashed ${cor};color:${cor};`
                 : `background:${cor};border:2.5px solid #fff;color:#fff;`;
             const conteudo = todosTravados ? '🔒' : (g.itens.length > 1 ? String(g.itens.length) : (aproximado ? '≈' : ''));
@@ -1105,6 +1131,7 @@ export default function MapaExpedicao() {
             // dourado de "movido no rascunho".
             const chipsPino = [
                 ...(cargaFora ? [chip('#e5e7eb', '#374151', 'FORA')] : []),
+                ...(algumaNaoLiberada ? [chip('#fee2e2', '#b91c1c', 'PREPARAR')] : []),
                 ...(soPedido ? [] : tipos.map(t => chip(BADGE_TIPO[t].bg, BADGE_TIPO[t].fg, BADGE_TIPO[t].t)))
             ];
             const badges = chipsPino.length
@@ -1350,12 +1377,70 @@ export default function MapaExpedicao() {
                     </button>
                     <button
                         type="button"
-                        onClick={aplicar}
+                        onClick={seguirDoAvisoApagar}
                         disabled={aplicando}
                         className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-full font-semibold text-sm min-h-[44px] flex items-center justify-center gap-2 disabled:opacity-60"
                     >
                         {aplicando && <Loader2 className="h-4 w-4 animate-spin" />}
                         {cobrancasApagadas.length === 1 ? 'Apagar e aplicar' : 'Apagar as cobranças e aplicar'}
+                    </button>
+                </div>
+            </div>
+        </div>,
+        document.body
+    );
+
+    // Esc fecha o aviso de liberar amostra
+    useEffect(() => {
+        if (!confirmandoLiberar) return;
+        const aoTeclar = (ev) => {
+            if (ev.key === 'Escape' && !aplicando) { ev.stopPropagation(); setConfirmandoLiberar(false); }
+        };
+        window.addEventListener('keydown', aoTeclar);
+        return () => window.removeEventListener('keydown', aoTeclar);
+    }, [confirmandoLiberar, aplicando]);
+
+    // Aviso antes de liberar+embarcar amostra não liberada (mesmo padrão do aviso de cobrança)
+    const dialogoLiberarAmostras = (!confirmandoLiberar || !amostrasALiberar.length) ? null : createPortal(
+        <div
+            className="fixed inset-0 z-[2000] bg-black/50 flex items-end md:items-center justify-center p-0 md:p-4"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="titulo-liberar-amostras"
+            onClick={() => setConfirmandoLiberar(false)}
+        >
+            <div className="bg-white w-full md:max-w-md rounded-t-2xl md:rounded-2xl shadow-xl p-4 md:p-5 max-h-[85dvh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+                <div className="flex items-start gap-2.5 mb-3">
+                    <span className="bg-amber-100 p-2 rounded-lg shrink-0">
+                        <AlertTriangle className="h-5 w-5 text-amber-600" />
+                    </span>
+                    <div className="min-w-0">
+                        <h2 id="titulo-liberar-amostras" className="text-base md:text-lg font-bold text-gray-900">
+                            {amostrasALiberar.length === 1
+                                ? '1 amostra ainda não foi liberada'
+                                : `${amostrasALiberar.length} amostras ainda não foram liberadas`}
+                        </h2>
+                        <p className="text-sm text-gray-600 mt-0.5">Liberar e embarcar?</p>
+                    </div>
+                </div>
+                <div className="bg-amber-50 border border-amber-200 rounded-lg divide-y divide-amber-100 mb-4 max-h-48 overflow-y-auto">
+                    {amostrasALiberar.map(a => (
+                        <div key={a.chave} className="flex items-center gap-2 px-3 py-2">
+                            <span className="text-xs text-amber-900 font-medium truncate flex-1">
+                                {a.clienteNome || 'Cliente'}{a.etiqueta ? ` · ${a.etiqueta}` : ''}
+                            </span>
+                        </div>
+                    ))}
+                </div>
+                <div className="flex flex-col-reverse md:flex-row md:justify-end gap-2">
+                    <button type="button" onClick={() => setConfirmandoLiberar(false)}
+                        className="px-4 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-full font-medium text-sm min-h-[44px]">
+                        Cancelar
+                    </button>
+                    <button type="button" onClick={aplicar} disabled={aplicando}
+                        className="px-4 py-2 bg-primary hover:bg-primaryDark text-white rounded-full font-semibold text-sm min-h-[44px] flex items-center justify-center gap-2 disabled:opacity-60">
+                        {aplicando && <Loader2 className="h-4 w-4 animate-spin" />}
+                        Liberar e aplicar
                     </button>
                 </div>
             </div>
@@ -1374,6 +1459,7 @@ export default function MapaExpedicao() {
     return (
         <div className="relative z-0 isolate w-full max-w-full px-3 md:px-0 py-3 md:py-6 overflow-x-hidden">
             {dialogoApagarCobrancas}
+            {dialogoLiberarAmostras}
             {/* Topbar */}
             <div className="flex items-center justify-between gap-2 bg-white p-3 md:p-4 rounded-t-xl shadow-sm border border-gray-200 border-b-0">
                 <div className="flex items-center gap-2 min-w-0">
@@ -1593,6 +1679,7 @@ export default function MapaExpedicao() {
                                             {i.valorTotal != null && (
                                                 <span className="text-xs font-semibold text-gray-700 shrink-0">{fmtBRL(i.valorTotal)}</span>
                                             )}
+                                            {i.naoLiberada && <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-amber-100 text-amber-700 shrink-0">falta preparar</span>}
                                             {i.travado && <Lock className="h-3.5 w-3.5 text-gray-500 shrink-0" />}
                                             {abrivel && <ChevronRight className="h-4 w-4 text-gray-500 shrink-0" />}
                                         </Linha>
@@ -2059,6 +2146,21 @@ export default function MapaExpedicao() {
                                     {contagemTipos(grupos.semCarga)}
                                 </span>
                             </div>
+                            {/* Amostras abertas fora de carga: as vermelhas (entrega hoje/atrasada) em destaque */}
+                            {(() => {
+                                const naoLib = grupos.semCarga.filter(p => p.tipoItem === 'amostra' && p.naoLiberada);
+                                if (!naoLib.length) return null;
+                                const vermelhas = naoLib.filter(p => p.urgencia === 'vermelho').length;
+                                return (
+                                    <div className={`rounded-xl border p-3 text-xs ${vermelhas ? 'bg-red-50 border-red-200 text-red-800' : 'bg-amber-50 border-amber-200 text-amber-800'}`}>
+                                        <span className="font-semibold">
+                                            {naoLib.length} {naoLib.length === 1 ? 'amostra falta preparar' : 'amostras faltam preparar'}
+                                        </span>
+                                        {vermelhas > 0 && <span> · {vermelhas} com entrega hoje ou atrasada</span>}
+                                        <span className="block mt-0.5 opacity-90">Ao colocar numa carga e confirmar, ela é liberada e embarcada.</span>
+                                    </div>
+                                );
+                            })()}
 
                             {/* Cobrança tirada da carga NÃO fica "sem carga": ela é apagada no Confirmar */}
                             {grupos.apagar.length > 0 && (
@@ -2095,7 +2197,7 @@ export default function MapaExpedicao() {
                                             <span className="min-w-0 flex-1">
                                                 <span className="block text-sm font-semibold text-gray-800 truncate">{g.clienteNome || 'Cliente'}</span>
                                                 <span className="block text-xs text-gray-500 truncate">
-                                                    {g.itens.map(i => i.etiqueta || i.numero || NOME_TIPO[i.tipoItem]).join(' · ')}{g.cidade ? ` · ${g.cidade}` : ''}
+                                                    {g.itens.map(i => `${i.etiqueta || i.numero || NOME_TIPO[i.tipoItem]}${i.naoLiberada ? ' (falta preparar)' : ''}`).join(' · ')}{g.cidade ? ` · ${g.cidade}` : ''}
                                                 </span>
                                             </span>
                                             <span aria-hidden="true" className="flex gap-0.5 shrink-0">
@@ -2150,7 +2252,7 @@ export default function MapaExpedicao() {
                                                             {badgeTipo(i.tipoItem, 'mt-0.5')}
                                                             <span className="min-w-0 flex-1">
                                                                 <span className="block text-xs text-gray-700 truncate">
-                                                                    {NOME_TIPO[i.tipoItem] || 'Item'}{i.etiqueta || i.numero ? ` ${i.etiqueta || i.numero}` : ''}
+                                                                    {NOME_TIPO[i.tipoItem] || 'Item'}{i.etiqueta || i.numero ? ` ${i.etiqueta || i.numero}` : ''}{i.naoLiberada ? ' · falta preparar' : ''}
                                                                 </span>
                                                                 {i.motivo && (
                                                                     <span className="block text-[11px] text-gray-500">{i.motivo}</span>

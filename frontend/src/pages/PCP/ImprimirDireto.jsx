@@ -22,15 +22,28 @@ import useEnvioBitmap from './useEnvioBitmap';
 //  confirmar     () => boolean — opcional, síncrono, antes de enviar (ex.: > 60 etiquetas)
 //  total         nº de etiquetas do envio (caixas): confere o teto pela(s) coluna(s) da impressora
 //  rotuloZebra   texto do botão primário (padrão "Imprimir na Zebra")
+//  onImpresso    () => void — OPCIONAL. Avisa que a etiqueta foi mandada (clique no navegador, ou envio
+//                da Zebra que entrou em fila/imprimindo/saiu). Só faz efeito colateral (ex.: avançar status);
+//                nunca imprime. Quem não passa a prop não muda em nada.
 export default function ImprimirDireto({
     origem, preparar, copias = 1, referencia, nome = 'etiqueta', bloqueio = null, acaoBloqueio = null,
-    total = 0, onNavegador, confirmar, rotuloZebra = 'Imprimir na Zebra', className = '',
+    total = 0, onNavegador, confirmar, rotuloZebra = 'Imprimir na Zebra', className = '', onImpresso,
 }) {
     const [impressoras, setImpressoras] = useState(null); // null = carregando
     const [erroLista, setErroLista] = useState('');
     const [escolhida, setEscolhida] = useFiltroSalvo(`etiquetas:impressora:${origem}`, '');
     const envio = useEnvioBitmap();
     const vivo = useRef(true);
+    const avisouEnvio = useRef(false); // 1 aviso por envio da Zebra
+
+    useEffect(() => {
+        const f = envio.fase;
+        if (f === 'ocioso' || f === 'preparando' || f === 'enviando' || f === 'erro') { avisouEnvio.current = false; return; }
+        if ((f === 'fila' || f === 'imprimindo' || f === 'saiu') && !avisouEnvio.current) {
+            avisouEnvio.current = true;
+            if (onImpresso) { try { onImpresso(); } catch { /* aviso é secundário */ } }
+        }
+    }, [envio.fase]); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
         vivo.current = true;
@@ -62,6 +75,7 @@ export default function ImprimirDireto({
     const cancelarEImprimirNavegador = () => {
         const p = envio.cancelarPendentes();
         onNavegador?.();
+        if (onImpresso) { try { onImpresso(); } catch { /* secundário */ } }
         p.then((ok) => { if (!ok) toast('A etiqueta já estava saindo na Zebra — confira para não sair em dobro.', { icon: '⚠️', duration: 7000 }); });
     };
 
@@ -112,7 +126,7 @@ export default function ImprimirDireto({
                     {envio.ocupado ? <Loader2 className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" />}
                     {envio.ocupado ? (fase === 'preparando' ? 'Preparando…' : 'Enviando…') : fase === 'saiu' ? 'Imprimir de novo na Zebra' : rotuloZebra}
                 </button>
-                <button type="button" onClick={() => onNavegador?.()} data-acao="navegador"
+                <button type="button" onClick={() => { onNavegador?.(); if (onImpresso) { try { onImpresso(); } catch { /* secundário */ } } }} data-acao="navegador"
                     className="flex items-center justify-center gap-2 px-5 py-2.5 min-h-[44px] bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-sm">
                     <Globe className="h-4 w-4" /> Imprimir pelo navegador
                 </button>

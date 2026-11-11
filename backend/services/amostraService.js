@@ -1,5 +1,31 @@
 const prisma = require('../config/database');
 const gcal = require('./googleCalendarService');
+const { getDataReferencia } = require('../utils/dataReferenciaBrasilia');
+
+const STATUS_ABERTOS = ['SOLICITADA', 'PREPARACAO', 'LIBERADO'];
+
+// ---- Régua de urgência (ÚNICA, no backend) ----
+// dataEntrega é guardada como meia-noite UTC do dia escolhido -> o dia é o slice do ISO.
+const diaEntrega = (dataEntrega) => (dataEntrega ? new Date(dataEntrega).toISOString().slice(0, 10) : null);
+const somarDias = (ymd, n) => {
+    const d = new Date(ymd + 'T12:00:00Z');
+    d.setUTCDate(d.getUTCDate() + n);
+    return d.toISOString().slice(0, 10);
+};
+// 'vermelho' (hoje/atrasada) | 'ambar' (amanhã) | 'cinza' (resto ou sem data)
+const urgencia = (dataEntrega, hojeBr) => {
+    const dia = diaEntrega(dataEntrega);
+    if (!dia) return 'cinza';
+    if (dia <= hojeBr) return 'vermelho';
+    if (dia === somarDias(hojeBr, 1)) return 'ambar';
+    return 'cinza';
+};
+const PESO_URG = { vermelho: 0, ambar: 1, cinza: 2 };
+const ordenarPorUrgencia = (lista) => lista.sort((a, b) =>
+    (PESO_URG[a.urgencia] - PESO_URG[b.urgencia])
+    || ((a.dataEntregaDia || '9999') < (b.dataEntregaDia || '9999') ? -1 : (a.dataEntregaDia || '9999') > (b.dataEntregaDia || '9999') ? 1 : 0)
+    || (a.numero - b.numero));
+const aberta = (a) => STATUS_ABERTOS.includes(a.status) && !a.embarqueId;
 
 const amostraService = {
 
@@ -32,13 +58,18 @@ const amostraService = {
     },
 
     listar: async (filtros = {}) => {
-        const { status, solicitadoPorId, leadId, clienteId, dataEntregaDe, dataEntregaAte, createdAtDe, createdAtAte, busca } = filtros;
+        const { status, solicitadoPorId, leadId, clienteId, semCarga, dataEntregaDe, dataEntregaAte, createdAtDe, createdAtAte, busca } = filtros;
         
         const where = {};
         if (status) where.status = status;
         if (solicitadoPorId) where.solicitadoPorId = solicitadoPorId;
         if (leadId) where.leadId = leadId;
         if (clienteId) where.clienteId = clienteId;
+        // Só abertas sem carga (esquecidas). Combina com a visibilidade (solicitadoPorId) do controller.
+        if (semCarga) {
+            where.embarqueId = null;
+            where.status = status && STATUS_ABERTOS.includes(status) ? status : { in: STATUS_ABERTOS };
+        }
 
         // Filtro por Data de Entrega
         if (dataEntregaDe || dataEntregaAte) {
@@ -74,11 +105,12 @@ const amostraService = {
             ].filter(Boolean);
         }
 
-        return await prisma.amostra.findMany({
+        const lista = await prisma.amostra.findMany({
             where,
             include: {
                 itens: { include: { produto: { select: { nome: true, codigo: true } } } },
                 solicitadoPor: { select: { nome: true } },
+                embarque: { select: { id: true, numero: true } },
                 // id: sem ele a ficha rápida do cliente (ClientePopup) não consegue buscar o
                 // cadastro completo do lead ao ser aberta a partir do card da amostra.
                 lead: { select: { id: true, nomeEstabelecimento: true, numero: true } },
@@ -86,6 +118,78 @@ const amostraService = {
             },
             orderBy: { createdAt: 'desc' }
         });
+        const hoje = getDataReferencia();
+        return lista.map(a => ({
+            ...a,
+            dataEntregaDia: diaEntrega(a.dataEntrega),
+            urgencia: aberta(a) ? urgencia(a.dataEntrega, hoje) : null,
+        }));
+    },
+
+    // Abertas (SOLICITADA/PREPARACAO/LIBERADO) sem carga, enxutas, já ordenadas por urgência.
+    // Usada pela faixa de Cargas, Central de Pendências e resumo da sub-aba.
+    listarAbertasSemCarga: async ({ solicitadoPorId } = {}) => {
+        const where = { embarqueId: null, status: { in: STATUS_ABERTOS } };
+        if (solicitadoPorId) where.solicitadoPorId = solicitadoPorId;
+        const rows = await prisma.amostra.findMany({
+            where,
+            select: {
+                id: true, numero: true, status: true, dataEntrega: true, createdAt: true, embarqueId: true,
+                leadId: true, clienteId: true,
+                solicitadoPor: { select: { nome: true } },
+                cliente: { select: { NomeFantasia: true, Nome: true, End_Cidade: true } },
+                lead: { select: { nomeEstabelecimento: true, cidade: true } },
+                _count: { select: { itens: true } },
+            },
+        });
+        const hoje = getDataReferencia();
+        const lista = rows.map(a => ({
+            id: a.id,
+            numero: a.numero,
+            etiqueta: `AM#${a.numero}`,
+            status: a.status,
+            dataEntregaDia: diaEntrega(a.dataEntrega),
+            urgencia: urgencia(a.dataEntrega, hoje),
+            tipoDestino: a.leadId && !a.clienteId ? 'lead' : 'cliente',
+            destinatario: a.cliente?.NomeFantasia || a.cliente?.Nome || a.lead?.nomeEstabelecimento || 'Sem destinatário',
+            cidade: a.cliente?.End_Cidade || a.lead?.cidade || null,
+            vendedor: a.solicitadoPor?.nome || null,
+            qtdItens: a._count?.itens || 0,
+            criadaEm: a.createdAt,
+        }));
+        return { hoje, amostras: ordenarPorUrgencia(lista) };
+    },
+
+    // Libera direto (SOLICITADA/PREPARACAO -> LIBERADO). Idempotente.
+    // Retorna { codigo: 200|404|409, ... }
+    liberar: async (id) => {
+        const r = await prisma.amostra.updateMany({
+            where: { id, status: { in: ['SOLICITADA', 'PREPARACAO'] } },
+            data: { status: 'LIBERADO' },
+        });
+        if (r.count > 0) {
+            gcal.disparar(gcal.sincronizarAmostra, id);
+            return { codigo: 200, ok: true, status: 'LIBERADO', jaEstava: false };
+        }
+        const atual = await prisma.amostra.findUnique({ where: { id }, select: { status: true } });
+        if (!atual) return { codigo: 404, error: 'Amostra não encontrada.' };
+        if (atual.status === 'LIBERADO') return { codigo: 200, ok: true, status: 'LIBERADO', jaEstava: true };
+        return { codigo: 409, error: 'Amostra já entregue/cancelada - não dá para liberar.' };
+    },
+
+    // Etiqueta impressa: SOLICITADA -> PREPARACAO, condicional (nunca regride).
+    marcarEtiquetaImpressa: async (id) => {
+        const r = await prisma.amostra.updateMany({
+            where: { id, status: 'SOLICITADA' },
+            data: { status: 'PREPARACAO' },
+        });
+        if (r.count > 0) {
+            gcal.disparar(gcal.sincronizarAmostra, id);
+            return { codigo: 200, ok: true, status: 'PREPARACAO', avancou: true };
+        }
+        const atual = await prisma.amostra.findUnique({ where: { id }, select: { status: true } });
+        if (!atual) return { codigo: 404, error: 'Amostra não encontrada.' };
+        return { codigo: 200, ok: true, status: atual.status, avancou: false };
     },
 
     buscarPorId: async (id) => {
@@ -145,5 +249,11 @@ const amostraService = {
         });
     },
 };
+
+amostraService.STATUS_ABERTOS = STATUS_ABERTOS;
+amostraService.diaEntrega = diaEntrega;
+amostraService.urgencia = urgencia;
+amostraService.somarDias = somarDias;
+amostraService.ordenarPorUrgencia = ordenarPorUrgencia;
 
 module.exports = amostraService;

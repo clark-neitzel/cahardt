@@ -235,6 +235,8 @@ Lista pedidos do tipo **Amostra** (`AM#`). Produtos enviados como amostra com fl
 Status possíveis: `SOLICITADA → PREPARACAO → LIBERADO → ENTREGUE`
 
 - Botão de avançar status: muda para o próximo estado
+- **Amostra que ninguém esquece:** o botão da sub-aba **Amostras** mostra um **número** com as amostras abertas (solicitada, em preparação ou liberada) que ainda **não estão em nenhuma carga** — vermelho se alguma tem entrega hoje/atrasada, âmbar nas demais (vendedor vê só as dele; quem vê tudo, o total). O filtro **"Só sem carga"** (lembrado por usuário) lista só essas amostras **ignorando o período**, para a antiga esquecida aparecer. No card: **borda vermelha + aviso** quando a entrega é hoje/atrasada e a amostra não está em carga; chip **"Carga #N"** quando já embarcou; a data de entrega mostra o dia certo. O link `/pedidos?aba=amostras&semCarga=1&amostra=<id>` (usado pela Central de Pendências) abre direto nessa sub-aba, com o filtro ligado e a amostra em destaque. Os mesmos avisos aparecem em Expedição → Cargas (faixa "Amostras sem carga"), no Mapa das Entregas e na Central de Pendências.
+- **Imprimir a etiqueta avança o status:** ao imprimir a etiqueta de uma amostra **Solicitada** (Zebra ou navegador), ela passa sozinha para **Em preparação**. Amostra já em preparação/liberada/entregue **não muda** (nunca volta). Se a atualização falhar, a impressão sai normalmente.
 - Botão de excluir amostra (quem tem `Pode_Excluir_Amostra`)
 - **Etiqueta da amostra (100 × 120 mm)**: o ícone de **etiqueta** no card da amostra (ao lado do WhatsApp) — e o botão
   **Etiqueta** ao abrir a linha — abre a janela com a prévia do resumo do pedido para colar na caixa/sacola: destinatário

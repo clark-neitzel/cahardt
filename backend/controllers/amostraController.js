@@ -26,6 +26,7 @@ const amostraController = {
             if (req.query.status) filtros.status = req.query.status;
             if (req.query.leadId) filtros.leadId = req.query.leadId;
             if (req.query.clienteId) filtros.clienteId = req.query.clienteId;
+            if (req.query.semCarga === '1' || req.query.semCarga === 'true') filtros.semCarga = true;
 
             if (req.user) {
                 const permissoes = req.user.permissoes || {};
@@ -45,6 +46,52 @@ const amostraController = {
         } catch (error) {
             console.error('Erro ao listar amostras:', error);
             res.status(500).json({ error: 'Erro ao listar amostras.' });
+        }
+    },
+
+    // Visibilidade igual à do listar: vendedor sem pedidos.clientes==='todos' só enxerga as suas.
+    _filtroVisibilidade: (req) => {
+        const permissoes = req.user?.permissoes || {};
+        const podeVerTodos = permissoes.admin === true || permissoes.pedidos?.clientes === 'todos';
+        return podeVerTodos ? {} : { solicitadoPorId: req.user.id };
+    },
+
+    resumoAbertas: async (req, res) => {
+        try {
+            const { hoje, amostras } = await amostraService.listarAbertasSemCarga(amostraController._filtroVisibilidade(req));
+            res.json({
+                hoje,
+                semCarga: amostras.length,
+                vermelhas: amostras.filter(a => a.urgencia === 'vermelho').length,
+                ids: amostras.slice(0, 200).map(a => a.id),
+            });
+        } catch (error) {
+            console.error('Erro no resumo de amostras abertas:', error);
+            res.status(500).json({ error: 'Erro ao resumir amostras.' });
+        }
+    },
+
+    liberar: async (req, res) => {
+        try {
+            const p = req.user?.permissoes || {};
+            const pode = p.admin === true || p.Pode_Acessar_Embarque === true || p.Pode_Ver_Pendencias === true
+                || p.Pode_Acessar_Financeiro_Gerencial === true;
+            if (!pode) return res.status(403).json({ error: 'Você não tem permissão para liberar amostras.' });
+            const { codigo, ...corpo } = await amostraService.liberar(req.params.id);
+            res.status(codigo).json(corpo);
+        } catch (error) {
+            console.error('Erro ao liberar amostra:', error);
+            res.status(500).json({ error: 'Erro ao liberar amostra.' });
+        }
+    },
+
+    etiquetaImpressa: async (req, res) => {
+        try {
+            const { codigo, ...corpo } = await amostraService.marcarEtiquetaImpressa(req.params.id);
+            res.status(codigo).json(corpo);
+        } catch (error) {
+            console.error('Erro ao marcar etiqueta impressa:', error);
+            res.status(500).json({ error: 'Erro ao registrar a impressão.' });
         }
     },
 

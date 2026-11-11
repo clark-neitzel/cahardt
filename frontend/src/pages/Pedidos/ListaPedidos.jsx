@@ -4,6 +4,7 @@ import { Search, X, AlertCircle, AlertTriangle, Package, ChevronDown, ChevronUp,
 import pedidoService from '../../services/pedidoService';
 import api, { API_URL } from '../../services/api';
 import amostraService from '../../services/amostraService';
+import { dataLocalHoje } from '../../utils/dataLocal';
 import vendedorService from '../../services/vendedorService';
 import SelectBusca from '../../components/SelectBusca';
 import { opcoesVendedorFiltro, somenteAtivos } from '../../utils/vendedoresFiltro';
@@ -98,6 +99,11 @@ const ListaPedidos = () => {
     // "Só clientes em atraso": filtrado no SERVIDOR (soEmAtraso=1) — a lista é paginada
     const [soEmAtraso, setSoEmAtraso] = useFiltroSalvo('lista-pedidos:soEmAtraso', false);
     const [popupInad, setPopupInad] = useState(null); // { id, nome }
+    // Aba Amostras: "Só sem carga" (lembrado por usuário) — ignora o período de propósito,
+    // senão a amostra esquecida de semanas atrás some do filtro justamente quando mais importa
+    const [soSemCarga, setSoSemCarga] = useFiltroSalvo('lista-pedidos:amostrasSemCarga', false);
+    const [resumoAmostras, setResumoAmostras] = useState(null); // { semCarga, vermelhas } — contador da sub-aba (não persiste)
+    const [amostraAlvo, setAmostraAlvo] = useState(null);       // amostra destacada vinda de ?amostra=<id>
 
     // Datas em FiltroPeriodo (persistem o PRESET por usuário). Padrão: sem limite.
     const [perEntrega, ctlEntrega] = usePeriodoSalvo('lista-pedidos:entrega', 'todo');
@@ -116,7 +122,8 @@ const ListaPedidos = () => {
         vencimentoDe: perVencimento.de,
         vencimentoAte: perVencimento.ate,
         soEmAtraso: !!soEmAtraso,
-    }), [filtros, perEntrega, perCriacao, perVencimento, soEmAtraso]);
+        semCarga: !!soSemCarga,
+    }), [filtros, perEntrega, perCriacao, perVencimento, soEmAtraso, soSemCarga]);
     const [busca, setBusca] = useState('');
     const [buscaServer, setBuscaServer] = useState('');
     const debounceRef = useRef(null);
@@ -162,6 +169,18 @@ const ListaPedidos = () => {
         navigate(location.pathname, { replace: true, state: location.state });
     }, [location.search]); // eslint-disable-line
 
+    // Vindo da Central de Pendências / Cargas: /pedidos?aba=amostras&semCarga=1&amostra=<id>
+    // abre a sub-aba Amostras, liga "Só sem carga" e destaca a amostra (não depende de soEmAtraso).
+    useEffect(() => {
+        const q = new URLSearchParams(location.search);
+        if (q.get('aba') !== 'amostras') return;
+        setAbaAtiva('amostras');
+        if (q.get('semCarga') === '1') setSoSemCarga(true);
+        const alvo = q.get('amostra');
+        if (alvo) { setAmostraAlvo(alvo); setExpandedAmostra(alvo); }
+        navigate(location.pathname, { replace: true, state: location.state });
+    }, [location.search]); // eslint-disable-line
+
     useEffect(() => {
         if (!highlightId || loading) return;
         const el = document.getElementById(`pedido-row-${highlightId}`);
@@ -175,6 +194,24 @@ const ListaPedidos = () => {
     const [amostras, setAmostras] = useState([]);
     const [loadingAmostras, setLoadingAmostras] = useState(false);
     const [expandedAmostra, setExpandedAmostra] = useState(null);
+
+    // Contador vermelho/âmbar no nome da sub-aba: amostras abertas sem carga que ESTE usuário enxerga
+    const carregarResumoAmostras = useCallback(async () => {
+        try {
+            const r = await amostraService.resumoAbertas();
+            setResumoAmostras({ hoje: r?.hoje || null, semCarga: Number(r?.semCarga) || 0, vermelhas: Number(r?.vermelhas) || 0 });
+        } catch { /* contador é secundário: sem ele a aba continua funcionando */ }
+    }, []);
+    useEffect(() => { carregarResumoAmostras(); }, [carregarResumoAmostras, abaAtiva]);
+
+    // Rola até a amostra destacada assim que a lista chega
+    useEffect(() => {
+        if (!amostraAlvo || loadingAmostras || abaAtiva !== 'amostras') return;
+        const el = document.getElementById(`amostra-row-${amostraAlvo}`);
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const t = setTimeout(() => setAmostraAlvo(null), 5000);
+        return () => clearTimeout(t);
+    }, [amostraAlvo, loadingAmostras, amostras, abaAtiva]);
     const [todosVendedores, setTodosVendedores] = useState([]);
     const [showFilters, setShowFilters] = useState(false);
     const [filtroStatus, setFiltroStatus] = useFiltroSalvo('lista-pedidos:filtroStatus', 'TODOS');
@@ -330,7 +367,15 @@ const ListaPedidos = () => {
                     delete amostraParams.dataVendaDe;
                     delete amostraParams.dataVendaAte;
                 }
+                if (f.semCarga) {
+                    // "Só sem carga": o período NÃO vale (a amostra esquecida pode ser antiga)
+                    delete amostraParams.dataEntregaDe; delete amostraParams.dataEntregaAte;
+                    delete amostraParams.dataVendaDe; delete amostraParams.dataVendaAte;
+                    delete amostraParams.createdAtDe; delete amostraParams.createdAtAte;
+                    amostraParams.semCarga = 1;
+                }
                 const data = await amostraService.listar(amostraParams);
+                if (minhaCarga !== seqCarga.current) { return; }
                 setAmostras(data);
                 setLoadingAmostras(false);
                 return;
@@ -712,6 +757,7 @@ const ListaPedidos = () => {
             await amostraService.excluir(amostraId);
             toast.success('Amostra excluída com sucesso!');
             setAmostras(prev => prev.filter(a => a.id !== amostraId));
+            carregarResumoAmostras();
         } catch (error) {
             toast.error(error.response?.data?.error || 'Erro ao excluir amostra.');
         }
@@ -724,6 +770,7 @@ const ListaPedidos = () => {
         try {
             await amostraService.atualizarStatus(amostraId, proximo);
             setAmostras(prev => prev.map(a => a.id === amostraId ? { ...a, status: proximo } : a));
+            carregarResumoAmostras();
             toast.success(`Amostra movida para ${proximo}`);
         } catch (error) {
             toast.error('Erro ao atualizar status da amostra.');
@@ -839,8 +886,9 @@ const ListaPedidos = () => {
         if (!perEntrega.padrao || !perCriacao.padrao || !perVencimento.padrao) return true;
         if (filtros.embarqueNumero || filtros.motorista) return true;
         if (soEmAtraso) return true;
+        if (soSemCarga && abaAtiva === 'amostras') return true;
         return false;
-    }, [filtros, perEntrega, perCriacao, perVencimento, soEmAtraso]);
+    }, [filtros, perEntrega, perCriacao, perVencimento, soEmAtraso, soSemCarga, abaAtiva]);
 
     const limparFiltros = () => {
         setFiltros({ ...filtrosPadrao });
@@ -851,6 +899,7 @@ const ListaPedidos = () => {
         setBuscaServer('');
         setFiltroStatus('TODOS');
         setSoEmAtraso(false);
+        setSoSemCarga(false);
     };
 
     // Ação do estado vazio: se tem filtro/busca/status ativo, oferece limpar;
@@ -985,33 +1034,42 @@ const ListaPedidos = () => {
                 <div className="flex overflow-x-auto scrollbar-hide gap-1 pb-0.5">
                     <button
                         onClick={() => setAbaAtiva('pedidos')}
-                        className={`flex-shrink-0 px-3 py-1.5 text-[12px] sm:text-[13px] font-bold rounded-t border transition-colors ${abaAtiva === 'pedidos' ? 'bg-white text-blue-700 border-gray-200 border-b-white z-10 -mb-[1px]' : 'bg-gray-100 text-gray-500 border-transparent hover:text-gray-700'}`}
+                        className={`flex-shrink-0 whitespace-nowrap px-3 py-1.5 text-[12px] sm:text-[13px] font-bold rounded-t border transition-colors ${abaAtiva === 'pedidos' ? 'bg-white text-blue-700 border-gray-200 border-b-white z-10 -mb-[1px]' : 'bg-gray-100 text-gray-500 border-transparent hover:text-gray-700'}`}
                     >
                         Pedidos
                     </button>
                     <button
                         onClick={() => setAbaAtiva('especiais')}
-                        className={`flex-shrink-0 px-3 py-1.5 text-[12px] sm:text-[13px] font-bold rounded-t border transition-colors ${abaAtiva === 'especiais' ? 'bg-white text-purple-700 border-gray-200 border-b-white z-10 -mb-[1px]' : 'bg-gray-100 text-gray-500 border-transparent hover:text-gray-700'}`}
+                        className={`flex-shrink-0 whitespace-nowrap px-3 py-1.5 text-[12px] sm:text-[13px] font-bold rounded-t border transition-colors ${abaAtiva === 'especiais' ? 'bg-white text-purple-700 border-gray-200 border-b-white z-10 -mb-[1px]' : 'bg-gray-100 text-gray-500 border-transparent hover:text-gray-700'}`}
                     >
                         Especiais
                     </button>
                     <button
                         onClick={() => setAbaAtiva('bonificacao')}
-                        className={`flex-shrink-0 px-3 py-1.5 text-[12px] sm:text-[13px] font-bold rounded-t border transition-colors ${abaAtiva === 'bonificacao' ? 'bg-white text-green-700 border-gray-200 border-b-white z-10 -mb-[1px]' : 'bg-gray-100 text-gray-500 border-transparent hover:text-gray-700'}`}
+                        className={`flex-shrink-0 whitespace-nowrap px-3 py-1.5 text-[12px] sm:text-[13px] font-bold rounded-t border transition-colors ${abaAtiva === 'bonificacao' ? 'bg-white text-green-700 border-gray-200 border-b-white z-10 -mb-[1px]' : 'bg-gray-100 text-gray-500 border-transparent hover:text-gray-700'}`}
                     >
                         Bonificação
                     </button>
                     <button
                         onClick={() => setAbaAtiva('amostras')}
-                        className={`flex-shrink-0 flex items-center gap-1 px-3 py-1.5 text-[12px] sm:text-[13px] font-bold rounded-t border transition-colors ${abaAtiva === 'amostras' ? 'bg-white text-orange-700 border-gray-200 border-b-white z-10 -mb-[1px]' : 'bg-gray-100 text-gray-500 border-transparent hover:text-gray-700'}`}
+                        className={`flex-shrink-0 whitespace-nowrap flex items-center gap-1 px-3 py-1.5 text-[12px] sm:text-[13px] font-bold rounded-t border transition-colors ${abaAtiva === 'amostras' ? 'bg-white text-orange-700 border-gray-200 border-b-white z-10 -mb-[1px]' : 'bg-gray-100 text-gray-500 border-transparent hover:text-gray-700'}`}
                     >
                         <Package className="h-3.5 w-3.5" />
                         Amostras
+                        {resumoAmostras?.semCarga > 0 && (
+                            <span
+                                data-contador-amostras
+                                title={`${resumoAmostras.semCarga} amostra(s) aberta(s) sem carga`}
+                                className={`flex-none min-w-[18px] h-[18px] px-1 inline-flex items-center justify-center rounded-full text-[10px] font-bold text-white ${resumoAmostras.vermelhas > 0 ? 'bg-red-600' : 'bg-amber-500'}`}
+                            >
+                                {resumoAmostras.semCarga}
+                            </span>
+                        )}
                     </button>
                     {(user?.permissoes?.admin || user?.permissoes?.Pode_Fazer_Devolucao) && (
                         <button
                             onClick={() => setAbaAtiva('devolucoes')}
-                            className={`flex-shrink-0 flex items-center gap-1 px-3 py-1.5 text-[12px] sm:text-[13px] font-bold rounded-t border transition-colors ${abaAtiva === 'devolucoes' ? 'bg-white text-red-700 border-gray-200 border-b-white z-10 -mb-[1px]' : 'bg-gray-100 text-gray-500 border-transparent hover:text-gray-700'}`}
+                            className={`flex-shrink-0 whitespace-nowrap flex items-center gap-1 px-3 py-1.5 text-[12px] sm:text-[13px] font-bold rounded-t border transition-colors ${abaAtiva === 'devolucoes' ? 'bg-white text-red-700 border-gray-200 border-b-white z-10 -mb-[1px]' : 'bg-gray-100 text-gray-500 border-transparent hover:text-gray-700'}`}
                         >
                             <RotateCcw className="h-3.5 w-3.5" />
                             Devoluções
@@ -1198,6 +1256,20 @@ const ListaPedidos = () => {
             {abaAtiva === 'devolucoes' ? (
                 <ListaDevolucoes filtros={filtrosComDatas} />
             ) : abaAtiva === 'amostras' ? (
+                <>
+                <div className="flex flex-wrap items-center gap-2 mb-2">
+                    <button
+                        type="button"
+                        data-filtro-so-sem-carga
+                        onClick={() => setSoSemCarga(v => !v)}
+                        aria-pressed={!!soSemCarga}
+                        className={`flex items-center gap-1 px-3 py-1.5 min-h-[36px] text-[12px] font-bold rounded-full border transition-colors shrink-0 ${soSemCarga ? 'bg-red-100 text-red-800 border-red-300' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
+                    >
+                        <AlertCircle className="h-3.5 w-3.5" />
+                        Só sem carga
+                    </button>
+                    {soSemCarga && <span className="text-[11px] text-gray-500">mostrando amostras abertas sem carga, ignorando o período</span>}
+                </div>
                 <div className="bg-white rounded-xl overflow-hidden border border-gray-200 shadow-sm">
                     <div className="divide-y divide-gray-200">
                         {loadingAmostras ? (
@@ -1217,9 +1289,21 @@ const ListaPedidos = () => {
                                 const nomeDestinatario = amostra.cliente?.NomeFantasia || amostra.cliente?.Nome || amostra.lead?.nomeEstabelecimento || 'Destinatário Desconhecido';
                                 const cidadeBairro = amostra.cliente ? `${amostra.cliente.End_Cidade || ''} ${amostra.cliente.End_Bairro ? ' - ' + amostra.cliente.End_Bairro : ''}` : '';
                                 const alvoClienteAmostra = amostra.cliente || amostra.lead || null;
-                                
+                                // Data de entrega SEMPRE pela string do dia (nunca new Date(): o fuso mostrava o dia anterior)
+                                const diaEntrega = amostra.dataEntregaDia || (typeof amostra.dataEntrega === 'string' ? amostra.dataEntrega.slice(0, 10) : '');
+                                const diaFmt = /^\d{4}-\d{2}-\d{2}$/.test(diaEntrega) ? `${diaEntrega.slice(8, 10)}/${diaEntrega.slice(5, 7)}/${diaEntrega.slice(0, 4)}` : '-';
+                                const semCargaAberta = !amostra.embarqueId && ['SOLICITADA', 'PREPARACAO', 'LIBERADO'].includes(amostra.status);
+                                const urgente = semCargaAberta && amostra.urgencia === 'vermelho';
+                                const diasAtraso = (() => {
+                                    // dias de atraso pela diferença de strings de dia ('YYYY-MM-DD' vs hoje do servidor/local)
+                                    if (!urgente || !diaEntrega) return 0;
+                                    const hoje = resumoAmostras?.hoje || dataLocalHoje();
+                                    return Math.max(0, Math.round((Date.parse(`${hoje}T12:00:00Z`) - Date.parse(`${diaEntrega}T12:00:00Z`)) / 86400000));
+                                })();
+                                const emAlvo = amostraAlvo === amostra.id;
+
                                 return (
-                                    <div key={amostra.id} className="border-b border-gray-100">
+                                    <div key={amostra.id} id={`amostra-row-${amostra.id}`} className={`border-b border-gray-100 ${urgente ? 'border-l-4 !border-l-red-500' : ''} ${emAlvo ? 'ring-2 ring-primary ring-inset bg-yellow-50' : ''}`}>
                                         <div
                                             className="p-3 hover:bg-gray-50 cursor-pointer transition-colors"
                                             onClick={() => setExpandedAmostra(isExpanded ? null : amostra.id)}
@@ -1254,12 +1338,29 @@ const ListaPedidos = () => {
                                                     </div>
                                                     <div className="flex flex-col gap-0.5 text-[11px] text-gray-500 mb-1">
                                                         <div className="flex items-center gap-1 font-medium">
-                                                            <span className="text-gray-800">Entrega: {amostra.dataEntrega ? new Date(amostra.dataEntrega).toLocaleDateString('pt-BR') : '-'}</span>
+                                                            <span className="text-gray-800">Entrega: {diaFmt}</span>
                                                             <span className="text-gray-300">|</span>
                                                             <span>Criação: {new Date(amostra.createdAt).toLocaleDateString('pt-BR')}</span>
                                                         </div>
                                                         {cidadeBairro.trim() && <div className="text-gray-500 capitalize">{cidadeBairro.toLowerCase()}</div>}
                                                         <div className="text-[10px] text-gray-500">Solicitado por: {amostra.solicitadoPor?.nome || '-'}</div>
+                                                        {amostra.embarque?.numero != null && (
+                                                            <div>
+                                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-full bg-sky-100 text-sky-800 border border-sky-200">
+                                                                    <Truck className="h-3 w-3" /> Carga #{amostra.embarque.numero}
+                                                                </span>
+                                                            </div>
+                                                        )}
+                                                        {urgente && (
+                                                            <div className="flex items-start gap-1 mt-0.5 text-[11px] font-semibold text-red-700 bg-red-50 border border-red-200 rounded px-2 py-1">
+                                                                <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-px" />
+                                                                <span>
+                                                                    {diasAtraso > 0
+                                                                        ? `Entrega ATRASADA há ${diasAtraso} ${diasAtraso === 1 ? 'dia' : 'dias'} e a amostra ainda não está em nenhuma carga`
+                                                                        : 'Entrega é HOJE e a amostra ainda não está em nenhuma carga'}
+                                                                </span>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </div>
                                                 <div className="flex flex-col items-end gap-1.5 shrink-0">
@@ -1354,6 +1455,7 @@ const ListaPedidos = () => {
                         )}
                     </div>
                 </div>
+                </>
             ) : (
                 /* Conteúdo: Pedidos e Especiais */
                 <div className="bg-white rounded-xl overflow-hidden border border-gray-200 shadow-sm">
@@ -2269,7 +2371,14 @@ const ListaPedidos = () => {
 
             {/* Modal de impressão em lote */}
             {etiquetaAmostra && (
-                <EtiquetaAmostraModal amostra={etiquetaAmostra} onClose={() => setEtiquetaAmostra(null)} />
+                <EtiquetaAmostraModal
+                    amostra={etiquetaAmostra}
+                    onClose={() => setEtiquetaAmostra(null)}
+                    onStatus={(novo) => {
+                        setAmostras(prev => prev.map(a => a.id === etiquetaAmostra.id ? { ...a, status: novo } : a));
+                        carregarResumoAmostras();
+                    }}
+                />
             )}
             {loteModal && (
                 <ImprimirLoteModal

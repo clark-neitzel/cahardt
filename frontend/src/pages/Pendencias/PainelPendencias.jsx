@@ -55,14 +55,25 @@ const SkeletonBloco = () => (
 // Uma linha (item) de um bloco: título/subtítulo/valor + botão de ação (1 clique
 // quando o item traz `acao`, senão "Abrir" leva para a tela original).
 // Pedido de cliente em atraso (especial) abre a lista de Pedidos já filtrada: "Só clientes em atraso".
-const rotaDoItem = (item) => (item.rota === '/pedidos' && item.origem === 'ESPECIAL' ? '/pedidos?soEmAtraso=1&aba=especiais' : item.rota);
+const rotaDoItem = (item) => item.rotaAbrir || (item.rota === '/pedidos' && item.origem === 'ESPECIAL' ? '/pedidos?soEmAtraso=1&aba=especiais' : item.rota);
 
 const LinhaPendencia = ({ item, onExecutarAcao, executando, navigate }) => {
     const valor = item.valor != null ? fmtMoeda(item.valor) : null;
     const data = fmtData(item.dataRef);
+    // Item com severidade própria (ex.: amostra sem carga) ganha a barra colorida na esquerda
+    const estiloItem = item.severidade ? SEVERIDADE_ESTILO[item.severidade] : null;
+    const botaoAbrir = (
+        <button
+            type="button"
+            onClick={() => { const r = rotaDoItem(item); if (r) navigate(r); }}
+            className="px-3 py-2 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full text-xs font-medium whitespace-nowrap min-h-[44px]"
+        >
+            Abrir
+        </button>
+    );
     return (
-        <div className="flex items-center justify-between gap-3 py-2.5 border-b border-gray-100 last:border-b-0">
-            <div className="min-w-0 flex-1">
+        <div className={`flex flex-wrap items-center justify-between gap-x-3 gap-y-2 py-2.5 border-b border-gray-100 last:border-b-0 ${estiloItem ? `${estiloItem.barra} pl-3` : ''}`}>
+            <div className="min-w-0 flex-1 basis-40">
                 <p className="text-sm font-semibold text-gray-900 truncate">{item.titulo}</p>
                 <p className="text-xs text-gray-500 truncate">
                     {item.subtitulo}
@@ -71,24 +82,20 @@ const LinhaPendencia = ({ item, onExecutarAcao, executando, navigate }) => {
                 </p>
             </div>
             {valor && <span className="text-sm font-semibold text-gray-700 whitespace-nowrap hidden sm:inline">{valor}</span>}
-            {item.acao ? (
-                <button
-                    type="button"
-                    disabled={executando}
-                    onClick={() => onExecutarAcao(item)}
-                    className="px-3 py-2 bg-primary hover:bg-primaryDark text-white rounded-full text-xs font-semibold whitespace-nowrap disabled:opacity-50 min-h-[44px]"
-                >
-                    {executando ? '...' : item.acao.label}
-                </button>
-            ) : (
-                <button
-                    type="button"
-                    onClick={() => item.rota && navigate(rotaDoItem(item))}
-                    className="px-3 py-2 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full text-xs font-medium whitespace-nowrap min-h-[44px]"
-                >
-                    Abrir
-                </button>
-            )}
+            <div className="flex items-center gap-2">
+                {item.acao && (
+                    <button
+                        type="button"
+                        disabled={executando}
+                        onClick={() => onExecutarAcao(item)}
+                        className="px-3 py-2 bg-primary hover:bg-primaryDark text-white rounded-full text-xs font-semibold whitespace-nowrap disabled:opacity-50 min-h-[44px]"
+                    >
+                        {executando ? '...' : item.acao.label}
+                    </button>
+                )}
+                {/* Só ação OU só "Abrir" nos blocos antigos; os dois juntos quando o item traz rotaAbrir */}
+                {(!item.acao || item.rotaAbrir) && botaoAbrir}
+            </div>
         </div>
     );
 };

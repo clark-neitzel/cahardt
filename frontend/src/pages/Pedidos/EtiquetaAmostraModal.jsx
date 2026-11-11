@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { X, AlertTriangle, Minus, Plus, Loader2 } from 'lucide-react';
 import ImprimirDireto from '../PCP/ImprimirDireto';
 import { useEscalaPreview } from '../PCP/OrientacaoEtiqueta';
@@ -14,11 +14,14 @@ import { montarEtiquetaAmostra, prepararEtiquetaAmostra } from './etiquetaAmostr
 // busca a amostra completa ao abrir e, enquanto carrega, monta a prévia com o que já tem.
 const BTN_MAIS_MENOS = 'min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-full border border-gray-300 hover:bg-gray-50';
 
-export default function EtiquetaAmostraModal({ amostra, onClose }) {
+export default function EtiquetaAmostraModal({ amostra, onClose, onStatus }) {
     const [completa, setCompleta] = useState(null);
     const [erro, setErro] = useState('');
     const [copias, setCopias] = useState(1);
     const [fontesOk, setFontesOk] = useState(false);
+    const statusAvisado = useRef(false); // avança o status uma só vez por abertura do modal
+    const completaRef = useRef(null);
+    completaRef.current = completa;
 
     useEffect(() => { let vivo = true; carregarFontesFuncionario().then(() => vivo && setFontesOk(true)); return () => { vivo = false; }; }, []);
     useEffect(() => {
@@ -45,6 +48,17 @@ export default function EtiquetaAmostraModal({ amostra, onClose }) {
 
     const numero = montada.dados.numero;
     const nome = montada.dados.nome;
+
+    // Depois de imprimir (Zebra ou navegador): SOLICITADA -> PREPARACAO. Falha aqui NUNCA atrapalha a impressão.
+    const aoImprimir = () => {
+        if (statusAvisado.current || !amostra?.id) return;
+        const statusAtual = (completaRef.current || amostra).status;
+        if (statusAtual !== 'SOLICITADA') return;
+        statusAvisado.current = true;
+        amostraService.marcarEtiquetaImpressa(amostra.id)
+            .then((r) => { if (r?.status && onStatus) onStatus(r.status); })
+            .catch(() => { /* o status pode ser avançado depois pelo botão da lista */ });
+    };
 
     const imprimirNavegador = () => {
         // a Zebra grande é configurada em paisagem: página 120×100 e a etiqueta (100×120) girada 90°
@@ -113,6 +127,7 @@ export default function EtiquetaAmostraModal({ amostra, onClose }) {
                         total={0}
                         referencia={{ tipo: 'AMOSTRA', id: String(amostra?.id ?? ''), rotulo: `Amostra ${numero} — ${nome}` }}
                         onNavegador={imprimirNavegador}
+                        onImpresso={aoImprimir}
                         preparar={() => prepararEtiquetaAmostra(dados)}
                     />
                     <p className="text-xs text-gray-500">Pelo navegador: papel 120 × 100 mm (paisagem), margem 0, escala 100%.</p>

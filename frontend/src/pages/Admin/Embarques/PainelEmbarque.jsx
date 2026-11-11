@@ -8,6 +8,7 @@ import NovaCargaModal from './NovaCargaModal';
 import DetalhesCargaModal from './DetalhesCargaModal';
 import PageHeader from '../../../components/PageHeader';
 import EstadoVazio from '../../../components/EstadoVazio';
+import AmostrasForaDeCarga from './AmostrasForaDeCarga';
 
 const PainelEmbarque = () => {
     const [embarques, setEmbarques] = useState([]);
@@ -15,6 +16,7 @@ const PainelEmbarque = () => {
     const [isNovaCargaOpen, setIsNovaCargaOpen] = useState(false);
     const [vendedores, setVendedores] = useState([]);
     const [cargaSelecionadaId, setCargaSelecionadaId] = useState(null);
+    const [recarregarFaixa, setRecarregarFaixa] = useState(0); // sobe para a faixa de amostras recarregar
 
     const fetchData = async () => {
         try {
@@ -55,11 +57,19 @@ const PainelEmbarque = () => {
     const onCargaCriada = () => {
         setIsNovaCargaOpen(false);
         fetchData();
+        setRecarregarFaixa((n) => n + 1);
         toast.success('Novo embarque registrado na doca.');
     };
 
     return (
         <div className="w-full px-3 md:px-0 py-4 md:py-6">
+            {/* Amostras abertas que ainda não estão em nenhuma carga (some quando vazia) */}
+            <AmostrasForaDeCarga
+                embarques={embarques}
+                recarregarKey={recarregarFaixa}
+                onMudou={fetchData}
+                onNovaCarga={() => setIsNovaCargaOpen(true)}
+            />
             <div className="bg-white rounded-t-xl shadow-sm border border-gray-200 border-b-0">
                 <PageHeader
                     icon={Truck}
@@ -128,6 +138,11 @@ const PainelEmbarque = () => {
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-center text-gray-900 font-bold">
                                     <span className="bg-gray-100 px-3 py-1 rounded-full text-xs border border-gray-200">{emb._count?.pedidos}</span>
+                                    {emb._count?.amostras > 0 && (
+                                        <span className="ml-1.5 bg-amber-100 text-amber-800 px-2 py-1 rounded-full text-xs font-semibold border border-amber-200">
+                                            + {emb._count.amostras} {emb._count.amostras === 1 ? 'amostra' : 'amostras'}
+                                        </span>
+                                    )}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                     <button
@@ -163,7 +178,7 @@ const PainelEmbarque = () => {
                                 <div className="flex items-center justify-between mb-1">
                                     <span className="font-mono font-bold text-[14px] text-gray-900">Carga #{emb.numero}</span>
                                     <span className="bg-gray-100 px-2 py-0.5 rounded-full text-[11px] font-bold border border-gray-200 text-gray-700">
-                                        {emb._count?.pedidos} pedidos
+                                        {emb._count?.pedidos} pedidos{emb._count?.amostras > 0 ? ` · ${emb._count.amostras} ${emb._count.amostras === 1 ? 'amostra' : 'amostras'}` : ''}
                                     </span>
                                 </div>
                                 <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-gray-500">
@@ -195,7 +210,7 @@ const PainelEmbarque = () => {
                 <DetalhesCargaModal
                     embarqueId={cargaSelecionadaId}
                     onClose={() => setCargaSelecionadaId(null)}
-                    onUpdated={fetchData}
+                    onUpdated={() => { fetchData(); setRecarregarFaixa((n) => n + 1); }}
                     motoristas={vendedores}
                 />
             )}

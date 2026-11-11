@@ -12,7 +12,7 @@ Mapa da expedição para dividir entre as cargas/veículos **tudo que vai para a
 
 - **Pedidos faturados** do período escolhido;
 - **Bonificações (BN#)** e **pedidos especiais (ZZ#)** — só depois de **aprovados** (a aprovação é o "faturamento" deles; pendente de aprovação não embarca e não aparece);
-- **Amostras (AM#)** — as **liberadas** que ainda não estão em carga nenhuma, mais as que já estão penduradas nas cargas do dia (inclusive as já entregues, que ficam travadas). Amostra solicitada/em preparação/cancelada não aparece;
+- **Amostras (AM#)** — as **abertas sem carga** (solicitada, em preparação ou liberada — **aparecem mesmo sem ter sido liberadas**, para ninguém esquecer), mais as que já estão penduradas nas cargas do dia (inclusive as já entregues, que ficam travadas). A que ainda **não foi liberada** aparece com pino tracejado e a nota **"falta preparar"**; ao arrastar para uma carga e **Confirmar**, o sistema pergunta *"Essa amostra ainda não foi liberada. Liberar e embarcar?"* — se confirmar, ela é liberada e embarcada de uma vez; se cancelar, nada é gravado. Amostra cancelada não aparece. Cada amostra aberta mostra a **urgência pela data de entrega** (vermelho = hoje/atrasada, âmbar = amanhã, cinza = resto/sem data);
 - **Cobranças de rota (CB#)** — só as que já estão penduradas nas cargas do dia. O mapa **não** lista títulos em aberto soltos: cobrança nova nasce pelo botão **"Inserir Cobrança"** na tela da carga (Painel de Expedição).
 
 Pedido cancelado, devolvido ou excluído dentro de uma carga **não conta como entrega** e não aparece.
@@ -33,6 +33,7 @@ Acesso: menu Embarque → botão **"Mapa das entregas"** no topo do Painel de Ex
   - **BN** (roxo) bonificação · **ZZ** (roxo) pedido especial · **A** (âmbar) amostra · **$** (verde) cobrança · **P** (branco, borda cinza) pedido comum.
   - O **P** só aparece em **pino misto**: quando o cliente leva pedido comum junto com amostra, cobrança, especial ou bonificação, o **P** aparece ao lado das outras marcações. **Pino que leva só pedido comum fica sem marcação nenhuma** (é o caso mais comum, por isso limpo).
 - **Marca cinza `FORA` embaixo do pino** — o item está numa carga que você **tirou da divisão automática** (caixa "Participa da divisão automática" desmarcada no cartão da carga). O pino também fica levemente esmaecido, mas quem identifica o caso é a marca `FORA`: só o esmaecido se confundia com o pino travado.
+- **Pino tracejado "falta preparar"** — amostra solicitada/em preparação, ainda sem carga. Move normalmente; a liberação é pedida no Confirmar. A **"Sugerir divisão" nunca distribui** essa amostra.
 - **Cadeado 🔒 (pino apagado)** — item que **não se move mais**: pedido que já saiu para entrega (status diferente de PENDENTE), amostra já **entregue**, cobrança que já foi **cobrada / não cobrada / baixada**. Se um cliente tem itens travados e itens livres, só os livres se movem.
 - A legenda no canto inferior esquerdo do mapa resume esses estados.
 - Tocar num pino abre o cartão do cliente: nome, cidade, a lista do que vai para ele (etiqueta e valor de cada item) e o menu **"Mover para…"** — que **leva tudo junto**.
@@ -86,7 +87,7 @@ Acesso: menu Embarque → botão **"Mapa das entregas"** no topo do Painel de Ex
 ## Rascunho e confirmação (nada grava no clique)
 
 1. Mover um pino (ou usar "Sugerir divisão" / "Trocar") só muda a tela — aparece a faixa **"alterações não aplicadas"** com **Confirmar** e **Descartar**.
-2. **Confirmar** grava tudo de uma vez nas cargas. Se o banco tiver mudado desde que a tela foi carregada, **nada é aplicado** — a tela diz **qual item** e **por quê**, recarrega o mapa e você confirma de novo. São três situações, todas tratadas do mesmo jeito: o item **sumiu** (foi apagado), **mudou de carga** (outro operador mexeu) ou **mudou de situação** (amostra entregue, cobrança registrada na rua pelo motorista, entrega já concluída).
+2. **Confirmar** grava tudo de uma vez nas cargas. Se houver amostra ainda não liberada indo para uma carga, antes aparece a pergunta *"Liberar e embarcar?"* (a amostra vira Liberada e entra na carga no mesmo passo; amostra entregue ou cancelada continua sendo recusada). Se o banco tiver mudado desde que a tela foi carregada, **nada é aplicado** — a tela diz **qual item** e **por quê**, recarrega o mapa e você confirma de novo. São três situações, todas tratadas do mesmo jeito: o item **sumiu** (foi apagado), **mudou de carga** (outro operador mexeu) ou **mudou de situação** (amostra entregue, cobrança registrada na rua pelo motorista, entrega já concluída).
    - Diferente disso é o aviso de item que **não pode ser remanejado por regra** (especial/bonificação sem aprovação, pedido do Delivery, pedido cancelado indo para outra carga): aí recarregar não resolve — tire o item da mudança e confirme de novo.
    - Se o motorista **já organizou a rota** dele, o Confirmar **funciona normalmente**: o pedido remanejado é retirado automaticamente da rota organizada do motorista. Ele vê a rota **sem aquela parada** e o **número de paradas já atualiza na hora**, mas **km e tempo ficam como estavam, marcados como desatualizados** — a tela dele avisa algo como *"a expedição mudou sua carga — organize a rota de novo"*, e os números só voltam a valer depois que ele reorganizar. (Antes o sistema recalculava a duração sozinho e a conta saía **menor** do que a realidade, porque a volta à base sumia da soma.)
    - O mesmo aviso aparece para o motorista que **recebeu** um pedido: a rota organizada dele fica marcada como desatualizada (a parada nova só entra depois de **Organizar Rota**). O botão **Recalcular horários** do app dele **não** tira esse aviso — só o Organizar Rota.
@@ -136,7 +137,7 @@ Se a volta prevista de uma carga passa de 16:30, o horário aparece em âmbar ("
 - Não define a **ordem** das entregas (isso é do motorista, em Minhas Entregas).
 - Não cria nem imprime cargas (isso é no Painel de Expedição — o link "abrir carga" leva até lá).
 - Não cria cobrança nova nem busca títulos em aberto (isso é o "Inserir Cobrança" da tela da carga).
-- Não libera amostra: amostra só entra na divisão depois de **liberada** na tela de Amostras.
+- Não libera amostra por conta própria: a amostra ainda não liberada só é liberada se **você confirmar** "Liberar e embarcar" ao aplicar a divisão; a divisão automática ("Sugerir divisão") nunca mexe nela.
 - Não aprova especial/bonificação: eles só aparecem aqui depois de aprovados na tela de Pedidos.
 - Não mexe em item que já saiu / já foi trabalhado (cadeado).
 - Não cancela, aprova nem edita pedido: o popup do pedido aqui é só consulta (a tela completa é a aba Pedidos).
