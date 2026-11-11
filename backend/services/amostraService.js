@@ -1,6 +1,7 @@
 const prisma = require('../config/database');
 const gcal = require('./googleCalendarService');
 const amostraAvisoService = require('./amostraAvisoService');
+const conferenciaCarga = require('./conferenciaCargaService');
 const { getDataReferencia } = require('../utils/dataReferenciaBrasilia');
 
 const STATUS_ABERTOS = ['SOLICITADA', 'PREPARACAO', 'LIBERADO'];
@@ -212,12 +213,119 @@ const amostraService = {
         if (!statusValidos.includes(novoStatus)) {
             throw new Error(`Status inválido: ${novoStatus}`);
         }
+        // Cancelar exige motivo (quem/quando/por quê) e tira da carga — só pelo `cancelar` abaixo.
+        if (novoStatus === 'CANCELADA') {
+            throw new Error('Use o cancelamento com motivo.');
+        }
         const atualizada = await prisma.amostra.update({
             where: { id },
             data: { status: novoStatus }
         });
         gcal.disparar(gcal.sincronizarAmostra, id); // agenda Produção: cria/atualiza (preparação/liberada) ou apaga (solicitada/cancelada)
         return atualizada;
+    },
+
+    // Só o necessário para a checagem de permissão do cancelar.
+    buscarSolicitante: async (id) => {
+        return await prisma.amostra.findUnique({ where: { id }, select: { id: true, solicitadoPorId: true } });
+    },
+
+    // Cancela com motivo (mantém o registro visível como CANCELADA). Se estava numa carga,
+    // desvincula — amostra cancelada não pode seguir no romaneio do motorista.
+    // Retorna { codigo: 200|400|404|409, ... } (mesmo padrão de liberar/marcarEtiquetaImpressa).
+    cancelar: async (id, { motivo, usuario } = {}) => {
+        const motivoLimpo = typeof motivo === 'string' ? motivo.trim() : '';
+        if (motivoLimpo.length < 3 || motivoLimpo.length > 500) {
+            return { codigo: 400, error: 'Informe o motivo do cancelamento.' };
+        }
+        const atual = await prisma.amostra.findUnique({
+            where: { id },
+            select: {
+                id: true, numero: true, status: true, embarqueId: true,
+                embarque: { select: { numero: true } },
+                // Nome do destinatário p/ o histórico da carga (mesmo formato do DELETE /embarques/:id/amostras/:amostraId).
+                cliente: { select: { NomeFantasia: true, Nome: true } },
+                lead: { select: { nomeEstabelecimento: true } },
+            },
+        });
+        if (!atual) return { codigo: 404, error: 'Amostra não encontrada.' };
+        if (atual.status === 'ENTREGUE') return { codigo: 409, error: 'Amostra já entregue — não dá para cancelar.' };
+        if (atual.status === 'CANCELADA') return { codigo: 409, error: 'Amostra já está cancelada.' };
+
+        const usuarioId = usuario?.id || null;
+        let usuarioNome = usuario?.nome || null;
+        if (!usuarioNome && usuarioId) {
+            const v = await prisma.vendedor.findUnique({ where: { id: usuarioId }, select: { nome: true } }).catch(() => null);
+            usuarioNome = v?.nome || null;
+        }
+        const agora = new Date();
+        const cargaAntigaId = atual.embarqueId || null;
+        const cargaNumero = atual.embarque?.numero ?? null;
+
+        // Só o atômico: status + carimbo do cancelamento + saída da carga (+ zera a conferência da carga,
+        // igual ao DELETE /embarques/:id/amostras/:amostraId). Condicional no status: dois cliques
+        // simultâneos não cancelam duas vezes.
+        const r = await prisma.$transaction(async (tx) => {
+            return await tx.amostra.updateMany({
+                where: { id, status: { notIn: ['ENTREGUE', 'CANCELADA'] } },
+                data: {
+                    status: 'CANCELADA',
+                    motivoCancelamento: motivoLimpo,
+                    canceladoEm: agora,
+                    canceladoPorId: usuarioId,
+                    canceladoPorNome: usuarioNome,
+                    ...(cargaAntigaId ? { embarqueId: null, ...conferenciaCarga.RESET_CONFERENCIA } : {}),
+                },
+            });
+        }, { timeout: 20000, maxWait: 10000 });
+        if (r.count === 0) {
+            // Mudou entre a leitura e a gravação (outro usuário entregou/cancelou).
+            const dep = await prisma.amostra.findUnique({ where: { id }, select: { status: true } });
+            if (!dep) return { codigo: 404, error: 'Amostra não encontrada.' };
+            if (dep.status === 'CANCELADA') return { codigo: 409, error: 'Amostra já está cancelada.' };
+            return { codigo: 409, error: 'Amostra já entregue — não dá para cancelar.' };
+        }
+
+        // Fora da transação (best-effort, nunca desfaz o cancelamento):
+        // agenda "Produção" apaga o evento de amostra cancelada.
+        try { gcal.disparar(gcal.sincronizarAmostra, id); }
+        catch (e) { console.error('[Amostra] Falha ao sincronizar agenda após cancelar (cancelamento já efetivado):', e.message); }
+        // Versionamento da carga (mesmo padrão de registrarVersaoEmbarque em routes/embarques.js —
+        // replicado aqui para não importar rota dentro de service).
+        if (cargaAntigaId) {
+            try {
+                const emb = await prisma.embarque.update({
+                    where: { id: cargaAntigaId },
+                    data: { versao: { increment: 1 } },
+                    select: { versao: true },
+                });
+                await prisma.embarqueVersaoLog.create({
+                    data: {
+                        embarqueId: cargaAntigaId,
+                        versao: emb.versao,
+                        acao: 'AMOSTRA_REMOVIDA',
+                        alteracoes: {
+                            motivo: 'AMOSTRA_CANCELADA',
+                            amostras: [{
+                                numero: `AM#${atual.numero}`,
+                                destinatario: atual.cliente?.NomeFantasia || atual.cliente?.Nome || atual.lead?.nomeEstabelecimento || null,
+                                motivoCancelamento: motivoLimpo,
+                            }],
+                        },
+                        alteradoPorId: usuarioId,
+                        alteradoPorNome: usuarioNome,
+                    },
+                });
+            } catch (e) {
+                console.error('[EmbarqueVersao] Falha ao registrar versão (AMOSTRA_REMOVIDA por cancelamento) — cancelamento NÃO afetado:', e.message);
+            }
+        }
+
+        const amostra = await prisma.amostra.findUnique({
+            where: { id },
+            select: { id: true, numero: true, status: true, motivoCancelamento: true, canceladoEm: true, canceladoPorNome: true, embarqueId: true },
+        });
+        return { codigo: 200, ok: true, removidaDaCarga: !!cargaAntigaId, cargaNumero, amostra };
     },
 
     excluir: async (id, { forceAdmin = false } = {}) => {

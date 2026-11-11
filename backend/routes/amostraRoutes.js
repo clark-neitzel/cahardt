@@ -8,6 +8,7 @@ router.get('/resumo-abertas', amostraController.resumoAbertas);
 router.get('/:id', amostraController.buscarPorId);
 router.patch('/:id/status', amostraController.atualizarStatus);
 router.post('/:id/liberar', amostraController.liberar);
+router.post('/:id/cancelar', amostraController.cancelar);
 router.post('/:id/etiqueta-impressa', amostraController.etiquetaImpressa);
 router.post('/:id/enviar-whatsapp', amostraController.enviarWhatsapp);
 router.delete('/:id', amostraController.excluir);

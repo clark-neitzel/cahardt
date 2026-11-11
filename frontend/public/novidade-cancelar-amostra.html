@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Cancelar amostra com motivo — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<meta property="og:title" content="🚫 Novidade no Hardt App: cancelar amostra com motivo">
+<meta property="og:description" content="Amostra que não vai mais (cliente não aceitou, foi esquecida) agora pode ser cancelada com motivo. Ela continua na lista como Cancelada, sai da carga e some das pendências.">
+<meta property="og:type" content="website">
+<style>
+  :root { --primary:#00754A; --primary-dark:#006241; --house:#1E3932; --mint:#d4e9e2; --cream:#f2f0eb; --gold:#cba258; --ink:rgba(0,0,0,.87); --ink-soft:#5f6b66; letter-spacing:-0.01em; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--cream); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; line-height:1.55; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:620px; margin:0 auto; padding:0 16px 56px; }
+  .hero { background:linear-gradient(168deg,var(--house) 0%,#16302a 100%); color:#fff; padding:40px 16px 96px; }
+  .hero-inner { max-width:620px; margin:0 auto; text-align:center; }
+  .eyebrow { display:inline-block; background:var(--gold); color:#2b230f; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.14em; padding:6px 14px; border-radius:999px; margin-bottom:18px; }
+  .hero h1 { font-size:clamp(28px,7vw,40px); font-weight:800; line-height:1.12; margin:0 0 12px; text-wrap:balance; }
+  .hero p { color:rgba(255,255,255,.75); font-size:16px; max-width:46ch; margin:0 auto; text-wrap:balance; }
+
+  .sec-label { font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.16em; color:var(--primary-dark); margin:34px 4px 12px; }
+  .acc { background:#fff; border:1px solid #e3e1da; border-radius:16px; margin-bottom:10px; overflow:hidden; box-shadow:0 1px 2px rgba(30,57,50,.05); }
+  .acc-head { width:100%; display:flex; align-items:center; gap:12px; background:none; border:none; font:inherit; text-align:left; padding:15px 16px; cursor:pointer; min-height:56px; }
+  .acc-ico { width:38px; height:38px; border-radius:11px; background:var(--mint); display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
+  .acc-head strong { flex:1; font-size:15.5px; font-weight:700; }
+  .acc-seta { color:#9aa5a0; transition:transform .2s; font-size:13px; }
+  .acc.aberto .acc-seta { transform:rotate(180deg); }
+  .acc-corpo { display:none; padding:0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display:block; }
+  .acc-corpo p, .acc-corpo li { font-size:14px; color:var(--ink-soft); }
+  .acc-corpo p { margin:0 0 10px; } .acc-corpo ul, .acc-corpo ol { margin:0; padding-left:18px; } .acc-corpo li { margin-bottom:7px; } .acc-corpo b { color:var(--ink); }
+  @media (max-width:420px) { .acc-corpo { padding-left:16px; } }
+
+  .tela { background:#fff; border:1px solid #e3e1da; border-radius:16px; overflow:hidden; margin-bottom:12px; box-shadow:0 1px 2px rgba(30,57,50,.05); }
+  .tela-titulo { background:var(--house); color:#fff; padding:12px 16px; font-size:13px; font-weight:800; display:flex; align-items:center; gap:8px; }
+  .tela-corpo { padding:16px; background:#f7f6f2; }
+  .app-card { background:#fff; border:1px solid #e5e3dc; border-radius:12px; overflow:hidden; margin-bottom:10px; }
+  .app-card-body { padding:12px; }
+  .pin { display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; border-radius:999px; background:var(--gold); color:#2b230f; font-size:11px; font-weight:800; margin-left:6px; flex-shrink:0; }
+  .legenda { padding:12px 16px 4px; background:#fff; border-top:1px solid #edece6; }
+  .legenda div { display:flex; gap:8px; font-size:13px; color:var(--ink-soft); margin-bottom:8px; }
+  .legenda .pin { margin:1px 0 0; }
+  .chip { font-size:10px; font-weight:800; padding:2px 6px; border-radius:4px; border:1px solid #fed7aa; background:#fff7ed; color:#c2410c; }
+  .aviso { background:#fff7ed; border:1px solid #fed7aa; border-radius:12px; padding:12px 14px; font-size:13.5px; color:#7c2d12; margin:0 0 10px; }
+
+  .faixa-am { background:#fffbeb; border:1px solid #fde68a; border-radius:12px; padding:10px; margin-bottom:10px; }
+  .faixa-am .cab { font-size:10px; font-weight:800; letter-spacing:.12em; color:#92400e; margin-bottom:8px; }
+  .linha-am { background:#fff; border:1px solid #e5e3dc; border-left:4px solid #d1d5db; border-radius:10px; padding:9px 10px; margin-bottom:6px; font-size:12px; }
+  .linha-am.verm { border-left-color:#ef4444; }
+  .linha-am b { font-size:13px; } .linha-am .sub { color:#6b756f; margin:3px 0 7px; }
+  .bt { display:inline-block; font-size:11px; font-weight:700; padding:6px 11px; border-radius:999px; border:1.5px solid var(--primary); color:var(--primary); background:#fff; margin:0 4px 4px 0; }
+  .bt.cheio { background:var(--primary); color:#fff; }
+  .bt.verm { border-color:#fecaca; color:#b91c1c; }
+  .bt.verm.cheio { background:#dc2626; border-color:#dc2626; color:#fff; }
+  .bt.cinza { border-color:#d1d5db; color:#374151; }
+  .st { font-size:10px; font-weight:800; padding:2px 7px; border-radius:999px; }
+  .st.sol { background:#dbeafe; color:#1e40af; } .st.canc { background:#fee2e2; color:#b91c1c; }
+  .vm { font-size:10px; font-weight:800; padding:2px 7px; border-radius:999px; background:#fee2e2; color:#b91c1c; }
+  .dialogo { background:#fff; border:1px solid #e5e3dc; border-radius:14px; padding:14px; box-shadow:0 8px 24px rgba(0,0,0,.08); }
+  .dialogo .tit { font-size:10px; font-weight:800; letter-spacing:.12em; color:#4b5563; text-transform:uppercase; }
+  .dialogo .sub { font-size:13px; color:#555; margin:2px 0 10px; }
+  .campo { border:1px solid #d1d5db; border-radius:6px; padding:8px 10px; font-size:12.5px; color:#111; background:#fff; min-height:58px; margin:4px 0 2px; }
+  .campo.vazio { color:#9ca3af; }
+  .lbl { font-size:12px; font-weight:600; color:#374151; margin-top:8px; }
+  .nota-amb { background:#fffbeb; border:1px solid #fde68a; color:#92400e; border-radius:8px; padding:7px 9px; font-size:11px; margin:8px 0; }
+  .motivo { font-size:11px; color:#b91c1c; margin-top:4px; }
+  .toast { display:inline-block; background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:7px 11px; font-size:12px; box-shadow:0 2px 8px rgba(0,0,0,.08); margin-top:8px; }
+</style>
+</head>
+<body>
+
+<div class="hero"><div class="hero-inner">
+  <span class="eyebrow">Novidade · Expedição e Pedidos</span>
+  <h1>Cancelar amostra com motivo</h1>
+  <p>A amostra que não vai mais sair deixa de ficar parada na fila: cancele com o motivo e ela continua registrada, só que fora do caminho.</p>
+</div></div>
+
+<div class="wrap">
+  <div class="sec-label">O que mudou</div>
+<div class="acc aberto"><button class="acc-head" type="button"><span class="acc-ico">🚫</span><strong>O que é</strong><span class="acc-seta">▲</span></button>
+<div class="acc-corpo">
+<p>Até hoje uma amostra (AM#) só tinha dois caminhos: <b>avançar</b> (preparar, liberar, embarcar) ou <b>excluir</b> — e excluir apagava tudo, sem deixar rastro. Quando o cliente não aceitava a amostra, ou ela era esquecida e já não fazia mais sentido mandar, ela ficava <b>parada para sempre</b> na faixa "Amostras fora de carga", na Central de Pendências e no contador de Pedidos → Amostras.</p>
+<p>Agora existe o botão <b>Cancelar</b>, que pede um <b>motivo</b>. A amostra:</p>
+<ul>
+<li><b>continua na lista</b> de Pedidos → Amostras, com o selo vermelho <b>Cancelada</b>, o motivo, quem cancelou e quando;</li>
+<li><b>some</b> da faixa de Cargas, do Mapa e da Central de Pendências (não é mais pendência de ninguém);</li>
+<li>se já estava numa <b>carga</b>, sai dela sozinha.</li>
+</ul>
+<p>O botão <b>Excluir</b> (lixeira) continua existindo para quem tem permissão — ele apaga de verdade. Para o dia a dia, use <b>Cancelar</b>: fica o registro e a explicação.</p>
+</div></div>
+
+<div class="acc aberto"><button class="acc-head" type="button"><span class="acc-ico">📱</span><strong>As telas do app</strong><span class="acc-seta">▲</span></button>
+<div class="acc-corpo" style="padding-left:16px">
+
+<div class="tela"><div class="tela-titulo">📱 Tela 1 · Expedição → Cargas (faixa "Amostras fora de carga")</div><div class="tela-corpo">
+<div class="faixa-am"><div class="cab">AMOSTRAS FORA DE CARGA · 1 <span class="vm">1 atrasada</span></div>
+<div class="linha-am verm"><span class="chip">AM#6</span> <b>Restaurante Palmeirão</b> <span class="st sol">Solicitada</span>
+<div class="sub">Blumenau · Entrega <b style="color:#b91c1c">ATRASADA 03/11</b> · vend. Ana</div>
+<span class="bt">🏷️ Etiqueta</span><span class="bt">Liberar</span><span class="bt cheio">🚚 Embarcar</span><span class="bt verm">🚫 Cancelar</span><span class="pin">1</span></div></div>
+</div><div class="legenda">
+<div><span class="pin">1</span><span>Novo botão <b>Cancelar</b> (vermelho, ao lado de Etiqueta / Liberar / Embarcar) em cada amostra da faixa. Ele abre a janela da Tela 2. Depois de cancelar, a amostra <b>sai da faixa na hora</b> e o contador diminui; se era a última, a faixa some.</span></div>
+</div></div>
+
+<div class="tela"><div class="tela-titulo">📱 Tela 2 · Janela "Cancelar amostra"</div><div class="tela-corpo">
+<div class="dialogo">
+<div class="tit">Cancelar amostra AM#6<span class="pin">1</span></div>
+<div class="sub">Restaurante Palmeirão</div>
+<div style="font-size:12.5px;color:#555;margin-bottom:6px">A amostra continua na lista como <b style="color:#b91c1c">Cancelada</b>, com o motivo e quem cancelou. Ela não vai mais para a expedição.</div>
+<div class="nota-amb">Esta amostra está na carga #212 — ao cancelar ela sai da carga.<span class="pin">2</span></div>
+<div class="lbl">Motivo <span style="color:#dc2626">*</span><span class="pin">3</span></div>
+<div class="campo">Cliente não aceitou a amostra, pediu para não mandar.</div>
+<div style="display:flex;justify-content:space-between;font-size:10px;color:#6b7280"><span></span><span>48/500</span></div>
+<div style="margin-top:12px;text-align:right"><span class="bt cinza">Voltar</span><span class="bt verm cheio">🚫 Cancelar amostra</span><span class="pin">4</span></div>
+</div>
+<div class="toast">✅ Amostra AM#6 cancelada, removida da carga #212<span class="pin">5</span></div>
+</div><div class="legenda">
+<div><span class="pin">1</span><span>O título mostra <b>qual amostra</b> e para <b>quem</b> ela era (cliente ou lead), para não cancelar a errada.</span></div>
+<div><span class="pin">2</span><span>Aviso em âmbar só aparece quando a amostra <b>já está numa carga</b>: ao cancelar, ela é tirada da carga sozinha. Amostra que não está em carga não mostra este aviso.</span></div>
+<div><span class="pin">3</span><span><b>Motivo é obrigatório</b> (pelo menos 3 letras, até 500). Ex.: "cliente não aceitou", "amostra esquecida, não vai mais". Até escrever o motivo, o botão vermelho fica desligado.</span></div>
+<div><span class="pin">4</span><span><b>Voltar</b> fecha sem fazer nada. <b>Cancelar amostra</b> confirma. Se você não tiver permissão, o app avisa e nada muda.</span></div>
+<div><span class="pin">5</span><span>Mensagem de confirmação. Quando a amostra estava numa carga, ela diz de qual carga foi removida.</span></div>
+</div></div>
+
+<div class="tela"><div class="tela-titulo">📱 Tela 3 · Pedidos → Amostras</div><div class="tela-corpo">
+<div class="app-card"><div class="app-card-body" style="font-size:12px"><span class="chip">AM#6</span> <b>Restaurante Palmeirão</b> <span class="st canc">Cancelada</span>
+<div style="color:#6b756f;margin:4px 0">Entrega: 03/11/2026 | Criação: 01/11/2026 · Solicitado por: Ana</div>
+<div class="motivo"><b>Motivo:</b> Cliente não aceitou a amostra, pediu para não mandar. · por Marcos em 11/11/2026<span class="pin">1</span></div></div></div>
+<div class="app-card"><div class="app-card-body" style="font-size:12px"><span class="chip">AM#9</span> <b>Padaria Pão Quente</b> <span class="st sol">Solicitada</span>
+<div style="color:#6b756f;margin:4px 0 8px">Entrega: 12/11/2026 | Criação: 11/11/2026</div>
+<span class="bt cinza">🖨️ Imprimir</span><span class="bt cinza">🏷️ Etiqueta</span><span class="bt cheio" style="background:#f97316;border-color:#f97316">Avançar status</span><span class="bt verm">🚫 Cancelar</span><span class="pin">2</span></div></div>
+</div><div class="legenda">
+<div><span class="pin">1</span><span>A amostra cancelada <b>não some</b>: fica com o selo vermelho <b>Cancelada</b> e, embaixo, a linha <b>Motivo</b> com quem cancelou e a data. Ela sai do contador da aba e do filtro "Só sem carga".</span></div>
+<div><span class="pin">2</span><span>Ao abrir uma amostra ainda aberta, o botão <b>Cancelar</b> fica ao lado de Imprimir / Etiqueta / Avançar status. Amostra já <b>entregue</b> ou já <b>cancelada</b> não mostra o botão.</span></div>
+</div></div>
+
+</div></div>
+
+<div class="acc aberto"><button class="acc-head" type="button"><span class="acc-ico">✅</span><strong>Para começar a usar</strong><span class="acc-seta">▲</span></button>
+<div class="acc-corpo">
+<ol><li>Em <b>Expedição → Cargas</b>, na faixa amarela, toque em <b>Cancelar</b> na amostra que não vai mais — ou em <b>Pedidos → Amostras</b>, abra a amostra e toque em <b>Cancelar</b>.</li>
+<li>Escreva o <b>motivo</b> (ex.: "cliente não aceitou").</li>
+<li>Toque em <b>Cancelar amostra</b>. Pronto: ela sai das pendências e fica registrada como cancelada.</li></ol>
+<div class="aviso">Cancelar não tem volta pelo app. Se a amostra for mesmo sair depois, peça uma amostra nova.</div>
+<p>Quem pode cancelar: quem já libera amostra na expedição, quem tem permissão de excluir amostra, o administrador e <b>quem pediu a amostra</b> (o próprio vendedor). Amostra já <b>entregue</b> não pode ser cancelada.</p>
+</div></div>
+</div>
+
+<script>
+document.querySelectorAll('.acc-head').forEach(function(h){h.addEventListener('click',function(){h.parentElement.classList.toggle('aberto');});});
+</script>
+</body>
+</html>

@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Package, Tag, CheckCircle2, Truck, ChevronDown, ChevronUp } from 'lucide-react';
+import { Package, Tag, CheckCircle2, Truck, ChevronDown, ChevronUp, Ban } from 'lucide-react';
 import toast from 'react-hot-toast';
 import embarqueService from '../../../services/embarqueService';
 import amostraService from '../../../services/amostraService';
 import { useFiltroSalvo } from '../../../hooks/useFiltrosSalvos';
 import EtiquetaPedidoModal from '../../Pedidos/EtiquetaPedidoModal';
 import EmbarcarAmostraModal from './EmbarcarAmostraModal';
+import ModalCancelarAmostra from '../../Pedidos/ModalCancelarAmostra';
 
 // Faixa "Amostras fora de carga" no topo do Painel de Expedição: amostras abertas
 // (Solicitada / Preparação / Liberado) que ainda NÃO estão em nenhuma carga. Some quando vazia.
@@ -40,6 +41,7 @@ export default function AmostrasForaDeCarga({ embarques, onMudou, onNovaCarga, r
     const liberandoRef = useRef(false); // trava síncrona: o estado só atualiza no próximo render e o duplo clique passava
     const [etiqueta, setEtiqueta] = useState(null);
     const [embarcando, setEmbarcando] = useState(null);
+    const [cancelando, setCancelando] = useState(null); // amostra no modal "Cancelar amostra" (com motivo)
 
     const carregar = useCallback(async () => {
         try {
@@ -71,6 +73,19 @@ export default function AmostrasForaDeCarga({ embarques, onMudou, onNovaCarga, r
             liberandoRef.current = false;
             setLiberandoId(null);
         }
+    };
+
+    // Cancelada com motivo: sai da faixa na hora (contador junto) e avisa o painel para recarregar
+    const aoCancelar = (a) => {
+        setCancelando(null);
+        setDados((d) => {
+            if (!d) return d;
+            const amostras = d.amostras.filter((x) => x.id !== a.id);
+            const vermelhas = amostras.filter((x) => x.urgencia === 'vermelho').length;
+            return { ...d, amostras, total: amostras.length, vermelhas };
+        });
+        carregar();
+        onMudou?.();
     };
 
     if (!dados || dados.total <= 0) return null; // sem amostra fora de carga, a faixa não existe
@@ -124,6 +139,10 @@ export default function AmostrasForaDeCarga({ embarques, onMudou, onNovaCarga, r
                                     className="flex items-center gap-1.5 px-3 py-2 min-h-[44px] bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-xs">
                                     <Truck className="h-3.5 w-3.5" /> Embarcar
                                 </button>
+                                <button type="button" onClick={() => setCancelando(a)} data-cancelar-amostra
+                                    className="flex items-center gap-1.5 px-3 py-2 min-h-[44px] bg-white border border-red-200 text-red-700 hover:bg-red-50 rounded-full font-medium text-xs">
+                                    <Ban className="h-3.5 w-3.5" /> Cancelar
+                                </button>
                             </div>
                         </div>
                     ))}
@@ -139,6 +158,13 @@ export default function AmostrasForaDeCarga({ embarques, onMudou, onNovaCarga, r
                     }}
                     onClose={() => setEtiqueta(null)}
                     onStatus={(novo) => setDados((d) => d && { ...d, amostras: d.amostras.map((x) => (x.id === etiqueta.id ? { ...x, status: novo } : x)) })}
+                />
+            )}
+            {cancelando && (
+                <ModalCancelarAmostra
+                    amostra={cancelando}
+                    onClose={() => setCancelando(null)}
+                    onCancelada={() => aoCancelar(cancelando)}
                 />
             )}
             {embarcando && (

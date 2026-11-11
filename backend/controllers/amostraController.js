@@ -106,6 +106,32 @@ const amostraController = {
         }
     },
 
+    // Cancelar com motivo. Quem pode: quem libera amostra (Embarque/Pendências/Financeiro gerencial),
+    // quem exclui amostra, admin, ou o próprio vendedor que pediu (desiste da própria amostra).
+    cancelar: async (req, res) => {
+        try {
+            const p = req.user?.permissoes || {};
+            const motivo = typeof req.body?.motivo === 'string' ? req.body.motivo.trim() : '';
+            if (motivo.length < 3 || motivo.length > 500) {
+                return res.status(400).json({ error: 'Informe o motivo do cancelamento.' });
+            }
+            const alvo = await amostraService.buscarSolicitante(req.params.id);
+            if (!alvo) return res.status(404).json({ error: 'Amostra não encontrada.' });
+            const pode = p.admin === true || p.Pode_Acessar_Embarque === true || p.Pode_Ver_Pendencias === true
+                || p.Pode_Acessar_Financeiro_Gerencial === true || p.Pode_Excluir_Amostra === true
+                || alvo.solicitadoPorId === req.user.id;
+            if (!pode) return res.status(403).json({ error: 'Você não tem permissão para cancelar esta amostra.' });
+            const { codigo, ...corpo } = await amostraService.cancelar(req.params.id, {
+                motivo,
+                usuario: { id: req.user.id, nome: req.user.nome || null },
+            });
+            res.status(codigo).json(corpo);
+        } catch (error) {
+            console.error('Erro ao cancelar amostra:', error);
+            res.status(500).json({ error: 'Erro ao cancelar amostra.' });
+        }
+    },
+
     excluir: async (req, res) => {
         try {
             const permissoes = req.user?.permissoes || {};
@@ -140,6 +166,7 @@ const amostraController = {
         try {
             const { status } = req.body;
             if (!status) return res.status(400).json({ error: 'Informe o novo status.' });
+            if (status === 'CANCELADA') return res.status(400).json({ error: 'Use o cancelamento com motivo.' });
             const amostra = await amostraService.atualizarStatus(req.params.id, status);
             res.json(amostra);
         } catch (error) {

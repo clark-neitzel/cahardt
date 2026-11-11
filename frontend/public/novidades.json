@@ -1,5 +1,11 @@
 [
   {
+    "slug": "cancelar-amostra",
+    "titulo": "Cancelar amostra com motivo",
+    "resumo": "Amostra que não vai mais (cliente não aceitou, foi esquecida) agora pode ser cancelada com motivo: continua na lista como Cancelada, sai da carga e some das pendências.",
+    "data": "2026-11-11"
+  },
+  {
     "slug": "etiqueta-pedido",
     "titulo": "Etiqueta para todo pedido",
     "resumo": "Pedido, especial, bonificação e amostra agora têm o ícone de etiqueta (100 × 120). Pedido com muitos itens sai em mais de uma etiqueta, sem perder nenhum produto.",

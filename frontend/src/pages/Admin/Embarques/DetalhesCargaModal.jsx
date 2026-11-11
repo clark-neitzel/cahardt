@@ -44,7 +44,11 @@ const descreverAlteracoes = (log) => {
         alt.pedidos.forEach(p => linhas.push(`${sinal} Pedido ${p.numero}${p.cliente ? ` — ${p.cliente}` : ''}`));
     }
     if (Array.isArray(alt.amostras)) {
-        alt.amostras.forEach(a => linhas.push(`${sinal} ${a.numero}${a.destinatario ? ` — ${a.destinatario}` : ''}`));
+        alt.amostras.forEach(a => {
+            // Amostra que saiu por cancelamento traz o motivo (campo opcional — guardar antes de interpolar)
+            const motivo = typeof a.motivoCancelamento === 'string' && a.motivoCancelamento.trim() ? ` (cancelada: ${a.motivoCancelamento.trim()})` : '';
+            linhas.push(`${sinal} ${a.numero}${a.destinatario ? ` — ${a.destinatario}` : ''}${motivo}`);
+        });
     }
     if (Array.isArray(alt.cobrancas)) {
         const sinalCob = log.acao === 'COBRANCA_REMOVIDA' ? '−' : '+';

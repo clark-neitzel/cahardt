@@ -23,7 +23,11 @@ const descreverMudanca = (log) => {
         alt.pedidos.forEach(p => linhas.push({ tag, texto: `Pedido ${p.numero}${p.cliente ? ` — ${p.cliente}` : ''}` }));
     }
     if (Array.isArray(alt.amostras)) {
-        alt.amostras.forEach(a => linhas.push({ tag, texto: `${a.numero}${a.destinatario ? ` — ${a.destinatario}` : ''}` }));
+        alt.amostras.forEach(a => {
+            // Amostra que saiu por cancelamento traz o motivo (campo opcional — guardar antes de interpolar)
+            const motivo = typeof a.motivoCancelamento === 'string' && a.motivoCancelamento.trim() ? ` (cancelada: ${a.motivoCancelamento.trim()})` : '';
+            linhas.push({ tag, texto: `${a.numero}${a.destinatario ? ` — ${a.destinatario}` : ''}${motivo}` });
+        });
     }
     if (linhas.length === 0) linhas.push({ tag: 'MUDOU', texto: ACAO_LABELS[log.acao] || log.acao });
     return linhas;

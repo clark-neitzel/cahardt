@@ -20,6 +20,7 @@ import { eventosCobrancaPix } from '../Atendimentos/linhaDoTempoPedido';
 import PixAvulsoModal from './PixAvulsoModal';
 import ImprimirLoteModal from './ImprimirLoteModal';
 import EtiquetaPedidoModal from './EtiquetaPedidoModal';
+import ModalCancelarAmostra from './ModalCancelarAmostra';
 import { fmtNumero } from '../../utils/numeroPedido';
 import PageHeader from '../../components/PageHeader';
 import EstadoVazio from '../../components/EstadoVazio';
@@ -248,6 +249,7 @@ const ListaPedidos = () => {
     const [pixModal, setPixModal] = useState(null); // { id, numero, especial, clienteNome, valorSugerido }
     const [loteModal, setLoteModal] = useState(null); // { pedidoIds } ou { amostraIds } p/ impressão em lote
     const [etiquetaAmostra, setEtiquetaAmostra] = useState(null); // amostra (do card) p/ a etiqueta 100×120
+    const [cancelandoAmostra, setCancelandoAmostra] = useState(null); // amostra no modal "Cancelar amostra" (com motivo)
     const [etiquetaPedido, setEtiquetaPedido] = useState(null);   // pedido (do card) p/ a etiqueta 100×120
     const [gerandoDanfe, setGerandoDanfe] = useState(null); // pedidoId com DANFE em geração
     const [convertendo, setConvertendo] = useState(null); // pedidoId em conversão especial→pedido
@@ -761,6 +763,19 @@ const ListaPedidos = () => {
         } catch (error) {
             toast.error(error.response?.data?.error || 'Erro ao excluir amostra.');
         }
+    };
+
+    // Cancelada com motivo: o card fica na lista como "Cancelada" (com motivo/quem/quando) e sai da carga
+    const handleAmostraCancelada = (resp) => {
+        const nova = resp?.amostra;
+        if (nova?.id) {
+            setAmostras(prev => prev.map(a => a.id === nova.id
+                ? { ...a, ...nova, status: 'CANCELADA', embarqueId: null, embarque: null }
+                : a));
+            setSelecionados(prev => { const s = new Set(prev); s.delete(nova.id); return s; });
+        }
+        setCancelandoAmostra(null);
+        carregarResumoAmostras();
     };
 
     const handleAvancarAmostra = async (amostraId, statusAtual) => {
@@ -1361,6 +1376,13 @@ const ListaPedidos = () => {
                                                                 </span>
                                                             </div>
                                                         )}
+                                                        {amostra.status === 'CANCELADA' && (amostra.motivoCancelamento || amostra.canceladoEm || amostra.canceladoPorNome) && (
+                                                            <div className="text-xs text-red-700 mt-0.5" data-motivo-cancelamento>
+                                                                {amostra.motivoCancelamento ? <><strong>Motivo:</strong> {amostra.motivoCancelamento}</> : <strong>Cancelada</strong>}
+                                                                {amostra.canceladoPorNome ? ` · por ${amostra.canceladoPorNome}` : ''}
+                                                                {amostra.canceladoEm ? ` em ${new Date(amostra.canceladoEm).toLocaleDateString('pt-BR')}` : ''}
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </div>
                                                 <div className="flex flex-col items-end gap-1.5 shrink-0">
@@ -1445,7 +1467,17 @@ const ListaPedidos = () => {
                                                             Avançar status
                                                         </button>
                                                     )}
-                                                
+                                                    {!['ENTREGUE', 'CANCELADA'].includes(amostra.status) && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={(e) => { e.stopPropagation(); setCancelandoAmostra(amostra); }}
+                                                            className="text-[11px] font-bold px-3 py-1.5 rounded border bg-white border-red-200 text-red-700 hover:bg-red-50 flex items-center gap-1.5"
+                                                            title="Cancelar a amostra com motivo (ela continua na lista como cancelada)"
+                                                            data-cancelar-amostra
+                                                        >
+                                                            <Ban className="h-3.5 w-3.5" /> Cancelar
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </div>
                                         )}
@@ -2404,6 +2436,13 @@ const ListaPedidos = () => {
                         setAmostras(prev => prev.map(a => a.id === etiquetaAmostra.id ? { ...a, status: novo } : a));
                         carregarResumoAmostras();
                     }}
+                />
+            )}
+            {cancelandoAmostra && (
+                <ModalCancelarAmostra
+                    amostra={cancelandoAmostra}
+                    onClose={() => setCancelandoAmostra(null)}
+                    onCancelada={handleAmostraCancelada}
                 />
             )}
             {etiquetaPedido && (

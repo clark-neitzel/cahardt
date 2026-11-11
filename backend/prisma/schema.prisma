@@ -2359,6 +2359,13 @@ model Amostra {
   // ID do evento na agenda "Produção" do Google Calendar (null = sem evento)
   gcalEventId       String?   @map("gcal_event_id")
 
+  // Cancelamento com motivo (POST /amostras/:id/cancelar). A amostra fica visível como CANCELADA,
+  // sai da carga (embarqueId = null) e some da faixa "sem carga"/pendências/agenda.
+  motivoCancelamento String?   @map("motivo_cancelamento") @db.Text
+  canceladoEm        DateTime? @map("cancelado_em")
+  canceladoPorId     String?   @map("cancelado_por_id")
+  canceladoPorNome   String?   @map("cancelado_por_nome")
+
   // Conferência de carga por bipagem (AM# no recibo) — ver comentário em Pedido.
   cargaConferidaEm      DateTime?     @map("carga_conferida_em")
   cargaConferidaPorId   String?       @map("carga_conferida_por_id")

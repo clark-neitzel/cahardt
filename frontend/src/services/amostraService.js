@@ -44,6 +44,13 @@ const amostraService = {
         return response.data;
     },
 
+    // Cancela com motivo (3–500 chars). Registro continua visível como CANCELADA; se estava numa
+    // carga, sai dela. Resposta: { ok, removidaDaCarga, cargaNumero, amostra }
+    cancelar: async (id, motivo) => {
+        const response = await api.post(`/amostras/${id}/cancelar`, { motivo });
+        return response.data;
+    },
+
     excluir: async (id) => {
         const response = await api.delete(`/amostras/${id}`);
         return response.data;
