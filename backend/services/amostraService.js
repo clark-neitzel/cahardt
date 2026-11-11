@@ -1,5 +1,6 @@
 const prisma = require('../config/database');
 const gcal = require('./googleCalendarService');
+const amostraAvisoService = require('./amostraAvisoService');
 const { getDataReferencia } = require('../utils/dataReferenciaBrasilia');
 
 const STATUS_ABERTOS = ['SOLICITADA', 'PREPARACAO', 'LIBERADO'];
@@ -54,6 +55,8 @@ const amostraService = {
         });
         // Agenda "Produção" (Google Calendar): best-effort, nunca bloqueia a criação.
         gcal.disparar(gcal.sincronizarAmostra, criada.id);
+        // Aviso no WhatsApp (best-effort, sem await: nunca atrasa nem derruba a criação).
+        amostraAvisoService.avisarNovaAmostra(criada).catch(e => console.error('[AvisoAmostra]', e.message));
         return criada;
     },
 

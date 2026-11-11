@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Pencil, Save, X, Search, Plus, Mail, Shield, UserX, UserCheck, User, MessageCircle, Phone, Bell, BellOff, Repeat, Check, Link2, Bot } from 'lucide-react';
+import { Pencil, Save, X, Search, Plus, Mail, Shield, UserX, UserCheck, User, MessageCircle, Phone, Bell, BellOff, Repeat, Package, Check, Link2, Bot } from 'lucide-react';
 import vendedorService from '../../../services/vendedorService';
 import PermissoesModal from './PermissoesModal';
 import NovoUsuarioModal from './NovoUsuarioModal';
@@ -64,6 +64,22 @@ const ListaVendedores = () => {
             toast.error('Erro ao salvar aviso de pedido convertido');
         }
     };
+
+    // Aviso no WhatsApp quando nasce uma amostra nova (quem criou não recebe)
+    const handleToggleAvisoAmostra = async (vendedor) => {
+        const novoValor = !vendedor.avisoAmostraWhatsapp;
+        try {
+            const updated = await vendedorService.atualizar(vendedor.id, { avisoAmostraWhatsapp: novoValor });
+            setVendedores(vendedores.map(v => v.id === vendedor.id ? { ...vendedor, ...updated } : v));
+            toast.success(`${vendedor.nome}: aviso de amostra nova ${novoValor ? 'ativado' : 'desativado'}`);
+        } catch {
+            toast.error('Erro ao salvar aviso de amostra');
+        }
+    };
+
+    const tituloAvisoAmostra = (v) => v.avisoAmostraWhatsapp
+        ? (v.telefone ? 'Aviso de amostra nova no WhatsApp: ligado' : 'Aviso de amostra nova no WhatsApp: ligado, mas sem telefone cadastrado: não receberá')
+        : 'Aviso de amostra nova no WhatsApp: desligado';
 
     const fetchVendedores = async () => {
         try {
@@ -209,6 +225,9 @@ const ListaVendedores = () => {
             </button>
             <button onClick={() => handleToggleAlertaConvertido(vendedor)} className={`p-2 rounded-full hover:bg-gray-100 ${vendedor.alertaPedidoConvertido ? 'text-orange-600' : 'text-gray-300'}`} title={vendedor.alertaPedidoConvertido ? 'Aviso de pedido convertido: ligado' : 'Aviso de pedido convertido: desligado'}>
                 <Repeat className="h-4 w-4" />
+            </button>
+            <button onClick={() => handleToggleAvisoAmostra(vendedor)} className={`p-2 rounded-full hover:bg-gray-100 ${vendedor.avisoAmostraWhatsapp ? 'text-teal-600' : 'text-gray-300'}`} title={tituloAvisoAmostra(vendedor)}>
+                <Package className="h-4 w-4" />
             </button>
             <button onClick={() => setPermissionsModalVendedor(vendedor)} className="p-2 rounded-full hover:bg-gray-100 text-indigo-500" title="Acessos e Permissões"><Shield className="h-4 w-4" /></button>
             <button onClick={() => handleEdit(vendedor)} className="p-2 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600" title="Editar"><Pencil className="h-4 w-4" /></button>
@@ -432,6 +451,9 @@ const ListaVendedores = () => {
                                                 </button>
                                                 <button onClick={() => handleToggleAlertaConvertido(vendedor)} className={`p-2 rounded-full hover:bg-gray-100 ${vendedor.alertaPedidoConvertido ? 'text-orange-600' : 'text-gray-300'}`} title="Aviso de pedido convertido">
                                                     <Repeat className="h-4 w-4" />
+                                                </button>
+                                                <button onClick={() => handleToggleAvisoAmostra(vendedor)} className={`p-2 rounded-full hover:bg-gray-100 ${vendedor.avisoAmostraWhatsapp ? 'text-teal-600' : 'text-gray-300'}`} title={tituloAvisoAmostra(vendedor)}>
+                                                    <Package className="h-4 w-4" />
                                                 </button>
                                                 <button onClick={() => handleToggleAtivo(vendedor)} className={`p-2 rounded-full hover:bg-gray-100 ${vendedor.ativo === false ? 'text-green-600' : 'text-red-400'}`} title={vendedor.ativo === false ? 'Reativar' : 'Inativar'}>
                                                     {vendedor.ativo === false ? <UserCheck className="h-4 w-4" /> : <UserX className="h-4 w-4" />}

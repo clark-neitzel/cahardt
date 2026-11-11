@@ -1,0 +1,10 @@
+              ref              |  tipo   | origem  |  status  |   telefone    | codigo_erro | tentativas | len 
+-------------------------------+---------+---------+----------+---------------+-------------+------------+-----
+ amostra-nova-fc4997e…3476c4cd | interno | amostra | PENDENTE | 5547991110002 | sem_url     |          1 | 309
+ amostra-nova-91c4883…3476c4cd | interno | amostra | PENDENTE | 5547991110002 | sem_url     |          1 | 586
+ amostra-nova-b7c7850…3476c4cd | interno | amostra | PENDENTE | 5547991110002 | sem_url     |          1 | 283
+ amostra-nova-12afbce…3476c4cd | interno | amostra | PENDENTE | 5547991110002 | sem_url     |          1 | 278
+ amostra-nova-fc4997e…3476c4cd | interno | amostra | PENDENTE | 5547991110002 | sem_url     |          1 | 309
+ amostra-nova-fc4997e…3476c4cd | interno | amostra | PENDENTE | 5547991110002 | sem_url     |          1 | 309
+(6 rows)
+

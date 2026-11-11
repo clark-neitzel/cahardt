@@ -53,6 +53,9 @@
   .copias span.v { width:48px; height:34px; border:1px solid #d8d5cc; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; font-weight:700; }
   .aviso { background:#fff7ed; border:1px solid #fed7aa; border-radius:12px; padding:12px 14px; font-size:13.5px; color:#7c2d12; margin:0 0 10px; }
 
+  .wa { background:#e7ddd0; border-radius:12px; padding:12px; }
+  .wa .bal { background:#dcf8c6; border-radius:10px 10px 10px 2px; padding:9px 11px; font-size:12px; color:#111; max-width:300px; line-height:1.5; box-shadow:0 1px 1px rgba(0,0,0,.12); word-break:break-word; }
+  .lin-us { display:flex; align-items:center; flex-wrap:wrap; gap:4px; font-size:12px; }
   .faixa-am { background:#fffbeb; border:1px solid #fde68a; border-radius:12px; padding:10px; margin-bottom:10px; }
   .faixa-am .cab { font-size:10px; font-weight:800; letter-spacing:.12em; color:#92400e; margin-bottom:8px; }
   .linha-am { background:#fff; border:1px solid #e5e3dc; border-left:4px solid #d1d5db; border-radius:10px; padding:9px 10px; margin-bottom:6px; font-size:12px; }
@@ -108,12 +111,21 @@
 <div class="app-card"><div class="app-card-body" style="font-size:12px"><span class="chip">AM#55</span> <b>Mercado Sol</b> <span class="st lib">Liberado</span> <span class="st" style="background:#e0f2fe;color:#075985">🚚 Carga #212</span><span class="pin">4</span></div></div></div><div class="legenda"><div><span class="pin">1</span><span>O número no nome da aba mostra quantas amostras abertas estão <b>sem carga</b> (vermelho se alguma é para hoje/atrasada, âmbar nos demais casos). Some quando zera.</span></div><div><span class="pin">2</span><span><b>Só sem carga</b> lista só essas amostras e <b>ignora o período</b> — assim a amostra antiga que foi esquecida aparece. A escolha fica salva.</span></div><div><span class="pin">3</span><span>Card com <b>borda vermelha</b> e aviso quando a entrega é hoje (ou está atrasada) e a amostra não está em carga.</span></div><div><span class="pin">4</span><span>Amostra já embarcada mostra a <b>carga</b> dela. A data de entrega agora sai correta (antes podia aparecer um dia a menos). Imprimir a etiqueta de uma amostra Solicitada a passa para <b>Preparação</b>.</span></div></div></div>
 
 </div></div>
+<div class="acc aberto"><button class="acc-head" type="button"><span class="acc-ico">💬</span><strong>Aviso no WhatsApp</strong><span class="acc-seta">▲</span></button>
+<div class="acc-corpo" style="padding-left:16px">
+<p>Quando alguém cria uma amostra, o sistema manda um <b>WhatsApp</b> para as pessoas que você escolher. Quem criou a amostra não recebe o próprio aviso.</p>
+<div class="tela"><div class="tela-titulo">📱 Administração → Usuários</div><div class="tela-corpo"><div class="app-card"><div class="app-card-body"><div class="lin-us"><b>Marcos (expedição)</b> <span class="ico">🔔</span><span class="ico">🔁</span><span class="ico novo" style="background:#ccfbf1;color:#0d9488">📦</span><span class="pin">1</span><span class="ico">🛡️</span></div></div></div></div>
+<div class="legenda"><div><span class="pin">1</span><span>Ícone da <b>caixa</b>: <b>verde-azulado</b> = a pessoa recebe o aviso de amostra nova; <b>cinza</b> = não recebe. Toque para ligar ou desligar. A pessoa precisa ter <b>telefone cadastrado</b> — sem telefone, o ícone avisa que ela não receberá.</span></div></div></div>
+<div class="tela"><div class="tela-titulo">💬 O que chega no WhatsApp</div><div class="tela-corpo"><div class="wa"><div class="bal">📦 <b>Nova amostra AM#58</b><br><b>Para:</b> Padaria Pão Quente — Blumenau<br><b>Entrega:</b> 12/11<br><b>Pedida por:</b> João<br><b>Itens:</b><br>• 2 × Coxinha 30g<br>• 1 × Risoles<br><b>Obs:</b> Entregar de manhã<br>Ela já aparece em <b>Expedição → Cargas</b> (faixa Amostras fora de carga) e em <b>Pedidos → Amostras</b>.<span class="pin">2</span></div></div></div>
+<div class="legenda"><div><span class="pin">2</span><span>Uma mensagem por amostra nova, com o essencial para a expedição já se organizar. Com mais de 5 itens, aparece "+N itens".</span></div></div></div>
+</div></div>
 <div class="acc aberto"><button class="acc-head" type="button"><span class="acc-ico">✅</span><strong>Para começar a usar</strong><span class="acc-seta">▲</span></button>
 <div class="acc-corpo">
 <ol><li>Abra <b>Expedição → Cargas</b>: se houver amostra fora de carga, a faixa amarela aparece no topo.</li>
 <li>Toque em <b>Etiqueta</b> para imprimir e colar na caixa.</li>
-<li>Toque em <b>Embarcar</b>, escolha a carga e confirme.</li></ol>
-<div class="aviso">Não há aviso por WhatsApp nesta versão: o lembrete fica dentro do app.</div>
+<li>Toque em <b>Embarcar</b>, escolha a carga e confirme.</li>
+<li>Para receber o aviso no WhatsApp: <b>Administração → Usuários</b> → ligue o ícone da caixa de quem deve receber.</li></ol>
+<div class="aviso">O aviso por WhatsApp só vai para quem for marcado em Usuários (por padrão, ninguém) e que tenha telefone cadastrado.</div>
 <p>Não precisa de permissão nova: quem já acessa Cargas/Pendências/Pedidos vê o que já via.</p>
 </div></div>
 </div>

@@ -738,6 +738,9 @@ model Vendedor {
   // Alerta de pedido especial convertido em pedido com NF (popup a cada 5 min p/ faturamento)
   alertaPedidoConvertido Boolean @default(false) @map("alerta_pedido_convertido")
 
+  // Recebe WhatsApp quando uma amostra nova é criada (expedição/produção)
+  avisoAmostraWhatsapp Boolean @default(false) @map("aviso_amostra_whatsapp")
+
   // Caixa: tabela de preço usada para cobrar faltas na conferência de devoluções
   // (id ou idCondicao da TabelaPreco, sem FK — mesma flexibilidade de Cliente.Condicao_de_pagamento)
   tabelaCobrancaFaltaId String? @map("tabela_cobranca_falta_id")

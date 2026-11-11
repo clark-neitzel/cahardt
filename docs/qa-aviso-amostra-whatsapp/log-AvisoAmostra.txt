@@ -1,0 +1,12 @@
+[AvisoAmostra] Edilson sem telefone válido: pulado
+[BotWhatsapp] falhou (sem_url) · interno · 5547991110002 · BOT_WHATSAPP_URL não configurada — reagendado
+[AvisoAmostra] AM#59: 1 enviado(s), 1 falha(s)/pulado(s)
+[AvisoAmostra] Edilson sem telefone válido: pulado
+[BotWhatsapp] falhou (sem_url) · interno · 5547991110002 · BOT_WHATSAPP_URL não configurada — reagendado
+[AvisoAmostra] AM#63: 1 enviado(s), 1 falha(s)/pulado(s)
+[AvisoAmostra] Edilson sem telefone válido: pulado
+[BotWhatsapp] falhou (sem_url) · interno · 5547991110002 · BOT_WHATSAPP_URL não configurada — reagendado
+[AvisoAmostra] AM#64: 1 enviado(s), 1 falha(s)/pulado(s)
+[AvisoAmostra] Edilson sem telefone válido: pulado
+[BotWhatsapp] falhou (sem_url) · interno · 5547991110002 · BOT_WHATSAPP_URL não configurada — reagendado
+[AvisoAmostra] AM#65: 1 enviado(s), 1 falha(s)/pulado(s)

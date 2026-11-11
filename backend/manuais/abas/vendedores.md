@@ -28,6 +28,7 @@ Gerenciamento de todos os usuários do sistema (chamados de "vendedores", mas in
 - Marcar um usuário como **Acesso externo** (contabilidade, parceiro) — ele some de todos os seletores de vendedor/motorista/equipe do app
 - Configurar quais formas de atendimento aparecem para o vendedor (Presencial, WhatsApp, Telefone)
 - Ligar/desligar alerta de faturamento por WhatsApp
+- Ligar/desligar o **aviso de amostra nova no WhatsApp** (ícone de caixa) para cada usuário
 - Abrir o modal de permissões para configurar as permissões detalhadas do usuário
 
 ---
@@ -102,6 +103,13 @@ O que muda com a caixinha marcada:
 - Clique nos botões de forma (Presencial, WhatsApp, Telefone) no card do vendedor
 - As formas marcadas aparecem como opção no modal de atendimento da Rota para aquele vendedor
 - A mudança é salva automaticamente
+
+### Aviso de amostra nova no WhatsApp
+1. Na linha do usuário (computador: coluna de ações; celular: ícones no cartão), toque no ícone de **caixa** (ao lado do ícone de repetir/pedido convertido)
+2. Ligado = **verde-azulado**; desligado = cinza. Aparece o aviso "Aviso de amostra nova ativado/desativado"
+3. Quem está ligado recebe **uma mensagem de WhatsApp sempre que uma amostra nova é criada** (AM#, para quem, entrega, quem pediu, itens e observação)
+4. **Precisa ter telefone cadastrado** e estar **ativo**; ligado sem telefone, o ícone avisa "não receberá"
+5. **Quem criou a amostra não recebe** o próprio aviso. Por padrão ninguém vem ligado — o administrador marca quem deve receber
 
 ### Ligar/desligar alerta de faturamento
 - Clique no ícone de sino na linha do vendedor

@@ -156,7 +156,7 @@ const vendedorController = {
                 return res.status(403).json({ error: 'Sem permissão para editar usuários.' });
             }
 
-            const { email, telefone, flexMensal, flexDisponivel, login, senha, permissoes, maxDescontoFlex, percentualFlex, ativo, formasAtendimentoVisiveis, alertaFaturamento, alertaPedidoConvertido, tabelaCobrancaFaltaId, quebraCaixa, clienteUuid, nomeVendedorBotHardt, acessoExterno } = req.body;
+            const { email, telefone, flexMensal, flexDisponivel, login, senha, permissoes, maxDescontoFlex, percentualFlex, ativo, formasAtendimentoVisiveis, alertaFaturamento, alertaPedidoConvertido, avisoAmostraWhatsapp, tabelaCobrancaFaltaId, quebraCaixa, clienteUuid, nomeVendedorBotHardt, acessoExterno } = req.body;
 
             // Campos sensíveis (permissões, login, senha, status) só por admin — evita
             // escalonamento de privilégio e sequestro de conta por um gestor não-admin.
@@ -179,6 +179,7 @@ const vendedorController = {
             if (formasAtendimentoVisiveis !== undefined) dataToUpdate.formasAtendimentoVisiveis = formasAtendimentoVisiveis;
             if (alertaFaturamento !== undefined) dataToUpdate.alertaFaturamento = alertaFaturamento;
             if (alertaPedidoConvertido !== undefined) dataToUpdate.alertaPedidoConvertido = alertaPedidoConvertido;
+            if (avisoAmostraWhatsapp !== undefined) dataToUpdate.avisoAmostraWhatsapp = avisoAmostraWhatsapp === true;
             if (tabelaCobrancaFaltaId !== undefined) dataToUpdate.tabelaCobrancaFaltaId = tabelaCobrancaFaltaId || null;
             // Integração site ↔ Bot Hardt: acentos e espaços contam na comparação do bot,
             // então só apara as pontas — nunca "normalizar" o valor digitado.
