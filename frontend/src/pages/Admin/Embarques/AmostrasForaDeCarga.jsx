@@ -4,7 +4,7 @@ import toast from 'react-hot-toast';
 import embarqueService from '../../../services/embarqueService';
 import amostraService from '../../../services/amostraService';
 import { useFiltroSalvo } from '../../../hooks/useFiltrosSalvos';
-import EtiquetaAmostraModal from '../../Pedidos/EtiquetaAmostraModal';
+import EtiquetaPedidoModal from '../../Pedidos/EtiquetaPedidoModal';
 import EmbarcarAmostraModal from './EmbarcarAmostraModal';
 
 // Faixa "Amostras fora de carga" no topo do Painel de Expedição: amostras abertas
@@ -131,7 +131,7 @@ export default function AmostrasForaDeCarga({ embarques, onMudou, onNovaCarga, r
             )}
 
             {etiqueta && (
-                <EtiquetaAmostraModal
+                <EtiquetaPedidoModal
                     amostra={{
                         id: etiqueta.id, numero: etiqueta.numero, status: etiqueta.status,
                         cliente: etiqueta.tipoDestino === 'lead' ? null : { NomeFantasia: etiqueta.destinatario || '', End_Cidade: etiqueta.cidade || '' },

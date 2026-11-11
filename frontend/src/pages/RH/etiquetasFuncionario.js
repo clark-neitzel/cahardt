@@ -76,6 +76,9 @@ function larguraPx100(texto, peso) {
 // sem canvas (teste em node): estimativa média de 0,6 em por caractere
 const larguraEm = (texto, peso) => { const w = larguraPx100(texto, peso); return w ? w / 100 : texto.length * 0.62; };
 
+/** Largura (mm) de um texto em `pt` pontos, medida como no ajustarTexto (canvas). */
+export const larguraTextoMm = (texto, pt, peso = 700) => (larguraEm(String(texto || ''), peso) * (pt / 0.75)) / MM_PX;
+
 /**
  * Quebra o texto em até `maxLinhas` linhas e acha o MAIOR tamanho (pt, entre minPt e tetoPt) em que
  * todas cabem em `larguraMm` e a altura (linhas × entrelinha) cabe em `alturaMm`. Medido, não estimado.

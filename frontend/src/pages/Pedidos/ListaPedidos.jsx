@@ -19,16 +19,13 @@ import BoletosAsaasModal from '../Financeiro/BoletosAsaasModal';
 import { eventosCobrancaPix } from '../Atendimentos/linhaDoTempoPedido';
 import PixAvulsoModal from './PixAvulsoModal';
 import ImprimirLoteModal from './ImprimirLoteModal';
-import EtiquetaAmostraModal from './EtiquetaAmostraModal';
+import EtiquetaPedidoModal from './EtiquetaPedidoModal';
+import { fmtNumero } from '../../utils/numeroPedido';
 import PageHeader from '../../components/PageHeader';
 import EstadoVazio from '../../components/EstadoVazio';
 import SeloInadimplencia from '../../components/SeloInadimplencia';
 import PopupContasEmAberto from '../../components/PopupContasEmAberto';
 import CampoNumero from '../../components/CampoNumero';
-
-// Pedido recém-criado pode ainda não ter número do CA (rascunho ABERTO) — nunca interpolar
-// null/undefined direto na tela (vira "#null" para o usuário).
-const fmtNumero = (pedido) => pedido.numero == null ? '(rascunho)' : pedido.bonificacao ? `BN#${pedido.numero}` : pedido.especial ? `ZZ#${pedido.numero}` : `#${pedido.numero}`;
 
 // Encaixe de entrega: NÃO é campo do Pedido — o NovoPedido.jsx grava o prefixo "ENCAIXE DE
 // ENTREGA" na 1ª linha de `observacoes` (com ou sem o resto do texto do vendedor embaixo).
@@ -251,6 +248,7 @@ const ListaPedidos = () => {
     const [pixModal, setPixModal] = useState(null); // { id, numero, especial, clienteNome, valorSugerido }
     const [loteModal, setLoteModal] = useState(null); // { pedidoIds } ou { amostraIds } p/ impressão em lote
     const [etiquetaAmostra, setEtiquetaAmostra] = useState(null); // amostra (do card) p/ a etiqueta 100×120
+    const [etiquetaPedido, setEtiquetaPedido] = useState(null);   // pedido (do card) p/ a etiqueta 100×120
     const [gerandoDanfe, setGerandoDanfe] = useState(null); // pedidoId com DANFE em geração
     const [convertendo, setConvertendo] = useState(null); // pedidoId em conversão especial→pedido
     const [detalheExtra, setDetalheExtra] = useState(null); // detalhe completo do pedido do modal (parcelas, cobranças, NFs)
@@ -285,6 +283,8 @@ const ListaPedidos = () => {
     // `permissoes.pedidos` é OBJETO ({view, edit, clientes}) — `edit === true` é o
     // espelho exato do gate usado em RotaLeads.jsx; `!!perms.pedidos` liberaria até
     // quem só LÊ a aba (regra do projeto, não repetir esse bug).
+    // Etiqueta 100×120: espelha o backend (impressaoEtiquetasRoutes.podeOrigem 'PEDIDO')
+    const podeEtiquetaPedido = user?.permissoes?.admin || user?.permissoes?.pedidos?.view === true || user?.permissoes?.pedidos?.edit === true;
     const podeCriarPedido = user?.permissoes?.admin || user?.permissoes?.pedidos?.edit === true;
     const [reatribuindo, setReatribuindo] = useState(false);
     const [novoVendedorId, setNovoVendedorId] = useState('');
@@ -1767,6 +1767,19 @@ const ListaPedidos = () => {
                                                     </div>
                                                 );
                                             })()}
+                                            {podeEtiquetaPedido && (
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => { e.stopPropagation(); setEtiquetaPedido(pedido); }}
+                                                    className="flex items-center justify-center gap-1 px-2.5 py-1.5 min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 text-[11px] font-bold bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 shadow-sm"
+                                                    title="Etiqueta (100 × 120)"
+                                                    aria-label="Etiqueta (100 × 120)"
+                                                    data-etiqueta-pedido
+                                                >
+                                                    <Tag className="h-4 w-4" />
+                                                    <span className="hidden lg:inline">Etiqueta</span>
+                                                </button>
+                                            )}
                                             <button
                                                 onClick={() => {
                                                     const bloq = pedido.statusEnvio === 'RECEBIDO' || ['APROVADO', 'FATURADO', 'EM_ABERTO'].includes(pedido.situacaoCA);
@@ -2279,6 +2292,19 @@ const ListaPedidos = () => {
                                 >
                                     {getWsStatus(selectedPedido.id) === 'enviando' ? <Loader2 className="h-5 w-5 animate-spin" /> : getWsStatus(selectedPedido.id) === 'ok' ? <CheckCircle className="h-5 w-5" /> : getWsStatus(selectedPedido.id) === 'erro' ? <XCircle className="h-5 w-5" /> : <MessageCircle className="h-5 w-5" />}
                                 </button>
+                                {podeEtiquetaPedido && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setEtiquetaPedido(selectedPedido)}
+                                        className="p-2 min-h-[44px] min-w-[44px] rounded flex items-center justify-center gap-1.5 border border-gray-300 text-gray-700 hover:bg-gray-50"
+                                        title="Etiqueta (100 × 120)"
+                                        aria-label="Etiqueta (100 × 120)"
+                                        data-etiqueta-pedido
+                                    >
+                                        <Tag className="h-5 w-5" />
+                                        <span className="hidden sm:inline text-sm font-bold">Etiqueta</span>
+                                    </button>
+                                )}
                                 <button onClick={() => setSelectedPedido(null)} className="px-6 py-2 bg-gray-900 text-white rounded font-bold text-sm">Fechar</button>
                             </div>
                         </div>
@@ -2371,13 +2397,19 @@ const ListaPedidos = () => {
 
             {/* Modal de impressão em lote */}
             {etiquetaAmostra && (
-                <EtiquetaAmostraModal
+                <EtiquetaPedidoModal
                     amostra={etiquetaAmostra}
                     onClose={() => setEtiquetaAmostra(null)}
                     onStatus={(novo) => {
                         setAmostras(prev => prev.map(a => a.id === etiquetaAmostra.id ? { ...a, status: novo } : a));
                         carregarResumoAmostras();
                     }}
+                />
+            )}
+            {etiquetaPedido && (
+                <EtiquetaPedidoModal
+                    pedido={etiquetaPedido}
+                    onClose={() => setEtiquetaPedido(null)}
                 />
             )}
             {loteModal && (

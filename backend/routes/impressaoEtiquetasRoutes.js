@@ -23,11 +23,14 @@ const ORIGENS = {
     DELIVERY: { tamanho: '40x25', linguagem: 'EPL2', tipo: 'CAIXA_KIT_FESTA', usaCopias: false },
     FUNCIONARIO_PASTA: { tamanho: '100x120', linguagem: 'ZPL', tipo: 'ETIQUETA_FUNCIONARIO', usaCopias: true },
     FUNCIONARIO_ARQUIVO: { tamanho: '40x25', linguagem: 'EPL2', tipo: 'ETIQUETA_FUNCIONARIO', usaCopias: false },
-    AMOSTRA: { tamanho: '100x120', linguagem: 'ZPL', tipo: 'ETIQUETA_AMOSTRA', usaCopias: true },   // resumo do pedido de amostra (Pedidos → Amostras)
+    AMOSTRA: { tamanho: '100x120', linguagem: 'ZPL', tipo: 'ETIQUETA_AMOSTRA', usaCopias: true },   // legado: mantido p/ PWA em cache com versão antiga
+    // etiqueta de pedido (normal/especial/bonificação/amostra): N páginas + ordem em "sequencia" (1/2,2/2,1/2,2/2...). Sem ^PQ.
+    PEDIDO: { tamanho: '100x120', linguagem: 'ZPL', tipo: 'ETIQUETA_PEDIDO', usaCopias: false, zplSequencia: true },
 };
 const TIPOS_REFERENCIA = ['ETIQUETA_PRODUTO', 'PEDIDO', 'FUNCIONARIO', 'AMOSTRA'];
 const MAX_BITMAPS = 60;
 const MAX_COPIAS = 999;
+const MAX_SEQUENCIA_ZPL = 120;   // = 40 blocos x MAX_TRABALHOS(3)
 
 // pcp.etiquetas / kitFesta são flags de OBJETO de permissões: checa a flag, nunca !!perms.pcp
 async function podeOrigem(req, origem) {
@@ -36,7 +39,7 @@ async function podeOrigem(req, origem) {
     if (origem === 'PRODUTO') return !!p.pcp?.etiquetas;
     if (origem === 'KIT_FESTA') return !!p.kitFesta;
     if (origem === 'FUNCIONARIO_PASTA' || origem === 'FUNCIONARIO_ARQUIVO') return !!p.Pode_Ver_Ponto || !!p.Pode_Editar_Ponto;
-    if (origem === 'AMOSTRA') return p.pedidos?.view === true || p.pedidos?.edit === true;   // mesma tela de Pedidos (objeto, nunca !!p.pedidos)
+    if (origem === 'AMOSTRA' || origem === 'PEDIDO') return p.pedidos?.view === true || p.pedidos?.edit === true;   // mesma tela de Pedidos (objeto, nunca !!p.pedidos)
     if (origem === 'DELIVERY') {
         const perm = await deliveryService.permissaoDoUsuario({ ...req.user, permissoes: p });
         return !!perm.podeVer;
@@ -94,6 +97,12 @@ function validarCorpo(b, origem, cfg) {
             copias = Number(b.copias);
             if (!Number.isInteger(copias) || copias < 1 || copias > MAX_COPIAS) return { erro: `copias deve ser de 1 a ${MAX_COPIAS}.` };
         }
+    } else if (cfg.zplSequencia) {
+        if (b.copias !== undefined && Number(b.copias) !== 1) return { erro: 'Etiqueta de pedido não usa "copias"; repita os índices em "sequencia".' };
+        if (!Array.isArray(b.sequencia) || b.sequencia.length < 1) return { erro: '"sequencia" é obrigatória (ordem de impressão, índices de "bitmaps").' };
+        if (b.sequencia.length > MAX_SEQUENCIA_ZPL) return { erro: `Etiquetas demais de uma vez (máximo ${MAX_SEQUENCIA_ZPL}). Divida em lotes menores.` };
+        sequencia = b.sequencia.map(Number);
+        if (!sequencia.every((i) => Number.isInteger(i) && i >= 0 && i < b.bitmaps.length)) return { erro: '"sequencia" tem índice que não existe em "bitmaps".' };
     } else {
         if (b.copias !== undefined && Number(b.copias) !== 1) return { erro: 'Caixas não usam "copias"; repita os índices em "sequencia".' };
         if (!Array.isArray(b.sequencia) || b.sequencia.length < 1) return { erro: '"sequencia" é obrigatória (ordem de impressão, índices de "bitmaps").' };
@@ -139,6 +148,16 @@ router.post('/', async (req, res) => {
                     conteudo: bmp.renderZplImagem({ raw: raws[0], larguraDots: dim.w, alturaDots: dim.h, copias: v.copias, impressora: imp, compressao }),
                     copias: v.copias, etiquetas: v.copias,
                 }];
+            } else if (cfg.zplSequencia) {
+                // um bloco ^XA..^XZ por etiqueta (copias:1, sem ^PQ); o agente manda os bytes crus ao spooler e a Zebra imprime cada formulário
+                const compressao = await svc.compressaoGf(imp);
+                const blocos = v.sequencia.map((i) => bmp.renderZplImagem({ raw: raws[i], larguraDots: dim.w, alturaDots: dim.h, copias: 1, impressora: imp, compressao }));
+                conteudos = [];
+                for (let i = 0; i < blocos.length; i += bmp.MAX_FORMULARIOS_POR_TRABALHO) {
+                    const parte = blocos.slice(i, i + bmp.MAX_FORMULARIOS_POR_TRABALHO);
+                    conteudos.push({ conteudo: Buffer.concat(parte), copias: 1, etiquetas: parte.length });
+                }
+                if (conteudos.length > bmp.MAX_TRABALHOS) throw new bmp.ErroBitmap(`Etiquetas demais de uma vez (máximo ${bmp.MAX_TRABALHOS * bmp.MAX_FORMULARIOS_POR_TRABALHO}). Divida em lotes menores.`);
             } else {
                 conteudos = bmp.dividirEmTrabalhos(v.sequencia, imp.colunas).map((parte) => ({
                     conteudo: bmp.renderEpl2Imagem({ raws, sequencia: parte, impressora: imp }), copias: 1, etiquetas: parte.length,
@@ -184,7 +203,7 @@ router.post('/trabalhos/:id/cancelar', async (req, res) => {
     try {
         const admin = !!permsDe(req).admin;
         const t = await prisma.impressaoTrabalho.findUnique({ where: { id: req.params.id }, select: { id: true, tipo: true, solicitadoPorId: true } });
-        if (!t || !['ETIQUETA_PRODUTO', 'CAIXA_KIT_FESTA', 'ETIQUETA_FUNCIONARIO', 'ETIQUETA_AMOSTRA'].includes(t.tipo) || (!admin && t.solicitadoPorId !== String(req.user?.id))) {
+        if (!t || !['ETIQUETA_PRODUTO', 'CAIXA_KIT_FESTA', 'ETIQUETA_FUNCIONARIO', 'ETIQUETA_AMOSTRA', 'ETIQUETA_PEDIDO'].includes(t.tipo) || (!admin && t.solicitadoPorId !== String(req.user?.id))) {
             return res.status(404).json({ error: 'Trabalho não encontrado.' });
         }
         const r = await prisma.impressaoTrabalho.updateMany({

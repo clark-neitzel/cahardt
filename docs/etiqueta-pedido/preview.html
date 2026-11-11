@@ -1,0 +1,45 @@
+<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Etiqueta do pedido — preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+  body{margin:0;background:#f2f0eb;font-family:Manrope,system-ui,sans-serif;color:rgba(0,0,0,.87);padding:16px}
+  h1{font-size:18px;margin:0 0 4px}.sub{font-size:13px;color:#555;margin:0 0 16px}
+  .grid{display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start}
+  .caso h3{font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:#555;margin:0 0 8px}
+  .papel{background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.15);display:inline-block;width:100mm;height:120mm;transform-origin:top left}
+  @media (max-width:480px){.papel{transform:scale(.85)}.caso{height:calc(120mm*.85 + 30px)}}
+  .mock{margin-top:28px;background:#fff;border:1px solid #e5e7eb;border-radius:12px;max-width:520px;box-shadow:0 1px 2px rgba(0,0,0,.05)}
+  .mock .row{padding:12px;display:flex;justify-content:space-between;gap:8px}
+  .chip{font-size:10px;font-weight:800;padding:2px 6px;border-radius:4px;border:1px solid #fed7aa;background:#fff7ed;color:#c2410c}
+  .ico{display:inline-flex;width:28px;height:28px;align-items:center;justify-content:center;border-radius:6px;color:#9ca3af}
+  .ico.novo{color:#00754A;background:#d4e9e2;box-shadow:0 0 0 2px #cba258}
+  .pin{display:inline-block;background:#cba258;color:#fff;font-weight:800;font-size:11px;border-radius:999px;width:18px;height:18px;line-height:18px;text-align:center;margin-left:4px}
+  .leg{font-size:13px;padding:0 12px 12px;color:#444}
+</style></head><body>
+<h1>Etiqueta 100 x 120 mm - pedido, especial, bonificacao, amostra</h1>
+<div class="grid" id="grid"></div>
+<script type="module">
+import { dePedido, deAmostra, montarEtiquetaPedido } from './etiqueta-pedido.bundle.js';
+const cli = { NomeFantasia: 'Padaria Pão da Serra', Nome: 'J. M. Schmidt Panificadora Ltda', End_Logradouro: 'Rua Barão do Rio Branco', End_Numero: '1240', End_Bairro: 'Centro', End_Cidade: 'Blumenau', Telefone_Celular: '(47) 99912-3456' };
+const it = (n, q, u='un') => ({ quantidade: q, produto: { nome: n, unidade: u } });
+const base = { numero: 5821, dataVenda: '2026-11-13T00:00:00.000Z', horaEntrega: '14:30', vendedor: { nome: 'Rafael Kuhn' }, cliente: cli, observacoes: 'Entregar na cozinha, falar com a Dona Marta.', itens: [it('Coxinha de Frango com Catupiry', 20), it('Kibe', 20), it('Bolinha de Queijo', 20), ] };
+const nomes = ['Coxinha de Frango','Kibe','Risole de Carne','Bolinha de Queijo','Croquete de Carne','Enroladinho de Salsicha','Empada de Palmito','Esfiha de Carne','Pastel de Queijo','Mini pizza','Quibe recheado','Bolinho de Bacalhau','Pão de Queijo Tradicional Congelado 1kg','Churros doce de leite','Folhado de presunto e queijo','Pastel de feira','Coxinha de costela','Hamburguer de picanha 90g','Nugget de frango','Pão de alho','Brigadeiro gourmet','Beijinho','Kibe de queijo','Rissole de camarão','Canudinho'];
+const casos = [
+ ['Pedido normal (3 itens)', dePedido(base)],
+ ['Pedido especial', dePedido({ ...base, numero: 77, especial: true })],
+ ['Bonificação', dePedido({ ...base, numero: 31, bonificacao: true })],
+ ['Amostra', deAmostra({ numero: 148, dataEntrega: '2026-11-13', solicitadoPor: { nome: 'Rafael Kuhn' }, cliente: cli, observacao: 'Provar antes de fechar.', itens: [{ nomeProduto: 'Amostra - Coxinha', quantidade: 20, produto: { unidade: 'un' } }, { nomeProduto: 'Amostra - Kibe', quantidade: 10 }] })],
+ ['Especial 25 itens (paginado)', dePedido({ ...base, numero: 912, especial: true, observacoes: 'Entregar até as 10h. '.repeat(3), itens: nomes.concat(nomes).slice(0,25).map((n,i)=>it(`${i+1}-${n} recheado c/ catupiry`.slice(0,36),(i+1)*3, i%5==0?'kg':'un')) })],
+ ['Pedido 9 itens, nomes de 34 caracteres (#591)', dePedido({ ...base, numero: 591, itens: nomes.slice(0,9).map((n,i)=>it(`${n} tradicional congelado 1kg`.slice(0,34),i+1)) })],
+];
+async function render() {
+  try { await document.fonts.load('800 12pt Manrope'); await document.fonts.load('700 12pt Manrope'); await document.fonts.load('600 12pt Manrope'); await document.fonts.ready; } catch {}
+  document.getElementById('grid').innerHTML = casos.map(([t, d], i) => {
+    const m = montarEtiquetaPedido(d);
+    const css = m.estilos.replaceAll('#area-impressao', `.c${i}`);
+    return `<style>${css}</style><div class="caso"><h3>${t} - ${m.paginas} etiqueta(s)</h3><div style="display:flex;gap:12px">${m.etiquetas.map(h=>`<div class="papel c${i}">${h}</div>`).join('')}</div></div>`;
+  }).join('');
+  document.body.dataset.pronto='1';
+}
+render();
+</script></body></html>

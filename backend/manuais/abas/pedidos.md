@@ -239,13 +239,18 @@ Status possíveis: `SOLICITADA → PREPARACAO → LIBERADO → ENTREGUE`
 - **Aviso no WhatsApp ao criar:** quando uma amostra nova é criada, o sistema manda uma mensagem de WhatsApp (AM#, destinatário, entrega, quem pediu, itens) para os usuários marcados em **Administração → Usuários** (ícone de caixa). Quem criou a amostra não recebe; usuário sem telefone ou inativo é ignorado. O aviso nunca atrapalha a criação da amostra.
 - **Imprimir a etiqueta avança o status:** ao imprimir a etiqueta de uma amostra **Solicitada** (Zebra ou navegador), ela passa sozinha para **Em preparação**. Amostra já em preparação/liberada/entregue **não muda** (nunca volta). Se a atualização falhar, a impressão sai normalmente.
 - Botão de excluir amostra (quem tem `Pode_Excluir_Amostra`)
-- **Etiqueta da amostra (100 × 120 mm)**: o ícone de **etiqueta** no card da amostra (ao lado do WhatsApp) — e o botão
-  **Etiqueta** ao abrir a linha — abre a janela com a prévia do resumo do pedido para colar na caixa/sacola: destinatário
-  (fantasia e razão social, endereço, bairro · cidade, telefone; amostra de lead sai com contato/WhatsApp/cidade do lead),
-  data de entrega, quem pediu, a lista de itens com quantidade (acima de 8 itens vai em 2 colunas) e a observação do
-  vendedor. Nº de cópias e dois botões: **Imprimir na Zebra** (vai direto para a impressora grande da cozinha, mesma fila
-  das etiquetas de produto) e **Imprimir pelo navegador** (papel 120 × 100 paisagem, margem 0, escala 100%). Só preto no
-  branco e **sem tarja preta** (área sólida gruda o ribbon). Amostra cancelada não tem o ícone. Quem vê Pedidos imprime.
+- **Etiqueta 100 × 120 mm (todo pedido e amostra)**: o ícone de **etiqueta** aparece em **todo card de pedido** (normal,
+  especial, bonificação, até cancelado), ao lado de Detalhes/Editar, e também no rodapé dos detalhes do pedido; na aba
+  Amostras fica no card (ao lado do WhatsApp) e no botão **Etiqueta** da linha aberta. A janela mostra a prévia do resumo
+  para colar na caixa/sacola: faixa **PEDIDO / PEDIDO ESPECIAL / BONIFICAÇÃO / AMOSTRA** com o número (#N, ZZ#N, BN#N,
+  AM#N), destinatário (fantasia e razão social, endereço, bairro · cidade, telefone; amostra de lead sai com
+  contato/WhatsApp/cidade do lead), **data e hora da entrega**, **vendedor**, itens com quantidade e a observação.
+  Bonificação e amostra levam "SEM VALOR COMERCIAL" no rodapé. **Nenhum item é escondido**: se não cabe numa etiqueta,
+  continua em outra (1/2, 2/2…) e a janela avisa "Esta impressão sai em N etiquetas"; a prévia mostra todas. As **cópias**
+  repetem o conjunto completo na ordem (1/2, 2/2, 1/2, 2/2…) e o total aparece ao lado. Dois botões: **Imprimir na Zebra**
+  (fila da impressora grande, tipo "Etiqueta de pedido") e **Imprimir pelo navegador** (papel 120 × 100 paisagem, margem
+  0, escala 100%). Só preto no branco e **sem tarja preta** (área sólida gruda o ribbon). Imprimir a etiqueta **não altera**
+  o pedido; só a amostra "Solicitada" avança para "Em preparação". Quem vê ou edita Pedidos imprime.
 - Controle de amostras por produto
 - **Observação da entrega**: ao abrir a linha de uma amostra já entregue, aparece o recado que quem
   entregou escreveu na porta ("deixei com o gerente", "pediu para o vendedor passar sexta"), com a data da

@@ -5,21 +5,25 @@ import { useEscalaPreview } from '../PCP/OrientacaoEtiqueta';
 import { imprimirNaPagina } from '../../utils/imprimirNaPagina';
 import CampoNumero from '../../components/CampoNumero';
 import amostraService from '../../services/amostraService';
+import pedidoService from '../../services/pedidoService';
 import { carregarFontesFuncionario } from '../RH/etiquetasFuncionario';
-import { montarEtiquetaAmostra, prepararEtiquetaAmostra } from './etiquetaAmostra';
+import { deAmostra, dePedido, montarEtiquetaPedido, prepararEtiquetaPedido } from './etiquetaPedido';
 
-// Etiqueta do pedido de amostra (100 × 120, rolo grande da Zebra) — aberta pelo ícone de etiqueta no card
-// da aba Amostras. Mesmo padrão da etiqueta da pasta do RH: prévia + cópias + "Imprimir na Zebra" /
-// "Imprimir pelo navegador". `amostra` é o registro do card (sem endereço/telefone/observação): o modal
-// busca a amostra completa ao abrir e, enquanto carrega, monta a prévia com o que já tem.
+// Etiqueta 100 × 120 do PEDIDO (normal, especial, bonificação) ou da AMOSTRA (rolo grande da Zebra).
+// Props: `pedido` OU `amostra` = registro do card (resumido). O modal busca o completo ao abrir
+// (endereço, telefone, observação, unidades) e, enquanto carrega, monta a prévia com o que já tem.
+// Pedido grande sai em várias etiquetas (1/2, 2/2…) — nunca esconde item. Cópias vão embutidas na
+// `sequencia` (1,2,1,2…), nunca em `copias` (o servidor recusa as duas juntas).
 const BTN_MAIS_MENOS = 'min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-full border border-gray-300 hover:bg-gray-50';
 
-export default function EtiquetaAmostraModal({ amostra, onClose, onStatus }) {
+export default function EtiquetaPedidoModal({ pedido, amostra, onClose, onStatus }) {
+    const ehAmostra = !!amostra;
+    const registro = amostra || pedido;
     const [completa, setCompleta] = useState(null);
     const [erro, setErro] = useState('');
     const [copias, setCopias] = useState(1);
     const [fontesOk, setFontesOk] = useState(false);
-    const statusAvisado = useRef(false); // avança o status uma só vez por abertura do modal
+    const statusAvisado = useRef(false); // avança o status de amostra uma só vez por abertura
     const completaRef = useRef(null);
     completaRef.current = completa;
 
@@ -27,31 +31,36 @@ export default function EtiquetaAmostraModal({ amostra, onClose, onStatus }) {
     useEffect(() => {
         let vivo = true;
         setCompleta(null); setErro('');
-        if (!amostra?.id) return undefined;
-        amostraService.buscarPorId(amostra.id)
-            .then((a) => { if (vivo) setCompleta(a); })
+        if (!registro?.id) return undefined;
+        const busca = ehAmostra ? amostraService.buscarPorId(registro.id) : pedidoService.detalhar(registro.id);
+        busca
+            .then((r) => { if (vivo) setCompleta(r); })
             .catch(() => { if (vivo) setErro('Não deu para carregar o endereço e a observação. A etiqueta sai só com o que está na lista.'); });
         return () => { vivo = false; };
-    }, [amostra?.id]);
+    }, [registro?.id, ehAmostra]);
 
-    const dados = completa || amostra;
+    const fonte = completa || registro;
+    const dados = useMemo(() => (ehAmostra ? deAmostra(fonte) : dePedido(fonte)), [fonte, ehAmostra]);
     const qtd = Math.max(1, Math.min(99, parseInt(copias, 10) || 1));
-    const montada = useMemo(() => montarEtiquetaAmostra(dados), [dados, fontesOk]); // eslint-disable-line react-hooks/exhaustive-deps
+    const montada = useMemo(() => montarEtiquetaPedido(dados), [dados, fontesOk]); // eslint-disable-line react-hooks/exhaustive-deps
+    const paginas = montada.paginas;
+    const total = paginas * qtd;
     const [refPrev, escala] = useEscalaPreview(100, 1.25);
 
     // preview: o CSS da etiqueta é escopado no id do preview (nunca vaza para o app)
-    const idPrev = 'prev-etq-amostra';
+    const clsPrev = 'prev-etq-pedido';
     const cssPrev = useMemo(() => montada.estilos
         .replace(/@page\s*{[^}]*}/g, '')
         .replace(/html\.modo-impressao[^{]*{[^}]*}/g, '')
-        .replaceAll('#area-impressao', `#${idPrev}`), [montada]);
+        .replaceAll('#area-impressao', `.${clsPrev}`), [montada]);
 
-    const numero = montada.dados.numero;
-    const nome = montada.dados.nome;
+    const numero = dados.numeroTxt;
+    const nome = dados.nome;
+    const rotulo = `${ehAmostra ? 'Amostra' : 'Pedido'} ${numero} — ${nome}`;
 
-    // Depois de imprimir (Zebra ou navegador): SOLICITADA -> PREPARACAO. Falha aqui NUNCA atrapalha a impressão.
+    // Só amostra SOLICITADA avança para PREPARACAO. Falha aqui NUNCA atrapalha a impressão.
     const aoImprimir = () => {
-        if (statusAvisado.current || !amostra?.id) return;
+        if (!ehAmostra || statusAvisado.current || !amostra?.id) return;
         const statusAtual = (completaRef.current || amostra).status;
         if (statusAtual !== 'SOLICITADA') return;
         statusAvisado.current = true;
@@ -70,7 +79,10 @@ export default function EtiquetaAmostraModal({ amostra, onClose, onStatus }) {
             #area-impressao .pg + .pg { break-before: page; page-break-before: always; }
             #area-impressao .pg > .etq { transform: rotate(90deg); flex: 0 0 auto; }
         `;
-        imprimirNaPagina(estilos, Array.from({ length: qtd }, () => `<div class="pg">${montada.corpo}</div>`).join(''));
+        // ordem 1,2,1,2… (cada cópia completa o conjunto)
+        const folhas = [];
+        for (let c = 0; c < qtd; c++) montada.etiquetas.forEach((h) => folhas.push(`<div class="pg">${h}</div>`));
+        imprimirNaPagina(estilos, folhas.join(''));
     };
 
     return (
@@ -78,7 +90,7 @@ export default function EtiquetaAmostraModal({ amostra, onClose, onStatus }) {
             <div className="bg-white w-full md:max-w-xl rounded-t-2xl md:rounded-2xl max-h-[92vh] overflow-y-auto overflow-x-hidden" onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-center justify-between px-4 py-2 border-b border-gray-100">
                     <div className="min-w-0">
-                        <p className="text-xs font-bold uppercase tracking-widest text-gray-600">Etiqueta da amostra · 100 × 120 mm</p>
+                        <p className="text-xs font-bold uppercase tracking-widest text-gray-600">Etiqueta {ehAmostra ? 'da amostra' : 'do pedido'} · 100 × 120 mm</p>
                         <p className="text-sm text-gray-600 truncate">{numero} — {nome}</p>
                     </div>
                     <button type="button" onClick={onClose} aria-label="Fechar" className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-100"><X className="h-5 w-5" /></button>
@@ -93,24 +105,41 @@ export default function EtiquetaAmostraModal({ amostra, onClose, onStatus }) {
                             <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" /><span>{erro}</span>
                         </div>
                     )}
-                    {montada.itensOcultos > 0 && (
-                        <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-xs text-amber-900">
+                    {paginas > 1 && (
+                        <div data-aviso-paginas className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-xs text-amber-900">
                             <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
-                            <span>São muitos itens: {montada.itensOcultos} não cabem na etiqueta e ficam indicados como "+ itens".</span>
+                            <span>Esta impressão sai em <b>{paginas} etiquetas</b> (são {dados.itens.length} itens). Cole todas na mesma caixa.</span>
+                        </div>
+                    )}
+                    {montada.itensFora > 0 && (
+                        <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-2.5 text-xs text-red-800">
+                            <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" /><span>Pedido grande demais: {montada.itensFora} itens não cabem nas etiquetas. Confira pelo pedido impresso.</span>
+                        </div>
+                    )}
+                    {montada.cortouNome && (
+                        <div data-aviso-nome-cortado className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-xs text-amber-900">
+                            <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" /><span>Algum nome é muito longo e sai abreviado ("…") na etiqueta. Confira na prévia.</span>
+                        </div>
+                    )}
+                    {montada.cortouObs && (
+                        <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-xs text-amber-900">
+                            <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" /><span>A observação é longa e pode sair cortada na etiqueta.</span>
                         </div>
                     )}
 
-                    <div ref={refPrev} className="bg-gray-100 rounded-xl p-2 md:p-4 flex justify-center overflow-hidden">
-                        <div style={{ width: `${100 * (96 / 25.4) * escala}px`, height: `${120 * (96 / 25.4) * escala}px` }}>
-                            <div style={{ transform: `scale(${escala})`, transformOrigin: 'top left', width: '100mm' }}>
-                                <style>{cssPrev}</style>
-                                <div id={idPrev} className="bg-white shadow-sm" dangerouslySetInnerHTML={{ __html: montada.corpo }} />
+                    <div ref={refPrev} className="bg-gray-100 rounded-xl p-2 md:p-4 flex flex-col items-center gap-3 overflow-hidden">
+                        <style>{cssPrev}</style>
+                        {montada.etiquetas.map((html, i) => (
+                            <div key={i} style={{ width: `${100 * (96 / 25.4) * escala}px`, height: `${120 * (96 / 25.4) * escala}px` }}>
+                                <div style={{ transform: `scale(${escala})`, transformOrigin: 'top left', width: '100mm' }}>
+                                    <div className={`bg-white shadow-sm ${clsPrev}`} dangerouslySetInnerHTML={{ __html: html }} />
+                                </div>
                             </div>
-                        </div>
+                        ))}
                     </div>
                     <p className="text-xs text-gray-500 text-center -mt-2">Prévia do tamanho da etiqueta (100 × 120 mm). Só preto no branco.</p>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                         <span className="text-sm font-medium text-gray-700">Cópias</span>
                         <button type="button" aria-label="Menos" onClick={() => setCopias((c) => Math.max(1, (parseInt(c, 10) || 1) - 1))} className={BTN_MAIS_MENOS}><Minus className="h-4 w-4" /></button>
                         <CampoNumero min="1" max="99" value={copias}
@@ -118,17 +147,17 @@ export default function EtiquetaAmostraModal({ amostra, onClose, onStatus }) {
                             onBlur={(e) => { if (!e.target.value || parseInt(e.target.value, 10) < 1) setCopias(1); }}
                             className="w-16 min-h-[44px] text-center font-semibold text-gray-800 border border-gray-300 rounded-lg" />
                         <button type="button" aria-label="Mais" onClick={() => setCopias((c) => Math.min(99, (parseInt(c, 10) || 1) + 1))} className={BTN_MAIS_MENOS}><Plus className="h-4 w-4" /></button>
+                        {paginas > 1 && <span data-total-etiquetas className="text-xs text-gray-600">{paginas} etiquetas × {qtd} {qtd === 1 ? 'cópia' : 'cópias'} = {total}</span>}
                     </div>
 
                     <ImprimirDireto
-                        origem="AMOSTRA"
-                        copias={qtd}
-                        nome={`Amostra ${numero} — ${nome}`}
-                        total={0}
-                        referencia={{ tipo: 'AMOSTRA', id: String(amostra?.id ?? ''), rotulo: `Amostra ${numero} — ${nome}` }}
+                        origem="PEDIDO"
+                        nome={rotulo}
+                        total={total}
+                        referencia={{ tipo: 'PEDIDO', id: String(registro?.id ?? ''), rotulo }}
                         onNavegador={imprimirNavegador}
                         onImpresso={aoImprimir}
-                        preparar={() => prepararEtiquetaAmostra(dados)}
+                        preparar={() => prepararEtiquetaPedido(dados, qtd)}
                     />
                     <p className="text-xs text-gray-500">Pelo navegador: papel 120 × 100 mm (paisagem), margem 0, escala 100%.</p>
                 </div>

@@ -1,5 +1,11 @@
 [
   {
+    "slug": "etiqueta-pedido",
+    "titulo": "Etiqueta para todo pedido",
+    "resumo": "Pedido, especial, bonificação e amostra agora têm o ícone de etiqueta (100 × 120). Pedido com muitos itens sai em mais de uma etiqueta, sem perder nenhum produto.",
+    "data": "2026-11-11"
+  },
+  {
     "slug": "amostra-sem-esquecer",
     "titulo": "Amostra que ninguém esquece",
     "resumo": "Amostra que ainda não está em nenhuma carga agora aparece sozinha em Cargas, no Mapa, na Central de Pendências e em Pedidos → Amostras, com cor de urgência. Agora também avisa no WhatsApp quem estiver marcado em Usuários quando uma amostra nova é criada.",
