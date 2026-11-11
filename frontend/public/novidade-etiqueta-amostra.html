@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Etiqueta da amostra — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<meta property="og:title" content="🏷️ Novidade no Hardt App: etiqueta do pedido de amostra">
+<meta property="og:description" content="Na aba Pedidos → Amostras, um ícone imprime a etiqueta grande (100 × 120) com cliente, entrega, itens e observação — direto na Zebra ou pelo navegador.">
+<meta property="og:type" content="website">
+<style>
+  :root { --primary:#00754A; --primary-dark:#006241; --house:#1E3932; --mint:#d4e9e2; --cream:#f2f0eb; --gold:#cba258; --ink:rgba(0,0,0,.87); --ink-soft:#5f6b66; letter-spacing:-0.01em; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--cream); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; line-height:1.55; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:620px; margin:0 auto; padding:0 16px 56px; }
+  .hero { background:linear-gradient(168deg,var(--house) 0%,#16302a 100%); color:#fff; padding:40px 16px 96px; }
+  .hero-inner { max-width:620px; margin:0 auto; text-align:center; }
+  .eyebrow { display:inline-block; background:var(--gold); color:#2b230f; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.14em; padding:6px 14px; border-radius:999px; margin-bottom:18px; }
+  .hero h1 { font-size:clamp(28px,7vw,40px); font-weight:800; line-height:1.12; margin:0 0 12px; text-wrap:balance; }
+  .hero p { color:rgba(255,255,255,.75); font-size:16px; max-width:46ch; margin:0 auto; text-wrap:balance; }
+
+  /* mock da etiqueta flutuando sobre o hero */
+  .etq { max-width:300px; margin:-68px auto 34px; background:#fff; border:2px solid #000; border-radius:4px; box-shadow:0 18px 44px rgba(20,40,34,.28); color:#000; font-family:Manrope,-apple-system,sans-serif; padding:0 0 8px; }
+  .etq .faixa { display:flex; justify-content:space-between; align-items:center; padding:8px 12px; border-bottom:3px solid #000; font-weight:800; }
+  .etq .faixa .t { letter-spacing:.14em; font-size:14px; } .etq .faixa .n { font-size:18px; }
+  .etq .dest { padding:8px 12px 4px; }
+  .etq .nome { font-weight:800; font-size:19px; line-height:1.05; }
+  .etq .end { font-size:10.5px; font-weight:600; line-height:1.4; }
+  .etq .datas { display:flex; gap:6px; padding:4px 12px; }
+  .etq .dt { flex:1; border:1.5px solid #000; text-align:center; padding:3px; }
+  .etq .dt small { display:block; font-size:7px; font-weight:800; letter-spacing:.14em; } .etq .dt b { font-size:13px; }
+  .etq .itens { margin:6px 12px 0; border-top:2px solid #000; }
+  .etq .cab { display:flex; justify-content:space-between; font-size:8px; font-weight:800; letter-spacing:.14em; padding:4px 0 2px; }
+  .etq .it { display:flex; justify-content:space-between; font-size:11.5px; font-weight:700; padding:3px 0; border-bottom:1px solid #000; }
+  .etq .it:last-child { border-bottom:0; }
+  .etq .obs { font-size:9px; font-weight:600; padding:6px 12px 0; }
+  .etq .rod { text-align:center; font-size:7px; font-weight:600; padding-top:6px; }
+
+  .sec-label { font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.16em; color:var(--primary-dark); margin:34px 4px 12px; }
+  .acc { background:#fff; border:1px solid #e3e1da; border-radius:16px; margin-bottom:10px; overflow:hidden; box-shadow:0 1px 2px rgba(30,57,50,.05); }
+  .acc-head { width:100%; display:flex; align-items:center; gap:12px; background:none; border:none; font:inherit; text-align:left; padding:15px 16px; cursor:pointer; min-height:56px; }
+  .acc-ico { width:38px; height:38px; border-radius:11px; background:var(--mint); display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
+  .acc-head strong { flex:1; font-size:15.5px; font-weight:700; }
+  .acc-seta { color:#9aa5a0; transition:transform .2s; font-size:13px; }
+  .acc.aberto .acc-seta { transform:rotate(180deg); }
+  .acc-corpo { display:none; padding:0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display:block; }
+  .acc-corpo p, .acc-corpo li { font-size:14px; color:var(--ink-soft); }
+  .acc-corpo p { margin:0 0 10px; } .acc-corpo ul, .acc-corpo ol { margin:0; padding-left:18px; } .acc-corpo li { margin-bottom:7px; } .acc-corpo b { color:var(--ink); }
+  @media (max-width:420px) { .acc-corpo { padding-left:16px; } }
+
+  .tela { background:#fff; border:1px solid #e3e1da; border-radius:16px; overflow:hidden; margin-bottom:12px; box-shadow:0 1px 2px rgba(30,57,50,.05); }
+  .tela-titulo { background:var(--house); color:#fff; padding:12px 16px; font-size:13px; font-weight:800; display:flex; align-items:center; gap:8px; }
+  .tela-corpo { padding:16px; background:#f7f6f2; }
+  .app-card { background:#fff; border:1px solid #e5e3dc; border-radius:12px; overflow:hidden; margin-bottom:10px; }
+  .app-card-body { padding:12px; }
+  .app-btn { display:inline-flex; align-items:center; gap:6px; background:var(--primary); color:#fff; font-size:12.5px; font-weight:700; padding:9px 16px; border-radius:999px; }
+  .app-btn.claro { background:#fff; border:1.5px solid var(--primary); color:var(--primary); }
+  .pin { display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; border-radius:999px; background:var(--gold); color:#2b230f; font-size:11px; font-weight:800; margin-left:6px; flex-shrink:0; }
+  .legenda { padding:12px 16px 4px; background:#fff; border-top:1px solid #edece6; }
+  .legenda div { display:flex; gap:8px; font-size:13px; color:var(--ink-soft); margin-bottom:8px; }
+  .legenda .pin { margin:1px 0 0; }
+  .chip { font-size:10px; font-weight:800; padding:2px 6px; border-radius:4px; border:1px solid #fed7aa; background:#fff7ed; color:#c2410c; }
+  .ico { display:inline-flex; width:28px; height:28px; align-items:center; justify-content:center; border-radius:6px; color:#9ca3af; font-size:15px; }
+  .ico.novo { color:var(--primary); background:var(--mint); box-shadow:0 0 0 2px var(--gold); }
+  .status { font-size:10px; font-weight:800; padding:2px 8px; border-radius:999px; background:#fef3c7; color:#92400e; border:1px solid #fde68a; }
+  .copias { display:flex; align-items:center; gap:8px; font-size:13px; margin:10px 0; }
+  .copias span.b { width:34px; height:34px; border:1px solid #d8d5cc; border-radius:999px; display:inline-flex; align-items:center; justify-content:center; }
+  .copias span.v { width:48px; height:34px; border:1px solid #d8d5cc; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; font-weight:700; }
+  .aviso { background:#fff7ed; border:1px solid #fed7aa; border-radius:12px; padding:12px 14px; font-size:13.5px; color:#7c2d12; margin:0 0 10px; }
+</style>
+</head>
+<body>
+
+<div class="hero"><div class="hero-inner">
+  <span class="eyebrow">Novidade · Pedidos</span>
+  <h1>Etiqueta do pedido de amostra</h1>
+  <p>Um ícone na aba Amostras imprime a etiqueta grande com cliente, entrega, itens e observação. Cola na caixa e a amostra sai identificada.</p>
+</div></div>
+
+<div class="wrap">
+  <div class="etq">
+    <div class="faixa"><span class="t">AMOSTRA</span><span class="n">AM#148</span></div>
+    <div class="dest">
+      <div class="nome">PADARIA PÃO DA SERRA</div>
+      <div class="end">J. M. Schmidt Panificadora Ltda<br>Rua Barão do Rio Branco, 1240<br>Centro · Blumenau<br>Tel. (47) 99912-3456</div>
+    </div>
+    <div class="datas"><div class="dt"><small>ENTREGA</small><b>13/11/2026</b></div><div class="dt"><small>PEDIDO POR</small><b>Rafael Kuhn</b></div></div>
+    <div class="itens">
+      <div class="cab"><span>ITENS DA AMOSTRA</span><span>4 itens</span></div>
+      <div class="it"><span>Coxinha de Frango com Catupiry</span><span>20 un</span></div>
+      <div class="it"><span>Kibe</span><span>20 un</span></div>
+      <div class="it"><span>Bolinha de Queijo</span><span>20 un</span></div>
+      <div class="it"><span>Risole de Carne</span><span>10 un</span></div>
+    </div>
+    <div class="obs"><b>OBS:</b> Entregar na cozinha, falar com a Dona Marta.</div>
+    <div class="rod">SEM VALOR COMERCIAL · HARDT DOCES E SALGADOS · 11/11/2026</div>
+  </div>
+
+  <div class="sec-label">O que mudou</div>
+
+  <div class="acc aberto"><button class="acc-head" type="button"><span class="acc-ico">🏷️</span><strong>O que é</strong><span class="acc-seta">▲</span></button>
+  <div class="acc-corpo">
+    <p>Toda amostra agora pode sair com uma <b>etiqueta de 100 × 120 mm</b> (o rolo grande da Zebra, o mesmo das etiquetas de produto) com o resumo do pedido:</p>
+    <ul>
+      <li><b>Quem recebe:</b> nome fantasia e razão social, endereço, bairro · cidade e telefone. Se for um <b>lead</b> (ainda não é cliente), sai o contato, o WhatsApp e a cidade do lead.</li>
+      <li><b>Entrega</b> e <b>quem pediu</b> a amostra.</li>
+      <li><b>Os itens</b> com a quantidade. Com mais de 8 itens, a lista sai em duas colunas.</li>
+      <li><b>A observação</b> que o vendedor escreveu ao pedir a amostra.</li>
+    </ul>
+    <p>Só preto no branco e <b>sem tarja preta</b> (área preta cheia gruda o ribbon da impressora).</p>
+  </div></div>
+
+  <div class="acc aberto"><button class="acc-head" type="button"><span class="acc-ico">📱</span><strong>As telas do app</strong><span class="acc-seta">▲</span></button>
+  <div class="acc-corpo" style="padding-left:16px">
+
+    <div class="tela">
+      <div class="tela-titulo">📱 Tela 1 · Pedidos → aba Amostras — onde fica o ícone</div>
+      <div class="tela-corpo">
+        <div class="app-card"><div class="app-card-body" style="display:flex;justify-content:space-between;gap:8px">
+          <div><span class="chip">AM#148</span> <b style="font-size:14px">Padaria Pão da Serra</b><div style="font-size:11px;color:#666;margin-top:4px">Entrega: 13/11/2026 | Criação: 11/11/2026<br>Solicitado por: Rafael Kuhn</div></div>
+          <div style="text-align:right"><span class="status">PREPARAÇÃO</span><div style="margin-top:8px;white-space:nowrap"><span class="ico novo">🏷️</span><span class="pin">1</span> <span class="ico">💬</span><span class="ico">🗑️</span><span class="ico">⌄</span></div></div>
+        </div></div>
+        <div class="app-card"><div class="app-card-body" style="display:flex;gap:8px;flex-wrap:wrap">
+          <span class="app-btn claro">🖨️ Imprimir</span><span class="app-btn claro">🏷️ Etiqueta<span class="pin">2</span></span><span class="app-btn" style="background:#f97316">Avançar status</span>
+        </div></div>
+      </div>
+      <div class="legenda">
+        <div><span class="pin">1</span><span>O <b>ícone de etiqueta</b> fica no card da amostra, ao lado do WhatsApp. Amostra cancelada não tem o ícone.</span></div>
+        <div><span class="pin">2</span><span>Ao abrir a linha da amostra, o botão <b>Etiqueta</b> faz a mesma coisa (o <b>Imprimir</b> continua sendo o recibo em A4/cupom).</span></div>
+      </div>
+    </div>
+
+    <div class="tela">
+      <div class="tela-titulo">📱 Tela 2 · Janela da etiqueta</div>
+      <div class="tela-corpo">
+        <div class="app-card"><div class="app-card-body">
+          <div style="font-size:10px;font-weight:800;letter-spacing:.12em;color:#6b756f">ETIQUETA DA AMOSTRA · 100 × 120 MM</div>
+          <div style="font-size:13px;color:#444;margin-bottom:10px">AM#148 — Padaria Pão da Serra</div>
+          <div style="background:#eceae4;border-radius:10px;padding:10px;text-align:center;font-size:12px;color:#6b756f">[ prévia da etiqueta, do tamanho real ] <span class="pin">1</span></div>
+          <div class="copias">Cópias <span class="b">−</span><span class="v">1</span><span class="b">+</span><span class="pin">2</span></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap"><span class="app-btn">🖨️ Imprimir na Zebra<span class="pin">3</span></span><span class="app-btn claro">🌐 Imprimir pelo navegador<span class="pin">4</span></span></div>
+        </div></div>
+      </div>
+      <div class="legenda">
+        <div><span class="pin">1</span><span>A <b>prévia</b> é exatamente o que vai sair impresso. Confira o endereço e os itens antes de imprimir.</span></div>
+        <div><span class="pin">2</span><span><b>Cópias</b>: uma por caixa/sacola.</span></div>
+        <div><span class="pin">3</span><span><b>Imprimir na Zebra</b>: vai direto para a impressora grande da cozinha, pela mesma fila das etiquetas de produto. A tela mostra <i>Preparando → Na fila → Imprimindo → Saiu</i>.</span></div>
+        <div><span class="pin">4</span><span><b>Imprimir pelo navegador</b>: abre a impressão normal. Papel <b>120 × 100 mm</b> (paisagem), margem 0, escala 100%.</span></div>
+      </div>
+    </div>
+  </div></div>
+
+  <div class="acc aberto"><button class="acc-head" type="button"><span class="acc-ico">✅</span><strong>Para começar a usar</strong><span class="acc-seta">▲</span></button>
+  <div class="acc-corpo">
+    <ol>
+      <li>Abra <b>Pedidos → Amostras</b> e ache a amostra.</li>
+      <li>Toque no <b>ícone de etiqueta</b> do card.</li>
+      <li>Confira a prévia, escolha as cópias e toque em <b>Imprimir na Zebra</b>.</li>
+      <li>Cole a etiqueta na caixa da amostra.</li>
+    </ol>
+    <div class="aviso">Zebra desligada ou PC da cozinha fora? Use <b>Imprimir pelo navegador</b>: sai igual, só muda o caminho.</div>
+    <p>Quem vê a aba Pedidos já consegue imprimir — não precisa de permissão nova.</p>
+  </div></div>
+</div>
+
+<script>
+document.querySelectorAll('.acc-head').forEach(function(h){h.addEventListener('click',function(){h.parentElement.classList.toggle('aberto');});});
+</script>
+</body>
+</html>

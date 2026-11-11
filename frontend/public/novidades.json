@@ -1,5 +1,11 @@
 [
   {
+    "slug": "etiqueta-amostra",
+    "titulo": "Etiqueta do pedido de amostra",
+    "resumo": "Na aba Pedidos → Amostras, o ícone de etiqueta imprime a etiqueta grande (100 × 120) com cliente, entrega, itens e observação — direto na Zebra ou pelo navegador.",
+    "data": "2026-11-11"
+  },
+  {
     "slug": "por-que-causas",
     "titulo": "Por que caiu a margem? Agora mostra quem e o quê",
     "resumo": "No painel do selo dos Indicadores de Gestão, agora aparecem os insumos que subiram, os clientes com preço abaixo da tabela, as bonificações sem retorno e quem parou de comprar. A produção também vê qual insumo subiu no custo.",
@@ -51,6 +57,12 @@
     "slug": "contas-pagar-tipo-pagamento",
     "titulo": "Contas a Pagar: filtro por tipo de pagamento",
     "resumo": "Novo filtro para ver só os boletos e tirar da lista as contas de cartão, com etiqueta Boleto/Cartão/Pix em cada conta.",
+    "data": "2026-11-03"
+  },
+  {
+    "slug": "despesa-nova-tela",
+    "titulo": "Nova tela de lançar despesa",
+    "resumo": "A janela de Nova/Editar despesa ficou larga, em 3 colunas, com Total e botões Salvar/Cancelar sempre à vista. Veja o passo a passo para lançar despesa antiga.",
     "data": "2026-11-03"
   },
   {
