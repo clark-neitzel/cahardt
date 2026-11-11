@@ -182,6 +182,12 @@ const NovoPedido = () => {
     // cliente não deixa a resposta de uma busca velha sobrescrever `ultimoPedido` com o pedido do
     // cliente errado (achado do revisor).
     const ultimoPedidoReqRef = useRef(null);
+    const sugestaoTipoReqRef = useRef(null); // cliente da última sugestão de tipo pedida (descarta resposta em voo)
+    const sugestaoTipoAplicadaRef = useRef(null); // cliente p/ o qual já avaliamos a sugestão (evita repetir toast)
+    const tipoPedidoAtualRef = useRef(null); // espelho de tipoPedido (efeito do cliente não depende dele)
+    tipoPedidoAtualRef.current = tipoPedido;
+    const clienteDoRascunhoRef = useRef(null); // cliente restaurado DO rascunho (não recebe sugestão automática)
+    const tipoAutoDoClienteRef = useRef(null); // cliente cuja sugestão marcou o tipo sozinha (clique manual zera)
     const [todasCondicoes, setTodasCondicoes] = useState([]);
     const [vendedores, setVendedores] = useState([]);
 
@@ -396,6 +402,7 @@ const NovoPedido = () => {
                         const mesmoCLiente = !clienteIdFromUrl || (clienteIdFromUrl === pd.clienteId);
 
                         if (clienteAlvo) setTimeout(() => setClienteId(clienteAlvo), 100);
+                        clienteDoRascunhoRef.current = (clienteAlvo && mesmoCLiente) ? clienteAlvo : null;
                         if (pd.clienteSearchText && mesmoCLiente) setClienteSearchText(pd.clienteSearchText);
                         // Rascunho antigo pode ter data já passada — nesse caso o vendedor escolhe de novo
                         const hojeLocal = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
@@ -487,6 +494,15 @@ const NovoPedido = () => {
             setHistoricoMap(new Map());
             setUltimoPedido(null);
             ultimoPedidoReqRef.current = null; // nenhum cliente selecionado: qualquer resposta em voo é descartada
+            sugestaoTipoReqRef.current = null;
+            sugestaoTipoAplicadaRef.current = null;
+            if (tipoAutoDoClienteRef.current && tipoAutoDoClienteRef.current !== '') {
+                // O tipo veio da sugestão automática de OUTRO cliente e o vendedor não escolheu depois: desfaz
+                tipoAutoDoClienteRef.current = null;
+                tipoPedidoAtualRef.current = null;
+                setTipoPedido(null); setEspecial(false); setBonificacao(false); setNfBonificacao(null);
+                setCondicaoPagamentoId(''); setCondicaoSelecionada(null); setProdutos([]);
+            }
             setInadimplenciaCliente(null);
             return;
         }
@@ -556,6 +572,37 @@ const NovoPedido = () => {
             clienteService.obterInadimplencia(clienteId).then(data => {
                 setInadimplenciaCliente(data);
             }).catch(() => setInadimplenciaCliente(null));
+
+            // Sugestão de tipo (especial) pelo histórico do cliente — só em pedido NOVO e
+            // sem escolha manual do vendedor. Falha = ignora.
+            if (tipoAutoDoClienteRef.current && tipoAutoDoClienteRef.current !== clienteId) {
+                // O tipo veio da sugestão automática de OUTRO cliente e o vendedor não escolheu depois: desfaz
+                tipoAutoDoClienteRef.current = null;
+                tipoPedidoAtualRef.current = null;
+                setTipoPedido(null); setEspecial(false); setBonificacao(false); setNfBonificacao(null);
+                setCondicaoPagamentoId(''); setCondicaoSelecionada(null); setProdutos([]);
+            }
+            sugestaoTipoReqRef.current = clienteId;
+            if (clienteDoRascunhoRef.current && clienteDoRascunhoRef.current !== clienteId) clienteDoRascunhoRef.current = null; // trocou de cliente: acabou a restauração
+            if (!editId && clienteDoRascunhoRef.current !== clienteId && sugestaoTipoAplicadaRef.current !== clienteId) {
+                clienteService.obterSugestaoTipoPedido(clienteId).then(res => {
+                    if (sugestaoTipoReqRef.current !== clienteId) return; // cliente já trocou
+                    if (sugestaoTipoAplicadaRef.current === clienteId) return;
+                    sugestaoTipoAplicadaRef.current = clienteId;
+                    const podeEsp = !!(user?.permissoes?.Pode_Criar_Especial || user?.permissoes?.admin);
+                    if (res?.sugestaoTipo !== 'ESPECIAL' || !podeEsp) return;
+                    if (tipoPedidoAtualRef.current) return; // vendedor já escolheu
+                    tipoAutoDoClienteRef.current = clienteId;
+                    setTipoPedido('ESPECIAL');
+                    setEspecial(true);
+                    setBonificacao(false);
+                    setNfBonificacao(null);
+                    setCondicaoPagamentoId('');
+                    setCondicaoSelecionada(null);
+                    setProdutos([]);
+                    toast('Marcado como especial: a maioria dos últimos pedidos deste cliente foi especial. Você pode trocar.', { duration: 6000, icon: 'ℹ️' });
+                }).catch(() => { });
+            }
 
             // Carregar histórico de compras do cliente
             pedidoService.historicoComprasCliente(clienteId).then(historico => {
@@ -2015,6 +2062,7 @@ const NovoPedido = () => {
                                             type="button"
                                             className={`flex-1 px-3 py-2.5 rounded-md text-xs font-bold border transition-colors ${tipoPedido === 'PEDIDO' ? 'bg-blue-600 text-white border-blue-600 shadow-sm' : 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'}`}
                                             onClick={async () => {
+                                                tipoAutoDoClienteRef.current = null;
                                                 setTipoPedido('PEDIDO');
                                                 setEspecial(false);
                                                 setBonificacao(false);
@@ -2033,7 +2081,8 @@ const NovoPedido = () => {
                                                 type="button"
                                                 className={`flex-1 px-3 py-2.5 rounded-md text-xs font-bold border transition-colors ${tipoPedido === 'ESPECIAL' ? 'bg-purple-600 text-white border-purple-600 shadow-sm' : 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100'}`}
                                                 onClick={async () => {
-                                                    setTipoPedido('ESPECIAL');
+                                                    tipoAutoDoClienteRef.current = null;
+                                                setTipoPedido('ESPECIAL');
                                                     setEspecial(true);
                                                     setBonificacao(false);
                                                     setNfBonificacao(null);
@@ -2052,7 +2101,8 @@ const NovoPedido = () => {
                                                 type="button"
                                                 className={`flex-1 px-3 py-2.5 rounded-md text-xs font-bold border transition-colors ${tipoPedido === 'BONIFICACAO' ? 'bg-green-600 text-white border-green-600 shadow-sm' : 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'}`}
                                                 onClick={async () => {
-                                                    setTipoPedido('BONIFICACAO');
+                                                    tipoAutoDoClienteRef.current = null;
+                                                setTipoPedido('BONIFICACAO');
                                                     setBonificacao(true);
                                                     setEspecial(false);
                                                     setNfBonificacao(null);

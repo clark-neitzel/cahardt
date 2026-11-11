@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
+import { tipoSugerido, textoSugestao, selosSugestao } from '../../utils/sugestaoTipoPedido';
 import { Snowflake, Package, ClipboardList, Settings, Search, Check, X, Link2, Trash2, RefreshCw, Plus, Star, ImageOff, Save, Loader2, Store, Megaphone, Upload, Image as ImageIcon, Tag, Truck, Calendar, MapPin, Phone, MessageCircle, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import congeladosService from '../../services/congeladosService';
@@ -224,6 +225,7 @@ function PedidoLinha({ p, onAbrir, onInad }) {
           { texto: s.label, cls: s.cls },
           semEstoque ? { texto: 'Sem estoque', cls: 'bg-red-100 text-red-700', icon: AlertTriangle, title: 'Falta estoque para aprovar este pedido' } : null,
           p?.origem === 'WHATSAPP_IA' ? { texto: 'WhatsApp IA', cls: 'bg-purple-100 text-purple-700', icon: IconeWhatsIA } : null, // pedido tirado pela Ana (bot)
+          ...selosSugestao(p),
           p.encaixe ? { texto: 'Encaixe', cls: 'bg-orange-100 text-orange-700' } : null,
           p.celularAlterado ? { texto: 'telefone novo', cls: 'bg-yellow-100 text-yellow-700' } : null,
           p.pedido?.numero ? { texto: `→ Pedido #${p.pedido.numero}`, cls: 'bg-green-100 text-green-800' } : null,
@@ -275,6 +277,7 @@ function PedidoDetalhe({ pedido: p, onClose, onAprovar, onVincular, onRecusar, o
         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${s.cls}`}>{s.label}</span>
         {p.semEstoque === true && <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-semibold flex items-center gap-1"><AlertTriangle className="h-3 w-3" /> Sem estoque</span>}
         {veioDaIA(p) && <SeloOrigemIA />}
+        {selosSugestao(p).map(x => <span key={x.texto} className={`text-xs px-2 py-0.5 rounded-full font-semibold ${x.cls}`}>{x.texto}</span>)}
         {p.encaixe && <span className="text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 font-semibold">Encaixe</span>}
         {p.celularAlterado && <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700">telefone novo</span>}
       </div>
@@ -455,7 +458,7 @@ function fmtDiaSemana(dataYMD) {
 }
 
 function AprovarModal({ pedido, onClose, onDone, onAtualizarFila }) {
-  const [tipo, setTipo] = useState('NORMAL');
+  const [tipo, setTipo] = useState(tipoSugerido(pedido));
   const retirada = ehRetirada(pedido);
   const minData = retirada ? hojeLocal() : amanhaLocal();
   // Pré-preenche com a data que o cliente escolheu no site — MAS só se ela ainda não
@@ -518,6 +521,9 @@ function AprovarModal({ pedido, onClose, onDone, onAtualizarFila }) {
             <span className="text-sm font-medium text-gray-700">{t === 'NORMAL' ? 'Pedido normal (com nota)' : 'Pedido especial (sem nota)'}</span>
           </label>
         ))}
+        {textoSugestao(pedido) && (
+          <p className={`text-xs ${pedido.historicoTipos?.motivo === 'CONDICAO_NAO_PERMITE' ? 'text-amber-700' : 'text-gray-500'}`}>{textoSugestao(pedido)}</p>
+        )}
       </div>
 
       <div className="mb-4">

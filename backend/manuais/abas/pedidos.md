@@ -58,6 +58,8 @@ Central de consulta e gerenciamento de todos os pedidos lançados no sistema. Aq
 3. Clique em **"Novo Pedido"** no card
 4. O sistema abre `/pedidos/novo?clienteId=...` (tela `NovoPedido`)
 5. Escolha o **tipo** (Pedido Normal, Especial ou Bonificação)
+
+   - **Tipo sugerido (desde 11/2026):** ao escolher o cliente, o tipo vem sugerido pelos **últimos 3 pedidos** dele (sem bonificação/excluídos): se a maioria foi **Especial**, o pedido abre marcado em Especial, senão em Normal. Se o cliente não tem nenhuma condição de pagamento que permita especial (ex.: só a prazo/boleto), a sugestão é Normal. O vendedor pode trocar o tipo livremente.
    - Escolhendo **Bonificação**, aparece a pergunta obrigatória **"Esta bonificação sai com nota fiscal?"** — *Com nota* (o escritório emite a NF-e de bonificação) ou *Sem nota* (sai só com o recibo, como sempre foi). Nada vem marcado de véspera: enquanto não responder, não dá para fechar a bonificação
    - Se o cliente não tiver **CNPJ/CPF e endereço completo** no cadastro, a opção "Com nota" fica indisponível e a tela diz exatamente o que falta preencher
 6. Selecione a **condição de pagamento** e a **data de entrega**

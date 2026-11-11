@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Sugestão de pedido especial — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<meta property="og:title" content="Novidade no Hardt App: o sistema sugere pedido ESPECIAL">
+<meta property="og:description" content="Cliente que costuma comprar especial agora já vem sugerido na aprovação dos pedidos da Ana e do site, e no Novo Pedido.">
+<meta property="og:type" content="website">
+<style>
+  :root { --primary:#00754A; --house:#1E3932; --mint:#d4e9e2; --cream:#f2f0eb; --gold:#cba258; --ink:rgba(0,0,0,.87); --ink-soft:#5f6b66; letter-spacing:-0.01em; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--cream); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; line-height:1.55; }
+  .wrap { max-width:620px; margin:0 auto; padding:0 16px 56px; }
+  .hero { background:linear-gradient(168deg,var(--house) 0%,#16302a 100%); color:#fff; padding:40px 16px 40px; text-align:center; margin-bottom:24px; }
+  .hero-inner { max-width:620px; margin:0 auto; }
+  .eyebrow { display:inline-block; background:var(--gold); color:#2b230f; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.14em; padding:6px 14px; border-radius:999px; margin-bottom:18px; }
+  .hero h1 { font-size:clamp(26px,7vw,38px); font-weight:800; line-height:1.15; margin:0 0 12px; }
+  .hero p { color:rgba(255,255,255,.75); font-size:16px; max-width:46ch; margin:0 auto; }
+  .acc { background:#fff; border:1px solid #e3e0d8; border-radius:14px; margin-bottom:12px; overflow:hidden; }
+  .acc-head { all:unset; box-sizing:border-box; width:100%; display:flex; align-items:center; gap:12px; padding:14px 16px; cursor:pointer; min-height:48px; }
+  .acc-head:focus-visible { outline:3px solid var(--gold); outline-offset:2px; }
+  .acc-ico { width:36px; height:36px; border-radius:10px; background:var(--mint); display:flex; align-items:center; justify-content:center; font-size:18px; flex:none; }
+  .acc-head strong { flex:1; font-size:15.5px; }
+  .acc-seta { color:#9aa5a0; transition:transform .2s; font-size:13px; }
+  .acc.aberto .acc-seta { transform:rotate(180deg); }
+  .acc-corpo { display:none; padding:0 16px 16px 64px; }
+  .acc.aberto .acc-corpo { display:block; }
+  .acc-corpo p, .acc-corpo li { font-size:14px; color:var(--ink-soft); }
+  .acc-corpo p { margin:0 0 10px; }
+  .acc-corpo ul { margin:0; padding-left:18px; }
+  .acc-corpo li { margin-bottom:7px; }
+  .acc-corpo b { color:var(--ink); }
+  @media (max-width:420px) { .acc-corpo { padding-left:16px; } }
+  h2.sec { font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.12em; color:#4b5651; margin:28px 0 12px; }
+  .tela { background:#fff; border:1px solid #e3e0d8; border-radius:16px; overflow:hidden; margin-bottom:16px; }
+  .tela-titulo { background:var(--house); color:#fff; font-size:13px; font-weight:700; padding:10px 16px; }
+  .tela-corpo { padding:16px; background:#f7f6f2; }
+  .card { background:#fff; border:1px solid #e3e0d8; border-radius:12px; padding:12px; font-size:13px; }
+  .linha1 { display:flex; justify-content:space-between; gap:8px; font-weight:700; }
+  .sub { color:var(--ink-soft); font-size:12px; margin-top:2px; }
+  .selos { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; position:relative; }
+  .selo { font-size:11px; font-weight:600; padding:3px 9px; border-radius:999px; display:inline-flex; align-items:center; gap:4px; }
+  .s-azul { background:#dbeafe; color:#1e40af; } .s-roxo { background:#f3e8ff; color:#7e22ce; } .s-ambar { background:#fef3c7; color:#b45309; }
+  .opcao { display:flex; align-items:center; gap:8px; border:1px solid #e3e0d8; border-radius:10px; padding:10px 12px; margin-bottom:8px; font-size:13px; font-weight:600; background:#fff; }
+  .opcao.sel { border-color:#38bdf8; background:#f0f9ff; }
+  .radio { width:14px; height:14px; border-radius:50%; border:2px solid #9aa5a0; flex:none; }
+  .opcao.sel .radio { border-color:#0284c7; background:radial-gradient(#0284c7 40%,transparent 45%); }
+  .nota { font-size:12px; color:var(--ink-soft); margin:4px 0 8px; display:flex; gap:6px; align-items:flex-start; }
+  .nota.amb { color:#b45309; }
+  .btns { display:flex; gap:8px; } .btns div { flex:1; text-align:center; padding:9px; border-radius:999px; font-size:12px; font-weight:700; border:1px solid #d7d3c8; background:#fff; }
+  .btns .ativo-roxo { background:#9333ea; color:#fff; border-color:#9333ea; }
+  .toast { background:#1f2937; color:#fff; font-size:12px; border-radius:10px; padding:10px 12px; margin-top:10px; }
+  .pin { display:inline-flex; width:20px; height:20px; border-radius:50%; background:var(--gold); color:#2b230f; font-size:11px; font-weight:800; align-items:center; justify-content:center; flex:none; }
+  .legenda { padding:12px 16px 16px; }
+  .legenda div { display:flex; gap:8px; font-size:13px; color:var(--ink-soft); margin-bottom:7px; align-items:flex-start; }
+  .legenda .pin { margin-top:1px; } .legenda b { color:var(--ink); }
+  .inline-pin { margin-left:4px; }
+</style>
+</head>
+<body>
+<div class="hero"><div class="hero-inner">
+  <span class="eyebrow">Novidade</span>
+  <h1>O sistema agora sugere pedido ESPECIAL</h1>
+  <p>Cliente que costuma comprar sem nota já vem sugerido na hora de aprovar e de fazer o pedido.</p>
+</div></div>
+
+<div class="wrap">
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true"><span class="acc-ico">💡</span><strong>O que mudou</strong><span class="acc-seta">▼</span></button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Pedidos que a <b>Ana (WhatsApp)</b> e o <b>site</b> mandam para aprovação nasciam sempre como <b>"Pedido normal (com nota)"</b>. Muita gente aprovava sem trocar.</li>
+        <li>Agora o sistema olha os <b>últimos 3 pedidos do cliente</b>. Se a maioria foi <b>especial</b>, ele já deixa o <b>Especial</b> marcado.</li>
+        <li>Você <b>continua podendo trocar</b> na hora. É só uma sugestão.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true"><span class="acc-ico">🛡️</span><strong>Quando NÃO sugere especial</strong><span class="acc-seta">▼</span></button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Se a <b>condição de pagamento</b> do pedido é a prazo, especial não é permitido. Aí o sistema mantém <b>normal</b> e avisa que o cliente costuma pedir especial.</li>
+        <li>Cliente sem histórico: segue <b>normal</b>, como sempre.</li>
+        <li>No <b>Novo Pedido</b>, só marca especial sozinho para quem tem permissão de criar especial, e nunca troca uma escolha que você já fez.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="sec">As telas do app</h2>
+
+  <div class="tela">
+    <div class="tela-titulo">Tela 1 · Fila de pedidos (Ana / site)</div>
+    <div class="tela-corpo">
+      <div class="card">
+        <div class="linha1"><span>#1234 · Padaria Estrela</span><span>R$ 480,00</span></div>
+        <div class="sub">Entrega: 12/11 · Cond.: À vista</div>
+        <div class="selos">
+          <span class="selo s-azul">Aguardando</span>
+          <span class="selo s-roxo">Costuma pedir especial</span><span class="pin inline-pin">1</span>
+        </div>
+        <div class="selos">
+          <span class="selo s-ambar">Histórico especial · condição não permite</span><span class="pin inline-pin">2</span>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Selo roxo:</b> a maioria dos últimos pedidos deste cliente foi especial.</span></div>
+      <div><span class="pin">2</span><span><b>Selo âmbar:</b> foi especial, mas a condição deste pedido não permite. Fica normal.</span></div>
+    </div>
+  </div>
+
+  <div class="tela">
+    <div class="tela-titulo">Tela 2 · Janela "Aprovar pedido"</div>
+    <div class="tela-corpo">
+      <div class="opcao"><span class="radio"></span>Pedido normal (com nota)</div>
+      <div class="opcao sel"><span class="radio"></span>Pedido especial (sem nota)<span class="pin inline-pin">1</span></div>
+      <div class="nota">ℹ️ Sugerido pelo histórico: 2 dos últimos 3 pedidos foram especiais.<span class="pin inline-pin">2</span></div>
+      <div class="btns"><div>Cancelar</div><div class="ativo-roxo">Gerar pedido</div></div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Já vem marcado</b> como especial. Quer normal? Toque na outra opção.</span></div>
+      <div><span class="pin">2</span><span><b>Explica o porquê</b> da sugestão, para você decidir com segurança.</span></div>
+    </div>
+  </div>
+
+  <div class="tela">
+    <div class="tela-titulo">Tela 3 · Novo Pedido (vendedor)</div>
+    <div class="tela-corpo">
+      <div class="btns"><div>Pedido</div><div class="ativo-roxo">Especial</div><div>Bonificação</div></div>
+      <div class="toast">Marcado como especial: a maioria dos últimos pedidos deste cliente foi especial. Você pode trocar.<span class="pin inline-pin">2</span></div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Ao escolher o cliente,</b> o tipo Especial já fica marcado (só para quem pode criar especial).</span></div>
+      <div><span class="pin">2</span><span><b>Aviso rápido</b> na tela. Se você já tinha escolhido o tipo, nada muda.</span></div>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true"><span class="acc-ico">✅</span><strong>Para começar a usar</strong><span class="acc-seta">▼</span></button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Nada para configurar: não tem campo novo no cadastro do cliente.</li>
+        <li>Na hora de aprovar, <b>confira o tipo</b>. A sugestão ajuda, a decisão continua sendo sua.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+<script>
+  function alternar(btn) {
+    const acc = btn.parentElement;
+    const abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>

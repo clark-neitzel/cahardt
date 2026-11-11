@@ -12,6 +12,7 @@ router.post('/sync', clienteController.sincronizar); // Desativado (cadastro nã
 router.put('/lote', clienteController.atualizarLote); // Atualização em lote
 router.get('/condicoes-pagamento', condicaoPagamentoController.listar); // Nova rota
 router.get('/:uuid/inadimplencia', clienteController.obterInadimplencia);
+router.get('/:uuid/sugestao-tipo-pedido', clienteController.sugestaoTipoPedido); // tipo sugerido p/ Novo Pedido
 // Histórico do endereço (quem/quando/restaurar/ver no mapa) — ANTES de '/:uuid'
 router.get('/:uuid/endereco-historico', clienteController.enderecoHistorico);
 router.get('/:uuid/endereco-historico/:eventoId/geocode', clienteController.enderecoHistoricoGeocode);

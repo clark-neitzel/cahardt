@@ -1172,6 +1172,33 @@ const clienteController = {
         });
     },
 
+    // Tipo sugerido (NORMAL/ESPECIAL) para o Novo Pedido, pelo histórico dos últimos 3 pedidos.
+    // permiteEspecial = o cliente tem pelo menos uma condição (padrão ou extras) ativa com permiteEspecial.
+    sugestaoTipoPedido: async (req, res) => {
+        try {
+            const { uuid } = req.params;
+            const cliente = await prisma.cliente.findUnique({
+                where: { UUID: uuid },
+                select: { Condicao_de_pagamento: true, condicoes_pagamento_permitidas: true },
+            });
+            if (!cliente) return res.status(404).json({ error: 'Cliente não encontrado.' });
+            const ids = (cliente.condicoes_pagamento_permitidas || []).filter(Boolean);
+            if (ids.length === 0 && cliente.Condicao_de_pagamento) ids.push(cliente.Condicao_de_pagamento);
+            const condicoes = ids.length
+                ? await prisma.tabelaPreco.findMany({
+                    where: { ativo: true, permiteEspecial: true, OR: [{ id: { in: ids } }, { idCondicao: { in: ids } }] },
+                    select: { id: true },
+                })
+                : [];
+            const r = await require('../services/sugestaoTipoPedidoService')
+                .sugerirTipoPedido(uuid, { permiteEspecial: condicoes.length > 0 });
+            res.json({ sugestaoTipo: r.sugestaoTipo, historicoTipos: { especiais: r.especiais, total: r.total, motivo: r.motivo }, ...r });
+        } catch (error) {
+            console.error('Erro ao sugerir tipo de pedido:', error);
+            res.status(500).json({ error: 'Erro ao sugerir tipo de pedido.' });
+        }
+    },
+
     // Retornar status de inadimplência + contas a receber em aberto de um cliente
     obterInadimplencia: async (req, res) => {
         try {

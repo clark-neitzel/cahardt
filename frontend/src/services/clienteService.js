@@ -16,6 +16,12 @@ const clienteService = {
         return response.data;
     },
 
+    // Sugestão de tipo de pedido (normal/especial) pelo histórico do cliente
+    obterSugestaoTipoPedido: async (uuid) => {
+        const response = await api.get(`/clientes/${uuid}/sugestao-tipo-pedido`);
+        return response.data;
+    },
+
     obterInadimplencia: async (uuid) => {
         const response = await api.get(`/clientes/${uuid}/inadimplencia`);
         return response.data;

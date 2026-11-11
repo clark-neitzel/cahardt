@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import { tipoSugerido, textoSugestao, selosSugestao } from '../../utils/sugestaoTipoPedido';
 import { Search, Loader2, Check, X, AlertTriangle, UserPlus, Package, Calendar, Clock, MapPin, Truck, ExternalLink, Trash2, Phone, RefreshCw, Megaphone, Printer } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { kitFestaService } from '../../services/kitFestaService';
@@ -120,6 +121,7 @@ export default function AbaPedidos() {
               selos={[
                 { texto: STATUS_LABEL[p.status] || p.status, cls: BADGE[p.status] || 'bg-gray-100 text-gray-700' },
                 p.status === 'PENDENTE_CADASTRO' ? { texto: 'Cliente sem cadastro no app', cls: 'bg-red-50 text-red-700 border border-red-200', icon: AlertTriangle } : null,
+                ...selosSugestao(p),
                 p.celularAlterado ? { texto: 'Celular alterado — atualizar no cadastro', cls: 'bg-amber-50 text-amber-700 border border-amber-200', icon: Phone } : null,
                 p.status === 'CANCELADO'
                   ? { texto: `Pedido ${p.pedido?.numero ? `#${p.pedido.numero} ` : ''}excluído no sistema`, cls: 'bg-gray-100 text-gray-600' }
@@ -139,7 +141,7 @@ export default function AbaPedidos() {
 // ── Modal de detalhe + aprovação/conversão ──
 function ModalPedido({ pedido, isAdmin, onClose, onChanged }) {
   const [vendedores, setVendedores] = useState([]);
-  const [tipo, setTipo] = useState('NORMAL');
+  const [tipo, setTipo] = useState(tipoSugerido(pedido));
   const [vendedorId, setVendedorId] = useState('');
   const [processando, setProcessando] = useState(false);
 
@@ -336,6 +338,9 @@ function ModalPedido({ pedido, isAdmin, onClose, onChanged }) {
                     <option value="ESPECIAL">Especial (sem nota)</option>
                     <option value="BONIFICACAO">Bonificação</option>
                   </SelectBusca>
+                  {textoSugestao(pedido) && (
+                    <p className={`text-xs mt-1 ${pedido.historicoTipos?.motivo === 'CONDICAO_NAO_PERMITE' ? 'text-amber-700' : 'text-gray-500'}`}>{textoSugestao(pedido)}</p>
+                  )}
                 </div>
                 <div>
                   <label className="text-xs text-gray-500">Vendedor</label>

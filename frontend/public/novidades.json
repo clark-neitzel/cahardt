@@ -1,5 +1,11 @@
 [
   {
+    "slug": "sugestao-especial",
+    "titulo": "Sugestão de pedido especial",
+    "resumo": "Pedidos da Ana e do site agora já vêm sugeridos como Especial quando o cliente costuma comprar sem nota (pelos últimos 3 pedidos). Dá para trocar na hora.",
+    "data": "2026-11-11"
+  },
+  {
     "slug": "cancelar-amostra",
     "titulo": "Cancelar amostra com motivo",
     "resumo": "Amostra que não vai mais (cliente não aceitou, foi esquecida) agora pode ser cancelada com motivo: continua na lista como Cancelada, sai da carga e some das pendências.",

@@ -40,3 +40,5 @@ certa dentro de Pedidos Online.
 
 ## Cliente em atraso na fila do site
 Pedido de cliente em atraso mostra o selo ao lado do nome. Se o atraso trava a venda, aparece a caixa "Aguardando liberação de um responsável" e o botão **Aprovar e gerar pedido** fica desabilitado para quem não tem a permissão "Vender para inadimplente" (ou admin); quem tem vê **Assumir responsabilidade e aprovar** e o nome entra na observação do pedido. O pedido continua na fila. Selo amarelo (a confirmar) não trava.
+
+O tipo do pedido (Normal/Especial) na janela de aprovação já vem **sugerido pelos últimos 3 pedidos do cliente** (maioria especial → abre em Especial; condição a prazo nunca sugere Especial); quem aprova pode trocar.

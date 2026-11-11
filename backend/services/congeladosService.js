@@ -1403,6 +1403,25 @@ const congeladosService = {
             console.error('[Congelados] Falha ao anexar inadimplência na fila (segue sem):', e.message);
         }
 
+        // Tipo sugerido (NORMAL/ESPECIAL) pelo histórico do cliente — aditivo, falha segue sem o campo.
+        // `permiteEspecial` = o mesmo teste que adminAprovarPedido faz na tabela de preço do pedido.
+        try {
+            const sug = require('./sugestaoTipoPedidoService');
+            const tabIds = [...new Set(pedidos.filter(p => PENDENTES.includes(p.status) && p.tabelaPrecoId).map(p => p.tabelaPrecoId))];
+            const tabs = tabIds.length ? await prisma.tabelaPreco.findMany({ where: { id: { in: tabIds } }, select: { id: true, permiteEspecial: true } }) : [];
+            const tabMap = new Map(tabs.map(t => [t.id, !!t.permiteEspecial]));
+            await sug.anexarNaFila(
+                pedidos,
+                p => PENDENTES.includes(p.status),
+                p => ({
+                    clienteUuid: p.congeladosCliente?.clienteUuid || null,
+                    permiteEspecial: p.tabelaPrecoId && tabMap.has(p.tabelaPrecoId) ? tabMap.get(p.tabelaPrecoId) : true,
+                })
+            );
+        } catch (e) {
+            console.error('[Congelados] Falha ao anexar sugestão de tipo na fila (segue sem):', e.message);
+        }
+
         return pedidos;
     },
 

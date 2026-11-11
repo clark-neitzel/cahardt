@@ -1025,7 +1025,7 @@ const kitFestaService = {
                 { kitFestaCliente: { cliente: { End_Cidade: { contains: busca, mode: 'insensitive' } } } },
             ].filter(Boolean);
         }
-        return prisma.kitFestaPedido.findMany({
+        const lista = await prisma.kitFestaPedido.findMany({
             where,
             orderBy: { createdAt: 'desc' }, // mais recente primeiro
             include: {
@@ -1035,6 +1035,18 @@ const kitFestaService = {
             },
             take: 300,
         });
+        // Tipo sugerido pelo histórico do cliente (aditivo). A aprovação do Kit Festa não restringe
+        // especial por condição de pagamento, então permiteEspecial = true.
+        try {
+            await require('./sugestaoTipoPedidoService').anexarNaFila(
+                lista,
+                p => ['AGUARDANDO', 'PENDENTE_CADASTRO'].includes(p.status),
+                p => ({ clienteUuid: p.kitFestaCliente?.clienteUuid || null, permiteEspecial: true })
+            );
+        } catch (e) {
+            console.error('[KitFesta] Falha ao anexar sugestão de tipo na fila (segue sem):', e.message);
+        }
+        return lista;
     },
 
     async adminRecusarPedido(id, motivo) {
