@@ -1,0 +1,72 @@
+<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Etiqueta da amostra — preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+  body{margin:0;background:#f2f0eb;font-family:Manrope,system-ui,sans-serif;color:rgba(0,0,0,.87);padding:16px}
+  h1{font-size:18px;margin:0 0 4px}.sub{font-size:13px;color:#555;margin:0 0 16px}
+  .grid{display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start}
+  .caso h3{font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:#555;margin:0 0 8px}
+  .papel{background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.15);display:inline-block;width:100mm;height:120mm;transform-origin:top left}
+  @media (max-width:480px){.papel{transform:scale(.85)}.caso{height:calc(120mm*.85 + 30px)}}
+  .mock{margin-top:28px;background:#fff;border:1px solid #e5e7eb;border-radius:12px;max-width:520px;box-shadow:0 1px 2px rgba(0,0,0,.05)}
+  .mock .row{padding:12px;display:flex;justify-content:space-between;gap:8px}
+  .chip{font-size:10px;font-weight:800;padding:2px 6px;border-radius:4px;border:1px solid #fed7aa;background:#fff7ed;color:#c2410c}
+  .ico{display:inline-flex;width:28px;height:28px;align-items:center;justify-content:center;border-radius:6px;color:#9ca3af}
+  .ico.novo{color:#00754A;background:#d4e9e2;box-shadow:0 0 0 2px #cba258}
+  .pin{display:inline-block;background:#cba258;color:#fff;font-weight:800;font-size:11px;border-radius:999px;width:18px;height:18px;line-height:18px;text-align:center;margin-left:4px}
+  .leg{font-size:13px;padding:0 12px 12px;color:#444}
+</style></head><body>
+<h1>Etiqueta do pedido de amostra · 100 × 120 mm</h1>
+<p class="sub">Mesmo rolo grande da Zebra das etiquetas de produto. Sai pelos dois caminhos: <b>Imprimir na Zebra</b> (fila direta) e <b>Imprimir pelo navegador</b>. Só preto no branco (térmica).</p>
+<div class="grid" id="grid"></div>
+<div class="mock">
+  <div class="row">
+    <div><span class="chip">AM#148</span> <b style="font-size:14px">Padaria Pão da Serra</b><div style="font-size:11px;color:#666;margin-top:4px">Entrega: 13/11/2026 | Criação: 11/11/2026<br>Solicitado por: Rafael Kuhn</div></div>
+    <div style="text-align:right"><span style="font-size:10px;font-weight:800;padding:2px 8px;border-radius:999px;background:#fef3c7;color:#92400e;border:1px solid #fde68a">PREPARAÇÃO</span><div style="margin-top:8px">
+      <span class="ico novo" title="Imprimir etiqueta da amostra"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5" fill="currentColor"/></svg></span><span class="pin">1</span>
+      <span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg></span>
+      <span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg></span>
+      <span class="ico">⌄</span></div></div>
+  </div>
+  <div class="leg"><span class="pin">1</span> Novo ícone de <b>etiqueta</b> no card da amostra (aba Pedidos → Amostras), ao lado do WhatsApp. Abre a janela com a prévia, nº de cópias e os botões <b>Imprimir na Zebra</b> / <b>Imprimir pelo navegador</b>.</div>
+</div>
+
+<script type="module">
+import { montarEtiquetaAmostra } from './etiqueta-amostra.bundle.js';
+const cliente = {
+  numero: 148, dataEntrega: '2026-11-13T00:00:00.000Z', observacao: 'Entregar na cozinha, falar com a Dona Marta. Cliente quer provar antes de fechar o Kit Festa de dezembro.',
+  solicitadoPor: { nome: 'Rafael Kuhn' },
+  cliente: { NomeFantasia: 'Padaria Pão da Serra', Nome: 'J. M. Schmidt Panificadora Ltda', End_Logradouro: 'Rua Barão do Rio Branco', End_Numero: '1240', End_Bairro: 'Centro', End_Cidade: 'Blumenau', Telefone_Celular: '(47) 99912-3456' },
+  itens: [
+    { nomeProduto: 'Amostra - Coxinha de Frango com Catupiry', quantidade: 20, produto: { unidade: 'un' } },
+    { nomeProduto: 'Amostra - Kibe', quantidade: 20, produto: { unidade: 'un' } },
+    { nomeProduto: 'Amostra - Bolinha de Queijo', quantidade: 20, produto: { unidade: 'un' } },
+    { nomeProduto: 'Amostra - Risole de Carne', quantidade: 10, produto: { unidade: 'un' } },
+    { nomeProduto: 'Amostra - Pão de Queijo Tradicional', quantidade: 1, produto: { unidade: 'kg' } },
+  ],
+};
+const lead = {
+  numero: 149, dataEntrega: '2026-11-14T00:00:00.000Z', observacao: '',
+  solicitadoPor: { nome: 'Ana Paula' },
+  lead: { nomeEstabelecimento: 'Mercado Bom Preço Garcia', contato: 'Sr. Valdir', whatsapp: '(47) 98877-1122', cidade: 'Blumenau' },
+  itens: [ { nomeProduto: 'Amostra - Coxinha de Frango', quantidade: 30 }, { nomeProduto: 'Amostra - Croquete de Carne', quantidade: 30 } ],
+};
+const nomes = ['Coxinha', 'Kibe', 'Risole', 'Bolinha de Queijo', 'Croquete', 'Enroladinho', 'Empada', 'Esfiha', 'Pastel', 'Mini pizza', 'Quibe', 'Bolinho de Bacalhau', 'Pão de Queijo', 'Churros'];
+const muitos = {
+  numero: 150, dataEntrega: '2026-11-18T00:00:00.000Z', observacao: 'Degustação para o evento da empresa (120 pessoas). Enviar tabela de preços junto.',
+  solicitadoPor: { nome: 'Clarkson Neitzel' },
+  cliente: { NomeFantasia: 'Restaurante e Churrascaria Recanto Gaúcho da Serra', Nome: 'Recanto Gaúcho Alimentos Eireli', End_Logradouro: 'Rodovia BR-470, km 58, Galpão 3', End_Numero: 's/n', End_Bairro: 'Badenfurt', End_Cidade: 'Blumenau', Telefone: '(47) 3322-4455' },
+  itens: nomes.map((n, i) => ({ nomeProduto: `Amostra - ${n}`, quantidade: (i + 1) * 5 })),
+};
+const casos = [['Cliente cadastrado', cliente], ['Lead (ainda não é cliente)', lead], ['Muitos itens + obs longa', muitos]];
+async function render() {
+  try { await document.fonts.load('800 12pt Manrope'); await document.fonts.load('700 12pt Manrope'); await document.fonts.load('600 12pt Manrope'); await document.fonts.ready; } catch {}
+  document.getElementById('grid').innerHTML = casos.map(([t, a], i) => {
+    const m = montarEtiquetaAmostra(a);
+    const css = m.estilos.replaceAll('#area-impressao', `#p${i}`);
+    return `<style>${css}</style><div class="caso"><h3>${t}</h3><div class="papel"><div id="p${i}">${m.corpo}</div></div></div>`;
+  }).join('');
+}
+render();
+</script>
+</body></html>

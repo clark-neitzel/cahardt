@@ -236,6 +236,13 @@ Status possíveis: `SOLICITADA → PREPARACAO → LIBERADO → ENTREGUE`
 
 - Botão de avançar status: muda para o próximo estado
 - Botão de excluir amostra (quem tem `Pode_Excluir_Amostra`)
+- **Etiqueta da amostra (100 × 120 mm)**: o ícone de **etiqueta** no card da amostra (ao lado do WhatsApp) — e o botão
+  **Etiqueta** ao abrir a linha — abre a janela com a prévia do resumo do pedido para colar na caixa/sacola: destinatário
+  (fantasia e razão social, endereço, bairro · cidade, telefone; amostra de lead sai com contato/WhatsApp/cidade do lead),
+  data de entrega, quem pediu, a lista de itens com quantidade (acima de 8 itens vai em 2 colunas) e a observação do
+  vendedor. Nº de cópias e dois botões: **Imprimir na Zebra** (vai direto para a impressora grande da cozinha, mesma fila
+  das etiquetas de produto) e **Imprimir pelo navegador** (papel 120 × 100 paisagem, margem 0, escala 100%). Só preto no
+  branco e **sem tarja preta** (área sólida gruda o ribbon). Amostra cancelada não tem o ícone. Quem vê Pedidos imprime.
 - Controle de amostras por produto
 - **Observação da entrega**: ao abrir a linha de uma amostra já entregue, aparece o recado que quem
   entregou escreveu na porta ("deixei com o gerente", "pediu para o vendedor passar sexta"), com a data da

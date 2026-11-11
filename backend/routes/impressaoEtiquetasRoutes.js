@@ -23,8 +23,9 @@ const ORIGENS = {
     DELIVERY: { tamanho: '40x25', linguagem: 'EPL2', tipo: 'CAIXA_KIT_FESTA', usaCopias: false },
     FUNCIONARIO_PASTA: { tamanho: '100x120', linguagem: 'ZPL', tipo: 'ETIQUETA_FUNCIONARIO', usaCopias: true },
     FUNCIONARIO_ARQUIVO: { tamanho: '40x25', linguagem: 'EPL2', tipo: 'ETIQUETA_FUNCIONARIO', usaCopias: false },
+    AMOSTRA: { tamanho: '100x120', linguagem: 'ZPL', tipo: 'ETIQUETA_AMOSTRA', usaCopias: true },   // resumo do pedido de amostra (Pedidos → Amostras)
 };
-const TIPOS_REFERENCIA = ['ETIQUETA_PRODUTO', 'PEDIDO', 'FUNCIONARIO'];
+const TIPOS_REFERENCIA = ['ETIQUETA_PRODUTO', 'PEDIDO', 'FUNCIONARIO', 'AMOSTRA'];
 const MAX_BITMAPS = 60;
 const MAX_COPIAS = 999;
 
@@ -35,6 +36,7 @@ async function podeOrigem(req, origem) {
     if (origem === 'PRODUTO') return !!p.pcp?.etiquetas;
     if (origem === 'KIT_FESTA') return !!p.kitFesta;
     if (origem === 'FUNCIONARIO_PASTA' || origem === 'FUNCIONARIO_ARQUIVO') return !!p.Pode_Ver_Ponto || !!p.Pode_Editar_Ponto;
+    if (origem === 'AMOSTRA') return p.pedidos?.view === true || p.pedidos?.edit === true;   // mesma tela de Pedidos (objeto, nunca !!p.pedidos)
     if (origem === 'DELIVERY') {
         const perm = await deliveryService.permissaoDoUsuario({ ...req.user, permissoes: p });
         return !!perm.podeVer;
@@ -182,7 +184,7 @@ router.post('/trabalhos/:id/cancelar', async (req, res) => {
     try {
         const admin = !!permsDe(req).admin;
         const t = await prisma.impressaoTrabalho.findUnique({ where: { id: req.params.id }, select: { id: true, tipo: true, solicitadoPorId: true } });
-        if (!t || !['ETIQUETA_PRODUTO', 'CAIXA_KIT_FESTA', 'ETIQUETA_FUNCIONARIO'].includes(t.tipo) || (!admin && t.solicitadoPorId !== String(req.user?.id))) {
+        if (!t || !['ETIQUETA_PRODUTO', 'CAIXA_KIT_FESTA', 'ETIQUETA_FUNCIONARIO', 'ETIQUETA_AMOSTRA'].includes(t.tipo) || (!admin && t.solicitadoPorId !== String(req.user?.id))) {
             return res.status(404).json({ error: 'Trabalho não encontrado.' });
         }
         const r = await prisma.impressaoTrabalho.updateMany({

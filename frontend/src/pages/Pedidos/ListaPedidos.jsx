@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Search, X, AlertCircle, AlertTriangle, Package, ChevronDown, ChevronUp, Printer, CheckSquare, Square, Trash2, Calendar, User, Filter, Pencil, CheckCircle, RotateCcw, MessageCircle, XCircle, Loader2, List, FileEdit, Send, RefreshCw, FileCheck, Receipt, Bell, FileText, ExternalLink, Truck, CircleDollarSign, Zap, MapPin, Clock, Ban, QrCode } from 'lucide-react';
+import { Search, X, AlertCircle, AlertTriangle, Package, ChevronDown, ChevronUp, Printer, CheckSquare, Square, Trash2, Calendar, User, Filter, Pencil, CheckCircle, RotateCcw, MessageCircle, XCircle, Loader2, List, FileEdit, Send, RefreshCw, FileCheck, Receipt, Bell, FileText, ExternalLink, Truck, CircleDollarSign, Zap, MapPin, Clock, Ban, QrCode, Tag } from 'lucide-react';
 import pedidoService from '../../services/pedidoService';
 import api, { API_URL } from '../../services/api';
 import amostraService from '../../services/amostraService';
@@ -18,6 +18,7 @@ import BoletosAsaasModal from '../Financeiro/BoletosAsaasModal';
 import { eventosCobrancaPix } from '../Atendimentos/linhaDoTempoPedido';
 import PixAvulsoModal from './PixAvulsoModal';
 import ImprimirLoteModal from './ImprimirLoteModal';
+import EtiquetaAmostraModal from './EtiquetaAmostraModal';
 import PageHeader from '../../components/PageHeader';
 import EstadoVazio from '../../components/EstadoVazio';
 import SeloInadimplencia from '../../components/SeloInadimplencia';
@@ -212,6 +213,7 @@ const ListaPedidos = () => {
     const [boletosModal, setBoletosModal] = useState(null); // { pedidoId, clienteNome, pedidoNumero }
     const [pixModal, setPixModal] = useState(null); // { id, numero, especial, clienteNome, valorSugerido }
     const [loteModal, setLoteModal] = useState(null); // { pedidoIds } ou { amostraIds } p/ impressão em lote
+    const [etiquetaAmostra, setEtiquetaAmostra] = useState(null); // amostra (do card) p/ a etiqueta 100×120
     const [gerandoDanfe, setGerandoDanfe] = useState(null); // pedidoId com DANFE em geração
     const [convertendo, setConvertendo] = useState(null); // pedidoId em conversão especial→pedido
     const [detalheExtra, setDetalheExtra] = useState(null); // detalhe completo do pedido do modal (parcelas, cobranças, NFs)
@@ -1265,6 +1267,17 @@ const ListaPedidos = () => {
                                                         {statusAmostraLabels[amostra.status]}
                                                     </span>
                                                     <div className="flex items-center gap-1 mt-1">
+                                                        {amostra.status !== 'CANCELADA' && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={(e) => { e.stopPropagation(); setEtiquetaAmostra(amostra); }}
+                                                                className="p-1 text-gray-400 hover:text-primary rounded hover:bg-gray-100"
+                                                                title="Imprimir etiqueta da amostra (100 × 120)"
+                                                                data-etiqueta-amostra
+                                                            >
+                                                                <Tag className="h-4 w-4" />
+                                                            </button>
+                                                        )}
                                                         {amostra.clienteId && (
                                                             <button
                                                                 onClick={(e) => { e.stopPropagation(); handleEnviarWhatsapp(amostra.id, 'amostra'); }}
@@ -1314,6 +1327,15 @@ const ListaPedidos = () => {
                                                     >
                                                         <Printer className="h-3.5 w-3.5" /> Imprimir
                                                     </button>
+                                                    {amostra.status !== 'CANCELADA' && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={(e) => { e.stopPropagation(); setEtiquetaAmostra(amostra); }}
+                                                            className="text-[11px] font-bold px-3 py-1.5 rounded border bg-white border-gray-300 text-gray-600 hover:bg-gray-50 flex items-center gap-1.5"
+                                                        >
+                                                            <Tag className="h-3.5 w-3.5" /> Etiqueta
+                                                        </button>
+                                                    )}
                                                     {['SOLICITADA', 'PREPARACAO'].includes(amostra.status) && (
                                                         <button
                                                             onClick={(e) => { e.stopPropagation(); handleAvancarAmostra(amostra.id, amostra.status); }}
@@ -2246,6 +2268,9 @@ const ListaPedidos = () => {
             )}
 
             {/* Modal de impressão em lote */}
+            {etiquetaAmostra && (
+                <EtiquetaAmostraModal amostra={etiquetaAmostra} onClose={() => setEtiquetaAmostra(null)} />
+            )}
             {loteModal && (
                 <ImprimirLoteModal
                     pedidoIds={loteModal.pedidoIds || []}
