@@ -2,6 +2,19 @@ const prisma = require('../config/database');
 const categoriaEstoqueService = require('./categoriaEstoqueService');
 
 /**
+ * Próximo código numérico sequencial do catálogo (max + 1 entre códigos de 4 a 6 dígitos,
+ * para ignorar EANs gravados como código). Mínimo 4 dígitos, com zero à esquerda.
+ * `db` pode ser a transação (tx).
+ */
+async function proximoCodigo(db = prisma) {
+    // Dentro de transação: lock de aviso serializa quem gera código (liberado no commit/rollback).
+    if (db !== prisma) await db.$executeRaw`SELECT pg_advisory_xact_lock(7770001)`;
+    const rows = await db.$queryRaw`SELECT MAX(codigo::bigint)::text AS maximo FROM produtos WHERE codigo ~ '^[0-9]{4,6}$'`;
+    const maximo = rows?.[0]?.maximo ? parseInt(rows[0].maximo, 10) : 0;
+    return String(maximo + 1).padStart(4, '0');
+}
+
+/**
  * Criação de Produto — extraído de `produtoController.criar` em 09/2026 para ser
  * reutilizável pela conferência de nota (Entrada de Notas, "Criar produto novo") e
  * pela promoção de item PCP órfão a Produto, além da tela de Produtos.
@@ -107,6 +120,22 @@ async function criar(dados, usuario, db = prisma) {
         }
     }
 
+    // Código (SKU): informado => não pode repetir; vazio => gera o próximo sequencial.
+    const resolverCodigo = async (cli) => {
+        const informado = codigo != null ? String(codigo).trim() : '';
+        if (informado) {
+            const dup = await cli.produto.findFirst({ where: { codigo: informado }, select: { id: true } });
+            if (dup) {
+                const erro = new Error(`Já existe produto com o código ${informado}`);
+                erro.status = 400;
+                throw erro;
+            }
+            return informado;
+        }
+        return proximoCodigo(cli);
+    };
+    let codigoFinal = null; // só preenchido antes do create no caminho com rede (CA ligado)
+
     // 1) Cria no Conta Azul (era a fonte do catálogo até 23/07/2026).
     // CA somente leitura: o produto nasce SÓ no app, com um id local no lugar do
     // contaAzulId (coluna obrigatória/única — vínculo legado).
@@ -121,11 +150,12 @@ async function criar(dados, usuario, db = prisma) {
             erro.status = 500;
             throw erro;
         }
+        codigoFinal = await resolverCodigo(db);
         const contaAzulService = require('./contaAzulService');
         try {
             criadoCA = await contaAzulService.criarProdutoCA({
                 nome,
-                codigoSku: codigo,
+                codigoSku: codigoFinal,
                 codigoEan: ean,
                 valorVenda: valor,
                 categoriaNome: categoriaCanonica,
@@ -140,10 +170,10 @@ async function criar(dados, usuario, db = prisma) {
     }
 
     // 2) Salva local com o vínculo (origem APP)
-    const produto = await db.produto.create({
+    const criarProduto = (cli, cod) => cli.produto.create({
         data: {
             contaAzulId: criadoCA.id,
-            codigo: codigo?.trim() || '',
+            codigo: cod,
             nome: nome.trim(),
             valorVenda: valor,
             unidade: unidadeFinal,
@@ -164,6 +194,13 @@ async function criar(dados, usuario, db = prisma) {
             notaOrigemId: notaOrigemId || null
         }
     });
+    let produto;
+    if (CA_SOMENTE_LEITURA && db === prisma) {
+        // Transação curta (só banco, sem rede): lock + MAX + create => sem código repetido em cadastros simultâneos.
+        produto = await prisma.$transaction(async (tx) => criarProduto(tx, await resolverCodigo(tx)), { timeout: 20000, maxWait: 10000 });
+    } else {
+        produto = await criarProduto(db, codigoFinal || await resolverCodigo(db));
+    }
 
     // Estoque inicial vira uma ENTRADA rastreável (movimentação ESTOQUE_INICIAL), DEPOIS e fora
     // de transação (ajustar abre a sua). Se falhar, o produto fica criado e o erro é devolvido.
@@ -195,4 +232,4 @@ async function criar(dados, usuario, db = prisma) {
     return retorno;
 }
 
-module.exports = { criar };
+module.exports = { criar, proximoCodigo };

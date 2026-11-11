@@ -179,9 +179,16 @@ const pcpItemService = {
         });
         if (existente) return existente;
 
+        // Rede de segurança: produto sem código recebe o próximo sequencial (nunca '' nem '-PA').
+        let codigoProduto = (produto.codigo || '').trim();
+        if (!codigoProduto) {
+            codigoProduto = await require('./produtoService').proximoCodigo(db);
+            await db.produto.update({ where: { id: produto.id }, data: { codigo: codigoProduto } });
+            produto.codigo = codigoProduto;
+        }
         // Verificar se codigo ja existe (pode ter outro item com mesmo codigo)
-        const codigoExiste = await db.itemPcp.findUnique({ where: { codigo: produto.codigo } });
-        const codigo = codigoExiste ? `${produto.codigo}-${tipo}` : produto.codigo;
+        const codigoExiste = await db.itemPcp.findUnique({ where: { codigo: codigoProduto } });
+        const codigo = codigoExiste ? `${codigoProduto}-${tipo}` : codigoProduto;
 
         return db.itemPcp.create({
             data: {

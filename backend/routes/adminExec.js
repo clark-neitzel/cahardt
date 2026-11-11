@@ -13024,4 +13024,49 @@ router.post('/fornecedores-espelhar-de-clientes', async (req, res) => {
     }
 });
 
+// POST /api/admin-exec/backfill-codigo-produtos[?dry=1]
+// Atribui código sequencial aos produtos com codigo '' (por createdAt) e corrige o ItemPcp
+// espelho (codigo '' ou terminado em -MP/-PA/-EMB). ?dry=1 só lista o que faria.
+// Retomável: grava produto a produto (cada um em sua transação); rodar de novo continua de onde parou.
+router.post('/backfill-codigo-produtos', async (req, res) => {
+    try {
+        const dry = req.query.dry === '1';
+        const produtoService = require('../services/produtoService');
+        // codigo vazio OU só espaços
+        const vazios = (await prisma.$queryRaw`SELECT id, nome FROM produtos WHERE codigo ~ '^[[:space:]]*$' ORDER BY created_at ASC`);
+        const resultado = [];
+        let proximo = parseInt(await produtoService.proximoCodigo(prisma), 10);
+        for (const p of vazios) {
+            const codigoNovo = String(proximo).padStart(4, '0');
+            proximo++;
+            const itens = await prisma.itemPcp.findMany({
+                where: { produtoId: p.id, OR: [{ codigo: '' }, { codigo: { endsWith: '-MP' } }, { codigo: { endsWith: '-PA' } }, { codigo: { endsWith: '-EMB' } }] },
+                select: { id: true, codigo: true, tipo: true }
+            });
+            const itensPlano = [];
+            for (const it of itens) {
+                const usado = async (c) => !!(await prisma.itemPcp.findFirst({ where: { codigo: c, id: { not: it.id } }, select: { id: true } }))
+                    || itensPlano.some(x => x.para === c);
+                let para = codigoNovo;
+                if (await usado(para)) {
+                    para = `${codigoNovo}-${it.tipo}`;
+                    for (let n = 2; await usado(para); n++) para = `${codigoNovo}-${it.tipo}-${n}`;
+                }
+                itensPlano.push({ id: it.id, de: it.codigo, para });
+            }
+            if (!dry) {
+                await prisma.$transaction(async (tx) => {
+                    await tx.produto.update({ where: { id: p.id }, data: { codigo: codigoNovo } });
+                    for (const it of itensPlano) await tx.itemPcp.update({ where: { id: it.id }, data: { codigo: it.para } });
+                }, { timeout: 20000, maxWait: 10000 });
+            }
+            resultado.push({ id: p.id, nome: p.nome, codigoNovo, itemPcpCorrigido: itensPlano });
+        }
+        res.json({ dry, total: resultado.length, produtos: resultado });
+    } catch (err) {
+        console.error('[backfill-codigo-produtos]', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 module.exports = router;
