@@ -13035,10 +13035,10 @@ router.post('/backfill-codigo-produtos', async (req, res) => {
         // codigo vazio OU só espaços
         const vazios = (await prisma.$queryRaw`SELECT id, nome FROM produtos WHERE codigo ~ '^[[:space:]]*$' ORDER BY created_at ASC`);
         const resultado = [];
-        let proximo = parseInt(await produtoService.proximoCodigo(prisma), 10);
+        const atribuidos = new Set();
         for (const p of vazios) {
-            const codigoNovo = String(proximo).padStart(4, '0');
-            proximo++;
+            const codigoNovo = await produtoService.proximoCodigo(prisma, atribuidos);
+            atribuidos.add(codigoNovo);
             const itens = await prisma.itemPcp.findMany({
                 where: { produtoId: p.id, OR: [{ codigo: '' }, { codigo: { endsWith: '-MP' } }, { codigo: { endsWith: '-PA' } }, { codigo: { endsWith: '-EMB' } }] },
                 select: { id: true, codigo: true, tipo: true }

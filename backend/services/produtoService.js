@@ -2,16 +2,22 @@ const prisma = require('../config/database');
 const categoriaEstoqueService = require('./categoriaEstoqueService');
 
 /**
- * Próximo código numérico sequencial do catálogo (max + 1 entre códigos de 4 a 6 dígitos,
- * para ignorar EANs gravados como código). Mínimo 4 dígitos, com zero à esquerda.
- * `db` pode ser a transação (tx).
+ * Próximo código numérico sequencial do catálogo: base = MAX entre códigos de EXATAMENTE
+ * 4 dígitos (a sequência real da Hardt; códigos de 5-6 dígitos vindos do CA/fornecedor e EANs
+ * são ignorados) + 1, com zero à esquerda (mín. 4 dígitos). Depois sonda até achar um código
+ * livre (cobre passar de 9999 e colisão com código de fornecedor). `db` pode ser a transação.
+ * `evitar` (Set opcional) = códigos a pular além dos do banco (usado pelo backfill/dry-run).
  */
-async function proximoCodigo(db = prisma) {
+async function proximoCodigo(db = prisma, evitar = null) {
     // Dentro de transação: lock de aviso serializa quem gera código (liberado no commit/rollback).
     if (db !== prisma) await db.$executeRaw`SELECT pg_advisory_xact_lock(7770001)`;
-    const rows = await db.$queryRaw`SELECT MAX(codigo::bigint)::text AS maximo FROM produtos WHERE codigo ~ '^[0-9]{4,6}$'`;
-    const maximo = rows?.[0]?.maximo ? parseInt(rows[0].maximo, 10) : 0;
-    return String(maximo + 1).padStart(4, '0');
+    const rows = await db.$queryRaw`SELECT MAX(codigo::bigint)::text AS maximo FROM produtos WHERE codigo ~ '^[0-9]{4}$'`;
+    let n = (rows?.[0]?.maximo ? parseInt(rows[0].maximo, 10) : 0) + 1;
+    for (;;) {
+        const candidato = String(n).padStart(4, '0');
+        if (!(evitar && evitar.has(candidato)) && !(await db.produto.findFirst({ where: { codigo: candidato }, select: { id: true } }))) return candidato;
+        n++;
+    }
 }
 
 /**
