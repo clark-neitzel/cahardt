@@ -151,42 +151,76 @@ async function registrarAtendimento(agenteBruto, body) {
     const proximaVisita = dataOpcional(b.proximaVisita, 'proximaVisita');
     const referencia = referenciaOpcional(b.referencia);
 
-    if (referencia) {
-        // A aspa final entra na busca: "abc" não pode casar com "abcdefgh".
-        const marca = `"referencia":"${referencia}"`;
-        const existente = await prisma.auditLog.findFirst({
-            where: { acao: 'ANALYTICS_ATENDIMENTO', detalhes: { contains: marca } },
-            orderBy: { createdAt: 'desc' },
-        });
-        if (existente?.entidadeId) {
-            const ja = await prisma.atendimento.findUnique({ where: { id: existente.entidadeId } });
-            if (ja) return { atendimento: publicoAtendimento(ja), duplicado: true, agente };
-        }
-    }
+    const repetido = await atendimentoPorReferencia(referencia);
+    if (repetido) return { atendimento: publicoAtendimento(repetido), duplicado: true, agente };
 
     await exigirVendedor(vendedorId);
     if (clienteId) await exigirCliente(clienteId);
     if (leadId) await exigirLead(leadId);
 
-    const criado = await prisma.atendimento.create({
-        data: {
-            tipo,
-            observacao,
-            acaoKey: acaoKey || 'AGENTE',
-            acaoLabel: acaoLabel || 'Registro do agente comercial',
-            clienteId,
-            leadId,
-            idVendedor: vendedorId,
-            proximaVisita,
-            gpsVendedor,
-        },
-    });
+    const dados = {
+        tipo,
+        observacao,
+        acaoKey: acaoKey || 'AGENTE',
+        acaoLabel: acaoLabel || 'Registro do agente comercial',
+        clienteId,
+        leadId,
+        idVendedor: vendedorId,
+        proximaVisita,
+        gpsVendedor,
+    };
+
+    let criado;
+    try {
+        // Atendimento + referência + data da próxima visita do lead nascem juntos.
+        // A chave única da referência é o que impede duas notas quando dois POSTs
+        // chegam ao mesmo tempo (o lookup anterior sozinho não segura a corrida).
+        criado = await prisma.$transaction(async (tx) => {
+            const at = await tx.atendimento.create({ data: dados });
+            if (referencia) {
+                await tx.atendimentoReferenciaAgente.create({
+                    data: { referencia, atendimentoId: at.id, agente },
+                });
+            }
+            if (leadId && proximaVisita) {
+                await tx.lead.update({ where: { id: leadId }, data: { proximaVisita } });
+            }
+            return at;
+        }, { timeout: 20000, maxWait: 10000 });
+    } catch (e) {
+        if (e?.code === 'P2002' && referencia) {
+            const ja = await esperarReferencia(referencia);
+            if (ja) return { atendimento: publicoAtendimento(ja), duplicado: true, agente };
+            throw erro(409, 'Esta referência está sendo gravada agora. Tente de novo.', 'REFERENCIA_EM_USO');
+        }
+        if (e?.code === 'P2025') throw erro(404, 'Lead não encontrado.', 'NAO_ENCONTRADO');
+        throw e;
+    }
 
     await auditar('ANALYTICS_ATENDIMENTO', 'Atendimento', criado.id, {
-        referencia, clienteId, leadId, vendedorId, tipo,
+        referencia, clienteId, leadId, vendedorId, tipo, proximaVisita: !!proximaVisita,
     }, agente);
 
     return { atendimento: publicoAtendimento(criado), duplicado: false, agente };
+}
+
+async function atendimentoPorReferencia(referencia) {
+    if (!referencia) return null;
+    const row = await prisma.atendimentoReferenciaAgente.findUnique({
+        where: { referencia },
+        include: { atendimento: true },
+    });
+    return row?.atendimento || null;
+}
+
+// O outro POST pode ainda não ter commitado quando o nosso bate na chave única.
+async function esperarReferencia(referencia) {
+    for (let i = 0; i < 3; i++) {
+        const ja = await atendimentoPorReferencia(referencia);
+        if (ja) return ja;
+        await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    return null;
 }
 
 function publicoLead(l) {

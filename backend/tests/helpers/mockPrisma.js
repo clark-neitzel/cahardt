@@ -27,11 +27,14 @@ function makeMockPrisma(overrides = {}) {
     return new Proxy({}, {
         get(_target, model) {
             if (model === 'then') return undefined; // evita await acidental tratar o proxy como thenable
-            const modelOverrides = overrides[model] || {};
+            const modelOverrides = overrides[model];
+            // $transaction é função no client de verdade. Os demais models são { metodo: fn }.
+            if (typeof modelOverrides === 'function') return modelOverrides;
+            const metodos = modelOverrides || {};
             return new Proxy({}, {
                 get(_t, method) {
                     if (method === 'then') return undefined;
-                    if (typeof modelOverrides[method] === 'function') return modelOverrides[method];
+                    if (typeof metodos[method] === 'function') return metodos[method];
                     return naoStubado(String(model), String(method));
                 }
             });

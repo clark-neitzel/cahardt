@@ -37,6 +37,18 @@ function appCom(mockPrisma) {
     return buildApp('/api/analytics', ROUTER, mockPrisma, CACHE);
 }
 
+function prismaComTransacao(overrides) {
+    const mock = makeMockPrisma({
+        ...overrides,
+        $transaction: (fn, opcoes) => {
+            assert.equal(opcoes && opcoes.timeout, 20000);
+            assert.equal(opcoes && opcoes.maxWait, 10000);
+            return fn(mock);
+        },
+    });
+    return mock;
+}
+
 function memoriaSugestoes() {
     const db = new Map();
     let audits = [];
@@ -197,7 +209,7 @@ serie('sugestão: cria, não duplica o mesmo sugestaoId, exige prova para feita'
 
 serie('atendimento: sem cliente recusa; com cliente grava nota e não mexe em pedido', async () => {
     const criados = [];
-    const mock = makeMockPrisma({
+    const mock = prismaComTransacao({
         vendedor: { findUnique: async () => ({ id: 'vend-1', nome: 'Leticia' }) },
         cliente: { findUnique: async () => ({ UUID: 'cli-1', Nome: 'Padaria', NomeFantasia: 'Padaria' }) },
         atendimento: {
@@ -206,7 +218,7 @@ serie('atendimento: sem cliente recusa; com cliente grava nota e não mexe em pe
                 return { id: 'at-1', criadoEm: '2026-11-12T12:00:00.000Z', ...data };
             },
         },
-        auditLog: { create: async ({ data }) => data, findFirst: async () => null },
+        auditLog: { create: async ({ data }) => data },
     });
     const { close, request } = await startTestServer(appCom(mock));
     try {
@@ -238,6 +250,101 @@ serie('atendimento: sem cliente recusa; com cliente grava nota e não mexe em pe
         assert.equal(criados[0].pedidoId, undefined);
         assert.equal(criados[0].idVendedor, 'vend-1');
         assert.equal(criados[0].tipo, 'WHATSAPP');
+    } finally { await close(); }
+});
+
+serie('atendimento de lead marca a próxima visita no lead e a referência não duplica nem na corrida', async () => {
+    const atendimentos = new Map();
+    const refs = new Map();
+    const lead = { id: 'lead-1', proximaVisita: null };
+    let seq = 0;
+    const ordem = [];
+    let forcarCorrida = false;
+    let buscasNaCorrida = 0;
+    const mock = prismaComTransacao({
+        vendedor: { findUnique: async () => ({ id: 'vend-1', nome: 'Leticia' }) },
+        lead: {
+            findUnique: async () => ({ id: 'lead-1', numero: 3, nomeEstabelecimento: 'Mercado', etapa: 'NOVO' }),
+            update: async ({ where, data }) => {
+                assert.equal(where.id, 'lead-1');
+                ordem.push('lead');
+                Object.assign(lead, data);
+                return lead;
+            },
+        },
+        atendimento: {
+            create: async ({ data }) => {
+                ordem.push('atendimento');
+                seq += 1;
+                const row = { id: `at-${seq}`, criadoEm: '2026-11-12T12:00:00.000Z', ...data };
+                atendimentos.set(row.id, row);
+                return row;
+            },
+        },
+        atendimentoReferenciaAgente: {
+            findUnique: async ({ where }) => {
+                if (forcarCorrida) {
+                    buscasNaCorrida += 1;
+                    if (buscasNaCorrida === 1) return null;
+                }
+                const row = refs.get(where.referencia);
+                return row ? { ...row, atendimento: atendimentos.get(row.atendimentoId) } : null;
+            },
+            create: async ({ data }) => {
+                if (forcarCorrida || refs.has(data.referencia)) {
+                    const e = new Error('unique');
+                    e.code = 'P2002';
+                    throw e;
+                }
+                ordem.push('referencia');
+                refs.set(data.referencia, data);
+                return data;
+            },
+        },
+        auditLog: { create: async ({ data }) => data },
+    });
+    const { close, request } = await startTestServer(appCom(mock));
+    try {
+        const ok = await request('POST', '/api/analytics/v1/atendimentos', {
+            headers: AGENTE,
+            body: {
+                vendedorId: 'vend-1', leadId: 'lead-1', tipo: 'VISITA',
+                observacao: 'Marquei a volta para sexta.',
+                proximaVisita: '2026-11-20',
+                referencia: 'visita-lead-1-sexta',
+            },
+        });
+        assert.equal(ok.status, 201);
+        assert.equal(ok.body.duplicado, false);
+        assert.deepEqual(ordem, ['atendimento', 'referencia', 'lead']);
+        assert.equal(lead.proximaVisita.toISOString().slice(0, 10), '2026-11-20');
+
+        const deNovo = await request('POST', '/api/analytics/v1/atendimentos', {
+            headers: AGENTE,
+            body: {
+                vendedorId: 'vend-1', leadId: 'lead-1', tipo: 'VISITA',
+                observacao: 'retry', proximaVisita: '2026-11-20',
+                referencia: 'visita-lead-1-sexta',
+            },
+        });
+        assert.equal(deNovo.status, 200);
+        assert.equal(deNovo.body.duplicado, true);
+        assert.equal(deNovo.body.atendimento.id, 'at-1');
+        assert.equal(seq, 1);
+
+        // Corrida: a busca inicial não acha (o outro ainda não commitou) e o
+        // insert da referência bate na chave única. A resposta é o que já existe.
+        forcarCorrida = true;
+        const corrida = await request('POST', '/api/analytics/v1/atendimentos', {
+            headers: AGENTE,
+            body: {
+                vendedorId: 'vend-1', leadId: 'lead-1', tipo: 'VISITA',
+                observacao: 'ao mesmo tempo', referencia: 'visita-lead-1-sexta',
+            },
+        });
+        assert.equal(corrida.status, 200);
+        assert.equal(corrida.body.duplicado, true);
+        assert.equal(corrida.body.atendimento.id, 'at-1');
     } finally { await close(); }
 });
 

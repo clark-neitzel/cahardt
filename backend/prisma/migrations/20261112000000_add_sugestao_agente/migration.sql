@@ -35,3 +35,18 @@ CREATE INDEX "sugestoes_agente_criado_em_idx" ON "sugestoes_agente"("criado_em")
 ALTER TABLE "sugestoes_agente" ADD CONSTRAINT "sugestoes_agente_vendedor_id_fkey" FOREIGN KEY ("vendedor_id") REFERENCES "vendedores"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 ALTER TABLE "sugestoes_agente" ADD CONSTRAINT "sugestoes_agente_cliente_id_fkey" FOREIGN KEY ("cliente_id") REFERENCES "clientes"("UUID") ON DELETE SET NULL ON UPDATE CASCADE;
 ALTER TABLE "sugestoes_agente" ADD CONSTRAINT "sugestoes_agente_lead_id_fkey" FOREIGN KEY ("lead_id") REFERENCES "leads"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- Referência única do atendimento gravado pelo agente (idempotência).
+-- Nenhuma coluna nova em "atendimentos": a chave fica nesta tabela.
+CREATE TABLE "atendimento_referencia_agente" (
+    "referencia" TEXT NOT NULL,
+    "atendimento_id" TEXT NOT NULL,
+    "agente" TEXT NOT NULL,
+    "criado_em" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "atendimento_referencia_agente_pkey" PRIMARY KEY ("referencia")
+);
+
+CREATE UNIQUE INDEX "atendimento_referencia_agente_atendimento_id_key" ON "atendimento_referencia_agente"("atendimento_id");
+
+ALTER TABLE "atendimento_referencia_agente" ADD CONSTRAINT "atendimento_referencia_agente_atendimento_id_fkey" FOREIGN KEY ("atendimento_id") REFERENCES "atendimentos"("id") ON DELETE CASCADE ON UPDATE CASCADE;

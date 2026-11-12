@@ -238,7 +238,9 @@ curl -s -X POST -H "x-analytics-key: $ANALYTICS_API_KEY" \
 
 `tipo`: `WHATSAPP`, `PRESENCIAL`, `VISITA`, `TELEFONE`, `LIGACAO`, `OUTROS`, `SEM_VISITA`, `NOTA`, `AMOSTRA`.
 
-`vendedorId` e (`clienteId` ou `leadId`) são obrigatórios. `referencia` (8 a 80 caracteres, letras/números/`._:-`) é opcional: repetir o POST com a mesma referência devolve o atendimento já gravado (`duplicado: true`) em vez de criar outro.
+`vendedorId` e (`clienteId` ou `leadId`) são obrigatórios. `referencia` (8 a 80 caracteres, letras/números/`._:-`) é opcional e **única no banco**: repetir o POST, mesmo duas vezes ao mesmo tempo, devolve o atendimento já gravado (`duplicado: true`) e não cria outra nota.
+
+`proximaVisita` (`YYYY-MM-DD`), quando o contato é de um lead, grava a data **no lead e na nota, juntos**. É essa data do lead que coloca a visita na rota do vendedor. Sem ela, o lead parado continua na lista de parados.
 
 Resposta 201: `{ "atendimento": { "id", "tipo", "observacao", "clienteId", "vendedorId", "criadoEm" }, "duplicado": false, "agente": "carteira-manha" }`.
 
