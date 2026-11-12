@@ -46,22 +46,11 @@ function startSchedulers() {
         await syncPedidosService.processarFila();
     }, 30000); // 30 segundos
 
-    // === 4.1. AUTO-SYNC BAIXAS (Contas a Receber CA → App) ===
-    // A cada 1 hora, verifica se parcelas abertas no app já foram baixadas no Conta Azul
-    // e aplica a baixa local (valor, data, forma de pagamento).
-    console.log('⏰ Iniciando Auto-Sync de Baixas (Contas a Receber CA → App)...');
-    const contasReceberSyncService = require('../services/contasReceberSyncService');
-    const _runSyncBaixas = async () => {
-        try {
-            await contasReceberSyncService.sincronizarTodasAbertas();
-        } catch (err) {
-            console.error('⚠️ Auto-Sync Baixas Error:', err.message);
-        }
-    };
-    // Primeira execução 5min após o start (p/ outros sincs rodarem antes)
-    setTimeout(_runSyncBaixas, 300000);
-    // Depois a cada 1 hora
-    setInterval(_runSyncBaixas, 3600000); // 60 min
+    // === 4.1. AUTO-SYNC BAIXAS (Contas a Receber CA → App) — DESLIGADO (CA descontinuado, 11/2026) ===
+    // Rodava a cada 1h (e 5min após o start) chamando contasReceberSyncService.sincronizarTodasAbertas().
+    // O Conta Azul não existe mais (dono confirmou) e o refresh token deu invalid_grant: cada ciclo
+    // gerava ~55 erros no log. O service e as rotas manuais continuam no repo, só o agendamento saiu.
+    // Baixa de recebíveis segue pelo app (Caixa) e pelo worker Asaas (4.1b).
 
     // === 4.1b. RETENTATIVA DE BAIXAS ASAAS ===
     // Cobranças Asaas RECEBIDAS com baixa pendente (ex.: pedido especial convertido
