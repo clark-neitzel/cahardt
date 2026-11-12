@@ -4,18 +4,19 @@ import dayjs from 'dayjs';
 import 'dayjs/locale/pt-br';
 import toast from 'react-hot-toast';
 import {
-    Home, BarChart3, Repeat, MessageCircle, DollarSign, AlertTriangle,
+    Home, BarChart3, MessageCircle, DollarSign, AlertTriangle,
     CreditCard, Clock, Users, Tag, TrendingDown, TrendingUp, MapPin, CalendarDays,
     ChevronLeft, ChevronRight, Sparkles
 } from 'lucide-react';
 import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import AbaUsoIA from './AbaUsoIA';
+import AbaCarteira from './AbaCarteira';
 import SelectBusca from '../../components/SelectBusca';
 import { useFiltrosSalvos } from '../../hooks/useFiltrosSalvos';
 import {
     Card, Kpi, BarraMeta, LinhaBarra, BarrasVerticais, Gauge,
-    BadgeRecompra, ItemAlerta, Carregando, fmtRS, fmtRS0, fmtK, fmtBR, fmtInt,
+    ItemAlerta, Carregando, fmtRS, fmtRS0, fmtK, fmtBR, fmtInt,
     useAtualizaAoVoltar
 } from './dashUi';
 
@@ -24,7 +25,7 @@ dayjs.locale('pt-br');
 const ABAS = [
     { key: 'visao', label: 'Visão Geral', icon: Home },
     { key: 'vendas', label: 'Vendas & Pedidos', icon: BarChart3 },
-    { key: 'recorrencia', label: 'Recorrência', icon: Repeat },
+    { key: 'carteira', label: 'Carteira', icon: Users },
     { key: 'atendimentos', label: 'Atendimentos', icon: MessageCircle },
     { key: 'resultado', label: 'Resultado & Margem', icon: DollarSign },
 ];
@@ -33,8 +34,11 @@ const ABA_IA = { key: 'ia', label: 'IA', icon: Sparkles };
 
 // Abas cujos dados mudam quando o filtro de categoria muda
 const ABAS_COM_CATEGORIA = ['visao', 'vendas', 'resultado'];
-// Abas que respondem ao mês selecionado (recorrência é sempre a foto atual da carteira)
+// Abas que respondem ao mês selecionado (a Carteira é sempre a foto de hoje e tem os próprios controles)
 const ABAS_COM_MES = ['visao', 'vendas', 'atendimentos', 'resultado'];
+
+// Abas sem o navegador de mês e o seletor de categoria no cabeçalho
+const ABAS_SEM_FILTRO_CABECALHO = ['carteira', 'ia'];
 
 const MESES_LONGO = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 const mesAtualSP = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }).slice(0, 7);
@@ -62,7 +66,9 @@ const DashboardGeral = () => {
     const [atualizadoEm, setAtualizadoEm] = useState(null);
     const [tick, setTick] = useState(0);        // gatilho de recarga (voltar ao app, aba re-clicada, 5min)
 
-    const aba = abasVisiveis.some((a) => a.key === filtros.aba) ? filtros.aba : 'visao';
+    // Filtro salvo antigo ('recorrencia') abre a Carteira, que a substituiu
+    const abaSalva = filtros.aba === 'recorrencia' ? 'carteira' : filtros.aba;
+    const aba = abasVisiveis.some((a) => a.key === abaSalva) ? abaSalva : 'visao';
     const categoria = filtros.categoria || '';
     const hoje = mesAtualSP();
     const ehAtual = mes === hoje;
@@ -78,7 +84,7 @@ const DashboardGeral = () => {
     }, []);
 
     const buscarAba = useCallback(async (chave, cat, mesSel) => {
-        if (chave === 'ia') return; // a aba IA faz o próprio fetch (AbaUsoIA)
+        if (chave === 'ia' || chave === 'carteira') return; // IA e Carteira fazem o próprio fetch
         setCarregando((c) => ({ ...c, [chave]: true }));
         try {
             const params = {};
@@ -129,6 +135,8 @@ const DashboardGeral = () => {
     const d = dados[aba];
     const ocupado = aba !== 'ia' && carregando[aba] && !d;
     const ehIA = aba === 'ia';
+    const semFiltroCabecalho = ABAS_SEM_FILTRO_CABECALHO.includes(aba);
+    const ehCarteira = aba === 'carteira';
 
     return (
         <div className="max-w-full overflow-x-hidden">
@@ -141,10 +149,10 @@ const DashboardGeral = () => {
                         </div>
                         <div className="min-w-0">
                             <h1 className="text-base md:text-2xl font-bold text-gray-900 truncate">Dashboard Gerencial</h1>
-                            <p className={`text-xs md:text-sm text-gray-500 font-medium ${ehIA ? '' : 'capitalize'}`}>{ehIA ? 'Uso e custo da IA' : rotuloMesLongo(mes)}</p>
+                            <p className={`text-xs md:text-sm text-gray-500 font-medium ${ehIA || ehCarteira ? '' : 'capitalize'}`}>{ehIA ? 'Uso e custo da IA' : ehCarteira ? `Carteira · foto de hoje, ${dayjs().format('DD/MM')}` : rotuloMesLongo(mes)}</p>
                         </div>
                     </div>
-                    {!ehIA && <div className="md:ml-auto flex flex-wrap items-center gap-2">
+                    {!semFiltroCabecalho && <div className="md:ml-auto flex flex-wrap items-center gap-2">
                         {/* Navegador de mês */}
                         <div className="flex items-center bg-white border border-gray-300 rounded-full">
                             <button onClick={() => irMes(-1)} disabled={mes <= mesMinimo}
@@ -168,7 +176,7 @@ const DashboardGeral = () => {
                         </div>
                     </div>}
                 </div>
-                {!ehAtual && !ehIA && (
+                {!ehAtual && !semFiltroCabecalho && (
                     <div className="mt-3">
                         <span className="inline-flex items-center gap-2 text-xs font-bold text-amber-700 bg-amber-100 rounded-full px-3 py-1.5">
                             📅 vendo {rotuloMesLongo(mes)} (mês fechado)
@@ -203,10 +211,7 @@ const DashboardGeral = () => {
                 {ehIA && ehAdmin && <AbaUsoIA tick={tick} />}
                 {!ocupado && aba === 'visao' && d && <AbaVisaoGeral d={d} irPara={(k) => setFiltros({ ...filtros, aba: k })} />}
                 {!ocupado && aba === 'vendas' && d && <AbaVendas d={d} />}
-                {!ocupado && aba === 'recorrencia' && d && <>
-                    {!ehAtual && <p className="text-sm text-gray-600 font-medium px-1">A recorrência mostra a <b>situação atual da carteira</b> (não muda por mês) — mesmo vendo {rotuloMesLongo(mes)}.</p>}
-                    <AbaRecorrencia d={d} />
-                </>}
+                {ehCarteira && <AbaCarteira tick={tick} onAtualizado={setAtualizadoEm} onIrPara={(k) => setFiltros({ ...filtros, aba: k })} />}
                 {!ocupado && aba === 'atendimentos' && d && <AbaAtendimentos d={d} />}
                 {!ocupado && aba === 'resultado' && d && <AbaResultado d={d} />}
             </div>
@@ -277,7 +282,7 @@ const AbaVisaoGeral = ({ d, irPara }) => {
                             numero={fmtInt(a.recompraCritica)}
                             titulo="Clientes em recompra crítica"
                             sub="passaram do dobro do ciclo normal de compra"
-                            acao={<button onClick={() => irPara('recorrencia')} className="text-primary text-xs font-bold whitespace-nowrap">ver Recorrência →</button>}
+                            acao={<button onClick={() => irPara('carteira')} className="text-primary text-xs font-bold whitespace-nowrap">ver Carteira →</button>}
                         />
                         <ItemAlerta
                             numero={fmtInt(a.retornosVencidos)}
@@ -423,115 +428,6 @@ const SituacaoVendedor = ({ pct }) => {
     return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-700">precisa reagir</span>;
 };
 
-/* ══════════════ ABA 3 · RECORRÊNCIA ══════════════ */
-const AbaRecorrencia = ({ d }) => {
-    const f = d.funil || {};
-    const cart = d.carteira || {};
-    return (
-        <>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <FunilCard n={f.NO_PRAZO} rotulo="No prazo" sub="comprando dentro do ciclo" cls="bg-green-100 text-green-800" />
-                <FunilCard n={f.ATENCAO} rotulo="Atenção" sub="passou um pouco do ciclo" cls="bg-yellow-100 text-yellow-800" />
-                <FunilCard n={f.ATRASADO} rotulo="Atrasado" sub="1,5× o ciclo sem comprar" cls="bg-amber-100 text-amber-700" />
-                <FunilCard n={f.CRITICO} rotulo="Crítico" sub="2× o ciclo — risco de perder" cls="bg-red-100 text-red-700" />
-            </div>
-            <p className="text-sm text-gray-600 font-medium px-1">
-                Os <b className="text-gray-900">{fmtInt(d.emRisco?.clientes)}</b> clientes em atrasado + crítico compravam juntos cerca de{' '}
-                <b className="text-gray-900">{fmtRS0(d.emRisco?.valorMensalEstimado)}/mês</b> — é essa venda que está em risco.
-            </p>
-
-            <Card icon={Clock} titulo="Clientes críticos — agir primeiro" direita="ordenado por venda em risco" semPadding>
-                {/* Desktop */}
-                <div className="hidden md:block overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                            <tr>
-                                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Cliente</th>
-                                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Vendedor</th>
-                                <th className="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Ciclo normal</th>
-                                <th className="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Sem comprar há</th>
-                                <th className="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Compra média/mês</th>
-                                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200 text-sm">
-                            {(d.criticos || []).map((c) => (
-                                <tr key={c.clienteId} className="hover:bg-gray-50">
-                                    <td className="px-5 py-3">
-                                        <Link to={`/clientes/${c.clienteId}`} className="font-semibold text-gray-900 hover:text-primary">{c.nome}</Link>
-                                        {c.cidade && <p className="text-xs text-gray-500 font-medium">{c.cidade}</p>}
-                                    </td>
-                                    <td className="px-5 py-3 text-gray-700">{c.vendedor || '—'}</td>
-                                    <td className="px-5 py-3 text-right text-gray-700 tabular-nums">{c.cicloDias != null ? `${c.cicloDias} dias` : '—'}</td>
-                                    <td className="px-5 py-3 text-right font-bold text-red-700 tabular-nums">{c.diasSemComprar != null ? `${c.diasSemComprar} dias` : '—'}</td>
-                                    <td className="px-5 py-3 text-right font-bold text-gray-900 tabular-nums">{fmtRS0(c.compraMensalEstimada)}</td>
-                                    <td className="px-5 py-3"><BadgeRecompra status={c.status} /></td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-                {/* Mobile */}
-                <div className="md:hidden space-y-3 p-3">
-                    {(d.criticos || []).map((c) => (
-                        <Link key={c.clienteId} to={`/clientes/${c.clienteId}`} className="block bg-white rounded-xl border border-gray-200 shadow-sm p-4">
-                            <div className="flex items-center justify-between gap-2 mb-1">
-                                <span className="font-semibold text-gray-900 truncate">{c.nome}</span>
-                                <BadgeRecompra status={c.status} />
-                            </div>
-                            <p className="text-xs text-gray-500 font-medium">
-                                {c.cidade || ''}{c.vendedor ? ` · ${c.vendedor}` : ''}
-                            </p>
-                            <p className="text-sm text-gray-700 font-medium mt-1.5">
-                                <span className="text-red-700 font-bold">{c.diasSemComprar != null ? `${c.diasSemComprar} dias sem comprar` : ''}</span>
-                                {c.cicloDias != null ? ` · ciclo ${c.cicloDias}d` : ''} · <b>{fmtRS0(c.compraMensalEstimada)}/mês</b>
-                            </p>
-                        </Link>
-                    ))}
-                </div>
-            </Card>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-                <Card icon={TrendingDown} titulo="Sinais de enfraquecimento" direita="ainda compra, mas menos">
-                    <div className="space-y-2">
-                        {(d.enfraquecendo || []).map((c) => (
-                            <ItemAlerta
-                                key={c.clienteId}
-                                numero="↓"
-                                cor="bg-amber-100 text-amber-700"
-                                titulo={c.nome}
-                                sub={`ticket caiu ${fmtBR(Math.abs(c.variacaoTicketPct), 0)}%${c.produtoAusente ? ` · sumiu da cesta: ${c.produtoAusente}` : ''}`}
-                                acao={<Link to={`/clientes/${c.clienteId}`} className="text-primary text-xs font-bold whitespace-nowrap">ver cliente →</Link>}
-                            />
-                        ))}
-                        {(d.enfraquecendo || []).length === 0 && <p className="text-sm text-gray-500">Nenhum sinal forte de queda. 👏</p>}
-                    </div>
-                </Card>
-                <Card icon={Users} titulo="Movimento da carteira — mês">
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
-                        <div><p className="text-2xl font-extrabold text-green-700 tabular-nums">+{fmtInt(cart.novosNoMes)}</p><p className="text-xs font-bold text-gray-500">novos</p></div>
-                        <div><p className="text-2xl font-extrabold text-green-700 tabular-nums">+{fmtInt(cart.reativadosNoMes)}</p><p className="text-xs font-bold text-gray-500">reativados</p></div>
-                        <div><p className="text-2xl font-extrabold text-red-700 tabular-nums">{fmtInt(cart.semCompra90d)}</p><p className="text-xs font-bold text-gray-500">sem compra +90d</p></div>
-                        <div><p className="text-2xl font-extrabold text-amber-700 tabular-nums">{fmtInt(cart.primeiraCompraSemRecompra)}</p><p className="text-xs font-bold text-gray-500">1ª compra s/ recompra</p></div>
-                    </div>
-                    <p className="text-xs text-gray-500 font-medium mt-3 text-center">Carteira ativa acompanhada: <b className="text-gray-700">{fmtInt(d.totalAtivos)} clientes</b>. A 2ª compra é o que fideliza — acompanhar de perto quem fez só uma.</p>
-                </Card>
-            </div>
-        </>
-    );
-};
-
-const FunilCard = ({ n, rotulo, sub, cls }) => {
-    const [bg, texto] = cls.split(' ');
-    return (
-        <div className={`rounded-xl p-4 ${bg}`}>
-            <p className={`text-2xl md:text-3xl font-extrabold tabular-nums ${texto}`}>{fmtInt(n)}</p>
-            <p className={`text-sm font-bold ${texto}`}>{rotulo}</p>
-            <p className={`text-xs font-semibold mt-1 opacity-80 ${texto}`}>{sub}</p>
-        </div>
-    );
-};
-
 /* ══════════════ ABA 4 · ATENDIMENTOS ══════════════ */
 const AbaAtendimentos = ({ d }) => (
     <>
@@ -554,7 +450,7 @@ const AbaAtendimentos = ({ d }) => (
                     <LinhaBarra key={m.motivo} nome={m.motivo} valor={fmtInt(m.qtd)} percent={(m.qtd / Math.max(1, arr[0]?.qtd)) * 100} cor="bg-[#cba258]" />
                 ))}
                 {(d.motivosSemVenda || []).length === 0 && <p className="text-sm text-gray-500">Nenhum motivo registrado no período.</p>}
-                <p className="text-xs text-gray-500 font-medium mt-2">"Ainda tem estoque" alto pode indicar visita fora do ciclo — cruze com a aba Recorrência.</p>
+                <p className="text-xs text-gray-500 font-medium mt-2">"Ainda tem estoque" alto pode indicar visita fora do ciclo — cruze com a aba Carteira.</p>
             </Card>
         </div>
 

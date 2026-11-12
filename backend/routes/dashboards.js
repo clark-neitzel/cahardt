@@ -30,32 +30,9 @@ const idsEmEsperaConferencia = async () =>
 
 const num = (v) => Number(v || 0);
 const round2 = (v) => Math.round(num(v) * 100) / 100;
-const TZ = 'America/Sao_Paulo';
-
-// ── datas (fuso de São Paulo) — espelham adminDashboard.js ──
-const isoNowTZ = () => new Date().toLocaleDateString('en-CA', { timeZone: TZ });
-const inicioDiaSP = (ymd) => new Date(`${ymd}T00:00:00-03:00`);
-const fimDiaSP = (ymd) => new Date(`${ymd}T23:59:59.999-03:00`);
-const somaDiasISO = (ymd, n) => {
-    const d = new Date(`${ymd}T12:00:00-03:00`);
-    d.setDate(d.getDate() + n);
-    return d.toLocaleDateString('en-CA', { timeZone: TZ });
-};
-const somaMesesYM = (ym, n) => {
-    const [y, m] = ym.split('-').map(Number);
-    const d = new Date(y, m - 1 + n, 1);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-};
-const segundaDaSemana = (ymd) => {
-    const d = new Date(`${ymd}T12:00:00-03:00`);
-    const dow = d.getDay(); // 0=dom..6=sab
-    d.setDate(d.getDate() + (dow === 0 ? -6 : 1 - dow));
-    return d.toLocaleDateString('en-CA', { timeZone: TZ });
-};
-const diasNoMes = (ym) => {
-    const [y, m] = ym.split('-').map(Number);
-    return new Date(y, m, 0).getDate();
-};
+const {
+    TZ, isoNowTZ, inicioDiaSP, fimDiaSP, somaDiasISO, somaMesesYM, segundaDaSemana, diasNoMes
+} = require('../utils/dataSP'); // helpers de data (fuso SP) extraídos em 11/2026
 const YM = /^\d{4}-\d{2}$/;
 const YMD = /^\d{4}-\d{2}-\d{2}$/;
 const DIAS_SEMANA_PT = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
@@ -638,6 +615,74 @@ router.get('/geral/recorrencia', verificarAuth, checkGestor, async (req, res) =>
         console.error('[Dashboards] Erro na aba recorrência:', error);
         res.status(500).json({ error: 'Erro ao montar a aba de recorrência.' });
     }
+});
+
+// ════════════════════════════════════════════════════════════════
+// GERAL · ABA CARTEIRA (substitui a leitura da Recorrência; a rota antiga continua no ar)
+// Cálculo em backend/services/carteiraService.js (cache de 10 min; "Já sei" invalida).
+// ════════════════════════════════════════════════════════════════
+const carteiraService = require('../services/carteiraService');
+const erroCarteira = (res, error, rotulo) => {
+    if (error?.status) return res.status(error.status).json({ error: error.message });
+    console.error(`[Dashboards] Erro em ${rotulo}:`, error);
+    return res.status(500).json({ error: `Erro ao ${rotulo}.` });
+};
+
+router.get('/geral/carteira', verificarAuth, checkGestor, async (req, res) => {
+    try {
+        const periodo = req.query.periodo === 'mes' ? 'mes' : 'semana';
+        const vendedorId = String(req.query.vendedorId || 'todos');
+        const painel = await carteiraService.obterPainel({ periodo, vendedorId, fresh: req.query.fresh === '1' });
+        res.json(painel);
+    } catch (error) { erroCarteira(res, error, 'montar a aba Carteira'); }
+});
+
+router.get('/geral/carteira/buscar-clientes', verificarAuth, checkGestor, async (req, res) => {
+    try { res.json(await carteiraService.buscarClientes(req.query.q)); }
+    catch (error) { erroCarteira(res, error, 'buscar clientes'); }
+});
+
+router.post('/geral/carteira/mesmo-cliente', verificarAuth, checkGestor, async (req, res) => {
+    try {
+        const { antigoId, atualId, origem } = req.body || {};
+        const r = await carteiraService.criarVinculo({ antigoId, atualId, origem, usuarioId: req.user.id });
+        if (!r.duplicado) await carteiraService.auditar('CARTEIRA_MESMO_CLIENTE', r.id, { antigoId, atualId, origem }, req.user);
+        res.json(r);
+    } catch (error) { erroCarteira(res, error, 'juntar os cadastros'); }
+});
+
+router.delete('/geral/carteira/mesmo-cliente/:id', verificarAuth, checkGestor, async (req, res) => {
+    try {
+        const r = await carteiraService.desfazerVinculo(req.params.id);
+        await carteiraService.auditar('CARTEIRA_MESMO_CLIENTE_DESFEITO', req.params.id, r, req.user);
+        res.json({ ok: true });
+    } catch (error) { erroCarteira(res, error, 'desfazer o vínculo'); }
+});
+
+router.post('/geral/carteira/sugestao-dispensar', verificarAuth, checkGestor, async (req, res) => {
+    try {
+        const { antigoId, atualId } = req.body || {};
+        const r = await carteiraService.dispensarSugestao({ antigoId, atualId, usuarioId: req.user.id });
+        await carteiraService.auditar('CARTEIRA_SUGESTAO_DISPENSADA', r.id, { antigoId, atualId }, req.user);
+        res.json(r);
+    } catch (error) { erroCarteira(res, error, 'dispensar a sugestão'); }
+});
+
+router.post('/geral/carteira/silencio', verificarAuth, checkGestor, async (req, res) => {
+    try {
+        const { clienteId, dias } = req.body || {};
+        const r = await carteiraService.silenciar({ clienteId, dias, usuarioId: req.user.id });
+        await carteiraService.auditar('CARTEIRA_SILENCIO', clienteId, { dias, ate: r.ate }, req.user);
+        res.json(r);
+    } catch (error) { erroCarteira(res, error, 'silenciar o cliente'); }
+});
+
+router.delete('/geral/carteira/silencio/:clienteId', verificarAuth, checkGestor, async (req, res) => {
+    try {
+        const r = await carteiraService.desfazerSilencio(req.params.clienteId);
+        await carteiraService.auditar('CARTEIRA_SILENCIO_DESFEITO', req.params.clienteId, {}, req.user);
+        res.json({ ok: true });
+    } catch (error) { erroCarteira(res, error, 'desfazer o silêncio'); }
 });
 
 // ════════════════════════════════════════════════════════════════

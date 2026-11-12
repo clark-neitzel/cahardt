@@ -5133,3 +5133,36 @@ model IaUsoLog {
   @@index([usuarioId, criadoEm])
   @@map("ia_uso_logs")
 }
+
+// =============================================
+// PAINEL CARTEIRA (Dashboard Gerencial) — "Já sei" (11/2026)
+// Tabelas laterais SEM relation/FK com `clientes` (tabela no teto de colunas; snapshot solto,
+// existência validada no código). Nenhuma coluna nova em `clientes`.
+// =============================================
+
+// Este cadastro (antigo) é o mesmo cliente de outro cadastro (atual). Um cadastro só aponta
+// para UM atual. `ignorado = true` = "não é o mesmo cliente": suprime a sugestão e não une nada.
+model ClienteMesmoQue {
+  id          String   @id @default(uuid())
+  antigoId    String   @unique @map("antigo_id")
+  atualId     String   @map("atual_id")
+  origem      String   @default("MANUAL") // MANUAL | SUGESTAO
+  ignorado    Boolean  @default(false)
+  criadoPorId String?  @map("criado_por_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([atualId])
+  @@map("cliente_mesmo_que")
+}
+
+// "Já sei" — não me avise deste cliente (nas listas do painel Carteira) até a data.
+model ClienteSilencio {
+  clienteUuid  String   @id @map("cliente_uuid")
+  silenciarAte DateTime @map("silenciar_ate")
+  criadoPorId  String?  @map("criado_por_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@index([silenciarAte])
+  @@map("cliente_silencio")
+}

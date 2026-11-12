@@ -1,5 +1,11 @@
 [
   {
+    "slug": "carteira",
+    "titulo": "Nova aba Carteira no Dashboard",
+    "resumo": "A aba Recorrência virou Carteira: resumo da semana ou do mês, 20 maiores clientes, quem parou de comprar e o botão Já sei. O botão Analisar com IA saiu dos cards da Rota.",
+    "data": "2026-11-12"
+  },
+  {
     "slug": "sugestao-especial",
     "titulo": "Sugestão de pedido especial",
     "resumo": "Pedidos da Ana e do site agora já vêm sugeridos como Especial quando o cliente costuma comprar sem nota (pelos últimos 3 pedidos). Dá para trocar na hora.",

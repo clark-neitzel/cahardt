@@ -10,7 +10,7 @@ permissao: todos (cada perfil vê o seu — gestão, vendedor ou entregador)
 
 A tela inicial do app. Desde julho/2026 existe **um dashboard para cada perfil**, escolhido automaticamente pelas permissões de quem entrou:
 
-- **Gestão** (`admin` ou `Pode_Ver_Dashboard_Admin`) → **Dashboard Gerencial** com 5 abas: Visão Geral, Vendas & Pedidos, Recorrência, Atendimentos e Resultado & Margem. Quem é **administrador** (`admin`) vê ainda uma 6ª aba, **IA** (uso e custo da inteligência artificial).
+- **Gestão** (`admin` ou `Pode_Ver_Dashboard_Admin`) → **Dashboard Gerencial** com 5 abas: Visão Geral, Vendas & Pedidos, Carteira, Atendimentos e Resultado & Margem. Quem é **administrador** (`admin`) vê ainda uma 6ª aba, **IA** (uso e custo da inteligência artificial).
 - **Vendedor** (demais usuários) → **Dashboard pessoal**: minha meta, meu dia, ranking da semana e "quem visitar primeiro".
 - **Entregador** (`Pode_Executar_Entregas`, sem meta de venda) → **Dashboard do Entregador**: rota de hoje, próxima parada, dinheiro a receber na entrega e resumo da semana.
 
@@ -22,7 +22,7 @@ Os painéis antigos (cockpit, painel clássico) foram substituídos por este.
 
 ### Navegador de mês e filtro de categoria
 No topo há:
-- **Navegador de mês** (`‹ Julho 2026 ›`): passe entre os meses para ver o dashboard de cada um. No mês atual mostra tudo (inclusive hoje/alertas/caixa); num **mês fechado** a Visão Geral vira "Resultado do mês" (vendas, meta, atingimento, margem, devoluções) e os blocos de *hoje/alertas/saúde do caixa* somem (são do momento). As abas Vendas, Atendimentos e Resultado & Margem passam a mostrar o mês escolhido; a Recorrência é sempre a foto atual da carteira. Abre sempre no mês corrente; navega até 12 meses atrás.
+- **Navegador de mês** (`‹ Julho 2026 ›`): passe entre os meses para ver o dashboard de cada um. No mês atual mostra tudo (inclusive hoje/alertas/caixa); num **mês fechado** a Visão Geral vira "Resultado do mês" (vendas, meta, atingimento, margem, devoluções) e os blocos de *hoje/alertas/saúde do caixa* somem (são do momento). As abas Vendas, Atendimentos e Resultado & Margem passam a mostrar o mês escolhido; a Carteira é sempre a foto de hoje (tem o seu próprio seletor Semana/Mês). Abre sempre no mês corrente; navega até 12 meses atrás.
 - **Seletor de categoria** (padrão: Produto Acabado): filtra as abas Visão Geral, Vendas e a margem. A escolha fica salva por usuário.
 
 ### Aba Visão Geral
@@ -38,12 +38,23 @@ No topo há:
 - Top produtos dos últimos 30 dias, produtos em queda (30d vs 30 anteriores) e vendas por cidade
 - Link "ver como vendedor →" abre o dashboard individual de qualquer vendedor
 
-### Aba Recorrência
-- Funil de recompra da carteira: No prazo / Atenção / Atrasado / Crítico (calculado pelo ciclo de compra de cada cliente)
-- **R$ em risco**: quanto os clientes atrasados+críticos compravam por mês
-- Lista "clientes críticos — agir primeiro" ordenada pela venda em risco (clique abre o cliente)
-- Sinais de enfraquecimento (ticket caindo, produto que sumiu da cesta)
-- Movimento da carteira: novos, reativados, sem compra +90d, 1ª compra sem recompra
+### Aba Carteira (substitui a antiga aba Recorrência)
+Foto de HOJE da carteira de clientes, calculada por regra (sem inteligência artificial). Não usa o navegador de mês nem o seletor de categoria: tem os seus próprios controles no topo, **Semana | Mês** (semana corrente de segunda até hoje contra a anterior até o mesmo dia; ou mês até hoje contra o mês anterior até o mesmo dia), **vendedor** e **Lista curta | Completa** (5 clientes ou todos). A escolha fica lembrada. Blocos, na ordem:
+- **Resumo do gerente**: 3 a 4 frases montadas dos números (vendas contra o período anterior, clientes que compraram, novos/voltaram/pararam, parados e os 20 maiores, projeção do mês).
+- **Para onde o mês está indo**: já entrou, quanto fecha no ritmo atual, a meta, o quanto falta por dia de trabalho contra o que vem entrando, e uma linha por vendedor. Usa a mesma conta da comissão e da Visão Geral. Sem meta cadastrada, mostra só o ritmo.
+- **Seis números comparados**: vendas líquidas (já descontando devolução), clientes que compraram, ticket, clientes novos, voltaram (compraram de novo depois de 35+ dias parados) e pararam (passaram a ser considerados parados no período).
+- **Gráfico**: últimas 9 semanas ou últimos 6 meses.
+- **Suas decisões de hoje**: cliente grande com pedido faltando, "parece o mesmo cliente" (mesmo celular ou endereço, um parando quando o outro começa; botão **Juntar** ou **Não é o mesmo**), clientes sem vendedor (mostra só 5, os que já pediram primeiro, para não inflar o total) e clientes para inativar (mais de 180 dias sem comprar; só o tempo sem comprar decide, uma anotação de vendedor dizendo "fechou" aparece só como aviso no cliente). O quadro "o que deram as suas decisões" começa vazio.
+- **Os 20 maiores clientes** (últimos 90 dias, líquido): aviso quando um deles está com pedido faltando.
+- **Carteira por vendedor**: no ritmo, atraso leve, parado (a Ana chama / precisa de visita), para inativar, novos.
+- **Clientes que pedem atenção**: abas Parados (Ana), Parados (visita), Atraso leve, Inativar e Enfraquecendo (ticket caindo 15% ou mais). Cada cliente traz um texto do gerente (por regra) e abre o cadastro.
+- **O que a equipe fez**: pedidos, R$ e clientes por vendedor, mais os registros sem pedido, separados pelo tipo do registro (WhatsApp, presencial, sem visita, outros; financeiro fica de fora), contra o período anterior.
+- **Por que não compraram** (últimos 30 dias): lido por palavra das anotações dos vendedores, por isso é aproximado.
+- **Quem mais caiu e quem mais subiu**, **por tipo de cliente** e **por grupo de produto**.
+- **Movimento da carteira** e o **valor em risco por mês**.
+**Como a Carteira decide quem está parado**: o ritmo de cada cliente é o MAIOR entre o ciclo do cadastro (ou da categoria) e a média dos intervalos entre os últimos 6 pedidos. Está **no ritmo** até 1,5 vez o ritmo sem comprar; **parado** com 21 dias ou mais E 2 vezes o ritmo (precisa de 3 dias de pedido; cliente com 1 ou 2 pedidos é "novo"); depois de 180 dias vira "para inativar". Pedido cancelado e bonificação não contam. Cadastros ligados como "mesmo cliente" contam como um só, e cadastro inativo que ainda compra entra na conta. Kit Festa é sazonal (nunca aparece como parado) e Funcionários ficam fora das listas. "Parado" com celular utilizável e com menos de 2 registros "sem resposta" por WhatsApp nos últimos 30 dias vai para a Ana; com 2 ou mais (ou sem celular), visita presencial. "Sem visita" não conta como mensagem. Nesta etapa não há como separar vendedor interno de externo, então todos os registros de WhatsApp entram na conta (na etapa atual isso é só rótulo: nada é disparado).
+**Botão "Já sei" em cada cliente**: (1) *é o mesmo cliente de outro cadastro* — busca o outro cadastro por nome ou documento (mesmo inativo, mínimo 3 letras) e junta os dois, com **Desfazer**; (2) *não me avise por 30 ou 90 dias* — o cliente sai das listas e volta sozinho quando o prazo acaba (pode desfazer); (3) *não compra mais* — abre o cadastro para inativar. Tudo fica registrado no log de auditoria. Os números da Carteira podem diferir do alerta "recompra crítica" da Visão Geral, que ainda usa a régua antiga do ciclo fixo.
+Os dados ficam em cache por até 10 minutos; o botão de atualizar do dashboard força o recálculo. Quem vê: a mesma permissão do Dashboard Gerencial (administrador ou `Pode_Ver_Dashboard_Admin`).
 
 ### Aba Atendimentos
 - Total do mês, % que virou pedido, sem venda e leads novos
@@ -59,7 +70,7 @@ No topo há:
 ### Aba IA (visível só para administrador)
 Mostra **quanto a inteligência artificial custou, por dia, quem usou e onde gastou** — para o dono enxergar se o gasto é **de uma vez só (pontual)** ou **todo dia (recorrente)**. Quem tem só `Pode_Ver_Dashboard_Admin` (ou é gestor) **não vê** esta aba nem os valores: é exclusiva de `admin`.
 - **Cartões do topo**: custo de hoje, dos últimos 7 dias e dos últimos 30 dias (em dólar e em reais; a cotação do dólar é buscada automaticamente — se alguém cadastrar uma em Config → IA, a cadastrada vale), número de chamadas e % que falhou.
-- **Todo dia × uma vez**: separa os serviços que usam a IA em **Recorrente** (usou em 5 ou mais dias dos últimos 30), **Ocasional** (3 ou 4 dias) e **Pontual** (1 ou 2 dias), com o custo de cada grupo. É aqui que se descobre o gasto que se repete sem ninguém perceber (por exemplo a orientação automática de cada cliente, que roda toda noite e depois de cada atendimento). Logo depois que o painel entra no ar ainda há pouco histórico: enquanto houver menos de 5 dias de dados ele avisa "poucos dados" em vez de classificar errado.
+- **Todo dia × uma vez**: separa os serviços que usam a IA em **Recorrente** (usou em 5 ou mais dias dos últimos 30), **Ocasional** (3 ou 4 dias) e **Pontual** (1 ou 2 dias), com o custo de cada grupo. É aqui que se descobre o gasto que se repete sem ninguém perceber (por exemplo a orientação automática de cada cliente, gerada depois de cada atendimento; a análise noturna das 23:30 foi desligada em 11/2026). Logo depois que o painel entra no ar ainda há pouco histórico: enquanto houver menos de 5 dias de dados ele avisa "poucos dados" em vez de classificar errado.
 - **Custo por dia**: barras diárias separando o que foi **automático** (o sistema chamou sozinho) do que foi **manual** (uma pessoa pediu). O dia vale no **horário de Brasília**.
 - **Por serviço**: ranking de onde gastou (Clippy, orientação por cliente, Como Fazer, fotos do checklist do veículo, leitura de comprovante de despesa). Chamada sem identificação aparece como "Sem identificação".
 - **Por pessoa**: quem mais usou. O que o sistema faz sozinho aparece como "Sistema (automático)".

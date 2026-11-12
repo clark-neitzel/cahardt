@@ -7,7 +7,7 @@ import {
     Clock, Calendar, Tag, CheckCircle, ClipboardList, Star,
     Package, X, Navigation, Loader, Search, Truck, Edit3,
     DollarSign, Trash2, Save, ChevronDown, ChevronUp, Route, Bell,
-    ArrowLeftRight, Check, Sparkles, AlertCircle, QrCode, Info
+    ArrowLeftRight, Check, AlertCircle, QrCode, Info
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import leadService from '../../services/leadService';
@@ -334,7 +334,7 @@ const fmtData = (d) => d ? new Date(d).toLocaleDateString('pt-BR', { timeZone: '
 // null/undefined direto na tela (vira "#null" para o usuário).
 const fmtNumeroPedido = (p) => p.numero == null ? '(rascunho)' : `${p.bonificacao ? 'BN' : p.especial ? 'ZZ' : ''}#${p.numero}`;
 
-const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostrarAcoes = true, podeEscolherVendedor = false, meuVendedorId, alerta, onAlertaVisto, onFinalizarTransferencia, onTransferenciaVista, foraFiltro, bloqueado, podeUsarIA = false, selo = {} }) => {
+const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostrarAcoes = true, podeEscolherVendedor = false, meuVendedorId, alerta, onAlertaVisto, onFinalizarTransferencia, onTransferenciaVista, foraFiltro, bloqueado, selo = {} }) => {
     const navigate = useNavigate();
     const atendHoje = getAtendimentoHoje(cliente._atendimentos);
     const atendOutro = !atendHoje ? getAtendimentoOutroVendedor(cliente, meuVendedorId) : null;
@@ -352,8 +352,6 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostr
     const [orientExpanded, setOrientExpanded] = useState(false);
     const [obsExpanded, setObsExpanded] = useState(false);
     const [popup, setPopup] = useState(null); // { pendingAction }
-    const [analisandoIA, setAnalisandoIA] = useState(false);
-    const [orientacaoLocalIA, setOrientacaoLocalIA] = useState(null);
 
     // Badge principal da linha sempre visível — mesma prioridade/cores que o card já usava
     // espalhadas em vários lugares, só concentradas numa única badge (nenhuma regra nova).
@@ -385,21 +383,6 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostr
             setPopup({ pendingAction: () => onNovoPedido(cliente.UUID), insight });
         } else {
             onNovoPedido(cliente.UUID);
-        }
-    };
-
-    const handleAnalisarIA = async (e) => {
-        e.stopPropagation();
-        setAnalisandoIA(true);
-        try {
-            const res = await api.post(`/insights/clientes/${cliente.UUID}/gerar-ia`);
-            setOrientacaoLocalIA(res.data.orientacaoIaJson);
-            setOrientExpanded(true);
-            toast.success('Análise IA atualizada');
-        } catch (err) {
-            toast.error(err.response?.data?.error || 'Erro ao analisar');
-        } finally {
-            setAnalisandoIA(false);
         }
     };
 
@@ -576,9 +559,9 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostr
                             </button>
                         )}
 
-                        {/* Orientação do dia — cenário + motivo + botão IA */}
+                        {/* Orientação do dia — cenário + motivo */}
                         {insight?.insightPrincipalTipo && !atendHoje && (() => {
-                            const ia = orientacaoLocalIA || insight.orientacaoIaJson;
+                            const ia = insight.orientacaoIaJson; // gerada após o atendimento (a análise manual por botão foi retirada em 11/2026)
                             const meta = CENARIO_META[insight.insightPrincipalTipo] || {};
                             const motivo = gerarMotivoInsight(insight);
                             return (
@@ -598,19 +581,6 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostr
                                             <span className="text-[10px] text-gray-500 truncate">{motivo}</span>
                                         )}
                                         <span className="ml-auto flex items-center gap-0.5 shrink-0">
-                                            {podeUsarIA && (
-                                                <button
-                                                    onClick={handleAnalisarIA}
-                                                    disabled={analisandoIA}
-                                                    className="p-0.5 rounded text-violet-400 hover:text-violet-600 hover:bg-violet-50 transition-colors disabled:opacity-40"
-                                                    title="Analisar com IA"
-                                                >
-                                                    {analisandoIA
-                                                        ? <Loader className="h-3 w-3 animate-spin" />
-                                                        : <Sparkles className="h-3 w-3" />
-                                                    }
-                                                </button>
-                                            )}
                                             <ChevronDown className={`h-3 w-3 text-gray-400 transition-transform ${orientExpanded ? 'rotate-180' : ''}`} />
                                         </span>
                                     </button>
@@ -1679,7 +1649,6 @@ const RotaLeads = () => {
     const podeAjustar = !!(user?.permissoes?.admin) || !!(user?.permissoes?.Pode_Ajustar_Entregas);
     // Cobrança de títulos em rota (aparece dentro da aba Entregas, junto do roteiro do dia)
     const podeCobrarRota = !!(user?.permissoes?.admin) || !!(user?.permissoes?.Pode_Cobrar_Titulo_Rota);
-    const podeUsarIAOrientacao = !!(user?.permissoes?.admin) || !!(user?.permissoes?.Pode_Usar_IA_Orientacao);
 
     // Gravar o WhatsApp pelo selo = espelho EXATO do gate do backend
     // (clienteController.js, PATCH /clientes/:uuid):
@@ -2315,7 +2284,7 @@ const RotaLeads = () => {
         const mostrarAcoes = aba === 'atendimento' || aba === 'atendidos';
 
         if (item._tipo === 'cliente') {
-            return <CardCliente key={item.UUID} cliente={item} onAtendimento={setModalAtendimento} onNovoPedido={handleNovoPedido} onVerCliente={setClientePopupItem} mostrarAcoes={mostrarAcoes} podeEscolherVendedor={podeEscolherVendedor} meuVendedorId={vendedorId} alerta={alertasPorItem[item.UUID]} onAlertaVisto={handleMarcarAlertaVisto} onFinalizarTransferencia={handleFinalizarTransferencia} onTransferenciaVista={handleMarcarTransferenciaVista} foraFiltro={item._foraFiltro} bloqueado={item._bloqueado} podeUsarIA={podeUsarIAOrientacao} selo={seloWhats} />;
+            return <CardCliente key={item.UUID} cliente={item} onAtendimento={setModalAtendimento} onNovoPedido={handleNovoPedido} onVerCliente={setClientePopupItem} mostrarAcoes={mostrarAcoes} podeEscolherVendedor={podeEscolherVendedor} meuVendedorId={vendedorId} alerta={alertasPorItem[item.UUID]} onAlertaVisto={handleMarcarAlertaVisto} onFinalizarTransferencia={handleFinalizarTransferencia} onTransferenciaVista={handleMarcarTransferenciaVista} foraFiltro={item._foraFiltro} bloqueado={item._bloqueado} selo={seloWhats} />;
         }
         return <CardLead key={item.id} lead={item} onAtendimento={setModalAtendimento} onVerCliente={setClientePopupItem} mostrarAcoes={mostrarAcoes} podeEscolherVendedor={podeEscolherVendedor} meuVendedorId={vendedorId} alerta={alertasPorItem[item.id]} onAlertaVisto={handleMarcarAlertaVisto} onFinalizarTransferencia={handleFinalizarTransferencia} onTransferenciaVista={handleMarcarTransferenciaVista} foraFiltro={item._foraFiltro} bloqueado={item._bloqueado} />;
     };

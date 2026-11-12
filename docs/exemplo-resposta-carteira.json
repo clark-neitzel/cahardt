@@ -1,0 +1,911 @@
+{
+  "_aviso": "EXEMPLO real do banco LOCAL com data de referência 2026-05-20 (o local não tem movimento recente). Listas cortadas em 3 itens só neste arquivo; a API devolve até 50 por lista (o campo total traz a contagem completa). Campo cacheIdadeSegundos só existe na resposta HTTP.",
+  "hoje": "2026-05-20",
+  "periodo": "mes",
+  "janela": {
+    "atual": {
+      "de": "2026-05-01",
+      "ate": "2026-05-20"
+    },
+    "anterior": {
+      "de": "2026-04-01",
+      "ate": "2026-04-20"
+    }
+  },
+  "vendedorId": "todos",
+  "vendedores": [
+    {
+      "id": "cd3dff75-91e1-4284-8d20-f933b7ae31e3",
+      "nome": "Clarkson Neitzel"
+    },
+    {
+      "id": "d7e38053-fee1-441f-932b-4756bc53f0dc",
+      "nome": "Edilson"
+    },
+    {
+      "id": "2eebf9f2-6dda-49be-aa9f-8b853476c4cd",
+      "nome": "Jociel"
+    }
+  ],
+  "numeros": {
+    "pedidosReais": {
+      "atual": 115027.77,
+      "anterior": 148075.06,
+      "variacaoPct": -22.32
+    },
+    "qtdPedidos": {
+      "atual": 299,
+      "anterior": 403,
+      "variacaoPct": -25.81
+    },
+    "clientesCompraram": {
+      "atual": 197,
+      "anterior": 217,
+      "variacaoPct": -9.22
+    },
+    "ticket": {
+      "atual": 384.71,
+      "anterior": 367.43,
+      "variacaoPct": 4.7
+    },
+    "novos": {
+      "atual": 18,
+      "anterior": 207
+    },
+    "voltaram": {
+      "atual": 2,
+      "anterior": 0
+    },
+    "pararam": {
+      "atual": 7,
+      "anterior": 0
+    }
+  },
+  "grafico": {
+    "tipo": "mensal",
+    "titulo": "Últimos 6 meses",
+    "itens": [
+      {
+        "rotulo": "dezembro",
+        "de": "2025-12-01",
+        "valor": 0,
+        "parcial": false
+      },
+      {
+        "rotulo": "janeiro",
+        "de": "2026-01-01",
+        "valor": 0,
+        "parcial": false
+      },
+      {
+        "rotulo": "fevereiro",
+        "de": "2026-02-01",
+        "valor": 0,
+        "parcial": false
+      }
+    ]
+  },
+  "projecao": {
+    "mes": "2026-05",
+    "mesRotulo": "maio",
+    "diaHoje": 20,
+    "jaEntrou": 115027.77,
+    "fechaNoRitmo": 117543.39,
+    "meta": 318300,
+    "pctMeta": 36.93,
+    "pctRealizado": 36.14,
+    "mesAnteriorTotal": 267507.18,
+    "variacaoVsMesAnteriorPct": -56.06,
+    "diasTrabalho": {
+      "total": 20,
+      "passados": 13,
+      "restantes": 7
+    },
+    "faltaParaMeta": 203272.23,
+    "porDiaNecessario": 29038.89,
+    "porDiaAteAgora": 8848.29,
+    "metodo": "dias_trabalho",
+    "frase": "No ritmo atual maio fecha em R$ 117.543, 56% abaixo de abril (R$ 267.507) e em 37% da meta. Para bater a meta faltam R$ 203.272 em 7 dias de trabalho: R$ 29.039 por dia, contra R$ 8.848 por dia até agora.",
+    "porVendedor": [
+      {
+        "vendedorId": "d461e216-9f58-4ecb-8c4c-53d31c6b8e33",
+        "nome": "laudenor da Silva",
+        "meta": 145000,
+        "realizado": 54142.51,
+        "projecao": 54142.51,
+        "pctMeta": 37.34,
+        "pctRealizado": 37.34,
+        "metodo": "dias_trabalho"
+      },
+      {
+        "vendedorId": "01c9474d-ec91-4fbf-b40a-686e914585f0",
+        "nome": "Leticia Piske",
+        "meta": 140000,
+        "realizado": 47332.22,
+        "projecao": 47332.22,
+        "pctMeta": 33.81,
+        "pctRealizado": 33.81,
+        "metodo": "dias_trabalho"
+      },
+      {
+        "vendedorId": "2eebf9f2-6dda-49be-aa9f-8b853476c4cd",
+        "nome": "Jociel",
+        "meta": 28300,
+        "realizado": 8626.27,
+        "projecao": 8626.27,
+        "pctMeta": 30.48,
+        "pctRealizado": 30.48,
+        "metodo": "dias_trabalho"
+      }
+    ]
+  },
+  "atencao": {
+    "paradoAna": {
+      "total": 3,
+      "itens": [
+        {
+          "clienteId": "8cd5ea99-53ba-4643-be90-e5c3f6df898d",
+          "nome": "LOPES ASSADOS E CONGELADOS",
+          "cidade": "Garuva",
+          "vendedor": "Jociel",
+          "vendedorId": "2eebf9f2-6dda-49be-aa9f-8b853476c4cd",
+          "tipo": "Lanchonete",
+          "ritmoDias": 7,
+          "origemRitmo": "CICLO_CADASTRO",
+          "diasSemComprar": 22,
+          "pedidosValidos": 4,
+          "ultimoPedido": "2026-04-28",
+          "ticketMedio": 254.72,
+          "valorEmRiscoMes": 1091.66,
+          "destino": "ANA",
+          "textoGerente": "Costuma pedir a cada 7 dias e está há 22 sem pedir. Último pedido em 28/04, ticket médio R$ 255. Tem celular utilizável: a Ana pode chamar. Dia de venda: SEG. Último registro: presencial em 11/05 (Atendido sem pedido).",
+          "cadastrosUnidos": [],
+          "silenciadoAte": null,
+          "pausadoAte": null,
+          "avisos": []
+        },
+        {
+          "clienteId": "4b346b22-7ba5-4ab9-983e-ce4af1b64723",
+          "nome": "POSTO IRMAOS DE FAVERI",
+          "cidade": "Camboriú",
+          "vendedor": "laudenor da Silva",
+          "vendedorId": "d461e216-9f58-4ecb-8c4c-53d31c6b8e33",
+          "tipo": "Posto de Combustível / Loja de Posto",
+          "ritmoDias": 10,
+          "origemRitmo": "INTERVALO_REAL",
+          "diasSemComprar": 21,
+          "pedidosValidos": 3,
+          "ultimoPedido": "2026-04-29",
+          "ticketMedio": 331.6,
+          "valorEmRiscoMes": 994.8,
+          "destino": "ANA",
+          "textoGerente": "Costuma pedir a cada 10 dias e está há 21 sem pedir. Último pedido em 29/04, ticket médio R$ 332. Tem celular utilizável: a Ana pode chamar. Dia de venda: QUA. Último registro: whatsapp em 06/05 (Atendido sem pedido).",
+          "cadastrosUnidos": [],
+          "silenciadoAte": null,
+          "pausadoAte": null,
+          "avisos": []
+        },
+        {
+          "clienteId": "9280c7a0-aac2-45cc-a121-4453413d5134",
+          "nome": "POSTO SALSEIROS 3",
+          "cidade": "Itajaí",
+          "vendedor": "laudenor da Silva",
+          "vendedorId": "d461e216-9f58-4ecb-8c4c-53d31c6b8e33",
+          "tipo": "Posto de Combustível / Loja de Posto",
+          "ritmoDias": 7,
+          "origemRitmo": "CICLO_CADASTRO",
+          "diasSemComprar": 29,
+          "pedidosValidos": 4,
+          "ultimoPedido": "2026-04-21",
+          "ticketMedio": 161.89,
+          "valorEmRiscoMes": 693.81,
+          "destino": "ANA",
+          "textoGerente": "Costuma pedir a cada 7 dias e está há 29 sem pedir. Último pedido em 21/04, ticket médio R$ 162. Tem celular utilizável: a Ana pode chamar. Dia de venda: SEG. Último registro: whatsapp em 11/05.",
+          "cadastrosUnidos": [],
+          "silenciadoAte": null,
+          "pausadoAte": null,
+          "avisos": []
+        }
+      ]
+    },
+    "paradoVisita": {
+      "total": 4,
+      "itens": [
+        {
+          "clienteId": "21f9ea8e-e1bd-4ae6-8921-2703ca8fde71",
+          "nome": "MERCADO E ACOUGUE JM",
+          "cidade": "Garuva",
+          "vendedor": "Jociel",
+          "vendedorId": "2eebf9f2-6dda-49be-aa9f-8b853476c4cd",
+          "tipo": "Mercado / Supermercado",
+          "ritmoDias": 7,
+          "origemRitmo": "CICLO_CADASTRO",
+          "diasSemComprar": 22,
+          "pedidosValidos": 4,
+          "ultimoPedido": "2026-04-28",
+          "ticketMedio": 446.17,
+          "valorEmRiscoMes": 1912.16,
+          "destino": "VISITA",
+          "textoGerente": "Costuma pedir a cada 7 dias e está há 22 sem pedir. Último pedido em 28/04, ticket médio R$ 446. Sem celular utilizável ou sem resposta no WhatsApp: pede visita presencial. Dia de venda: SEG. Último registro: presencial em 11/05 (Atendido sem pedido).",
+          "cadastrosUnidos": [],
+          "silenciadoAte": null,
+          "pausadoAte": null,
+          "avisos": []
+        },
+        {
+          "clienteId": "9425afa1-db09-4a0e-99bb-b63168deffa2",
+          "nome": "PARADINHA DA MARCIA MORENA",
+          "cidade": "Garuva",
+          "vendedor": "Jociel",
+          "vendedorId": "2eebf9f2-6dda-49be-aa9f-8b853476c4cd",
+          "tipo": "Lanchonete",
+          "ritmoDias": 7,
+          "origemRitmo": "CICLO_CADASTRO",
+          "diasSemComprar": 22,
+          "pedidosValidos": 4,
+          "ultimoPedido": "2026-04-28",
+          "ticketMedio": 204.57,
+          "valorEmRiscoMes": 876.73,
+          "destino": "VISITA",
+          "textoGerente": "Costuma pedir a cada 7 dias e está há 22 sem pedir. Último pedido em 28/04, ticket médio R$ 205. Sem celular utilizável ou sem resposta no WhatsApp: pede visita presencial. Dia de venda: SEG. Último registro: presencial em 11/05 (Atendido sem pedido).",
+          "cadastrosUnidos": [],
+          "silenciadoAte": null,
+          "pausadoAte": null,
+          "avisos": []
+        },
+        {
+          "clienteId": "b4a93cb0-b8c5-45c0-808f-66aba438d1c6",
+          "nome": "D CASA",
+          "cidade": "Balneário Piçarras",
+          "vendedor": "laudenor da Silva",
+          "vendedorId": "d461e216-9f58-4ecb-8c4c-53d31c6b8e33",
+          "tipo": "Conveniência",
+          "ritmoDias": 7,
+          "origemRitmo": "CICLO_CADASTRO",
+          "diasSemComprar": 21,
+          "pedidosValidos": 3,
+          "ultimoPedido": "2026-04-29",
+          "ticketMedio": 198.66,
+          "valorEmRiscoMes": 851.4,
+          "destino": "VISITA",
+          "textoGerente": "Costuma pedir a cada 7 dias e está há 21 sem pedir. Último pedido em 29/04, ticket médio R$ 199. Sem celular utilizável ou sem resposta no WhatsApp: pede visita presencial. Dia de venda: TER. Último registro: presencial em 12/05 (Atendido sem pedido).",
+          "cadastrosUnidos": [],
+          "silenciadoAte": null,
+          "pausadoAte": null,
+          "avisos": []
+        }
+      ]
+    },
+    "atrasoLeve": {
+      "total": 37,
+      "itens": [
+        {
+          "clienteId": "5865861c-1fb6-4559-943e-d70514ee7ae3",
+          "nome": "SOLAR PDI GESTAO HOTELEIRA LTDA",
+          "cidade": "Penha",
+          "vendedor": "laudenor da Silva",
+          "vendedorId": "d461e216-9f58-4ecb-8c4c-53d31c6b8e33",
+          "tipo": null,
+          "ritmoDias": 9.3,
+          "origemRitmo": "INTERVALO_REAL",
+          "diasSemComprar": 14,
+          "pedidosValidos": 4,
+          "ultimoPedido": "2026-05-06",
+          "ticketMedio": 1007.5,
+          "valorEmRiscoMes": 3250,
+          "destino": "ATRASO_LEVE",
+          "textoGerente": "Costuma pedir a cada 9 dias e está há 14 sem pedir. Último pedido em 06/05, ticket médio R$ 1.008. Dia de venda: TER. Último registro: whatsapp em 12/05 (Sem resposta / Ausente).",
+          "cadastrosUnidos": [],
+          "silenciadoAte": null,
+          "pausadoAte": null,
+          "avisos": []
+        },
+        {
+          "clienteId": "c5f04bfd-0997-4084-8ebe-46349048cbad",
+          "nome": "PANIFICADORA E CONFEITARIA WOLLNER",
+          "cidade": "Joinville",
+          "vendedor": "laudenor da Silva",
+          "vendedorId": "d461e216-9f58-4ecb-8c4c-53d31c6b8e33",
+          "tipo": "Padaria",
+          "ritmoDias": 7.5,
+          "origemRitmo": "INTERVALO_REAL",
+          "diasSemComprar": 12,
+          "pedidosValidos": 5,
+          "ultimoPedido": "2026-05-08",
+          "ticketMedio": 803.82,
+          "valorEmRiscoMes": 3215.28,
+          "destino": "ATRASO_LEVE",
+          "textoGerente": "Costuma pedir a cada 8 dias e está há 12 sem pedir. Último pedido em 08/05, ticket médio R$ 804. Dia de venda: QUA. Último registro: financeiro em 07/05.",
+          "cadastrosUnidos": [],
+          "silenciadoAte": null,
+          "pausadoAte": null,
+          "avisos": []
+        },
+        {
+          "clienteId": "cc1f3ad3-3376-4d2e-82dc-5a225d220400",
+          "nome": "PADARIA SCALLER",
+          "cidade": "Camboriú",
+          "vendedor": "laudenor da Silva",
+          "vendedorId": "d461e216-9f58-4ecb-8c4c-53d31c6b8e33",
+          "tipo": "Padaria",
+          "ritmoDias": 7,
+          "origemRitmo": "CICLO_CADASTRO",
+          "diasSemComprar": 13,
+          "pedidosValidos": 5,
+          "ultimoPedido": "2026-05-07",
+          "ticketMedio": 738.99,
+          "valorEmRiscoMes": 3167.1,
+          "destino": "ATRASO_LEVE",
+          "textoGerente": "Costuma pedir a cada 7 dias e está há 13 sem pedir. Último pedido em 07/05, ticket médio R$ 739. Dia de venda: QUA. Último registro: financeiro em 07/05.",
+          "cadastrosUnidos": [],
+          "silenciadoAte": null,
+          "pausadoAte": null,
+          "avisos": []
+        }
+      ]
+    },
+    "inativar": {
+      "total": 0,
+      "itens": []
+    },
+    "enfraquecendo": {
+      "total": 51,
+      "itens": [
+        {
+          "clienteId": "0a483abf-0b1b-442d-8e5e-6324bcf0eeeb",
+          "nome": "PLAZA PAES E DOCES",
+          "cidade": "Joinville",
+          "vendedor": "laudenor da Silva",
+          "vendedorId": "d461e216-9f58-4ecb-8c4c-53d31c6b8e33",
+          "tipo": "Padaria",
+          "ritmoDias": 8.8,
+          "origemRitmo": "INTERVALO_REAL",
+          "diasSemComprar": 9,
+          "pedidosValidos": 6,
+          "ultimoPedido": "2026-05-11",
+          "ticketMedio": 177.79,
+          "valorEmRiscoMes": 606.1,
+          "destino": null,
+          "textoGerente": "Pede a cada 9 dias e está há 9 sem pedir. Dia de venda: QUA. Último registro: financeiro em 12/05.",
+          "cadastrosUnidos": [],
+          "silenciadoAte": null,
+          "pausadoAte": null,
+          "avisos": [],
+          "variacaoTicketPct": -100,
+          "produtoAusente": "1-GG-COXINHA FRANGO C/10 170GR"
+        },
+        {
+          "clienteId": "196b32bb-712b-441f-a074-d43f1b1047db",
+          "nome": "DOCERIA SAO JOSE",
+          "cidade": "Joinville",
+          "vendedor": "Leticia Piske",
+          "vendedorId": "01c9474d-ec91-4fbf-b40a-686e914585f0",
+          "tipo": "Padaria",
+          "ritmoDias": 8.4,
+          "origemRitmo": "INTERVALO_REAL",
+          "diasSemComprar": 6,
+          "pedidosValidos": 6,
+          "ultimoPedido": "2026-05-14",
+          "ticketMedio": 730.62,
+          "valorEmRiscoMes": 2609.36,
+          "destino": null,
+          "textoGerente": "Pede a cada 8 dias e está há 6 sem pedir. Dia de venda: QUA. Último registro: financeiro em 07/05.",
+          "cadastrosUnidos": [],
+          "silenciadoAte": null,
+          "pausadoAte": null,
+          "avisos": [],
+          "variacaoTicketPct": -100,
+          "produtoAusente": "2-FR-M-COXINHA LING.BLUMEN.C/30 65GR"
+        },
+        {
+          "clienteId": "118d546b-e294-4d08-b140-441747a7054d",
+          "nome": "LA PAUSA COFFEE LTDA",
+          "cidade": "Joinville",
+          "vendedor": "Leticia Piske",
+          "vendedorId": "01c9474d-ec91-4fbf-b40a-686e914585f0",
+          "tipo": "Lanchonete",
+          "ritmoDias": 14,
+          "origemRitmo": "INTERVALO_REAL",
+          "diasSemComprar": 20,
+          "pedidosValidos": 3,
+          "ultimoPedido": "2026-04-30",
+          "ticketMedio": 144.69,
+          "valorEmRiscoMes": 310.05,
+          "destino": null,
+          "textoGerente": "Pede a cada 14 dias e está há 20 sem pedir. Dia de venda: QUA. Último registro: whatsapp em 06/05 (Atendido sem pedido).",
+          "cadastrosUnidos": [],
+          "silenciadoAte": null,
+          "pausadoAte": null,
+          "avisos": [],
+          "variacaoTicketPct": -100,
+          "produtoAusente": "3-ENROLADINHO PIZZA C/08 140GR"
+        }
+      ]
+    }
+  },
+  "equipe": {
+    "janela": {
+      "atual": {
+        "de": "2026-05-01",
+        "ate": "2026-05-20"
+      },
+      "anterior": {
+        "de": "2026-04-01",
+        "ate": "2026-04-20"
+      }
+    },
+    "porVendedor": [
+      {
+        "vendedorId": "d461e216-9f58-4ecb-8c4c-53d31c6b8e33",
+        "nome": "laudenor da Silva",
+        "atual": {
+          "pedidos": 121,
+          "reais": 54142.51,
+          "clientes": 81,
+          "semPedido": {
+            "whatsapp": 34,
+            "presencial": 54,
+            "semVisita": 0,
+            "outros": 0,
+            "total": 88,
+            "atendidoSemPedido": 36,
+            "semResposta": 9
+          }
+        },
+        "anterior": {
+          "pedidos": 175,
+          "reais": 70109.77,
+          "clientes": 97,
+          "semPedido": {
+            "whatsapp": 12,
+            "presencial": 39,
+            "semVisita": 0,
+            "outros": 0,
+            "total": 51,
+            "atendidoSemPedido": 35,
+            "semResposta": 2
+          }
+        }
+      },
+      {
+        "vendedorId": "01c9474d-ec91-4fbf-b40a-686e914585f0",
+        "nome": "Leticia Piske",
+        "atual": {
+          "pedidos": 117,
+          "reais": 47332.22,
+          "clientes": 78,
+          "semPedido": {
+            "whatsapp": 137,
+            "presencial": 1,
+            "semVisita": 0,
+            "outros": 0,
+            "total": 138,
+            "atendidoSemPedido": 64,
+            "semResposta": 71
+          }
+        },
+        "anterior": {
+          "pedidos": 183,
+          "reais": 68297.07,
+          "clientes": 100,
+          "semPedido": {
+            "whatsapp": 157,
+            "presencial": 0,
+            "semVisita": 0,
+            "outros": 0,
+            "total": 157,
+            "atendidoSemPedido": 70,
+            "semResposta": 66
+          }
+        }
+      },
+      {
+        "vendedorId": "2eebf9f2-6dda-49be-aa9f-8b853476c4cd",
+        "nome": "Jociel",
+        "atual": {
+          "pedidos": 26,
+          "reais": 8626.27,
+          "clientes": 22,
+          "semPedido": {
+            "whatsapp": 17,
+            "presencial": 32,
+            "semVisita": 0,
+            "outros": 0,
+            "total": 49,
+            "atendidoSemPedido": 48,
+            "semResposta": 0
+          }
+        },
+        "anterior": {
+          "pedidos": 24,
+          "reais": 6223.72,
+          "clientes": 15,
+          "semPedido": {
+            "whatsapp": 12,
+            "presencial": 28,
+            "semVisita": 0,
+            "outros": 0,
+            "total": 40,
+            "atendidoSemPedido": 25,
+            "semResposta": 3
+          }
+        }
+      }
+    ],
+    "nota": "Registros sem pedido classificados pelo TIPO: SEM_VISITA = sem visita; PRESENCIAL/VISITA/AMOSTRA = presencial; WHATSAPP = WhatsApp; demais = outros. Financeiro fica de fora. atendidoSemPedido e semResposta vêm do rótulo da ação, independente do tipo."
+  },
+  "carteiraPorVendedor": [
+    {
+      "vendedorId": null,
+      "nome": "Sem vendedor",
+      "total": 825,
+      "noRitmo": 0,
+      "atrasoLeve": 0,
+      "paradoAna": 0,
+      "paradoVisita": 0,
+      "inativar": 0,
+      "novos": 2,
+      "sazonal": 0,
+      "silenciados": 0,
+      "valorEmRiscoMes": 0,
+      "registrosSemPedido": {
+        "whatsapp": 0,
+        "presencial": 0,
+        "semVisita": 0,
+        "outros": 0,
+        "total": 0,
+        "atendidoSemPedido": 0,
+        "semResposta": 0
+      }
+    },
+    {
+      "vendedorId": "d461e216-9f58-4ecb-8c4c-53d31c6b8e33",
+      "nome": "laudenor da Silva",
+      "total": 133,
+      "noRitmo": 55,
+      "atrasoLeve": 21,
+      "paradoAna": 2,
+      "paradoVisita": 2,
+      "inativar": 0,
+      "novos": 38,
+      "sazonal": 0,
+      "silenciados": 0,
+      "valorEmRiscoMes": 32799.47,
+      "registrosSemPedido": {
+        "whatsapp": 34,
+        "presencial": 54,
+        "semVisita": 0,
+        "outros": 0,
+        "total": 88,
+        "atendidoSemPedido": 36,
+        "semResposta": 9
+      }
+    },
+    {
+      "vendedorId": "01c9474d-ec91-4fbf-b40a-686e914585f0",
+      "nome": "Leticia Piske",
+      "total": 128,
+      "noRitmo": 57,
+      "atrasoLeve": 15,
+      "paradoAna": 0,
+      "paradoVisita": 0,
+      "inativar": 0,
+      "novos": 34,
+      "sazonal": 5,
+      "silenciados": 0,
+      "valorEmRiscoMes": 13856.94,
+      "registrosSemPedido": {
+        "whatsapp": 137,
+        "presencial": 1,
+        "semVisita": 0,
+        "outros": 0,
+        "total": 138,
+        "atendidoSemPedido": 64,
+        "semResposta": 71
+      }
+    }
+  ],
+  "top20": {
+    "janela": {
+      "de": "2026-02-20",
+      "ate": "2026-05-20"
+    },
+    "somaReais": 146594.44,
+    "pctDaVenda90d": 38.18,
+    "faltando": 2,
+    "itens": [
+      {
+        "clienteId": "54b5e2cb-d51b-4f76-b23a-f50279a6e864",
+        "nome": "RENATO FESTAS E EVENTOS",
+        "vendedor": "laudenor da Silva",
+        "vendedorId": "d461e216-9f58-4ecb-8c4c-53d31c6b8e33",
+        "reais90d": 24288.6,
+        "ritmoDias": 7,
+        "diasSemComprar": 8,
+        "status": "EM_DIA",
+        "silenciadoAte": null,
+        "cadastrosUnidos": [],
+        "textoGerente": null
+      },
+      {
+        "clienteId": "763f51cb-fd6e-428e-bf54-96ac296d4bb9",
+        "nome": "PANIFICADORA NEUMANN",
+        "vendedor": "Leticia Piske",
+        "vendedorId": "01c9474d-ec91-4fbf-b40a-686e914585f0",
+        "reais90d": 14321.82,
+        "ritmoDias": 7,
+        "diasSemComprar": 9,
+        "status": "EM_DIA",
+        "silenciadoAte": null,
+        "cadastrosUnidos": [],
+        "textoGerente": null
+      },
+      {
+        "clienteId": "e8573cdf-6fb5-4b22-bcf6-394b28ec00d6",
+        "nome": "PANIFICADORA BELEM",
+        "vendedor": "laudenor da Silva",
+        "vendedorId": "d461e216-9f58-4ecb-8c4c-53d31c6b8e33",
+        "reais90d": 12514.9,
+        "ritmoDias": 7,
+        "diasSemComprar": 9,
+        "status": "EM_DIA",
+        "silenciadoAte": null,
+        "cadastrosUnidos": [],
+        "textoGerente": null
+      }
+    ]
+  },
+  "quemMudou": {
+    "cairam": [
+      {
+        "clienteId": "e8573cdf-6fb5-4b22-bcf6-394b28ec00d6",
+        "nome": "PANIFICADORA BELEM",
+        "vendedor": "laudenor da Silva",
+        "tipo": null,
+        "atual": 3165.08,
+        "anterior": 6604.52,
+        "diferenca": -3439.44,
+        "cadastrosUnidos": []
+      },
+      {
+        "clienteId": "763f51cb-fd6e-428e-bf54-96ac296d4bb9",
+        "nome": "PANIFICADORA NEUMANN",
+        "vendedor": "Leticia Piske",
+        "tipo": null,
+        "atual": 3802.2,
+        "anterior": 6457.62,
+        "diferenca": -2655.42,
+        "cadastrosUnidos": []
+      },
+      {
+        "clienteId": "196b32bb-712b-441f-a074-d43f1b1047db",
+        "nome": "DOCERIA SAO JOSE",
+        "vendedor": "Leticia Piske",
+        "tipo": "Padaria",
+        "atual": 465.6,
+        "anterior": 2956.6,
+        "diferenca": -2491,
+        "cadastrosUnidos": []
+      }
+    ],
+    "subiram": [
+      {
+        "clienteId": "54b5e2cb-d51b-4f76-b23a-f50279a6e864",
+        "nome": "RENATO FESTAS E EVENTOS",
+        "vendedor": "laudenor da Silva",
+        "tipo": "Casa de Festas / Eventos / Buffet de Festa",
+        "atual": 9749.23,
+        "anterior": 7508.32,
+        "diferenca": 2240.91,
+        "cadastrosUnidos": []
+      },
+      {
+        "clienteId": "d8ac982e-1976-4698-8c08-227ed43ea9a1",
+        "nome": "CLARKSON NEITZEL JUNIOR",
+        "vendedor": "Atendimento",
+        "tipo": "Funcionários/Tercerizados",
+        "atual": 1482.37,
+        "anterior": 0,
+        "diferenca": 1482.37,
+        "cadastrosUnidos": []
+      },
+      {
+        "clienteId": "1ae158f7-1f45-4c42-9e51-b81e6ddc8d52",
+        "nome": "RESTAURANTE SINUELO BR 101",
+        "vendedor": "Leticia Piske",
+        "tipo": "Posto de Combustível / Loja de Posto",
+        "atual": 3248,
+        "anterior": 1856,
+        "diferenca": 1392,
+        "cadastrosUnidos": []
+      }
+    ]
+  },
+  "porTipoCliente": [
+    {
+      "tipo": "Padaria",
+      "atual": 40577.29,
+      "anterior": 61045.6,
+      "diferenca": -20468.31
+    },
+    {
+      "tipo": "Sem tipo",
+      "atual": 14196.67,
+      "anterior": 23999.32,
+      "diferenca": -9802.65
+    },
+    {
+      "tipo": "Posto de Combustível / Loja de Posto",
+      "atual": 13420.52,
+      "anterior": 14861.33,
+      "diferenca": -1440.81
+    }
+  ],
+  "porGrupoProduto": [
+    {
+      "grupo": "Produto Acabado",
+      "atual": 43284.06,
+      "anterior": 51211.82,
+      "diferenca": -7927.76
+    },
+    {
+      "grupo": "Mini Salgados para Fritar",
+      "atual": 27009.8,
+      "anterior": 31657.73,
+      "diferenca": -4647.93
+    },
+    {
+      "grupo": "Produtos para Fritar",
+      "atual": 16436.83,
+      "anterior": 23233.85,
+      "diferenca": -6797.02
+    }
+  ],
+  "motivos": {
+    "janela": {
+      "de": "2026-04-21",
+      "ate": "2026-05-20"
+    },
+    "totalRegistros": 644,
+    "aproximado": true,
+    "aviso": "Lido das anotações dos vendedores por palavra: é aproximado enquanto o motivo for texto livre.",
+    "itens": [
+      {
+        "motivo": "Estoque cheio",
+        "qtd": 78
+      },
+      {
+        "motivo": "Semana que vem",
+        "qtd": 63
+      },
+      {
+        "motivo": "Não precisa agora",
+        "qtd": 8
+      }
+    ],
+    "porAcao": [
+      {
+        "label": "Atendido sem pedido",
+        "qtd": 297
+      },
+      {
+        "label": "Sem resposta / Ausente",
+        "qtd": 187
+      },
+      {
+        "label": "Enviar vendedor",
+        "qtd": 7
+      }
+    ]
+  },
+  "decisoes": [
+    {
+      "tipo": "GRANDE_FALTOU",
+      "titulo": "Cliente grande com pedido faltando",
+      "qtd": 2,
+      "total": 2,
+      "itens": [
+        {
+          "clienteId": "464f3124-209f-4231-af8c-3fe37e748f2d",
+          "nome": "PANIFICADORA E CONFEITARIA PREMIUM",
+          "detalhe": "13 dias sem pedir e costuma pedir a cada 7",
+          "link": "/clientes/464f3124-209f-4231-af8c-3fe37e748f2d"
+        },
+        {
+          "clienteId": "5865861c-1fb6-4559-943e-d70514ee7ae3",
+          "nome": "SOLAR PDI GESTAO HOTELEIRA LTDA",
+          "detalhe": "14 dias sem pedir e costuma pedir a cada 9",
+          "link": "/clientes/5865861c-1fb6-4559-943e-d70514ee7ae3"
+        }
+      ]
+    },
+    {
+      "tipo": "MESMO_CLIENTE",
+      "titulo": "Parece o mesmo cliente",
+      "qtd": 0,
+      "total": 0,
+      "itens": []
+    },
+    {
+      "tipo": "SEM_VENDEDOR",
+      "titulo": "Clientes sem vendedor",
+      "qtd": 5,
+      "total": 824,
+      "itens": [
+        {
+          "clienteId": "a9f4bba3-c07e-4ddb-91c9-5a9b4c4f7212",
+          "nome": "TESTE-FRONTBONIF PADARIA",
+          "pedidosNoApp": 2,
+          "link": "/clientes/a9f4bba3-c07e-4ddb-91c9-5a9b4c4f7212"
+        },
+        {
+          "clienteId": "46780b53-39f5-4145-8734-871f780dc21e",
+          "nome": "09.114.093 ADILSON ALBERTO LIGERO TERENTIM",
+          "pedidosNoApp": 0,
+          "link": "/clientes/46780b53-39f5-4145-8734-871f780dc21e"
+        },
+        {
+          "clienteId": "fbd2fbd2-37f4-43c0-b42c-2990bce25d9e",
+          "nome": "13.206.676 SERGIO NUNES DA SILVA FERREIRA",
+          "pedidosNoApp": 0,
+          "link": "/clientes/fbd2fbd2-37f4-43c0-b42c-2990bce25d9e"
+        }
+      ]
+    }
+  ],
+  "semVendedor": {
+    "total": 824,
+    "hoje": [
+      {
+        "clienteId": "a9f4bba3-c07e-4ddb-91c9-5a9b4c4f7212",
+        "nome": "TESTE-FRONTBONIF PADARIA",
+        "pedidosNoApp": 2,
+        "link": "/clientes/a9f4bba3-c07e-4ddb-91c9-5a9b4c4f7212"
+      },
+      {
+        "clienteId": "46780b53-39f5-4145-8734-871f780dc21e",
+        "nome": "09.114.093 ADILSON ALBERTO LIGERO TERENTIM",
+        "pedidosNoApp": 0,
+        "link": "/clientes/46780b53-39f5-4145-8734-871f780dc21e"
+      },
+      {
+        "clienteId": "fbd2fbd2-37f4-43c0-b42c-2990bce25d9e",
+        "nome": "13.206.676 SERGIO NUNES DA SILVA FERREIRA",
+        "pedidosNoApp": 0,
+        "link": "/clientes/fbd2fbd2-37f4-43c0-b42c-2990bce25d9e"
+      }
+    ]
+  },
+  "decisoesPendentes": 7,
+  "resultadoDecisoes": {
+    "aprovados": 0,
+    "responderam": 0,
+    "voltaram": 0,
+    "reais": 0
+  },
+  "movimento": {
+    "semCompra90d": 0,
+    "primeiraCompraSemRecompra": 54,
+    "totalAtivos": 1141
+  },
+  "valorEmRiscoMes": 51435.93,
+  "resumo": {
+    "frases": [
+      "Em maio até o dia 20 as vendas somam R$ 115.028, 22% abaixo de abril no mesmo período (R$ 148.075), com 197 clientes comprando (contra 217).",
+      "Entraram 18 clientes novos, 2 voltaram depois de mais de um mês e 7 passaram a contar como parados.",
+      "Hoje há 7 clientes parados e 37 em atraso leve; dos 20 maiores, 2 estão com pedido faltando."
+    ],
+    "rotulo": "maio até o dia 20",
+    "parcial": "maio até o dia 20: R$ 115.028, contra R$ 148.075 no mesmo período anterior.",
+    "projecao": {
+      "valorProjetado": 117543.39,
+      "meta": 318300,
+      "pctMeta": 36.93
+    }
+  },
+  "atalhos": {
+    "vendas": "Vendas & Pedidos",
+    "atendimentos": "Atendimentos"
+  },
+  "geradoEm": "2026-11-12T07:20:35.441Z"
+}
