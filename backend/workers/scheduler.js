@@ -67,6 +67,9 @@ function startSchedulers() {
     // === 4.2. CONTAS A PAGAR / FORNECEDORES ↔ CA ===
     // Workers 100% isolados: cada método já engole os próprios erros e, sem token
     // do CA configurado, pula silenciosamente. Nunca derrubam o servidor.
+    // MANTIDOS LIGADOS (60s): processarFilaFornecedores e processarFilaDespesas. Com CA_SOMENTE_LEITURA
+    // eles só DRENAM filas no banco (ENVIAR -> NAO_ENVIAR), sem chamar o CA; fornecedores.js e
+    // contasPagar.js (reenviar-ca, baixa em conta legada) ainda gravam 'ENVIAR' e dependem dessa drenagem.
     console.log('⏰ Iniciando Workers de Contas a Pagar/Fornecedores (↔ CA)...');
     const contasPagarCaSync = require('../services/contasPagarCaSyncService');
 
@@ -86,22 +89,14 @@ function startSchedulers() {
         }, 60000);
     }, 120000);
 
-    // Conferência de baixas no CA (a cada 30min) — primeira execução 10min após o start
-    const _runBaixasPagar = () => {
-        contasPagarCaSync.conferirBaixasCA()
-            .catch(err => console.error('⚠️ Worker Baixas Contas a Pagar Error:', err.message));
-    };
-    setTimeout(_runBaixasPagar, 600000);
-    setInterval(_runBaixasPagar, 1800000); // 30 minutos
+    // Conferência de baixas no CA (30min) — DESLIGADO (CA descontinuado, 11/2026)
+    // Só lia GET /parcelas/{id}/baixa de títulos legados (idParcelaCA) e com o refresh token em
+    // invalid_grant não traz nada. Baixa de Contas a Pagar nasce no app (ledger local). O método
+    // conferirBaixasCA e a rota manual continuam no service.
 
-    // Sincronização da lista de contas financeiras (bancos/caixas) do CA — para os
-    // relatórios "por conta" mostrarem o nome do banco. 3min após o start, depois a cada 6h.
-    const _runContasFin = () => {
-        contasPagarCaSync.sincronizarContasFinanceiras()
-            .catch(err => console.error('⚠️ Worker Contas Financeiras Error:', err.message));
-    };
-    setTimeout(_runContasFin, 180000);
-    setInterval(_runContasFin, 6 * 3600000); // 6 horas
+    // Sincronização de contas financeiras (bancos/caixas) do CA (6h) — DESLIGADO (CA descontinuado, 11/2026)
+    // Os seletores (listarContasFinanceirasSeguro) leem a tabela local contas_financeiras; o CA só
+    // era fallback com a tabela vazia. sincronizarContasFinanceiras e a rota admin continuam no service.
 
     // === 4.3. CAPTURA DE NF-e (SEFAZ Distribuição DF-e) ===
     // Consulta as NF-e emitidas contra o nosso CNPJ e alimenta a caixa de Notas Recebidas.
