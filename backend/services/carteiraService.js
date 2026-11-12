@@ -143,8 +143,10 @@ async function carregarBase(hojeForcado) {
         prisma.cliente.findMany({
             select: {
                 UUID: true, Nome: true, NomeFantasia: true, Ativo: true, idVendedor: true, Dia_de_venda: true,
+                Dia_de_entrega: true, Documento: true, Ponto_GPS: true,
                 categoriaClienteId: true, cicloCompraPersonalizadoDias: true, Telefone_Celular: true,
-                End_Logradouro: true, End_Numero: true, End_CEP: true, End_Cidade: true
+                Telefone: true, Telefone_Comercial: true,
+                End_Logradouro: true, End_Numero: true, End_Bairro: true, End_CEP: true, End_Cidade: true, End_Estado: true
             }
         }),
         prisma.categoriaCliente.findMany({ select: { id: true, nome: true, cicloPadraoDias: true } }),
@@ -844,6 +846,129 @@ async function buscarClientes(q) {
     return { data: rows.map((c) => ({ id: c.UUID, nome: c.Nome, fantasia: c.NomeFantasia || null, cidade: c.End_Cidade || null, ativo: !!c.Ativo })) };
 }
 
+function telefonesDaEntidade(e, cliPorId, whats) {
+    const nums = [];
+    const visto = new Set();
+    const add = (n) => {
+        const t = String(n || '').trim();
+        if (!t || visto.has(t)) return;
+        visto.add(t);
+        nums.push(t);
+    };
+    for (const id of e.ids) {
+        const c = cliPorId.get(id);
+        if (c) {
+            add(c.Telefone_Celular);
+            add(c.Telefone);
+            add(c.Telefone_Comercial);
+        }
+        for (const n of whats.get(id) || []) add(n);
+    }
+    return nums;
+}
+
+function serializarEntidade(e, cliPorId, whats) {
+    const cad = e.cad;
+    const ult = e.ultimoAtend;
+    return {
+        clienteId: e.id,
+        nome: e.nome,
+        razaoSocial: cad.Nome || null,
+        documento: cad.Documento || null,
+        ativo: !!cad.Ativo,
+        noCarteira: !!e.noCarteira,
+        foraDaCarteira: !!e.fora,
+        categoria: e.cat?.nome?.trim() || null,
+        vendedorId: e.vendedorId,
+        vendedor: e.vendedorId ? e.vendedorNome : null,
+        endereco: {
+            logradouro: cad.End_Logradouro || null,
+            numero: cad.End_Numero || null,
+            bairro: cad.End_Bairro || null,
+            cidade: cad.End_Cidade || null,
+            estado: cad.End_Estado || null,
+            cep: cad.End_CEP || null,
+        },
+        gps: cad.Ponto_GPS || null,
+        diasVenda: cad.Dia_de_venda || null,
+        diasEntrega: cad.Dia_de_entrega || null,
+        whatsapps: telefonesDaEntidade(e, cliPorId, whats),
+        temCelular: !!e.temCelular,
+        estado: e.estado,
+        ritmoDias: e.ritmo,
+        origemRitmo: e.origemRitmo,
+        diasSemComprar: e.diasSem,
+        ultimoPedido: e.ultimo,
+        primeiroPedido: e.primeiro,
+        pedidosValidos: e.validos.length,
+        ticketMedio: e.ticket,
+        valorEmRiscoMes: e.valorEmRiscoMes,
+        destino: e.destino,
+        silenciadoAte: e.silenciadoAte,
+        pausadoAte: e.pausadoAte,
+        avisos: e.avisos || [],
+        cadastrosUnidos: e.cadastrosUnidos,
+        semRespostaWhatsapp30d: e.semRespostaWpp30,
+        ultimoAtendimento: ult ? {
+            tipo: ult.tipo || null,
+            em: ult.dia || null,
+            acao: ult.acaoLabel || null,
+            observacao: ult.observacao ? String(ult.observacao).slice(0, 500) : null,
+        } : null,
+    };
+}
+
+/**
+ * Lista da Carteira, um cliente por linha (a mesma classificação do painel).
+ * Usada pela API dos agentes. Não altera o cache nem o cálculo do painel.
+ */
+async function listarClientes({
+    vendedorId = null, estado = null, cidade = null, q = null,
+    somenteCarteira = false, page = 1, limit = 50, fresh = false, ordenar = 'risco',
+} = {}) {
+    const entrada = await obterBase(!!fresh);
+    const base = entrada.base;
+    const { ents, cliPorId } = montarEntidades(base);
+    const whats = new Map(base.whats.map((w) => [w.clienteUuid, w.numeros || []]));
+    let lista = [...ents.values()];
+    if (somenteCarteira) lista = lista.filter((e) => e.noCarteira);
+    if (vendedorId === 'sem-vendedor') lista = lista.filter((e) => !e.vendedorId);
+    else if (vendedorId) lista = lista.filter((e) => e.vendedorId === vendedorId);
+    if (estado) {
+        const set = new Set(String(estado).split(',').map((s) => s.trim().toUpperCase()).filter(Boolean));
+        if (set.size) lista = lista.filter((e) => set.has(e.estado));
+    }
+    if (cidade) {
+        const c = semAcento(cidade);
+        lista = lista.filter((e) => semAcento(e.cad.End_Cidade).includes(c));
+    }
+    if (q) {
+        const n = semAcento(q);
+        const dig = String(q).replace(/\D/g, '');
+        lista = lista.filter((e) => semAcento(e.nome).includes(n)
+            || semAcento(e.cad.Nome).includes(n)
+            || (dig.length >= 3 && String(e.cad.Documento || '').includes(dig)));
+    }
+    if (ordenar === 'nome') lista.sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR'));
+    else if (ordenar === 'dias') lista.sort((a, b) => (b.diasSem || 0) - (a.diasSem || 0) || String(a.nome).localeCompare(String(b.nome), 'pt-BR'));
+    else lista.sort((a, b) => (b.valorEmRiscoMes - a.valorEmRiscoMes) || ((b.diasSem || 0) - (a.diasSem || 0)));
+
+    const pg = Math.max(1, Number(page) || 1);
+    const lim = Math.min(100, Math.max(1, Number(limit) || 50));
+    const total = lista.length;
+    const fatia = lista.slice((pg - 1) * lim, (pg - 1) * lim + lim);
+    return {
+        page: pg,
+        limit: lim,
+        total,
+        totalPages: total === 0 ? 0 : Math.ceil(total / lim),
+        hoje: base.hoje,
+        geradoEm: base.geradoEm,
+        cacheIdadeSegundos: Math.round((Date.now() - entrada.ts) / 1000),
+        data: fatia.map((e) => serializarEntidade(e, cliPorId, whats)),
+    };
+}
+
 async function auditar(acao, entidadeId, detalhes, user) {
     try {
         await prisma.auditLog.create({ data: { acao, entidade: 'CarteiraJaSei', entidadeId: String(entidadeId || '-'), detalhes: JSON.stringify(detalhes), usuarioId: user?.id || '-', usuarioNome: user?.nome || user?.login || '-' } });
@@ -851,7 +976,7 @@ async function auditar(acao, entidadeId, detalhes, user) {
 }
 
 module.exports = {
-    obterPainel, invalidar,
+    obterPainel, listarClientes, invalidar,
     buscarClientes, criarVinculo, desfazerVinculo, dispensarSugestao, silenciar, desfazerSilencio, auditar,
     // puras (testes)
     periodos, calcularRitmo, classificar, classificarMotivo,

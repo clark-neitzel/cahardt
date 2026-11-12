@@ -17,7 +17,7 @@ Antes de ir para o EasyPanel, certifique-se de que o código está no GitHub:
 
 ### A. Criar o Projeto
 1.  No EasyPanel, crie um novo projeto (ex: `HardtApp`).
-2.  Verifique se o serviço de Banco de Dados (PostgreSQL) já está criado e anote a "Connection String" interna (ex: `postgres://hardt:hardt123@cahardt_hardtapp:5432/hardtapp`).
+2.  Verifique se o serviço de Banco de Dados (PostgreSQL) já está criado e anote a "Connection String" interna (ex: `postgres://USUARIO:SENHA@NOME_DO_SERVICO_POSTGRES:5432/NOME_DO_BANCO`). Não grave a senha real neste arquivo.
 
 ### B. Criar Serviço do Backend
 1.  Clique em **"Add Service"** > **"App"**.
@@ -38,7 +38,7 @@ Adicione as seguintes chaves:
 
 | Chave | Valor |
 | :--- | :--- |
-| `DATABASE_URL` | `postgres://hardt:hardt123@cahardt_hardtapp:5432/hardtapp?sslmode=disable` (Sua string do banco interno) |
+| `DATABASE_URL` | `postgres://USUARIO:SENHA@NOME_DO_SERVICO_POSTGRES:5432/NOME_DO_BANCO?sslmode=disable` (a string interna do banco, copiada do EasyPanel — não commitar a senha). Se uma senha real deste banco já chegou a ser commitada, troque a senha no Postgres: o histórico do git continua com o valor antigo. |
 | `PORT` | `3000` |
 
 ### E. Deploy

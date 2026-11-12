@@ -225,6 +225,7 @@ model Cliente {
   devolucoes     Devolucao[]
   atendimentos   Atendimento[]
   cobrancaEnvios CobrancaEnvio[]
+  sugestoesAgente SugestaoAgente[]
 
   // Indicação (auto-referência: quem indicou este cliente)
   indicacaoId String?   @map("indicacao_id")
@@ -804,6 +805,7 @@ model Vendedor {
   devolucoesMotorista   Devolucao[] @relation("DevolucaoMotorista")
 
   mensagensAgendadas MensagemAgendada[]
+  sugestoesAgente    SugestaoAgente[]
 
   curriculoAcessos   CurriculoAcesso[]
   curriculoHistorico CurriculoHistorico[]
@@ -1536,6 +1538,7 @@ model Lead {
 
   atendimentos Atendimento[]
   amostras     Amostra[]
+  sugestoesAgente SugestaoAgente[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -1593,6 +1596,10 @@ model Atendimento {
   usuarioRegistro   Vendedor? @relation("AtendimentoRegistro", fields: [usuarioRegistroId], references: [id])
 
   criadoEm DateTime @default(now()) @map("criado_em")
+
+  // Idempotência da API dos agentes. A FK fica na outra tabela, então nenhuma
+  // coluna nova aparece em `atendimentos` nem na resposta das rotas que já existem.
+  referenciaAgente AtendimentoReferenciaAgente?
 
   @@index([leadId])
   @@index([clienteId])
@@ -5165,4 +5172,53 @@ model ClienteSilencio {
 
   @@index([silenciarAte])
   @@map("cliente_silencio")
+}
+
+// Sugestão que um agente comercial registra para um vendedor (retenção, recompra,
+// upsell, cobrança, visita, prospecção). Não mexe em pedido nem em financeiro.
+// `sugestaoId` é o identificador de rastreio que o agente manda (idempotência).
+// `historico` guarda cada mudança de status: quem (agente), quando e a nota.
+model SugestaoAgente {
+  id           String    @id @default(uuid())
+  sugestaoId   String    @unique @map("sugestao_id")
+  agente       String
+  tipo         String // RETENCAO | RECOMPRA | UPSELL | CROSS_SELL | COBRANCA | PRECO | VISITA | PROSPECCAO | OUTRO
+  titulo       String
+  texto        String    @db.Text
+  status       String    @default("SUGERIDA") // SUGERIDA | APROVADA | ENVIADA | FEITA | IGNORADA
+  vendedorId   String?   @map("vendedor_id")
+  clienteId    String?   @map("cliente_id")
+  leadId       String?   @map("lead_id")
+  provaTexto   String?   @map("prova_texto") @db.Text
+  provaPor     String?   @map("prova_por")
+  provaEm      DateTime? @map("prova_em")
+  aprovadoPor  String?   @map("aprovado_por")
+  historico    Json
+  criadoEm     DateTime  @default(now()) @map("criado_em")
+  atualizadoEm DateTime  @updatedAt @map("atualizado_em")
+
+  vendedor Vendedor? @relation(fields: [vendedorId], references: [id], onDelete: SetNull)
+  cliente  Cliente?  @relation(fields: [clienteId], references: [UUID], onDelete: SetNull)
+  lead     Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([vendedorId])
+  @@index([clienteId])
+  @@index([leadId])
+  @@index([criadoEm])
+  @@map("sugestoes_agente")
+}
+
+// Referência única de um atendimento gravado pela API dos agentes.
+// Duas chamadas iguais (retry ou clique duplo) batem nesta chave e não criam
+// duas notas. A linha nasce na mesma transação do atendimento.
+model AtendimentoReferenciaAgente {
+  referencia    String   @id
+  atendimentoId String   @unique @map("atendimento_id")
+  agente        String
+  criadoEm      DateTime @default(now()) @map("criado_em")
+
+  atendimento Atendimento @relation(fields: [atendimentoId], references: [id], onDelete: Cascade)
+
+  @@map("atendimento_referencia_agente")
 }
