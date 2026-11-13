@@ -707,6 +707,19 @@ Tabela nova entra em `condicoes_pagamento_permitidas` quando essa lista não est
 Resposta: `{ ok, mudou, ficha, resolvido, grupos, pendencias }` — `resolvido: true` = saiu de acertar/classificar/telefone.
 Cliente inativo → `409 CLIENTE_INATIVO`.
 
+**13/11 — ficha completa pelo bot.** O mesmo PATCH também aceita (mesmas validações do `PATCH /clientes/:uuid` do app):
+`razaoSocial` (não vazia), `nomeFantasia`, `documento` (CNPJ/CPF com DV válido e único; acerta `Tipo_Pessoa`), `email`,
+`inscricaoEstadual` (só dígitos; SC = 9) e `indicadorIe` (`CONTRIBUINTE | CONTRIBUINTE_ISENTO | NAO_CONTRIBUINTE`),
+`endereco: { logradouro, numero, complemento, bairro, cidade, estado, cep }` (cidade **só da lista oficial** — fora dela
+volta o erro com `sugestoes`; UF 2 letras; CEP 8 dígitos; grava a trilha do endereço com o agente como autor),
+`observacoes`, `observacaoComercial` (aviso fixado), `canais` (`Presencial | Whatsapp | Telefone`), `categoriaId`
+(segmento, ativo; auditado como no app) e `tabelasPermitidas: [ids]` (ativas; a favorita entra junto).
+`contatos: [{ id, telefone?, nome?, papel? }]` corrige número e/ou nome/papel da pessoa do WhatsApp.
+Fica de fora: ponto GPS (aprovação do módulo de GPS), reativar, indicação, ciclo/insight e "também fornecedor".
+`GET /v1/cadastro-opcoes` passou a trazer `categorias`, `canais` e `indicadoresIe`; a ficha (`GET /v1/clientes/:id/ficha`)
+traz em `cliente` os campos separados `nomeFantasia`, `enderecoCampos`, `inscricaoEstadual`, `indicadorIe`, `observacoes`,
+`observacaoComercial`, `canais` e `categoria`. A ficha da API da IA (`POST /cliente/ficha`) passou a trazer `cliente.id`.
+
 ##### `POST /v1/clientes/:id/inativar`
 `{ motivo, detalhe? }` (mesmos motivos do pedido de inativação). Inativa **na hora** (`Ativo = false`), grava no
 histórico e fecha como `aprovada` o pedido de inativação pendente do cliente. Já inativo → `409 CLIENTE_JA_INATIVO`.
