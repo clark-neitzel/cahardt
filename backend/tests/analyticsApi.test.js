@@ -28,8 +28,11 @@ const CACHE = [
     'services/analyticsConsultaService.js',
     'services/analyticsRegistroService.js',
     'services/analyticsComum.js',
+    'services/analyticsBackupService.js',
+    'services/backupLock.js',
     'services/clienteContatoService.js',
     'middlewares/analyticsAuth.js',
+    'middlewares/analyticsBackupAuth.js',
 ];
 const CHAVE = 'chave-teste-analytics-agentes';
 const AGENTE = { 'x-analytics-key': CHAVE, 'x-analytics-agent': 'carteira-manha' };
@@ -366,7 +369,9 @@ serie('os arquivos da API não enviam WhatsApp nem aceitam SQL do chamador', () 
         'services/analyticsConsultaService.js',
         'services/analyticsRegistroService.js',
         'services/analyticsComum.js',
+        'services/analyticsBackupService.js',
         'middlewares/analyticsAuth.js',
+        'middlewares/analyticsBackupAuth.js',
     ];
     for (const rel of arquivos) {
         const txt = fs.readFileSync(path.join(__dirname, '..', rel), 'utf8');
