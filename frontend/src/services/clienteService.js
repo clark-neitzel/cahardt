@@ -82,6 +82,18 @@ const clienteService = {
         return response.data;
     },
 
+    // Telefones do WhatsApp na ordem preferida (o 1º válido é o preferido)
+    listarTelefones: async (uuid) => {
+        const response = await api.get(`/clientes/${uuid}/telefones`);
+        return response.data;
+    },
+
+    // ordem = lista de números, o preferido primeiro ([] volta à ordem padrão)
+    ordenarTelefones: async (uuid, ordem) => {
+        const response = await api.put(`/clientes/${uuid}/telefones/ordem`, { ordem });
+        return response.data;
+    },
+
     listarContatos: async (uuid) => {
         const response = await api.get(`/clientes/${uuid}/contatos`);
         return response.data;

@@ -12,7 +12,9 @@ import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 // ─────────────────────────────────────────────────────────────────────────────
 // Cadastros pra acertar + pedidos de inativação.
 //  - "Cadastros pra acertar": CLIENTES ativos (ou cliente e fornecedor) sem dia de venda, dia de
-//    entrega, tabela de preço ou vendedor — a Ana só atende cliente com o cadastro completo.
+//    entrega, tabela de preço ou vendedor — a Ana só atende cliente com o cadastro completo — ou com
+//    TELEFONE INCOMPLETO (sem DDD, DDD que não existe, dígitos a menos/a mais): a Ana não consegue
+//    mandar WhatsApp. Número com DDD não precisa do 55 (entra sozinho no envio).
 //    Fornecedor puro não é cliente incompleto e não aparece aqui.
 //  - "Classificar": cadastros sem nenhuma movimentação (sem contas a receber, pedidos nem contas a
 //    pagar). A equipe escolhe: cliente, fornecedor, os dois — ou pede a inativação.
@@ -45,7 +47,7 @@ const MOTIVOS_INATIVACAO = [
 const ROTULO_PERFIL = { CLIENTE: 'Cliente', FORNECEDOR: 'Fornecedor' };
 const rotuloPerfil = (p) => ROTULO_PERFIL[p] || p;
 
-function ChipsFaltando({ faltando, classificacao }) {
+function ChipsFaltando({ faltando, classificacao, telefone }) {
     return (
         <div className="flex flex-wrap gap-1.5">
             {classificacao?.valor === 'CLIENTE_FORNECEDOR' && (
@@ -53,6 +55,12 @@ function ChipsFaltando({ faltando, classificacao }) {
             )}
             {(faltando || []).map((f) => (
                 <span key={f.campo} className="px-2 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-700">{f.rotulo}</span>
+            ))}
+            {/* nov/2026: telefone sem DDD / dígitos errados — a Ana não consegue mandar WhatsApp */}
+            {(telefone?.numeros || []).map((n) => (
+                <span key={`tel-${n.bruto}`} className="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-700" title={`Número no cadastro: ${n.bruto}`}>
+                    Telefone incompleto …{n.final}: {n.rotuloMotivo}
+                </span>
             ))}
         </div>
     );
@@ -92,7 +100,7 @@ function AbaCadastros({ vendedores }) {
                     {opcoesVendedorFiltro(vendedores)}
                 </SelectBusca>
                 <p className="text-sm text-gray-600 md:ml-auto">
-                    {dados ? <><strong className="text-gray-900">{dados.total}</strong> {dados.total === 1 ? 'cliente com cadastro incompleto' : 'clientes com cadastro incompleto'}</> : ''}
+                    {dados ? <><strong className="text-gray-900">{dados.total}</strong> {dados.total === 1 ? 'cliente com cadastro incompleto' : 'clientes com cadastro incompleto'}{dados.contagens?.telefone ? ` (${dados.contagens.telefone} com telefone incompleto)` : ''}</> : ''}
                 </p>
             </div>
 
@@ -106,7 +114,7 @@ function AbaCadastros({ vendedores }) {
                         <button onClick={carregar} className="mt-4 px-5 py-2.5 bg-primary hover:bg-primaryDark text-white rounded-full text-sm font-semibold min-h-[44px]">Tentar de novo</button>
                     </div>
                 ) : linhas.length === 0 ? (
-                    <EstadoVazio icon={CheckCircle2} titulo="Tudo certo por aqui" descricao="Nenhum cliente ativo está com o cadastro incompleto. Fornecedores não entram nesta lista, e os cadastros sem classificação ficam na aba Classificar." />
+                    <EstadoVazio icon={CheckCircle2} titulo="Tudo certo por aqui" descricao="Nenhum cliente ativo está com o cadastro ou o telefone incompleto. Fornecedores não entram nesta lista, e os cadastros sem classificação ficam na aba Classificar." />
                 ) : (
                     <>
                         {/* Mobile: cards */}
@@ -118,7 +126,7 @@ function AbaCadastros({ vendedores }) {
                                         <ChevronRight className="h-4 w-4 text-gray-400 shrink-0" />
                                     </div>
                                     <p className="text-xs text-gray-500 mb-2">{[c.cidade, c.vendedor && `Vendedor: ${c.vendedor}`].filter(Boolean).join(' · ') || 'Sem vendedor'}</p>
-                                    <ChipsFaltando faltando={c.faltando} classificacao={c.classificacao} />
+                                    <ChipsFaltando faltando={c.faltando} classificacao={c.classificacao} telefone={c.telefoneIncompleto} />
                                 </button>
                             ))}
                         </div>
@@ -129,7 +137,7 @@ function AbaCadastros({ vendedores }) {
                                     <tr>
                                         <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Cliente</th>
                                         <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Vendedor</th>
-                                        <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">O que falta</th>
+                                        <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">O que acertar</th>
                                         <th className="px-5 py-3" />
                                     </tr>
                                 </thead>
@@ -138,7 +146,7 @@ function AbaCadastros({ vendedores }) {
                                         <tr key={c.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => abrir(c.id)}>
                                             <td className="px-5 py-3 text-gray-900 font-medium">{c.nome}<div className="text-xs text-gray-500 font-normal">{c.cidade || ''}</div></td>
                                             <td className="px-5 py-3 text-gray-600">{c.vendedor || <span className="text-gray-500">—</span>}</td>
-                                            <td className="px-5 py-3"><ChipsFaltando faltando={c.faltando} classificacao={c.classificacao} /></td>
+                                            <td className="px-5 py-3"><ChipsFaltando faltando={c.faltando} classificacao={c.classificacao} telefone={c.telefoneIncompleto} /></td>
                                             <td className="px-5 py-3 text-right">
                                                 <span className="inline-flex items-center gap-1 text-primary font-semibold text-xs">Abrir ficha <ChevronRight className="h-3.5 w-3.5" /></span>
                                             </td>
