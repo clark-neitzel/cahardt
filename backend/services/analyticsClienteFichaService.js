@@ -90,6 +90,8 @@ async function ficha(clienteId) {
             email: cli.Email || null,
             telefone: cli.Telefone || null,
             celular: cli.Telefone_Celular || null,
+            comercial: cli.Telefone_Comercial || null,
+            whatsapps: cli.whatsapp?.numeros || [],
             endereco: endereco(cli),
             cidade: cli.End_Cidade || null,
             estado: cli.End_Estado || null,

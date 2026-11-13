@@ -13,6 +13,7 @@ const classif = require('../services/clienteClassificacaoService');
 const backup = require('../services/analyticsBackupService');
 const telefones = require('../services/clienteTelefonesService');
 const { exigirAgente } = require('../services/clienteContatoRegras');
+const edicao = require('../services/analyticsCadastroEdicaoService');
 
 const router = express.Router();
 
@@ -28,6 +29,7 @@ function asyncRoute(fn) {
             if (err?.codigo && status < 500) body.codigo = err.codigo;
             if (err?.contatos && status < 500) body.contatos = err.contatos;
             if (err?.pessoas && status < 500) body.pessoas = err.pessoas;
+            if (Array.isArray(err?.erros) && status < 500) body.erros = err.erros;
             res.status(status).json(body);
         });
     };
@@ -42,7 +44,7 @@ router.get('/v1/status', (req, res) => {
         ok: true,
         versao: '1',
         whatsapp: false,
-        escreve: ['atendimentos', 'leads', 'sugestoes', 'contatos', 'inativacoes', 'classificacoes'],
+        escreve: ['atendimentos', 'leads', 'sugestoes', 'contatos', 'inativacoes', 'classificacoes', 'cadastro (só painel)'],
     });
 });
 
@@ -86,6 +88,26 @@ router.get('/v1/clientes/:id/ficha', asyncRoute(async (req, res) => {
 // Só leitura.
 router.get('/v1/cadastros-pendentes', asyncRoute(async (req, res) => {
     res.json(await fichaSvc.cadastrosPendentes(req.query));
+}));
+
+// Opções dos campos da ficha editável do painel do bot (vendedores, tabelas, dias, classificação, motivos).
+router.get('/v1/cadastro-opcoes', asyncRoute(async (req, res) => {
+    res.json(await edicao.opcoes());
+}));
+
+// Contexto pra decidir (visitas com a nota do vendedor, últimos pedidos, histórico e auditoria). Só leitura.
+router.get('/v1/clientes/:id/contexto', asyncRoute(async (req, res) => {
+    res.json(await edicao.contexto(req.params.id));
+}));
+
+// A EQUIPE corrige o cadastro pelo painel do bot (agente "painel-<nome>"; ver ANALYTICS_CADASTRO_AGENTES).
+router.patch('/v1/clientes/:id/cadastro', asyncRoute(async (req, res) => {
+    res.json(await edicao.editar(req.params.id, req.body, { agente: agente(req) }));
+}));
+
+// A EQUIPE inativa na hora pelo painel do bot (o painel pede confirmação). Agente comercial só PEDE (abaixo).
+router.post('/v1/clientes/:id/inativar', asyncRoute(async (req, res) => {
+    res.json(await edicao.inativar(req.params.id, req.body, { agente: agente(req) }));
 }));
 
 // O agente PEDE a inativação; quem inativa é uma pessoa, na fila do app.
