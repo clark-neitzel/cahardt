@@ -684,6 +684,39 @@ curl -s -X POST -H "x-analytics-key: $ANALYTICS_API_KEY" -H "x-analytics-agent: 
   -d '{"classificacao":"FORNECEDOR"}' "https://<host>/api/analytics/v1/clientes/UUID/classificacao"
 ```
 
+#### Ficha editável do painel do bot (11/2026)
+
+Pedido do Clarkson (13/11): corrigir o cadastro **dentro do painel do bot**, sem abrir outra aba. Quem
+edita é a **equipe**, pelo painel; os agentes comerciais (Ana, Luke) continuam só pedindo inativação.
+
+- `x-analytics-agent` obrigatório e com prefixo permitido em `ANALYTICS_CADASTRO_AGENTES` (padrão `painel`).
+  O bot manda `painel-<nome de quem salvou>`. Outro agente → `403 AGENTE_SEM_PERMISSAO`.
+- Tudo vai para o histórico (`cliente_alteracoes`, autor = o agente, tela "Painel do bot > Ficha do cliente")
+  e para o `audit_logs` (`CLIENTE_ALTERADO`).
+
+##### `GET /v1/cadastro-opcoes`
+`{ dias, vendedores: [{ id, nome }], tabelas: [{ id, nome, acrescimoPct, valorMinimo }], classificacoes, motivosInativacao }` — só ativos.
+
+##### `PATCH /v1/clientes/:id/cadastro`
+Campos opcionais (ausente = não mexe): `diaVenda`, `diaEntrega` (`["SEG","QUA"]` ou `"SEG,QUA"`), `tabelaPrecoId`,
+`vendedorId`, `telefones: { celular, telefone, comercial }` (`""` limpa), `whatsapps: [..]`, `contatos: [{ id, telefone }]`
+(pessoas do WhatsApp deste cliente), `telefonePreferido`, `classificacao` (`CLIENTE | FORNECEDOR | CLIENTE_FORNECEDOR | automatica`).
+Telefone precisa de DDD + número (mesma régua da pendência "Telefone incompleto"); grava sem o 55.
+Erro de validação → `400 DADOS_INVALIDOS` com `erros: [{ campo, mensagem }]` e nada é gravado.
+Tabela nova entra em `condicoes_pagamento_permitidas` quando essa lista não está vazia.
+Resposta: `{ ok, mudou, ficha, resolvido, grupos, pendencias }` — `resolvido: true` = saiu de acertar/classificar/telefone.
+Cliente inativo → `409 CLIENTE_INATIVO`.
+
+##### `POST /v1/clientes/:id/inativar`
+`{ motivo, detalhe? }` (mesmos motivos do pedido de inativação). Inativa **na hora** (`Ativo = false`), grava no
+histórico e fecha como `aprovada` o pedido de inativação pendente do cliente. Já inativo → `409 CLIENTE_JA_INATIVO`.
+
+##### `GET /v1/clientes/:id/contexto`
+Só leitura, para decidir entre acertar e inativar: `atendimentos` (últimas 15 visitas/notas, com `observacao` e
+`vendedor`), `pedidos` (últimos 8, qualquer status menos bonificação, com total), `alteracoes` (histórico campo a campo,
+existe desde nov/2026), `auditoria` (audit_logs `CLIENTE_ALTERADO`, mais antigo; `idVendedor` com o nome),
+`inativacoes` e as observações do cadastro. Mudança feita antes desses registros não tem quem/quando.
+
 #### `POST /v1/clientes/:id/inativacao`
 
 A Ana **pede**; ela nunca inativa. Exige o cabeçalho `x-analytics-agent`. Uma pessoa autorizada aprova ou recusa no app (**Clientes → Cadastros a acertar → Pedidos de inativação**); aprovar inativa o cliente e fica no histórico (`/v1/clientes/:id/alteracoes`: campo `Ativo` e campo `inativacao`, com o motivo e quem pediu).
