@@ -5,6 +5,7 @@ const prisma = require('../config/database');
 const { erro, idOpcional } = require('./analyticsComum');
 const { chaveTelefone } = require('../utils/telefoneChave');
 const regras = require('./clienteContatoRegras');
+const historico = require('./clienteHistoricoService');
 
 const CHAVE_MIGRACAO = 'cliente_contatos_migracao_v1';
 
@@ -36,6 +37,29 @@ async function auditar(acao, entidadeId, detalhes, ator) {
     } catch (e) {
         console.error('[ClienteContato] falha ao gravar AuditLog (operação já efetivada):', e.message);
     }
+}
+
+function resumoHistorico(row) {
+    return [row.nome, row.telefone, row.papel].filter(Boolean).join(' · ');
+}
+
+// Histórico de alterações (cliente_alteracoes). Best-effort: nunca lança.
+function telaDoAtor(ator) {
+    return ator?.agente ? 'API /analytics/v1' : (ator?.tela || 'Cadastro > Pessoas do WhatsApp');
+}
+
+function historicoCriado(row, ator) {
+    return historico.registrarEvento({
+        clienteId: row.clienteUuid, entidade: 'contato', entidadeId: row.id, acao: 'criado',
+        ator, tela: telaDoAtor(ator), resumo: resumoHistorico(row),
+    });
+}
+
+function historicoDiff(antes, depois, ator) {
+    return historico.registrarDiff({
+        clienteId: depois.clienteUuid, entidade: 'contato', entidadeId: depois.id,
+        ator, tela: telaDoAtor(ator), antes, depois, campos: historico.CAMPOS_CONTATO,
+    });
 }
 
 async function exigirCliente(id) {
@@ -171,6 +195,7 @@ async function gravar(clienteId, body, ator) {
                     },
                 });
                 await auditar('CONTATO_CRIADO', row.id, resumir(row), ator);
+                await historicoCriado(row, ator);
                 return {
                     status: 201,
                     contato: regras.serializarContato(row),
@@ -199,6 +224,7 @@ async function gravar(clienteId, body, ator) {
             const row = await prisma.clienteContato.findUnique({ where: { id: decisao.id } });
             if (!row) continue;
             await auditar('CONTATO_ATUALIZADO', row.id, { ...resumir(row), aprendeuNome: true }, ator);
+            await historicoDiff(existentes.find((e) => e.id === row.id) || {}, row, ator);
             return {
                 status: 200,
                 contato: regras.serializarContato(row),
@@ -214,6 +240,7 @@ async function gravar(clienteId, body, ator) {
                 data: { ...decisao.dados, atualizadoPor: quem },
             });
             await auditar('CONTATO_ATUALIZADO', row.id, { ...resumir(row), aprendeuNome: false }, ator);
+            await historicoDiff(existentes.find((e) => e.id === row.id) || {}, row, ator);
             return {
                 status: 200,
                 contato: regras.serializarContato(row),
@@ -245,6 +272,7 @@ async function atualizar(contatoId, body, ator, clienteId) {
         throw e;
     }
     await auditar('CONTATO_ATUALIZADO', row.id, resumir(row), ator);
+    await historicoDiff(atual, row, ator);
     return { contato: regras.serializarContato(row), agente: ator?.agente || null };
 }
 
@@ -263,6 +291,7 @@ async function registrarConversa(contatoId, body, ator) {
         ...resumir(row),
         ultimoContatoEm: em.toISOString(),
     }, ator);
+    await historicoDiff(atual, row, ator);
     return { contato: regras.serializarContato(row), agente: ator?.agente || null };
 }
 
@@ -270,6 +299,10 @@ async function excluir(contatoId, ator, clienteId) {
     const atual = await acharContato(contatoId, clienteId);
     await prisma.clienteContato.delete({ where: { id: atual.id } });
     await auditar('CONTATO_EXCLUIDO', atual.id, resumir(atual), ator);
+    await historico.registrarEvento({
+        clienteId: atual.clienteUuid, entidade: 'contato', entidadeId: atual.id, acao: 'excluido',
+        ator, tela: telaDoAtor(ator), resumo: resumoHistorico(atual),
+    });
     return { ok: true, id: atual.id };
 }
 
@@ -290,9 +323,10 @@ async function garantirTelefonesDoCadastro(clienteUuid, fontes, ator = {}, { ori
     for (const t of telefones) {
         if (chaves.has(t.chave)) continue;
         try {
+            const novoId = crypto.randomUUID();
             await prisma.clienteContato.create({
                 data: {
-                    id: crypto.randomUUID(),
+                    id: novoId,
                     clienteUuid,
                     nome: null,
                     nomeChave: '',
@@ -305,6 +339,14 @@ async function garantirTelefonesDoCadastro(clienteUuid, fontes, ator = {}, { ori
             });
             criados += 1;
             chaves.add(t.chave);
+            // A varredura de migração (origem MIGRACAO) não entra: são milhares de linhas
+            // criadas pelo sistema, sem ninguém para responsabilizar.
+            if (origem !== 'MIGRACAO') {
+                await historico.registrarEvento({
+                    clienteId: clienteUuid, entidade: 'contato', entidadeId: novoId, acao: 'criado',
+                    ator, tela: 'Cadastro > telefone do cliente', resumo: t.telefone,
+                });
+            }
         } catch (e) {
             if (e.code !== 'P2002') throw e;
         }
