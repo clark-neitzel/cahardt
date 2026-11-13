@@ -8,6 +8,7 @@ const contatos = require('../services/clienteContatoService');
 const historico = require('../services/clienteHistoricoService');
 const fichaSvc = require('../services/analyticsClienteFichaService');
 const inativacao = require('../services/clienteInativacaoService');
+const classif = require('../services/clienteClassificacaoService');
 const { exigirAgente } = require('../services/clienteContatoRegras');
 
 const router = express.Router();
@@ -38,7 +39,7 @@ router.get('/v1/status', (req, res) => {
         ok: true,
         versao: '1',
         whatsapp: false,
-        escreve: ['atendimentos', 'leads', 'sugestoes', 'contatos', 'inativacoes'],
+        escreve: ['atendimentos', 'leads', 'sugestoes', 'contatos', 'inativacoes', 'classificacoes'],
     });
 });
 
@@ -47,7 +48,10 @@ router.get('/v1/carteira', asyncRoute(async (req, res) => {
 }));
 
 router.get('/v1/clientes', asyncRoute(async (req, res) => {
-    res.json(await consulta.clientes(req.query));
+    const r = await consulta.clientes(req.query);
+    // Enriquece DEPOIS da página pronta (uma query só para a página); a carteira não muda.
+    await classif.enriquecer(r?.data, (c) => c.clienteId || c.id);
+    res.json(r);
 }));
 
 // Ficha completa do cliente para o agente (identificação, dias, tabela, vendedor, pedidos, produtos, contatos).
@@ -55,7 +59,8 @@ router.get('/v1/clientes/:id/ficha', asyncRoute(async (req, res) => {
     res.json(await fichaSvc.ficha(req.params.id));
 }));
 
-// Clientes ativos com cadastro incompleto ("cadastros pra acertar"). Só leitura.
+// Cadastros ativos: ?grupo=acertar (padrão: clientes com cadastro incompleto) | classificar (a classificar).
+// Só leitura.
 router.get('/v1/cadastros-pendentes', asyncRoute(async (req, res) => {
     res.json(await fichaSvc.cadastrosPendentes(req.query));
 }));
@@ -65,6 +70,12 @@ router.post('/v1/clientes/:id/inativacao', asyncRoute(async (req, res) => {
     const quem = exigirAgente(agente(req));
     const r = await inativacao.solicitar(req.params.id, req.body, { agente: quem });
     res.status(r.status).json({ duplicado: r.duplicado, solicitacao: r.solicitacao });
+}));
+
+// Classificação manual (cliente / fornecedor / os dois) por cima da automática; "automatica" desfaz.
+router.post('/v1/clientes/:id/classificacao', asyncRoute(async (req, res) => {
+    const quem = exigirAgente(agente(req));
+    res.json({ classificacao: await classif.classificar(req.params.id, req.body, { agente: quem }) });
 }));
 
 router.get('/v1/inativacoes', asyncRoute(async (req, res) => {
@@ -91,7 +102,9 @@ router.post('/v1/clientes/:id/contatos', asyncRoute(async (req, res) => {
 }));
 
 router.get('/v1/contatos/por-telefone', asyncRoute(async (req, res) => {
-    res.json(await contatos.buscarPorTelefone(req.query.telefone));
+    const r = await contatos.buscarPorTelefone(req.query.telefone);
+    await classif.enriquecer(r.data, (c) => c.clienteId);
+    res.json(r);
 }));
 
 router.patch('/v1/contatos/:id', asyncRoute(async (req, res) => {

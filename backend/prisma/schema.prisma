@@ -396,6 +396,25 @@ model ClienteInativacaoSolicitacao {
   @@map("cliente_inativacao_solicitacoes")
 }
 
+// Classificação MANUAL do cadastro (cliente / fornecedor / os dois) em tabela lateral — a `clientes`
+// está no teto de 1600 colunas, nada novo entra nela e, de propósito, SEM FK/relação (mesmo padrão
+// de ClienteInativacaoSolicitacao). A classificação AUTOMÁTICA nunca é gravada: é calculada ao vivo
+// (contas a receber, pedidos, contas a pagar). Esta linha só existe quando uma pessoa/agente decidiu
+// por cima do automático; apagar a linha = voltar ao automático. Nunca guarda "A_CLASSIFICAR".
+model ClienteClassificacao {
+  id                 String   @id @default(uuid())
+  clienteId          String   @unique @map("cliente_id")
+  classificacao      String // CLIENTE | FORNECEDOR | CLIENTE_FORNECEDOR
+  atualizadoPorTipo  String   @default("usuario") @map("atualizado_por_tipo") // usuario | agente
+  atualizadoPorId    String?  @map("atualizado_por_id")
+  atualizadoPorNome  String?  @map("atualizado_por_nome")
+  origem             String   @default("app") // app | api_agente
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  @@map("cliente_classificacao")
+}
+
 // Situação do WhatsApp do cadastro (Telefone_Celular) em tabela lateral — a `clientes`
 // está no teto de 1600 colunas do Postgres, mesma razão da ClienteFiscal. NENHUMA coluna
 // nova entra em `clientes`: a FK fica aqui.
