@@ -567,27 +567,74 @@ Cadastros **ativos**, por grupo (mais antigos por nome). Filtros: `grupo`, `vend
 |---|---|
 | `acertar` (padrão) | Cadastros com **classificação efetiva `CLIENTE` ou `CLIENTE_FORNECEDOR`** e algum dos 4 campos obrigatórios faltando. **Fornecedor puro e "a classificar" não entram** — não são clientes incompletos. |
 | `classificar` | Cadastros com classificação efetiva `A_CLASSIFICAR` (sem contas a receber, pedidos nem contas a pagar), **estando ou não** com os 4 campos preenchidos. |
+| `telefone` | Clientes (`CLIENTE`/`CLIENTE_FORNECEDOR`) com **telefone incompleto** (ver "Telefones do WhatsApp" abaixo). Eles também aparecem em `acertar`. |
 
 Grupo desconhecido: 400 `GRUPO_INVALIDO`.
 
 ```json
 {
   "grupo": "acertar",
-  "contagens": { "acertar": 12, "classificar": 40 },
+  "contagens": { "acertar": 12, "classificar": 40, "telefone": 3 },
   "page": 1, "limit": 50, "total": 12, "totalPages": 1,
   "data": [
     { "id": "UUID", "nome": "Padaria do Zé", "cidade": "Joinville", "documento": "12345678000199",
       "vendedorId": "UUID", "vendedor": "Carla", "perfis": ["CLIENTE"],
       "classificacao": { "valor": "CLIENTE", "origem": "automatica", "...": "..." }, "somenteFornecedor": false,
-      "completo": false, "faltando": [ { "campo": "diaEntrega", "rotulo": "Dia de entrega" } ] }
+      "completo": false, "faltando": [ { "campo": "diaEntrega", "rotulo": "Dia de entrega" } ],
+      "telefoneIncompleto": { "campo": "telefoneIncompleto", "rotulo": "Telefone incompleto", "semNumeroValido": false,
+                              "numeros": [ { "bruto": "0474299403", "final": "9403", "motivo": "sem_ddd", "rotuloMotivo": "Falta o DDD" } ] },
+      "pendencias": [ { "campo": "diaEntrega", "rotulo": "Dia de entrega" }, { "campo": "telefoneIncompleto", "rotulo": "Telefone incompleto" } ] }
   ]
 }
 ```
 
 - `contagens` vem nas duas respostas e respeita o filtro `vendedorId`; `contagens.acertar` é o mesmo número do `total` de `grupo=acertar`.
 - Em `grupo=classificar`, `faltando` é só contexto (não são "clientes incompletos").
+- **`faltando` continua sendo só os 4 campos da regra da Ana** (a ficha e a regra de atendimento não mudam). O telefone vem à parte em `telefoneIncompleto` (ou `null`) e `pendencias` junta os dois. `grupo=acertar` agora inclui também o cliente com os 4 campos OK mas telefone incompleto (`completo: true`).
 
 A equipe vê as mesmas listas no app: **Clientes → Cadastros a acertar** (abas *Cadastros pra acertar* e *Classificar*).
+
+#### Telefones do WhatsApp — o que o número precisa ter, ordem preferida e "funcionando" (11/2026)
+
+**O que o número precisa ter.** A Z-API exige `55 + DDD + número`, só dígitos (`5547999998888`). O cadastro guarda quase sempre **sem o 55** — isso é seguro: o 55 entra na hora do envio (`status: "normalizado"`). Vira **`incompleto`** (e pendência "Telefone incompleto" em *Cadastros pra acertar*) quando não dá para adivinhar:
+
+| `motivo` | Exemplo | `rotuloMotivo` |
+|---|---|---|
+| `sem_ddd` | `34471023`, `0474299403` | Falta o DDD |
+| `ddd_55` | `55996293920` (Joinville) | Parece que falta o DDD (tem 55 no lugar do DDD) — só aceito como DDD 55 se o cadastro é do RS |
+| `ddd_invalido` | `5935778920` | DDD não existe |
+| `celular_sem_9` | `47888092707` | Celular com 9 dígitos precisa começar com 9 |
+| `tamanho` | `453264801145` | Quantidade de dígitos errada |
+| `numero_invalido` | `4700000000` | Número inválido |
+
+A mesma régua vale para o envio de avisos do app (`botWhatsappService.normalizarTelefone`): número incompleto não é mais mandado ao bot.
+
+##### `GET /v1/clientes/:id/telefones`
+
+Todos os números do cliente (Celular, WhatsApps do cadastro, Telefone, Comercial e pessoas do WhatsApp), **sem repetir** (com/sem 55 e com/sem o 9º dígito são o mesmo), na **ordem preferida**. O mesmo objeto vem na ficha como `telefonesWhatsapp`.
+
+```json
+{ "clienteId": "UUID", "nome": "Bona Pães",
+  "telefones": [
+    { "chave": "4788095072", "numero": "554788095072", "bruto": "47 8809-5072", "final": "5072", "status": "normalizado", "valido": true,
+      "motivo": null, "rotuloMotivo": null, "fontes": ["celular"], "pessoas": [], "ordem": 1, "preferencial": true,
+      "funcionando": true, "funcionandoEm": "2026-11-16T12:05:00.000Z" },
+    { "chave": "4791117038", "numero": "5547991117038", "bruto": "47991117038", "final": "7038", "status": "normalizado", "valido": true,
+      "fontes": ["contato"], "pessoas": ["Maria"], "ordem": 2, "preferencial": false, "funcionando": false, "funcionandoEm": null }
+  ],
+  "ordemDefinida": true, "preferido": "554788095072", "funcionando": "554788095072", "pendencia": null }
+```
+
+- `numero` = formato da Z-API (`null` se incompleto). `preferido` = 1º número **válido** da ordem. `funcionando` = último número que respondeu (o bot avisa).
+- Sem ordem gravada (`ordemDefinida: false`): Celular → WhatsApps do cadastro → Telefone → Comercial → pessoas (conversa mais recente primeiro).
+
+##### `PUT /v1/clientes/:id/telefones/ordem`
+
+Exige `x-analytics-agent`. Corpo: `{ "ordem": ["47991117038", "4788095072"] }` (números como estiverem, com ou sem 55/9; o 1º é o preferido; quem ficar de fora vai para o fim na ordem padrão). `[]` volta à ordem padrão. Erros: 400 `ORDEM_INVALIDA`, 400 `TELEFONE_NAO_E_DO_CLIENTE`, 404. Entra no histórico (campo `ordemTelefones`). No app: ficha do cliente → card **Ordem dos telefones no WhatsApp** (`PUT /api/clientes/:uuid/telefones/ordem`, quem edita clientes).
+
+##### `POST /v1/clientes/:id/telefones/funcionando`
+
+Exige `x-analytics-agent`. Corpo: `{ "telefone": "554788095072" }`. O bot chama quando o cliente **responde** por aquele número; não muda a ordem escolhida pela equipe. Histórico: campo `telefoneFuncionando` (só quando troca).
 
 #### Classificação do cadastro (cliente, fornecedor ou a classificar) (11/2026)
 

@@ -1,6 +1,7 @@
 // Pessoas do WhatsApp na ficha do cliente (app, com login).
 // A API dos agentes fica em analyticsRoutes — lá não há exclusão.
 const contato = require('../services/clienteContatoService');
+const telefones = require('../services/clienteTelefonesService');
 
 function permissoes(req) {
     const p = req.user?.permissoes;
@@ -34,6 +35,19 @@ function asyncRoute(fn) {
 }
 
 const clienteContatoController = {
+    // Telefones do WhatsApp na ordem preferida (o 1º válido é o preferido) + situação de cada um.
+    listarTelefones: asyncRoute(async (req, res) => {
+        res.json(await telefones.listar(req.params.uuid));
+    }),
+
+    // Grava a ordem (body.ordem = números, o preferido primeiro; [] volta à ordem padrão).
+    ordenarTelefones: asyncRoute(async (req, res) => {
+        if (!podeEditar(req)) {
+            return res.status(403).json({ error: 'Sem permissão para editar os telefones do cliente.', codigo: 'SEM_PERMISSAO' });
+        }
+        res.json(await telefones.definirOrdem(req.params.uuid, req.body, ator(req)));
+    }),
+
     listar: asyncRoute(async (req, res) => {
         res.json(await contato.listar(req.params.uuid));
     }),

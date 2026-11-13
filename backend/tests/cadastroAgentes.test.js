@@ -186,6 +186,7 @@ function mockBanco({ clientes, receber = [], pedidos = [], fornecedores = [], pa
             delete: async ({ where }) => { mem.manuais = mem.manuais.filter((m) => m.clienteId !== where.clienteId); return {}; },
         },
         clienteAlteracao: { createMany: async ({ data }) => { mem.historico.push(...data); return { count: data.length }; } },
+        clienteContato: { findMany: async () => [] },
     };
     return mem;
 }
@@ -280,7 +281,7 @@ test('cadastros-pendentes: padrão exclui FORNECEDOR e A_CLASSIFICAR; inclui CLI
         assert.equal(r.status, 200);
         assert.equal(r.body.grupo, 'acertar');
         assert.equal(r.body.total, 3);
-        assert.deepEqual(r.body.contagens, { acertar: 3, classificar: 2 });
+        assert.deepEqual(r.body.contagens, { acertar: 3, classificar: 2, telefone: 0 });
         assert.deepEqual(r.body.data.map((d) => d.id).sort(), ['c-cf', 'c-cliente', 'c-manual']);
         const cf = r.body.data.find((d) => d.id === 'c-cf');
         assert.equal(cf.classificacao.valor, 'CLIENTE_FORNECEDOR');
@@ -292,7 +293,7 @@ test('cadastros-pendentes: padrão exclui FORNECEDOR e A_CLASSIFICAR; inclui CLI
         assert.equal(c.status, 200);
         assert.equal(c.body.grupo, 'classificar');
         assert.equal(c.body.total, 2);
-        assert.deepEqual(c.body.contagens, { acertar: 3, classificar: 2 });
+        assert.deepEqual(c.body.contagens, { acertar: 3, classificar: 2, telefone: 0 });
         assert.deepEqual(c.body.data.map((d) => d.id).sort(), ['c-nada', 'c-nada-completo']);
         const n = c.body.data.find((d) => d.id === 'c-nada');
         assert.equal(n.classificacao.valor, 'A_CLASSIFICAR');
@@ -321,7 +322,7 @@ test('cadastros-pendentes: filtra por vendedor e a paginação vem DEPOIS do fil
         assert.equal(p1.body.totalPages, 3);
         assert.deepEqual(p1.body.data.map((d) => d.nome), ['A1', 'A2']);
         assert.deepEqual(p3.body.data.map((d) => d.nome), ['A5']);
-        assert.deepEqual(p1.body.contagens, { acertar: 5, classificar: 0 });
+        assert.deepEqual(p1.body.contagens, { acertar: 5, classificar: 0, telefone: 0 });
     });
 });
 
@@ -601,7 +602,7 @@ test('rotas do app: classificar e pedir inativação com o usuário logado; grup
         const l = await s.request('GET', `${base}/pendentes?grupo=classificar`);
         assert.equal(l.status, 200);
         assert.deepEqual(l.body.data.map((d) => d.id), ['cli-1']);
-        assert.deepEqual(l.body.contagens, { acertar: 0, classificar: 1 });
+        assert.deepEqual(l.body.contagens, { acertar: 0, classificar: 1, telefone: 0 });
         assert.equal((await s.request('GET', `${base}/pendentes?grupo=zzz`)).status, 400);
 
         const c = await s.request('POST', `${base}/clientes/cli-1/classificacao`, { body: { classificacao: 'FORNECEDOR' } });
