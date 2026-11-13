@@ -2,7 +2,7 @@
 
 API de máquina para os agentes da área de vendas (carteira, retenção, recompra, upsell, cobrança, preço, visita e prospecção). Ela **não usa o login** dos vendedores. A chave é outra, só desta API.
 
-Ela **não envia WhatsApp**, **não cria pedido** e **não dá baixa** em parcela. O que ela grava é nota de contato, lead e a sugestão que o agente mandou para o vendedor.
+Ela **não envia WhatsApp**, **não cria pedido** e **não dá baixa** em parcela. O que ela grava é nota de contato, lead, a sugestão que o agente mandou para o vendedor, e a **pessoa** que atende o WhatsApp do cliente (nome, papel, última conversa).
 
 A leitura de cliente reusa a Carteira (`carteiraService`). A leitura de venda reusa a mesma régua do app: pedido não cancelado, sem bonificação, faturado ou especial, menos a devolução ativa.
 
@@ -11,7 +11,7 @@ A leitura de cliente reusa a Carteira (`carteiraService`). A leitura de venda re
 1. No serviço do **backend**, aba Environment, crie a variável `ANALYTICS_API_KEY`.
 2. O valor é uma senha longa, sorteada (por exemplo 40 caracteres aleatórios). **Não commite esse valor** e não cole em chat, print ou URL.
 3. Salve e faça o deploy (ou reinicie o serviço). Sem essa variável a API responde **503** e não atende ninguém.
-4. A publicação já roda `prisma db push` no start do backend. Isso cria a tabela `sugestoes_agente`. Não é preciso rodar SQL na mão. O arquivo `backend/prisma/migrations/20261112000000_add_sugestao_agente/migration.sql` é o mesmo passo, para quem aplica migration pelo Prisma.
+4. A publicação já roda `prisma db push` no start do backend. Isso cria a tabela `sugestoes_agente` e a tabela `cliente_contatos`. Não é preciso rodar SQL na mão. Os arquivos em `backend/prisma/migrations/` são o mesmo passo, para quem aplica migration pelo Prisma. A cópia dos telefones já cadastrados para contatos sem nome roda sozinha na subida do backend (uma vez). `db push` não executa INSERT.
 
 A chave vai **somente** no header `x-analytics-key`. Se ela for na URL (`?x-analytics-key=`), a API recusa (400): o servidor anota a URL no log e a senha vazaria.
 
@@ -31,7 +31,7 @@ curl -s -H "x-analytics-key: $ANALYTICS_API_KEY" \
 Resposta:
 
 ```json
-{ "ok": true, "versao": "1", "whatsapp": false, "escreve": ["atendimentos", "leads", "sugestoes"] }
+{ "ok": true, "versao": "1", "whatsapp": false, "escreve": ["atendimentos", "leads", "sugestoes", "contatos"] }
 ```
 
 Erros: `{ "error": "mensagem", "codigo": "CODIGO" }`. 401 chave errada, 503 variável ausente, 404 rota que não existe (pedido e financeiro não têm POST).
@@ -308,10 +308,202 @@ curl -s -X PATCH -H "x-analytics-key: $ANALYTICS_API_KEY" \
 
 `GET /v1/sugestoes` filtra por `status`, `tipo`, `vendedorId`, `clienteId`, `leadId`, `agente`. Cada linha traz o `historico` (quem mudou, quando, a nota).
 
+### Contatos do cliente — pessoas do WhatsApp
+
+O cadastro do cliente continua com o **número da empresa** (`Telefone`, `Telefone_Celular`, `Telefone_Comercial` e a lista `cliente_whatsapps`). Esses campos não mudam: é por eles que saem aviso de pedido, boleto e cobrança.
+
+O contato é a **pessoa** que atende aquele WhatsApp. Um cliente pode ter várias. Várias pessoas podem usar o **mesmo** número (dona e gerente no mesmo celular da loja). A Ana não apaga contato por esta API.
+
+Telefone na busca e na gravação aceita o jeito que chegar: com ou sem `55`, com ou sem o 9º dígito, com máscara. `47999998888`, `4799998888`, `5547999998888` e `+55 (47) 99999-8888` são o mesmo número.
+
+Na subida do backend, cada telefone já gravado no cadastro vira um contato **sem nome** (`origem: "MIGRACAO"`). Rodar de novo não duplica.
+
+#### `GET /v1/clientes/:id/contatos`
+
+Lista as pessoas daquele cliente. `falarCom` é quem tem nome **e** a conversa mais recente. Se ninguém se encaixa, `falarCom` é `null` e `perguntarQuem` é `true` — a Ana pergunta com quem está falando. `pessoas` são só as que já têm nome (dá para oferecer "falo com a Maria ou o João?").
+
+#### `GET /v1/contatos/por-telefone?telefone=`
+
+Acha o cliente e os contatos daquele número. Não exige `x-analytics-agent` (é leitura).
+
+- Se o número está em mais de um cliente, `encontrados` vem maior que 1. **Não escolha um.** Pergunte de qual empresa se trata. A busca junta contato e telefone do cadastro: um cliente que só tem o número no cadastro (contato apagado, migração no meio, telefone gravado por fora) continua na lista, com `telefoneNoCadastro: true`.
+- `falarCom` olha só as pessoas **daquele** número.
+- `telefoneNoCadastro: true` e `total: 0`: o número está no cadastro da empresa, mas ainda não há linha de contato (a cópia do boot não rodou, ou o número entrou por fora). A Ana pergunta quem é e grava com o POST abaixo. Esta leitura **não cria** contato.
+
+```bash
+curl -s -H "x-analytics-key: $ANALYTICS_API_KEY" \
+  "https://<host>/api/analytics/v1/contatos/por-telefone?telefone=5547999998888"
+```
+
+```json
+{
+  "telefone": "5547999998888",
+  "chave": "4799998888",
+  "encontrados": 1,
+  "data": [{
+    "clienteId": "uuid",
+    "nome": "Padaria do Zé",
+    "razaoSocial": "Padaria do Zé Ltda",
+    "ativo": true,
+    "cidade": "Blumenau",
+    "estado": "SC",
+    "falarCom": {
+      "id": "uuid-maria",
+      "clienteId": "uuid",
+      "nome": "Maria",
+      "telefone": "47999998888",
+      "papel": "dona",
+      "nota": null,
+      "ultimoContatoEm": "2026-11-13T14:02:00.000Z",
+      "origem": "AGENTE",
+      "criadoPor": "ana",
+      "atualizadoPor": "ana",
+      "criadoEm": "2026-11-13T13:00:00.000Z",
+      "atualizadoEm": "2026-11-13T14:02:00.000Z"
+    },
+    "perguntarQuem": false,
+    "telefoneNoCadastro": false,
+    "pessoas": [{
+      "id": "uuid-maria",
+      "nome": "Maria",
+      "telefone": "47999998888",
+      "papel": "dona",
+      "ultimoContatoEm": "2026-11-13T14:02:00.000Z"
+    }],
+    "total": 1,
+    "data": [{
+      "id": "uuid-maria",
+      "clienteId": "uuid",
+      "nome": "Maria",
+      "telefone": "47999998888",
+      "papel": "dona",
+      "nota": null,
+      "ultimoContatoEm": "2026-11-13T14:02:00.000Z",
+      "origem": "AGENTE"
+    }]
+  }]
+}
+```
+
+`data` traz todo mundo daquele número, inclusive quem ainda está sem nome. `pessoas` traz só quem já tem nome. O objeto do contato é o mesmo em `falarCom`, `pessoas` e `data` (o exemplo encurta `pessoas`).
+
+Se `perguntarQuem` é `true`, cumprimente a empresa sem chutar um nome.
+
+#### `POST /v1/clientes/:id/contatos`
+
+Cria ou atualiza. Exige `x-analytics-agent`. É o que a Ana chama quando aprende o nome.
+
+| Situação | O que acontece |
+|---|---|
+| Número novo, com ou sem nome | 201, `criado: true` |
+| Mesmo número e mesmo nome (maiúscula e acento não contam) | 200, `atualizado: true`, não cria outra pessoa |
+| Número que só tinha contato sem nome, e agora veio um nome | 200, `aprendeuNome: true` — preenche aquela linha |
+| Outro nome no mesmo número | 201, outra pessoa |
+| Sem nome, mas o número já tem pessoa nomeada | 409 `INFORME_O_NOME`, com `pessoas` para a Ana perguntar |
+
+`telefone` é obrigatório. `nome`, `papel` (texto livre: `dona`, `gerente`, `compras`…), `nota` e `ultimoContatoEm` (ISO) são opcionais. Campo ausente no atualizar não apaga o que já estava.
+
+```bash
+curl -s -X POST -H "x-analytics-key: $ANALYTICS_API_KEY" \
+  -H "x-analytics-agent: ana" -H "content-type: application/json" \
+  -d '{ "nome": "Maria", "telefone": "47999998888", "papel": "dona", "nota": "Prefere de manhã" }' \
+  "https://<host>/api/analytics/v1/clientes/UUID/contatos"
+```
+
+Resposta 201: `{ "contato": { "id", "clienteId", "nome", "telefone", "papel", "nota", "ultimoContatoEm", "origem": "AGENTE", "criadoPor": "ana" }, "criado": true, "atualizado": false, "aprendeuNome": false, "agente": "ana" }`.
+
+A escrita fica em `audit_logs` (`CONTATO_CRIADO` ou `CONTATO_ATUALIZADO`) com `usuarioNome` = o agente.
+
+#### `PATCH /v1/contatos/:id`
+
+Atualiza nome, telefone, papel, nota ou `ultimoContatoEm`. Mesma regra do agente no header. Mandar `""` limpa nome, papel ou nota. Não apaga a pessoa.
+
+#### `POST /v1/contatos/:id/conversa`
+
+Marca a última conversa com aquela pessoa. Sem corpo, usa o horário de agora. Com corpo, `{ "em": "2026-11-13T14:02:00.000Z" }`.
+
+É isso que faz `falarCom` apontar para ela na próxima mensagem. Também vai para o `audit_logs` (`CONTATO_CONVERSA`).
+
+```bash
+curl -s -X POST -H "x-analytics-key: $ANALYTICS_API_KEY" \
+  -H "x-analytics-agent: ana" -H "content-type: application/json" \
+  -d '{}' \
+  "https://<host>/api/analytics/v1/contatos/UUID/conversa"
+```
+
+#### O que o bot da Ana precisa fazer
+
+1. Na mensagem que chega, `GET /v1/contatos/por-telefone?telefone=` com o número de quem escreveu.
+2. `encontrados: 0` — número desconhecido (o fluxo de lead continua como já é; esta API não cria cliente).
+3. `encontrados` maior que 1 — não escolha. Pergunte a empresa.
+4. Um cliente com `falarCom` — trate a pessoa pelo nome.
+5. Um cliente com `perguntarQuem: true` — pergunte com quem está falando. Se `pessoas` tiver nomes, pode citá-los.
+6. Quando a pessoa disser o nome, `POST /v1/clientes/:clienteId/contatos` com `nome`, o mesmo `telefone` e o header `x-analytics-agent: ana`. Repetir o POST não duplica.
+7. No fim da conversa (ou ao reconhecer a pessoa), `POST /v1/contatos/:id/conversa`.
+8. Não há DELETE. Contato errado se corrige no app (ficha do cliente → Pessoas do WhatsApp) ou com PATCH.
+
 ---
+
+### Histórico de alterações do cliente (uso interno)
+
+> **Uso interno.** Mostra quem mudou o cadastro e quando. **Nunca repassar ao cliente**, nem citar numa conversa de WhatsApp.
+
+Toda mudança em um cliente (campos do cadastro, criação) e nas pessoas do WhatsApp (criar, editar, apagar) grava uma linha por campo alterado — pelo app ou por esta API (o agente fica com o nome de `x-analytics-agent`). O histórico só cresce: não existe escrita, edição nem exclusão por aqui. Senhas, chaves e certificados nunca são gravados; textos acima de 500 caracteres vêm cortados.
+
+#### `GET /v1/clientes/:id/alteracoes`
+
+Mais novo primeiro. Filtros (todos opcionais, combináveis):
+
+| Parâmetro | O que faz |
+|---|---|
+| `desde`, `ate` | Período `YYYY-MM-DD`, inclusive, no horário de São Paulo |
+| `campo` | Nome técnico do campo (`Nome`, `idVendedor`, `Telefone_Celular`, `papel`…) |
+| `autor` | Parte do nome de quem fez (`ana`, `Maria`), sem diferenciar maiúscula |
+| `origem` | `app`, `api_agente` ou `sistema` |
+| `entidade` | `cliente` ou `contato` |
+| `limite` | Linhas por página (padrão 50, **máximo 200**) |
+| `pagina` | Começa em 1 |
+
+Resposta:
+
+```json
+{
+  "clienteId": "UUID",
+  "page": 1, "limit": 50, "total": 2, "totalPages": 1,
+  "data": [
+    {
+      "id": "UUID",
+      "em": "2026-11-13T14:02:00.000Z",
+      "entidade": "cliente",
+      "entidadeId": null,
+      "acao": "alterado",
+      "campo": "idVendedor",
+      "valorAntigo": "uuid-vendedor-a",
+      "valorNovo": "uuid-vendedor-b",
+      "valorAntigoRotulo": "Carla",
+      "valorNovoRotulo": "Pedro",
+      "autor": { "tipo": "usuario", "id": "UUID", "nome": "Maria" },
+      "origem": "app",
+      "tela": "CARTEIRA"
+    }
+  ]
+}
+```
+
+- `acao`: `alterado`, `criado` ou `excluido`. Em criação/exclusão o campo é `cadastro` (cliente) ou `contato`, e o resumo vem em `valorNovo`/`valorAntigo`.
+- `entidade: "contato"` traz o id da pessoa em `entidadeId`.
+- `autor.tipo`: `usuario` (app, com login), `agente` (API, `id` = `agente:<nome>`) ou `sistema`.
+- `valorAntigoRotulo`/`valorNovoRotulo` só vêm preenchidos quando o valor é um id de vendedor ou de tipo de cliente.
+- Erros 400: `ORIGEM_INVALIDA`, `ENTIDADE_INVALIDA`, `DATA_INVALIDA`, `PERIODO_INVALIDO`.
+
+```bash
+curl -s -H "x-analytics-key: $ANALYTICS_API_KEY" \
+  "https://<host>/api/analytics/v1/clientes/UUID/alteracoes?desde=2026-11-01&origem=api_agente&limite=20"
+```
 
 ## O que esta API não faz
 
+- Não apaga contato de cliente. Quem corrige um nome errado é o PATCH, ou a ficha do cliente no app.
 - Não envia WhatsApp, boleto, Pix nem e-mail.
 - Não cria, edita ou cancela pedido, nota ou devolução.
 - Não dá baixa, não estorna e não concilia.

@@ -4,6 +4,9 @@ const express = require('express');
 const { verificarChaveAnalytics } = require('../middlewares/analyticsAuth');
 const consulta = require('../services/analyticsConsultaService');
 const registro = require('../services/analyticsRegistroService');
+const contatos = require('../services/clienteContatoService');
+const historico = require('../services/clienteHistoricoService');
+const { exigirAgente } = require('../services/clienteContatoRegras');
 
 const router = express.Router();
 
@@ -17,6 +20,8 @@ function asyncRoute(fn) {
             if (res.headersSent) return;
             const body = { error: status >= 500 ? 'Erro interno.' : (err?.message || 'Erro.') };
             if (err?.codigo && status < 500) body.codigo = err.codigo;
+            if (err?.contatos && status < 500) body.contatos = err.contatos;
+            if (err?.pessoas && status < 500) body.pessoas = err.pessoas;
             res.status(status).json(body);
         });
     };
@@ -31,7 +36,7 @@ router.get('/v1/status', (req, res) => {
         ok: true,
         versao: '1',
         whatsapp: false,
-        escreve: ['atendimentos', 'leads', 'sugestoes'],
+        escreve: ['atendimentos', 'leads', 'sugestoes', 'contatos'],
     });
 });
 
@@ -46,6 +51,41 @@ router.get('/v1/clientes', asyncRoute(async (req, res) => {
 router.get('/v1/clientes/:id/financeiro', asyncRoute(async (req, res) => {
     res.json(await consulta.financeiroCliente(req.params.id));
 }));
+
+router.get('/v1/clientes/:id/contatos', asyncRoute(async (req, res) => {
+    res.json(await contatos.listar(req.params.id));
+}));
+
+// Histórico de alterações do cadastro (uso interno — nunca mostrar ao cliente). Só leitura.
+router.get('/v1/clientes/:id/alteracoes', asyncRoute(async (req, res) => {
+    res.json(await historico.listar(req.params.id, req.query));
+}));
+
+router.post('/v1/clientes/:id/contatos', asyncRoute(async (req, res) => {
+    const agente = exigirAgente(req.headers['x-analytics-agent']);
+    const r = await contatos.gravar(req.params.id, req.body, { agente });
+    res.status(r.status).json(r);
+}));
+
+router.get('/v1/contatos/por-telefone', asyncRoute(async (req, res) => {
+    res.json(await contatos.buscarPorTelefone(req.query.telefone));
+}));
+
+router.patch('/v1/contatos/:id', asyncRoute(async (req, res) => {
+    const agente = exigirAgente(req.headers['x-analytics-agent']);
+    res.json(await contatos.atualizar(req.params.id, req.body, { agente }));
+}));
+
+router.post('/v1/contatos/:id/conversa', asyncRoute(async (req, res) => {
+    const agente = exigirAgente(req.headers['x-analytics-agent']);
+    res.json(await contatos.registrarConversa(req.params.id, req.body, { agente }));
+}));
+
+function semExclusao(_req, res) {
+    res.status(405).json({ error: 'Esta API não apaga contato.', codigo: 'SEM_EXCLUSAO' });
+}
+router.delete('/v1/contatos/:id', semExclusao);
+router.delete('/v1/clientes/:id/contatos/:contatoId', semExclusao);
 
 router.get('/v1/vendas', asyncRoute(async (req, res) => {
     res.json(await consulta.vendas(req.query));

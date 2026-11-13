@@ -25,6 +25,8 @@ import toast from 'react-hot-toast';
 import gpsClientesService from '../../services/gpsClientesService';
 import ModalPontoGps from '../../components/ModalPontoGps';
 import whatsappClientesService, { rotuloMotivo, calcularValidaAte } from '../../services/whatsappClientesService';
+import ContatosCliente from './ContatosCliente';
+import HistoricoAlteracoesCliente from './HistoricoAlteracoesCliente';
 import QualidadeGps, { avaliarGps } from '../../components/Clientes/QualidadeGps';
 import HistoricoEndereco from '../../components/Clientes/HistoricoEndereco';
 import QualidadeWhatsapp, { avaliarWhatsapp } from '../../components/Clientes/QualidadeWhatsapp';
@@ -627,6 +629,14 @@ const DetalheCliente = () => {
                 >
                     Histórico ({atendimentos.length + pedidosCliente.length + devolucoesCliente.length + leadsCliente.reduce((acc, l) => acc + (l.atendimentos?.length || 0), 0)})
                 </button>
+                {podeEditarCadastroCA && (
+                    <button
+                        onClick={() => setAbaAtiva('alteracoes')}
+                        className={`shrink-0 whitespace-nowrap px-3.5 py-2 rounded-full text-sm font-bold min-h-[44px] md:min-h-[36px] transition-colors ${abaAtiva === 'alteracoes' ? 'bg-house text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+                    >
+                        Alterações
+                    </button>
+                )}
                 {leadsCliente.length > 0 && (
                     <button
                         onClick={() => setAbaAtiva('lead')}
@@ -636,6 +646,11 @@ const DetalheCliente = () => {
                     </button>
                 )}
             </div>
+
+            {/* ============================= ABA: ALTERAÇÕES (histórico do cadastro) ============================= */}
+            {abaAtiva === 'alteracoes' && podeEditarCadastroCA && (
+                <HistoricoAlteracoesCliente clienteId={uuid} />
+            )}
 
             {/* ============================= ABA: FINANCEIRO ============================= */}
             {abaAtiva === 'financeiro' && (
@@ -1573,6 +1588,8 @@ const DetalheCliente = () => {
                         </div>
                     </div>
                 </SectionCard>
+
+                <ContatosCliente clienteId={uuid} podeEditar={!!podeEditarCadastroCA} />
 
                 {/* ─── CARD: OBSERVAÇÕES ─── */}
                 <SectionCard icon={FileText} title="Observações Gerais">

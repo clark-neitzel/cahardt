@@ -8,6 +8,14 @@ const cidadeService = require('../services/cidadeService'); // cadastro oficial 
 // v1.6.3: normalização compartilhada com iaClienteService.adicionarWhatsapp — um número grava com
 // a mesma cara não importa se foi pela tela de Clientes ou pela API da IA (painel do bot).
 const { soDigitosWhatsapp, whatsappValido } = require('../utils/whatsapp');
+const historico = require('../services/clienteHistoricoService'); // histórico de alterações (quem/quando/antes→depois)
+
+// Quem está logado (vem do JWT) e de que tela veio a alteração — para o histórico.
+const atorHistorico = (req) => ({ id: req.user?.id || null, nome: req.user?.nome || req.user?.login || null });
+const telaHistorico = (req, padrao) => {
+    const o = req.body?.origem;
+    return (typeof o === 'string' && o.trim()) ? o.trim().slice(0, 80) : padrao;
+};
 
 // Campos cuja mudança é auditada em audit_logs (CLIENTE_ALTERADO) — reorganizam a carteira
 // (dia de entrega/venda, vendedor, categoria) ou o WhatsApp de contato. É o que
@@ -29,6 +37,22 @@ function normalizarWhatsapps(lista, erros) {
         }
     }
     return nums;
+}
+
+// Copia o telefone do cadastro para um contato sem nome, se esse número ainda
+// não tiver pessoa. Falha aqui não desfaz o cliente (já gravado).
+async function espelharContatos(cliente, req, numeros) {
+    try {
+        const contatos = require('../services/clienteContatoService');
+        await contatos.garantirTelefonesDoCadastro(cliente.UUID, {
+            Telefone: cliente.Telefone,
+            Telefone_Celular: cliente.Telefone_Celular,
+            Telefone_Comercial: cliente.Telefone_Comercial,
+            numeros: numeros || null,
+        }, { id: req.user?.id || null, nome: req.user?.nome || null });
+    } catch (e) {
+        console.error('[ClienteContato] espelho do cadastro falhou (cliente já salvo):', e.message);
+    }
 }
 
 // IE varia por UF; em SC são 9 dígitos. Devolve mensagem de erro ou null se ok.
@@ -678,6 +702,12 @@ const clienteController = {
                 }
             });
 
+            await historico.registrarEvento({
+                clienteId: cliente.UUID, entidade: 'cliente', acao: 'criado',
+                ator: atorHistorico(req), tela: telaHistorico(req, 'POST /clientes (novo cadastro)'),
+                resumo: `${cliente.NomeFantasia || cliente.Nome} (código ${cliente.Codigo})`,
+            });
+
             // Auditoria do GPS / cliente balcão (best-effort — o cadastro já foi criado)
             let autorGpsNomeCriacao = null;
             let gpsLogCriacaoId = null;
@@ -736,6 +766,7 @@ const clienteController = {
                 });
             }
             cliente.Whatsapps = whatsappsNorm || [];
+            await espelharContatos(cliente, req, whatsappsNorm);
 
             // "Os dois": espelha também na tabela de fornecedores (best-effort, não derruba a criação)
             if (criaFornecedor) {
@@ -811,7 +842,12 @@ const clienteController = {
                     // foto "antes" da trilha do endereço (clientes_endereco_log)
                     End_Logradouro: true, End_Numero: true, End_Complemento: true, End_Bairro: true, End_Cidade: true, End_CEP: true, Ponto_GPS: true,
                     // usados só pela auditoria (diff de/para) gravada após o update
-                    Dia_de_entrega: true, Dia_de_venda: true, idVendedor: true, categoriaClienteId: true, Nome: true, NomeFantasia: true, Ativo: true
+                    Dia_de_entrega: true, Dia_de_venda: true, idVendedor: true, categoriaClienteId: true, Nome: true, NomeFantasia: true, Ativo: true,
+                    // usados só pelo histórico de alterações (diff campo a campo)
+                    Tipo_Pessoa: true, Email: true, Telefone: true, Indicador_Inscricao_Estadual: true,
+                    Formas_Atendimento: true, Condicao_de_pagamento: true, condicoes_pagamento_permitidas: true, indicacaoId: true,
+                    cicloCompraPersonalizadoDias: true, insightAtivo: true, observacaoComercialFixa: true, recebeAvisoPedido: true,
+                    Observacoes_Gerais: true, Perfis: true, whatsapp: { select: { numeros: true } }
                 }
             });
             if (!atual) return res.status(404).json({ error: 'Cliente não encontrado' });
@@ -974,6 +1010,10 @@ const clienteController = {
                     // Limpar o ponto: permitido, mas fica no histórico
                     await prisma.cliente.update({ where: { UUID: uuid }, data: { Ponto_GPS: null } });
                     pontoFoiAlterado = true;
+                    await historico.registrar({
+                        clienteId: uuid, ator: atorHistorico(req), tela: telaHistorico(req, 'PATCH /clientes/:uuid'),
+                        mudancas: [{ campo: 'Ponto_GPS', de: historico.normalizarValor(atualGpsCli?.Ponto_GPS), para: null }],
+                    });
                     try {
                         const autorGps = await prisma.vendedor.findUnique({ where: { id: req.user.id }, select: { nome: true } });
                         const logLimpa = await prisma.clienteGpsLog.create({
@@ -1045,6 +1085,15 @@ const clienteController = {
             }
             await gravarTrilhaEndereco(enderecoHistorico.snapshotDe(cliente));
 
+            // Histórico de alterações (campo a campo, só o que mudou). Best-effort: nunca
+            // lança. O Ponto_GPS fica de fora — quem grava é o serviço de GPS.
+            const atorHist = atorHistorico(req);
+            const telaHist = telaHistorico(req, 'PATCH /clientes/:uuid');
+            await historico.registrarDiff({
+                clienteId: uuid, ator: atorHist, tela: telaHist, antes: atual, depois: cliente,
+                campos: historico.CAMPOS_CLIENTE.filter(c => c !== 'Perfis'),
+            });
+
             // Auditoria (audit_logs) das mudanças que reorganizam a carteira: dia de
             // entrega/venda, vendedor, categoria e celular. Fora de transação, best-effort:
             // nunca altera a resposta nem desfaz o update já feito.
@@ -1098,6 +1147,10 @@ const clienteController = {
                     create: { clienteUuid: uuid, numeros: whatsappsNorm },
                     update: { numeros: whatsappsNorm }
                 });
+                await historico.registrarDiff({
+                    clienteId: uuid, ator: atorHist, tela: telaHist,
+                    antes: { Whatsapps: atual.whatsapp?.numeros || [] }, depois: { Whatsapps: whatsappsNorm },
+                });
                 cliente.Whatsapps = whatsappsNorm;
             }
 
@@ -1107,6 +1160,10 @@ const clienteController = {
                     where: { clienteUuid: uuid },
                     create: { clienteUuid: uuid, inscricaoEstadual: ieNorm || null },
                     update: { inscricaoEstadual: ieNorm || null }
+                });
+                await historico.registrarDiff({
+                    clienteId: uuid, ator: atorHist, tela: telaHist,
+                    antes: { Inscricao_Estadual: atual.fiscal?.inscricaoEstadual ?? null }, depois: { Inscricao_Estadual: ieNorm || null },
                 });
             }
 
@@ -1141,6 +1198,10 @@ const clienteController = {
                     const semFornecedor = perfis.filter(p => (p?.perfil || p) !== 'FORNECEDOR');
                     const novosPerfis = tambemFornecedor ? [...semFornecedor, { perfil: 'FORNECEDOR' }] : semFornecedor;
                     await prisma.cliente.update({ where: { UUID: uuid }, data: { Perfis: JSON.stringify(novosPerfis) } });
+                    await historico.registrarDiff({
+                        clienteId: uuid, ator: atorHist, tela: telaHist,
+                        antes: { Perfis: atual.Perfis }, depois: { Perfis: JSON.stringify(novosPerfis) },
+                    });
                     cliente.Perfis = JSON.stringify(novosPerfis);
                 } catch (fornErr) {
                     console.error('Falha ao atualizar espelho de fornecedor (cliente já salvo):', fornErr);
@@ -1153,6 +1214,10 @@ const clienteController = {
                 cliente.gpsPendente = true;
             } else if (gpsResultado?.aplicado) {
                 cliente.Ponto_GPS = await prisma.cliente.findUnique({ where: { UUID: uuid }, select: { Ponto_GPS: true } }).then(c => c?.Ponto_GPS || null);
+            }
+
+            if (telefoneNorm !== undefined || celularNorm !== undefined || whatsappsNorm) {
+                await espelharContatos(cliente, req, whatsappsNorm);
             }
 
             res.json(cliente);
@@ -1348,12 +1413,13 @@ const clienteController = {
             // O updateMany é único (mesmo "para" pra todo mundo); o "de" varia por cliente, então
             // lê o valor ANTES de cada um aqui (1 query) para montar o {de, para} por linha depois.
             const camposParaAuditar = Object.keys(dadosAtualizacao).filter(c => CAMPOS_AUDITADOS_CLIENTE.includes(c));
-            const clientesAntesLote = camposParaAuditar.length > 0
+            // (o select também traz os demais campos do lote — o histórico de alterações precisa do "antes" de todos)
+            const clientesAntesLote = Object.keys(dadosAtualizacao).length > 0
                 ? await prisma.cliente.findMany({
                     where: { UUID: { in: ids } },
                     select: {
                         UUID: true, NomeFantasia: true, Nome: true,
-                        ...Object.fromEntries(camposParaAuditar.map(c => [c, true]))
+                        ...Object.fromEntries(Object.keys(dadosAtualizacao).map(c => [c, true]))
                     }
                 })
                 : [];
@@ -1402,6 +1468,15 @@ const clienteController = {
                 }
             }
 
+            // Histórico de alterações do lote (uma linha por campo que mudou em cada cliente)
+            const atorLoteHist = atorHistorico(req);
+            for (const c of clientesAntesLote) {
+                await historico.registrarDiff({
+                    clienteId: c.UUID, ator: atorLoteHist, tela: 'PUT /clientes/lote (edição em lote)',
+                    antes: c, depois: dadosAtualizacao, campos: Object.keys(dadosAtualizacao),
+                });
+            }
+
             // Espelho de fornecedor em lote (best-effort por cliente; precisa de documento)
             let semDocumento = 0;
             if (dados.tambemFornecedor !== undefined) {
@@ -1440,6 +1515,10 @@ const clienteController = {
                         const semFornecedor = perfis.filter(p => String(p?.perfil || p).toUpperCase() !== 'FORNECEDOR');
                         const novosPerfis = ligar ? [...semFornecedor, { perfil: 'FORNECEDOR' }] : semFornecedor;
                         await prisma.cliente.update({ where: { UUID: c.UUID }, data: { Perfis: JSON.stringify(novosPerfis) } });
+                        await historico.registrarDiff({
+                            clienteId: c.UUID, ator: atorLoteHist, tela: 'PUT /clientes/lote (edição em lote)',
+                            antes: { Perfis: c.Perfis }, depois: { Perfis: JSON.stringify(novosPerfis) },
+                        });
                     } catch (fornErr) {
                         console.error(`Falha no espelho de fornecedor (lote) para ${c.UUID}:`, fornErr.message);
                     }

@@ -1,5 +1,11 @@
 [
   {
+    "slug": "contatos-cliente",
+    "titulo": "Pessoas do WhatsApp no cliente",
+    "resumo": "Na ficha do cliente dá para anotar quem atende o WhatsApp: nome, número, papel e nota. A Ana passa a usar esse nome na conversa.",
+    "data": "2026-11-13"
+  },
+  {
     "slug": "carteira",
     "titulo": "Carteira com ficha do cliente",
     "resumo": "Na aba Carteira, toque num cliente e a ficha abre por cima: troque vendedor, situação, dia de venda e mais, salve e a Carteira se atualiza sem sair do lugar. Inclui resumo da semana ou do mês, 20 maiores e o botão Já sei.",

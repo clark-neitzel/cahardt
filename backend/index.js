@@ -302,6 +302,16 @@ const startServer = async () => {
                 require('./services/gpsClientesService').aplicarPendenciasLegadas()
                     .catch(e => console.error('[GpsClientes] migração de pendências legadas:', e.message));
             }, 10000);
+
+            // Copia os telefones já cadastrados para contatos sem nome (uma vez).
+            // db push cria a tabela e não roda INSERT — a cópia mora no boot.
+            setTimeout(() => {
+                require('./services/clienteContatoService').migrarTelefonesExistentes()
+                    .then((r) => {
+                        if (!r?.jaFeito) console.log(`[ClienteContato] migração: ${r.criados} contato(s) a partir de ${r.vistos} cliente(s)`);
+                    })
+                    .catch((e) => console.error('[ClienteContato] migração dos telefones falhou:', e.message));
+            }, 8000);
         });
     } catch (error) {
         console.error('Erro fatal ao iniciar servidor:', error);
