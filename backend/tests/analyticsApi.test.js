@@ -28,6 +28,7 @@ const CACHE = [
     'services/analyticsConsultaService.js',
     'services/analyticsRegistroService.js',
     'services/analyticsComum.js',
+    'services/clienteContatoService.js',
     'middlewares/analyticsAuth.js',
 ];
 const CHAVE = 'chave-teste-analytics-agentes';

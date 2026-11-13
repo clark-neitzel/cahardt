@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Pessoas do WhatsApp — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<meta property="og:title" content="Novidade no Hardt App: pessoas do WhatsApp">
+<meta property="og:description" content="Agora a ficha do cliente guarda o nome de quem atende o WhatsApp. A Ana passa a chamar a pessoa certa.">
+<meta property="og:type" content="website">
+<style>
+  :root { --primary:#00754A; --primary-dark:#006241; --house:#1E3932; --mint:#d4e9e2; --cream:#f2f0eb; --gold:#cba258; --ink:rgba(0,0,0,.87); --ink-soft:#5f6b66; letter-spacing:-0.01em; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--cream); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; line-height:1.55; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:620px; margin:0 auto; padding:0 16px 56px; }
+  .hero { background:linear-gradient(168deg,var(--house) 0%,#16302a 100%); color:#fff; padding:40px 16px 56px; }
+  .hero-inner { max-width:620px; margin:0 auto; text-align:center; }
+  .eyebrow { display:inline-block; background:var(--gold); color:#2b230f; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.14em; padding:6px 14px; border-radius:999px; margin-bottom:18px; }
+  .hero h1 { font-size:clamp(28px,7vw,40px); font-weight:800; line-height:1.12; margin:0 0 12px; text-wrap:balance; }
+  .hero p { color:rgba(255,255,255,.75); font-size:16px; max-width:46ch; margin:0 auto; text-wrap:balance; }
+  h2 { font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.14em; color:var(--primary-dark); margin:30px 4px 12px; }
+  .acc { background:#fff; border:1px solid #e3e1da; border-radius:16px; margin-bottom:10px; overflow:hidden; box-shadow:0 1px 2px rgba(30,57,50,.05); }
+  .acc-head { width:100%; display:flex; align-items:center; gap:12px; background:none; border:none; font:inherit; text-align:left; padding:15px 16px; cursor:pointer; min-height:56px; }
+  .acc-head:focus-visible { outline:3px solid var(--gold); outline-offset:2px; }
+  .acc-ico { width:38px; height:38px; border-radius:11px; background:var(--mint); display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
+  .acc-head strong { flex:1; font-size:15.5px; font-weight:700; }
+  .acc-seta { color:#9aa5a0; transition:transform .2s; font-size:13px; }
+  .acc.aberto .acc-seta { transform:rotate(180deg); }
+  .acc-corpo { display:none; padding:0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display:block; }
+  .acc-corpo p, .acc-corpo li { font-size:14px; color:var(--ink-soft); }
+  .acc-corpo p { margin:0 0 10px; }
+  .acc-corpo ul { margin:0; padding-left:18px; }
+  .acc-corpo li { margin-bottom:7px; }
+  .acc-corpo b { color:var(--ink); }
+  @media (max-width:420px) { .acc-corpo { padding-left:16px; } }
+  .tela { background:#fff; border:1px solid #e3e1da; border-radius:18px; overflow:hidden; margin-bottom:14px; box-shadow:0 1px 2px rgba(30,57,50,.05); }
+  .tela-titulo { background:var(--house); color:#fff; font-size:12px; font-weight:700; padding:10px 16px; }
+  .app-card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:12px; margin:12px; }
+  .sec { font-size:11px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; color:#4b5563; margin-bottom:10px; }
+  .pessoa { border:1px solid #e5e7eb; border-radius:12px; padding:10px 12px; margin-bottom:8px; }
+  .pessoa strong { font-size:14px; }
+  .sub { font-size:12px; color:#4b5563; margin-top:2px; }
+  .badge { font-size:10px; font-weight:700; padding:2px 8px; border-radius:999px; margin-left:6px; }
+  .b-verde { background:var(--mint); color:var(--primary-dark); }
+  .b-cinza { background:#f3f4f6; color:#374151; }
+  .campo { background:#fff; border:1px solid #d1d5db; border-radius:8px; padding:8px 10px; font-size:13px; color:#6b7280; margin-bottom:8px; }
+  .btn { display:inline-block; padding:8px 14px; border-radius:999px; font-size:12px; font-weight:700; }
+  .btn-cheio { background:var(--primary); color:#fff; }
+  .btn-borda { border:1px solid var(--primary); color:var(--primary); background:#fff; }
+  .pin { display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; border-radius:50%; background:var(--gold); color:#2b230f; font-size:11px; font-weight:800; flex-shrink:0; }
+  .legenda { padding:4px 16px 16px; }
+  .legenda div { display:flex; gap:8px; font-size:13px; color:var(--ink-soft); margin-bottom:7px; align-items:flex-start; }
+  .legenda b { color:var(--ink); }
+</style>
+</head>
+<body>
+<div class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">Novidade</span>
+    <h1>Quem atende o WhatsApp</h1>
+    <p>A ficha do cliente agora guarda o nome da pessoa, não só o número da empresa. A Ana passa a chamar quem falou por último.</p>
+  </div>
+</div>
+<div class="wrap">
+  <h2>O que mudou</h2>
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">👤</span><strong>O número continua. O nome entra.</strong><span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>O celular do cadastro segue sendo o WhatsApp da <b>empresa</b>: aviso de pedido, boleto e cobrança não mudam de número.</p>
+      <p>Embaixo, no card <b>Pessoas do WhatsApp</b>, ficam as pessoas que atendem: nome, número, papel (dona, gerente, compras…) e uma nota. Várias pessoas podem usar o mesmo WhatsApp.</p>
+    </div>
+  </div>
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🤖</span><strong>A Ana aprende o nome na conversa</strong><span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Se ainda não houver nome, a Ana pergunta com quem está falando.</li>
+        <li>Quando a pessoa se apresenta, o nome fica salvo na ficha.</li>
+        <li>Na próxima conversa, a Ana chama a última pessoa com quem falou naquele número.</li>
+        <li>Os telefones que já estavam no cadastro aparecem como <b>Ainda sem nome</b>, para completar.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">✏️</span><strong>Para começar a usar</strong><span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Abra o cliente e role até <b>Pessoas do WhatsApp</b>.</li>
+        <li>Toque em <b>Adicionar pessoa</b>, preencha nome e WhatsApp. Papel e nota são opcionais.</li>
+        <li>O lápis corrige. A lixeira apaga a pessoa — pede confirmação e <b>não</b> apaga o celular do cadastro.</li>
+        <li>Quem só consulta a ficha vê a lista e não vê o formulário.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>As telas do app</h2>
+  <div class="tela">
+    <div class="tela-titulo">Tela 1 · Ficha do cliente, card Pessoas do WhatsApp</div>
+    <div class="app-card">
+      <div class="sec">Pessoas do WhatsApp <span class="pin">1</span></div>
+      <div class="pessoa">
+        <strong>Maria</strong><span class="badge b-verde">dona</span> <span class="pin">2</span>
+        <div class="sub">(47) 99999-8888</div>
+        <div class="sub">Última conversa em 13/11/2026 11:02 <span class="pin">3</span></div>
+      </div>
+      <div class="pessoa">
+        <strong>Sem nome</strong><span class="badge b-cinza">Ainda sem nome</span> <span class="pin">4</span>
+        <div class="sub">(47) 3333-4444</div>
+        <div class="sub">A Ana ainda não registrou conversa com esta pessoa</div>
+      </div>
+      <span class="btn btn-borda">Adicionar pessoa</span> <span class="pin">5</span>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>O card fica na aba <b>Cadastro</b>, abaixo de Contato / Fiscal. O celular de cima não muda de função.</span></div>
+      <div><span class="pin">2</span><span><b>Nome e papel</b> de quem atende. O papel é livre: dona, gerente, compras ou outro.</span></div>
+      <div><span class="pin">3</span><span><b>Última conversa</b> que a Ana registrou. É essa pessoa que ela chama na próxima mensagem daquele número.</span></div>
+      <div><span class="pin">4</span><span>Telefone que já estava no cadastro, <b>ainda sem nome</b>. Não é erro — é o ponto de partida.</span></div>
+      <div><span class="pin">5</span><span><b>Adicionar pessoa</b> abre o formulário (tela 2). Só aparece para quem edita o cadastro.</span></div>
+    </div>
+  </div>
+  <div class="tela">
+    <div class="tela-titulo">Tela 2 · Incluir uma pessoa</div>
+    <div class="app-card">
+      <div class="sec">Nova pessoa</div>
+      <div class="campo">Nome — Maria <span class="pin">1</span></div>
+      <div class="campo">WhatsApp — 47999998888 <span class="pin">2</span></div>
+      <div class="campo">Papel — dona <span class="pin">3</span></div>
+      <div class="campo">Nota — prefere de manhã</div>
+      <span class="btn btn-cheio">Adicionar</span> <span class="pin">4</span>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>O <b>nome</b> pode ficar em branco. A Ana completa quando a pessoa se apresentar.</span></div>
+      <div><span class="pin">2</span><span>O <b>WhatsApp</b> é com DDD. Vale com ou sem o 55 e com ou sem o 9.</span></div>
+      <div><span class="pin">3</span><span>Atalhos de <b>papel</b>: dona, gerente, compras, financeiro, recepção. Dá para escrever outro.</span></div>
+      <div><span class="pin">4</span><span><b>Adicionar</b> grava na hora. Enter confirma, Esc cancela. O celular do cadastro não é alterado.</span></div>
+    </div>
+  </div>
+</div>
+<script>
+function alternar(btn) {
+  var acc = btn.parentElement;
+  var aberto = acc.classList.toggle('aberto');
+  btn.setAttribute('aria-expanded', aberto ? 'true' : 'false');
+}
+</script>
+</body>
+</html>

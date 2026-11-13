@@ -53,6 +53,7 @@ Cadastro completo de clientes da empresa — **o cadastro agora é 100% do app**
 2. Navegue pelas sub-abas: Cadastro, Admin ou Histórico
 3. Edite os campos desejados e clique em **Salvar Alterações** — tudo fica gravado no app
 4. No card "Informações do Cadastro" há o botão **Atualizar pela Receita/SEFAZ**: re-consulta o CNPJ e preenche o formulário com os dados atuais (endereço novo, IE etc.) — nada é salvo até clicar em Salvar
+5. No card **Pessoas do WhatsApp**, clique em **Adicionar pessoa**, preencha o nome e o WhatsApp (papel e nota são opcionais) e confirme. Para corrigir, use o lápis. Para tirar uma pessoa que foi anotada errada, use a lixeira e confirme — isso não apaga o celular do cadastro
 
 ### Alterar dados em lote
 1. Marque o checkbox de um ou mais clientes
@@ -129,6 +130,14 @@ Aba padrão ao abrir o detalhe. Contém tudo que é editável pelo time comercia
 - Indicador de IE (Contribuinte, Não Contribuinte, Isento)
 - Telefone fixo (editável)
 - **WhatsApps do cliente** (lista): números de WhatsApp extras vinculados ao cadastro (sócio, comprador, caixa...), além do celular/fixo. Digita-se o número com DDD e clica em "Adicionar"; cada número vira um chip com X para remover. O **atendimento automático da empresa (bot de WhatsApp)** reconhece o cliente por qualquer número desta lista — quando um desses números manda mensagem, o painel de atendimento já mostra a ficha certa do cliente sem ninguém precisar vincular na mão. O mesmo campo existe no cadastro novo (seção Contato)
+
+**Pessoas do WhatsApp** (card abaixo de Contato / Fiscal)
+- São as **pessoas** que atendem o WhatsApp, não o número da empresa. O celular do cadastro continua sendo o que recebe aviso de pedido, boleto e cobrança
+- Cada pessoa tem nome (pode ficar em branco), WhatsApp, papel opcional (dona, gerente, compras, financeiro, recepção — ou outro texto) e uma nota
+- Várias pessoas podem usar o mesmo número. O card mostra a última conversa que a Ana registrou com cada uma
+- Ao abrir a ficha, os telefones que já estavam no cadastro aparecem como contato **sem nome**, para a Ana (ou o escritório) completar depois. Isso não apaga nem troca o celular
+- Quem tem permissão de editar o cadastro (`clientes.edit`, `Pode_Editar_GPS` ou admin) adiciona, edita e apaga. Apagar pede confirmação — a Ana deixa de ver aquele nome. Quem só consulta a ficha vê a lista e não vê o formulário
+- A Ana grava e atualiza por conta própria quando aprende o nome na conversa. O app não manda mensagem por causa disso
 
 **Observações Gerais**
 - Campo de texto livre com anotações sobre o cliente

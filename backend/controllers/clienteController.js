@@ -31,6 +31,22 @@ function normalizarWhatsapps(lista, erros) {
     return nums;
 }
 
+// Copia o telefone do cadastro para um contato sem nome, se esse número ainda
+// não tiver pessoa. Falha aqui não desfaz o cliente (já gravado).
+async function espelharContatos(cliente, req, numeros) {
+    try {
+        const contatos = require('../services/clienteContatoService');
+        await contatos.garantirTelefonesDoCadastro(cliente.UUID, {
+            Telefone: cliente.Telefone,
+            Telefone_Celular: cliente.Telefone_Celular,
+            Telefone_Comercial: cliente.Telefone_Comercial,
+            numeros: numeros || null,
+        }, { id: req.user?.id || null, nome: req.user?.nome || null });
+    } catch (e) {
+        console.error('[ClienteContato] espelho do cadastro falhou (cliente já salvo):', e.message);
+    }
+}
+
 // IE varia por UF; em SC são 9 dígitos. Devolve mensagem de erro ou null se ok.
 function validarIe(ie, uf) {
     if (!ie) return null;
@@ -736,6 +752,7 @@ const clienteController = {
                 });
             }
             cliente.Whatsapps = whatsappsNorm || [];
+            await espelharContatos(cliente, req, whatsappsNorm);
 
             // "Os dois": espelha também na tabela de fornecedores (best-effort, não derruba a criação)
             if (criaFornecedor) {
@@ -1153,6 +1170,10 @@ const clienteController = {
                 cliente.gpsPendente = true;
             } else if (gpsResultado?.aplicado) {
                 cliente.Ponto_GPS = await prisma.cliente.findUnique({ where: { UUID: uuid }, select: { Ponto_GPS: true } }).then(c => c?.Ponto_GPS || null);
+            }
+
+            if (telefoneNorm !== undefined || celularNorm !== undefined || whatsappsNorm) {
+                await espelharContatos(cliente, req, whatsappsNorm);
             }
 
             res.json(cliente);

@@ -247,6 +247,10 @@ model Cliente {
   // WhatsApps vinculados ao cadastro (tabela lateral — mesma razão da ClienteFiscal)
   whatsapp ClienteWhatsapp?
 
+  // Pessoas que atendem o WhatsApp (nome, papel, último contato). Tabela lateral:
+  // `clientes` está no teto de colunas. Não substitui Telefone / Telefone_Celular.
+  contatos ClienteContato[]
+
   // Situação do WhatsApp do cadastro (verificação, selo por uso real, dispensa) —
   // tabela lateral, mesma razão da ClienteFiscal
   whatsappStatus ClienteWhatsappStatus?
@@ -311,6 +315,39 @@ model ClienteWhatsapp {
   cliente     Cliente  @relation(fields: [clienteUuid], references: [UUID], onDelete: Cascade)
 
   @@map("cliente_whatsapps")
+}
+
+// Pessoa que atende o cliente no WhatsApp. Várias pessoas podem usar o mesmo número
+// (dona, gerente, compras). O telefone do cadastro (Telefone, Telefone_Celular,
+// Telefone_Comercial e cliente_whatsapps) continua sendo o número da empresa —
+// aviso de pedido, boleto e selo não leem esta tabela.
+// `nome_chave` vazio = contato ainda sem nome (veio da migração do telefone).
+// A chave única (cliente + telefone normalizado + nome) impede duas "Marias"
+// no mesmo WhatsApp e impede dois contatos sem nome para o mesmo número.
+model ClienteContato {
+  id            String    @id @default(uuid())
+  clienteUuid   String    @map("cliente_uuid")
+  cliente       Cliente   @relation(fields: [clienteUuid], references: [UUID], onDelete: Cascade)
+
+  nome          String?
+  nomeChave     String    @default("") @map("nome_chave")
+  telefone      String
+  telefoneChave String    @map("telefone_chave")
+  papel         String?
+  nota          String?   @db.Text
+
+  ultimoContatoEm DateTime? @map("ultimo_contato_em")
+
+  origem        String   @default("CADASTRO") // MIGRACAO | CADASTRO | AGENTE
+  criadoPor     String?  @map("criado_por")
+  atualizadoPor String?  @map("atualizado_por")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([clienteUuid, telefoneChave, nomeChave])
+  @@index([telefoneChave])
+  @@map("cliente_contatos")
 }
 
 // Situação do WhatsApp do cadastro (Telefone_Celular) em tabela lateral — a `clientes`

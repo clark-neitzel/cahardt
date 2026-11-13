@@ -25,6 +25,7 @@ import toast from 'react-hot-toast';
 import gpsClientesService from '../../services/gpsClientesService';
 import ModalPontoGps from '../../components/ModalPontoGps';
 import whatsappClientesService, { rotuloMotivo, calcularValidaAte } from '../../services/whatsappClientesService';
+import ContatosCliente from './ContatosCliente';
 import QualidadeGps, { avaliarGps } from '../../components/Clientes/QualidadeGps';
 import HistoricoEndereco from '../../components/Clientes/HistoricoEndereco';
 import QualidadeWhatsapp, { avaliarWhatsapp } from '../../components/Clientes/QualidadeWhatsapp';
@@ -1573,6 +1574,8 @@ const DetalheCliente = () => {
                         </div>
                     </div>
                 </SectionCard>
+
+                <ContatosCliente clienteId={uuid} podeEditar={!!podeEditarCadastroCA} />
 
                 {/* ─── CARD: OBSERVAÇÕES ─── */}
                 <SectionCard icon={FileText} title="Observações Gerais">

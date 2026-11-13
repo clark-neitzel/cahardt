@@ -80,7 +80,27 @@ const clienteService = {
     sincronizar: async () => {
         const response = await api.post('/clientes/sync');
         return response.data;
-    }
+    },
+
+    listarContatos: async (uuid) => {
+        const response = await api.get(`/clientes/${uuid}/contatos`);
+        return response.data;
+    },
+
+    criarContato: async (uuid, dados) => {
+        const response = await api.post(`/clientes/${uuid}/contatos`, dados);
+        return response.data;
+    },
+
+    atualizarContato: async (uuid, contatoId, dados) => {
+        const response = await api.patch(`/clientes/${uuid}/contatos/${contatoId}`, dados);
+        return response.data;
+    },
+
+    excluirContato: async (uuid, contatoId) => {
+        const response = await api.delete(`/clientes/${uuid}/contatos/${contatoId}`);
+        return response.data;
+    },
 };
 
 export default clienteService;

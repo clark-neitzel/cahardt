@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const clienteController = require('../controllers/clienteController');
+const clienteContatoController = require('../controllers/clienteContatoController');
 const condicaoPagamentoController = require('../controllers/condicaoPagamentoController');
 
 // Rotas para Clientes
@@ -18,6 +19,10 @@ router.get('/:uuid/endereco-historico', clienteController.enderecoHistorico);
 router.get('/:uuid/endereco-historico/:eventoId/geocode', clienteController.enderecoHistoricoGeocode);
 router.post('/:uuid/endereco-historico/:eventoId/restaurar', clienteController.enderecoHistoricoRestaurar);
 router.patch('/:uuid/retomar-visitas', clienteController.retomarVisitas); // ANTES de PATCH '/:uuid'
+router.get('/:uuid/contatos', clienteContatoController.listar);
+router.post('/:uuid/contatos', clienteContatoController.criar);
+router.patch('/:uuid/contatos/:contatoId', clienteContatoController.atualizar);
+router.delete('/:uuid/contatos/:contatoId', clienteContatoController.excluir);
 router.get('/:uuid', clienteController.detalhar);
 router.patch('/:uuid', clienteController.atualizar);
 
