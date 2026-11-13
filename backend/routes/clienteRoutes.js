@@ -21,6 +21,8 @@ router.get('/:uuid/endereco-historico/:eventoId/geocode', clienteController.ende
 router.post('/:uuid/endereco-historico/:eventoId/restaurar', clienteController.enderecoHistoricoRestaurar);
 router.patch('/:uuid/retomar-visitas', clienteController.retomarVisitas); // ANTES de PATCH '/:uuid'
 router.get('/:uuid/alteracoes', clienteHistoricoController.listar); // histórico de alterações (somente leitura)
+router.get('/:uuid/telefones', clienteContatoController.listarTelefones); // ordem preferida do WhatsApp
+router.put('/:uuid/telefones/ordem', clienteContatoController.ordenarTelefones);
 router.get('/:uuid/contatos', clienteContatoController.listar);
 router.post('/:uuid/contatos', clienteContatoController.criar);
 router.patch('/:uuid/contatos/:contatoId', clienteContatoController.atualizar);

@@ -415,6 +415,29 @@ model ClienteClassificacao {
   @@map("cliente_classificacao")
 }
 
+// Ordem PREFERIDA dos telefones do cliente (nov/2026, pedido do Clarkson: "cliente com dois números
+// tem que ter um número preferencial; primeiro contato nesse, se não responder passa pro outro").
+// Tabela lateral SEM FK, mesmo padrão de ClienteClassificacao (`clientes` no teto de 1600 colunas).
+// `ordem` guarda a CHAVE tolerante do número (utils/telefoneChave: sem 55 e sem o 9º dígito) — vale
+// para Telefone_Celular, Telefone, Telefone_Comercial, cliente_whatsapps e cliente_contatos. Número
+// que não está na ordem vai para o fim, na ordem padrão. Sem linha = ordem padrão.
+// `funcionando*` = o último número que RESPONDEU no WhatsApp (o bot avisa); o bot tenta ele primeiro.
+model ClienteTelefonePreferencia {
+  id                String    @id @default(uuid())
+  clienteId         String    @unique @map("cliente_id")
+  ordem             String[]  @default([])
+  funcionandoChave  String?   @map("funcionando_chave")
+  funcionandoEm     DateTime? @map("funcionando_em")
+  funcionandoPor    String?   @map("funcionando_por")
+  atualizadoPorTipo String    @default("usuario") @map("atualizado_por_tipo") // usuario | agente
+  atualizadoPorId   String?   @map("atualizado_por_id")
+  atualizadoPorNome String?   @map("atualizado_por_nome")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  @@map("cliente_telefone_preferencia")
+}
+
 // Situação do WhatsApp do cadastro (Telefone_Celular) em tabela lateral — a `clientes`
 // está no teto de 1600 colunas do Postgres, mesma razão da ClienteFiscal. NENHUMA coluna
 // nova entra em `clientes`: a FK fica aqui.

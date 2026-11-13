@@ -26,6 +26,7 @@ import gpsClientesService from '../../services/gpsClientesService';
 import ModalPontoGps from '../../components/ModalPontoGps';
 import whatsappClientesService, { rotuloMotivo, calcularValidaAte } from '../../services/whatsappClientesService';
 import ContatosCliente from './ContatosCliente';
+import TelefonesPreferenciaCliente from './TelefonesPreferenciaCliente';
 import HistoricoAlteracoesCliente from './HistoricoAlteracoesCliente';
 import QualidadeGps, { avaliarGps } from '../../components/Clientes/QualidadeGps';
 import HistoricoEndereco from '../../components/Clientes/HistoricoEndereco';
@@ -1590,6 +1591,8 @@ const DetalheCliente = () => {
                 </SectionCard>
 
                 <ContatosCliente clienteId={uuid} podeEditar={!!podeEditarCadastroCA} />
+
+                <TelefonesPreferenciaCliente clienteId={uuid} podeEditar={!!podeEditarCadastroCA} />
 
                 {/* ─── CARD: OBSERVAÇÕES ─── */}
                 <SectionCard icon={FileText} title="Observações Gerais">

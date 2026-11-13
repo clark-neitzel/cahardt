@@ -11,6 +11,7 @@ const fichaSvc = require('../services/analyticsClienteFichaService');
 const inativacao = require('../services/clienteInativacaoService');
 const classif = require('../services/clienteClassificacaoService');
 const backup = require('../services/analyticsBackupService');
+const telefones = require('../services/clienteTelefonesService');
 const { exigirAgente } = require('../services/clienteContatoRegras');
 
 const router = express.Router();
@@ -110,6 +111,24 @@ router.get('/v1/clientes/:id/financeiro', asyncRoute(async (req, res) => {
 
 router.get('/v1/clientes/:id/contatos', asyncRoute(async (req, res) => {
     res.json(await contatos.listar(req.params.id));
+}));
+
+// Telefones para WhatsApp na ORDEM PREFERIDA (o 1º válido é o preferido), número já no formato da
+// Z-API (55 + DDD + número), situação (ok | normalizado | incompleto) e o "funcionando" (o último que respondeu).
+router.get('/v1/clientes/:id/telefones', asyncRoute(async (req, res) => {
+    res.json(await telefones.listar(req.params.id));
+}));
+
+// O agente grava a ordem (body.ordem: números, o preferido primeiro; [] = ordem padrão).
+router.put('/v1/clientes/:id/telefones/ordem', asyncRoute(async (req, res) => {
+    const quem = exigirAgente(agente(req));
+    res.json(await telefones.definirOrdem(req.params.id, req.body, { agente: quem }));
+}));
+
+// O bot avisa que o número RESPONDEU no WhatsApp (body.telefone) → vira o "funcionando".
+router.post('/v1/clientes/:id/telefones/funcionando', asyncRoute(async (req, res) => {
+    const quem = exigirAgente(agente(req));
+    res.json(await telefones.marcarFuncionando(req.params.id, req.body, { agente: quem }));
 }));
 
 // Histórico de alterações do cadastro (uso interno — nunca mostrar ao cliente). Só leitura.

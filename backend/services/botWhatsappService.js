@@ -33,6 +33,7 @@
  * ─────────────────────────────────────────────────────────────────────────
  */
 const prisma = require('../config/database');
+const { numeroWhatsapp } = require('../utils/telefoneWhatsapp');
 
 const LIMITE_TEXTO = 2000;
 const TIMEOUT_MS = 30000; // folgado de propósito: o bot espaça os envios (5s) e a chamada espera na fila
@@ -62,13 +63,13 @@ const getConfig = () => ({
     apiKey: process.env.BOT_WHATSAPP_API_KEY || '',
 });
 
-/** Só dígitos, com DDI 55. Devolve null se não der pra usar. */
-const normalizarTelefone = (raw) => {
-    let phone = String(raw || '').replace(/\D/g, '');
-    if (phone.length < 10) return null;
-    if (!phone.startsWith('55')) phone = '55' + phone;
-    return phone;
-};
+/**
+ * Só dígitos, com DDI 55 (o formato que a Z-API exige). Devolve null se não der pra usar.
+ * Nov/2026: mesma régua de utils/telefoneWhatsapp — DDD + número ganha o 55 na hora; número sem
+ * DDD, com DDD inexistente, dígito a menos/a mais ou "55 no lugar do DDD" (ex.: 55996293920)
+ * NÃO é mais mandado para a Z-API (antes ia "55996293920" e o envio falhava calado).
+ */
+const normalizarTelefone = (raw) => numeroWhatsapp(raw);
 
 /**
  * Corta o texto em 2000 caracteres SEM cortar no meio de uma linha — o bot
