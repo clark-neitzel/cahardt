@@ -373,6 +373,29 @@ model ClienteAlteracao {
   @@map("cliente_alteracoes")
 }
 
+// Pedido de inativação de cliente feito por um agente (ex.: Ana) ou pelo app. O agente SÓ pede;
+// quem inativa é uma pessoa autorizada, na fila do app. Tabela lateral sem FK (a `clientes` está
+// no teto de 1600 colunas — nada novo entra nela). Uma solicitação `pendente` por cliente
+// (garantido no serviço: pedido repetido devolve o que já existe).
+model ClienteInativacaoSolicitacao {
+  id                String    @id @default(uuid())
+  clienteId         String    @map("cliente_id")
+  motivo            String // fechou | trocou_dono | parou_de_comprar | numero_errado | outro
+  detalhe           String?   @db.Text // obrigatório quando motivo = outro (até 500 caracteres)
+  solicitadoPor     String    @map("solicitado_por") // nome do agente ou do usuário do app
+  origem            String    @default("api_agente") // api_agente | app
+  status            String    @default("pendente") // pendente | aprovada | recusada
+  decididoPorId     String?   @map("decidido_por_id")
+  decididoPorNome   String?   @map("decidido_por_nome")
+  decididoEm        DateTime? @map("decidido_em")
+  observacaoDecisao String?   @map("observacao_decisao") @db.Text
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  @@index([clienteId, status])
+  @@index([status, createdAt])
+  @@map("cliente_inativacao_solicitacoes")
+}
+
 // Situação do WhatsApp do cadastro (Telefone_Celular) em tabela lateral — a `clientes`
 // está no teto de 1600 colunas do Postgres, mesma razão da ClienteFiscal. NENHUMA coluna
 // nova entra em `clientes`: a FK fica aqui.
