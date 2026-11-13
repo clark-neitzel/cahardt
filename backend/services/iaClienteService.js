@@ -492,6 +492,8 @@ const iaClienteService = {
                 tipo: 'CLIENTE',
                 ...(tambemFornecedor ? { tambemFornecedor: true } : {}),
                 cliente: {
+                    // 13/11: id do cadastro — o painel do bot abre a ficha editável a partir do vínculo por documento
+                    id: cliente.UUID,
                     nome: cliente.Nome,
                     nomeFantasia: cliente.NomeFantasia,
                     documento: cliente.Documento,

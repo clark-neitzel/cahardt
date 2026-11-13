@@ -26,9 +26,12 @@ async function ficha(clienteId) {
             UUID: true, Nome: true, NomeFantasia: true, Documento: true, Tipo_Pessoa: true, Ativo: true, Perfis: true,
             Email: true, Telefone: true, Telefone_Celular: true, Telefone_Comercial: true,
             whatsapp: { select: { numeros: true } },
-            End_Logradouro: true, End_Numero: true, End_Bairro: true, End_Cidade: true, End_Estado: true, End_CEP: true,
+            End_Logradouro: true, End_Numero: true, End_Complemento: true, End_Bairro: true, End_Cidade: true, End_Estado: true, End_CEP: true,
             Dia_de_venda: true, Dia_de_entrega: true, Condicao_de_pagamento: true, condicoes_pagamento_permitidas: true,
             idVendedor: true, vendedor: { select: { id: true, nome: true, ativo: true } },
+            // 13/11: campos que o painel do bot passou a editar (ficha completa, sem abrir o app)
+            Indicador_Inscricao_Estadual: true, Observacoes_Gerais: true, observacaoComercialFixa: true, Formas_Atendimento: true,
+            categoriaClienteId: true, categoriaCliente: { select: { id: true, nome: true } }, fiscal: { select: { inscricaoEstadual: true } },
         },
     });
     if (!cli) throw erro(404, 'Cliente não encontrado.', 'NAO_ENCONTRADO');
@@ -96,6 +99,18 @@ async function ficha(clienteId) {
             cidade: cli.End_Cidade || null,
             estado: cli.End_Estado || null,
             cep: cli.End_CEP || null,
+            // 13/11 — campos separados pra edição no painel do bot (aditivo; os de cima não mudam)
+            nomeFantasia: cli.NomeFantasia || null,
+            enderecoCampos: {
+                logradouro: cli.End_Logradouro || null, numero: cli.End_Numero || null, complemento: cli.End_Complemento || null,
+                bairro: cli.End_Bairro || null, cidade: cli.End_Cidade || null, estado: cli.End_Estado || null, cep: cli.End_CEP || null,
+            },
+            inscricaoEstadual: cli.fiscal?.inscricaoEstadual || null,
+            indicadorIe: cli.Indicador_Inscricao_Estadual || null,
+            observacoes: cli.Observacoes_Gerais || null,
+            observacaoComercial: cli.observacaoComercialFixa || null,
+            canais: Array.isArray(cli.Formas_Atendimento) ? cli.Formas_Atendimento : [],
+            categoria: cli.categoriaClienteId ? { id: cli.categoriaClienteId, nome: cli.categoriaCliente?.nome || null } : null,
         },
         diaVenda: dias(cli.Dia_de_venda),
         diaEntrega: dias(cli.Dia_de_entrega),

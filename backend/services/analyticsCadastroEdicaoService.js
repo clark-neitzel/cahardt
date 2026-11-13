@@ -7,6 +7,14 @@
 //                          POST /v1/clientes/:id/inativar       — inativa NA HORA (ação da equipe, com confirmação no painel)
 //                          GET  /v1/clientes/:id/contexto       — visitas, pedidos, alterações e auditoria (só leitura)
 //
+// 13/11 (2ª rodada, Clarkson: "todas as alterações que precisa ser feita possam ser feitas dentro do bot"):
+// o PATCH também grava identificação (razão social, fantasia, CNPJ/CPF), e-mail, IE + indicador,
+// endereço (cidade só da lista oficial, com a trilha do endereço), observações, aviso comercial
+// fixado, condições permitidas, canais de atendimento, categoria (segmento) e nome/papel das pessoas
+// do WhatsApp — as MESMAS validações do PATCH /clientes/:uuid do app. Fica de fora de propósito:
+// ponto GPS (passa pela aprovação do módulo de GPS), reativar, indicação, ciclo/insight e o
+// espelho "também fornecedor" (a classificação cobre o uso do bot).
+//
 // Segurança: mesma chave da API (x-analytics-key) + x-analytics-agent OBRIGATÓRIO e com prefixo de
 // quem pode editar cadastro (env ANALYTICS_CADASTRO_AGENTES, padrão "painel" — o bot manda
 // "painel-<nome de quem salvou>"). Agente comercial (ana, luke) continua só pedindo inativação.
@@ -25,13 +33,21 @@ const telefonesSvc = require('./clienteTelefonesService');
 const contatosSvc = require('./clienteContatoService');
 const inativacao = require('./clienteInativacaoService');
 const whatsCliente = require('./whatsappClienteService');
+const { normalizarDoc, validarDoc, ehCnpj } = require('../utils/documento');
+const cidadeService = require('./cidadeService');                       // cidade só da lista oficial (modo estrito)
+const enderecoHistorico = require('./clienteEnderecoHistoricoService'); // trilha do endereço (quem/quando/restaurar)
 
 // carregado na hora (a ficha também é usada pelas rotas; evita ciclo de require)
 const fichaSvc = () => require('./analyticsClienteFichaService');
 
 const DIAS = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'DOM'];
 const TELA = 'Painel do bot > Ficha do cliente';
-const CAMPOS_AUDITADOS = ['Dia_de_entrega', 'Dia_de_venda', 'idVendedor', 'Telefone_Celular', 'Ativo', 'Condicao_de_pagamento'];
+// mesmos do app (CAMPOS_AUDITADOS_CLIENTE: rotaHistoricaService lê) + a tabela de preço
+const CAMPOS_AUDITADOS = ['Dia_de_entrega', 'Dia_de_venda', 'idVendedor', 'categoriaClienteId', 'Telefone_Celular', 'Ativo', 'Condicao_de_pagamento'];
+const CAMPOS_ENDERECO = { logradouro: 'End_Logradouro', numero: 'End_Numero', complemento: 'End_Complemento', bairro: 'End_Bairro', cidade: 'End_Cidade', estado: 'End_Estado', cep: 'End_CEP' };
+const CANAIS = ['Presencial', 'Whatsapp', 'Telefone'];                    // "Canais de Atendimento Preferenciais" do app
+const INDICADORES_IE = ['CONTRIBUINTE', 'CONTRIBUINTE_ISENTO', 'NAO_CONTRIBUINTE'];
+const MAX_TABELAS = 30;
 const MAX_WHATSAPPS = 10;
 const MAX_CONTATOS = 20;
 
@@ -76,10 +92,28 @@ function lerTelefone(v, campo, rotulo, uf, erros) {
 }
 
 const SEL_CLIENTE = {
-    UUID: true, Nome: true, NomeFantasia: true, Ativo: true, Documento: true, Perfis: true, End_Estado: true,
+    UUID: true, Nome: true, NomeFantasia: true, Ativo: true, Documento: true, Tipo_Pessoa: true, Perfis: true, Email: true,
     Telefone: true, Telefone_Celular: true, Telefone_Comercial: true, whatsapp: { select: { numeros: true } },
     Dia_de_venda: true, Dia_de_entrega: true, Condicao_de_pagamento: true, condicoes_pagamento_permitidas: true, idVendedor: true,
+    End_Logradouro: true, End_Numero: true, End_Complemento: true, End_Bairro: true, End_Cidade: true, End_Estado: true, End_CEP: true, Ponto_GPS: true,
+    Indicador_Inscricao_Estadual: true, Observacoes_Gerais: true, observacaoComercialFixa: true, Formas_Atendimento: true, categoriaClienteId: true,
+    fiscal: { select: { inscricaoEstadual: true } },
 };
+
+/** Texto livre: '' / null limpa. `linhas` mantém quebras (observações). */
+function lerTexto(v, max, { linhas = false } = {}) {
+    let s = String(v ?? '');
+    s = linhas ? s.replace(/\r\n/g, '\n').replace(/[ \t]+/g, ' ').trim() : s.replace(/\s+/g, ' ').trim();
+    return s ? s.slice(0, max) : null;
+}
+
+// IE varia por UF; em SC são 9 dígitos (mesma régua do app — clienteController.validarIe)
+function validarIe(ie, uf) {
+    if (!ie) return null;
+    if (!/^\d{2,14}$/.test(ie)) return 'Inscrição Estadual deve ter só números (2 a 14 dígitos).';
+    if (String(uf || '').toUpperCase() === 'SC' && ie.length !== 9) return 'Inscrição Estadual de SC deve ter 9 dígitos.';
+    return null;
+}
 
 async function exigirCliente(clienteId) {
     const id = idOpcional(clienteId, 'clienteId');
@@ -112,9 +146,12 @@ async function auditar(cli, depois, agente) {
 
 // ── opções dos campos ─────────────────────────────────────────────────────────
 async function opcoes() {
-    const [vendedores, tabelas] = await Promise.all([
+    const [vendedores, tabelas, categorias] = await Promise.all([
         prisma.vendedor.findMany({ where: { ativo: true, acessoExterno: false }, orderBy: { nome: 'asc' }, select: { id: true, nome: true } }),
         prisma.tabelaPreco.findMany({ where: { ativo: true }, orderBy: { nomeCondicao: 'asc' }, select: { id: true, nomeCondicao: true, acrescimoPreco: true, valorMinimo: true } }),
+        prisma.categoriaCliente?.findMany
+            ? prisma.categoriaCliente.findMany({ where: { ativo: true }, orderBy: { nome: 'asc' }, select: { id: true, nome: true, cicloPadraoDias: true } }).catch(() => [])
+            : [],
     ]);
     return {
         dias: DIAS,
@@ -127,6 +164,13 @@ async function opcoes() {
             { valor: 'automatica', rotulo: 'Automática (pelo financeiro e pedidos)' },
         ],
         motivosInativacao: inativacao.MOTIVOS.map((m) => ({ valor: m, rotulo: inativacao.ROTULO_MOTIVO[m] || m })),
+        categorias: (categorias || []).map((c) => ({ id: c.id, nome: c.nome, cicloPadraoDias: c.cicloPadraoDias ?? null })),
+        canais: CANAIS,
+        indicadoresIe: [
+            { valor: 'CONTRIBUINTE', rotulo: 'Contribuinte' },
+            { valor: 'CONTRIBUINTE_ISENTO', rotulo: 'Contribuinte isento' },
+            { valor: 'NAO_CONTRIBUINTE', rotulo: 'Não contribuinte' },
+        ],
     };
 }
 
@@ -153,6 +197,12 @@ function pendenciasDaFicha(ficha) {
  *  telefones: { celular, telefone, comercial } ('' limpa) · whatsapps: [números]
  *  contatos: [{ id, telefone }] — telefone das pessoas do WhatsApp deste cliente
  *  telefonePreferido: número (vira o 1º da ordem) · classificacao: CLIENTE | FORNECEDOR | CLIENTE_FORNECEDOR | automatica
+ *  contatos: [{ id, telefone?, nome?, papel? }] — corrigir número e/ou nome/papel da pessoa
+ *  razaoSocial, nomeFantasia, documento (CNPJ/CPF, validado e único), email
+ *  inscricaoEstadual, indicadorIe: CONTRIBUINTE | CONTRIBUINTE_ISENTO | NAO_CONTRIBUINTE ('' limpa)
+ *  endereco: { logradouro, numero, complemento, bairro, cidade (só da lista oficial), estado (UF), cep }
+ *  observacoes, observacaoComercial (aviso fixado) · tabelasPermitidas: [ids] · canais: ['Presencial','Whatsapp','Telefone']
+ *  categoriaId: id da categoria (segmento) ('' limpa)
  */
 async function editar(clienteId, body, { agente } = {}) {
     const quem = exigirAgenteCadastro(agente);
@@ -160,9 +210,19 @@ async function editar(clienteId, body, { agente } = {}) {
     const tem = (k) => Object.prototype.hasOwnProperty.call(src, k);
     const cli = await exigirCliente(clienteId);
     if (!cli.Ativo) throw erro(409, 'O cliente está inativo. Reative no CA-Hardt antes de editar.', 'CLIENTE_INATIVO');
-    const uf = cli.End_Estado || null;
     const erros = [];
     const data = {};
+
+    // UF primeiro: a régua de telefone e de IE usa a UF que vai ficar gravada
+    const end = tem('endereco') && src.endereco && typeof src.endereco === 'object' && !Array.isArray(src.endereco) ? src.endereco : null;
+    if (tem('endereco') && !end) erros.push({ campo: 'endereco', mensagem: 'Envie o endereço como { logradouro, numero, bairro, cidade, estado, cep }.' });
+    const temEnd = (k) => !!end && Object.prototype.hasOwnProperty.call(end, k);
+    if (temEnd('estado')) {
+        const e = String(end.estado ?? '').trim().toUpperCase();
+        if (e && !/^[A-Z]{2}$/.test(e)) erros.push({ campo: 'endereco.estado', mensagem: 'UF deve ter 2 letras (ex.: SC).' });
+        else data.End_Estado = e || null;
+    }
+    const uf = ('End_Estado' in data ? data.End_Estado : cli.End_Estado) || null;
 
     if (tem('diaVenda')) { const v = lerDias(src.diaVenda, 'diaVenda', erros); if (v !== undefined) data.Dia_de_venda = v; }
     if (tem('diaEntrega')) { const v = lerDias(src.diaEntrega, 'diaEntrega', erros); if (v !== undefined) data.Dia_de_entrega = v; }
@@ -200,6 +260,91 @@ async function editar(clienteId, body, { agente } = {}) {
         }
     }
 
+    // ── identificação e contato ──
+    if (tem('razaoSocial')) {
+        const v = lerTexto(src.razaoSocial, 200);
+        if (!v) erros.push({ campo: 'razaoSocial', mensagem: 'Razão social / nome não pode ficar vazio.' });
+        else data.Nome = v;
+    }
+    if (tem('nomeFantasia')) data.NomeFantasia = lerTexto(src.nomeFantasia, 200);
+    if (tem('documento')) {
+        const d = normalizarDoc(src.documento);
+        if (!d) erros.push({ campo: 'documento', mensagem: 'CNPJ/CPF não pode ficar vazio.' });
+        else if (!validarDoc(d)) erros.push({ campo: 'documento', mensagem: 'CNPJ/CPF inválido (confira os dígitos).' });
+        else if (d !== normalizarDoc(cli.Documento)) {
+            const outro = await prisma.cliente.findUnique({ where: { Documento: d }, select: { UUID: true, Nome: true } });
+            if (outro && outro.UUID !== cli.UUID) erros.push({ campo: 'documento', mensagem: `Documento já usado pelo cliente ${outro.Nome}.` });
+            else { data.Documento = d; data.Tipo_Pessoa = ehCnpj(d) ? 'JURIDICA' : 'FISICA'; }
+        }
+    }
+    if (tem('email')) {
+        const v = String(src.email ?? '').trim();
+        if (v && (v.length > 200 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v))) erros.push({ campo: 'email', mensagem: 'E-mail inválido.' });
+        else data.Email = v || null;
+    }
+    let ie;
+    if (tem('inscricaoEstadual')) {
+        const v = String(src.inscricaoEstadual ?? '').replace(/\D/g, '');
+        const e = validarIe(v, uf);
+        if (e) erros.push({ campo: 'inscricaoEstadual', mensagem: e });
+        else ie = v || null;
+    }
+    if (tem('indicadorIe')) {
+        const v = String(src.indicadorIe ?? '').trim().toUpperCase();
+        if (v && !INDICADORES_IE.includes(v)) erros.push({ campo: 'indicadorIe', mensagem: `Indicador de IE inválido. Use ${INDICADORES_IE.join(', ')}.` });
+        else data.Indicador_Inscricao_Estadual = v || null;
+    }
+
+    // ── endereço (cidade só da lista oficial — mesma régua estrita do app) ──
+    if (end) {
+        for (const k of ['logradouro', 'numero', 'complemento', 'bairro']) if (temEnd(k)) data[CAMPOS_ENDERECO[k]] = lerTexto(end[k], 200);
+        if (temEnd('cep')) {
+            const c = String(end.cep ?? '').replace(/\D/g, '');
+            if (c && c.length !== 8) erros.push({ campo: 'endereco.cep', mensagem: 'CEP deve ter 8 dígitos.' });
+            else data.End_CEP = c || null;
+        }
+        if (temEnd('cidade')) {
+            try {
+                data.End_Cidade = await cidadeService.resolver(end.cidade, { modo: 'estrito' });
+            } catch (e) {
+                if (!e?.codigo) throw e;
+                erros.push({ campo: 'endereco.cidade', mensagem: e.message, sugestoes: (e.sugestoes || []).map((x) => x.nome) });
+            }
+        }
+    }
+
+    // ── observações e comercial ──
+    if (tem('observacoes')) data.Observacoes_Gerais = lerTexto(src.observacoes, 5000, { linhas: true });
+    if (tem('observacaoComercial')) data.observacaoComercialFixa = lerTexto(src.observacaoComercial, 2000, { linhas: true });
+    if (tem('canais')) {
+        const l = Array.isArray(src.canais) ? src.canais.map((c) => CANAIS.find((x) => x.toLowerCase() === String(c || '').trim().toLowerCase())) : null;
+        if (!l || l.some((x) => !x)) erros.push({ campo: 'canais', mensagem: `Canais inválidos. Use ${CANAIS.join(', ')}.` });
+        else data.Formas_Atendimento = CANAIS.filter((x) => l.includes(x));
+    }
+    if (tem('categoriaId')) {
+        const id = src.categoriaId == null || src.categoriaId === '' ? null : idOpcional(src.categoriaId, 'categoriaId');
+        if (id) {
+            const c = await prisma.categoriaCliente.findUnique({ where: { id }, select: { id: true, ativo: true } });
+            if (!c || !c.ativo) erros.push({ campo: 'categoriaId', mensagem: 'Categoria não existe ou está inativa.' });
+            else data.categoriaClienteId = c.id;
+        } else data.categoriaClienteId = null;
+    }
+    if (tem('tabelasPermitidas')) {
+        if (!Array.isArray(src.tabelasPermitidas) || src.tabelasPermitidas.length > MAX_TABELAS) erros.push({ campo: 'tabelasPermitidas', mensagem: 'Envie a lista de tabelas permitidas.' });
+        else {
+            const ids = [...new Set(src.tabelasPermitidas.map((x) => String(x || '').trim()).filter(Boolean))];
+            const achadas = ids.length ? await prisma.tabelaPreco.findMany({ where: { id: { in: ids } }, select: { id: true, ativo: true } }) : [];
+            const ok = new Set(achadas.filter((t) => t.ativo).map((t) => t.id));
+            const ruins = ids.filter((x) => !ok.has(x));
+            if (ruins.length) erros.push({ campo: 'tabelasPermitidas', mensagem: 'Tabela permitida não existe ou está inativa.' });
+            else {
+                // lista não vazia precisa conter a favorita (senão o pedido não aceita a condição)
+                const fav = 'Condicao_de_pagamento' in data ? data.Condicao_de_pagamento : cli.Condicao_de_pagamento;
+                data.condicoes_pagamento_permitidas = ids.length && fav && !ids.includes(fav) ? [...ids, fav] : ids;
+            }
+        }
+    }
+
     let whatsapps;
     if (tem('whatsapps')) {
         if (!Array.isArray(src.whatsapps) || src.whatsapps.length > MAX_WHATSAPPS) erros.push({ campo: 'whatsapps', mensagem: `Envie a lista de WhatsApps (no máximo ${MAX_WHATSAPPS}).` });
@@ -218,9 +363,15 @@ async function editar(clienteId, body, { agente } = {}) {
                 const cid = idOpcional(c?.id, 'contato');
                 const row = cid ? await prisma.clienteContato.findUnique({ where: { id: cid } }) : null;
                 if (!row || row.clienteUuid !== cli.UUID) { erros.push({ campo: `contatos.${i}`, mensagem: 'Pessoa do WhatsApp não é deste cliente.' }); continue; }
-                const v = lerTelefone(c?.telefone, `contatos.${i}`, `Telefone de ${row.nome || 'pessoa do WhatsApp'}`, uf, erros);
-                if (v === null) erros.push({ campo: `contatos.${i}`, mensagem: 'A pessoa do WhatsApp precisa de um telefone (esta API não apaga contato).' });
-                else if (v) contatos.push({ id: row.id, telefone: v, atual: row.telefone });
+                const mud = {};
+                if (Object.prototype.hasOwnProperty.call(c, 'telefone')) {
+                    const v = lerTelefone(c.telefone, `contatos.${i}`, `Telefone de ${row.nome || 'pessoa do WhatsApp'}`, uf, erros);
+                    if (v === null) erros.push({ campo: `contatos.${i}`, mensagem: 'A pessoa do WhatsApp precisa de um telefone (esta API não apaga contato).' });
+                    else if (v && String(row.telefone || '').replace(/\D/g, '') !== v) mud.telefone = v;
+                }
+                if (Object.prototype.hasOwnProperty.call(c, 'nome')) { const n = lerTexto(c.nome, 120); if (n !== (row.nome || null)) mud.nome = n; }
+                if (Object.prototype.hasOwnProperty.call(c, 'papel')) { const p = lerTexto(c.papel, 40); if (p !== (row.papel || null)) mud.papel = p; }
+                if (Object.keys(mud).length) contatos.push({ id: row.id, mud });
             }
         }
     }
@@ -249,6 +400,10 @@ async function editar(clienteId, body, { agente } = {}) {
         await historico.registrarDiff({ clienteId: cli.UUID, ator, tela: TELA, antes: cli, depois, campos: Object.keys(data) });
         await auditar(cli, Object.fromEntries(Object.keys(data).map((k) => [k, depois[k]])), quem);
         mudou.push(...Object.keys(data));
+        if (Object.values(CAMPOS_ENDERECO).some((k) => k in data)) {
+            // trilha do endereço (quem/quando/restaurar) — registrar nunca lança
+            await enderecoHistorico.registrar({ clienteUuid: cli.UUID, antes: cli, depois, tipo: 'ALTERACAO', origem: 'CADASTRO', autor: { id: null, nome: quem } });
+        }
         if ('Telefone_Celular' in data) {
             try { await whatsCliente.sincronizarTemNumero(cli.UUID, data.Telefone_Celular || null); } catch (e) { console.error('[CadastroPainel] temNumero:', e?.message || e); }
         }
@@ -260,9 +415,13 @@ async function editar(clienteId, body, { agente } = {}) {
         mudou.push('Whatsapps');
     }
     for (const c of contatos) {
-        if (String(c.atual || '').replace(/\D/g, '') === c.telefone) continue;
-        await contatosSvc.atualizar(c.id, { telefone: c.telefone }, ator, cli.UUID);
+        await contatosSvc.atualizar(c.id, c.mud, ator, cli.UUID);
         mudou.push(`contato:${c.id}`);
+    }
+    if (ie !== undefined && ie !== (cli.fiscal?.inscricaoEstadual ?? null)) {
+        await prisma.clienteFiscal.upsert({ where: { clienteUuid: cli.UUID }, create: { clienteUuid: cli.UUID, inscricaoEstadual: ie }, update: { inscricaoEstadual: ie } });
+        await historico.registrarDiff({ clienteId: cli.UUID, ator, tela: TELA, antes: { Inscricao_Estadual: cli.fiscal?.inscricaoEstadual ?? null }, depois: { Inscricao_Estadual: ie } });
+        mudou.push('Inscricao_Estadual');
     }
     if (classificacao !== undefined) {
         await classif.classificar(cli.UUID, { classificacao }, ator);
