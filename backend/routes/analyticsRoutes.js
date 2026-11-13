@@ -5,7 +5,13 @@ const { verificarChaveAnalytics } = require('../middlewares/analyticsAuth');
 const { exigirBackup } = require('../middlewares/analyticsBackupAuth');
 const consulta = require('../services/analyticsConsultaService');
 const registro = require('../services/analyticsRegistroService');
+const contatos = require('../services/clienteContatoService');
+const historico = require('../services/clienteHistoricoService');
+const fichaSvc = require('../services/analyticsClienteFichaService');
+const inativacao = require('../services/clienteInativacaoService');
+const classif = require('../services/clienteClassificacaoService');
 const backup = require('../services/analyticsBackupService');
+const { exigirAgente } = require('../services/clienteContatoRegras');
 
 const router = express.Router();
 
@@ -19,6 +25,8 @@ function asyncRoute(fn) {
             if (res.headersSent) return;
             const body = { error: status >= 500 ? 'Erro interno.' : (err?.message || 'Erro.') };
             if (err?.codigo && status < 500) body.codigo = err.codigo;
+            if (err?.contatos && status < 500) body.contatos = err.contatos;
+            if (err?.pessoas && status < 500) body.pessoas = err.pessoas;
             res.status(status).json(body);
         });
     };
@@ -33,7 +41,7 @@ router.get('/v1/status', (req, res) => {
         ok: true,
         versao: '1',
         whatsapp: false,
-        escreve: ['atendimentos', 'leads', 'sugestoes'],
+        escreve: ['atendimentos', 'leads', 'sugestoes', 'contatos', 'inativacoes', 'classificacoes'],
     });
 });
 
@@ -62,12 +70,80 @@ router.get('/v1/carteira', asyncRoute(async (req, res) => {
 }));
 
 router.get('/v1/clientes', asyncRoute(async (req, res) => {
-    res.json(await consulta.clientes(req.query));
+    const r = await consulta.clientes(req.query);
+    // Enriquece DEPOIS da página pronta (uma query só para a página); a carteira não muda.
+    await classif.enriquecer(r?.data, (c) => c.clienteId || c.id);
+    res.json(r);
+}));
+
+// Ficha completa do cliente para o agente (identificação, dias, tabela, vendedor, pedidos, produtos, contatos).
+router.get('/v1/clientes/:id/ficha', asyncRoute(async (req, res) => {
+    res.json(await fichaSvc.ficha(req.params.id));
+}));
+
+// Cadastros ativos: ?grupo=acertar (padrão: clientes com cadastro incompleto) | classificar (a classificar).
+// Só leitura.
+router.get('/v1/cadastros-pendentes', asyncRoute(async (req, res) => {
+    res.json(await fichaSvc.cadastrosPendentes(req.query));
+}));
+
+// O agente PEDE a inativação; quem inativa é uma pessoa, na fila do app.
+router.post('/v1/clientes/:id/inativacao', asyncRoute(async (req, res) => {
+    const quem = exigirAgente(agente(req));
+    const r = await inativacao.solicitar(req.params.id, req.body, { agente: quem });
+    res.status(r.status).json({ duplicado: r.duplicado, solicitacao: r.solicitacao });
+}));
+
+// Classificação manual (cliente / fornecedor / os dois) por cima da automática; "automatica" desfaz.
+router.post('/v1/clientes/:id/classificacao', asyncRoute(async (req, res) => {
+    const quem = exigirAgente(agente(req));
+    res.json({ classificacao: await classif.classificar(req.params.id, req.body, { agente: quem }) });
+}));
+
+router.get('/v1/inativacoes', asyncRoute(async (req, res) => {
+    res.json(await inativacao.listar(req.query));
 }));
 
 router.get('/v1/clientes/:id/financeiro', asyncRoute(async (req, res) => {
     res.json(await consulta.financeiroCliente(req.params.id));
 }));
+
+router.get('/v1/clientes/:id/contatos', asyncRoute(async (req, res) => {
+    res.json(await contatos.listar(req.params.id));
+}));
+
+// Histórico de alterações do cadastro (uso interno — nunca mostrar ao cliente). Só leitura.
+router.get('/v1/clientes/:id/alteracoes', asyncRoute(async (req, res) => {
+    res.json(await historico.listar(req.params.id, req.query));
+}));
+
+router.post('/v1/clientes/:id/contatos', asyncRoute(async (req, res) => {
+    const agente = exigirAgente(req.headers['x-analytics-agent']);
+    const r = await contatos.gravar(req.params.id, req.body, { agente });
+    res.status(r.status).json(r);
+}));
+
+router.get('/v1/contatos/por-telefone', asyncRoute(async (req, res) => {
+    const r = await contatos.buscarPorTelefone(req.query.telefone);
+    await classif.enriquecer(r.data, (c) => c.clienteId);
+    res.json(r);
+}));
+
+router.patch('/v1/contatos/:id', asyncRoute(async (req, res) => {
+    const agente = exigirAgente(req.headers['x-analytics-agent']);
+    res.json(await contatos.atualizar(req.params.id, req.body, { agente }));
+}));
+
+router.post('/v1/contatos/:id/conversa', asyncRoute(async (req, res) => {
+    const agente = exigirAgente(req.headers['x-analytics-agent']);
+    res.json(await contatos.registrarConversa(req.params.id, req.body, { agente }));
+}));
+
+function semExclusao(_req, res) {
+    res.status(405).json({ error: 'Esta API não apaga contato.', codigo: 'SEM_EXCLUSAO' });
+}
+router.delete('/v1/contatos/:id', semExclusao);
+router.delete('/v1/clientes/:id/contatos/:contatoId', semExclusao);
 
 router.get('/v1/vendas', asyncRoute(async (req, res) => {
     res.json(await consulta.vendas(req.query));

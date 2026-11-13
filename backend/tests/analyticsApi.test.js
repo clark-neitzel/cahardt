@@ -30,6 +30,7 @@ const CACHE = [
     'services/analyticsComum.js',
     'services/analyticsBackupService.js',
     'services/backupLock.js',
+    'services/clienteContatoService.js',
     'middlewares/analyticsAuth.js',
     'middlewares/analyticsBackupAuth.js',
 ];
