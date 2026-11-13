@@ -3,6 +3,7 @@
 const express = require('express');
 const fichaSvc = require('../services/analyticsClienteFichaService');
 const inativacao = require('../services/clienteInativacaoService');
+const classif = require('../services/clienteClassificacaoService');
 
 const router = express.Router();
 
@@ -41,6 +42,17 @@ router.use(exigirPermissao);
 
 router.get('/pendentes', asyncRoute(async (req, res) => {
     res.json(await fichaSvc.cadastrosPendentes(req.query));
+}));
+
+// A equipe classifica (CLIENTE | FORNECEDOR | CLIENTE_FORNECEDOR | automatica). Ator = usuário logado.
+router.post('/clientes/:id/classificacao', asyncRoute(async (req, res) => {
+    res.json({ classificacao: await classif.classificar(req.params.id, req.body, req.user) });
+}));
+
+// A equipe pede a inativação de um cadastro (vai para a mesma fila de aprovação dos agentes).
+router.post('/clientes/:id/inativacao', asyncRoute(async (req, res) => {
+    const r = await inativacao.solicitar(req.params.id, req.body, { id: req.user?.id, nome: req.user?.nome || req.user?.login });
+    res.status(r.status).json({ duplicado: r.duplicado, solicitacao: r.solicitacao });
 }));
 
 router.get('/inativacoes', asyncRoute(async (req, res) => {

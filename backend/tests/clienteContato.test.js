@@ -18,6 +18,7 @@ const ROUTER = path.join(__dirname, '../routes/analyticsRoutes.js');
 const CACHE = [
     'routes/analyticsRoutes.js',
     'services/clienteContatoService.js',
+    'services/clienteClassificacaoService.js',
     'services/analyticsConsultaService.js',
     'services/analyticsRegistroService.js',
     'services/analyticsComum.js',
@@ -155,6 +156,11 @@ function memoria({ clientesExtra = [], aoUpdateMany = null } = {}) {
         auditLog: {
             create: async ({ data }) => { audits.push(data); return data; },
         },
+        // Classificação (enriquece a busca por telefone): sem movimento nenhum.
+        contaReceber: { findMany: async () => [] },
+        pedido: { findMany: async () => [] },
+        contaPagar: { findMany: async () => [] },
+        clienteClassificacao: { findMany: async () => [] },
     };
 }
 
