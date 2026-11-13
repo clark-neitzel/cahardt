@@ -311,6 +311,12 @@ router.post('/:id/cadastro-pessoa', verificarAuth, checkAcesso, async (req, res)
                 Data_Criacao: new Date()
             }
         });
+        await require('../services/clienteHistoricoService').registrarEvento({
+            clienteId: cliente.UUID, entidade: 'cliente', acao: 'criado',
+            ator: { id: req.user?.id || null, nome: req.user?.nome || req.user?.login || null },
+            tela: 'POST /fornecedores (cadastro de pessoa do fornecedor)',
+            resumo: `${cliente.NomeFantasia || cliente.Nome} (código ${cliente.Codigo})`,
+        });
         res.status(201).json({ cliente });
     } catch (error) {
         console.error('Erro ao criar cadastro de pessoa do fornecedor:', error);

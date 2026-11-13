@@ -5,6 +5,7 @@ const { verificarChaveAnalytics } = require('../middlewares/analyticsAuth');
 const consulta = require('../services/analyticsConsultaService');
 const registro = require('../services/analyticsRegistroService');
 const contatos = require('../services/clienteContatoService');
+const historico = require('../services/clienteHistoricoService');
 const { exigirAgente } = require('../services/clienteContatoRegras');
 
 const router = express.Router();
@@ -53,6 +54,11 @@ router.get('/v1/clientes/:id/financeiro', asyncRoute(async (req, res) => {
 
 router.get('/v1/clientes/:id/contatos', asyncRoute(async (req, res) => {
     res.json(await contatos.listar(req.params.id));
+}));
+
+// Histórico de alterações do cadastro (uso interno — nunca mostrar ao cliente). Só leitura.
+router.get('/v1/clientes/:id/alteracoes', asyncRoute(async (req, res) => {
+    res.json(await historico.listar(req.params.id, req.query));
 }));
 
 router.post('/v1/clientes/:id/contatos', asyncRoute(async (req, res) => {
