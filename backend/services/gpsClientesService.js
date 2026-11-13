@@ -330,6 +330,14 @@ const seloEntrega = (gpsEntrega, pontoClienteStr) => {
 // Resposta ganhou `logId` (aditivo — consumidores só leem aplicado/pendente/semMudanca).
 const enderecoHist = () => require('./clienteEnderecoHistoricoService');
 
+// Histórico de alterações do cliente (cliente_alteracoes): só o Ponto_GPS. O texto do
+// endereço é registrado por quem o grava (cadastro / restaurar).
+const historicoPonto = (clienteUuid, de, para, autor, tela) =>
+    require('./clienteHistoricoService').registrarDiff({
+        clienteId: clienteUuid, ator: autor, tela: `GPS${tela ? `:${tela}` : ''}`,
+        antes: { Ponto_GPS: de }, depois: { Ponto_GPS: para },
+    });
+
 const registrarMudanca = async ({ clienteUuid, pontoNovo, autor, origem, posicaoAutor, autorizacao, trilha = true, extraCliente }) => {
     const cliente = await prisma.cliente.findUnique({
         where: { UUID: clienteUuid },
@@ -404,6 +412,9 @@ const registrarMudanca = async ({ clienteUuid, pontoNovo, autor, origem, posicao
         const criado = await tx.clienteGpsLog.create({ data: { ...dadosLog, status: 'APLICADO' } });
         logId = criado.id;
     }, { timeout: 20000, maxWait: 10000 });
+
+    // Histórico de alterações do cliente (fora da transação, nunca lança)
+    await historicoPonto(clienteUuid, cliente.Ponto_GPS, pontoNovoFmt, autor, origem);
 
     // Trilha do endereço: FORA da transação, best-effort (registrar nunca lança)
     if (trilha) {
@@ -512,6 +523,7 @@ const decidirPendencia = async (logId, aprovar, decisor, motivo) => {
         await tx.clienteGpsLog.update({ where: { id: logId }, data: { status: 'APLICADO', ...decisao } });
     }, { timeout: 20000, maxWait: 10000 });
 
+    await historicoPonto(log.clienteUuid, antesFoto?.Ponto_GPS ?? null, log.pontoNovo, decisor, 'SAUDE');
     // Trilha do endereço (fora da transação, best-effort)
     try {
         if (antesFoto) {
@@ -586,6 +598,7 @@ const desfazerMudanca = async (logId, decisor) => {
             data: { status: 'DESFEITO', decididoPorId: decisor.id, decididoPorNome: decisor.nome, decididoEm: new Date() }
         });
     }, { timeout: 20000, maxWait: 10000 });
+    await historicoPonto(log.clienteUuid, antesFoto?.Ponto_GPS ?? null, log.pontoAntigo, decisor, 'DESFAZER_GPS');
     // Trilha do endereço (fora da transação, best-effort). Sem gpsLogId: o desfazer não cria
     // ClienteGpsLog novo. O evento ORIGINAL (linha da trilha ligada a este log por gpsLogId, ou
     // o legado) aparece com status DESFEITO — o listar() lê o status do ClienteGpsLog ligado.

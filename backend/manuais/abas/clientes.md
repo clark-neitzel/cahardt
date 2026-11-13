@@ -53,6 +53,7 @@ Cadastro completo de clientes da empresa — **o cadastro agora é 100% do app**
 2. Navegue pelas sub-abas: Cadastro, Admin ou Histórico
 3. Edite os campos desejados e clique em **Salvar Alterações** — tudo fica gravado no app
 4. No card "Informações do Cadastro" há o botão **Atualizar pela Receita/SEFAZ**: re-consulta o CNPJ e preenche o formulário com os dados atuais (endereço novo, IE etc.) — nada é salvo até clicar em Salvar
+5. No card **Pessoas do WhatsApp**, clique em **Adicionar pessoa**, preencha o nome e o WhatsApp (papel e nota são opcionais) e confirme. Para corrigir, use o lápis. Para tirar uma pessoa que foi anotada errada, use a lixeira e confirme — isso não apaga o celular do cadastro
 
 ### Alterar dados em lote
 1. Marque o checkbox de um ou mais clientes
@@ -129,6 +130,14 @@ Aba padrão ao abrir o detalhe. Contém tudo que é editável pelo time comercia
 - Indicador de IE (Contribuinte, Não Contribuinte, Isento)
 - Telefone fixo (editável)
 - **WhatsApps do cliente** (lista): números de WhatsApp extras vinculados ao cadastro (sócio, comprador, caixa...), além do celular/fixo. Digita-se o número com DDD e clica em "Adicionar"; cada número vira um chip com X para remover. O **atendimento automático da empresa (bot de WhatsApp)** reconhece o cliente por qualquer número desta lista — quando um desses números manda mensagem, o painel de atendimento já mostra a ficha certa do cliente sem ninguém precisar vincular na mão. O mesmo campo existe no cadastro novo (seção Contato)
+
+**Pessoas do WhatsApp** (card abaixo de Contato / Fiscal)
+- São as **pessoas** que atendem o WhatsApp, não o número da empresa. O celular do cadastro continua sendo o que recebe aviso de pedido, boleto e cobrança
+- Cada pessoa tem nome (pode ficar em branco), WhatsApp, papel opcional (dona, gerente, compras, financeiro, recepção — ou outro texto) e uma nota
+- Várias pessoas podem usar o mesmo número. O card mostra a última conversa que a Ana registrou com cada uma
+- Ao abrir a ficha, os telefones que já estavam no cadastro aparecem como contato **sem nome**, para a Ana (ou o escritório) completar depois. Isso não apaga nem troca o celular
+- Quem tem permissão de editar o cadastro (`clientes.edit`, `Pode_Editar_GPS` ou admin) adiciona, edita e apaga. Apagar pede confirmação — a Ana deixa de ver aquele nome. Quem só consulta a ficha vê a lista e não vê o formulário
+- A Ana grava e atualiza por conta própria quando aprende o nome na conversa. O app não manda mensagem por causa disso
 
 **Observações Gerais**
 - Campo de texto livre com anotações sobre o cliente
@@ -370,3 +379,21 @@ Cada vez que o endereço do cliente é salvo, o sistema guarda **quem mudou, qua
 ## Selo Matriz / Filial (10/2026)
 
 Na lista de clientes (tabela no computador e cartão no celular) e no cabeçalho do cadastro do cliente aparece, ao lado do nome/CNPJ, um selo pequeno: **Matriz** (verde) ou **Filial** (âmbar). Não é um campo cadastrado: o sistema olha a **ordem do CNPJ** (os 4 caracteres depois da barra, ex.: 08.766.459/**0001**-02). Ordem **0001 = Matriz**; qualquer outra (0002, 0003…) = **Filial**. Cliente com CPF, sem documento ou com CNPJ inválido não mostra selo. Para mudar, só corrigindo o CNPJ do cadastro.
+
+## Aba Alterações — histórico do cadastro (11/2026)
+
+Na ficha do cliente existe a aba **Alterações** (só aparece para quem edita clientes: `clientes.edit`, `Pode_Editar_GPS` ou admin). Ela lista, do mais novo para o mais antigo, **tudo que mudou naquele cadastro**: data e hora (horário de Brasília), **quem** mexeu, **de onde** (aplicativo — com a tela, como Carteira, Mapa de clientes, edição em lote — ou agente/API, como a Ana ou o Luke), qual campo e o **antes → depois**.
+
+- Registra os campos do cadastro (nome, documento, contatos, endereço, ponto no mapa, vendedor, tipo de cliente, dia de venda/entrega, ciclo, observações, ativo/inativo, WhatsApps, IE, perfil fornecedor), a criação do cadastro e as **Pessoas do WhatsApp** (adicionar, editar, apagar, última conversa).
+- Só entra o que realmente mudou: salvar sem mexer em nada não gera linha. Textos muito longos aparecem cortados. Senhas, chaves e certificados nunca são gravados.
+- Ninguém edita nem apaga um registro do histórico — nem o administrador. A lista tem "Carregar mais" quando passa de 30 linhas.
+- Só passa a valer **a partir da publicação**: mudanças antigas não aparecem. Atualizações automáticas do sistema (sincronização antiga do Conta Azul, cópia inicial de telefones) não entram.
+- Para a equipe de agentes, o mesmo histórico sai em `GET /api/analytics/v1/clientes/:id/alteracoes` — uso interno, nunca para mostrar ao cliente.
+
+## Cadastros a acertar e pedidos de inativação (11/2026)
+
+Botão **📋 Cadastros a acertar** na lista de clientes (só para quem edita clientes ou admin), com um selo vermelho quando há pedidos de inativação esperando. A tela tem três abas (o selo vermelho de cada aba mostra quantos itens esperam):
+
+- **Cadastros pra acertar:** **clientes** ativos (ou cliente e fornecedor) com o cadastro incompleto para a Ana atender. O cadastro só está completo com **dia de venda, dia de entrega, tabela de preço (a condição de pagamento favorita do cliente, que precisa existir e estar ativa) e vendedor**. Cada cliente mostra o que falta; clicar abre a ficha para corrigir. Dá para filtrar por vendedor (o filtro fica salvo). **Fornecedor puro não aparece aqui** (não é cliente incompleto).
+- **Classificar:** cadastros ativos **sem nenhum movimento** (sem contas a receber, sem pedidos, sem contas a pagar — em geral importados). O sistema classifica sozinho: só contas a pagar = fornecedor; contas a receber/pedidos = cliente; os dois = cliente e fornecedor. Os que não têm nada ficam aqui para a equipe escolher **Cliente**, **Fornecedor** ou **Cliente e fornecedor** (some da lista e a escolha fica no histórico do cadastro), ou **Pedir inativação** (escolhe o motivo; o pedido vai para a aba de pedidos). A Ana não trata cadastro sem classificação como cliente normal e não atende fornecedor.
+- **Pedidos de inativação:** quando a Ana percebe que um cliente fechou, trocou de dono, parou de comprar ou está com número errado, ela **pede** para inativar — ela nunca inativa sozinha. Aqui a equipe decide: **Inativar cliente** (o cliente fica inativo, como se fosse feito na ficha, e a mudança entra na aba Alterações com o motivo e quem pediu) ou **Manter ativo** (recusa; o cliente segue ativo). Em ambos dá para escrever uma observação. Um pedido por cliente por vez; depois de decidido, a Ana pode pedir de novo. O filtro mostra aguardando, aprovadas, recusadas ou todas.

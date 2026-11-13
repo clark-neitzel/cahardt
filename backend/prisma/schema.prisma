@@ -247,6 +247,10 @@ model Cliente {
   // WhatsApps vinculados ao cadastro (tabela lateral — mesma razão da ClienteFiscal)
   whatsapp ClienteWhatsapp?
 
+  // Pessoas que atendem o WhatsApp (nome, papel, último contato). Tabela lateral:
+  // `clientes` está no teto de colunas. Não substitui Telefone / Telefone_Celular.
+  contatos ClienteContato[]
+
   // Situação do WhatsApp do cadastro (verificação, selo por uso real, dispensa) —
   // tabela lateral, mesma razão da ClienteFiscal
   whatsappStatus ClienteWhatsappStatus?
@@ -311,6 +315,104 @@ model ClienteWhatsapp {
   cliente     Cliente  @relation(fields: [clienteUuid], references: [UUID], onDelete: Cascade)
 
   @@map("cliente_whatsapps")
+}
+
+// Pessoa que atende o cliente no WhatsApp. Várias pessoas podem usar o mesmo número
+// (dona, gerente, compras). O telefone do cadastro (Telefone, Telefone_Celular,
+// Telefone_Comercial e cliente_whatsapps) continua sendo o número da empresa —
+// aviso de pedido, boleto e selo não leem esta tabela.
+// `nome_chave` vazio = contato ainda sem nome (veio da migração do telefone).
+// A chave única (cliente + telefone normalizado + nome) impede duas "Marias"
+// no mesmo WhatsApp e impede dois contatos sem nome para o mesmo número.
+model ClienteContato {
+  id            String    @id @default(uuid())
+  clienteUuid   String    @map("cliente_uuid")
+  cliente       Cliente   @relation(fields: [clienteUuid], references: [UUID], onDelete: Cascade)
+
+  nome          String?
+  nomeChave     String    @default("") @map("nome_chave")
+  telefone      String
+  telefoneChave String    @map("telefone_chave")
+  papel         String?
+  nota          String?   @db.Text
+
+  ultimoContatoEm DateTime? @map("ultimo_contato_em")
+
+  origem        String   @default("CADASTRO") // MIGRACAO | CADASTRO | AGENTE
+  criadoPor     String?  @map("criado_por")
+  atualizadoPor String?  @map("atualizado_por")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([clienteUuid, telefoneChave, nomeChave])
+  @@index([telefoneChave])
+  @@map("cliente_contatos")
+}
+
+// Histórico de alterações do cliente (auditoria — só INSERT/SELECT, sem rota de edição).
+// Uma linha por campo que mudou. SEM FK para `clientes` de propósito: o histórico
+// sobrevive mesmo se o cadastro for apagado, e nenhuma coluna entra em `clientes`.
+model ClienteAlteracao {
+  id          String   @id @default(uuid())
+  clienteId   String   @map("cliente_id")
+  entidade    String   @default("cliente") // cliente | contato
+  entidadeId  String?  @map("entidade_id") // id do contato quando entidade = contato
+  acao        String   @default("alterado") // criado | alterado | excluido
+  campo       String
+  valorAntigo String?  @map("valor_antigo") @db.Text
+  valorNovo   String?  @map("valor_novo") @db.Text
+  autorTipo   String   @map("autor_tipo") // usuario | agente | sistema
+  autorId     String?  @map("autor_id")
+  autorNome   String   @map("autor_nome")
+  origem      String   // app | api_agente | sistema
+  tela        String?  // tela/rota de origem (ex.: CARTEIRA, mapa-clientes)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([clienteId, createdAt])
+  @@map("cliente_alteracoes")
+}
+
+// Pedido de inativação de cliente feito por um agente (ex.: Ana) ou pelo app. O agente SÓ pede;
+// quem inativa é uma pessoa autorizada, na fila do app. Tabela lateral sem FK (a `clientes` está
+// no teto de 1600 colunas — nada novo entra nela). Uma solicitação `pendente` por cliente
+// (garantido no serviço: pedido repetido devolve o que já existe).
+model ClienteInativacaoSolicitacao {
+  id                String    @id @default(uuid())
+  clienteId         String    @map("cliente_id")
+  motivo            String // fechou | trocou_dono | parou_de_comprar | numero_errado | outro
+  detalhe           String?   @db.Text // obrigatório quando motivo = outro (até 500 caracteres)
+  solicitadoPor     String    @map("solicitado_por") // nome do agente ou do usuário do app
+  origem            String    @default("api_agente") // api_agente | app
+  status            String    @default("pendente") // pendente | aprovada | recusada
+  decididoPorId     String?   @map("decidido_por_id")
+  decididoPorNome   String?   @map("decidido_por_nome")
+  decididoEm        DateTime? @map("decidido_em")
+  observacaoDecisao String?   @map("observacao_decisao") @db.Text
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  @@index([clienteId, status])
+  @@index([status, createdAt])
+  @@map("cliente_inativacao_solicitacoes")
+}
+
+// Classificação MANUAL do cadastro (cliente / fornecedor / os dois) em tabela lateral — a `clientes`
+// está no teto de 1600 colunas, nada novo entra nela e, de propósito, SEM FK/relação (mesmo padrão
+// de ClienteInativacaoSolicitacao). A classificação AUTOMÁTICA nunca é gravada: é calculada ao vivo
+// (contas a receber, pedidos, contas a pagar). Esta linha só existe quando uma pessoa/agente decidiu
+// por cima do automático; apagar a linha = voltar ao automático. Nunca guarda "A_CLASSIFICAR".
+model ClienteClassificacao {
+  id                 String   @id @default(uuid())
+  clienteId          String   @unique @map("cliente_id")
+  classificacao      String // CLIENTE | FORNECEDOR | CLIENTE_FORNECEDOR
+  atualizadoPorTipo  String   @default("usuario") @map("atualizado_por_tipo") // usuario | agente
+  atualizadoPorId    String?  @map("atualizado_por_id")
+  atualizadoPorNome  String?  @map("atualizado_por_nome")
+  origem             String   @default("app") // app | api_agente
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  @@map("cliente_classificacao")
 }
 
 // Situação do WhatsApp do cadastro (Telefone_Celular) em tabela lateral — a `clientes`

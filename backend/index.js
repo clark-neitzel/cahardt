@@ -174,6 +174,7 @@ app.use('/api/notas-fiscais', authMiddleware, notasFiscaisRoutes); // NF-e emiti
 app.use('/api/canhotos', authMiddleware, canhotoRoutes); // Canhoto da NF assinado (bipe da DANFE, arquivo do mês)
 app.use('/api/produtos', authMiddleware, produtoRoutes);
 app.use('/api/clientes', authMiddleware, clienteRoutes);
+app.use('/api/cadastro-pendencias', authMiddleware, require('./routes/cadastroPendenciasRoutes')); // cadastros pra acertar + fila de inativação (pedidos dos agentes)
 app.use('/api/inadimplencia', authMiddleware, require('./routes/inadimplenciaRoutes')); // Inadimplência visível: config (selo, carência, trava)
 app.use('/api/setores', authMiddleware, require('./routes/setores')); // Cadastro de Setores (Como Fazer / ficha do funcionário)
 app.use('/api/cidades', authMiddleware, require('./routes/cidades')); // Lista canônica de cidades (dropdowns) — padronização de grafia
@@ -302,6 +303,16 @@ const startServer = async () => {
                 require('./services/gpsClientesService').aplicarPendenciasLegadas()
                     .catch(e => console.error('[GpsClientes] migração de pendências legadas:', e.message));
             }, 10000);
+
+            // Copia os telefones já cadastrados para contatos sem nome (uma vez).
+            // db push cria a tabela e não roda INSERT — a cópia mora no boot.
+            setTimeout(() => {
+                require('./services/clienteContatoService').migrarTelefonesExistentes()
+                    .then((r) => {
+                        if (!r?.jaFeito) console.log(`[ClienteContato] migração: ${r.criados} contato(s) a partir de ${r.vistos} cliente(s)`);
+                    })
+                    .catch((e) => console.error('[ClienteContato] migração dos telefones falhou:', e.message));
+            }, 8000);
         });
     } catch (error) {
         console.error('Erro fatal ao iniciar servidor:', error);

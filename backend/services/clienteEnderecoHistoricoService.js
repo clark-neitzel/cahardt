@@ -421,6 +421,11 @@ const restaurar = async (uuid, eventoId, { lado = 'antes', partes = 'tudo', auto
     }
 
     const depois = await foto(uuid);
+    // Histórico de alterações do cliente: só o texto (o ponto é registrado pelo serviço de GPS)
+    await require('./clienteHistoricoService').registrarDiff({
+        clienteId: uuid, ator: autor, tela: 'Endereço > restaurar versão anterior',
+        antes, depois, campos: CAMPOS_TEXTO
+    });
     const novoId = await registrar({
         clienteUuid: uuid, antes, depois, tipo: 'RESTAURACAO', origem: 'RESTAURAR',
         autor, posicaoAutor, gpsLogId, autorizadoPorNome,
