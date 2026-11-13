@@ -350,6 +350,29 @@ model ClienteContato {
   @@map("cliente_contatos")
 }
 
+// Histórico de alterações do cliente (auditoria — só INSERT/SELECT, sem rota de edição).
+// Uma linha por campo que mudou. SEM FK para `clientes` de propósito: o histórico
+// sobrevive mesmo se o cadastro for apagado, e nenhuma coluna entra em `clientes`.
+model ClienteAlteracao {
+  id          String   @id @default(uuid())
+  clienteId   String   @map("cliente_id")
+  entidade    String   @default("cliente") // cliente | contato
+  entidadeId  String?  @map("entidade_id") // id do contato quando entidade = contato
+  acao        String   @default("alterado") // criado | alterado | excluido
+  campo       String
+  valorAntigo String?  @map("valor_antigo") @db.Text
+  valorNovo   String?  @map("valor_novo") @db.Text
+  autorTipo   String   @map("autor_tipo") // usuario | agente | sistema
+  autorId     String?  @map("autor_id")
+  autorNome   String   @map("autor_nome")
+  origem      String   // app | api_agente | sistema
+  tela        String?  // tela/rota de origem (ex.: CARTEIRA, mapa-clientes)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([clienteId, createdAt])
+  @@map("cliente_alteracoes")
+}
+
 // Situação do WhatsApp do cadastro (Telefone_Celular) em tabela lateral — a `clientes`
 // está no teto de 1600 colunas do Postgres, mesma razão da ClienteFiscal. NENHUMA coluna
 // nova entra em `clientes`: a FK fica aqui.
