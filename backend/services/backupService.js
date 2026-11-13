@@ -29,6 +29,7 @@ const path = require('path');
 const { execFile } = require('child_process');
 const prisma = require('../config/database');
 const gdrive = require('./googleDriveService');
+const backupLock = require('./backupLock');
 
 const UPLOADS_DIR = path.join(__dirname, '../uploads'); // → /app/uploads (volume persistente)
 const PASTA_RAIZ_NOME = 'Backup Sistema Hardt';
@@ -37,7 +38,6 @@ const RETENCAO_DIARIO_QTD = 60;
 const RETENCAO_ARQUIVOS_QTD = 30;
 const FALHAS_PARA_ALERTAR = 3;
 
-let _rodandoBanco = false;
 let _rodandoUploads = false;
 
 // ── Data/hora no fuso de São Paulo (o container roda em UTC) ─────────────────
@@ -177,8 +177,8 @@ async function executarBackupBanco() {
         console.log('[Backup] ambiente local (banco em localhost) — backup do banco NÃO enviado ao Drive.');
         return { ok: false, pulado: true, motivo: 'ambiente local' };
     }
-    if (_rodandoBanco) return { ok: false, motivo: 'ja_rodando' };
-    _rodandoBanco = true;
+    // Mesma trava do download do Luke: um pg_dump por vez.
+    if (!backupLock.tentar('automatico')) return { ok: false, motivo: 'ja_rodando' };
     const inicio = Date.now();
     const status = await lerStatus();
     status.banco = status.banco || {};
@@ -233,7 +233,7 @@ async function executarBackupBanco() {
         return { ok: false, erro: e.message };
     } finally {
         if (tmp) { try { fs.unlinkSync(tmp); } catch { /* já foi */ } }
-        _rodandoBanco = false;
+        backupLock.liberar('automatico');
     }
 }
 
