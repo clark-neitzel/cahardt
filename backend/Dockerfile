@@ -1,11 +1,11 @@
 # Build Stage - Cache Bust 2026-02-10
 FROM node:20-alpine
 
-# pg_dump p/ o backup automático do banco (backupService). Tenta a versão mais
-# nova disponível no Alpine desta imagem; pg_dump novo lê servidor antigo.
-RUN apk add --no-cache postgresql17-client \
-    || apk add --no-cache postgresql16-client \
-    || apk add --no-cache postgresql15-client
+# pg_dump do backup automático e do GET /api/analytics/v1/backup.
+# O Postgres do serviço hardtapp é 17 (backend/docs/backup-restauracao.md).
+# pg_dump mais antigo recusa o servidor ("server version mismatch"). Sem
+# fallback: uma imagem com o client 16 subiria e o backup falharia em silêncio.
+RUN apk add --no-cache postgresql17-client
 
 WORKDIR /app
 

@@ -10,6 +10,7 @@
 | Arquivos (`backend/uploads`: PDFs, XMLs, fotos, certificado) | 1x/dia (madrugada) | `Backup Sistema Hardt/Arquivos/` | últimos 30 dias |
 
 - Código: `backend/services/backupService.js`; agendamento em `backend/workers/scheduler.js` (job 12).
+- O download do agente Luke (`GET /api/analytics/v1/backup`, ver `docs/analytics-api.md`) usa a **mesma trava**: enquanto um dos dois está no `pg_dump`, o outro espera (o automático pula a rodada; o Luke recebe 409).
 - Conta do Drive: a mesma já conectada para os XMLs da contabilidade (`app_configs.gdrive_config`).
   A pasta raiz pode ser trocada com a chave `backupPastaId` dentro dessa config.
 - Status na tela **Configurações → Backup automático** (rota `GET /api/config/backup/status`).

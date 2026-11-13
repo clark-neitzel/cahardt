@@ -2,8 +2,10 @@
 // Não usa o JWT do app. Não envia WhatsApp. Não grava pedido nem financeiro.
 const express = require('express');
 const { verificarChaveAnalytics } = require('../middlewares/analyticsAuth');
+const { exigirBackup } = require('../middlewares/analyticsBackupAuth');
 const consulta = require('../services/analyticsConsultaService');
 const registro = require('../services/analyticsRegistroService');
+const backup = require('../services/analyticsBackupService');
 
 const router = express.Router();
 
@@ -33,6 +35,26 @@ router.get('/v1/status', (req, res) => {
         whatsapp: false,
         escreve: ['atendimentos', 'leads', 'sugestoes'],
     });
+});
+
+// Dump completo do Postgres, em stream. Chave extra (BACKUP_API_KEY) + agente luke.
+// Não usa asyncRoute: o corpo é binário, e um 500 precisa ir com codigo sem
+// repetir o stderr do pg_dump (pode citar a senha se a gente escorregar).
+router.get('/v1/backup', (req, res) => {
+    Promise.resolve()
+        .then(async () => {
+            exigirBackup(req);
+            await backup.executar(req, res);
+        })
+        .catch((err) => {
+            const status = Number(err?.status) || 500;
+            if (!err?.codigo) console.error('[Analytics][Backup]', err?.message || err);
+            if (res.headersSent || res.writableEnded || res.destroyed) return;
+            res.status(status).json({
+                error: status >= 500 && !err?.codigo ? 'Erro interno.' : (err?.message || 'Erro.'),
+                codigo: err?.codigo || 'ERRO',
+            });
+        });
 });
 
 router.get('/v1/carteira', asyncRoute(async (req, res) => {
