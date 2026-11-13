@@ -17,7 +17,7 @@ A chave vai **somente** no header `x-analytics-key`. Se ela for na URL (`?x-anal
 
 Em toda **escrita**, mande também `x-analytics-agent` com o nome do agente (até 80 caracteres). É o que fica na auditoria (`audit_logs`: ação, id, data e o nome do agente).
 
-Limite: 300 chamadas certas por minuto, e 30 chaves erradas por minuto no mesmo IP. Acima disso, 429.
+Limite: 300 chamadas certas por minuto, e 30 chaves erradas por minuto no mesmo IP. Acima disso, 429. O backup do banco (seção abaixo) conta como uma chamada, e além disso só roda um por vez.
 
 Base (produção): `https://<host-do-backend>/api/analytics/v1`
 
@@ -674,6 +674,127 @@ Depois que o pedido é decidido, a Ana pode pedir de novo (vira um pedido novo).
 
 Só leitura. Filtros: `status` = `pendente` (padrão), `aprovada`, `recusada` ou `todas`; `clienteId`; `page`, `limit` (padrão 50, máx. 100). Pendentes vêm do mais antigo; os demais, do mais novo. Cada item tem o formato de `solicitacao` acima; depois de decidido traz `decididoPor: { id, nome }`, `decididoEm` e `observacaoDecisao`. Erro: 400 `STATUS_INVALIDO`.
 
+## Backup do banco — `GET /v1/backup`
+
+Download **somente leitura** do Postgres inteiro, para o agente **Luke** gravar no Google Drive do dono. O formato é o custom do `pg_dump` (`-Fc`, já comprimido). Esse formato precisa reescrever o índice no fim do arquivo, então o servidor grava um temporário em `/tmp`, e **só se o `pg_dump` terminar bem** esse arquivo é enviado em stream, com `Content-Length`. O Node não carrega o dump na memória. O temporário é apagado quando o download acaba (ou se o `pg_dump` falhar — aí a resposta é JSON de erro, não um arquivo cortado). O pico de disco no container é o tamanho do dump (algumas centenas de MB).
+
+Isto é separado do backup automático de 15 minutos (`backend/services/backupService.js`), que sobe o arquivo pela conta do Drive ligada nas Configurações. Esta rota não usa essa conta: quem grava no Drive é o Luke, do lado dele.
+
+### Por que duas chaves
+
+`ANALYTICS_API_KEY` é a chave de todos os agentes de venda. O dump é o banco inteiro (clientes, financeiro, configurações). Se essa chave vazar, ela **não** pode baixar o banco. A rota exige as três coisas:
+
+| Header | Valor |
+|---|---|
+| `x-analytics-key` | `ANALYTICS_API_KEY` (a mesma das outras rotas) |
+| `x-backup-key` | `BACKUP_API_KEY` (só desta rota) |
+| `x-analytics-agent` | `luke` (maiúsculas não importam) |
+
+`x-analytics-agent` **não é senha** — qualquer um pode escrever o header. Quem tranca é a `BACKUP_API_KEY`. O nome fica no log e na auditoria para saber quem pediu.
+
+Sem `BACKUP_API_KEY` no ambiente, a rota responde **503** (`BACKUP_NAO_CONFIGURADO`) e não chama o `pg_dump`. O resto da API de analytics continua igual.
+
+As duas chaves vão **só no header**. Na URL (`?x-backup-key=` ou `?backup_key=`), a API recusa (400): o servidor anota a URL no log.
+
+### EasyPanel
+
+No serviço **hardt-backend**, aba Environment, crie `BACKUP_API_KEY` com uma senha longa sorteada (40 caracteres ou mais), **diferente** da `ANALYTICS_API_KEY` e do `ADMIN_SECRET`. Não commite, não cole em chat e não use em print. Salve e faça o deploy. Sem essa variável o backup por esta rota fica desligado.
+
+Não é preciso variável nova para o `pg_dump`: o `backend/Dockerfile` instala `postgresql17-client`. Não há Nixpacks neste repositório; o build do backend é o Dockerfile.
+
+### O que volta
+
+Sucesso: **200**, corpo binário, sem JSON. `Content-Length` é o tamanho do arquivo — se o download cair no meio, o cliente consegue ver que veio menos byte do que o prometido.
+
+| Header | |
+|---|---|
+| `Content-Type` | `application/octet-stream` |
+| `Content-Disposition` | `attachment; filename="hardt-banco-AAAA-MM-DD-HHMM.dump"` |
+| `X-Backup-Formato` | `pg_dump-custom` |
+
+O nome usa o fuso de São Paulo (data e hora). O formato é o custom do Postgres (`pg_dump --format=custom --no-owner --no-privileges`), o mesmo do backup automático.
+
+Enquanto um dump está rodando (este ou o automático de 15 min), a próxima chamada recebe **409** `BACKUP_EM_ANDAMENTO`. Não há fila. Chave de backup errada: **401**, e 20 erros no mesmo IP por minuto passam a **429**. Agente que não é o luke: **403**.
+
+O `pg_dump` tem 20 minutos para terminar. Se passar disso, a conexão cai e a resposta não é um arquivo válido.
+
+O log do servidor anota início e fim: agente, horário, nome do arquivo, tamanho em bytes e duração. A auditoria (`audit_logs`, ação `BACKUP_BANCO`, usuário `luke`) guarda o mesmo, sem o conteúdo do arquivo. A senha do banco não entra no log, na auditoria nem na resposta. O `pg_dump` recebe a senha por variável de ambiente, não pela linha de comando.
+
+### Versão do Postgres
+
+O serviço **hardtapp** é Postgres **17** (conferido em 28/07/2026; ver `backend/docs/backup-restauracao.md`). O `pg_dump` precisa ser **17 ou mais novo** — o 16 falha com `server version mismatch` / `unsupported version`. A rota lê as duas versões antes de começar e, se o client for mais antigo que o servidor, responde **503** `VERSAO_INCOMPATIVEL` e não gera arquivo.
+
+Como conferir depois do deploy, sem baixar o banco:
+
+```bash
+# dentro do container do hardt-backend
+pg_dump --version
+
+# as duas versões juntas (pg_dump e o servidor), pela rota que já existe
+curl -s -H "x-admin-secret: $ADMIN_SECRET" \
+  "https://<host>/api/admin-exec/diag-backup"
+```
+
+No JSON, `pgDump` é a versão do client e `servidor` é o `SELECT version()` do hardtapp. O número maior do client tem que ser igual ou maior que o do servidor.
+
+### Pedir o arquivo
+
+```bash
+curl -fS --retry 0 \
+  -H "x-analytics-key: $ANALYTICS_API_KEY" \
+  -H "x-backup-key: $BACKUP_API_KEY" \
+  -H "x-analytics-agent: luke" \
+  -o hardt-banco.dump \
+  "https://<host>/api/analytics/v1/backup"
+```
+
+Não use `curl -v` em log compartilhado: o `-v` imprime os headers, inclusive as chaves.
+
+Só fique com o arquivo se o `curl` terminar com código 0. Se a conexão cair no meio, o curl sai com erro e o arquivo está incompleto — apague e peça de novo. Um 200 com fim limpo é o que vale. Antes de subir para o Drive, confira o arquivo:
+
+```bash
+pg_restore --list hardt-banco.dump >/dev/null
+```
+
+Se esse comando falhar, o dump está cortado ou corrompido. Não suba para o Drive no lugar de um backup bom.
+
+Um banco de algumas centenas de MB pode levar minutos. Se o proxy do EasyPanel cortar a resposta no meio (download que para sempre no mesmo ponto), aumente o tempo de resposta do serviço **hardt-backend**. A rota manda `X-Accel-Buffering: no` para o proxy não segurar o arquivo inteiro.
+
+### Restaurar (`pg_restore`)
+
+O `pg_restore` tem que ser **17 ou mais novo**, igual ao `pg_dump` que gerou o arquivo. No Mac: `brew install postgresql@17` e use `/opt/homebrew/opt/postgresql@17/bin/pg_restore`. Restaure num banco **vazio**. Não restaure por cima de um banco que ainda tem dado que importa.
+
+```bash
+createdb hardt_restaurado
+pg_restore --no-owner --no-privileges --exit-on-error \
+  -d hardt_restaurado hardt-banco-2026-11-13-1230.dump
+psql hardt_restaurado -c "SELECT count(*) FROM pedidos;"
+```
+
+`--no-owner --no-privileges` (na geração e aqui) deixa restaurar com qualquer usuário. Para voltar a produção, aponte a `DATABASE_URL` do backend para esse banco, ou restaure num Postgres novo e vazio e reinicie o backend. O passo a passo do backup automático está em `backend/docs/backup-restauracao.md`.
+
+### Erros desta rota
+
+| HTTP | codigo | quando |
+|---|---|---|
+| 400 | `CHAVE_NA_URL` | chave na query string |
+| 401 | `CHAVE_INVALIDA` | `x-analytics-key` errada |
+| 401 | `BACKUP_CHAVE_INVALIDA` | `x-backup-key` errada |
+| 403 | `AGENTE_NAO_AUTORIZADO` | header do agente não é `luke` |
+| 409 | `BACKUP_EM_ANDAMENTO` | já existe um `pg_dump` rodando |
+| 429 | `LIMITE` | muitas chaves de backup erradas |
+| 503 | `BACKUP_NAO_CONFIGURADO` | falta `BACKUP_API_KEY` |
+| 503 | `BANCO_NAO_CONFIGURADO` | falta `DATABASE_URL` ou ela não é um endereço Postgres |
+| 503 | `PG_DUMP_INDISPONIVEL` | a imagem não tem `pg_dump` |
+| 503 | `VERSAO_INCOMPATIVEL` | `pg_dump` mais antigo que o servidor |
+| 503 | `BANCO_INDISPONIVEL` | não deu para ler a versão do servidor |
+| 504 | `BACKUP_TIMEOUT` | passou de 20 minutos sem produzir o arquivo |
+| 500 | `BACKUP_FALHOU` | `pg_dump` falhou antes de enviar bytes |
+
+A mensagem de erro não traz senha, connection string nem o texto cru do `pg_dump`.
+
+---
+
 ## O que esta API não faz
 
 - Não inativa cliente: só **pede** a inativação (`POST /v1/clientes/:id/inativacao`); a decisão é de uma pessoa no app.
@@ -681,5 +802,5 @@ Só leitura. Filtros: `status` = `pendente` (padrão), `aprovada`, `recusada` ou
 - Não envia WhatsApp, boleto, Pix nem e-mail.
 - Não cria, edita ou cancela pedido, nota ou devolução.
 - Não dá baixa, não estorna e não concilia.
-- Não executa SQL nem código enviado pelo chamador.
+- Não executa SQL nem código enviado pelo chamador. O backup é um `pg_dump` fixo, só leitura — não aceita comando, filtro nem nome de tabela na URL.
 - Não devolve senha, token, certificado ou a própria chave.
