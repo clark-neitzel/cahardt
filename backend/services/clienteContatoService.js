@@ -103,24 +103,29 @@ async function buscarPorTelefone(telefoneRaw) {
     if (!info) {
         throw erro(400, 'Telefone inválido. Informe DDD + número (com ou sem 55, com ou sem o 9).', 'TELEFONE_INVALIDO');
     }
-    const rows = await prisma.clienteContato.findMany({
-        where: { telefoneChave: info.chave },
-        include: { cliente: { select: SEL_CLIENTE } },
-    });
-    let data;
-    if (rows.length) {
-        const map = new Map();
-        for (const row of rows) {
-            if (!row.cliente) continue;
-            const id = row.cliente.UUID;
-            if (!map.has(id)) map.set(id, { cliente: row.cliente, contatos: [] });
-            map.get(id).contatos.push(row);
-        }
-        data = [...map.values()].map((g) => regras.montarBlocoCliente(g.cliente, g.contatos, { telefoneNoCadastro: false }));
-    } else {
-        const legado = await clientesDoCadastroPorChave(info.chave);
-        data = legado.map((c) => regras.montarBlocoCliente(c, [], { telefoneNoCadastro: true }));
+    // As duas fontes juntas. Se a busca parasse no primeiro contato, um segundo
+    // cliente com o mesmo número só no cadastro (migração no meio, contato apagado
+    // na ficha, telefone gravado por fora) sumiria — e a Ana escolheria a empresa errada.
+    const [rows, legado] = await Promise.all([
+        prisma.clienteContato.findMany({
+            where: { telefoneChave: info.chave },
+            include: { cliente: { select: SEL_CLIENTE } },
+        }),
+        clientesDoCadastroPorChave(info.chave),
+    ]);
+    const map = new Map();
+    for (const row of rows) {
+        if (!row.cliente) continue;
+        const id = row.cliente.UUID;
+        if (!map.has(id)) map.set(id, { cliente: row.cliente, contatos: [] });
+        map.get(id).contatos.push(row);
     }
+    for (const c of legado) {
+        if (!map.has(c.UUID)) map.set(c.UUID, { cliente: c, contatos: [] });
+    }
+    const data = [...map.values()].map((g) => regras.montarBlocoCliente(g.cliente, g.contatos, {
+        telefoneNoCadastro: g.contatos.length === 0,
+    }));
     data.sort((a, b) => {
         if (a.ativo !== b.ativo) return a.ativo ? -1 : 1;
         return String(a.nome || '').localeCompare(String(b.nome || ''), 'pt');
@@ -128,84 +133,101 @@ async function buscarPorTelefone(telefoneRaw) {
     return { telefone: info.telefone, chave: info.chave, encontrados: data.length, data };
 }
 
+function enriquecerInformeNome(e) {
+    if (e?.codigo === 'INFORME_O_NOME' && Array.isArray(e.contatos)) {
+        e.contatos = e.contatos.map(regras.serializarContato);
+        e.pessoas = e.contatos.filter((c) => c.nome);
+    }
+    return e;
+}
+
 async function gravar(clienteId, body, ator) {
     const cliente = await exigirCliente(clienteId);
     const entrada = regras.lerEntrada(body, { telefoneObrigatorio: true });
-    const existentes = await prisma.clienteContato.findMany({
-        where: { clienteUuid: cliente.UUID, telefoneChave: entrada.telefone.valor.chave },
-    });
-    let decisao;
-    try {
-        decisao = regras.decidirGravacao(existentes, entrada);
-    } catch (e) {
-        if (e.codigo === 'INFORME_O_NOME' && Array.isArray(e.contatos)) {
-            e.contatos = e.contatos.map(regras.serializarContato);
-            e.pessoas = e.contatos.filter((c) => c.nome);
-        }
-        throw e;
-    }
     const quem = rotuloAtor(ator);
-    if (decisao.acao === 'criar') {
+    // Duas Anas podem aprender nomes diferentes ao mesmo tempo no contato sem nome.
+    // Quem chega depois não sobrescreve: a linha só é preenchida se ainda estiver
+    // sem nome. Se outra pessoa já tomou a vaga, a decisão é refeita.
+    for (let tentativa = 0; tentativa < 3; tentativa++) {
+        const existentes = await prisma.clienteContato.findMany({
+            where: { clienteUuid: cliente.UUID, telefoneChave: entrada.telefone.valor.chave },
+        });
+        let decisao;
         try {
-            const row = await prisma.clienteContato.create({
-                data: {
-                    id: crypto.randomUUID(),
-                    clienteUuid: cliente.UUID,
-                    ...decisao.dados,
-                    origem: ator?.agente ? 'AGENTE' : 'CADASTRO',
-                    criadoPor: quem,
-                    atualizadoPor: quem,
-                },
-            });
-            await auditar('CONTATO_CRIADO', row.id, resumir(row), ator);
+            decisao = regras.decidirGravacao(existentes, entrada);
+        } catch (e) {
+            throw enriquecerInformeNome(e);
+        }
+        if (decisao.acao === 'criar') {
+            try {
+                const row = await prisma.clienteContato.create({
+                    data: {
+                        id: crypto.randomUUID(),
+                        clienteUuid: cliente.UUID,
+                        ...decisao.dados,
+                        origem: ator?.agente ? 'AGENTE' : 'CADASTRO',
+                        criadoPor: quem,
+                        atualizadoPor: quem,
+                    },
+                });
+                await auditar('CONTATO_CRIADO', row.id, resumir(row), ator);
+                return {
+                    status: 201,
+                    contato: regras.serializarContato(row),
+                    criado: true,
+                    atualizado: false,
+                    aprendeuNome: false,
+                    agente: ator?.agente || null,
+                };
+            } catch (e) {
+                if (e.code === 'P2002') continue;
+                throw e;
+            }
+        }
+        if (decisao.aprendeuNome) {
+            let claimed;
+            try {
+                claimed = await prisma.clienteContato.updateMany({
+                    where: { id: decisao.id, nomeChave: '' },
+                    data: { ...decisao.dados, atualizadoPor: quem },
+                });
+            } catch (e) {
+                if (e.code === 'P2002') continue;
+                throw e;
+            }
+            if (!claimed || claimed.count !== 1) continue;
+            const row = await prisma.clienteContato.findUnique({ where: { id: decisao.id } });
+            if (!row) continue;
+            await auditar('CONTATO_ATUALIZADO', row.id, { ...resumir(row), aprendeuNome: true }, ator);
             return {
-                status: 201,
+                status: 200,
                 contato: regras.serializarContato(row),
-                criado: true,
-                atualizado: false,
+                criado: false,
+                atualizado: true,
+                aprendeuNome: true,
+                agente: ator?.agente || null,
+            };
+        }
+        try {
+            const row = await prisma.clienteContato.update({
+                where: { id: decisao.id },
+                data: { ...decisao.dados, atualizadoPor: quem },
+            });
+            await auditar('CONTATO_ATUALIZADO', row.id, { ...resumir(row), aprendeuNome: false }, ator);
+            return {
+                status: 200,
+                contato: regras.serializarContato(row),
+                criado: false,
+                atualizado: true,
                 aprendeuNome: false,
                 agente: ator?.agente || null,
             };
         } catch (e) {
-            if (e.code !== 'P2002') throw e;
-            const deNovo = await prisma.clienteContato.findMany({
-                where: { clienteUuid: cliente.UUID, telefoneChave: entrada.telefone.valor.chave },
-            });
-            let segunda;
-            try {
-                segunda = regras.decidirGravacao(deNovo, entrada);
-            } catch (err) {
-                if (err.codigo === 'INFORME_O_NOME' && Array.isArray(err.contatos)) {
-                    err.contatos = err.contatos.map(regras.serializarContato);
-                    err.pessoas = err.contatos.filter((c) => c.nome);
-                }
-                throw err;
-            }
-            if (segunda.acao !== 'atualizar') {
-                throw erro(409, 'Já existe uma pessoa com esse nome neste WhatsApp.', 'CONTATO_REPETIDO');
-            }
-            decisao = segunda;
+            if (e.code === 'P2002') continue;
+            throw e;
         }
     }
-    let row;
-    try {
-        row = await prisma.clienteContato.update({
-            where: { id: decisao.id },
-            data: { ...decisao.dados, atualizadoPor: quem },
-        });
-    } catch (e) {
-        if (e.code === 'P2002') throw erro(409, 'Já existe uma pessoa com esse nome neste WhatsApp.', 'CONTATO_REPETIDO');
-        throw e;
-    }
-    await auditar('CONTATO_ATUALIZADO', row.id, { ...resumir(row), aprendeuNome: !!decisao.aprendeuNome }, ator);
-    return {
-        status: 200,
-        contato: regras.serializarContato(row),
-        criado: false,
-        atualizado: true,
-        aprendeuNome: !!decisao.aprendeuNome,
-        agente: ator?.agente || null,
-    };
+    throw erro(409, 'Não deu para gravar o contato agora. Tente de novo.', 'CONTATO_EM_DISPUTA');
 }
 
 async function atualizar(contatoId, body, ator, clienteId) {

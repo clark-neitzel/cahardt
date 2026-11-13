@@ -326,7 +326,7 @@ Lista as pessoas daquele cliente. `falarCom` é quem tem nome **e** a conversa m
 
 Acha o cliente e os contatos daquele número. Não exige `x-analytics-agent` (é leitura).
 
-- Se o número está em mais de um cliente, `encontrados` vem maior que 1. **Não escolha um.** Pergunte de qual empresa se trata.
+- Se o número está em mais de um cliente, `encontrados` vem maior que 1. **Não escolha um.** Pergunte de qual empresa se trata. A busca junta contato e telefone do cadastro: um cliente que só tem o número no cadastro (contato apagado, migração no meio, telefone gravado por fora) continua na lista, com `telefoneNoCadastro: true`.
 - `falarCom` olha só as pessoas **daquele** número.
 - `telefoneNoCadastro: true` e `total: 0`: o número está no cadastro da empresa, mas ainda não há linha de contato (a cópia do boot não rodou, ou o número entrou por fora). A Ana pergunta quem é e grava com o POST abaixo. Esta leitura **não cria** contato.
 

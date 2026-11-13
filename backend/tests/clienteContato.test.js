@@ -85,7 +85,7 @@ test('falarCom é a última pessoa com nome e conversa registrada', () => {
     assert.equal(regras.escolherFalarCom([{ nome: 'Maria', ultimoContatoEm: null }]), null);
 });
 
-function memoria() {
+function memoria({ clientesExtra = [], aoUpdateMany = null } = {}) {
     const clientes = [{
         UUID: 'cli-1',
         Nome: 'Padaria do Zé Ltda',
@@ -97,7 +97,7 @@ function memoria() {
         Telefone_Celular: '47911112222',
         Telefone_Comercial: null,
         whatsapp: null,
-    }];
+    }, ...clientesExtra];
     const contatos = [];
     const audits = [];
     const combina = (row, where) => {
@@ -140,6 +140,16 @@ function memoria() {
                 if (!row) { const e = new Error('não achei'); e.code = 'P2025'; throw e; }
                 Object.assign(row, data, { updatedAt: new Date() });
                 return { ...row };
+            },
+            updateMany: async ({ where, data }) => {
+                if (aoUpdateMany) {
+                    const desviou = await aoUpdateMany(contatos, where, data);
+                    if (desviou) return desviou;
+                }
+                const row = contatos.find((c) => c.id === where.id && c.nomeChave === where.nomeChave);
+                if (!row) return { count: 0 };
+                Object.assign(row, data, { updatedAt: new Date() });
+                return { count: 1 };
             },
         },
         auditLog: {
@@ -273,6 +283,82 @@ test('API: aprende o nome, acha com e sem 55/9, registra a conversa e não apaga
         });
         assert.equal(sumiu.status, 404);
         assert.equal(sumiu.body.codigo, 'NAO_ENCONTRADO');
+    } finally {
+        await close();
+    }
+});
+
+test('busca devolve os dois clientes quando só um tem contato para o número', async () => {
+    const mem = memoria({
+        clientesExtra: [{
+            UUID: 'cli-2',
+            Nome: 'Mercado da Esquina Ltda',
+            NomeFantasia: 'Mercado da Esquina',
+            Ativo: true,
+            End_Cidade: 'Blumenau',
+            End_Estado: 'SC',
+            Telefone: null,
+            Telefone_Celular: '47999998888',
+            Telefone_Comercial: null,
+            whatsapp: null,
+        }],
+    });
+    const { close, request } = await startTestServer(appCom(mem));
+    try {
+        const criado = await request('POST', '/api/analytics/v1/clientes/cli-1/contatos', {
+            headers: AGENTE,
+            body: { nome: 'Maria', telefone: '47999998888' },
+        });
+        assert.equal(criado.status, 201);
+        const busca = await request('GET', '/api/analytics/v1/contatos/por-telefone?telefone=5547999998888', {
+            headers: { 'x-analytics-key': CHAVE },
+        });
+        assert.equal(busca.status, 200);
+        assert.equal(busca.body.encontrados, 2);
+        const ze = busca.body.data.find((c) => c.clienteId === 'cli-1');
+        const mercado = busca.body.data.find((c) => c.clienteId === 'cli-2');
+        assert.equal(ze.pessoas[0].nome, 'Maria');
+        assert.equal(ze.telefoneNoCadastro, false);
+        assert.equal(mercado.total, 0);
+        assert.equal(mercado.telefoneNoCadastro, true);
+        assert.equal(mercado.perguntarQuem, true);
+    } finally {
+        await close();
+    }
+});
+
+test('dois nomes ao mesmo tempo não sobrescrevem o contato sem nome', async () => {
+    let disputa = true;
+    const mem = memoria({
+        aoUpdateMany: async (contatos, where) => {
+            if (!disputa) return null;
+            disputa = false;
+            const row = contatos.find((c) => c.id === where.id);
+            if (!row) return { count: 0 };
+            // A outra gravação chegou antes e deu nome à linha.
+            row.nome = 'João';
+            row.nomeChave = 'joao';
+            row.atualizadoPor = 'outra';
+            return { count: 0 };
+        },
+    });
+    const { close, request } = await startTestServer(appCom(mem));
+    try {
+        const semNome = await request('POST', '/api/analytics/v1/clientes/cli-1/contatos', {
+            headers: AGENTE,
+            body: { telefone: '47999998888' },
+        });
+        assert.equal(semNome.status, 201);
+        const maria = await request('POST', '/api/analytics/v1/clientes/cli-1/contatos', {
+            headers: AGENTE,
+            body: { nome: 'Maria', telefone: '47999998888', papel: 'dona' },
+        });
+        assert.equal(maria.status, 201);
+        assert.equal(maria.body.criado, true);
+        assert.equal(maria.body.contato.nome, 'Maria');
+        assert.notEqual(maria.body.contato.id, semNome.body.contato.id);
+        const nomes = mem.contatos.map((c) => c.nome).sort();
+        assert.deepEqual(nomes, ['João', 'Maria']);
     } finally {
         await close();
     }
