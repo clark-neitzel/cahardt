@@ -31,7 +31,7 @@ curl -s -H "x-analytics-key: $ANALYTICS_API_KEY" \
 Resposta:
 
 ```json
-{ "ok": true, "versao": "1", "whatsapp": false, "escreve": ["atendimentos", "leads", "sugestoes", "contatos", "inativacoes"] }
+{ "ok": true, "versao": "1", "whatsapp": false, "escreve": ["atendimentos", "leads", "sugestoes", "contatos", "inativacoes", "classificacoes"] }
 ```
 
 Erros: `{ "error": "mensagem", "codigo": "CODIGO" }`. 401 chave errada, 503 variável ausente, 404 rota que não existe (pedido e financeiro não têm POST).
@@ -542,10 +542,13 @@ Só leitura. Tudo que a Ana precisa saber do cliente numa chamada.
   "ultimosPedidos": [ { "id": "UUID", "numero": 1234, "data": "2026-11-10T00:00:00.000Z", "total": 25.5, "status": "ENTREGUE", "itens": 2, "especial": false } ],
   "topProdutos90d": [ { "produtoId": "UUID", "produto": "Coxinha", "codigo": "C1", "unidade": "CX", "quantidade": 5, "vezes": 2 } ],
   "contatos": { "...": "mesmo bloco de GET /v1/clientes/:id/contatos" },
-  "cadastro": { "completo": true, "faltando": [] }
+  "cadastro": { "completo": true, "faltando": [] },
+  "classificacao": { "valor": "CLIENTE", "origem": "automatica", "...": "ver 'Classificação do cadastro'" },
+  "somenteFornecedor": false
 }
 ```
 
+- `classificacao` / `somenteFornecedor`: ver [Classificação do cadastro](#classificação-do-cadastro-cliente-fornecedor-ou-a-classificar-11-2026). **Se `somenteFornecedor` for `true`, a Ana não atende.**
 - `diaVenda` / `diaEntrega`: lista de dias (`SEG`, `TER`…); vazia = não definido.
 - `tabelaPreco` / `vendedor` / `condicaoPagamento.padrao` são `null` quando não há (ou a tabela não existe mais).
 - `ultimosPedidos`: até 5, mais novo primeiro, só pedido válido (faturado ou especial, sem cancelado nem bonificação — mesma regra de `/v1/vendas`). `status` é a situação da entrega (`PENDENTE`, `ENTREGUE`, `ENTREGUE_PARCIAL`, `DEVOLVIDO`). `total` = soma dos itens, sem descontar devolução.
@@ -558,19 +561,81 @@ curl -s -H "x-analytics-key: $ANALYTICS_API_KEY" "https://<host>/api/analytics/v
 
 #### `GET /v1/cadastros-pendentes`
 
-Clientes **ativos** com algum campo obrigatório faltando ("cadastros pra acertar"). Mais antigos por nome. Filtros: `vendedorId`, `page` (1…), `limit` (padrão 50, máx. 100).
+Cadastros **ativos**, por grupo (mais antigos por nome). Filtros: `grupo`, `vendedorId`, `page` (1…), `limit` (padrão 50, máx. 100). A paginação é feita **depois** da classificação, então `total`/`totalPages` são do grupo pedido.
+
+| `grupo` | O que lista |
+|---|---|
+| `acertar` (padrão) | Cadastros com **classificação efetiva `CLIENTE` ou `CLIENTE_FORNECEDOR`** e algum dos 4 campos obrigatórios faltando. **Fornecedor puro e "a classificar" não entram** — não são clientes incompletos. |
+| `classificar` | Cadastros com classificação efetiva `A_CLASSIFICAR` (sem contas a receber, pedidos nem contas a pagar), **estando ou não** com os 4 campos preenchidos. |
+
+Grupo desconhecido: 400 `GRUPO_INVALIDO`.
 
 ```json
 {
-  "page": 1, "limit": 50, "total": 2, "totalPages": 1,
+  "grupo": "acertar",
+  "contagens": { "acertar": 12, "classificar": 40 },
+  "page": 1, "limit": 50, "total": 12, "totalPages": 1,
   "data": [
-    { "id": "UUID", "nome": "Padaria do Zé", "cidade": "Joinville", "vendedorId": "UUID", "vendedor": "Carla",
+    { "id": "UUID", "nome": "Padaria do Zé", "cidade": "Joinville", "documento": "12345678000199",
+      "vendedorId": "UUID", "vendedor": "Carla", "perfis": ["CLIENTE"],
+      "classificacao": { "valor": "CLIENTE", "origem": "automatica", "...": "..." }, "somenteFornecedor": false,
       "completo": false, "faltando": [ { "campo": "diaEntrega", "rotulo": "Dia de entrega" } ] }
   ]
 }
 ```
 
-A equipe vê a mesma lista no app: **Clientes → Cadastros a acertar**.
+- `contagens` vem nas duas respostas e respeita o filtro `vendedorId`; `contagens.acertar` é o mesmo número do `total` de `grupo=acertar`.
+- Em `grupo=classificar`, `faltando` é só contexto (não são "clientes incompletos").
+
+A equipe vê as mesmas listas no app: **Clientes → Cadastros a acertar** (abas *Cadastros pra acertar* e *Classificar*).
+
+#### Classificação do cadastro (cliente, fornecedor ou a classificar) (11/2026)
+
+Um registro de `clientes` pode ser cliente, fornecedor, os dois, ou ainda não ter movimento (importado). `classificacao.valor`:
+
+| `valor` | Regra automática |
+|---|---|
+| `CLIENTE` | só tem contas a receber / pedidos |
+| `FORNECEDOR` | só tem contas a pagar |
+| `CLIENTE_FORNECEDOR` | tem os dois (continua sendo cliente: precisa dos 4 campos) |
+| `A_CLASSIFICAR` | não tem nenhum dos três (a equipe escolhe) |
+
+**Evidências** (calculadas ao vivo, nada é gravado):
+- `temContasReceber`: existe **qualquer** conta a receber do cliente, de qualquer status (inclusive quitada/cancelada — é histórico).
+- `temPedido`: existe pedido **não cancelado e não bonificação**. É mais largo que o "pedido válido" de `/v1/vendas` (faturado ou especial) de propósito: pedido feito e ainda não faturado já prova que é cliente; pedido só de bonificação não prova.
+- `temContasPagar`: o **documento** (CPF/CNPJ, comparado sem pontuação e com letras de CNPJ alfanumérico preservadas; documento vazio nunca casa) bate com o de um fornecedor que tenha ao menos uma conta a pagar, de qualquer status.
+- O arquivo morto de parcelas importadas do CA não entra, e o campo "perfis" do cadastro **não** decide nada (vazio vira "cliente" no mapa): `perfis` aparece só como dica.
+
+**Override manual:** a equipe (app) ou o agente (`POST` abaixo) pode fixar `CLIENTE`, `FORNECEDOR` ou `CLIENTE_FORNECEDOR`; vale por cima do automático (`origem: "manual"`). `"automatica"` desfaz. Nunca se grava `A_CLASSIFICAR`.
+
+```json
+{
+  "valor": "CLIENTE",
+  "origem": "automatica",
+  "automatica": "CLIENTE",
+  "manual": null,
+  "somenteFornecedor": false,
+  "evidencias": { "temContasReceber": true, "temPedido": true, "temContasPagar": false },
+  "perfis": ["CLIENTE"]
+}
+```
+
+- `origem`: `manual` | `automatica`. `manual` é `null` sem override. `somenteFornecedor` = (`valor` é `FORNECEDOR`). `perfis`: lista (maiúscula) do que veio no cadastro; `[]` se nada foi registrado.
+- Aparece como `classificacao` (+ `somenteFornecedor` no topo do item) em: `GET /v1/clientes/:id/ficha`, `GET /v1/cadastros-pendentes`, cada item de `GET /v1/contatos/por-telefone` (`data`) e cada item de `GET /v1/clientes` (`data`; o `clienteId` do item).
+
+**Regra para o bot:** a Ana **não atende** quando `somenteFornecedor` é `true`, e **não trata `A_CLASSIFICAR` como cliente normal** até a equipe classificar (a mudança no bot é separada; aqui só se documenta o contrato).
+
+##### `POST /v1/clientes/:id/classificacao`
+
+Exige `x-analytics-agent`. Corpo: `{ "classificacao": "CLIENTE" | "FORNECEDOR" | "CLIENTE_FORNECEDOR" | "automatica" }` (`null` também desfaz). Resposta 200: `{ "classificacao": { …objeto acima… } }`. Repetir o mesmo valor é idempotente.
+
+- Erros: 400 `CLASSIFICACAO_INVALIDA` (inclui `A_CLASSIFICAR` e corpo vazio), 400 sem o cabeçalho do agente, 400 `ID_INVALIDO`, 404 `NAO_ENCONTRADO`.
+- Cada mudança entra em `GET /v1/clientes/:id/alteracoes` (campo `classificacao`, valores como `automatica:FORNECEDOR` → `manual:CLIENTE`, tela "Cadastros pra acertar").
+
+```bash
+curl -s -X POST -H "x-analytics-key: $ANALYTICS_API_KEY" -H "x-analytics-agent: ana" -H "content-type: application/json" \
+  -d '{"classificacao":"FORNECEDOR"}' "https://<host>/api/analytics/v1/clientes/UUID/classificacao"
+```
 
 #### `POST /v1/clientes/:id/inativacao`
 
