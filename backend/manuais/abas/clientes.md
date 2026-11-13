@@ -379,3 +379,13 @@ Cada vez que o endereço do cliente é salvo, o sistema guarda **quem mudou, qua
 ## Selo Matriz / Filial (10/2026)
 
 Na lista de clientes (tabela no computador e cartão no celular) e no cabeçalho do cadastro do cliente aparece, ao lado do nome/CNPJ, um selo pequeno: **Matriz** (verde) ou **Filial** (âmbar). Não é um campo cadastrado: o sistema olha a **ordem do CNPJ** (os 4 caracteres depois da barra, ex.: 08.766.459/**0001**-02). Ordem **0001 = Matriz**; qualquer outra (0002, 0003…) = **Filial**. Cliente com CPF, sem documento ou com CNPJ inválido não mostra selo. Para mudar, só corrigindo o CNPJ do cadastro.
+
+## Aba Alterações — histórico do cadastro (11/2026)
+
+Na ficha do cliente existe a aba **Alterações** (só aparece para quem edita clientes: `clientes.edit`, `Pode_Editar_GPS` ou admin). Ela lista, do mais novo para o mais antigo, **tudo que mudou naquele cadastro**: data e hora (horário de Brasília), **quem** mexeu, **de onde** (aplicativo — com a tela, como Carteira, Mapa de clientes, edição em lote — ou agente/API, como a Ana ou o Luke), qual campo e o **antes → depois**.
+
+- Registra os campos do cadastro (nome, documento, contatos, endereço, ponto no mapa, vendedor, tipo de cliente, dia de venda/entrega, ciclo, observações, ativo/inativo, WhatsApps, IE, perfil fornecedor), a criação do cadastro e as **Pessoas do WhatsApp** (adicionar, editar, apagar, última conversa).
+- Só entra o que realmente mudou: salvar sem mexer em nada não gera linha. Textos muito longos aparecem cortados. Senhas, chaves e certificados nunca são gravados.
+- Ninguém edita nem apaga um registro do histórico — nem o administrador. A lista tem "Carregar mais" quando passa de 30 linhas.
+- Só passa a valer **a partir da publicação**: mudanças antigas não aparecem. Atualizações automáticas do sistema (sincronização antiga do Conta Azul, cópia inicial de telefones) não entram.
+- Para a equipe de agentes, o mesmo histórico sai em `GET /api/analytics/v1/clientes/:id/alteracoes` — uso interno, nunca para mostrar ao cliente.

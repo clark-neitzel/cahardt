@@ -444,6 +444,63 @@ curl -s -X POST -H "x-analytics-key: $ANALYTICS_API_KEY" \
 
 ---
 
+### Histórico de alterações do cliente (uso interno)
+
+> **Uso interno.** Mostra quem mudou o cadastro e quando. **Nunca repassar ao cliente**, nem citar numa conversa de WhatsApp.
+
+Toda mudança em um cliente (campos do cadastro, criação) e nas pessoas do WhatsApp (criar, editar, apagar) grava uma linha por campo alterado — pelo app ou por esta API (o agente fica com o nome de `x-analytics-agent`). O histórico só cresce: não existe escrita, edição nem exclusão por aqui. Senhas, chaves e certificados nunca são gravados; textos acima de 500 caracteres vêm cortados.
+
+#### `GET /v1/clientes/:id/alteracoes`
+
+Mais novo primeiro. Filtros (todos opcionais, combináveis):
+
+| Parâmetro | O que faz |
+|---|---|
+| `desde`, `ate` | Período `YYYY-MM-DD`, inclusive, no horário de São Paulo |
+| `campo` | Nome técnico do campo (`Nome`, `idVendedor`, `Telefone_Celular`, `papel`…) |
+| `autor` | Parte do nome de quem fez (`ana`, `Maria`), sem diferenciar maiúscula |
+| `origem` | `app`, `api_agente` ou `sistema` |
+| `entidade` | `cliente` ou `contato` |
+| `limite` | Linhas por página (padrão 50, **máximo 200**) |
+| `pagina` | Começa em 1 |
+
+Resposta:
+
+```json
+{
+  "clienteId": "UUID",
+  "page": 1, "limit": 50, "total": 2, "totalPages": 1,
+  "data": [
+    {
+      "id": "UUID",
+      "em": "2026-11-13T14:02:00.000Z",
+      "entidade": "cliente",
+      "entidadeId": null,
+      "acao": "alterado",
+      "campo": "idVendedor",
+      "valorAntigo": "uuid-vendedor-a",
+      "valorNovo": "uuid-vendedor-b",
+      "valorAntigoRotulo": "Carla",
+      "valorNovoRotulo": "Pedro",
+      "autor": { "tipo": "usuario", "id": "UUID", "nome": "Maria" },
+      "origem": "app",
+      "tela": "CARTEIRA"
+    }
+  ]
+}
+```
+
+- `acao`: `alterado`, `criado` ou `excluido`. Em criação/exclusão o campo é `cadastro` (cliente) ou `contato`, e o resumo vem em `valorNovo`/`valorAntigo`.
+- `entidade: "contato"` traz o id da pessoa em `entidadeId`.
+- `autor.tipo`: `usuario` (app, com login), `agente` (API, `id` = `agente:<nome>`) ou `sistema`.
+- `valorAntigoRotulo`/`valorNovoRotulo` só vêm preenchidos quando o valor é um id de vendedor ou de tipo de cliente.
+- Erros 400: `ORIGEM_INVALIDA`, `ENTIDADE_INVALIDA`, `DATA_INVALIDA`, `PERIODO_INVALIDO`.
+
+```bash
+curl -s -H "x-analytics-key: $ANALYTICS_API_KEY" \
+  "https://<host>/api/analytics/v1/clientes/UUID/alteracoes?desde=2026-11-01&origem=api_agente&limite=20"
+```
+
 ## O que esta API não faz
 
 - Não apaga contato de cliente. Quem corrige um nome errado é o PATCH, ou a ficha do cliente no app.
