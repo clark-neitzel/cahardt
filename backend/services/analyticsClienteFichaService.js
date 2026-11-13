@@ -4,6 +4,7 @@ const prisma = require('../config/database');
 const { erro, idOpcional, pagina, lista, num, dec, somaDiasISO, isoNowTZ, inicioDiaSP } = require('./analyticsComum');
 const completo = require('./clienteCadastroCompletoService');
 const contatos = require('./clienteContatoService');
+const classif = require('./clienteClassificacaoService');
 const { WHERE_PEDIDO_RECEITA } = require('./projecaoVendasService');
 
 const DIAS_TOP = 90;
@@ -21,7 +22,7 @@ async function ficha(clienteId) {
     const cli = await prisma.cliente.findUnique({
         where: { UUID: id },
         select: {
-            UUID: true, Nome: true, NomeFantasia: true, Documento: true, Tipo_Pessoa: true, Ativo: true,
+            UUID: true, Nome: true, NomeFantasia: true, Documento: true, Tipo_Pessoa: true, Ativo: true, Perfis: true,
             Email: true, Telefone: true, Telefone_Celular: true,
             End_Logradouro: true, End_Numero: true, End_Bairro: true, End_Cidade: true, End_Estado: true, End_CEP: true,
             Dia_de_venda: true, Dia_de_entrega: true, Condicao_de_pagamento: true, condicoes_pagamento_permitidas: true,
@@ -34,7 +35,7 @@ async function ficha(clienteId) {
     const desde = inicioDiaSP(somaDiasISO(isoNowTZ().slice(0, 10), -DIAS_TOP));
     const filtroPedido = { clienteId: id, ...WHERE_PEDIDO_RECEITA, cancelado: false };
 
-    const [tabelas, pedidos, itens, bloco] = await Promise.all([
+    const [tabelas, pedidos, itens, bloco, mapaClassif] = await Promise.all([
         idsTabelas.length
             ? prisma.tabelaPreco.findMany({
                 where: { OR: [{ id: { in: idsTabelas } }, { idCondicao: { in: idsTabelas } }] },
@@ -53,7 +54,9 @@ async function ficha(clienteId) {
             take: 5000,
         }),
         contatos.listar(id),
+        classif.classificacaoDeClientes([cli]),
     ]);
+    const classificacao = mapaClassif.get(id);
 
     const tabela = completo.resolverTabela(cli.Condicao_de_pagamento, tabelas);
     const permitidas = (cli.condicoes_pagamento_permitidas || []).map((x) => {
@@ -109,52 +112,66 @@ async function ficha(clienteId) {
         topProdutos90d: topProdutos,
         contatos: bloco,
         cadastro: completo.avaliarCadastro(cli, { tabela, vendedor: cli.vendedor }),
+        classificacao,
+        somenteFornecedor: classificacao.somenteFornecedor,
     };
 }
 
-/** Clientes ATIVOS com algum campo obrigatório faltando. Filtro opcional: vendedorId. */
+const GRUPOS = ['acertar', 'classificar'];
+
+/**
+ * Cadastros ATIVOS por grupo (filtro opcional: vendedorId):
+ *  - acertar (padrão): campo obrigatório faltando E classificação efetiva CLIENTE ou CLIENTE_FORNECEDOR.
+ *    Fornecedor-só e "a classificar" NÃO são clientes incompletos.
+ *  - classificar: classificação efetiva A_CLASSIFICAR (com ou sem os 4 campos preenchidos).
+ * Carrega os ativos em memória (centenas/poucos milhares), classifica em lote e SÓ DEPOIS pagina —
+ * paginar no SQL ficaria errado ao excluir linhas. `contagens` vem do mesmo passeio.
+ */
 async function cadastrosPendentes(query = {}) {
+    const grupo = String(query.grupo ?? 'acertar').trim().toLowerCase() || 'acertar';
+    if (!GRUPOS.includes(grupo)) {
+        throw erro(400, `grupo inválido. Use: ${GRUPOS.join(', ')}.`, 'GRUPO_INVALIDO');
+    }
     const pg = pagina(query);
     const vendedorId = idOpcional(query.vendedorId, 'vendedorId');
     const tabelas = await completo.tabelasAtivas();
-    const chaves = tabelas.flatMap((t) => [t.id, t.idCondicao]).filter(Boolean);
-    const idsVendedores = (await prisma.vendedor.findMany({ select: { id: true } })).map((v) => v.id);
-    const vazio = (campo) => ({ OR: [{ [campo]: null }, { [campo]: '' }] });
-    const where = {
-        Ativo: true,
-        ...(vendedorId ? { idVendedor: vendedorId } : {}),
-        OR: [
-            vazio('Dia_de_venda'),
-            vazio('Dia_de_entrega'),
-            { idVendedor: null },
-            { idVendedor: { notIn: idsVendedores } }, // aponta para vendedor que não existe mais
-            vazio('Condicao_de_pagamento'),
-            { Condicao_de_pagamento: { notIn: chaves } },
-        ],
-    };
-    const [total, rows] = await Promise.all([
-        prisma.cliente.count({ where }),
-        prisma.cliente.findMany({
-            where,
-            orderBy: [{ NomeFantasia: 'asc' }, { Nome: 'asc' }],
-            skip: pg.skip,
-            take: pg.limit,
-            select: {
-                UUID: true, Nome: true, NomeFantasia: true, End_Cidade: true,
-                Dia_de_venda: true, Dia_de_entrega: true, Condicao_de_pagamento: true, idVendedor: true,
-                vendedor: { select: { id: true, nome: true, ativo: true } },
-            },
-        }),
-    ]);
-    const data = rows.map((c) => ({
+    const rows = await prisma.cliente.findMany({
+        where: { Ativo: true, ...(vendedorId ? { idVendedor: vendedorId } : {}) },
+        orderBy: [{ NomeFantasia: 'asc' }, { Nome: 'asc' }],
+        select: {
+            UUID: true, Nome: true, NomeFantasia: true, Documento: true, Perfis: true, End_Cidade: true,
+            Dia_de_venda: true, Dia_de_entrega: true, Condicao_de_pagamento: true, idVendedor: true,
+            vendedor: { select: { id: true, nome: true, ativo: true } },
+        },
+    });
+    const mapa = await classif.classificacaoDeClientes(rows, { todos: true });
+    const contagens = { acertar: 0, classificar: 0 };
+    const doGrupo = [];
+    for (const c of rows) {
+        const k = mapa.get(c.UUID);
+        const cadastro = completo.avaliarLinha(c, tabelas);
+        const ehCliente = k.valor === 'CLIENTE' || k.valor === 'CLIENTE_FORNECEDOR';
+        if (ehCliente && !cadastro.completo) {
+            contagens.acertar += 1;
+            if (grupo === 'acertar') doGrupo.push({ c, k, cadastro });
+        } else if (k.valor === classif.A_CLASSIFICAR) {
+            contagens.classificar += 1;
+            if (grupo === 'classificar') doGrupo.push({ c, k, cadastro });
+        }
+    }
+    const data = doGrupo.slice(pg.skip, pg.skip + pg.limit).map(({ c, k, cadastro }) => ({
         id: c.UUID,
         nome: nomeDe(c),
         cidade: c.End_Cidade || null,
+        documento: c.Documento || null,
         vendedorId: c.idVendedor || null,
         vendedor: c.vendedor?.nome || null,
-        ...completo.avaliarLinha(c, tabelas),
+        perfis: k.perfis,
+        classificacao: k,
+        somenteFornecedor: k.somenteFornecedor,
+        ...cadastro,
     }));
-    return lista({ page: pg.page, limit: pg.limit, total, data });
+    return lista({ page: pg.page, limit: pg.limit, total: doGrupo.length, data, extra: { grupo, contagens } });
 }
 
 module.exports = { ficha, cadastrosPendentes };
