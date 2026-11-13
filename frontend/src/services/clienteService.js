@@ -97,6 +97,12 @@ const clienteService = {
         return response.data;
     },
 
+    // Histórico de alterações do cadastro (somente leitura; exige permissão de editar clientes)
+    listarAlteracoes: async (uuid, params = {}) => {
+        const response = await api.get(`/clientes/${uuid}/alteracoes`, { params });
+        return response.data;
+    },
+
     excluirContato: async (uuid, contatoId) => {
         const response = await api.delete(`/clientes/${uuid}/contatos/${contatoId}`);
         return response.data;
