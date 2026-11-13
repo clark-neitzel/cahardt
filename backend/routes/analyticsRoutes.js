@@ -6,6 +6,8 @@ const consulta = require('../services/analyticsConsultaService');
 const registro = require('../services/analyticsRegistroService');
 const contatos = require('../services/clienteContatoService');
 const historico = require('../services/clienteHistoricoService');
+const fichaSvc = require('../services/analyticsClienteFichaService');
+const inativacao = require('../services/clienteInativacaoService');
 const { exigirAgente } = require('../services/clienteContatoRegras');
 
 const router = express.Router();
@@ -36,7 +38,7 @@ router.get('/v1/status', (req, res) => {
         ok: true,
         versao: '1',
         whatsapp: false,
-        escreve: ['atendimentos', 'leads', 'sugestoes', 'contatos'],
+        escreve: ['atendimentos', 'leads', 'sugestoes', 'contatos', 'inativacoes'],
     });
 });
 
@@ -46,6 +48,27 @@ router.get('/v1/carteira', asyncRoute(async (req, res) => {
 
 router.get('/v1/clientes', asyncRoute(async (req, res) => {
     res.json(await consulta.clientes(req.query));
+}));
+
+// Ficha completa do cliente para o agente (identificação, dias, tabela, vendedor, pedidos, produtos, contatos).
+router.get('/v1/clientes/:id/ficha', asyncRoute(async (req, res) => {
+    res.json(await fichaSvc.ficha(req.params.id));
+}));
+
+// Clientes ativos com cadastro incompleto ("cadastros pra acertar"). Só leitura.
+router.get('/v1/cadastros-pendentes', asyncRoute(async (req, res) => {
+    res.json(await fichaSvc.cadastrosPendentes(req.query));
+}));
+
+// O agente PEDE a inativação; quem inativa é uma pessoa, na fila do app.
+router.post('/v1/clientes/:id/inativacao', asyncRoute(async (req, res) => {
+    const quem = exigirAgente(agente(req));
+    const r = await inativacao.solicitar(req.params.id, req.body, { agente: quem });
+    res.status(r.status).json({ duplicado: r.duplicado, solicitacao: r.solicitacao });
+}));
+
+router.get('/v1/inativacoes', asyncRoute(async (req, res) => {
+    res.json(await inativacao.listar(req.query));
 }));
 
 router.get('/v1/clientes/:id/financeiro', asyncRoute(async (req, res) => {

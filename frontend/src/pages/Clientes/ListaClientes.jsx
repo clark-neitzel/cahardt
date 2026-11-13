@@ -4,6 +4,7 @@ import SeloMatrizFilial from '../../components/SeloMatrizFilial';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import clienteService from '../../services/clienteService';
 import vendedorService from '../../services/vendedorService';
+import cadastroPendenciasService from '../../services/cadastroPendenciasService';
 import tabelaPrecoService from '../../services/tabelaPrecoService';
 import fornecedorService from '../../services/fornecedorService';
 import { Search, MapPin, Phone, User, Filter, Settings, X, Save, AlertTriangle, MessageCircle, AlertCircle, UserPlus, Building2, ArrowRight } from 'lucide-react';
@@ -75,6 +76,7 @@ const ListaClientes = () => {
     const permsUser = user?.permissoes || {};
     const podeCadastrar = permsUser.admin || permsUser.clientes?.edit;
     const podeVerFornecedores = permsUser.admin || permsUser.Pode_Acessar_Fornecedores;
+    const [pedidosInativacao, setPedidosInativacao] = useState(0); // selo do botão "Cadastros a acertar"
 
     const getSaved = (key, defaultVal) => {
         const saved = localStorage.getItem(`clientesFiltro_${key}`);
@@ -170,6 +172,12 @@ const ListaClientes = () => {
 
     // Modal de Inadimplência
     const [clienteInadimplente, setClienteInadimplente] = useState(null); // { nome, uuid }
+
+    // Selo com os pedidos de inativação esperando decisão (só para quem edita clientes)
+    useEffect(() => {
+        if (!podeCadastrar) return;
+        cadastroPendenciasService.contagemInativacoes().then((r) => setPedidosInativacao(r?.pendentes || 0)).catch(() => {});
+    }, [podeCadastrar]);
 
     // Carregar dados de apoio
     useEffect(() => {
@@ -473,6 +481,18 @@ const ListaClientes = () => {
                             className="shrink-0 px-3 py-2 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-sm flex items-center gap-1.5 min-h-[38px]"
                         >
                             💬<span className="hidden lg:inline">WhatsApp</span>
+                        </button>
+                    )}
+                    {podeCadastrar && (
+                        <button
+                            onClick={() => navigate('/clientes/cadastros-pra-acertar')}
+                            title="Cadastros pra acertar e pedidos de inativação"
+                            className="relative shrink-0 px-3 py-2 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-sm flex items-center gap-1.5 min-h-[38px]"
+                        >
+                            📋<span className="hidden lg:inline">Cadastros a acertar</span>
+                            {pedidosInativacao > 0 && (
+                                <span className="px-1.5 min-w-[20px] text-center text-xs font-semibold rounded-full bg-red-600 text-white">{pedidosInativacao}</span>
+                            )}
                         </button>
                     )}
                     {podeCadastrar && (

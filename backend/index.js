@@ -174,6 +174,7 @@ app.use('/api/notas-fiscais', authMiddleware, notasFiscaisRoutes); // NF-e emiti
 app.use('/api/canhotos', authMiddleware, canhotoRoutes); // Canhoto da NF assinado (bipe da DANFE, arquivo do mês)
 app.use('/api/produtos', authMiddleware, produtoRoutes);
 app.use('/api/clientes', authMiddleware, clienteRoutes);
+app.use('/api/cadastro-pendencias', authMiddleware, require('./routes/cadastroPendenciasRoutes')); // cadastros pra acertar + fila de inativação (pedidos dos agentes)
 app.use('/api/inadimplencia', authMiddleware, require('./routes/inadimplenciaRoutes')); // Inadimplência visível: config (selo, carência, trava)
 app.use('/api/setores', authMiddleware, require('./routes/setores')); // Cadastro de Setores (Como Fazer / ficha do funcionário)
 app.use('/api/cidades', authMiddleware, require('./routes/cidades')); // Lista canônica de cidades (dropdowns) — padronização de grafia

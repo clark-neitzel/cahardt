@@ -31,7 +31,7 @@ curl -s -H "x-analytics-key: $ANALYTICS_API_KEY" \
 Resposta:
 
 ```json
-{ "ok": true, "versao": "1", "whatsapp": false, "escreve": ["atendimentos", "leads", "sugestoes", "contatos"] }
+{ "ok": true, "versao": "1", "whatsapp": false, "escreve": ["atendimentos", "leads", "sugestoes", "contatos", "inativacoes"] }
 ```
 
 Erros: `{ "error": "mensagem", "codigo": "CODIGO" }`. 401 chave errada, 503 variável ausente, 404 rota que não existe (pedido e financeiro não têm POST).
@@ -501,8 +501,117 @@ curl -s -H "x-analytics-key: $ANALYTICS_API_KEY" \
   "https://<host>/api/analytics/v1/clientes/UUID/alteracoes?desde=2026-11-01&origem=api_agente&limite=20"
 ```
 
+### Cadastro completo, ficha e inativação (11/2026)
+
+#### Regra: "cadastro completo para atendimento"
+
+A Ana só atende cliente que tem **todos** estes campos:
+
+| `campo` | `rotulo` | Quando conta como faltando |
+|---|---|---|
+| `diaVenda` | Dia de venda (visita) | `Dia_de_venda` vazio |
+| `diaEntrega` | Dia de entrega | `Dia_de_entrega` vazio |
+| `tabelaPreco` | Tabela de preço | `Condicao_de_pagamento` vazio, ou apontando para uma tabela que não existe / está inativa |
+| `vendedor` | Vendedor responsável | sem `idVendedor`, ou vendedor que não existe |
+
+**Tabela de preço:** no Hardt, "tabela de preço" e "condição de pagamento" são a mesma coisa (`/v1/tabelas-preco`): cada uma traz o acréscimo sobre o preço do produto e o prazo. A favorita do cliente é a `Condicao_de_pagamento` (id da tabela). `condicoes_pagamento_permitidas` é só a lista do que ele pode usar — **não** substitui a favorita. Vendedor inativo continua valendo (só precisa existir).
+
+Em todas as respostas o resultado vem assim:
+
+```json
+"cadastro": { "completo": false, "faltando": [ { "campo": "diaEntrega", "rotulo": "Dia de entrega" } ] }
+```
+
+#### `GET /v1/clientes/:id/ficha`
+
+Só leitura. Tudo que a Ana precisa saber do cliente numa chamada.
+
+```json
+{
+  "cliente": { "id": "UUID", "nome": "Padaria do Zé", "razaoSocial": "Padaria LTDA", "documento": "12345678000199", "tipoPessoa": "JURIDICA",
+               "ativo": true, "email": null, "telefone": null, "celular": "47999998888",
+               "endereco": "Rua A, 10, Centro, Joinville/SC", "cidade": "Joinville", "estado": "SC", "cep": "89200000" },
+  "diaVenda": ["TER"],
+  "diaEntrega": ["QUA"],
+  "tabelaPreco": { "id": "1000", "nome": "À vista", "acrescimoPct": 0, "ativo": true },
+  "vendedor": { "id": "UUID", "nome": "Carla", "ativo": true },
+  "condicaoPagamento": {
+    "padrao": { "id": "1000", "nome": "À vista", "qtdParcelas": 1, "parcelasDias": 0 },
+    "permitidas": [ { "id": "1000", "nome": "À vista", "ativo": true }, { "id": "2000", "nome": "Boleto 14d", "ativo": true } ]
+  },
+  "ultimosPedidos": [ { "id": "UUID", "numero": 1234, "data": "2026-11-10T00:00:00.000Z", "total": 25.5, "status": "ENTREGUE", "itens": 2, "especial": false } ],
+  "topProdutos90d": [ { "produtoId": "UUID", "produto": "Coxinha", "codigo": "C1", "unidade": "CX", "quantidade": 5, "vezes": 2 } ],
+  "contatos": { "...": "mesmo bloco de GET /v1/clientes/:id/contatos" },
+  "cadastro": { "completo": true, "faltando": [] }
+}
+```
+
+- `diaVenda` / `diaEntrega`: lista de dias (`SEG`, `TER`…); vazia = não definido.
+- `tabelaPreco` / `vendedor` / `condicaoPagamento.padrao` são `null` quando não há (ou a tabela não existe mais).
+- `ultimosPedidos`: até 5, mais novo primeiro, só pedido válido (faturado ou especial, sem cancelado nem bonificação — mesma regra de `/v1/vendas`). `status` é a situação da entrega (`PENDENTE`, `ENTREGUE`, `ENTREGUE_PARCIAL`, `DEVOLVIDO`). `total` = soma dos itens, sem descontar devolução.
+- `topProdutos90d`: até 8 produtos dos últimos 90 dias, por número de pedidos (`vezes`) e depois por `quantidade`.
+- Erros: 404 `NAO_ENCONTRADO`; 400 `ID_INVALIDO`.
+
+```bash
+curl -s -H "x-analytics-key: $ANALYTICS_API_KEY" "https://<host>/api/analytics/v1/clientes/UUID/ficha"
+```
+
+#### `GET /v1/cadastros-pendentes`
+
+Clientes **ativos** com algum campo obrigatório faltando ("cadastros pra acertar"). Mais antigos por nome. Filtros: `vendedorId`, `page` (1…), `limit` (padrão 50, máx. 100).
+
+```json
+{
+  "page": 1, "limit": 50, "total": 2, "totalPages": 1,
+  "data": [
+    { "id": "UUID", "nome": "Padaria do Zé", "cidade": "Joinville", "vendedorId": "UUID", "vendedor": "Carla",
+      "completo": false, "faltando": [ { "campo": "diaEntrega", "rotulo": "Dia de entrega" } ] }
+  ]
+}
+```
+
+A equipe vê a mesma lista no app: **Clientes → Cadastros a acertar**.
+
+#### `POST /v1/clientes/:id/inativacao`
+
+A Ana **pede**; ela nunca inativa. Exige o cabeçalho `x-analytics-agent`. Uma pessoa autorizada aprova ou recusa no app (**Clientes → Cadastros a acertar → Pedidos de inativação**); aprovar inativa o cliente e fica no histórico (`/v1/clientes/:id/alteracoes`: campo `Ativo` e campo `inativacao`, com o motivo e quem pediu).
+
+```json
+{ "motivo": "fechou", "detalhe": "Dono disse que fechou a loja" }
+```
+
+| `motivo` | Quando usar |
+|---|---|
+| `fechou` | fechou o negócio |
+| `trocou_dono` | mudou de dono |
+| `parou_de_comprar` | parou de comprar |
+| `numero_errado` | o número/contato não é do cliente |
+| `outro` | exige `detalhe` |
+
+`detalhe` é opcional (obrigatório em `outro`), até 500 caracteres.
+
+Resposta nova — **201**:
+
+```json
+{ "duplicado": false,
+  "solicitacao": { "id": "UUID", "clienteId": "UUID", "cliente": "Padaria do Zé", "motivo": "fechou", "motivoRotulo": "Fechou o negócio",
+                   "detalhe": "Dono disse que fechou a loja", "solicitadoPor": "ana", "origem": "api_agente", "status": "pendente",
+                   "decididoPor": null, "decididoEm": null, "observacaoDecisao": null, "criadoEm": "2026-11-13T14:02:00.000Z" } }
+```
+
+Já existe um pedido **pendente** para o cliente — **200**, devolve o que já estava lá, sem criar outro: `{ "duplicado": true, "solicitacao": { … } }`.
+
+Erros: 400 `AGENTE_OBRIGATORIO` / `AGENTE_INVALIDO`, `MOTIVO_INVALIDO`, `CAMPO_OBRIGATORIO` (detalhe em `outro`), `CAMPO_LONGO`; 404 `NAO_ENCONTRADO`; **409 `CLIENTE_JA_INATIVO`** (nada é criado).
+
+Depois que o pedido é decidido, a Ana pode pedir de novo (vira um pedido novo).
+
+#### `GET /v1/inativacoes`
+
+Só leitura. Filtros: `status` = `pendente` (padrão), `aprovada`, `recusada` ou `todas`; `clienteId`; `page`, `limit` (padrão 50, máx. 100). Pendentes vêm do mais antigo; os demais, do mais novo. Cada item tem o formato de `solicitacao` acima; depois de decidido traz `decididoPor: { id, nome }`, `decididoEm` e `observacaoDecisao`. Erro: 400 `STATUS_INVALIDO`.
+
 ## O que esta API não faz
 
+- Não inativa cliente: só **pede** a inativação (`POST /v1/clientes/:id/inativacao`); a decisão é de uma pessoa no app.
 - Não apaga contato de cliente. Quem corrige um nome errado é o PATCH, ou a ficha do cliente no app.
 - Não envia WhatsApp, boleto, Pix nem e-mail.
 - Não cria, edita ou cancela pedido, nota ou devolução.

@@ -389,3 +389,10 @@ Na ficha do cliente existe a aba **Alterações** (só aparece para quem edita c
 - Ninguém edita nem apaga um registro do histórico — nem o administrador. A lista tem "Carregar mais" quando passa de 30 linhas.
 - Só passa a valer **a partir da publicação**: mudanças antigas não aparecem. Atualizações automáticas do sistema (sincronização antiga do Conta Azul, cópia inicial de telefones) não entram.
 - Para a equipe de agentes, o mesmo histórico sai em `GET /api/analytics/v1/clientes/:id/alteracoes` — uso interno, nunca para mostrar ao cliente.
+
+## Cadastros a acertar e pedidos de inativação (11/2026)
+
+Botão **📋 Cadastros a acertar** na lista de clientes (só para quem edita clientes ou admin), com um selo vermelho quando há pedidos de inativação esperando. A tela tem duas abas:
+
+- **Cadastros pra acertar:** clientes **ativos** com o cadastro incompleto para a Ana atender. O cadastro só está completo com **dia de venda, dia de entrega, tabela de preço (a condição de pagamento favorita do cliente, que precisa existir e estar ativa) e vendedor**. Cada cliente mostra o que falta; clicar abre a ficha para corrigir. Dá para filtrar por vendedor (o filtro fica salvo).
+- **Pedidos de inativação:** quando a Ana percebe que um cliente fechou, trocou de dono, parou de comprar ou está com número errado, ela **pede** para inativar — ela nunca inativa sozinha. Aqui a equipe decide: **Inativar cliente** (o cliente fica inativo, como se fosse feito na ficha, e a mudança entra na aba Alterações com o motivo e quem pediu) ou **Manter ativo** (recusa; o cliente segue ativo). Em ambos dá para escrever uma observação. Um pedido por cliente por vez; depois de decidido, a Ana pode pedir de novo. O filtro mostra aguardando, aprovadas, recusadas ou todas.
