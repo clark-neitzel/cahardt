@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
     Users, TrendingUp, BarChart3, ListChecks, Crown, AlertTriangle, MessageCircle,
@@ -10,6 +9,7 @@ import clienteService from '../../services/clienteService';
 import SelectBusca from '../../components/SelectBusca';
 import { useFiltrosSalvos } from '../../hooks/useFiltrosSalvos';
 import { Card, fmtRS0, fmtBR, fmtInt } from './dashUi';
+import FichaClienteCarteira from './FichaClienteCarteira';
 
 /* ─────────────── utilitários ─────────────── */
 const MINUSC = new Set(['de', 'da', 'do', 'e', 'dos', 'das']);
@@ -138,7 +138,7 @@ const JaSeiDialog = ({ cliente, modo, onClose, onFeito }) => {
         } catch (e) { toast.error(erroMsg(e, 'Não foi possível silenciar este cliente.')); trava.current = false; setGravando(false); }
     };
 
-    const titulo = modo === 'mesmo' ? 'É o mesmo cliente de outro cadastro' : modo === 'silencio' ? 'Não avisar por um tempo' : 'Este cliente não compra mais';
+    const titulo = modo === 'mesmo' ? 'É o mesmo cliente de outro cadastro' : 'Não avisar por um tempo';
 
     return (
         <div className="fixed inset-0 z-[999] flex items-end md:items-center justify-center bg-black/50 p-0 md:p-4" onClick={onClose}>
@@ -206,18 +206,6 @@ const JaSeiDialog = ({ cliente, modo, onClose, onFeito }) => {
                     </>
                 )}
 
-                {modo === 'inativar' && (
-                    <>
-                        <p className="text-sm text-gray-600">Para tirar este cliente da carteira, abra o cadastro e marque como inativo. Nada é alterado por aqui.</p>
-                        <div className="flex flex-col-reverse md:flex-row gap-2 md:justify-end">
-                            <BotaoPilula onClick={onClose}>Cancelar</BotaoPilula>
-                            <Link to={`/clientes/${cliente.clienteId}`} onClick={onClose}
-                                className="min-h-[44px] px-4 rounded-full text-sm font-semibold bg-primary hover:bg-primaryDark text-white shadow-sm inline-flex items-center justify-center">
-                                Abrir o cadastro
-                            </Link>
-                        </div>
-                    </>
-                )}
             </div>
         </div>
     );
@@ -363,7 +351,7 @@ const BlocoGrafico = ({ g, onIrPara }) => {
     );
 };
 
-const BlocoDecisoes = ({ decisoes, resolver, semVendedor, pendentes }) => {
+const BlocoDecisoes = ({ decisoes, resolver, semVendedor, pendentes, abrirFicha }) => {
     const [aberto, setAberto] = useState(null);
     const [ocupado, setOcupado] = useState(null);
     const lista = decisoes.filter((x) => x && x.qtd > 0);
@@ -379,7 +367,7 @@ const BlocoDecisoes = ({ decisoes, resolver, semVendedor, pendentes }) => {
     const dispensar = (it) => executar(it, resolver.dispensar);
 
     return (
-        <Card icon={ListChecks} titulo="Suas decisões de hoje" direita={pl(total, 'pendente', 'pendentes')} semPadding>
+        <Card icon={ListChecks} titulo="Suas decisões de hoje" direita={`${pl(total, 'pendente', 'pendentes')} hoje${lista.some((x) => x.tipo === 'SEM_VENDEDOR' && x.total != null && x.total > x.qtd) ? ' · sem vendedor: só os do dia' : ''}`} semPadding>
             {lista.length === 0 && <div className="p-4"><Vazio>Nada pendente por enquanto.</Vazio></div>}
             <div className="divide-y divide-gray-100">
                 {lista.map((dc) => {
@@ -425,7 +413,7 @@ const BlocoDecisoes = ({ decisoes, resolver, semVendedor, pendentes }) => {
                                 <ul className="mt-2 space-y-1.5 max-h-72 overflow-y-auto">
                                     {itens.map((it) => (
                                         <li key={it.clienteId}>
-                                            <Link to={it.link || `/clientes/${it.clienteId}`} className="flex items-center justify-between gap-3 bg-gray-50 hover:bg-mint/40 border border-gray-100 rounded-lg px-3 py-2.5 min-h-[44px]">
+                                            <button type="button" onClick={() => abrirFicha(it.clienteId)} className="w-full text-left flex items-center justify-between gap-3 bg-gray-50 hover:bg-mint/40 border border-gray-100 rounded-lg px-3 py-2.5 min-h-[44px]">
                                                 <span className="min-w-0">
                                                     <span className="block text-sm font-semibold text-gray-900 break-words">{nomeBonito(it.nome)}</span>
                                                     <span className="block text-xs font-medium text-gray-500">
@@ -434,7 +422,7 @@ const BlocoDecisoes = ({ decisoes, resolver, semVendedor, pendentes }) => {
                                                     </span>
                                                 </span>
                                                 <span className="text-primary text-xs font-bold whitespace-nowrap">abrir →</span>
-                                            </Link>
+                                            </button>
                                         </li>
                                     ))}
                                     {totalReal > itens.length && <li className="text-xs font-medium text-gray-500 px-1">Mostrando {itens.length} de {fmtInt(totalReal)}{semV ? '. Os primeiros são os que já pediram.' : '.'}</li>}
@@ -464,7 +452,7 @@ const BlocoResultadoDecisoes = ({ r }) => {
 };
 
 /* Linha expansível de cliente (atenção e top 20 faltando) */
-const LinhaClienteAtencao = ({ c, aba, cheia, aberto, onToggle, abrirJaSei }) => {
+const LinhaClienteAtencao = ({ c, aba, cheia, aberto, onToggle, abrirJaSei, abrirFicha }) => {
     const enf = aba === 'enfraquecendo';
     const sub = [tipoCurto(c.tipo), primeiroNome(c.vendedor), c.cidade].filter(Boolean).join(' · ');
     return (
@@ -498,7 +486,7 @@ const LinhaClienteAtencao = ({ c, aba, cheia, aberto, onToggle, abrirJaSei }) =>
                     {enf && <p className="text-sm text-gray-700 mb-2">O ticket caiu {fmtBR(Math.abs(c.variacaoTicketPct || 0), 0)}%{c.produtoAusente ? ` e ${nomeBonito(c.produtoAusente)} sumiu da cesta` : ''}.</p>}
                     {c.textoGerente && <TextoGerente texto={c.textoGerente} />}
                     {Array.isArray(c.cadastrosUnidos) && c.cadastrosUnidos.length > 0 && <p className="text-xs font-medium text-gray-500 mt-2">Cadastros unidos: {c.cadastrosUnidos.map(nomeBonito).join(', ')}.</p>}
-                    <div className="mt-2"><Link to={`/clientes/${c.clienteId}`} className="text-primary text-sm font-bold">abrir o cadastro →</Link></div>
+                    <div className="mt-2"><button type="button" onClick={() => abrirFicha(c.clienteId)} className="min-h-[44px] px-4 rounded-full text-sm font-semibold bg-primary hover:bg-primaryDark text-white shadow-sm">Abrir a ficha</button></div>
                     <BotoesJaSei cliente={{ clienteId: c.clienteId, nome: c.nome }} abrir={abrirJaSei} />
                 </div>
             )}
@@ -506,7 +494,7 @@ const LinhaClienteAtencao = ({ c, aba, cheia, aberto, onToggle, abrirJaSei }) =>
     );
 };
 
-const BlocoAtencao = ({ atencao, cheia, setCheia, abrirJaSei, aba, setAba }) => {
+const BlocoAtencao = ({ atencao, cheia, setCheia, abrirJaSei, abrirFicha, aba, setAba }) => {
     const [aberto, setAberto] = useState(null);
     const abas = ABAS_ATENCAO.filter((a) => atencao[a.key]);
     const atual = abas.find((a) => a.key === aba) ? aba : (abas[0]?.key || 'paradoAna');
@@ -526,7 +514,7 @@ const BlocoAtencao = ({ atencao, cheia, setCheia, abrirJaSei, aba, setAba }) => 
             {ver.length === 0 && <div className="p-4"><Vazio>Nenhum cliente nesta lista.</Vazio></div>}
             {ver.map((c) => (
                 <LinhaClienteAtencao key={c.clienteId} c={c} aba={atual} cheia={cheia}
-                    aberto={aberto === c.clienteId} onToggle={() => setAberto(aberto === c.clienteId ? null : c.clienteId)} abrirJaSei={abrirJaSei} />
+                    aberto={aberto === c.clienteId} onToggle={() => setAberto(aberto === c.clienteId ? null : c.clienteId)} abrirJaSei={abrirJaSei} abrirFicha={abrirFicha} />
             ))}
             <Rodape texto={`Mostrando ${ver.length} de ${fmtInt(bloco.total)}`}
                 botao={bloco.total > 5 ? <BotaoPilula onClick={() => setCheia(!cheia)}>{cheia ? 'Encurtar a lista' : `Ver todos os ${fmtInt(bloco.total)}`}</BotaoPilula> : null} />
@@ -534,7 +522,7 @@ const BlocoAtencao = ({ atencao, cheia, setCheia, abrirJaSei, aba, setAba }) => 
     );
 };
 
-const BlocoTop20 = ({ t, listaCompleta, abrirJaSei }) => {
+const BlocoTop20 = ({ t, listaCompleta, abrirJaSei, abrirFicha }) => {
     const [todos, setTodos] = useState(false);
     const [aberto, setAberto] = useState(null);
     const itens = (Array.isArray(t.itens) ? t.itens : []).map((m, i) => ({ ...m, pos: i + 1 }));
@@ -553,8 +541,8 @@ const BlocoTop20 = ({ t, listaCompleta, abrirJaSei }) => {
                 const sub = [primeiroNome(m.vendedor), m.ritmoDias != null ? `compra a cada ${pl(Math.round(m.ritmoDias), 'dia', 'dias')}` : '', m.cadastrosUnidos?.length ? `${m.cadastrosUnidos.length + 1} cadastros do mesmo cliente` : ''].filter(Boolean).join(' · ');
                 return (
                     <div key={m.clienteId} className="border-b border-gray-100 last:border-b-0">
-                        <button type="button" disabled={!faltando} onClick={() => setAberto(ab ? null : m.clienteId)} aria-expanded={faltando ? ab : undefined}
-                            className={`w-full text-left px-4 md:px-5 py-3 min-h-[56px] flex items-center gap-3 ${faltando ? 'hover:bg-gray-50' : 'cursor-default'}`}>
+                        <button type="button" onClick={() => (faltando ? setAberto(ab ? null : m.clienteId) : abrirFicha(m.clienteId))} aria-expanded={faltando ? ab : undefined}
+                            className="w-full text-left px-4 md:px-5 py-3 min-h-[56px] flex items-center gap-3 hover:bg-gray-50">
                             <span className="flex-none w-7 text-xs font-extrabold text-gray-400 tabular-nums">{m.pos}</span>
                             <span className="flex-1 min-w-0">
                                 <span className="block text-sm font-bold text-gray-900 break-words">{nomeBonito(m.nome)}</span>
@@ -568,7 +556,7 @@ const BlocoTop20 = ({ t, listaCompleta, abrirJaSei }) => {
                         {faltando && ab && (
                             <div className="px-4 md:px-5 pb-4">
                                 {m.textoGerente && <TextoGerente texto={m.textoGerente} />}
-                                <div className="mt-2"><Link to={`/clientes/${m.clienteId}`} className="text-primary text-sm font-bold">abrir o cadastro →</Link></div>
+                                <div className="mt-2"><button type="button" onClick={() => abrirFicha(m.clienteId)} className="min-h-[44px] px-4 rounded-full text-sm font-semibold bg-primary hover:bg-primaryDark text-white shadow-sm">Abrir a ficha</button></div>
                                 <BotoesJaSei cliente={{ clienteId: m.clienteId, nome: m.nome }} abrir={abrirJaSei} />
                             </div>
                         )}
@@ -723,20 +711,22 @@ const BlocoMotivos = ({ m }) => {
     );
 };
 
-const BlocoQuemMudou = ({ q, rotAtual, rotAnt }) => {
+const BlocoQuemMudou = ({ q, rotAtual, rotAnt, abrirFicha }) => {
     const cairam = Array.isArray(q.cairam) ? q.cairam : [];
     const subiram = Array.isArray(q.subiram) ? q.subiram : [];
     if (!cairam.length && !subiram.length) return null;
     const Linha = ({ c }) => {
         const d = Number(c.diferenca || 0);
+        const Raiz = c.clienteId ? 'button' : 'div';
         return (
-            <div className="flex items-center justify-between gap-3 px-4 md:px-5 py-2.5 border-b border-gray-100 last:border-b-0">
+            <Raiz {...(c.clienteId ? { type: 'button', onClick: () => abrirFicha(c.clienteId) } : {})}
+                className={`w-full text-left flex items-center justify-between gap-3 px-4 md:px-5 py-2.5 min-h-[44px] border-b border-gray-100 last:border-b-0 ${c.clienteId ? 'hover:bg-gray-50' : ''}`}>
                 <div className="min-w-0">
                     <p className="text-sm font-semibold text-gray-900 truncate">{nomeBonito(c.nome)}</p>
                     <p className="text-xs font-medium text-gray-500 truncate">{[primeiroNome(c.vendedor), tipoCurto(c.tipo), c.cadastrosUnidos?.length ? 'cadastros unidos' : ''].filter(Boolean).join(' · ')} · de {fmtRS0(c.anterior)} para {fmtRS0(c.atual)}</p>
                 </div>
                 <span className={`flex-none text-sm font-extrabold tabular-nums ${d < 0 ? 'text-red-700' : 'text-green-700'}`}>{d < 0 ? '− ' : '+ '}{fmtRS0(Math.abs(d))}</span>
-            </div>
+            </Raiz>
         );
     };
     return (
@@ -782,11 +772,18 @@ const AbaCarteira = ({ tick = 0, onAtualizado, onIrPara }) => {
     const [carregando, setCarregando] = useState(true);
     const [abaAtencao, setAbaAtencao] = useState('paradoAna');
     const [jaSei, setJaSei] = useState(null); // { cliente, modo }
+    const [ficha, setFicha] = useState(null); // { id, inativar }
+    const [fichaVersao, setFichaVersao] = useState(0);
     const reqRef = useRef(0);
+    const ultimaBuscaRef = useRef(0);
+    const abrirFicha = (id, inativar = false) => { if (id) setFicha({ id, inativar }); };
+    const abrirJaSei = (cliente, modo) => (modo === 'inativar' ? abrirFicha(cliente.clienteId, true) : setJaSei({ cliente, modo }));
 
-    const carregar = useCallback(async ({ fresh = false } = {}) => {
+    // silencioso = busca em segundo plano: não pisca a tela, não mexe na rolagem nem em listas abertas
+    const carregar = useCallback(async ({ fresh = false, silencioso = false } = {}) => {
         const id = ++reqRef.current;
-        setCarregando(true);
+        ultimaBuscaRef.current = Date.now();
+        if (!silencioso) setCarregando(true);
         try {
             const res = await api.get('/dashboards/geral/carteira', { params: { periodo, vendedorId, ...(fresh ? { fresh: 1 } : {}) } });
             if (id !== reqRef.current) return;
@@ -794,14 +791,35 @@ const AbaCarteira = ({ tick = 0, onAtualizado, onIrPara }) => {
             if (onAtualizado) onAtualizado(new Date());
         } catch (e) {
             if (id !== reqRef.current) return;
-            setErro(erroMsg(e, 'Não foi possível carregar a Carteira.'));
+            if (!silencioso) setErro(erroMsg(e, 'Não foi possível carregar a Carteira.'));
         } finally {
             if (id === reqRef.current) setCarregando(false);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [periodo, vendedorId]);
 
-    useEffect(() => { carregar(); }, [carregar, tick]);
+    useEffect(() => { carregar(); }, [carregar]);
+
+    // Gatilho do painel (voltar ao app, 5 min): busca em silêncio
+    const tickAnterior = useRef(tick);
+    useEffect(() => {
+        if (tickAnterior.current === tick) return;
+        tickAnterior.current = tick;
+        if (Date.now() - ultimaBuscaRef.current >= 30000) carregar({ silencioso: true });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [tick]);
+
+    // Voltou para a aba do navegador / a janela ganhou foco: atualiza em silêncio (no mínimo 30 s entre buscas)
+    useEffect(() => {
+        const revalidar = () => {
+            if (document.visibilityState !== 'visible') return;
+            if (Date.now() - ultimaBuscaRef.current < 30000) return;
+            carregar({ silencioso: true });
+        };
+        document.addEventListener('visibilitychange', revalidar);
+        window.addEventListener('focus', revalidar);
+        return () => { document.removeEventListener('visibilitychange', revalidar); window.removeEventListener('focus', revalidar); };
+    }, [carregar]);
 
     // Vendedor salvo que não existe mais: volta para "Todos"
     useEffect(() => {
@@ -818,7 +836,7 @@ const AbaCarteira = ({ tick = 0, onAtualizado, onIrPara }) => {
                     <button type="button" className="font-bold text-primary underline min-h-[44px] px-2 flex-none"
                         onClick={async () => {
                             toast.dismiss(t.id);
-                            try { await desfazer(); toast.success('Desfeito.'); carregar(); }
+                            try { await desfazer(); toast.success('Desfeito.'); carregar({ silencioso: true }); setFichaVersao((v) => v + 1); }
                             catch (e) { toast.error(erroMsg(e, 'Não foi possível desfazer.')); }
                         }}>Desfazer</button>
                 )}
@@ -826,7 +844,7 @@ const AbaCarteira = ({ tick = 0, onAtualizado, onIrPara }) => {
         ), { duration: 10000 });
     };
 
-    const aoFeito = (msg, desfazer) => { setJaSei(null); avisarComDesfazer(msg, desfazer); carregar(); };
+    const aoFeito = (msg, desfazer) => { setJaSei(null); avisarComDesfazer(msg, desfazer); carregar({ silencioso: true }); setFichaVersao((v) => v + 1); };
 
     const resolver = {
         juntar: async (it) => {
@@ -834,7 +852,7 @@ const AbaCarteira = ({ tick = 0, onAtualizado, onIrPara }) => {
                 const r = await api.post('/dashboards/geral/carteira/mesmo-cliente', { antigoId: it.antigoId, atualId: it.atualId, origem: 'SUGESTAO' });
                 const id = r.data?.id;
                 avisarComDesfazer(`${nomeBonito(it.antigoNome)} e ${nomeBonito(it.atualNome)} agora são um cliente só.`, id ? () => api.delete(`/dashboards/geral/carteira/mesmo-cliente/${id}`) : null);
-                carregar();
+                carregar({ silencioso: true });
             } catch (e) { toast.error(erroMsg(e, 'Não foi possível juntar os cadastros.')); }
         },
         dispensar: async (it) => {
@@ -842,7 +860,7 @@ const AbaCarteira = ({ tick = 0, onAtualizado, onIrPara }) => {
                 const r = await api.post('/dashboards/geral/carteira/sugestao-dispensar', { antigoId: it.antigoId, atualId: it.atualId });
                 const id = r.data?.id;
                 avisarComDesfazer('Combinado, não vou sugerir juntar estes dois de novo.', id ? () => api.delete(`/dashboards/geral/carteira/mesmo-cliente/${id}`) : null);
-                carregar();
+                carregar({ silencioso: true });
             } catch (e) { toast.error(erroMsg(e, 'Não foi possível dispensar a sugestão.')); }
         }
     };
@@ -895,16 +913,16 @@ const AbaCarteira = ({ tick = 0, onAtualizado, onIrPara }) => {
                     {d.projecao && <BlocoProjecao p={d.projecao} vendedorId={vendedorId} />}
                     {d.numeros && <BlocoNumeros n={d.numeros} antes={antes} />}
                     {d.grafico && <BlocoGrafico g={d.grafico} onIrPara={onIrPara} />}
-                    {Array.isArray(d.decisoes) && <BlocoDecisoes decisoes={d.decisoes} resolver={resolver} semVendedor={d.semVendedor} pendentes={d.decisoesPendentes} />}
+                    {Array.isArray(d.decisoes) && <BlocoDecisoes decisoes={d.decisoes} resolver={resolver} semVendedor={d.semVendedor} pendentes={d.decisoesPendentes} abrirFicha={abrirFicha} />}
                     {d.resultadoDecisoes && <BlocoResultadoDecisoes r={d.resultadoDecisoes} />}
-                    {d.top20 && <BlocoTop20 t={d.top20} listaCompleta={listaCompleta} abrirJaSei={(cliente, modo) => setJaSei({ cliente, modo })} />}
+                    {d.top20 && <BlocoTop20 t={d.top20} listaCompleta={listaCompleta} abrirJaSei={abrirJaSei} abrirFicha={abrirFicha} />}
                     {Array.isArray(d.carteiraPorVendedor) && <BlocoCarteiraVendedor linhas={d.carteiraPorVendedor} />}
                     {d.atencao && <BlocoAtencao atencao={d.atencao} cheia={listaCompleta} setCheia={(v) => setFiltros({ ...filtros, lista: v ? 'completa' : 'curta' })}
-                        abrirJaSei={(cliente, modo) => setJaSei({ cliente, modo })} aba={abaAtencao} setAba={setAbaAtencao} />}
+                        abrirJaSei={abrirJaSei} abrirFicha={abrirFicha} aba={abaAtencao} setAba={setAbaAtencao} />}
                     {d.equipe && <BlocoEquipe eq={d.equipe} vendedorId={vendedorId} antes={antes} />}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4 items-start">
                         {d.motivos && <BlocoMotivos m={d.motivos} />}
-                        {d.quemMudou && <BlocoQuemMudou q={d.quemMudou} rotAtual={rotJanelaAtual} rotAnt={rotJanelaAnt} />}
+                        {d.quemMudou && <BlocoQuemMudou q={d.quemMudou} rotAtual={rotJanelaAtual} rotAnt={rotJanelaAnt} abrirFicha={abrirFicha} />}
                     </div>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4 items-start">
                         {Array.isArray(d.porTipoCliente) && <TabelaComparativa icon={Tag} titulo="Por tipo de cliente" rotulo="Tipo" linhas={d.porTipoCliente} chave="tipo" rotAtual={rotJanelaAtual} rotAnt={rotJanelaAnt} />}
@@ -934,6 +952,13 @@ const AbaCarteira = ({ tick = 0, onAtualizado, onIrPara }) => {
                 </div>
             )}
 
+            {ficha && (
+                <FichaClienteCarteira key={ficha.id} clienteId={ficha.id} inativarInicial={ficha.inativar} versao={fichaVersao} bloqueado={!!jaSei}
+                    onClose={() => setFicha(null)}
+                    onSalvo={(msg, desfazer) => { avisarComDesfazer(msg, desfazer); carregar({ silencioso: true }); }}
+                    onMudou={(msg) => { toast.success(msg); carregar({ silencioso: true }); }}
+                    onAbrirJaSei={abrirJaSei} />
+            )}
             {jaSei && <JaSeiDialog cliente={jaSei.cliente} modo={jaSei.modo} onClose={() => setJaSei(null)} onFeito={aoFeito} />}
         </div>
     );

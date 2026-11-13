@@ -305,7 +305,11 @@ function montarEntidades(base) {
         e.vendedorNome = e.vendedorId ? (vendPorId.get(e.vendedorId)?.nome || 'Vendedor') : 'Sem vendedor';
         e.silenciadoAte = silenc.get(e.id) || null;
         e.pausadoAte = pausa.get(e.id) || null;
-        e.noCarteira = !e.fora && (e.cad.Ativo || (e.diasSem != null && e.diasSem <= DIAS_INATIVAR));
+        // Cadastro INATIVO só fica na Carteira se estiver unido a outro cadastro ou ainda estiver comprando
+        // (no ritmo / atraso leve). Inativo parado, "para inativar" ou sem pedido sai de listas, top 20,
+        // decisões e destinos; o dinheiro histórico dele continua nos totais de venda.
+        e.unido = e.ids.size > 1;
+        e.noCarteira = !e.fora && (e.cad.Ativo || e.unido || e.estado === 'NO_RITMO' || e.estado === 'ATRASO_LEVE');
         const ats = (atPorEnt.get(e.id) || []).sort((a, b) => (a.dia < b.dia ? 1 : -1));
         e.atendimentos = ats;
         e.ultimoAtend = ats[0] || null;
@@ -314,25 +318,43 @@ function montarEntidades(base) {
         const temCel = [...e.ids].some((id) => celularUtil(cliPorId.get(id)?.Telefone_Celular) || (whats.get(id) || []).some((n) => celularUtil(n)));
         e.temCelular = temCel;
         // destino
-        if (e.estado === 'PARADO') e.destino = (temCel && e.semRespostaWpp30 < 2) ? 'ANA' : 'VISITA';
+        if (!e.noCarteira) e.destino = null;
+        else if (e.estado === 'PARADO') e.destino = (temCel && e.semRespostaWpp30 < 2) ? 'ANA' : 'VISITA';
         else if (e.estado === 'ATRASO_LEVE') e.destino = 'ATRASO_LEVE';
         else if (e.estado === 'INATIVAR') e.destino = 'INATIVAR';
         else e.destino = null;
         // "fechou" nas anotações NÃO muda o bucket (dava falso positivo): vira só um aviso no cliente
         e.avisos = e.fechouObs ? ['VENDEDOR_ANOTOU_FECHOU'] : [];
         e.cadastrosUnidos = [...e.ids].filter((id) => id !== e.id).map((id) => cliPorId.get(id)?.NomeFantasia || cliPorId.get(id)?.Nome).filter(Boolean);
+        e.cadastrosUnidosIds = [...e.ids].filter((id) => id !== e.id);
+        e.nomesPorId = new Map([...e.ids].map((id) => [id, cliPorId.get(id)?.NomeFantasia || cliPorId.get(id)?.Nome]));
         e.valorEmRiscoMes = round2(e.ticket * (30 / Math.max(1, e.ritmo)));
         e.insight = insPorCli.get(e.id) || null;
     }
     return { ents, canon, cliPorId, vendPorId, nomeProd, paraAtual };
 }
 
-function textoGerente(e, hoje) {
+// "MERCADO E PANIFICADORA MONDINI ME" -> "Mercado e Panificadora Mondini ME" (só para texto corrido)
+const MINUSCULAS = new Set(['e', 'de', 'da', 'do', 'das', 'dos']);
+const SIGLAS = new Set(['me', 'epp', 'ltda', 'eireli', 'sa', 'mei']);
+function nomeBonito(n) {
+    const t = String(n || '').trim();
+    if (!t) return '';
+    return t.toLowerCase().split(/\s+/).map((w, i) => {
+        if (SIGLAS.has(w.replace(/[.,]/g, ''))) return w.toUpperCase();
+        if (i > 0 && MINUSCULAS.has(w)) return w;
+        return w.charAt(0).toUpperCase() + w.slice(1);
+    }).join(' ');
+}
+
+function textoGerente(e, hoje, abertoId) {
     const p = [];
     if (e.estado === 'PARADO' || e.estado === 'ATRASO_LEVE') {
         p.push(`Costuma pedir a cada ${pl(Math.round(e.ritmo), 'dia')} e está há ${pl(e.diasSem, 'dia')} sem pedir. Último pedido em ${ddmm(e.ultimo)}, ticket médio ${brl(e.ticket)}.`);
     } else if (e.estado === 'INATIVAR') {
         p.push(`Está há ${pl(e.diasSem, 'dia')} sem pedir. Último pedido em ${ddmm(e.ultimo)}.`);
+    } else if (e.diasSem == null) {
+        p.push('Ainda não tem pedido válido.');
     } else {
         p.push(`Pede a cada ${pl(Math.round(e.ritmo), 'dia')} e está há ${pl(e.diasSem, 'dia')} sem pedir.`);
     }
@@ -341,7 +363,8 @@ function textoGerente(e, hoje) {
     if (e.ultimoAtend) p.push(`Último registro: ${String(e.ultimoAtend.tipo || '').toLowerCase()} em ${ddmm(e.ultimoAtend.dia)}${e.ultimoAtend.acaoLabel ? ` (${e.ultimoAtend.acaoLabel})` : ''}.`);
     if (e.avisos?.includes('VENDEDOR_ANOTOU_FECHOU')) p.push('Atenção: uma anotação recente de vendedor diz que o cliente fechou.');
     if (e.pausadoAte) p.push(`Visitas pausadas até ${ddmm(e.pausadoAte)}.`);
-    if (e.cadastrosUnidos.length) p.push(`Soma os cadastros: ${e.cadastrosUnidos.join(', ')}.`);
+    const outros = (abertoId ? [...e.ids] : (e.cadastrosUnidosIds || [])).filter((id) => id !== abertoId).map((id) => nomeBonito(e.nomesPorId?.get(id))).filter(Boolean);
+    if (outros.length) p.push(`Soma os cadastros: ${outros.join(', ')}.`);
     return p.join(' ');
 }
 
@@ -575,7 +598,7 @@ function calcular(base, periodoTipo, vendedorFiltro) {
         const w90 = { de: somaDiasISO(hoje, -89), ate: hoje };
         const porEnt = porEntJanela(w90);
         const totalVenda = [...porEnt.values()].reduce((s, v) => s + v, 0);
-        const rank = [...porEnt.entries()].filter(([e, v]) => v > 0 && !e.fora).sort((a, b) => b[1] - a[1]).slice(0, 20);
+        const rank = [...porEnt.entries()].filter(([e, v]) => v > 0 && e.noCarteira).sort((a, b) => b[1] - a[1]).slice(0, 20);
         const soma = rank.reduce((s, [, v]) => s + v, 0);
         let faltando = 0;
         const itens = rank.map(([e, v]) => {
@@ -975,8 +998,220 @@ async function auditar(acao, entidadeId, detalhes, user) {
     } catch (e) { console.error('[Carteira] falha ao gravar AuditLog (operação já efetivada):', e.message); }
 }
 
+// ───────────────────────── ficha do cliente (painel lateral da Carteira) ─────────────────────────
+
+const DIAS_VENDA = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'DOM', 'N/D']; // mesmo conjunto/ordem do DayPicker do cadastro
+const idValido = (v) => typeof v === 'string' && v.length > 0 && v.length <= 64 && /^[\w-]+$/.test(v); // ids são uuid (alguns de teste não)
+const permsDe = (user) => (typeof user?.permissoes === 'string' ? JSON.parse(user.permissoes) : (user?.permissoes || {}));
+
+/** O que a ficha pode editar, espelhando EXATAMENTE os gates de clienteController.atualizar. */
+function podeEditarFicha(user, celularAtual) {
+    const perms = permsDe(user);
+    const cadastro = !!(perms.admin || perms.clientes?.edit || perms.Pode_Editar_GPS);
+    const numeroAtualOk = (() => { try { return require('./whatsappClienteService').numeroValido(celularAtual); } catch { return !!chaveCelular(celularAtual); } })();
+    return {
+        vendedor: true, categoria: true, diaVenda: true, ciclo: true, observacao: true, // o cadastro não exige permissão própria para estes
+        ativo: cadastro,                 // no cadastro, sem clientes.edit o Ativo é ignorado em silêncio
+        whatsapps: cadastro,
+        celular: cadastro || (perms.pedidos?.edit === true && !numeroAtualOk)
+    };
+}
+
+const CAMPOS_FICHA = 'UUID Nome NomeFantasia Ativo idVendedor categoriaClienteId Dia_de_venda cicloCompraPersonalizadoDias Telefone_Celular observacaoComercialFixa End_Cidade'.split(' ');
+const selectFicha = () => Object.fromEntries(CAMPOS_FICHA.map((c) => [c, true]));
+
+function normalizarDiaVenda(v) {
+    const lista = Array.isArray(v) ? v : String(v ?? '').split(/[,;]/);
+    const dias = [...new Set(lista.map((d) => String(d).trim().toUpperCase()).filter(Boolean))];
+    const ruins = dias.filter((d) => !DIAS_VENDA.includes(d));
+    if (ruins.length) throw erro(400, `Dia de venda inválido: ${ruins.join(', ')}. Use ${DIAS_VENDA.join(', ')}.`);
+    dias.sort((a, b) => DIAS_VENDA.indexOf(a) - DIAS_VENDA.indexOf(b));
+    return dias.join(', '); // formato do cadastro: "SEG, QUA"
+}
+
+async function obterFicha(clienteId, user) {
+    if (!idValido(clienteId)) throw erro(400, 'Id de cliente inválido.');
+    const cad = await prisma.cliente.findUnique({ where: { UUID: clienteId }, select: selectFicha() });
+    if (!cad) throw erro(404, 'Cliente não encontrado.');
+
+    const entrada = await obterBase(false);
+    const base = entrada.base;
+    if (!entrada.memo.has('__ents')) entrada.memo.set('__ents', montarEntidades(base));
+    const M = entrada.memo.get('__ents');
+    const e = M.ents.get(M.canon(clienteId)) || null; // null = cadastro criado depois da última leitura do cache
+    const ids = e ? [...e.ids] : [clienteId];
+    const agora = new Date();
+
+    const [pedidos, atend, vendedores, categorias, vinculos, silencios, wpp] = await Promise.all([
+        prisma.$queryRaw`
+            SELECT p.id, p.numero, p.cliente_id, p.situacao_ca, p.especial,
+                   to_char((p.data_venda AT TIME ZONE 'UTC') AT TIME ZONE 'America/Sao_Paulo', 'YYYY-MM-DD') AS dia,
+                   COALESCE(SUM(i.valor * i.quantidade), 0)::float AS valor
+            FROM pedidos p LEFT JOIN pedido_itens i ON i.pedido_id = p.id
+            WHERE p.cliente_id IN (${Prisma.join(ids)}) AND p.bonificacao = false AND p.cancelado = false
+              AND (p.situacao_ca = 'FATURADO' OR p.especial = true) AND p.data_venda <= ${fimDiaSP(base.hoje)}
+            GROUP BY p.id ORDER BY p.data_venda DESC LIMIT 5`,
+        prisma.atendimento.findMany({
+            where: { clienteId: { in: ids } }, orderBy: { criadoEm: 'desc' }, take: 6,
+            select: { id: true, tipo: true, acaoLabel: true, observacao: true, criadoEm: true, vendedor: { select: { nome: true } }, usuarioRegistro: { select: { nome: true } } }
+        }),
+        prisma.vendedor.findMany({ where: { ativo: true, acessoExterno: false }, orderBy: { nome: 'asc' }, select: { id: true, nome: true } }),
+        prisma.categoriaCliente.findMany({ where: { ativo: true }, orderBy: { nome: 'asc' }, select: { id: true, nome: true, cicloPadraoDias: true } }),
+        prisma.clienteMesmoQue.findMany({ where: { ignorado: false, OR: [{ antigoId: { in: ids } }, { atualId: { in: ids } }] } }),
+        prisma.clienteSilencio.findMany({ where: { clienteUuid: { in: ids }, silenciarAte: { gt: agora } } }),
+        prisma.clienteWhatsapp.findUnique({ where: { clienteUuid: clienteId }, select: { numeros: true } })
+    ]);
+
+    const idsNomes = [...new Set(vinculos.flatMap((v) => [v.antigoId, v.atualId]))];
+    const nomes = idsNomes.length ? await prisma.cliente.findMany({ where: { UUID: { in: idsNomes } }, select: { UUID: true, Nome: true, NomeFantasia: true } }) : [];
+    const nomeDe = new Map(nomes.map((c) => [c.UUID, c.NomeFantasia || c.Nome]));
+    const cat = categorias.find((c) => c.id === cad.categoriaClienteId) || null;
+    const catNome = cat?.nome || (cad.categoriaClienteId ? (await prisma.categoriaCliente.findUnique({ where: { id: cad.categoriaClienteId }, select: { nome: true } }))?.nome : null) || null;
+    const vend = vendedores.find((v) => v.id === cad.idVendedor) || (cad.idVendedor ? await prisma.vendedor.findUnique({ where: { id: cad.idVendedor }, select: { id: true, nome: true } }) : null);
+
+    return {
+        clienteId: cad.UUID, nome: cad.Nome, fantasia: cad.NomeFantasia || null, cidade: cad.End_Cidade || null, ativo: !!cad.Ativo,
+        vendedor: cad.idVendedor ? { id: cad.idVendedor, nome: vend?.nome || 'Vendedor' } : null,
+        categoria: cad.categoriaClienteId ? { id: cad.categoriaClienteId, nome: catNome } : null,
+        diaVenda: cad.Dia_de_venda || '',
+        diasVenda: cad.Dia_de_venda ? cad.Dia_de_venda.split(',').map((d) => d.trim()).filter(Boolean) : [],
+        cicloPersonalizadoDias: cad.cicloCompraPersonalizadoDias ?? null,
+        cicloEfetivoDias: e ? e.ciclo : (cad.cicloCompraPersonalizadoDias || cat?.cicloPadraoDias || 7),
+        celular: cad.Telefone_Celular || null,
+        whatsapps: wpp?.numeros || [],
+        observacaoComercial: cad.observacaoComercialFixa || null,
+        unidoA: e && e.id !== clienteId ? { clienteId: e.id, nome: e.nome } : null,
+        cadastrosUnidos: e ? [...e.ids].filter((id) => id !== clienteId).map((id) => nomeBonito(e.nomesPorId.get(id))).filter(Boolean) : [], // os OUTROS cadastros (sem o que está aberto)
+        numeros: e ? {
+            situacao: e.estado, destino: e.destino, diasSemComprar: e.diasSem, ritmoDias: e.ritmo, origemRitmo: e.origemRitmo,
+            ticketMedio: e.ticket, totalPedidos: e.validos.length, ultimoPedido: e.ultimo, valorEmRiscoMes: e.valorEmRiscoMes,
+            textoGerente: textoGerente(e, base.hoje, clienteId), avisos: e.avisos || [],
+            silenciadoAte: e.silenciadoAte, pausadoAte: e.pausadoAte
+        } : null,
+        ultimosPedidos: pedidos.map((p) => ({ id: p.id, numero: p.numero ?? null, data: p.dia, valor: round2(p.valor), status: p.especial ? 'ESPECIAL' : (p.situacao_ca || null), clienteId: p.cliente_id })),
+        ultimosAtendimentos: atend.map((a) => ({ id: a.id, data: diaSP(a.criadoEm), tipo: a.tipo, acao: a.acaoLabel || null, observacao: a.observacao || null, quem: a.usuarioRegistro?.nome || a.vendedor?.nome || null })),
+        jaSei: {
+            silencios: silencios.map((s) => ({ clienteId: s.clienteUuid, ate: diaSP(s.silenciarAte) })), // desfazer: DELETE /silencio/:clienteId
+            vinculos: vinculos.map((v) => ({ id: v.id, antigoId: v.antigoId, antigoNome: nomeDe.get(v.antigoId) || null, atualId: v.atualId, atualNome: nomeDe.get(v.atualId) || null, origem: v.origem })) // desfazer: DELETE /mesmo-cliente/:id
+        },
+        podeEditar: podeEditarFicha(user, cad.Telefone_Celular),
+        opcoes: {
+            vendedores, dias: DIAS_VENDA,
+            categorias: categorias.map((c) => ({ id: c.id, nome: c.nome, cicloPadraoDias: c.cicloPadraoDias }))
+        },
+        cacheIdadeSegundos: Math.round((Date.now() - entrada.ts) / 1000)
+    };
+}
+
+/** Roda o handler de clienteController.atualizar (mesma validação, WhatsApp, auditoria CLIENTE_ALTERADO) sem duplicar regra. */
+function chamarAtualizarCadastro(clienteId, body, user) {
+    const ctl = require('../controllers/clienteController');
+    return new Promise((resolve, reject) => {
+        let status = 200;
+        const res = {
+            status(n) { status = n; return this; },
+            json(obj) { return status >= 400 ? reject(Object.assign(erro(status, obj?.error || 'Erro ao salvar.'), { codigo: obj?.codigo })) : resolve(obj); }
+        };
+        Promise.resolve(ctl.atualizar({ params: { uuid: clienteId }, body, user }, res)).catch(reject);
+    });
+}
+
+/** Desfazer: o vendedor inativo só é aceito se já foi o vendedor deste cliente por uma troca feita na ficha (AuditLog). */
+async function foiVendedorDaFicha(clienteId, vendedorId) {
+    const logs = await prisma.auditLog.findMany({ where: { acao: 'CARTEIRA_FICHA_ALTERADA', entidadeId: clienteId }, orderBy: { createdAt: 'desc' }, take: 20, select: { detalhes: true } });
+    return logs.some((l) => { try { return JSON.parse(l.detalhes)?.mudancas?.idVendedor?.de === vendedorId; } catch { return false; } });
+}
+
+async function atualizarFicha(clienteId, body, user) {
+    if (!idValido(clienteId)) throw erro(400, 'Id de cliente inválido.');
+    const b = body || {};
+    const antes = await prisma.cliente.findUnique({ where: { UUID: clienteId }, select: selectFicha() });
+    if (!antes) throw erro(404, 'Cliente não encontrado.');
+    const wppAntes = (await prisma.clienteWhatsapp.findUnique({ where: { clienteUuid: clienteId }, select: { numeros: true } }))?.numeros || [];
+    const pode = podeEditarFicha(user, antes.Telefone_Celular);
+
+    // Lista branca: só estes 8 campos entram; o resto do body é ignorado.
+    const patch = {};
+    const quer = (k) => Object.prototype.hasOwnProperty.call(b, k);
+    if (quer('vendedorId')) {
+        const v = b.vendedorId === '' ? null : b.vendedorId;
+        if (v !== null) {
+            if (!idValido(v)) throw erro(400, 'Vendedor inválido.');
+            const vend = await prisma.vendedor.findUnique({ where: { id: v }, select: { ativo: true } });
+            if (!vend) throw erro(400, 'Vendedor inválido.');
+            if (!vend.ativo && v !== antes.idVendedor && !(await foiVendedorDaFicha(clienteId, v))) throw erro(400, 'Esse vendedor está inativo.');
+        }
+        if (v !== (antes.idVendedor || null)) patch.idVendedor = v;
+    }
+    if (quer('categoriaId')) {
+        const c = b.categoriaId === '' ? null : b.categoriaId;
+        if (c !== null) {
+            if (!idValido(c) || !(await prisma.categoriaCliente.findUnique({ where: { id: c }, select: { id: true } }))) throw erro(400, 'Tipo de cliente inválido.');
+        }
+        if (c !== (antes.categoriaClienteId || null)) patch.categoriaClienteId = c;
+    }
+    if (quer('ativo')) {
+        if (typeof b.ativo !== 'boolean') throw erro(400, 'ativo deve ser true ou false.');
+        if (b.ativo !== !!antes.Ativo) patch.Ativo = b.ativo;
+    }
+    if (quer('diaVenda')) {
+        const d = normalizarDiaVenda(b.diaVenda);
+        if (d !== (antes.Dia_de_venda || '')) patch.Dia_de_venda = d;
+    }
+    if (quer('cicloDias')) {
+        let c = b.cicloDias;
+        if (c === '' || c === null) c = null;
+        else {
+            c = Number(c);
+            if (!Number.isInteger(c) || c < 1 || c > 365) throw erro(400, 'O ciclo de compra deve ser um número inteiro de 1 a 365 dias.');
+        }
+        if (c !== (antes.cicloCompraPersonalizadoDias ?? null)) patch.cicloCompraPersonalizadoDias = c;
+    }
+    if (quer('observacaoComercial')) {
+        const o = b.observacaoComercial == null ? null : String(b.observacaoComercial).trim().slice(0, 2000) || null;
+        if (o !== (antes.observacaoComercialFixa || null)) patch.observacaoComercialFixa = o;
+    }
+    if (quer('celular')) {
+        const bruto = String(b.celular ?? '').trim();
+        const c = bruto.replace(/\D/g, '');
+        if (bruto && !c) throw erro(400, 'Celular inválido: informe só números, com DDD.');
+        if (c !== (antes.Telefone_Celular || '')) patch.Telefone_Celular = c; // o cadastro valida 10/11 dígitos e confere no bot
+    }
+    if (quer('whatsapps')) {
+        if (!Array.isArray(b.whatsapps)) throw erro(400, 'whatsapps deve ser uma lista.');
+        patch.Whatsapps = b.whatsapps; // o cadastro normaliza/valida e só grava com permissão
+    }
+
+    const gate = [['idVendedor', 'vendedor', 'vendedor'], ['categoriaClienteId', 'categoria', 'tipo de cliente'], ['Ativo', 'ativo', 'situação (ativo/inativo)'],
+        ['Telefone_Celular', 'celular', 'celular'], ['Whatsapps', 'whatsapps', 'WhatsApps']];
+    for (const [campo, chave, rotulo] of gate) {
+        if (campo in patch && !pode[chave]) throw erro(403, `Sem permissão para alterar ${rotulo}. Peça a quem edita clientes.`);
+    }
+
+    if (Object.keys(patch).length) {
+        try {
+            await chamarAtualizarCadastro(clienteId, { ...patch, origem: 'CARTEIRA' }, user);
+        } finally {
+            invalidar(); // mesmo que o cadastro responda erro depois de gravar parte (ex.: vendedor gravado, WhatsApp recusado)
+        }
+        try { // auditoria própria da ficha (fora de qualquer transação; o CLIENTE_ALTERADO do cadastro já foi gravado)
+            const depois = await prisma.cliente.findUnique({ where: { UUID: clienteId }, select: selectFicha() });
+            const wppDepois = (await prisma.clienteWhatsapp.findUnique({ where: { clienteUuid: clienteId }, select: { numeros: true } }))?.numeros || [];
+            const mapa = { idVendedor: 'idVendedor', categoriaClienteId: 'categoriaClienteId', Ativo: 'Ativo', Dia_de_venda: 'Dia_de_venda', cicloCompraPersonalizadoDias: 'cicloCompraPersonalizadoDias', Telefone_Celular: 'Telefone_Celular', observacaoComercialFixa: 'observacaoComercialFixa' };
+            const mudancas = {};
+            for (const k of Object.keys(mapa)) if ((antes[k] ?? null) !== (depois?.[k] ?? null)) mudancas[k] = { de: antes[k] ?? null, para: depois?.[k] ?? null };
+            if (JSON.stringify(wppAntes) !== JSON.stringify(wppDepois)) mudancas.Whatsapps = { de: wppAntes, para: wppDepois };
+            if (Object.keys(mudancas).length) {
+                await prisma.auditLog.create({ data: { acao: 'CARTEIRA_FICHA_ALTERADA', entidade: 'Cliente', entidadeId: clienteId, usuarioId: user?.id || '-', usuarioNome: user?.nome || user?.login || '-', detalhes: JSON.stringify({ cliente: antes.NomeFantasia || antes.Nome, mudancas }) } });
+            }
+        } catch (e) { console.error('[Carteira] falha ao gravar AuditLog da ficha (alteração já efetivada):', e.message); }
+    }
+    return obterFicha(clienteId, user);
+}
+
+
 module.exports = {
-    obterPainel, listarClientes, invalidar,
+    obterPainel, listarClientes, invalidar, obterFicha, atualizarFicha,
     buscarClientes, criarVinculo, desfazerVinculo, dispensarSugestao, silenciar, desfazerSilencio, auditar,
     // puras (testes)
     periodos, calcularRitmo, classificar, classificarMotivo,

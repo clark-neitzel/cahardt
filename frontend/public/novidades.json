@@ -1,8 +1,8 @@
 [
   {
     "slug": "carteira",
-    "titulo": "Nova aba Carteira no Dashboard",
-    "resumo": "A aba Recorrência virou Carteira: resumo da semana ou do mês, 20 maiores clientes, quem parou de comprar e o botão Já sei. O botão Analisar com IA saiu dos cards da Rota.",
+    "titulo": "Carteira com ficha do cliente",
+    "resumo": "Na aba Carteira, toque num cliente e a ficha abre por cima: troque vendedor, situação, dia de venda e mais, salve e a Carteira se atualiza sem sair do lugar. Inclui resumo da semana ou do mês, 20 maiores e o botão Já sei.",
     "data": "2026-11-12"
   },
   {

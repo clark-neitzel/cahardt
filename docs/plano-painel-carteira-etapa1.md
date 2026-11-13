@@ -183,6 +183,33 @@ Regras que o front precisa saber: (a) "pedidosReais" pode ser negativo quando s�
 | "Não compra mais" | NÃO há rota nova: o front abre `/clientes/:id` (cadastro) — não foi criada rota enxuta de inativar | — | — |
 Observações: o `id` do vínculo criado volta no POST (guardar para o "Desfazer" do toast). Ao juntar, a lista `decisoes[MESMO_CLIENTE]` perde o item e o cliente passa a aparecer uma vez só (com `cadastrosUnidos`). `?fresh=1` não é necessário depois de gravar: o backend já invalida.
 
+### 4.2 Ficha do cliente (painel lateral da Carteira) — REAL (13/11/2026)
+Ambas `verificarAuth` + `checkGestor`; erro = `{error, codigo?}`. `:id` = UUID do cadastro (pode ser um cadastro "unido": os números são da entidade unida, `unidoA` aponta o principal). Sem coluna nova: tudo vem de `clientes`, `cliente_whatsapps`, `cliente_silencio`, `cliente_mesmo_que`, pedidos e atendimentos.
+
+`GET /api/dashboards/geral/carteira/cliente/:id` -> 200:
+```jsonc
+{ "clienteId":"", "nome":"razão social", "fantasia":"|null", "cidade":"|null", "ativo":true,
+  "vendedor":{"id":"","nome":""} /*|null*/, "categoria":{"id":"","nome":""} /*|null*/,
+  "diaVenda":"SEG, QUA" /* "" = sem dia */, "diasVenda":["SEG","QUA"],
+  "cicloPersonalizadoDias":15 /*|null*/, "cicloEfetivoDias":15 /* personalizado, senão da categoria, senão 7 */,
+  "celular":"47999990001|null", "whatsapps":["47988887777"], "observacaoComercial":"|null",
+  "unidoA":{"clienteId":"","nome":""} /*|null*/, "cadastrosUnidos":["nome"] /* os OUTROS cadastros da entidade (sem o aberto), em Title Case */,
+  "numeros": { "situacao":"NO_RITMO|ATRASO_LEVE|PARADO|INATIVAR|NOVO|SEM_PEDIDO|SAZONAL", "destino":"ANA|VISITA|ATRASO_LEVE|INATIVAR|null",
+      "diasSemComprar":41, "ritmoDias":30, "origemRitmo":"INTERVALO_REAL|CICLO_CADASTRO", "ticketMedio":125.46, "totalPedidos":20,
+      "ultimoPedido":"2026-10-02", "valorEmRiscoMes":125.46, "textoGerente":"frase", "avisos":[], "silenciadoAte":"YYYY-MM-DD|null", "pausadoAte":"YYYY-MM-DD|null" } /* null se o cadastro é novo demais p/ o cache: tratar */,
+  "ultimosPedidos":[{"id","numero":123|null,"data":"YYYY-MM-DD","valor":444,"status":"FATURADO|ESPECIAL","clienteId"}],   // até 5, válidos (sem cancelado/bonificação), data <= hoje
+  "ultimosAtendimentos":[{"id","data":"YYYY-MM-DD","tipo":"WHATSAPP","acao":"|null","observacao":"|null","quem":"nome|null"}],   // até 6
+  "jaSei":{ "silencios":[{"clienteId","ate":"YYYY-MM-DD"}],            // desfazer: DELETE /silencio/:clienteId
+            "vinculos":[{"id","antigoId","antigoNome","atualId","atualNome","origem"}] },   // desfazer: DELETE /mesmo-cliente/:id
+  "podeEditar":{"vendedor":true,"categoria":true,"diaVenda":true,"ciclo":true,"observacao":true,"ativo":false,"celular":false,"whatsapps":false},
+  "opcoes":{"vendedores":[{"id","nome"}],"categorias":[{"id","nome","cicloPadraoDias"}],"dias":["SEG","TER","QUA","QUI","SEX","SAB","DOM","N/D"]},
+  "cacheIdadeSegundos":0 }
+```
+`PATCH /api/dashboards/geral/carteira/cliente/:id` — corpo com SÓ os campos que mudaram (campo ausente = não mexe; qualquer chave fora desta lista é ignorada): `vendedorId` (uuid|null), `ativo` (boolean), `categoriaId` (uuid|null), `diaVenda` (lista `["SEG","QUA"]` ou texto `"SEG, QUA"`; `""` limpa), `cicloDias` (inteiro 1-365|null), `celular` (dígitos, 10 ou 11; texto sem nenhum dígito = 400; `""` limpa), `whatsapps` (lista; o cadastro normaliza), `observacaoComercial` (texto|null, máx. 2000). Resposta 200 = a ficha atualizada (mesmo formato do GET). Valor igual ao atual é ignorado (não grava nem audita). Vendedor INATIVO só é aceito se já foi o vendedor do cliente por troca feita na ficha (desfazer); senão 400 "Esse vendedor está inativo.". O cache da Carteira é invalidado sempre que houve tentativa de gravar (inclusive se o cadastro respondeu erro depois de gravar parte).
+Regra da Carteira (muda `numeros.destino` e as listas): cadastro com `ativo=false` só conta na Carteira se estiver unido (vínculo) ou com situação NO_RITMO/ATRASO_LEVE; os demais inativos saem das listas, top 20, decisões e `destino` (= null). Totais de venda não mudam.
+Erros: 400 vendedor/tipo inexistente ou vendedor inativo, dia fora de SEG..N/D, ciclo fora de 1-365, `ativo` não booleano, celular/WhatsApp inválido (mensagem do cadastro), `codigo:"WHATSAPP_NAO_EXISTE"` (celular novo sem WhatsApp, só com o módulo ligado); 403 campo sem permissão (mensagem "Sem permissão para alterar X"); 404 cliente inexistente. Ao salvar: reaproveita `clienteController.atualizar` (mesma validação, tabela `cliente_whatsapps`, conferência do número no bot, AuditLog `CLIENTE_ALTERADO` com `origem:"CARTEIRA"`), grava AuditLog `CARTEIRA_FICHA_ALTERADA` (antes/depois) e invalida o cache da Carteira.
+Permissões (espelham o cadastro): vendedor, tipo, dia de venda, ciclo e observação não exigem permissão própria (o cadastro também não); `ativo` e `whatsapps` exigem `admin` / `clientes.edit` / `Pode_Editar_GPS`; `celular` idem, ou `pedidos.edit` quando o cliente ainda não tem celular válido. Inativar não tem confirmação no servidor (só um `confirm` na tela do cadastro): a ficha deve pedir confirmação.
+
 ## 5. Desempenho (banco compartilhado e lento)
 Princípio: o universo é PEQUENO (≈1.208 ativos + inativos que compram; ≈5,4 mil pedidos no total — contagem por canal da Revisão 3 somada; não confirmado se há pedidos fora desses canais). Então carregar e calcular em Node, sem N+1.
 | # | Consulta | Custo |

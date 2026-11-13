@@ -623,7 +623,7 @@ router.get('/geral/recorrencia', verificarAuth, checkGestor, async (req, res) =>
 // ════════════════════════════════════════════════════════════════
 const carteiraService = require('../services/carteiraService');
 const erroCarteira = (res, error, rotulo) => {
-    if (error?.status) return res.status(error.status).json({ error: error.message });
+    if (error?.status) return res.status(error.status).json({ error: error.message, ...(error.codigo ? { codigo: error.codigo } : {}) });
     console.error(`[Dashboards] Erro em ${rotulo}:`, error);
     return res.status(500).json({ error: `Erro ao ${rotulo}.` });
 };
@@ -640,6 +640,16 @@ router.get('/geral/carteira', verificarAuth, checkGestor, async (req, res) => {
 router.get('/geral/carteira/buscar-clientes', verificarAuth, checkGestor, async (req, res) => {
     try { res.json(await carteiraService.buscarClientes(req.query.q)); }
     catch (error) { erroCarteira(res, error, 'buscar clientes'); }
+});
+
+router.get('/geral/carteira/cliente/:id', verificarAuth, checkGestor, async (req, res) => {
+    try { res.json(await carteiraService.obterFicha(req.params.id, req.user)); }
+    catch (error) { erroCarteira(res, error, 'abrir a ficha do cliente'); }
+});
+
+router.patch('/geral/carteira/cliente/:id', verificarAuth, checkGestor, async (req, res) => {
+    try { res.json(await carteiraService.atualizarFicha(req.params.id, req.body, req.user)); }
+    catch (error) { erroCarteira(res, error, 'salvar a ficha do cliente'); }
 });
 
 router.post('/geral/carteira/mesmo-cliente', verificarAuth, checkGestor, async (req, res) => {
