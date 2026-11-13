@@ -5,6 +5,7 @@ const { erro, idOpcional, pagina, lista, num, dec, somaDiasISO, isoNowTZ, inicio
 const completo = require('./clienteCadastroCompletoService');
 const contatos = require('./clienteContatoService');
 const classif = require('./clienteClassificacaoService');
+const telefonesSvc = require('./clienteTelefonesService');
 const { WHERE_PEDIDO_RECEITA } = require('./projecaoVendasService');
 
 const DIAS_TOP = 90;
@@ -23,7 +24,8 @@ async function ficha(clienteId) {
         where: { UUID: id },
         select: {
             UUID: true, Nome: true, NomeFantasia: true, Documento: true, Tipo_Pessoa: true, Ativo: true, Perfis: true,
-            Email: true, Telefone: true, Telefone_Celular: true,
+            Email: true, Telefone: true, Telefone_Celular: true, Telefone_Comercial: true,
+            whatsapp: { select: { numeros: true } },
             End_Logradouro: true, End_Numero: true, End_Bairro: true, End_Cidade: true, End_Estado: true, End_CEP: true,
             Dia_de_venda: true, Dia_de_entrega: true, Condicao_de_pagamento: true, condicoes_pagamento_permitidas: true,
             idVendedor: true, vendedor: { select: { id: true, nome: true, ativo: true } },
@@ -35,7 +37,7 @@ async function ficha(clienteId) {
     const desde = inicioDiaSP(somaDiasISO(isoNowTZ().slice(0, 10), -DIAS_TOP));
     const filtroPedido = { clienteId: id, ...WHERE_PEDIDO_RECEITA, cancelado: false };
 
-    const [tabelas, pedidos, itens, bloco, mapaClassif] = await Promise.all([
+    const [tabelas, pedidos, itens, bloco, mapaClassif, prefTel] = await Promise.all([
         idsTabelas.length
             ? prisma.tabelaPreco.findMany({
                 where: { OR: [{ id: { in: idsTabelas } }, { idCondicao: { in: idsTabelas } }] },
@@ -55,6 +57,7 @@ async function ficha(clienteId) {
         }),
         contatos.listar(id),
         classif.classificacaoDeClientes([cli]),
+        telefonesSvc.lerPreferencia(id),
     ]);
     const classificacao = mapaClassif.get(id);
 
@@ -112,18 +115,24 @@ async function ficha(clienteId) {
         topProdutos90d: topProdutos,
         contatos: bloco,
         cadastro: completo.avaliarCadastro(cli, { tabela, vendedor: cli.vendedor }),
+        // Telefones para WhatsApp na ORDEM PREFERIDA (o 1º válido é o preferido), com o número já no
+        // formato da Z-API (55 + DDD + número) e a pendência "Telefone incompleto" (nov/2026).
+        telefonesWhatsapp: telefonesSvc.montarTelefones(cli, bloco?.data || [], prefTel),
         classificacao,
         somenteFornecedor: classificacao.somenteFornecedor,
     };
 }
 
-const GRUPOS = ['acertar', 'classificar'];
+const GRUPOS = ['acertar', 'classificar', 'telefone'];
 
 /**
  * Cadastros ATIVOS por grupo (filtro opcional: vendedorId):
  *  - acertar (padrão): campo obrigatório faltando E classificação efetiva CLIENTE ou CLIENTE_FORNECEDOR.
  *    Fornecedor-só e "a classificar" NÃO são clientes incompletos.
  *  - classificar: classificação efetiva A_CLASSIFICAR (com ou sem os 4 campos preenchidos).
+ *  - telefone: CLIENTE / CLIENTE_FORNECEDOR com telefone incompleto (sem DDD, DDD inexistente, dígitos
+ *    errados, "55 no lugar do DDD") — também entram em `acertar`, com a pendência "Telefone incompleto".
+ *    Número com DDD + número NÃO é pendência: o 55 é colocado na hora do envio.
  * Carrega os ativos em memória (centenas/poucos milhares), classifica em lote e SÓ DEPOIS pagina —
  * paginar no SQL ficaria errado ao excluir linhas. `contagens` vem do mesmo passeio.
  */
@@ -142,24 +151,31 @@ async function cadastrosPendentes(query = {}) {
             UUID: true, Nome: true, NomeFantasia: true, Documento: true, Perfis: true, End_Cidade: true,
             Dia_de_venda: true, Dia_de_entrega: true, Condicao_de_pagamento: true, idVendedor: true,
             vendedor: { select: { id: true, nome: true, ativo: true } },
+            End_Estado: true, Telefone: true, Telefone_Celular: true, Telefone_Comercial: true,
+            whatsapp: { select: { numeros: true } },
         },
     });
-    const mapa = await classif.classificacaoDeClientes(rows, { todos: true });
-    const contagens = { acertar: 0, classificar: 0 };
+    const [mapa, telContatos] = await Promise.all([
+        classif.classificacaoDeClientes(rows, { todos: true }),
+        telefonesDosContatos(),
+    ]);
+    const contagens = { acertar: 0, classificar: 0, telefone: 0 };
     const doGrupo = [];
     for (const c of rows) {
         const k = mapa.get(c.UUID);
         const cadastro = completo.avaliarLinha(c, tabelas);
         const ehCliente = k.valor === 'CLIENTE' || k.valor === 'CLIENTE_FORNECEDOR';
-        if (ehCliente && !cadastro.completo) {
+        const telefone = ehCliente ? telefonesSvc.montarTelefones(c, telContatos.get(c.UUID) || []).pendencia : null;
+        if (ehCliente && (!cadastro.completo || telefone)) {
             contagens.acertar += 1;
-            if (grupo === 'acertar') doGrupo.push({ c, k, cadastro });
+            if (telefone) contagens.telefone += 1;
+            if (grupo === 'acertar' || (grupo === 'telefone' && telefone)) doGrupo.push({ c, k, cadastro, telefone });
         } else if (k.valor === classif.A_CLASSIFICAR) {
             contagens.classificar += 1;
-            if (grupo === 'classificar') doGrupo.push({ c, k, cadastro });
+            if (grupo === 'classificar') doGrupo.push({ c, k, cadastro, telefone: null });
         }
     }
-    const data = doGrupo.slice(pg.skip, pg.skip + pg.limit).map(({ c, k, cadastro }) => ({
+    const data = doGrupo.slice(pg.skip, pg.skip + pg.limit).map(({ c, k, cadastro, telefone }) => ({
         id: c.UUID,
         nome: nomeDe(c),
         cidade: c.End_Cidade || null,
@@ -170,8 +186,27 @@ async function cadastrosPendentes(query = {}) {
         classificacao: k,
         somenteFornecedor: k.somenteFornecedor,
         ...cadastro,
+        // `faltando` continua sendo só os 4 campos da regra da Ana; o telefone vem à parte
+        telefoneIncompleto: telefone || null,
+        pendencias: [...cadastro.faltando, ...(telefone ? [{ campo: telefone.campo, rotulo: telefone.rotulo }] : [])],
     }));
     return lista({ page: pg.page, limit: pg.limit, total: doGrupo.length, data, extra: { grupo, contagens } });
+}
+
+// Telefones das pessoas do WhatsApp (cliente_contatos) de todos os clientes, numa query só.
+// Se a leitura falhar, a lista sai só com os telefones do cadastro (não derruba a tela).
+async function telefonesDosContatos() {
+    const mapa = new Map();
+    try {
+        const rows = await prisma.clienteContato.findMany({ select: { clienteUuid: true, telefone: true } });
+        for (const r of rows || []) {
+            if (!mapa.has(r.clienteUuid)) mapa.set(r.clienteUuid, []);
+            mapa.get(r.clienteUuid).push({ telefone: r.telefone });
+        }
+    } catch (e) {
+        console.error('[CadastrosPendentes] telefones dos contatos indisponíveis:', e?.message || e);
+    }
+    return mapa;
 }
 
 module.exports = { ficha, cadastrosPendentes };
