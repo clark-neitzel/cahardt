@@ -185,6 +185,16 @@ function ModalPedido({ pedido, isAdmin, onClose, onChanged }) {
       toast.success('Cliente vinculado. Agora pode aprovar.');
     } catch (e) { toast.error(e.response?.data?.error || 'Erro ao vincular'); }
   };
+  const criarCadastro = async () => {
+    setProcessando(true);
+    try {
+      const r = await kitFestaService.criarCadastroDoPedido(pedido.id);
+      if (r.cliente) setClienteVinc(r.cliente);
+      const extra = (r.avisos && r.avisos.length) ? ` ${r.avisos.join(' ')}` : '';
+      toast.success((r.criado ? 'Cadastro criado e vinculado.' : 'Cliente já existia e foi vinculado.') + extra);
+    } catch (e) { toast.error(e.response?.data?.error || 'Erro ao criar cadastro'); }
+    finally { setProcessando(false); }
+  };
 
   const aprovar = async () => {
     setProcessando(true);
@@ -254,6 +264,11 @@ function ModalPedido({ pedido, isAdmin, onClose, onChanged }) {
                 <Phone className="h-3.5 w-3.5" /> O cliente informou/corrigiu o celular ({pedido.telefoneCliente}). Atualize no cadastro do cliente.
               </div>
             )}
+            {String(pedido.observacoes || '').includes('[ENCAIXE]') && (
+              <div className="mt-1.5 text-xs bg-orange-50 text-orange-800 rounded-lg px-2.5 py-1.5 font-medium">
+                ENCAIXE: o horário estava cheio. O pedido só vale depois da confirmação da equipe.
+              </div>
+            )}
           </div>
 
           {/* Entrega */}
@@ -275,13 +290,13 @@ function ModalPedido({ pedido, isAdmin, onClose, onChanged }) {
             <div className="space-y-1">
               {pedido.itens.map(it => (
                 <div key={it.id} className="flex justify-between text-sm">
-                  <span className="text-gray-700"><b>{it.quantidade}×</b> {it.nomeProduto}{it.opcao ? ` (${it.opcao})` : ''} <span className="text-gray-400 text-xs">· {it.unidadesPorCaixa}un</span></span>
+                  <span className="text-gray-700"><b>{it.quantidade}×</b> {it.nomeProduto}{it.opcao ? ` (${it.opcao})` : ''} <span className="text-gray-400 text-xs">· {Number(it.unidadesPorCaixa) === 1 ? 'pacote 500 g' : `${it.unidadesPorCaixa}un`}</span></span>
                   <span className="text-gray-600">{money(it.precoUnitario * it.quantidade)}</span>
                 </div>
               ))}
             </div>
             <div className="mt-2 pt-2 border-t border-gray-100 space-y-0.5 text-sm">
-              <div className="flex justify-between text-gray-500"><span>Subtotal ({pedido.totalCaixas} caixas)</span><span>{money(pedido.subtotal)}</span></div>
+              <div className="flex justify-between text-gray-500"><span>Subtotal ({pedido.totalCaixas} caixa(s) de Kit Festa; pacotes 500 g não entram nessa conta)</span><span>{money(pedido.subtotal)}</span></div>
               {Number(pedido.descontoValor) > 0 && <div className="flex justify-between text-gray-500"><span>{pedido.origemDesconto === 'CREDITO' ? 'Crédito de indicação' : pedido.origemDesconto === 'INDICACAO' ? 'Desconto de indicação' : `Cupom ${pedido.cupomCodigo || ''}`}</span><span>– {money(pedido.descontoValor)}</span></div>}
               {Number(pedido.taxaEntrega) > 0 && <div className="flex justify-between text-gray-500"><span>Taxa entrega</span><span>{money(pedido.taxaEntrega)}</span></div>}
               <div className="flex justify-between font-bold text-gray-800"><span>Total</span><span>{money(pedido.total)}</span></div>
@@ -302,7 +317,11 @@ function ModalPedido({ pedido, isAdmin, onClose, onChanged }) {
               <div className="text-sm font-medium text-red-700 flex items-center gap-1.5 mb-2">
                 <UserPlus className="h-4 w-4" /> Vincular a um cliente do app
               </div>
-              <p className="text-xs text-gray-500 mb-2">Este cliente ainda não tem cadastro. Cadastre o cliente em Clientes → Novo e vincule aqui antes de aprovar.</p>
+              <p className="text-xs text-gray-500 mb-2">Este cliente ainda não tem cadastro. Você pode criar o cadastro com os dados do pedido (a equipe completa o que faltar) ou buscar um cliente já existente.</p>
+              <button type="button" onClick={criarCadastro} disabled={processando}
+                className="w-full mb-2 bg-white border border-red-200 text-red-700 rounded-lg py-2 text-sm font-medium hover:bg-red-50 disabled:opacity-50 flex items-center justify-center gap-1.5">
+                <UserPlus className="h-4 w-4" /> Criar cadastro com os dados do pedido
+              </button>
               <div className="relative">
                 <Search className="h-4 w-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input className="w-full border border-gray-300 rounded-lg pl-9 pr-3 py-2 text-sm" placeholder="Buscar cliente por nome ou CPF..."
