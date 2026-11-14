@@ -64,7 +64,7 @@ const kitFestaController = {
         catch (e) { erro(res, e, 'slots'); }
     },
     validarCupom: async (req, res) => {
-        try { res.json(await svc.validarCupom({ codigo: req.body.codigo, totalCaixas: req.body.totalCaixas })); }
+        try { res.json(await svc.validarCupom({ codigo: req.body.codigo, totalCaixas: req.body.totalCaixas, itens: req.body.itens })); }
         catch (e) { erro(res, e, 'validarCupom'); }
     },
     verificarEntrega: async (req, res) => {
@@ -222,6 +222,14 @@ const kitFestaController = {
     adminVincularCliente: async (req, res) => {
         try { res.json(await svc.adminVincularCliente(req.params.id, req.body.clienteUuid)); }
         catch (e) { erro(res, e, 'adminVincularCliente'); }
+    },
+    atualizarDadosCadastro: async (req, res) => {
+        try { res.json(await svc.atualizarDadosCadastro(req.params.id, req.body || {})); }
+        catch (e) { erro(res, e, 'atualizarDadosCadastro'); }
+    },
+    adminCriarCadastroDoPedido: async (req, res) => {
+        try { res.json(await svc.adminCriarCadastroDoPedido(req.params.id, { aprovadoPorId: req.user?.id })); }
+        catch (e) { erro(res, e, 'adminCriarCadastroDoPedido'); }
     },
     adminExcluirPedido: async (req, res) => {
         try {

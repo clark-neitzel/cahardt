@@ -31,6 +31,7 @@ v1.post('/kitfesta/verificar-entrega', kitFestaCtrl.verificarEntrega);
 // Kit Festa — criação de pedido pela IA (cai na fila de aprovação; webhook automático desligado,
 // quem confirma é a Ana na conversa). Identifica por telefone; cliente novo informa nome+CPF.
 v1.post('/kitfesta/pedido', kitFestaCtrl.criarPedidoIA);
+v1.post('/kitfesta/pedido/:id/dados-cadastro', kitFestaCtrl.atualizarDadosCadastro);
 
 // Congelados — catálogo, grupos e ficha técnica (preço GENÉRICO, tabela "Site")
 // v1.6.0: `catalogo` aponta para catalogoIA (mesma URL; resposta antiga + objeto único de
