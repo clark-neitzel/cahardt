@@ -53,6 +53,12 @@ function gerarCodigoIndicacao(nome) {
 }
 
 // Imagem principal de um Produto
+const {
+    ehPacoteKitFesta, rotuloUnidade, quantidadeCaixasParaMinimo,
+    textoResumoQuantidades, marcarEncaixe, temEncaixe,
+    mesclarObservacoesCadastro, parsearBlocoCadastro,
+} = require('./kitFestaPacote');
+
 function imagemPrincipal(produto) {
     if (!produto?.imagens?.length) return null;
     const p = produto.imagens.find(i => i.principal) || produto.imagens[0];
@@ -76,6 +82,8 @@ function produtoSitePublico(kp) {
         destaque: kp.destaque,
         ordem: kp.ordem,
         imagem: imagemPrincipal(kp.produto),
+        pacote: ehPacoteKitFesta(kp),
+        unidadeLabel: rotuloUnidade(kp),
     };
 }
 
@@ -433,19 +441,30 @@ const kitFestaService = {
     },
 
     // ───────── Cupom ─────────
-    async validarCupom({ codigo, totalCaixas }) {
+    async validarCupom({ codigo, totalCaixas, itens }) {
         const c = await prisma.kitFestaCupom.findUnique({ where: { codigo: String(codigo || '').toUpperCase() } });
         if (!c || !c.ativo) throw new Error('Cupom inválido.');
         if (c.validade && c.validade < new Date()) throw new Error('Cupom expirado.');
         if (c.usoMaximo != null && c.usos >= c.usoMaximo) throw new Error('Cupom esgotado.');
-        if (c.minCaixas && totalCaixas < c.minCaixas) {
-            throw new Error(`Válido a partir de ${c.minCaixas} caixas.`);
+        let caixas = Number(totalCaixas) || 0;
+        if (Array.isArray(itens) && itens.length) {
+            const ids = itens.map(i => i.kitFestaProdutoId || i.id).filter(Boolean);
+            const kps = await prisma.kitFestaProduto.findMany({
+                where: { id: { in: ids } },
+                include: { categoria: true },
+            });
+            const mapa = {};
+            kps.forEach(k => { mapa[k.id] = k; });
+            caixas = quantidadeCaixasParaMinimo(itens, it => mapa[it.kitFestaProdutoId || it.id]).caixas;
+        }
+        if (c.minCaixas && caixas < c.minCaixas) {
+            throw new Error(`Válido a partir de ${c.minCaixas} caixas (pacotes de 500 g não entram nessa conta).`);
         }
         return { codigo: c.codigo, tipo: c.tipo, valor: dec(c.valor), label: c.label, minCaixas: c.minCaixas };
     },
 
     // ───────── Criação de pedido (cliente logado ou visitante) ─────────
-    async criarPedidoSite({ clienteId, visitante, itens, modo, data, horario, bairroId, enderecoEntrega, cep, cupomCodigo, indicacaoCodigo, usarCredito, observacoes, telefone, notificarCliente = true, idempotencyKey }) {
+    async criarPedidoSite({ clienteId, visitante, itens, modo, data, horario, bairroId, enderecoEntrega, cep, cupomCodigo, indicacaoCodigo, usarCredito, observacoes, telefone, notificarCliente = true, idempotencyKey, encaixe }) {
         if (!Array.isArray(itens) || itens.length === 0) throw new Error('Carrinho vazio.');
 
         // Cliente autenticado ou visitante (cria registro sem cadastro)
@@ -475,13 +494,12 @@ const kitFestaService = {
         const kpIds = itens.map(i => i.kitFestaProdutoId).filter(Boolean);
         const kps = await prisma.kitFestaProduto.findMany({
             where: { id: { in: kpIds }, ativo: true },
-            include: { produto: true },
+            include: { produto: true, categoria: true },
         });
         const kpMap = {};
         kps.forEach(k => { kpMap[k.id] = k; });
 
         let subtotal = 0;
-        let totalCaixas = 0;
         const itensData = [];
         for (const it of itens) {
             const kp = kpMap[it.kitFestaProdutoId];
@@ -490,7 +508,6 @@ const kitFestaService = {
             if (qtd <= 0) continue;
             const preco = kp.precoKitFesta != null ? dec(kp.precoKitFesta) : dec(kp.produto?.valorVenda);
             subtotal += preco * qtd;
-            totalCaixas += qtd;
             itensData.push({
                 kitFestaProdutoId: kp.id,
                 nomeProduto: kp.produto?.nome || '',
@@ -502,16 +519,31 @@ const kitFestaService = {
         }
         if (!itensData.length) throw new Error('Carrinho vazio.');
 
-        // Mínimo de caixas
+        const qtdMin = quantidadeCaixasParaMinimo(itens, it => kpMap[it.kitFestaProdutoId]);
+        const totalCaixas = qtdMin.caixas; // pacotes 500 g NÃO entram no mínimo
         const cfg = await this.configPublico();
         const minCaixas = (cfg.regras && cfg.regras.minCaixas) || DEFAULT_CONFIG.regras.minCaixas;
-        if (totalCaixas < minCaixas) throw new Error(`Pedido mínimo de ${minCaixas} caixas.`);
+        if (totalCaixas < minCaixas) {
+            throw new Error(`Pedido mínimo de ${minCaixas} caixas (pacotes de 500 g não entram nessa conta). ${textoResumoQuantidades(qtdMin)}.`);
+        }
 
         // Antecedência mínima: não deixa fechar pedido para um horário perto demais do agora
         const ante = Number(cfg.agenda?.antecedenciaHoras) || 0;
         if (data && horario && !this._slotFuturo(String(data).slice(0, 10), horario, ante)) {
             throw new Error(`Esse horário já não está mais disponível (precisamos de ${ante}h de antecedência). Escolha outro horário.`);
         }
+
+        // Horário cheio: não barra o pedido — anota como ENCAIXE (só vale após a equipe confirmar).
+        let obsPedido = observacoes || null;
+        let pedidoEncaixe = !!encaixe;
+        if (data && horario) {
+            try {
+                const slots = await this.slotsPublico({ data: String(data).slice(0, 10), modo });
+                const slot = (slots || []).find(s => s.hora === horario);
+                if (slot?.full) pedidoEncaixe = true;
+            } catch (_) { /* agenda indisponível: segue sem marcar */ }
+        }
+        if (pedidoEncaixe) obsPedido = marcarEncaixe(obsPedido);
 
         // Entrega: taxa é "a combinar" (não cobra no site). Exige endereço e verifica cobertura por raio.
         let taxaEntrega = 0;
@@ -537,7 +569,7 @@ const kitFestaService = {
 
         if (cupomCodigo) {
             try {
-                const cup = await this.validarCupom({ codigo: cupomCodigo, totalCaixas });
+                const cup = await this.validarCupom({ codigo: cupomCodigo, totalCaixas, itens });
                 descontoValor = cup.tipo === 'pct' ? subtotal * cup.valor / 100 : Math.min(cup.valor, subtotal);
                 cupomAplicado = cup.codigo; origemDesconto = 'CUPOM';
             } catch (_) { /* cupom inválido: ignora silenciosamente */ }
@@ -587,7 +619,7 @@ const kitFestaService = {
                 creditoUsadoId: creditoParaUsar?.id || null,
                 total,
                 totalCaixas,
-                observacoes: observacoes || null,
+                observacoes: obsPedido,
                 status: semCadastro ? 'PENDENTE_CADASTRO' : 'AGUARDANDO',
                 idempotencyKey: idempotencyKey || null,
                 itens: { create: itensData },
@@ -629,7 +661,7 @@ const kitFestaService = {
     // existe uma conta do site com esse número, reaproveita (sem pedir CPF); senão exige nome+CPF
     // (necessário para o cadastro do site e para a nota). Webhook automático DESLIGADO (a Ana
     // confirma na conversa). Cai na MESMA fila de aprovação do Kit Festa; faturamento aprova.
-    async criarPedidoIA({ telefone, itens, modo, data, horario, enderecoEntrega, cep, cupomCodigo, observacoes, visitante, idempotencyKey }) {
+    async criarPedidoIA({ telefone, itens, modo, data, horario, enderecoEntrega, cep, cupomCodigo, observacoes, visitante, idempotencyKey, encaixe }) {
         if (!Array.isArray(itens) || itens.length === 0) throw new Error('Carrinho vazio.');
 
         // Idempotência: mesma chave → devolve o mesmo pedido (retry/timeout do bot).
@@ -663,9 +695,13 @@ const kitFestaService = {
         const pedido = await this.criarPedidoSite({
             clienteId, visitante: visitanteFinal, itens: itensMap, modo, data, horario,
             enderecoEntrega, cep, cupomCodigo, observacoes: obs, telefone,
-            notificarCliente: false, idempotencyKey,
+            notificarCliente: false, idempotencyKey, encaixe,
         });
-        return { id: pedido.id, numero: pedido.numero, status: pedido.status, total: dec(pedido.total) };
+        return {
+            id: pedido.id, numero: pedido.numero, status: pedido.status, total: dec(pedido.total),
+            semCadastro: !!pedido.semCadastro,
+            encaixe: temEncaixe(pedido.observacoes),
+        };
     },
 
     // Marca/desmarca pagamento (quitação). Ao quitar, gera o crédito do indicador
@@ -1142,6 +1178,7 @@ const kitFestaService = {
                 quantidade: it.quantidade,
                 valor: dec(it.precoUnitario),
                 valorBase: dec(it.precoUnitario),
+                descricao: 'KIT_FESTA_PRECO_FIXO',
             });
         }
 
@@ -1179,6 +1216,126 @@ const kitFestaService = {
 
         // (uso do cupom já é registrado na criação do pedido — não incrementa aqui)
         return atualizado;
+    },
+
+    // Ana (ou o site) complementa dados de cadastro DEPOIS de fechar o pedido.
+    async atualizarDadosCadastro(id, dados = {}) {
+        const kp = await prisma.kitFestaPedido.findUnique({ where: { id } });
+        if (!kp) throw new Error('Pedido não encontrado.');
+        if (['CONVERTIDO', 'RECUSADO', 'CANCELADO'].includes(kp.status)) {
+            throw new Error('Este pedido já foi encerrado e não recebe mais dados de cadastro.');
+        }
+        const obs = mesclarObservacoesCadastro(kp.observacoes, {
+            nome: dados.nome || kp.nomeCliente,
+            cpf: dados.cpf || kp.cpfCliente,
+            telefone: dados.telefone || kp.telefoneCliente,
+            logradouro: dados.logradouro,
+            numero: dados.numero,
+            complemento: dados.complemento,
+            bairro: dados.bairro,
+            cidade: dados.cidade,
+            uf: dados.uf,
+            cep: dados.cep,
+            email: dados.email,
+            extra: dados.extra,
+        });
+        let endereco = kp.enderecoEntrega;
+        if (dados.logradouro || dados.cidade) {
+            const partes = [
+                dados.logradouro,
+                dados.numero ? `nº ${dados.numero}` : null,
+                dados.complemento || null,
+                dados.bairro || null,
+                (dados.cidade && dados.uf) ? `${dados.cidade}/${dados.uf}` : (dados.cidade || dados.uf || null),
+                dados.cep ? `CEP ${String(dados.cep).replace(/\D/g, '')}` : null,
+            ].filter(Boolean);
+            if (partes.length) endereco = partes.join(', ');
+        }
+        const atualizado = await prisma.kitFestaPedido.update({
+            where: { id },
+            data: { observacoes: obs, enderecoEntrega: endereco || kp.enderecoEntrega },
+        });
+        return { ok: true, id: atualizado.id, numero: atualizado.numero, observacoes: atualizado.observacoes, enderecoEntrega: atualizado.enderecoEntrega };
+    },
+
+    // Botão da fila: cria o Cliente no CA-Hardt com o que já está no pedido
+    // (e no bloco [CADASTRO] das observações) e vincula. A Letícia completa o que faltar.
+    async adminCriarCadastroDoPedido(id, { aprovadoPorId } = {}) {
+        const kp = await prisma.kitFestaPedido.findUnique({
+            where: { id },
+            include: { kitFestaCliente: true },
+        });
+        if (!kp) throw new Error('Pedido não encontrado.');
+        const avisos = [];
+        const parsed = parsearBlocoCadastro(kp.observacoes) || {};
+        const soDigitos = (v) => String(v ?? '').replace(/\D/g, '');
+        const doc = soDigitos(parsed.cpf || kp.cpfCliente);
+        const nome = String(parsed.nome || kp.nomeCliente || '').trim();
+        if (!nome) throw new Error('O pedido não tem nome do cliente.');
+        if (!doc || doc.length < 11) throw new Error('O pedido não tem CPF/CNPJ válido para criar o cadastro.');
+
+        const existente = await prisma.cliente.findFirst({
+            where: { Documento: { contains: doc } },
+            select: { UUID: true, Nome: true, Documento: true },
+        });
+        if (existente) {
+            await this.adminVincularCliente(id, existente.UUID);
+            return { ok: true, criado: false, vinculado: true, cliente: existente, avisos: ['Já existia um cadastro com este documento; o pedido foi só vinculado.'] };
+        }
+
+        const telefone = soDigitos(parsed.telefone || kp.telefoneCliente);
+        const email = parsed.email || null;
+        const cep = soDigitos(parsed.cep);
+        const uf = (parsed.uf || '').toUpperCase() || null;
+        let cidade = null;
+        if (parsed.cidade) {
+            try {
+                const cidadeService = require('./cidadeService');
+                cidade = await cidadeService.resolver(parsed.cidade, { modo: 'tolerante' });
+            } catch (_) {
+                avisos.push(`Cidade "${parsed.cidade}" não foi encontrada na lista oficial; ficou em branco para a equipe completar.`);
+            }
+        } else {
+            avisos.push('Cidade não veio no pedido; a equipe precisa completar o endereço no cadastro.');
+        }
+
+        const [{ max }] = await prisma.$queryRaw`
+            SELECT COALESCE(MAX(NULLIF(regexp_replace("Codigo", '[^0-9]', '', 'g'), '')::bigint), 0) AS max
+            FROM clientes`;
+        const proximoCodigo = String(Number(max) + 1);
+
+        const cliente = await prisma.cliente.create({
+            data: {
+                UUID: crypto.randomUUID(),
+                Codigo: proximoCodigo,
+                Nome: nome,
+                Documento: doc,
+                Tipo_Pessoa: doc.length > 11 ? 'JURIDICA' : 'FISICA',
+                Email: email,
+                Telefone_Celular: telefone || null,
+                End_Logradouro: parsed.logradouro || (parsed.enderecoTexto ? String(parsed.enderecoTexto).split(',')[0].trim() : null),
+                End_Numero: parsed.numero || null,
+                End_Bairro: parsed.bairro || null,
+                End_Cidade: cidade,
+                End_Estado: uf,
+                End_CEP: cep || null,
+                End_Pais: 'Brasil',
+                Ativo: true,
+                Perfis: JSON.stringify([{ perfil: 'CLIENTE' }]),
+                Perfil_Filtro: 'PADRAO',
+                Data_Criacao: new Date(),
+                Observacoes_Gerais: `Pré-cadastro a partir do Kit Festa #${kp.numero}. A equipe deve completar os 4 campos (dia de venda, dia de entrega, tabela de preço e vendedor).`,
+            },
+        });
+
+        await this.adminVincularCliente(id, cliente.UUID);
+        return {
+            ok: true,
+            criado: true,
+            vinculado: true,
+            cliente: { UUID: cliente.UUID, Nome: cliente.Nome, Documento: cliente.Documento, Codigo: cliente.Codigo },
+            avisos,
+        };
     },
 };
 

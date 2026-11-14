@@ -51,6 +51,7 @@ export const kitFestaService = {
     aprovarPedido: (id, dados) => api.post(`/kitfesta/pedidos/${id}/aprovar`, dados).then(r => r.data),
     recusarPedido: (id, motivo) => api.post(`/kitfesta/pedidos/${id}/recusar`, { motivo }).then(r => r.data),
     vincularCliente: (id, clienteUuid) => api.post(`/kitfesta/pedidos/${id}/vincular`, { clienteUuid }).then(r => r.data),
+    criarCadastroDoPedido: (id) => api.post(`/kitfesta/pedidos/${id}/criar-cadastro`).then(r => r.data),
     marcarPago: (id, pago) => api.post(`/kitfesta/pedidos/${id}/pago`, { pago }).then(r => r.data),
     excluirPedido: (id) => api.delete(`/kitfesta/pedidos/${id}`).then(r => r.data),
 };

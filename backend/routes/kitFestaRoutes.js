@@ -78,6 +78,7 @@ router.get('/pedidos', ctrl.adminPedidos);
 router.post('/pedidos/:id/aprovar', ctrl.adminAprovarPedido);
 router.post('/pedidos/:id/recusar', ctrl.adminRecusarPedido);
 router.post('/pedidos/:id/vincular', ctrl.adminVincularCliente);
+router.post('/pedidos/:id/criar-cadastro', ctrl.adminCriarCadastroDoPedido);
 router.post('/pedidos/:id/pago', ctrl.adminMarcarPago);
 router.delete('/pedidos/:id', ctrl.adminExcluirPedido);
 

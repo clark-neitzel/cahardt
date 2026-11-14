@@ -10,6 +10,8 @@ import { useVisitorPing } from '../../hooks/useVisitorPing';
 const LOGO = '/kitfesta/logo.png';
 const BOX = '/kitfesta/box.gif';
 const money = (n) => 'R$ ' + Number(n || 0).toFixed(2).replace('.', ',');
+const ehPacote = (p) => !!(p && (p.pacote === true || Number(p.unidades) === 1 || String(p.categoria || '').toLowerCase().includes('congelado')));
+const rotuloUnidade = (p) => p?.unidadeLabel || (ehPacote(p) ? 'pacote 500 g' : `caixa de ${p?.unidades || 25}`);
 const imgUrl = (u) => !u ? null : (u.startsWith('http') ? u : `${API_URL}${u}`);
 
 export default function KitFestaSite() {
@@ -64,11 +66,17 @@ export default function KitFestaSite() {
   const minCaixas = (cfg?.regras?.minCaixas) || 4;
 
   const totals = useMemo(() => {
-    let boxes = 0, subtotal = 0;
-    Object.keys(cart).forEach(id => { const p = produtos.find(x => x.id === id); if (p) { boxes += cart[id]; subtotal += cart[id] * p.preco; } });
+    let boxes = 0, pacotes = 0, subtotal = 0;
+    Object.keys(cart).forEach(id => {
+      const p = produtos.find(x => x.id === id);
+      if (!p) return;
+      const q = cart[id];
+      subtotal += q * p.preco;
+      if (ehPacote(p)) pacotes += q; else boxes += q;
+    });
     let discount = 0;
     if (coupon) discount = coupon.tipo === 'pct' ? subtotal * coupon.valor / 100 : Math.min(coupon.valor, subtotal);
-    return { boxes, subtotal, discount, total: Math.max(0, subtotal - discount) };
+    return { boxes, pacotes, subtotal, discount, total: Math.max(0, subtotal - discount) };
   }, [cart, coupon, produtos]);
 
   const logout = () => { setToken(null); setCliente(null); setVisitante(null); setCart({}); setCoupon(null); };
@@ -81,7 +89,7 @@ export default function KitFestaSite() {
     <div className="kf">
       {screen === 'shop' && (
         <>
-          <Header cfg={cfg} logo={siteLogo} cartCount={totals.boxes} onCart={() => setCartOpen(true)} onLogout={logout}
+          <Header cfg={cfg} logo={siteLogo} cartCount={totals.boxes + totals.pacotes} onCart={() => setCartOpen(true)} onLogout={logout}
             nome={cliente?.nome || visitante?.nome} onAbrirLogin={() => setLoginModal(true)} />
           <Hero cfg={cfg} onCatalog={goCatalog} />
           <HowItWorks cfg={cfg} />
@@ -90,7 +98,12 @@ export default function KitFestaSite() {
               <ProdGrid produtos={produtos.filter(p => p.destaque)} qtyOf={qtyOf} onAdd={addItem} onRemove={removeItem} />
             </Section>
           )}
-          <Catalog produtos={produtos} categorias={categorias} qtyOf={qtyOf} onAdd={addItem} onRemove={removeItem} />
+          {produtos.some(ehPacote) && (
+            <Section titulo="Congelados" sub="Salgados congelados em pacote de 500 g, pra você aquecer em casa. Não entram no mínimo de caixas do Kit Festa.">
+              <ProdGrid produtos={produtos.filter(ehPacote)} qtyOf={qtyOf} onAdd={addItem} onRemove={removeItem} />
+            </Section>
+          )}
+          <Catalog produtos={produtos.filter(p => !ehPacote(p))} categorias={categorias.filter(c => !String(c.slug || '').toLowerCase().includes('congelado'))} qtyOf={qtyOf} onAdd={addItem} onRemove={removeItem} />
           {avaliacoes.length > 0 && (
             <Section board titulo="O que dizem nossos clientes" sub="Quem fez festa com a gente conta como foi">
               <div className="rev-grid">
@@ -112,9 +125,9 @@ export default function KitFestaSite() {
           )}
           <Contato cfg={cfg} logo={siteLogo} />
 
-          {totals.boxes > 0 && (
+          {(totals.boxes + totals.pacotes) > 0 && (
             <button className="btn btn-yellow fab-cart" onClick={() => setCartOpen(true)}>
-              <ShoppingCart size={18} /> {totals.boxes} caixa(s) · {money(totals.total)}
+              <ShoppingCart size={18} /> {totals.boxes} caixa(s){totals.pacotes ? ` + ${totals.pacotes} pacote(s)` : ''} · {money(totals.total)}
             </button>
           )}
         </>
@@ -298,7 +311,7 @@ function ProdGrid({ produtos, qtyOf, onAdd, onRemove }) {
               <h3>{p.nome}</h3>
               <p className="d">{p.descricao}</p>
               <div className="card-foot">
-                <div className="price"><b>{money(p.preco)}</b><span>{p.unidades} unidades</span></div>
+                <div className="price"><b>{money(p.preco)}</b><span>{rotuloUnidade(p)}</span></div>
                 {q === 0 ? (
                   <button className="add-btn" onClick={() => onAdd(p.id)} aria-label="Adicionar"><Plus size={18} /></button>
                 ) : (
@@ -367,7 +380,7 @@ function CartDrawer({ cart, produtos, onClose, onAdd, onRemove, coupon, setCoupo
                   <div className="thumb tex-paper" style={{ overflow: 'hidden' }}>
                     {imgUrl(p.imagem) && <img src={imgUrl(p.imagem)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
                   </div>
-                  <div className="info"><h4>{p.nome}</h4><span>{money(p.preco)} · {p.unidades}un</span></div>
+                  <div className="info"><h4>{p.nome}</h4><span>{money(p.preco)} · {rotuloUnidade(p)}</span></div>
                   <div className="right">
                     <div className="stepper">
                       <button onClick={() => onRemove(id)}><Minus size={15} /></button>
@@ -418,7 +431,7 @@ function CartDrawer({ cart, produtos, onClose, onAdd, onRemove, coupon, setCoupo
         {ids.length > 0 && (
           <div className="drawer-foot">
             <div className="tot">
-              <div className="row"><span>{boxes} caixa(s)</span><span>{money(totals.subtotal)}</span></div>
+              <div className="row"><span>{boxes} caixa(s){totals.pacotes ? ` + ${totals.pacotes} pacote(s)` : ''}</span><span>{money(totals.subtotal)}</span></div>
               {totals.discount > 0 && <div className="row disc"><span>Desconto</span><span>– {money(totals.discount)}</span></div>}
               <div className="grand"><span>Total</span><b>{money(totals.total)}</b></div>
             </div>

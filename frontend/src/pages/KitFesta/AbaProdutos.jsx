@@ -41,6 +41,11 @@ export default function AbaProdutos() {
 
   return (
     <div>
+      <div className="mb-3 text-xs text-gray-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+        <b>Pacotes 500 g (G-MINI):</b> crie a categoria/grupo <b>Congelados</b> (o slug deve ficar <code>congelados</code>),
+        adicione os 6 produtos, defina <b>Preço Kit Festa = 15,00</b> e <b>Unidades por caixa = 1</b>.
+        Assim eles aparecem na seção Congelados do site, como “pacote 500 g”, e <b>não entram</b> no mínimo de 4 caixas.
+      </div>
       {/* Barra de ações */}
       <div className="flex flex-col md:flex-row md:items-center gap-2 mb-3">
         <div className="relative flex-1">

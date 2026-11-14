@@ -760,6 +760,22 @@ const NovoPedido = () => {
         mapAtual.forEach((item, pid) => {
             const produto = listaProdutos.find(p => p.id === pid);
             if (!produto) return;
+            // Pedidos que vieram do Kit Festa (canal KIT_FESTA ou item carimbado)
+            // mantêm o preço unitário do catálogo do Kit Festa — a condição 4003
+            // (Avista-Kit Festa) NÃO pode recalcular pela tabela.
+            const precoFixoKitFesta = canalOrigem === 'KIT_FESTA'
+                || item.descricao === 'KIT_FESTA_PRECO_FIXO'
+                || item.precoTravadoKitFesta === true;
+            if (precoFixoKitFesta) {
+                novoMapa.set(pid, {
+                    ...item,
+                    precoTravadoKitFesta: true,
+                    valorUnitario: Number(item.valorUnitario),
+                    valorBase: Number(item.valorBase ?? item.valorUnitario),
+                    flexUnitario: Number((Number(item.valorUnitario) - Number(item.valorBase ?? item.valorUnitario)).toFixed(2)),
+                });
+                return;
+            }
             const promoAtiva = todasPromos.get(pid);
             const liberada = checkPromoLiberada(promoAtiva, mapAtual);
 
@@ -823,7 +839,7 @@ const NovoPedido = () => {
             });
         });
         return novoMapa;
-    }, [checkPromoLiberada, vendedorSelecionado, especial]);
+    }, [checkPromoLiberada, vendedorSelecionado, especial, canalOrigem]);
 
     // Piso de preço permitido para um produto (mínimo entre "tabela × limite flex do vendedor"
     // e "preço promocional", quando aplicável). Usado só em `setQuantidade`, ao adicionar item
