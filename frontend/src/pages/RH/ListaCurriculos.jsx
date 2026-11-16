@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Search, Filter, Users, TrendingUp, ChevronRight, RefreshCw, ChevronDown, Check } from 'lucide-react';
 import { listarCurriculos, obterContagens } from '../../services/curriculoService';
 import SelectBusca from '../../components/SelectBusca';
-import { API_URL } from '../../services/api';
+import { urlUpload, useTokenMidia } from '../../utils/urlUpload';
 import { useFiltrosSalvos } from '../../hooks/useFiltrosSalvos';
 
 const AREAS = ['', 'Produção', 'Entrega', 'Vendas', 'Administrativo', 'Outros'];
@@ -37,6 +37,7 @@ function Badge({ status }) {
 }
 
 export default function ListaCurriculos() {
+  useTokenMidia(); // re-renderiza a foto quando o token de mídia chega/renova
   const navigate = useNavigate();
   const [curriculos, setCurriculos] = useState([]);
   const [total, setTotal] = useState(0);
@@ -206,7 +207,7 @@ export default function ListaCurriculos() {
                 {/* Foto */}
                 <div className="shrink-0">
                   {c.foto
-                    ? <img src={`${API_URL}/uploads/${c.foto}`} alt={c.nome}
+                    ? <img src={urlUpload(c.foto)} alt={c.nome}
                         className="w-10 h-10 rounded-full object-cover border border-gray-200" />
                     : <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 font-semibold text-sm">
                         {c.nome.charAt(0).toUpperCase()}

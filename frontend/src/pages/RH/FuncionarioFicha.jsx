@@ -7,7 +7,7 @@ import configService from '../../services/configService';
 import SelectBusca from '../../components/SelectBusca';
 import FiltroPeriodo, { usePeriodoSalvo } from '../../components/FiltroPeriodo';
 import { imprimirCartaoPonto, imprimirReciboPrestador } from './imprimirCartaoPonto';
-import { API_URL } from '../../services/api';
+import { urlUpload, renovarHref } from '../../utils/urlUpload';
 import CampoNumero from '../../components/CampoNumero';
 import { useSetores, opcoesSetores } from '../../hooks/useSetores';
 import FotoPessoa from '../../components/ComoFazer/FotoPessoa';
@@ -468,7 +468,7 @@ function AbaExames({ f, onSaved }) {
               <span><b>{ex.tipo}</b> · {fmtData(ex.data)}{ex.validade ? ` · vence ${fmtData(ex.validade)}` : ''} <span className="text-xs text-gray-500">{ex.resultado || ''}</span></span>
               <span className="flex items-center gap-2">
                 {badge && <span className={`px-2 py-1 text-xs font-semibold rounded-full ${badge[0]}`}>{badge[1]}</span>}
-                {ex.arquivo && <a href={`${API_URL}/uploads/${ex.arquivo}`} target="_blank" rel="noreferrer" className="text-primary text-xs font-semibold">Ver</a>}
+                {ex.arquivo && <a href={urlUpload(ex.arquivo)} onClick={(e) => renovarHref(e, ex.arquivo)} target="_blank" rel="noreferrer" className="text-primary text-xs font-semibold">Ver</a>}
                 <button onClick={() => excluir(ex.id)} className="text-gray-400 hover:text-red-600"><Trash2 className="h-4 w-4" /></button>
               </span>
             </li>
@@ -516,7 +516,7 @@ function AbaAtestados({ f, onSaved }) {
           <li key={a.id} className="flex items-center justify-between px-4 py-2.5 text-sm">
             <span><b>{fmtData(a.dataInicio)}</b> · {a.dias} dia(s){a.cid ? ` · CID ${a.cid}` : ''}</span>
             <span className="flex items-center gap-2">
-              {a.arquivo && <a href={`${API_URL}/uploads/${a.arquivo}`} target="_blank" rel="noreferrer" className="text-primary text-xs font-semibold">Ver</a>}
+              {a.arquivo && <a href={urlUpload(a.arquivo)} onClick={(e) => renovarHref(e, a.arquivo)} target="_blank" rel="noreferrer" className="text-primary text-xs font-semibold">Ver</a>}
               <button onClick={() => excluir(a.id)} className="text-gray-400 hover:text-red-600"><Trash2 className="h-4 w-4" /></button>
             </span>
           </li>
@@ -1256,7 +1256,7 @@ function ListaAnexos({ itens, render, onDelete }) {
         <li key={d.id} className="flex items-center justify-between px-4 py-2.5 text-sm">
           <span className="truncate">📄 {render(d)}</span>
           <span className="flex items-center gap-3 shrink-0">
-            <a href={`${API_URL}/uploads/${d.arquivo}`} target="_blank" rel="noreferrer" className="text-primary text-xs font-semibold">Ver</a>
+            <a href={urlUpload(d.arquivo)} onClick={(e) => renovarHref(e, d.arquivo)} target="_blank" rel="noreferrer" className="text-primary text-xs font-semibold">Ver</a>
             <button onClick={() => onDelete(d.id)} className="text-gray-400 hover:text-red-600"><Trash2 className="h-4 w-4" /></button>
           </span>
         </li>

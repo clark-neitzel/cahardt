@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { Camera, Upload, CheckCircle, User, ChevronRight, ChevronLeft, X, ShieldCheck, MessageCircle } from 'lucide-react';
 import { solicitarAcessoCurriculo, validarAcessoCurriculo, salvarCurriculo, uploadFotoCurriculo } from '../../services/curriculoService';
-import { API_URL } from '../../services/api';
+import { urlUpload } from '../../utils/urlUpload';
 import SelectBusca from '../../components/SelectBusca';
 
 // WhatsApp público da empresa (para quem perdeu o número cadastrado)
@@ -103,7 +103,7 @@ export default function Candidatura() {
   const [cepErro, setCepErro] = useState('');
 
   // Preenche o formulário com os dados retornados após validar o código
-  function preencherForm(c) {
+  function preencherForm(c, tokenEdicao) {
     setForm({
       nome: c.nome || '', email: c.email || '', whatsapp: formatarWhatsApp(c.whatsapp || ''),
       cpf: formatarCPF(c.cpf || ''), dataNascimento: c.dataNascimento?.split('T')[0] || '',
@@ -116,7 +116,8 @@ export default function Candidatura() {
       empregosSemRegistro: c.empregosSemRegistro || '',
       outrasExperiencias: c.outrasExperiencias || '',
     });
-    if (c.foto) setFotoPreview(`${API_URL}/uploads/${c.foto}`);
+    // Página pública: a foto abre com o token de EDIÇÃO do candidato, não com o de mídia do app.
+    if (c.foto) setFotoPreview(urlUpload(c.foto, tokenEdicao || ''));
     if (c.empregosRegistrados || c.empregosSemRegistro || c.outrasExperiencias) setTemExperiencia(true);
   }
 
@@ -175,7 +176,7 @@ export default function Candidatura() {
     setCodigoCarregando(true);
     try {
       const res = await validarAcessoCurriculo(cpfLimpo, cod);
-      preencherForm(res.curriculo);
+      preencherForm(res.curriculo, res.token);
       setToken(res.token);
       setEditando(true);
       setEtapa('formulario');

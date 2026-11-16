@@ -127,7 +127,7 @@ const jsonGlobal = express.json();
 app.use((req, res, next) => (req.path.startsWith('/api/como-fazer') ? next() : jsonGlobal(req, res, next)));
 app.use((req, res, next) => {
     // Log básico para debug
-    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url.replace(/([?&]mt=)[^&]*/g, '$1***')}`);
     next();
 });
 

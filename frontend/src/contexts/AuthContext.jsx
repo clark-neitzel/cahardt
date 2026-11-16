@@ -1,10 +1,12 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import appAuthService from '../services/appAuthService';
 import api from '../services/api';
+import { definirTokenMidia, limparTokenMidia } from '../utils/urlUpload';
 
 const AuthContext = createContext();
 
 const TENTATIVAS_SESSAO = 3;
+const RENOVAR_MIDIA_MS = 6 * 60 * 60 * 1000; // token vale 12h; renova com 6h
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
@@ -13,7 +15,29 @@ export const AuthProvider = ({ children }) => {
     // Diferente de "deslogado": o token continua guardado e é só tentar de novo.
     const [erroConexao, setErroConexao] = useState(false);
 
+    // Token de mídia (?mt=) para abrir arquivos sensíveis em <img>/<a>. Falha aqui NUNCA
+    // desloga nem trava o app: segue sem token e tenta de novo na próxima renovação.
+    const midiaEmMs = useRef(0);
+    const midiaBuscando = useRef(false);
+    const buscarTokenMidia = useCallback(async () => {
+        if (midiaBuscando.current) return;
+        midiaBuscando.current = true;
+        try {
+            const { data } = await api.get('/auth/midia-token');
+            if (data?.token) {
+                definirTokenMidia(data.token);
+                midiaEmMs.current = Date.now();
+            }
+        } catch (e) {
+            console.warn('Token de mídia indisponível (segue sem):', e?.message);
+        } finally {
+            midiaBuscando.current = false;
+        }
+    }, []);
+
     const limparSessao = useCallback(() => {
+        limparTokenMidia();
+        midiaEmMs.current = 0;
         localStorage.removeItem('@HardtApp:token');
         delete api.defaults.headers.common['Authorization'];
         setUser(null);
@@ -42,6 +66,7 @@ export const AuthProvider = ({ children }) => {
                 setUser(userData);
                 setErroConexao(false);
                 setLoading(false);
+                buscarTokenMidia(); // sem await: não atrasa a abertura
                 return;
             } catch (error) {
                 const status = error.response?.status;
@@ -64,11 +89,22 @@ export const AuthProvider = ({ children }) => {
         // Rede/servidor fora: mantém o token e mostra a tela de "tentar novamente".
         setErroConexao(true);
         setLoading(false);
-    }, [limparSessao]);
+    }, [limparSessao, buscarTokenMidia]);
 
     useEffect(() => {
         carregarUsuario();
     }, [carregarUsuario]);
+
+    // Renovação: a cada 6h com o app aberto e ao voltar ao primeiro plano se já passou de 6h
+    // (ou se nunca conseguiu o token).
+    useEffect(() => {
+        if (!user) return undefined;
+        const precisa = () => !midiaEmMs.current || Date.now() - midiaEmMs.current >= RENOVAR_MIDIA_MS;
+        const intervalo = setInterval(() => { if (precisa()) buscarTokenMidia(); }, 10 * 60 * 1000);
+        const aoVoltar = () => { if (document.visibilityState === 'visible' && precisa()) buscarTokenMidia(); };
+        document.addEventListener('visibilitychange', aoVoltar);
+        return () => { clearInterval(intervalo); document.removeEventListener('visibilitychange', aoVoltar); };
+    }, [user, buscarTokenMidia]);
 
     const login = async (loginSTR, senhaSTR) => {
         try {
@@ -77,6 +113,7 @@ export const AuthProvider = ({ children }) => {
             api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
             setUser(user);
             setErroConexao(false);
+            buscarTokenMidia();
             return { success: true };
         } catch (error) {
             console.error(error);

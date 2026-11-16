@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ChevronLeft, MessageCircle, Clock, User, Check, AlertCircle, X, Trash2, Pencil } from 'lucide-react';
 import { obterCurriculo, atualizarCurriculo, gerarLinkWhatsapp, excluirCurriculo } from '../../services/curriculoService';
-import { API_URL } from '../../services/api';
+import { urlUpload, useTokenMidia } from '../../utils/urlUpload';
 import { useAuth } from '../../contexts/AuthContext';
 import SelectBusca from '../../components/SelectBusca';
 import toast from 'react-hot-toast';
@@ -65,6 +65,7 @@ function Campo({ label, valor }) {
 }
 
 export default function DetalheCurriculo() {
+  useTokenMidia(); // re-renderiza a foto quando o token de mídia chega/renova
   const { id } = useParams();
   const navigate = useNavigate();
   const { hasPermission } = useAuth();
@@ -146,7 +147,7 @@ export default function DetalheCurriculo() {
       {fotoAmpliada && curriculo.foto && (
         <div onClick={() => setFotoAmpliada(false)}
           className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 cursor-zoom-out">
-          <img src={`${API_URL}/uploads/${curriculo.foto}`} alt={curriculo.nome}
+          <img src={urlUpload(curriculo.foto)} alt={curriculo.nome}
             className="max-w-full max-h-full rounded-2xl shadow-2xl object-contain"
             onClick={e => e.stopPropagation()} />
           <button onClick={() => setFotoAmpliada(false)}
@@ -232,7 +233,7 @@ export default function DetalheCurriculo() {
             <div className="flex gap-4 items-start">
               {curriculo.foto
                 ? <button onClick={() => setFotoAmpliada(true)} className="shrink-0 focus:outline-none group">
-                    <img src={`${API_URL}/uploads/${curriculo.foto}`} alt={curriculo.nome}
+                    <img src={urlUpload(curriculo.foto)} alt={curriculo.nome}
                       className="w-20 h-20 rounded-xl object-cover border border-gray-200 group-hover:opacity-80 transition cursor-zoom-in" />
                   </button>
                 : <div className="w-20 h-20 rounded-xl bg-orange-100 flex items-center justify-center text-orange-600 font-bold text-2xl shrink-0">

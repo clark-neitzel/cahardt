@@ -15,6 +15,11 @@ const authMiddleware = async (req, res, next) => {
     try {
         const decoded = jwt.verify(token, JWT_SECRET);
 
+        // Token de mídia (só para ler arquivos via ?mt=) nunca vale como login
+        if (decoded.tipo === 'midia') {
+            return res.status(401).json({ error: 'Token expirado ou inválido.' });
+        }
+
         // Busca permissões atualizadas do banco para garantir que mudanças de admin
         // tenham efeito imediato, sem precisar de novo login
         const vendedor = await prisma.vendedor.findUnique({
