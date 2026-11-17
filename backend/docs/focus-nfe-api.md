@@ -683,8 +683,9 @@ observação no padrão acima. Campos Focus: `finalidade_emissao: 4`, `tipo_docu
 
 #### 🔴 Referência da nota de origem **POR ITEM** (NT 2025.002 v1.51 — VC02-14 / VC03-20)
 
-A partir da NT 2025.002 v1.51 não basta referenciar a nota de origem no **cabeçalho**
-(`NFref`/`notas_referenciadas`): toda NF-e com `finalidade_emissao = 4` (devolução) precisa
+A partir da NT 2025.002 v1.51 a referência da nota de origem passa a ser feita **por item**
+(no lugar do cabeçalho `NFref`/`notas_referenciadas` — **os dois juntos são rejeitados**, ver
+"Referência da origem" abaixo): toda NF-e com `finalidade_emissao = 4` (devolução) precisa
 apontar o documento de origem **dentro de cada item** — a chave de acesso e o **número daquele
 item na nota ORIGINAL**. Sem isso a SEFAZ rejeita com **321**.
 
@@ -856,25 +857,35 @@ as aplica, cada uma com `bloqueia` e `gravaMotivo`, mais `primeiraQueBloqueia` e
 é gravado, a aba Devoluções **não** mostra texto vermelho e o motivo aparece só no aviso do momento
 do clique. Hoje **só** as falhas de referência por item e as recusas da Focus/SEFAZ gravam motivo.
 
-#### `notas_referenciadas` de cabeçalho + referência por item — e o rollback de uma linha
+#### Referência da origem: POR ITEM **ou** no cabeçalho — NUNCA os dois (PROVADO em homologação, 17/11/2026)
 
-`notas_referenciadas` no cabeçalho **continua sendo enviado** junto com a referência por item: a
-NT muda *onde* a SEFAZ valida a origem, não proíbe a referência de cabeçalho. **Isso está SEM
-PROVA** — nenhuma nota foi emitida ainda com as duas referências juntas (não houve token de
-homologação para testar).
+**Prova (homologação Focus, 17/11/2026):** a SEFAZ **rejeita** a NF-e de devolução com a referência no
+cabeçalho (`notas_referenciadas`) **e** por item (`chave_acesso_dfe_referenciado` +
+`numero_item_dfe_referenciado`) ao mesmo tempo: *"Rejeicao: NF-e com referenciamento de documento a
+nivel de nota e a nivel de item"*. Autoriza quando vai **só por item** ou **só no cabeçalho**
+(NT 2025.002 v1.53).
 
-Se a SEFAZ rejeitar a nota por causa dessa convivência, a correção é **uma linha só**, em
-`focusNfeEmissaoService.emitirDevolucao` (a linha está marcada com `⚠️ ROLLBACK DE UMA LINHA`):
+Regra no código (`focusNfeEmissaoService`, devolução de venda e devolução de bonificação):
 
 ```js
-// de:
-notas_referenciadas: [{ chave_nfe: chaveOriginal }],
-// para:
 ...(usarRefItem ? {} : { notas_referenciadas: [{ chave_nfe: chaveOriginal }] }),
 ```
 
-Assim o cabeçalho continua enquanto o interruptor está desligado (comportamento de hoje, que já
-funciona em produção) e some quando a referência por item está ligada. Não mexer em mais nada.
+Com a referência por item ligada (`nfe_devolucao_ref_item` em `auto`/`sempre`, e a nota casou os
+itens) **não** se manda o cabeçalho; com `usarRefItem` falso (`nunca`, ou `auto` sem casamento) vai só
+o cabeçalho.
+
+**Falha no casamento por item NÃO cai para o cabeçalho:** com a referência por item ligada
+(modo `auto` em produção a partir de 05/10/2026, em homologação sempre; ou `sempre`), se o app não
+conseguir casar os itens com a nota original (XML indisponível, produto ausente na nota, linhas
+esgotadas), a emissão é **BLOQUEADA** com mensagem clara: a devolução fica registrada
+(estoque/cobrança já ajustados) e a nota é reemitida manualmente pelo botão da aba Devoluções depois
+de corrigir. Só o modo `nunca` envia o cabeçalho. Resultado dos testes: "Resultado da prova" abaixo.
+
+**Resultado da prova (homologação Focus real, 17/11/2026, código sem wrappers):** todas AUTORIZADAS.
+Devolução de venda: modo `auto` parcial (NF 5018, só item, nItem 1), `nunca` parcial (NF 5020, só
+cabeçalho), `sempre` parcial (NF 5022, só item, nItem 2), `auto` total de 2 itens (NF 5024, nItem 1 e 2).
+Devolução de bonificação (CFOP 1949): `auto` (NF 5026, só item) e `nunca` (NF 5028, só cabeçalho).
 
 ### Venda para CPF (pessoa física / consumidor final) — perfil DIFERENTE
 
@@ -992,7 +1003,7 @@ e a gravada como ESPECIAL era barrada sem nota nenhuma. Agora a BN# tem caminho 
 | `formas_pagamento` | `[{ '90', 0 }]` | `[{ forma_pagamento: '90', valor_pagamento: 0 }]` (igual) |
 | Fatura / duplicatas | nunca | **nunca** |
 | Valor | `DevolucaoItem.valorUnitario` × qtd | igual (preço de tabela gravado na BN#) |
-| Nota referenciada | NF-e da **venda** (`notaAutorizadaDoPedido` ou `pedido.nfeChave`) | NF-e da **bonificação** (`notaBonificacaoAutorizada`: `tipo BONIFICACAO` + `AUTORIZADO`, ref `nf-<amb>-<pedidoId>`) — cabeçalho `notas_referenciadas` **e** por item (`chave_acesso_dfe_referenciado` + `numero_item_dfe_referenciado`) com o mesmo interruptor `nfe_devolucao_ref_item` |
+| Nota referenciada | NF-e da **venda** (`notaAutorizadaDoPedido` ou `pedido.nfeChave`) | NF-e da **bonificação** (`notaBonificacaoAutorizada`: `tipo BONIFICACAO` + `AUTORIZADO`, ref `nf-<amb>-<pedidoId>`) — por item (`chave_acesso_dfe_referenciado` + `numero_item_dfe_referenciado`) quando o interruptor `nfe_devolucao_ref_item` está ligado; senão só cabeçalho `notas_referenciadas` (nunca os dois — SEFAZ rejeita) |
 | Fonte dos itens/nItem da origem | payload → xml-local → xml-ca | `payloadEnviado.items` da nota de bonificação (fonte `payload`, banco, sem rede) |
 | `informacoes_adicionais_contribuinte` | fantasia + `DEVOLUCAO REFERENTE SUA NF N 1-N DE dd/mm/aaaa` + `Pedido #N` + frase de crédito (CNPJ) + textos legais | fantasia + `DEVOLUCAO DE MERCADORIA RECEBIDA EM BONIFICACAO (REMESSA CFOP <5910|6910 lido de notaBonif.payloadEnviado.items[0].cfop>) - REFERENTE A NF-e N <serie>-<numero> DE <dd/mm/aaaa>` · `Bonificação BN#N - Devolução DEV#N` · `SEM COBRANCA E SEM EFEITO FINANCEIRO - MERCADORIA HAVIA SIDO REMETIDA SEM ONUS AO DESTINATARIO.` · textos legais. **NUNCA** a frase de aproveitamento de crédito de ICMS |
 | Efeito financeiro | parcelas/boletos ajustados no registro da devolução | **nenhum** (bonificação não tem conta a receber). Só o estoque, creditado UMA vez no registro da devolução (`estoqueService.creditarDevolucao`) — a emissão da nota não mexe em estoque |
@@ -1033,5 +1044,5 @@ Sem `numero`, pega a devolução ATIVA mais recente de BN# com nota autorizada.
 **Teste local (Focus simulada — a SEFAZ NÃO é exercitada):** `cd backend && node scripts/teste-nf-devolucao-bonificacao.js`
 (banco `hardt_local` obrigatório). Cenários (a)–(j) do plano de 09/2026: sem nota, parcial SC, PR, CPF, idempotência,
 regressão byte a byte da venda, estoque uma vez + sem conta a receber, contrato do front, PROCESSANDO, ERRO → reemissão.
-**Só a primeira nota real em homologação/produção prova a aceitação da SEFAZ** (CFOP 1949 com finalidade 4 e as duas
-referências juntas — ver o rollback de uma linha comentado em `notas_referenciadas`).
+**Só a primeira nota real em homologação/produção prova a aceitação da SEFAZ** (CFOP 1949 com finalidade 4 e a regra
+"item OU cabeçalho, nunca os dois").

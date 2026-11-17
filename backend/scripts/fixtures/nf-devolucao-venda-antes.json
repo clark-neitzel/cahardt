@@ -1,8 +1,8 @@
 {
-  "geradoEm": "2026-09-11T06:43:31.078Z",
+  "geradoEm": "2026-11-17T22:20:39.843Z",
   "produtos": [
-    "1",
-    "3051"
+    "000000000000004494",
+    "00008"
   ],
   "aviso": "Payload de emitirDevolucao para pedido NORMAL, gerado ANTES do despacho de bonificação (09/2026). Não regenerar sem motivo.",
   "payload": {
@@ -46,23 +46,18 @@
         "valor_pagamento": 0
       }
     ],
-    "notas_referenciadas": [
-      {
-        "chave_nfe": "11111111111111111111111111111111111111111111"
-      }
-    ],
-    "informacoes_adicionais_contribuinte": "DEVOLUCAO REFERENTE SUA NF N 1-880001 DE 01/09/2026#Referente ao pedido #9890001#DOCUMENTO EMITIDO POR ME OU EPP OPTANTE PELO SIMPLES NACIONAL.#NAO GERA DIREITO A CREDITO FISCAL DE IPI.#PERMITE O APROVEITAMENTO DO CREDITO DE ICMS NO VALOR DE R$ 1,57, CORRESPONDENTE A ALIQUOTA DE 3,82%, NOS TERMOS DO ART. 23 DA LC 123/2006.",
+    "informacoes_adicionais_contribuinte": "DEVOLUCAO REFERENTE SUA NF N 1-880001 DE 01/09/2026#Pedido #9890001#PERMITE O APROVEITAMENTO DO CREDITO DE ICMS NO VALOR DE R$ 1,57, CORRESPONDENTE A ALIQUOTA DE 3,82%, NOS TERMOS DO ART. 23 DA LC 123/2006.#DOCUMENTO EMITIDO POR ME OU EPP OPTANTE PELO SIMPLES NACIONAL.#NAO GERA DIREITO A CREDITO FISCAL DE IPI.",
     "items": [
       {
         "numero_item": 1,
-        "codigo_produto": "3051",
-        "descricao": "2-FR-G-COXINHA-AIPIM-FRANGO C/20 130GR",
+        "codigo_produto": "00008",
+        "descricao": "FERMENTO KG",
         "chave_acesso_dfe_referenciado": "11111111111111111111111111111111111111111111",
-        "numero_item_dfe_referenciado": "2",
+        "numero_item_dfe_referenciado": "1",
         "cfop": "1201",
-        "codigo_ncm": "19022000",
-        "unidade_comercial": "PT",
-        "unidade_tributavel": "PT",
+        "codigo_ncm": "21021090",
+        "unidade_comercial": "pct",
+        "unidade_tributavel": "pct",
         "quantidade_comercial": 2,
         "quantidade_tributavel": 2,
         "valor_unitario_comercial": 20.5,

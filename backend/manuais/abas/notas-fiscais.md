@@ -88,7 +88,7 @@ Na aba **Pedidos → Devoluções**, ao expandir uma devolução de pedido **com
 ### NF-e de DEVOLUÇÃO de bonificação (09/2026)
 
 Quando a devolução é de uma **bonificação (BN#) que saiu COM nota fiscal autorizada**, o app emite uma nota de devolução própria — **não** é a "Devolução de venda":
-- Natureza de operação **"Devolução de mercadoria remetida a título de bonificação"**, nota de **entrada**, CFOP **1949** (cliente em SC) ou **2949** (outro estado), referenciando a **NF-e da bonificação** (no cabeçalho e, a partir de 05/10/2026, item a item).
+- Natureza de operação **"Devolução de mercadoria remetida a título de bonificação"**, nota de **entrada**, CFOP **1949** (cliente em SC) ou **2949** (outro estado), referenciando a **NF-e da bonificação** (**um ou outro, nunca os dois**: item a item a partir de 05/10/2026; se o interruptor `nfe_devolucao_ref_item` estiver em "nunca", só no cabeçalho — a SEFAZ rejeita as duas referências juntas).
 - ICMS **CSOSN 102 sem crédito** (para CNPJ e CPF — a remessa saiu sem crédito, a volta também não gera), PIS/COFINS 99, forma de pagamento **"90 – sem pagamento"**, **sem fatura e sem duplicata**.
 - Nas Informações Complementares sai *"DEVOLUCAO DE MERCADORIA RECEBIDA EM BONIFICACAO (REMESSA CFOP 5910/6910) - REFERENTE A NF-e N …"*, o `BN#` e o `DEV#`, e a frase *"SEM COBRANCA E SEM EFEITO FINANCEIRO"*.
 - **Nenhum efeito financeiro**: bonificação não tem conta a receber, e a devolução dela não cria, cancela nem abate nada — só o estoque volta (no registro da devolução, uma única vez). No pacote da contabilidade (CSV 07) ela sai com **Tipo = BONIFICACAO**, para **não** ser somada como abatimento de faturamento.

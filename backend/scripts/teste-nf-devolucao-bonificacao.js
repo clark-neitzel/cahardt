@@ -243,7 +243,7 @@ function semDatas(payload) {
     checar(!Object.keys(p.items[0]).some(k => k.startsWith('ipi_')), 'sem IPI');
     checar(p.items[0].quantidade_comercial === 2 && p.items[0].valor_unitario_comercial === 20.5 && p.items[0].valor_bruto === 41, 'quantidade/valor da DevolucaoItem (2 × 20,50 = 41,00)');
     checar(p.valor_produtos === 41 && p.valor_total === 41, 'valor_produtos = valor_total = soma');
-    checar(JSON.stringify(p.notas_referenciadas) === JSON.stringify([{ chave_nfe: CHAVE_BN }]), 'referência de cabeçalho à NF-e da bonificação');
+    checar(p.notas_referenciadas === undefined, 'SEM referência de cabeçalho quando a referência é por item (SEFAZ rejeita as duas juntas — 17/11/2026)');
     checar(p.items[0].chave_acesso_dfe_referenciado === CHAVE_BN && p.items[0].numero_item_dfe_referenciado === '2', 'referência POR ITEM com nItem 2 (o produto era o 2º item da nota de origem)');
     checar(JSON.stringify(p.formas_pagamento) === JSON.stringify([{ forma_pagamento: '90', valor_pagamento: 0 }]), 'tPag 90 valor 0');
     checar(!Object.keys(p).some(k => /fatura|duplicata/.test(k)), 'sem fatura/duplicatas');

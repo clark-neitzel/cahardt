@@ -475,9 +475,9 @@ async function montarNotaBonificacao(pedido) {
  *   - PIS/COFINS CST 99; IPI omitido (só o CST 99 sozinho gera IPITrib inválido).
  *   - tPag 90 valor 0; SEM fatura/duplicata: bonificação não tem conta a receber e a
  *     devolução dela NÃO tem NENHUM efeito financeiro.
- *   - Referencia a NF-e da bonificação no cabeçalho (`notas_referenciadas`) E por item
- *     (`chave_acesso_dfe_referenciado` + `numero_item_dfe_referenciado`, NT 2025.002)
- *     quando `usarRefItem` — mesma mecânica da devolução de venda.
+ *   - Referencia a NF-e da bonificação POR ITEM (`chave_acesso_dfe_referenciado` +
+ *     `numero_item_dfe_referenciado`, NT 2025.002) quando `usarRefItem`; senão SÓ no
+ *     cabeçalho (`notas_referenciadas`). Nunca os dois (SEFAZ rejeita) — ver focus-nfe-api.md.
  *
  * Entradas: `dev` (Devolucao com `itens.produto`), `pedido` (a BN#), `cliente` (com
  * `fiscal`), `notaBonif` (NotaFiscalApp tipo BONIFICACAO AUTORIZADA — é dela que saem a
@@ -612,14 +612,11 @@ async function montarNotaDevolucaoBonificacao({ dev, pedido, cliente, notaBonif,
         valor_total: total,
         // Sem pagamento — e SEM numero_fatura/duplicatas (não há cobrança em bonificação).
         formas_pagamento: [{ forma_pagamento: '90', valor_pagamento: 0 }],
-        // MANTIDO de propósito junto com a referência por item: a NT 2025.002 muda ONDE a
-        // SEFAZ valida a origem, não proíbe a referência de cabeçalho. SEM PROVA — ninguém
-        // emitiu ainda com as duas referências juntas.
-        // ⚠️ ROLLBACK DE UMA LINHA: se a SEFAZ rejeitar por causa desta referência de
-        // cabeçalho convivendo com a referência por item, troque APENAS a linha abaixo por:
-        //     ...(usarRefItem ? {} : { notas_referenciadas: [{ chave_nfe: chaveOriginal }] }),
-        // (mesmo rollback documentado para a devolução de venda em focus-nfe-api.md).
-        notas_referenciadas: [{ chave_nfe: chaveOriginal }],
+        // REFERÊNCIA DA ORIGEM: ou POR ITEM (usarRefItem) ou no CABEÇALHO — NUNCA os dois.
+        // PROVA (homologação Focus, 17/11/2026): a SEFAZ REJEITA a nota com as duas referências
+        // ("Rejeicao: NF-e com referenciamento de documento a nivel de nota e a nivel de item").
+        // Autoriza só por item ou só no cabeçalho (NT 2025.002 v1.53).
+        ...(usarRefItem ? {} : { notas_referenciadas: [{ chave_nfe: chaveOriginal }] }),
         informacoes_adicionais_contribuinte: linhas.filter(Boolean).join('#'),
         items,
     };
@@ -1360,15 +1357,11 @@ async function emitirDevolucao(devolucaoId) {
         valor_produtos: total,
         valor_total: total,
         formas_pagamento: [{ forma_pagamento: '90', valor_pagamento: 0 }], // sem pagamento (devolução)
-        // MANTIDO de propósito junto com a referência por item: a NT 2025.002 muda ONDE a
-        // SEFAZ valida a origem, não proíbe a referência de cabeçalho. SEM PROVA — ninguém
-        // emitiu ainda com as duas referências juntas.
-        // ⚠️ ROLLBACK DE UMA LINHA: se a SEFAZ rejeitar a nota por causa desta referência de
-        // cabeçalho convivendo com a referência por item, troque APENAS a linha abaixo por:
-        //     ...(usarRefItem ? {} : { notas_referenciadas: [{ chave_nfe: chaveOriginal }] }),
-        // (mantém o cabeçalho enquanto o interruptor está desligado, remove quando ligado).
-        // Documentado em backend/docs/focus-nfe-api.md → "Referência da nota de origem POR ITEM".
-        notas_referenciadas: [{ chave_nfe: chaveOriginal }],
+        // REFERÊNCIA DA ORIGEM: ou POR ITEM (usarRefItem) ou no CABEÇALHO — NUNCA os dois.
+        // PROVA (homologação Focus, 17/11/2026): a SEFAZ REJEITA a nota com as duas referências
+        // ("Rejeicao: NF-e com referenciamento de documento a nivel de nota e a nivel de item").
+        // Autoriza só por item ou só no cabeçalho (NT 2025.002 v1.53).
+        ...(usarRefItem ? {} : { notas_referenciadas: [{ chave_nfe: chaveOriginal }] }),
         informacoes_adicionais_contribuinte: linhas.filter(Boolean).join('#'),
         items,
     };
