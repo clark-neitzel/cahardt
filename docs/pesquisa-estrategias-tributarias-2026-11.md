@@ -107,3 +107,17 @@ Imposto mensal do conjunto (NCM corrigido, CBS 11,4%, ICMS 17%), em R$ mil:
 
 Premissas da encomenda: taxa de fabricação ~R$ 80 mil/mês (custo de conversão de 70% do volume), ICMS da fabricação diferido (a confirmar em SC para encomendante do Simples; sem o diferimento somam-se R$ 13,6 mil e o ganho quase some), DAS Anexo II 11,0%. Dos impostos da Hardt nas vendas diretas, R$ 23 mil (ICMS 13,8 + CBS 9,2) viram crédito para os clientes. Hoje no Simples o total é R$ 31,6 mil.
 Impacto no sistema (não iniciado): insumo de terceiros no PCP, notas de remessa/retorno/industrialização (CFOP 5901/5902/5124), emissão de nota e contas a receber da empresa nova.
+
+### 8.1 Mesma conta só com a receita com nota (pedido do dono, 17/11)
+
+A tabela acima usou R$ 275 mil/mês (com os especiais). Só com nota a base é R$ 228 mil: Hardt direto ~R$ 77 mil, empresa nova ~R$ 152 mil (R$ 1,82 mi/ano, DAS ~10,0%), taxa de fabricação ~R$ 62 mil.
+
+| R$ mil/mês | Hoje (Simples) | Hardt sozinha fora | Duas empresas, encomenda |
+|---|---:|---:|---:|
+| ICMS Hardt | — | 32,6 | 11,0 |
+| CBS Hardt | — | 16,0 | 9,1 |
+| INSS patronal | — | 4,5 | 4,5 |
+| DAS | 26,3 | — | 15,2 |
+| **Total** | **26,3** | **53,1** | **39,8** |
+
+Dos 39,8 mil, cerca de 21,9 mil (ICMS 13,1 + CBS 8,8 destacados nas notas da Hardt para clientes do regime normal) viram crédito para esses clientes; hoje eles só aproveitam 3,69% (~2,8 mil). Há espaço para subir o preço desse grupo em ~20% a 25% sem aumentar o custo líquido deles, o que cobre a diferença de 13,5 mil contra hoje.
