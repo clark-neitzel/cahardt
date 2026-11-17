@@ -11,6 +11,7 @@
 //    bonificação (`bonificacao = true`, não é venda).
 //  - Pedido especial CONTA (é venda, só não emite nota).
 
+const { ordenarItensPorNome } = require('../utils/ordenarItens');
 const prisma = require('../config/database');
 
 const pedidoRepetirService = {
@@ -66,7 +67,7 @@ const pedidoRepetirService = {
             nomeCondicaoPagamento: pedido.nomeCondicaoPagamento,
             tipoPagamento: pedido.tipoPagamento,
             valorFrete: pedido.valorFrete != null ? Number(pedido.valorFrete) : 0,
-            itens: pedido.itens.map(item => ({
+            itens: ordenarItensPorNome(pedido.itens).map(item => ({
                 produtoId: item.produtoId,
                 nome: item.produto ? item.produto.nome : null,
                 quantidade: Number(item.quantidade),

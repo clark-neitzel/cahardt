@@ -1,4 +1,5 @@
 const express = require('express');
+const { ordenarItensPorNome } = require('../utils/ordenarItens');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const prisma = require('../config/database'); // singleton compartilhado (pool único)
@@ -471,6 +472,7 @@ router.get('/resumo', async (req, res) => {
             },
             orderBy: { dataEntrega: 'asc' }
         });
+        entregas.forEach(e => { e.itens = ordenarItensPorNome(e.itens); }); // itens em ordem alfabética
 
         // 6. Buscar TODAS as condições da TabelaPreco (sem distinct, cada nomeCondicao pode ter debitaCaixa diferente)
         const todasCondicoes = await prisma.tabelaPreco.findMany({

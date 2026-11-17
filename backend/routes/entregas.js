@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { ordenarItensPorNome } = require('../utils/ordenarItens');
 const prisma = require('../config/database'); // singleton compartilhado (pool único)
 const verificarAuth = require('../middlewares/authMiddleware');
 const {
@@ -288,6 +289,7 @@ router.get('/pendentes', verificarAuth, checkAcessoEntregador, async (req, res) 
             },
             orderBy: [{ prioridadeEntrega: { sort: 'asc', nulls: 'last' } }, { cliente: { NomeFantasia: 'asc' } }]
         });
+        entregas.forEach(e => { e.itens = ordenarItensPorNome(e.itens); }); // itens em ordem alfabética
 
         // Enriquece com o nome legível da condição de pagamento (join manual sem FK)
         // O pedido salva opcaoCondicaoPagamento = opcaoCondicao da TabelaPreco (não idCondicao!)
@@ -393,6 +395,7 @@ router.get('/concluidas', verificarAuth, checkAcessoEntregador, async (req, res)
             orderBy: { dataEntrega: 'desc' },
             take: 50
         });
+        entregas.forEach(e => { e.itens = ordenarItensPorNome(e.itens); }); // itens em ordem alfabética
 
         // Enriquece com o nome legível da condição de pagamento
         const condicoesCodigos = [...new Set(entregas.map(e => e.opcaoCondicaoPagamento).filter(Boolean))];
@@ -1117,6 +1120,7 @@ router.get('/gerencial', verificarAuth, checkAuditor, async (req, res) => {
             })
         ]);
 
+        entregas.forEach(e => { e.itens = ordenarItensPorNome(e.itens); }); // itens em ordem alfabética
         const totalPages = Math.ceil(total / Number(limit));
 
         res.json({
@@ -1201,6 +1205,7 @@ router.get('/:id', verificarAuth, checkAuditor, async (req, res) => {
             if (tabela) condicaoNome = tabela.nomeCondicao;
         }
 
+        pedido.itens = ordenarItensPorNome(pedido.itens);
         res.json({ ...pedido, condicaoNome });
     } catch (error) {
         console.error('Erro ao detalhar entrega:', error);

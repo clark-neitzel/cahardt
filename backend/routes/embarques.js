@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { ordenarItensPorNome } = require('../utils/ordenarItens');
 const prisma = require('../config/database'); // singleton compartilhado (pool único)
 const verificarAuth = require('../middlewares/authMiddleware');
 const conferenciaCarga = require('../services/conferenciaCargaService');
@@ -263,6 +264,7 @@ router.get('/:id', verificarAuth, checkAcessoEmbarque, async (req, res) => {
             const chave = `${p.tipoPagamento || ''}|${p.opcaoCondicaoPagamento || ''}`;
             return {
                 ...p,
+                itens: ordenarItensPorNome(p.itens), // itens em ordem alfabética
                 nomeCondicaoPagamento: p.nomeCondicaoPagamento || mapaCondicoes[chave] || mapaCondicoesPorOpcao[p.opcaoCondicaoPagamento] || p.opcaoCondicaoPagamento || p.tipoPagamento || '-'
             };
         });

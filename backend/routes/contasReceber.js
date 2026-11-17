@@ -1,4 +1,5 @@
 const express = require('express');
+const { ordenarItensPorNome } = require('../utils/ordenarItens');
 const router = express.Router();
 const prisma = require('../config/database'); // singleton compartilhado (pool único)
 const verificarAuth = require('../middlewares/authMiddleware');
@@ -1092,7 +1093,7 @@ router.get('/relatorio-itens', verificarAuth, checkAcesso, async (req, res) => {
             if (pedidosMap.has(conta.pedidoId)) continue;
             const p = conta.pedido;
             const clienteNome = p.cliente?.NomeFantasia || p.cliente?.Nome || '-';
-            const itens = (p.itens || []).map(it => {
+            const itens = ordenarItensPorNome(p.itens || []).map(it => {
                 const quantidade = Number(it.quantidade);
                 const valorUnitario = Number(it.valor);
                 return {

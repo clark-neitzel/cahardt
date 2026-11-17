@@ -1,5 +1,6 @@
 const prisma = require('../config/database');
 
+const { ordenarItensPorNome } = require('../utils/ordenarItens');
 const ETAPAS = ['PEDIDO', 'PRODUCAO', 'SAINDO', 'ENTREGUE'];
 
 const deliveryService = {
@@ -265,7 +266,7 @@ const deliveryService = {
                 horaEntrega: p.horaEntrega || null,
                 cliente: p.cliente,
                 vendedor: p.vendedor,
-                itens: p.itens.map(i => ({
+                itens: ordenarItensPorNome(p.itens).map(i => ({
                     id: i.id,
                     produto: i.produto,
                     quantidade: Number(i.quantidade),

@@ -76,3 +76,7 @@ Histórico gerencial de todas as entregas realizadas pelo sistema. Mostra cada b
 | `frontend/src/pages/Admin/Embarques/ModalDetalheEntrega.jsx` | Modal de detalhes da entrega |
 | `frontend/src/services/entregasService.js` | Chamadas de API para entregas |
 | `backend/src/routes/entregas.js` | Rotas do backend |
+
+## Ordem dos itens
+
+- Os itens de cada pedido aparecem em ordem alfabética (números primeiro) na entrega, no embarque e no caixa.

@@ -1,4 +1,5 @@
 const pedidoService = require('../services/pedidoService');
+const { ordenarItensPorNome } = require('../utils/ordenarItens');
 const prisma = require('../config/database'); // singleton compartilhado (pool único)
 const axios = require('axios');
 const contaAzulService = require('../services/contaAzulService');
@@ -1316,7 +1317,7 @@ const pedidoController = {
                         forma: pg.formaPagamentoNome,
                         valor: Number(pg.valor)
                     })),
-                    itens: p.itens.map(item => ({
+                    itens: ordenarItensPorNome(p.itens).map(item => ({
                         produtoNome: item.produto?.nome || item.descricao || '-',
                         produtoCodigo: item.produto?.codigo || '-',
                         quantidade: Number(item.quantidade),
@@ -1407,7 +1408,7 @@ const pedidoController = {
                     clienteNome: p.cliente?.NomeFantasia || p.cliente?.Nome || '-',
                     flexTotal: ft,
                     valorTotal: p.itens.reduce((s, i) => s + Number(i.valor) * Number(i.quantidade), 0),
-                    itens: p.itens.map(i => ({
+                    itens: ordenarItensPorNome(p.itens).map(i => ({
                         produtoNome: i.produto?.nome || '-',
                         produtoCodigo: i.produto?.codigo || '-',
                         quantidade: Number(i.quantidade),
@@ -2141,7 +2142,7 @@ const pedidoController = {
                 vendedorNome: p.vendedor?.nome || null,
                 nomeCondicaoPagamento: p.nomeCondicaoPagamento,
                 total: p.itens.reduce((s, i) => s + Number(i.quantidade) * Number(i.valor), 0),
-                itens: p.itens.map(i => ({
+                itens: ordenarItensPorNome(p.itens).map(i => ({
                     nome: i.produto?.nome || i.produtoId,
                     quantidade: Number(i.quantidade),
                     valor: Number(i.valor)

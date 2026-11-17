@@ -460,3 +460,7 @@ A confirmação do pedido que o cliente recebe no WhatsApp traz **todos os itens
 - Os dashboards e o aging usam a mesma regra de classificação, mas somam todos os títulos vencidos (inclusive de pedidos excluídos/cancelados e sem a tolerância de R$ 1), por isso o total deles pode ser maior que a soma dos selos por cliente.
 
 ---
+
+## Ordem dos itens
+
+- Enquanto o vendedor digita o pedido, os itens ficam na ordem em que foram digitados. Depois de salvo, os itens aparecem em **ordem alfabética** (números primeiro, por valor: 2 antes de 10; depois letras) no detalhe do pedido, na impressão, no recibo, na mensagem de WhatsApp e na NF-e (a numeração 1, 2, 3… da nota segue essa ordem). Notas já emitidas não mudam.

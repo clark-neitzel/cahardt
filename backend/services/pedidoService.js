@@ -6,6 +6,7 @@ const { calcularItensComFlex, calcularDiferencaFlex, gerarParcelasData } = requi
 const estoqueService = require('./estoqueService');
 const { calcularFlexDinamico, obterRegrasCategoria } = require('./flexService');
 const { camposFaltandoParaNota } = require('../utils/cadastroFiscal');
+const { ordenarItensPorNome } = require('../utils/ordenarItens');
 
 // ── Horário de entrega (11/2026) ─────────────────────────────────────────────
 // Opcional, "HH:MM". null/""/undefined → sem horário (null). Formato inválido → erro 400.
@@ -79,6 +80,7 @@ function anexarNotaApp(items) {
     for (const p of items) {
         const n = (p.notasFiscaisApp || []).find(x => x.ref === `${prefixo}${p.id}`) || null;
         p.notaApp = n ? { id: n.id, status: n.status, numero: n.numero, chave: n.chave } : null;
+        if (Array.isArray(p.itens)) p.itens = ordenarItensPorNome(p.itens); // itens em ordem alfabética (só leitura)
     }
     return items;
 }
@@ -966,6 +968,7 @@ const pedidoService = {
                 }
             }
         });
+        if (pedido && Array.isArray(pedido.itens)) pedido.itens = ordenarItensPorNome(pedido.itens);
         // Forma/conta EFETIVAS das parcelas: baixa via conciliação/Asaas só grava o
         // ledger e o popup do pedido mostrava "Forma: -". Derivação na leitura, pelo
         // mesmo helper do Contas a Receber (não escreve nada na parcela).

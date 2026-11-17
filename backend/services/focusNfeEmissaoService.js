@@ -6,6 +6,7 @@
 //   - cliente em OUTRA UF (interestadual) → CFOP 6102/6101 e local_destino 2 (idDest interestadual);
 //     sem isso a SEFAZ rejeita (idDest incompatível com a UF de destino). Ref.: nota real 84501 do CA (SC→PR, CFOP 6101).
 const prisma = require('../config/database');
+const { ordenarItensPorNome } = require('../utils/ordenarItens');
 const focusNfe = require('./focusNfeService');
 const { gerarParcelasData, ehPedidoAPrazo } = require('./pedidoCalculos');
 const { normalizarChaveNFeTolerante } = require('../utils/documento');
@@ -226,7 +227,7 @@ async function montarNotaVenda(pedido) {
     const { doc, ehCPF, interestadual } = validarCadastroFiscal(cliente);
     const destinatario = montarDestinatario(cliente, doc, ehCPF);
 
-    const itensValidos = (pedido.itens || []).filter(i => Number(i.quantidade) > 0);
+    const itensValidos = ordenarItensPorNome((pedido.itens || []).filter(i => Number(i.quantidade) > 0)); // ordem alfabética (numero_item segue)
     if (!itensValidos.length) throw new Error('Pedido sem itens com quantidade.');
 
     let total = 0;
@@ -349,7 +350,7 @@ async function montarNotaBonificacao(pedido) {
     const { doc, ehCPF, interestadual } = validarCadastroFiscal(cliente);
     const destinatario = montarDestinatario(cliente, doc, ehCPF);
 
-    const itensValidos = (pedido.itens || []).filter(i => Number(i.quantidade) > 0);
+    const itensValidos = ordenarItensPorNome((pedido.itens || []).filter(i => Number(i.quantidade) > 0)); // ordem alfabética (numero_item segue)
     if (!itensValidos.length) throw new Error('Bonificação sem itens com quantidade.');
 
     let total = 0;

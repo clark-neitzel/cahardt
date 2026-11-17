@@ -10,6 +10,7 @@
  * Ver backend/services/botWhatsappService.js e INTEGRACAO-ENVIO-BOT-WHATSAPP.md.
  */
 const prisma = require('../config/database');
+const { ordenarItensPorNome } = require('../utils/ordenarItens');
 const bot = require('./botWhatsappService');
 
 const formatPhone = (cliente) => cliente?.Telefone_Celular || null;
@@ -54,7 +55,7 @@ const DESPEDIDA = '\n\nObrigado pela preferência! 🙏';
 const moedaBR = (v) => Number(v || 0).toFixed(2).replace('.', ',');
 
 /** Um bloco por item do pedido (formato idêntico ao de sempre). */
-const blocosItens = (pedido) => (pedido.itens || []).map(i => {
+const blocosItens = (pedido) => ordenarItensPorNome(pedido.itens || []).map(i => {
     const nomeProd = i.produto?.nome || 'Produto';
     return `\`${nomeProd}\`\n${Number(i.quantidade)} un x R$ ${moedaBR(i.valor)}`;
 });

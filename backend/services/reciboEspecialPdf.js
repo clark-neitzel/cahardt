@@ -5,6 +5,7 @@
 // tabela de itens, total em destaque e linha de assinatura.
 // =====================================================================
 const PDFDocument = require('pdfkit');
+const { ordenarItensPorNome } = require('../utils/ordenarItens');
 const { code128bLarguras } = require('./code128');
 
 const VERDE_ESCURO = '#1E3932';
@@ -259,7 +260,7 @@ function gerarReciboEspecial(pedido) {
         y += 7;
 
         let total = 0;
-        const itens = pedido.itens || [];
+        const itens = ordenarItensPorNome(pedido.itens || []); // ordem alfabética
         for (const item of itens) {
             const qtd = Number(item.quantidade);
             const unit = Number(item.valor);
