@@ -2082,7 +2082,7 @@ const ListaPedidos = () => {
 
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
                                 <div><p className="text-[10px] uppercase font-bold text-gray-500">Entrega</p><p className="font-bold">{new Date(selectedPedido.dataVenda).toLocaleDateString('pt-BR')}{selectedPedido.horaEntrega ? ` ${selectedPedido.horaEntrega}` : ''}</p></div>
-                                <div><p className="text-[10px] uppercase font-bold text-gray-500">Emissão</p><p className="font-medium">{new Date(selectedPedido.createdAt).toLocaleDateString('pt-BR')}</p></div>
+                                <div><p className="text-[10px] uppercase font-bold text-gray-500">Emissão</p><p className="font-medium">{new Date(selectedPedido.createdAt).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })} {new Date(selectedPedido.createdAt).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' })}</p>{(detalheExtra?.usuarioLancamento || selectedPedido.usuarioLancamento)?.nome && <p className="text-[11px] text-gray-500 truncate">por {(detalheExtra?.usuarioLancamento || selectedPedido.usuarioLancamento).nome}</p>}</div>
                                 <div className="col-span-2"><p className="text-[10px] uppercase font-bold text-gray-500">Pagamento</p><p className="font-medium">{selectedPedido.nomeCondicaoPagamento || 'N/D'}</p></div>
                             </div>
 
