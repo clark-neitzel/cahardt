@@ -256,7 +256,7 @@ const ModalConferir = ({
         <div className="fixed inset-0 z-[90] flex items-end md:items-center justify-center bg-black/50 p-0 md:p-4" onClick={onFechar}>
             <div
                 ref={raiz} onKeyDown={aoTeclar}
-                className="bg-white w-full md:max-w-3xl lg:max-w-5xl rounded-t-2xl md:rounded-2xl shadow-2xl h-[92dvh] md:h-auto max-h-[95vh] flex flex-col"
+                className={`bg-white w-full md:max-w-3xl lg:max-w-5xl rounded-t-2xl md:rounded-2xl shadow-2xl h-[92dvh] ${semMovimento ? 'md:h-auto' : 'md:h-[95vh] lg:h-[min(760px,95vh)]'} max-h-[95vh] flex flex-col`}
                 onClick={e => e.stopPropagation()}
             >
                 <div className="bg-house px-4 md:px-5 py-3 flex items-center gap-3 rounded-t-2xl shrink-0">
