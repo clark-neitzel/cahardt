@@ -5,6 +5,7 @@ const pcpReceitaService = require('../services/pcpReceitaService');
 const categoriaEstoqueService = require('../services/categoriaEstoqueService');
 const produtoService = require('../services/produtoService');
 const estoqueService = require('../services/estoqueService');
+const { normalizarNcm, ncmValido } = require('../utils/ncm');
 
 // Moeda em português para os textos que o usuário lê (log de auditoria).
 // Mesmo padrão de uma linha já usado em cobrancaService.js e reciboEspecialPdf.js.
@@ -415,7 +416,12 @@ const produtoController = {
             }
             // NCM/EAN: texto livre, trim; vazio vira string vazia (mesmo padrão de 'ean' na
             // criação) — nunca null, pra não colidir com o tipo String (não String?) do schema.
-            if (data.ncm !== undefined) data.ncm = String(data.ncm ?? '').trim() || null;
+            // NCM: vazio permitido (nota usa o NCM padrão); preenchido precisa de 8 dígitos. Grava SEM pontos.
+            if (data.ncm !== undefined) {
+                const ncmTxt = String(data.ncm ?? '').trim();
+                if (ncmTxt && !ncmValido(ncmTxt)) return res.status(400).json({ error: 'NCM deve ter 8 dígitos (ex.: 19022000)' });
+                data.ncm = ncmTxt ? normalizarNcm(ncmTxt) : null;
+            }
             if (data.ean !== undefined) data.ean = String(data.ean ?? '').trim();
             // Ativo: só true/false de verdade
             if (data.ativo !== undefined) {

@@ -10,6 +10,7 @@ const { ordenarItensPorNome } = require('../utils/ordenarItens');
 const focusNfe = require('./focusNfeService');
 const { gerarParcelasData, ehPedidoAPrazo } = require('./pedidoCalculos');
 const { normalizarChaveNFeTolerante } = require('../utils/documento');
+const { ncmDoItem } = require('../utils/ncm');
 const { mensagemCadastroIncompleto, documentoNormalizado, ehCPFDoc } = require('../utils/cadastroFiscal');
 
 const EMITENTE = {
@@ -25,6 +26,36 @@ const EMITENTE = {
     inscricao_estadual_emitente: '255372744',
     regime_tributario_emitente: 1, // Simples Nacional (CRT=1 nas notas do CA)
 };
+
+/**
+ * Resolve o NCM de cada item da nota (regra única — ver utils/ncm.js).
+ *  - estrito=true (VENDA e BONIFICAÇÃO): NCM preenchido porém inválido -> lança Error listando
+ *    TODOS os produtos ruins, ANTES de qualquer ref/registro. A Focus/SEFAZ recusaria a nota.
+ *  - estrito=false (DEVOLUÇÃO): NUNCA lança; inválido ou vazio cai no ncmPadrao + aviso
+ *    (a devolução já está registrada, estoque e cobrança ajustados — nota não pode travar por NCM).
+ *  - NCM vazio: segue com o ncmPadrao + console.warn + aviso.
+ * Devolve { ncmPorItem: Map(item -> ncm), avisos: [string] }.
+ */
+function resolverNcmItens(itens, cfg, { estrito, rotulo }) {
+    const ncmPorItem = new Map();
+    const avisos = [];
+    const ruins = [];
+    for (const item of itens) {
+        const r = ncmDoItem(item, cfg);
+        ncmPorItem.set(item, r.ncm);
+        const nome = item.produto?.nome || item.descricao || item.produtoId;
+        const cod = item.produto?.codigo || item.produtoId;
+        if (r.origem === 'invalido') {
+            if (estrito) ruins.push(`Produto ${nome} (cód. ${cod}) tem NCM inválido "${r.bruto}" — corrija em Produtos (precisa de 8 dígitos)`);
+            else avisos.push(`Produto ${nome} (cód. ${cod}): NCM inválido "${r.bruto}" no cadastro — usado o NCM padrão ${cfg.ncmPadrao}`);
+        } else if (r.origem === 'padrao') {
+            avisos.push(`Produto ${nome} (cód. ${cod}): sem NCM no cadastro — usado o NCM padrão ${cfg.ncmPadrao}`);
+        }
+    }
+    if (ruins.length) throw new Error(ruins.join('. ') + '.');
+    for (const a of avisos) console.warn(`[NCM] ${rotulo}: ${a}`);
+    return { ncmPorItem, avisos };
+}
 
 const CONFIG_PADRAO = {
     aliquotaCreditoSimples: 3.82, // pCredSN das notas reais — muda com a faixa do Simples
@@ -230,6 +261,7 @@ async function montarNotaVenda(pedido) {
     const itensValidos = ordenarItensPorNome((pedido.itens || []).filter(i => Number(i.quantidade) > 0)); // ordem alfabética (numero_item segue)
     if (!itensValidos.length) throw new Error('Pedido sem itens com quantidade.');
 
+    const { ncmPorItem, avisos: avisosNcm } = resolverNcmItens(itensValidos, cfg, { estrito: true, rotulo: `venda #${pedido.numero}` });
     let total = 0;
     const items = itensValidos.map((item, idx) => {
         const q = Number(item.quantidade);
@@ -237,7 +269,7 @@ async function montarNotaVenda(pedido) {
         const bruto = round2(q * v);
         total = round2(total + bruto);
         const revenda = !!item.produto?.nfeRevenda;
-        const ncm = String(item.produto?.ncm || '').replace(/\D/g, '') || cfg.ncmPadrao;
+        const ncm = ncmPorItem.get(item);
         return {
             numero_item: idx + 1,
             codigo_produto: item.produto?.codigo || item.produtoId,
@@ -295,7 +327,7 @@ async function montarNotaVenda(pedido) {
     };
 
     const agora = agoraBrasilia();
-    return {
+    const notaMontada = {
         natureza_operacao: ehCPF ? 'Venda a Nao Contribuinte' : 'Venda de Mercadorias / Produtos',
         data_emissao: agora,
         data_entrada_saida: agora,
@@ -319,6 +351,9 @@ async function montarNotaVenda(pedido) {
         informacoes_adicionais_contribuinte: linhas.filter(Boolean).join('#'),
         items,
     };
+    // Avisos de NCM fora do JSON (não enumerável: não vai à Focus nem ao payloadEnviado).
+    Object.defineProperty(notaMontada, 'avisosNcm', { value: avisosNcm, enumerable: false });
+    return notaMontada;
 }
 
 /**
@@ -353,6 +388,7 @@ async function montarNotaBonificacao(pedido) {
     const itensValidos = ordenarItensPorNome((pedido.itens || []).filter(i => Number(i.quantidade) > 0)); // ordem alfabética (numero_item segue)
     if (!itensValidos.length) throw new Error('Bonificação sem itens com quantidade.');
 
+    const { ncmPorItem, avisos: avisosNcm } = resolverNcmItens(itensValidos, cfg, { estrito: true, rotulo: `bonificação #${pedido.numero}` });
     let total = 0;
     const items = itensValidos.map((item, idx) => {
         const q = Number(item.quantidade);
@@ -360,7 +396,7 @@ async function montarNotaBonificacao(pedido) {
         const bruto = round2(q * v);
         total = round2(total + bruto);
         const revenda = !!item.produto?.nfeRevenda;
-        const ncm = String(item.produto?.ncm || '').replace(/\D/g, '') || cfg.ncmPadrao;
+        const ncm = ncmPorItem.get(item);
         return {
             numero_item: idx + 1,
             codigo_produto: item.produto?.codigo || item.produtoId,
@@ -394,7 +430,7 @@ async function montarNotaBonificacao(pedido) {
     // CSOSN 101 e aqui o CSOSN é 102 (sem crédito) — seria informação falsa na nota.
 
     const agora = agoraBrasilia();
-    return {
+    const notaMontada = {
         natureza_operacao: 'Remessa em bonificacao',
         data_emissao: agora,
         data_entrada_saida: agora,
@@ -418,6 +454,9 @@ async function montarNotaBonificacao(pedido) {
         informacoes_adicionais_contribuinte: linhas.filter(Boolean).join('#'),
         items,
     };
+    // Avisos de NCM fora do JSON (não enumerável: não vai à Focus nem ao payloadEnviado).
+    Object.defineProperty(notaMontada, 'avisosNcm', { value: avisosNcm, enumerable: false });
+    return notaMontada;
 }
 
 /**
@@ -497,6 +536,7 @@ async function montarNotaDevolucaoBonificacao({ dev, pedido, cliente, notaBonif,
         }
     }
 
+    const { ncmPorItem, avisos: avisosNcm } = resolverNcmItens(itensValidos, cfg, { estrito: false, rotulo: `devolução DEV#${dev.numero}` });
     let total = 0;
     const items = itensValidos.map((item, idx) => {
         const q = Number(item.quantidade);
@@ -517,7 +557,7 @@ async function montarNotaDevolucaoBonificacao({ dev, pedido, cliente, notaBonif,
             // 1949/2949: entrada por devolução de bonificação (espelho de 5910/6910). Sem par
             // revenda/produção — `nfeRevenda` só decide o CEST, como na remessa.
             cfop: interestadual ? '2949' : '1949',
-            codigo_ncm: String(item.produto?.ncm || '').replace(/\D/g, '') || cfg.ncmPadrao,
+            codigo_ncm: ncmPorItem.get(item),
             ...(revenda && item.produto?.nfeCest ? { cest: item.produto.nfeCest } : {}),
             unidade_comercial: item.produto?.unidade || 'PT',
             unidade_tributavel: item.produto?.unidade || 'PT',
@@ -583,7 +623,7 @@ async function montarNotaDevolucaoBonificacao({ dev, pedido, cliente, notaBonif,
         informacoes_adicionais_contribuinte: linhas.filter(Boolean).join('#'),
         items,
     };
-    return { nota, refItem };
+    return { nota, refItem, avisosNcm };
 }
 
 const MAPA_STATUS = {
@@ -721,6 +761,7 @@ async function emitirVenda(pedidoId) {
     const atualizada = await prisma.notaFiscalApp.update({ where: { ref }, data: aplicarRetornoFocus(data) });
     await marcarPedidoFaturado(atualizada);
     await registrarCanhoto(atualizada); // best-effort — nunca lança
+    if (nota.avisosNcm?.length) atualizada.avisosNcm = nota.avisosNcm; // campo extra (só aviso; nada quebra)
     return atualizada;
 }
 
@@ -1093,7 +1134,7 @@ async function emitirDevolucaoBonificacao(dev) {
         }
         throw err;
     }
-    const { nota, refItem } = montada;
+    const { nota, refItem, avisosNcm } = montada;
     if (refItem.usado) {
         console.log(`[NFDevolucao] BN#${pedido.numero} DEV#${dev.numero} ref por item: fonte=${refItem.fonte} itens=${itensValidos.length} nf=nº ${notaBonif.numero || '?'}`);
     }
@@ -1114,6 +1155,7 @@ async function emitirDevolucaoBonificacao(dev) {
     // nota é de ENTRADA, `registrarDeNotaApp` a classifica como DESCONHECIDO, igual à
     // devolução de venda.
     await registrarCanhoto(atualizada);
+    if (avisosNcm?.length) atualizada.avisosNcm = avisosNcm; // campo extra (só aviso)
     return atualizada;
 }
 
@@ -1227,6 +1269,7 @@ async function emitirDevolucao(devolucaoId) {
         console.log(`[NFDevolucao] ref por item: fonte=${origem.fonte} itens=${itensValidos.length} nf=${rotuloNota}`);
     }
 
+    const { ncmPorItem, avisos: avisosNcm } = resolverNcmItens(itensValidos, cfg, { estrito: false, rotulo: `devolução DEV#${dev.numero}` });
     let total = 0;
     const items = itensValidos.map((item, idx) => {
         const q = Number(item.quantidade);
@@ -1245,7 +1288,7 @@ async function emitirDevolucao(devolucaoId) {
                 numero_item_dfe_referenciado: String(nItemPorItemDev.get(item.id)),
             } : {}),
             cfop: revenda ? (interestadual ? '2202' : '1202') : (interestadual ? '2201' : '1201'), // entrada por devolução (espelho de 6102/6101/5102/5101)
-            codigo_ncm: String(item.produto?.ncm || '').replace(/\D/g, '') || cfg.ncmPadrao,
+            codigo_ncm: ncmPorItem.get(item),
             ...(revenda && item.produto?.nfeCest ? { cest: item.produto.nfeCest } : {}),
             unidade_comercial: item.produto?.unidade || 'PT',
             unidade_tributavel: item.produto?.unidade || 'PT',
@@ -1349,6 +1392,7 @@ async function emitirDevolucao(devolucaoId) {
     // a emissão parecer que falhou nem desfazer a devolução. `registrarCanhoto` engole
     // qualquer exceção e só loga; não há `$transaction` nenhuma neste arquivo.
     await registrarCanhoto(atualizada); // best-effort — nunca lança
+    if (avisosNcm?.length) atualizada.avisosNcm = avisosNcm; // campo extra (só aviso)
     return atualizada;
 }
 

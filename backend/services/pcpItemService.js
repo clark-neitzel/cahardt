@@ -1,4 +1,5 @@
 const prisma = require('../config/database');
+const { normalizarNcm, ncmValido } = require('../utils/ncm');
 const categoriaEstoqueService = require('./categoriaEstoqueService');
 
 const erroComStatus = (status, mensagem) => {
@@ -293,7 +294,8 @@ const pcpItemService = {
                 select: { ean: true, ncm: true }
             });
             ean = notaItem?.ean || null;
-            ncm = notaItem?.ncm || null;
+            // NCM do XML do fornecedor: só vale com 8 dígitos; senão null (nunca trava a promoção)
+            ncm = ncmValido(notaItem?.ncm) ? normalizarNcm(notaItem.ncm) : null;
         }
 
         const produtoService = require('./produtoService');

@@ -1,5 +1,6 @@
 const prisma = require('../config/database');
 const categoriaEstoqueService = require('./categoriaEstoqueService');
+const { normalizarNcm, ncmValido } = require('../utils/ncm');
 
 /**
  * Próximo código numérico sequencial do catálogo: base = MAX entre códigos de EXATAMENTE
@@ -56,6 +57,14 @@ async function criar(dados, usuario, db = prisma) {
         erro.status = 400;
         throw erro;
     }
+    // NCM: vazio permitido; preenchido precisa de 8 dígitos (grava sem pontos). Validado antes de qualquer gravação.
+    const ncmTxt = String(ncm ?? '').trim();
+    if (ncmTxt && !ncmValido(ncmTxt)) {
+        const erro = new Error('NCM deve ter 8 dígitos (ex.: 19022000)');
+        erro.status = 400;
+        throw erro;
+    }
+    const ncmFinal = ncmTxt ? normalizarNcm(ncmTxt) : null;
     const unidadeFinal = String(unidade || 'UN').trim().substring(0, 10).toUpperCase() || 'UN';
 
     const valor = valorVenda != null
@@ -184,7 +193,7 @@ async function criar(dados, usuario, db = prisma) {
             valorVenda: valor,
             unidade: unidadeFinal,
             ean: ean?.trim() || '',
-            ncm: ncm?.trim() || null,
+            ncm: ncmFinal,
             categoria: categoriaCanonica,
             categoriaProdutoId: categoriaProdutoId || null,
             controlaEstoque: controlaEstoqueFinal,

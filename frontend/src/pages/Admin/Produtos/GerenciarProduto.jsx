@@ -8,6 +8,7 @@ import promocaoService from '../../../services/promocaoService';
 import { API_URL } from '../../../services/api';
 import categoriaProdutoService from '../../../services/categoriaProdutoService';
 import toast from 'react-hot-toast';
+import { normalizarNcm, ncmValido, erroNcm, MSG_NCM_INVALIDO } from '../../../utils/ncm';
 import SelectBusca from '../../../components/SelectBusca';
 import ComboBusca from '../../../components/ComboBusca';
 import {
@@ -722,6 +723,10 @@ const GerenciarProduto = () => {
 
     // Data States
     const [produto, setProduto] = useState(null);
+    // NCM legado fora do padrão: só bloqueia/envia se o usuário mexeu nele nesta edição
+    const ncmAlterado = (v) => String(v ?? '').trim() !== String(produto?.ncm ?? '').trim();
+    const ncmEnviavel = (v) => ncmValido(v) || ncmAlterado(v) ? ncmValido(v) : false;
+    const ncmAviso = (v) => !ncmValido(v) && !ncmAlterado(v);
     const [imagemAtual, setImagemAtual] = useState(0);
     const [imagensLocal, setImagensLocal] = useState([]);
     const [uploadingImagem, setUploadingImagem] = useState(false);
@@ -881,6 +886,7 @@ const GerenciarProduto = () => {
 
     const handleSaveComercial = async () => {
         if (!podeEditar) { toast.error('Você não tem permissão para editar produtos.'); return; }
+        if (ncmAlterado(formData.ncm) && !ncmValido(formData.ncm)) { toast.error(MSG_NCM_INVALIDO); return; }
         setSalvandoComercial(true);
         try {
             const unidadeLimpa = (formData.unidade || '').trim();
@@ -935,7 +941,7 @@ const GerenciarProduto = () => {
                 valorVenda: precoNum.toFixed(2),
                 unidade: unidadeLimpa,
                 categoria: (formData.categoria || '').trim() || null,
-                ncm: String(formData.ncm ?? '').trim() || null,
+                ...(ncmEnviavel(formData.ncm) ? { ncm: normalizarNcm(formData.ncm) || null } : {}),
                 ean: String(formData.ean ?? '').trim(),
                 custoManual: custoManualVal === '' ? null : parseFloat(custoManualVal.replace(',', '.')),
                 categoriaProdutoId: formData.categoriaProdutoId || null,
@@ -1306,8 +1312,11 @@ const GerenciarProduto = () => {
                       <div className="flex items-center justify-between py-2.5 gap-3" style={{ borderBottom: '1px solid #F2F3F8' }}>
                         <span className="text-sm" style={{ color: '#8A90A2' }}>NCM</span>
                         {podeEditar ? (
-                          <input value={formData.ncm} onChange={e => setFormData(prev => ({ ...prev, ncm: e.target.value }))}
-                            placeholder="0000.00.00" className="text-sm font-semibold font-mono text-right border border-gray-300 rounded px-2 py-1 w-32 focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
+                          <div className="flex flex-col items-end">
+                            <input value={formData.ncm} onChange={e => setFormData(prev => ({ ...prev, ncm: e.target.value }))}
+                              inputMode="numeric" maxLength={10} placeholder="19022000" className={`text-sm font-semibold font-mono text-right border rounded px-2 py-1 w-32 focus:ring-1 focus:outline-none ${(ncmValido(formData.ncm) || ncmAviso(formData.ncm)) ? 'border-gray-300 focus:border-primary focus:ring-primary' : 'border-red-400 focus:border-red-500 focus:ring-red-500'}`} />
+                            {ncmAviso(formData.ncm) ? <span className="text-xs text-amber-700 mt-1 text-right">NCM fora do padrão — corrija quando puder</span> : erroNcm(formData.ncm) && <span className="text-xs text-red-600 mt-1 text-right">{erroNcm(formData.ncm)}</span>}
+                          </div>
                         ) : <span className="text-sm font-semibold font-mono text-right" style={{ color: '#16192B' }}>{formData.ncm || '—'}</span>}
                       </div>
                       {(produto?.notaOrigem || produto?.nomeOrigemNota) && (
@@ -1626,8 +1635,11 @@ const GerenciarProduto = () => {
                                             <div>
                                                 <div className="font-bold tracking-[.05em] uppercase mb-1" style={{ fontSize: 10.5, color: '#9AA0B4' }}>NCM</div>
                                                 {podeEditar ? (
+                                                    <>
                                                     <input value={formData.ncm} onChange={e => setFormData(prev => ({ ...prev, ncm: e.target.value }))}
-                                                        placeholder="0000.00.00" className="w-full font-semibold font-mono border border-gray-300 rounded px-2 py-1.5 focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" style={{ fontSize: 14, color: '#16192B' }} />
+                                                        inputMode="numeric" maxLength={10} placeholder="19022000" className={`w-full font-semibold font-mono border rounded px-2 py-1.5 focus:ring-1 focus:outline-none ${(ncmValido(formData.ncm) || ncmAviso(formData.ncm)) ? 'border-gray-300 focus:border-primary focus:ring-primary' : 'border-red-400 focus:border-red-500 focus:ring-red-500'}`} style={{ fontSize: 14, color: '#16192B' }} />
+                                                    {ncmAviso(formData.ncm) ? <p className="text-xs text-amber-700 mt-1 font-normal">NCM fora do padrão — corrija quando puder</p> : erroNcm(formData.ncm) && <p className="text-xs text-red-600 mt-1 font-normal">{erroNcm(formData.ncm)}</p>}
+                                                    </>
                                                 ) : <div className="font-semibold font-mono" style={{ fontSize: 14, color: '#16192B' }}>{formData.ncm || '—'}</div>}
                                             </div>
                                             <div>

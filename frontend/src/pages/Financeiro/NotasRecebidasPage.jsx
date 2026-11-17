@@ -8,6 +8,7 @@ import categoriaProdutoService from '../../services/categoriaProdutoService';
 import api from '../../services/api';
 import { Inbox, Trash2, Loader2, RefreshCw, X, FileDown, Printer, Search, Upload, Calendar, FilePlus, UploadCloud, Clock, Link2, Unlink, PackageCheck, Undo2, Wrench, ArrowRight, ShieldCheck, ShieldAlert, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { normalizarNcm, ncmValido, erroNcm, MSG_NCM_INVALIDO } from '../../utils/ncm';
 import ComboBusca from '../../components/ComboBusca';
 import SelectBusca from '../../components/SelectBusca';
 import { useFiltrosSalvos } from '../../hooks/useFiltrosSalvos';
@@ -1353,7 +1354,7 @@ const ModalCriarProdutoNota = ({ aberto, itemNota, valorInicial, onCancelar, onC
         setCategoria(valorInicial?.categoria || '');
         setCategoriaProdutoId(valorInicial?.categoriaProdutoId || '');
         setEan(valorInicial?.ean || itemNota?.ean || '');
-        setNcm(valorInicial?.ncm || itemNota?.ncm || '');
+        { const n0 = valorInicial?.ncm || itemNota?.ncm || ''; setNcm(ncmValido(n0) ? normalizarNcm(n0) : ''); }
         setUnidade(valorInicial?.unidade || itemNota?.unidade || '');
         setFator(valorInicial?.fator || '1');
         setControle(valorInicial?.controlaEstoque === true ? 'true' : valorInicial?.controlaEstoque === false ? 'false' : 'segue');
@@ -1382,6 +1383,7 @@ const ModalCriarProdutoNota = ({ aberto, itemNota, valorInicial, onCancelar, onC
         if (!nome.trim()) { toast.error('Informe o nome do produto.'); return; }
         if (!categoria.trim()) { toast.error('Escolha a categoria do produto — é obrigatória.'); return; }
         if (!unidade.trim()) { toast.error('Informe a unidade do produto.'); return; }
+        if (!ncmValido(ncm)) { toast.error(MSG_NCM_INVALIDO); return; }
         const fatorNum = parseFator(fator);
         if (fatorNum <= 0) { toast.error('Informe a conversão de quantidade (maior que zero).'); return; }
         onConfirmar({
@@ -1398,7 +1400,7 @@ const ModalCriarProdutoNota = ({ aberto, itemNota, valorInicial, onCancelar, onC
                 : (categoriaEscolhida ? categoriaEscolhida.controlaEstoque !== false : null),
             unidade: unidade.trim(),
             ean: ean.trim() || null,
-            ncm: ncm.trim() || null,
+            ncm: normalizarNcm(ncm) || null,
             fator: fator
         });
     };
@@ -1474,9 +1476,12 @@ const ModalCriarProdutoNota = ({ aberto, itemNota, valorInicial, onCancelar, onC
                         <input
                             value={ncm}
                             onChange={e => setNcm(e.target.value)}
-                            placeholder="da nota"
-                            className="mt-1 w-full min-h-[44px] border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                            inputMode="numeric"
+                            maxLength={10}
+                            placeholder="19022000"
+                            className={`mt-1 w-full min-h-[44px] border rounded px-3 py-2 text-sm focus:ring-1 focus:outline-none ${ncmValido(ncm) ? 'border-gray-300 focus:border-primary focus:ring-primary' : 'border-red-400 focus:border-red-500 focus:ring-red-500'}`}
                         />
+                        {erroNcm(ncm) && <p className="text-xs text-red-600 mt-1">{erroNcm(ncm)}</p>}
                     </div>
                 </div>
 
@@ -2696,7 +2701,7 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                 controlaEstoque: v.novo.controlaEstoque,
                 unidade: v.novo.unidade.trim(),
                 ean: v.novo.ean || undefined,
-                ncm: v.novo.ncm || undefined
+                ncm: normalizarNcm(v.novo.ncm) || undefined
             }
             : null,
         semEstoqueMotivo: v.semEstoqueMotivo || null,
@@ -3681,7 +3686,7 @@ const PainelCorrigirEntrada = ({ nota, itensPcp, modo = 'corrigir', onCancelar, 
                             controlaEstoque: v.novo.controlaEstoque,
                             unidade: v.novo.unidade.trim(),
                             ean: v.novo.ean || undefined,
-                            ncm: v.novo.ncm || undefined
+                            ncm: normalizarNcm(v.novo.ncm) || undefined
                         }
                         : null
                 }));

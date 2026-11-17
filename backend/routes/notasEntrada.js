@@ -16,6 +16,7 @@ const router = express.Router();
 const fs = require('fs');
 const path = require('path');
 const prisma = require('../config/database');
+const { normalizarNcm, ncmValido } = require('../utils/ncm');
 const verificarAuth = require('../middlewares/authMiddleware');
 const sefazDfeService = require('../services/sefazDfeService');
 const nfseAdnService = require('../services/nfseAdnService');
@@ -1498,7 +1499,8 @@ const processarItensConferencia = async (tx, nota, itensBody, itensNota, { catPa
                 controlaEstoque: cp.controlaEstoque,
                 unidade: cp.unidade,
                 ean: cp.ean?.trim() || itemNota.ean || null,
-                ncm: cp.ncm?.trim() || itemNota.ncm || null,
+                // NCM do XML do fornecedor/da tela: inválido (≠ 8 dígitos) vira null — NUNCA trava a conferência.
+                ncm: [cp.ncm, itemNota.ncm].map(v => ncmValido(v) ? normalizarNcm(v) : null).find(Boolean) || null,
                 nomeOrigemNota: itemNota.descricao,
                 notaOrigemId: nota.id
             }, { id: usuarioId }, tx);

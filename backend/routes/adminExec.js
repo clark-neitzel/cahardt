@@ -13069,4 +13069,36 @@ router.post('/backfill-codigo-produtos', async (req, res) => {
     }
 });
 
+// ── Diagnóstico SOMENTE-LEITURA: NCM dos produtos ativos (11/2026) ──
+// Lista produtos ativos com NCM vazio (a nota usa o ncmPadrao) e com NCM preenchido mas ≠ 8 dígitos
+// (a NF-e de venda/bonificação RECUSA; a devolução cai no padrão). Não grava nada.
+router.get('/diag-ncm-produtos', async (req, res) => {
+    try {
+        const { ncmValido } = require('../utils/ncm');
+        const emissao = require('../services/focusNfeEmissaoService');
+        const cfg = await emissao.getConfig();
+        const produtos = await prisma.produto.findMany({
+            where: { ativo: true },
+            select: { id: true, codigo: true, nome: true, ncm: true, categoria: true },
+            orderBy: { nome: 'asc' },
+        });
+        const vazios = [], invalidos = [];
+        for (const p of produtos) {
+            const bruto = String(p.ncm ?? '').trim();
+            if (!bruto) vazios.push({ id: p.id, codigo: p.codigo, nome: p.nome, categoria: p.categoria });
+            else if (!ncmValido(bruto)) invalidos.push({ id: p.id, codigo: p.codigo, nome: p.nome, categoria: p.categoria, ncm: p.ncm });
+        }
+        res.json({
+            ncmPadrao: cfg.ncmPadrao,
+            totalAtivos: produtos.length,
+            usamNcmPadrao: vazios.length,
+            semNcm: { total: vazios.length, produtos: vazios },
+            ncmInvalido: { total: invalidos.length, produtos: invalidos },
+        });
+    } catch (err) {
+        console.error('[diag-ncm-produtos]', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 module.exports = router;
