@@ -62,6 +62,11 @@ async function getConfig() {
 const round2 = (n) => Math.round(n * 100) / 100;
 const fmtBR = (n) => n.toFixed(2).replace('.', ',');
 
+/** NCM do item: o do cadastro do produto (só dígitos) ou, se vazio, o padrão da configuração fiscal. */
+function ncmDoItem(item, cfg) {
+    return String(item.produto?.ncm || '').replace(/\D/g, '') || cfg.ncmPadrao;
+}
+
 // ── Informações complementares da DANFE ──────────────────────────────────────
 // Separador '#' vai no XML (a Focus grava '\n' como literal); a DANFE do app (patch do
 // node-pdf-nfe) converte '#' NÃO seguido de dígito em quebra de linha. Por isso 'Pedido #4821',
@@ -237,7 +242,7 @@ async function montarNotaVenda(pedido) {
         const bruto = round2(q * v);
         total = round2(total + bruto);
         const revenda = !!item.produto?.nfeRevenda;
-        const ncm = String(item.produto?.ncm || '').replace(/\D/g, '') || cfg.ncmPadrao;
+        const ncm = ncmDoItem(item, cfg);
         return {
             numero_item: idx + 1,
             codigo_produto: item.produto?.codigo || item.produtoId,
@@ -360,7 +365,7 @@ async function montarNotaBonificacao(pedido) {
         const bruto = round2(q * v);
         total = round2(total + bruto);
         const revenda = !!item.produto?.nfeRevenda;
-        const ncm = String(item.produto?.ncm || '').replace(/\D/g, '') || cfg.ncmPadrao;
+        const ncm = ncmDoItem(item, cfg);
         return {
             numero_item: idx + 1,
             codigo_produto: item.produto?.codigo || item.produtoId,
@@ -517,7 +522,7 @@ async function montarNotaDevolucaoBonificacao({ dev, pedido, cliente, notaBonif,
             // 1949/2949: entrada por devolução de bonificação (espelho de 5910/6910). Sem par
             // revenda/produção — `nfeRevenda` só decide o CEST, como na remessa.
             cfop: interestadual ? '2949' : '1949',
-            codigo_ncm: String(item.produto?.ncm || '').replace(/\D/g, '') || cfg.ncmPadrao,
+            codigo_ncm: ncmDoItem(item, cfg),
             ...(revenda && item.produto?.nfeCest ? { cest: item.produto.nfeCest } : {}),
             unidade_comercial: item.produto?.unidade || 'PT',
             unidade_tributavel: item.produto?.unidade || 'PT',
@@ -1039,6 +1044,123 @@ async function registrarErroNotaDevolucao({ ref, ambiente, pedidoId, mensagem })
 }
 
 /**
+ * Monta o JSON da NF-e de DEVOLUÇÃO de venda — função PURA (sem banco, sem Focus, sem rede).
+ * Extraída de `emitirDevolucao` em 11/2026 SEM mudança de comportamento (provada por
+ * `scripts/snapshot-payload-nf-devolucao.js`, diff antes/depois vazio). Recebe tudo já resolvido:
+ * as travas, a leitura da nota original e o casamento de itens (`nItemPorItemDev`) continuam
+ * em `emitirDevolucao`.
+ *  - `itensValidos`: itens da devolução com quantidade > 0 (com `produto` carregado);
+ *  - `nItemPorItemDev`: Map<item.id, nItem da nota de origem> (usado só se `usarRefItem`);
+ *  - `dataOrigem`: data da nota/venda original (Date|string|null); `agora`: data_emissao pronta.
+ */
+function montarPayloadNotaDevolucao({ cfg, cliente, doc, ehCPF, interestadual, itensValidos,
+    usarRefItem, nItemPorItemDev, chaveOriginal, numeroOriginal, dataOrigem, pedidoNumero, agora }) {
+    const ie = String(cliente.fiscal?.inscricaoEstadual || '').replace(/\D/g, '');
+    let total = 0;
+    const items = itensValidos.map((item, idx) => {
+        const q = Number(item.quantidade);
+        const v = Number(item.valorUnitario);
+        const bruto = round2(q * v);
+        total = round2(total + bruto);
+        const revenda = !!item.produto?.nfeRevenda;
+        return {
+            numero_item: idx + 1,
+            codigo_produto: item.produto?.codigo || item.produtoId,
+            descricao: item.produto?.nome || 'PRODUTO',
+            // Documento de origem NO ITEM (NT 2025.002 v1.51). `numero_item_dfe_referenciado`
+            // é o nItem na nota ORIGINAL — não confundir com `numero_item` acima.
+            ...(usarRefItem ? {
+                chave_acesso_dfe_referenciado: chaveOriginal,
+                numero_item_dfe_referenciado: String(nItemPorItemDev.get(item.id)),
+            } : {}),
+            cfop: revenda ? (interestadual ? '2202' : '1202') : (interestadual ? '2201' : '1201'), // entrada por devolução (espelho de 6102/6101/5102/5101)
+            codigo_ncm: ncmDoItem(item, cfg),
+            ...(revenda && item.produto?.nfeCest ? { cest: item.produto.nfeCest } : {}),
+            unidade_comercial: item.produto?.unidade || 'PT',
+            unidade_tributavel: item.produto?.unidade || 'PT',
+            quantidade_comercial: q,
+            quantidade_tributavel: q,
+            valor_unitario_comercial: v,
+            valor_unitario_tributavel: v,
+            valor_bruto: bruto,
+            inclui_no_total: 1,
+            icms_origem: 0,
+            pis_situacao_tributaria: '99', // na devolução o CA usava 99 (venda usa 49)
+            cofins_situacao_tributaria: '99',
+            ...(ehCPF
+                ? { icms_situacao_tributaria: '102' }
+                : {
+                    icms_situacao_tributaria: '101',
+                    icms_aliquota_credito_simples: cfg.aliquotaCreditoSimples,
+                    icms_valor_credito_simples: round2(bruto * cfg.aliquotaCreditoSimples / 100),
+                }),
+        };
+    });
+
+    const dataOrig = dataOrigem;
+    const dataOrigBR = dataOrig ? new Date(dataOrig).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : null;
+    const linhas = [
+        linhaNomeFantasia(cliente, ehCPF),
+        `DEVOLUCAO REFERENTE SUA NF N 1-${numeroOriginal || ''}${dataOrigBR ? ` DE ${dataOrigBR}` : ''}`.trim(),
+        `Pedido #${pedidoNumero}`,
+    ];
+    if (!ehCPF) {
+        const credTotal = round2(items.reduce((s, it) => s + (it.icms_valor_credito_simples || 0), 0));
+        linhas.push(`PERMITE O APROVEITAMENTO DO CREDITO DE ICMS NO VALOR DE R$ ${fmtBR(credTotal)}, CORRESPONDENTE A ALIQUOTA DE ${String(cfg.aliquotaCreditoSimples).replace('.', ',')}%, NOS TERMOS DO ART. 23 DA LC 123/2006.`);
+    }
+    linhas.push(...cfg.textosLegais); // textos legais DEPOIS da frase do crédito
+
+    const nota = {
+        natureza_operacao: 'Devolucao de venda',
+        data_emissao: agora,
+        data_entrada_saida: agora,
+        tipo_documento: 0, // ENTRADA
+        finalidade_emissao: 4, // devolução
+        local_destino: interestadual ? 2 : 1,
+        consumidor_final: ehCPF ? 1 : 0,
+        presenca_comprador: 1,
+        ...EMITENTE,
+        nome_destinatario: cliente.Nome,
+        ...(ehCPF
+            ? { cpf_destinatario: doc, indicador_inscricao_estadual_destinatario: 9 }
+            : {
+                cnpj_destinatario: doc,
+                ...(ie
+                    ? { indicador_inscricao_estadual_destinatario: 1, inscricao_estadual_destinatario: ie }
+                    : { indicador_inscricao_estadual_destinatario: 2 }),
+            }),
+        logradouro_destinatario: cliente.End_Logradouro,
+        numero_destinatario: String(cliente.End_Numero),
+        ...(cliente.End_Complemento ? { complemento_destinatario: cliente.End_Complemento } : {}),
+        bairro_destinatario: cliente.End_Bairro,
+        municipio_destinatario: cliente.End_Cidade,
+        uf_destinatario: cliente.End_Estado,
+        cep_destinatario: String(cliente.End_CEP).replace(/\D/g, ''),
+        pais_destinatario: 'Brasil',
+        modalidade_frete: 0,
+        valor_frete: 0,
+        valor_seguro: 0,
+        valor_desconto: 0,
+        valor_outras_despesas: 0,
+        valor_produtos: total,
+        valor_total: total,
+        formas_pagamento: [{ forma_pagamento: '90', valor_pagamento: 0 }], // sem pagamento (devolução)
+        // MANTIDO de propósito junto com a referência por item: a NT 2025.002 muda ONDE a
+        // SEFAZ valida a origem, não proíbe a referência de cabeçalho. SEM PROVA — ninguém
+        // emitiu ainda com as duas referências juntas.
+        // ⚠️ ROLLBACK DE UMA LINHA: se a SEFAZ rejeitar a nota por causa desta referência de
+        // cabeçalho convivendo com a referência por item, troque APENAS a linha abaixo por:
+        //     ...(usarRefItem ? {} : { notas_referenciadas: [{ chave_nfe: chaveOriginal }] }),
+        // (mantém o cabeçalho enquanto o interruptor está desligado, remove quando ligado).
+        // Documentado em backend/docs/focus-nfe-api.md → "Referência da nota de origem POR ITEM".
+        notas_referenciadas: [{ chave_nfe: chaveOriginal }],
+        informacoes_adicionais_contribuinte: linhas.filter(Boolean).join('#'),
+        items,
+    };
+    return nota;
+}
+
+/**
  * Emite a NF-e de DEVOLUÇÃO de BONIFICAÇÃO (09/2026). Chamada SÓ por `emitirDevolucao`,
  * pelo despacho `dev.pedidoOriginal.bonificacao` — a rota, o Caixa, a aba Devoluções, o
  * canhoto e o ZIP continuam falando só com `emitirDevolucao` e com a ref `nfd-<amb>-<devId>`.
@@ -1176,7 +1298,6 @@ async function emitirDevolucao(devolucaoId) {
     const doc = String(cliente?.Documento || '').replace(/[^0-9A-Za-z]/g, '').toUpperCase();
     if (!doc) throw new Error(`Cliente "${cliente?.Nome}" sem CPF/CNPJ no cadastro.`);
     const ehCPF = /^\d{11}$/.test(doc);
-    const ie = String(cliente.fiscal?.inscricaoEstadual || '').replace(/\D/g, '');
     const faltando = [];
     if (!cliente.End_Logradouro) faltando.push('endereço (rua)');
     if (!cliente.End_Numero) faltando.push('número');
@@ -1227,108 +1348,13 @@ async function emitirDevolucao(devolucaoId) {
         console.log(`[NFDevolucao] ref por item: fonte=${origem.fonte} itens=${itensValidos.length} nf=${rotuloNota}`);
     }
 
-    let total = 0;
-    const items = itensValidos.map((item, idx) => {
-        const q = Number(item.quantidade);
-        const v = Number(item.valorUnitario);
-        const bruto = round2(q * v);
-        total = round2(total + bruto);
-        const revenda = !!item.produto?.nfeRevenda;
-        return {
-            numero_item: idx + 1,
-            codigo_produto: item.produto?.codigo || item.produtoId,
-            descricao: item.produto?.nome || 'PRODUTO',
-            // Documento de origem NO ITEM (NT 2025.002 v1.51). `numero_item_dfe_referenciado`
-            // é o nItem na nota ORIGINAL — não confundir com `numero_item` acima.
-            ...(usarRefItem ? {
-                chave_acesso_dfe_referenciado: chaveOriginal,
-                numero_item_dfe_referenciado: String(nItemPorItemDev.get(item.id)),
-            } : {}),
-            cfop: revenda ? (interestadual ? '2202' : '1202') : (interestadual ? '2201' : '1201'), // entrada por devolução (espelho de 6102/6101/5102/5101)
-            codigo_ncm: String(item.produto?.ncm || '').replace(/\D/g, '') || cfg.ncmPadrao,
-            ...(revenda && item.produto?.nfeCest ? { cest: item.produto.nfeCest } : {}),
-            unidade_comercial: item.produto?.unidade || 'PT',
-            unidade_tributavel: item.produto?.unidade || 'PT',
-            quantidade_comercial: q,
-            quantidade_tributavel: q,
-            valor_unitario_comercial: v,
-            valor_unitario_tributavel: v,
-            valor_bruto: bruto,
-            inclui_no_total: 1,
-            icms_origem: 0,
-            pis_situacao_tributaria: '99', // na devolução o CA usava 99 (venda usa 49)
-            cofins_situacao_tributaria: '99',
-            ...(ehCPF
-                ? { icms_situacao_tributaria: '102' }
-                : {
-                    icms_situacao_tributaria: '101',
-                    icms_aliquota_credito_simples: cfg.aliquotaCreditoSimples,
-                    icms_valor_credito_simples: round2(bruto * cfg.aliquotaCreditoSimples / 100),
-                }),
-        };
+    const nota = montarPayloadNotaDevolucao({
+        cfg, cliente, doc, ehCPF, interestadual, itensValidos,
+        usarRefItem, nItemPorItemDev, chaveOriginal, numeroOriginal,
+        dataOrigem: notaVendaApp?.criadoEm || pedido.dataVenda,
+        pedidoNumero: pedido.numero,
+        agora: agoraBrasilia(),
     });
-
-    const dataOrig = notaVendaApp?.criadoEm || pedido.dataVenda;
-    const dataOrigBR = dataOrig ? new Date(dataOrig).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : null;
-    const linhas = [
-        linhaNomeFantasia(cliente, ehCPF),
-        `DEVOLUCAO REFERENTE SUA NF N 1-${numeroOriginal || ''}${dataOrigBR ? ` DE ${dataOrigBR}` : ''}`.trim(),
-        `Pedido #${pedido.numero}`,
-    ];
-    if (!ehCPF) {
-        const credTotal = round2(items.reduce((s, it) => s + (it.icms_valor_credito_simples || 0), 0));
-        linhas.push(`PERMITE O APROVEITAMENTO DO CREDITO DE ICMS NO VALOR DE R$ ${fmtBR(credTotal)}, CORRESPONDENTE A ALIQUOTA DE ${String(cfg.aliquotaCreditoSimples).replace('.', ',')}%, NOS TERMOS DO ART. 23 DA LC 123/2006.`);
-    }
-    linhas.push(...cfg.textosLegais); // textos legais DEPOIS da frase do crédito
-
-    const agora = agoraBrasilia();
-    const nota = {
-        natureza_operacao: 'Devolucao de venda',
-        data_emissao: agora,
-        data_entrada_saida: agora,
-        tipo_documento: 0, // ENTRADA
-        finalidade_emissao: 4, // devolução
-        local_destino: interestadual ? 2 : 1,
-        consumidor_final: ehCPF ? 1 : 0,
-        presenca_comprador: 1,
-        ...EMITENTE,
-        nome_destinatario: cliente.Nome,
-        ...(ehCPF
-            ? { cpf_destinatario: doc, indicador_inscricao_estadual_destinatario: 9 }
-            : {
-                cnpj_destinatario: doc,
-                ...(ie
-                    ? { indicador_inscricao_estadual_destinatario: 1, inscricao_estadual_destinatario: ie }
-                    : { indicador_inscricao_estadual_destinatario: 2 }),
-            }),
-        logradouro_destinatario: cliente.End_Logradouro,
-        numero_destinatario: String(cliente.End_Numero),
-        ...(cliente.End_Complemento ? { complemento_destinatario: cliente.End_Complemento } : {}),
-        bairro_destinatario: cliente.End_Bairro,
-        municipio_destinatario: cliente.End_Cidade,
-        uf_destinatario: cliente.End_Estado,
-        cep_destinatario: String(cliente.End_CEP).replace(/\D/g, ''),
-        pais_destinatario: 'Brasil',
-        modalidade_frete: 0,
-        valor_frete: 0,
-        valor_seguro: 0,
-        valor_desconto: 0,
-        valor_outras_despesas: 0,
-        valor_produtos: total,
-        valor_total: total,
-        formas_pagamento: [{ forma_pagamento: '90', valor_pagamento: 0 }], // sem pagamento (devolução)
-        // MANTIDO de propósito junto com a referência por item: a NT 2025.002 muda ONDE a
-        // SEFAZ valida a origem, não proíbe a referência de cabeçalho. SEM PROVA — ninguém
-        // emitiu ainda com as duas referências juntas.
-        // ⚠️ ROLLBACK DE UMA LINHA: se a SEFAZ rejeitar a nota por causa desta referência de
-        // cabeçalho convivendo com a referência por item, troque APENAS a linha abaixo por:
-        //     ...(usarRefItem ? {} : { notas_referenciadas: [{ chave_nfe: chaveOriginal }] }),
-        // (mantém o cabeçalho enquanto o interruptor está desligado, remove quando ligado).
-        // Documentado em backend/docs/focus-nfe-api.md → "Referência da nota de origem POR ITEM".
-        notas_referenciadas: [{ chave_nfe: chaveOriginal }],
-        informacoes_adicionais_contribuinte: linhas.filter(Boolean).join('#'),
-        items,
-    };
 
     const registro = existente
         ? await prisma.notaFiscalApp.update({ where: { ref }, data: { status: 'PROCESSANDO', mensagemSefaz: null, payloadEnviado: nota } })
@@ -1397,7 +1423,7 @@ function resumoNotaParaFront(nota) {
     return { id: nota.id, numero: nota.numero ?? null, serie: nota.serie ?? null, chave: nota.chave ?? null };
 }
 
-module.exports = { linhaNomeFantasia, linhaComObs, montarNotaVenda, montarNotaBonificacao, emitirVenda, emitirDevolucao, sincronizarEventos, consultarAtualizar, consultarPresas, getConfig, notaAutorizadaDoPedido,
+module.exports = { montarPayloadNotaDevolucao, linhaNomeFantasia, linhaComObs, montarNotaVenda, montarNotaBonificacao, emitirVenda, emitirDevolucao, sincronizarEventos, consultarAtualizar, consultarPresas, getConfig, notaAutorizadaDoPedido,
     // devolução de BONIFICAÇÃO (09/2026)
     montarNotaDevolucaoBonificacao, emitirDevolucaoBonificacao,
     mapaNotasBonificacaoAutorizadas, notaBonificacaoAutorizada, resumoNotaParaFront,
