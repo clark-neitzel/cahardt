@@ -57,3 +57,53 @@ A esposa NÃO é sócia da Hardt; tem empresa própria que presta serviço à Ha
 3. Diferimento do ICMS na encomenda com encomendante do Simples.
 4. Dados da empresa da esposa: CNPJ, atividade, regime, faturamento.
 5. % de carne por produto (ficha técnica).
+
+## 6. Como os concorrentes citados pelo dono estão montados (cadastro público da Receita, via BrasilAPI, 17/11/2026)
+
+| Empresa | CNPJ | Regime | Estrutura |
+|---|---|---|---|
+| Du'Cava Salgadinhos Ltda (Joinville) | 05.511.908/0001-83 | fora do Simples desde 2016; Lucro Presumido | uma empresa só. CNAE 1096-1 (fabricação). Em 05/2026 abriu FILIAL (0002-64) com atacado 4637-1/4639-7, varejo 4729-6 e transporte 4930-2; em 01/2026 entraram os cônjuges como sócios |
+| Nevasca Alimentos S.A. (Guaramirim) | 04.311.800/0001-84 | fora do Simples desde 2017; Lucro Real | uma empresa só, S.A.; CNAEs de fabricação, varejo, treinamento e eventos |
+| Presto Alimentos Ltda (Palhoça) | 19.518.682/0001-57 | excluída do Simples em 07/2024; Lucro Real | fábrica (1099-6) + transporte próprio no CNAE |
+| Kabo Alimentos Ltda, fantasia "Presto Alimentos" (Florianópolis) | 40.002.105/0001-02 | fora do Simples desde 2023; Lucro Presumido | atacadista (4637-1) com OUTRO dono, usando a marca Presto = fábrica + distribuidor independente |
+| Confeitaria Paladar Ltda (Joinville) | 81.306.094/0001-23 | Simples | um dono, microempresa, fabricação |
+| Atacadistas pequenos de salgado congelado em Joinville: W&S (46.965.039/0001-44), + Q Salgados (47.384.118/0001-24), Degust (38.541.503/0001-47) | | W&S e + Q no Simples; Degust Lucro Real | CNAE 4637-1/4639-7, um dono cada |
+
+Leitura: nenhum dos maiores usa empresa paralela no Simples. Os que cresceram saíram do Simples e ficaram em UMA empresa (Presumido ou Real), às vezes com filial de distribuição/transporte. O modelo "fábrica + distribuidor" existe (Presto/Kabo), com dono diferente e os dois fora do Simples: é logística e comercial, não economia de imposto. O Simples aparece nos atacadistas pequenos e independentes.
+Observação: "+ Q Salgados" fica na Rua Quinze de Outubro 200, Rio Bonito (a Hardt é no 170) e a sócia tem sobrenome Neitzel. A Hardt não tem venda para esse CNPJ no app (abr–nov/2026). Perguntado ao dono se é da família.
+
+## 7. Empresa nova da esposa: três formatos (imposto por R$ 100 de venda final, NCM corrigido)
+
+- Hardt sozinha fora do Simples: ~25.
+- Ela (Simples) compra o produto PRONTO da Hardt e de outros e revende: 22 a 27. Só ganha se o faturamento dela for pequeno (faixas baixas do Simples); com os R$ 3 mi de venda paga 11,4% de DAS em cima do ICMS e CBS já pagos pela Hardt. ST, se vigente, piora.
+- Ela (Simples) compra os INSUMOS, a Hardt fabrica por encomenda, ela vende (pode vender produto de outros também): ~17, se SC adiar o ICMS da fabricação para encomendante do Simples.
+- Modelo Presto (as duas fora do Simples): ~25, sem ganho.
+Dívida: empresa nova e independente que COMPRA da Hardt não responde pela dívida (W&S e Degust não respondem). Responde se assumir a clientela/estabelecimento da Hardt (art. 133 CTN) ou se for tratada como a mesma empresa (grupo de fato). Por isso a Hardt deve continuar vendendo direto uma parte (clientes do regime normal, que aproveitam o crédito) e a empresa dela atender os clientes do Simples e o consumidor.
+
+## 8. Divisão da carteira entre a Hardt e a empresa nova (17/11/2026)
+
+Base: 305 clientes com CNPJ que compraram de abr a set/2026, regime consultado um a um no cadastro público (BrasilAPI); 111 pessoas físicas à parte. Receita mensal total R$ 275 mil (inclui os especiais).
+
+| Grupo | Clientes | Receita/mês | Fica com |
+|---|---:|---:|---|
+| Regime normal (46) + nunca optaram pelo Simples (42, quase todos postos e redes) | 88 | 71 mil | Hardt (aproveitam crédito de ICMS e CBS) |
+| Simples com exclusão em 31/12/2026 | 18 | 10 mil | Hardt a partir de janeiro |
+| Simples | 155 | 158 mil | empresa nova |
+| MEI | 44 | 14 mil | empresa nova |
+| Pessoa física (Kit Festa, balcão, funcionários) | 111 | 22 mil | empresa nova |
+
+Resultado: Hardt direto ~R$ 81 mil/mês (29%); empresa nova ~R$ 194 mil/mês (71%) = R$ 2,33 mi/ano, abaixo do sublimite de R$ 3,6 mi mesmo com +25% de preço.
+Por categoria: postos (27 mil) e hotéis ficam 100% com a Hardt; mercados dividem (15 mil Hardt, 13 mil nova); padarias 21 mil Hardt e 100 mil nova; casas de festa, lanchonetes, restaurantes e cafeterias quase tudo na nova.
+
+Imposto mensal do conjunto (NCM corrigido, CBS 11,4%, ICMS 17%), em R$ mil:
+
+| | Hardt sozinha | Encomenda (ela compra insumo) | Ela compra pronto a 70% |
+|---|---:|---:|---:|
+| ICMS Hardt (líquido) | 40,6 | 12,0 | 30,2 |
+| CBS Hardt (líquida) | 21,3 | 11,8 | 14,4 |
+| INSS patronal Hardt | 4,5 | 4,5 | 4,5 |
+| DAS da empresa nova | — | 21,4 | 21,9 |
+| **Total** | **66,4 (24%)** | **49,7 (18%)** | **71,0 (26%)** |
+
+Premissas da encomenda: taxa de fabricação ~R$ 80 mil/mês (custo de conversão de 70% do volume), ICMS da fabricação diferido (a confirmar em SC para encomendante do Simples; sem o diferimento somam-se R$ 13,6 mil e o ganho quase some), DAS Anexo II 11,0%. Dos impostos da Hardt nas vendas diretas, R$ 23 mil (ICMS 13,8 + CBS 9,2) viram crédito para os clientes. Hoje no Simples o total é R$ 31,6 mil.
+Impacto no sistema (não iniciado): insumo de terceiros no PCP, notas de remessa/retorno/industrialização (CFOP 5901/5902/5124), emissão de nota e contas a receber da empresa nova.
