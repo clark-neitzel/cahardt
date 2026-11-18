@@ -43,6 +43,7 @@ const ListaLeads = lazyComRetry(() => import('./pages/Leads/ListaLeads'));
 import Login from './pages/Login/Login';
 const CamaraFria = lazyComRetry(() => import('./pages/Admin/CamaraFria'));
 const PainelEmbarque = lazyComRetry(() => import('./pages/Admin/Embarques/PainelEmbarque'));
+const SeparacaoCarga = lazyComRetry(() => import('./pages/Logistica/SeparacaoCarga/SeparacaoCargaPage'));
 const MapaExpedicao = lazyComRetry(() => import('./pages/Admin/Embarques/MapaExpedicao'));
 const AuditoriaEntregas = lazyComRetry(() => import('./pages/Admin/Embarques/AuditoriaEntregas'));
 const ListaEntregasGerencial = lazyComRetry(() => import('./pages/Admin/Embarques/ListaEntregasGerencial'));
@@ -155,10 +156,13 @@ import TelaSemConexao from './components/TelaSemConexao';
 import { useVersionCheck } from './hooks/useVersionCheck';
 
 const PrivateRoute = ({ children, tab }) => {
-  const { signed, loading, hasPermission, erroConexao } = useAuth();
+  const { signed, loading, hasPermission, erroConexao, usandoSnapshot } = useAuth();
+  const { pathname } = useLocation();
   if (loading) return <div className="p-8 text-center text-gray-500">Validando sessão...</div>;
   // Servidor não respondeu: mostrar "tentar novamente" em vez de jogar no login.
   if (erroConexao) return <TelaSemConexao />;
+  // Sem rede, usando o usuário guardado só para a Separação de Carga: nenhuma outra tela abre (permissão pode estar velha).
+  if (usandoSnapshot && !pathname.startsWith('/separacao-carga')) return <TelaSemConexao />;
   if (!signed) return <Navigate to="/login" replace />;
   const temAcesso = !tab || (Array.isArray(tab) ? tab.some(t => hasPermission(t, 'view')) : hasPermission(tab, 'view'));
   if (!temAcesso) return <div className="p-8 text-center text-red-600 font-bold">Acesso Negado a esta tela.</div>;
@@ -178,10 +182,12 @@ const HomeRedirect = () => {
 // Raiz do domínio: visitante (não logado) vê o site público de início;
 // funcionário logado é levado para o painel do sistema.
 const RootRoute = () => {
-  const { signed, loading, erroConexao } = useAuth();
+  const { signed, loading, erroConexao, usandoSnapshot } = useAuth();
   if (loading) return <div className="p-8 text-center text-gray-500">Carregando...</div>;
   // Funcionário com sessão salva e servidor fora do ar: não cair no site público.
   if (erroConexao) return <TelaSemConexao />;
+  // Abriu pelo ícone sem sinal com separação em andamento: vai direto para a Separação de Carga.
+  if (usandoSnapshot) return <Navigate to="/separacao-carga" replace />;
   if (!signed) return <HomeSite />;
   return <HomeRedirect />;
 };
@@ -332,7 +338,7 @@ function filtrarSecoesPorPerfil(secoes, perfil) {
 
   // Quem tem acesso aos Indicadores (ex.: gerente de produção) vê o item no menu simplificado,
   // mesmo que o grupo dele fosse escondido por ter 1 item só.
-  return secoes.filter((s) => grupos.includes(s.label) || s.items.length >= 2 || s.items.some((i) => i.to === '/indicadores-gestao'));
+  return secoes.filter((s) => grupos.includes(s.label) || s.items.length >= 2 || s.items.some((i) => i.to === '/indicadores-gestao') || s.items.some((i) => i.to === '/separacao-carga'));
 }
 
 // Rotas antigas que viraram aba de "Pedidos Online" (B4) — um favorito salvo
@@ -441,6 +447,7 @@ const Layout = ({ children }) => {
     ].filter(Boolean) },
     { label: 'Logística', icon: Truck, items: [
       hasPermission('Pode_Acessar_Embarque') && { to: '/admin/embarques', icon: PackageCheck, label: 'Embarque' },
+      hasPermission('Pode_Separar_Carga') && { to: '/separacao-carga', icon: ClipboardCheck, label: 'Separação de Carga' },
       hasPermission('Pode_Ver_Mapa_Camara_Fria') && { to: '/admin/camara-fria', icon: Snowflake, label: 'Câmara Fria' },
       hasPermission('Pode_Ver_Todas_Entregas') && { to: '/entregas', icon: Truck, label: 'Entregas' },
     ].filter(Boolean) },
@@ -994,6 +1001,7 @@ function App() {
 
               {/* Outros Admins */}
               <Route path="/admin/camara-fria" element={<PrivateRoute tab="Pode_Ver_Mapa_Camara_Fria"><CamaraFria /></PrivateRoute>} />
+              <Route path="/separacao-carga" element={<PrivateRoute tab="Pode_Separar_Carga"><SeparacaoCarga /></PrivateRoute>} />
               <Route path="/admin/embarques" element={<PrivateRoute tab="Pode_Acessar_Embarque"><PainelEmbarque /></PrivateRoute>} />
               <Route path="/admin/embarques/mapa" element={<PrivateRoute tab="Pode_Acessar_Embarque"><MapaExpedicao /></PrivateRoute>} />
               <Route path="/admin/auditoria-entregas" element={<PrivateRoute tab="Pode_Ver_Todas_Entregas"><AuditoriaEntregas /></PrivateRoute>} />

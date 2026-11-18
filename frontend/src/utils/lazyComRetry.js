@@ -1,4 +1,5 @@
 import { lazy } from 'react';
+import { redeViva } from './redeViva';
 
 /**
  * Substitui o React.lazy() nas rotas.
@@ -33,10 +34,15 @@ export function lazyComRetry(importar) {
                 sessionStorage.removeItem(CHAVE_TRAVA);
                 return modulo;
             } catch (erroFinal) {
+                // Sem internet (ex.: câmara fria): recarregar apagaria o cache offline do app. Só repassa o erro.
+                if (typeof navigator !== 'undefined' && navigator.onLine === false) throw erroFinal;
                 if (sessionStorage.getItem(CHAVE_TRAVA) === '1') {
                     // Já recarregamos uma vez e continua falhando: mostra o erro de verdade.
                     throw erroFinal;
                 }
+                // Wi-Fi ligado mas sem saída para a internet: onLine diz true, o arquivo falhou por falta de rede
+                // (não por deploy). Apagar o cache aqui destruiria a casca offline — só repassa o erro.
+                if (!(await redeViva())) throw erroFinal;
 
                 sessionStorage.setItem(CHAVE_TRAVA, '1');
                 console.warn('Arquivo da tela não encontrado (provável deploy novo). Recarregando...', erroFinal?.message);

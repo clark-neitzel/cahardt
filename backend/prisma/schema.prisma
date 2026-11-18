@@ -5359,3 +5359,82 @@ model AtendimentoReferenciaAgente {
 
   @@map("atendimento_referencia_agente")
 }
+
+// ============================================================================
+// Separação de carga na câmara fria (11/2026). A falta fica REGISTRADA aqui — não altera pedido/nota/estoque.
+// Plano: docs/separacao-carga/PLANO.md. Só aditivo; ids de Embarque/Pedido/Produto guardados como String (sem relação).
+// ============================================================================
+model SeparacaoCarga {
+  id            String    @id @default(uuid())
+  embarqueId    String    @unique @map("embarque_id") // 1 separação por carga
+  ordemRegra    String    @default("CARGA") @map("ordem_regra") // CARGA | CIDADE | MANUAL (ordem dos pedidos, guardada NA carga)
+  ordemManual   Json?     @map("ordem_manual") // ["pedidoId", ...] quando MANUAL (último toque vence, em bloco)
+  ordemEm       DateTime? @map("ordem_em") // carimbo (relógio corrigido) da última mudança de regra/ordem
+  criadoPorId   String?   @map("criado_por_id")
+  criadoPorNome String?   @map("criado_por_nome")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  linhas     SeparacaoCargaLinha[]
+  pedidos    SeparacaoCargaPedido[]
+  conclusoes SeparacaoCargaConclusao[]
+
+  @@map("separacao_cargas")
+}
+
+// 1 linha = 1 produto na carga inteira OU 1 produto dentro de 1 pedido. `chave` é a unicidade que torna o envio idempotente.
+model SeparacaoCargaLinha {
+  id                 String         @id @default(uuid())
+  separacaoId        String         @map("separacao_id")
+  separacao          SeparacaoCarga @relation(fields: [separacaoId], references: [id], onDelete: Cascade)
+  chave              String // "c:<produtoId>" | "p:<pedidoId>:<produtoId>"
+  escopo             String // CARGA | PEDIDO
+  pedidoId           String?        @map("pedido_id")
+  produtoId          String         @map("produto_id")
+  quantidadeSeparada Decimal        @default(0) @map("quantidade_separada") @db.Decimal(12, 3) // "SEPAREI" (absoluto, nunca delta)
+  tocada             Boolean        @default(false) // o usuário mexeu na linha
+  motivoFalta        String?        @map("motivo_falta") // VEM_DEPOIS | NAO_TEM | null
+  carimboEm          DateTime       @map("carimbo_em") // decide "último toque vence"
+  atualizadoPorId    String?        @map("atualizado_por_id")
+  atualizadoPorNome  String?        @map("atualizado_por_nome")
+  updatedAt          DateTime       @updatedAt @map("updated_at")
+
+  @@unique([separacaoId, chave])
+  @@index([separacaoId])
+  @@index([pedidoId])
+  @@map("separacao_carga_linhas")
+}
+
+// Por pedido: quantas bolsas deu.
+model SeparacaoCargaPedido {
+  id                String         @id @default(uuid())
+  separacaoId       String         @map("separacao_id")
+  separacao         SeparacaoCarga @relation(fields: [separacaoId], references: [id], onDelete: Cascade)
+  pedidoId          String         @map("pedido_id")
+  bolsas            Int            @default(0)
+  bolsasEm          DateTime?      @map("bolsas_em") // carimbo do último toque em bolsas
+  atualizadoPorNome String?        @map("atualizado_por_nome")
+  updatedAt         DateTime       @updatedAt @map("updated_at")
+
+  @@unique([separacaoId, pedidoId])
+  @@index([separacaoId])
+  @@map("separacao_carga_pedidos")
+}
+
+// "Concluir separação" = evento (append-only). Pode concluir de novo; vale a última.
+model SeparacaoCargaConclusao {
+  id             String         @id @default(uuid())
+  separacaoId    String         @map("separacao_id")
+  separacao      SeparacaoCarga @relation(fields: [separacaoId], references: [id], onDelete: Cascade)
+  requisicaoId   String         @unique @map("requisicao_id") // gerado no aparelho → reenvio não duplica
+  modo           String // CARGA | PEDIDO
+  carimboEm      DateTime       @map("carimbo_em")
+  concluidaEm    DateTime       @default(now()) @map("concluida_em") // relógio do servidor
+  porId          String?        @map("por_id")
+  porNome        String?        @map("por_nome")
+  versaoEmbarque Int            @map("versao_embarque")
+  resumo         Json
+
+  @@index([separacaoId])
+  @@map("separacao_carga_conclusoes")
+}

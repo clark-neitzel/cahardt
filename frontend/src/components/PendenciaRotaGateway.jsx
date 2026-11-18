@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { AlertTriangle, Calendar, MapPin, User, MessageCircle, Phone, ClipboardList, Package, LogOut, CheckCircle, WifiOff, RefreshCw } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import atendimentoService from '../services/atendimentoService';
 import ModalAtendimento from '../pages/Rota/ModalAtendimento';
@@ -19,6 +20,8 @@ const PendenciaRotaGateway = () => {
     const { user, signed, logout } = useAuth();
     const [loading, setLoading] = useState(true);
     const [erro, setErro] = useState(false); // esgotou as tentativas — NÃO libera silenciosamente
+    const [erroRede, setErroRede] = useState(false); // a falha foi de REDE (sem resposta do servidor), não resposta do servidor
+    const { pathname } = useLocation();
     const [retryLoading, setRetryLoading] = useState(false);
     const [pendencia, setPendencia] = useState(null); // { pendente, diasPendentes, diaPendente }
     const [modalAtendimento, setModalAtendimento] = useState(null);
@@ -45,17 +48,20 @@ const PendenciaRotaGateway = () => {
 
         if (manual) setRetryLoading(true);
 
+        let falhouPorRede = false;
         for (let tentativa = 1; tentativa <= TENTATIVAS_BUSCA; tentativa++) {
             try {
                 const result = await atendimentoService.buscarPendenciasRota();
                 setPendencia(result);
                 setClientesResolvidos(new Set());
                 setErro(false);
+                setErroRede(false);
                 setLoading(false);
                 setRetryLoading(false);
                 ultimaDataOkRef.current = dataLocalHoje();
                 return;
             } catch (error) {
+                falhouPorRede = !error?.response;
                 console.error(`Erro ao buscar pendências de rota (tentativa ${tentativa}/${TENTATIVAS_BUSCA}):`, error);
                 if (tentativa < TENTATIVAS_BUSCA) {
                     await new Promise(resolve => setTimeout(resolve, 900 * tentativa));
@@ -80,9 +86,18 @@ const PendenciaRotaGateway = () => {
         // após a virada do dia): por segurança, NÃO libera silenciosamente — mostra
         // tela de erro com "Tentar novamente" (nunca desloga por erro de rede)
         setErro(true);
+        setErroRede(falhouPorRede);
         setLoading(false);
         setRetryLoading(false);
     }, [signed, user]);
+
+    // Voltou o sinal com a conferência pendente: confere sozinho
+    useEffect(() => {
+        if (!erro) return undefined;
+        const aoVoltar = () => carregarPendencias();
+        window.addEventListener('online', aoVoltar);
+        return () => window.removeEventListener('online', aoVoltar);
+    }, [erro, carregarPendencias]);
 
     // Carga inicial
     useEffect(() => {
@@ -156,6 +171,9 @@ const PendenciaRotaGateway = () => {
 
     // Não foi possível confirmar (rede caiu, backend fora) mesmo após 3 tentativas —
     // por segurança NÃO libera silenciosamente; pede para tentar de novo.
+    // Exceção: a Separação de Carga (câmara fria, sem sinal) não fica bloqueada quando a conferência falhou por REDE.
+    // Com internet, e em qualquer outra tela, o bloqueio continua igual.
+    if (erro && erroRede && pathname.startsWith('/separacao-carga')) return null;
     if (erro) {
         return (
             <div className="fixed inset-0 bg-secondary z-[200] flex items-center justify-center p-4 md:p-6">

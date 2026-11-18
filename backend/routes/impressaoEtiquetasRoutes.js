@@ -26,6 +26,8 @@ const ORIGENS = {
     AMOSTRA: { tamanho: '100x120', linguagem: 'ZPL', tipo: 'ETIQUETA_AMOSTRA', usaCopias: true },   // legado: mantido p/ PWA em cache com versão antiga
     // etiqueta de pedido (normal/especial/bonificação/amostra): N páginas + ordem em "sequencia" (1/2,2/2,1/2,2/2...). Sem ^PQ.
     PEDIDO: { tamanho: '100x120', linguagem: 'ZPL', tipo: 'ETIQUETA_PEDIDO', usaCopias: false, zplSequencia: true },
+    // bolsa térmica da Separação de Carga (permissão própria; reaproveita o tipo de fila do pedido)
+    SEPARACAO: { tamanho: '100x120', linguagem: 'ZPL', tipo: 'ETIQUETA_PEDIDO', usaCopias: false, zplSequencia: true },
 };
 const TIPOS_REFERENCIA = ['ETIQUETA_PRODUTO', 'PEDIDO', 'FUNCIONARIO', 'AMOSTRA'];
 const MAX_BITMAPS = 60;
@@ -36,6 +38,7 @@ const MAX_SEQUENCIA_ZPL = 120;   // = 40 blocos x MAX_TRABALHOS(3)
 async function podeOrigem(req, origem) {
     const p = permsDe(req);
     if (p.admin) return true;
+    if (origem === 'SEPARACAO') return p.Pode_Separar_Carga === true;
     if (origem === 'PRODUTO') return !!p.pcp?.etiquetas;
     if (origem === 'KIT_FESTA') return !!p.kitFesta;
     if (origem === 'FUNCIONARIO_PASTA' || origem === 'FUNCIONARIO_ARQUIVO') return !!p.Pode_Ver_Ponto || !!p.Pode_Editar_Ponto;

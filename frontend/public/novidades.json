@@ -1,5 +1,11 @@
 [
   {
+    "slug": "separacao-carga",
+    "titulo": "Separação de Carga",
+    "resumo": "Tela nova no menu Logística para separar a carga na câmara fria: letra grande, botões grandes, falta registrada e funciona sem internet.",
+    "data": "2026-11-18"
+  },
+  {
     "slug": "regime-cliente",
     "titulo": "Regime tributário do cliente",
     "resumo": "O sistema agora mostra se o cliente é do Simples, MEI ou regime normal, atualiza sozinho todo dia e tem filtro na lista de clientes.",

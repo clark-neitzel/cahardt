@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { LogOut, MapPin, Home, AlertTriangle } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useDiario } from '../../contexts/DiarioContext';
 import { toast } from 'react-hot-toast';
@@ -10,6 +11,7 @@ import FormVoltaPresencial from './FormVoltaPresencial';
 const DiarioGateway = () => {
     const { logout, user, signed } = useAuth();
     const { diarioStatus, carregarStatus } = useDiario();
+    const { pathname } = useLocation();
 
     // Passos do modal
     // 1: PendenciaOntem -> 2: Escolher Modo -> 3: Form Presencial
@@ -66,6 +68,10 @@ const DiarioGateway = () => {
 
     if (!signed) return null; // Prevenção se a sessão estiver limpando
     if (user?.permissoes?.admin || user?.permissoes?.Isento_Ponto) return null; // Admin ou Isento de Ponto pula o check-in diário
+
+    // Exceção: a Separação de Carga (câmara fria, sem sinal) não fica bloqueada quando a conferência falhou por REDE
+    // (ou enquanto ela ainda tenta sem internet). Com internet, e em qualquer outra tela, o bloqueio continua igual.
+    if (pathname.startsWith('/separacao-carga') && (diarioStatus.falhaRede || (diarioStatus.loading && navigator.onLine === false))) return null;
 
     if (diarioStatus.loading) {
         return <div className="fixed inset-0 bg-white z-[100] flex justify-center items-center font-semibold text-gray-500">Aguarde, verificando seu Ponto Diário...</div>;

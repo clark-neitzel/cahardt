@@ -53,6 +53,7 @@
 |-----|------|-----------|--------|
 | Mapa da Câmara Fria | `/mapa-camara-fria.html` | Desenha o layout das pilhas de caixas dentro do container da câmara fria; arrastar, girar, espelhar, imprimir | [mapa-camara-fria.md](mapa-camara-fria.md) |
 | Embarque | `/admin/embarques` | Painel de expedição para montar cargas e romaneios de entrega | [embarque.md](embarque.md) |
+| Separação de Carga | `/separacao-carga` | Separar a carga na câmara fria (letra grande, funciona sem internet, bolsas e etiquetas) | [separacao-carga.md](separacao-carga.md) |
 | Mapa das Entregas | `/admin/embarques/mapa` | Mapa para dividir as entregas do dia entre as cargas (rascunho + confirmar) | [embarques-mapa.md](embarques-mapa.md) |
 | Entregas | `/admin/entregas` | Histórico gerencial de todas as entregas e baixas logísticas | [entregas.md](entregas.md) |
 

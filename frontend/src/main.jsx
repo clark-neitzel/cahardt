@@ -2,6 +2,8 @@ import React, { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
+import { redeViva } from './utils/redeViva'
+import { WifiOff, RefreshCw } from 'lucide-react'
 
 // Erro de "arquivo da tela sumiu" — acontece quando a aba ficou aberta durante um
 // deploy: o index.html velho aponta para pedaços de JS que o servidor já trocou.
@@ -13,16 +15,28 @@ function ehErroDeChunk(error) {
   return /Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module|Loading chunk \d+ failed/i.test(msg);
 }
 
-function recarregarPorChunk() {
+let recarregandoPorChunk = false;
+function recarregarPorChunk(aoNaoRecarregar) {
+  // Sem internet (ex.: câmara fria): recarregar apagaria a casca offline do app (Separação de Carga).
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return false;
   if (sessionStorage.getItem(CHAVE_TRAVA_CHUNK) === '1') return false;
-  sessionStorage.setItem(CHAVE_TRAVA_CHUNK, '1');
+  if (recarregandoPorChunk) return true;
+  recarregandoPorChunk = true;
 
-  // Limpa o cache do service worker antes de recarregar, para não voltar na casca antiga.
-  const limpeza = typeof caches !== 'undefined'
-    ? caches.keys().then((nomes) => Promise.all(nomes.map((n) => caches.delete(n))))
-    : Promise.resolve();
-
-  limpeza.catch(() => { }).finally(() => window.location.reload());
+  // navigator.onLine mente (Wi-Fi sem saída): confirma a rede de verdade antes de apagar cache e recarregar.
+  redeViva().then((viva) => {
+    if (!viva) {
+      recarregandoPorChunk = false;
+      if (aoNaoRecarregar) aoNaoRecarregar();
+      return;
+    }
+    sessionStorage.setItem(CHAVE_TRAVA_CHUNK, '1');
+    // Limpa o cache do service worker antes de recarregar, para não voltar na casca antiga.
+    const limpeza = typeof caches !== 'undefined'
+      ? caches.keys().then((nomes) => Promise.all(nomes.map((n) => caches.delete(n))))
+      : Promise.resolve();
+    limpeza.catch(() => { }).finally(() => window.location.reload());
+  });
   return true;
 }
 
@@ -30,7 +44,7 @@ function recarregarPorChunk() {
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { hasError: false, error: null, errorInfo: null, recarregando: false };
+    this.state = { hasError: false, error: null, errorInfo: null, recarregando: false, semConexao: false };
   }
 
   static getDerivedStateFromError(error) {
@@ -40,7 +54,11 @@ class ErrorBoundary extends React.Component {
 
   componentDidCatch(error, errorInfo) {
     if (ehErroDeChunk(error)) {
-      if (recarregarPorChunk()) return;
+      // Sem rede de verdade a tela falhou por falta de internet, não por deploy: mostra "Sem conexão" com botão
+      // (no PWA do iPhone não há como recarregar). Online de verdade o fluxo antigo (limpa cache + recarrega 1x) segue.
+      const semRede = () => this.setState({ semConexao: true, recarregando: false });
+      if (typeof navigator !== 'undefined' && navigator.onLine === false) { semRede(); return; }
+      if (recarregarPorChunk(semRede)) return;
       this.setState({ hasError: true, error, errorInfo, recarregando: false });
       return;
     }
@@ -49,6 +67,29 @@ class ErrorBoundary extends React.Component {
   }
 
   render() {
+    if (this.state.semConexao) {
+      return (
+        <div className="min-h-screen bg-secondary flex items-center justify-center p-6">
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8 w-full max-w-sm text-center">
+            <div className="bg-mint p-3 rounded-full inline-flex mb-4">
+              <WifiOff className="h-6 w-6 text-primary" />
+            </div>
+            <h1 className="text-lg font-bold text-gray-900 mb-2">Sem conexão</h1>
+            <p className="text-sm text-gray-600 mb-6 leading-relaxed">
+              Não foi possível abrir esta tela sem internet. Verifique a conexão e tente novamente — você continua logado.
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="w-full min-h-[44px] px-4 py-3 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm inline-flex items-center justify-center gap-2"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Tentar novamente
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     if (this.state.recarregando) {
       return (
         <div style={{ padding: 32, textAlign: 'center', color: '#555', fontFamily: 'system-ui, sans-serif' }}>

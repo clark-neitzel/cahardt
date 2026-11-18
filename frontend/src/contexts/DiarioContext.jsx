@@ -14,7 +14,8 @@ export const DiarioProvider = ({ children }) => {
         hojeStatus: 'nao_iniciado', // ou 'iniciado'
         pendenciaAnterior: false,
         diarioHoje: null,
-        diarioPendente: null
+        diarioPendente: null,
+        falhaRede: false // a última consulta falhou por REDE (sem resposta do servidor)
     });
 
     const carregarStatus = useCallback(async () => {
@@ -23,15 +24,21 @@ export const DiarioProvider = ({ children }) => {
             return;
         }
 
+        // Prazo curto SÓ na Separação de Carga (câmara fria sem sinal). Em qualquer outra tela a chamada é igual
+        // à de sempre (sem prazo): banco lento não pode fazer o modal do ponto aparecer para quem já iniciou o dia.
+        const naSeparacao = window.location.pathname.startsWith('/separacao-carga');
         try {
-            const { data } = await api.get('/diarios/status');
+            const { data } = await api.get('/diarios/status', naSeparacao ? { timeout: 15000 } : undefined);
             setDiarioStatus({
                 loading: false,
+                falhaRede: false,
                 ...data
             });
         } catch (error) {
             console.error('Erro ao carregar o status do Diário:', error);
-            setDiarioStatus(prev => ({ ...prev, loading: false }));
+            setDiarioStatus(prev => naSeparacao
+                ? { ...prev, loading: false, falhaRede: !error?.response }
+                : { ...prev, loading: false });
         }
     }, [signed, user]);
 

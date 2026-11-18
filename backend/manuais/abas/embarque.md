@@ -167,6 +167,7 @@ Apenas usuários com a permissão `Pode_Executar_Entregas` ou `admin` e com stat
 - **Caixa Diário** — as baixas de entrega (pagamentos recebidos) registradas pelo motorista alimentam o caixa do dia; as **cobranças da rota** cobradas em dinheiro somam no valor a prestar e são baixadas no cartão "Cobranças da Rota"
 - **Contas a Receber** — as cobranças inseridas na carga são parcelas em aberto; a baixa acontece no Caixa, não aqui
 - **Auditoria de Entregas** — permite revisar e corrigir pagamentos registrados pelo motorista
+- **Separação de Carga** (`/separacao-carga`) — tela própria para separar a mercadoria da carga na câmara fria (funciona sem internet); só registra o que foi separado e **não altera** a carga nem a versão da folha. Ver o manual "Separação de Carga"
 - **Veículos** — o veículo não é selecionado no formulário atual de criação (apenas motorista e data); veículo pode estar vinculado via backend
 
 ---
