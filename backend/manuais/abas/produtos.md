@@ -90,6 +90,12 @@ O servidor recusa essas gravações de qualquer forma (erro 403 "Sem permissão 
 9. Na **ficha do produto** (Produtos → visualizar) o valor de venda continua **só de leitura** — o lugar de editar o preço é a tela Gerenciar Produto, uma só, para não haver dois caminhos diferentes
 10. Onde o preço novo aparece: catálogo de vendas, novo pedido, **conferência do Caixa** (é o preço-base sobre o qual entra o acréscimo da tabela do cliente), listas personalizadas (catálogo personalizado) e cálculo de margem. No **Kit Festa** e no **site de congelados** o preço novo só vale para os produtos que **não** têm preço próprio cadastrado nessas telas — onde existe preço específico, ele continua mandando. **Pedidos já lançados não mudam** — eles guardam o preço do momento da venda
 
+### Promoções: quando a promoção vale no pedido (11/2026)
+1. A promoção só vale no pedido **dentro do período** (da data de início até a data final). Passada a data final, ela **para de valer sozinha no Novo Pedido**: some o selo verde de promoção e o preço-base volta ao **preço de tabela × acréscimo da condição de pagamento**.
+2. Isso acontece mesmo que, na ficha do produto (aba **Promoções**), ela ainda apareça como **ativa** — ela só muda para encerrada quando alguém clica em **Encerrar**. Vencer a data não encerra sozinho; apenas deixa de valer no pedido.
+3. **Para criar outra promoção no mesmo produto**, é preciso antes clicar em **Encerrar** na antiga (mesmo vencida). Senão o sistema recusa com *"Já existe uma promoção ativa para este produto. Encerre-a antes de criar uma nova."*
+4. **Atenção ao último dia:** a data final digitada vale até **a meia-noite (horário de Greenwich)**, ou seja, a promoção para de valer por volta das **21h do dia ANTERIOR** à data final (horário de Brasília). A data de início segue a mesma regra (começa às 21h da véspera). Se quiser que a promoção valha o último dia inteiro, **digite a data final um dia depois**.
+
 ### Custo do produto (Receita × Custo médio × Custo Manual)
 - **Custo pela Receita (PCP)**: se o produto está vinculado a um item do PCP com **receita ativa**, o custo exibido no detalhe do produto é o **custo calculado pela receita** (ingredientes + perda ÷ rendimento) — ele **substitui qualquer outro custo** na tela e é o usado no cálculo da margem. O cartão de custo passa a mostrar "Custo (Receita)".
 - **Custo médio**: valor histórico do cadastro, somente leitura. Vale quando o produto **não tem receita ativa**. É também o custo usado dentro do cálculo das receitas do PCP (custo dos ingredientes).

@@ -1,5 +1,11 @@
 [
   {
+    "slug": "promocao-vencida",
+    "titulo": "Promoção vencida para de valer",
+    "resumo": "No Novo Pedido, promoção com data final passada deixa de valer sozinha e o produto volta ao preço de tabela. Pedido aberto com preço de promoção vencida pode ter o preço ajustado ao reabrir.",
+    "data": "2026-11-18"
+  },
+  {
     "slug": "separacao-carga",
     "titulo": "Separação de Carga",
     "resumo": "Tela nova no menu Logística para separar a carga na câmara fria: letra grande, botões grandes, falta registrada e funciona sem internet.",

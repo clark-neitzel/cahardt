@@ -1,5 +1,6 @@
 const prisma = require('../config/database');
 const { randomUUID } = require('crypto');
+const promocaoService = require('../services/promocaoService');
 
 const promocaoController = {
 
@@ -149,22 +150,20 @@ const promocaoController = {
 
     /**
      * GET /api/promocoes/ativas-lote
-     * Retorna TODAS as promoções atualmente ativas (dentro do período) em uma única query.
+     * Retorna as promoções VIGENTES (ATIVA e dentro do período) em uma única query.
      * Usado pelo NovoPedido para evitar N requisições (1 por produto).
      * Retorna: { [produtoId]: Promocao }
      */
     buscarAtivasLote: async (req, res) => {
         try {
-            // Retorna todas as promoções com status ATIVA (inclui futuras/agendadas)
-            // O filtro real de período é feito no momento do pedido pelo backend
-            const promos = await prisma.promocao.findMany({
-                where: { status: 'ATIVA' },
-                include: { grupos: { include: { condicoes: true } } }
-            });
+            // Só promoção VIGENTE (status ATIVA e dataInicio <= agora <= dataFim): mesmo critério
+            // do salvamento do pedido (buscarAtivaPorProduto). Vencida/agendada NÃO sai daqui,
+            // senão a tela calcula o valorBase com um preço que o backend não reconhece.
+            const vigentes = await promocaoService.listarVigentes();
 
             // Transformar em mapa produtoId → promocao
             const mapa = {};
-            promos.forEach(p => { mapa[p.produtoId] = p; });
+            vigentes.forEach((p, produtoId) => { mapa[produtoId] = p; });
             return res.json(mapa);
         } catch (error) {
             console.error('Erro ao buscar promoções ativas (lote):', error);

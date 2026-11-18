@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Promoção vencida para de valer — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<meta property="og:title" content="🏷️ Ajuste no Hardt App: promoção vencida para de valer sozinha">
+<meta property="og:description" content="Passou da data final da promoção? O produto volta sozinho ao preço de tabela no Novo Pedido. Veja o antes e depois.">
+<meta property="og:type" content="website">
+<style>
+  :root { --primary:#00754A; --primary-dark:#006241; --house:#1E3932; --mint:#d4e9e2; --cream:#f2f0eb; --gold:#cba258; --ink:rgba(0,0,0,.87); --ink-soft:#5f6b66; letter-spacing:-0.01em; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--cream); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; line-height:1.55; -webkit-font-smoothing:antialiased; overflow-x:hidden; }
+  .wrap { max-width:620px; margin:0 auto; padding:0 16px 56px; }
+  .hero { background:linear-gradient(168deg,var(--house) 0%,#16302a 100%); color:#fff; padding:40px 16px 48px; }
+  .hero-inner { max-width:620px; margin:0 auto; text-align:center; }
+  .eyebrow { display:inline-block; background:var(--gold); color:#2b230f; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.14em; padding:6px 14px; border-radius:999px; margin-bottom:18px; }
+  .hero h1 { font-size:clamp(26px,7vw,38px); font-weight:800; line-height:1.12; margin:0 0 12px; text-wrap:balance; }
+  .hero p { color:rgba(255,255,255,.75); font-size:16px; max-width:46ch; margin:0 auto; text-wrap:balance; }
+  .sec-label { font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.16em; color:var(--primary-dark); margin:30px 4px 12px; }
+  .acc { background:#fff; border:1px solid #e3e1da; border-radius:16px; margin-bottom:10px; overflow:hidden; box-shadow:0 1px 2px rgba(30,57,50,.05); }
+  .acc-head { width:100%; display:flex; align-items:center; gap:12px; background:none; border:none; font:inherit; text-align:left; padding:15px 16px; cursor:pointer; min-height:56px; }
+  .acc-head:focus-visible { outline:3px solid var(--gold); outline-offset:2px; }
+  .acc-ico { width:38px; height:38px; border-radius:11px; background:var(--mint); display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
+  .acc-head strong { flex:1; font-size:15.5px; font-weight:700; }
+  .acc-seta { color:#9aa5a0; transition:transform .2s; font-size:13px; }
+  .acc.aberto .acc-seta { transform:rotate(180deg); }
+  .acc-corpo { display:none; padding:0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display:block; }
+  .acc-corpo p, .acc-corpo li { font-size:14px; color:var(--ink-soft); }
+  .acc-corpo p { margin:0 0 10px; }
+  .acc-corpo ul { margin:0; padding-left:18px; }
+  .acc-corpo li { margin-bottom:7px; }
+  .acc-corpo b { color:var(--ink); }
+  @media (max-width:420px) { .acc-corpo { padding-left:16px; } }
+  .tela { background:#fff; border:1px solid #e3e1da; border-radius:16px; overflow:hidden; margin-bottom:12px; box-shadow:0 1px 2px rgba(30,57,50,.05); }
+  .tela-titulo { background:var(--house); color:#fff; padding:12px 16px; font-size:13px; font-weight:800; display:flex; align-items:center; gap:8px; }
+  .tela-titulo.antes { background:#6b756f; }
+  .tela-corpo { padding:14px; background:#f7f6f2; }
+  .app-card { background:#fff; border:1px solid #e5e3dc; border-radius:12px; padding:10px 12px; }
+  .prod { font-size:13px; font-weight:700; color:var(--ink); }
+  .linha { display:flex; flex-wrap:wrap; align-items:center; gap:6px 8px; margin-top:6px; }
+  .chip { display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:700; padding:2px 8px; border-radius:999px; background:#dcfce7; color:#15803d; border:1px solid #86efac; }
+  .riscado { font-size:11px; color:#9ca3af; text-decoration:line-through; }
+  .campo-preco { width:64px; border:1px solid #93c5fd; background:#fff; color:#1e40af; border-radius:4px; padding:2px 6px; font-size:12px; font-weight:700; text-align:center; }
+  .flex { font-size:11px; font-weight:700; padding:0 5px; border-radius:4px; }
+  .flex.pos { background:#dcfce7; color:#15803d; }
+  .flex.neg { background:#fee2e2; color:#b91c1c; }
+  .qtd { font-size:11px; color:#6b756f; }
+  .pin { display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:50%; background:var(--gold); color:#2b230f; font-size:11px; font-weight:800; flex-shrink:0; vertical-align:2px; margin-left:2px; }
+  .legenda { padding:12px 16px 16px; }
+  .legenda div { display:flex; gap:8px; font-size:13px; color:var(--ink-soft); margin-bottom:7px; align-items:flex-start; }
+  .legenda .pin { margin:1px 0 0; }
+  .legenda b { color:var(--ink); }
+  .nota { font-size:12px; color:var(--ink-soft); padding:0 16px 14px; }
+  .rodape { text-align:center; font-size:13px; color:var(--ink-soft); margin-top:36px; }
+  .rodape strong { color:var(--primary-dark); }
+  table.lista { width:100%; border-collapse:collapse; font-size:13px; color:var(--ink-soft); }
+  table.lista td { padding:6px 0; border-bottom:1px dashed #e3e1da; }
+  table.lista td:last-child { text-align:right; font-weight:700; color:var(--ink); white-space:nowrap; padding-left:10px; }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Ajuste no Hardt App</span>
+    <h1>Promoção vencida<br>para de valer sozinha</h1>
+    <p>No Novo Pedido, a promoção agora só vale dentro do período. Passou da data final, o produto volta ao preço de tabela.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="sec-label">O que mudou</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🏷️</span>
+      <strong>Data final passou, promoção acabou</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Antes, uma promoção com a data final já vencida continuava valendo no Novo Pedido até alguém clicar em "Encerrar". O selo verde aparecia e o preço ficava rebaixado.</p>
+      <p>Agora o sistema respeita a data: <b>passou do último dia, o preço volta ao de tabela</b> (com o acréscimo da condição de pagamento), sem precisar encerrar manualmente.</p>
+      <p>Promoção que está dentro da data <b>continua funcionando igual</b>: selo verde e preço promocional.</p>
+    </div>
+  </div>
+
+  <div class="sec-label">As telas do app</div>
+
+  <div class="tela">
+    <div class="tela-titulo antes">Antes · Novo Pedido (promoção vencida)</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="prod">G-MINI Coxinha Frango 500GR</div>
+        <div class="qtd">Condição: 7 dias - Boleto (2,5%)</div>
+        <div class="linha">
+          <span class="chip">🏷 R$ 9,22 <span class="pin">1</span></span>
+          <span class="riscado">R$ 9,22 <span class="pin">2</span></span>
+          <span class="campo-preco">9,90</span>
+          <span class="flex pos">+0,68 <span class="pin">3</span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tela">
+    <div class="tela-titulo">Depois · Novo Pedido (mesmo produto)</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="prod">G-MINI Coxinha Frango 500GR</div>
+        <div class="qtd">Condição: 7 dias - Boleto (2,5%)</div>
+        <div class="linha">
+          <span class="riscado" style="text-decoration:none;color:#6b756f">R$ 10,15 <span class="pin">4</span></span>
+          <span class="campo-preco">9,90</span>
+          <span class="flex neg">−0,25 <span class="pin">5</span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="legenda">
+    <div><span class="pin">1</span><span><b>Selo verde de promoção</b> aparecia mesmo com a data final vencida.</span></div>
+    <div><span class="pin">2</span><span><b>Base riscada</b> ficava rebaixada, no valor da promoção.</span></div>
+    <div><span class="pin">3</span><span><b>Flex</b> calculado em cima dessa base rebaixada.</span></div>
+    <div><span class="pin">4</span><span><b>Sem selo.</b> A base é o preço de tabela: R$ 9,90 (à vista) + 2,5% da condição = R$ 10,15.</span></div>
+    <div><span class="pin">5</span><span><b>Flex recalculado</b> sobre o preço de tabela. Vender abaixo da base (como o 9,90) desconta do flex e depende do limite de desconto do seu perfil.</span></div>
+  </div>
+
+  <div class="sec-label">O que você vai notar</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">👀</span>
+      <strong>O selo sumiu de 15 produtos</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Estes produtos estavam com promoção vencida e voltaram ao preço de tabela:</p>
+      <table class="lista">
+        <tr><td>Abril 2026 (G-MINI 500GR)</td><td>5 produtos</td></tr>
+        <tr><td>Calzone Junho 2026</td><td>3 produtos</td></tr>
+        <tr><td>Enroladinho Julho 2026</td><td>3 produtos</td></tr>
+        <tr><td>Setembro 30,00</td><td>2 produtos</td></tr>
+        <tr><td>Março/26</td><td>1 produto</td></tr>
+        <tr><td>Coxinha 1,00</td><td>1 produto</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">📝</span>
+      <strong>Pedido em rascunho: confira o total</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Se você deixou um pedido aberto (ainda não enviado) com preço de uma promoção que já venceu, ao reabrir o sistema <b>recalcula a base sem a promoção</b>. O preço do item só sobe se ficar abaixo do desconto máximo que o seu perfil permite. Confira o total antes de enviar.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">➕</span>
+      <strong>Quer criar uma promoção nova?</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Se o produto já tem uma promoção vencida, primeiro clique em <b>"Encerrar Promoção"</b> na antiga (ficha do produto → Promoções). Depois crie a nova normalmente.</p>
+    </div>
+  </div>
+
+  <p class="rodape"><strong>Hardt App</strong> · ajuste de 18/11/2026</p>
+</div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.parentElement;
+    const abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>
