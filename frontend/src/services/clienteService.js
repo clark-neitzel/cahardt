@@ -11,6 +11,12 @@ const clienteService = {
         return response.data;
     },
 
+    // Consulta de novo o regime tributário (Simples/MEI/normal) na Receita
+    atualizarRegime: async (uuid) => {
+        const response = await api.post(`/clientes/${uuid}/atualizar-regime`);
+        return response.data;
+    },
+
     detalhar: async (uuid) => {
         const response = await api.get(`/clientes/${uuid}`);
         return response.data;

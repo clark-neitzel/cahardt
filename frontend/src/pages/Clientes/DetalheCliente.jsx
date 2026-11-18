@@ -35,6 +35,7 @@ import EstadoVazio from '../../components/EstadoVazio';
 import { rotuloFormaAConfirmar } from '../../components/SeloInadimplencia';
 import { ContasEmAbertoLista, AcoesContasEmAberto } from '../../components/PopupContasEmAberto';
 import { detalheAtualizacao } from '../../utils/gpsQuemAtualizou';
+import SeloRegime, { clienteEhPJ } from '../../components/SeloRegime';
 import CampoNumero from '../../components/CampoNumero';
 
 // Data curta em pt-BR, tolerante a valor nulo/inválido vindo do backend
@@ -42,6 +43,14 @@ const fmtDataBr = (v) => {
     if (!v) return '';
     const d = new Date(v);
     return isNaN(d) ? '' : d.toLocaleDateString('pt-BR');
+};
+
+// Data PURA (gravada à meia-noite UTC, ex.: dataExclusaoSimples): formata em UTC
+// para não voltar um dia no fuso de Brasília.
+const fmtDataPuraBr = (v) => {
+    if (!v) return '';
+    const d = new Date(v);
+    return isNaN(d) ? '' : d.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
 };
 
 // Toggle switch inline
@@ -115,6 +124,26 @@ const DetalheCliente = () => {
     // Espelha o gate do backend (gpsClientesRoutes.js POST /cliente/:uuid/ponto)
     const podeEditarPontoGps = !!(perms.admin || perms.Pode_Editar_GPS || perms.clientes?.edit || perms.Pode_Executar_Entregas);
     const [cliente, setCliente] = useState(null);
+    const [atualizandoRegime, setAtualizandoRegime] = useState(false);
+    // Backend: admin OU clientes.edit (sem o Pode_Editar_GPS do podeEditarCadastroCA)
+    const podeAtualizarRegime = !!(perms.admin || perms.clientes?.edit);
+    const atualizarRegime = async () => {
+        if (atualizandoRegime) return;
+        setAtualizandoRegime(true);
+        try {
+            const r = await clienteService.atualizarRegime(uuid);
+            if (r?.ok) {
+                setCliente(c => ({ ...c, regimeFiscal: r.regimeFiscal }));
+                toast.success('Regime tributário atualizado.');
+            } else {
+                toast.error(r?.erro || 'Não foi possível consultar a Receita agora. Tente mais tarde.');
+            }
+        } catch (err) {
+            toast.error(err.response?.data?.erro || err.response?.data?.message || err.response?.data?.error || 'Erro ao atualizar o regime.');
+        } finally {
+            setAtualizandoRegime(false);
+        }
+    };
     // Ponto GPS: mapa + selo + cliente balcão
     const [showMapaGps, setShowMapaGps] = useState(false);
     const [gpsInfo, setGpsInfo] = useState(null); // { balcao, selo, sugestao, balcaoPorNome }
@@ -1567,6 +1596,30 @@ const DetalheCliente = () => {
                                 <option value="NAO_CONTRIBUINTE">Não Contribuinte</option>
                             </SelectBusca>
                         </div>
+                        {clienteEhPJ(cliente) && (
+                            <div className="sm:col-span-2 lg:col-span-3">
+                                <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Regime tributário</label>
+                                <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                                    <SeloRegime regimeFiscal={cliente.regimeFiscal} />
+                                    {fmtDataBr(cliente.regimeFiscal?.consultadoEm) && (
+                                        <span className="text-xs text-gray-500">consultado em {fmtDataBr(cliente.regimeFiscal.consultadoEm)}</span>
+                                    )}
+                                    {cliente.regimeFiscal?.regime === 'NORMAL' && fmtDataPuraBr(cliente.regimeFiscal?.dataExclusaoSimples) && (
+                                        <span className="text-xs text-gray-500">saiu do Simples em {fmtDataPuraBr(cliente.regimeFiscal.dataExclusaoSimples)}</span>
+                                    )}
+                                    {podeAtualizarRegime && (
+                                        <button type="button" onClick={atualizarRegime} disabled={atualizandoRegime}
+                                            className="inline-flex items-center justify-center gap-1.5 min-h-[44px] px-4 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-sm disabled:opacity-60">
+                                            <RefreshCw className={`h-4 w-4 ${atualizandoRegime ? 'animate-spin' : ''}`} />
+                                            {atualizandoRegime ? 'Consultando...' : 'Atualizar regime'}
+                                        </button>
+                                    )}
+                                </div>
+                                {cliente.regimeFiscal?.erro && (
+                                    <p className="text-xs text-amber-700 mt-1">A última consulta falhou; mostrando o regime anterior.</p>
+                                )}
+                            </div>
+                        )}
                     </div>
                     {/* Telefone fixo + WhatsApps vinculados */}
                     <div className="mt-4 pt-4 border-t border-gray-100 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

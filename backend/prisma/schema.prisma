@@ -288,6 +288,18 @@ model ClienteFiscal {
   inscricaoEstadual String? @map("inscricao_estadual")
   cliente           Cliente @relation(fields: [clienteUuid], references: [UUID], onDelete: Cascade)
 
+  // Regime tributário do cliente PJ (11/2026) — consultado na Receita (BrasilAPI/CNPJá) e
+  // atualizado sozinho pelo worker diário. null = nunca consultado.
+  regimeTributario    String?   @map("regime_tributario") // SIMPLES | MEI | NORMAL | DESCONHECIDO
+  dataExclusaoSimples DateTime? @map("data_exclusao_simples")
+  porte               String?   @map("porte")
+  cnaePrincipal       String?   @map("cnae_principal")
+  regimeConsultadoEm  DateTime? @map("regime_consultado_em")
+  regimeFonte         String?   @map("regime_fonte") // BrasilAPI | CNPJa
+  regimeErro          String?   @map("regime_erro") // último erro de consulta (não apaga o regime anterior)
+
+  @@index([regimeTributario])
+  @@index([regimeConsultadoEm])
   @@map("cliente_fiscal")
 }
 

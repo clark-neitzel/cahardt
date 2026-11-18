@@ -13028,6 +13028,21 @@ router.post('/fornecedores-espelhar-de-clientes', async (req, res) => {
 // Atribui código sequencial aos produtos com codigo '' (por createdAt) e corrige o ItemPcp
 // espelho (codigo '' ou terminado em -MP/-PA/-EMB). ?dry=1 só lista o que faria.
 // Retomável: grava produto a produto (cada um em sua transação); rodar de novo continua de onde parou.
+// Backfill do regime tributário dos clientes PJ (Receita). Body { dryRun (padrão true), limite (padrão 50) }.
+// dryRun só monta a fila (não chama a Receita, não grava). Real: ~1,1s por cliente — mantenha limite pequeno.
+router.post('/clientes-backfill-regime', async (req, res) => {
+    try {
+        const b = req.body || {};
+        const dryRun = b.dryRun !== false && b.dryRun !== 'false';
+        const limite = Math.min(Math.max(parseInt(b.limite, 10) || 50, 1), 200);
+        const r = await require('../services/regimeTributarioService').rodarLote({ limite, dryRun });
+        res.json(r);
+    } catch (e) {
+        console.error('[admin-exec] clientes-backfill-regime:', e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
 router.post('/backfill-codigo-produtos', async (req, res) => {
     try {
         const dry = req.query.dry === '1';

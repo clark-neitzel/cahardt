@@ -9,6 +9,7 @@ import tabelaPrecoService from '../../services/tabelaPrecoService';
 import fornecedorService from '../../services/fornecedorService';
 import { Search, MapPin, Phone, User, Filter, Settings, X, Save, AlertTriangle, MessageCircle, AlertCircle, UserPlus, Building2, ArrowRight } from 'lucide-react';
 import SelectBusca from '../../components/SelectBusca';
+import SeloRegime, { clienteEhPJ } from '../../components/SeloRegime';
 import SeloInadimplencia from '../../components/SeloInadimplencia';
 import PopupContasEmAberto from '../../components/PopupContasEmAberto';
 import SeloWhatsappCliente, { LegendaSeloWhatsapp } from '../../components/SeloWhatsappCliente';
@@ -45,6 +46,16 @@ const DIAS_SEMANA = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'DOM', 'N/D'];
 // ARRAY, nunca Fragment (<>…</>): o SelectBusca varre os filhos para montar o menu,
 // e um Fragment o faz abrir VAZIO — falha que nem o build nem o curl pegam, só
 // clicando.
+// Filtro de regime tributário (backend: ?regime=). ARRAY, nunca Fragment.
+const OPCOES_REGIME = [
+    { valor: 'todos', rotulo: 'Todos' },
+    { valor: 'SIMPLES', rotulo: 'Simples' },
+    { valor: 'MEI', rotulo: 'MEI' },
+    { valor: 'NORMAL', rotulo: 'Regime normal' },
+    { valor: 'DESCONHECIDO', rotulo: 'Não identificado' },
+    { valor: 'NAO_CONSULTADO', rotulo: 'Não consultado' },
+];
+
 const SITUACOES_WHATSAPP = [
     { valor: '', rotulo: 'Todos' },
     { valor: 'EM_USO', rotulo: 'WhatsApp em uso' },
@@ -142,6 +153,7 @@ const ListaClientes = () => {
     // prioriza o localStorage, então o valor da URL é reaplicado uma vez na abertura.
     // Congelado no 1º render para não depender da ordem em que os efeitos rodam (o
     // efeito de sync reescreve a URL a partir do estado logo em seguida).
+    const [regime, setRegime] = useFiltroSalvo('lista-clientes:regime', 'todos');
     const [whatsappDaUrl] = useState(() => searchParams.get('whatsapp'));
     useEffect(() => {
         const bruto = whatsappDaUrl !== null ? whatsappDaUrl : whatsapp;
@@ -213,6 +225,7 @@ const ListaClientes = () => {
         if (semVenda === 'faixa' && semVendaAte) params.semVendaAte = semVendaAte;
         if (perfil) params.perfil = perfil;
         if (whatsapp) params.whatsapp = whatsapp;
+        if (regime && regime !== 'todos') params.regime = regime;
         setSearchParams(params, { replace: true });
 
         saveToLocal('search', search);
@@ -231,7 +244,7 @@ const ListaClientes = () => {
         // usuário). Aqui ele entra só no sync da URL — e PRECISA estar nas deps abaixo,
         // senão o endereço não acompanha a troca do filtro e o link copiado abriria
         // outra situação.
-    }, [search, page, limit, idVendedor, diaEntrega, diaVenda, condicaoPagamento, condicaoPermitida, semVenda, semVendaDe, semVendaAte, perfil, whatsapp, activeTab, setSearchParams]);
+    }, [search, page, limit, idVendedor, diaEntrega, diaVenda, condicaoPagamento, condicaoPermitida, semVenda, semVendaDe, semVendaAte, perfil, whatsapp, regime, activeTab, setSearchParams]);
 
     const fetchClientes = async () => {
         setLoading(true);
@@ -245,7 +258,8 @@ const ListaClientes = () => {
                 semVendaDe: semVenda === 'faixa' ? semVendaDe : undefined,
                 semVendaAte: semVenda === 'faixa' ? semVendaAte : undefined,
                 // `|| undefined` para "Todos" não virar `whatsapp=` vazio na query.
-                whatsapp: whatsapp || undefined
+                whatsapp: whatsapp || undefined,
+                regime: regime && regime !== 'todos' ? regime : undefined
             });
             setClientes(data.data);
             setTotalPages(data.meta.totalPages);
@@ -267,7 +281,7 @@ const ListaClientes = () => {
     useEffect(() => {
         const t = setTimeout(fetchClientes, 300);
         return () => clearTimeout(t);
-    }, [page, limit, search, activeTab, idVendedor, diaEntrega, diaVenda, condicaoPagamento, condicaoPermitida, semVenda, semVendaDe, semVendaAte, perfil, whatsapp]);
+    }, [page, limit, search, activeTab, idVendedor, diaEntrega, diaVenda, condicaoPagamento, condicaoPermitida, semVenda, semVendaDe, semVendaAte, perfil, whatsapp, regime]);
 
     // Busca também na tabela de fornecedores (cadastros que só existem como fornecedor —
     // ex.: importados do Conta Azul — não aparecem na lista de clientes; sem isso o usuário
@@ -302,10 +316,11 @@ const ListaClientes = () => {
         setSemVendaAte('');
         setPerfil('');
         setWhatsapp('');
+        setRegime('todos');
         setPage(1);
     };
 
-    const activeFiltersCount = [idVendedor, diaEntrega, diaVenda, condicaoPagamento, condicaoPermitida, semVenda, perfil, whatsapp].filter(Boolean).length;
+    const activeFiltersCount = [idVendedor, diaEntrega, diaVenda, condicaoPagamento, condicaoPermitida, semVenda, perfil, whatsapp, regime !== 'todos' ? regime : ''].filter(Boolean).length;
 
     // Situação escolhida, só quando é uma das conhecidas E não é "Todos" — é o que
     // libera a linha de ajuda. Sem esta busca, um valor estranho renderizaria um
@@ -642,6 +657,19 @@ const ListaClientes = () => {
                         </SelectBusca>
                     </div>
 
+                    <div>
+                        <label className="block text-[11px] font-medium text-gray-500 mb-1">Regime tributário</label>
+                        <SelectBusca
+                            className="w-full"
+                            value={regime}
+                            onChange={(e) => { setRegime(e.target.value); setPage(1); }}
+                        >
+                            {OPCOES_REGIME.map(o => (
+                                <option key={o.valor} value={o.valor}>{o.rotulo}</option>
+                            ))}
+                        </SelectBusca>
+                    </div>
+
                     <div className="flex items-end col-span-2 sm:col-span-1">
                         <button
                             onClick={handleClearFilters}
@@ -770,6 +798,7 @@ const ListaClientes = () => {
                                                 número, então o estado "Sem WhatsApp" sai como chip
                                                 estático — nunca um botão que não leva a lugar nenhum. */}
                                             <SeloWhatsappCliente cliente={cliente} mostrar={mostrarSeloWhats} />
+                                            {clienteEhPJ(cliente) && <SeloRegime regimeFiscal={cliente.regimeFiscal} compacto />}
                                         </div>
                                     </td>
                                     <td className="px-3 py-2 text-xs text-gray-600 whitespace-nowrap">
@@ -881,6 +910,7 @@ const ListaClientes = () => {
                                     </span>
                                 )}
                                 <SeloWhatsappCliente cliente={cliente} mostrar={mostrarSeloWhats} />
+                                {clienteEhPJ(cliente) && <SeloRegime regimeFiscal={cliente.regimeFiscal} compacto />}
                                 {cliente.Formas_Atendimento && cliente.Formas_Atendimento.length > 0 && (
                                     <div className="flex gap-0.5 ml-auto">
                                         {cliente.Formas_Atendimento.map(forma => {

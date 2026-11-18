@@ -97,7 +97,7 @@ const clienteController = {
     // Listar clientes com paginação e busca
     listar: async (req, res) => {
         try {
-            const { page = 1, limit = 10, search = '', ativo, idVendedor, diaEntrega, diaVenda, condicaoPagamento, condicaoPermitida, semVenda, semVendaDe, semVendaAte, perfil, whatsapp, excluirPausados } = req.query;
+            const { page = 1, limit = 10, search = '', ativo, idVendedor, diaEntrega, diaVenda, condicaoPagamento, condicaoPermitida, semVenda, semVendaDe, semVendaAte, perfil, whatsapp, excluirPausados, regime } = req.query;
             const skip = (page - 1) * limit;
 
             const where = {};
@@ -207,6 +207,20 @@ const clienteController = {
                 else console.warn(`[Clientes] filtro whatsapp="${whatsapp}" desconhecido — ignorado (sem filtro).`);
             }
 
+            // Filtro de regime tributário (cliente_fiscal). Valor desconhecido é IGNORADO (mesma
+            // razão do filtro whatsapp: GET /clientes é compartilhada por várias telas).
+            if (regime) {
+                const r = String(regime).toUpperCase();
+                if (['SIMPLES', 'MEI', 'NORMAL', 'DESCONHECIDO'].includes(r)) {
+                    where.AND = [...(where.AND || []), { fiscal: { is: { regimeTributario: r } } }];
+                } else if (r === 'NAO_CONSULTADO') {
+                    // Prisma: `not` exclui null — por isso o OR explícito (sem linha OU sem data de consulta)
+                    where.AND = [...(where.AND || []), { OR: [{ fiscal: { is: null } }, { fiscal: { is: { regimeConsultadoEm: null } } }] }];
+                } else {
+                    console.warn(`[Clientes] filtro regime="${regime}" desconhecido — ignorado (sem filtro).`);
+                }
+            }
+
             // ?excluirPausados=1 (lista da Rota): esconde clientes com visitas pausadas (pausadoAte > agora).
             // As demais telas que usam /clientes (NovoPedido, Catálogo...) NÃO passam o param e seguem vendo todos.
             if (excluirPausados === '1' || excluirPausados === 'true') {
@@ -230,6 +244,8 @@ const clienteController = {
                 take: Number(limit),
                 orderBy: { Nome: 'asc' },
                 include: {
+                    // Só os campos de regime (sem IE): achatado em `regimeFiscal` abaixo
+                    fiscal: { select: require('../services/regimeTributarioService').SELECT_REGIME },
                     vendedor: {
                         select: {
                             id: true,
@@ -296,9 +312,11 @@ const clienteController = {
             // Serve à bonificação COM NOTA: o vendedor vê na hora o que falta no
             // cadastro, em vez de descobrir com a nota travada no Financeiro.
             const { fiscalApto } = require('../utils/cadastroFiscal');
-            const clientesComFlag = clientes.map(({ pausa, ...c }) => ({
+            const { paraRegimeFiscal } = require('../services/regimeTributarioService');
+            const clientesComFlag = clientes.map(({ pausa, fiscal, ...c }) => ({
                 ...c,
                 pausadoAte: pausa?.pausadoAte || null,
+                regimeFiscal: paraRegimeFiscal(fiscal), // null = nunca consultado (aditivo)
                 // campos antigos (inadimplente, totalVencido) mantêm nome e tipo; os 3 últimos são aditivos
                 inadimplente: situacaoMap.get(c.UUID)?.inadimplente || false,
                 totalVencido: situacaoMap.get(c.UUID)?.totalVencido || 0,
@@ -425,6 +443,8 @@ const clienteController = {
             cliente.Whatsapps = cliente.whatsapp?.numeros ?? [];
             cliente.pausadoAte = cliente.pausa?.pausadoAte || null;
             delete cliente.pausa;
+            // Regime tributário (aditivo): null = nunca consultado
+            cliente.regimeFiscal = require('../services/regimeTributarioService').paraRegimeFiscal(cliente.fiscal);
 
             // Até quando a dispensa do WhatsApp vale. É calculado (dispensaEm + N dias da
             // config), não é coluna — por isso entra aqui e não no select. Só ADIÇÃO de campo.
@@ -775,6 +795,9 @@ const clienteController = {
             }
 
             cliente.Inscricao_Estadual = ieNorm || null;
+            cliente.regimeFiscal = null;
+            // Regime tributário: consulta DEPOIS de salvar, sem bloquear a resposta (erro nunca derruba o cadastro)
+            if (ehCnpj(docNorm)) require('../services/regimeTributarioService').agendarConsulta(cliente.UUID);
             res.status(201).json(cliente);
         } catch (error) {
             console.error('Erro ao criar cliente:', error);
@@ -1220,10 +1243,48 @@ const clienteController = {
                 await espelharContatos(cliente, req, whatsappsNorm);
             }
 
+            // CNPJ mudou: o regime antigo não vale mais — zera e reconsulta sem bloquear a resposta
+            if (podeEditarCadastro && docNorm !== undefined && normalizarDoc(docNorm) !== normalizarDoc(atual.Documento)) {
+                const regimeSvc = require('../services/regimeTributarioService');
+                try {
+                    await regimeSvc.zerarRegime(uuid);
+                    if (ehCnpj(docNorm)) regimeSvc.agendarConsulta(uuid);
+                } catch (regErr) {
+                    console.error('[Regime] falha ao zerar regime após troca de CNPJ (cadastro já salvo):', regErr.message);
+                }
+                cliente.regimeFiscal = null;
+            }
+
             res.json(cliente);
         } catch (error) {
             console.error('Erro ao atualizar cliente:', error);
             res.status(500).json({ error: 'Erro ao atualizar dados do cliente' });
+        }
+    },
+
+    // Atualiza o regime tributário (Simples/MEI/Normal) de UM cliente PJ consultando a Receita.
+    // 200 { ok:true, regimeFiscal } | 200 { ok:false, erro } (API externa fora) | 400 PF/CNPJ inválido | 403 sem permissão.
+    // Permissão = a mesma de editar cadastro (admin ou clientes.edit).
+    atualizarRegime: async (req, res) => {
+        try {
+            const perms = req.user?.permissoes || {};
+            if (!(perms.admin || perms.clientes?.edit)) {
+                return res.status(403).json({ error: 'Sem permissão para atualizar o regime tributário do cliente.' });
+            }
+            const { uuid } = req.params;
+            const cli = await prisma.cliente.findUnique({ where: { UUID: uuid }, select: { Documento: true } });
+            if (!cli) return res.status(404).json({ error: 'Cliente não encontrado' });
+
+            const svc = require('../services/regimeTributarioService');
+            if (!svc.cnpjNumerico(cli.Documento)) {
+                return res.status(400).json({ error: 'Só é possível consultar o regime de cliente com CNPJ numérico válido (pessoa física ou CNPJ alfanumérico não são consultados).' });
+            }
+            const r = await svc.atualizarCliente(uuid);
+            if (r.ok) return res.json({ ok: true, regimeFiscal: r.regimeFiscal });
+            res.json({ ok: false, erro: r.erro || 'Não foi possível consultar a Receita agora. Tente novamente mais tarde.' });
+        } catch (error) {
+            console.error('Erro ao atualizar regime tributário:', error);
+            res.status(500).json({ error: 'Erro ao atualizar regime tributário' });
         }
     },
 

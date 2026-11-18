@@ -402,3 +402,14 @@ Botão **📋 Cadastros a acertar** na lista de clientes (só para quem edita cl
 ## Ordem dos telefones no WhatsApp (11/2026)
 
 Na ficha do cliente, abaixo de **Pessoas do WhatsApp**, o card **Ordem dos telefones no WhatsApp** lista todos os números do cliente (celular, WhatsApps, telefone, comercial e das pessoas), sem repetir. O de cima é o **Preferido**: a Ana chama primeiro nele; se o cliente não responder no prazo, ela tenta o próximo, um por dia, nunca dois números no mesmo dia. O número que respondeu ganha o selo **Respondeu** e a Ana começa por ele na próxima vez. Use as setas para mudar a ordem e **Salvar ordem** (só quem edita clientes). Número incompleto aparece com o motivo e nunca é o preferido. Toda mudança fica no histórico de alterações.
+
+## Regime tributário do cliente (Simples / MEI / Normal) — novo, 11/2026
+
+O sistema guarda o regime tributário de cada **cliente pessoa jurídica** (CNPJ), consultado na Receita Federal (BrasilAPI, com a CNPJá como reserva). Valores: **Simples**, **MEI**, **Regime normal** (Lucro Presumido/Real), **Não identificado** (CNPJ que a Receita não retorna) e **Não consultado**.
+
+- **Selo de regime** na lista e na ficha do cliente (aba Cadastro), com a data da última consulta, porte e CNAE principal; se o cliente saiu do Simples, mostra a data de exclusão.
+- **Botão "Atualizar regime"** na ficha: consulta a Receita na hora. Exige a mesma permissão de editar o cadastro (admin ou Clientes → editar). Se a Receita estiver fora do ar, aparece o aviso e o regime anterior é mantido (nunca vira "Normal" por falha de consulta).
+- **Filtro "Regime"** na lista: Simples, MEI, Regime normal, Não identificado ou Não consultado (pessoa física aparece em "Não consultado": só CNPJ numérico de 14 dígitos é consultado).
+- **Atualização automática**: ao cadastrar um cliente ou alterar o CNPJ, o regime é consultado sozinho (a troca de CNPJ apaga o regime antigo). Todo dia às 05:00 o sistema atualiza cerca de 60 clientes ativos, começando por quem comprou nos últimos 60 dias e nunca foi consultado (ou foi há mais de 30 dias); na virada do ano (janeiro) o sistema reconsulta todos, mas aos poucos (cerca de 60 clientes por dia), então leva alguns dias para todo mundo ser atualizado. Clientes cuja consulta falhou são retentados por último, para não travar os demais.
+- CNPJ alfanumérico (novo formato) ainda não é consultado.
+- Esta informação **não emite nem altera nota fiscal** — é só consulta e análise.

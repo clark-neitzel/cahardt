@@ -361,6 +361,26 @@ function startSchedulers() {
     };
     scheduleSeloWhatsapp();
 
+    // === 9c. REGIME TRIBUTÁRIO DOS CLIENTES PJ (Receita) ===
+    // 1x por dia (05:00): consulta ~60 clientes (prioriza quem comprou nos últimos 60 dias),
+    // pausa de ~1,1s entre chamadas; 429 para a rodada. Isolado: nunca derruba nada.
+    console.log('⏰ Agendando a atualização do regime tributário dos clientes...');
+    const _runRegimeTributario = () => {
+        require('../services/regimeTributarioService').rodarLote({ limite: 60 })
+            .then((r) => {
+                if (r.jaRodando) return console.log('[Regime] rodada anterior ainda em andamento — pulando.');
+                console.log(`[Regime] fila ${r.total}, atualizados ${r.processados}, erros ${r.erros}${r.parouPorLimite ? ' (parou: limite 429)' : ''}`, r.porRegime);
+            })
+            .catch(err => console.error('[Regime] Error:', err.message));
+    };
+    const scheduleRegimeTributario = () => {
+        const now = new Date();
+        const target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 5, 0, 0);
+        if (target <= now) target.setDate(target.getDate() + 1);
+        setTimeout(() => { _runRegimeTributario(); scheduleRegimeTributario(); }, target.getTime() - now.getTime());
+    };
+    scheduleRegimeTributario();
+
     // === 10. EXTRATO ASAAS → CONCILIAÇÃO BANCÁRIA ===
     // Busca os lançamentos da conta Asaas (janela de 7 dias, idempotente pelo id
     // do Asaas) e já roda a conciliação automática. Sem ASAAS_API_KEY ou sem a

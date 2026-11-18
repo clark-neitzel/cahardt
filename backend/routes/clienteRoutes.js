@@ -13,6 +13,7 @@ router.post('/', clienteController.criar); // Criar cliente novo (cadastro 100% 
 router.post('/sync', clienteController.sincronizar); // Desativado (cadastro não vem mais do CA)
 router.put('/lote', clienteController.atualizarLote); // Atualização em lote
 router.get('/condicoes-pagamento', condicaoPagamentoController.listar); // Nova rota
+router.post('/:uuid/atualizar-regime', clienteController.atualizarRegime); // regime tributário (Receita)
 router.get('/:uuid/inadimplencia', clienteController.obterInadimplencia);
 router.get('/:uuid/sugestao-tipo-pedido', clienteController.sugestaoTipoPedido); // tipo sugerido p/ Novo Pedido
 // Histórico do endereço (quem/quando/restaurar/ver no mapa) — ANTES de '/:uuid'
