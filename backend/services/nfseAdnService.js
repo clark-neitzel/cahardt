@@ -217,6 +217,59 @@ function parseEventoNfse(xmlString) {
     return { chave, cancelamento, codigos };
 }
 
+/** Lista "Codigo: Descricao" dos arrays Erros/Alertas do corpo do ADN (tolerante a caixa). Função PURA. */
+function extrairErrosAdn(data) {
+    if (!data || typeof data !== 'object') return [];
+    const out = [];
+    for (const nomeLista of ['Erros', 'Alertas']) {
+        const lista = campo(data, nomeLista, nomeLista.toLowerCase());
+        const arr = Array.isArray(lista) ? lista : (lista ? [lista] : []);
+        for (const e of arr) {
+            if (e && typeof e === 'object') {
+                const cod = campo(e, 'Codigo', 'codigo', 'Code');
+                const desc = campo(e, 'Descricao', 'descricao', 'Mensagem', 'mensagem');
+                const txt = [cod, desc].filter(Boolean).join(': ');
+                if (txt) out.push(txt);
+            } else if (e) {
+                out.push(String(e));
+            }
+        }
+    }
+    return out;
+}
+
+/** Corpo bruto truncado (string ou JSON) — para diagnóstico quando o ADN não explica o erro. Função PURA. */
+function corpoBruto(resp, max = 1500) {
+    let corpo;
+    if (typeof resp?.data === 'string') corpo = resp.data;
+    else if (Buffer.isBuffer(resp?.data)) corpo = resp.data.toString('utf8');
+    else { try { corpo = JSON.stringify(resp?.data); } catch (_) { corpo = String(resp?.data); } }
+    corpo = String(corpo ?? '');
+    return corpo.length > max ? `${corpo.substring(0, max)}…(+${corpo.length - max} chars)` : corpo;
+}
+
+/** Mensagem completa de uma resposta HTTP de erro do ADN (códigos + status + content-type + corpo bruto). Função PURA. */
+function descreverRespostaErro(resp, extra = '', maxCorpo = 1500) {
+    const erros = extrairErrosAdn(resp.data);
+    const ct = resp.headers?.['content-type'] || '—';
+    const tipo = campo(resp.data, 'TipoConsulta', 'tipoConsulta');
+    return `Ambiente nacional retornou HTTP ${resp.status}` +
+        (erros.length ? ` [${erros.join(' | ')}]` : ' [sem Erros/Alertas no corpo]') +
+        `${extra} (content-type: ${ct}${tipo ? `, TipoConsulta: ${tipo}` : ''}). Corpo: ${corpoBruto(resp, maxCorpo)}`;
+}
+
+/** GET de uma página do ADN. cnpjConsulta opcional (mesmo CNPJ base do certificado). */
+async function consultarAdn(agent, ultNSU, cnpjConsulta) {
+    const url = `${ADN_DFE_URL}/${ultNSU}`;
+    return axios.get(url, {
+        httpsAgent: agent,
+        timeout: TIMEOUT_MS,
+        validateStatus: () => true,
+        params: cnpjConsulta ? { cnpjConsulta } : undefined,
+        headers: { Accept: 'application/json' }
+    });
+}
+
 // ─────────────────────────────────────────────────────────────
 // Configuração / estado (linha 'nfse' na dfe_controle)
 // ─────────────────────────────────────────────────────────────
@@ -449,6 +502,8 @@ async function executarCiclo({ manual = false } = {}) {
         let capturadas = 0;
         let processados = 0;
         let resultado = '';
+        let usarCnpjConsulta = false;
+        let tentouCnpjConsulta = false;
 
         for (let iter = 0; iter < MAX_ITERACOES; iter++) {
             const ctrl = await getControle();
@@ -456,19 +511,32 @@ async function executarCiclo({ manual = false } = {}) {
 
             let resp;
             try {
-                resp = await axios.get(`${ADN_DFE_URL}/${ultNSU}`, {
-                    httpsAgent: agent,
-                    timeout: TIMEOUT_MS,
-                    validateStatus: () => true,
-                    headers: { Accept: 'application/json' }
-                });
+                resp = await consultarAdn(agent, ultNSU, usarCnpjConsulta ? cnpjNosso : null);
+                // 400 SEM código de erro explicativo (o ADN passou a rejeitar a consulta sem dizer por quê
+                // após a atualização de 03/11 sobre perfis/procurações): tenta UMA vez informando o CNPJ do
+                // próprio certificado em cnpjConsulta (mesmo CNPJ base = autorizado sem procuração, manual v1.1).
+                if (resp.status === 400 && !usarCnpjConsulta && extrairErrosAdn(resp.data).length === 0
+                    && cnpjNosso && cnpjNosso.length === 14) {
+                    console.warn(`[NFSe ADN] HTTP 400 sem Erros no corpo — tentando de novo com cnpjConsulta. Corpo: ${corpoBruto(resp)}`);
+                    const resp2 = await consultarAdn(agent, ultNSU, cnpjNosso);
+                    if (resp2.status !== 400) {
+                        usarCnpjConsulta = true;
+                        resp = resp2;
+                        console.log(`[NFSe ADN] Com cnpjConsulta a consulta voltou HTTP ${resp2.status} — usando o parâmetro neste ciclo.`);
+                    } else {
+                        resp = resp2;
+                        tentouCnpjConsulta = true;
+                    }
+                }
             } catch (e) {
                 resultado = `Erro de conexão com o ambiente nacional: ${String(e.message).substring(0, 400)}`;
                 break;
             }
 
             if (resp.status === 404) {
-                resultado = `Nenhum documento novo. ${processados > 0 ? `${processados} docs processados neste ciclo.` : ''}`.trim();
+                // E2220/E2230 (ou 404 sem corpo) = nenhum documento a partir do NSU: situação normal
+                const cods = extrairErrosAdn(resp.data);
+                resultado = `Nenhum documento novo${cods.length ? ` (${cods.join(' | ')})` : ''}. ${processados > 0 ? `${processados} docs processados neste ciclo.` : ''}`.trim();
                 break;
             }
             if (resp.status === 429) {
@@ -478,10 +546,10 @@ async function executarCiclo({ manual = false } = {}) {
                 break;
             }
             if (resp.status < 200 || resp.status >= 300) {
-                const corpo = typeof resp.data === 'string'
-                    ? resp.data
-                    : JSON.stringify(campo(resp.data, 'Erros', 'erros', 'mensagem', 'Mensagem', 'StatusProcessamento') ?? resp.data ?? '');
-                resultado = `Ambiente nacional retornou HTTP ${resp.status}: ${String(corpo).substring(0, 400)}`;
+                const extraErro = tentouCnpjConsulta ? ' (também falhou com cnpjConsulta)' : '';
+                // console: corpo bruto até 1500; ultimoResultado (tela): enxuto, ~400 caracteres
+                console.warn(`[NFSe ADN] ${descreverRespostaErro(resp, extraErro)}`);
+                resultado = descreverRespostaErro(resp, extraErro, 150).substring(0, 400);
                 break;
             }
 
@@ -658,5 +726,7 @@ module.exports = {
     parseNfse,
     parseEventoNfse,
     extrairLote,
-    decodificarArquivoXml
+    decodificarArquivoXml,
+    extrairErrosAdn,
+    descreverRespostaErro
 };
