@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Proposta: Bipe rápido e QR na etiqueta</title>
+<meta name="description" content="Plano: câmera sempre aberta para bipar, código de barras certo em todo produto e QR na etiqueta com produto, fabricação e validade.">
+<meta property="og:title" content="Proposta: Bipe rápido e QR na etiqueta">
+<meta property="og:description" content="Câmera sempre aberta, código certo em cada produto e QR na etiqueta. Veja o plano e responda 5 perguntas.">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--primary:#00754A;--house:#1E3932;--mint:#d4e9e2;--bg:#f2f0eb;--text:rgba(0,0,0,.87);--muted:#4b5563;--border:#e5e7eb;--gold:#cba258}
+*{box-sizing:border-box}
+html,body{max-width:100%;overflow-x:hidden}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Manrope,system-ui,sans-serif;letter-spacing:-.01em;line-height:1.5;font-size:17px}
+.hero{background:var(--house);color:#fff;padding:32px 16px 26px}
+.hero .in,.wrap{max-width:900px;margin:0 auto}
+.hero h1{font-size:26px;margin:0 0 8px;font-weight:800;line-height:1.2}
+.hero p{margin:0;opacity:.92}
+.tag{display:inline-block;background:var(--gold);color:#1a1a1a;font-weight:800;font-size:11px;letter-spacing:.08em;text-transform:uppercase;padding:4px 10px;border-radius:999px;margin-bottom:12px}
+.wrap{padding:0 16px 56px}
+.card{background:#fff;border:1px solid var(--border);border-radius:12px;margin-top:20px;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.card>h2{margin:0;padding:14px 18px;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:#4b5563;border-bottom:1px solid #f1f1f1;display:flex;gap:10px;align-items:center}
+.card>h2 b{width:26px;height:26px;border-radius:999px;background:var(--primary);color:#fff;display:grid;place-items:center;font-size:13px;flex-shrink:0;letter-spacing:0}
+.body{padding:16px 18px}
+.body p{margin:6px 0}.muted{color:var(--muted);font-size:15px}
+.grid{display:grid;grid-template-columns:1fr;gap:12px}
+@media(min-width:720px){.grid.c2{grid-template-columns:1fr 1fr}.grid.c3{grid-template-columns:1fr 1fr 1fr}}
+.box{border:1px solid var(--border);border-radius:10px;padding:14px;background:#fafaf8;font-size:16px}
+.box b.t{display:block;margin-bottom:4px;font-size:17px}
+.bd{display:inline-block;border-radius:999px;padding:2px 10px;font-size:12px;font-weight:800;margin-left:4px;vertical-align:middle}
+.g{background:#dcfce7;color:#166534}.a{background:#fef3c7;color:#92400e}.r{background:#fee2e2;color:#b91c1c}.m{background:var(--mint);color:var(--house)}
+.num{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+@media(min-width:720px){.num{grid-template-columns:repeat(4,1fr)}}
+.num div{background:#fafaf8;border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center}
+.num b{display:block;font-size:30px;font-weight:800;line-height:1.1}.num span{font-size:13px;color:var(--muted);font-weight:700}
+.fase{display:flex;gap:12px;padding:12px 0;border-top:1px solid #f1f1f1}
+.fase:first-child{border-top:0}
+.fase .n{flex-shrink:0;width:34px;height:34px;border-radius:999px;background:var(--house);color:#fff;font-weight:800;display:grid;place-items:center}
+.fase .d{font-size:13px;font-weight:800;color:var(--primary)}
+.fase b{font-size:17px}
+/* mock câmera */
+.cel{width:100%;max-width:340px;margin:0 auto;border:8px solid #1f2937;border-radius:26px;background:#111;overflow:hidden}
+.cam{height:230px;background:linear-gradient(135deg,#2b3a35,#16201d);position:relative;display:grid;place-items:center;color:#9ca3af;font-weight:700;font-size:14px}
+.mira{width:62%;height:90px;border:3px solid #4ade80;border-radius:10px;position:absolute}
+.cel .flash{padding:12px 14px;font-weight:800;font-size:18px;line-height:1.2;background:#16a34a;color:#fff;transition:background .15s}
+.cel .flash.r{background:#dc2626}.cel .flash.a{background:#f59e0b;color:#111}
+.cel .barra{background:#fff;padding:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.cel .barra .pr{flex:1;font-weight:800;font-size:14px;color:#111;min-width:8em}
+.cel button,.btn{font-family:inherit;border:2px solid #6b7280;background:#fff;border-radius:999px;padding:8px 14px;font-weight:800;font-size:14px;cursor:pointer;min-height:44px;color:#111}
+.btn.p{background:var(--primary);border-color:var(--primary);color:#fff}
+.btns{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:12px}
+/* etiqueta */
+.etq{width:260px;max-width:100%;aspect-ratio:100/120;border:2px solid #111;border-radius:6px;background:#fff;padding:12px;display:flex;flex-direction:column;color:#000;margin:0 auto}
+.etq .t1{font-weight:800;font-size:17px;line-height:1.15}
+.etq .t2{font-size:12px;font-weight:700;margin-top:4px}
+.etq .row{display:flex;gap:10px;align-items:flex-end;margin-top:auto}
+.etq .bars{flex:1;height:54px;background:repeating-linear-gradient(90deg,#000 0 2px,#fff 2px 4px,#000 4px 5px,#fff 5px 8px,#000 8px 11px,#fff 11px 12px)}
+.etq .eannum{font-size:11px;font-family:ui-monospace,Menlo,monospace;letter-spacing:.08em;margin-top:2px}
+.etq svg{width:84px;height:84px;flex-shrink:0}
+.etq .dt{font-size:12px;font-weight:800;margin-top:8px;border-top:1px solid #000;padding-top:4px;display:flex;justify-content:space-between}
+.dec{border:2px solid var(--gold);border-radius:10px;padding:14px;background:#fffdf6;margin-top:12px}
+.dec b.t{display:block;font-size:17px;margin-bottom:6px}
+.dec .op{display:block;margin-top:8px;font-size:16px}
+table{width:100%;border-collapse:collapse;font-size:15px}
+td,th{padding:8px 6px;border-top:1px solid #eee;text-align:left;vertical-align:top}th{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);border-top:0}
+</style>
+</head>
+<body>
+<div class="hero"><div class="in">
+  <span class="tag">Proposta · plano</span>
+  <h1>Bipe rápido e QR na etiqueta</h1>
+  <p>Câmera sempre aberta para bipar sem esperar, código de barras certo em todo produto e, na etiqueta, um QR com produto, fabricação e validade. Começa pelo que faz achar o produto.</p>
+</div></div>
+
+<div class="wrap">
+
+<section class="card">
+  <h2><b>1</b>Respostas diretas</h2>
+  <div class="body">
+    <div class="box"><b class="t">"Bipar leva direto ao produto?"</b>
+      Vai levar, mas <b>hoje ainda não</b>. O mock que você viu só soma no primeiro produto que falta, de mentira. O bipe de verdade lê o código de barras, acha o produto e soma na linha certa do pedido. Produto que não é do pedido fica <b>vermelho</b> na hora; mais do que o pedido pede fica <b>amarelo</b>.</div>
+    <div class="box" style="margin-top:12px"><b class="t">"A câmera tem que estar direto aberta, rápido"</b>
+      Concordo. Hoje a leitura por câmera do app abre uma janela a cada leitura, e é isso que demora. A proposta é uma tela que <b>abre a câmera uma vez e fica lendo</b>, pacote após pacote, sem fechar.</div>
+    <div class="box" style="margin-top:12px"><b class="t">"QR com produto, lote e validade"</b>
+      Dá para fazer em fases. <b>Produto e validade, sim.</b> O <b>lote de verdade</b> não existe como dado na etiqueta de produto (hoje "Lote" é só a data de fabricação digitada). Isso fica para uma fase opcional, e você decide.</div>
+  </div>
+</section>
+
+<section class="card">
+  <h2><b>2</b>O que encontrei nos dados de hoje</h2>
+  <div class="body">
+    <div class="num">
+      <div><b>55</b><span>etiquetas ativas, todas com código válido</span></div>
+      <div><b>89</b><span>produtos vendidos em 90 dias</span></div>
+      <div><b>14</b><span>desses sem código de barras</span></div>
+      <div><b>15</b><span>grupos de código repetido (nenhum vendido)</span></div>
+    </div>
+    <p class="muted" style="margin-top:12px">Dos 14 sem código, 12 são "Produto Acabado" (os "C/25-HF"), quase todos em pedido especial. Código repetido hoje faz o bipe escolher um produto em silêncio; vai passar a avisar.</p>
+  </div>
+</section>
+
+<section class="card">
+  <h2><b>3</b>A tela de bipar (clique e veja)</h2>
+  <div class="body">
+    <p class="muted">Câmera já aberta, leitura contínua, resposta grande em cor e som. Os botões simulam o que o motorista veria.</p>
+    <div class="cel" style="margin-top:12px">
+      <div class="cam"><div class="mira"></div><span id="camtxt">câmera aberta · aponte para o pacote</span></div>
+      <div class="flash" id="fl">Aguardando leitura…</div>
+      <div class="barra"><span class="pr" id="pr">Coxinha de Frango 1 kg · 0 de 10</span><button onclick="desf()">Desfazer</button></div>
+    </div>
+    <div class="btns">
+      <button class="btn p" onclick="ler('ok')">Ler pacote certo</button>
+      <button class="btn" onclick="ler('fora')">Pacote de outro produto</button>
+      <button class="btn" onclick="ler('dup')">Leu duas vezes seguidas</button>
+      <button class="btn" onclick="ler('cheio')">Já completou</button>
+    </div>
+    <div class="grid c2" style="margin-top:16px">
+      <div class="box"><b class="t">O que faz ser rápido</b>Pede a permissão uma vez; mantém a câmera ligada; lê vários formatos; não fecha ao acertar; trava leitura em dobro do mesmo pacote por ~1 segundo.</div>
+      <div class="box"><b class="t">Plano B</b>Leitor bluetooth (funciona como teclado) e digitar o código, na mesma tela. Botão "Desfazer último".</div>
+    </div>
+    <p class="muted" style="margin-top:12px"><span class="bd a">Sem garantia no iPhone/iPad</span> Vibração, lanterna e a câmera não pedir permissão de novo no app instalado só se confirmam no aparelho de verdade. Etiqueta fria e úmida (câmara) também só o papel prova.</p>
+  </div>
+</section>
+
+<section class="card">
+  <h2><b>4</b>A etiqueta com QR</h2>
+  <div class="body">
+    <div class="etq">
+      <div class="t1">Coxinha de Frango 1 kg</div>
+      <div class="t2">Hardt Salgados · Congelado</div>
+      <div class="row"><div style="flex:1"><div class="bars"></div><div class="eannum">7891234567895</div></div><svg id="qr" viewBox="0 0 25 25" shape-rendering="crispEdges"></svg></div>
+      <div class="dt"><span>Fab 19/11/26</span><span>Val 19/02/27</span></div>
+    </div>
+    <p class="muted" style="text-align:center;margin-top:8px">Desenho ilustrativo. O QR real é gerado pelo sistema.</p>
+    <div class="grid c2" style="margin-top:12px">
+      <div class="box"><b class="t">O que vai dentro do QR</b>Texto curto e versionado: <code>HB1</code> + código do produto + fabricação + validade (28 caracteres). Os dados estão <b>dentro</b> do QR: funciona sem internet.</div>
+      <div class="box"><b class="t">Tamanho</b>Cerca de 2 cm com margem, nível de correção alto (resiste a etiqueta riscada ou embaçada). O código de barras continua impresso.</div>
+    </div>
+    <div class="box" style="margin-top:12px"><b class="t">Etiquetas antigas já coladas</b>Continuam valendo pelo código de barras. O QR só aparece nas novas, e o bipe aceita os dois.</div>
+  </div>
+</section>
+
+<section class="card">
+  <h2><b>5</b>Em que ordem fazer</h2>
+  <div class="body">
+    <div class="fase"><div class="n">0</div><div><b>Teste de papel</b> <span class="d">1 dia</span><br><span class="muted">Imprimir etiquetas de teste e ver se o celular lê rápido, com luva e etiqueta fria.</span></div></div>
+    <div class="fase"><div class="n">1</div><div><b>Código de barras certo e único</b> <span class="d">2 a 3 dias</span><br><span class="muted">Tela com os 14 produtos sem código e os repetidos, para você preencher. É o que faz o bipe achar o produto. Sem mudar a etiqueta.</span></div></div>
+    <div class="fase"><div class="n">2</div><div><b>Tela de câmera direta</b> <span class="d">3 dias</span><br><span class="muted">Leitura contínua, resposta em cor e som, plano B. Usada primeiro no Ajuste de Estoque.</span></div></div>
+    <div class="fase"><div class="n">3</div><div><b>Bipe na conferência do motorista</b> <span class="d">3 a 4 dias</span><br><span class="muted">Depende da 1ª etapa da versão do motorista (conferir no toque), que ainda não foi construída e não está nesses dias. Funciona sem internet.</span></div></div>
+    <div class="fase"><div class="n">4</div><div><b>QR na etiqueta</b> <span class="d">3 a 4 dias + 1 de teste</span><br><span class="muted">Produto, fabricação e validade. Começando pela etiqueta 100×120 em pé.</span></div></div>
+    <div class="fase"><div class="n">5</div><div><b>Lote de verdade</b> <span class="bd m">opcional</span> <span class="d">4 a 6 dias</span><br><span class="muted">Só se você quiser rastrear lote: precisa guardar o que foi impresso. Não entra no QR da fase 4.</span></div></div>
+    <p class="muted" style="margin-top:8px"><b>Total: 14 a 19 dias de trabalho</b>, em fases que já entregam valor sozinhas. O que só se prova em aparelho: iPhone, iPad, impressora Zebra e câmara fria.</p>
+  </div>
+</section>
+
+<section class="card">
+  <h2><b>6</b>Preciso que você decida</h2>
+  <div class="body">
+    <div class="dec"><b class="t">A. O QR pode ir sem o número do lote, só com produto, fabricação e validade?</b>
+      <span class="op"><b>A1.</b> Sim, e o lote fica para depois. <span class="bd m">recomendo</span></span>
+      <span class="op"><b>A2.</b> Não, quero lote já. Aumenta bastante o trabalho (fase 5 vem antes).</span></div>
+    <div class="dec"><b class="t">B. Qual etiqueta primeiro?</b>
+      <span class="op"><b>B1.</b> A 100×120 em pé (a maior, mais fácil de ler). <span class="bd m">recomendo</span></span>
+      <span class="op"><b>B2.</b> A deitada, de mercado.</span></div>
+    <div class="dec"><b class="t">C. Os 12 "Produto Acabado" sem código (C/25-HF)?</b>
+      <span class="op"><b>C1.</b> Deixar no toque, sem bipe. São quase todos pedido especial. <span class="bd m">recomendo</span></span>
+      <span class="op"><b>C2.</b> Criar um código para cada um e imprimir.</span></div>
+    <div class="dec"><b class="t">D. Os 15 pares de código repetido (nenhum é vendido hoje)?</b>
+      <span class="op"><b>D1.</b> Eu mostro a lista e você diz qual código fica com qual produto. <span class="bd m">recomendo</span></span>
+      <span class="op"><b>D2.</b> Deixar como está; o bipe só avisa quando cair num repetido.</span></div>
+    <div class="dec"><b class="t">E. Posso contar com iPhone, iPad e etiquetas de teste?</b>
+      <span class="op"><b>E1.</b> Sim, no teste de papel (fase 0) você me ajuda a ler as etiquetas no aparelho. <span class="bd m">preciso disso</span></span></div>
+    <p class="muted" style="margin-top:12px">Responda no formato <b>A1, B1, C1, D1, E1</b>. E diga se começo já pela fase 0 e 1 (códigos certos) enquanto você pensa no resto.</p>
+  </div>
+</section>
+
+</div>
+<script>
+// QR ilustrativo (não lê): 3 quadrados de canto + padrão
+(function(){var s='',r=7;function f(x,y){s+='<rect x="'+x+'" y="'+y+'" width="7" height="7" fill="#000"/><rect x="'+(x+1)+'" y="'+(y+1)+'" width="5" height="5" fill="#fff"/><rect x="'+(x+2)+'" y="'+(y+2)+'" width="3" height="3" fill="#000"/>'}
+s='<rect width="25" height="25" fill="#fff"/>';f(0,0);f(18,0);f(0,18);
+var seed=7;function rnd(){seed=(seed*9301+49297)%233280;return seed/233280}
+for(var y=0;y<25;y++)for(var x=0;x<25;x++){var c=(x<8&&y<8)||(x>16&&y<8)||(x<8&&y>16);if(!c&&rnd()>.52)s+='<rect x="'+x+'" y="'+y+'" width="1" height="1"/>'}
+document.getElementById('qr').innerHTML=s})();
+var n=0,T=10,fe=document.getElementById('fl'),pr=document.getElementById('pr'),bloq=false;
+function msg(c,t){fe.className='flash '+(c||'');fe.textContent=t;pr.textContent='Coxinha de Frango 1 kg · '+n+' de '+T}
+function ler(k){
+  if(k==='ok'){if(n>=T)return ler('cheio');n++;msg('','✓ Coxinha de Frango 1 kg · '+n+' de '+T)}
+  else if(k==='fora')msg('r','✕ Kibe 1 kg não é deste pedido — tire da bolsa');
+  else if(k==='dup')msg('a','Mesmo pacote lido de novo — ignorado (conta só 1)');
+  else if(k==='cheio')msg('a','Já tem 10 de 10 — este pacote é a mais');
+}
+function desf(){if(n>0){n--;msg('a','Desfeito: voltou para '+n+' de '+T)}}
+msg('','Aguardando leitura…');
+</script>
+</body>
+</html>
