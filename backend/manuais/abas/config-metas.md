@@ -59,7 +59,7 @@ Cadastro e gestão das metas mensais de vendas por vendedor. Para cada vendedor 
      - Por isso a soma das metas por cidade pode ficar **menor** que o valor sugerido: a
        diferença é exatamente o valor desses clientes sem cidade.
    - Metas de promoção: nome da promoção + valor alvo
-     (a lista de promoções para vincular mostra só as que estão **valendo hoje** — promoção vencida ou ainda agendada não aparece)
+     (a lista de promoções para vincular mostra as **vigentes e as agendadas** — as agendadas aparecem com "começa em dd/mm"; promoção vencida ou encerrada não aparece. Cada opção mostra também o nome do produto)
 5. Salve
 
 ### Ver metas de outro mês

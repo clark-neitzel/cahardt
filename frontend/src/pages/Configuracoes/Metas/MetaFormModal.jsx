@@ -66,12 +66,20 @@ const MetaFormModal = ({ isOpen, onClose, metaData, vendedores, mesAtualStr }) =
     useEffect(() => {
         const fetchPromocoes = async () => {
             try {
-                const data = await promocaoService.buscarAtivasLote();
-                const arr = Object.values(data).map(p => ({
-                    id: p.id,
-                    nome: p.nome,
-                    produtoNome: p.produto?.nome || p.produtoNome || ''
-                }));
+                const data = await promocaoService.listarParaMeta();
+                const arr = (Array.isArray(data) ? data : []).map(p => {
+                    let inicio = '';
+                    if (p.agendada && p.dataInicio) {
+                        const d = new Date(p.dataInicio);
+                        if (!isNaN(d)) inicio = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+                    }
+                    return {
+                        id: p.id,
+                        nome: p.nome,
+                        produtoNome: p.produtoNome || '',
+                        comecaEm: inicio
+                    };
+                });
                 setPromocoesAtivas(arr);
             } catch (e) {
                 console.error("Erro ao carregar promoções", e);
@@ -846,7 +854,7 @@ const MetaFormModal = ({ isOpen, onClose, metaData, vendedores, mesAtualStr }) =
                                                     .filter(p => !metasPromocoes.some(mp => mp.promocaoId === p.id))
                                                     .map(p => (
                                                         <option key={p.id} value={p.id}>
-                                                            {p.nome}{p.produtoNome ? ` (${p.produtoNome})` : ''}
+                                                            {p.nome}{p.produtoNome ? ` (${p.produtoNome})` : ''}{p.comecaEm ? ` · começa em ${p.comecaEm}` : ''}
                                                         </option>
                                                     ))}
                                             </select>

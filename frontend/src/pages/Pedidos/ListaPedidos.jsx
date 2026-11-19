@@ -36,7 +36,9 @@ const getEncaixeInfo = (pedido) => {
     const obs = (pedido.observacoes || '').trim();
     const ehEncaixe = obs.toUpperCase().startsWith(PREFIXO_ENCAIXE);
     if (!ehEncaixe) return { encaixe: false, obsExibida: obs };
-    const resto = obs.slice(PREFIXO_ENCAIXE.length).replace(/^\n+/, '').trim();
+    // Laço: pedidos antigos podem ter o prefixo repetido (duplicava a cada edição)
+    let resto = obs;
+    while (resto.toUpperCase().startsWith(PREFIXO_ENCAIXE)) resto = resto.slice(PREFIXO_ENCAIXE.length).trim();
     return { encaixe: true, obsExibida: resto };
 };
 

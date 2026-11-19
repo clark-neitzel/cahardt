@@ -28,6 +28,15 @@ const promocaoService = {
     },
 
     /**
+     * Promoções vigentes + agendadas (para o formulário de Metas).
+     * Formato: [{ id, nome, tipo, produtoId, produtoNome, dataInicio, dataFim, agendada }]
+     */
+    listarParaMeta: async () => {
+        const response = await api.get('/promocoes/para-meta');
+        return response.data;
+    },
+
+    /**
      * Cria nova promoção para o produto
      */
     criar: async (dados) => {

@@ -94,6 +94,79 @@ const promocaoService = {
         return flex;
     },
 
+    /**
+     * Converte a data digitada na tela para o instante certo (horário de Brasília, -03:00 fixo;
+     * o servidor roda em UTC, então nada de setHours). "YYYY-MM-DD" → início = 00:00:00.000 do dia,
+     * fim = 23:59:59.999 do dia. String ISO completa (com hora) passa como está.
+     * @param {string|Date} valor
+     * @param {'inicio'|'fim'} ponta
+     * @returns {Date|null} null se inválida
+     */
+    parseDataPromocao: (valor, ponta) => {
+        if (valor instanceof Date) return isNaN(valor.getTime()) ? null : valor;
+        const str = String(valor ?? '').trim();
+        let d;
+        if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+            d = new Date(`${str}T${ponta === 'fim' ? '23:59:59.999' : '00:00:00.000'}-03:00`);
+            // rejeita dia inexistente (ex.: 2026-02-30 que o JS "rola" para março)
+            if (!isNaN(d.getTime()) && new Date(`${str}T12:00:00.000Z`).toISOString().slice(0, 10) !== str) return null;
+        } else {
+            d = new Date(str);
+        }
+        return isNaN(d.getTime()) ? null : d;
+    },
+
+    /**
+     * Promoções para o seletor de metas: vigentes + agendadas (ATIVA e dataFim >= agora).
+     * Vencida e ENCERRADA ficam de fora.
+     */
+    listarParaMeta: async (agora = new Date()) => {
+        const lista = await prisma.promocao.findMany({
+            where: { status: 'ATIVA', dataFim: { gte: agora } },
+            include: { produto: { select: { id: true, nome: true } } },
+        });
+        return lista
+            .map(p => ({
+                id: p.id,
+                nome: p.nome,
+                tipo: p.tipo,
+                produtoId: p.produtoId,
+                produtoNome: p.produto?.nome || null,
+                dataInicio: new Date(p.dataInicio).toISOString(),
+                dataFim: new Date(p.dataFim).toISOString(),
+                agendada: new Date(p.dataInicio) > agora,
+            }))
+            .sort((a, b) => (a.produtoNome || '').localeCompare(b.produtoNome || '', 'pt-BR')
+                || a.dataInicio.localeCompare(b.dataInicio));
+    },
+
+    /**
+     * Encerra (status ENCERRADA) as promoções ATIVA com dataFim já passada. Vencer não encerra
+     * sozinho e o produto só aceita uma ATIVA — a vencida trava a criação da próxima.
+     * Sem aplicar: só lista. Idempotente (2ª chamada → encerradas 0).
+     */
+    encerrarVencidas: async ({ aplicar = false } = {}) => {
+        const agora = new Date();
+        const lista = await prisma.promocao.findMany({
+            where: { status: 'ATIVA', dataFim: { lt: agora } },
+            include: { produto: { select: { codigo: true, nome: true } } },
+            orderBy: { dataFim: 'asc' },
+        });
+        const promocoes = lista.map(p => ({
+            id: p.id, nome: p.nome, tipo: p.tipo, produtoId: p.produtoId,
+            produtoCodigo: p.produto?.codigo ?? null, produtoNome: p.produto?.nome ?? null,
+            precoPromocional: Number(p.precoPromocional),
+            dataInicio: p.dataInicio, dataFim: p.dataFim, criadoPor: p.criadoPor,
+        }));
+        if (!aplicar) return { simulacao: true, agora, total: promocoes.length, promocoes };
+        // UM updateMany (atômico); o where repete o critério para não pegar o que mudou entre a leitura e a escrita
+        const r = promocoes.length ? await prisma.promocao.updateMany({
+            where: { id: { in: promocoes.map(p => p.id) }, status: 'ATIVA', dataFim: { lt: agora } },
+            data: { status: 'ENCERRADA', encerradoPor: 'sistema', encerradoEm: agora, encerradaAntesPrevisto: false },
+        }) : { count: 0 };
+        return { simulacao: false, encerradas: r.count, promocoes };
+    },
+
     // ── v1.6.0 da API da IA (aditivo; nada acima mudou) ─────────────────────────────────────
 
     /**

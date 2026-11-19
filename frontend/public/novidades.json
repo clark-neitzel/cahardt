@@ -1,5 +1,11 @@
 [
   {
+    "slug": "promocao-ajustes",
+    "titulo": "Promoções: novos ajustes",
+    "resumo": "Promoção vale do 1º ao último dia inteiro, editar pedido mantém o preço promocional, ENCAIXE DE ENTREGA não se repete e Metas voltou a listar promoções agendadas.",
+    "data": "2026-11-19"
+  },
+  {
     "slug": "promocao-vencida",
     "titulo": "Promoção vencida para de valer",
     "resumo": "No Novo Pedido, promoção com data final passada deixa de valer sozinha e o produto volta ao preço de tabela. Pedido aberto com preço de promoção vencida pode ter o preço ajustado ao reabrir.",

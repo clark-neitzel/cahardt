@@ -17,6 +17,9 @@ router.get('/ativa', promocaoController.buscarAtiva);
 // Buscar TODAS as promoções ativas em lote (1 query só, para o NovoPedido)
 router.get('/ativas-lote', promocaoController.buscarAtivasLote);
 
+// Promoções vigentes + agendadas (seletor de metas)
+router.get('/para-meta', promocaoController.listarParaMeta);
+
 // ESCRITA — exige admin OU produtos.edit.
 // Promoção define o PREÇO com que o produto sai no pedido (NovoPedido.jsx usa
 // promoAtiva.precoPromocional como preço-base), então criar/encerrar promoção é

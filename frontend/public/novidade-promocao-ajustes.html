@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Promoções, novos ajustes — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<meta property="og:title" content="🏷️ Hardt App: novos ajustes nas promoções">
+<meta property="og:description" content="Promoção vale o período inteiro, editar pedido mantém o preço promocional, ENCAIXE DE ENTREGA não se repete e Metas lista as promoções agendadas.">
+<meta property="og:type" content="website">
+<style>
+  :root { --primary:#00754A; --primary-dark:#006241; --house:#1E3932; --mint:#d4e9e2; --cream:#f2f0eb; --gold:#cba258; --ink:rgba(0,0,0,.87); --ink-soft:#5f6b66; letter-spacing:-0.01em; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--cream); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; line-height:1.55; -webkit-font-smoothing:antialiased; overflow-x:hidden; }
+  .wrap { max-width:620px; margin:0 auto; padding:0 16px 56px; }
+  .hero { background:linear-gradient(168deg,var(--house) 0%,#16302a 100%); color:#fff; padding:40px 16px 48px; }
+  .hero-inner { max-width:620px; margin:0 auto; text-align:center; }
+  .eyebrow { display:inline-block; background:var(--gold); color:#2b230f; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.14em; padding:6px 14px; border-radius:999px; margin-bottom:18px; }
+  .hero h1 { font-size:clamp(26px,7vw,38px); font-weight:800; line-height:1.12; margin:0 0 12px; text-wrap:balance; }
+  .hero p { color:rgba(255,255,255,.75); font-size:16px; max-width:46ch; margin:0 auto; text-wrap:balance; }
+  .sec-label { font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.16em; color:var(--primary-dark); margin:30px 4px 12px; }
+  .acc { background:#fff; border:1px solid #e3e1da; border-radius:16px; margin-bottom:10px; overflow:hidden; box-shadow:0 1px 2px rgba(30,57,50,.05); }
+  .acc-head { width:100%; display:flex; align-items:center; gap:12px; background:none; border:none; font:inherit; text-align:left; padding:15px 16px; cursor:pointer; min-height:56px; }
+  .acc-head:focus-visible { outline:3px solid var(--gold); outline-offset:2px; }
+  .acc-ico { width:38px; height:38px; border-radius:11px; background:var(--mint); display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
+  .acc-head strong { flex:1; font-size:15.5px; font-weight:700; }
+  .acc-seta { color:#9aa5a0; transition:transform .2s; font-size:13px; }
+  .acc.aberto .acc-seta { transform:rotate(180deg); }
+  .acc-corpo { display:none; padding:0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display:block; }
+  .acc-corpo p, .acc-corpo li { font-size:14px; color:var(--ink-soft); }
+  .acc-corpo p { margin:0 0 10px; }
+  .acc-corpo ul { margin:0; padding-left:18px; }
+  .acc-corpo li { margin-bottom:7px; }
+  .acc-corpo b { color:var(--ink); }
+  @media (max-width:420px) { .acc-corpo { padding-left:16px; } }
+  .tela { background:#fff; border:1px solid #e3e1da; border-radius:16px; overflow:hidden; margin-bottom:12px; box-shadow:0 1px 2px rgba(30,57,50,.05); }
+  .tela-titulo { background:var(--house); color:#fff; padding:12px 16px; font-size:13px; font-weight:800; display:flex; align-items:center; gap:8px; }
+  .tela-titulo.antes { background:#6b756f; }
+  .tela-corpo { padding:14px; background:#f7f6f2; }
+  .app-card { background:#fff; border:1px solid #e5e3dc; border-radius:12px; padding:10px 12px; }
+  .prod { font-size:13px; font-weight:700; color:var(--ink); }
+  .linha { display:flex; flex-wrap:wrap; align-items:center; gap:6px 8px; margin-top:6px; }
+  .chip { display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:700; padding:2px 8px; border-radius:999px; background:#dcfce7; color:#15803d; border:1px solid #86efac; }
+  .riscado { font-size:11px; color:#9ca3af; text-decoration:line-through; }
+  .campo-preco { width:64px; border:1px solid #93c5fd; background:#fff; color:#1e40af; border-radius:4px; padding:2px 6px; font-size:12px; font-weight:700; text-align:center; }
+  .flex { font-size:11px; font-weight:700; padding:0 5px; border-radius:4px; }
+  .flex.pos { background:#dcfce7; color:#15803d; }
+  .flex.neg { background:#fee2e2; color:#b91c1c; }
+  .qtd { font-size:11px; color:#6b756f; }
+  .pin { display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:50%; background:var(--gold); color:#2b230f; font-size:11px; font-weight:800; flex-shrink:0; vertical-align:2px; margin-left:2px; }
+  .legenda { padding:12px 16px 16px; }
+  .legenda div { display:flex; gap:8px; font-size:13px; color:var(--ink-soft); margin-bottom:7px; align-items:flex-start; }
+  .legenda .pin { margin:1px 0 0; }
+  .legenda b { color:var(--ink); }
+  .nota { font-size:12px; color:var(--ink-soft); padding:0 16px 14px; }
+  .rodape { text-align:center; font-size:13px; color:var(--ink-soft); margin-top:36px; }
+  .rodape strong { color:var(--primary-dark); }
+  table.lista { width:100%; border-collapse:collapse; font-size:13px; color:var(--ink-soft); }
+  table.lista td { padding:6px 0; border-bottom:1px dashed #e3e1da; }
+  table.lista td:last-child { text-align:right; font-weight:700; color:var(--ink); white-space:nowrap; padding-left:10px; }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Ajustes no Hardt App</span>
+    <h1>Promoções:<br>novos ajustes</h1>
+    <p>Cinco acertos nas promoções, no pedido e na tela de Metas.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="sec-label">O que mudou</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">📅</span>
+      <strong>A promoção vale o período inteiro</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Da <b>0h do dia de início até 23:59 do dia final</b>. Antes ela parava na noite anterior ao último dia. <b>Nas promoções novas</b> (criadas a partir de agora), a data mostrada na ficha do produto é a mesma que foi digitada. As promoções antigas continuam aparecendo no histórico com um dia a menos.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">✏️</span>
+      <strong>Editar pedido mantém o preço da promoção</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Ao editar e salvar um pedido, o selo e o preço da promoção continuam, enquanto ela estiver valendo.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🚚</span>
+      <strong>"ENCAIXE DE ENTREGA" não se repete mais</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Antes, cada vez que o pedido era editado, a observação ganhava mais uma linha "ENCAIXE DE ENTREGA". Agora aparece uma vez só, e o que você escreveu na observação é mantido. Em pedidos que já estavam repetidos, a lista mostra uma vez só.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🎯</span>
+      <strong>Metas: promoções agendadas voltaram à lista</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Em Configurações → Metas, a lista de promoções mostra de novo as que ainda vão começar, com o nome do produto e "começa em dd/mm".</p>
+    </div>
+  </div>
+
+  <div class="sec-label">As telas do app</div>
+
+  <div class="tela">
+    <div class="tela-titulo">Configurações · Metas · Meta de Promoções</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="prod">+ Adicionar promoção... <span class="pin">1</span></div>
+        <div class="qtd">Calzone Dezembro (Calzone Frango 500GR) · começa em 01/12 <span class="pin">2</span></div>
+        <div class="qtd">Enroladinho Novembro (Enroladinho Queijo 500GR)</div>
+      </div>
+    </div>
+  </div>
+  <div class="legenda">
+    <div><span class="pin">1</span><span><b>Lista de promoções</b> para vincular à meta.</span></div>
+    <div><span class="pin">2</span><span><b>Agendada:</b> mostra o nome do produto e "começa em dd/mm". As que já estão valendo aparecem sem esse trecho.</span></div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">✅</span>
+      <strong>As promoções vencidas foram encerradas</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Já dá para criar promoção nova nesses produtos.</p>
+    </div>
+  </div>
+
+  <p class="rodape"><strong>Hardt App</strong> · ajustes de 19/11/2026</p>
+</div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.parentElement;
+    const abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>

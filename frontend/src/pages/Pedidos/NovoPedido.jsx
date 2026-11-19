@@ -138,6 +138,15 @@ const fmtData = (d) => {
     return `${String(dt.getUTCDate()).padStart(2, '0')}/${String(dt.getUTCMonth() + 1).padStart(2, '0')}`;
 };
 
+// Remove do INÍCIO da observação o marcador "ENCAIXE DE ENTREGA" (todas as ocorrências,
+// qualquer caixa). Não mexe em "encaixe de entrega" no meio do texto do vendedor.
+const semPrefixoEncaixe = (txt) => {
+    let t = String(txt == null ? '' : txt).trim();
+    const P = 'ENCAIXE DE ENTREGA';
+    while (t.toUpperCase().startsWith(P)) t = t.slice(P.length).trim();
+    return t;
+};
+
 const NovoPedido = () => {
     const navigate = useNavigate();
     const { id: editId } = useParams();
@@ -352,7 +361,7 @@ const NovoPedido = () => {
                         }
 
                         setClienteId(pd.clienteId);
-                        setObservacoes(pd.observacoes || '');
+                        setObservacoes(semPrefixoEncaixe(pd.observacoes));
                         if (pd.dataVenda) {
                             setDataEntrega(pd.dataVenda.split('T')[0]);
                             dataEntregaOriginalRef.current = pd.dataVenda.split('T')[0];
@@ -408,7 +417,7 @@ const NovoPedido = () => {
                         const hojeLocal = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
                         if (pd.dataEntrega && pd.dataEntrega >= hojeLocal) setDataEntrega(pd.dataEntrega);
                         if (pd.isEncaixe !== undefined) setIsEncaixe(pd.isEncaixe);
-                        if (pd.observacoes && mesmoCLiente) setObservacoes(pd.observacoes);
+                        if (pd.observacoes && mesmoCLiente) setObservacoes(semPrefixoEncaixe(pd.observacoes));
                         if (pd.canalOrigem && mesmoCLiente) setCanalOrigem(pd.canalOrigem);
                         if (pd.tipoPedido && mesmoCLiente) {
                             setTipoPedido(pd.tipoPedido);
@@ -1344,7 +1353,7 @@ const NovoPedido = () => {
     };
 
     const salvarPedido = async (statusEnvio, latLng) => {
-        let obsFinal = observacoes;
+        let obsFinal = semPrefixoEncaixe(observacoes);
         if (isEncaixe) obsFinal = obsFinal ? `ENCAIXE DE ENTREGA\n${obsFinal}` : `ENCAIXE DE ENTREGA`;
 
         const itensLimpos = [];

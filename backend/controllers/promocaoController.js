@@ -25,6 +25,13 @@ const promocaoController = {
             return res.status(400).json({ error: 'Promoção condicional exige pelo menos 1 grupo de condições.' });
         }
 
+        // Datas "YYYY-MM-DD": vale da 0h do dia inicial até 23:59:59 do dia final, horário de Brasília
+        const inicio = promocaoService.parseDataPromocao(dataInicio, 'inicio');
+        const fim = promocaoService.parseDataPromocao(dataFim, 'fim');
+        if (!inicio) return res.status(400).json({ error: 'Data de início inválida.' });
+        if (!fim) return res.status(400).json({ error: 'Data final inválida.' });
+        if (fim < inicio) return res.status(400).json({ error: 'A data final não pode ser anterior à data de início.' });
+
         try {
             // Verifica se já existe uma promoção ativa para o produto
             const ativa = await prisma.promocao.findFirst({
@@ -45,8 +52,8 @@ const promocaoController = {
                     nome,
                     tipo,
                     precoPromocional: parseFloat(precoPromocional),
-                    dataInicio: new Date(dataInicio),
-                    dataFim: new Date(dataFim),
+                    dataInicio: inicio,
+                    dataFim: fim,
                     status: 'ATIVA',
                     criadoPor: criadoPor || 'sistema',
                     grupos: tipo === 'CONDICIONAL' ? {
@@ -167,6 +174,19 @@ const promocaoController = {
             return res.json(mapa);
         } catch (error) {
             console.error('Erro ao buscar promoções ativas (lote):', error);
+            return res.status(500).json({ error: 'Erro interno.' });
+        }
+    },
+
+    /**
+     * GET /api/promocoes/para-meta
+     * Promoções vigentes + agendadas (para o seletor de metas). Array, ordenado por produto/início.
+     */
+    listarParaMeta: async (req, res) => {
+        try {
+            return res.json(await promocaoService.listarParaMeta());
+        } catch (error) {
+            console.error('Erro ao listar promoções para meta:', error);
             return res.status(500).json({ error: 'Erro interno.' });
         }
     },

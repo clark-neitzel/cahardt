@@ -871,6 +871,7 @@ curl -H "x-ia-api-key: SUACHAVE" -X POST -H "Content-Type: application/json" \
   cliente na conversa, diferente de `/cliente/situacao` e `/cliente/buscar` (só painel). Endpoints
   100% novos — nenhum campo de nenhuma resposta existente foi alterado.
 - **1.7.0** (2026-10-08) — O bot da Ana precisa saber se o produto vem pronto para aquecer ou cru. Campo novo `grupoDescricao` no objeto único de produto (catálogo, reconhecer-telefone, meu-catalogo, itens de pedido, produtos-comprados), no catálogo antigo e na ficha; `descricao` nova nos itens de `GET /congelados/grupos`. Tudo aditivo — nada removido/renomeado.
+- **(2026-11-19, sem mudança de versão)** Datas de promoção: quem cria a promoção na tela digita "AAAA-MM-DD" e agora ela vale da 0h do dia de início até 23:59:59 do dia final (Brasília). Nenhum campo mudou; só o VALOR de `validoDe`/`validoAte` (e `dataInicio`/`dataFim`) das promoções criadas a partir de agora passa a ser o dia digitado (antes saía um dia antes). `validoAte` continua `AAAA-MM-DD` em America/Sao_Paulo.
 
 ## Fase 2 — Criação de pedido pela IA (IMPLEMENTADA na v1.4)
 

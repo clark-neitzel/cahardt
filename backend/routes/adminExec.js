@@ -64,7 +64,7 @@ router.get('/ping', (req, res) => {
         ok: true,
         // Marcador de deploy: bumpar a cada mudança de backend que precise de confirmação
         // em produção (não há outro jeito de saber de fora qual versão está no ar).
-        deployMarker: 'promocao-vigente-2026-11-18',
+        deployMarker: 'promocao-ajustes-2026-11-19',
         uptimeSegundos: Math.round(process.uptime()),
         timestamp: new Date().toISOString(),
         openaiConfigurada: !!process.env.OPENAI_API_KEY,
@@ -150,6 +150,18 @@ router.post('/etiquetas-sincronizar-ean', async (req, res) => {
         res.json({ simulacao: !aplicar, total: alteradas.length, alteradas, semEan });
     } catch (err) {
         console.error('[AdminExec] etiquetas-sincronizar-ean:', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// POST /api/admin-exec/promocoes-encerrar-vencidas[?aplicar=1]
+// Encerra (status ENCERRADA, encerradoPor 'sistema') as promoções ATIVA cuja dataFim já passou.
+// Sem ?aplicar=1 só SIMULA. Idempotente.
+router.post('/promocoes-encerrar-vencidas', async (req, res) => {
+    try {
+        res.json(await require('../services/promocaoService').encerrarVencidas({ aplicar: req.query.aplicar === '1' }));
+    } catch (err) {
+        console.error('[AdminExec] promocoes-encerrar-vencidas:', err.message);
         res.status(500).json({ error: err.message });
     }
 });

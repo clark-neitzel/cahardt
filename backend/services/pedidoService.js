@@ -623,6 +623,15 @@ const pedidoService = {
             }
         }
 
+        // Promoções vigentes dos itens: lidas ANTES da transação (como na criação). Sem isso a
+        // edição regravava os itens sem emPromocao/promocaoId e o selo/preço de promoção sumia.
+        const itensEdicao = (itens || []).filter(i => i && i.produtoId);
+        const promocoesAtivasEdit = {};
+        for (const prodId of [...new Set(itensEdicao.map(i => i.produtoId))]) {
+            const promo = await promocaoService.buscarAtivaPorProduto(prodId);
+            if (promo) promocoesAtivasEdit[prodId] = promo;
+        }
+
         const pedidoEditado = await prisma.$transaction(async (tx) => {
             const pedidoAntigo = await tx.pedido.findUnique({
                 where: { id },
@@ -664,28 +673,24 @@ const pedidoService = {
             const editProdutoIds = [...new Set((itens || []).map(i => i.produtoId).filter(Boolean))];
             const editRegras = await obterRegrasCategoria(editProdutoIds, tx);
 
-            const novosItens = (itens || []).map(item => {
-                const valorDigitado = parseFloat(item.valor) || 0;
-                const valorBase = parseFloat(item.valorBase) || 0;
-                const qtd = parseFloat(item.quantidade) || 0;
-
-                const flexBruto = isentoFlexEdit ? 0 : (valorDigitado - valorBase) * qtd;
-                const regra = !isentoFlexEdit ? editRegras.get(item.produtoId) : null;
-                const flexItem = regra
-                    ? (!regra.contabilizaFlex ? 0 : flexBruto > 0 && regra.flexPositivo === false ? 0 : flexBruto < 0 && regra.flexNegativo === false ? 0 : flexBruto)
-                    : flexBruto;
-
-                totalPedido += valorDigitado * qtd;
-                flexTotalPedido += flexItem;
-
-                return {
-                    produtoId: item.produtoId,
-                    quantidade: qtd,
-                    valor: valorDigitado,
-                    valorBase: valorBase,
-                    flexGerado: flexItem
-                };
-            });
+            // Mesmo cálculo da criação (promoção + regras de flex por categoria). parseFloat(...)||0
+            // protege contra NaN (a edição sempre tolerou valor/quantidade vazios).
+            const itensNormalizados = (itens || []).map(item => ({
+                ...item,
+                valor: parseFloat(item.valor) || 0,
+                valorBase: parseFloat(item.valorBase) || 0,
+                quantidade: parseFloat(item.quantidade) || 0,
+            }));
+            const valorTotalEstimadoEdit = itensNormalizados.reduce((acc, i) => acc + i.valor * i.quantidade, 0);
+            const calculo = calcularItensComFlex(itensNormalizados, promocoesAtivasEdit, valorTotalEstimadoEdit, editRegras);
+            let novosItens = calculo.itensData;
+            flexTotalPedido = calculo.flexTotalPedido;
+            // Cliente isento de flex: zera flex dos itens e do pedido (igual à criação)
+            if (isentoFlexEdit) {
+                novosItens = novosItens.map(i => ({ ...i, flexGerado: 0 }));
+                flexTotalPedido = 0;
+            }
+            totalPedido = novosItens.reduce((s, i) => s + i.valor * i.quantidade, 0);
 
             // Exclui os itens anteriores
             await tx.pedidoItem.deleteMany({
