@@ -58,11 +58,22 @@ export function listarCargasBaixadas(u) {
                     id: c.carga.id, numero: c.carga.numero, dataSaida: c.carga.dataSaida, motorista: c.carga.motorista,
                     totalPedidos: (c.carga.pedidos || []).length, baixadoEm: c.baixadoEm,
                     pendentes: (d.sujo.linhas.length + d.sujo.pedidos.length + (d.sujo.ordem ? 1 : 0) + d.concluir.length),
+                    etiquetas: d.etiquetas.length,                  // etiqueta de bolsa esperando para imprimir
+                    concLocal: !!d.estado?.conclusao?.local,        // conclusão ainda não enviada
                 });
             }
         }
     } catch { /* sem localStorage */ }
     return out.sort((a, b) => String(a.dataSaida).localeCompare(String(b.dataSaida)) || (a.numero - b.numero));
+}
+
+/** Remove do aparelho uma carga (carga + estado) e a marca de "última" se for ela. */
+export function removerCarga(u, e) {
+    try {
+        localStorage.removeItem(kCarga(u, e));
+        localStorage.removeItem(kEstado(u, e));
+        if (lerUltima(u) === e) localStorage.removeItem(kUltima(u));
+    } catch { /* secundário */ }
 }
 
 /** Limpa só carga já concluída E enviada, com saída há mais de 7 dias. NUNCA apaga toque não enviado. */

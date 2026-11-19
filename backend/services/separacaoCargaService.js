@@ -27,19 +27,23 @@ function etiquetaDe(p) {
     return p.bonificacao ? `BN#${n}` : p.especial ? `ZZ#${n}` : `#${n}`;
 }
 
+// Pedido que ainda entra na separação: ativo e ainda não entregue (statusEntrega tem default, nunca é null).
+const FILTRO_PEDIDO_PENDENTE = { cancelado: false, devolucaoFinalizada: false, statusEntrega: 'PENDENTE' };
+
 // ---------- cargas disponíveis ----------
 
 async function listarCargas() {
     const ontem = getDataReferencia(new Date(Date.now() - 24 * 3600 * 1000));
     const inicio = new Date(`${ontem}T00:00:00.000Z`);
     const embarques = await prisma.embarque.findMany({
-        where: { dataSaida: { gte: inicio }, conferenciaConcluidaEm: null },
+        // só cargas com ao menos um pedido ainda pendente de entrega (carga já entregue sai da lista)
+        where: { dataSaida: { gte: inicio }, conferenciaConcluidaEm: null, pedidos: { some: FILTRO_PEDIDO_PENDENTE } },
         orderBy: [{ dataSaida: 'asc' }, { numero: 'asc' }],
         take: 40,
         select: {
             id: true, numero: true, dataSaida: true, versao: true,
             responsavel: { select: { nome: true } },
-            pedidos: { where: { cancelado: false, devolucaoFinalizada: false }, select: { id: true } },
+            pedidos: { where: FILTRO_PEDIDO_PENDENTE, select: { id: true } },
         },
     });
     const ids = embarques.map((e) => e.id);
@@ -75,7 +79,7 @@ async function montarCarga(embarqueId) {
             responsavel: { select: { nome: true } },
             amostras: { select: { id: true, status: true } },
             pedidos: {
-                where: { cancelado: false, devolucaoFinalizada: false },
+                where: FILTRO_PEDIDO_PENDENTE,
                 orderBy: { cliente: { NomeFantasia: 'asc' } },
                 select: {
                     id: true, numero: true, especial: true, bonificacao: true,

@@ -22,7 +22,7 @@ Quem tem a permissão **Pode_Separar_Carga** (ligada em Administração → Usu�
 
 ## Como fazer (passo a passo)
 
-1. **Com internet**, abra Logística → Separação de Carga e escolha a carga. Aparecem as cargas que ainda não saíram: data de saída de ontem em diante e conferência da doca ainda não concluída.
+1. **Com internet**, abra Logística → Separação de Carga e escolha a carga. Aparecem só as cargas que ainda têm **pelo menos um pedido pendente de entrega**: data de saída de ontem em diante e conferência da doca ainda não concluída. Carga em que todos os pedidos já foram entregues (ou cancelados/devolvidos) some da lista, e o número de pedidos mostrado conta apenas os pendentes. No aparelho que já tinha essa carga guardada, ela abre na hora (mesmo sem sinal) e, se o servidor confirmar que já foi entregue e não houver nada seu esperando para ser enviado, fecha sozinha logo em seguida e some do aparelho.
 2. Ao escolher, a carga é **baixada para o aparelho**. Toque na barra da carga ("Trocar ▾"): no painel que abre aparece o texto verde "Carga baixada neste aparelho — pode entrar na câmara". Na barra fechada fica a bolinha e "baixada no aparelho".
 3. Entre na câmara e separe. Cada toque é guardado no aparelho na mesma hora — se a tela apagar ou o app fechar, nada se perde.
 4. Ao sair da câmara e voltar o sinal, tudo é enviado sozinho. O painel da barra mostra quantos toques ainda não foram enviados.
@@ -43,7 +43,7 @@ Lista de produtos em ordem alfabética, cada um com a **soma de todos os pedidos
 
 ### Por pedido (bolsa térmica)
 Um pedido por vez, para montar a bolsa de cada cliente. Cada pedido mostra o status: A separar, Separando, Com falta, Separado. Vale tudo do modo anterior (+, −, ✓, razão da falta), só que dentro do pedido.
-- Os pedidos que **saíram ou foram cancelados** da carga não aparecem.
+- Os pedidos que **saíram, foram cancelados ou já foram entregues** não aparecem: só entram na separação os pedidos ainda pendentes de entrega (vale nos dois modos, por carga e por pedido).
 - **Próximo pedido** leva ao seguinte na ordem, pulando os já prontos; também dá para abrir qualquer pedido na lista.
 - Os dois modos são **independentes**: o que você separa em "Carga inteira" não preenche o "Por pedido", e vice-versa.
 

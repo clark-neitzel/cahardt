@@ -11,10 +11,10 @@ import { useAuth } from '../../../contexts/AuthContext';
 import separacaoCargaService from '../../../services/separacaoCargaService';
 import impressaoEtiquetasService from '../../../services/impressaoEtiquetasService';
 import {
-    celula, chaveCarga, chavePedido, diffCarga, estadoVazio, indexarCarga, mesclarEstado, MOTIVO_NAO_TEM,
+    celula, chaveCarga, chavePedido, diffCarga, estadoVazio, indexarCarga, mesclarEstado, MOTIVO_NAO_TEM, cargasObsoletas,
 } from './separacaoCalculo';
 import {
-    dadosVazios, gravarCarga, gravarDados, gravarUltima, lerCarga, lerDados, lerUltima, limparAntigas, listarCargasBaixadas,
+    dadosVazios, gravarCarga, gravarDados, gravarUltima, lerCarga, lerDados, lerUltima, limparAntigas, listarCargasBaixadas, removerCarga,
 } from './separacaoStorage';
 
 const TAM_LOTE = 200;
@@ -318,21 +318,33 @@ export default function useSeparacaoCarga({ impressoraId, impressorasProntas = f
     }, [R]);
 
     // ───────────── cargas disponíveis ─────────────
+    // Devolve a lista do servidor, ou null se não houve resposta (offline/erro) — quem chama decide.
     const listar = useCallback(async () => {
         if (uid) setBaixadas(listarCargasBaixadas(uid));
-        if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) return null;
         try {
             const r = await separacaoCargaService.listar();
-            setCargas(Array.isArray(r?.cargas) ? r.cargas : []);
+            // resposta mal formada (portal de Wi-Fi, proxy devolvendo HTML): NÃO é "lista vazia" — nada é limpo
+            if (!Array.isArray(r?.cargas)) { setErroLista('Não foi possível carregar as cargas.'); return null; }
+            const lista = r.cargas;
+            setCargas(lista);
             setErroLista('');
             setSemRede(false);
+            // o servidor só lista carga com pedido pendente de entrega: a guardada no aparelho que sumiu da lista
+            // já foi entregue — sai do aparelho, desde que não tenha NADA a enviar (toque, conclusão, etiqueta).
+            if (uid) {
+                cargasObsoletas(listarCargasBaixadas(uid), lista, R.embarqueId).forEach((id) => removerCarga(uid, id));
+                setBaixadas(listarCargasBaixadas(uid));
+            }
+            return lista;
         } catch (e) {
             const s = e?.response?.status;
             if (s === 403) setErroLista('Você não tem permissão para separar cargas.');
             else if (!e?.response) setSemRede(true);
             else setErroLista(e?.response?.data?.error || 'Não foi possível carregar as cargas.');
+            return null;
         }
-    }, [uid]);
+    }, [uid, R]);
     const listarRef = useRef(listar); listarRef.current = listar;
 
     // abrir/baixar uma carga (precisa de sinal)
@@ -393,19 +405,38 @@ export default function useSeparacaoCarga({ impressoraId, impressorasProntas = f
         return abrirCarga(id);
     }, [abrirBaixada, abrirCarga, R]);
 
+    // fecha a carga aberta (volta para a lista) e a tira do aparelho — só usada para carga já entregue e sem pendência
+    const fecharAtiva = useCallback((id) => {
+        const numero = R.info?.carga?.numero;   // guarda ANTES de zerar (sem requisição)
+        R.embarqueId = null; R.info = null; R.dados = dadosVazios();
+        setInfo(null); setDados(dadosVazios()); setProntoParaCamara(false);
+        if (uid) { removerCarga(uid, id); setBaixadas(listarCargasBaixadas(uid)); }
+        toast(`A carga${numero != null ? ` #${numero}` : ''} já foi entregue e saiu da lista.`, { duration: 7000 });
+    }, [uid, R]);
+
     // ao entrar: reabre a carga em andamento (a que estava aberta) direto do aparelho
     const iniciou = useRef(false);
     useEffect(() => {
         if (!uid || iniciou.current) return;
         iniciou.current = true;
         setBaixadas(listarCargasBaixadas(uid));
+        // Reabre a última NA HORA, do aparelho (na câmara fria a rede mente: não se espera servidor).
         const ult = lerUltima(uid);
         if (ult && abrirBaixada(ult)) {
+            R.autoAberta = ult;
             setSemControladorSW(import.meta.env.PROD && 'serviceWorker' in navigator && !navigator.serviceWorker.controller);
             setTimeout(() => sincRef.current(), 400);
         }
-        listar();
-    }, [uid, abrirBaixada, listar]);
+        // Em segundo plano: se o servidor (resposta bem formada) não lista mais a carga reaberta automaticamente e não há
+        // nada a enviar, ela já foi entregue — fecha e some do aparelho. Carga aberta por toque nunca é fechada aqui.
+        listarRef.current().then((lista) => {
+            const auto = R.autoAberta;
+            R.autoAberta = null;
+            if (R.morto || !lista || !auto || R.embarqueId !== auto) return;
+            if (!cargasObsoletas(listarCargasBaixadas(uid), lista, null).includes(auto)) return;
+            fecharAtiva(auto);
+        }).catch(() => { R.autoAberta = null; });
+    }, [uid, abrirBaixada, fecharAtiva, R]);
 
     // ───────────── toques ─────────────
     const tocarLinha = useCallback((k, mudar) => {

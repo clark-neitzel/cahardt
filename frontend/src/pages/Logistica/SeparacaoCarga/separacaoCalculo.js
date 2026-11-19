@@ -222,3 +222,14 @@ export function textoCaixas(q, porCaixa) {
     const resto = arred(t - cx * pc);
     return `${cx} cx fechada${cx > 1 ? 's' : ''}${resto ? ` + ${fmtQtd(resto)} pct` : ''}`;
 }
+
+/**
+ * Cargas guardadas no aparelho que o servidor NÃO lista mais (já entregues) e que não têm nada a enviar.
+ * `baixadas` vem de listarCargasBaixadas (pendentes/etiquetas/concLocal). Nunca devolve a carga aberta agora (ativaId).
+ */
+export function cargasObsoletas(baixadas, cargasServidor, ativaId) {
+    const ids = new Set((cargasServidor || []).map((c) => c.id));
+    return (baixadas || [])
+        .filter((b) => b.id !== ativaId && !ids.has(b.id) && !b.pendentes && !b.etiquetas && !b.concLocal)
+        .map((b) => b.id);
+}

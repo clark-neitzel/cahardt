@@ -137,9 +137,13 @@ export default function SeparacaoCargaPage() {
     // ───── andamento (sempre à vista) ─────
     const ksCarga = chavesDaCarga(carga);
     const pedidoAberto = modo === 'pedido' && aberto ? idx.pedidos.get(aberto) : null;
+    const semPedidos = (carga.pedidos || []).length === 0;   // tudo foi entregue: nada mais a separar
     let txt; let pct; let vt = null;
     const falTxt = (r) => (r.fal ? <> · <span className="fal">falta {fmtFal(r.fal)}</span></> : null);
-    if (modo === 'carga') {
+    if (semPedidos) {
+        pct = 0;
+        txt = <b>Sem pedido pendente</b>;
+    } else if (modo === 'carga') {
         const r = conta(estado, idx, ksCarga); pct = r.pct;
         txt = <><b>{pct}%</b> · {r.ok} de {ksCarga.length} produtos{falTxt(r)}</>;
     } else if (pedidoAberto) {
@@ -210,7 +214,12 @@ export default function SeparacaoCargaPage() {
                     </div>
                 )}
 
-                {modo === 'carga' ? (
+                {semPedidos ? (
+                    <div className="vazio">
+                        <p style={{ margin: '0 0 .8em' }}>Esta carga não tem mais pedido pendente de entrega.</p>
+                        <button type="button" className="big" onClick={(e) => { e.stopPropagation(); setPainel(true); window.scrollTo({ top: 0 }); }}>Escolher outra carga</button>
+                    </div>
+                ) : modo === 'carga' ? (
                     <>
                         <div className="lst">
                             {carga.produtos.filter((p) => !soFalta || classe(estado, idx, h.chaveCarga(p.produtoId)) !== 'ok').map(linhaProduto)}
