@@ -1,5 +1,11 @@
 [
   {
+    "slug": "aprovar-mesmo-dia",
+    "titulo": "Aprovar pedido para hoje",
+    "resumo": "Em Pedidos Online, quem aprova o pedido do site agora pode escolher a entrega para o mesmo dia. O site do cliente continua sem aceitar.",
+    "data": "2026-11-23"
+  },
+  {
     "slug": "promocao-ajustes",
     "titulo": "Promoções: novos ajustes",
     "resumo": "Promoção vale do 1º ao último dia inteiro, editar pedido mantém o preço promocional, ENCAIXE DE ENTREGA não se repete e Metas voltou a listar promoções agendadas.",

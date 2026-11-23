@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Aprovar pedido para hoje — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp (sem imagem de propósito) -->
+<meta property="og:title" content="📅 Novidade no Hardt App: aprovar pedido para hoje">
+<meta property="og:description" content="Em Pedidos Online, quem aprova o pedido do site agora pode escolher a entrega para o mesmo dia. O site do cliente continua sem aceitar.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A; --primary-dark: #006241; --house: #1E3932;
+    --mint: #d4e9e2; --cream: #f2f0eb; --gold: #cba258;
+    --ink: rgba(0,0,0,.87); --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  html, body { overflow-x: hidden; }
+  body { margin: 0; background: var(--cream); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55; -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+  .hero { background: linear-gradient(168deg, var(--house) 0%, #16302a 100%); color: #fff; padding: 40px 16px 44px; }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow { display: inline-block; background: var(--gold); color: #2b230f; font-size: 11px; font-weight: 800;
+    text-transform: uppercase; letter-spacing: .14em; padding: 6px 14px; border-radius: 999px; margin-bottom: 18px; }
+  .hero h1 { font-size: clamp(28px, 7vw, 38px); font-weight: 800; line-height: 1.12; margin: 0 0 12px; text-wrap: balance; }
+  .hero p { color: rgba(255,255,255,.75); font-size: 16px; max-width: 46ch; margin: 0 auto; text-wrap: balance; }
+  .sec-label { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .16em;
+    color: var(--primary-dark); margin: 30px 4px 12px; }
+  .acc { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; margin-bottom: 10px; overflow: hidden;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05); }
+  .acc-head { width: 100%; display: flex; align-items: center; gap: 12px; background: none; border: none; font: inherit;
+    text-align: left; padding: 15px 16px; cursor: pointer; min-height: 44px; }
+  .acc-head:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .acc-ico { width: 38px; height: 38px; border-radius: 12px; background: var(--mint); display: flex;
+    align-items: center; justify-content: center; font-size: 19px; flex-shrink: 0; }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n { width: 30px; height: 30px; flex-shrink: 0; border-radius: 50%; background: var(--primary); color: #fff;
+    font-weight: 800; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+  .rodape { text-align: center; font-size: 13px; color: var(--ink-soft); margin-top: 40px; }
+  .rodape strong { color: var(--primary-dark); }
+
+  /* mockups */
+  .tela { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; overflow: hidden; margin-bottom: 12px;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05); }
+  .tela-titulo { background: var(--house); color: #fff; padding: 12px 16px; font-size: 13px; font-weight: 800; }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .app-card { background: #fff; border: 1px solid #e5e3dc; border-radius: 12px; overflow: hidden; margin-bottom: 10px; }
+  .app-card-head { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-bottom: 1px solid #f0efe9;
+    font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .12em; color: #6b756f; }
+  .app-card-body { padding: 12px; }
+  .app-input { border: 1px solid #d8d5cc; border-radius: 8px; padding: 8px 10px; font-size: 12.5px; color: var(--ink);
+    background: #fff; margin-bottom: 6px; }
+  .app-input small { display: block; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em;
+    color: #9aa5a0; margin-bottom: 2px; }
+  .app-input.vazio { color: #9aa5a0; }
+  .app-radio { display: flex; align-items: center; gap: 8px; border: 1px solid #e5e3dc; border-radius: 8px;
+    padding: 8px 10px; font-size: 12.5px; margin-bottom: 6px; color: #555; }
+  .app-radio.on { border-color: #38bdf8; background: #f0f9ff; }
+  .app-radio i { width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid #9aa5a0; flex-shrink: 0; }
+  .app-radio.on i { border-color: var(--primary); background: radial-gradient(var(--primary) 45%, #fff 50%); }
+  .app-dica { font-size: 11.5px; color: #6b756f; margin: 0 0 6px; }
+  .app-aviso { font-size: 11.5px; font-weight: 600; color: #b45309; background: #fffbeb; border: 1px solid #fde68a;
+    border-radius: 6px; padding: 6px 8px; margin: 6px 0 0; }
+  .app-botoes { display: flex; justify-content: flex-end; align-items: center; gap: 12px; margin-top: 10px; font-size: 12.5px; color: #6b756f; }
+  .app-btn { display: inline-flex; background: var(--primary); color: #fff; font-size: 12.5px; font-weight: 700;
+    padding: 9px 16px; border-radius: 999px; }
+  .pin { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%;
+    background: var(--gold); color: #2b230f; font-size: 11px; font-weight: 800; flex-shrink: 0; vertical-align: 2px; margin-left: 6px; }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">Novidade</span>
+    <h1>Aprovar pedido do site para hoje</h1>
+    <p>Em Pedidos Online, quem aprova o pedido agora pode escolher a entrega para o mesmo dia.</p>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <div class="sec-label">O que mudou</div>
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">📅</span><strong>Hoje já aparece no calendário</strong><span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Em <b>Pedidos Online → Site (Congelados) → "Aprovar e gerar pedido"</b>, o calendário da data de entrega deixa escolher <b>hoje</b>. Antes só dava a partir de amanhã.</li>
+        <li>Escolheu hoje? Aparece um <b>aviso amarelo</b>: "Entrega para hoje (mesmo dia) — confira se dá tempo de separar e embarcar."</li>
+        <li>O aviso é só um <b>lembrete</b> — ele não bloqueia nada.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="sec-label">As telas do app</div>
+
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 1 · Aprovar pedido — entrega para hoje</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">Aprovar pedido #1234</div>
+        <div class="app-card-body">
+          <div class="app-radio on"><i></i>Pedido normal (com nota)</div>
+          <div class="app-radio"><i></i>Pedido especial (sem nota)</div>
+          <div class="app-input" style="margin-top:10px"><small>Data de entrega <span class="pin">1</span></small>23/11/2026</div>
+          <p class="app-dica">segunda-feira</p>
+          <p class="app-aviso">Entrega para hoje (mesmo dia) — confira se dá tempo de separar e embarcar. <span class="pin">2</span></p>
+          <div class="app-botoes"><span>Cancelar</span><span class="app-btn">Gerar pedido <span class="pin">3</span></span></div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Toque no campo <b>Data de entrega</b> e escolha o dia de <b>hoje</b> no calendário.</span></div>
+      <div><span class="pin">2</span><span>O <b>aviso amarelo</b> lembra de conferir se dá tempo de separar e embarcar. Não impede de continuar.</span></div>
+      <div><span class="pin">3</span><span>Ao tocar em <b>Gerar pedido</b>, o pedido é criado com entrega para hoje.</span></div>
+    </div>
+  </div>
+
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 2 · Sem escolher data</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-body">
+          <div class="app-input vazio"><small>Data de entrega <span class="pin">1</span></small>dd/mm/aaaa</div>
+          <p class="app-dica">Sem data: será usado o próximo dia de entrega regular do cliente (a partir de amanhã).</p>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Campo <b>em branco</b>: o sistema usa o próximo dia de entrega do cliente, a partir de amanhã. Hoje <b>nunca</b> entra sozinho.</span></div>
+    </div>
+  </div>
+
+  <div class="sec-label">O que não mudou</div>
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🔒</span><strong>Continua como antes</strong><span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>O <b>site do cliente</b> e a <b>Ana (WhatsApp)</b> continuam <b>não aceitando</b> pedido para o mesmo dia. Só quem aprova dentro do app pode.</li>
+        <li>Sem escolher data, vale o <b>próximo dia de entrega do cliente</b>, a partir de amanhã.</li>
+        <li>Se o cliente pediu para um dia e você aprova <b>nesse mesmo dia</b>, o campo abre em branco: para sair hoje, escolha hoje no calendário.</li>
+        <li><b>Kit Festa:</b> nada mudou.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="sec-label">Para usar</div>
+  <div class="passos">
+    <div class="passo"><span class="passo-n">1</span><div><b>Atualize o app:</b> toque no ícone de atualizar ↻ (ou feche e abra o app).</div></div>
+    <div class="passo"><span class="passo-n">2</span><div>Vá em <b>Pedidos Online → Site (Congelados)</b> e toque em <b>Aprovar e gerar pedido</b>.</div></div>
+    <div class="passo"><span class="passo-n">3</span><div>No campo <b>Data de entrega</b>, escolha <b>hoje</b>, confira o aviso amarelo e toque em <b>Gerar pedido</b>.</div></div>
+  </div>
+
+  <p class="rodape">Dúvidas? Pergunte ao <strong>Clippy</strong> dentro do app.<br>— Hardt Salgados</p>
+</div>
+
+<script>
+  function alternar(btn) {
+    var acc = btn.parentElement;
+    var abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>
