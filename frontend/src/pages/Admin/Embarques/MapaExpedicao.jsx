@@ -948,7 +948,21 @@ export default function MapaExpedicao() {
             // reapareceria como pendente na recarga).
             await carregar({ limparRascunho: true });
         } catch (e) {
-            if (e.response?.status === 409) {
+            if (e.response?.data?.codigo === 'CARGA_JA_SEPARADA') {
+                // Regra: carga já separada na câmara fria não recebe mais pedidos. Nada foi
+                // aplicado e o arranjo não mudou — NÃO recarrega e NÃO limpa o rascunho, para o
+                // operador mover o pedido para outra carga e confirmar de novo.
+                const d = e.response.data;
+                const nums = Array.isArray(d.cargasSeparadas)
+                    ? [...new Set(d.cargasSeparadas.map(c => c?.numero).filter(n => n != null))]
+                    : [];
+                const base = (typeof d.error === 'string' && d.error.trim())
+                    || 'Esta carga já foi separada na câmara fria, então não dá mais para incluir pedidos nela. Crie uma nova carga para este pedido.';
+                toast.error(
+                    `${base}${nums.length ? ` Carga${nums.length > 1 ? 's' : ''} já separada${nums.length > 1 ? 's' : ''}: ${nums.map(n => `#${n}`).join(', ')}.` : ''}`,
+                    { duration: 10000 }
+                );
+            } else if (e.response?.status === 409) {
                 // O 409 cobre TRÊS causas diferentes (item sumiu · mudou de carga · mudou de
                 // situação: entrega já entregue, amostra entregue, cobrança registrada na rua).
                 // Cada conflito vem com a causa REAL pronta em `frase` (e em `motivo`), e

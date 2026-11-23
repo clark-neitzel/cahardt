@@ -7,6 +7,7 @@ import { toast } from 'react-hot-toast';
 import api from '../../services/api';
 import FormVeiculoPresencial from './FormVeiculoPresencial';
 import FormVoltaPresencial from './FormVoltaPresencial';
+import { ehRotaOffline } from '../../utils/rotasOffline';
 
 const DiarioGateway = () => {
     const { logout, user, signed } = useAuth();
@@ -71,7 +72,7 @@ const DiarioGateway = () => {
 
     // Exceção: a Separação de Carga (câmara fria, sem sinal) não fica bloqueada quando a conferência falhou por REDE
     // (ou enquanto ela ainda tenta sem internet). Com internet, e em qualquer outra tela, o bloqueio continua igual.
-    if (pathname.startsWith('/separacao-carga') && (diarioStatus.falhaRede || (diarioStatus.loading && navigator.onLine === false))) return null;
+    if (ehRotaOffline(pathname) && (diarioStatus.falhaRede || (diarioStatus.loading && navigator.onLine === false))) return null;
 
     if (diarioStatus.loading) {
         return <div className="fixed inset-0 bg-white z-[100] flex justify-center items-center font-semibold text-gray-500">Aguarde, verificando seu Ponto Diário...</div>;

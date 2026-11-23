@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import api from '../services/api';
 import { useAuth } from './AuthContext';
 import dataLocalHoje from '../utils/dataLocal';
+import { ehRotaOffline } from '../utils/rotasOffline';
 
 const DiarioContext = createContext();
 
@@ -26,7 +27,7 @@ export const DiarioProvider = ({ children }) => {
 
         // Prazo curto SÓ na Separação de Carga (câmara fria sem sinal). Em qualquer outra tela a chamada é igual
         // à de sempre (sem prazo): banco lento não pode fazer o modal do ponto aparecer para quem já iniciou o dia.
-        const naSeparacao = window.location.pathname.startsWith('/separacao-carga');
+        const naSeparacao = ehRotaOffline(window.location.pathname);
         try {
             const { data } = await api.get('/diarios/status', naSeparacao ? { timeout: 15000 } : undefined);
             setDiarioStatus({

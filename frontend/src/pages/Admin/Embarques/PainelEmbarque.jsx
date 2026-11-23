@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { Plus, Search, Truck, FileText, X, Map as MapIcon } from 'lucide-react';
 import toast from 'react-hot-toast';
 import embarqueService from '../../../services/embarqueService';
+import conferenciaMotoristaService from '../../../services/conferenciaMotoristaService';
+import SeloConferenciaMotorista from './SeloConferenciaMotorista';
 import vendedorService from '../../../services/vendedorService';
 import NovaCargaModal from './NovaCargaModal';
 import DetalhesCargaModal from './DetalhesCargaModal';
@@ -12,6 +14,7 @@ import AmostrasForaDeCarga from './AmostrasForaDeCarga';
 
 const PainelEmbarque = () => {
     const [embarques, setEmbarques] = useState([]);
+    const [resumosConf, setResumosConf] = useState({}); // comprovante da conferência do motorista, por embarqueId
     const [loading, setLoading] = useState(true);
     const [isNovaCargaOpen, setIsNovaCargaOpen] = useState(false);
     const [vendedores, setVendedores] = useState([]);
@@ -23,6 +26,16 @@ const PainelEmbarque = () => {
             setLoading(true);
             const dataEmbarques = await embarqueService.listar({});
             setEmbarques(dataEmbarques);
+            // Comprovante da conferência do motorista: UMA chamada para todas as cargas da lista. Falha aqui nunca quebra o Embarque.
+            // Sem await: não atrasa o fim do carregamento; o selo aparece quando a resposta chegar.
+            try {
+                const ids = (Array.isArray(dataEmbarques) ? dataEmbarques : []).map((e) => e.id).filter(Boolean).slice(0, 100);
+                if (ids.length) {
+                    conferenciaMotoristaService.resumo(ids)
+                        .then((r) => setResumosConf(r?.resumos && typeof r.resumos === 'object' ? r.resumos : {}))
+                        .catch(() => setResumosConf({}));
+                } else setResumosConf({});
+            } catch { setResumosConf({}); }
 
             const dataVendedores = await vendedorService.listar();
             // Filtração Avançada: Puxa só quem tá ativo E quem tem a flag 'Pode_Executar_Entregas' ou é Root Admin
@@ -135,6 +148,7 @@ const PainelEmbarque = () => {
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-gray-700">
                                     {emb.responsavel?.nome || <span className="text-red-500 text-xs text-italic">Usuário Deletado</span>}
+                                    <SeloConferenciaMotorista resumo={resumosConf[emb.id]} className="ml-2" />
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-center text-gray-900 font-bold">
                                     <span className="bg-gray-100 px-3 py-1 rounded-full text-xs border border-gray-200">{emb._count?.pedidos}</span>
@@ -186,6 +200,7 @@ const PainelEmbarque = () => {
                                     <span className="font-medium text-gray-700">
                                         {emb.responsavel?.nome || <span className="text-red-500">Sem motorista</span>}
                                     </span>
+                                    <SeloConferenciaMotorista resumo={resumosConf[emb.id]} />
                                 </div>
                                 <div className="flex justify-end mt-1">
                                     <span className="text-sky-600 text-[11px] font-semibold flex items-center gap-0.5">

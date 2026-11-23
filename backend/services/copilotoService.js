@@ -58,6 +58,7 @@ const ABAS = [
     // ── Logística ───────────────────────────────
     { slug: 'embarque',           nome: 'Embarque',                     rota: '/admin/embarques',                    perm: 'Pode_Acessar_Embarque' },
     { slug: 'separacao-carga',  nome: 'Separação de Carga',           rota: '/separacao-carga',                    perm: 'Pode_Separar_Carga' },
+    { slug: 'conferencia-motorista', nome: 'Conferir Carga (Motorista)', rota: '/conferencia-motorista',            perm: 'Pode_Conferir_Carga_Motorista' },
     { slug: 'mapa-camara-fria',  nome: 'Mapa da Câmara Fria',          rota: '/mapa-camara-fria.html',              perm: 'Pode_Ver_Mapa_Camara_Fria' },
     { slug: 'embarques-mapa',     nome: 'Mapa das Entregas',            rota: '/admin/embarques/mapa',               perm: 'Pode_Acessar_Embarque' },
     { slug: 'entregas',           nome: 'Entregas',                     rota: '/entregas',                           perm: ['Pode_Ver_Todas_Entregas', 'Pode_Executar_Entregas'] },

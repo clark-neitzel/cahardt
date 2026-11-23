@@ -35,6 +35,7 @@ const formasPagamentoEntregaRoutes = require('./routes/formasPagamentoEntrega');
 const embarqueRoutes = require('./routes/embarques'); // Módulo de Formação de Carga/Expedição
 const embarquesMapaRoutes = require('./routes/embarquesMapa'); // Mapa de divisão de cargas (Expedição)
 const separacaoCargaRoutes = require('./routes/separacaoCarga'); // Separação de carga na câmara fria (offline)
+const conferenciaMotoristaRoutes = require('./routes/conferenciaMotorista'); // Conferência da carga pelo motorista (offline)
 const entregasRoutes = require('./routes/entregas'); // Módulo Mobile do Entregador
 const despesasRoutes = require('./routes/despesas'); // Módulo de Despesas
 const despesaComprovanteRoutes = require('./routes/despesaComprovante'); // F2: comprovante da despesa (foto + IA)
@@ -200,6 +201,7 @@ app.use('/api/pagamentos-entrega', formasPagamentoEntregaRoutes); // Pagamentos 
 app.use('/api/embarques', embarquesMapaRoutes); // Mapa de divisão de cargas — ANTES do router clássico (senão /mapa cai no GET /:id)
 app.use('/api/embarques', embarqueRoutes); // Montagem Cargas e Despacho Logístico
 app.use('/api/separacao-carga', authMiddleware, separacaoCargaRoutes); // Separação de Carga (Logística)
+app.use('/api/conferencia-motorista', authMiddleware, conferenciaMotoristaRoutes); // Conferência da carga pelo motorista
 app.use('/api/entregas', entregasRoutes); // App Motorista
 app.use('/api/despesas', despesaComprovanteRoutes); // F2: precisa vir ANTES (rotas próprias, auth por rota)
 app.use('/api/despesas', despesasRoutes); // Módulo de Despesas

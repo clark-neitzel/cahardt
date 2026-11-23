@@ -404,7 +404,8 @@ const ConferenciaCargaPanel = ({ embarqueId, onFechar, onSituacao, onCargaAltera
                 'Ele entra como "falta bipar": o bipe é o que marca que o volume subiu no caminhão. A folha impressa ficou para trás (a versão da carga mudou).');
         } catch (e) {
             console.error('[Conferência] Falha ao adicionar à carga:', e);
-            avisar('erro', 'Não consegui adicionar',
+            avisar('erro',
+                e?.response?.data?.codigo === 'CARGA_JA_SEPARADA' ? 'Carga já separada' : 'Não consegui adicionar',
                 e?.response?.data?.error || 'Tente pelo botão "Atrelar Notas FATURADAS".');
         } finally {
             if (montadoRef.current) { setAdicionando(false); focar(); }

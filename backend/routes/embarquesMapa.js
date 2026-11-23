@@ -53,6 +53,7 @@ const whereElegivelNaCarga = () => {
     return resto;
 };
 const conferenciaCarga = require('../services/conferenciaCargaService');
+const cargaSeparadaGuard = require('../services/cargaSeparadaGuard');
 const osrm = require('../services/osrmService');
 const gcal = require('../services/googleCalendarService');
 const { diaEntrega, urgencia: urgenciaAmostra } = require('../services/amostraService');
@@ -1388,6 +1389,27 @@ router.post('/aplicar-divisao', verificarAuth, checkAcessoEmbarque, async (req, 
             ...destinos,
             ...[...porChave.values()].map(r => r.embarqueId).filter(Boolean)
         ]);
+        // Trava: carga de destino com separação CONCLUÍDA na câmara fria não recebe pedido.
+        // Lote inteiro recusado (409, nada aplicado). `conflitos` vai preenchido para a tela do mapa explicar.
+        {
+            const destPedidos = [...new Set(mudancas.filter(m => m.tipo === 'pedido' && m.embarqueId).map(m => m.embarqueId))];
+            const separadas = await cargaSeparadaGuard.cargasJaSeparadas(destPedidos);
+            if (separadas.size) {
+                const conflitosSep = mudancas
+                    .filter(m => m.tipo === 'pedido' && separadas.has(m.embarqueId))
+                    .map(m => novoConflito({
+                        tipo: 'pedido', id: m.id, reg: porChave.get(chave(m)), embarqueIdAtual: m.atual,
+                        motivo: 'a carga de destino já foi separada na câmara fria',
+                        frase: cargaSeparadaGuard.MENSAGEM
+                    }));
+                const primeira = separadas.values().next().value;
+                return res.status(409).json({
+                    ...cargaSeparadaGuard.corpoErro(primeira),
+                    cargasSeparadas: [...separadas.values()],
+                    conflitos: conflitosSep
+                });
+            }
+        }
         const pedidosEntrandoEmCarga = mudancas.filter(m => m.tipo === 'pedido' && m.embarqueId).map(m => m.id);
         if (pedidosEntrandoEmCarga.length) {
             const doHelper = await bloqueadosParaEmbarque(pedidosEntrandoEmCarga, { cargasPermitidas: cargasArranjo });
@@ -1538,6 +1560,17 @@ router.post('/aplicar-divisao', verificarAuth, checkAcessoEmbarque, async (req, 
                 err.statusCode = 400;
                 err.bloqueados = impedimentos;
                 throw err;
+            }
+
+            // Revalida a trava de carga separada no instante da escrita (alguém pode ter concluído a separação no meio).
+            {
+                const destP = [...new Set(mudancas.filter(m => m.tipo === 'pedido' && m.embarqueId).map(m => m.embarqueId))];
+                const sepTx = await cargaSeparadaGuard.cargasJaSeparadas(destP, tx);
+                if (sepTx.size) {
+                    const err = new Error(cargaSeparadaGuard.CODIGO);
+                    err.cargaSeparada = sepTx.values().next().value;
+                    throw err;
+                }
             }
 
             if (destinos.length) {
@@ -1704,6 +1737,9 @@ router.post('/aplicar-divisao', verificarAuth, checkAcessoEmbarque, async (req, 
             cargasAfetadas
         });
     } catch (error) {
+        if (error.message === cargaSeparadaGuard.CODIGO && error.cargaSeparada) {
+            return res.status(409).json({ ...cargaSeparadaGuard.corpoErro(error.cargaSeparada), conflitos: [] });
+        }
         if (error.statusCode === 409 || error.code === 'P2034') {
             return res.status(409).json({
                 // error.detalhe diz o que mudou de verdade (sumiu × carga ×

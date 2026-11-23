@@ -1,0 +1,51 @@
+// Textos das telas que usam os componentes de contagem. TEXTOS_SEPARACAO = exatamente o que a Separação sempre mostrou
+// (é o padrão dos componentes quando a prop `textos` não vem). TEXTOS_CONFERENCIA = vocabulário do motorista.
+export const TEXTOS_SEPARACAO = {
+    ariaBarra: 'Carga e modo de separação',
+    rotuloPedir: 'Separar',
+    rotuloFeito: 'Separei',
+    rotuloFalta: 'Falta',
+    ariaFeito: (nome) => `Quanto já separou de ${nome}`,
+    btnTudo: '✓ Separei tudo',
+    btnTudoOk: '✓ Separado',
+    motivos: [
+        { valor: 'VEM_DEPOIS', rotulo: '⏳ Vem depois', cls: 'dep', badge: 'Vem depois', badgeCls: 'a' },
+        { valor: 'NAO_TEM', rotulo: '✕ Não tem', cls: 'nt', badge: 'Não tem', badgeCls: 'r' },
+    ],
+    ficouFaltando: 'Ficou faltando',
+    semOrdem: 'Sem ordem — separa quando quiser',
+    amostraParte: 'separe à parte',
+    jaFeito: 'O que você já separou nas linhas que continuam foi mantido.',
+    ordemPara: 'Ordem para separar',
+    concluirCarga: 'Concluir separação da carga',
+    quantasBolsas: 'Quantas bolsas deu este pedido?',
+    tocarPedido: 'Toque em um pedido para separar.',
+    semOutroPedido: 'Não há outro pedido para separar nesta carga.',
+    dicaProximo: 'Segue a ordem que você escolheu e pula os já separados. Para escolher outro, toque em ‹.',
+    pedidoStatus: { ok: 'Separado', falta: 'Com falta', andando: 'Separando', zero: 'A separar' },
+};
+
+export const TEXTOS_CONFERENCIA = {
+    ariaBarra: 'Carga e modo de conferência',
+    rotuloPedir: 'Levar',
+    rotuloFeito: 'Conferi',
+    rotuloFalta: 'Falta',
+    ariaFeito: (nome) => `Quanto já conferiu de ${nome}`,
+    btnTudo: '✓ Conferi tudo',
+    btnTudoOk: '✓ Conferido',
+    motivos: [
+        { valor: 'VEM_DEPOIS', rotulo: '⏳ Vem depois', cls: 'dep', badge: 'Vem depois', badgeCls: 'a' },
+        { valor: 'NAO_VEIO', rotulo: '✕ Não veio', cls: 'nt', badge: 'Não veio', badgeCls: 'r' },
+    ],
+    ficouFaltando: 'Ficou faltando',
+    semOrdem: 'Sem ordem — confere quando quiser',
+    amostraParte: 'confira à parte',
+    jaFeito: 'O que você já conferiu nas linhas que continuam foi mantido.',
+    ordemPara: 'Ordem para conferir',
+    concluirCarga: 'Concluir conferência da carga',
+    quantasBolsas: 'Quantas bolsas leva este pedido?',
+    tocarPedido: 'Toque em um pedido para conferir.',
+    semOutroPedido: 'Não há outro pedido para conferir nesta carga.',
+    dicaProximo: 'Segue a ordem que você escolheu e pula os já conferidos. Para escolher outro, toque em ‹.',
+    pedidoStatus: { ok: 'Conferido', falta: 'Com falta', andando: 'Conferindo', zero: 'A conferir' },
+};

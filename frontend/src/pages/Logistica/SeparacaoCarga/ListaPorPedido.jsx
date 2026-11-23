@@ -2,10 +2,12 @@ import { Fragment } from 'react';
 import LinhaSeparacao from './LinhaSeparacao';
 import FicouFaltando from './FicouFaltando';
 import { classe, celula, faltas, pedidoPronto, proximoPedido, separado, statusPedido } from './separacaoCalculo';
+import { TEXTOS_SEPARACAO } from './textos';
 
 // Modo "Por pedido": lista dos pedidos (com a ordem para separar) + detalhe do pedido aberto
 // (linhas, "Ficou faltando", bolsas/etiquetas e "Próximo pedido").
-export default function ListaPorPedido({ carga, idx, estado, ordenados, aberto, setAberto, soFalta, h, onConcluir, aoAbrir }) {
+// `textos` e `avisoLinha(chave)` (opcionais): vocabulário da conferência e a linha "Separação avisou…" por chave.
+export default function ListaPorPedido({ carga, idx, estado, ordenados, aberto, setAberto, soFalta, h, onConcluir, aoAbrir, textos = TEXTOS_SEPARACAO, avisoLinha = null }) {
     const regra = estado.ordem?.regra || 'CARGA';
     const manual = estado.ordem?.manual || [];
     const ped = aberto ? idx.pedidos.get(aberto) : null;
@@ -17,7 +19,7 @@ export default function ListaPorPedido({ carga, idx, estado, ordenados, aberto, 
     const lista = (
         <div className="pl">
             <div className="ord">
-                <span>Ordem para separar</span>
+                <span>{textos.ordemPara}</span>
                 <div className="seg">{seg('CARGA', 'Da carga')}{seg('CIDADE', 'Por cidade')}{seg('MANUAL', 'Eu escolho')}</div>
                 {regra === 'MANUAL' && (
                     <p>Toque no quadrado para numerar: 1º, 2º, 3º… Toque de novo para tirar o número. Quem ficar sem número vai depois, em qualquer ordem.
@@ -27,10 +29,10 @@ export default function ListaPorPedido({ carga, idx, estado, ordenados, aberto, 
             </div>
             {visiveis.map((x) => {
                 const pos = manual.indexOf(x.id);
-                const st = statusPedido(estado, idx, x);
+                const st = statusPedido(estado, idx, x, textos.pedidoStatus);
                 const cab = [];
                 if (regra === 'CIDADE' && x.cidade !== cidadeAtual) { cidadeAtual = x.cidade; cab.push(<div key={`c-${x.id}`} className="cidh">{x.cidade || 'Sem cidade'}</div>); }
-                if (regra === 'MANUAL' && pos < 0 && !divisor && manual.length) { divisor = true; cab.push(<div key={`d-${x.id}`} className="cidh">Sem ordem — separa quando quiser</div>); }
+                if (regra === 'MANUAL' && pos < 0 && !divisor && manual.length) { divisor = true; cab.push(<div key={`d-${x.id}`} className="cidh">{textos.semOrdem}</div>); }
                 return (
                     <Fragment key={x.id}>
                         {cab}
@@ -47,12 +49,12 @@ export default function ListaPorPedido({ carga, idx, estado, ordenados, aberto, 
                     </Fragment>
                 );
             })}
-            <button type="button" className="big" onClick={onConcluir}>Concluir separação da carga</button>
+            <button type="button" className="big" onClick={onConcluir}>{textos.concluirCarga}</button>
         </div>
     );
 
     let detalhe;
-    if (!ped) detalhe = <div className="vazio">Toque em um pedido para separar.</div>;
+    if (!ped) detalhe = <div className="vazio">{textos.tocarPedido}</div>;
     else {
         const ks = idx.porPedido.get(ped.id) || [];
         const b = estado.pedidos?.[ped.id]?.b || 0;
@@ -70,13 +72,13 @@ export default function ListaPorPedido({ carga, idx, estado, ordenados, aberto, 
                         const it = ped.itens.find((i) => k === `p:${ped.id}:${i.produtoId}`);
                         return (
                             <LinhaSeparacao key={k} k={k} nome={it?.nome} unidade={it?.unidade} pedir={idx.pedir.get(k)} sep={separado(estado, idx, k)}
-                                cl={classe(estado, idx, k)} tocada={c.t} motivo={c.m} h={h} />
+                                cl={classe(estado, idx, k)} tocada={c.t} motivo={c.m} h={h} textos={textos} aviso={avisoLinha ? avisoLinha(k) : null} />
                         );
                     })}
                 </div>
-                <FicouFaltando itens={faltas(estado, idx, ks)} />
+                <FicouFaltando itens={faltas(estado, idx, ks)} textos={textos} />
                 <div className="bol">
-                    <h4>Quantas bolsas deu este pedido?</h4>
+                    <h4>{textos.quantasBolsas}</h4>
                     <div className="ln">
                         <button type="button" className="rd" onClick={() => h.mudarBolsas(ped.id, b - 1)} aria-label="Menos uma bolsa" disabled={b <= 0}>−</button>
                         <span className="nb">{b}</span>
@@ -90,8 +92,8 @@ export default function ListaPorPedido({ carga, idx, estado, ordenados, aberto, 
                 </div>
                 {prox
                     ? (<><button type="button" className="big o" onClick={() => { setAberto(prox.id); aoAbrir?.(); }}>Próximo pedido: {prox.cliente} ›</button>
-                        <p className="dica">Segue a ordem que você escolheu e pula os já separados. Para escolher outro, toque em ‹.</p></>)
-                    : <div className="vazio">Não há outro pedido para separar nesta carga.</div>}
+                        <p className="dica">{textos.dicaProximo}</p></>)
+                    : <div className="vazio">{textos.semOutroPedido}</div>}
             </>
         );
     }

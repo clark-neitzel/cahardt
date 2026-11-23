@@ -213,17 +213,17 @@ const AdicionarPedidosModal = ({ embarqueId, onClose, onSuccess }) => {
         if (!temPedidos && !temAmostras) return toast.error('Selecione ao menos um pedido ou amostra.');
         try {
             setSaving(true);
-            const promises = [];
-            if (temPedidos) promises.push(embarqueService.inserirPedidos(embarqueId, Array.from(selecionados)));
-            if (temAmostras) promises.push(embarqueService.inserirAmostras(embarqueId, Array.from(amostrasSelecionadas)));
-            await Promise.all(promises);
+            // Pedidos primeiro; amostras só se os pedidos deram certo (em carga já separada
+            // os pedidos levam 409 e as amostras não podem entrar sozinhas).
+            if (temPedidos) await embarqueService.inserirPedidos(embarqueId, Array.from(selecionados));
+            if (temAmostras) await embarqueService.inserirAmostras(embarqueId, Array.from(amostrasSelecionadas));
             const msgs = [];
             if (temPedidos) msgs.push(`${selecionados.size} pedido${selecionados.size > 1 ? 's' : ''}`);
             if (temAmostras) msgs.push(`${amostrasSelecionadas.size} amostra${amostrasSelecionadas.size > 1 ? 's' : ''}`);
             toast.success(`${msgs.join(' e ')} ${temPedidos ? 'atrelado' : 'atrelada'}${selecionados.size + amostrasSelecionadas.size > 1 ? 's' : ''} à carga!`);
             onSuccess();
         } catch (error) {
-            toast.error(error.response?.data?.error || 'Erro ao atrelar itens à carga.');
+            toast.error(error.response?.data?.error || 'Erro ao atrelar itens à carga.', { duration: 10000 });
         } finally {
             setSaving(false);
         }

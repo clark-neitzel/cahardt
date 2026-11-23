@@ -5,6 +5,7 @@ const prisma = require('../config/database'); // singleton compartilhado (pool �
 const verificarAuth = require('../middlewares/authMiddleware');
 const conferenciaCarga = require('../services/conferenciaCargaService');
 const amostraService = require('../services/amostraService');
+const cargaSeparadaGuard = require('../services/cargaSeparadaGuard');
 const gcal = require('../services/googleCalendarService');
 
 const checkAcessoEmbarque = async (req, res, next) => {
@@ -443,6 +444,11 @@ router.post('/:id/pedidos', verificarAuth, checkAcessoEmbarque, async (req, res)
         if (!pedidosIds || !pedidosIds.length) {
             return res.status(400).json({ error: 'Forneça a lista de pedidos a incluir.' });
         }
+
+        // Trava: carga com separação CONCLUÍDA na câmara fria não recebe mais pedido (cria-se uma carga nova).
+        // Separação só iniciada não trava. Recusa o lote inteiro, sem aplicar nada.
+        const separada = await cargaSeparadaGuard.cargaJaSeparada(embarqueId);
+        if (separada) return res.status(409).json(cargaSeparadaGuard.corpoErro(separada));
 
         // Trava: Validar se os pedidos realmente estão livres e aptos para embarque
         // (cancelado e devolvido ficam de fora — a mercadoria não vai sair)

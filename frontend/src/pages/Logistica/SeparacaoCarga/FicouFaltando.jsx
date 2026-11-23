@@ -1,17 +1,19 @@
-import { MOTIVO_DEPOIS, MOTIVO_NAO_TEM, fmtQtd } from './separacaoCalculo';
+import { fmtQtd } from './separacaoCalculo';
+import { TEXTOS_SEPARACAO } from './textos';
 
 // Lista "Ficou faltando": só linhas TOCADAS que ainda têm falta, com o selo do motivo.
-export default function FicouFaltando({ itens }) {
+export default function FicouFaltando({ itens, textos = TEXTOS_SEPARACAO }) {
     if (!itens?.length) return null;
     return (
         <div className="falt">
-            <h4>Ficou faltando</h4>
+            <h4>{textos.ficouFaltando}</h4>
             {itens.map((f) => (
                 <div key={f.chave}>
                     <span>{f.nome} — falta {fmtQtd(f.falta)}</span>
-                    {f.motivo === MOTIVO_NAO_TEM ? <span className="bd r">Não tem</span>
-                        : f.motivo === MOTIVO_DEPOIS ? <span className="bd a">Vem depois</span>
-                            : <span className="bd c">Sem motivo</span>}
+                    {(() => {
+                        const m = textos.motivos.find((x) => x.valor === f.motivo);
+                        return m ? <span className={`bd ${m.badgeCls}`}>{m.badge}</span> : <span className="bd c">Sem motivo</span>;
+                    })()}
                 </div>
             ))}
         </div>

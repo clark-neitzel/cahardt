@@ -28,6 +28,8 @@ const ORIGENS = {
     PEDIDO: { tamanho: '100x120', linguagem: 'ZPL', tipo: 'ETIQUETA_PEDIDO', usaCopias: false, zplSequencia: true },
     // bolsa térmica da Separação de Carga (permissão própria; reaproveita o tipo de fila do pedido)
     SEPARACAO: { tamanho: '100x120', linguagem: 'ZPL', tipo: 'ETIQUETA_PEDIDO', usaCopias: false, zplSequencia: true },
+    // bolsa térmica da Conferência da carga pelo motorista (permissão própria; mesmo formato da Separação)
+    CONFERENCIA: { tamanho: '100x120', linguagem: 'ZPL', tipo: 'ETIQUETA_PEDIDO', usaCopias: false, zplSequencia: true },
 };
 const TIPOS_REFERENCIA = ['ETIQUETA_PRODUTO', 'PEDIDO', 'FUNCIONARIO', 'AMOSTRA'];
 const MAX_BITMAPS = 60;
@@ -39,6 +41,7 @@ async function podeOrigem(req, origem) {
     const p = permsDe(req);
     if (p.admin) return true;
     if (origem === 'SEPARACAO') return p.Pode_Separar_Carga === true;
+    if (origem === 'CONFERENCIA') return p.Pode_Conferir_Carga_Motorista === true;
     if (origem === 'PRODUTO') return !!p.pcp?.etiquetas;
     if (origem === 'KIT_FESTA') return !!p.kitFesta;
     if (origem === 'FUNCIONARIO_PASTA' || origem === 'FUNCIONARIO_ARQUIVO') return !!p.Pode_Ver_Ponto || !!p.Pode_Editar_Ponto;

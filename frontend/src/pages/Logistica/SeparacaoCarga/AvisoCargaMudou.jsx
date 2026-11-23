@@ -1,8 +1,9 @@
 import { fmtQtd } from './separacaoCalculo';
+import { TEXTOS_SEPARACAO } from './textos';
 
 // "A carga mudou": o escritório mexeu na carga enquanto este aparelho estava sem sinal.
 // A nova carga só vira a ativa depois do OK da pessoa.
-export default function AvisoCargaMudou({ mudou, onOk }) {
+export default function AvisoCargaMudou({ mudou, onOk, textos = TEXTOS_SEPARACAO }) {
     if (!mudou) return null;
     const { diff, descartados } = mudou;
     return (
@@ -35,7 +36,7 @@ export default function AvisoCargaMudou({ mudou, onOk }) {
                         {descartados} toque{descartados > 1 ? 's' : ''} seu{descartados > 1 ? 's' : ''} {descartados > 1 ? 'eram' : 'era'} de pedido que saiu da carga e {descartados > 1 ? 'foram descartados' : 'foi descartado'}.
                     </p>
                 )}
-                <p style={{ margin: 0, fontSize: '.88em', fontWeight: 600, color: '#374151' }}>O que você já separou nas linhas que continuam foi mantido.</p>
+                <p style={{ margin: 0, fontSize: '.88em', fontWeight: 600, color: '#374151' }}>{textos.jaFeito}</p>
                 <div className="bt"><button type="button" className="big" onClick={onOk}>OK, entendi</button></div>
             </div>
         </div>

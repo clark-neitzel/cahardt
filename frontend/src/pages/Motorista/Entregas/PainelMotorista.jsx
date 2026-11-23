@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { abrirLinkExterno } from '../../../utils/linkExterno';
-import { Truck, MapPin, CheckCircle, Clock, Navigation, Star, X, QrCode } from 'lucide-react';
+import { Truck, MapPin, CheckCircle, Clock, Navigation, Star, X, QrCode, ClipboardList } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import ChipConferenciaMotorista from '../../../components/ChipConferenciaMotorista';
 import toast from 'react-hot-toast';
 import entregasService from '../../../services/entregasService';
 import CheckoutEntregaModal from './CheckoutEntregaModal';
@@ -85,12 +87,12 @@ const PainelMotorista = () => {
     return (
         <div className="max-w-md mx-auto min-h-screen bg-gray-100 pb-20">
             {/* Header Fixo Mobile */}
-            <div className="bg-house text-white p-4 shadow-md sticky top-0 z-10 flex justify-between items-center">
+            <div className="bg-house text-white p-4 shadow-md sticky top-0 z-10 flex flex-wrap justify-between items-center gap-2">
                 <div className="flex items-center space-x-2">
                     <Truck className="h-6 w-6" />
                     <h1 className="text-xl font-bold tracking-tight">Meu Roteiro</h1>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center justify-end gap-2">
                     {abaAtiva === 'pendentes' && totalPrioridades > 0 && (
                         <div className="text-xs font-bold bg-amber-500 text-white px-2 py-1 rounded flex items-center gap-1">
                             <Star className="h-3 w-3" /> {totalPrioridades}
@@ -101,9 +103,18 @@ const PainelMotorista = () => {
                             {entregas.length} {abaAtiva === 'pendentes' ? 'Restantes' : 'Feitas'}
                         </div>
                     )}
+                    {(user?.permissoes?.admin || user?.permissoes?.Pode_Conferir_Carga_Motorista === true) && (
+                        <Link
+                            to="/conferencia-motorista"
+                            className="text-xs font-bold text-white no-underline bg-primary px-3 py-1.5 rounded-full flex items-center gap-1 active:bg-primaryDark min-h-[44px]"
+                            title="Conferir a carga do caminhão"
+                        >
+                            <ClipboardList className="h-4 w-4" /> Conferir carga
+                        </Link>
+                    )}
                     <button
                         onClick={() => setConferirFolhaAberto(true)}
-                        className="text-xs font-bold bg-primary px-2.5 py-1.5 rounded-full flex items-center gap-1 active:bg-primaryDark min-h-[32px]"
+                        className="text-xs font-bold text-white bg-primary px-3 py-1.5 rounded-full flex items-center gap-1 active:bg-primaryDark min-h-[44px]"
                         title="Conferir folha impressa (QR)"
                     >
                         <QrCode className="h-4 w-4" /> Folha
@@ -195,6 +206,7 @@ const PainelMotorista = () => {
                                         )}
                                     </div>
                                 </div>
+                                {abaAtiva === 'pendentes' && <ChipConferenciaMotorista conferencia={entrega.conferenciaMotorista} className="mt-2" />}
                             </div>
 
                             {abaAtiva === 'pendentes' && (

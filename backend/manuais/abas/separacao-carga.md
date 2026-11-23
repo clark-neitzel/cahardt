@@ -10,6 +10,8 @@ permissao: Pode_Separar_Carga
 
 Tela feita para usar **dentro da câmara fria**, no iPad ou no celular, na hora de separar a mercadoria de uma carga. Substitui a folha de embarque impressa: letra grande, botões grandes, e **funciona sem internet**. Para cada produto aparecem três números: **SEPARAR** (o que o pedido pede), **SEPAREI** (o que você já tirou) e **FALTA** (a diferença).
 
+Depois, o motorista confere a mesma carga do zero na tela **Conferir Carga (Motorista)** e vê só um aviso nas linhas em que você marcou falta (nunca o número que você separou).
+
 Importante: o que você marca aqui **fica só registrado na separação**. Não muda pedido, nota fiscal, estoque nem a carga no Embarque. Nenhum aviso é mandado a ninguém (nem WhatsApp).
 
 ---
@@ -88,7 +90,7 @@ Os botões **A−** e **A+** (no painel da barra) aumentam ou diminuem a letra d
 
 ## Concluir separação
 
-Registra quem concluiu, quando e um resumo (quantos produtos completos, quantos com falta, quantos sem tocar, e a lista de faltas com a razão). Pode concluir de novo depois; vale a última. Concluir **não fecha a carga** nem avisa ninguém: é só o registro. Reenviar a mesma conclusão (por falha de internet) não cria duplicata.
+Registra quem concluiu, quando e um resumo (quantos produtos completos, quantos com falta, quantos sem tocar, e a lista de faltas com a razão). Pode concluir de novo depois; vale a última. Concluir **não fecha a carga** nem avisa ninguém: é só o registro. Mas, depois de concluída, **a carga não aceita mais pedido novo** (o Embarque recusa e manda criar uma nova carga) — assim a contagem não fica errada. Reenviar a mesma conclusão (por falha de internet) não cria duplicata.
 
 ---
 

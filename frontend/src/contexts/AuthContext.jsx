@@ -2,18 +2,15 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import appAuthService from '../services/appAuthService';
 import api from '../services/api';
 import { definirTokenMidia, limparTokenMidia } from '../utils/urlUpload';
+import { ehRotaOffline, rotaOfflinePara } from '../utils/rotasOffline';
 
 const AuthContext = createContext();
 
 const TENTATIVAS_SESSAO = 3;
 const CHAVE_SNAPSHOT = '@HardtApp:userSnapshot';
-// Telas que precisam abrir SEM internet (Separação de Carga dentro da câmara fria) usam o último usuário validado.
-const ROTA_OFFLINE = '/separacao-carga';
+// Telas que precisam abrir SEM internet (Separação de Carga na câmara fria, Conferência do motorista) usam o último usuário validado.
+// (lista e chaves em utils/rotasOffline.js)
 const guardarSnapshot = (u) => { try { localStorage.setItem(CHAVE_SNAPSHOT, JSON.stringify(u)); } catch { /* sem localStorage */ } };
-// Há separação em andamento NESTE aparelho para este usuário? (mesma chave de pages/Logistica/SeparacaoCarga/separacaoStorage.js)
-const temSeparacaoEmAndamento = (userId) => {
-    try { return !!JSON.parse(localStorage.getItem(`separacao_carga_v1:${userId}:ultima`) || 'null')?.embarqueId; } catch { return false; }
-};
 const lerSnapshot = () => { try { return JSON.parse(localStorage.getItem(CHAVE_SNAPSHOT) || 'null'); } catch { return null; } };
 const RENOVAR_MIDIA_MS = 6 * 60 * 60 * 1000; // token vale 12h; renova com 6h
 
@@ -107,17 +104,16 @@ export const AuthProvider = ({ children }) => {
             }
         }
 
-        // Só a Separação de Carga abre sem rede (usa o último usuário validado). Vale para abrir direto nela OU pelo
-        // ícone do app (que abre em "/"): com separação em andamento neste aparelho e permissão de separar, usa o
-        // snapshot (RootRoute leva para /separacao-carga). Qualquer outra rota continua caindo na TelaSemConexao;
+        // Só a Separação de Carga e a Conferência do motorista abrem sem rede (usa o último usuário validado). Vale para abrir direto nela OU pelo
+        // ícone do app (que abre em "/"): com carga em andamento neste aparelho e a permissão da tela, usa o
+        // snapshot (RootRoute leva para a tela certa, via rotaOfflinePara). Qualquer outra rota continua caindo na TelaSemConexao;
         // 401/403 já deslogou acima.
         const snapshot = lerSnapshot();
         const caminho = window.location.pathname;
-        const caminhoOk = usouSnapshot.current || caminho.startsWith(ROTA_OFFLINE) || caminho === '/';
-        const podeSeparar = !!(snapshot?.permissoes?.admin || snapshot?.permissoes?.Pode_Separar_Carga === true);
+        const caminhoOk = usouSnapshot.current || ehRotaOffline(caminho) || caminho === '/';
         // Só vale quando o servidor NÃO respondeu (rede caída/timeout). 5xx/502/503 (deploy) = TelaSemConexao como sempre.
         const semResposta = !ultimoErro?.response;
-        if (semResposta && snapshot?.id && caminhoOk && podeSeparar && temSeparacaoEmAndamento(snapshot.id)) {
+        if (semResposta && snapshot?.id && caminhoOk && rotaOfflinePara(snapshot)) {
             usouSnapshot.current = true;
             setUsandoSnapshot(true);
             setUser(snapshot);

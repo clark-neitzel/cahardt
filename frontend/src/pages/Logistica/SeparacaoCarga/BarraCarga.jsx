@@ -1,4 +1,5 @@
 import SelectBusca from '../../../components/SelectBusca';
+import { TEXTOS_SEPARACAO } from './textos';
 
 const dataBr = (v) => {
     const s = String(v || '').slice(0, 10);
@@ -27,7 +28,7 @@ export function CartaoCarga({ c, ativa, onEscolher, online }) {
 // Barra fixa em cima: carga (encolhida) + painel (trocar carga, modo, letra, internet).
 export default function BarraCarga({
     carga, modo, setModo, aberta, alternar, fechar, online, pendentes, sincronizando, lista, onEscolher, letra, mudarLetra, prontoParaCamara,
-    semControladorSW, memoriaCheia, erroServidor, erroLista, abrindo, irParaAviso, etiquetasN = 0,
+    semControladorSW, memoriaCheia, erroServidor, erroLista, abrindo, irParaAviso, etiquetasN = 0, textos = TEXTOS_SEPARACAO,
 }) {
     const modoTxt = modo === 'carga' ? 'Carga inteira' : 'Por pedido';
     const guardados = pendentes ? `${pendentes} toque${pendentes > 1 ? 's' : ''} guardado${pendentes > 1 ? 's' : ''} no aparelho` : 'tudo guardado no aparelho';
@@ -38,7 +39,7 @@ export default function BarraCarga({
             : `sem internet${pendentes ? ` · ${pendentes} guardado${pendentes > 1 ? 's' : ''}` : ''}`;
     return (
         <>
-            <button type="button" className="cab" onClick={alternar} aria-label="Carga e modo de separação" aria-expanded={aberta}>
+            <button type="button" className="cab" onClick={alternar} aria-label={textos.ariaBarra} aria-expanded={aberta}>
                 <div className="tx">
                     <b><span className="nc">Carga #{carga.numero}</span>{carga.motorista ? <span className="mo"> · {carga.motorista}</span> : null}</b>
                     <span className={erroServidor || memoriaCheia ? 'er' : ''}><i className={`dot ${online && !erroServidor ? '' : 'off'}`} />{modoTxt} · {estadoTxt}{etiquetasN > 0 ? ` · 🖨 ${etiquetasN}` : ''}</span>
@@ -58,7 +59,7 @@ export default function BarraCarga({
                             <span className="t">
                                 {pendentes
                                     ? `${sincronizando ? 'Enviando' : 'Enviando em instantes'} · ${pendentes} toque${pendentes > 1 ? 's' : ''} ainda não enviado${pendentes > 1 ? 's' : ''}`
-                                    : 'Carga baixada neste aparelho — pode entrar na câmara'}
+                                    : prontoParaCamara ? 'Carga baixada neste aparelho — pode entrar na câmara' : 'Carga aberta neste aparelho'}
                             </span>
                         </div>
                     )
@@ -73,6 +74,7 @@ export default function BarraCarga({
                     {lista.map((c) => <CartaoCarga key={c.id} c={c} ativa={c.id === carga.id} online={online} onEscolher={onEscolher} />)}
                 </div>
                 {abrindo && <p className="dica" style={{ marginTop: '.5em' }}>Baixando a carga…</p>}
+                <div className="dica" style={{ marginTop: '.5em', fontSize: '.7em', opacity: .75 }}>versão do app: {typeof __BUILD_ID__ !== 'undefined' ? __BUILD_ID__ : 'dev'}</div>
                 <div className="modo">
                     <button type="button" className={modo === 'carga' ? 'on' : ''} onClick={() => setModo('carga')}>Carga inteira<small>somo tudo por produto</small></button>
                     <button type="button" className={modo === 'pedido' ? 'on' : ''} onClick={() => setModo('pedido')}>Por pedido<small>bolsa térmica, um cliente por vez</small></button>
@@ -103,7 +105,7 @@ export function AvisosCarga({ avisoRef, memoriaCheia, erroServidor, pendentes, s
                     <button type="button" onClick={tentarDeNovo} disabled={sincronizando}>{sincronizando ? 'Enviando…' : 'Tentar de novo'}</button>
                 </div>
             )}
-            {semControladorSW && <div className="aviso-a" role="status">Feche e abra o app uma vez com sinal antes de entrar na câmara, para ele funcionar sem internet.</div>}
+            {semControladorSW && <div className="aviso-a" role="status">Este aparelho ainda não está pronto para ficar sem sinal. Feche e abra o app com internet.</div>}
         </div>
     );
 }

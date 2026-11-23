@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
 import { redeViva } from './utils/redeViva'
+import { garantirOffline } from './utils/garantirOffline'
 import { WifiOff, RefreshCw } from 'lucide-react'
 
 // Erro de "arquivo da tela sumiu" — acontece quando a aba ficou aberta durante um
@@ -76,7 +77,7 @@ class ErrorBoundary extends React.Component {
             </div>
             <h1 className="text-lg font-bold text-gray-900 mb-2">Sem conexão</h1>
             <p className="text-sm text-gray-600 mb-6 leading-relaxed">
-              Não foi possível abrir esta tela sem internet. Verifique a conexão e tente novamente — você continua logado.
+              Esta tela ainda não está guardada neste aparelho. Abra o app uma vez com internet para poder usá-la sem sinal. Você continua logado.
             </p>
             <button
               onClick={() => window.location.reload()}
@@ -141,6 +142,35 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
     navigator.serviceWorker.register('/sw.js').catch((err) => {
       console.warn('Falha ao registrar o service worker:', err);
     });
+  });
+
+  // OFFLINE GARANTIDO: com rede de verdade, pede ao service worker para conferir/repor a casca do app no cache
+  // (index.html + arquivos das telas offline). Roda: ao abrir, ao a internet voltar e ao voltar para o app —
+  // no máximo a cada ~10 min, sem competir com o carregamento inicial. Falha é silenciosa. Cobre também o caso
+  // do recarregamento por deploy novo (recarregarPorChunk apaga os caches e recarrega; aqui eles são repostos).
+  // Ver frontend/public/sw.js e frontend/src/utils/garantirOffline.js.
+  const INTERVALO_GARANTIA_MS = 10 * 60 * 1000;
+  let ultimaGarantia = 0;
+  let garantindo = false;
+  const agendarGarantia = (forcar) => {
+    if (garantindo) return;
+    if (!forcar && Date.now() - ultimaGarantia < INTERVALO_GARANTIA_MS) return;
+    garantindo = true;
+    const rodar = async () => {
+      try {
+        if (!(await redeViva())) return;
+        await navigator.serviceWorker.ready;
+        const r = await garantirOffline();
+        if (r.ok) ultimaGarantia = Date.now();
+      } catch { /* silencioso */ } finally { garantindo = false; }
+    };
+    const ocioso = window.requestIdleCallback || ((fn) => setTimeout(fn, 1500));
+    ocioso(rodar, { timeout: 5000 });
+  };
+  window.addEventListener('load', () => setTimeout(() => agendarGarantia(true), 2500));
+  window.addEventListener('online', () => agendarGarantia(false));
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') agendarGarantia(false);
   });
 }
 

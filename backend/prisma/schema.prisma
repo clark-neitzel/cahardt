@@ -5438,3 +5438,79 @@ model SeparacaoCargaConclusao {
   @@index([separacaoId])
   @@map("separacao_carga_conclusoes")
 }
+
+// ============================================================
+// Conferência da Carga pelo motorista (1ª etapa: no toque, sem bipe)
+// ESPELHO das 4 tabelas separacao_carga* (mesmos campos). Aditivo. Plano: docs/conferencia-motorista/PLANO.md
+// ============================================================
+model ConferenciaMotoristaCarga {
+  id            String    @id @default(uuid())
+  embarqueId    String    @unique @map("embarque_id") // 1 conferência por carga
+  ordemRegra    String    @default("CARGA") @map("ordem_regra") // CARGA | CIDADE | MANUAL
+  ordemManual   Json?     @map("ordem_manual")
+  ordemEm       DateTime? @map("ordem_em")
+  criadoPorId   String?   @map("criado_por_id")
+  criadoPorNome String?   @map("criado_por_nome")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  linhas     ConferenciaMotoristaLinha[]
+  pedidos    ConferenciaMotoristaPedido[]
+  conclusoes ConferenciaMotoristaConclusao[]
+
+  @@map("conferencia_motorista_cargas")
+}
+
+model ConferenciaMotoristaLinha {
+  id                  String                    @id @default(uuid())
+  conferenciaId       String                    @map("conferencia_id")
+  conferencia         ConferenciaMotoristaCarga @relation(fields: [conferenciaId], references: [id], onDelete: Cascade)
+  chave               String // "c:<produtoId>" | "p:<pedidoId>:<produtoId>"
+  escopo              String // CARGA | PEDIDO
+  pedidoId            String?                   @map("pedido_id")
+  produtoId           String                    @map("produto_id")
+  quantidadeConferida Decimal                   @default(0) @map("quantidade_conferida") @db.Decimal(12, 3) // "CONFERI" (absoluto)
+  tocada              Boolean                   @default(false)
+  motivoFalta         String?                   @map("motivo_falta") // NAO_VEIO | VEM_DEPOIS | null
+  carimboEm           DateTime                  @map("carimbo_em")
+  atualizadoPorId     String?                   @map("atualizado_por_id")
+  atualizadoPorNome   String?                   @map("atualizado_por_nome")
+  updatedAt           DateTime                  @updatedAt @map("updated_at")
+
+  @@unique([conferenciaId, chave])
+  @@index([conferenciaId])
+  @@index([pedidoId])
+  @@map("conferencia_motorista_linhas")
+}
+
+model ConferenciaMotoristaPedido {
+  id                String                    @id @default(uuid())
+  conferenciaId     String                    @map("conferencia_id")
+  conferencia       ConferenciaMotoristaCarga @relation(fields: [conferenciaId], references: [id], onDelete: Cascade)
+  pedidoId          String                    @map("pedido_id")
+  bolsas            Int                       @default(0)
+  bolsasEm          DateTime?                 @map("bolsas_em")
+  atualizadoPorNome String?                   @map("atualizado_por_nome")
+  updatedAt         DateTime                  @updatedAt @map("updated_at")
+
+  @@unique([conferenciaId, pedidoId])
+  @@index([conferenciaId])
+  @@map("conferencia_motorista_pedidos")
+}
+
+model ConferenciaMotoristaConclusao {
+  id             String                    @id @default(uuid())
+  conferenciaId  String                    @map("conferencia_id")
+  conferencia    ConferenciaMotoristaCarga @relation(fields: [conferenciaId], references: [id], onDelete: Cascade)
+  requisicaoId   String                    @unique @map("requisicao_id")
+  modo           String // CARGA | PEDIDO
+  carimboEm      DateTime                  @map("carimbo_em")
+  concluidaEm    DateTime                  @default(now()) @map("concluida_em")
+  porId          String?                   @map("por_id")
+  porNome        String?                   @map("por_nome")
+  versaoEmbarque Int                       @map("versao_embarque")
+  resumo         Json
+
+  @@index([conferenciaId])
+  @@map("conferencia_motorista_conclusoes")
+}

@@ -95,9 +95,9 @@
 .sepc .it.par .q.f b{color:#b45309}
 .sepc .it.nao .q.f b{color:#dc2626}
 .sepc .it.ok .q.f b{color:#16a34a}
-.sepc .acts{display:flex;gap:.4em;align-items:center}
+.sepc .acts{display:flex;flex-wrap:wrap;gap:.4em;align-items:center}
 .sepc .rd{width:3em;height:3em;border-radius:999px;border:2px solid #6b7280;background:#fff;font-size:1.15em;font-weight:800;cursor:pointer;color:#111;flex-shrink:0;line-height:1}
-.sepc .tudo{height:3.3em;border-radius:999px;border:2px solid var(--primary);background:#fff;color:var(--primaryDark);font-weight:800;cursor:pointer;padding:0 1em;font-size:.95em;white-space:nowrap}
+.sepc .tudo{min-height:3.3em;border-radius:999px;border:2px solid var(--primary);background:#fff;color:var(--primaryDark);font-weight:800;cursor:pointer;padding:.35em 1em;font-size:.95em;line-height:1.15}
 .sepc .it.ok .tudo{background:#16a34a;border-color:#16a34a;color:#fff}
 .sepc .mot{grid-column:1/-1;display:flex;gap:.5em;align-items:center;flex-wrap:wrap;border-top:1px dashed #d9b36a;padding-top:.6em}
 .sepc .mot>span{font-weight:800;font-size:.9em}
@@ -161,12 +161,12 @@
 @container (max-width:52em){
 .sepc .it{grid-template-columns:1fr 1fr 1fr}
 .sepc .it .nm,.sepc .it .acts{grid-column:1/-1}
-.sepc .acts .tudo{flex:1}
+.sepc .acts .tudo{flex:1 1 auto}
 }
 @container (max-width:75em){
 .sepc .dois .it{grid-template-columns:1fr 1fr 1fr}
 .sepc .dois .it .nm,.sepc .dois .it .acts{grid-column:1/-1}
-.sepc .dois .acts .tudo{flex:1}
+.sepc .dois .acts .tudo{flex:1 1 auto}
 }
 
 .sepc .fixo{border-radius:1em 1em 0 0;overflow:visible}
@@ -197,3 +197,6 @@
 .sepc .q .num{width:100%;border:2px dashed #9ca3af;border-radius:.5em;background:#fff;text-align:center;font-weight:800;font-size:1.6em;line-height:1.1;padding:.05em 0;min-width:0;color:#111}
 .sepc .q .num:focus{outline:2px solid var(--primary);border-style:solid}
 .sepc .nb .num{width:2.2em;border:2px dashed #9ca3af;border-radius:.4em;text-align:center;font-weight:800;font-size:1em;background:#fff;min-width:0}
+
+/* Conferência do motorista: aviso por linha "Separação avisou…" */
+.sepc .avs{grid-column:1/-1;margin-top:.45em;background:#fef3c7;border:2px solid #f59e0b;color:#92400e;border-radius:.7em;padding:.5em .75em;font-weight:800;font-size:.88em;line-height:1.3}

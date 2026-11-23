@@ -9,6 +9,8 @@
 
 export const MOTIVO_DEPOIS = 'VEM_DEPOIS';
 export const MOTIVO_NAO_TEM = 'NAO_TEM';
+export const MOTIVO_NAO_VEIO = 'NAO_VEIO';   // conferência do motorista (o "Não tem" da Separação)
+export const motivoEhNao = (m) => m === MOTIVO_NAO_TEM || m === MOTIVO_NAO_VEIO;
 
 export const chaveCarga = (produtoId) => `c:${produtoId}`;
 export const chavePedido = (pedidoId, produtoId) => `p:${pedidoId}:${produtoId}`;
@@ -61,7 +63,7 @@ export function classe(estado, idx, k) {
     const q = idx.pedir.get(k) ?? 0;
     if (arred(c.q) >= q && c.t && q > 0) return 'ok';
     if (!c.t) return '';
-    return c.m === MOTIVO_NAO_TEM ? 'nao' : 'par';
+    return motivoEhNao(c.m) ? 'nao' : 'par';
 }
 
 /** Resumo de um conjunto de chaves: quantas prontas, quanto falta (só nas linhas tocadas), %. */
@@ -81,15 +83,15 @@ export const pedidoPronto = (estado, idx, ped) => {
 };
 
 /** Selo do pedido na lista: { cor:'g'|'a'|'b'|'c', texto } */
-export function statusPedido(estado, idx, ped) {
+export function statusPedido(estado, idx, ped, rot = { ok: 'Separado', falta: 'Com falta', andando: 'Separando', zero: 'A separar' }) {
     const ks = idx.porPedido.get(ped.id) || [];
     const ok = ks.filter((k) => classe(estado, idx, k) === 'ok').length;
     const toc = ks.filter((k) => celula(estado, k).t).length;
     const b = estado?.pedidos?.[ped.id]?.b || 0;
-    if (ks.length && ok === ks.length) return { cor: 'g', texto: `Separado${b ? ` · ${b} bolsa${b > 1 ? 's' : ''}` : ''}` };
-    if (ks.length && toc === ks.length) return { cor: 'a', texto: 'Com falta' };
-    if (toc) return { cor: 'b', texto: 'Separando' };
-    return { cor: 'c', texto: 'A separar' };
+    if (ks.length && ok === ks.length) return { cor: 'g', texto: `${rot.ok}${b ? ` · ${b} bolsa${b > 1 ? 's' : ''}` : ''}` };
+    if (ks.length && toc === ks.length) return { cor: 'a', texto: rot.falta };
+    if (toc) return { cor: 'b', texto: rot.andando };
+    return { cor: 'c', texto: rot.zero };
 }
 
 const cmp = (a, b) => String(a || '').localeCompare(String(b || ''), 'pt-BR');

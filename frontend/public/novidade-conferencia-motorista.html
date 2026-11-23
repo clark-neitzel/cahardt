@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Conferir a carga no caminhão — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp (sem og:image: cartão compacto) -->
+<meta property="og:title" content="🚚 Novidade no Hardt App: Conferir a carga no caminhão">
+<meta property="og:description" content="O motorista confere a carga no celular antes de sair, registra o que faltou e imprime as etiquetas das bolsas. Funciona sem internet.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A; --primary-dark: #006241; --house: #1E3932; --mint: #d4e9e2;
+    --cream: #f2f0eb; --gold: #cba258; --ink: rgba(0,0,0,.87); --ink-soft: #5f6b66;
+    --amar: #fdf3d6; --amar-t: #8a6d2f; --verm: #fde3e1; --verm-t: #b3261e;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  html, body { overflow-x: hidden; }
+  body { margin: 0; background: var(--cream); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55; -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+  .hero { background: linear-gradient(168deg, var(--house) 0%, #16302a 100%); color: #fff; padding: 40px 16px 40px; }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow { display: inline-block; background: var(--gold); color: #2b230f; font-size: 11px; font-weight: 800;
+    text-transform: uppercase; letter-spacing: .14em; padding: 6px 14px; border-radius: 999px; margin-bottom: 18px; }
+  .hero h1 { font-size: clamp(28px, 7vw, 40px); font-weight: 800; line-height: 1.12; margin: 0 0 12px; text-wrap: balance; }
+  .hero p { color: rgba(255,255,255,.75); font-size: 16px; max-width: 46ch; margin: 0 auto; text-wrap: balance; }
+
+  .sec-label { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .16em;
+    color: var(--primary-dark); margin: 34px 4px 12px; }
+  .acc { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; margin-bottom: 10px; overflow: hidden;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05); }
+  .acc-head { width: 100%; display: flex; align-items: center; gap: 12px; background: none; border: none; font: inherit;
+    text-align: left; padding: 15px 16px; cursor: pointer; min-height: 56px; }
+  .acc-head:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .acc-ico { width: 38px; height: 38px; border-radius: 11px; background: var(--mint); display: flex;
+    align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  .tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; vertical-align: 1px; }
+  .tag.mint { background: var(--mint); color: var(--primary-dark); }
+  .tag.amar { background: var(--amar); color: var(--amar-t); }
+  .tag.verm { background: var(--verm); color: var(--verm-t); }
+
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n { width: 30px; height: 30px; flex-shrink: 0; border-radius: 50%; background: var(--primary); color: #fff;
+    font-weight: 800; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+  .rodape { text-align: center; font-size: 13px; color: var(--ink-soft); margin-top: 40px; }
+  .rodape strong { color: var(--primary-dark); }
+
+  /* ── MOCKUPS ── */
+  .tela { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; overflow: hidden; margin-bottom: 12px;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05); }
+  .tela-titulo { background: var(--house); color: #fff; padding: 12px 16px; font-size: 13px; font-weight: 800; }
+  .tela-corpo { padding: 14px; background: #f7f6f2; }
+  .app-card { background: #fff; border: 1px solid #e5e3dc; border-radius: 12px; overflow: hidden; margin-bottom: 10px; }
+  .app-card-head { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-bottom: 1px solid #f0efe9;
+    font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .12em; color: #6b756f; }
+  .app-card-body { padding: 12px; }
+  .app-btn { display: inline-flex; align-items: center; gap: 6px; background: var(--primary); color: #fff;
+    font-size: 12.5px; font-weight: 700; padding: 9px 16px; border-radius: 999px; }
+  .app-btn.claro { background: #fff; border: 1.5px solid var(--primary); color: var(--primary); }
+  .app-btn.bloco { display: flex; justify-content: center; width: 100%; }
+  .app-pills { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .app-pill { font-size: 12px; font-weight: 700; padding: 7px 14px; border-radius: 999px; border: 1.5px solid #d8d5cc;
+    color: #6b756f; background: #fff; }
+  .app-pill.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .pin { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%;
+    background: var(--gold); color: #2b230f; font-size: 11px; font-weight: 800; flex-shrink: 0; vertical-align: 2px; margin-left: 6px; }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+
+  .barra { background: var(--house); color: #fff; border-radius: 12px; padding: 10px 12px; display: flex;
+    justify-content: space-between; align-items: center; gap: 8px; font-size: 12.5px; margin-bottom: 8px; }
+  .barra small { display: block; font-size: 10.5px; color: rgba(255,255,255,.65); }
+  .barra .bt { font-size: 11px; font-weight: 700; background: rgba(255,255,255,.14); padding: 5px 10px; border-radius: 999px; white-space: nowrap; }
+  .net { font-size: 11.5px; font-weight: 700; background: var(--mint); color: var(--primary-dark); border-radius: 10px; padding: 7px 10px; margin-bottom: 8px; }
+  .net.off { background: var(--house); color: #fff; }
+  .and { background: #fff; border: 1px solid #e5e3dc; border-radius: 12px; padding: 9px 12px; margin-bottom: 10px; font-size: 12px; }
+  .and .bar { height: 7px; border-radius: 99px; background: #e8e6df; margin-top: 6px; overflow: hidden; }
+  .and .bar i { display: block; height: 100%; width: 40%; background: var(--primary); }
+  .lin { background: #fff; border: 1px solid #e5e3dc; border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; }
+  .lin.ok { background: #eef7f3; border-color: rgba(0,117,74,.3); }
+  .lin.fal { background: var(--amar); border-color: #ecd9a1; }
+  .lin h4 { margin: 0 0 8px; font-size: 13.5px; }
+  .lin h4 small { font-weight: 600; color: #8a948f; font-size: 11px; }
+  .nums { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; text-align: center; margin-bottom: 8px; }
+  .nums div { background: #f7f6f2; border-radius: 8px; padding: 5px 2px; }
+  .nums small { display: block; font-size: 9px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: #8a948f; }
+  .nums b { font-size: 20px; line-height: 1.1; }
+  .nums .f b { color: var(--verm-t); }
+  .acoes { display: flex; gap: 6px; align-items: center; }
+  .qb { width: 40px; height: 40px; border-radius: 10px; border: 1.5px solid #d8d5cc; background: #fff; display: flex;
+    align-items: center; justify-content: center; font-size: 20px; font-weight: 700; flex-shrink: 0; }
+  .acoes .app-btn { flex: 1; justify-content: center; padding: 11px 8px; }
+  .motivo { display: flex; gap: 6px; margin-top: 8px; align-items: center; flex-wrap: wrap; font-size: 11.5px; font-weight: 700; color: var(--amar-t); }
+  .ped { display: flex; align-items: center; gap: 8px; background: #fff; border: 1px solid #e5e3dc; border-radius: 12px;
+    padding: 9px 10px; margin-bottom: 6px; font-size: 12.5px; }
+  .ped .nn { width: 26px; height: 26px; border-radius: 8px; background: var(--mint); color: var(--primary-dark);
+    font-weight: 800; font-size: 11px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .ped .nn.vz { background: #fff; border: 1.5px dashed #c9c6bb; color: #9aa5a0; }
+  .ped div { flex: 1; min-width: 0; }
+  .ped small { display: block; color: #8a948f; font-size: 11px; }
+  .etq { background: #fff; border: 2px solid #111; border-radius: 6px; padding: 10px; text-align: center; max-width: 220px; margin: 0 auto 6px; }
+  .etq small { font-size: 10px; color: #555; }
+  .etq .bg { font-size: 22px; font-weight: 900; line-height: 1.1; }
+  .etq .cl { font-size: 17px; font-weight: 800; margin: 4px 0 2px; }
+  .fila { background: var(--house); color: #fff; border-radius: 10px; padding: 9px 12px; font-size: 12px; font-weight: 700; margin-top: 8px; }
+  .fila.amar { background: var(--amar); color: var(--amar-t); display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+  .avs { background:#fef3c7; border:1.5px solid #f59e0b; color:#92400e; border-radius:9px; padding:6px 9px; font-size:11.5px; font-weight:800; margin-top:8px; }
+  .chip { display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:700; padding:3px 9px; border-radius:999px; }
+  .chip.v { background:var(--mint); color:var(--primary-dark); }
+  .chip.a { background:#fef3c7; color:#b45309; }
+  .chip.g { background:#dcfce7; color:#166534; }
+  .cart { background:#fff; border:1px solid #e5e3dc; border-radius:12px; padding:10px 12px; margin-bottom:8px; font-size:12.5px; }
+  .cart b { display:block; font-size:13.5px; }
+  .cart small { color:#8a948f; }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>Conferir a carga<br>no caminhão</h1>
+    <p>O motorista confere o que está levando direto no celular, antes de sair. Falta registrada com motivo, bolsas com etiqueta — e funciona sem internet.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="sec-label" style="margin-top:26px">Como funciona</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">📍</span><strong>Onde fica e quem usa</strong><span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>No menu: <b>Logística → Conferir Carga (Motorista)</b>. No <b>Meu Roteiro</b> do motorista há também o botão <b>"Conferir carga"</b>, ao lado de "Folha".</li>
+        <li>Usa quem o dono liberar: permissão <b>"Conferir Carga (Motorista)"</b>.</li>
+        <li><b>Motorista vê só as cargas dele.</b> O administrador vê todas as cargas que ainda têm entrega pendente.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">✅</span><strong>Como se confere</strong><span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Você conta do zero: a tela mostra <b>LEVAR</b> (o que a carga pede), <b>CONFERI</b> (o que você já viu no caminhão) e <b>FALTA</b>.</li>
+        <li><b>"✓ Conferi tudo"</b> resolve a linha num toque. <b>−</b> e <b>+</b> ajustam quando não está tudo.</li>
+        <li>Dois jeitos: <b>Carga inteira</b> (soma por produto) ou <b>Por pedido</b> (um cliente por vez, com as bolsas).</li>
+        <li>Quando falta, escolha o motivo: <span class="tag verm">Não veio</span> ou <span class="tag amar">Vem depois</span>.</li>
+        <li>Se a <b>Separação</b> já tinha avisado que faltava algo, a linha mostra <b>"Separação avisou: faltam N — vem depois"</b>. Só o aviso de falta, nunca quanto foi separado.</li>
+        <li>A falta é só um <b>registro</b>: não muda pedido, nota nem estoque, e <b>não impede a entrega</b>.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🧊</span><strong>Bolsas e etiquetas</strong><span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>No modo <b>Por pedido</b> você informa quantas bolsas leva cada cliente e toca em <b>"Imprimir N etiquetas"</b>: sai uma etiqueta por bolsa ("BOLSA 1 de 3").</li>
+        <li><b>Atenção:</b> a quantidade de bolsas informada na <b>Separação</b> e a informada na <b>Conferência</b> são contagens <b>independentes</b>. Se os dois imprimirem, podem sair duas etiquetas.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">📶</span><strong>Sem internet — 3 passos</strong><span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li><b>1.</b> Abra a carga ainda <b>com sinal</b>. Na barra da carga, a faixa verde <b>"pode entrar na câmara"</b> confirma que está pronto. Se aparecer a faixa amarela, feche e abra o app com internet.</li>
+        <li><b>2.</b> Sem sinal tudo funciona igual; cada toque fica guardado no aparelho. Se o app fechar, abra pelo ícone: volta na mesma carga.</li>
+        <li><b>3.</b> Com o sinal de volta, o app envia sozinho. Etiquetas guardadas só saem em <b>"Imprimir agora"</b>.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🏢</span><strong>O que o escritório vê</strong><span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>No <b>Embarque</b>, a carga ganha o selo <span class="tag mint">Conferida por João 06:42 · 2 faltas</span> ou <span class="tag amar">Saiu sem conferência</span>.</li>
+        <li>No cartão da entrega (<b>Minhas Entregas</b> e <b>Rota → Entregas</b>) aparece <b>"N bolsas · Faltou: …"</b>.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ══════════ TELAS ══════════ -->
+  <div class="sec-label">As telas do app</div>
+
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 1 · Conferência da carga</div>
+    <div class="tela-corpo">
+      <div class="barra">
+        <div><b>Carga #482 · João</b><small>Carga inteira · baixada no aparelho</small></div>
+        <span class="bt">Trocar ▾</span><span class="pin">1</span>
+      </div>
+      <div class="net">🟢 Carga baixada neste aparelho — pode entrar na câmara<span class="pin">2</span></div>
+      <div class="lin ok">
+        <h4>Coxinha de Frango 1 kg</h4>
+        <div class="nums"><div><small>Levar</small><b>48</b></div><div><small>Conferi</small><b>48</b></div><div><small>Falta</small><b>✓</b></div></div>
+        <div class="acoes"><span class="app-btn">✓ Conferido</span></div>
+      </div>
+      <div class="lin fal">
+        <h4>Kibe 1 kg</h4>
+        <div class="nums"><div><small>Levar<span class="pin">3</span></small><b>24</b></div><div><small>Conferi</small><b>18</b></div><div class="f"><small>Falta</small><b>6</b></div></div>
+        <div class="acoes"><span class="qb">−</span><span class="app-btn">✓ Conferi tudo</span><span class="qb">+</span><span class="pin">4</span></div>
+        <div class="avs">Separação avisou: faltam 6 — vem depois<span class="pin">5</span></div>
+        <div class="motivo">Falta 6. Por quê?<span class="tag amar">⏳ Vem depois</span><span class="tag verm">✕ Não veio</span><span class="pin">6</span></div>
+      </div>
+      <span class="app-btn bloco">Concluir conferência da carga<span class="pin" style="background:#fff">7</span></span>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Barra da carga.</b> Toque para trocar de carga, de modo ou o tamanho da letra. No painel aparece também a versão do app.</span></div>
+      <div><span class="pin">2</span><span><b>Faixa verde:</b> o aparelho está pronto para ficar sem sinal. Se estiver amarela, feche e abra o app com internet.</span></div>
+      <div><span class="pin">3</span><span><b>LEVAR / CONFERI / FALTA:</b> o que a carga pede, o que você conferiu e a conta de quanto falta.</span></div>
+      <div><span class="pin">4</span><span><b>Botões grandes</b> para usar de luva: <b>−</b>, <b>"✓ Conferi tudo"</b> e <b>+</b>. Dá para digitar o número também.</span></div>
+      <div><span class="pin">5</span><span><b>Aviso da Separação</b> (só quando ela marcou falta): ajuda a entender o que já era esperado.</span></div>
+      <div><span class="pin">6</span><span><b>Motivo da falta:</b> "Vem depois" ou "Não veio". Tudo cai na lista "Ficou faltando".</span></div>
+      <div><span class="pin">7</span><span><b>Concluir:</b> se sobrou produto sem tocar, o app avisa antes. Pode continuar ajustando e concluir de novo.</span></div>
+    </div>
+  </div>
+
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 2 · Cartão da entrega (Meu Roteiro / Rota)</div>
+    <div class="tela-corpo">
+      <div class="cart"><b>Padaria Estrela</b><small>Rua das Flores 120 · Joinville</small>
+        <div style="margin-top:8px"><span class="chip v">🧊 3 bolsas</span> <span class="chip a">Faltou: Kibe 1 kg 6 (vem depois)</span><span class="pin">1</span></div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>O motorista vê quantas bolsas leva esse cliente e o que <b>faltou</b> na conferência, na hora de entregar. Sem preço.</span></div>
+    </div>
+  </div>
+
+  <div class="tela">
+    <div class="tela-titulo">💻 Tela 3 · Comprovante no Embarque</div>
+    <div class="tela-corpo">
+      <div class="cart"><b>Carga #482 · 20/11</b><small>João · 8 pedidos</small>
+        <div style="margin-top:8px"><span class="chip g">✓ Conferida por João 06:42 · 2 faltas</span><span class="pin">1</span></div></div>
+      <div class="cart"><b>Carga #483 · 20/11</b><small>Pedro · 5 pedidos</small>
+        <div style="margin-top:8px"><span class="chip a">Saiu sem conferência</span><span class="pin">2</span></div></div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Selo verde:</b> quem conferiu, a hora e quantas faltas. Aparece na lista e no topo de "Gerenciamento da Carga".</span></div>
+      <div><span class="pin">2</span><span><b>Selo âmbar:</b> a carga saiu (há entrega feita ou a data já passou) sem a conferência do motorista. É só aviso: nada é bloqueado.</span></div>
+    </div>
+  </div>
+
+  <div class="sec-label">Para começar a usar</div>
+  <div class="passos">
+    <div class="passo"><span class="passo-n">1</span><div><b>Atualize o app:</b> toque no ícone de atualizar ↻ (ou feche e abra o app).</div></div>
+    <div class="passo"><span class="passo-n">2</span><div>Abra <b>Logística → Conferir Carga (Motorista)</b> (ou o botão no <b>Meu Roteiro</b>).</div></div>
+    <div class="passo"><span class="passo-n">3</span><div>Escolha a <b>carga</b>, <b>com internet</b>, e confira a faixa verde.</div></div>
+    <div class="passo"><span class="passo-n">4</span><div>Toque em <b>"✓ Conferi tudo"</b> em cada produto; se faltar, ajuste e escolha o motivo.</div></div>
+    <div class="passo"><span class="passo-n">5</span><div>Toque em <b>"Concluir conferência da carga"</b>.</div></div>
+  </div>
+
+  <p class="rodape">Dúvidas? Pergunte ao <strong>Clippy</strong> dentro do app.<br>— Hardt Salgados</p>
+</div>
+
+<script>
+  function alternar(btn) {
+    var acc = btn.parentElement;
+    var abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>

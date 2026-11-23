@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import atendimentoService from '../services/atendimentoService';
 import ModalAtendimento from '../pages/Rota/ModalAtendimento';
 import dataLocalHoje from '../utils/dataLocal';
+import { ehRotaOffline } from '../utils/rotasOffline';
 import toast from 'react-hot-toast';
 
 const FORMAS_ICONS = {
@@ -173,7 +174,7 @@ const PendenciaRotaGateway = () => {
     // por segurança NÃO libera silenciosamente; pede para tentar de novo.
     // Exceção: a Separação de Carga (câmara fria, sem sinal) não fica bloqueada quando a conferência falhou por REDE.
     // Com internet, e em qualquer outra tela, o bloqueio continua igual.
-    if (erro && erroRede && pathname.startsWith('/separacao-carga')) return null;
+    if (erro && erroRede && ehRotaOffline(pathname)) return null;
     if (erro) {
         return (
             <div className="fixed inset-0 bg-secondary z-[200] flex items-center justify-center p-4 md:p-6">

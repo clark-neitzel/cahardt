@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom';
 import { X, Printer, Plus, Trash2, MapPin, Package, Edit2, Check, History, AlertTriangle, ScanLine } from 'lucide-react';
 import toast from 'react-hot-toast';
 import embarqueService from '../../../services/embarqueService';
+import conferenciaMotoristaService from '../../../services/conferenciaMotoristaService';
+import SeloConferenciaMotorista from './SeloConferenciaMotorista';
 import AdicionarPedidosModal from './AdicionarPedidosModal';
 import CobrancasCargaSection from './CobrancasCargaSection';
 import ConferenciaCargaPanel from './ConferenciaCargaPanel';
@@ -72,6 +74,7 @@ const descreverAlteracoes = (log) => {
 const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] }) => {
     const { user } = useAuth();
     const [embarque, setEmbarque] = useState(null);
+    const [resumoConf, setResumoConf] = useState(null); // comprovante da conferência do motorista
     const [loading, setLoading] = useState(true);
     const [isAddOpen, setIsAddOpen] = useState(false);
     const [removerLoader, setRemoverLoader] = useState(null);
@@ -122,6 +125,13 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
             if (!silencioso) setLoading(true);
             const data = await embarqueService.detalhar(embarqueId);
             setEmbarque(data);
+            // Comprovante da conferência do motorista (falha aqui nunca atrapalha a carga)
+            // (sem await: não atrasa a abertura da carga; o selo aparece quando a resposta chegar)
+            try {
+                conferenciaMotoristaService.resumo([embarqueId])
+                    .then((r) => setResumoConf(r?.resumos?.[embarqueId] || null))
+                    .catch(() => setResumoConf(null));
+            } catch { setResumoConf(null); }
         } catch (error) {
             toast.error('Erro ao ler a carga. Ela pode ter sido deletada.');
             if (!silencioso) onClose();   // no refresh de fundo, um blip de rede não fecha a carga na cara de quem está bipando
@@ -620,7 +630,7 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4 py-8">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-h-[90vh] flex flex-col overflow-hidden">
                 <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-x-3 gap-y-1 flex-wrap min-w-0">
                         <div className="bg-sky-100 p-1.5 rounded-lg">
                             <Package className="h-4 w-4 text-sky-600" />
                         </div>
@@ -632,6 +642,7 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                                 v{embarque.versao}
                             </span>
                         )}
+                        <SeloConferenciaMotorista resumo={resumoConf} />
                     </div>
                     <div className="flex items-center gap-2">
                         <button type="button" onClick={() => setShowPreview(true)} disabled={!embarque} className="flex items-center gap-2 px-3 py-2 bg-sky-50 text-sky-700 hover:bg-sky-100 border border-sky-200 rounded-xl transition-colors font-semibold text-xs shadow-sm disabled:opacity-50">

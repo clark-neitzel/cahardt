@@ -31,6 +31,7 @@ import api from '../../services/api';
 import MetaCidadeHojeBanner from '../../components/Rota/MetaCidadeHojeBanner';
 import MetaAdminHojeBanner from '../../components/Rota/MetaAdminHojeBanner';
 import SelectBusca from '../../components/SelectBusca';
+import ChipConferenciaMotorista from '../../components/ChipConferenciaMotorista';
 import SeloWhatsappCliente, { LegendaSeloWhatsapp } from '../../components/SeloWhatsappCliente';
 import ModalWhatsappCliente from '../../components/ModalWhatsappCliente';
 import whatsappClientesService from '../../services/whatsappClientesService';
@@ -1029,6 +1030,7 @@ const CardEntregaPendente = ({ pedido, onCheckout, podeCheckout, onVerCliente, o
                         </button>
                     )}
                 </div>
+                <ChipConferenciaMotorista conferencia={pedido.conferenciaMotorista} className="mt-1.5" />
                 {podeCheckout && (
                     <button
                         onClick={() => onCheckout(pedido)}

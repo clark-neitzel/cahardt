@@ -34,6 +34,9 @@ export default function TelaSemConexao() {
                     Não conseguimos confirmar seu acesso agora. Verifique a internet e tente novamente —
                     você continua logado.
                 </p>
+                <p className="text-xs text-gray-500 -mt-3 mb-6 leading-relaxed">
+                    Para usar a Separação ou a Conferência sem sinal, abra a carga uma vez com internet antes de entrar na câmara.
+                </p>
 
                 <button
                     onClick={handleTentar}

@@ -41,6 +41,7 @@ const DEFAULT_PERMISSIONS = {
     Pode_Editar_Embarque: false,
     Pode_Ver_Mapa_Camara_Fria: false,
     Pode_Separar_Carga: false,
+    Pode_Conferir_Carga_Motorista: false,
     Pode_Executar_Entregas: false,
     Pode_Ver_Todas_Entregas: false,
     Pode_Ajustar_Entregas: false,
@@ -306,6 +307,7 @@ const BOOL_INDEX = [
     // Logística
     { sec: 'logistica', path: 'Pode_Acessar_Embarque', nome: 'Embarque', desc: 'Montagem de cargas e romaneios', kw: 'carga romaneio embarque caminhao menu' },
     { sec: 'logistica', path: 'Pode_Separar_Carga', nome: 'Separação de Carga', desc: 'Separar a carga na câmara fria (funciona sem internet)', kw: 'separar separacao carga camara fria bolsa etiqueta' },
+    { sec: 'logistica', path: 'Pode_Conferir_Carga_Motorista', nome: 'Conferir Carga (Motorista)', desc: 'Conferir a carga do próprio caminhão no celular (funciona sem internet)', kw: 'conferir conferencia carga motorista caminhao bolsa etiqueta' },
     { sec: 'logistica', path: 'Pode_Ver_Mapa_Camara_Fria', nome: 'Mapa da Câmara Fria', desc: 'Layout das pilhas de caixas no container (câmara fria)', kw: 'camara fria container caixas mapa estoque' },
     { sec: 'logistica', path: 'Pode_Ver_Todas_Entregas', nome: 'Entregas (Auditor)', desc: 'Vê as entregas de todos os motoristas (+ menu Auditoria Entregas)', kw: 'auditoria entregas todas fiscalizar conferir' },
     { sec: 'logistica', path: 'Pode_Executar_Entregas', nome: 'Minhas Entregas (Motorista)', desc: 'A pessoa aparece como motorista e executa entregas', kw: 'motorista entregar dirigir minhas entregas caminhao' },
@@ -1185,6 +1187,7 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 px-2">Menus visíveis</p>
             <MenuToggle icon={PackageCheck} label="Embarque" checked={!!permissoes.Pode_Acessar_Embarque} onChange={() => toggleBool('Pode_Acessar_Embarque')} />
             <MenuToggle icon={ClipboardCheck} label="Separação de Carga" checked={!!permissoes.Pode_Separar_Carga} onChange={() => toggleBool('Pode_Separar_Carga')} />
+            <MenuToggle icon={ClipboardCheck} label="Conferir Carga (Motorista)" checked={!!permissoes.Pode_Conferir_Carga_Motorista} onChange={() => toggleBool('Pode_Conferir_Carga_Motorista')} />
             <MenuToggle icon={Snowflake} label="Mapa da Câmara Fria" checked={!!permissoes.Pode_Ver_Mapa_Camara_Fria} onChange={() => toggleBool('Pode_Ver_Mapa_Camara_Fria')} />
             <MenuToggle icon={Truck} label="Entregas (Auditor)" checked={!!permissoes.Pode_Ver_Todas_Entregas} onChange={() => toggleBool('Pode_Ver_Todas_Entregas')} />
             <MenuToggle icon={Truck} label="Minhas Entregas (Motorista)" checked={!!permissoes.Pode_Executar_Entregas} onChange={() => toggleBool('Pode_Executar_Entregas')} />

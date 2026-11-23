@@ -247,3 +247,7 @@ Quem conclui a entrega no lugar certo nunca vê essa pergunta. Sem internet, a c
 
 ## Aviso de cliente em atraso na entrega
 Na etapa de pagamentos do checkout aparece uma faixa amarela "Este cliente tem R$ X em atraso... Ofereça receber agora". É só informativa, não bloqueia a entrega, e só aparece se o administrador deixar ligada a chave "Motorista vê o atraso na entrega" (Configurações › Venda a inadimplente).
+
+## Conferência da carga pelo motorista (novo — 11/2026)
+- No topo de Minhas Entregas, ao lado de **Folha**, aparece o botão **Conferir carga** para quem tem a permissão *Conferir Carga (Motorista)*. Ele abre a tela de conferência (veja o manual "Conferir Carga (Motorista)").
+- Depois de conferir **por pedido**, o cartão da entrega (aqui e em Rota → Entregas) mostra **"N bolsas"** e **"Faltou: produto (motivo)"**. Só informativo: não bloqueia a entrega. Se a informação não puder ser carregada, o roteiro abre normalmente sem esse aviso.

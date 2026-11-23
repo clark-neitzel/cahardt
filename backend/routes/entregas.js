@@ -360,6 +360,15 @@ router.get('/pendentes', verificarAuth, checkAcessoEntregador, async (req, res) 
             } : null),
         }));
 
+        // Chip da Conferência do motorista (campo ADITIVO). Falha aqui NUNCA derruba o roteiro.
+        let chipsConferencia = new Map();
+        try {
+            chipsConferencia = await require('../services/conferenciaMotoristaService').resumoPorPedidos(pedidosEnriquecidos.map(p => p.id));
+        } catch (errConf) {
+            console.error('[Entregas] chip da conferência do motorista indisponível (roteiro segue):', errConf.message);
+        }
+        pedidosEnriquecidos.forEach(p => { p.conferenciaMotorista = chipsConferencia.get(p.id) || null; });
+
         res.json([...pedidosEnriquecidos, ...amostrasFormatadas]);
     } catch (error) {
         console.error('Erro ao listar entregas pendentes:', error);

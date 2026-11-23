@@ -8,29 +8,30 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../../contexts/AuthContext';
-import separacaoCargaService from '../../../services/separacaoCargaService';
 import impressaoEtiquetasService from '../../../services/impressaoEtiquetasService';
 import {
     celula, chaveCarga, chavePedido, diffCarga, estadoVazio, indexarCarga, mesclarEstado, MOTIVO_NAO_TEM, cargasObsoletas,
 } from './separacaoCalculo';
-import {
-    dadosVazios, gravarCarga, gravarDados, gravarUltima, lerCarga, lerDados, lerUltima, limparAntigas, listarCargasBaixadas, removerCarga,
-} from './separacaoStorage';
+import { dadosVazios } from './separacaoStorage';
+import { CONFIG_SEPARACAO } from './config';
+import { garantirOffline } from '../../../utils/garantirOffline';
+import { redeViva } from '../../../utils/redeViva';
 
 const TAM_LOTE = 200;
+const CHAVE_OFFLINE_OK = 'hardt:offline-casca-ok';   // último ok:true do garantirOffline + buildId
 const MAX_BOLSAS = 20;
 
-const novoId = () => {
+const novoId = (pre = 'sep-') => {
     try { if (window.crypto?.randomUUID) return window.crypto.randomUUID(); } catch { /* segue */ }
-    return 'sep-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 12);
+    return pre + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 12);
 };
 
 // id fixo deste aparelho (8..80, [A-Za-z0-9-]) — o servidor só usa para log
-function idDoAparelho() {
-    const k = 'separacao_carga_v1:aparelho';
+function idDoAparelho(prefixo = 'separacao_carga_v1') {
+    const k = `${prefixo}:aparelho`;
     try {
         let v = localStorage.getItem(k);
-        if (!v || !/^[A-Za-z0-9-]{8,80}$/.test(v)) { v = novoId().replace(/[^A-Za-z0-9-]/g, '').slice(0, 60); if (v.length < 8) v = `apar-${Date.now()}`; localStorage.setItem(k, v); }
+        if (!v || !/^[A-Za-z0-9-]{8,80}$/.test(v)) { v = novoId('apar-').replace(/[^A-Za-z0-9-]/g, '').slice(0, 60); if (v.length < 8) v = `apar-${Date.now()}`; localStorage.setItem(k, v); }
         return v;
     } catch { return `apar-${Date.now().toString(36)}`; }
 }
@@ -62,7 +63,11 @@ function aquecerCache() {
     } catch { /* aquecimento é secundário */ }
 }
 
-export default function useSeparacaoCarga({ impressoraId, impressorasProntas = false, precisaEscolherImpressora = false } = {}) {
+// `config` escolhe a tela (CONFIG_SEPARACAO por padrão = comportamento de sempre; CONFIG_CONFERENCIA = conferência do motorista).
+export default function useSeparacaoCarga({ impressoraId, impressorasProntas = false, precisaEscolherImpressora = false, config = CONFIG_SEPARACAO } = {}) {
+    const { service: servico, storage: S, textos: T } = config;
+    const { gravarCarga, gravarDados, gravarUltima, lerCarga, lerDados, lerUltima, limparAntigas, listarCargasBaixadas, removerCarga } = S;
+    const gerarId = () => novoId(config.idPrefixo);
     const { user } = useAuth();
     const uid = user?.id || null;
     const nomeUser = user?.nome || null;
@@ -78,14 +83,50 @@ export default function useSeparacaoCarga({ impressoraId, impressorasProntas = f
     const [abrindo, setAbrindo] = useState(false);
     const [erroServidor, setErroServidor] = useState(''); // o envio está parado por um motivo que NÃO é falta de internet (o aparelho guarda tudo)
     const [memoriaCheia, setMemoriaCheia] = useState(false);
-    const [semControladorSW, setSemControladorSW] = useState(false);
-    const [prontoParaCamara, setProntoParaCamara] = useState(false);
+    const [offline, setOffline] = useState(null);       // { ok, faltando, buildId } vindo de garantirOffline (null = ainda não verificou)
+    const [baixadaAgora, setBaixadaAgora] = useState(false);
+    const semControladorSW = !!offline && !offline.ok;    // aparelho ainda NÃO pronto para ficar sem sinal (faixa âmbar)
+    const prontoParaCamara = baixadaAgora && !!offline?.ok;
 
     const refs = useRef({ info: null, dados: dadosVazios(), desvio: 0, embarqueId: null, falhas: 0, voando: false, etqVoando: false, parado: false, impressoraId, impressorasProntas, precisaEscolher: precisaEscolherImpressora });
     refs.current.impressoraId = impressoraId;
     refs.current.impressorasProntas = impressorasProntas;
     refs.current.precisaEscolher = precisaEscolherImpressora;
     const R = refs.current;
+
+    // Pede ao service worker para garantir a casca do app no cache (abrir SEM sinal depois). Só com rede; nunca rejeita.
+    // Em desenvolvimento não há service worker: considera pronto para não mostrar aviso à toa.
+    const semRedeRef = useRef(false); semRedeRef.current = semRede;
+    const verificarOfflineRef = useRef(() => {});
+    verificarOfflineRef.current = async () => {
+        const buildAtual = typeof __BUILD_ID__ !== 'undefined' ? __BUILD_ID__ : 'dev';
+        if (!import.meta.env.PROD) { setOffline({ ok: true, faltando: [], buildId: 'dev' }); return; }
+        const redeInacessivel = () => (typeof navigator !== 'undefined' && navigator.onLine === false) || semRedeRef.current;
+        // Registro (por aparelho, sem dado pessoal) da última vez que a casca foi CONFIRMADA no cache, e de qual build.
+        // Sem rede não dá para perguntar de novo ao service worker: vale a última confirmação, mas só do MESMO build em execução.
+        const confirmadoNesteBuild = () => {
+            try { const r = JSON.parse(localStorage.getItem(CHAVE_OFFLINE_OK) || 'null'); return !!(r && r.ok === true && r.buildId === buildAtual); } catch { return false; }
+        };
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+            if (confirmadoNesteBuild()) setOffline({ ok: true, faltando: [], buildId: buildAtual });
+            else setOffline((atual) => atual || { ok: false, faltando: ['sem-confirmacao'], buildId: '' });
+            return;
+        }
+        const r = await garantirOffline();
+        if (R.morto) return;
+        if (r.ok) {
+            try { localStorage.setItem(CHAVE_OFFLINE_OK, JSON.stringify({ ok: true, buildId: buildAtual, em: new Date().toISOString() })); } catch { /* sem localStorage */ }
+            setOffline(r);
+        } else if (confirmadoNesteBuild()) {
+            // ok:false pode ser só a rede morta (o service worker refaz fetch na rede para confirmar). Rede realmente inacessível
+            // (Wi-Fi sem saída: navigator.onLine mente) + confirmação do MESMO build => a casca está em cache: verde.
+            const morta = redeInacessivel() || !(await redeViva());
+            if (R.morto) return;
+            setOffline(morta ? { ok: true, faltando: [], buildId: buildAtual } : r);   // rede viva e ok:false real => âmbar
+        } else setOffline(r);
+    };
+    // rede passou a falhar (primeira falha de envio/lista): reconfere — sem laço (só dispara quando `semRede` vira true)
+    useEffect(() => { if (semRede) verificarOfflineRef.current(); }, [semRede]);
 
     // ───────────── gravação ─────────────
     const persistir = useCallback((novos) => {
@@ -127,7 +168,7 @@ export default function useSeparacaoCarga({ impressoraId, impressorasProntas = f
         R.falhas = 0;
         R.parado = false;
         // etiqueta que ficou "ENVIANDO" quando a tela fechou volta para a fila (o servidor é idempotente por requisicaoId)
-        const d = { ...dadosNovos, etiquetas: (dadosNovos.etiquetas || []).map((e) => (e.status === 'ENVIANDO' ? { ...e, status: 'AGUARDANDO' } : e)) };
+        const d = { ...dadosNovos, etiquetas: (dadosNovos.etiquetas || []).map((e) => (e.status === 'ENVIANDO' ? { ...e, status: 'AGUARDANDO', exigeToque: true } : e)) };
         setInfo(infoNova);
         setErroServidor('');
         persistir(d);
@@ -155,7 +196,7 @@ export default function useSeparacaoCarga({ impressoraId, impressorasProntas = f
         const atual = R.info?.carga;
         if (!atual || !assinaturaServidor || assinaturaServidor === atual.assinatura || R.dados.mudou) return;
         try {
-            const nova = await separacaoCargaService.baixar(atual.id);
+            const nova = await servico.baixar(atual.id);
             if (nova?.carga && nova.carga.assinatura !== atual.assinatura) registrarMudanca(nova);
         } catch { /* sem sinal: confere na próxima */ }
     }, [registrarMudanca, R]);
@@ -211,7 +252,7 @@ export default function useSeparacaoCarga({ impressoraId, impressorasProntas = f
             let ultimaResp = null;
             for (const lote of lotes) {
                 if (R.embarqueId !== embarqueId) return;   // trocou de carga no meio: este laço morre aqui
-                const resp = await separacaoCargaService.sincronizar(embarqueId, { loteId: idDoAparelho(), aparelho: nomeDoAparelho(), ops: lote });
+                const resp = await servico.sincronizar(embarqueId, { loteId: idDoAparelho(config.prefixoStorage), aparelho: nomeDoAparelho(), ops: lote });
                 // a resposta é da carga ANTIGA: não pode ser aplicada na que está aberta agora
                 if (R.embarqueId !== embarqueId) return;
                 ultimaResp = resp;
@@ -235,6 +276,13 @@ export default function useSeparacaoCarga({ impressoraId, impressorasProntas = f
                     }
                 });
             }
+            // Conferência: avisos "Separação avisou" chegam no ciclo de 30 s — atualiza em silêncio (sem modal "A carga mudou")
+            if (ultimaResp?.avisosSeparacao && R.info?.carga && R.embarqueId === embarqueId
+                && JSON.stringify(ultimaResp.avisosSeparacao) !== JSON.stringify(R.info.carga.avisosSeparacao || null)) {
+                const novaInfo = { ...R.info, carga: { ...R.info.carga, avisosSeparacao: ultimaResp.avisosSeparacao } };
+                if (uid) gravarCarga(uid, embarqueId, novaInfo);
+                R.info = novaInfo; setInfo(novaInfo);
+            }
             R.falhas = 0;
             R.parado = false;
             setSemRede(false);
@@ -248,8 +296,10 @@ export default function useSeparacaoCarga({ impressoraId, impressorasProntas = f
                 R.parado = true;   // não adianta insistir sozinho; o botão "Tentar de novo" tenta
                 setErroServidor('Esta carga não existe mais no sistema.');
             } else if (status === 403) {
-                R.parado = true;
-                setErroServidor('Você não tem permissão para separar cargas.');
+                R.parado = true;   // não insiste; o que o aparelho tem continua guardado (nada é descartado)
+                setErroServidor(e?.response?.data?.codigo === 'CARGA_DE_OUTRO_MOTORISTA'
+                    ? 'Esta carga é de outro motorista.'
+                    : T.sem403);
             } else if (status === 400) {
                 R.falhas += 1;     // volta a tentar com espera crescente (pode ser um lote com problema que o escritório conserta)
                 setErroServidor(e?.response?.data?.error || 'O sistema recusou o envio.');
@@ -264,7 +314,7 @@ export default function useSeparacaoCarga({ impressoraId, impressorasProntas = f
         } finally {
             R.voando = false; setSincronizando(false);
         }
-    }, [mutar, conferirAssinatura, R]);
+    }, [mutar, conferirAssinatura, R, uid]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const sincRef = useRef(sincronizar); sincRef.current = sincronizar;
     const tentarDeNovo = useCallback(() => { R.parado = false; R.falhas = 0; return sincRef.current({ manual: true }); }, [R]);
@@ -298,7 +348,8 @@ export default function useSeparacaoCarga({ impressoraId, impressorasProntas = f
     // esconder o app, trocar de tela) — toque pendente não deve esperar a tela voltar a abrir.
     useEffect(() => {
         R.morto = false;   // (remontagem do StrictMode reaproveita a ref)
-        const on = () => { setNavOnline(true); R.falhas = 0; sincRef.current(); etqRef.current({ manual: false }); listarRef.current(); };
+        verificarOfflineRef.current();   // ao abrir a tela com rede: confere se o aparelho está pronto para ficar sem sinal
+        const on = () => { setNavOnline(true); R.falhas = 0; sincRef.current(); etqRef.current({ manual: false }); listarRef.current(); verificarOfflineRef.current(); };
         const off = () => setNavOnline(false);
         const vis = () => {
             if (document.visibilityState === 'visible') { sincRef.current(); etqRef.current({ manual: false }); }
@@ -323,7 +374,7 @@ export default function useSeparacaoCarga({ impressoraId, impressorasProntas = f
         if (uid) setBaixadas(listarCargasBaixadas(uid));
         if (typeof navigator !== 'undefined' && navigator.onLine === false) return null;
         try {
-            const r = await separacaoCargaService.listar();
+            const r = await servico.listar();
             // resposta mal formada (portal de Wi-Fi, proxy devolvendo HTML): NÃO é "lista vazia" — nada é limpo
             if (!Array.isArray(r?.cargas)) { setErroLista('Não foi possível carregar as cargas.'); return null; }
             const lista = r.cargas;
@@ -339,7 +390,7 @@ export default function useSeparacaoCarga({ impressoraId, impressorasProntas = f
             return lista;
         } catch (e) {
             const s = e?.response?.status;
-            if (s === 403) setErroLista('Você não tem permissão para separar cargas.');
+            if (s === 403) setErroLista(T.semLista403);
             else if (!e?.response) setSemRede(true);
             else setErroLista(e?.response?.data?.error || 'Não foi possível carregar as cargas.');
             return null;
@@ -352,7 +403,7 @@ export default function useSeparacaoCarga({ impressoraId, impressorasProntas = f
         if (!uid || abrindo) return false;
         setAbrindo(true);
         try {
-            const r = await separacaoCargaService.baixar(id);
+            const r = await servico.baixar(id);
             const desvio = r?.agora ? Date.parse(r.agora) - Date.now() : 0;
             const baixada = { carga: r.carga, baixadoEm: new Date().toISOString(), desvioRelogioMs: Number.isFinite(desvio) ? desvio : 0 };
             const local = lerDados(uid, id);
@@ -373,16 +424,16 @@ export default function useSeparacaoCarga({ impressoraId, impressorasProntas = f
                 gravarCarga(uid, id, baixada);
                 ativar(baixada, { ...local, estado: mesclarEstado(local.estado, r.estado), mudou: null });
             }
-            setProntoParaCamara(true);
-            setSemControladorSW(import.meta.env.PROD && 'serviceWorker' in navigator && !navigator.serviceWorker.controller);
+            setBaixadaAgora(true);
             aquecerCache();
+            verificarOfflineRef.current();
             limparAntigas(uid);
             setBaixadas(listarCargasBaixadas(uid));
             setSemRede(false);
             return true;
         } catch (e) {
             const s = e?.response?.status;
-            toast.error(s === 404 ? 'Esta carga não está mais disponível.' : s === 403 ? 'Você não tem permissão para separar cargas.' : !e?.response ? 'Sem sinal para baixar a carga. Tente com internet.' : (e?.response?.data?.error || 'Não foi possível baixar a carga.'));
+            toast.error(s === 404 ? 'Esta carga não está mais disponível.' : s === 403 ? (e?.response?.data?.codigo === 'CARGA_DE_OUTRO_MOTORISTA' ? 'Esta carga é de outro motorista.' : T.sem403) : !e?.response ? 'Sem sinal para baixar a carga. Tente com internet.' : (e?.response?.data?.error || 'Não foi possível baixar a carga.'));
             if (!e?.response) setSemRede(true);
             return false;
         } finally { setAbrindo(false); }
@@ -394,7 +445,7 @@ export default function useSeparacaoCarga({ impressoraId, impressorasProntas = f
         const c = lerCarga(uid, id);
         if (!c?.carga) { toast.error('Esta carga não está guardada neste aparelho.'); return false; }
         ativar(c, lerDados(uid, id));
-        setProntoParaCamara(true);
+        setBaixadaAgora(true);
         return true;
     }, [uid, ativar]);
 
@@ -409,7 +460,7 @@ export default function useSeparacaoCarga({ impressoraId, impressorasProntas = f
     const fecharAtiva = useCallback((id) => {
         const numero = R.info?.carga?.numero;   // guarda ANTES de zerar (sem requisição)
         R.embarqueId = null; R.info = null; R.dados = dadosVazios();
-        setInfo(null); setDados(dadosVazios()); setProntoParaCamara(false);
+        setInfo(null); setDados(dadosVazios()); setBaixadaAgora(false);
         if (uid) { removerCarga(uid, id); setBaixadas(listarCargasBaixadas(uid)); }
         toast(`A carga${numero != null ? ` #${numero}` : ''} já foi entregue e saiu da lista.`, { duration: 7000 });
     }, [uid, R]);
@@ -424,7 +475,6 @@ export default function useSeparacaoCarga({ impressoraId, impressorasProntas = f
         const ult = lerUltima(uid);
         if (ult && abrirBaixada(ult)) {
             R.autoAberta = ult;
-            setSemControladorSW(import.meta.env.PROD && 'serviceWorker' in navigator && !navigator.serviceWorker.controller);
             setTimeout(() => sincRef.current(), 400);
         }
         // Em segundo plano: se o servidor (resposta bem formada) não lista mais a carga reaberta automaticamente e não há
@@ -473,7 +523,7 @@ export default function useSeparacaoCarga({ impressoraId, impressorasProntas = f
             const i = d.etiquetas.findIndex((e) => e.pedidoId === pedidoId && e.status !== 'ENVIANDO');
             if (i >= 0) {
                 if (b === 0) d.etiquetas.splice(i, 1);
-                else if (d.etiquetas[i].bolsas !== b) d.etiquetas[i] = { ...d.etiquetas[i], bolsas: b, requisicaoId: novoId(), status: 'AGUARDANDO', erro: null, exigeToque: d.etiquetas[i].exigeToque || d.etiquetas[i].status === 'ERRO' }; // etiqueta nunca sai sozinha após erro/offline
+                else if (d.etiquetas[i].bolsas !== b) d.etiquetas[i] = { ...d.etiquetas[i], bolsas: b, requisicaoId: gerarId(), status: 'AGUARDANDO', erro: null, exigeToque: d.etiquetas[i].exigeToque || d.etiquetas[i].status === 'ERRO' }; // etiqueta nunca sai sozinha após erro/offline
             }
             const x = d.estado.pedidos[pedidoId] || { b: 0, c: null };
             d.estado.pedidos[pedidoId] = { b, c: carimbo(x.c) };
@@ -499,7 +549,7 @@ export default function useSeparacaoCarga({ impressoraId, impressorasProntas = f
     const limparOrdem = () => gravarOrdem('MANUAL', []);
 
     const concluir = useCallback((modo) => {
-        const requisicaoId = novoId();
+        const requisicaoId = gerarId();
         const c = carimbo(null);
         mutar((d) => {
             d.concluir.push({ requisicaoId, modo, c });
@@ -529,9 +579,9 @@ export default function useSeparacaoCarga({ impressoraId, impressorasProntas = f
                     const { prepararEtiquetasBolsas } = await import('./etiquetaBolsa');
                     const { bitmaps, sequencia } = await prepararEtiquetasBolsas(it.dados, it.bolsas);
                     await impressaoEtiquetasService.enviar({
-                        origem: 'SEPARACAO', requisicaoId: it.requisicaoId,
+                        origem: config.origemImpressao, requisicaoId: it.requisicaoId,
                         ...(R.impressoraId ? { impressoraId: R.impressoraId } : {}),
-                        referencia: { tipo: 'PEDIDO', id: it.pedidoId, rotulo: `Bolsas Carga #${it.dados.cargaNumero} · ${it.dados.etiqueta} — ${it.dados.cliente}`.slice(0, 200) },
+                        referencia: { tipo: 'PEDIDO', id: it.pedidoId, rotulo: `${config.rotuloEtiqueta} #${it.dados.cargaNumero} · ${it.dados.etiqueta} — ${it.dados.cliente}`.slice(0, 200) },
                         bitmaps, sequencia,
                     });
                     mutar((d) => { d.etiquetas = d.etiquetas.filter((e) => !(e.pedidoId === it.pedidoId && e.requisicaoId === it.requisicaoId)); });
@@ -539,7 +589,11 @@ export default function useSeparacaoCarga({ impressoraId, impressorasProntas = f
                 } catch (e) {
                     if (!e?.response && !e?.semRetentativa) {
                         // sem rede: volta para a fila com a MESMA requisicaoId e para por aqui
-                        mutar((d) => { const x = d.etiquetas.find((z) => z.pedidoId === it.pedidoId); if (x) x.status = 'AGUARDANDO'; });
+                        // CAUSA RAIZ do "saiu sozinha ao voltar o sinal": o aparelho dizia estar online (navigator.onLine mente em Wi-Fi sem saída),
+                        // o item entrou na fila sem `exigeToque`, a requisição falhou por rede e o item continuou "liberado" —
+                        // ao voltar o sinal o envio automático o despachava. Falhou por rede => passa a exigir o toque do usuário.
+                        // vale para TODOS os itens ainda não enviados da fila (o laço dá break: os seguintes não foram tentados)
+                        mutar((d) => { d.etiquetas.forEach((x) => { x.status = 'AGUARDANDO'; x.exigeToque = true; }); });
                         setSemRede(true);
                         break;
                     }
@@ -569,10 +623,10 @@ export default function useSeparacaoCarga({ impressoraId, impressorasProntas = f
             if (i >= 0) {
                 // quantidade mudou com o item ainda na fila: id NOVO (senão o servidor acha que é repetido e imprime a quantidade antiga);
                 // mesma quantidade = retry do mesmo pedido, mantém o id
-                const requisicaoId = d.etiquetas[i].bolsas !== b ? novoId() : d.etiquetas[i].requisicaoId;
+                const requisicaoId = d.etiquetas[i].bolsas !== b ? gerarId() : d.etiquetas[i].requisicaoId;
                 d.etiquetas[i] = { ...d.etiquetas[i], bolsas: b, requisicaoId, dados: dadosEtq, status: 'AGUARDANDO', erro: null, exigeToque: !online };
             }
-            else { d.etqSeq = (d.etqSeq || 0) + 1; d.etiquetas.push({ pedidoId: ped.id, ordem: d.etqSeq, bolsas: b, requisicaoId: novoId(), exigeToque: !online, dados: dadosEtq, status: 'AGUARDANDO', erro: null }); }
+            else { d.etqSeq = (d.etqSeq || 0) + 1; d.etiquetas.push({ pedidoId: ped.id, ordem: d.etqSeq, bolsas: b, requisicaoId: gerarId(), exigeToque: !online, dados: dadosEtq, status: 'AGUARDANDO', erro: null }); }
         });
         if (online) enviarEtiquetas({ manual: false });
         else toast(`Sem internet: ${b} etiqueta${b > 1 ? 's' : ''} guardada${b > 1 ? 's' : ''} — você imprime ao sair da câmara.`, { icon: '🖨' });
@@ -585,7 +639,7 @@ export default function useSeparacaoCarga({ impressoraId, impressorasProntas = f
 
     return {
         uid, info, carga: info?.carga || null, idx, dados, estado: dados.estado || estadoVazio(),
-        online, navOnline, semRede, sincronizando, pendentes, erroServidor, tentarDeNovo, memoriaCheia, semControladorSW, prontoParaCamara,
+        online, navOnline, semRede, sincronizando, pendentes, erroServidor, tentarDeNovo, memoriaCheia, semControladorSW, prontoParaCamara, offline,
         cargas, erroLista, baixadas, abrindo,
         listar, abrirCarga, abrirBaixada, trocarCarga, sincronizar,
         mais, menos, tudo, digitar, motivo, mudarBolsas, trocarRegra, numerar, limparOrdem, concluir,
