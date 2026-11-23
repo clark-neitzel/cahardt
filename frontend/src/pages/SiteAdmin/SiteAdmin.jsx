@@ -429,16 +429,8 @@ function PedidoDetalhe({ pedido: p, onClose, onAprovar, onVincular, onRecusar, o
   );
 }
 
-// amanhã em 'YYYY-MM-DD', no fuso local (usado como min do input de data para entrega)
-function amanhaLocal() {
-  const d = new Date();
-  d.setDate(d.getDate() + 1);
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${d.getFullYear()}-${mm}-${dd}`;
-}
-
-// hoje em 'YYYY-MM-DD', no fuso local (retirada pode ser no mesmo dia)
+// hoje em 'YYYY-MM-DD', no fuso local — usado como mínimo do campo de data na aprovação
+// (entrega e retirada) e no pré-preenchimento do campo
 function hojeLocal() {
   const d = new Date();
   const mm = String(d.getMonth() + 1).padStart(2, '0');
@@ -460,13 +452,16 @@ function fmtDiaSemana(dataYMD) {
 function AprovarModal({ pedido, onClose, onDone, onAtualizarFila }) {
   const [tipo, setTipo] = useState(tipoSugerido(pedido));
   const retirada = ehRetirada(pedido);
-  const minData = retirada ? hojeLocal() : amanhaLocal();
+  // Dentro do app, quem aprova pode escolher HOJE (entrega ou retirada); o site do cliente segue exigindo amanhã.
+  const minData = hojeLocal();
   // Pré-preenche com a data que o cliente escolheu no site — MAS só se ela ainda não
-  // passou. Se a aprovação atrasou e a data do site já ficou no passado, deixa em
+  // passou. Data do site igual a hoje: na RETIRADA vem preenchida (comportamento antigo);
+  // na ENTREGA abre em branco de propósito — hoje só entra por escolha explícita de quem aprova.
+  // Se a aprovação atrasou e a data do site já ficou no passado, deixa em
   // branco de propósito: confirmar com o campo vazio aciona o recálculo automático no
   // backend (próximo dia regular do cliente), em vez de mandar uma data inválida.
   const dataSite = pedido.dataEntrega ? String(pedido.dataEntrega).slice(0, 10) : '';
-  const [data, setData] = useState(dataSite && dataSite >= minData ? dataSite : '');
+  const [data, setData] = useState(dataSite && (retirada ? dataSite >= minData : dataSite > minData) ? dataSite : '');
   const [busy, setBusy] = useState(false);
   const [erro, setErro] = useState('');
   // Itens sem estoque: vêm prontos da fila (`pedido.itensSemEstoque`, bloqueia de cara) ou
@@ -539,6 +534,11 @@ function AprovarModal({ pedido, onClose, onDone, onAtualizarFila }) {
           <p className="text-xs text-gray-500 mt-1">{fmtDiaSemana(data)}</p>
         ) : (
           <p className="text-xs text-gray-500 mt-1">Sem data: será usado o próximo dia de entrega regular do cliente (a partir de amanhã).</p>
+        )}
+        {!retirada && data && data === hojeLocal() && (
+          <p className="text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1 mt-2">
+            Entrega para hoje (mesmo dia) — confira se dá tempo de separar e embarcar.
+          </p>
         )}
         {pedido.encaixe && (
           <p className="text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1 mt-2">

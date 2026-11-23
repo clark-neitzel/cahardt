@@ -1502,8 +1502,9 @@ const congeladosService = {
         // (body com dataEntrega:'' ou recalcular:true — o operador limpou o campo de
         // propósito) → cp.dataEntrega (o que o cliente escolheu no site/IA), MAS só se
         // ainda não passou → próximo dia regular do cliente a partir de amanhã → amanhã.
-        // NUNCA "hoje" por padrão (bug real: aprovar no dia seguinte ao pedido fazia a
-        // entrega sair um dia antes do escolhido) e NUNCA reaproveitar uma data do site
+        // NUNCA "hoje" por padrão — hoje só vale quando o operador escolhe a data explicitamente
+        // no body (bug real: aprovar no dia seguinte ao pedido fazia a entrega sair um dia
+        // antes do escolhido) e NUNCA reaproveitar uma data do site
         // que já ficou no passado (aprovação atrasada não pode gerar entrega retroativa).
         const modoAtual = cp.modo === 'retirada' ? 'retirada' : 'entrega';
         const hojeStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
@@ -1521,8 +1522,8 @@ const congeladosService = {
         if (dataEntrega != null && dataEntrega !== '') {
             if (!/^\d{4}-\d{2}-\d{2}$/.test(String(dataEntrega))) throw new Error('Data de entrega inválida.');
             if (String(dataEntrega) < hojeStr) throw new Error('A data de entrega não pode ser no passado.');
-            // Retirada pode ser hoje; entrega precisa ser a partir de amanhã.
-            if (modoAtual !== 'retirada' && String(dataEntrega) < amanhaStr) throw new Error('A data de entrega deve ser a partir de amanhã.');
+            // Na aprovação pelo app, hoje é aceito (entrega e retirada) quando o operador ESCOLHE a data.
+            // (A trava "a partir de amanhã" é só do pedido feito pelo cliente no site/IA.)
             dataEntregaStr = String(dataEntrega);
         } else if (recalcularExplicito) {
             // Campo limpo pelo operador (ou recálculo pedido explicitamente): ignora
