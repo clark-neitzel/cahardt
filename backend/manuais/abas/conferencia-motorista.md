@@ -34,3 +34,4 @@ O que se marca aqui **não muda** pedido, nota, estoque nem a carga, e **não bl
 - *Não vejo a carga*: você não é o motorista responsável por ela (só admin vê todas) ou todos os pedidos já foram entregues.
 - *Não vejo o que a separação contou*: é de propósito, a conferência é independente.
 - *Sem sinal e a tela não abre*: abra a tela e baixe a carga com internet antes de sair da cobertura.
+- *Quero sair sem separar nada*: toque em **‹ Sair** (canto esquerdo da barra escura do topo, ou no alto da tela de escolher carga). A contagem já feita fica guardada no aparelho e os toques ainda não enviados sincronizam depois; nada é perdido.

@@ -108,3 +108,6 @@ Registra quem concluiu, quando e um resumo (quantos produtos completos, quantos 
 - Tabelas `separacao_cargas`, `separacao_carga_linhas`, `separacao_carga_pedidos`, `separacao_carga_conclusoes`
 - `backend/routes/impressaoEtiquetasRoutes.js` — origem `SEPARACAO` das etiquetas
 - `frontend/src/pages/Logistica/SeparacaoCarga/`
+
+## Sair da tela
+- *Quero sair sem separar nada*: toque em **‹ Sair** (canto esquerdo da barra escura do topo, ou no alto da tela de escolher carga). A contagem já feita fica guardada no aparelho e os toques ainda não enviados sincronizam depois; nada é perdido.

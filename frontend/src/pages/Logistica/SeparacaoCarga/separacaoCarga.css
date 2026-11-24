@@ -6,7 +6,9 @@
 /* a barra de cima do app no celular é fixa (h-14 = 3.5rem); no desktop só desce se houver a barra de visitantes */
 @media (min-width:768px){.sepc .fixo{top:var(--topo-extra,0px)}}
 .sepc .fixo{position:sticky;top:3.5rem;z-index:30;background:#fff;box-shadow:0 3px 8px rgba(0,0,0,.12)}
-.sepc .cab{display:flex;align-items:center;gap:.6em;width:100%;padding:.5em 1em;background:var(--house);color:#fff;border:0;text-align:left;font-size:1em;cursor:pointer;min-height:3.2em}
+.sepc .cabw{display:flex;align-items:center;background:var(--house)}
+.sepc .sair{flex-shrink:0;margin-left:.7em;min-height:44px;min-width:44px;border:2px solid rgba(255,255,255,.75);border-radius:999px;background:transparent;color:#fff;padding:.3em .8em;font-weight:800;font-size:.9em;white-space:nowrap;cursor:pointer}
+.sepc .cab{display:flex;align-items:center;gap:.6em;flex:1;min-width:0;border-radius:inherit;padding:.5em 1em;background:var(--house);color:#fff;border:0;text-align:left;font-size:1em;cursor:pointer;min-height:3.2em}
 .sepc .cab .tx{flex:1;min-width:0;line-height:1.2}
 .sepc .cab .tx b{display:flex;min-width:0;font-size:1.1em;font-weight:800;white-space:nowrap}
 .sepc .cab .tx b .nc{flex-shrink:0}
@@ -170,7 +172,7 @@
 }
 
 .sepc .fixo{border-radius:1em 1em 0 0;overflow:visible}
-.sepc .cab{border-radius:1em 1em 0 0}
+.sepc .cabw{border-radius:1em 1em 0 0}
 .sepc button:disabled{opacity:.4;cursor:default}
 .sepc .cg{max-width:80%}
 .sepc .cg b,.sepc .cg span{white-space:nowrap}

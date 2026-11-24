@@ -28,7 +28,7 @@ export function CartaoCarga({ c, ativa, onEscolher, online }) {
 // Barra fixa em cima: carga (encolhida) + painel (trocar carga, modo, letra, internet).
 export default function BarraCarga({
     carga, modo, setModo, aberta, alternar, fechar, online, pendentes, sincronizando, lista, onEscolher, letra, mudarLetra, prontoParaCamara,
-    semControladorSW, memoriaCheia, erroServidor, erroLista, abrindo, irParaAviso, etiquetasN = 0, textos = TEXTOS_SEPARACAO,
+    semControladorSW, memoriaCheia, erroServidor, erroLista, abrindo, irParaAviso, onSair, etiquetasN = 0, textos = TEXTOS_SEPARACAO,
 }) {
     const modoTxt = modo === 'carga' ? 'Carga inteira' : 'Por pedido';
     const guardados = pendentes ? `${pendentes} toque${pendentes > 1 ? 's' : ''} guardado${pendentes > 1 ? 's' : ''} no aparelho` : 'tudo guardado no aparelho';
@@ -39,6 +39,8 @@ export default function BarraCarga({
             : `sem internet${pendentes ? ` · ${pendentes} guardado${pendentes > 1 ? 's' : ''}` : ''}`;
     return (
         <>
+            <div className="cabw">
+            {onSair && <button type="button" className="sair" onClick={onSair} aria-label="Sair desta tela sem separar">‹ Sair</button>}
             <button type="button" className="cab" onClick={alternar} aria-label={textos.ariaBarra} aria-expanded={aberta}>
                 <div className="tx">
                     <b><span className="nc">Carga #{carga.numero}</span>{carga.motorista ? <span className="mo"> · {carga.motorista}</span> : null}</b>
@@ -46,6 +48,7 @@ export default function BarraCarga({
                 </div>
                 <span className="tr">{aberta ? 'Fechar ▴' : 'Trocar ▾'}</span>
             </button>
+            </div>
             {/* o detalhe do erro fica no topo do conteúdo (rola junto); aqui só uma linha de alerta, sempre à vista, que leva até ele */}
             {(erroServidor || memoriaCheia) && (
                 <button type="button" className="alerta-fx" onClick={irParaAviso}>

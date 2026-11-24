@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 import { ClipboardCheck, Loader2 } from 'lucide-react';
 import { useFiltroSalvo } from '../../../hooks/useFiltrosSalvos';
 import impressaoEtiquetasService from '../../../services/impressaoEtiquetasService';
@@ -50,6 +51,9 @@ function avisoDaLinha(avisos, chave) {
 }
 
 export default function ConferenciaMotoristaPage() {
+    const navigate = useNavigate();
+    // Sair sem separar: a contagem já fica guardada no aparelho (nada é limpo); toques pendentes sincronizam depois.
+    const sair = () => { if (window.history.state?.idx > 0) navigate(-1); else navigate('/', { replace: true }); };
     const [letraSalva, setLetraSalva] = useFiltroSalvo('conferencia-motorista:letra', LETRA_PADRAO);
     const [modo, setModo] = useFiltroSalvo('conferencia-motorista:modo', 'carga');
     const [impressoraSalva, setImpressoraSalva] = useFiltroSalvo(CONFIG_CONFERENCIA.chavePrefImpressora, '');
@@ -142,6 +146,7 @@ export default function ConferenciaMotoristaPage() {
             <div className="sepc py-3 md:p-6" style={{ fontSize: `${letra}px` }}>
                 <div className="sepc-q">
                     <div className="pick">
+                        <button type="button" className="big o" style={{ alignSelf: 'flex-start', width: 'auto', whiteSpace: 'nowrap' }} onClick={sair}>‹ Sair</button>
                         <h3 style={{ display: 'flex', gap: '.4em', alignItems: 'center' }}><ClipboardCheck className="h-5 w-5" aria-hidden /> Conferir carga (motorista)</h3>
                         <p style={{ margin: 0, fontWeight: 700, fontSize: '.92em' }}>
                             {online
@@ -218,7 +223,7 @@ export default function ConferenciaMotoristaPage() {
                         alternar={(e) => { e.stopPropagation(); setPainel((v) => !v); }}
                         online={online} pendentes={h.pendentes} sincronizando={h.sincronizando} lista={lista} onEscolher={escolherCarga}
                         letra={letra} mudarLetra={mudarLetra} prontoParaCamara={h.prontoParaCamara} semControladorSW={h.semControladorSW}
-                        etiquetasN={h.etiquetas.reduce((t, e) => t + (e.bolsas || 0), 0)} memoriaCheia={h.memoriaCheia} erroServidor={h.erroServidor} irParaAviso={irParaAviso} erroLista={h.erroLista} abrindo={h.abrindo}
+                        etiquetasN={h.etiquetas.reduce((t, e) => t + (e.bolsas || 0), 0)} memoriaCheia={h.memoriaCheia} erroServidor={h.erroServidor} irParaAviso={irParaAviso} onSair={sair} erroLista={h.erroLista} abrindo={h.abrindo}
                     />
                     <div className="prog">
                         <div className="l1">
