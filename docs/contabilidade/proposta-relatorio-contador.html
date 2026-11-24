@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Proposta: Contabilidade — relatório completo para o contador</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--primary:#00754A;--primaryDark:#006241;--house:#1E3932;--mint:#d4e9e2;--bg:#f2f0eb;--surface:#fff;--text:rgba(0,0,0,.87);--muted:#4b5563;--border:#e5e7eb;--gold:#cba258}
+*{box-sizing:border-box}
+html,body{max-width:100%;overflow-x:hidden}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Manrope,"SF Pro Text",system-ui,sans-serif;letter-spacing:-.01em;font-variant-numeric:tabular-nums;line-height:1.5}
+.wrap{max-width:1240px;margin:0 auto;padding:0 16px 64px;min-width:0}
+.hero{background:var(--house);color:#fff;padding:36px 16px 28px}
+.hero .in{max-width:1208px;margin:0 auto}
+.hero h1{font-size:28px;margin:0 0 8px;font-weight:800;line-height:1.2}
+.hero p{margin:0;opacity:.92;max-width:800px;font-size:16px}
+.tag{display:inline-block;background:var(--gold);color:#1a1a1a;font-weight:700;font-size:11px;letter-spacing:.08em;text-transform:uppercase;padding:4px 10px;border-radius:999px;margin-bottom:12px}
+section{margin-top:28px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 1px 2px rgba(0,0,0,.04);min-width:0}
+.card .head{display:flex;align-items:center;gap:10px;padding:14px 20px;border-bottom:1px solid #f1f1f1}
+.card .head .n{width:28px;height:28px;border-radius:999px;background:var(--primary);color:#fff;font-weight:800;display:grid;place-items:center;font-size:14px;flex-shrink:0}
+.card .head h2{margin:0;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:#4b5563}
+.card .body{padding:20px;min-width:0}
+p{margin:6px 0}
+.muted{color:var(--muted);font-size:15px}
+.grid2{display:grid;grid-template-columns:1fr;gap:14px}
+@media(min-width:760px){.grid2{grid-template-columns:1fr 1fr}}
+.box{border:1px solid var(--border);border-radius:10px;padding:14px 16px;background:#fafaf8;font-size:15px;min-width:0}
+.box b.t{display:block;margin-bottom:6px;font-size:16px}
+.box ol,.box ul{margin:6px 0 0;padding-left:20px}.box li{margin:5px 0}
+.chip{display:inline-block;border-radius:999px;padding:2px 9px;font-size:11px;font-weight:800;white-space:nowrap;vertical-align:middle}
+.chip.ok{background:var(--mint);color:var(--house)}.chip.ver{background:#fef3c7;color:#92400e}
+.aviso{background:#fffbeb;border:1px solid #fcd34d;border-radius:10px;padding:12px 16px;font-size:15px;color:#78350f}
+.pin{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:999px;background:var(--gold);color:#1a1a1a;font-size:12px;font-weight:800;box-shadow:0 1px 2px rgba(0,0,0,.3);flex-shrink:0;font-style:normal;vertical-align:middle;letter-spacing:0}
+.legenda{display:grid;grid-template-columns:1fr;gap:10px;font-size:15px;margin-top:16px}
+@media(min-width:760px){.legenda{grid-template-columns:1fr 1fr}}
+.legenda div{display:flex;gap:10px;align-items:flex-start}.legenda .pin{margin-top:1px}
+
+.alt{position:sticky;top:0;z-index:30;background:var(--bg);padding:10px 0;display:flex;gap:8px;align-items:center;justify-content:center;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.alt button{border:1px solid var(--primary);background:#fff;color:var(--primary);border-radius:999px;padding:9px 18px;font-weight:700;font-family:inherit;cursor:pointer;font-size:14px}
+.alt button.on{background:var(--primary);color:#fff}
+.palco{container-type:inline-size;margin:14px auto 0;transition:max-width .2s;min-width:0;max-width:100%}
+body.mob .palco{max-width:390px;border:10px solid #1f2937;border-radius:28px;background:#fff;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.25)}
+body.mob .palco .app{border-radius:0;border:0;height:740px;max-height:none}
+
+/* ============ MOCK DO APP ============ */
+.app{font-size:14px;background:var(--bg);border:1px solid var(--border);border-radius:16px;overflow-y:auto;overflow-x:hidden;max-height:880px;color:#111;min-width:0}
+.topo{background:#fff;border-bottom:1px solid var(--border);padding:14px 20px;display:flex;gap:12px;align-items:center}
+.topo .ic{background:var(--mint);border-radius:8px;width:36px;height:36px;display:grid;place-items:center;font-size:18px;flex-shrink:0}
+.topo h3{margin:0;font-size:20px;font-weight:800;line-height:1.1}.topo small{color:#4b5563;font-size:12px}
+.miolo{padding:16px 20px 22px}
+.abas,.acoes{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.pl{border:1px solid #d1d5db;background:#fff;border-radius:999px;padding:7px 14px;font-weight:600;font-size:13px;font-family:inherit;color:#111;white-space:nowrap}
+.pl.on{background:var(--house);color:#fff;border-color:var(--house)}
+.pl.out{border-color:var(--primary);color:var(--primary)}
+.novo{background:var(--gold);color:#1a1a1a;border-radius:999px;font-size:9px;font-weight:800;padding:1px 6px;margin-left:5px;letter-spacing:.06em;vertical-align:middle}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:12px}
+.kpis.k5{grid-template-columns:repeat(5,minmax(0,1fr))}
+.kpi{background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px 14px;min-width:0}
+.kpi>span{display:block;font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#4b5563}
+.kpi b{display:block;font-size:19px;font-weight:800;margin-top:2px;white-space:nowrap}
+.kpi em{display:block;font-style:normal;font-size:11.5px;color:#4b5563;margin-top:1px}
+.verm{color:#9a3412}.verd{color:var(--primaryDark)}.azul{color:#1e40af}.neg{color:#b91c1c}
+.alerta{background:#fffbeb;border:1px solid #fcd34d;color:#78350f;border-radius:10px;padding:8px 12px;font-size:13px;margin-bottom:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.alerta u{font-weight:700;cursor:pointer}
+.cartao{background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:0 1px 2px rgba(0,0,0,.04);margin-bottom:12px;min-width:0}
+.cartao>.h{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:11px 16px;border-bottom:1px solid #f1f1f1;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#4b5563}
+.seg{display:inline-flex;background:#ecebe6;border-radius:999px;padding:3px;gap:2px;flex-wrap:wrap;text-transform:none;letter-spacing:0}
+.seg button{border:0;background:transparent;border-radius:999px;padding:5px 12px;font-family:inherit;font-weight:600;font-size:12.5px;color:#374151;cursor:pointer;white-space:nowrap}
+.seg button.on{background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.15);color:#111;font-weight:700}
+.filtros{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:12px 16px}
+.per{display:inline-flex;align-items:center;border:1px solid var(--primary);border-radius:999px;overflow:hidden;font-size:13px;background:#fff;white-space:nowrap}
+.per i{font-style:normal;padding:7px 11px;color:var(--primary);font-weight:800}.per b{padding:7px 10px;border-left:1px solid #e5e7eb;border-right:1px solid #e5e7eb}.per b small{font-weight:500;color:#4b5563;margin-left:4px}
+.busca{border:1px solid #d1d5db;border-radius:6px;padding:7px 12px;font-size:13px;color:#6b7280;background:#fff;flex:1;min-width:150px;max-width:260px}
+.lbl{font-size:12px;font-weight:700;color:#374151;text-transform:none;letter-spacing:0;display:inline-flex;gap:6px;align-items:center}
+.lk{border:0;background:none;color:var(--primary);font-weight:700;font-family:inherit;font-size:12.5px;cursor:pointer;padding:4px 6px}
+
+/* árvore */
+.arv{--cols:minmax(0,1fr) 62px 122px 122px 122px 70px}
+.arv.rec{--cols:minmax(0,1fr) 62px 122px 106px 122px 122px}
+.thead,.grp,.row{display:grid;grid-template-columns:var(--cols);gap:0 10px;align-items:center}
+.thead{position:sticky;top:0;z-index:4;background:#f9fafb;border-bottom:1px solid var(--border);padding:9px 16px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#4b5563}
+.num{text-align:right;white-space:nowrap}
+.grp{background:#f3f1ea;padding:8px 16px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:#374151;border-bottom:1px solid var(--border);border-top:1px solid var(--border)}
+.grp.fora{background:#fdf6e3;color:#7c5a12}
+.grp .nm{display:flex;gap:8px;align-items:center;flex-wrap:wrap;min-width:0}
+.row{padding:10px 16px;border-bottom:1px solid #eeeeea;cursor:pointer;min-width:0}
+.row:hover{background:#fafaf8}
+.row .nm{display:flex;gap:8px;align-items:flex-start;min-width:0}
+.row .tx{min-width:0;display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center}
+.r-cat .t{font-weight:800;font-size:14.5px}
+.r-forn{padding-left:40px;background:#fff}.r-forn .t{font-weight:700}.r-forn small{color:#4b5563;font-size:12px}
+.r-mais{padding-left:40px;cursor:default;color:#4b5563;font-style:italic}.r-mais.c0{padding-left:16px}
+.chev{width:0;height:0;border-left:6px solid #374151;border-top:4.5px solid transparent;border-bottom:4.5px solid transparent;margin-top:6px;flex-shrink:0;transition:transform .15s}
+.open>.row>.nm>.chev,.open>.dh>.dt>.chev{transform:rotate(90deg)}
+.kids{display:none}.open>.kids{display:block}
+.mobinfo{display:none;width:100%;font-size:12px;color:#4b5563;font-weight:500}
+.bdg{display:inline-block;padding:2px 8px;border-radius:999px;font-size:10.5px;font-weight:700;white-space:nowrap}
+.b-gray{background:#f3f4f6;color:#374151}.b-green{background:#dcfce7;color:#166534}.b-blue{background:#dbeafe;color:#1e40af}.b-red{background:#fee2e2;color:#b91c1c}.b-amber{background:#fef3c7;color:#b45309}.b-purple{background:#f3e8ff;color:#7e22ce}.b-mint{background:var(--mint);color:var(--primaryDark)}.b-yellow{background:#fef9c3;color:#854d0e}
+.docs{padding:8px 16px 12px 64px;background:#fcfcfa;border-bottom:1px solid #eeeeea}
+.rec .docs{padding-left:40px}
+.doc{border:1px solid var(--border);border-left:3px solid #9cc9b9;border-radius:8px;background:#fff;margin-top:8px;min-width:0}
+.doc.mais{border-left-color:#d1d5db;color:#4b5563;font-style:italic}
+.doc.dev{border-left-color:#f87171}
+.dh{display:flex;gap:10px;align-items:flex-start;justify-content:space-between;padding:8px 12px;min-width:0}
+.doc.node>.dh{cursor:pointer}
+.dt{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;min-width:0}
+.dt .chev{margin-top:0;border-left-width:5px;border-top-width:4px;border-bottom-width:4px}
+.dt .meta{color:#4b5563;font-size:12.5px}
+.dv{font-weight:800;white-space:nowrap}
+.obs{padding:0 12px 8px 12px;font-size:12.5px;color:#4b5563}
+.its{border-top:1px solid #f1f1ee;padding:4px 12px 8px}
+.it{display:grid;grid-template-columns:minmax(0,1fr) 92px 58px 86px 96px 104px;gap:0 10px;padding:5px 0;border-bottom:1px dashed #ececE6;font-size:13px;align-items:center}
+.it:last-child{border-bottom:0}
+.it.h{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#6b7280;border-bottom:1px solid #e5e7eb}
+.it.ex{color:#4b5563;font-style:italic}
+.it.tot{font-weight:800;border-top:1px solid #e5e7eb;border-bottom:0}
+.it .p{min-width:0}
+.it .mobinfo{font-style:normal}
+.total{display:grid;grid-template-columns:var(--cols);gap:0 10px;padding:12px 16px;font-weight:800;background:#f9fafb;border-top:2px solid #d1d5db;font-size:14.5px}
+.resumos{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.mini{font-size:13px}
+.mini .l{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;padding:7px 16px;border-bottom:1px solid #f1f1ee}
+.mini .l:last-child{border-bottom:0;font-weight:800;background:#f9fafb;border-radius:0 0 12px 12px}
+.mini .l small{color:#4b5563}
+.ag{--cols:minmax(0,1fr) repeat(5,112px)}
+.ag .row{cursor:default}
+
+@container (max-width:760px){
+  .topo{padding:10px 12px}.topo h3{font-size:16px}.miolo{padding:10px 10px 18px}
+  .abas,.acoes{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}.abas::-webkit-scrollbar,.acoes::-webkit-scrollbar{display:none}
+  .kpis,.kpis.k5{grid-template-columns:1fr 1fr}.kpi b{font-size:16px}
+  .cartao>.h{padding:10px 12px}.filtros{padding:10px 12px;flex-direction:column;align-items:stretch}.busca{max-width:none}.per{align-self:flex-start}
+  .thead{display:none}
+  .grp,.row,.total{grid-template-columns:minmax(0,1fr) auto;padding-left:12px;padding-right:12px}
+  .grp .c:not(.v),.row .c:not(.v),.total .c:not(.v){display:none}
+  .row{min-height:48px}
+  .r-forn,.r-mais{padding-left:26px}.r-mais.c0{padding-left:12px}
+  .mobinfo{display:block}
+  .docs,.rec .docs{padding:4px 10px 10px 14px}
+  .dh{padding:8px 10px}.its{padding:4px 10px 8px}
+  .it{grid-template-columns:minmax(0,1fr) auto}.it .x{display:none}.it.h{display:none}
+  .resumos{grid-template-columns:1fr}
+}
+.colunas{display:grid;grid-template-columns:1fr;gap:8px;margin-top:8px}
+@media(min-width:760px){.colunas{grid-template-columns:repeat(3,1fr)}}
+.colunas div{border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:#fafaf8;font-size:13.5px;line-height:1.45}
+.colunas b{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--primaryDark);margin-bottom:3px}
+.csv td.dn{text-align:right}
+/* tabela do CSV */
+.csv{overflow-x:auto;border:1px solid var(--border);border-radius:10px}
+.csv table{border-collapse:collapse;font-size:12.5px;white-space:nowrap;min-width:100%}
+.csv th{background:#f9fafb;text-align:left;padding:7px 10px;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:#4b5563;border-bottom:1px solid var(--border)}
+.csv td{padding:6px 10px;border-bottom:1px solid #f1f1ee}
+.passos{display:grid;grid-template-columns:1fr;gap:10px}
+@media(min-width:760px){.passos{grid-template-columns:repeat(3,1fr)}}
+</style>
+</head>
+<body>
+<div class="hero"><div class="in">
+  <span class="tag">Proposta · ainda não está no sistema</span>
+  <h1>Contabilidade: relatório completo para o contador</h1>
+  <p>Hoje o relatório por categoria mostra só o total. A proposta abre cada categoria em <b>fornecedor → nota → produto</b>, faz o mesmo no Contas a Receber e cria a <b>posição em aberto no fim do mês</b>.</p>
+</div></div>
+
+<div class="wrap">
+
+<section class="card"><div class="head"><span class="n">★</span><h2>Resumo em 30 segundos</h2></div><div class="body">
+  <div class="grid2">
+    <div class="box"><b class="t">Hoje</b>
+      <ul><li>"Matéria Prima — R$ 71.325,83". O contador pergunta: <b>de quem? de quê?</b></li>
+      <li>A coluna "Pago" do resumo por categoria aparece <b>R$ 0,00</b> mesmo com contas pagas.</li>
+      <li>Não existe a foto do que ficou em aberto no último dia do mês.</li></ul></div>
+    <div class="box"><b class="t">Com a proposta</b>
+      <ul><li>Cada categoria abre em <b>fornecedor → nota → produto</b>, com NCM, CFOP, quantidade e valor.</li>
+      <li>A soma <b>fecha</b>: produtos + frete = nota = valor que foi para a categoria.</li>
+      <li>Contas a Receber igual: <b>cliente → nota → produto</b>, com devolução e venda sem nota.</li>
+      <li>Aba nova: <b>Posição em aberto</b> (fornecedores e clientes) no fim do mês.</li></ul></div>
+  </div>
+  <p class="aviso" style="margin-top:14px"><b>Sobre os números:</b> os totais das categorias são os da sua tela de agosto/2026. <b>Fornecedores, notas, produtos e os valores do Contas a Receber são de exemplo</b> — servem só para mostrar o formato.</p>
+</div></section>
+
+<div class="alt">
+  <button class="on" onclick="visao('pc',this)">🖥 Computador / iPad</button>
+  <button onclick="visao('mob',this)">📱 Celular</button>
+  <span class="muted" style="font-size:13px">As telas abaixo são clicáveis — toque numa categoria para abrir.</span>
+</div>
+
+<!-- ======================= TELA 1 ======================= -->
+<section class="card"><div class="head"><span class="n">1</span><h2>Contas a Pagar · por categoria, com fornecedor e produtos</h2></div><div class="body">
+  <p class="muted">É o seu pedido principal: embaixo de cada categoria, quem recebeu e o que foi comprado.</p>
+  <div class="palco"><div class="app">
+    <div class="topo"><div class="ic">🏛</div><div><h3>Contabilidade</h3><small>Relatórios de consulta para o escritório de contabilidade</small></div></div>
+    <div class="miolo">
+      <div class="abas" id="abas1"></div>
+      <div class="acoes"><span class="pl out">⬇ CSV</span><span class="pl">🖨 Imprimir / PDF</span></div>
+      <div class="kpis">
+        <div class="kpi"><span>Total lançado no mês</span><b class="verm" id="k-tot"></b><em>51 categorias</em></div>
+        <div class="kpi"><span>Entra no resultado (DRE)</span><b id="k-dre"></b><em>despesa de verdade</em></div>
+        <div class="kpi"><span>Fora do resultado <i class="pin">8</i></span><b id="k-fora"></b><em>retirada, empréstimo, imobilizado</em></div>
+        <div class="kpi"><span>Pago · Em aberto <i class="pin">9</i></span><b><span class="verd" id="k-pg"></span></b><em>em aberto <b style="display:inline;font-size:12px" class="azul" id="k-ab"></b></em></div>
+      </div>
+      <div class="alerta">⚠️ <span><b>9 lançamentos sem documento fiscal</b> — R$ 4.212,80 neste período.</span> <u>Ver só esses</u></div>
+      <div class="cartao">
+        <div class="h"><span>Filtros</span>
+          <span class="seg"><button>Contas (competência)</button><button>Pagamentos (caixa)</button><button class="on">Por categoria (DRE)</button></span></div>
+        <div class="filtros">
+          <span class="per"><i>‹</i><b>agosto/2026<small>01/08 – 31/08</small> ▾</b><i>›</i></span>
+          <span class="busca">🔍 Fornecedor ou produto…</span>
+          <span class="lbl"><i class="pin">1</i> Abrir até:
+            <span class="seg" id="seg1"><button onclick="nivel('tp',1,this)">Categoria</button><button onclick="nivel('tp',2,this)">Fornecedor</button><button onclick="nivel('tp',3,this)">Nota</button><button class="on" onclick="nivel('tp',4,this)">Produto</button></span></span>
+        </div>
+      </div>
+      <div class="cartao arv" id="tp" style="overflow:hidden"></div>
+    </div>
+  </div></div>
+
+  <div class="legenda">
+    <div><i class="pin">1</i><span><b>Abrir até</b> — você escolhe o nível: só categoria, até fornecedor, até nota ou até produto. Vale para a tela, para o <b>PDF</b> e para o <b>CSV</b>.</span></div>
+    <div><i class="pin">2</i><span><b>Fornecedor</b> com CNPJ, quantas contas e quanto dele foi para aquela categoria.</span></div>
+    <div><i class="pin">3</i><span><b>Nota</b> com número, emissão, vencimento, <b>data do pagamento, forma e banco</b>. A chave de acesso (44 números) vai no arquivo.</span></div>
+    <div><i class="pin">4</i><span><b>Produtos da nota</b> com NCM, CFOP, quantidade, valor unitário e total — como vieram na nota do fornecedor.</span></div>
+    <div><i class="pin">5</i><span><b>Frete e outros valores da nota</b> em linha separada. Assim a soma dos produtos bate com o valor da nota e o contador não pergunta da diferença.</span></div>
+    <div><i class="pin">6</i><span><b>Nota dividida em duas categorias</b>: mostra só a parte desta categoria e avisa para onde foi o resto.</span></div>
+    <div><i class="pin">7</i><span><b>Despesa sem produto</b> (energia, salário, imposto): aparece a descrição do lançamento e o mês a que se refere.</span></div>
+    <div><i class="pin">8</i><span><b>Fora do resultado</b> — retirada de lucro, parcela de empréstimo e compra de equipamento não são despesa do mês. Ficam separados, com subtotal próprio. <b>Depende da sua decisão</b> (ver o fim da página).</span></div>
+    <div><i class="pin">9</i><span><b>Pago e em aberto por categoria</b> — corrige o "Pago R$ 0,00" de hoje.</span></div>
+  </div>
+</div></section>
+
+<!-- ======================= CSV ======================= -->
+<section class="card"><div class="head"><span class="n">2</span><h2>O arquivo que vai para o contador (Excel / CSV)</h2></div><div class="body">
+  <p class="muted"><b>Regra: tudo que aparece na tela vai no arquivo, uma linha por produto.</b> Cada linha repete categoria, fornecedor, nota, vencimento, pagamento, forma e banco — o contador filtra e soma sem precisar abrir o sistema.</p>
+
+  <p style="margin-top:16px"><b>Contas a Pagar — <span id="np"></span> colunas</b></p>
+  <div class="colunas" id="gp"></div>
+  <p class="muted" style="margin-top:12px;font-size:13px">Exemplo do arquivo (arraste para o lado para ver todas as colunas):</p>
+  <div class="csv" id="cp"></div>
+
+  <p style="margin-top:22px"><b>Contas a Receber — <span id="nr"></span> colunas</b></p>
+  <div class="colunas" id="gr"></div>
+  <p class="muted" style="margin-top:12px;font-size:13px">Exemplo do arquivo:</p>
+  <div class="csv" id="cr"></div>
+  <p class="muted" style="font-size:13px">* CFOP da venda: preciso conferir se está guardado em todas as notas antes de prometer essa coluna.</p>
+
+  <div class="passos" style="margin-top:18px">
+    <div class="box"><b class="t">Uma linha por produto</b>Despesa sem produto (energia, salário, imposto) sai em uma linha só, com a coluna Produto vazia e a descrição do lançamento preenchida.</div>
+    <div class="box"><b class="t">Nota com mais de uma parcela</b>Os vencimentos e as datas de pagamento vão na mesma célula, separados por ponto e vírgula. "Pago" e "Em aberto" já saem divididos por produto, então dá para somar a coluna.</div>
+    <div class="box"><b class="t">A soma fecha</b>Frete e outros valores da nota saem em linha própria. Somando a coluna "Valor nesta categoria" dá o total do relatório. "Total da nota" se repete em cada linha, por isso vem marcado "não somar".</div>
+  </div>
+</div></section>
+
+<!-- ======================= TELA 2 ======================= -->
+<section class="card"><div class="head"><span class="n">3</span><h2>Contas a Receber · por cliente, com nota e produtos</h2></div><div class="body">
+  <p class="muted">A mesma ideia do lado das vendas. Entra como uma 3ª visão, ao lado de "Títulos" e "Recebimentos" que já existem.</p>
+  <div class="palco"><div class="app">
+    <div class="topo"><div class="ic">🏛</div><div><h3>Contabilidade</h3><small>Relatórios de consulta para o escritório de contabilidade</small></div></div>
+    <div class="miolo">
+      <div class="abas" id="abas2"></div>
+      <div class="acoes"><span class="pl out">⬇ CSV</span><span class="pl">🖨 Imprimir / PDF</span></div>
+      <div class="kpis k5">
+        <div class="kpi"><span>Faturado com NF-e</span><b>R$ 412.380,40</b><em>1.184 notas</em></div>
+        <div class="kpi"><span>Vendas sem nota</span><b style="color:#7e22ce">R$ 18.940,00</b><em>pedidos especiais</em></div>
+        <div class="kpi"><span>Devoluções</span><b class="neg">− R$ 3.215,60</b><em>17 notas de devolução</em></div>
+        <div class="kpi"><span>Recebido no mês</span><b class="verd">R$ 398.112,75</b><em>pelo dia da baixa</em></div>
+        <div class="kpi"><span>Em aberto em 31/08</span><b class="azul" id="k-rab"></b><em>ver Posição em aberto</em></div>
+      </div>
+      <div class="cartao">
+        <div class="h"><span>Filtros</span>
+          <span class="seg"><button>Títulos (competência)</button><button>Recebimentos (caixa)</button><button class="on">Por cliente (com produtos)<span class="novo">NOVO</span></button></span></div>
+        <div class="filtros">
+          <span class="per"><i>‹</i><b>agosto/2026<small>01/08 – 31/08</small> ▾</b><i>›</i></span>
+          <span class="busca">🔍 Cliente, CNPJ ou produto…</span>
+          <span class="pl">Nota fiscal: todas ▾</span>
+          <span class="lbl">Abrir até:
+            <span class="seg"><button onclick="nivel('tr',1,this)">Cliente</button><button onclick="nivel('tr',2,this)">Nota</button><button class="on" onclick="nivel('tr',3,this)">Produto</button></span></span>
+        </div>
+      </div>
+      <div class="cartao arv rec" id="tr" style="overflow:hidden"></div>
+      <div class="resumos">
+        <div class="cartao mini" style="margin:0"><div class="h"><span>Recebido por forma e banco <i class="pin">5</i></span></div>
+          <div class="l"><span>Boleto Asaas <small>→ conta Asaas</small></span><b>R$ 182.440,10</b></div>
+          <div class="l"><span>PIX <small>→ Sicredi</small></span><b>R$ 141.902,65</b></div>
+          <div class="l"><span>Dinheiro <small>→ Caixa</small></span><b>R$ 52.310,00</b></div>
+          <div class="l"><span>Cartão <small>→ Sicredi</small></span><b>R$ 21.460,00</b></div>
+          <div class="l"><span>Total recebido</span><span>R$ 398.112,75</span></div></div>
+        <div class="cartao mini" style="margin:0"><div class="h"><span>Faturado por tipo de operação <i class="pin">6</i></span><span class="chip ver" style="text-transform:none;letter-spacing:0">a confirmar</span></div>
+          <div class="l"><span>5.101 <small>venda de produção própria</small></span><b>R$ 371.142,36</b></div>
+          <div class="l"><span>5.102 <small>revenda de mercadoria</small></span><b>R$ 41.238,04</b></div>
+          <div class="l"><span>5.910 <small>bonificação (não é receita)</small></span><b>R$ 2.614,00</b></div>
+          <div class="l"><span>Devoluções <small>1.201 / 1.202</small></span><b class="neg">− R$ 3.215,60</b></div>
+          <div class="l"><span>Faturado com NF-e</span><span>R$ 412.380,40</span></div></div>
+      </div>
+    </div>
+  </div></div>
+  <div class="legenda">
+    <div><i class="pin">1</i><span><b>Cliente</b> com CNPJ e quatro números: faturado, devolvido, recebido e em aberto.</span></div>
+    <div><i class="pin">2</i><span><b>Nota</b> com pedido, forma de recebimento, data e banco da baixa, e se já foi conciliada com o extrato.</span></div>
+    <div><i class="pin">3</i><span><b>Devolução</b> aparece embaixo da nota de origem, em vermelho, já descontando do em aberto.</span></div>
+    <div><i class="pin">4</i><span><b>Venda sem nota</b> (pedido especial) vem marcada em roxo, com os produtos do pedido.</span></div>
+    <div><i class="pin">5</i><span><b>Recebido por forma e banco</b> — é o número que o contador confere com o extrato de cada conta.</span></div>
+    <div><i class="pin">6</i><span><b>Faturado por tipo de operação</b> — separa produção própria, revenda, bonificação e devolução (ajuda na apuração do Simples). Preciso conferir se o dado está guardado em todas as notas antes de prometer.</span></div>
+  </div>
+</div></section>
+
+<!-- ======================= TELA 3 ======================= -->
+<section class="card"><div class="head"><span class="n">4</span><h2>Aba nova · Posição em aberto no fim do mês</h2></div><div class="body">
+  <p class="muted">A "foto" do último dia do mês: quanto a empresa devia a cada fornecedor e quanto cada cliente devia a ela. É o número que o contador usa para fechar o balanço, e mostra o atraso por faixa.</p>
+  <div class="palco"><div class="app" style="max-height:none">
+    <div class="topo"><div class="ic">🏛</div><div><h3>Contabilidade</h3><small>Relatórios de consulta para o escritório de contabilidade</small></div></div>
+    <div class="miolo">
+      <div class="abas" id="abas3"></div>
+      <div class="acoes"><span class="pl out">⬇ CSV</span><span class="pl">🖨 Imprimir / PDF</span></div>
+      <div class="cartao">
+        <div class="h"><span>Posição em</span>
+          <span class="seg" id="segag"><button class="on" onclick="aging('f',this)">A pagar (fornecedores)</button><button onclick="aging('c',this)">A receber (clientes)</button></span></div>
+        <div class="filtros"><span class="per"><i>‹</i><b>31/08/2026<small>último dia do mês</small> ▾</b><i>›</i></span>
+          <span class="muted" style="font-size:12.5px">Inclui títulos de meses anteriores que ainda estavam em aberto nessa data.</span></div>
+      </div>
+      <div class="cartao arv ag" id="ta" style="overflow:hidden"></div>
+    </div>
+  </div></div>
+</div></section>
+
+<!-- ======================= EXTRAS ======================= -->
+<section class="card"><div class="head"><span class="n">5</span><h2>O que mais pode entrar</h2></div><div class="body">
+  <div class="grid2">
+    <div class="box"><b class="t">Já está nesta proposta <span class="chip ok">o dado já existe no sistema</span></b>
+      <ol><li>Fornecedor, nota e produtos embaixo de cada categoria.</li>
+      <li>NCM, CFOP e chave de acesso das notas de compra.</li>
+      <li>Pago × em aberto por categoria.</li>
+      <li>Nota rateada mostrando a parte de cada categoria.</li>
+      <li>Posição em aberto no fim do mês, com atraso por faixa.</li></ol></div>
+    <div class="box"><b class="t">Posso incluir se o contador quiser</b>
+      <ol><li>Juros, multas e descontos do mês em um resumo (pagos e recebidos). <span class="chip ok">dado existe</span></li>
+      <li>Estoque no fim do mês: quantidade × custo de cada produto. <span class="chip ok">dado existe</span></li>
+      <li>Faturado por tipo de operação (CFOP), como no quadro da tela 3. <span class="chip ver">preciso conferir</span></li>
+      <li>Impostos de cada nota de compra (ICMS, IPI, ST). <span class="chip ver">hoje só está no XML</span></li>
+      <li>Tarifas do Asaas e do cartão (diferença entre o título e o que entrou no banco). <span class="chip ver">hoje não é guardado</span></li></ol></div>
+  </div>
+</div></section>
+
+<section class="card"><div class="head"><span class="n">6</span><h2>O que achei na tela de hoje</h2></div><div class="body">
+  <div class="grid2">
+    <div class="box"><b class="t">Provável origem das perguntas do contador</b>
+      <ul><li><b>Antecipação de Lucros</b> (R$ 36.310,16) está como despesa operacional de Pessoal. Retirada de lucro normalmente não é despesa.</li>
+      <li><b>Empréstimos de Outras Instituições</b> e <b>Outras Imobilizações</b> também entram como despesa do mês.</li>
+      <li>Juntas somam <b id="t-fora"></b> — <b id="t-forapct"></b> do total do relatório.</li></ul>
+      <p class="muted" style="margin-top:8px">O sistema já tem a opção "fora da DRE" no cadastro de categorias. É só marcar essas três — depois de confirmar com o contador.</p></div>
+    <div class="box"><b class="t">Ajustes pequenos que vão junto</b>
+      <ul><li>"Pago R$ 0,00" no resumo por categoria passa a mostrar o valor certo.</li>
+      <li>O cartão "Filtros ativos: 1" dá lugar a um número útil.</li>
+      <li>Percentual com vírgula: 24,7% no lugar de 24.7%.</li>
+      <li>Busca passa a achar também por produto.</li></ul></div>
+  </div>
+</div></section>
+
+<section class="card"><div class="head"><span class="n">7</span><h2>Preciso que você decida</h2></div><div class="body">
+  <div class="passos">
+    <div class="box"><b class="t">1. Separar "Fora do resultado"?</b>Retirada de lucro, empréstimo e imobilizado saem do total de despesa e ganham subtotal próprio.<br><span class="chip ok" style="margin-top:8px">Recomendo: sim, após o contador confirmar</span></div>
+    <div class="box"><b class="t">2. Salário por funcionário?</b>Abrir "Salários" e "Benefícios" pessoa por pessoa, ou mostrar só o total da categoria.<br><span class="chip ok" style="margin-top:8px">Recomendo: por pessoa, só para o contador</span></div>
+    <div class="box"><b class="t">3. Quais extras entram?</b>Mostre a lista "Posso incluir" ao contador e me diga quais ele usa de verdade.<br><span class="chip ok" style="margin-top:8px">Recomendo: começar pelos itens 1 e 2</span></div>
+  </div>
+  <p class="muted" style="margin-top:14px"><b>Ordem de entrega sugerida:</b> ① Contas a Pagar detalhado (o pedido principal) → ② Contas a Receber detalhado → ③ Posição em aberto. Cada etapa é publicada e conferida antes da próxima.</p>
+  <p class="muted"><b>Padrões do sistema já aplicados:</b> período em pílula única, filtros lembrados por usuário, tabela vira cartão no celular, impressão na própria página, cores de status padrão.</p>
+</div></section>
+
+</div>
+
+<script>
+const R=v=>(v<0?'− ':'')+'R$ '+Math.abs(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const N=v=>v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const Q=v=>v.toLocaleString('pt-BR',{maximumFractionDigits:2});
+const PC=(v,t)=>(t?v/t*100:0).toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})+'%';
+const pin=n=>n?` <i class="pin">${n}</i>`:'';
+const COR={Pago:'green',Recebido:'green',Aberto:'blue',Vencido:'red','NF-e':'blue','NFC-e':'blue',Fatura:'gray',Guia:'gray',Recibo:'gray',Contrato:'gray','Sem nota':'amber',Especial:'purple','Devolução':'red',Rateada:'gray'};
+const B=t=>t?`<span class="bdg b-${COR[t]||'gray'}">${t}</span>`:'';
+const C=(x,cls='')=>`<div class="c num ${cls}">${x??''}</div>`;
+
+/* ---------------- CONTAS A PAGAR ---------------- */
+const P=[
+{g:'Custos variáveis',cats:[
+ {n:'Matéria Prima',cl:'Operacional · Variável',c:45,v:71325.83,pg:52341.33,f:[
+  {n:'Moinho Vale do Trigo Ltda',d:'12.345.678/0001-90',c:2,v:16120,pin:2,docs:[
+   {t:'NF-e 45.812',em:'04/08',vc:'03/09',st:'Pago',tp:'NF-e',v:8060,pin:3,pinIt:4,it:[
+    ['Farinha de trigo tipo 1 — saco 25 kg','1101.00.10','5.101',80,'SC',96.5,7720],
+    ['Fermento biológico seco 500 g','2102.10.90','5.101',20,'CX',17,340]]},
+   {t:'NF-e 46.377',em:'19/08',vc:'18/09',st:'Aberto',tp:'NF-e',v:8060,ex:['Frete da nota',185],it:[
+    ['Farinha de trigo tipo 1 — saco 25 kg','1101.00.10','5.101',70,'SC',96.5,6755],
+    ['Farinha de trigo integral — saco 25 kg','1101.00.10','5.101',10,'SC',112,1120]]}]},
+  {n:'Frigorífico Serra Azul S.A.',d:'23.456.789/0001-01',c:3,v:21874.5,docs:[
+   {t:'NF-e 118.204',em:'06/08',vc:'05/09',st:'Pago',tp:'NF-e',v:9412,it:[
+    ['Peito de frango desfiado congelado','0207.14.00','6.101',450,'KG',16.9,7605],
+    ['Carne bovina moída congelada','0202.30.00','6.101',65,'KG',27.8,1807]]},
+   {t:'NF-e 118.690',em:'14/08',vc:'13/09',st:'Pago',tp:'NF-e',v:6760,it:[
+    ['Peito de frango desfiado congelado','0207.14.00','6.101',400,'KG',16.9,6760]]},
+   {t:'NF-e 119.105',em:'25/08',vc:'24/09 e 24/10 (2 parcelas)',st:'Aberto',tp:'NF-e',v:5702.5,it:[
+    ['Presunto cozido','1602.41.00','6.101',150,'KG',21.35,3202.5],
+    ['Linguiça calabresa','1601.00.00','6.101',100,'KG',25,2500]]}]},
+  {n:'Laticínios Bela Vista Ltda',d:'34.567.890/0001-12',c:2,v:9846,docs:[
+   {t:'NF-e 7.731',em:'11/08',vc:'10/09',st:'Pago',tp:'NF-e',v:5340,it:[
+    ['Queijo muçarela','0406.10.10','5.101',150,'KG',35.6,5340]]},
+   {t:'NF-e 7.802',em:'22/08',vc:'21/09',st:'Aberto',tp:'NF-e',v:4506,it:[
+    ['Requeijão cremoso — bisnaga 1,5 kg','0406.10.90','5.101',120,'UN',28.3,3396],
+    ['Queijo parmesão ralado','0406.20.00','5.101',30,'KG',37,1110]]}]},
+  {n:'Atacado Central Ltda',d:'67.890.123/0001-45',c:1,v:1512.3,docs:[
+   {t:'NF-e 902.114',em:'08/08',vc:'08/08',st:'Pago',tp:'NF-e',v:1512.3,fp:'Dinheiro',bc:'Caixa',pin:6,rat:'Nota de R$ 1.964,30 dividida em duas categorias: <b>R$ 1.512,30 aqui</b> e R$ 452,00 em Material de Limpeza.',it:[
+    ['Óleo de soja 900 ml — caixa c/ 20','1507.90.11','5.102',12,'CX',118.9,1426.8],
+    ['Sal refinado 1 kg — fardo c/ 30','2501.00.20','5.102',5,'FD',17.1,85.5]]}]},
+  {mais:'+ 8 fornecedores',c:37,v:21973.03}]},
+ {n:'Energia Elétrica',cl:'Operacional · Variável',c:2,v:15270.61,pg:15270.61,f:[
+  {n:'Distribuidora de Energia S.A.',d:'45.111.222/0001-33',c:2,v:15270.61,docs:[
+   {t:'Fatura 08/2026 — fábrica',em:'10/08',vc:'20/08',st:'Pago',tp:'Fatura',fp:'Boleto',cp:'08/2026',v:13964.11,pin:7,nota:'Despesa sem produtos — vale a descrição do lançamento. O PDF da fatura fica anexado.'},
+   {t:'Fatura 08/2026 — escritório',em:'10/08',vc:'20/08',st:'Pago',tp:'Fatura',fp:'Boleto',cp:'08/2026',v:1306.5}]}]}]},
+{g:'Pessoal',cats:[
+ {n:'Salários',cl:'Operacional · Fixa',c:36,v:31259.06,pg:31259.06,f:[
+  {n:'Funcionário A',d:'CPF ***.412.***-**',c:2,v:2480,docs:[
+   {t:'Adiantamento 08/2026',em:'20/08',vc:'20/08',st:'Pago',tp:'Recibo',cp:'08/2026',v:992},
+   {t:'Salário 08/2026',em:'31/08',vc:'05/09',st:'Pago',tp:'Recibo',cp:'08/2026',v:1488}]},
+  {n:'Funcionário B',d:'CPF ***.907.***-**',c:2,v:3150,docs:[
+   {t:'Adiantamento 08/2026',em:'20/08',vc:'20/08',st:'Pago',tp:'Recibo',cp:'08/2026',v:1260},
+   {t:'Salário 08/2026',em:'31/08',vc:'05/09',st:'Pago',tp:'Recibo',cp:'08/2026',v:1890}]},
+  {mais:'+ 16 funcionários',c:32,v:25629.06}]},
+ {n:'Benefícios aos Funcionários',cl:'Operacional · Fixa',c:43,v:9087.94,pg:9087.94,f:[
+  {n:'Operadora de Benefícios Ltda',d:'56.222.333/0001-44',c:2,v:6240,docs:[
+   {t:'Vale-alimentação 08/2026',em:'01/08',vc:'05/08',st:'Pago',tp:'NF-e',cp:'08/2026',v:4680},
+   {t:'Vale-transporte 08/2026',em:'01/08',vc:'05/08',st:'Pago',tp:'NF-e',cp:'08/2026',v:1560}]},
+  {mais:'+ 6 fornecedores',c:41,v:2847.94}]}]},
+{g:'Impostos sobre vendas',cats:[
+ {n:'DAS Simples',cl:'Operacional · Variável',c:1,v:26823.92,pg:26823.92,f:[
+  {n:'Receita Federal — Simples Nacional',d:'guia DAS',c:1,v:26823.92,docs:[
+   {t:'DAS — faturamento de julho',em:'10/08',vc:'20/08',st:'Pago',tp:'Guia',cp:'07/2026',v:26823.92}]}]}]},
+{g:'Veículos e entregas',cats:[
+ {n:'Combustíveis',cl:'Operacional · Variável',c:50,v:9835.21,pg:7980,f:[
+  {n:'Auto Posto Avenida Ltda',d:'78.333.444/0001-55',c:41,v:8120.4,docs:[
+   {t:'NFC-e 88.231',em:'03/08',vc:'03/08',st:'Pago',tp:'NFC-e',v:367.54,it:[['Diesel S10','2710.19.21','5.656',62.4,'L',5.89,367.54]]},
+   {t:'NFC-e 88.902',em:'05/08',vc:'05/08',st:'Pago',tp:'NFC-e',v:235.22,it:[['Gasolina comum','2710.12.59','5.656',38,'L',6.19,235.22]]},
+   {mais:'+ 39 abastecimentos',v:7517.64}]},
+  {n:'Posto Rodovia Sul Ltda',d:'89.444.555/0001-66',c:9,v:1714.81,docs:[{mais:'9 abastecimentos',v:1714.81}]}]}]},
+{g:'Financeiras',cats:[
+ {n:'Parcelamento do Simples Nacional',cl:'Operacional · Fixa',c:13,v:12284.36,pg:12284.36,f:[
+  {n:'Receita Federal — Parcelamento',d:'guia DAS-PARC',c:13,v:12284.36,docs:[
+   {t:'Parcela 14/60',em:'01/08',vc:'31/08',st:'Pago',tp:'Guia',v:944.95},
+   {t:'Parcela 22/60 — 2º parcelamento',em:'01/08',vc:'31/08',st:'Pago',tp:'Guia',v:1210},
+   {mais:'+ 11 parcelas',v:10129.41}]}]}]},
+{g:'Demais categorias',cats:[{resto:'41 categorias recolhidas neste exemplo',c:214,v:62246.42,pg:48120}]},
+{g:'Fora do resultado — não é despesa do mês',fora:1,pin:8,cats:[
+ {n:'Antecipação de Lucros',cl:'Fora da DRE',c:13,v:36310.16,pg:36310.16,f:[
+  {n:'Sócio 1',d:'CPF ***.118.***-**',c:7,v:20000,docs:[{t:'Retirada — PIX',em:'05/08',vc:'05/08',st:'Pago',tp:'Recibo',v:5000},{mais:'+ 6 retiradas',v:15000}]},
+  {n:'Sócio 2',d:'CPF ***.640.***-**',c:6,v:16310.16,docs:[{mais:'6 retiradas',v:16310.16}]}]},
+ {n:'Empréstimos de Outras Instituições',cl:'Fora da DRE',c:2,v:7640,pg:7640,f:[
+  {n:'Banco Cooperativo Regional',d:'90.555.666/0001-77',c:2,v:7640,docs:[
+   {t:'Parcela 09/36 — capital de giro',em:'10/08',vc:'10/08',st:'Pago',tp:'Contrato',v:4120},
+   {t:'Parcela 21/48 — financiamento do veículo',em:'15/08',vc:'15/08',st:'Pago',tp:'Contrato',v:3520}]}]},
+ {n:'Outras Imobilizações por Aquisição',cl:'Fora da DRE',c:1,v:6880,pg:0,f:[
+  {n:'Refrigeração Industrial Planalto Ltda',d:'01.666.777/0001-88',c:1,v:6880,docs:[
+   {t:'NF-e 2.204',em:'18/08',vc:'17/09',st:'Aberto',tp:'NF-e',v:6880,it:[['Freezer horizontal 500 L','8418.30.00','6.102',2,'UN',3440,6880]]}]}]}]}
+];
+
+function itens(d,sinal=1){
+  let h=`<div class="kids"><div class="its"><div class="it h"><div>Produto${pin(d.pinIt)}</div><div class="x">NCM</div><div class="x num">CFOP</div><div class="x num">Qtd</div><div class="x num">Vl. unit.</div><div class="num">Total</div></div>`;
+  let s=0;
+  d.it.forEach(i=>{s+=i[6];h+=`<div class="it"><div class="p">${i[0]}<span class="mobinfo">${Q(i[3])} ${i[4]} × R$ ${N(i[5])} · NCM ${i[1]} · CFOP ${i[2]}</span></div><div class="x">${i[1]}</div><div class="x num">${i[2]}</div><div class="x num">${Q(i[3])} ${i[4]}</div><div class="x num">${N(i[5])}</div><div class="num">${N(sinal*i[6])}</div></div>`;});
+  if(d.ex){s+=d.ex[1];h+=`<div class="it ex"><div class="p">${d.ex[0]} <i class="pin">5</i></div><div class="x"></div><div class="x"></div><div class="x"></div><div class="x"></div><div class="num">${N(d.ex[1])}</div></div>`;}
+  h+=`<div class="it tot"><div class="p">${d.rat?'Parte desta categoria':'Total do documento'}</div><div class="x"></div><div class="x"></div><div class="x"></div><div class="x"></div><div class="num">${N(sinal*s)}</div></div></div></div>`;
+  return h;
+}
+function doc(d){
+  if(d.mais) return `<div class="doc mais"><div class="dh"><div class="dt">${d.mais} <span class="meta">(recolhidos neste exemplo)</span></div><div class="dv">${R(d.v)}</div></div></div>`;
+  const has=d.it&&d.it.length, dev=d.tp==='Devolução';
+  let h=`<div class="doc ${has?'node open':''} ${dev?'dev':''}"><div class="dh" ${has?'onclick="tg(this)"':''}><div class="dt">${has?'<i class="chev"></i>':''}<b>${d.t}</b>${pin(d.pin)}<span class="meta">emissão ${d.em}${d.vc?` · venc. ${d.vc}`:''}${d.cp?` · referente a ${d.cp}`:''}${d.st==='Pago'&&!d.inf?` · <b style="font-weight:700;color:#166534">pago em ${d.pg||d.vc}</b> · ${d.fp||'PIX'} · ${d.bc||'Sicredi'}`:''}</span>${B(d.tp)}${B(d.st)}${d.rat?B('Rateada'):''}</div><div class="dv ${dev?'neg':''}">${R(d.v)}</div></div>`;
+  if(d.inf) h+=`<div class="obs">${d.inf}</div>`;
+  if(d.rat) h+=`<div class="obs">↳ ${d.rat}</div>`;
+  if(d.nota) h+=`<div class="obs">↳ ${d.nota}</div>`;
+  if(has) h+=itens(d,dev?-1:1);
+  return h+'</div>';
+}
+function pagar(){
+  let tot=0,pg=0,fora=0;P.forEach(g=>g.cats.forEach(c=>{tot+=c.v;pg+=c.pg;if(g.fora)fora+=c.v;}));
+  let h=`<div class="thead"><div>Categoria › Fornecedor › Nota › Produto</div><div class="num">Contas</div><div class="num">Valor</div><div class="num">Pago</div><div class="num">Em aberto</div><div class="num">% total</div></div>`;
+  P.forEach(g=>{
+    const gv=g.cats.reduce((s,c)=>s+c.v,0),gp=g.cats.reduce((s,c)=>s+c.pg,0);
+    h+=`<div class="grp ${g.fora?'fora':''}"><div class="nm">${g.g}${pin(g.pin)}</div>${C('')}${C(R(gv),'v')}${C(R(gp))}${C(R(gv-gp))}${C(PC(gv,tot))}</div>`;
+    g.cats.forEach(c=>{
+      if(c.resto){h+=`<div class="row r-mais c0"><div class="nm"><div class="tx">${c.resto}<span class="mobinfo">${c.c} contas · ${PC(c.v,tot)} · pago ${R(c.pg)}</span></div></div>${C(c.c)}${C(R(c.v),'v')}${C(R(c.pg))}${C(R(c.v-c.pg))}${C(PC(c.v,tot))}</div>`;return;}
+      h+=`<div class="node cat open"><div class="row r-cat" onclick="tg(this)"><div class="nm"><i class="chev"></i><div class="tx"><span class="t">${c.n}</span><span class="bdg ${g.fora?'b-amber':'b-mint'}">${c.cl}</span><span class="mobinfo">${c.c} contas · ${PC(c.v,tot)} do total · pago ${R(c.pg)} · aberto ${R(c.v-c.pg)}</span></div></div>${C(c.c)}${C(R(c.v),'v')}${C(R(c.pg),'verd')}${C(c.v-c.pg>0.004?R(c.v-c.pg):'—','azul')}${C(PC(c.v,tot))}</div><div class="kids">`;
+      c.f.forEach(f=>{
+        if(f.mais){h+=`<div class="row r-mais"><div class="nm"><div class="tx">${f.mais} (recolhidos neste exemplo)<span class="mobinfo">${f.c} contas</span></div></div>${C(f.c)}${C(R(f.v),'v')}${C('')}${C('')}${C('')}</div>`;return;}
+        h+=`<div class="node forn open"><div class="row r-forn" onclick="tg(this)"><div class="nm"><i class="chev"></i><div class="tx"><span class="t">${f.n}</span>${pin(f.pin)}<small>${f.d}</small><span class="mobinfo">${f.c} ${f.c>1?'contas':'conta'} · ${PC(f.v,c.v)} da categoria</span></div></div>${C(f.c)}${C(R(f.v),'v')}${C('')}${C('')}${C(PC(f.v,c.v))}</div><div class="kids"><div class="docs">${f.docs.map(doc).join('')}</div></div></div>`;
+      });
+      h+=`</div></div>`;
+    });
+  });
+  h+=`<div class="total"><div>Total do período</div>${C('')}${C(R(tot),'v')}${C(R(pg))}${C(R(tot-pg))}${C('100,0%')}</div>`;
+  document.getElementById('tp').innerHTML=h;
+  document.getElementById('k-tot').textContent=R(tot);document.getElementById('k-dre').textContent=R(tot-fora);
+  document.getElementById('k-fora').textContent=R(fora);document.getElementById('k-pg').textContent=R(pg);document.getElementById('k-ab').textContent=R(tot-pg);
+  document.getElementById('t-fora').textContent=R(fora);document.getElementById('t-forapct').textContent=PC(fora,tot);
+}
+
+/* ---------------- CONTAS A RECEBER ---------------- */
+const RC=[
+ {n:'Supermercado Bom Preço Ltda',d:'45.678.901/0001-23',c:2,fat:4442,dev:189,rec:2380,pin:1,docs:[
+  {t:'NF-e 90.877 · Pedido #4655',em:'12/08',st:'Recebido',tp:'NF-e',v:2380,pin:2,inf:'PIX · recebido em 12/08 · banco Sicredi · conciliado com o extrato ✓',it:[
+   ['Risole de carne congelado 1 kg','1902.20.00','5.101',50,'PCT',19.6,980],
+   ['Coxinha de frango congelada 1 kg','1902.20.00','5.101',50,'PCT',18.9,945],
+   ['Mini churros congelado 1 kg','1905.90.90','5.101',25,'PCT',18.2,455]]},
+  {t:'NF-e 91.204 · Pedido #4812',em:'05/08',vc:'02/09',st:'Aberto',tp:'NF-e',v:2062,inf:'Boleto 28 dias · em aberto R$ 1.873,00 (já descontada a devolução abaixo)',it:[
+   ['Coxinha de frango congelada 1 kg','1902.20.00','5.101',60,'PCT',18.9,1134],
+   ['Bolinha de queijo congelada 1 kg','1902.20.00','5.101',40,'PCT',23.2,928]]},
+  {t:'NF-e 91.377 · devolução da NF 91.204',em:'14/08',tp:'Devolução',v:-189,pin:3,it:[
+   ['Coxinha de frango congelada 1 kg','1902.20.00','1.201',10,'PCT',18.9,189]]}]},
+ {n:'Lanchonete Ponto Certo ME',d:'56.789.012/0001-34',c:1,fat:486,dev:0,rec:486,docs:[
+  {t:'Pedido #4790 — venda sem nota',em:'09/08',st:'Recebido',tp:'Especial',v:486,pin:4,inf:'Dinheiro · recebido em 09/08 · caixa do motorista',it:[
+   ['Pastel de carne congelado 1 kg','—','—',15,'PCT',17.4,261],
+   ['Enroladinho de salsicha congelado 1 kg','—','—',15,'PCT',15,225]]}]},
+ {n:'Padaria Pão Quente Ltda',d:'67.890.123/0001-56',c:2,fat:2646,dev:0,rec:1512,docs:[
+  {t:'NF-e 91.455 · Pedido #4861',em:'19/08',vc:'26/08',st:'Recebido',tp:'NF-e',v:1512,inf:'Boleto Asaas · recebido em 26/08 · conta Asaas · conciliado com o extrato ✓',it:[
+   ['Coxinha de frango congelada 1 kg','1902.20.00','5.101',80,'PCT',18.9,1512]]},
+  {t:'NF-e 91.690 · Pedido #4933',em:'27/08',vc:'24/09',st:'Aberto',tp:'NF-e',v:1134,inf:'Boleto 28 dias · em aberto',it:[
+   ['Coxinha de frango congelada 1 kg','1902.20.00','5.101',60,'PCT',18.9,1134]]}]}
+];
+function receber(){
+  let h=`<div class="thead"><div>Cliente › Nota › Produto</div><div class="num">Notas</div><div class="num">Faturado</div><div class="num">Devolvido</div><div class="num">Recebido</div><div class="num">Em aberto</div></div>`;
+  RC.forEach(c=>{const ab=c.fat-c.dev-c.rec;
+    h+=`<div class="node cat open"><div class="row r-cat" onclick="tg(this)"><div class="nm"><i class="chev"></i><div class="tx"><span class="t">${c.n}</span>${pin(c.pin)}<small style="color:#4b5563;font-size:12px">${c.d}</small><span class="mobinfo">${c.c} ${c.c>1?'notas':'nota'} · recebido ${R(c.rec)}${c.dev?` · devolvido ${R(c.dev)}`:''} · aberto ${R(ab)}</span></div></div>${C(c.c)}${C(R(c.fat),'v')}${C(c.dev?R(-c.dev):'—',c.dev?'neg':'')}${C(R(c.rec),'verd')}${C(ab>0.004?R(ab):'—','azul')}</div><div class="kids"><div class="docs">${c.docs.map(doc).join('')}</div></div></div>`;});
+  h+=`<div class="row r-mais c0"><div class="nm"><div class="tx">+ 212 clientes (recolhidos neste exemplo)</div></div>${C('')}${C('…','v')}${C('')}${C('')}${C('')}</div>`;
+  document.getElementById('tr').innerHTML=h;
+}
+
+/* ---------------- POSIÇÃO EM ABERTO ---------------- */
+const AG={f:[['Frigorífico Serra Azul S.A.','23.456.789/0001-01',5702.5,0,0,0],['Moinho Vale do Trigo Ltda','12.345.678/0001-90',8060,0,0,0],['Refrigeração Industrial Planalto Ltda','01.666.777/0001-88',6880,0,0,0],['Embalagens Litoral Ltda','12.777.888/0001-99',3410,1280,0,0],['Demais 14 fornecedores','',21930.4,2300,640,0]],
+ c:[['Mercado São Jorge Ltda','78.901.234/0001-67',4320,0,0,3180.5],['Restaurante Sabor da Serra Ltda','89.012.345/0001-78',0,2916,1458,0],['Supermercado Bom Preço Ltda','45.678.901/0001-23',1873,0,0,0],['Padaria Pão Quente Ltda','67.890.123/0001-56',1134,0,0,0],['Demais 87 clientes','',68204.1,9812.4,2410.2,1122]]};
+const somaAg=k=>AG[k].reduce((s,r)=>s+r[2]+r[3]+r[4]+r[5],0);
+function aging(k,b){
+  if(b)b.parentElement.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));
+  const T=[0,0,0,0];const z=(v,cls)=>C(v?R(v):'—',v?cls:'');
+  let h=`<div class="thead"><div>${k==='f'?'Fornecedor':'Cliente'}</div><div class="num">A vencer</div><div class="num">Vencido 1–30 d</div><div class="num">31–60 d</div><div class="num">+ de 60 d</div><div class="num">Total em aberto</div></div>`;
+  AG[k].forEach(r=>{const t=r[2]+r[3]+r[4]+r[5];[0,1,2,3].forEach(i=>T[i]+=r[i+2]);const venc=r[3]+r[4]+r[5];
+    h+=`<div class="row ${r[1]?'':'r-mais c0'}"><div class="nm"><div class="tx"><span class="t" style="font-weight:700">${r[0]}</span>${r[1]?`<small style="color:#4b5563;font-size:12px">${r[1]}</small>`:''}<span class="mobinfo">a vencer ${R(r[2])}${venc?` · <b class="neg">vencido ${R(venc)}</b>`:''}</span></div></div>${z(r[2])}${z(r[3],'neg')}${z(r[4],'neg')}${z(r[5],'neg')}${C(R(t),'v')}</div>`;});
+  const tt=T[0]+T[1]+T[2]+T[3];
+  h+=`<div class="total"><div>Total em 31/08/2026</div>${C(R(T[0]))}${C(R(T[1]))}${C(R(T[2]))}${C(R(T[3]))}${C(R(tt),'v')}</div>`;
+  document.getElementById('ta').innerHTML=h;
+}
+
+/* ---------------- ARQUIVO CSV ---------------- */
+const HP=[['cat','Categoria'],['cl','Classificação'],['g','Grupo DRE'],['f','Fornecedor'],['cnpj','CNPJ / CPF'],
+ ['tp','Tipo de documento'],['n','Nº do documento'],['ch','Chave de acesso'],['ds','Descrição do lançamento'],['em','Emissão'],['cp','Referente a'],
+ ['pa','Parcelas'],['vc','Vencimento(s)'],['st','Situação'],['dp','Data(s) de pagamento'],['fp','Forma de pagamento'],['bc','Banco / conta'],['jm','Juros e multa'],['dc','Desconto'],['cc','Conciliado com extrato'],['bx','Baixado por'],
+ ['pr','Produto'],['cod','Código no fornecedor'],['ncm','NCM'],['cfop','CFOP'],['q','Qtd'],['un','Un'],['vu','Valor unitário'],
+ ['vcat','Valor nesta categoria'],['pgp','Pago'],['abp','Em aberto'],['vn','Total da nota (não somar)'],['ax','Anexo PDF']];
+const GP=[['Categoria',0,3],['Fornecedor',3,5],['Documento',5,11],['Parcelas e pagamento',11,21],['Produto',21,28],['Valores',28,33]];
+const mp={cat:'Matéria Prima',cl:'Operacional · Variável',g:'Custos variáveis',cp:'08/2026',jm:'0,00',dc:'0,00',ax:'Sim',tp:'NF-e'};
+const moinho={...mp,f:'Moinho Vale do Trigo Ltda',cnpj:'12.345.678/0001-90'};
+const LP=[
+ {...moinho,n:'45812',ch:'42260812345678000190550010000458121000458127',ds:'Compra de farinha',em:'04/08/2026',pa:'1',vc:'03/09/2026',st:'Pago',dp:'03/09/2026',fp:'PIX',bc:'Sicredi',cc:'Sim',bx:'Escritório',pr:'Farinha de trigo tipo 1 — saco 25 kg',cod:'FT-0025',ncm:'1101.00.10',cfop:'5101',q:'80',un:'SC',vu:'96,50',vcat:'7.720,00',pgp:'7.720,00',abp:'0,00',vn:'8.060,00'},
+ {...moinho,n:'45812',ch:'42260812345678000190550010000458121000458127',ds:'Compra de farinha',em:'04/08/2026',pa:'1',vc:'03/09/2026',st:'Pago',dp:'03/09/2026',fp:'PIX',bc:'Sicredi',cc:'Sim',bx:'Escritório',pr:'Fermento biológico seco 500 g',cod:'FB-0500',ncm:'2102.10.90',cfop:'5101',q:'20',un:'CX',vu:'17,00',vcat:'340,00',pgp:'340,00',abp:'0,00',vn:'8.060,00'},
+ {...moinho,n:'46377',ch:'42260812345678000190550010000463771000463772',ds:'Compra de farinha',em:'19/08/2026',pa:'1',vc:'18/09/2026',st:'Aberto',cc:'Não',pr:'(Frete da nota)',vcat:'185,00',pgp:'0,00',abp:'185,00',vn:'8.060,00'},
+ {...mp,f:'Frigorífico Serra Azul S.A.',cnpj:'23.456.789/0001-01',n:'119105',ch:'43260823456789000101550010001191051001191058',ds:'Compra de frios',em:'25/08/2026',pa:'2',vc:'24/09/2026; 24/10/2026',st:'Aberto',cc:'Não',pr:'Presunto cozido',cod:'7791',ncm:'1602.41.00',cfop:'6101',q:'150',un:'KG',vu:'21,35',vcat:'3.202,50',pgp:'0,00',abp:'3.202,50',vn:'5.702,50'},
+ {...mp,f:'Atacado Central Ltda',cnpj:'67.890.123/0001-45',n:'902114',ch:'42260867890123000145550010009021141009021140',ds:'Compra no atacado (rateada)',em:'08/08/2026',pa:'1',vc:'08/08/2026',st:'Pago',dp:'08/08/2026',fp:'Dinheiro',bc:'Caixa',cc:'Sim',bx:'Escritório',pr:'Óleo de soja 900 ml — caixa c/ 20',cod:'10442',ncm:'1507.90.11',cfop:'5102',q:'12',un:'CX',vu:'118,90',vcat:'1.426,80',pgp:'1.426,80',abp:'0,00',vn:'1.964,30'},
+ {cat:'Energia Elétrica',cl:'Operacional · Variável',g:'Custos variáveis',f:'Distribuidora de Energia S.A.',cnpj:'45.111.222/0001-33',tp:'Fatura',n:'08/2026',ds:'Fatura 08/2026 — fábrica',em:'10/08/2026',cp:'08/2026',pa:'1',vc:'20/08/2026',st:'Pago',dp:'20/08/2026',fp:'Boleto',bc:'Sicredi',jm:'0,00',dc:'0,00',cc:'Sim',bx:'Escritório',vcat:'13.964,11',pgp:'13.964,11',abp:'0,00',vn:'13.964,11',ax:'Sim'}];
+const HR=[['cli','Cliente'],['cnpj','CNPJ / CPF'],['vd','Vendedor'],
+ ['ped','Pedido'],['tp','Tipo de documento'],['n','Nº da nota'],['ch','Chave de acesso'],['em','Emissão'],['cd','Condição de pagamento'],
+ ['pa','Parcelas'],['vc','Vencimento(s)'],['st','Situação'],['dp','Data(s) de recebimento'],['fp','Forma de recebimento'],['bc','Banco / conta'],['dc','Desconto'],['md','Motivo do desconto'],['cc','Conciliado com extrato'],['bx','Baixado por'],
+ ['pr','Produto'],['ncm','NCM'],['cfop','CFOP *'],['q','Qtd'],['un','Un'],['vu','Valor unitário'],
+ ['vp','Valor do produto'],['rcp','Recebido'],['abp','Em aberto'],['vn','Total da nota (não somar)']];
+const GR=[['Cliente',0,3],['Documento',3,9],['Parcelas e recebimento',9,19],['Produto',19,25],['Valores',25,29]];
+const bp={cli:'Supermercado Bom Preço Ltda',cnpj:'45.678.901/0001-23',vd:'Vendedor 1',dc:'0,00',ncm:'1902.20.00',un:'PCT'};
+const LR=[
+ {...bp,ped:'4655',tp:'NF-e',n:'90877',ch:'42260899888777000166550010000908771000908775',em:'12/08/2026',cd:'À vista — PIX',pa:'1',vc:'12/08/2026',st:'Recebido',dp:'12/08/2026',fp:'PIX',bc:'Sicredi',cc:'Sim',bx:'Escritório',pr:'Risole de carne congelado 1 kg',cfop:'5101',q:'50',vu:'19,60',vp:'980,00',rcp:'980,00',abp:'0,00',vn:'2.380,00'},
+ {...bp,ped:'4812',tp:'NF-e',n:'91204',ch:'42260899888777000166550010000912041000912049',em:'05/08/2026',cd:'Boleto 28 dias',pa:'1',vc:'02/09/2026',st:'Aberto',fp:'Boleto Asaas',cc:'Não',pr:'Coxinha de frango congelada 1 kg',cfop:'5101',q:'60',vu:'18,90',vp:'1.134,00',rcp:'0,00',abp:'1.134,00',vn:'2.062,00'},
+ {...bp,ped:'4812',tp:'Devolução (ref. NF 91204)',n:'91377',ch:'42260899888777000166550010000913771000913772',em:'14/08/2026',st:'Devolvido',cc:'—',pr:'Coxinha de frango congelada 1 kg',cfop:'1201',q:'-10',vu:'18,90',vp:'-189,00',rcp:'0,00',abp:'-189,00',vn:'-189,00'},
+ {cli:'Lanchonete Ponto Certo ME',cnpj:'56.789.012/0001-34',vd:'Vendedor 2',ped:'4790',tp:'Venda sem nota (especial)',em:'09/08/2026',cd:'À vista — dinheiro',pa:'1',vc:'09/08/2026',st:'Recebido',dp:'09/08/2026',fp:'Dinheiro',bc:'Caixa',dc:'0,00',cc:'—',bx:'Motorista 1',pr:'Pastel de carne congelado 1 kg',q:'15',un:'PCT',vu:'17,40',vp:'261,00',rcp:'261,00',abp:'0,00',vn:'486,00'}];
+function csv(H,L,G,idT,idG,idN){
+  const num=k=>['q','vu','vcat','pgp','abp','vn','vp','rcp','jm','dc'].includes(k);
+  document.getElementById(idT).innerHTML='<table><tr>'+H.map(h=>`<th>${h[1]}</th>`).join('')+'</tr>'+L.map(l=>'<tr>'+H.map(h=>`<td class="${num(h[0])?'dn':''}">${l[h[0]]??''}</td>`).join('')+'</tr>').join('')+'</table>';
+  document.getElementById(idG).innerHTML=G.map(g=>`<div><b>${g[0]}</b>${H.slice(g[1],g[2]).map(h=>h[1]).join(' · ')}</div>`).join('');
+  document.getElementById(idN).textContent=H.length;
+}
+csv(HP,LP,GP,'cp','gp','np');csv(HR,LR,GR,'cr','gr','nr');
+
+/* ---------------- interação ---------------- */
+function tg(el){el.parentElement.classList.toggle('open');}
+function nivel(id,n,b){
+  b.parentElement.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));
+  const t=document.getElementById(id),temF=id==='tp';
+  t.querySelectorAll('.cat').forEach(c=>c.classList.toggle('open',n>=2));
+  t.querySelectorAll('.forn').forEach(f=>f.classList.toggle('open',n>=3));
+  t.querySelectorAll('.doc.node').forEach(d=>d.classList.toggle('open',n>=(temF?4:3)));
+}
+function visao(v,b){document.body.classList.toggle('mob',v==='mob');if(b)b.parentElement.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));}
+function abas(id,ativa){const A=['Contas a Receber','Contas a Pagar','Posição em aberto','Extratos','Notas de Entrada','Pacote do Mês'];
+  document.getElementById(id).innerHTML=A.map(a=>`<span class="pl ${a===ativa?'on':''}">${a}${a==='Posição em aberto'?'<span class="novo">NOVO</span>':''}</span>`).join('');}
+abas('abas1','Contas a Pagar');abas('abas2','Contas a Receber');abas('abas3','Posição em aberto');
+pagar();receber();aging('f');
+document.getElementById('k-rab').textContent=R(somaAg('c'));
+if(new URLSearchParams(location.search).get('full'))document.head.insertAdjacentHTML('beforeend','<style>.app{max-height:none!important;height:auto!important}</style>');
+if(new URLSearchParams(location.search).get('v')==='mob')visao('mob',document.querySelectorAll('.alt button')[1]);
+</script>
+</body>
+</html>

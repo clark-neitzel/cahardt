@@ -30,6 +30,7 @@ const router = express.Router();
 const prisma = require('../config/database');
 const verificarAuth = require('../middlewares/authMiddleware');
 const anexoService = require('../services/anexoService');
+const relatorioService = require('../services/contabilidadeRelatorioService');
 
 const getPerms = async (userId) => {
     const vendedor = await prisma.vendedor.findUnique({
@@ -413,6 +414,9 @@ router.get('/relatorio-pagar', verificarAuth, checkAcesso, async (req, res) => {
         const catFiltro = toList(categoria);
         const linhas = [];
         let truncado = false;
+        let extraResumo = null;
+        let extraContas = null;
+        let extraItens = null;
 
         // Filtro comum sobre a CONTA (emissão/fornecedor/categoria) — visão contas e pagamentos
         const whereConta = { status: { not: 'CANCELADO' } };
@@ -505,43 +509,19 @@ router.get('/relatorio-pagar', verificarAuth, checkAcesso, async (req, res) => {
             }
         } else if (visao === 'categorias') {
             // ── DRE: totais por categoria usando SEMPRE o rateio quando existir ──
-            const contas = await prisma.contaPagar.findMany({
-                where: whereConta,
-                take: LIMITE_LINHAS + 1,
-                select: SELECT_CONTA_PAGAR
-            });
-            truncado = contas.length > LIMITE_LINHAS;
-            const catsInfo = new Map(
-                (await prisma.categoriaDespesa.findMany({
-                    select: { nome: true, classificacao: true, natureza: true, grupoDre: { select: { nome: true } } }
-                })).map((c) => [c.nome, c])
-            );
-            const acum = new Map();
-            const somar = (nomeCat, valor) => {
-                const nome = nomeCat || 'Sem categoria';
-                const atual = acum.get(nome) || { categoria: nome, contas: 0, valor: 0 };
-                atual.contas += 1;
-                atual.valor = round2(atual.valor + Number(valor || 0));
-                acum.set(nome, atual);
-            };
-            for (const c of contas.slice(0, LIMITE_LINHAS)) {
-                if (c.rateios.length > 0) c.rateios.forEach((r) => somar(r.categoria, r.valor));
-                else somar(c.categoriaDespesa?.nome || c.categoria, c.valorTotal);
-            }
-            const totalGeral = round2([...acum.values()].reduce((s, a) => s + a.valor, 0));
-            for (const a of [...acum.values()].sort((x, y) => y.valor - x.valor)) {
-                const info = catsInfo.get(a.categoria);
-                linhas.push({
-                    id: a.categoria,
-                    categoria: a.categoria,
-                    classificacao: info?.classificacao || null,
-                    natureza: info?.natureza || null,
-                    grupoDre: info?.grupoDre?.nome || null,
-                    contas: a.contas,
-                    valor: a.valor,
-                    percentual: totalGeral > 0 ? round2((a.valor / totalGeral) * 100) : 0
-                });
-            }
+            // Detalhado (detalhe=1): categoria → conta → produto, ver contabilidadeRelatorioService.
+            const det = await relatorioService.montarPagarDetalhado({
+                whereConta,
+                detalhe: String(req.query.detalhe || '') === '1',
+                limiteContas: LIMITE_LINHAS,
+                selectConta: SELECT_CONTA_PAGAR,
+                nomeBanco,
+                helpers: { resolverDocPagar, idsConciliadosPagar, idsContasComAnexo: (ids) => anexoService.idsContasComAnexo(ids) }
+            }, prisma);
+            truncado = det.truncado;
+            linhas.push(...det.linhas);
+            extraResumo = det.resumoExtra;
+            if (det.itens) { extraContas = det.contas; extraItens = det.itens; }
         } else {
             // ── Competência: 1 linha por parcela ──
             const where = { contaPagar: whereConta };
@@ -616,9 +596,11 @@ router.get('/relatorio-pagar', verificarAuth, checkAcesso, async (req, res) => {
         const pagoTotal = round2(linhas.reduce((s, l) => s + (l.valorPago || 0), 0));
         res.json({
             visao: ['pagamentos', 'categorias'].includes(visao) ? visao : 'contas',
-            resumo: { linhas: linhas.length, valorTotal, pagoTotal, truncado },
+            ...(extraItens ? { detalhe: true } : {}),
+            resumo: { linhas: linhas.length, valorTotal, pagoTotal, truncado, ...(extraResumo || {}) },
             bancos: contasFin.map((c) => ({ id: c.id, nome: c.nomeBanco })),
-            linhas
+            linhas,
+            ...(extraItens ? { contas: extraContas, itens: extraItens } : {})
         });
     } catch (error) {
         console.error('[Contabilidade] relatorio-pagar:', error);

@@ -14,6 +14,13 @@ A área tem 5 abas: **Contas a Receber**, **Contas a Pagar**, **Extratos**, **No
 ## Aba Contas a Pagar
 - **Três visões**: Contas (competência, pela data de emissão), Pagamentos (caixa — uma linha por baixa, com **juros, multa e desconto**) e **Por categoria (DRE)** — totais por categoria calculados SEMPRE pelo rateio da nota (matéria-prima × uso e consumo), com a classificação (Operacional/Financeiro/Fora da DRE) e o grupo da DRE.
 - Conta com itens de categorias diferentes aparece como **RATEADA** e abre as linhas do rateio logo abaixo.
+- **Por categoria (DRE) agora é uma árvore detalhada** — categoria → fornecedor → nota → produtos — para responder ao contador "esse total de Matéria Prima é de quem e de quê?". O período dessa visão é a **data de emissão** da nota/lançamento (os filtros de vencimento e pagamento não se aplicam a ela e ficam escondidos). O total de cada categoria é SEMPRE o valor do rateio gravado na conta; os produtos só detalham esse valor, e o que sobra (frete, seguro, IPI/ST, desconto da nota, arredondamento) aparece numa linha **"Frete e outros valores da nota"** (pode ser negativa quando houve desconto). Assim a soma dos produtos + essa linha fecha centavo a centavo com a categoria.
+- **De onde vêm os produtos:** nota de entrada (NF-e) → itens da nota (descrição, código do fornecedor, NCM, CFOP, quantidade, unidade, valor unitário); despesa lançada à mão com produtos → os produtos da despesa (sem NCM/CFOP/código; diferença vira "Outros valores / diferença da despesa"); energia, salário, imposto, NFS-e e contas importadas do Conta Azul não têm produtos e saem em **uma linha por categoria**, com a descrição do lançamento. Quando a nota foi **vinculada depois** a uma parcela já lançada (caso típico das contas importadas do CA), os produtos ainda **não aparecem** — um aviso cinza informa quantos lançamentos estão nesse caso.
+- **Pago e Em aberto por categoria** — "Pago (até hoje)" soma tudo que já foi pago das contas emitidas no período (não só o pago dentro do período); baixas estornadas não contam. Quando uma conta tem várias categorias ou produtos, **pago, desconto e juros/multa são rateados** na mesma proporção do valor (a soma sempre fecha). Em aberto = valor − pago − desconto.
+- **Dados por nota** (nas linhas da árvore e no CSV): tipo do documento (NF-e, NFC-e, NFS-e, Importada (antiga), Sem documento — NFC-e é reconhecida pela chave de acesso, modelo 65), número, chave, emissão, "referente a" (mês de competência), parcelas pagas/total, vencimento(s), situação (Pago, Parcial, Vencido, Aberto — "Vencido" depende do dia em que o relatório é gerado), data(s) de pagamento, forma(s), banco(s), quem baixou, conciliado com o extrato (Sim/Não/Parcial), se tem anexo e o **total da nota (não somar)**.
+- **Fora do resultado** — categorias classificadas como "Fora da DRE" no cadastro (ex.: Antecipação de Lucros, empréstimos, imobilizado) entram num bloco à parte, com subtotal próprio; o sistema não reclassifica nenhuma categoria sozinho.
+- **Lançamentos sem nota fiscal** — linha informativa cinza com a quantidade e o valor (salários, impostos e contas de consumo entram aqui) e opção de ver só esses.
+- **Abrir até** (Categoria / Fornecedor / Nota / Produto) controla a profundidade na tela e na impressão. **O CSV sai sempre com uma linha por produto** e todas as colunas (33), qualquer que seja o nível aberto; a coluna "Valor nesta categoria" é a única para somar no Excel (junto de Pago e Em aberto). Se o período for tão grande que o arquivo sairia incompleto (acima de 20.000 linhas), o sistema avisa e **bloqueia o CSV** — escolha um período menor.
 - Coluna Documento: NF-e (produto), NFS-e (serviço), importada (antiga) ou sem nota; 📎 indica PDF anexado.
 - Filtros: emissão/vencimento/pagamento (presets), fornecedor, documento, forma, banco do pagamento, status. Exporta CSV e imprime.
 
@@ -41,6 +48,8 @@ A área tem 5 abas: **Contas a Receber**, **Contas a Pagar**, **Extratos**, **No
 - **Cartões de resumo** — quantidade, valor total (ou recebido, na visão caixa), valor com nota fiscal e valor sem nota (especial).
 
 ## Perguntas comuns
+- **"O total de Matéria Prima não bate com a soma dos produtos da nota"** → confira a linha "Frete e outros valores da nota": ela leva frete, impostos e descontos que não são produto. A soma dos produtos + essa linha é sempre igual ao total da categoria.
+- **"Por que alguns lançamentos aparecem sem produtos?"** → energia, salário, imposto e serviços não têm produtos; e notas vinculadas depois a uma parcela já lançada ainda não trazem os produtos para este relatório.
 - **"Como vejo tudo que foi criado num mês?"** → visão Títulos + período de criação no mês desejado.
 - **"Como vejo o que entrou de dinheiro no mês, por banco?"** → visão Recebimentos + período de pagamento no mês; ligue as colunas Forma e Banco da baixa.
 - **"Como sei se um recebimento é de nota fiscal ou de especial?"** → coluna Nota fiscal (o selo roxo "Especial — sem nota" indica venda sem NF).
@@ -50,4 +59,5 @@ A área tem 5 abas: **Contas a Receber**, **Contas a Pagar**, **Extratos**, **No
 
 ## O que esta tela NÃO faz
 - Não dá baixa, não edita títulos, não emite nota — é só consulta/exportação.
+- Não reclassifica categoria (ex.: o que é "Fora da DRE" vem do cadastro de categorias).
 - Bonificações e pedidos excluídos/cancelados não aparecem (mesma regra da tela de Contas a Receber).
