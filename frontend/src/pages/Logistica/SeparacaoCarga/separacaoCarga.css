@@ -184,9 +184,11 @@
 .sepc .aviso-e.er-envio span{flex:1;min-width:10em}
 .sepc .aviso-e.er-envio button{border:0;background:#991b1b;color:#fff;border-radius:999px;font-weight:800;font-size:.95em;min-height:44px;padding:0 1.2em;cursor:pointer}
 .sepc .conc{margin:.8em 1em 0;background:#dcfce7;border:1px solid #86efac;color:#14532d;border-radius:.8em;padding:.6em .9em;font-weight:800;font-size:.9em}
-.sepc .pick{padding:1em;display:grid;gap:.6em}
+.sepc .pick{padding:1em;display:grid;gap:.6em;align-content:start;grid-auto-rows:max-content}
+.sepc .pick>*{align-self:start;min-height:0}
+.sepc .pick .big{min-height:3.3em;height:auto}
 .sepc .pick h3{margin:0;font-size:1.15em;font-weight:800}
-.sepc .pick .cg{max-width:none;width:100%;display:block}
+.sepc .pick .cg{max-width:none;width:100%;display:block;height:auto;min-height:0}
 .sepc .fila .sel{flex:1 1 12em;min-width:10em}
 .sepc .fila.er{background:#fef2f2;color:#991b1b;border-color:#fca5a5}
 .sepc .mdl-f{position:fixed;inset:0;z-index:90;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:1em}
