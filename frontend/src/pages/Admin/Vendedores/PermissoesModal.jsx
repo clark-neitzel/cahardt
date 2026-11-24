@@ -155,7 +155,7 @@ const DEFAULT_PERMISSIONS = {
     Pode_Editar_Ponto: false,
     // Tela inicial preferida
     telaInicial: '/',
-    // Assistente Clippy: ausente = true; só false desliga (admin sempre vê)
+    // Assistente Clippy: ausente = true; só false desliga (vale também para admin)
     Pode_Ver_Clippy: true,
     // Barra de visitantes online (site ao vivo no topo do admin)
     Pode_Ver_Barra_Online: false,
@@ -706,9 +706,7 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
         <div className="flex items-start gap-2">
             <div className="flex-1 min-w-0">
                 <Toggle
-                    checked={getBoolPath(entry.path) || (entry.path === 'Pode_Ver_Clippy' && !!permissoes.admin)}
-                    disabled={entry.path === 'Pode_Ver_Clippy' && !!permissoes.admin}
-                    dica={entry.path === 'Pode_Ver_Clippy' && permissoes.admin ? 'Administrador vê tudo automaticamente' : ''}
+                    checked={entry.path === 'Pode_Ver_Clippy' ? permissoes.Pode_Ver_Clippy !== false : getBoolPath(entry.path)}
                     onChange={(v) => setBoolPath(entry.path, v)}
                     label={entry.nome}
                     sublabel={entry.desc}
@@ -861,12 +859,11 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                     <p className="text-xs text-teal-700 mt-0.5">Mostra o balão de ajuda no canto da tela (só no computador). Desligado, a pessoa também não recebe os avisos de novidade do sistema.</p>
                 </div>
                 <button
-                    type="button" role="switch" aria-checked={!!permissoes.admin || permissoes.Pode_Ver_Clippy !== false}
-                    onClick={() => !permissoes.admin && toggleBool('Pode_Ver_Clippy')}
-                    className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${(permissoes.admin || permissoes.Pode_Ver_Clippy !== false) ? 'bg-teal-600' : 'bg-gray-200'} ${permissoes.admin ? 'opacity-60 cursor-not-allowed' : ''}`}
-                    title={permissoes.admin ? 'Administrador vê tudo automaticamente' : ''}
+                    type="button" role="switch" aria-checked={permissoes.Pode_Ver_Clippy !== false}
+                    onClick={() => setPermissoes(prev => ({ ...prev, Pode_Ver_Clippy: prev.Pode_Ver_Clippy === false }))}
+                    className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${permissoes.Pode_Ver_Clippy !== false ? 'bg-teal-600' : 'bg-gray-200'}`}
                 >
-                    <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${(permissoes.admin || permissoes.Pode_Ver_Clippy !== false) ? 'translate-x-5' : 'translate-x-0'}`} />
+                    <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${permissoes.Pode_Ver_Clippy !== false ? 'translate-x-5' : 'translate-x-0'}`} />
                 </button>
             </div>
         </div>

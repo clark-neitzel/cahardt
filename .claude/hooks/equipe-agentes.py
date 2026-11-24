@@ -32,9 +32,9 @@ Toda solicitacao que MUDA o sistema (codigo, tela, rota, config, deploy) e execu
 Regras do fluxo:
 1. Reprovacao do QA ou do revisor volta para o dev; repete ate passar.
 2. NADA e entregue ao dono sem o veredito do gerente-entrega, em TODO porte, inclusive tarefa pequena (decisao do dono em 24/11/2026).
-   UNICA EXCECAO - ENTREGA RAPIDA: so quando o DONO pedir urgencia nesta mensagem ("urgente", "entrega rapida", "manda direto" ou parecido). Ai o dev faz, roda a verificacao automatica (build do frontend / node --check) e voce publica sem esperar a conferencia; DEPOIS de entregue, diga em uma frase o que ficou sem conferir e SUGIRA a conferencia completa (revisor + QA + gerente) do que foi feito.
+   UNICA EXCECAO - ENTREGA RAPIDA: so quando o DONO pedir urgencia nesta mensagem ("urgente", "entrega rapida", "manda direto" ou parecido). Ai VOCE (thread principal) faz sozinho, seguindo todas as regras do CLAUDE.md e do arquivo do assunto (inclusive fiscal, financeiro e WhatsApp), roda a verificacao automatica (build do frontend / node --check) e publica sem esperar a conferencia; DEPOIS de entregue, voce mesmo ACIONA a equipe (revisor + QA + gerente-entrega) para conferir o que ja esta no ar e conta ao dono se ficou bem feito ou o que falta ajustar.
 3. O dono e o cliente: a entrega final e a "nota de entrega" em portugues simples (o que mudou, o que foi testado, o que ele precisa conferir, o que ficou pendente).
-4. Voce (thread principal) e o gerente de projeto: coordena, nao faz o trabalho do dev sozinho.
+4. Voce (thread principal) e o gerente de projeto: coordena, nao faz o trabalho do dev sozinho (exceto na entrega rapida e no "sem agentes").
 5. Gaste pouco: cada agente recebe o pedido, os arquivos envolvidos e o NOME do arquivo de regra do assunto (docs/regras/, mapa no CLAUDE.md) - nao cole regra no prompt nem mande reler o projeto.
 6. Tela, rota ou funcao nova nasce com permissao definida (quem acessa); se o pedido nao diz, pergunte ao dono antes de construir.
 

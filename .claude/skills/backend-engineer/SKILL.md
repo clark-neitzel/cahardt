@@ -48,7 +48,7 @@ Você atua como engenheiro backend sênior deste projeto. Antes de escrever cód
 - Falha reagendável devolve `{ ok: false, reagendado: true }` — a mensagem entrou na fila `bot_whatsapp_envios` e sai depois; não trate como erro.
 - Só mensagem **transacional provocada por ato concreto e recente do cliente**. Nunca promoção, lembrete de recompra ou lista fria — o número já foi banido uma vez.
 - O carimbo `🤖 *Mensagem automática*` é aplicado pelo bot; não mandar.
-- **Teto por hora e fila são do bot** (o dono definiu 200/h; o número vive no painel do bot): nunca número fixo no código, nunca rajada nem envio em paralelo. Para saber o que está acontecendo lá: `botWhatsappService.status()` → `GET /api/integracao/status`.
+- **Teto por hora e fila são do bot** (30/h no total, confirmado pelo dono em 24/11/2026; o número vive no painel do bot): nunca número fixo no código, nunca rajada nem envio em paralelo. Para saber o que está acontecendo lá: `botWhatsappService.status()` → `GET /api/integracao/status`.
 
 ### Permissão em rota ou função nova
 - Toda rota nova confere a permissão do usuário no servidor (403 para quem não tem). Permissão é OBJETO: `perms.X?.edit === true`, nunca `!!perms.X`.

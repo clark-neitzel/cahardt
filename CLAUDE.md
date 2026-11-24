@@ -40,7 +40,7 @@ Três lugares, três papéis — não confundir:
 
 | Agente | Papel |
 |---|---|
-| **thread principal** | **Gerente de projeto.** Fala com o dono, entende o pedido, distribui, cobra e entrega. Não faz sozinho o trabalho do dev. Espera longa (build/deploy) é responsabilidade dele, não do agente. |
+| **thread principal** | **Gerente de projeto.** Fala com o dono, entende o pedido, distribui, cobra e entrega. Não faz sozinho o trabalho do dev (exceto na entrega rápida e no "sem agentes"). Espera longa (build/deploy) é responsabilidade dele, não do agente. |
 | `arquiteto` | Desenha o plano antes de codificar (arquivos, ordem, riscos, critérios de aceite). Somente leitura. |
 | `dev-backend` | Implementa rota, service, worker, schema, integração. Não commita. |
 | `dev-frontend` | Implementa tela, componente, filtro, impressão. Roda o build. Não commita. |
@@ -62,15 +62,15 @@ pedido do dono → (arquiteto, se médio/grande) → dev-backend / dev-frontend
 - **Pequena** (texto, cor, campo simples): `dev` → `revisor-codigo` → `gerente-entrega`. Sem QA. O gerente recebe um **pacote curto** (o diff, o veredito do revisor e a saída do build) — é conferência rápida, não reunião.
 - **Média** (tela nova, correção de bug, relatório): `dev` → `qa-testador` + `revisor-codigo` → `gerente-entrega`. *(padrão)*
 - **Grande** (módulo novo; qualquer coisa em fiscal, financeiro, NF-e, WhatsApp, permissões, migração): `arquiteto` antes, equipe completa depois.
-- **Entrega rápida** (só quando o DONO pedir: "urgente", "entrega rápida", "manda direto" ou parecido): o dev faz, roda a verificação automática (build do frontend / `node --check`) e a thread principal publica **sem esperar a conferência**. As regras dos processos protegidos continuam valendo. **Depois de entregue**, a thread principal diz em uma frase o que ficou sem conferir e **sugere a conferência completa** do que foi feito (revisor + QA + gerente) — o dono decide se roda. Urgência não é desculpa para esquecer a conferência: ela só muda de hora.
+- **Entrega rápida** (só quando o DONO pedir: "urgente", "entrega rápida", "manda direto" ou parecido — decisão dele em 24/11/2026): **a thread principal (gerente de projeto) faz sozinha**, seguindo TODAS as regras deste arquivo e do arquivo do assunto — inclusive em fiscal, financeiro e WhatsApp, onde os processos protegidos continuam valendo —, roda a verificação automática (build do frontend / `node --check`) e publica **sem esperar a conferência**. **Depois de entregue, ela mesma aciona a equipe** (revisor + QA + `gerente-entrega`) para conferir o que já está no ar e conta ao dono, em português simples, se ficou bem feito ou o que ainda precisa de ajuste. Não é sugestão: a conferência acontece sempre, só muda de hora.
 
 ### Regras do fluxo
 
 1. **Quem faz não confere.** Dev não aprova o próprio trabalho.
 2. **Relatório sem evidência = não feito.** Saída de comando, estado do DOM, resposta de API, PDF, captura de tela.
-3. **Nada é entregue ao dono sem o veredito do `gerente-entrega` — em TODO porte, inclusive tarefa pequena** (decisão do dono em 24/11/2026). Única exceção: a entrega rápida pedida por ele (acima).
+3. **Nada é entregue ao dono sem o veredito do `gerente-entrega` — em TODO porte, inclusive tarefa pequena** (decisão do dono em 24/11/2026). Única exceção: a entrega rápida pedida por ele (acima), em que o veredito vem logo depois da publicação.
 4. **A entrega final é a nota de entrega**: português simples — o que mudou, o que foi testado, o que ele precisa conferir, o que ficou pendente.
-5. **Quem commita é a thread principal**, e só **depois** do veredito do `gerente-entrega` — exceto na entrega rápida (os agentes nunca commitam nem publicam). O build tem que ter passado — a regra da seção seguinte continua valendo.
+5. **Quem commita é a thread principal**, e só **depois** do veredito do `gerente-entrega` — exceto na entrega rápida, em que ela commita e publica antes e a equipe confere em seguida (os agentes nunca commitam nem publicam). O build tem que ter passado — a regra da seção seguinte continua valendo.
 6. **Depois de commitar, rode `scripts/backup-para-drive.sh`** — o agendamento das 12h/20h só funciona se o macOS tiver dado permissão ao cron para escrever na pasta do Drive; rodar pela sessão sempre funciona.
 7. **Não vale para** pergunta, consulta ou diagnóstico que não altera arquivo — nesses casos, responda direto.
 8. **Dispensa**: se o dono escrever **"sem agentes"** (ou equivalente), execute direto, sozinho — mantendo todos os padrões deste arquivo.

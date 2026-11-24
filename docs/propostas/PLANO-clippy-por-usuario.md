@@ -1,5 +1,7 @@
 # PLANO: Clippy ligado/desligado por usuário (07/10/2026, arquiteto)
 
+> **Substituído em 24/11/2026:** o administrador NÃO é mais isento da chave `Pode_Ver_Clippy` — quem desliga, inclusive o administrador, deixa de ver o Clippy (pedido do dono). Onde este documento diz "admin sempre vê", vale o código atual (`App.jsx`, `backend/routes/copiloto.js`, `PermissoesModal.jsx`).
+
 ## Objetivo
 Chave por usuário em Admin → Usuários → Permissões controlando se a pessoa vê o assistente Clippy. Todos continuam vendo (comportamento atual); a chave serve para DESLIGAR. Admin sempre vê.
 

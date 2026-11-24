@@ -1,5 +1,7 @@
 # Nota de entrega — Clippy ligado/desligado por usuário
 
+> **Substituído em 24/11/2026:** o administrador NÃO é mais isento da chave `Pode_Ver_Clippy` — quem desliga, inclusive o administrador, deixa de ver o Clippy (pedido do dono). Onde este documento diz "admin sempre vê", vale o código atual (`App.jsx`, `backend/routes/copiloto.js`, `PermissoesModal.jsx`).
+
 **Data:** 07/10/2026
 **Veredito do gerente de entrega:** LIBERADO (ver seção "Pendências" no fim)
 

@@ -869,8 +869,9 @@ const Layout = ({ children }) => {
             não pode cobrir "pedidos pendentes de faturamento" e afins. */}
         <AlertaDevolucaoRefItem />
 
-        {/* COPILOTO (CLIPPY) — assistente de negócio com IA, só desktop */}
-        {(isAdmin || user?.permissoes?.Pode_Ver_Clippy !== false) && <Clippy />}
+        {/* COPILOTO (CLIPPY) — assistente de negócio com IA, só desktop.
+            Só `=== false` desliga (ausente = liga) e vale para TODOS, inclusive administrador — mesma regra de backend/routes/copiloto.js */}
+        {user?.permissoes?.Pode_Ver_Clippy !== false && <Clippy />}
         </>
         )}
 

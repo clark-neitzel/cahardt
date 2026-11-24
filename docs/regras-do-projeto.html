@@ -102,7 +102,7 @@ footer{padding-block:1.5rem 2.5rem;color:var(--muted);font-size:.82rem;border-to
 <nav class="idx" aria-label="Nesta página">
   <a href="#fluxo">Como o trabalho anda</a>
   <a href="#conflitos">Suas decisões</a>
-  <a href="#pendente">O que depende de você</a>
+  <a href="#pendente">Os 4 pontos que você respondeu</a>
   <a href="#mapa">Onde as regras moram</a>
   <a href="#uso">Mais usados</a>
   <a href="#pecas">O que cada um faz</a>
@@ -126,7 +126,7 @@ footer{padding-block:1.5rem 2.5rem;color:var(--muted);font-size:.82rem;border-to
       <tr><td><b>Pequena</b></td><td>Texto, cor, campo simples</td><td>Dev → revisor → gerente (conferência curta)</td></tr>
       <tr><td><b>Média</b> (padrão)</td><td>Tela nova, correção de defeito, relatório</td><td>Dev → QA + revisor → gerente</td></tr>
       <tr><td><b>Grande</b></td><td>Módulo novo, fiscal, financeiro, NF-e, WhatsApp, permissões</td><td>Arquiteto → devs → QA + revisor → gerente</td></tr>
-      <tr><td><b>Entrega rápida</b></td><td>Só quando você pedir: "urgente", "manda direto"</td><td>Dev → publica. Depois a conversa sugere a conferência completa e você decide</td></tr>
+      <tr><td><b>Entrega rápida</b></td><td>Só quando você pedir: "urgente", "manda direto"</td><td>A conversa principal faz sozinha, seguindo todas as regras, e publica. Em seguida aciona a equipe para conferir o que foi ao ar</td></tr>
     </tbody>
   </table></div>
   <p>Pergunta, consulta e diagnóstico que não alteram arquivo são respondidos direto, sem equipe. Se você escrever "sem agentes", a conversa principal faz sozinha.</p>
@@ -155,7 +155,7 @@ footer{padding-block:1.5rem 2.5rem;color:var(--muted);font-size:.82rem;border-to
     <h3>3. Tarefa pequena precisa do gerente de entrega?</h3>
     <div class="ab">
       <div class="voce"><span class="label">Você decidiu</span>Toda tarefa o gerente confere. Só não quando você pedir entrega rápida, e aí, depois de entregue, cabe sugerir uma conferência melhor.</div>
-      <div><span class="label">Como ficou escrito</span>O gerente entra em todo porte. Na pequena ele recebe um pacote curto: a mudança, o parecer do revisor e a verificação do código. Entrega rápida virou um porte próprio, que só você aciona.</div>
+      <div><span class="label">Como ficou escrito</span>O gerente entra em todo porte. Na pequena ele recebe um pacote curto: a mudança, o parecer do revisor e a verificação do código. Entrega rápida virou um porte próprio, que só você aciona: a conversa principal faz sozinha, seguindo as regras, publica, e logo depois a equipe confere se ficou bem feito ou se falta ajuste.</div>
     </div>
   </div>
   <div class="case">
@@ -191,10 +191,9 @@ footer{padding-block:1.5rem 2.5rem;color:var(--muted);font-size:.82rem;border-to
   <div class="case">
     <h3>8. Limite do WhatsApp: 200 ou 30 por hora?</h3>
     <div class="ab">
-      <div class="voce"><span class="label">Você decidiu</span>200 por hora, respeitando o tempo e a fila do bot. Talvez precise de uma consulta para saber o que acontece no bot.</div>
-      <div><span class="label">Como ficou escrito</span>A regra diz 200 por hora como decisão sua, e que o número e a fila são do bot: o sistema consulta o bot em vez de fixar número no código. Essa consulta já existe e aparece em Configurações → Notificação WhatsApp.</div>
+      <div class="voce"><span class="label">Você decidiu</span>Primeiro 200 por hora; depois você corrigiu: "o limite é 30".</div>
+      <div><span class="label">Como ficou escrito</span>A regra diz 30 por hora, que é o que o bot já usa. A cobrança automática já está no ritmo certo para esse teto, e nada precisou mudar no sistema. A consulta do que acontece no bot já existe e aparece em Configurações → Notificação WhatsApp.</div>
     </div>
-    <p class="fix"><b>Atenção:</b> a regra está escrita, mas o limite de 200 ainda não vale na prática. O bot está em 30 por hora e a cobrança automática segue no ritmo antigo. Veja "O que depende de você".</p>
   </div>
   <div class="case">
     <h3>9. Conta Azul aparecia como modelo a copiar</h3>
@@ -236,12 +235,12 @@ footer{padding-block:1.5rem 2.5rem;color:var(--muted);font-size:.82rem;border-to
 </section>
 
 <section id="pendente">
-  <h2>O que depende de você</h2>
-  <p class="lead">Quatro pontos que as regras não resolvem sozinhas.</p>
-  <div class="todo"><b>1. O limite de 200 por hora ainda não vale na prática.</b><p>Falta uma coisa sua e uma do sistema. A sua: no painel do bot, em Configurações, trocar o limite de mensagens automáticas por hora de 30 para 200. A do sistema: a cobrança automática espera 2 minutos e meio entre uma mensagem e outra, o que dá cerca de 24 por hora. Mudar essa espera é mexer no envio de WhatsApp, e só faço com o seu pedido. Hoje nada é barrado, porque o pico do último mês foi de 12 por hora.</p></div>
-  <div class="todo"><b>2. No "urgente", pula toda a conferência também em fiscal, financeiro e WhatsApp?</b><p>Você falou só do gerente. Do jeito que ficou escrito, a entrega rápida publica sem revisor, sem QA e sem gerente em qualquer assunto. Como você mesmo disse que a maioria dos consertos é urgente, vale decidir se nessas três áreas o revisor faz pelo menos uma leitura rápida antes de publicar.</p></div>
-  <div class="todo"><b>3. Botão do Ajuste de Estoque no computador.</b><p>O bloco de ação fica no mesmo canto do Clippy. Não foi conferido na tela se o Clippy cobre o botão. A regra manda provar isso quando alguém mexer nessa tela.</p></div>
-  <div class="todo"><b>4. Baixas antigas sem banco (Pix e cartão).</b><p>As regras ainda trazem um parágrafo marcado como pendente desde setembro, sobre rodar em produção a reversão das baixas antigas. Vale confirmar se já foi feito.</p></div>
+  <h2>Os 4 pontos que você respondeu</h2>
+  <p class="lead">Eram as pendências que as regras não resolviam sozinhas. Como cada uma ficou:</p>
+  <div class="todo"><b>1. Limite do WhatsApp: 30 por hora.</b><p>Você confirmou 30. A regra, a habilidade do backend e a memória foram corrigidas, e a pendência do 200 saiu. Nada mudou no sistema.</p></div>
+  <div class="todo"><b>2. No "urgente": a conversa principal faz sozinha e depois a equipe confere.</b><p>Vale em qualquer assunto, sempre seguindo as regras. A conferência deixou de ser sugestão: acontece sempre, logo depois de publicar, e você recebe o resultado.</p></div>
+  <div class="todo"><b>3. Clippy e botão do Ajuste de Estoque: corrigidos.</b><p>O Clippy ignorava a escolha do administrador: o interruptor dele ficava travado em ligado. Agora quem desliga, inclusive o administrador, deixa de ver. No Ajuste de Estoque, o mascote não fica mais por cima do campo Quantidade nem dos botões. Sobra um ponto para você decidir: o balão de "Novidade" ainda encosta na ponta do botão "+ Entrada" enquanto a novidade não foi vista.</p></div>
+  <div class="todo"><b>4. Baixas antigas sem banco: concluído.</b><p>Conferi em produção, só leitura: nenhuma baixa a reverter em 2026. O parágrafo de pendência saiu das regras.</p></div>
 </section>
 
 <section id="mapa">
@@ -342,7 +341,7 @@ footer{padding-block:1.5rem 2.5rem;color:var(--muted);font-size:.82rem;border-to
   <h3 style="margin-top:1.2rem">Processos protegidos</h3>
   <div class="rule"><span><b>NF-e de devolução.</b> Sai sozinha no clique de registrar. Erro na nota nunca desfaz a devolução. Pedido especial nunca gera nota.</span><small>Por quê: está funcionando em produção e envolve o fisco.</small></div>
   <div class="rule"><span><b>Pix comum e cartão.</b> Não quitam sozinhos. Ficam informados até a conciliação bancária confirmar. O caixa nunca trava por causa deles, e o cliente não vira inadimplente.</span><small>Por quê: você decidiu que nenhuma baixa existe sem uma conta bancária real por trás.</small></div>
-  <div class="rule"><span><b>WhatsApp.</b> Só mensagem provocada por um ato recente do cliente. Nada de promoção nem lista fria. No máximo 2000 caracteres.</span><small>Por quê: o número já foi banido uma vez por envio em massa.</small></div>
+  <div class="rule"><span><b>WhatsApp.</b> Só mensagem provocada por um ato recente do cliente. Nada de promoção nem lista fria. No máximo 2000 caracteres e 30 mensagens por hora.</span><small>Por quê: o número já foi banido uma vez por envio em massa.</small></div>
   <div class="rule"><span><b>API da IA de atendimento.</b> Nunca remover nem renomear um campo. Dado de cliente só com o telefone batendo, nunca só com CPF ou CNPJ.</span><small>Por quê: se o formato quebra, a IA para de responder cliente no WhatsApp.</small></div>
 
   <h3 style="margin-top:1.2rem">Banco de dados</h3>

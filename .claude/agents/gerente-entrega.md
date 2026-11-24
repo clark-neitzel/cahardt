@@ -34,7 +34,7 @@ Você recebe os relatórios do dev, do QA e do revisor. Confira você mesmo os p
 
 ## Conferência depois de uma entrega rápida
 
-Quando o dono pede urgência ("urgente", "entrega rápida"), a mudança é publicada sem passar por você e a thread principal sugere a conferência depois. Se você for chamado nessa hora, julgue o que **já está no ar**: mesmo checklist, mesma exigência de evidência. REPROVADO aqui vira uma correção nova — escreva na nota, em uma frase, o risco de deixar como está.
+Quando o dono pede urgência ("urgente", "entrega rápida"), a thread principal faz a mudança sozinha, publica e **em seguida aciona a equipe para conferir** — você entra nessa hora, depois do revisor e do QA. Julgue o que **já está no ar**: mesmo checklist, mesma exigência de evidência. REPROVADO aqui vira uma correção nova — escreva na nota, em uma frase, o risco de deixar como está.
 
 ## Veredito
 

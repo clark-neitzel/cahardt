@@ -837,8 +837,9 @@ export default function PainelEstoque() {
                                 </div>
 
                                 {/* BLOCO DE AÇÃO — Quantidade + botões. No celular (< 768 px) é uma barra FIXA no rodapé,
-                                    sempre à vista; a partir de md fica no pé do painel (sempre acessível, mesmo com zoom). */}
-                                <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:static md:z-auto md:px-0 md:pt-3 md:pb-0 md:bg-secondary md:shrink-0">
+                                    sempre à vista; a partir de md fica no pé do painel (sempre acessível, mesmo com zoom).
+                                    No lg (computador) o Clippy mora no canto inferior direito: lg:pr-24 deixa a coluna dele livre (só quando ele está montado — mesma expressão do App.jsx). */}
+                                <div className={`fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:static md:z-auto md:px-0 md:pt-3 md:pb-0 md:bg-secondary md:shrink-0 ${user?.permissoes?.Pode_Ver_Clippy !== false ? 'lg:pr-24' : ''}`}>
                                 <div className="flex items-end gap-2 md:block">
                                     <div className="w-24 shrink-0 md:w-auto md:mb-3">
                                         <label className="block text-xs md:text-sm font-medium text-gray-700 mb-0.5 md:mb-1.5">Quantidade</label>
