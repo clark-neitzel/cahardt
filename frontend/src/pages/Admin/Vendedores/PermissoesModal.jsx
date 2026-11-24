@@ -7,7 +7,7 @@ import {
     Settings, DollarSign, Warehouse, TrendingUp,
     Factory, Package, BookOpen as BookOpenIcon, Play, Calendar, Lightbulb, BarChart3, BarChart2,
     Clock, CalendarOff, ClipboardCheck, Tag, PartyPopper, Inbox, Building2, CalendarCheck, BellRing,
-    KeyRound, History, Zap, UsersRound, ChevronRight, ArrowLeft, FolderOpen
+    KeyRound, History, Zap, UsersRound, ChevronRight, ArrowLeft, FolderOpen, Landmark
 } from 'lucide-react';
 import vendedorService from '../../../services/vendedorService';
 import configService from '../../../services/configService';
@@ -64,6 +64,7 @@ const DEFAULT_PERMISSIONS = {
     Pode_Autorizar_Diferenca_Caixa: false,
     // Módulo de Veículos
     Pode_Acessar_Veiculos: false,
+    Pode_Acessar_Contabilidade: false,
     Pode_Editar_Veiculos: false,
     // CRM / Leads
     Pode_Editar_Lead: false,
@@ -184,6 +185,7 @@ const TELAS_INICIAIS = [
     { value: '/pcp/painel', label: 'Painel Operacional', icon: Play },
     { value: '/admin/produtos', label: 'Produtos (Admin)', icon: Box },
     { value: '/admin/vendedores', label: 'Vendedores (Admin)', icon: UserCog },
+    { value: '/admin/contabilidade', label: 'Contabilidade', icon: Landmark },
     { value: '/admin/config', label: 'Configurações Gerais', icon: Settings },
 ];
 
@@ -1370,6 +1372,7 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
             <MenuToggle icon={Box} label="Produtos" checked={!!permissoes.produtos?.view} onChange={() => toggleView('produtos')} />
             <MenuToggle icon={UserCog} label="Vendedores" checked={!!permissoes.vendedores?.view} onChange={() => toggleView('vendedores')} />
             <MenuToggle icon={Car} label="Veículos" checked={!!permissoes.Pode_Acessar_Veiculos} onChange={() => toggleBool('Pode_Acessar_Veiculos')} />
+            <MenuToggle icon={Landmark} label="Contabilidade (só consulta)" checked={!!permissoes.Pode_Acessar_Contabilidade} onChange={() => toggleBool('Pode_Acessar_Contabilidade')} />
 
             <div className="border-t mt-3 pt-3">
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 px-2">Permissões avançadas</p>
