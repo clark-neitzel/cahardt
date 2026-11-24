@@ -20,6 +20,8 @@ O projeto mora em `~/Projetos/CA-Hardt` (disco local). **Nunca** trabalhe na có
 
 ## Checklist do projeto (verifique item a item o que se aplica)
 
+A regra completa de cada item está em `docs/regras/` (mapa no `CLAUDE.md`). Abra o arquivo da área tocada — não o projeto inteiro.
+
 **Backend**
 - `$transaction` com `{ timeout: 20000, maxWait: 10000 }`; log/histórico/notificação e chamada de API externa **fora** da transação.
 - Nenhum campo removido do `schema.prisma` que exista no banco.
@@ -38,13 +40,16 @@ O projeto mora em `~/Projetos/CA-Hardt` (disco local). **Nunca** trabalhe na có
 - Design system: tokens do tema, botão em pílula, cores de badge de status intactas.
 - Mobile: sem grid >2 colunas sem `md:`, sem scroll horizontal, alvo de toque adequado.
 - `SelectBusca` no lugar de `<select>` nativo; `useFiltrosSalvos` nos filtros; filtro de data com `FiltroPeriodo` + `usePeriodoSalvo` (a persistência é do preset, nunca de data absoluta); `lazyComRetry` em rota nova.
-- Impressão no padrão vigente do `CLAUDE.md` (na própria página, `print()` síncrono, limpeza garantida) — nunca `window.open`/iframe.
+- Impressão pela peça única `frontend/src/utils/imprimirNaPagina.js` — nunca `window.open`/iframe, nunca só `@media print`, nunca cópia da função dentro da tela (`docs/regras/impressao.md`).
+- **Botões de ação** nunca cobertos e presos quando a tela rola; rodapé é o padrão, topo só quando o rodapé ficaria coberto (`docs/regras/telas.md`).
 - Campo opcional guardado antes de interpolar em template string.
 - **Linguagem visual v2**: tela nova/tocada usa `PageHeader`, `EstadoVazio`, 1 ação principal, sem `text-gray-400` em texto lido, botão pílula.
 - **Boas práticas de uso**: após ação que limpa formulário há `focus()` no campo inicial; botão de gravar desabilita durante o envio; Enter/Esc tratados.
 
 **Ambos**
 - Permissão do frontend espelha exatamente a do backend.
+- **Tela, rota ou função nova tem permissão**: a rota barra no servidor (403) com `perms.X?.edit === true` (nunca `!!perms.X`); permissão nova está no `PermissoesModal.jsx` (JSX + `BOOL_INDEX`) e na tabela `ABAS` do Clippy. Rota nova sem trava é achado grave.
+- Integração nova espelha Asaas/Focus NFe — nunca código do Conta Azul (só dados importados, somente leitura).
 - Nada de segredo (token, senha, chave) escrito no repositório.
 - Manual da aba / Clippy e página de novidade atualizados quando a mudança é visível ao usuário.
 

@@ -20,7 +20,7 @@ Enquanto você não conseguir completar a frase abaixo, não pode propor correç
 ## Fase 0 — Esse bug já foi "corrigido" antes?
 
 - `git log --oneline -i --grep="<palavra do bug>"` e `git log --oneline -- <arquivo do fluxo>`;
-  procure também no `CLAUDE.md` (a thread principal consulta ainda a memória do projeto e repassa o que achar).
+  procure também no `CLAUDE.md` e no arquivo do assunto em `docs/regras/` (a thread principal consulta ainda a memória do projeto e repassa o que achar).
 - Se já houve correção, o bug é **reincidente**: leia o commit anterior e explique no relatório
   **por que aquela correção não segurou**. Bug reincidente nunca é tarefa pequena.
 
@@ -40,7 +40,7 @@ Enquanto você não conseguir completar a frase abaixo, não pode propor correç
 
 ## Fase 2 — Comparar com o que funciona
 
-Ache no próprio projeto um fluxo parecido que funciona (o `CLAUDE.md` aponta as referências de
+Ache no próprio projeto um fluxo parecido que funciona (os arquivos de `docs/regras/` apontam as referências de
 cada padrão) e liste as diferenças uma por uma. Não descarte nenhuma com "isso não deve importar".
 
 ## Fase 3 — Uma hipótese por vez
@@ -56,7 +56,7 @@ cada padrão) e liste as diferenças uma por uma. Não descarte nenhuma com "iss
    `backend/tests/` (`cd backend && npm test`) quando couber; tela → o passo a passo de clique que
    o QA vai repetir.
 2. **Uma correção só, na causa.** Sem "já que estou aqui" — a exceção são as regras de boy-scout
-   do `CLAUDE.md`, e elas devem ser declaradas no relatório.
+   de `docs/regras/`, e elas devem ser declaradas no relatório.
 3. **Verifique o sintoma ORIGINAL**, não só que o código novo roda.
 4. Remova a instrumentação temporária (`console.log`, rota de diagnóstico).
 

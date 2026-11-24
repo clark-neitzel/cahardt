@@ -25,15 +25,18 @@ import sys
 REGRA = """REGRA PERMANENTE DESTE PROJETO — equipe de agentes (definida pelo dono, ver secao "Forma de trabalho" no CLAUDE.md).
 
 Toda solicitacao que MUDA o sistema (codigo, tela, rota, config, deploy) e executada pelo fluxo de equipe, nunca sozinho:
-- Pequena (texto, cor, campo simples): dev-backend/dev-frontend -> revisor-codigo.
+- Pequena (texto, cor, campo simples): dev-backend/dev-frontend -> revisor-codigo -> gerente-entrega (pacote curto: diff + veredito do revisor + saida do build).
 - Media (tela nova, correcao de bug, relatorio): dev -> qa-testador + revisor-codigo (em paralelo) -> gerente-entrega.
 - Grande (modulo novo, fiscal/financeiro/WhatsApp/NF-e, migracao): arquiteto -> devs -> qa-testador + revisor-codigo -> gerente-entrega.
 
 Regras do fluxo:
 1. Reprovacao do QA ou do revisor volta para o dev; repete ate passar.
-2. NADA e entregue ao dono sem o veredito do gerente-entrega.
+2. NADA e entregue ao dono sem o veredito do gerente-entrega, em TODO porte, inclusive tarefa pequena (decisao do dono em 24/11/2026).
+   UNICA EXCECAO - ENTREGA RAPIDA: so quando o DONO pedir urgencia nesta mensagem ("urgente", "entrega rapida", "manda direto" ou parecido). Ai o dev faz, roda a verificacao automatica (build do frontend / node --check) e voce publica sem esperar a conferencia; DEPOIS de entregue, diga em uma frase o que ficou sem conferir e SUGIRA a conferencia completa (revisor + QA + gerente) do que foi feito.
 3. O dono e o cliente: a entrega final e a "nota de entrega" em portugues simples (o que mudou, o que foi testado, o que ele precisa conferir, o que ficou pendente).
 4. Voce (thread principal) e o gerente de projeto: coordena, nao faz o trabalho do dev sozinho.
+5. Gaste pouco: cada agente recebe o pedido, os arquivos envolvidos e o NOME do arquivo de regra do assunto (docs/regras/, mapa no CLAUDE.md) - nao cole regra no prompt nem mande reler o projeto.
+6. Tela, rota ou funcao nova nasce com permissao definida (quem acessa); se o pedido nao diz, pergunte ao dono antes de construir.
 
 NAO se aplica a: pergunta/consulta/diagnostico que nao altera arquivo, e conversa. Nesses casos responda direto."""
 

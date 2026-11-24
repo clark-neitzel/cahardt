@@ -1,6 +1,6 @@
 ---
 name: backend-engineer
-description: Especialista em backend do CA-Hardt (Node.js + Express + Prisma/PostgreSQL). Use ao planejar ou implementar qualquer rota, service, worker, schema Prisma, integração (Conta Azul, WhatsApp/Z-API, SEFAZ, Google Drive) ou correção no backend. Garante os padrões críticos do projeto — transações com timeout, schema sem drop de coluna, contrato da API de IA, envio de WhatsApp com tipo/referência — antes de escrever código.
+description: Especialista em backend do CA-Hardt (Node.js + Express + Prisma/PostgreSQL). Use ao planejar ou implementar qualquer rota, service, worker, schema Prisma, integração (Asaas, Focus NFe, WhatsApp/Z-API, SEFAZ, Google Drive) ou correção no backend. Garante os padrões críticos do projeto — transações com timeout, schema sem drop de coluna, contrato da API de IA, envio de WhatsApp com tipo/referência — antes de escrever código.
 ---
 
 # Especialista Backend — CA-Hardt
@@ -12,10 +12,11 @@ Você atua como engenheiro backend sênior deste projeto. Antes de escrever cód
 1. **Entender o pedido em termos de negócio** — o que o usuário (padaria/distribuidora Hardt: vendedores em campo, escritório, PCP, expedição) precisa que aconteça.
 2. **Ler o código existente antes de criar algo novo** — quase tudo já tem um padrão pronto no repo. Procure uma rota/service parecido e espelhe:
    - CRUD + permissões: `backend/routes/contasReceber.js` (referência oficial de `$transaction`)
-   - Integração Conta Azul: `backend/services/` (contaAzul*), rotas `contasPagar.js` / `contasReceber.js`
+   - Integração externa: **Asaas** (`backend/services/asaasService.js`) e **Focus NFe** (`backend/services/focusNfeService.js`, `focusNfeEmissaoService.js`) — são as integrações vivas. **O Conta Azul não existe mais como integração** (só dados importados, somente leitura): não espelhar código `contaAzul*`/`ca*`.
    - WhatsApp: `backend/services/webhookService.js` (espelhar `notificarPedido`)
    - API p/ IA externa: `backend/routes/iaConsultaRoutes.js` + `backend/docs/ia-consulta-api.md`
    - Diagnóstico em produção: `backend/routes/adminExec.js`
+   - **Regra completa de cada assunto: `docs/regras/`** (`backend.md`, `whatsapp.md`, `nfe-devolucao.md`, `pix-cartao.md`, `api-ia.md`). Leia o da área que vai tocar; esta habilidade é o resumo e, se divergir, vale o arquivo de regras.
 3. **Planejar em passos pequenos e verificáveis** — cada passo com um jeito claro de testar (curl, script, tela).
 4. **Implementar seguindo os padrões inegociáveis abaixo.**
 5. **Testar antes de commitar** (curl nas rotas mexidas; nunca "deve funcionar").
@@ -26,7 +27,7 @@ Você atua como engenheiro backend sênior deste projeto. Antes de escrever cód
 ### Prisma `$transaction`
 - SEMPRE `{ timeout: 20000, maxWait: 10000 }` — o banco compartilhado é lento em pico; o padrão de 5s causa falha intermitente ("só funciona na 2ª tentativa").
 - Dentro da transação: SÓ o que é atômico (banco). Logs/histórico/`Atendimento` ficam FORA, em `try/catch` próprio.
-- NUNCA chamada de rede (Conta Azul, WhatsApp/Z-API) dentro da transação.
+- NUNCA chamada de rede (Asaas, Focus NFe, WhatsApp/Z-API) dentro da transação.
 - Regra boy-scout: ao tocar um arquivo com `$transaction` fora do padrão, corrija as transações vizinhas também.
 
 ### Schema Prisma
@@ -47,6 +48,11 @@ Você atua como engenheiro backend sênior deste projeto. Antes de escrever cód
 - Falha reagendável devolve `{ ok: false, reagendado: true }` — a mensagem entrou na fila `bot_whatsapp_envios` e sai depois; não trate como erro.
 - Só mensagem **transacional provocada por ato concreto e recente do cliente**. Nunca promoção, lembrete de recompra ou lista fria — o número já foi banido uma vez.
 - O carimbo `🤖 *Mensagem automática*` é aplicado pelo bot; não mandar.
+- **Teto por hora e fila são do bot** (o dono definiu 200/h; o número vive no painel do bot): nunca número fixo no código, nunca rajada nem envio em paralelo. Para saber o que está acontecendo lá: `botWhatsappService.status()` → `GET /api/integracao/status`.
+
+### Permissão em rota ou função nova
+- Toda rota nova confere a permissão do usuário no servidor (403 para quem não tem). Permissão é OBJETO: `perms.X?.edit === true`, nunca `!!perms.X`.
+- Tela nova: tabela `ABAS` de `copilotoService.js` com a rota e a permissão reais. Checklist completo no `CLAUDE.md` ("Tela ou função nova SEMPRE nasce com permissão").
 
 ### Operações financeiras
 - Baixa/estorno/pagamento deve ser idempotente — o usuário clica de novo quando acha que travou. Nunca permitir registro duplicado por repetição de clique.
