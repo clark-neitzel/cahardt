@@ -56,7 +56,12 @@ const CARIMBO = 'QA-REL-CONTADOR';
 const SENHA = 'qa123456';
 const USUARIOS = [
     { id: `${CARIMBO}-U1`, login: 'qa.contador', nome: 'QA contador', permissoes: { Pode_Acessar_Contabilidade: true } },
-    { id: `${CARIMBO}-U2`, login: 'qa.semcontabilidade', nome: 'QA sem contabilidade', permissoes: { Pode_Acessar_Contas_Pagar: true } }
+    { id: `${CARIMBO}-U2`, login: 'qa.semcontabilidade', nome: 'QA sem contabilidade', permissoes: { Pode_Acessar_Contas_Pagar: true } },
+    // Usuário externo (docs/contabilidade/PLANO-usuario-externo-contador.md §8)
+    { id: `${CARIMBO}-U3`, login: 'qa.externo', nome: 'QA externo', permissoes: { Pode_Acessar_Contabilidade: true, Usuario_Externo: true } },
+    { id: `${CARIMBO}-U4`, login: 'qa.externo.semtela', nome: 'QA externo sem tela', permissoes: { Usuario_Externo: true } },
+    { id: `${CARIMBO}-U5`, login: 'qa.vendedor', nome: 'QA vendedor', permissoes: { catalogo: { view: true }, pedidos: { view: true, edit: true }, clientes: { view: true }, rota: { view: true } } },
+    { id: `${CARIMBO}-U6`, login: 'qa.motorista', nome: 'QA motorista', permissoes: { Pode_Executar_Entregas: true, Pode_Acessar_Caixa: true, Pode_Fazer_Devolucao: true } }
 ];
 const D = (ymd) => new Date(`${ymd}T12:00:00-03:00`);
 
@@ -80,6 +85,8 @@ async function limpar() {
     await prisma.contaPagar.deleteMany({ where: { id: { in: ids } } });
     await prisma.notaEntrada.deleteMany({ where: { id: { in: notaIds } } });
     const forn = await prisma.fornecedor.deleteMany({ where: { razaoSocial: { contains: CARIMBO } } });
+    // restos de login dos usuários de QA (cortina do diário etc.) travam o delete por FK
+    await prisma.diarioVendedor.deleteMany({ where: { vendedorId: { in: USUARIOS.map((u) => u.id) } } });
     const usuarios = await prisma.vendedor.deleteMany({ where: { id: { in: USUARIOS.map((u) => u.id) } } });
     console.log(`🧹 Limpo: ${ids.length} conta(s), ${notaIds.length} nota(s), ${forn.count} fornecedor(es), ${usuarios.count} usuário(s).`);
 }

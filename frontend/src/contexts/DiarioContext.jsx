@@ -9,7 +9,7 @@ const DiarioContext = createContext();
 const TTL_REVALIDACAO_MS = 5 * 60 * 1000; // não rebusca em background mais que 1x/5min (banco compartilhado lento no pico); virada de data ignora o TTL
 
 export const DiarioProvider = ({ children }) => {
-    const { user, signed } = useAuth();
+    const { user, signed, ehExterno } = useAuth();
     const [diarioStatus, setDiarioStatus] = useState({
         loading: true,
         hojeStatus: 'nao_iniciado', // ou 'iniciado'
@@ -21,6 +21,11 @@ export const DiarioProvider = ({ children }) => {
 
     const carregarStatus = useCallback(async () => {
         if (!signed || !user?.id) {
+            setDiarioStatus(prev => ({ ...prev, loading: false }));
+            return;
+        }
+        // Externo (contador) não tem diário: o servidor barra /diarios/status.
+        if (ehExterno) {
             setDiarioStatus(prev => ({ ...prev, loading: false }));
             return;
         }
@@ -41,7 +46,7 @@ export const DiarioProvider = ({ children }) => {
                 ? { ...prev, loading: false, falhaRede: !error?.response }
                 : { ...prev, loading: false });
         }
-    }, [signed, user]);
+    }, [signed, user, ehExterno]);
 
     useEffect(() => {
         carregarStatus();
@@ -54,7 +59,7 @@ export const DiarioProvider = ({ children }) => {
     // o app em primeiro plano o dia inteiro), para o DiarioGateway pedir o início
     // do novo dia em vez de continuar achando que "hoje" já foi iniciado.
     useEffect(() => {
-        if (!signed || !user?.id) return;
+        if (!signed || !user?.id || ehExterno) return;
         let ultimaChamada = 0;
         let ultimaData = dataLocalHoje();
         const revisar = () => {
@@ -76,7 +81,7 @@ export const DiarioProvider = ({ children }) => {
             window.removeEventListener('focus', revisar);
             clearInterval(timer);
         };
-    }, [signed, user, carregarStatus]);
+    }, [signed, user, ehExterno, carregarStatus]);
 
     return (
         <DiarioContext.Provider value={{ diarioStatus, carregarStatus }}>

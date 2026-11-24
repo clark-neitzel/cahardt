@@ -47,6 +47,12 @@ A área tem 5 abas: **Contas a Receber**, **Contas a Pagar**, **Extratos**, **No
 - **Imprimir / PDF** — folha A4 paisagem impressa da própria página (funciona no iPad); "Salvar como PDF" na janela de impressão gera o arquivo para mandar por e-mail.
 - **Cartões de resumo** — quantidade, valor total (ou recebido, na visão caixa), valor com nota fiscal e valor sem nota (especial).
 
+## Como o contador entra
+- O cadastro do contador (Vendedores → escudo de permissões) leva **Contabilidade (só consulta)** + o interruptor **Usuário externo (contador)**, ambos na seção Acesso e Conta/Administração.
+- Com isso ele entra **direto na Contabilidade**; o menu só mostra Administração → Contabilidade, sem dashboard, tarefas, veículo, avisos ou Clippy. Qualquer outra rota do sistema é barrada no servidor ("acesso restrito à Contabilidade").
+- Se o interruptor estiver ligado e a **Contabilidade desligada**, a pessoa vê "sua conta ainda não tem nenhuma tela liberada" — ligue a permissão.
+- Sem o interruptor, o contador comum continua como antes (acessa a Contabilidade e o que mais tiver liberado).
+
 ## Perguntas comuns
 - **"O total de Matéria Prima não bate com a soma dos produtos da nota"** → confira a linha "Frete e outros valores da nota": ela leva frete, impostos e descontos que não são produto. A soma dos produtos + essa linha é sempre igual ao total da categoria.
 - **"Por que alguns lançamentos aparecem sem produtos?"** → energia, salário, imposto e serviços não têm produtos; e notas vinculadas depois a uma parcela já lançada ainda não trazem os produtos para este relatório.

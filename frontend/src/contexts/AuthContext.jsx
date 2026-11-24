@@ -3,6 +3,7 @@ import appAuthService from '../services/appAuthService';
 import api from '../services/api';
 import { definirTokenMidia, limparTokenMidia } from '../utils/urlUpload';
 import { ehRotaOffline, rotaOfflinePara } from '../utils/rotasOffline';
+import { ehUsuarioExterno } from '../utils/usuarioExterno';
 
 const AuthContext = createContext();
 
@@ -28,7 +29,9 @@ export const AuthProvider = ({ children }) => {
     const [usandoSnapshot, setUsandoSnapshot] = useState(false);
     const midiaEmMs = useRef(0);
     const midiaBuscando = useRef(false);
-    const buscarTokenMidia = useCallback(async () => {
+    const buscarTokenMidia = useCallback(async (usuario) => {
+        // Externo (contador): o servidor barra /auth/midia-token e ele não abre arquivos de funcionário.
+        if (ehUsuarioExterno(usuario?.permissoes)) return;
         if (midiaBuscando.current) return;
         midiaBuscando.current = true;
         try {
@@ -82,7 +85,7 @@ export const AuthProvider = ({ children }) => {
                 setUser(userData);
                 setErroConexao(false);
                 setLoading(false);
-                buscarTokenMidia(); // sem await: não atrasa a abertura
+                buscarTokenMidia(userData); // sem await: não atrasa a abertura
                 return;
             } catch (error) {
                 const status = error.response?.status;
@@ -136,8 +139,8 @@ export const AuthProvider = ({ children }) => {
     useEffect(() => {
         if (!user) return undefined;
         const precisa = () => !midiaEmMs.current || Date.now() - midiaEmMs.current >= RENOVAR_MIDIA_MS;
-        const intervalo = setInterval(() => { if (precisa()) buscarTokenMidia(); }, 10 * 60 * 1000);
-        const aoVoltar = () => { if (document.visibilityState === 'visible' && precisa()) buscarTokenMidia(); };
+        const intervalo = setInterval(() => { if (precisa()) buscarTokenMidia(user); }, 10 * 60 * 1000);
+        const aoVoltar = () => { if (document.visibilityState === 'visible' && precisa()) buscarTokenMidia(user); };
         document.addEventListener('visibilitychange', aoVoltar);
         return () => { clearInterval(intervalo); document.removeEventListener('visibilitychange', aoVoltar); };
     }, [user, buscarTokenMidia]);
@@ -157,7 +160,7 @@ export const AuthProvider = ({ children }) => {
                 setUsandoSnapshot(false);
                 guardarSnapshot(userData);
                 setUser(userData);
-                buscarTokenMidia();
+                buscarTokenMidia(userData);
             } catch (error) {
                 const status = error.response?.status;
                 if (status === 401 || status === 403) limparSessao();
@@ -184,7 +187,7 @@ export const AuthProvider = ({ children }) => {
             guardarSnapshot(user);
             setUser(user);
             setErroConexao(false);
-            buscarTokenMidia();
+            buscarTokenMidia(user);
             return { success: true };
         } catch (error) {
             console.error(error);
@@ -231,7 +234,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, signed: !!user, loading, erroConexao, usandoSnapshot, login, logout, hasPermission, refreshUser, tentarNovamente: carregarUsuario }}>
+        <AuthContext.Provider value={{ user, ehExterno: ehUsuarioExterno(user?.permissoes), signed: !!user, loading, erroConexao, usandoSnapshot, login, logout, hasPermission, refreshUser, tentarNovamente: carregarUsuario }}>
             {children}
         </AuthContext.Provider>
     );

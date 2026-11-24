@@ -156,9 +156,11 @@ import AlertaPagamentoAposQuitacao from './components/AlertaPagamentoAposQuitaca
 import Clippy from './components/Clippy/Clippy';
 import TelaSemConexao from './components/TelaSemConexao';
 import { useVersionCheck } from './hooks/useVersionCheck';
+import SemTelaExterno from './components/SemTelaExterno';
+import { rotaPermitidaExterno, homeDoExterno } from './utils/usuarioExterno';
 
 const PrivateRoute = ({ children, tab }) => {
-  const { signed, loading, hasPermission, erroConexao, usandoSnapshot } = useAuth();
+  const { signed, loading, hasPermission, erroConexao, usandoSnapshot, user, ehExterno } = useAuth();
   const { pathname } = useLocation();
   if (loading) return <div className="p-8 text-center text-gray-500">Validando sessão...</div>;
   // Servidor não respondeu: mostrar "tentar novamente" em vez de jogar no login.
@@ -166,6 +168,12 @@ const PrivateRoute = ({ children, tab }) => {
   // Sem rede, usando o usuário guardado só para a Separação de Carga: nenhuma outra tela abre (permissão pode estar velha).
   if (usandoSnapshot && !ehRotaOffline(pathname)) return <TelaSemConexao />;
   if (!signed) return <Navigate to="/login" replace />;
+  // Externo (contador): só as rotas da lista dele; o resto volta para a tela dele (sempre permitida → sem laço).
+  if (ehExterno) {
+    const home = homeDoExterno(user?.permissoes);
+    if (!home) return <SemTelaExterno />;
+    if (!rotaPermitidaExterno(pathname)) return <Navigate to={home} replace />;
+  }
   const temAcesso = !tab || (Array.isArray(tab) ? tab.some(t => hasPermission(t, 'view')) : hasPermission(tab, 'view'));
   if (!temAcesso) return <div className="p-8 text-center text-red-600 font-bold">Acesso Negado a esta tela.</div>;
   return children;
@@ -173,7 +181,11 @@ const PrivateRoute = ({ children, tab }) => {
 
 // Redireciona para a tela inicial configurada pelo admin
 const HomeRedirect = () => {
-  const { user } = useAuth();
+  const { user, ehExterno } = useAuth();
+  if (ehExterno) {
+    const home = homeDoExterno(user?.permissoes);
+    return home ? <Navigate to={home} replace /> : <SemTelaExterno />;
+  }
   const telaInicial = user?.permissoes?.telaInicial;
   if (telaInicial && telaInicial !== '/') {
     return <Navigate to={telaInicial} replace />;
@@ -393,11 +405,11 @@ const Layout = ({ children }) => {
     document.addEventListener('pointerdown', fecharFora);
     return () => document.removeEventListener('pointerdown', fecharFora);
   }, [sidebarAberta]);
-  const { user, logout, hasPermission, loading } = useAuth();
+  const { user, logout, hasPermission, loading, ehExterno: externo } = useAuth();
   const { updateAvailable } = useVersionCheck();
   const { favoritos, toggle: toggleFavorito, limite: limiteFavoritos } = useMenuFavoritos(user?.id);
   const perfil = usePerfil();
-  const podeVerComoFazer = usePodeVerComoFazer(user?.id);
+  const podeVerComoFazer = usePodeVerComoFazer(externo ? null : user?.id);
   const [menuCompleto, setMenuCompleto] = useFiltroSalvo('menu:completo', false);
   // Dica de descoberta (correção pós-revisão): na 1ª vez que o filtro de
   // perfil esconder algum grupo, mostrar uma linha discreta oferecendo "Ver
@@ -432,7 +444,7 @@ const Layout = ({ children }) => {
   const showPonto = isAdmin || hasPermission('Pode_Ver_Ponto') || hasPermission('Pode_Editar_Ponto');
 
   // ── Seções do menu DESKTOP (barra recolhida + flyout). Mesmas permissões de antes. ──
-  const desktopSections = [
+  const desktopSectionsTodas = [
     { label: 'Vendas', icon: ClipboardList, twoCols: true, items: [
       hasPermission('catalogo') && { to: '/catalogo', icon: BookOpen, label: 'Catálogo' },
       hasPermission('pedidos') && { to: '/pedidos', icon: ClipboardList, label: 'Pedidos' },
@@ -526,6 +538,13 @@ const Layout = ({ children }) => {
     ].filter(Boolean) : []) },
   ].filter(s => s.items.length > 0);
 
+  // Externo (contador): menu só com as telas da lista dele, mesmo que tenha outras permissões ligadas.
+  const desktopSections = externo
+    ? desktopSectionsTodas
+        .map(s => ({ ...s, items: s.items.filter(i => rotaPermitidaExterno(i.to)) }))
+        .filter(s => s.items.length > 0)
+    : desktopSectionsTodas;
+
   // Favoritos válidos: só telas que o usuário ainda tem permissão de ver
   // (perdeu a permissão → o atalho some sozinho, sem quebrar nada). Deriva de
   // `desktopSections` SEM o filtro de perfil (A2) — um favorito de um grupo
@@ -538,12 +557,12 @@ const Layout = ({ children }) => {
 
   // A2 — menu que aparece de fato: filtrado por perfil, a não ser que seja
   // gestor (nunca perde nada) ou o usuário tenha ligado "Ver menu completo".
-  const secoesFiltradasPorPerfil = perfil.gestor ? desktopSections : filtrarSecoesPorPerfil(desktopSections, perfil);
+  const secoesFiltradasPorPerfil = (perfil.gestor || externo) ? desktopSections : filtrarSecoesPorPerfil(desktopSections, perfil);
   const desktopSectionsVisiveis = menuCompleto ? desktopSections : secoesFiltradasPorPerfil;
 
   // Dica de descoberta: só faz sentido oferecer "Ver menu completo" se o
   // filtro de perfil está de fato escondendo algum grupo agora.
-  const algumGrupoEscondido = !perfil.gestor && secoesFiltradasPorPerfil.length < desktopSections.length;
+  const algumGrupoEscondido = !externo && !perfil.gestor && secoesFiltradasPorPerfil.length < desktopSections.length;
   const mostrarDicaMenu = algumGrupoEscondido && !menuCompleto && !dicaMenuVista;
   const ativarMenuCompletoPelaDica = () => { setMenuCompleto(true); setDicaMenuVista(true); };
 
@@ -573,9 +592,9 @@ const Layout = ({ children }) => {
 
         {/* Nav — só as SEÇÕES (barra curta); cada uma abre o submenu à direita no hover */}
         <nav className="flex-1 py-2 space-y-0.5 overflow-y-auto">
-          <SidebarItem to="/tarefas" icon={CalendarCheck} label="Tarefas" />
-          {podeVerComoFazer && <SidebarItem to="/como-fazer" icon={BookOpenCheck} label="Como Fazer" />}
-          <SidebarItem to="/" icon={LayoutDashboard} label="Dashboard" end />
+          {!externo && <SidebarItem to="/tarefas" icon={CalendarCheck} label="Tarefas" />}
+          {!externo && podeVerComoFazer && <SidebarItem to="/como-fazer" icon={BookOpenCheck} label="Como Fazer" />}
+          {!externo && <SidebarItem to="/" icon={LayoutDashboard} label="Dashboard" end />}
           {itensFavoritos.length > 0 && (
             <>
               <div className="mx-2 mt-4 mb-1 px-3">
@@ -610,7 +629,7 @@ const Layout = ({ children }) => {
           )}
           {/* A2 — escape sempre acessível: menu por perfil pode esconder um grupo que a
               pessoa usa raramente mas usa (risco central do plano de navegação) */}
-          {!perfil.gestor && (
+          {!externo && !perfil.gestor && (
             <button
               onClick={() => setMenuCompleto(v => !v)}
               title={menuCompleto ? 'Voltar ao menu do seu perfil' : 'Ver todos os grupos do menu'}
@@ -620,8 +639,8 @@ const Layout = ({ children }) => {
               <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">{menuCompleto ? 'Menu do meu perfil' : 'Ver menu completo'}</span>
             </button>
           )}
-          <DiarioPegarVeiculo />
-          <DiarioCheckout />
+          {!externo && <DiarioPegarVeiculo />}
+          {!externo && <DiarioCheckout />}
           <div className="flex items-center gap-2 px-3 py-2">
             <div className="w-7 h-7 bg-white/15 rounded-full flex items-center justify-center shrink-0">
               <span className="text-[11px] font-bold text-white">{(user.nome || user.login || '?')[0].toUpperCase()}</span>
@@ -649,12 +668,12 @@ const Layout = ({ children }) => {
       {/* ═══════════════════════════════════════════ */}
       {/* BARRA DE VISITANTES ONLINE (desktop)       */}
       {/* ═══════════════════════════════════════════ */}
-      {visitorBar && <VisitorBar onClose={() => setVisitorBar(false)} />}
+      {visitorBar && !externo && <VisitorBar onClose={() => setVisitorBar(false)} />}
 
       {/* ═══════════════════════════════════════════ */}
       {/* MAIN CONTENT AREA                          */}
       {/* ═══════════════════════════════════════════ */}
-      <div className={`flex-1 ${sidebarAberta ? 'md:ml-60' : 'md:ml-16'} flex flex-col min-h-screen min-w-0 transition-[margin] duration-200${visitorBar ? ' md:pt-[38px]' : ''}`} style={{ '--topo-extra': visitorBar ? '38px' : '0px' }}>
+      <div className={`flex-1 ${sidebarAberta ? 'md:ml-60' : 'md:ml-16'} flex flex-col min-h-screen min-w-0 transition-[margin] duration-200${visitorBar && !externo ? ' md:pt-[38px]' : ''}`} style={{ '--topo-extra': visitorBar && !externo ? '38px' : '0px' }}>
         {/* ── Mobile top bar ── */}
         <nav className="no-print md:hidden bg-house shadow-sm fixed top-0 left-0 right-0 z-50">
           <div className="px-4 flex justify-between h-14 items-center">
@@ -670,8 +689,8 @@ const Layout = ({ children }) => {
                 <RefreshCw className={`h-5 w-5 ${updateAvailable ? 'animate-spin' : ''}`} style={updateAvailable ? { animationDuration: '3s' } : undefined} />
                 {updateAvailable && <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse" />}
               </button>
-              <DiarioPegarVeiculo />
-          <DiarioCheckout />
+              {!externo && <DiarioPegarVeiculo />}
+              {!externo && <DiarioCheckout />}
               <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                 className="inline-flex items-center justify-center p-2 rounded-md text-white/60 hover:text-white hover:bg-white/10"
@@ -705,13 +724,15 @@ const Layout = ({ children }) => {
           {/* Drawer body — scrollable */}
           <div className="flex-1 overflow-y-auto divide-y divide-gray-100">
             {/* Tarefas — sempre visível (1º item) */}
+            {!externo && (
             <NavLink to="/tarefas" onClick={closeMobile} className={({ isActive }) => `flex items-center gap-2.5 px-4 py-3 text-sm font-semibold transition-colors ${isActive ? 'text-primary bg-primary-50/50' : 'text-gray-700 hover:bg-gray-50'}`}>
               <CalendarCheck className="h-4 w-4" />
               Tarefas
             </NavLink>
+            )}
 
             {/* Como Fazer — manuais, treinamento e rotinas (toda a equipe logada) */}
-            {podeVerComoFazer && (
+            {!externo && podeVerComoFazer && (
               <NavLink to="/como-fazer" onClick={closeMobile} className={({ isActive }) => `flex items-center gap-2.5 px-4 py-3 text-sm font-semibold transition-colors ${isActive ? 'text-primary bg-primary-50/50' : 'text-gray-700 hover:bg-gray-50'}`}>
                 <BookOpenCheck className="h-4 w-4" />
                 Como Fazer
@@ -719,10 +740,12 @@ const Layout = ({ children }) => {
             )}
 
             {/* Dashboard — sempre visível */}
+            {!externo && (
             <NavLink to="/" end onClick={closeMobile} className={({ isActive }) => `flex items-center gap-2.5 px-4 py-3 text-sm font-semibold transition-colors ${isActive ? 'text-primary bg-primary-50/50' : 'text-gray-700 hover:bg-gray-50'}`}>
               <LayoutDashboard className="h-4 w-4" />
               Dashboard
             </NavLink>
+            )}
 
             {/* Favoritos — telas fixadas pelo usuário (máx. 10) */}
             {itensFavoritos.length > 0 && (
@@ -787,7 +810,7 @@ const Layout = ({ children }) => {
               </div>
             )}
             {/* A2 — mesmo escape do desktop: sempre acessível, também no celular */}
-            {!perfil.gestor && (
+            {!externo && !perfil.gestor && (
               <button
                 onClick={() => setMenuCompleto(v => !v)}
                 className="w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-white border border-gray-200 text-gray-600 hover:bg-gray-100 rounded-full text-sm font-semibold transition-colors mb-2"
@@ -806,6 +829,9 @@ const Layout = ({ children }) => {
           </div>
         </div>
 
+        {/* Externo (contador): nenhum gateway, alerta ou assistente é montado (nem chamam a API) */}
+        {!externo && (
+        <>
         {/* GATEKEEPER DE PENDÊNCIAS DE ROTA (bloqueia app inteiro) */}
         <PendenciaRotaGateway />
 
@@ -845,6 +871,8 @@ const Layout = ({ children }) => {
 
         {/* COPILOTO (CLIPPY) — assistente de negócio com IA, só desktop */}
         {(isAdmin || user?.permissoes?.Pode_Ver_Clippy !== false) && <Clippy />}
+        </>
+        )}
 
         <main className="flex-1 w-full px-4 sm:px-6 lg:px-8 pb-10 overflow-x-clip">
           {children}

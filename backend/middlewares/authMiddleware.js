@@ -3,6 +3,18 @@ const jwt = require('jsonwebtoken');
 const prisma = require('../config/database'); // singleton compartilhado (pool único)
 const JWT_SECRET = require('../config/jwtSecret');
 
+// Usuário externo (contador): só alcança o que está nesta lista. Nega por padrão.
+// ESPELHA `ROTAS_EXTERNO` do frontend (frontend/src/utils/usuarioExterno.js) — mexeu aqui, mexa lá.
+// `/api/auth/midia-token` fica FORA de propósito. `/auth/me` NUNCA pode sair daqui (403 ali desloga).
+const CAMINHOS_EXTERNO = /^\/api\/(auth\/(me|menu-favoritos)|contabilidade)(\/|$)/;
+
+function externoPodeAcessar(urlOriginal) {
+    const bruto = String(urlOriginal || '').split('?')[0].split('#')[0].toLowerCase();
+    // sem truque de caminho: '..', '//', barra invertida ou separador/ponto codificado
+    if (bruto.includes('..') || bruto.includes('//') || bruto.includes('\\') || /%(2e|2f|5c|00)/.test(bruto)) return false;
+    return CAMINHOS_EXTERNO.test(bruto);
+}
+
 const authMiddleware = async (req, res, next) => {
     const authHeader = req.headers.authorization;
 
@@ -35,6 +47,11 @@ const authMiddleware = async (req, res, next) => {
             ? JSON.parse(vendedor.permissoes)
             : vendedor.permissoes || {};
 
+        // Usuário externo (contador): permissões já estão em mãos, zero consulta extra.
+        if (!permissoesAtuais.admin && permissoesAtuais.Usuario_Externo === true && !externoPodeAcessar(req.originalUrl)) {
+            return res.status(403).json({ error: 'Usuário externo: acesso restrito à Contabilidade.', codigo: 'USUARIO_EXTERNO' });
+        }
+
         req.user = {
             ...decoded,
             permissoes: permissoesAtuais,
@@ -50,3 +67,5 @@ const authMiddleware = async (req, res, next) => {
 };
 
 module.exports = authMiddleware;
+module.exports.externoPodeAcessar = externoPodeAcessar;
+module.exports.CAMINHOS_EXTERNO = CAMINHOS_EXTERNO;

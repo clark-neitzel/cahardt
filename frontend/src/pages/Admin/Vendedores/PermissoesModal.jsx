@@ -123,6 +123,7 @@ const DEFAULT_PERMISSIONS = {
     // Utilitários Admin
     Pode_Resetar_Dados: false,
     Isento_Ponto: false,
+    Usuario_Externo: false,
     admin: false,
     // Permissões de Estoque
     estoque: [],
@@ -257,6 +258,7 @@ const BOOL_INDEX = [
     // Acesso
     { sec: 'acesso', path: 'admin', nome: 'Administrador Global', desc: 'Acesso irrestrito a tudo; pula trava de ponto/veículo', kw: 'total master mestre tudo liberado irrestrito', danger: true, noBulk: true },
     { sec: 'acesso', path: 'Isento_Ponto', nome: 'Isento de Ponto / Diário', desc: 'Pula a trava de check-in diário (veículo/home office) ao fazer login', kw: 'ponto checkin diario trava bater veiculo' },
+    { sec: 'acesso', path: 'Usuario_Externo', nome: 'Usuário externo (contador)', desc: 'Pessoa de fora da empresa: só vê e só acessa a Contabilidade. Sem dashboard, tarefas, veículo, avisos ou assistente. As demais permissões ficam sem efeito.', kw: 'externo contador contabilidade escritorio terceiro parceiro de fora restrito', noBulk: true },
     { sec: 'acesso', path: 'Pode_Ver_Clippy', nome: 'Assistente Clippy', desc: 'Mostra o balão de ajuda no canto da tela (só no computador). Desligado, a pessoa também não recebe os avisos de novidade do sistema.', kw: 'clippy ajuda assistente balão novidade', noBulk: true },
     { sec: 'acesso', path: 'Pode_Ver_Barra_Online', nome: 'Barra de Visitantes Online', desc: 'Mostra no topo quantas pessoas estão nos sites públicos (Início, Congelados, Kit Festa)', kw: 'site visitantes online ao vivo topo' },
     // Dashboard
@@ -791,6 +793,30 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                     >
                         <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${permissoes.Isento_Ponto ? 'translate-x-5' : 'translate-x-0'}`} />
                     </button>
+                </div>
+            )}
+
+            {/* ── Usuário externo (contador) ── */}
+            {!permissoes.admin && (
+                <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                    <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                            <h4 className="font-bold text-purple-900 text-sm">Usuário externo (contador)</h4>
+                            <p className="text-xs text-purple-700 mt-0.5">A pessoa só vê a Contabilidade (somente consulta). Não aparecem dashboard, tarefas, veículo, avisos nem o assistente. Outras permissões ligadas neste cadastro ficam sem efeito enquanto esta chave estiver ligada.</p>
+                        </div>
+                        <button
+                            type="button" role="switch" aria-checked={permissoes.Usuario_Externo === true}
+                            onClick={() => toggleBool('Usuario_Externo')}
+                            className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${permissoes.Usuario_Externo === true ? 'bg-purple-600' : 'bg-gray-200'}`}
+                        >
+                            <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${permissoes.Usuario_Externo === true ? 'translate-x-5' : 'translate-x-0'}`} />
+                        </button>
+                    </div>
+                    {permissoes.Usuario_Externo === true && (
+                        permissoes.Pode_Acessar_Contabilidade === true
+                            ? <p className="mt-2 text-xs font-medium text-green-700">Contabilidade liberada.</p>
+                            : <p className="mt-2 text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2 py-1.5">Atenção: a Contabilidade está desligada. Esta pessoa não terá nenhuma tela. Ligue "Contabilidade (só consulta)" na seção Administração.</p>
+                    )}
                 </div>
             )}
 
