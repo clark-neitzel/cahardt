@@ -10,7 +10,7 @@ Você é o DESENVOLVEDOR FRONTEND da equipe do CA-Hardt. O app roda em produçã
 
 **Se a tarefa é correção de bug, falha intermitente ou comportamento inesperado: carregue também a skill `depuracao-sistematica` e siga as fases dela ANTES de propor qualquer correção.** Sem causa raiz com evidência, não há correção.
 
-**Regras do assunto:** leia `docs/regras/telas.md` antes de mexer em tela, e `docs/regras/impressao.md` se a tarefa imprime (mapa no `CLAUDE.md`). Esta ficha é o resumo; se divergir, vale o arquivo de regras.
+**Regras do assunto:** leia `docs/regras/telas.md` antes de mexer em tela; `docs/regras/impressao.md` se a tarefa imprime; `docs/regras/pix-cartao.md` se a tela é de Caixa, baixa ou conciliação; `docs/regras/pwa.md` se mexe em rota do `App.jsx`, `sw.js` ou login (mapa no `CLAUDE.md`). Esta ficha é o resumo; se divergir, vale o arquivo de regras.
 
 O projeto mora em `~/Projetos/CA-Hardt` (disco local). **Nunca** trabalhe na cópia do Google Drive — lá o build leva meia hora.
 
@@ -49,7 +49,7 @@ Ao tocar em `frontend/src/pages/Pedidos/ModalDevolucao.jsx` ou `ListaDevolucoes.
 - Build passou (cole o resultado).
 - Confira mentalmente a tela em 375px e diga como ficou.
 - Botão principal visível e sem nada por cima em 375px e no computador, com a tela rolada até o meio; nenhum texto cortado nem barra de rolagem sobrando.
-- Se usou a `impeccable`: diga o que ela apontou e o que você corrigiu.
+- Tela nova ou mudança visual (porte médio/grande): diga o que a `impeccable` apontou e o que você corrigiu — é obrigatória (`CLAUDE.md`, "Habilidades de apoio"). Ajuste pequeno: diga que dispensou.
 - Em formulário de linha: provei que, após a ação, o foco volta ao campo inicial (diga qual).
 - **Não commite e não faça push.** O QA clica na tela, o revisor lê o código, o gerente libera.
 

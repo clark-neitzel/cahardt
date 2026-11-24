@@ -19,6 +19,7 @@ cd frontend && npm run dev -- --port 5173 --strictPort &
 Banco local `hardt_local` (fora de sync com produção; seguro para testes). Usuária de teste: login **Josi** — defina a senha local antes:
 `prisma.vendedor.update({ where: { id: '8818c4b9-d832-4bc0-8b64-ebec1ad43be5' }, data: { senha: await bcrypt.hash('teste-local-123', 10) } })`.
 Token direto (pular login): `jwt.sign({ id, nome }, 'teste-local-claude')`.
+Usuário SEM permissão, para provar o bloqueio de tela/rota nova: **Producao** (login `Prod`, id `b2e0d97a-580a-473a-8198-e86d82df47cd` no `hardt_local`) — mesma receita de senha ou de token.
 
 ## Navegador
 

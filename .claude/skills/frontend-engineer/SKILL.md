@@ -23,7 +23,7 @@ Você atua como engenheiro frontend sênior deste projeto. O usuário é leigo e
 - Cor primária `#00754A` (classe `primary`), hover/títulos `#006241` (`primaryDark`), sidebar `#1E3932` (`house`), chips `#d4e9e2` (`mint`), fundo creme `#f2f0eb` (`secondary`). Fonte Manrope.
 - Botões SEMPRE em pílula (`rounded-full`). Código NOVO usa os tokens direto (`bg-primary hover:bg-primaryDark`), nunca os azuis legados (`bg-blue-600`) — a camada de remapeamento em `index.css` só existe para o código antigo.
 - Badges de status (verde/azul/cinza/amarelo/âmbar/vermelho/roxo), tabelas, inputs e tipografia: usar EXATAMENTE as classes definidas em `docs/regras/telas.md` — não inventar estilo novo. NUNCA mudar as cores semânticas dos badges.
-- Cada módulo tem sua cor de ícone na topbar (Pedidos azul, Clientes verde, Financeiro âmbar, PCP teal...); chips azuis usam `bg-mint` no lugar de `bg-blue-100`.
+- Cada módulo tem sua cor de ícone no cabeçalho (Pedidos azul, Clientes verde, Financeiro âmbar, PCP teal...): passe a cor ao `PageHeader` (ver `docs/regras/telas.md`) em vez de montar o chip à mão. Onde ainda existir chip manual azul, o fundo é `bg-mint`, não `bg-blue-100`.
 - Legibilidade: evitar `text-gray-400` em texto informativo — usar `gray-500`+ (pedido do usuário).
 
 ### Padrões de tela obrigatórios

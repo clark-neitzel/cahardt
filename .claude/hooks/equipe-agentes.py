@@ -27,7 +27,7 @@ REGRA = """REGRA PERMANENTE DESTE PROJETO — equipe de agentes (definida pelo d
 Toda solicitacao que MUDA o sistema (codigo, tela, rota, config, deploy) e executada pelo fluxo de equipe, nunca sozinho:
 - Pequena (texto, cor, campo simples): dev-backend/dev-frontend -> revisor-codigo -> gerente-entrega (pacote curto: diff + veredito do revisor + saida do build).
 - Media (tela nova, correcao de bug, relatorio): dev -> qa-testador + revisor-codigo (em paralelo) -> gerente-entrega.
-- Grande (modulo novo, fiscal/financeiro/WhatsApp/NF-e, migracao): arquiteto -> devs -> qa-testador + revisor-codigo -> gerente-entrega.
+- Grande (modulo novo, fiscal/financeiro/WhatsApp/NF-e, permissoes, migracao): arquiteto -> devs -> qa-testador + revisor-codigo -> gerente-entrega.
 
 Regras do fluxo:
 1. Reprovacao do QA ou do revisor volta para o dev; repete ate passar.

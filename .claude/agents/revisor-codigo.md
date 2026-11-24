@@ -43,7 +43,7 @@ A regra completa de cada item está em `docs/regras/` (mapa no `CLAUDE.md`). Abr
 - Impressão pela peça única `frontend/src/utils/imprimirNaPagina.js` — nunca `window.open`/iframe, nunca só `@media print`, nunca cópia da função dentro da tela (`docs/regras/impressao.md`).
 - **Botões de ação** nunca cobertos e presos quando a tela rola; rodapé é o padrão, topo só quando o rodapé ficaria coberto (`docs/regras/telas.md`).
 - Campo opcional guardado antes de interpolar em template string.
-- **Linguagem visual v2**: tela nova/tocada usa `PageHeader`, `EstadoVazio`, 1 ação principal, sem `text-gray-400` em texto lido, botão pílula.
+- **Linguagem visual v2**: tela nova/tocada usa `PageHeader`, `EstadoVazio`, 1 ação principal, sem `text-gray-400` em texto lido, botão pílula. Em tela nova ou mudança visual de porte médio/grande, o relatório do dev mostra o que a `impeccable` apontou — aponte se faltar.
 - **Boas práticas de uso**: após ação que limpa formulário há `focus()` no campo inicial; botão de gravar desabilita durante o envio; Enter/Esc tratados.
 
 **Ambos**

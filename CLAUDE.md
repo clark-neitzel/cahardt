@@ -16,7 +16,7 @@ Três lugares, três papéis — não confundir:
 | Lugar | Papel |
 |---|---|
 | **GitHub** (`clark-neitzel/cahardt`) | **O projeto mora aqui.** Fonte oficial, com todo o histórico. É de onde o EasyPanel puxa para publicar. Trabalho que não foi enviado para cá não existe. |
-| **Mac** (`~/Projetos/CA-Hardt`) | **Bancada de trabalho e teste local.** Onde se edita, builda, roda o app e testa — e de onde se envia (push) para o GitHub. Nada deve ficar só aqui. |
+| **Mac** (`~/Projetos/CA-Hardt`) | **Bancada de trabalho e teste local.** Onde se edita, builda, roda o app e testa — e de onde se envia (push) para o GitHub. Nada deve ficar só aqui — única exceção: mudança só de regra/documento espera o próximo envio de código (seção "Enviar ao GitHub"). |
 | **Google Drive** (`.../Conta Azul/CA-Hardt-Backups/completo_<data>.tgz`) | **Backup de segurança.** Pacote único gerado por `scripts/backup-para-drive.sh`; guarda as 5 cópias mais recentes e leva também o que o GitHub não pode guardar (`.env`, `.admin-secret`). Espaço sobrando e fácil de abrir. |
 
 - **NUNCA trabalhar dentro da pasta do Drive.** Lá cada arquivo é baixado da nuvem na hora do uso:
@@ -77,7 +77,7 @@ pedido do dono → (arquiteto, se médio/grande) → dev-backend / dev-frontend
 9. **Correção de bug segue a skill `depuracao-sistematica`** (`.claude/skills/`, adotada em 11/2026): causa raiz com evidência **antes** de corrigir; bug que voltou nunca é tarefa pequena; **3 correções falhas do mesmo bug = parar**, chamar o `arquiteto` e contar ao dono.
 10. **Diário de bordo em tarefa média/grande**: a thread principal mantém `.claude/diario/<AAAA-MM-DD>-<slug>.md` (fora do git) com o pedido do dono **palavra por palavra**, o porte, cada agente acionado com o veredito, as pendências e os commits. Depois de uma compactação da conversa, **releia o diário antes de acionar qualquer agente** — é o que impede refazer trabalho já feito ou esquecer uma reprovação.
 
-### Equipe sempre, gastando pouco (decisão do dono em 24/11/2026)
+### Equipe sempre, gastando pouco (sugestão aplicada em 24/11/2026 — o dono perguntou qual era a sugestão; se ele quiser outra, muda aqui)
 
 Conferir tudo e economizar deixam de brigar quando **cada agente lê só a parte dele**:
 
@@ -89,7 +89,7 @@ Conferir tudo e economizar deixam de brigar quando **cada agente lê só a parte
 ### Ativação automática (não depende de ninguém lembrar)
 
 1. **Hook `UserPromptSubmit`** — `.claude/hooks/equipe-agentes.py`, ligado em `.claude/settings.json`:
-   roda a cada mensagem do dono e injeta esta regra no contexto; detecta sozinho o "sem agentes".
+   roda a cada mensagem do dono e injeta esta regra no contexto; sinaliza o "sem agentes" (o gancho só avisa — quem aplica a dispensa é a thread principal).
 2. **Esta seção do `CLAUDE.md`** — lida no início de toda sessão.
 3. **As fichas em `.claude/agents/`** — carregam o papel e as regras críticas dentro de cada agente.
 

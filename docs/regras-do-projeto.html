@@ -1,0 +1,390 @@
+<title>Regras do CA-Hardt</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap">
+<style>
+/* Layout: uma coluna de leitura (até 960px) com faixa verde-escura no topo; resumo antes do detalhe; conflitos como fichas A × B */
+:root{
+  --bg:#f2f0eb; --surface:#ffffff; --ink:#1c2824; --muted:#56635d; --line:#dcd6ca;
+  --primary:#00754a; --house:#1e3932; --on-house:#f3f7f5; --on-house-muted:#b9cdc5; --mint:#d4e9e2; --gold:#8a6a1f;
+  --ok:#0b5a3b; --red:#a8261b; --red-bg:#fbe5e2; --amber:#8a5a00; --amber-bg:#fdf0cf; --blue:#1f4fb3; --blue-bg:#dfe9fb;
+  --font:"Manrope",-apple-system,"SF Pro Text","Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f1d19; --surface:#172a24; --ink:#e8efec; --muted:#a2b3ab; --line:#2b443b;
+  --primary:#55c79a; --house:#0a1613; --on-house:#eef4f1; --on-house-muted:#9fb5ac; --mint:#1f4539; --gold:#d9b869;
+  --ok:#7fe0b6; --red:#ff9c90; --red-bg:#3d1a16; --amber:#f2c063; --amber-bg:#3a2c0c; --blue:#9cbcff; --blue-bg:#172a4d; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1d19; --surface:#172a24; --ink:#e8efec; --muted:#a2b3ab; --line:#2b443b;
+  --primary:#55c79a; --house:#0a1613; --on-house:#eef4f1; --on-house-muted:#9fb5ac; --mint:#1f4539; --gold:#d9b869;
+  --ok:#7fe0b6; --red:#ff9c90; --red-bg:#3d1a16; --amber:#f2c063; --amber-bg:#3a2c0c; --blue:#9cbcff; --blue-bg:#172a4d; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:16px;line-height:1.6;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+.wrap{max-width:960px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.hero{background:var(--house);color:var(--on-house);margin-top:calc(-1*env(safe-area-inset-top,0px));padding-top:calc(env(safe-area-inset-top,0px) + 2.5rem);padding-bottom:2rem}
+.hero .eyebrow{font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:var(--on-house-muted)}
+.hero h1{font-size:clamp(1.8rem,5vw,2.6rem);font-weight:800;line-height:1.1;margin:.4rem 0 .6rem;text-wrap:balance}
+.hero p{color:var(--on-house-muted);max-width:62ch;margin:0}
+.nums{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.75rem;margin-top:1.5rem}
+.num{border-top:2px solid var(--on-house-muted);padding-top:.6rem}
+.num b{display:block;font-size:1.9rem;font-weight:800;line-height:1.1}
+.num span{font-size:.8rem;color:var(--on-house-muted)}
+nav.idx{display:flex;flex-wrap:wrap;gap:.5rem;padding-block:1rem}
+nav.idx a{font-size:.85rem;font-weight:600;color:var(--primary);text-decoration:none;border:1px solid var(--primary);border-radius:999px;padding:.3rem .85rem}
+nav.idx a:hover,nav.idx a:focus-visible{background:var(--mint);outline:none}
+section{padding-block:1.75rem;border-top:1px solid var(--line)}
+h2{font-size:1.45rem;font-weight:800;margin:0 0 .3rem;text-wrap:balance}
+h3{font-size:1.02rem;font-weight:700;margin:0 0 .25rem}
+.lead{color:var(--muted);max-width:68ch;margin:0 0 1.1rem}
+.label{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted)}
+p{margin:.4rem 0;max-width:72ch}
+/* fluxo */
+.flow{display:flex;flex-wrap:wrap;gap:.5rem;align-items:stretch;margin:.75rem 0 1rem}
+.step{flex:1 1 130px;min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:.7rem .8rem}
+.step b{display:block;font-size:.92rem}
+.step span{font-size:.8rem;color:var(--muted)}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:520px;font-size:.92rem;background:var(--surface);border:1px solid var(--line)}
+th,td{text-align:left;padding:.6rem .8rem;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-weight:700}
+tr:last-child td{border-bottom:0}
+/* conflitos */
+.grp{display:flex;align-items:center;gap:.6rem;margin:1.4rem 0 .6rem}
+.tag{font-size:.72rem;font-weight:700;border-radius:999px;padding:.2rem .7rem;white-space:nowrap}
+.t-red{background:var(--red-bg);color:var(--red)} .t-amber{background:var(--amber-bg);color:var(--amber)} .t-blue{background:var(--blue-bg);color:var(--blue)}
+.case{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:1rem 1.1rem;margin-bottom:.8rem}
+.case h3{display:flex;gap:.5rem;align-items:baseline}
+.case h3 i{font-style:normal;color:var(--muted);font-weight:600;font-size:.85rem}
+.ab{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:.6rem;margin:.6rem 0}
+.ab div{min-width:0;border:1px dashed var(--line);border-radius:8px;padding:.55rem .7rem;font-size:.9rem}
+.ab .label{display:block;margin-bottom:.15rem}
+.fix{font-size:.92rem;margin-top:.5rem}
+.fix b{color:var(--primary)}
+.t-ok{background:var(--mint);color:var(--ok)}
+.ab .voce{border-style:solid;border-color:var(--primary)}
+.todo{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--gold);border-radius:10px;padding:.8rem 1rem;margin-bottom:.7rem}
+.todo p{margin:.2rem 0 0;font-size:.93rem}
+/* barras */
+.bars{display:grid;gap:.45rem;margin:.6rem 0 1rem}
+.bar{display:grid;grid-template-columns:minmax(120px,170px) 1fr 3ch;gap:.6rem;align-items:center;font-size:.9rem}
+.bar .track{background:var(--mint);border-radius:4px;height:14px;min-width:0}
+.bar .fill{display:block;height:100%;background:var(--primary);border-radius:4px}
+.bar .v{text-align:right;font-weight:700}
+.bar.zero .track{background:transparent;border:1px dashed var(--line)}
+.why{background:var(--mint);border-radius:10px;padding:.8rem 1rem;font-size:.93rem;margin:.6rem 0}
+/* fichas */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:.7rem}
+.card{min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:.85rem 1rem}
+.card p{font-size:.92rem;margin:.2rem 0 0}
+.card .label{display:block;margin-top:.5rem}
+code{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:.86em;background:var(--mint);padding:.05em .35em;border-radius:4px;overflow-wrap:anywhere}
+ul{margin:.3rem 0;padding-left:1.15rem} li{margin:.3rem 0;max-width:74ch}
+.rule{display:grid;grid-template-columns:minmax(0,1fr);gap:.2rem;padding:.7rem 0;border-bottom:1px solid var(--line)}
+.rule:last-child{border-bottom:0}
+.rule small{color:var(--muted);font-size:.86rem}
+.note{border-left:3px solid var(--gold);padding:.4rem 0 .4rem .9rem;color:var(--muted);font-size:.92rem;margin:1rem 0}
+footer{padding-block:1.5rem 2.5rem;color:var(--muted);font-size:.82rem;border-top:1px solid var(--line)}
+</style>
+
+<header class="hero"><div class="wrap">
+  <div class="eyebrow">CA-Hardt · atualizado em 24/11/2026, depois das suas decisões</div>
+  <h1>As regras do projeto, em linguagem simples</h1>
+  <p>O que a equipe de agentes é obrigada a seguir, como ficaram os 11 pontos que você decidiu, o que foi mais usado nos últimos dois meses e o que cada peça faz.</p>
+  <div class="nums">
+    <div class="num"><b>173</b><span>linhas no arquivo principal (eram 866)</span></div>
+    <div class="num"><b>9</b><span>arquivos de regra, um por assunto</span></div>
+    <div class="num"><b>6</b><span>agentes na equipe</span></div>
+            <div class="num"><b>11</b><span>pontos decididos por você e aplicados</span></div>
+    <div class="num"><b>2</b><span>regras novas pedidas por você</span></div>
+  </div>
+</div></header>
+
+<div class="wrap">
+<nav class="idx" aria-label="Nesta página">
+  <a href="#fluxo">Como o trabalho anda</a>
+  <a href="#conflitos">Suas decisões</a>
+  <a href="#pendente">O que depende de você</a>
+  <a href="#mapa">Onde as regras moram</a>
+  <a href="#uso">Mais usados</a>
+  <a href="#pecas">O que cada um faz</a>
+  <a href="#regras">Regras por assunto</a>
+  <a href="#memoria">Pedidos seus guardados</a>
+</nav>
+
+<section id="fluxo">
+  <h2>Como o trabalho anda</h2>
+  <p class="lead">A regra central do projeto é que quem faz não é quem confere. Todo pedido que muda o sistema passa por esta fila.</p>
+  <div class="flow">
+    <div class="step"><b>1. Você pede</b><span>A conversa principal entende e distribui</span></div>
+    <div class="step"><b>2. Arquiteto</b><span>Só em tarefa média ou grande</span></div>
+    <div class="step"><b>3. Dev</b><span>Backend ou frontend escreve</span></div>
+    <div class="step"><b>4. QA + Revisor</b><span>Ao mesmo tempo. Reprovou, volta ao dev</span></div>
+    <div class="step"><b>5. Gerente</b><span>Veredito e nota de entrega</span></div>
+  </div>
+  <div class="tbl"><table>
+    <thead><tr><th>Porte</th><th>Exemplo</th><th>Quem entra</th></tr></thead>
+    <tbody>
+      <tr><td><b>Pequena</b></td><td>Texto, cor, campo simples</td><td>Dev → revisor → gerente (conferência curta)</td></tr>
+      <tr><td><b>Média</b> (padrão)</td><td>Tela nova, correção de defeito, relatório</td><td>Dev → QA + revisor → gerente</td></tr>
+      <tr><td><b>Grande</b></td><td>Módulo novo, fiscal, financeiro, NF-e, WhatsApp, permissões</td><td>Arquiteto → devs → QA + revisor → gerente</td></tr>
+      <tr><td><b>Entrega rápida</b></td><td>Só quando você pedir: "urgente", "manda direto"</td><td>Dev → publica. Depois a conversa sugere a conferência completa e você decide</td></tr>
+    </tbody>
+  </table></div>
+  <p>Pergunta, consulta e diagnóstico que não alteram arquivo são respondidos direto, sem equipe. Se você escrever "sem agentes", a conversa principal faz sozinha.</p>
+</section>
+
+<section id="conflitos">
+  <h2>Suas 11 decisões, aplicadas</h2>
+  <p class="lead">Cada ponto que estava em conflito, com o que você respondeu e como a regra ficou. As mudanças estão gravadas no computador (registro <code>92019d76</code>) e sobem junto no próximo envio de código. Um revisor independente e o gerente de entrega conferiram o texto contra o código do app.</p>
+
+  <div class="grp"><span class="tag t-ok">Decidido</span><span class="label">eram contradições</span></div>
+  <div class="case">
+    <h3>1. Botões de ação: no rodapé ou no topo?</h3>
+    <div class="ab">
+      <div class="voce"><span class="label">Você decidiu</span>Usar o que mais se usa hoje. O botão nunca pode ficar coberto nem fora de alcance, e fica preso quando a tela rola, para não perder o lugar.</div>
+      <div><span class="label">Como ficou escrito</span>Uma regra só no lugar das quatro. Padrão: rodapé, que é o mais usado (12 telas e modais). Topo só quando o rodapé ficaria coberto pelo Clippy, que é o caso do formulário comprido no computador. O QA prova rolando a tela no celular e no computador.</div>
+    </div>
+  </div>
+  <div class="case">
+    <h3>2. Impressão: a habilidade ensinava o jeito antigo</h3>
+    <div class="ab">
+      <div class="voce"><span class="label">Você decidiu</span>Corrija.</div>
+      <div><span class="label">Como ficou escrito</span>A habilidade do frontend e a regra agora mandam usar a peça única de impressão que já existe no app. Saiu o exemplo embutido, que também estava numa versão abandonada. Copiar a função para dentro de uma tela ficou proibido: foi assim que o defeito do iPad voltou.</div>
+    </div>
+  </div>
+  <div class="case">
+    <h3>3. Tarefa pequena precisa do gerente de entrega?</h3>
+    <div class="ab">
+      <div class="voce"><span class="label">Você decidiu</span>Toda tarefa o gerente confere. Só não quando você pedir entrega rápida, e aí, depois de entregue, cabe sugerir uma conferência melhor.</div>
+      <div><span class="label">Como ficou escrito</span>O gerente entra em todo porte. Na pequena ele recebe um pacote curto: a mudança, o parecer do revisor e a verificação do código. Entrega rápida virou um porte próprio, que só você aciona.</div>
+    </div>
+  </div>
+  <div class="case">
+    <h3>4. Formato do botão: pílula ou canto de 4px?</h3>
+    <div class="ab">
+      <div class="voce"><span class="label">Você decidiu</span>Sempre pílula, conforme o layout novo.</div>
+      <div><span class="label">Como ficou escrito</span>A linha que falava em canto de 4px ou 6px para botão saiu. Vale pílula em todo botão.</div>
+    </div>
+  </div>
+
+  <div class="grp"><span class="tag t-ok">Decidido</span><span class="label">eram textos velhos</span></div>
+  <div class="case">
+    <h3>5. Exemplos em azul dentro de uma regra que pede verde</h3>
+    <div class="ab">
+      <div class="voce"><span class="label">Você decidiu</span>A equipe de design sugere a regra pelo layout atual, sem conflito.</div>
+      <div><span class="label">Como ficou escrito</span>Os exemplos de card e de cabeçalho agora usam o verde do tema e o cabeçalho padrão de página que já existe no app. As cores de cada módulo e as dos selos de status não mudaram.</div>
+    </div>
+  </div>
+  <div class="case">
+    <h3>6. "A ser criado" para peças que já existem</h3>
+    <div class="ab">
+      <div class="voce"><span class="label">Você decidiu</span>Pode ajustar.</div>
+      <div><span class="label">Como ficou escrito</span>Cabeçalho único, estado vazio e glossário de status agora constam como "já existe, usar sempre".</div>
+    </div>
+  </div>
+  <div class="case">
+    <h3>7. Índice da memória falava do BotConversa como se valesse</h3>
+    <div class="ab">
+      <div class="voce"><span class="label">Você decidiu</span>Pode corrigir.</div>
+      <div><span class="label">Como ficou escrito</span>A linha do índice agora diz que o BotConversa foi desligado em julho e que todo WhatsApp sai pelo bot da Ana.</div>
+    </div>
+  </div>
+  <div class="case">
+    <h3>8. Limite do WhatsApp: 200 ou 30 por hora?</h3>
+    <div class="ab">
+      <div class="voce"><span class="label">Você decidiu</span>200 por hora, respeitando o tempo e a fila do bot. Talvez precise de uma consulta para saber o que acontece no bot.</div>
+      <div><span class="label">Como ficou escrito</span>A regra diz 200 por hora como decisão sua, e que o número e a fila são do bot: o sistema consulta o bot em vez de fixar número no código. Essa consulta já existe e aparece em Configurações → Notificação WhatsApp.</div>
+    </div>
+    <p class="fix"><b>Atenção:</b> a regra está escrita, mas o limite de 200 ainda não vale na prática. O bot está em 30 por hora e a cobrança automática segue no ritmo antigo. Veja "O que depende de você".</p>
+  </div>
+  <div class="case">
+    <h3>9. Conta Azul aparecia como modelo a copiar</h3>
+    <div class="ab">
+      <div class="voce"><span class="label">Você decidiu</span>O Conta Azul não existe mais, só os dados importados. A integração padrão hoje é o Asaas e o Focus.</div>
+      <div><span class="label">Como ficou escrito</span>A habilidade do backend e o arquivo principal apontam Asaas e Focus NFe como modelo de integração. O código antigo do Conta Azul não serve mais de referência.</div>
+    </div>
+  </div>
+
+  <div class="grp"><span class="tag t-ok">Decidido</span><span class="label">eram duas regras boas puxando para lados opostos</span></div>
+
+  <div class="case">
+    <h3>10. Equipe sempre × economizar</h3>
+    <p>Você disse que não entendeu a sugestão. Ela já foi aplicada, e se você preferir outro caminho é só dizer. Em linguagem simples:</p>
+    <ul>
+      <li><b>O problema:</b> cada agente é como um funcionário que relia o manual inteiro, de 866 linhas, toda vez que era chamado. Foram cerca de 520 chamadas em dois meses.</li>
+      <li><b>O que mudou:</b> o manual principal ficou com 173 linhas, só o que vale para toda tarefa. O resto virou 9 capítulos, um por assunto, e cada agente abre só o capítulo do que vai mexer.</li>
+      <li><b>O que você ganha:</b> tudo continua sendo conferido, como você pediu, e cada conferência custa menos. Pergunta e diagnóstico continuam sem equipe.</li>
+    </ul>
+  </div>
+  <div class="case">
+    <h3>11. Envio sempre autorizado × envio reinicia o sistema</h3>
+    <div class="ab">
+      <div class="voce"><span class="label">Você decidiu</span>Sim, mas tem que avisar que o app vai ser atualizado. Atualizar no meio do dia nunca deu problema, e na maioria das vezes o conserto é urgente.</div>
+      <div><span class="label">Como ficou escrito</span>O envio continua liberado a qualquer hora. Na hora de enviar, a conversa avisa em uma linha o que está subindo. Mudança só de regra ou de documento não reinicia o sistema à toa: fica gravada no computador e sobe junto no próximo envio de código.</div>
+    </div>
+  </div>
+
+  <div class="grp"><span class="tag t-ok">Novo</span><span class="label">duas regras que você pediu junto</span></div>
+
+  <div class="case">
+    <h3>Tela ou função nova sempre nasce com permissão</h3>
+    <p>Antes de dar qualquer tela, aba, botão de ação ou relatório como pronto, a equipe define quem pode acessar. O servidor bloqueia primeiro, a tela espelha o servidor, a permissão nova entra no painel de permissões, e o QA prova abrindo com um usuário que não tem acesso. Se o pedido não disser quem acessa, a conversa pergunta a você antes de construir.</p>
+  </div>
+  <div class="case">
+    <h3>Habilidade de design obrigatória em tela nova</h3>
+    <p>A <code>impeccable</code> passa a ser usada pelo dev frontend em toda tela nova ou mudança visual, para pegar texto cortado, barra de rolagem sobrando, hierarquia e espaçamento. O padrão visual do projeto continua mandando sobre o que ela sugerir. As outras três (<code>awesome-design-md</code>, <code>archify</code>, <code>mindmap</code>) ficam fora do fluxo e só entram se você pedir pelo nome.</p>
+  </div>
+</section>
+
+<section id="pendente">
+  <h2>O que depende de você</h2>
+  <p class="lead">Quatro pontos que as regras não resolvem sozinhas.</p>
+  <div class="todo"><b>1. O limite de 200 por hora ainda não vale na prática.</b><p>Falta uma coisa sua e uma do sistema. A sua: no painel do bot, em Configurações, trocar o limite de mensagens automáticas por hora de 30 para 200. A do sistema: a cobrança automática espera 2 minutos e meio entre uma mensagem e outra, o que dá cerca de 24 por hora. Mudar essa espera é mexer no envio de WhatsApp, e só faço com o seu pedido. Hoje nada é barrado, porque o pico do último mês foi de 12 por hora.</p></div>
+  <div class="todo"><b>2. No "urgente", pula toda a conferência também em fiscal, financeiro e WhatsApp?</b><p>Você falou só do gerente. Do jeito que ficou escrito, a entrega rápida publica sem revisor, sem QA e sem gerente em qualquer assunto. Como você mesmo disse que a maioria dos consertos é urgente, vale decidir se nessas três áreas o revisor faz pelo menos uma leitura rápida antes de publicar.</p></div>
+  <div class="todo"><b>3. Botão do Ajuste de Estoque no computador.</b><p>O bloco de ação fica no mesmo canto do Clippy. Não foi conferido na tela se o Clippy cobre o botão. A regra manda provar isso quando alguém mexer nessa tela.</p></div>
+  <div class="todo"><b>4. Baixas antigas sem banco (Pix e cartão).</b><p>As regras ainda trazem um parágrafo marcado como pendente desde setembro, sobre rodar em produção a reversão das baixas antigas. Vale confirmar se já foi feito.</p></div>
+</section>
+
+<section id="mapa">
+  <h2>Onde as regras moram agora</h2>
+  <p class="lead">Cada regra existe em um lugar só. Regra nova altera a que já trata do tema, em vez de ser empilhada por cima: foi a repetição que criou as contradições.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Assunto</th><th>Arquivo</th><th>O que nunca pode quebrar</th></tr></thead>
+    <tbody>
+      <tr><td><b>Toda tarefa</b></td><td><code>CLAUDE.md</code></td><td>A equipe e os portes, a verificação antes de gravar, permissão em tela nova, aviso no envio</td></tr>
+      <tr><td>Telas</td><td><code>docs/regras/telas.md</code></td><td>Tema verde, pílula, celular, largura no computador, botões de ação nunca cobertos</td></tr>
+      <tr><td>Impressão</td><td><code>docs/regras/impressao.md</code></td><td>Sempre pela peça única, nunca janela nova nem quadro escondido</td></tr>
+      <tr><td>Banco e arquivos</td><td><code>docs/regras/backend.md</code></td><td>Não apagar campo, prazo de 20 segundos, arquivo só na pasta que sobrevive</td></tr>
+      <tr><td>WhatsApp</td><td><code>docs/regras/whatsapp.md</code></td><td>Só mensagem provocada pelo cliente, teto e fila do bot</td></tr>
+      <tr><td>NF-e de devolução</td><td><code>docs/regras/nfe-devolucao.md</code></td><td>Sai sozinha no clique, erro nunca desfaz a devolução</td></tr>
+      <tr><td>Caixa, Pix e cartão</td><td><code>docs/regras/pix-cartao.md</code></td><td>Não quitam sozinhos, o caixa nunca trava</td></tr>
+      <tr><td>API da IA de atendimento</td><td><code>docs/regras/api-ia.md</code></td><td>Nunca remover campo, dado só com o telefone batendo</td></tr>
+      <tr><td>App instalado</td><td><code>docs/regras/pwa.md</code></td><td>Atualiza sozinho, nunca desloga por queda de rede</td></tr>
+      <tr><td>Novidades e manual</td><td><code>docs/regras/novidades-e-manual.md</code></td><td>Página de novidade, texto para o grupo, manual do Clippy</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="uso">
+  <h2>Mais usados e por quê</h2>
+  <p class="lead">Contagem real em 56 conversas deste projeto, de 19/09 a 24/11/2026, incluindo o que os agentes carregaram por conta própria.</p>
+
+  <h3>Agentes acionados</h3>
+  <div class="bars">
+    <div class="bar"><span>Revisor de código</span><span class="track"><span class="fill" style="width:100%"></span></span><span class="v">119</span></div>
+    <div class="bar"><span>Dev frontend</span><span class="track"><span class="fill" style="width:89%"></span></span><span class="v">106</span></div>
+    <div class="bar"><span>QA testador</span><span class="track"><span class="fill" style="width:78%"></span></span><span class="v">93</span></div>
+    <div class="bar"><span>Dev backend</span><span class="track"><span class="fill" style="width:76%"></span></span><span class="v">91</span></div>
+    <div class="bar"><span>Gerente de entrega</span><span class="track"><span class="fill" style="width:61%"></span></span><span class="v">72</span></div>
+    <div class="bar"><span>Arquiteto</span><span class="track"><span class="fill" style="width:34%"></span></span><span class="v">40</span></div>
+  </div>
+  <div class="why"><b>Por quê:</b> no período contado o revisor era o único que entrava nos três portes e voltava a cada correção, por isso lidera. A partir de hoje o gerente também entra em todos. O arquiteto só entra em tarefa média ou grande. O frontend passa o backend porque quase todo pedido seu termina numa tela.</div>
+
+  <h3>Habilidades carregadas</h3>
+  <div class="bars">
+    <div class="bar"><span>backend-engineer</span><span class="track"><span class="fill" style="width:100%"></span></span><span class="v">149</span></div>
+    <div class="bar"><span>frontend-engineer</span><span class="track"><span class="fill" style="width:88%"></span></span><span class="v">131</span></div>
+    <div class="bar"><span>verify</span><span class="track"><span class="fill" style="width:76%"></span></span><span class="v">113</span></div>
+    <div class="bar"><span>artifact-design</span><span class="track"><span class="fill" style="width:4%"></span></span><span class="v">6</span></div>
+    <div class="bar"><span>claude-api</span><span class="track"><span class="fill" style="width:1.5%"></span></span><span class="v">2</span></div>
+    <div class="bar zero"><span>impeccable</span><span class="track"></span><span class="v">0</span></div>
+    <div class="bar zero"><span>awesome-design-md</span><span class="track"></span><span class="v">0</span></div>
+    <div class="bar zero"><span>archify</span><span class="track"></span><span class="v">0</span></div>
+    <div class="bar zero"><span>mindmap</span><span class="track"></span><span class="v">0</span></div>
+  </div>
+  <div class="why"><b>Por quê:</b> as três primeiras não são escolhidas, são obrigatórias. A ficha de cada dev manda carregar a habilidade antes de começar, e a do QA manda seguir a <code>verify</code>. O que está escrito nelas pesa mais que qualquer outra regra, porque é relido centenas de vezes.</div>
+  <p>As quatro com zero estão instaladas no seu computador e não foram chamadas nenhuma vez neste projeto no período. A partir de hoje a <code>impeccable</code> é obrigatória em tela nova; as outras três ficam fora do fluxo. O modo <code>i-have-adhd</code> não aparece na contagem porque liga sozinho em toda sessão.</p>
+</section>
+
+<section id="pecas">
+  <h2>O que cada um faz</h2>
+  <p class="lead">Agente é um funcionário com papel fixo. Habilidade é um manual que o funcionário abre quando o assunto aparece.</p>
+
+  <div class="label" style="margin:.4rem 0 .5rem">A equipe</div>
+  <div class="cards">
+    <div class="card"><h3>Arquiteto</h3><p>Pensa antes de alguém escrever: quais arquivos mudam, em que ordem, o que pode quebrar. Só lê, não altera nada.</p></div>
+    <div class="card"><h3>Dev backend</h3><p>Faz a parte que o usuário não vê: regras de negócio, banco, integrações com NF-e, Asaas e WhatsApp. Não publica.</p></div>
+    <div class="card"><h3>Dev frontend</h3><p>Faz as telas, filtros, botões e impressões. Roda a verificação do código antes de entregar. Não publica.</p></div>
+    <div class="card"><h3>QA testador</h3><p>Abre o app de verdade e clica como um usuário, inclusive no tamanho de celular e nos caminhos de erro. Não corrige, só prova.</p></div>
+    <div class="card"><h3>Revisor de código</h3><p>Lê o que o dev escreveu procurando defeito, regra descumprida e efeito em outras telas. Não corrige, devolve.</p></div>
+    <div class="card"><h3>Gerente de entrega</h3><p>Portão final. Confere os relatórios, dá o veredito e escreve a nota de entrega que chega até você.</p></div>
+  </div>
+
+  <div class="label" style="margin:1.3rem 0 .5rem">Habilidades do projeto</div>
+  <div class="cards">
+    <div class="card"><h3>backend-engineer</h3><p>O manual do dev backend: como gravar no banco sem travar, o que nunca apagar, WhatsApp sem derrubar o número. O modelo de integração agora é Asaas e Focus NFe.</p></div>
+    <div class="card"><h3>frontend-engineer</h3><p>O manual do dev frontend. Ficou curto: aponta para o arquivo de regras de telas e o de impressão, em vez de repetir o que está lá.</p></div>
+    <div class="card"><h3>verify</h3><p>A receita do QA para ligar o app no computador e clicar nele com um navegador automático.</p></div>
+    <div class="card"><h3>depuracao-sistematica</h3><p>Nova, de hoje. Obriga a achar a causa do defeito antes de corrigir e a parar depois de três correções que não seguraram.</p></div>
+  </div>
+
+  <div class="label" style="margin:1.3rem 0 .5rem">Habilidades instaladas no seu computador</div>
+  <div class="cards">
+    <div class="card"><h3>i-have-adhd</h3><p>Molda toda resposta: começa pela ação, passos numerados, sem enrolação. Liga sozinha.</p></div>
+    <div class="card"><h3>impeccable</h3><p>Crítica e polimento de telas: texto cortado, barra de rolagem sobrando, hierarquia, espaçamento. Obrigatória em tela nova a partir de hoje.</p></div>
+    <div class="card"><h3>awesome-design-md</h3><p>Coleção de estilos visuais de 74 marcas conhecidas, para copiar um visual. Fora do fluxo deste projeto.</p></div>
+    <div class="card"><h3>archify</h3><p>Desenha diagramas de sistema e de fluxo. Fora do fluxo deste projeto.</p></div>
+    <div class="card"><h3>mindmap</h3><p>Transforma um assunto em mapa mental. Fora do fluxo deste projeto.</p></div>
+  </div>
+</section>
+
+<section id="regras">
+  <h2>As regras, por assunto</h2>
+  <p class="lead">Resumo das regras, já com as suas decisões. Quase toda regra nasceu de um problema que já aconteceu, e ele vem junto.</p>
+
+  <h3>Onde fica cada coisa</h3>
+  <div class="rule"><span>O projeto mora no GitHub, a bancada de trabalho é a pasta <code>Projetos/CA-Hardt</code> do Mac, e o Google Drive é só backup.</span><small>Por quê: na pasta do Drive a verificação do código levava 31 minutos em vez de segundos.</small></div>
+
+  <h3 style="margin-top:1.2rem">Antes de publicar</h3>
+  <div class="rule"><span>Toda mudança em tela passa pela verificação do código antes de ser gravada. Sem exceção.</span><small>Por quê: uma linha esquecida derruba a tela para todos os vendedores e motoristas.</small></div>
+  <div class="rule"><span>O que grava arquivo no servidor só está pronto depois de testado em produção, com uma publicação no meio.</span><small>Por quê: 14 documentos do Contas a Pagar se perderam sem erro nenhum na hora.</small></div>
+  <div class="rule"><span>Correção de defeito começa pela causa, não pelo sintoma. Três correções falhas e o trabalho para.</span><small>Por quê: a impressão do iPad foi "corrigida" mais de uma vez.</small></div>
+
+  <h3 style="margin-top:1.2rem">Processos protegidos</h3>
+  <div class="rule"><span><b>NF-e de devolução.</b> Sai sozinha no clique de registrar. Erro na nota nunca desfaz a devolução. Pedido especial nunca gera nota.</span><small>Por quê: está funcionando em produção e envolve o fisco.</small></div>
+  <div class="rule"><span><b>Pix comum e cartão.</b> Não quitam sozinhos. Ficam informados até a conciliação bancária confirmar. O caixa nunca trava por causa deles, e o cliente não vira inadimplente.</span><small>Por quê: você decidiu que nenhuma baixa existe sem uma conta bancária real por trás.</small></div>
+  <div class="rule"><span><b>WhatsApp.</b> Só mensagem provocada por um ato recente do cliente. Nada de promoção nem lista fria. No máximo 2000 caracteres.</span><small>Por quê: o número já foi banido uma vez por envio em massa.</small></div>
+  <div class="rule"><span><b>API da IA de atendimento.</b> Nunca remover nem renomear um campo. Dado de cliente só com o telefone batendo, nunca só com CPF ou CNPJ.</span><small>Por quê: se o formato quebra, a IA para de responder cliente no WhatsApp.</small></div>
+
+  <h3 style="margin-top:1.2rem">Banco de dados</h3>
+  <div class="rule"><span>Nunca apagar um campo que já existe no banco. O antigo fica marcado como legado.</span><small>Por quê: a publicação recusa e o servidor não sobe.</small></div>
+  <div class="rule"><span>Operação em várias etapas tem prazo de 20 segundos, e registros secundários ficam fora dela.</span><small>Por quê: o banco é compartilhado e lento no pico; a baixa falhava e só passava na terceira tentativa.</small></div>
+  <div class="rule"><span>Arquivo enviado pelo usuário só vai para a pasta que sobrevive à publicação.</span><small>Por quê: é o caso dos 14 documentos perdidos.</small></div>
+
+  <h3 style="margin-top:1.2rem">Telas</h3>
+  <div class="rule"><span>Tema verde, botão sempre em pílula, cores de status sempre as mesmas (verde pago, vermelho vencido).</span><small>Tema Starbucks, aprovado por você em julho.</small></div>
+  <div class="rule"><span>Botões de ação nunca cobertos e presos quando a tela rola. Rodapé como padrão, topo quando o Clippy cobriria.</span><small>Decisão sua de 24/11.</small></div>
+  <div class="rule"><span>Tela ou função nova nasce com permissão: o servidor bloqueia e a tela espelha.</span><small>Decisão sua de 24/11.</small></div>
+  <div class="rule"><span>Toda tela funciona no celular: sem rolagem lateral, tabela vira cartão, botão com tamanho de dedo.</span><small>Por quê: vendedor usa no celular e o escritório no iPad.</small></div>
+  <div class="rule"><span>No computador, usar a largura da tela em duas ou três colunas, para não ficar rolando.</span><small>Pedido seu de novembro.</small></div>
+  <div class="rule"><span>Filtro lembra a última escolha. Data usa sempre o mesmo seletor de período. Menu suspenso sempre com busca.</span><small>Pedidos seus de julho.</small></div>
+  <div class="rule"><span>O cursor nunca some: depois de salvar uma linha, volta para o primeiro campo. Enter confirma, Esc cancela, clique duplo não duplica.</span><small>Pedido seu de setembro.</small></div>
+  <div class="rule"><span>Impressão acontece na própria página, sempre pela peça única de impressão. Nunca em janela nova nem em quadro escondido.</span><small>Por quê: no iPad saía folha em branco ou a tela do app.</small></div>
+  <div class="rule"><span>O app instalado se atualiza sozinho e nunca desloga o usuário por queda de rede.</span><small>Por quê: no iPhone não há botão de recarregar; o vendedor ficava preso.</small></div>
+
+  <h3 style="margin-top:1.2rem">Comunicação com a equipe</h3>
+  <div class="rule"><span>Toda mudança visível gera uma página de novidade com as telas desenhadas e um texto pronto para o grupo do WhatsApp.</span><small>Sem link para abrir o app e sem imagem grande no cartão.</small></div>
+  <div class="rule"><span>O manual de cada aba é atualizado junto, porque é dele que o Clippy tira as respostas.</span><small>Sem isso o assistente explica o sistema antigo.</small></div>
+</section>
+
+<section id="memoria">
+  <h2>Pedidos seus guardados na memória</h2>
+  <p class="lead">Além do arquivo de regras, 30 notas guardam correções e preferências que você deu em conversa. As que mais mudam o dia a dia:</p>
+  <ul>
+    <li>Explicar simples, sem jargão, e executar a parte técnica.</li>
+    <li>Implementar o pedido como foi pedido, sem reinterpretar, e testar clicando na tela.</li>
+    <li>Avisar quando o trabalho cresce além do combinado e deixar você decidir.</li>
+    <li>Economizar tokens: reaproveitar documentos e memória, e fazer diagnóstico sem equipe.</li>
+    <li>Só o gerente de entrega usa o modelo mais caro. Os demais usam o intermediário.</li>
+    <li>Mostrar preview antes de mudar visual, sempre com as visões de computador e celular.</li>
+    <li>O número na tela mede exatamente o que o rótulo diz.</li>
+    <li>Permissão na tela espelha a do servidor, igualzinha.</li>
+    <li>Opções de um filtro não saem do resultado já filtrado, senão a opção marcada some.</li>
+    <li>Com sessões em paralelo, cada uma grava só os próprios arquivos.</li>
+  </ul>
+  <p class="note">Nota de memória não tem revisão: ninguém confere se continua verdadeira. Duas das contradições vieram daí, e as notas de impressão, WhatsApp, equipe e envio foram corrigidas junto com as regras.</p>
+</section>
+
+<footer>
+  Fontes: arquivo principal e arquivos de regras por assunto, fichas da pasta de trabalho, índice de memória e registro das conversas de 19/09 a 24/11/2026. Os números de uso contam chamadas, não tempo nem custo.
+</footer>
+</div>
