@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Site com visual novo — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<meta property="og:title" content="🌿 Novidade: o site da Hardt está com visual novo">
+<meta property="og:description" content="Início, Congelados e Kit Festa mais claros e fáceis de usar, com botão Minha área para quem já é cliente. Veja como orientar o cliente.">
+<meta property="og:type" content="website">
+<style>
+  :root { --primary:#00754A; --primary-dark:#006241; --house:#1E3932; --mint:#d4e9e2; --cream:#f2f0eb; --gold:#cba258; --ink:rgba(0,0,0,.87); --ink-soft:#5f6b66; --sv:#0f7a3b; --sg:#f5be18; letter-spacing:-0.01em; }
+  * { box-sizing:border-box; }
+  html,body { overflow-x:hidden; }
+  body { margin:0; background:var(--cream); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; line-height:1.55; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:620px; margin:0 auto; padding:0 16px 56px; }
+  .hero { background:linear-gradient(168deg,var(--house) 0%,#16302a 100%); color:#fff; padding:40px 16px 56px; }
+  .hero-inner { max-width:620px; margin:0 auto; text-align:center; }
+  .eyebrow { display:inline-block; background:var(--gold); color:#2b230f; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.14em; padding:6px 14px; border-radius:999px; margin-bottom:18px; }
+  .hero h1 { font-size:clamp(28px,7vw,40px); font-weight:800; line-height:1.12; margin:0 0 12px; text-wrap:balance; }
+  .hero p { margin:0 auto; max-width:480px; color:#d8e6e0; font-size:15.5px; }
+  .sec-label { font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.16em; color:var(--primary-dark); margin:32px 0 12px; }
+  .acc { background:#fff; border:1px solid #e3e1da; border-radius:16px; margin-bottom:10px; overflow:hidden; }
+  .acc-head { all:unset; box-sizing:border-box; width:100%; display:flex; align-items:center; gap:12px; padding:12px 16px; cursor:pointer; min-height:56px; }
+  .acc-ico { width:38px; height:38px; border-radius:11px; background:var(--mint); display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
+  .acc-head strong { flex:1; font-size:15.5px; font-weight:700; }
+  .acc-seta { color:#9aa5a0; transition:transform .2s; font-size:13px; }
+  .acc.aberto .acc-seta { transform:rotate(180deg); }
+  .acc-corpo { display:none; padding:0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display:block; }
+  .acc-corpo p, .acc-corpo li { font-size:14px; color:var(--ink-soft); }
+  .acc-corpo p { margin:0 0 10px; }
+  .acc-corpo ul { margin:0; padding-left:18px; }
+  .acc-corpo li { margin-bottom:7px; }
+  .acc-corpo b { color:var(--ink); }
+  @media (max-width:420px) { .acc-corpo { padding-left:16px; } }
+  .passos { background:#fff; border:1px solid #e3e1da; border-radius:16px; padding:18px 16px; }
+  .passo { display:flex; gap:14px; padding:10px 0; }
+  .passo + .passo { border-top:1px dashed #e3e1da; }
+  .passo-n { width:30px; height:30px; flex-shrink:0; border-radius:50%; background:var(--primary); color:#fff; font-weight:800; font-size:14px; display:flex; align-items:center; justify-content:center; }
+  .passo div { font-size:14px; color:var(--ink-soft); }
+  .passo b { color:var(--ink); }
+  .rodape { text-align:center; font-size:13px; color:var(--ink-soft); margin-top:40px; }
+  .rodape strong { color:var(--primary-dark); }
+
+  .tela { background:#fff; border:1px solid #e3e1da; border-radius:16px; overflow:hidden; margin-bottom:12px; box-shadow:0 1px 2px rgba(30,57,50,.05); }
+  .tela-titulo { background:var(--house); color:#fff; padding:12px 16px; font-size:13px; font-weight:700; }
+  .tela-corpo { padding:14px; background:#f7f6f2; }
+  .pin { display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:50%; background:var(--gold); color:#2b230f; font-size:11px; font-weight:800; flex-shrink:0; vertical-align:2px; margin-left:6px; }
+  .legenda { padding:12px 16px 16px; }
+  .legenda div { display:flex; gap:8px; font-size:13px; color:var(--ink-soft); margin-bottom:7px; align-items:flex-start; }
+  .legenda .pin { margin:1px 0 0; }
+  .legenda b { color:var(--ink); }
+
+  /* mocks no visual do SITE */
+  .site { background:#fff; border:1px solid #e3e1da; border-radius:12px; overflow:hidden; font-family:"Plus Jakarta Sans","Montserrat",-apple-system,sans-serif; }
+  .s-head { display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:10px 12px; border-bottom:1px solid #eee; background:#fff; }
+  .s-logo { width:30px; height:30px; border-radius:50%; background:var(--sv); color:#fff; font-weight:800; font-size:13px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .s-brand { font-weight:800; font-size:13px; color:#12301f; }
+  .s-nav { display:flex; gap:10px; font-size:12px; font-weight:600; color:#55645b; margin-left:auto; }
+  .s-nav .on { color:var(--sv); border-bottom:2px solid var(--sg); }
+  .s-row { display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-top:2px; width:100%; justify-content:flex-end; }
+  .s-pill { display:inline-flex; align-items:center; gap:6px; border:1.5px solid var(--sv); color:var(--sv); border-radius:999px; padding:6px 12px; font-size:12px; font-weight:700; background:#fff; line-height:1.15; }
+  .s-pill small { display:block; font-size:10px; font-weight:600; color:#55645b; }
+  .s-pill.cheio { background:var(--sv); color:#fff; border-color:var(--sv); }
+  .s-pill .bd { background:var(--sg); color:#2b230f; border-radius:999px; font-size:10px; padding:1px 6px; font-weight:800; }
+  .s-faixa { margin:10px; padding:12px; border-radius:12px; background:#eaf6ee; border:1px solid #cfe7d6; display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+  .s-faixa b { font-size:13px; color:#12301f; }
+  .s-faixa span.t { font-size:12px; color:#55645b; display:block; }
+  .s-btn { background:var(--sv); color:#fff; border-radius:999px; padding:9px 16px; font-size:12.5px; font-weight:700; display:inline-block; }
+  .s-busca { margin:0 10px 8px; border:1px solid #d9ded9; border-radius:999px; padding:9px 14px; font-size:12.5px; color:#8a958f; background:#fff; }
+  .s-chips { display:flex; gap:6px; flex-wrap:wrap; margin:0 10px 8px; }
+  .s-chip { border:1px solid #d9ded9; border-radius:999px; padding:5px 11px; font-size:11.5px; font-weight:600; color:#55645b; background:#fff; }
+  .s-chip.on { background:var(--sv); color:#fff; border-color:var(--sv); }
+  .s-cards { display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:0 10px 12px; }
+  .s-card { border:1px solid #e6e9e6; border-radius:12px; overflow:hidden; background:#fff; }
+  .s-foto { height:56px; background:linear-gradient(135deg,#f3e3b5,#e9c76a); position:relative; }
+  .s-ouro { position:absolute; top:6px; left:6px; background:var(--sg); color:#2b230f; font-size:10px; font-weight:800; border-radius:999px; padding:2px 8px; }
+  .s-cb { padding:8px; }
+  .s-cb b { font-size:12px; color:#12301f; display:block; }
+  .s-cb span { font-size:11px; color:#6a776f; display:block; }
+  .s-cb .pr { font-weight:800; color:var(--sv); font-size:13px; margin-top:3px; }
+  .s-ficha { padding:12px; }
+  .s-ficha h4 { margin:0 0 6px; font-size:13px; color:#12301f; }
+  .s-ficha h5 { margin:10px 0 4px; font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--sv); }
+  .s-tab { width:100%; border-collapse:collapse; font-size:11.5px; }
+  .s-tab th { background:var(--sv); color:#fff; text-align:left; padding:4px 6px; font-weight:700; }
+  .s-tab td { border-bottom:1px solid #e6e9e6; padding:4px 6px; color:#33413a; }
+  .s-barra { margin:10px; padding:10px 12px; border-radius:12px; background:#fff8e1; border:1px solid #f3dc8c; font-size:12.5px; color:#5a4a07; font-weight:600; }
+  .s-prog { height:6px; border-radius:999px; background:#f1e7bd; margin-top:6px; overflow:hidden; }
+  .s-prog i { display:block; height:100%; width:50%; background:var(--sg); }
+  .s-passos { display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:0 10px 12px; }
+  .s-passo { border:1px solid #e6e9e6; border-radius:12px; padding:8px; font-size:11.5px; color:#55645b; }
+  .s-passo b { display:inline-flex; width:20px; height:20px; border-radius:50%; background:var(--sv); color:#fff; align-items:center; justify-content:center; font-size:11px; margin-right:4px; }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no site da Hardt</span>
+    <h1>O site ganhou um visual novo</h1>
+    <p>Início, Congelados e Kit Festa ficaram mais claros e fáceis de usar — e quem já é cliente agora entra com um botão só. Veja o que mudou para orientar quem perguntar.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="sec-label">As telas</div>
+
+  <div class="tela">
+    <div class="tela-titulo">Tela 1 · Cabeçalho (igual nas 3 páginas)</div>
+    <div class="tela-corpo">
+      <div class="site">
+        <div class="s-head">
+          <span class="s-logo">H</span><span class="s-brand">Hardt Salgados</span>
+          <span class="s-nav"><span class="on">Início</span><span>Congelados</span><span>Kit Festa</span></span>
+          <div class="s-row"><span class="s-pill">👤 <span>Minha área<small>Já sou cliente</small></span></span></div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Menu único</b> "Início · Congelados · Kit Festa" — vale nas 3 páginas e marca onde o cliente está.</span></div>
+      <div><span class="pin">2</span><span><b>Minha área — Já sou cliente:</b> quem já compra entra com CPF/CNPJ e senha e passa a ver o preço e a condição do próprio cadastro. No Kit Festa continua existindo também o botão "Entrar no Kit Festa" (login próprio do Kit Festa).</span></div>
+    </div>
+  </div>
+
+  <div class="tela">
+    <div class="tela-titulo">Tela 2 · Congelados</div>
+    <div class="tela-corpo">
+      <div class="site">
+        <div class="s-faixa"><div><b>Já compra com a gente?</b><span class="t">Entre para ver seus preços</span></div><span class="s-btn">Entrar com meu cadastro</span></div>
+        <div class="s-busca">🔍 Buscar produto ou código...</div>
+        <div class="s-chips"><span class="s-chip on">Todos</span><span class="s-chip">Salgados</span><span class="s-chip">Pães</span></div>
+        <div class="s-chips"><span class="s-chip on">Todos os preparos</span><span class="s-chip">Para fritar</span><span class="s-chip">Para assar</span></div>
+        <div class="s-cards">
+          <div class="s-card"><div class="s-foto"></div><div class="s-cb"><b>Coxinha 25un</b><span>Para fritar · pacote 1 kg</span><div class="pr">R$ 00,00</div></div></div>
+          <div class="s-card"><div class="s-foto"></div><div class="s-cb"><b>Pão de queijo</b><span>Para assar · pacote 1 kg</span><div class="pr">R$ 00,00</div></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Faixa de entrada:</b> botão "Entrar com meu cadastro" logo no topo (antes o login só aparecia ao tocar no "+" de um produto). Logado, a faixa mostra o nome e a condição do cliente.</span></div>
+      <div><span class="pin">2</span><span><b>Busca</b> por nome, código ou grupo do produto.</span></div>
+      <div><span class="pin">3</span><span><b>Filtro por modo de preparo</b> (fritar, assar, aquecer...) junto das categorias.</span></div>
+      <div><span class="pin">4</span><span><b>Cards com mais informação:</b> preparo, pacote e preço. Para cliente logado aparecem também "Você sempre pede" e "Repetir último pedido".</span></div>
+    </div>
+  </div>
+
+  <div class="tela">
+    <div class="tela-titulo">Tela 3 · Ficha técnica do produto</div>
+    <div class="tela-corpo">
+      <div class="site">
+        <div class="s-ficha">
+          <h4>Coxinha 25un</h4>
+          <h5>Características do produto</h5>
+          <div style="font-size:11.5px;color:#33413a">Modo de preparo, validade, conservação, peso do pacote.</div>
+          <h5>Informação nutricional</h5>
+          <table class="s-tab"><tr><th>Item</th><th>100 g</th><th>%VD</th></tr><tr><td>Valor energético</td><td>000 kcal</td><td>0%</td></tr><tr><td>Proteínas</td><td>0 g</td><td>0%</td></tr></table>
+          <div style="margin-top:12px;text-align:center"><span class="s-btn">Adicionar ao pedido</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Características do produto:</b> bloco claro com as informações da etiqueta.</span></div>
+      <div><span class="pin">2</span><span><b>Tabela nutricional em verde</b>, no padrão ANVISA (100 g · porção · %VD).</span></div>
+      <div><span class="pin">3</span><span><b>Adicionar ao pedido</b> direto de dentro da ficha, sem fechar e procurar o "+".</span></div>
+    </div>
+  </div>
+
+  <div class="tela">
+    <div class="tela-titulo">Tela 4 · Kit Festa</div>
+    <div class="tela-corpo">
+      <div class="site">
+        <div class="s-barra">Faltam 2 caixas para o mínimo de 4<div class="s-prog"><i></i></div></div>
+        <div class="s-cards">
+          <div class="s-card"><div class="s-foto"><span class="s-ouro">★ Mais pedido</span></div><div class="s-cb"><b>Coxinha (caixa 25un)</b><span>1 sabor por caixa</span><div class="pr">R$ 00,00</div></div></div>
+          <div class="s-card"><div class="s-foto"></div><div class="s-cb"><b>Risole (caixa 25un)</b><span>1 sabor por caixa</span><div class="pr">R$ 00,00</div></div></div>
+        </div>
+        <div class="s-passos"><div class="s-passo"><b>1</b>Escolha as caixas</div><div class="s-passo"><b>2</b>Informe data e horário</div><div class="s-passo"><b>3</b>Confirme</div><div class="s-passo"><b>4</b>Envie pelo WhatsApp</div></div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Barra do mínimo:</b> "Faltam N caixas para o mínimo" — vira "Mínimo atingido" quando completa.</span></div>
+      <div><span class="pin">2</span><span><b>Selo dourado "★ Mais pedido"</b> nos campeões de venda.</span></div>
+      <div><span class="pin">3</span><span><b>"Como funciona"</b> em 4 passos numerados, no fim da página.</span></div>
+    </div>
+  </div>
+
+  <div class="sec-label">O que NÃO mudou</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true"><span class="acc-ico">✅</span><strong>Tudo que já funcionava continua</strong><span class="acc-seta">▼</span></button>
+    <div class="acc-corpo">
+      <ul>
+        <li><b>Preços:</b> visitante vê a tabela do site; cliente logado vê o preço e a condição do próprio cadastro, como sempre.</li>
+        <li><b>Pedido mínimo</b> (valor nos Congelados, 4 caixas no Kit Festa).</li>
+        <li><b>Cupons e indicação</b> do Kit Festa, e a <b>agenda</b> de datas e horários.</li>
+        <li><b>Pedido pelo WhatsApp:</b> o cliente registra o pedido e envia pelo botão "Enviar pedido pelo WhatsApp".</li>
+        <li>O rodapé segue simples: logo e direitos reservados. Não existe impressão da ficha do produto.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="sec-label">Como orientar o cliente que já compra</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true"><span class="acc-ico">🧭</span><strong>Passo a passo para o cliente</strong><span class="acc-seta">▼</span></button>
+    <div class="acc-corpo">
+      <div class="passos">
+        <div class="passo"><div class="passo-n">1</div><div>Abrir o site e tocar em <b>"Minha área — Já sou cliente"</b> (canto superior).</div></div>
+        <div class="passo"><div class="passo-n">2</div><div>Digitar o <b>CPF ou CNPJ</b> e a <b>senha</b>. Se for o primeiro acesso, o site pede para criar uma senha.</div></div>
+        <div class="passo"><div class="passo-n">3</div><div>Em Congelados, ver <b>"Você sempre pede"</b> e usar <b>"Repetir último pedido"</b>; ou buscar um produto pelo nome/código.</div></div>
+        <div class="passo"><div class="passo-n">4</div><div>Conferir a ficha, tocar em <b>"Adicionar ao pedido"</b>, escolher entrega ou retirada e enviar pelo WhatsApp.</div></div>
+        <div class="passo"><div class="passo-n">5</div><div>Cliente sem cadastro continua podendo pedir como visitante — a equipe vincula depois.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="rodape"><strong>Hardt App</strong> · dúvidas? Fale com o escritório.</div>
+</div>
+
+<script>
+  function alternar(btn) {
+    var acc = btn.parentElement;
+    var aberto = acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', aberto ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>

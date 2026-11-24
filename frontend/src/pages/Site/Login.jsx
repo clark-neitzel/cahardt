@@ -6,7 +6,7 @@ import { mascaraDoc as mascara, validarDoc, normalizarDoc } from '../../utils/do
 
 const soDigitos = (s) => String(s || '').replace(/\D/g, ''); // só p/ telefone
 
-export default function Login({ logo, whatsapp, titulo, sub, onLogin, onVisitante }) {
+export default function Login({ logo, whatsapp, titulo, sub, onLogin, onVisitante, onFechar }) {
   const [etapa, setEtapa] = useState('doc'); // doc | senha | criar | visitante | reset
   const [doc, setDoc] = useState('');
   const [nome, setNome] = useState('');
@@ -90,10 +90,10 @@ export default function Login({ logo, whatsapp, titulo, sub, onLogin, onVisitant
   const waLink = `https://wa.me/${whatsapp || '5547988548476'}?text=${encodeURIComponent('Olá! Quero me cadastrar para comprar congelados Hardt.')}`;
 
   return (
-    <div className="cg-login tex-board">
+    <div className="cg-login" role="dialog" aria-modal="true" aria-label={titulo || 'Área do cliente'}>
       <div className="cg-login-card">
-        <div className="sawtooth"></div>
         <div className="cg-login-in">
+          {onFechar && <button type="button" className="cg-login-x" onClick={onFechar} aria-label="Fechar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg></button>}
           <img className="logo" src={logo} alt="Hardt" />
           <h1>{titulo || 'Área do cliente'}</h1>
           <p className="sub">{sub || 'Entre para ver seus produtos, preços e condições e fazer seu pedido de congelados.'}</p>
@@ -106,7 +106,7 @@ export default function Login({ logo, whatsapp, titulo, sub, onLogin, onVisitant
                 <label>CPF / CNPJ ou código</label>
                 <input className="cg-input" autoCapitalize="characters" value={doc} onChange={e => setDoc(mascara(e.target.value))} placeholder="CPF ou CNPJ" autoFocus />
               </div>
-              <button type="submit" className="btn btn-yellow btn-block" disabled={busy || !docOk} style={{ marginTop: 8 }}>
+              <button type="submit" className="hd-btn hd-btn-lg cg-block" disabled={busy || !docOk} style={{ marginTop: 8 }}>
                 {busy ? 'Aguarde…' : 'Continuar'}
               </button>
               <p className="cg-login-note">Ainda não é cliente cadastrado?<br /><a href={waLink} target="_blank" rel="noopener noreferrer">Fale com a gente no WhatsApp</a></p>
@@ -115,13 +115,13 @@ export default function Login({ logo, whatsapp, titulo, sub, onLogin, onVisitant
 
           {etapa === 'senha' && (
             <form onSubmit={entrar}>
-              <p className="sub" style={{ marginBottom: 16 }}>Olá, <b style={{ color: 'var(--green-dd)' }}>{nome}</b>! Digite sua senha.</p>
-              {origem === 'kitfesta' && <p className="cg-login-note" style={{ marginTop: 0, marginBottom: 12 }}>Use a <b style={{ color: 'var(--green-dd)' }}>mesma senha do seu Kit Festa</b>.</p>}
+              <p className="sub" style={{ marginBottom: 16 }}>Olá, <b style={{ color: 'var(--hd-green-dark)' }}>{nome}</b>! Digite sua senha.</p>
+              {origem === 'kitfesta' && <p className="cg-login-note" style={{ marginTop: 0, marginBottom: 12 }}>Use a <b style={{ color: 'var(--hd-green-dark)' }}>mesma senha do seu Kit Festa</b>.</p>}
               <div className="cg-field">
                 <label>Senha</label>
                 <input className="cg-input" type="password" value={senha} onChange={e => setSenha(e.target.value)} placeholder="••••••••" autoFocus />
               </div>
-              <button type="submit" className="btn btn-yellow btn-block" disabled={busy} style={{ marginTop: 8 }}>{busy ? 'Entrando…' : 'Entrar'}</button>
+              <button type="submit" className="hd-btn hd-btn-lg cg-block" disabled={busy} style={{ marginTop: 8 }}>{busy ? 'Entrando…' : 'Entrar'}</button>
               <p className="cg-login-note" style={{ marginTop: 12 }}>
                 <a onClick={!busy ? enviarCodigo : undefined}>Esqueci minha senha</a>
               </p>
@@ -140,14 +140,14 @@ export default function Login({ logo, whatsapp, titulo, sub, onLogin, onVisitant
                 <label>Crie uma senha</label>
                 <input className="cg-input" type="password" value={senha} onChange={e => setSenha(e.target.value)} placeholder="ao menos 4 caracteres" autoFocus />
               </div>
-              <button type="submit" className="btn btn-yellow btn-block" disabled={busy} style={{ marginTop: 8 }}>{busy ? 'Criando…' : 'Criar conta e entrar'}</button>
+              <button type="submit" className="hd-btn hd-btn-lg cg-block" disabled={busy} style={{ marginTop: 8 }}>{busy ? 'Criando…' : 'Criar conta e entrar'}</button>
               <button type="button" className="cg-back" onClick={() => { setEtapa('doc'); setSenha(''); setErro(''); }}>← voltar</button>
             </form>
           )}
 
           {etapa === 'reset' && (
             <form onSubmit={redefinir}>
-              <p className="sub" style={{ marginBottom: 16 }}>Enviamos um código para o seu WhatsApp{telMasc ? <> <b style={{ color: 'var(--ink)' }}>{telMasc}</b></> : ''}. Informe abaixo e crie uma nova senha.</p>
+              <p className="sub" style={{ marginBottom: 16 }}>Enviamos um código para o seu WhatsApp{telMasc ? <> <b style={{ color: 'var(--hd-ink)' }}>{telMasc}</b></> : ''}. Informe abaixo e crie uma nova senha.</p>
               <div className="cg-field">
                 <label>Código recebido</label>
                 <input className="cg-input" value={codigo} onChange={e => setCodigo(e.target.value.toUpperCase())} placeholder="ex: A1B2C3" autoFocus />
@@ -156,7 +156,7 @@ export default function Login({ logo, whatsapp, titulo, sub, onLogin, onVisitant
                 <label>Nova senha</label>
                 <input className="cg-input" type="password" value={senha} onChange={e => setSenha(e.target.value)} placeholder="ao menos 4 caracteres" />
               </div>
-              <button type="submit" className="btn btn-yellow btn-block" disabled={busy} style={{ marginTop: 8 }}>{busy ? 'Salvando…' : 'Salvar e entrar'}</button>
+              <button type="submit" className="hd-btn hd-btn-lg cg-block" disabled={busy} style={{ marginTop: 8 }}>{busy ? 'Salvando…' : 'Salvar e entrar'}</button>
               <p className="cg-login-note" style={{ marginTop: 12 }}><a onClick={!busy ? enviarCodigo : undefined}>Reenviar código</a></p>
               <button type="button" className="cg-back" onClick={() => { setEtapa('senha'); setErro(''); }}>← voltar</button>
             </form>
@@ -164,7 +164,7 @@ export default function Login({ logo, whatsapp, titulo, sub, onLogin, onVisitant
 
           {etapa === 'visitante' && (
             <form onSubmit={entrarVisitante}>
-              <p className="sub" style={{ marginBottom: 16 }}>Não encontramos seu cadastro. Você pode <b style={{ color: 'var(--chalk)' }}>fazer o pedido mesmo assim</b> — nossa equipe finaliza seu cadastro depois.</p>
+              <p className="sub" style={{ marginBottom: 16 }}>Não encontramos seu cadastro. Você pode <b style={{ color: 'var(--hd-ink)' }}>fazer o pedido mesmo assim</b> — nossa equipe finaliza seu cadastro depois.</p>
               <div className="cg-field">
                 <label>Nome / Empresa</label>
                 <input className="cg-input" value={nome} onChange={e => setNome(e.target.value)} placeholder="Seu nome ou da empresa" autoFocus />
@@ -173,14 +173,14 @@ export default function Login({ logo, whatsapp, titulo, sub, onLogin, onVisitant
                 <label>Telefone (WhatsApp)</label>
                 <input className="cg-input" inputMode="numeric" value={telefone} onChange={e => setTelefone(e.target.value)} placeholder="(47) 9 9999-9999" />
               </div>
-              <button type="submit" className="btn btn-yellow btn-block" style={{ marginTop: 8 }}>Ver catálogo e pedir</button>
+              <button type="submit" className="hd-btn hd-btn-lg cg-block" style={{ marginTop: 8 }}>Ver catálogo e pedir</button>
               <p className="cg-login-note">Prefere falar com a gente? <a href={waLink} target="_blank" rel="noopener noreferrer">Cadastro pelo WhatsApp</a></p>
               <button type="button" className="cg-back" onClick={() => { setEtapa('doc'); setErro(''); }}>← voltar</button>
             </form>
           )}
 
           <p className="cg-login-note" style={{ marginTop: 18 }}>
-            <Link to="/inicio" style={{ color: 'var(--chalk-dim)' }}>← voltar ao site</Link>
+            <Link to="/inicio" style={{ color: 'var(--hd-muted)' }}>← voltar ao site</Link>
           </p>
         </div>
       </div>

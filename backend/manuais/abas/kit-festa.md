@@ -12,6 +12,8 @@ O Kit Festa é a linha de salgados de festa (caixas de 25 unidades, mínimo de 4
 
 ## Como o cliente faz o pedido (site público)
 
+> **Visual novo (11/2026):** o site tem cabeçalho único com menu "Início · Congelados · Kit Festa" e o botão "Minha área — Já sou cliente" (leva ao login de Congelados). O Kit Festa mantém o botão próprio **"Entrar no Kit Festa"** (login por CPF, sessão separada). O catálogo mostra a barra **"Faltam N caixas para o mínimo de 4"** (vira "Mínimo atingido" ao completar), o selo dourado **"★ Mais pedido"** nos produtos em destaque e a seção **"Como funciona"** em 4 passos numerados. Regras de mínimo, cupom, indicação, agenda e WhatsApp não mudaram.
+
 1. **Acesso por CPF ou CNPJ.** O cliente digita o **CPF (pessoa física) ou CNPJ (empresa)** — o sistema valida os dígitos verificadores (recusa número digitado errado) e aceita o **CNPJ alfanumérico novo** (com letras, ex.: `12.ABC.345/01DE-35`) que a Receita passa a emitir a partir de 07/2026. A busca no cadastro do app é feita pelo mesmo documento. Os estados abaixo valem para os dois:
    - **Tem cadastro no app e já tem senha** → faz login.
    - **Tem cadastro no app mas nunca acessou o site** → cria uma senha (primeiro acesso).

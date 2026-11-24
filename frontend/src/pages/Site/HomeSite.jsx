@@ -1,23 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import publicApi from './api';
-import { WhatsIcon, InstagramIcon, FacebookIcon } from './icons';
-import FalarVendedor from './FalarVendedor';
-import './site.css';
-import { API_URL } from '../../services/api';
+import publicApi, { getToken, setToken } from './api';
+import { InstagramIcon, FacebookIcon, WhatsIcon } from './icons';
+import SiteHeader from './SiteHeader';
+import SiteFooter from './SiteFooter';
+import './siteBase.css';
 import { useVisitorPing } from '../../hooks/useVisitorPing';
+import { imgUrl, lojaDe, logoDe, socialUrl } from './siteUtil';
 
-const LOGO = '/cong/logo.png';
 const BOX = '/cong/box.gif';
-const imgUrl = (u) => !u ? null : (u.startsWith('http') ? u : `${API_URL}${u}`);
-
-const LOJA_PADRAO = {
-  nome: 'Hardt Doces e Salgados',
-  endereco: 'Rua XV de Outubro, 170 — Pirabeiraba, Joinville/SC',
-  telefone: '(47) 98854-8476',
-  whatsapp: '5547988548476',
-  instagram: 'hardtsalgados',
-};
 
 const DIFERENCIAIS_PADRAO = [
   { num: 'desde 2007', titulo: 'Tradição', texto: 'Quase 20 anos fazendo salgado em Pirabeiraba, Joinville.' },
@@ -33,229 +24,202 @@ const HISTORIA_PADRAO = {
   imagens: [],
 };
 
-// Carrossel da seção "Nossa História" — anima por transform (GPU), sem mexer em box-shadow.
+// <img> que some (em vez de mostrar o texto alternativo) se o arquivo não carregar.
+function Foto({ src, alt, ...rest }) {
+  const [erro, setErro] = useState(false);
+  useEffect(() => { setErro(false); }, [src]);
+  if (!src || erro) return null;
+  return <img src={src} alt={alt} onError={() => setErro(true)} {...rest} />;
+}
+
+// Carrossel da seção "Nossa História" — anima só por transform (GPU).
 function HistoriaCarrossel({ imagens }) {
   const [i, setI] = useState(0);
   const n = imagens.length;
   useEffect(() => {
-    if (n <= 1) return;
+    if (n <= 1) return undefined;
     const id = setInterval(() => setI(p => (p + 1) % n), 4500);
     return () => clearInterval(id);
   }, [n]);
   if (!n) return null;
   const idx = i % n;
   return (
-    <div className="hist-carousel">
-      <div className="hist-slides" style={{ transform: `translateX(-${idx * 100}%)` }}>
-        {imagens.map((src, k) => <img key={k} src={src} alt="Hardt Salgados" />)}
+    <div className="hd-story-gal">
+      <div className="hd-story-slides" style={{ transform: `translateX(-${idx * 100}%)` }}>
+        {imagens.map((src, k) => <Foto key={k} src={src} alt="Hardt Salgados" loading="lazy" decoding="async" />)}
       </div>
       {n > 1 && (
-        <div className="hist-dots">
-          {imagens.map((_, k) => <span key={k} className={k === idx ? 'on' : ''} onClick={() => setI(k)} />)}
+        <div className="hd-story-dots">
+          {imagens.map((_, k) => (
+            <button key={k} type="button" aria-label={`Foto ${k + 1}`} aria-current={k === idx ? 'true' : undefined} onClick={() => setI(k)} />
+          ))}
         </div>
       )}
     </div>
   );
 }
 
-// Página principal pública do site da Hardt. Marketing/funil — sem login.
+// Página principal pública do site da Hardt. Mesmas seções da página anterior (Dois caminhos →
+// Nossa História com destaques → Contato com mapa), só com o visual novo.
 export default function HomeSite() {
   const [cfg, setCfg] = useState(null);
+  const [cliente, setCliente] = useState(null);
   useVisitorPing('inicio');
 
-  useEffect(() => { publicApi.config().then(setCfg).catch(() => {}); }, []);
+  useEffect(() => {
+    publicApi.config().then(setCfg).catch(() => {});
+    // Sessão de Congelados (se houver): só para mostrar "Olá, Nome". Falha = deslogado, sem erro na tela.
+    if (getToken()) {
+      publicApi.perfil().then(c => setCliente(c && c.nome ? c : null)).catch(() => setCliente(null));
+    }
+  }, []);
 
-  const loja = { ...LOJA_PADRAO, ...(cfg?.loja || {}) };
-  const hero = cfg?.hero || {};
-  const caminhos = cfg?.caminhos || {};
-  const historia = { ...HISTORIA_PADRAO, ...(cfg?.historia || {}) };
+  const sair = () => { setToken(null); setCliente(null); };
+
+  const loja = lojaDe(cfg);
+  const hero = (cfg && cfg.hero) || {};
+  const caminhos = (cfg && cfg.caminhos) || {};
+  const historia = { ...HISTORIA_PADRAO, ...((cfg && cfg.historia) || {}) };
   const histImgs = Array.isArray(historia.imagens) ? historia.imagens : [];
   const histParas = String(historia.texto || '').split('\n').map(s => s.trim()).filter(Boolean);
-  // Imagens do carrossel do topo: as enviadas no admin; se ainda não houver nenhuma, mostra a caixa padrão.
+  // Imagens do carrossel: as enviadas no admin; se ainda não houver nenhuma, mostra a caixa padrão.
   const heroFotos = histImgs.length ? histImgs.map(imgUrl) : [BOX];
-  const diferenciais = Array.isArray(cfg?.diferenciais) && cfg.diferenciais.length ? cfg.diferenciais : DIFERENCIAIS_PADRAO;
-  const LOGO_SRC = cfg?.logoUrl ? imgUrl(cfg.logoUrl) : LOGO;
+  const diferenciais = cfg && Array.isArray(cfg.diferenciais) && cfg.diferenciais.length ? cfg.diferenciais : DIFERENCIAIS_PADRAO;
+  const logoSrc = logoDe(cfg);
 
   const wa = `https://wa.me/${loja.whatsapp}`;
   const waMsg = `${wa}?text=${encodeURIComponent('Olá! Vim pelo site da Hardt e gostaria de fazer um pedido.')}`;
-  const social = (v, base) => !v ? null : (String(v).startsWith('http') ? v : `${base}${String(v).replace(/^@/, '')}`);
-  const igUrl = social(loja.instagram, 'https://instagram.com/');
-  const fbUrl = social(loja.facebook, 'https://facebook.com/');
+  const waEquipe = `${wa}?text=${encodeURIComponent('Olá! Vim pelo site e quero falar com a equipe de vendas.')}`;
+  const igUrl = socialUrl(loja.instagram, 'https://instagram.com/');
+  const fbUrl = socialUrl(loja.facebook, 'https://facebook.com/');
+  const enderecoLinhas = String(loja.endereco || '').split(' — ');
 
   return (
-    <div className="cg home">
-      {/* ===== NAV ===== */}
-      <header className="nav">
-        <div className="wrap nav-in">
-          <Link to="/inicio" className="nav-logo">
-            <img src={LOGO_SRC} alt={loja.nome} />
-            <span className="hide-sm">desde 2007</span>
-          </Link>
-          <nav className="nav-links">
-            <a href="#caminhos" className="hide-sm">Produtos</a>
-            <a href="#historia" className="hide-sm">A Hardt</a>
-            <a href="#contato" className="hide-sm">Contato</a>
-            <Link to="/login" className="btn btn-ghost btn-sm">Área Restrita</Link>
-          </nav>
-        </div>
-      </header>
+    <div className="hd">
+      <SiteHeader
+        ativo="inicio" cfg={cfg}
+        areaRestrita
+        sessao={cliente ? { nome: cliente.nome, onSair: sair } : undefined}
+      />
 
-      {/* ===== DOIS CAMINHOS (topo) ===== */}
-      <section className="section section-top" id="caminhos">
-        <div className="wrap">
-          <div className="intro-grid">
-            <div className="brand-mark">
-              <img src={LOGO_SRC} alt={loja.nome} />
+      <main>
+        {/* ===== DOIS CAMINHOS (começo da página) ===== */}
+        <section className="hd-section hd-top" id="caminhos">
+          <div className="hd-wrap">
+            <div className="hd-intro">
+              <img className="hd-intro-logo" src={logoSrc} alt={loja.nome} decoding="async" />
+              <div className="hd-intro-text">
+                <span className="hd-eyebrow">O que você precisa hoje?</span>
+                <h2>{caminhos.titulo || 'Dois jeitos de pedir'}</h2>
+                <p>{caminhos.subtitulo || 'Salgados prontos pra sua festa ou congelados pra revender e ter sempre em estoque. Escolha por onde começar.'}</p>
+              </div>
             </div>
-            <div className="sec-head intro-head">
-              <div className="kicker">O que você precisa hoje?</div>
-              <h2>{caminhos.titulo || 'Dois jeitos de pedir'}</h2>
-              <p>{caminhos.subtitulo || 'Salgados prontos pra sua festa ou congelados pra revender e ter sempre em estoque. Escolha por onde começar.'}</p>
+            <div className="hd-channels">
+              <Link to="/kit-festa" className="hd-channel hd-channel-featured">
+                <div><span className="hd-eyebrow">Pedido online</span><h3>Kit Festa</h3></div>
+                <p className="hd-channel-desc">Caixas de 25 salgados, um sabor por caixa. Monte do seu jeito a partir de 4 caixas.</p>
+                <ul className="hd-checks">
+                  <li><i>✓</i> Coxinha, bolinha, empadinha, churros e mais</li>
+                  <li><i>✓</i> Escolha data e horário de retirada ou entrega</li>
+                  <li><i>✓</i> Cupons, indicação e pagamento combinado depois</li>
+                </ul>
+                <div className="hd-channel-foot">
+                  <span className="hd-btn hd-btn-gold">Fazer pedido →</span>
+                  <span className="hd-note">Pra festas, eventos e coffee break</span>
+                </div>
+              </Link>
+              <Link to="/congelados" className="hd-channel">
+                <div><span className="hd-eyebrow">Área de clientes</span><h3>Congelados</h3></div>
+                <p className="hd-channel-desc">Catálogo completo de salgados congelados — minis, médios, grandes e gigantes — pra revenda e estoque.</p>
+                <ul className="hd-checks">
+                  <li><i>✓</i> Seus produtos e preços liberados pra você</li>
+                  <li><i>✓</i> Condições de pagamento do seu cadastro</li>
+                  <li><i>✓</i> Recompra rápida do que você já costuma pedir</li>
+                </ul>
+                <div className="hd-channel-foot">
+                  <span className="hd-btn hd-btn-outline">Entrar / fazer pedido →</span>
+                  <span className="hd-note">Preços e condições do seu cadastro</span>
+                </div>
+              </Link>
             </div>
           </div>
-          <div className="paths">
-            <Link className="path path-festa" to="/kit-festa">
-              <div className="sawtooth"></div>
-              <div className="path-body">
-                <div className="path-eyebrow"><span className="badge badge-live">Pedido online</span></div>
-                <h3>Kit Festa</h3>
-                <p>Caixas de 25 salgados, um sabor por caixa. Monte do seu jeito a partir de 4 caixas.</p>
-                <ul>
-                  <li><span className="mk"></span> Coxinha, bolinha, empadinha, churros e mais</li>
-                  <li><span className="mk"></span> Escolha data e horário de retirada ou entrega</li>
-                  <li><span className="mk"></span> Cupons, indicação e pagamento combinado depois</li>
-                </ul>
-                <div className="path-foot">
-                  <span className="btn btn-yellow">Fazer pedido →</span>
-                  <span className="path-note">Pra festas, eventos e coffee break</span>
-                </div>
-              </div>
-            </Link>
+        </section>
 
-            <Link className="path path-cong" to="/congelados">
-              <div className="sawtooth"></div>
-              <div className="path-body">
-                <div className="path-eyebrow"><span className="badge badge-soon">Área de clientes</span></div>
-                <h3>Congelados</h3>
-                <p>Catálogo completo de salgados congelados — minis, médios, grandes e gigantes — pra revenda e estoque.</p>
-                <ul>
-                  <li><span className="mk"></span> Seus produtos e preços liberados pra você</li>
-                  <li><span className="mk"></span> Condições de pagamento do seu cadastro</li>
-                  <li><span className="mk"></span> Recompra rápida do que você já costuma pedir</li>
-                </ul>
-                <div className="path-foot">
-                  <span className="btn btn-ghost">Entrar / fazer pedido →</span>
-                  <span className="path-note">Preços e condições do seu cadastro</span>
-                </div>
-              </div>
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* ===== NOSSA HISTÓRIA (painel verde + destaques) ===== */}
-      <section className="historia" id="historia">
-        <div className="wrap">
-          <div className="hist-panel">
-            <span className="hist-watermark" aria-hidden="true">2007</span>
-            <div className="hist-main">
-              <div className="hist-col-text">
-                <div className="hero-since kicker"><span className="dot"></span> {hero.kicker || 'Joinville/SC · desde 2007'}</div>
-                <h2 className="hist-title">{historia.titulo || 'Nossa História'}</h2>
-                <div className="hist-body">
+        {/* ===== NOSSA HISTÓRIA (texto + imagens + destaques, tudo no mesmo painel) ===== */}
+        <section className="hd-section hd-section-tint" id="historia">
+          <div className="hd-wrap">
+            <div className="hd-story-panel">
+              <div className="hd-story">
+                <div className="hd-story-text">
+                  <span className="hd-eyebrow hd-eyebrow-gold">{hero.kicker || 'Joinville/SC · desde 2007'}</span>
+                  <h2 style={{ marginBottom: 18 }}>{historia.titulo || 'Nossa História'}</h2>
                   {histParas.map((p, k) => <p key={k}>{p}</p>)}
+                  {historia.frase ? <p className="hd-frase">{historia.frase}</p> : null}
                 </div>
-                {historia.frase ? <p className="hist-frase">{historia.frase}</p> : null}
+                <div className="hd-story-art">
+                  <HistoriaCarrossel imagens={heroFotos} />
+                  <span className="hd-chip hd-chip-gold hd-story-seal">Sabor sem igual · desde 2007</span>
+                </div>
               </div>
-              <div className="hist-col-art">
-                <HistoriaCarrossel imagens={heroFotos} />
-                <div className="seal">Sabor<br />sem igual<small>desde 2007</small></div>
-              </div>
-            </div>
-            <div className="hist-stats">
-              {diferenciais.map((d, k) => (
-                <div className="hist-stat" key={k}>
-                  {d.num ? <div className="num">{d.num}</div> : null}
-                  <h4>{d.titulo}</h4>
-                  <p>{d.texto}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ===== CONTATO ===== */}
-      <section className="section" id="contato">
-        <div className="wrap contact">
-          <div className="contact-card">
-            <div className="contact-top">
-              <div className="contact-rows">
-                <div className="contact-row">
-                  <div><div className="lab">Onde estamos</div><div className="val" dangerouslySetInnerHTML={{ __html: String(loja.endereco || '').replace(' — ', '<br/>') }} /></div>
-                </div>
-                <div className="contact-row">
-                  <div><div className="lab">WhatsApp</div><a className="val val-big" href={waMsg} target="_blank" rel="noopener noreferrer">{loja.telefone}</a></div>
-                </div>
-                {loja.email && (
-                  <div className="contact-row">
-                    <div><div className="lab">E-mail</div><a className="val" href={`mailto:${loja.email}`}>{loja.email}</a></div>
+              <div className="hd-numbers-grid">
+                {diferenciais.map((d, k) => (
+                  <div className="hd-stat" key={k}>
+                    {d.num ? <span className="hd-stat-num">{d.num}</span> : null}
+                    <h3>{d.titulo}</h3>
+                    <p>{d.texto}</p>
                   </div>
-                )}
+                ))}
               </div>
-              {(igUrl || fbUrl) && (
-                <div className="contact-social">
-                  <div className="lab">Redes sociais</div>
-                  <div className="social-links">
-                    {igUrl && (
-                      <a className="soc" href={igUrl} target="_blank" rel="noopener noreferrer" aria-label="Instagram">
-                        <InstagramIcon /><span>{loja.instagram && !String(loja.instagram).startsWith('http') ? `@${String(loja.instagram).replace(/^@/, '')}` : 'Instagram'}</span>
-                      </a>
-                    )}
-                    {fbUrl && (
-                      <a className="soc" href={fbUrl} target="_blank" rel="noopener noreferrer" aria-label="Facebook">
-                        <FacebookIcon /><span>Facebook</span>
-                      </a>
-                    )}
-                  </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ===== CONTATO ===== */}
+        <section className="hd-section" id="contato">
+          <div className="hd-wrap">
+            <div className="hd-contact">
+              <div className="hd-contact-box">
+                <div>
+                  <div className="hd-contact-row"><small>Onde estamos</small><strong>{enderecoLinhas.map((l, k) => <React.Fragment key={k}>{k > 0 ? <br /> : null}{l}</React.Fragment>)}</strong></div>
+                  <div className="hd-contact-row"><small>WhatsApp</small><a href={waMsg} target="_blank" rel="noopener noreferrer"><strong className="hd-contact-big">{loja.telefone}</strong></a></div>
+                  {loja.email ? <div className="hd-contact-row"><small>E-mail</small><a href={`mailto:${loja.email}`}><strong>{loja.email}</strong></a></div> : null}
+                  {(igUrl || fbUrl) && (
+                    <div className="hd-contact-row">
+                      <small>Redes sociais</small>
+                      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 6 }}>
+                        {igUrl && <a className="hd-btn hd-btn-outline hd-btn-sm" href={igUrl} target="_blank" rel="noopener noreferrer" aria-label="Instagram"><InstagramIcon w={16} /> {loja.instagram && !String(loja.instagram).startsWith('http') ? `@${String(loja.instagram).replace(/^@/, '')}` : 'Instagram'}</a>}
+                        {fbUrl && <a className="hd-btn hd-btn-outline hd-btn-sm" href={fbUrl} target="_blank" rel="noopener noreferrer" aria-label="Facebook"><FacebookIcon w={16} /> Facebook</a>}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-            <div className="hero-cta contact-cta">
-              <a className="btn btn-wa" href={waMsg} target="_blank" rel="noopener noreferrer">WhatsApp</a>
-              <Link className="btn btn-yellow" to="/kit-festa">Kit-Festa</Link>
-              <Link className="btn btn-ghost" to="/congelados">Congelados</Link>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  <a className="hd-btn" href={waMsg} target="_blank" rel="noopener noreferrer">WhatsApp</a>
+                  <Link className="hd-btn hd-btn-gold" to="/kit-festa">Kit-Festa</Link>
+                  <Link className="hd-btn hd-btn-outline" to="/congelados">Congelados</Link>
+                </div>
+              </div>
+              <div className="hd-contact-map">
+                <iframe
+                  title="Localização da Hardt no mapa"
+                  src={`https://www.google.com/maps?q=${encodeURIComponent(String(loja.endereco || '').replace(' — ', ', '))}&output=embed`}
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  allowFullScreen
+                />
+              </div>
             </div>
           </div>
-          <div className="contact-map">
-            <iframe
-              title="Localização da Hardt no mapa"
-              src={`https://www.google.com/maps?q=${encodeURIComponent(String(loja.endereco || '').replace(' — ', ', '))}&output=embed`}
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-              allowFullScreen
-            />
-          </div>
-        </div>
-      </section>
+        </section>
+      </main>
 
-      {/* ===== FOOTER (simples: logo + marca registrada) ===== */}
-      <div className="sawtooth"></div>
-      <footer className="foot">
-        <div className="wrap foot-simple-in">
-          <img className="foot-mark" src={LOGO_SRC} alt="Hardt" />
-          <span>Hardt Doces e Salgados Ltda® — Todos os direitos reservados.</span>
-        </div>
-      </footer>
+      <SiteFooter cfg={cfg} />
 
-      {/* WhatsApp flutuante (acompanha o scroll) — leva SEMPRE à equipe de vendas, sem
-          marcador e sem nome de vendedor. É de propósito, não é esquecimento: a HomeSite é
-          a página pública de entrada e não carrega a sessão do cliente, então aqui não há
-          como saber quem é a pessoa nem qual o vendedor dela. Por isso `cliente` NÃO é
-          passado — sem ele o FalarVendedor cai na regra "todo o resto" (equipe). O atalho
-          direto para o vendedor só existe no catálogo de congelados, onde o cliente está
-          logado. NÃO passar `cliente` aqui sem antes decidir se a home vai buscar o perfil. */}
-      <FalarVendedor whatsapp={loja.whatsapp} variant="float" />
+      {/* WhatsApp flutuante — leva SEMPRE à equipe de vendas (sem marcador de vendedor), como antes:
+          a Home é pública e não conhece o vendedor do cliente. */}
+      <a className="hd-wa-fab" href={waEquipe} target="_blank" rel="noopener noreferrer" aria-label="Falar com a equipe de vendas" title="Falar com a equipe de vendas">
+        <WhatsIcon w={26} />
+      </a>
     </div>
   );
 }

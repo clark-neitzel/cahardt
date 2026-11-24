@@ -1,9 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { ShoppingCart, User, Home, Plus, Minus, X, Ticket, ArrowRight, MessageCircle, ChevronLeft, ChevronRight, Clock, Calendar, Truck, ShoppingBag, Edit3, Sparkles, Check, Loader2, MapPin, Mail } from 'lucide-react';
+import { ShoppingCart, LogIn, LogOut, Plus, Minus, X, Ticket, ArrowRight, MessageCircle, ChevronLeft, ChevronRight, Clock, Calendar, Truck, ShoppingBag, Edit3, Sparkles, Check, Loader2, MapPin } from 'lucide-react';
 import publicApi, { getToken, setToken } from './api';
 import Login from './Login';
+import '../Site/siteBase.css';
 import './kitfesta.css';
+import SiteHeader from '../Site/SiteHeader';
+import SiteFooter from '../Site/SiteFooter';
 import { API_URL } from '../../services/api';
 import { useVisitorPing } from '../../hooks/useVisitorPing';
 
@@ -53,6 +56,19 @@ export default function KitFestaSite() {
 
   useVisitorPing('kit-festa', Object.keys(cart).length > 0);
 
+  // Altura real do header (quebra em 2 linhas no celular) — a barra de progresso gruda logo abaixo dele
+  useEffect(() => {
+    const raiz = document.querySelector('.kf');
+    const hdr = raiz?.querySelector('.hd-header');
+    if (!raiz || !hdr) return undefined;
+    const medir = () => raiz.style.setProperty('--kf-hdr', `${hdr.offsetHeight}px`);
+    medir();
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(medir) : null;
+    if (ro) ro.observe(hdr);
+    window.addEventListener('resize', medir);
+    return () => { if (ro) ro.disconnect(); window.removeEventListener('resize', medir); };
+  }, [booting, cfg, screen]);
+
   const siteLogo = (cfg && cfg.logoUrl) ? imgUrl(cfg.logoUrl) : LOGO;
   const logado = cliente || visitante;
 
@@ -81,16 +97,34 @@ export default function KitFestaSite() {
 
   const logout = () => { setToken(null); setCliente(null); setVisitante(null); setCart({}); setCoupon(null); };
 
-  if (booting || !cfg) return <div className="kf"><div className="login tex-board"><Loader2 className="animate-spin" color="#fff" /></div></div>;
+  if (booting || !cfg) return <div className="hd kf"><div className="kf-boot"><Loader2 className="animate-spin" color="#0f7a3b" /></div></div>;
 
   const goCatalog = () => { document.getElementById('catalogo')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
+  const qtdItens = totals.boxes + totals.pacotes;
+  const nomeKf = cliente?.nome || visitante?.nome;
+
+  // Botão do Kit Festa (sessão própria, por CPF) — separado do "Minha área" de Congelados
+  const acoesKf = (
+    <button type="button" className="hd-pill kf-pill-conta" onClick={nomeKf ? logout : () => setLoginModal(true)}
+      title={nomeKf ? `Sair do Kit Festa (${nomeKf})` : 'Entrar no Kit Festa (CPF)'}
+      aria-label={nomeKf ? `Sair do Kit Festa (${nomeKf})` : 'Entrar no Kit Festa'}>
+      {nomeKf ? <LogOut size={16} /> : <LogIn size={16} />}
+      {nomeKf && <span className="kf-pill-nome">{nomeKf}</span>}
+      <span className="hd-lbl">{nomeKf ? 'Sair' : 'Entrar no Kit Festa'}</span>
+    </button>
+  );
 
   return (
-    <div className="kf">
+    <div className="hd kf">
+      {/* Como no original: o cabeçalho (carrinho, "Sair") só existe na vitrine — no checkout o topo
+          é só o "Voltar ao cardápio" (o cliente não abre o carrinho nem sai sem querer, perdendo o pedido). */}
       {screen === 'shop' && (
-        <>
-          <Header cfg={cfg} logo={siteLogo} cartCount={totals.boxes + totals.pacotes} onCart={() => setCartOpen(true)} onLogout={logout}
-            nome={cliente?.nome || visitante?.nome} onAbrirLogin={() => setLoginModal(true)} />
+        <SiteHeader ativo="kitfesta" cfg={cfg} logo={siteLogo} acoes={acoesKf}
+          carrinho={{ qtd: qtdItens, onAbrir: () => setCartOpen(true) }} />
+      )}
+
+      {screen === 'shop' && (
+        <main>
           <Hero cfg={cfg} onCatalog={goCatalog} />
           <HowItWorks cfg={cfg} />
           {produtos.some(p => p.destaque) && (
@@ -103,34 +137,45 @@ export default function KitFestaSite() {
               <ProdGrid produtos={produtos.filter(ehPacote)} qtyOf={qtyOf} onAdd={addItem} onRemove={removeItem} />
             </Section>
           )}
-          <Catalog produtos={produtos.filter(p => !ehPacote(p))} categorias={categorias.filter(c => !String(c.slug || '').toLowerCase().includes('congelado'))} qtyOf={qtyOf} onAdd={addItem} onRemove={removeItem} />
+          <Catalog produtos={produtos.filter(p => !ehPacote(p))} categorias={categorias.filter(c => !String(c.slug || '').toLowerCase().includes('congelado'))} qtyOf={qtyOf} onAdd={addItem} onRemove={removeItem}
+            barra={<ProgressoMinimo boxes={totals.boxes} minCaixas={minCaixas} onCart={() => setCartOpen(true)} />} />
           {avaliacoes.length > 0 && (
-            <Section board titulo="O que dizem nossos clientes" sub="Quem fez festa com a gente conta como foi">
-              <div className="rev-grid">
-                {avaliacoes.map(a => (
-                  <div className="rev" key={a.id}>
-                    <div style={{ color: 'var(--yellow)', fontSize: '.95rem' }}>{'★'.repeat(a.estrelas)}{'☆'.repeat(5 - a.estrelas)}</div>
-                    <p className="q">"{a.texto}"</p>
-                    <div className="who">
-                      <div className="av">{(a.nome || '?')[0]}</div>
-                      <div><b>{a.nome}</b><span>{[a.evento, a.dataLabel].filter(Boolean).join(' · ')}</span></div>
-                    </div>
+            <section className="hd-section hd-section-tint">
+              <div className="hd-wrap">
+                <div className="hd-section-head">
+                  <div>
+                    <h2>O que dizem nossos clientes</h2>
+                    <p>Quem fez festa com a gente conta como foi</p>
                   </div>
-                ))}
+                </div>
+                <div className="hd-depo-grid">
+                  {avaliacoes.map(a => {
+                    const est = Math.max(0, Math.min(5, Number(a.estrelas) || 0));
+                    const sub = [a.evento, a.dataLabel].filter(Boolean).join(' · ');
+                    return (
+                      <figure className="hd-depo" key={a.id}>
+                        <div className="hd-stars" aria-label={`${est} de 5 estrelas`}>{'★'.repeat(est)}{'☆'.repeat(5 - est)}</div>
+                        <blockquote>"{a.texto}"</blockquote>
+                        <figcaption><strong>{a.nome}</strong>{sub ? <span>{sub}</span> : null}</figcaption>
+                      </figure>
+                    );
+                  })}
+                </div>
               </div>
-            </Section>
+            </section>
           )}
           {cfg.indicacao?.ativo && (
             <Referral code={cliente?.codigoIndicacao} credito={cfg.indicacao?.credito} indicacao={cliente?.indicacao} aviso={cfg.indicacao?.avisoCreditos} onEntrar={() => setLoginModal(true)} />
           )}
-          <Contato cfg={cfg} logo={siteLogo} />
+          <Contato cfg={cfg} />
+          <SiteFooter cfg={cfg} logo={siteLogo} />
 
-          {(totals.boxes + totals.pacotes) > 0 && (
-            <button className="btn btn-yellow fab-cart" onClick={() => setCartOpen(true)}>
+          {qtdItens > 0 && (
+            <button className="kf-fab-cart" onClick={() => setCartOpen(true)}>
               <ShoppingCart size={18} /> {totals.boxes} caixa(s){totals.pacotes ? ` + ${totals.pacotes} pacote(s)` : ''} · {money(totals.total)}
             </button>
           )}
-        </>
+        </main>
       )}
 
       {screen === 'checkout' && (
@@ -168,40 +213,6 @@ export default function KitFestaSite() {
   );
 }
 
-/* ---------- Header ---------- */
-function Header({ cfg, logo, cartCount, onCart, onLogout, nome, onAbrirLogin }) {
-  return (
-    <header className="hd tex-board">
-      <div className="sawtooth" />
-      <div className="wrap hd-bar">
-        <div className="hd-logo" onClick={() => document.querySelector('.kf')?.scrollTo({ top: 0, behavior: 'smooth' })}>
-          <img src={logo || LOGO} alt="Hardt" />
-          <div className="who">
-            <span className="who-label">Hardt Kit Festa</span>
-            {nome && <b className="who-nome">{nome}</b>}
-          </div>
-        </div>
-        <div className="hd-spacer" />
-        <Link to="/inicio" className="hd-pill" title="Página inicial">
-          <Home size={17} /><span className="lbl">Início</span>
-        </Link>
-        <button className="hd-pill" onClick={nome ? onLogout : onAbrirLogin} title={nome ? 'Sair' : 'Entrar'}>
-          {nome ? (
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-          ) : (
-            <User size={16} />
-          )}
-          <span className="lbl">{nome ? 'Sair' : 'Entrar'}</span>
-        </button>
-        <button className="hd-pill hd-cart" onClick={onCart}>
-          <ShoppingCart size={18} /><span className="lbl">Carrinho</span>
-          {cartCount > 0 && <span className="badge">{cartCount}</span>}
-        </button>
-      </div>
-    </header>
-  );
-}
-
 /* ---------- Hero ---------- */
 function Hero({ cfg, onCatalog }) {
   const h = cfg.hero || {};
@@ -210,83 +221,96 @@ function Hero({ cfg, onCatalog }) {
   const tituloA = naIdx >= 0 ? titulo.slice(0, naIdx) : titulo;
   const tituloB = naIdx >= 0 ? titulo.slice(naIdx + 1) : '';
   return (
-    <section className="hero tex-board">
-      <div className="wrap hero-grid">
-        <div className="rise">
-          <span className="kicker">{h.kicker} · {cfg.loja?.desde}</span>
-          <h1>{tituloA}{tituloB && <span className="y">{tituloB}</span>}</h1>
-          <p className="lead">{h.subtitulo}</p>
-          <div className="hero-cta">
-            <button className="btn btn-yellow" onClick={onCatalog}><ShoppingBag size={18} /> Montar meu pedido</button>
-            <a className="btn btn-ghost" href={`https://wa.me/${cfg.loja?.whatsapp}`} target="_blank" rel="noreferrer"><MessageCircle size={18} /> WhatsApp</a>
+    <section className="kf-hero">
+      <div className="hd-wrap kf-hero-grid">
+        <div>
+          <span className="hd-eyebrow hd-eyebrow-gold">{h.kicker} · {cfg.loja?.desde}</span>
+          <h1>{tituloA}{tituloB && <span className="kf-h1-y">{tituloB}</span>}</h1>
+          <p className="kf-lead">{h.subtitulo}</p>
+          <div className="kf-hero-cta">
+            <button type="button" className="hd-btn hd-btn-lg" onClick={onCatalog}><ShoppingBag size={18} /> Montar meu pedido</button>
+            <a className="hd-btn hd-btn-outline hd-btn-lg" href={`https://wa.me/${cfg.loja?.whatsapp}`} target="_blank" rel="noreferrer"><MessageCircle size={18} /> WhatsApp</a>
           </div>
-          <div className="hero-trust">
+          <div className="kf-trust">
             <div className="t"><b>+19 anos</b><span>fazendo festa em Joinville</span></div>
             <div className="t"><b>25un</b><span>por caixa</span></div>
             <div className="t"><b>mín. {cfg.regras?.minCaixas || 4}</b><span>caixas por pedido</span></div>
           </div>
         </div>
-        <div className="hero-figure rise">
-          <div className="ph"><img src={BOX} alt="Caixa de salgados Hardt" /></div>
-          <div className="hero-badge"><b>25</b><span>salgados / caixa</span></div>
+        <div className="kf-hero-box">
+          <img src={BOX} alt="Caixa de salgados Hardt" fetchPriority="high" decoding="async" />
+          <div className="kf-hero-badge"><b>25</b><span>salgados / caixa</span></div>
         </div>
       </div>
     </section>
   );
 }
 
-/* ---------- Como funciona (faixa verde) ---------- */
+/* ---------- Como funciona (4 passos) ---------- */
 function HowItWorks({ cfg }) {
   const steps = cfg.comoFunciona || [];
-  const icons = [User, ShoppingBag, Calendar, MessageCircle];
+  if (steps.length === 0) return null;
   return (
-    <section className="tex-green how">
-      <div className="wrap">
-        <div className="how-grid">
-          {steps.map((s, i) => {
-            const Ic = icons[i] || Sparkles;
-            return (
-              <div className="how-step" key={i}>
-                <div className="nm"><Ic size={20} /></div>
-                <div><h4>{s.titulo}</h4><p>{s.desc}</p></div>
-              </div>
-            );
-          })}
-        </div>
+    <section className="kf-how" aria-label="Como funciona">
+      <div className="hd-wrap kf-how-grid">
+        {steps.map((s, i) => (
+          <div className="kf-step" key={i}>
+            <span className="kf-step-n">{i + 1}</span>
+            <div><h4>{s.titulo}</h4><p>{s.desc}</p></div>
+          </div>
+        ))}
       </div>
     </section>
   );
 }
 
 /* ---------- Section wrapper ---------- */
-function Section({ titulo, sub, children, board = false }) {
+function Section({ titulo, sub, children }) {
   return (
-    <section className={`sec ${board ? 'tex-board' : 'tex-paper'}`}>
-      <div className="wrap">
-        <div className={`sec-head ${board ? 'on-board' : 'on-paper'}`}>
-          <div><h2>{titulo}</h2>{sub && <p className="lead">{sub}</p>}</div>
-        </div>
+    <section className="kf-sec">
+      <div className="hd-wrap">
+        <div className="kf-sec-head"><h2>{titulo}</h2>{sub && <p>{sub}</p>}</div>
         {children}
       </div>
     </section>
   );
 }
 
-/* ---------- Catálogo com filtros ---------- */
-function Catalog({ produtos, categorias, qtyOf, onAdd, onRemove }) {
-  const [filtro, setFiltro] = useState('todos');
-  const lista = filtro === 'todos' ? produtos : produtos.filter(p => p.categoria === filtro);
+/* ---------- Barra de progresso do pedido mínimo (mesmo cálculo do carrinho: boxes × minCaixas) ---------- */
+function ProgressoMinimo({ boxes, minCaixas, onCart }) {
+  const ok = boxes >= minCaixas;
+  const pct = Math.min(100, Math.round((boxes / minCaixas) * 100));
   return (
-    <section className="sec tex-paper" id="catalogo">
-      <div className="wrap">
-        <div className="sec-head on-paper">
-          <div><h2>Nosso cardápio</h2><p className="lead">Cada caixa = 1 sabor, 25 unidades. Combine os sabores à vontade!</p></div>
-          <div className="filters">
-            <button className={`chip${filtro === 'todos' ? ' active' : ''}`} onClick={() => setFiltro('todos')}>Todos</button>
-            {categorias.map(c => (
-              <button key={c.id} className={`chip${filtro === c.slug ? ' active' : ''}`} onClick={() => setFiltro(c.slug)}>{c.nome}</button>
-            ))}
+    <div className={`kf-progress${ok ? ' ok' : ''}`} role="status" aria-live="polite">
+      <div className="hd-wrap kf-prog-in">
+        <div className="kf-prog-left">
+          <div className="kf-prog-label">
+            <span>{ok ? `✓ Mínimo atingido! ${boxes} caixa(s) selecionada(s)` : `Faltam ${minCaixas - boxes} caixa(s) para o mínimo de ${minCaixas}`}</span>
+            <strong>{boxes} / {minCaixas} caixas</strong>
           </div>
+          <div className="kf-prog-track"><div className="kf-prog-fill" style={{ width: `${pct}%` }} /></div>
+        </div>
+        <button type="button" className="hd-btn hd-btn-sm kf-prog-btn" onClick={onCart}>Ver carrinho</button>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Catálogo com filtros ---------- */
+function Catalog({ produtos, categorias, qtyOf, onAdd, onRemove, barra }) {
+  const [filtro, setFiltro] = useState('todos');
+  const lista = filtro === 'todos' ? produtos
+    : produtos.filter(p => p.categoria === filtro);
+  return (
+    <section className="kf-sec kf-cat" id="catalogo">
+      {barra}
+      <div className="hd-wrap">
+        <div className="kf-sec-head"><h2>Nosso cardápio</h2><p>Cada caixa = 1 sabor, 25 unidades. Combine os sabores à vontade!</p></div>
+        <div className="kf-filters" role="group" aria-label="Filtrar cardápio">
+          <button type="button" className="kf-chip" aria-pressed={filtro === 'todos'} onClick={() => setFiltro('todos')}>Todos</button>
+          {categorias.map(c => (
+            <button type="button" key={c.id} className="kf-chip" aria-pressed={filtro === c.slug} onClick={() => setFiltro(c.slug)}>{c.nome}</button>
+          ))}
         </div>
         <ProdGrid produtos={lista} qtyOf={qtyOf} onAdd={onAdd} onRemove={onRemove} />
       </div>
@@ -296,29 +320,30 @@ function Catalog({ produtos, categorias, qtyOf, onAdd, onRemove }) {
 
 function ProdGrid({ produtos, qtyOf, onAdd, onRemove }) {
   return (
-    <div className="grid-prod">
+    <div className="kf-grid">
       {produtos.map(p => {
         const q = qtyOf(p.id);
         return (
-          <div className="card" key={p.id}>
-            <div className="card-ph tex-paper">
-              {p.tags?.length > 0 && (
-                <div className="tags">{p.tags.slice(0, 1).map(t => <span className="tag tag-yellow" key={t}>{t}</span>)}</div>
-              )}
-              {imgUrl(p.imagem) && <img src={imgUrl(p.imagem)} alt={p.nome} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+          <div className="kf-card" key={p.id}>
+            <div className="kf-card-ph">
+              <div className="kf-badges">
+                {p.destaque && <span className="hd-chip hd-chip-gold">★ Mais pedido</span>}
+                {p.tags?.length > 0 && p.tags.slice(0, 1).map(t => <span className="hd-chip hd-chip-green" key={t}>{t}</span>)}
+              </div>
+              {imgUrl(p.imagem) && <img src={imgUrl(p.imagem)} alt={p.nome} loading="lazy" decoding="async" />}
             </div>
-            <div className="card-body">
+            <div className="kf-card-body">
               <h3>{p.nome}</h3>
-              <p className="d">{p.descricao}</p>
-              <div className="card-foot">
-                <div className="price"><b>{money(p.preco)}</b><span>{rotuloUnidade(p)}</span></div>
+              <p className="kf-d">{p.descricao}</p>
+              <div className="kf-card-foot">
+                <div className="kf-price"><b>{money(p.preco)}</b><span>{rotuloUnidade(p)}</span></div>
                 {q === 0 ? (
-                  <button className="add-btn" onClick={() => onAdd(p.id)} aria-label="Adicionar"><Plus size={18} /></button>
+                  <button type="button" className="kf-add" onClick={() => onAdd(p.id)} aria-label={`Adicionar ${p.nome}`}><Plus size={18} /></button>
                 ) : (
                   <div className="stepper">
-                    <button onClick={() => onRemove(p.id)}><Minus size={15} /></button>
+                    <button type="button" onClick={() => onRemove(p.id)} aria-label="Diminuir"><Minus size={15} /></button>
                     <span className="q">{q}</span>
-                    <button onClick={() => onAdd(p.id)}><Plus size={15} /></button>
+                    <button type="button" onClick={() => onAdd(p.id)} aria-label="Aumentar"><Plus size={15} /></button>
                   </div>
                 )}
               </div>
@@ -326,7 +351,7 @@ function ProdGrid({ produtos, qtyOf, onAdd, onRemove }) {
           </div>
         );
       })}
-      {produtos.length === 0 && <p style={{ color: '#8a7d63', gridColumn: '1/-1', textAlign: 'center' }}>Nenhum produto nesta categoria.</p>}
+      {produtos.length === 0 && <p className="kf-empty">Nenhum produto nesta categoria.</p>}
     </div>
   );
 }
@@ -377,8 +402,8 @@ function CartDrawer({ cart, produtos, onClose, onAdd, onRemove, coupon, setCoupo
             <>
               {ids.map(id => { const p = prodById(id); if (!p) return null; return (
                 <div className="ci" key={id}>
-                  <div className="thumb tex-paper" style={{ overflow: 'hidden' }}>
-                    {imgUrl(p.imagem) && <img src={imgUrl(p.imagem)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+                  <div className="thumb">
+                    {imgUrl(p.imagem) && <img src={imgUrl(p.imagem)} alt="" loading="lazy" decoding="async" />}
                   </div>
                   <div className="info"><h4>{p.nome}</h4><span>{money(p.preco)} · {rotuloUnidade(p)}</span></div>
                   <div className="right">
@@ -410,18 +435,18 @@ function CartDrawer({ cart, produtos, onClose, onAdd, onRemove, coupon, setCoupo
                   {/* Código de indicação (1ª compra) */}
                   {podeIndicar && (
                     <div className="coupon" style={{ marginTop: 10 }}>
-                      <div className="ip"><Sparkles size={16} color="#9a8c70" />
+                      <div className="ip"><Sparkles size={16} color="#6b776e" />
                         <input placeholder="código de indicação" value={codeInd} onChange={e => { setCodeInd(e.target.value); setErr(''); }} /></div>
                       <button className="btn btn-outline-ink btn-sm" onClick={applyIndicacao}>Usar</button>
                     </div>
                   )}
                   {/* Cupom normal */}
                   <div className="coupon" style={{ marginTop: 10 }}>
-                    <div className="ip"><Ticket size={16} color="#9a8c70" />
+                    <div className="ip"><Ticket size={16} color="#6b776e" />
                       <input placeholder="cupom de desconto" value={code} onChange={e => { setCode(e.target.value); setErr(''); }} /></div>
                     <button className="btn btn-outline-ink btn-sm" onClick={apply}>Aplicar</button>
                   </div>
-                  {(podeIndicar || creditos > 0) && <div className="legend" style={{ fontSize: 11, color: '#8a7d63', marginTop: 6 }}>Use só um: cupom, código de indicação ou crédito.</div>}
+                  {(podeIndicar || creditos > 0) && <div className="legend" style={{ fontSize: 11, color: '#6b776e', marginTop: 6 }}>Use só um: cupom, código de indicação ou crédito.</div>}
                   {err && <div className="coupon-err">{err}</div>}
                 </>
               )}
@@ -584,12 +609,11 @@ function CheckoutScreen({ cfg, cart, produtos, totals, coupon, telefoneAtual, en
   const ready = date && slot && telOk && modoOk;
 
   return (
-    <div className="tex-paper" style={{ minHeight: '100vh' }}>
-      <div className="co-top tex-board">
-        <div className="sawtooth" />
-        <div className="wrap"><button className="co-back" onClick={onBack}><ChevronLeft size={18} /> Voltar ao cardápio</button></div>
+    <div className="co-page">
+      <div className="co-top">
+        <div className="hd-wrap"><button className="co-back" onClick={onBack}><ChevronLeft size={18} /> Voltar ao cardápio</button></div>
       </div>
-      <div className="wrap co-grid">
+      <div className="hd-wrap co-grid">
         <div>
           <div className="co-block">
             <h3><Truck size={20} /> Como você quer receber?</h3>
@@ -623,7 +647,7 @@ function CheckoutScreen({ cfg, cart, produtos, totals, coupon, telefoneAtual, en
                 {/* Novo endereço via CEP (visitante ou "outro endereço") */}
                 {precisaNovoEnd && (
                   <div style={{ display: 'grid', gap: 8, marginBottom: 10 }}>
-                    {!temEndCadastro && <p style={{ fontSize: 12, color: '#8a7d63', margin: 0 }}>Informe o endereço de entrega:</p>}
+                    {!temEndCadastro && <p style={{ fontSize: 12, color: '#6b776e', margin: 0 }}>Informe o endereço de entrega:</p>}
                     <div className="coupon" style={{ margin: 0 }}>
                       <div className="ip" style={{ flex: 1, background: '#fff' }}>
                         <input inputMode="numeric" placeholder="CEP" value={cep}
@@ -734,7 +758,7 @@ function CheckoutScreen({ cfg, cart, produtos, totals, coupon, telefoneAtual, en
             {slot && (
               <div style={{ marginTop: 14 }}>
                 <label className="field" style={{ display: 'block', marginBottom: 4 }}>
-                  <span style={{ fontFamily: 'var(--f-display)', textTransform: 'uppercase', letterSpacing: '.06em', fontSize: '.72rem', color: '#6a5f4c' }}>
+                  <span style={{ fontFamily: 'var(--f-display)', textTransform: 'uppercase', letterSpacing: '.06em', fontSize: '.72rem', color: '#424d45' }}>
                     <MessageCircle size={13} style={{ verticalAlign: '-2px' }} /> Seu WhatsApp {telefoneAtual ? '(confirme)' : ''}
                   </span>
                 </label>
@@ -742,7 +766,7 @@ function CheckoutScreen({ cfg, cart, produtos, totals, coupon, telefoneAtual, en
                   <input inputMode="numeric" placeholder="(47) 99999-0000" value={telefone}
                     onChange={e => setTelefone(maskTel(e.target.value))} />
                 </div>
-                <p style={{ fontSize: 11, color: '#8a7d63', marginTop: 4 }}>Mandamos uma cópia do pedido nesse número.</p>
+                <p style={{ fontSize: 11, color: '#6b776e', marginTop: 4 }}>Mandamos uma cópia do pedido nesse número.</p>
               </div>
             )}
 
@@ -750,7 +774,7 @@ function CheckoutScreen({ cfg, cart, produtos, totals, coupon, telefoneAtual, en
               onClick={() => onFinish({ modo, date, dateLabel, slot, obs, cep: cepUsado, taxa: 0, endereco: enderecoFinal, telefone })}>
               <MessageCircle size={19} /> {!modoOk ? (modo === 'entrega' ? 'Complete o endereço' : '') : !date ? 'Escolha o dia' : !slot ? 'Escolha o horário' : !telOk ? 'Confirme seu WhatsApp' : 'Finalizar pedido'}
             </button>
-            <p style={{ fontSize: 12, color: '#8a7d63', textAlign: 'center', marginTop: 10 }}>
+            <p style={{ fontSize: 12, color: '#6b776e', textAlign: 'center', marginTop: 10 }}>
               O pagamento é combinado depois (pix ou na entrega).</p>
           </div>
         </div>
@@ -818,7 +842,7 @@ function ConfirmModal({ info, cfg, totals, cart, produtos, coupon, cliente, visi
               </div>
               <a className="btn btn-wa btn-block" href={link} target="_blank" rel="noreferrer" style={{ marginTop: 14 }}>
                 <MessageCircle size={19} /> Enviar pedido pelo WhatsApp</a>
-              <p style={{ fontSize: 12, color: '#8a7d63', textAlign: 'center', marginTop: 8, marginBottom: 0 }}>
+              <p style={{ fontSize: 12, color: '#6b776e', textAlign: 'center', marginTop: 8, marginBottom: 0 }}>
                 É esse envio que confirma seu pedido com a loja e agiliza o preparo.
               </p>
             </>
@@ -839,11 +863,11 @@ function Referral({ code, credito, indicacao, aviso, onEntrar }) {
   const copy = () => { try { navigator.clipboard.writeText(code); } catch (e) {} setCopied(true); setTimeout(() => setCopied(false), 1600); };
   const temSaldo = indicacao && (indicacao.creditosDisponiveis > 0 || indicacao.indicados > 0);
   return (
-    <section className="sec tex-board">
-      <div className="wrap">
+    <section className="hd-section kf-ref-sec">
+      <div className="hd-wrap">
         <div className="ref">
           <div>
-            <span className="kicker" style={{ color: 'var(--green-dd)' }}>Indique &amp; ganhe</span>
+            <span className="kicker">Indique &amp; ganhe</span>
             <h2>Indicou, os dois ganham</h2>
             <p>Compartilhe seu código. Seu amigo ganha <b>desconto</b> na primeira compra e você ganha <b>R${c} de crédito</b> quando ele quitar o pedido — 1 crédito por pedido seu.</p>
             {code ? (
@@ -860,14 +884,14 @@ function Referral({ code, credito, indicacao, aviso, onEntrar }) {
             )}
             {temSaldo && (
               <>
-                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 16 }}>
+                <div className="ref-mini">
                   <div className="credmini-c"><b>{indicacao.indicados}</b><span>indicados</span></div>
-                  <div className="credmini-c" style={{ background: 'var(--green)', color: '#fff' }}><b style={{ color: '#fff' }}>{indicacao.creditosDisponiveis}</b><span style={{ color: '#dff0e4' }}>créditos p/ usar</span></div>
+                  <div className="credmini-c gold"><b>{indicacao.creditosDisponiveis}</b><span>créditos p/ usar</span></div>
                   <div className="credmini-c"><b>R$ {Number(indicacao.valorDisponivel || 0).toFixed(0)}</b><span>disponível</span></div>
                 </div>
                 {aviso && (
-                  <p style={{ fontSize: 12, color: '#5a4a12', marginTop: 12, display: 'flex', gap: 6, alignItems: 'flex-start' }}>
-                    <Clock size={14} style={{ flexShrink: 0, marginTop: 1 }} /> {aviso}
+                  <p className="ref-aviso">
+                    <Clock size={14} /> {aviso}
                   </p>
                 )}
               </>
@@ -884,48 +908,8 @@ function Referral({ code, credito, indicacao, aviso, onEntrar }) {
   );
 }
 
-/* ---------- Footer ---------- */
-function Footer({ cfg, logo }) {
-  const l = cfg.loja || {};
-  return (
-    <footer className="ft tex-board">
-      <div className="wrap">
-        <div className="ft-grid">
-          <div>
-            <div className="hd-logo" style={{ marginBottom: 12 }}>
-              <img src={logo || LOGO} alt="Hardt" />
-              <div><div className="nm">{l.nome?.split(' ')[0] || 'Hardt'}</div><div className="sb">Doces &amp; Salgados</div></div>
-            </div>
-            <p style={{ fontSize: '.9rem', lineHeight: 1.5, maxWidth: '34ch' }}>{l.slogan} · {l.desde}.</p>
-          </div>
-          <div>
-            <h5>Onde estamos</h5>
-            <div className="row"><MapPin size={16} />
-              {l.mapsUrl
-                ? <a href={l.mapsUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--ink)', textDecoration: 'underline', textUnderlineOffset: 2 }}>{l.endereco}</a>
-                : l.endereco}
-            </div>
-            {l.mapsUrl && <div className="row"><MapPin size={16} style={{ opacity: 0 }} /><a href={l.mapsUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--green-dd)' }}>📍 Ver no mapa / traçar rota</a></div>}
-          </div>
-          <div>
-            <h5>Fale com a gente</h5>
-            <div className="row"><MessageCircle size={16} />
-              <a href={`https://wa.me/${l.whatsapp}`} style={{ color: 'var(--ink)' }} target="_blank" rel="noreferrer">{l.telefone}</a>
-            </div>
-            {l.email && <div className="row"><Mail size={16} /><a href={`mailto:${l.email}`} style={{ color: 'var(--ink)' }}>{l.email}</a></div>}
-          </div>
-        </div>
-        <div className="ft-bottom">
-          <span>© {new Date().getFullYear()} {l.nome}. Todos os direitos reservados.</span>
-          <span>Salgados de festa feitos à mão.</span>
-        </div>
-      </div>
-    </footer>
-  );
-}
-
 /* ---------- Final padrão (igual à home): contato (card + mapa) + rodapé simples ---------- */
-function Contato({ cfg, logo }) {
+function Contato({ cfg }) {
   const l = cfg.loja || {};
   const wa = `https://wa.me/${l.whatsapp}`;
   const waMsg = `${wa}?text=${encodeURIComponent('Olá! Vim pelo site da Hardt e gostaria de fazer um pedido.')}`;
@@ -934,9 +918,8 @@ function Contato({ cfg, logo }) {
   const fbUrl = social(l.facebook, 'https://facebook.com/');
   const mapSrc = `https://www.google.com/maps?q=${encodeURIComponent(String(l.endereco || '').replace(' — ', ', '))}&output=embed`;
   return (
-    <>
-      <section className="sec" id="contato">
-        <div className="wrap contact">
+      <section className="hd-section kf-contato" id="contato">
+        <div className="hd-wrap contact">
           <div className="contact-card">
             <div className="contact-top">
               <div className="contact-rows">
@@ -964,10 +947,10 @@ function Contato({ cfg, logo }) {
                 </div>
               )}
             </div>
-            <div className="hero-cta contact-cta">
-              <a className="btn btn-wa" href={waMsg} target="_blank" rel="noreferrer">WhatsApp</a>
-              <a className="btn btn-yellow" href="#catalogo">Kit-Festa</a>
-              <Link className="btn btn-ghost" to="/congelados">Congelados</Link>
+            <div className="kf-hero-cta contact-cta">
+              <a className="hd-btn" href={waMsg} target="_blank" rel="noreferrer">WhatsApp</a>
+              <a className="hd-btn hd-btn-gold" href="#catalogo">Kit-Festa</a>
+              <Link className="hd-btn hd-btn-outline" to="/congelados">Congelados</Link>
             </div>
           </div>
           <div className="contact-map">
@@ -975,13 +958,5 @@ function Contato({ cfg, logo }) {
           </div>
         </div>
       </section>
-      <div className="sawtooth"></div>
-      <footer className="ft-simple">
-        <div className="wrap foot-simple-in">
-          <img className="foot-mark" src={logo || LOGO} alt="Hardt" />
-          <span>Hardt Doces e Salgados Ltda® — Todos os direitos reservados.</span>
-        </div>
-      </footer>
-    </>
   );
 }

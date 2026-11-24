@@ -59,20 +59,22 @@ export default function FalarVendedor({ cliente, whatsapp, variant = 'pill' }) {
         curto: 'Vendas',
       };
 
-  if (variant === 'float') {
+  // Botão cheio (banner da página): rótulo completo, mesmo link/mensagem
+  if (variant === 'botao') {
     return (
-      <a className="wa-float" href={destino.href} target="_blank" rel="noreferrer"
+      <a className="hd-btn hd-btn-outline hd-btn-lg" href={destino.href} target="_blank" rel="noreferrer"
          aria-label={destino.titulo} title={destino.titulo}>
-        <WhatsIcon w={26} />
+        <WhatsIcon w={18} />
+        <span>Falar com vendedor</span>
       </a>
     );
   }
 
   return (
-    <a className="cg-pill" href={destino.href} target="_blank" rel="noreferrer"
+    <a className="hd-pill" href={destino.href} target="_blank" rel="noreferrer"
        aria-label={destino.titulo} title={destino.titulo}>
       <WhatsIcon w={15} />
-      <span className="lbl">{destino.curto}</span>
+      <span className="hd-lbl">{destino.curto}</span>
     </a>
   );
 }

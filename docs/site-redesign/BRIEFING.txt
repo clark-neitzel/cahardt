@@ -1,0 +1,369 @@
+================================================================================
+BRIEFING DE REDESIGN — SITE PÚBLICO HARDT DOCES E SALGADOS
+(Home /inicio · Congelados /congelados · Kit Festa /kit-festa)
+================================================================================
+
+ARQUIVO DE REFERÊNCIA VISUAL PRONTO NO REPOSITÓRIO:
+- proposta-novo-site-hardt.html (na raiz do projeto CA-Hardt)
+  Contém o layout completo aprovado como referência visual, já populado com
+  os dados e fotos reais de produção (55 congelados, 54 fichas ANVISA, 17 itens
+  do Kit Festa, textos e imagens oficiais).
+
+--------------------------------------------------------------------------------
+1. OBJETIVO DO REDESIGN
+--------------------------------------------------------------------------------
+Modernizar completamente a aparência e a experiência de uso do site público da
+Hardt, deixando-o mais leve, limpo, claro, rápido e confiável — inspirado na
+estética editorial da Presto Alimentos (prestoalimentos.com.br e ficha técnica),
+porém preservando 100% da identidade da Hardt (verde oficial + toques dourados)
+e o nosso maior diferencial competitivo: o cliente já faz o pedido online direto
+no site (tanto em Congelados quanto no Kit Festa).
+
+Problemas do site atual a eliminar:
+- Visual pesado e datado: fundo escuro tipo lousa (#191b17 com textura SVG),
+  papel creme envelhecido (#f3e7cd), serrilhado amarelo (.sawtooth), botões 3D
+  com sombra dura (box-shadow: 0 6px 0), foto inclinada tipo polaroid e selo
+  vermelho girado.
+- Excesso de fontes competindo: Oswald (caixa alta condensada) + Bitter
+  (serifada) + Kaushan Script (cursiva).
+- Inconsistência entre telas: Home escura, Congelados misto e Kit Festa creme,
+  sem navegação unificada clara entre as 3 áreas.
+- Abertura da Home sem fotos apetitosas dos salgados logo na primeira dobra.
+
+--------------------------------------------------------------------------------
+2. REGRA DE OURO — O QUE NÃO PODE SER QUEBRADO
+--------------------------------------------------------------------------------
+Esta tarefa é de REDESIGN VISUAL e UX do frontend público.
+NÃO alterar regras de negócio, rotas de API ou banco de dados:
+
+- Manter intactas todas as integrações de API:
+  * frontend/src/pages/Site/api.js (/api/congelados-publico/*)
+  * frontend/src/pages/KitFestaSite/api.js (/api/kitfesta-publico/*)
+- Manter intactos todos os fluxos de autenticação e sessão:
+  * Login/Visitante, @Congelados:token, @KitFesta:token, criar senha, reset.
+- Manter intactas todas as regras de negócio de Congelados:
+  * Tabela personalizada do cliente logado (meuCatalogo), condição padrão,
+    seção "Você sempre pede", botão "Repetir último pedido", pedido mínimo
+    (condicaoPadrao.valorMinimo / cfg.minimoSite), validação de indisponível
+    (sem estoque), entrega vs retirada, sugestão do dia regular da rota,
+    regra de encaixe, FalarVendedor, geração da mensagem de WhatsApp e
+    useVisitorPing.
+- Manter intactas todas as regras de negócio do Kit Festa:
+  * Mínimo de caixas (cfg.regras.minCaixas), cupons, código de indicação,
+    créditos de indicação, calendário com disponibilidade (agenda/slots),
+    verificação de entrega/CEP, checkout, confirmação e WhatsApp.
+- Manter intactos os painéis administrativos (SiteAdmin, KitFesta) — todos os
+  textos, fotos, grupos, categorias, avaliações e configs devem continuar vindo
+  dinamicamente da API, exatamente como hoje.
+- REGRA CRÍTICA DO PROJETO (Inputs em celulares com Dark Mode):
+  * Mudar o container do site para color-scheme: light (o site agora é claro!).
+  * Garantir explicitamente fundo branco (#ffffff / bg-white) e texto escuro
+    (#141d17 / text-gray-900) em TODOS os inputs, textareas e selects.
+
+--------------------------------------------------------------------------------
+3. SISTEMA VISUAL (DESIGN TOKENS OBRIGATÓRIOS)
+--------------------------------------------------------------------------------
+Paleta de cores:
+- Fundo principal das páginas:   #ffffff (branco puro)
+- Fundo de respiro (seções):     #f2f8f4 (verde-menta ultrassuave)
+- Superfície neutra (chips/box): #f7f8f7
+- Verde Hardt (principal):       #0f7a3b
+- Verde Hardt escuro (hover/txt):#09592a
+- Verde suave (badges/stepper):  #e3f2e8
+- Amarelo dourado Hardt:         #f5be18 (uso cirúrgico: badges "Mais pedido",
+                                 estrelas, CTA secundário do Kit Festa — NUNCA
+                                 como serrilhado ou sombra 3D grossa)
+- Amarelo suave (badge claro):   #fff9e6 (texto #7a5400)
+- Texto títulos (ink):           #141d17
+- Texto corpo:                   #424d45
+- Texto apoio (muted):           #6b776e
+- Linhas/bordas sutis:           rgba(20, 29, 23, 0.09)
+
+Tipografia (substituir Oswald, Bitter e Kaushan Script):
+- Títulos (h1, h2, h3, botões, labels): 'Montserrat', system-ui, sans-serif
+  (pesos 600, 700, 800, 900; letter-spacing: -0.03em nos títulos; sem forçar
+  text-transform: uppercase em tudo).
+- Corpo e leitura: 'Plus Jakarta Sans', system-ui, sans-serif (pesos 400-700).
+
+Formas, botões e elevação:
+- Botões em pílula chapados (border-radius: 999px), altura mínima 44px, sem
+  sombra 3D dura. Micro-interação no clique: transform: scale(0.97).
+- Cards com cantos amplos (border-radius: 20px; painéis maiores: 28px),
+  borda 1px solid rgba(20, 29, 23, 0.09) e sombra leve no hover.
+- Remover completamente: .tex-board escuro, .tex-paper texturizado, .sawtooth,
+  transform: rotate(...) em fotos/selos e box-shadow: 0 6px 0.
+
+--------------------------------------------------------------------------------
+4. CABEÇALHO E RODAPÉ UNIFICADOS (TODAS AS 3 ROTAS)
+--------------------------------------------------------------------------------
+Arquivos impactados:
+- frontend/src/pages/Site/HomeSite.jsx
+- frontend/src/pages/Site/CongeladosSite.jsx
+- frontend/src/pages/KitFestaSite/KitFestaSite.jsx
+(Recomendado criar um componente reutilizável de Header/Footer do site público
+em frontend/src/pages/Site/SiteHeader.jsx e SiteFooter.jsx, ou manter o mesmo
+markup/CSS nas 3 páginas.)
+
+Especificação do Header:
+- position: sticky; top: 0; fundo vidro branco translúcido:
+  background: rgba(255, 255, 255, 0.88); backdrop-filter: saturate(180%) blur(18px);
+  border-bottom: 1px solid rgba(20, 29, 23, 0.09).
+- Esquerda: Logo oficial da Hardt (cfg.logoUrl com fallback /cong/logo.png) +
+  nome da loja e "desde 2007".
+- Centro (desktop) / faixa dedicada logo abaixo no mobile:
+  Navegação limpa em cápsula cinza-claro com os 3 links principais:
+  [ Início (/inicio) | Congelados (/congelados) | Kit Festa (/kit-festa) ]
+  * Usar <nav> semântico com aria-current="page" no item ativo (NÃO usar
+    role="tablist" para navegação de páginas).
+  * Item ativo ganha pílula branca elevada com texto verde escuro (#09592a).
+- Direita:
+  * Na Home: link "Área Restrita" (/login) discreto em pílula outline.
+  * Em Congelados e Kit Festa: botão Falar com Vendedor (quando aplicável),
+    botão Entrar/Nome do cliente + Sair, e botão verde "Pedido / Carrinho"
+    com badge amarelo dourado mostrando a quantidade de itens.
+
+Especificação do Rodapé:
+- Fundo branco puro, borda superior fina (sem serrilhado .sawtooth).
+- 3 colunas no desktop (empilha no mobile):
+  1) Logo + Nome + Endereço + Telefone clicável
+  2) Navegação (Início, Congelados, Kit Festa)
+  3) Atendimento (WhatsApp, Instagram, Facebook)
+- Base discreta com copyright: "Hardt Doces e Salgados Ltda® — Todos os direitos reservados."
+
+--------------------------------------------------------------------------------
+5. MUDANÇAS POR PÁGINA
+--------------------------------------------------------------------------------
+
+=== 5.1. ABA INICIAL — frontend/src/pages/Site/HomeSite.jsx ===
+
+1) HERO EDITORIAL CLARO (primeira dobra):
+   - Substituir o bloco antigo "logo grande + texto no fundo preto" por um Hero
+     de 2 colunas sobre fundo branco com gradiente radial ultrassuave.
+   - Coluna esquerda:
+     * Eyebrow pill suave com ponto verde: cfg.hero.kicker
+     * H1 forte em Montserrat 800: cfg.hero.titulo
+     * Subtítulo legível: cfg.hero.subtitulo
+     * 2 botões pílula: "Kit Festa →" (verde) e "Congelados" (outline).
+   - Coluna direita (Mosaico de fotos reais):
+     * Foto principal grande (primeira foto .jpg de cfg.historia.imagens) com
+       legenda translúcida discreta no canto inferior (nome + slogan + desde 2007).
+     * 2 mini-cards clicáveis à direita com fundo branco estúdio: um levando ao
+       Kit Festa (com a imagem da caixa/box) e outro levando aos Congelados (com
+       foto real de um produto em destaque).
+
+2) DOIS JEITOS DE PEDIR (Cards lado a lado):
+   - Manter a estrutura de 2 cards (Kit Festa e Congelados), mas sem serrilhado:
+     * Card Kit Festa: degradê verde Hardt (#0f7a3b -> #09592a), texto branco,
+       checks dourados, botão pílula amarelo dourado ("Fazer pedido →").
+     * Card Congelados: fundo branco puro, borda sutil, checks em verde suave,
+       botão pílula verde Hardt ("Entrar / fazer pedido →").
+
+3) FAIXA DE DIFERENCIAIS (estilo Presto):
+   - Fundo verde-menta suave (#f2f8f4), 4 colunas no desktop (2 no tablet),
+     separadas por linhas verticais finas rgba(15,122,59,0.2).
+   - Renderiza cfg.diferenciais (num em destaque verde, título, texto).
+
+4) NOVA SEÇÃO "NOSSO PORTFÓLIO" (vitrine preview na Home):
+   - Inspirada diretamente na seção #produtos da Presto Alimentos.
+   - Cabeçalho com título "Nosso portfólio" + seletor segmentado em pílula:
+     [ Congelados | Kit Festa ]
+   - Trilho horizontal rolável (scroll-snap-type: x proximity) exibindo os
+     primeiros 6–8 produtos reais da aba selecionada (consumindo os endpoints
+     públicos já existentes /api/congelados-publico/catalogo e
+     /api/kitfesta-publico/catalogo).
+   - Clicar num congelado abre a Ficha Técnica ou direciona para /congelados;
+     link "Ver todos os Congelados ›" / "Ver todo o Kit Festa ›" abaixo à direita.
+
+5) NOSSA HISTÓRIA (editorial limpo):
+   - Fundo #f2f8f4, grid 2 colunas (sem painel verde escuro pesado, sem
+     watermark gigante, sem polaroid girada e sem selo vermelho rotacionado).
+   - Esquerda: carrossel limpo (border-radius: 28px) com cfg.historia.imagens e
+     indicadores em pílula branca translúcida.
+   - Direita: eyebrow, título, parágrafos reais de cfg.historia.texto, botão
+     WhatsApp + link para o catálogo.
+
+6) AVALIAÇÕES REAIS (condicional):
+   - Buscar /api/kitfesta-publico/avaliacoes e, se houver avaliações cadastradas,
+     exibir seção limpa "O que dizem nossos clientes" com cards suaves (sem
+     inventar avaliações extras).
+
+7) CONTATO E MAPA:
+   - Fundo #f2f8f4, 2 colunas: card branco limpo com Endereço, WhatsApp em
+     destaque verde, E-mail, botões de redes sociais e CTAs rápidos + iframe do
+     Google Maps com cantos arredondados (28px).
+
+=== 5.2. ABA CONGELADOS — frontend/src/pages/Site/CongeladosSite.jsx ===
+
+1) TOPO / BANNER CLARO:
+   - Substituir o fundo escuro por banner suave (gradiente #f2f8f4 -> #ffffff)
+     com título "Nosso cardápio", subtítulo (cfg.congelados.loginSub) e botões
+     de acesso ("Entrar com meu cadastro" quando deslogado + "Falar com vendedor").
+   - Quando cliente logado: exibir barra limpa em card branco com borda sutil
+     verde mostrando nome do cliente, condição padrão e botão pílula verde
+     "Repetir último pedido".
+
+2) BARRA DE FILTROS MODERNIZADA (estilo Presto + busca):
+   - Fileira 1: chips de grupos/categorias ("Todos", "Você sempre pede" se
+     logado, + todos os grupos da API com contagem de produtos) em LINHA ÚNICA
+     com rolagem horizontal suave no mobile (overflow-x: auto; flex-wrap: nowrap;
+     scroll-snap-type: inline proximity — NÃO quebrar em várias linhas!).
+   - Campo de busca rápida ao lado ("Buscar produto ou código...") filtrando por
+     nome, código e grupo em tempo real.
+   - Fileira 2 (sub-filtros): chips menores filtrando pelo campo `preparo` real
+     dos produtos ("Todos os preparos", "Para fritar", "Para assar",
+     "Assar ou aquecer", "Somente Aquecer").
+   - Faixa de contexto do grupo: quando um grupo específico está selecionado e
+     possui `grupo.descricao`, exibir uma barra discreta com filete verde à
+     esquerda mostrando a descrição daquele grupo.
+
+3) CARDS DE PRODUTO (padrão estúdio branco):
+   - IMPORTANTE: As fotos reais dos produtos da Hardt são em cumbuca branca
+     sobre fundo branco. Por isso, a área da imagem do card DEVE ter:
+     * background: #ffffff (branco puro!)
+     * aspect-ratio: 4 / 3
+     * padding: 12px
+     * img com width: 100%; height: 100%; object-fit: contain;
+     Isso faz as fotos parecerem recortadas e leves exatamente como na Presto!
+   - Badges limpos no topo da foto: preparo (em verde suave) e "Você compra" ou
+     "Indisponível" à direita.
+   - Se o produto tiver mais de 1 foto (p.imagens.length > 1), manter indicador
+     discreto "+N fotos" (ou dots sutis).
+   - Corpo do card:
+     * Rótulo pequeno verde: grupoNome · cód. {codigo}
+     * Título do produto (clicável para abrir a Ficha Técnica)
+     * Descrição curta (se existir, máx 2 linhas com line-clamp)
+     * Chips leves de embalagem e peso unitário (ex: "pacote · 90 un", "22g/un")
+     * Link explícito em verde: "Ficha técnica ›" (abre o modal da ficha)
+     * Rodapé com borda superior fina: preço em destaque à esquerda e botão
+       pílula "+ Adicionar" (que vira stepper "− q +" ao adicionar) à direita.
+
+4) MODAL DE FICHA TÉCNICA (FichaModal — inspirado em ficha_produto.jsp):
+   - Substituir o modal escuro/estreito atual por um modal amplo e claro
+     (largura até 980px no desktop), usando elemento nativo <dialog> aberto com
+     showModal() (com closedby="any" + fallback de clique fora para Safari,
+     overscroll-behavior: contain em dialog:modal e overflow: hidden;
+     overscroll-behavior: contain em dialog::backdrop — sem travar body com
+     overflow: hidden).
+   - Cabeçalho verde Hardt (#0f7a3b) com:
+     * Subtítulo "Ficha de Produto · Hardt Doces e Salgados"
+     * Nome do produto em branco
+     * Botão "Imprimir / PDF" (aciona window.print() com @media print formatado
+       limpo para folha A4, escondendo o restante da página) + botão fechar (✕).
+   - Bloco de apresentação (2 colunas):
+     * Foto principal em quadro branco quadrado (com seletor de bolinhas caso
+       haja múltiplas fotos) + nome, grupo, código, descrição e chips de peso
+       unitário, embalagem, peso do pacote e validade.
+   - Corpo em 2 colunas no desktop (empilha no mobile):
+     * Coluna esquerda:
+       - Card "CARACTERÍSTICAS DO PRODUTO" (título com barrinha vertical verde
+         estilo Presto): código, grupo, embalagem, peso unitário, peso do pacote,
+         validade, conservação/armazenamento.
+       - Card "MODO DE PREPARO" (com et.modoPreparo / p.modoPreparo).
+     * Coluna direita:
+       - Card com TABELA NUTRICIONAL ANVISA ESTILIZADA EM VERDE (igual à tabela
+         modernizada da Presto):
+         * Envolvida em contêiner acessível (tabindex="0", role="region",
+           aria-labelledby) com <caption> verde, <thead> fixo em verde claro
+           (#e7f3eb), linhas zebradas sutis (#f8fbf9), coluna da Porção em
+           negrito verde (#09592a), font-variant-numeric: tabular-nums.
+         * Manter exatamente a mesma lógica de cálculo já existente em
+           CongeladosSite.jsx (parseValor, parseVD, cálculo de 100g a partir de
+           pesoPorcao, recuos ind1/ind2).
+       - Parágrafo de Ingredientes (et.composicao).
+       - Caixa suave amarela de Alérgenos (Glúten, Lactose, alergenos e avisos).
+   - Rodapé fixo do modal: preço + embalagem à esquerda; botões "Fechar" e
+     "+ Adicionar ao pedido" à direita (adiciona ao carrinho direto da ficha!).
+
+5) DRAWER DO CARRINHO E TELA DE CONFIRMAÇÃO:
+   - Migrar o drawer (cg-drawer) do tema escuro para fundo branco limpo, itens
+     em cards suaves (#f7f8f7) com miniatura em fundo branco, seletor segmentado
+     "Entrega | Retirar na loja", inputs explicitamente brancos com texto escuro,
+     e tela de confirmação em card branco limpo (sem serrilhado).
+
+=== 5.3. ABA KIT FESTA — frontend/src/pages/KitFestaSite/KitFestaSite.jsx ===
+
+1) HERO CLARO + COMO FUNCIONA:
+   - Mesmo Header unificado claro no topo.
+   - Hero de 2 colunas em fundo claro suave (com leve brilho dourado sutil):
+     * Esquerda: eyebrow dourado suave (cfg.hero.kicker + desde), H1
+       (cfg.hero.titulo), subtítulo (cfg.hero.subtitulo), botões pílula
+       "Montar meu pedido ↓" e "WhatsApp", além do texto de entrega
+       (cfg.freteTexto).
+     * Direita: card branco limpo com sombra suave exibindo a caixa do Kit Festa
+       (BOX) sem selos tortos.
+   - Faixa "Como funciona" (cfg.comoFunciona): substituir a faixa verde pesada
+     por 4 passos minimalistas em fundo branco com número circular verde suave
+     (1, 2, 3, 4), título e descrição curta.
+
+2) NOVA BARRA FIXA DE PROGRESSO DO PEDIDO MÍNIMO:
+   - Logo acima do cardápio (position: sticky abaixo do header):
+     * Mostra dinamicamente "X / 4 caixas" (usando cfg.regras.minCaixas) e uma
+       barra de progresso verde que preenche conforme o cliente adiciona caixas.
+     * Enquanto < mínimo: "Faltam N caixa(s) para o mínimo de 4".
+     * Quando >= mínimo: "✓ Mínimo atingido! N caixas selecionadas" + botão
+       "Ver carrinho".
+
+3) CATÁLOGO KIT FESTA (unificado com Congelados):
+   - Seção "Mais pedidos" pode ser absorvida como o filtro "★ Mais pedidos" na
+     barra de categorias (ou mantida como faixa limpa acima), deixando a página
+     mais enxuta.
+   - Filtros em linha única com rolagem horizontal: Todos, ★ Mais pedidos, +
+     categorias reais da API (Forno, Doces, Fritos, Congelados) com contagem.
+   - Cards idênticos ao padrão limpo de Congelados: foto em fundo branco puro
+     (object-fit: contain), badge da embalagem (unidadeLabel: "caixa de 25",
+     "pacote 500 g", etc.), badge dourado "★ Mais pedido" quando destaque=true,
+     preço e botão "+ Adicionar" / stepper "− q +".
+
+4) INDIQUE E GANHE, AVALIAÇÕES, CARRINHO E CHECKOUT:
+   - Bloco Indique e Ganhe (cfg.indicacao): card verde Hardt arredondado (28px),
+     limpo, com valor real do crédito e avisoCreditos.
+   - Avaliações: mesmo estilo de card limpo usado na Home.
+   - Drawer do carrinho, modal de Login e tela de Checkout (calendário, slots,
+     endereço, cupons, indicação): atualizar CSS (kitfesta.css) para a nova
+     paleta branca + verde Hardt + tipografia Montserrat/Plus Jakarta Sans,
+     mantendo 100% da lógica e todos os inputs com fundo branco e texto escuro.
+
+--------------------------------------------------------------------------------
+6. PERFORMANCE E OTIMIZAÇÃO DE IMAGENS (RECOMENDADO)
+--------------------------------------------------------------------------------
+Durante a análise do site atual vs. Presto Alimentos, foram encontrados assets
+pesados que deixam o carregamento lento no celular:
+- Logo em produção (/uploads/congelados/logo-1781766671647.png): ~2,2 MB
+  -> Recomendar versão otimizada em WebP/PNG (< 80 KB) com altura máx. 200px.
+- GIF da caixa (/cong/box.gif): ~4,4 MB (e /kitfesta/box.gif: ~600 KB)
+  -> Converter para WebP animado ou PNG/WebP estático de alta qualidade
+  (Pedidos Kit Festa/projeto site pedidos/uploads/Caixa kit festa 02.png
+  convertido para WebP 800px fica abaixo de 120 KB!).
+- Aplicar loading="lazy" e decoding="async" em todas as fotos de cards, e
+  fetchpriority="high" apenas na imagem principal do Hero.
+
+--------------------------------------------------------------------------------
+7. ORDEM SUGERIDA DE IMPLEMENTAÇÃO E CHECKLIST DE VALIDAÇÃO
+--------------------------------------------------------------------------------
+Ordem sugerida:
+1. Criar tokens/base CSS compartilhada (Montserrat + Plus Jakarta Sans, cores
+   claras, botões pílula, header/footer unificados) e atualizar site.css.
+2. Atualizar HomeSite.jsx (Hero mosaico, Dois Caminhos, Diferenciais, Portfólio
+   preview, Nossa História, Avaliações, Contato/Mapa).
+3. Atualizar CongeladosSite.jsx (Banner, filtros linha única + busca + preparo +
+   descrição do grupo, cards brancos, novo FichaModal imprimível em A4, drawer
+   claro).
+4. Atualizar kitfesta.css e KitFestaSite.jsx (Header unificado, Hero claro,
+   Como Funciona minimalista, barra sticky de progresso de caixas, cards
+   unificados, drawer e checkout claros).
+5. Testar e validar tudo antes do deploy.
+
+Checklist de validação final:
+[ ] Desktop (1440px e 1200px) e Mobile (390px) sem rolagem horizontal indesejada.
+[ ] Navegação fluida entre /inicio, /congelados e /kit-festa pelo Header único.
+[ ] Login de cliente em /congelados carrega preços personalizados, "Você sempre
+    pede", "Repetir último pedido" e data sugerida da rota normalmente.
+[ ] Ficha Técnica abre com tabela ANVISA real de qualquer produto e o botão
+    "Imprimir / PDF" gera página A4 limpa (sem cortar colunas nem imprimir fundo
+    da página).
+[ ] Kit Festa valida mínimo de 4 caixas, aplica cupons/indicação, consulta
+    agenda/slots e finaliza pedido pro WhatsApp normalmente.
+[ ] Todos os inputs/selects/textareas ficam brancos com texto escuro mesmo em
+    celulares com Dark Mode ativado.
+[ ] Nenhuma rota de API ou funcionalidade do Admin/PCP/ERP foi afetada.
+================================================================================

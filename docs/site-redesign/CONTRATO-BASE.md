@@ -1,0 +1,10 @@
+# Contrato da base (Etapa A, pronta) — para as Etapas B e C
+
+- Importar `import '../Site/siteBase.css'` (ajuste o caminho) e envolver a página em `<div className="hd">` (o `.hd` é o scroller de 100dvh, como o `.cg`; o header sticky funciona dentro dele). Fontes já estão no `index.html`.
+- `SiteHeader({ ativo:'inicio'|'congelados'|'kitfesta', logo, cfg, sessao:{nome,onEntrar,onSair}, carrinho:{qtd,onAbrir}, acoes, areaRestrita })` — tudo opcional menos `ativo`. Sem `sessao.nome`: botão "Minha área / Já sou cliente" (`onEntrar()` se existir; senão Link para `/congelados?entrar=1`). Com nome: "Olá, Primeiro" + "Sair" (só se `onSair` existir). `carrinho` ausente = sem botão. `acoes` vem antes dos botões. `logo` ausente = `cfg.logoUrl` ou `/cong/logo.png`.
+- `SiteFooter({ cfg, logo })` — 3 colunas, usa `cfg.loja`.
+- `siteUtil.js`: `imgUrl`, `lojaDe(cfg)`, `logoDe(cfg,logo)`, `socialUrl`, `primeiroNome`, `LOGO_PADRAO`, `LOJA_PADRAO`.
+- Classes: layout `.hd-wrap .hd-section .hd-section-tint .hd-section-head`; `.hd-eyebrow(-gold) .hd-dot .hd-chip(-green/-gold)`; botões `.hd-btn (-outline -gold -soft -lg -sm) .hd-link-more`; `.hd-input`; `.hd-card(-lg)`; `.hd-segmented/.hd-seg-btn` (aria-pressed); `.hd-rail`; card de produto `.hd-prod .hd-prod-thumb .hd-prod-badge .hd-prod-body .hd-prod-cat .hd-prod-title .hd-prod-foot .hd-price .hd-price-sub`; `.hd-pill(-cart/-area) .hd-badge`; `.hd-depo*` (avaliações); `.hd-contact*`; `.hd-wa-fab`.
+- Tokens: `--hd-green, -green-dark, -green-tint, -green-soft, -gold, -gold-tint, -gold-ink, -surface, -ink, -text, -muted, -line, -line-strong, -r-md, -r-lg, -shadow-sm/md/lg, -f-head, -f-body`.
+- ATENÇÃO: os resets do `.hd` usam `:where()` (especificidade 0). NÃO reintroduzir `.hd a {...}` nem seletor de elemento solto em `.cg`/`.kf` — isso apagou a cor dos botões na Etapa A.
+- NÃO editar `siteBase.css`, `SiteHeader.jsx`, `SiteFooter.jsx`, `siteUtil.js` (são compartilhados por dois devs em paralelo). Se faltar algo neles, crie no seu próprio CSS e relate.

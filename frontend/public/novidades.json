@@ -1,5 +1,11 @@
 [
   {
+    "slug": "site-novo",
+    "titulo": "Site com visual novo",
+    "resumo": "Início, Congelados e Kit Festa ganharam visual novo e mais claro, com o botão Minha área para quem já é cliente entrar, busca e filtro de preparo nos Congelados e barra do mínimo no Kit Festa.",
+    "data": "2026-11-24"
+  },
+  {
     "slug": "conciliacao-juros",
     "titulo": "Juros e multa na conciliação",
     "resumo": "Ao conciliar vários títulos com uma saída do extrato, se o banco debitou a mais por juros/multa, agora dá para lançar a diferença ali mesmo e a linha fecha como Conciliada.",

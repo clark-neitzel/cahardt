@@ -1,9 +1,13 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import publicApi, { getToken, setToken } from './api';
-import { Icon, WhatsIcon } from './icons';
+import { Icon, WhatsIcon, InstagramIcon, FacebookIcon } from './icons';
 import Login from './Login';
 import FalarVendedor from './FalarVendedor';
+import SiteHeader from './SiteHeader';
+import SiteFooter from './SiteFooter';
+import { lojaDe, socialUrl } from './siteUtil';
+import './siteBase.css';
 import './site.css';
 import { API_URL } from '../../services/api';
 import { useVisitorPing } from '../../hooks/useVisitorPing';
@@ -42,6 +46,8 @@ export default function CongeladosSite() {
 
   const [cart, setCart] = useState(() => { try { return JSON.parse(localStorage.getItem('cg_cart') || '{}') || {}; } catch { return {}; } });
   const [filtro, setFiltro] = useState('todos');
+  const [busca, setBusca] = useState('');        // busca por texto: NÃO é persistida de propósito
+  const [preparo, setPreparo] = useState('todos'); // sub-filtro de preparo: aplicado no navegador (client-side), vale para visitante e cliente
   const [open, setOpen] = useState(false);
   const [confirm, setConfirm] = useState(null);
   const [enviando, setEnviando] = useState(false);
@@ -53,6 +59,7 @@ export default function CongeladosSite() {
   const [erroData, setErroData] = useState('');
 
   const logado = cliente || visitante;
+  const [searchParams, setSearchParams] = useSearchParams();
   const siteLogo = cfg?.logoUrl ? imgUrl(cfg.logoUrl) : LOGO;
   const whatsapp = cfg?.loja?.whatsapp || '5547988548476';
 
@@ -77,6 +84,15 @@ export default function CongeladosSite() {
       publicApi.catalogo().then(setProdutos).catch(() => {});
     }).finally(() => setBooting(false));
   }, []);
+
+  // "Minha área" vindo de outra página (/congelados?entrar=1): abre o login (só se deslogado)
+  // e limpa o parâmetro da URL.
+  useEffect(() => {
+    if (booting || !searchParams.has('entrar')) return;
+    if (!logado) setLoginModal(true);
+    const n = new URLSearchParams(searchParams); n.delete('entrar');
+    setSearchParams(n, { replace: true });
+  }, [booting, searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Carrega catálogo personalizado ao fazer login como cliente registrado
   useEffect(() => {
@@ -175,13 +191,25 @@ export default function CongeladosSite() {
   };
 
   // filtros por categoria
+  const semAcento = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
   const matched = useMemo(() => {
+    const q = semAcento(busca).trim();
     return produtos.filter(p => {
-      if (filtro === 'recompra') return !!p.comprado;
-      if (filtro !== 'todos' && p.grupo !== filtro) return false;
+      if (filtro === 'recompra') { if (!p.comprado) return false; }
+      else if (filtro !== 'todos' && p.grupo !== filtro) return false;
+      if (preparo !== 'todos' && p.preparo !== preparo) return false;
+      if (q && !(semAcento(p.nome).includes(q) || semAcento(p.codigo).includes(q) || semAcento(p.grupoNome).includes(q))) return false;
       return true;
     });
-  }, [produtos, filtro]);
+  }, [produtos, filtro, preparo, busca]);
+
+  // opções de preparo = os valores reais que aparecem nos produtos (ordem de preferência)
+  const preparosDisponiveis = useMemo(() => {
+    const pref = ['Para fritar', 'Para assar', 'Assar ou aquecer', 'Somente Aquecer'];
+    const set = Array.from(new Set(produtos.map(p => p.preparo).filter(Boolean)));
+    const rank = (v) => { const i = pref.findIndex(x => semAcento(x) === semAcento(v)); return i === -1 ? 99 : i; };
+    return set.sort((a, b) => rank(a) - rank(b) || String(a).localeCompare(String(b), 'pt'));
+  }, [produtos]);
 
   const ordenaNome = (a, b) => a.nome.localeCompare(b.nome, 'pt', { sensitivity: 'base' });
 
@@ -204,7 +232,7 @@ export default function CongeladosSite() {
   }, [matched, grupos, filtro]);
 
   const logout = () => {
-    setToken(null); setCliente(null); setVisitante(null); setCart({}); setUltimoPedido([]); setFiltro('todos');
+    setToken(null); setCliente(null); setVisitante(null); setCart({}); setUltimoPedido([]); setFiltro('todos'); setBusca(''); setPreparo('todos');
     // recarrega o catálogo público (preços do site) para não ficar tela vazia
     publicApi.catalogo().then(setProdutos).catch(() => setProdutos([]));
     publicApi.grupos().then(setGrupos).catch(() => {});
@@ -214,7 +242,7 @@ export default function CongeladosSite() {
   const [ficha, setFicha] = useState(null);
   const [fichaLoading, setFichaLoading] = useState(false);
   const abrirFicha = (p) => {
-    setFichaLoading(true); setFicha({ nome: p.nome, imagem: p.imagem, imagens: p.imagens, codigo: p.codigo, _loading: true });
+    setFichaLoading(true); setFicha({ id: p.id, nome: p.nome, imagem: p.imagem, imagens: p.imagens, codigo: p.codigo, _loading: true });
     publicApi.ficha(p.id).then(setFicha).catch(() => setFicha(null)).finally(() => setFichaLoading(false));
   };
 
@@ -239,8 +267,11 @@ export default function CongeladosSite() {
     } finally { setEnviando(false); }
   }
 
-  if (booting) return <div className="cg tex-board cong" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon n="cart" w={28} /></div>;
+  if (booting) return <div className="hd cg cg-boot"><Icon n="cart" w={28} /></div>;
 
+  const nomeCurto = cliente?.nome || visitante?.nome || '';
+  const sessaoHdr = { nome: nomeCurto, onEntrar: () => setLoginModal(true), onSair: logout };
+  const acaoVendedor = <FalarVendedor cliente={cliente} whatsapp={whatsapp} variant="pill" />;
 
   // tela de confirmação
   if (confirm) {
@@ -272,75 +303,90 @@ export default function CongeladosSite() {
     const txt = encodeURIComponent(partes.join('\n'));
     const waLink = `https://wa.me/${whatsapp}?text=${txt}`;
     return (
-      <div className="cg tex-board cong">
-        <div className="cg-login"><div className="cg-login-card"><div className="sawtooth"></div>
-          <div className="cg-login-in">
-            <img className="logo" src={siteLogo} alt="Hardt" />
+      <div className="hd cg">
+        <SiteHeader ativo="congelados" logo={siteLogo} cfg={cfg} sessao={sessaoHdr} acoes={acaoVendedor} />
+        <main className="cg-confirm">
+          <div className="cg-confirm-card">
+            <img className="cg-confirm-logo" src={siteLogo} alt="Hardt" />
             <h1>Pedido registrado!</h1>
-            <p className="sub">Seu pedido <b style={{ color: 'var(--green-dd)' }}>#{confirm.numero}</b> foi registrado{confirm.dataEntrega ? <> para <b style={{ color: 'var(--green-dd)' }}>{confirm.modo === 'retirada' ? 'retirada' : 'entrega'} em {dataBR(String(confirm.dataEntrega).slice(0, 10))}</b></> : ''}. Para a loja já começar a separar, <b style={{ color: 'var(--green-dd)' }}>envie pelo seu WhatsApp</b> tocando no botão abaixo. O pagamento é combinado conforme a sua condição.</p>
-            {confirm.encaixe && <p className="sub" style={{ marginTop: 6, color: 'var(--green-dd)' }}><b>Atenção:</b> essa data é um <b>encaixe</b> — a equipe vai confirmar a viabilidade da entrega e te avisar.</p>}
-            <a className="btn btn-wa btn-block" href={waLink} target="_blank" rel="noreferrer" style={{ marginTop: 8 }}>
+            <p className="cg-confirm-sub">Seu pedido <b>#{confirm.numero}</b> foi registrado{confirm.dataEntrega ? <> para <b>{confirm.modo === 'retirada' ? 'retirada' : 'entrega'} em {dataBR(String(confirm.dataEntrega).slice(0, 10))}</b></> : ''}. Para a loja já começar a separar, <b>envie pelo seu WhatsApp</b> tocando no botão abaixo. O pagamento é combinado conforme a sua condição.</p>
+            {confirm.encaixe && <p className="cg-confirm-sub cg-confirm-enc"><b>Atenção:</b> essa data é um <b>encaixe</b> — a equipe vai confirmar a viabilidade da entrega e te avisar.</p>}
+            <a className="hd-btn hd-btn-lg cg-block" href={waLink} target="_blank" rel="noreferrer">
               <WhatsIcon w={19} /> Enviar pedido pelo WhatsApp
             </a>
-            <button className="btn btn-yellow btn-block" onClick={() => setConfirm(null)} style={{ marginTop: 10 }}>Fazer outro pedido</button>
-            <p className="cg-login-note"><Link to="/inicio">← voltar ao site</Link></p>
+            <button type="button" className="hd-btn hd-btn-outline hd-btn-lg cg-block" onClick={() => setConfirm(null)}>Fazer outro pedido</button>
+            <p className="cg-confirm-note"><Link to="/inicio">← voltar ao site</Link></p>
           </div>
-        </div></div>
+        </main>
+        <SiteFooter cfg={cfg} logo={siteLogo} />
       </div>
     );
   }
 
-  const nomeCurto = cliente?.nome || visitante?.nome || '';
   const gruposFiltro = [{ id: 'todos', nome: 'Todos' }, ...(cliente ? [{ id: 'recompra', nome: 'Recomprar' }] : []), ...grupos];
+  const ficaProdAtual = ficha ? produtos.find(x => x.id === ficha.id) : null;
+  const adicionarDaFicha = (id) => { if (!logado) setFicha(null); addItem(id); }; // login abre fora do dialog
 
   return (
-    <div className="cg tex-board cong">
-      {/* TOPBAR */}
-      <header className="cg-top">
-        <div className="wrap cg-top-in">
-          <div className="cg-brand">
-            <img src={siteLogo} alt="Hardt" />
-            <div className="who">
-              <span className="who-label">Hardt Congelados</span>
-              <b className="who-nome">{nomeCurto}</b>
-            </div>
-          </div>
-          <div className="cg-top-actions">
-            <FalarVendedor cliente={cliente} whatsapp={whatsapp} variant="pill" />
-            <Link to="/inicio" className="cg-pill" title="Página inicial">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-              <span className="lbl">Início</span>
-            </Link>
-            <button className="cg-pill" onClick={logout} title="Sair">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-              <span className="lbl">Sair</span>
-            </button>
-            <button className="cg-pill cg-pill-cart" onClick={() => setOpen(true)} title="Ver pedido">
-              <Icon n="cart" w={17} />
-              <span className="lbl">Pedido</span>
-              {totals.boxes > 0 && <span className="badge">{totals.boxes}</span>}
-            </button>
-          </div>
-        </div>
-      </header>
+    <div className="hd cg">
+      <SiteHeader
+        ativo="congelados" logo={siteLogo} cfg={cfg}
+        sessao={sessaoHdr}
+        carrinho={{ qtd: totals.boxes, onAbrir: () => setOpen(true) }}
+        acoes={acaoVendedor}
+      />
 
-      {/* CONTENT */}
-      <main className="cg-catalog tex-paper">
-        <div className="wrap" style={{ paddingBottom: 120 }}>
-          {/* cabeçalho do cardápio: título + categorias (estilo Kit Festa) */}
-          <div className="cg-cathead">
-            <h2>Nosso cardápio</h2>
-            <div className="cg-filters">
-              {gruposFiltro.map(g => (
-                <button key={g.id} className={'cg-chip' + (filtro === g.id ? ' on' : '')} onClick={() => setFiltro(g.id)}>{g.nome}</button>
-              ))}
+      <main className="cg-main">
+        <section className="cg-banner">
+          <div className="hd-wrap">
+            {!logado ? (
+              <div className="cg-banner-actions">
+                <button type="button" className="hd-btn hd-btn-lg cg-btn-2" onClick={() => setLoginModal(true)}>
+                  <span><b>Entrar com meu cadastro</b><small>Minha área — Já sou cliente</small></span>
+                </button>
+                <FalarVendedor cliente={cliente} whatsapp={whatsapp} variant="botao" />
+              </div>
+            ) : (
+              <div className="cg-logbar">
+                <div className="cg-logbar-info">
+                  <b>{nomeCurto}</b>
+                  <span>{cliente ? (condPadrao?.nome ? `Condição: ${condPadrao.nome}` : 'Cliente cadastrado') : 'Pedido como visitante'}</span>
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+
+        <div className="hd-wrap cg-catalog">
+          {/* cabeçalho do cardápio: título + categorias (existe hoje) */}
+          <div className="cg-toolbar">
+            <div className="cg-toolbar-top">
+              <h2 className="cg-cathead-tit">Nosso cardápio</h2>
+              <div className="cg-filters" role="group" aria-label="Categorias">
+                {gruposFiltro.map(g => (
+                  <button key={g.id} type="button" className="cg-chip" aria-pressed={filtro === g.id} onClick={() => setFiltro(g.id)}>{g.nome}</button>
+                ))}
+              </div>
+              <label className="cg-search">
+                <Icon n="search" w={16} />
+                <input type="search" className="cg-search-in" placeholder="Buscar produto ou código..." aria-label="Buscar produto ou código"
+                  value={busca} onChange={e => setBusca(e.target.value)} autoComplete="off" />
+              </label>
             </div>
+            {preparosDisponiveis.length > 0 && (
+              <div className="cg-filters cg-filters-sub" role="group" aria-label="Modo de preparo">
+                <button type="button" className="cg-chip cg-chip-sub" aria-pressed={preparo === 'todos'} onClick={() => setPreparo('todos')}>Todos os preparos</button>
+                {preparosDisponiveis.map(v => (
+                  <button key={v} type="button" className="cg-chip cg-chip-sub" aria-pressed={preparo === v} onClick={() => setPreparo(v)}>{v}</button>
+                ))}
+              </div>
+            )}
           </div>
 
           {cliente && ultimoPedido.length > 0 && (
             <div className="cg-repeat">
               <span className="rt"><b>Seu último pedido</b> tem {ultimoPedido.length} {ultimoPedido.length === 1 ? 'item' : 'itens'}.</span>
-              <button className="btn btn-green btn-sm" onClick={repetirUltimo}><Icon n="refresh" w={15} /> Repetir último pedido</button>
+              <button type="button" className="hd-btn hd-btn-sm" onClick={repetirUltimo}><Icon n="refresh" w={15} /> Repetir último pedido</button>
             </div>
           )}
 
@@ -348,7 +394,7 @@ export default function CongeladosSite() {
 
           {cliente && comprados.length > 0 && (
             <>
-              <div className="cg-band-head"><span className="kx">Você sempre pede</span></div>
+              <div className="cg-band-head"><h2>Você sempre pede</h2></div>
               <div className="cg-grid">
                 {comprados.map(p => <Card key={p.id} p={p} preco={precoDe(p)} qty={qtyOf(p.id)} add={addItem} dec={removeItem} onAbrir={abrirFicha} />)}
               </div>
@@ -364,28 +410,30 @@ export default function CongeladosSite() {
             </React.Fragment>
           ))}
         </div>
+
+        <ContatoMapa cfg={cfg} />
       </main>
 
-      <FinalSite cfg={cfg} logo={siteLogo} />
+      <SiteFooter cfg={cfg} logo={siteLogo} />
 
       {/* mobile fab */}
       <div className={'cg-fab' + (totals.boxes > 0 && !open ? ' show' : '')}>
-        <button className="btn btn-yellow btn-block" onClick={() => setOpen(true)}>
+        <button type="button" className="hd-btn hd-btn-gold hd-btn-lg cg-block" onClick={() => setOpen(true)}>
           Ver pedido · {totals.boxes} {totals.boxes === 1 ? 'item' : 'itens'} · {money(totals.subtotal)}
         </button>
       </div>
 
       {/* DRAWER */}
       <div className={'cg-overlay' + (open ? ' open' : '')} onClick={() => setOpen(false)}></div>
-      <aside className={'cg-drawer' + (open ? ' open' : '')}>
+      <aside className={'cg-drawer' + (open ? ' open' : '')} aria-label="Seu pedido">
         <div className="cg-dhead">
           <Icon n="cart" w={20} />
           <h3>Seu pedido</h3>
-          {totals.boxes > 0 && <button className="cg-limpar" onClick={limparCarrinho}><Icon n="trash" w={14} /> Limpar</button>}
-          <button className="x" onClick={() => setOpen(false)}><Icon n="x" w={18} /></button>
+          {totals.boxes > 0 && <button type="button" className="cg-limpar" onClick={limparCarrinho}><Icon n="trash" w={14} /> Limpar</button>}
+          <button type="button" className="x" onClick={() => setOpen(false)} aria-label="Fechar pedido"><Icon n="x" w={18} /></button>
         </div>
 
-        <div className="cg-dbody thin-scroll">
+        <div className="cg-dbody">
           {totals.boxes === 0 ? (
             <div className="cg-cart-empty">
               <div className="ic"><Icon n="cart" w={26} /></div>
@@ -399,18 +447,18 @@ export default function CongeladosSite() {
                 return (
                   <div className="cg-citem" key={id}>
                     <div className="cthumb" style={!cimg ? { background: tileGradient(p.codigo || p.nome) } : undefined}>
-                      {cimg && <img src={cimg} alt="" />}
+                      {cimg && <img src={cimg} alt="" loading="lazy" decoding="async" />}
                     </div>
                     <div className="cinfo">
                       <div className="cn">{p.nome}</div>
                       <div className="cp">{money(precoDe(p))}{p.unidades ? ` · ${p.unidades}un` : ` · ${p.embalagem || 'caixa'}`}</div>
                     </div>
                     <div className="cg-ministep">
-                      <button onClick={() => removeItem(id)}><Icon n="minus" w={14} /></button>
+                      <button type="button" onClick={() => removeItem(id)} aria-label="Diminuir"><Icon n="minus" w={14} /></button>
                       <span className="q">{cart[id]}</span>
-                      <button onClick={() => addItem(id)}><Icon n="plus" w={14} /></button>
+                      <button type="button" onClick={() => addItem(id)} aria-label="Aumentar"><Icon n="plus" w={14} /></button>
                     </div>
-                    <button className="cg-citem-del" onClick={() => delItem(id)} title="Remover item" aria-label="Remover item"><Icon n="trash" w={16} /></button>
+                    <button type="button" className="cg-citem-del" onClick={() => delItem(id)} title="Remover item" aria-label="Remover item"><Icon n="trash" w={16} /></button>
                   </div>
                 );
               })}
@@ -419,14 +467,14 @@ export default function CongeladosSite() {
                 {condPadrao && (
                   <>
                     <h4>Condição de pagamento</h4>
-                    <div className="cg-select" style={{ opacity: .9 }}>{condPadrao.nome}</div>
+                    <div className="cg-select cg-select-ro">{condPadrao.nome}</div>
                   </>
                 )}
 
                 <h4>Como receber</h4>
-                <div className="cg-modo">
-                  <button type="button" className={hdr.modo !== 'retirada' ? 'on' : ''} onClick={() => setModo('entrega')}>Entrega</button>
-                  <button type="button" className={hdr.modo === 'retirada' ? 'on' : ''} onClick={() => setModo('retirada')}>Retirar na loja</button>
+                <div className="hd-segmented cg-modo">
+                  <button type="button" className="hd-seg-btn" aria-pressed={hdr.modo !== 'retirada'} onClick={() => setModo('entrega')}>Entrega</button>
+                  <button type="button" className="hd-seg-btn" aria-pressed={hdr.modo === 'retirada'} onClick={() => setModo('retirada')}>Retirar na loja</button>
                 </div>
 
                 <h4>{hdr.modo === 'retirada' ? 'Data de retirada' : 'Data de entrega'}</h4>
@@ -458,11 +506,11 @@ export default function CongeladosSite() {
                 {!cliente?.temCadastroApp && (
                   <>
                     <h4>Telefone (WhatsApp)</h4>
-                    <input className="cg-select" value={hdr.telefone} onChange={e => setHdr({ ...hdr, telefone: e.target.value })} placeholder="(47) 9 9999-9999" />
+                    <input className="cg-select" inputMode="tel" value={hdr.telefone} onChange={e => setHdr({ ...hdr, telefone: e.target.value })} placeholder="(47) 9 9999-9999" />
                   </>
                 )}
 
-                <h4>Observações <span style={{ color: 'var(--chalk-dim)', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(opcional)</span></h4>
+                <h4>Observações <span className="cg-opc">(opcional)</span></h4>
                 <textarea className="cg-textarea" placeholder="Horário, doca, alguma observação..." value={hdr.obs} onChange={e => setHdr({ ...hdr, obs: e.target.value })} />
               </div>
             </>
@@ -476,16 +524,16 @@ export default function CongeladosSite() {
             {below && <p className="cg-minwarn"><Icon n="tag" w={13} /> Pedido mínimo de {money(minimo)} para esta condição — faltam {money(minimo - totals.subtotal)}.</p>}
             {carrinhoIndisp && <p className="cg-minwarn"><Icon n="tag" w={13} /> Há item <b>sem estoque</b> no carrinho. Remova-o para continuar.</p>}
             {erroEnvio && <p className="cg-minwarn"><Icon n="tag" w={13} /> {erroEnvio}</p>}
-            <button className="btn btn-wa btn-block cg-cta" disabled={below || enviando || !hdr.dataEntrega || carrinhoIndisp} onClick={finalizar}>
+            <button type="button" className="hd-btn hd-btn-lg cg-block cg-cta" disabled={below || enviando || !hdr.dataEntrega || carrinhoIndisp} onClick={finalizar}>
               <Icon n="check" w={18} /> {enviando ? 'Enviando…' : carrinhoIndisp ? 'Remova itens sem estoque' : !hdr.dataEntrega ? 'Escolha a data de entrega' : 'Enviar pedido pelo WhatsApp'}
             </button>
-            <p className="cg-login-note" style={{ marginTop: 10 }}>Pagamento combinado depois, conforme sua condição — nada é cobrado online.</p>
+            <p className="cg-dnote">Pagamento combinado depois, conforme sua condição — nada é cobrado online.</p>
           </div>
         )}
       </aside>
 
       {loginModal && !logado && (
-        <div className="cg-fmodal-ov" style={{ alignItems: 'center' }} onClick={(e) => e.target === e.currentTarget && setLoginModal(false)}>
+        <div className="cg-login-ov" onClick={(e) => e.target === e.currentTarget && setLoginModal(false)}>
           <Login
             logo={siteLogo}
             whatsapp={whatsapp}
@@ -493,23 +541,30 @@ export default function CongeladosSite() {
             sub={cfg?.congelados?.loginSub || 'Faça login para adicionar produtos ao pedido e ver seu histórico.'}
             onLogin={(c) => { setCliente(c); setLoginModal(false); }}
             onVisitante={(v) => { setVisitante(v); setLoginModal(false); }}
+            onFechar={() => setLoginModal(false)}
           />
         </div>
       )}
 
-      {ficha && <FichaModal ficha={ficha} onClose={() => setFicha(null)} />}
+      {ficha && (
+        <FichaModal
+          ficha={ficha} onClose={() => setFicha(null)}
+          prod={ficaProdAtual} preco={ficaProdAtual ? precoDe(ficaProdAtual) : null}
+          qty={qtyOf(ficha.id)} add={adicionarDaFicha} dec={removeItem}
+          cfg={cfg}
+        />
+      )}
     </div>
   );
 }
 
-/* ============== FICHA (popup do produto) ============== */
-function FichaModal({ ficha, onClose }) {
+/* ============== FICHA (popup do produto) — <dialog> nativo ============== */
+function FichaModal({ ficha, onClose, prod, preco, qty, add, dec, cfg }) {
+  const dlgRef = useRef(null);
   const imgs = (ficha.imagens?.length ? ficha.imagens : (ficha.imagem ? [ficha.imagem] : [])).map(imgUrl);
   const [idx, setIdx] = useState(0);
   const cur = imgs.length ? idx % imgs.length : 0;
   const multi = imgs.length > 1;
-  const prev = (e) => { e.stopPropagation(); setIdx(i => (i - 1 + imgs.length) % imgs.length); };
-  const next = (e) => { e.stopPropagation(); setIdx(i => (i + 1) % imgs.length); };
   const et = ficha.etiqueta;
   const nut = et?.nutricional || {};
   const pesoPorc = Number(et?.pesoPorcao) || 0;
@@ -527,123 +582,176 @@ function FichaModal({ ficha, onClose }) {
     { label: 'Sódio (mg)',               raw: nut.sodio,               dec: 0, indent: 0 },
   ].filter(r => r.always || r.raw);
   const temNut = pesoPorc > 0 && linhasNut.some(r => r.raw);
+  // linhas já calculadas (100 g / porção / %VD) — usadas na tela E na impressão
+  const rowsNut = linhasNut.map(r => {
+    const porc = parseValor(r.raw);
+    const cem = (porc != null && pesoPorc) ? (porc / pesoPorc) * 100 : null;
+    const vd = parseVD(r.raw);
+    return {
+      label: r.label,
+      ind: r.indent === 1 ? 'ind1' : r.indent === 2 ? 'ind2' : '',
+      cem: fmtNum(cem, r.dec), porc: fmtNum(porc, r.dec), vd: vd != null ? vd : '—',
+    };
+  });
   // declaração de alérgenos (mesma lógica da etiqueta impressa: espécie p/ crustáceos/peixes)
   const alergenos = (Array.isArray(et?.alergenos) ? et.alergenos.filter(Boolean) : []).map(a => {
     if (a === 'Crustáceos' && et.especieCrustaceos) return `${a} (${et.especieCrustaceos})`;
     if (a === 'Peixes' && et.especiePeixes) return `${a} (${et.especiePeixes})`;
     return a;
   });
+  const alertaTxt = et ? (
+    (et.contemGluten ? 'CONTÉM GLÚTEN' : 'NÃO CONTÉM GLÚTEN')
+    + (et.contemLactose ? ' · CONTÉM LACTOSE' : '')
+    + (alergenos.length > 0 ? ` · ALÉRGICOS: CONTÉM ${alergenos.join(', ').toUpperCase()}.` : '')
+    + (et.avisosRotulo ? ` ${String(et.avisosRotulo).toUpperCase()}` : '')
+  ) : '';
+  // Enquanto a ficha carrega, usa o dado do card (se houver); sem ele, não mostra nada (evita "caixa" falso).
+  const embBase = ficha._loading ? (prod || null) : ficha;
+  const embTxt = embBase ? `${embBase.embalagem || 'caixa'}${embBase.unidades ? ` · ${embBase.unidades} un` : ''}` : '';
+  const pesoPacoteTxt = et?.pesoPacote ? (Number(et.pesoPacote) >= 1000 ? `${fmtNum(Number(et.pesoPacote) / 1000, 2)} kg` : `${fmtNum(Number(et.pesoPacote), 0)} g`) : '';
+  const pesoUnTxt = et?.pesoUnitario ? `${et.pesoUnitario} g` : '';
+  const validadeTxt = et?.validadeDias != null ? `${et.validadeDias} dias` : '';
+  const loja = cfg?.loja?.nome || 'Hardt Doces e Salgados';
+  const qtdEmb = et?.quantidadeEmbalagem;
+  const porcoesTxt = qtdEmb != null && qtdEmb !== '' ? `Porções por embalagem: ${qtdEmb}${et.quantidadeAproximada ? '±' : ''} porções` : '';
 
+  const idxAnt = () => setIdx(i => (imgs.length ? (i - 1 + imgs.length) % imgs.length : 0));
+  const idxProx = () => setIdx(i => (imgs.length ? (i + 1) % imgs.length : 0));
+
+  // abre como modal nativo (top layer): foco preso, Esc fecha, fundo inerte
+  useEffect(() => {
+    const d = dlgRef.current;
+    if (d && !d.open) { try { d.showModal(); } catch { d.setAttribute('open', ''); } }
+  }, []);
+  const fechar = () => { const d = dlgRef.current; if (d && d.open) d.close(); else onClose(); };
+  // fallback do clique no fundo (Safari/iOS sem closedby): o alvo é o próprio <dialog>
+  const cliqueFundo = (e) => { if (e.target === e.currentTarget) fechar(); };
+
+  const indisp = !!prod?.indisponivel;
   return (
-    <div className="cg-fmodal-ov" onClick={onClose}>
-      <div className="cg-fmodal" onClick={e => e.stopPropagation()}>
-        <button className="cg-fclose" onClick={onClose}><Icon n="x" w={18} /></button>
-        <div className="cg-fhero" style={!imgs.length ? { background: tileGradient(ficha.codigo || ficha.nome) } : undefined}>
-          {imgs.length ? (
-            <div className="cg-fslides" style={{ transform: `translateX(-${cur * 100}%)` }}>
-              {imgs.map((u, i) => <img key={i} src={u} alt={ficha.nome} />)}
-            </div>
-          ) : <span className="noimg">foto · {ficha.nome}</span>}
-          {multi && (
-            <>
-              <button className="cg-farrow left" onClick={prev} aria-label="Imagem anterior">‹</button>
-              <button className="cg-farrow right" onClick={next} aria-label="Próxima imagem">›</button>
-              <div className="cg-fdots">{imgs.map((_, i) => <span key={i} className={i === cur ? 'on' : ''} onClick={(e) => { e.stopPropagation(); setIdx(i); }} />)}</div>
-            </>
-          )}
+    <dialog ref={dlgRef} className="cg-dlg cg-ficha" closedby="any" aria-labelledby="cgFichaTit"
+      onClose={onClose} onClick={cliqueFundo}>
+      <div className="cg-ficha-top">
+        <div className="cg-ficha-tit">
+          <span>Ficha de Produto · {loja}</span>
+          <h2 id="cgFichaTit">{ficha.nome}</h2>
         </div>
-        <div className="cg-fhead">
-          <div className="cg-fhead-info">
-            <h2>{ficha.nome}</h2>
-            {ficha.grupoNome && <span className="cg-ftag">{ficha.grupoNome}</span>}
-            <p className="cg-fmeta">
-              {(ficha.embalagem || 'caixa')}{ficha.unidades ? ` · ${ficha.unidades} un` : ''}{et?.pesoUnitario ? ` · ${et.pesoUnitario}g/un` : ''}
-            </p>
+        <div className="cg-ficha-acts">
+          <button type="button" className="cg-fbtn cg-fbtn-x" onClick={fechar} aria-label="Fechar ficha"><Icon n="x" w={18} /></button>
+        </div>
+      </div>
+
+      <div className="cg-ficha-scroll">
+        <div className="cg-ficha-intro">
+          <div className="cg-ficha-photo">
+            {imgs.length ? <img src={imgs[cur]} alt={ficha.nome} decoding="async" /> : <span className="noimg" style={{ background: tileGradient(ficha.codigo || ficha.nome) }}>foto · {ficha.nome}</span>}
+            {multi && (
+              <>
+                <button type="button" className="cg-farrow left" onClick={idxAnt} aria-label="Foto anterior">‹</button>
+                <button type="button" className="cg-farrow right" onClick={idxProx} aria-label="Próxima foto">›</button>
+              </>
+            )}
+            {multi && (
+              <div className="cg-fdots" role="tablist" aria-label="Fotos do produto">
+                {imgs.map((_, i) => <button key={i} type="button" role="tab" aria-selected={i === cur} aria-label={`Foto ${i + 1}`} className={i === cur ? 'on' : ''} onClick={() => setIdx(i)} />)}
+              </div>
+            )}
+          </div>
+          <div className="cg-ficha-info">
+            {ficha.grupoNome && <span className="hd-chip hd-chip-green">{ficha.grupoNome}</span>}
+            <p className="cg-ficha-cod">cód. {ficha.codigo || '—'}</p>
+            {ficha.descricao && <p className="cg-fdesc">{ficha.descricao}</p>}
+            <div className="cg-fchips">
+              {embTxt && <span className="hd-chip">{embTxt}</span>}
+              {pesoUnTxt && <span className="hd-chip">{pesoUnTxt}/un</span>}
+              {pesoPacoteTxt && <span className="hd-chip">pacote {pesoPacoteTxt}</span>}
+              {validadeTxt && <span className="hd-chip">validade {validadeTxt}</span>}
+            </div>
           </div>
         </div>
 
         {ficha._loading ? (
           <p className="cg-floading">Carregando informações…</p>
+        ) : !et ? (
+          <p className="cg-fnodata">Ficha técnica deste produto ainda não cadastrada.</p>
         ) : (
-          <div className="cg-fbody thin-scroll">
-            {ficha.descricao && <p className="cg-fdesc">{ficha.descricao}</p>}
-
-            {!et && <p className="cg-fnodata">Ficha técnica deste produto ainda não cadastrada.</p>}
-
-            {et && (
-              <>
-                {/* Tabela nutricional — padrão ANVISA (IN 75/2020) */}
-                {temNut && (
-                  <div className="cg-fsec">
-                    <div className="cg-nut">
-                      <div className="cg-nut-cab">Informação Nutricional</div>
-                      <table className="cg-nut-tb">
-                        <colgroup><col style={{ width: '44%' }} /><col style={{ width: '18%' }} /><col style={{ width: '24%' }} /><col style={{ width: '14%' }} /></colgroup>
-                        <tbody>
-                          <tr className="porc"><td colSpan={4}>Porções por embalagem: {et.quantidadeEmbalagem}{et.quantidadeAproximada ? '±' : ''} porções<br />Porção: {pesoPorc} g (1 unidade)</td></tr>
-                          <tr className="rule"><td colSpan={4}><div className="thick" /></td></tr>
-                          <tr className="hdr"><td></td><td>100 g</td><td>Porção {pesoPorc} g</td><td>%VD*</td></tr>
-                          {linhasNut.map(r => {
-                            const porc = parseValor(r.raw);
-                            const cem = (porc != null && pesoPorc) ? (porc / pesoPorc) * 100 : null;
-                            const vd = parseVD(r.raw);
-                            const ind = r.indent === 1 ? 'ind1' : r.indent === 2 ? 'ind2' : '';
-                            return (
-                              <tr className="body-row" key={r.label}>
-                                <td className={ind}>{r.label}</td>
-                                <td className="val">{fmtNum(cem, r.dec)}</td>
-                                <td className="val">{fmtNum(porc, r.dec)}</td>
-                                <td className="val">{vd != null ? vd : '—'}</td>
-                              </tr>
-                            );
-                          })}
-                          <tr className="nota"><td colSpan={4}>*Percentual de valores diários fornecidos pela porção.</td></tr>
-                        </tbody>
-                      </table>
-                    </div>
+          <div className="cg-ficha-cols">
+            <div className="cg-ficha-col">
+              <section className="cg-fpanel">
+                <h3 className="cg-fpanel-tit">Características do produto</h3>
+                <dl className="cg-kv">
+                  {[['Código', ficha.codigo], ['Grupo', ficha.grupoNome], ['Embalagem', embTxt], ['Peso unitário', pesoUnTxt], ['Peso do pacote', pesoPacoteTxt], ['Validade', validadeTxt], ['Conservação', et.armazenamento]]
+                    .filter(([, v]) => v).map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}
+                </dl>
+              </section>
+              {et.modoPreparo && (
+                <section className="cg-fpanel">
+                  <h3 className="cg-fpanel-tit">Modo de preparo</h3>
+                  <p className="cg-fpanel-txt">{et.modoPreparo}</p>
+                </section>
+              )}
+            </div>
+            <div className="cg-ficha-col">
+              {/* Tabela nutricional — padrão ANVISA (IN 75/2020) */}
+              {temNut && (
+                <section className="cg-fpanel cg-fpanel-flush">
+                  <div className="cg-table-wrap" tabIndex={0} role="region" aria-labelledby="cgNutCap">
+                    <table className="cg-nut-table">
+                      <caption id="cgNutCap">Informação Nutricional</caption>
+                      <thead>
+                        <tr><th scope="col"><span className="cg-sr">Nutriente</span></th><th scope="col">100 g</th><th scope="col">Porção {pesoPorc} g</th><th scope="col">%VD*</th></tr>
+                      </thead>
+                      <tbody>
+                        <tr><td colSpan={4} className="cg-nut-porc">{porcoesTxt && <>{porcoesTxt}<br /></>}Porção: {pesoPorc} g (1 unidade)</td></tr>
+                        {rowsNut.map(r => (
+                          <tr key={r.label}>
+                            <th scope="row" className={r.ind}>{r.label}</th>
+                            <td>{r.cem}</td>
+                            <td className="col-porc">{r.porc}</td>
+                            <td>{r.vd}</td>
+                          </tr>
+                        ))}
+                        <tr><td colSpan={4} className="cg-nut-nota">*Percentual de valores diários fornecidos pela porção.</td></tr>
+                      </tbody>
+                    </table>
                   </div>
-                )}
+                </section>
+              )}
 
-                {/* Ingredientes + declaração de alérgenos */}
-                {et.composicao && (
-                  <div className="cg-fsec">
-                    <h4>Ingredientes</h4>
-                    <div className="cg-declar">
-                      <div className="ing">{et.composicao}</div>
-                      <div className="alert">
-                        {et.contemGluten ? 'CONTÉM GLÚTEN' : 'NÃO CONTÉM GLÚTEN'}
-                        {et.contemLactose ? ' · CONTÉM LACTOSE' : ''}
-                        {alergenos.length > 0 ? ` · ALÉRGICOS: CONTÉM ${alergenos.join(', ').toUpperCase()}.` : ''}
-                        {et.avisosRotulo ? ` ${String(et.avisosRotulo).toUpperCase()}` : ''}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Modo de preparo (depois dos ingredientes) */}
-                {et.modoPreparo && (
-                  <div className="cg-fsec">
-                    <h4>Modo de preparo</h4>
-                    <p>{et.modoPreparo}</p>
-                  </div>
-                )}
-
-                {/* Validade + conservação no final */}
-                {(et.validadeDias != null || et.armazenamento) && (
-                  <div className="cg-fgrid cg-fgrid-2">
-                    {et.validadeDias != null && <div className="cg-fcard"><b>{et.validadeDias} dias</b><span>validade</span></div>}
-                    {et.armazenamento && <div className="cg-fcard"><b>{et.armazenamento}</b><span>conservação</span></div>}
-                  </div>
-                )}
-              </>
-            )}
+              {/* Ingredientes + declaração de alérgenos */}
+              {et.composicao && (
+                <section className="cg-fpanel">
+                  <h3 className="cg-fpanel-tit">Ingredientes</h3>
+                  <p className="cg-fpanel-txt">{et.composicao}</p>
+                  <div className="cg-alerg">{alertaTxt}</div>
+                </section>
+              )}
+            </div>
           </div>
         )}
-        <div className="cg-ffoot">
-          <button className="btn btn-yellow btn-block" onClick={onClose}>Fechar</button>
+      </div>
+
+      <div className="cg-ficha-foot">
+        <div className="cg-ficha-price">
+          {preco != null ? <b>{money(preco)}</b> : null}
+          {embTxt ? <span>{embTxt}</span> : null}
+        </div>
+        <div className="cg-ficha-foot-acts">
+          <button type="button" className="hd-btn hd-btn-outline" onClick={fechar}>Fechar</button>
+          {prod && (indisp ? (
+            <span className="cg-semestoque">Sem estoque</span>
+          ) : qty === 0 ? (
+            <button type="button" className="hd-btn" onClick={() => add(prod.id)}><Icon n="plus" w={16} /> Adicionar ao pedido</button>
+          ) : (
+            <div className="cg-step" aria-label={`${qty} no pedido`}>
+              <button type="button" onClick={() => dec(prod.id)} aria-label="Diminuir"><Icon n="minus" w={15} /></button>
+              <span className="q">{qty}</span>
+              <button type="button" onClick={() => add(prod.id)} aria-label="Aumentar"><Icon n="plus" w={15} /></button>
+            </div>
+          ))}
         </div>
       </div>
-    </div>
+    </dialog>
   );
 }
 
@@ -659,39 +767,45 @@ function Card({ p, preco, qty, add, dec, onAbrir }) {
   const cur = imgs.length ? idx % imgs.length : 0;
   const emb = p.embalagem || 'caixa';
   const indisp = !!p.indisponivel;
+  const catTxt = [p.grupoNome, p.codigo ? `cód. ${p.codigo}` : null].filter(Boolean).join(' · ');
   return (
     <article className={'cg-card' + (indisp ? ' cg-indisp' : '')}>
-      <div className="ph" style={!imgs.length ? { background: tileGradient(p.codigo || p.nome) } : undefined}
-        onClick={() => onAbrir && onAbrir(p)} role="button" title="Ver detalhes do produto">
-        <div className="tagrow">
-          {indisp && <span className="tg indisp">Indisponível</span>}
-          {p.comprado && !indisp && <span className="tg bought">Você compra</span>}
+      <div className="cg-ph" style={!imgs.length ? { background: tileGradient(p.codigo || p.nome) } : undefined}
+        onClick={() => onAbrir && onAbrir(p)} role="button" tabIndex={0} aria-label={`Ver ficha técnica de ${p.nome}`}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onAbrir && onAbrir(p); } }}>
+        <div className="cg-tagrow">
+          {p.preparo ? <span className="cg-tg cg-tg-prep">{p.preparo}</span> : <span />}
+          {indisp ? <span className="cg-tg cg-tg-indisp">Indisponível</span>
+            : (p.comprado ? <span className="cg-tg cg-tg-bought">Você compra</span> : null)}
         </div>
         {imgs.length ? (
           <div className="cg-slides" style={{ transform: `translateX(-${cur * 100}%)` }}>
-            {imgs.map((u, i) => <img key={i} src={u} alt={p.nome} loading="lazy" />)}
+            {imgs.map((u, i) => <img key={i} src={u} alt={i === 0 ? p.nome : ''} loading="lazy" decoding="async" />)}
           </div>
         ) : <div className="noimg">foto · {p.nome}</div>}
         {imgs.length > 1 && (
           <div className="cg-dots">{imgs.map((_, i) => <span key={i} className={i === cur ? 'on' : ''} />)}</div>
         )}
-        <span className="cg-ver">ver detalhes</span>
       </div>
       <div className="cg-card-body">
-        <h3 onClick={() => onAbrir && onAbrir(p)} style={{ cursor: 'pointer' }}>{p.nome}</h3>
-        <span className="cx">{emb}{p.unidades ? ` · ${p.unidades} un` : ''}</span>
-        {p.preparo && <span className="cg-prep">{p.preparo}</span>}
+        {catTxt && <span className="cg-cat">{catTxt}</span>}
+        <h3><button type="button" className="cg-title-btn" onClick={() => onAbrir && onAbrir(p)}>{p.nome}</button></h3>
+        {p.descricao && <p className="cg-desc">{p.descricao}</p>}
+        <div className="cg-specs">
+          <span className="hd-chip">{emb}{p.unidades ? ` · ${p.unidades} un` : ''}</span>
+        </div>
+        <button type="button" className="cg-ficha-link" onClick={() => onAbrir && onAbrir(p)}>Ficha técnica ›</button>
         <div className="cg-card-foot">
           <div className="price"><b>{money(preco != null ? preco : p.preco)}</b></div>
           {indisp ? (
             <span className="cg-semestoque">Sem estoque</span>
           ) : qty === 0 ? (
-            <button className="cg-add" onClick={() => add(p.id)} aria-label="Adicionar"><Icon n="plus" w={20} /></button>
+            <button type="button" className="hd-btn hd-btn-sm cg-add" onClick={() => add(p.id)} aria-label={`Adicionar ${p.nome}`}><Icon n="plus" w={16} /> Adicionar</button>
           ) : (
             <div className="cg-step">
-              <button onClick={() => dec(p.id)}><Icon n="minus" w={15} /></button>
+              <button type="button" onClick={() => dec(p.id)} aria-label="Diminuir"><Icon n="minus" w={15} /></button>
               <span className="q">{qty}</span>
-              <button onClick={() => add(p.id)}><Icon n="plus" w={15} /></button>
+              <button type="button" onClick={() => add(p.id)} aria-label="Aumentar"><Icon n="plus" w={15} /></button>
             </div>
           )}
         </div>
@@ -700,64 +814,45 @@ function Card({ p, preco, qty, add, dec, onAbrir }) {
   );
 }
 
-/* ---------- Final padrão (igual à home/Kit Festa): contato + mapa + rodapé simples ---------- */
-function FinalSite({ cfg, logo }) {
-  const l = cfg?.loja || {};
-  const wa = `https://wa.me/${l.whatsapp || '5547988548476'}`;
+/* ---------- Contato + mapa (existe hoje: "Onde estamos"), no visual novo ---------- */
+function ContatoMapa({ cfg }) {
+  const loja = lojaDe(cfg);
+  const wa = `https://wa.me/${loja.whatsapp || '5547988548476'}`;
   const waMsg = `${wa}?text=${encodeURIComponent('Olá! Vim pelo site da Hardt e gostaria de fazer um pedido.')}`;
-  const social = (v, base) => !v ? null : (String(v).startsWith('http') ? v : `${base}${String(v).replace(/^@/, '')}`);
-  const igUrl = social(l.instagram, 'https://instagram.com/');
-  const fbUrl = social(l.facebook, 'https://facebook.com/');
-  const mapSrc = `https://www.google.com/maps?q=${encodeURIComponent(String(l.endereco || '').replace(' — ', ', '))}&output=embed`;
+  const igUrl = socialUrl(loja.instagram, 'https://instagram.com/');
+  const fbUrl = socialUrl(loja.facebook, 'https://facebook.com/');
+  const linhas = String(loja.endereco || '').split(' — ');
+  const mapSrc = `https://www.google.com/maps?q=${encodeURIComponent(String(loja.endereco || '').replace(' — ', ', '))}&output=embed`;
   return (
-    <div className="cg-fim">
-      <section className="section" id="contato">
-        <div className="wrap contact">
-          <div className="contact-card">
-            <div className="contact-top">
-              <div className="contact-rows">
-                <div className="contact-row"><div><div className="lab">Onde estamos</div><div className="val" dangerouslySetInnerHTML={{ __html: String(l.endereco || '').replace(' — ', '<br/>') }} /></div></div>
-                <div className="contact-row"><div><div className="lab">WhatsApp</div><a className="val val-big" href={waMsg} target="_blank" rel="noopener noreferrer">{l.telefone}</a></div></div>
-                {l.email && <div className="contact-row"><div><div className="lab">E-mail</div><a className="val" href={`mailto:${l.email}`}>{l.email}</a></div></div>}
-              </div>
+    <section className="hd-section hd-section-tint" id="contato">
+      <div className="hd-wrap">
+        <div className="hd-contact">
+          <div className="hd-contact-box">
+            <div>
+              <div className="hd-contact-row"><small>Onde estamos</small><strong>{linhas.map((l, k) => <React.Fragment key={k}>{k > 0 ? <br /> : null}{l}</React.Fragment>)}</strong></div>
+              <div className="hd-contact-row"><small>WhatsApp</small><a href={waMsg} target="_blank" rel="noopener noreferrer"><strong className="hd-contact-big">{loja.telefone}</strong></a></div>
+              {loja.email ? <div className="hd-contact-row"><small>E-mail</small><a href={`mailto:${loja.email}`}><strong>{loja.email}</strong></a></div> : null}
               {(igUrl || fbUrl) && (
-                <div className="contact-social">
-                  <div className="lab">Redes sociais</div>
-                  <div className="social-links">
-                    {igUrl && (
-                      <a className="soc" href={igUrl} target="_blank" rel="noopener noreferrer" aria-label="Instagram">
-                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5" /><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" /><line x1="17.5" y1="6.5" x2="17.51" y2="6.5" /></svg>
-                        <span>{l.instagram && !String(l.instagram).startsWith('http') ? `@${String(l.instagram).replace(/^@/, '')}` : 'Instagram'}</span>
-                      </a>
-                    )}
-                    {fbUrl && (
-                      <a className="soc" href={fbUrl} target="_blank" rel="noopener noreferrer" aria-label="Facebook">
-                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M22 12a10 10 0 1 0-11.56 9.88v-6.99H7.9V12h2.54V9.8c0-2.5 1.49-3.89 3.78-3.89 1.09 0 2.24.2 2.24.2v2.46h-1.26c-1.24 0-1.63.77-1.63 1.56V12h2.78l-.44 2.89h-2.34v6.99A10 10 0 0 0 22 12z" /></svg>
-                        <span>Facebook</span>
-                      </a>
-                    )}
+                <div className="hd-contact-row">
+                  <small>Redes sociais</small>
+                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 6 }}>
+                    {igUrl && <a className="hd-btn hd-btn-outline hd-btn-sm" href={igUrl} target="_blank" rel="noopener noreferrer" aria-label="Instagram"><InstagramIcon w={16} /> {loja.instagram && !String(loja.instagram).startsWith('http') ? `@${String(loja.instagram).replace(/^@/, '')}` : 'Instagram'}</a>}
+                    {fbUrl && <a className="hd-btn hd-btn-outline hd-btn-sm" href={fbUrl} target="_blank" rel="noopener noreferrer" aria-label="Facebook"><FacebookIcon w={16} /> Facebook</a>}
                   </div>
                 </div>
               )}
             </div>
-            <div className="hero-cta contact-cta">
-              <a className="btn btn-wa" href={waMsg} target="_blank" rel="noopener noreferrer">WhatsApp</a>
-              <Link className="btn btn-yellow" to="/kit-festa">Kit-Festa</Link>
-              <Link className="btn btn-ghost" to="/congelados">Congelados</Link>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <a className="hd-btn" href={waMsg} target="_blank" rel="noopener noreferrer">WhatsApp</a>
+              <Link className="hd-btn hd-btn-gold" to="/kit-festa">Kit-Festa</Link>
+              <Link className="hd-btn hd-btn-outline" to="/congelados">Congelados</Link>
             </div>
           </div>
-          <div className="contact-map">
+          <div className="hd-contact-map">
             <iframe title="Localização da Hardt no mapa" src={mapSrc} loading="lazy" referrerPolicy="no-referrer-when-downgrade" allowFullScreen />
           </div>
         </div>
-      </section>
-      <div className="sawtooth"></div>
-      <footer className="foot">
-        <div className="wrap foot-simple-in">
-          <img className="foot-mark" src={logo || LOGO} alt="Hardt" />
-          <span>Hardt Doces e Salgados Ltda® — Todos os direitos reservados.</span>
-        </div>
-      </footer>
-    </div>
+      </div>
+    </section>
   );
 }
