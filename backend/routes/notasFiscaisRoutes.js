@@ -181,6 +181,123 @@ router.get('/fila', checkVer, async (req, res) => {
     }
 });
 
+// GET /api/notas-fiscais/devolucoes?de=YYYY-MM-DD&ate=YYYY-MM-DD — aba "Devoluções" da tela
+// Notas Fiscais: TODAS as devoluções do período (por Devolucao.dataDevolucao, fuso de Brasília)
+// com a NF de devolução de cada uma (ref `nfd-<p|h>-<id>` do ambiente atual) e a situação
+// calculada no servidor. SÓ LEITURA. Fica ANTES de qualquer rota `/:id...`.
+router.get('/devolucoes', checkVer, async (req, res) => {
+    try {
+        try { await emissao.sincronizarEventos(); } // aplica webhooks pendentes antes de listar
+        catch (e) { console.error('[NotasFiscais] devolucoes: falha ao sincronizar eventos:', e.message); }
+
+        const de = req.query.de ? new Date(`${req.query.de}T00:00:00-03:00`) : null;
+        const ate = req.query.ate ? new Date(`${req.query.ate}T23:59:59.999-03:00`) : null;
+        if ((de && isNaN(de)) || (ate && isNaN(ate))) {
+            return res.status(400).json({ error: 'Datas inválidas (use YYYY-MM-DD).' });
+        }
+        const where = {};
+        if (de || ate) {
+            where.dataDevolucao = {};
+            if (de) where.dataDevolucao.gte = de;
+            if (ate) where.dataDevolucao.lte = ate;
+        }
+
+        const LIMITE = 1000; // backstop — se bater, `truncado: true` e a tela avisa
+        const itens = await prisma.devolucao.findMany({
+            where,
+            select: {
+                id: true, numero: true, dataDevolucao: true, valorTotal: true, status: true,
+                tipo: true, notaDevolucaoCA: true,
+                cliente: { select: { Nome: true, Documento: true } },
+                pedidoOriginal: { select: { id: true, numero: true, especial: true, bonificacao: true, nfeChave: true } },
+            },
+            orderBy: { dataDevolucao: 'desc' },
+            take: LIMITE,
+        });
+
+        const amb = focusNfe.ambiente() === 'producao' ? 'p' : 'h';
+        // Notas de devolução (ref nfd-) e notas de ORIGEM (ref nf-: venda ou bonificação) — 2 consultas, sem N+1.
+        const refsDev = itens.map(d => `nfd-${amb}-${d.id}`);
+        const refsOrigem = [...new Set(itens.map(d => d.pedidoOriginal?.id).filter(Boolean))].map(id => `nf-${amb}-${id}`);
+        const [notasDev, notasOrigem] = await Promise.all([
+            refsDev.length ? prisma.notaFiscalApp.findMany({
+                where: { ref: { in: refsDev } },
+                select: { ref: true, id: true, status: true, numero: true, serie: true, chave: true, mensagemSefaz: true },
+            }) : [],
+            refsOrigem.length ? prisma.notaFiscalApp.findMany({
+                where: { ref: { in: refsOrigem }, status: 'AUTORIZADO' },
+                select: { ref: true, tipo: true },
+            }) : [],
+        ]);
+        const porRef = new Map(notasDev.map(n => [n.ref, n]));
+        const origemAutorizada = new Map(notasOrigem.map(n => [n.ref, n])); // ref -> nota (venda ou bonificação)
+
+        const devolucoes = itens.map(d => {
+            const ped = d.pedidoOriginal || null;
+            const notaReg = porRef.get(`nfd-${amb}-${d.id}`) || null;
+            const nota = notaReg ? {
+                id: notaReg.id, status: notaReg.status, numero: notaReg.numero ?? null,
+                serie: notaReg.serie ?? null, chave: notaReg.chave ?? null, mensagemSefaz: notaReg.mensagemSefaz ?? null,
+            } : null;
+            const prefixoRotulo = ped?.bonificacao ? 'BN#' : (ped?.especial ? 'ZZ#' : '#');
+
+            // ESPELHA as travas de focusNfeEmissaoService.emitirDevolucao (mesma ordem).
+            // Se mudar lá, mudar aqui. É só EXIBIÇÃO — a autoridade é emitirDevolucao.
+            let motivoNaoEmite = null;
+            let bloqueioEmissao = null; // não é "nunca emite", mas hoje não dá para emitir
+            if (d.status !== 'ATIVA') {
+                motivoNaoEmite = 'Devolução revertida';
+            } else if (ped?.bonificacao) {
+                if (ped.especial) motivoNaoEmite = 'Pedido especial não gera nota';
+                else if (d.notaDevolucaoCA) motivoNaoEmite = `Já tem nota antiga do Conta Azul nº ${d.notaDevolucaoCA}`;
+                else if (!origemAutorizada.get(`nf-${amb}-${ped.id}`) || origemAutorizada.get(`nf-${amb}-${ped.id}`).tipo !== 'BONIFICACAO') {
+                    motivoNaoEmite = 'Bonificação sem nota: devolução não gera nota';
+                }
+            } else if (d.tipo === 'ESPECIAL' || ped?.especial) {
+                motivoNaoEmite = 'Pedido especial não gera nota';
+            } else if (d.notaDevolucaoCA) {
+                motivoNaoEmite = `Já tem nota antiga do Conta Azul nº ${d.notaDevolucaoCA}`;
+            } else if (ped && !origemAutorizada.get(`nf-${amb}-${ped.id}`) && !ped.nfeChave) {
+                bloqueioEmissao = 'A NF-e original da venda não foi encontrada';
+            }
+
+            let situacaoNf;
+            if (nota && ['AUTORIZADO', 'PROCESSANDO'].includes(nota.status)) {
+                situacaoNf = nota.status === 'AUTORIZADO' ? 'AUTORIZADA' : 'PROCESSANDO';
+                motivoNaoEmite = null; // nota viva vence qualquer outro motivo
+            } else if (motivoNaoEmite) {
+                situacaoNf = 'NAO_EMITE';
+            } else if (nota && nota.status === 'CANCELADO') {
+                situacaoNf = 'CANCELADA';
+            } else if (nota) { // ERRO | DENEGADO | outro
+                situacaoNf = 'REJEITADA';
+            } else {
+                situacaoNf = 'SEM_NOTA';
+            }
+            const podeEmitir = ['SEM_NOTA', 'REJEITADA', 'CANCELADA'].includes(situacaoNf) && !bloqueioEmissao;
+
+            return {
+                id: d.id,
+                numero: d.numero ?? null,
+                pedido: ped ? { id: ped.id, numero: ped.numero ?? null, rotulo: `${prefixoRotulo}${ped.numero ?? ''}` } : null,
+                cliente: { nome: d.cliente?.Nome || '—', documento: d.cliente?.Documento || null },
+                dataDevolucao: d.dataDevolucao,
+                valorTotal: Number(d.valorTotal),
+                status: d.status,
+                nota,
+                situacaoNf,
+                motivoNaoEmite,
+                bloqueioEmissao,
+                podeEmitir,
+            };
+        });
+        res.json({ devolucoes, total: devolucoes.length, truncado: itens.length === LIMITE });
+    } catch (e) {
+        console.error('[NotasFiscais] devolucoes:', e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // POST /api/notas-fiscais/emitir/:pedidoId — emite (ou reemite após rejeição).
 router.post('/emitir/:pedidoId', checkEmitir, async (req, res) => {
     try {

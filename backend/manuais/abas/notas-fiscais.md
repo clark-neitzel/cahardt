@@ -3,9 +3,27 @@
 **Rota:** `/notas-fiscais` · **Menu:** Financeiro → Notas Fiscais
 **Permissões:** `Pode_Acessar_Notas_Fiscais` (ver a tela, incluindo a aba Canhotos) · `Pode_Emitir_NF` (emitir/reemitir) · `Pode_Excluir_Pedido` (botão "Cancelar pedido") · `Pode_Configurar_NF` (existe no cadastro, mas **nenhuma tela usa** esta permissão hoje)
 
-**Abas da tela:** A emitir · Emitidas · **Canhotos** · Todas. As três primeiras tratam de *emitir* a nota; a aba **Canhotos** trata do *papel assinado que volta com o motorista* (seção própria no fim deste manual). As abas A emitir, Emitidas e Canhotos mostram a contagem do período no próprio rótulo.
+**Abas da tela:** A emitir · Emitidas · **Canhotos** · Bonificações · **Devoluções** · Todas. A emitir, Emitidas, Bonificações e Todas tratam de *emitir* a nota de venda; a aba **Canhotos** trata do *papel assinado que volta com o motorista* (seção própria no fim deste manual); a aba **Devoluções** mostra a NF-e de *devolução* (seção "Aba Devoluções" abaixo). As abas A emitir, Emitidas, Canhotos, Bonificações e Devoluções mostram a contagem do período no próprio rótulo.
 
-**Cada aba lembra o próprio período.** As abas de emissão (A emitir · Emitidas · Todas) abrem em **Hoje**, porque emitir nota é tarefa do dia. A aba **Canhotos** abre em **Este mês**, porque o arquivo de canhotos é organizado por mês, igual à pasta física. O seletor de período é um só na tela — ele troca junto com a aba —, e mexer no período de uma aba **não altera** o da outra.
+**Cada aba lembra o próprio período.** As abas de emissão (A emitir · Emitidas · Todas) abrem em **Hoje**, porque emitir nota é tarefa do dia. As abas **Canhotos** e **Devoluções** abrem em **Este mês** (a de Canhotos porque o arquivo de canhotos é organizado por mês, igual à pasta física; a de Devoluções porque se confere o mês todo). O seletor de período é um só na tela — ele troca junto com a aba —, e mexer no período de uma aba **não altera** o da outra.
+
+## Aba Devoluções (11/2026)
+
+Mostra **todas as devoluções do período, com a nota emitida ou não** — é onde se acha "a nota daquela devolução". Abre em **Este mês** (período próprio da aba, que não mexe no das outras) e o número no rótulo "Devoluções (N)" é o total do período. Cada linha traz: nº da devolução (DEV#), pedido, cliente (com CPF/CNPJ), data, valor e a **situação da NF-e**:
+
+- **Sem nota** (cinza) — a devolução foi registrada mas a nota não foi emitida. Se ainda não dá para emitir (por exemplo, a NF-e original da venda não foi encontrada), o motivo aparece embaixo do selo.
+- **Processando** (azul) — enviada à SEFAZ; a lista atualiza sozinha a cada 10s.
+- **NF 12345 · Série 1** (verde) — autorizada; botões **DANFE** e **XML**.
+- **Rejeitada** (vermelho) — a SEFAZ recusou; a mensagem oficial aparece numa caixa embaixo do selo.
+- **Cancelada** (vermelho) — nota cancelada.
+- **Não emite** (cinza) — devolução que **nunca gera nota** (por exemplo, devolução de pedido especial ou que já tem nota antiga); o motivo vem escrito embaixo.
+- Devolução **Revertida** aparece com selo cinza "Revertida" e a linha esmaecida (devolução desfeita não emite nota).
+
+**Botão de emitir:** "Emitir NF de devolução" (sem nota) ou "Emitir novamente" (rejeitada/cancelada) só aparece quando o sistema libera a emissão **e** a pessoa tem permissão (administrador, `Pode_Emitir_NF` ou `Pode_Fazer_Devolucao`). O botão trava enquanto envia (não dá clique duplo) e a lista recarrega ao terminar; se der erro, o motivo aparece na tela.
+
+**Filtro rápido** por situação (Todas · Sem nota · Rejeitadas · Autorizadas · Não emitem), que fica salvo para o usuário; cada chip mostra quantas devoluções do período têm aquela situação. Se o período tiver devoluções demais, um aviso amarelo pede um período menor.
+
+A emissão **automática** ao registrar a devolução no Caixa continua igual, e **Pedidos → Devoluções** continua tendo o botão "Emitir NF de devolução" — esta aba é só uma visão geral para achar e acompanhar as notas.
 
 ## O que é
 
@@ -64,6 +82,7 @@ Quando o motivo tem a ver com o cadastro do cliente (documento, inscrição esta
 - **"Cliente ... sem CPF/CNPJ"** ou **"cadastro incompleto: falta CEP/rua/número..."** → completar o cadastro do cliente (aba Clientes) e emitir de novo.
 - **"IE do destinatário não informada"** → cliente PJ contribuinte sem inscrição estadual no cadastro; preencher a IE do cliente (a busca por CNPJ no cadastro traz a IE) e reemitir.
 - **"Destinatário bloqueado na UF"** (rejeição 305) → **não é falta de IE nem erro de UF**; o cadastro do cliente está bloqueado na SEFAZ do estado dele. Usar o botão "Conferir na Receita/SEFAZ" (acima) para ver se o CNPJ foi baixado.
+- **Rejeição por vencimento da cobrança** ("Dados de cobrança não devem ser informados para pagamento à vista" ou "Data de vencimento da parcela ... menor que a Data de Emissão") → a nota à vista sai com vencimento no dia seguinte à venda; se ela for emitida nesse dia ou depois, o sistema passa o vencimento **da nota** para o dia seguinte à emissão (só na nota; o Contas a Receber e o boleto não mudam). Se a nota antiga foi rejeitada assim, é só reemitir.
 - **Nota presa em "Processando"** por mais de alguns minutos → o sistema já consulta sozinho, a cada 5 minutos, toda nota parada nesse status, e destrava assim que a SEFAZ responde (não é preciso ficar clicando). O botão "Atualizar" serve para conferir na hora. Se passar de ~1 hora assim, a nota está travada do lado da SEFAZ/Focus, não do app: avisar o suporte informando o número do pedido.
 
 ## XMLs para a contabilidade

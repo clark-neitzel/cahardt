@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Notas de Devolução — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp (sem og:image: cartão compacto) -->
+<meta property="og:title" content="↩️ Novidade no Hardt App: Notas de Devolução na tela de Notas">
+<meta property="og:description" content="Agora dá para ver todas as devoluções e a nota de cada uma (emitida ou não) na tela Notas Fiscais, e emitir ali mesmo.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 96px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 7vw, 40px);
+    font-weight: 800;
+    line-height: 1.12;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.75);
+    font-size: 16px;
+    max-width: 46ch;
+    margin: 0 auto;
+    text-wrap: balance;
+  }
+
+  /* mock da tela flutuando sobre o hero */
+  .mock {
+    max-width: 420px;
+    margin: -68px auto 28px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.28);
+    overflow: hidden;
+    text-align: left;
+  }
+  .mock-top {
+    background: var(--house);
+    color: #fff;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .mock-top small {
+    display: block;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    color: rgba(255,255,255,.55);
+  }
+  .mock-top strong { font-size: 16px; line-height: 1.2; }
+  .mock-ico { font-size: 24px; }
+  .mock-body { padding: 16px 18px 18px; }
+  .mock-label {
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--ink-soft);
+    margin-bottom: 4px;
+  }
+  .mock-input {
+    border: 1.5px solid #d8d5cc;
+    border-radius: 10px;
+    padding: 11px 13px;
+    font-size: 15px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--ink);
+    background: #fff;
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+  }
+  .mock-input.focado { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0,117,74,.14); }
+  .cursor { display: inline-block; width: 2px; height: 18px; background: var(--primary); margin-left: 2px; animation: pisca 1s steps(1) infinite; }
+  @keyframes pisca { 50% { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .cursor { animation: none; } }
+  .mock-campos { margin-top: 14px; display: grid; gap: 9px; }
+  .campo {
+    background: #f6f5f1;
+    border-radius: 9px;
+    padding: 8px 12px;
+    font-size: 13px;
+    color: #b9b5aa;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background .4s, color .4s;
+  }
+  .campo b { font-weight: 700; }
+  .campo.cheio { background: var(--mint); color: var(--primary-dark); }
+  .campo .ck { opacity: 0; transition: opacity .4s; }
+  .campo.cheio .ck { opacity: 1; }
+  .mock-status {
+    margin-top: 12px;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--ink-soft);
+    min-height: 20px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .mock-status.ok { color: var(--primary-dark); }
+
+  /* botão de demo */
+  .demo-cta {
+    display: block;
+    width: 100%;
+    max-width: 420px;
+    margin: 0 auto 8px;
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    font: inherit;
+    font-size: 16px;
+    font-weight: 800;
+    padding: 16px;
+    border-radius: 999px;
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(0,117,74,.35);
+  }
+  .demo-cta:hover { background: var(--primary-dark); }
+  .demo-cta:focus-visible, .acc-head:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .demo-hint { text-align: center; font-size: 12px; color: var(--ink-soft); margin: 0 0 34px; }
+
+  /* ── SEÇÕES / ACCORDION ── */
+  .sec-label {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: var(--primary-dark);
+    margin: 34px 4px 12px;
+  }
+  .acc {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .acc-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: none;
+    border: none;
+    font: inherit;
+    text-align: left;
+    padding: 15px 16px;
+    cursor: pointer;
+    min-height: 56px;
+  }
+  .acc-ico {
+    width: 38px; height: 38px;
+    border-radius: 11px;
+    background: var(--mint);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  /* passos */
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n {
+    width: 30px; height: 30px; flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 800;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .rodape {
+    text-align: center;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 40px;
+  }
+  .rodape strong { color: var(--primary-dark); }
+
+  /* ── MOCKUPS DAS TELAS DO APP ── */
+  .tela {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .tela-titulo {
+    background: var(--house);
+    color: #fff;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .app-card {
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .app-card-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    border-bottom: 1px solid #f0efe9;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: #6b756f;
+  }
+  .app-card-body { padding: 12px; }
+  .app-input {
+    border: 1px solid #d8d5cc;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 12.5px;
+    color: var(--ink);
+    background: #fff;
+    margin-bottom: 8px;
+  }
+  .app-input small { display: block; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: #9aa5a0; margin-bottom: 2px; }
+  .app-input.ok { background: var(--mint); border-color: rgba(0,117,74,.25); }
+  .app-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--primary);
+    color: #fff;
+    font-size: 12.5px;
+    font-weight: 700;
+    padding: 9px 16px;
+    border-radius: 999px;
+  }
+  .app-btn.claro { background: #fff; border: 1.5px solid var(--primary); color: var(--primary); }
+  .app-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+  .app-pill {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 7px 14px;
+    border-radius: 999px;
+    border: 1.5px solid #d8d5cc;
+    color: #6b756f;
+    background: #fff;
+  }
+  .app-pill.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .app-busca {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .app-busca .app-input { flex: 1; margin-bottom: 0; color: #9aa5a0; }
+  .app-toggle-linha {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: #f7f6f2;
+    border: 1px solid #edece6;
+    border-radius: 10px;
+    padding: 9px 12px;
+    font-size: 12.5px;
+  }
+  .app-toggle-linha small { display: block; font-size: 10.5px; color: #9aa5a0; }
+  .app-toggle {
+    width: 38px; height: 22px; flex-shrink: 0;
+    border-radius: 999px;
+    background: var(--primary);
+    position: relative;
+  }
+  .app-toggle::after {
+    content: '';
+    position: absolute;
+    top: 3px; right: 3px;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: #fff;
+  }
+  .pin {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    flex-shrink: 0;
+    vertical-align: 2px;
+    margin-left: 6px;
+  }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+  .tabs-mock { display:flex; gap:5px; flex-wrap:wrap; margin-bottom:10px; }
+  .sel { display:inline-block; font-size:11px; font-weight:700; padding:3px 9px; border-radius:999px; }
+  .s-cinza{background:#f1f1f0;color:#4b4f4d} .s-azul{background:#dbeafe;color:#1e40af}
+  .s-verde{background:#dcfce7;color:#166534} .s-verm{background:#fee2e2;color:#b91c1c}
+  .linha-dev { background:#fff; border:1px solid #e5e3dc; border-radius:12px; padding:11px 12px; margin-bottom:9px; font-size:12.5px; }
+  .linha-dev .t { display:flex; justify-content:space-between; gap:8px; font-weight:700; color:var(--ink); }
+  .linha-dev .s { color:#6b756f; font-size:11.5px; margin:2px 0 7px; }
+  .rej { background:#fef2f2; border:1px solid #fecaca; color:#991b1b; border-radius:8px; padding:6px 8px; font-size:11px; margin-top:5px; }
+  .mini-btn { display:inline-block; font-size:11.5px; font-weight:700; padding:6px 12px; border-radius:999px; margin-top:7px; margin-right:5px; }
+  .mini-btn.v { background:var(--primary); color:#fff; } .mini-btn.o { border:1.5px solid var(--primary); color:var(--primary); background:#fff; }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>Notas de devolução<br>agora aparecem na tela de Notas</h1>
+    <p>Nova aba <b>Devoluções</b> em Financeiro → Notas Fiscais: todas as devoluções do mês, com a situação da nota de cada uma — emitida ou não.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="sec-label">O que mudou</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">↩️</span>
+      <strong>Uma aba só para as devoluções</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Em <b>Financeiro → Notas Fiscais</b> tem a aba nova <b>"Devoluções (N)"</b>, entre Bonificações e Todas. O número é o total de devoluções do período.</li>
+        <li>Abre em <b>Este mês</b>. Cada linha mostra a devolução, o pedido, o cliente, a data, o valor e a <b>situação da nota</b>.</li>
+        <li>Chega de procurar: a devolução que está <b>sem nota</b> aparece ali, com o botão para emitir.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🚦</span>
+      <strong>Como ler a situação da nota</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li><b>Sem nota</b> (cinza): registrada, mas a nota não foi emitida. Se ainda não dá para emitir, o motivo aparece embaixo.</li>
+        <li><b>Processando</b> (azul): enviada à SEFAZ — a lista atualiza sozinha.</li>
+        <li><b>NF 12345</b> (verde): autorizada. Dá para abrir a <b>DANFE</b> e baixar o <b>XML</b>.</li>
+        <li><b>Rejeitada</b> (vermelho): a SEFAZ recusou; o motivo aparece na linha e dá para emitir novamente.</li>
+        <li><b>Não emite</b> (cinza): devolução que nunca gera nota (ex.: pedido especial). O motivo vem escrito.</li>
+        <li>Devolução <b>revertida</b> aparece esmaecida, com o selo "Revertida".</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">✅</span>
+      <strong>O que continua igual</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Ao registrar a devolução no <b>Caixa</b>, a nota continua sendo emitida <b>automaticamente</b>.</li>
+        <li>Em <b>Pedidos → Devoluções</b> o botão "Emitir NF de devolução" continua funcionando. A aba nova é só uma visão geral para achar e acompanhar.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="sec-label">As telas do app, sem mistério</div>
+
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 1 · Financeiro → Notas Fiscais → aba Devoluções</div>
+    <div class="tela-corpo">
+      <div class="tabs-mock">
+        <span class="app-pill">A emitir</span><span class="app-pill">Emitidas</span><span class="app-pill">Bonificações</span>
+        <span class="app-pill on">Devoluções (7)<span class="pin">1</span></span><span class="app-pill">Todas</span>
+      </div>
+      <div class="tabs-mock">
+        <span class="app-pill" style="font-size:11px;padding:5px 10px">📅 Este mês<span class="pin">2</span></span>
+      </div>
+      <div class="tabs-mock">
+        <span class="app-pill on" style="font-size:11px;padding:5px 10px">Todas (7)</span>
+        <span class="app-pill" style="font-size:11px;padding:5px 10px">Sem nota (2)</span>
+        <span class="app-pill" style="font-size:11px;padding:5px 10px">Rejeitadas (1)</span>
+        <span class="app-pill" style="font-size:11px;padding:5px 10px">Autorizadas (3)</span>
+        <span class="app-pill" style="font-size:11px;padding:5px 10px">Não emitem (1)</span><span class="pin">3</span>
+      </div>
+
+      <div class="linha-dev">
+        <div class="t"><span>DEV#210 · pedido #12480</span><span>R$ 84,50</span></div>
+        <div class="s">Padaria Exemplo LTDA · 12/11/2026</div>
+        <span class="sel s-cinza">Sem nota</span><span class="pin">4</span>
+        <div style="font-size:11px;color:#6b756f;margin-top:4px">A NF-e original da venda não foi encontrada</div>
+      </div>
+
+      <div class="linha-dev">
+        <div class="t"><span>DEV#208 · pedido #12391</span><span>R$ 132,00</span></div>
+        <div class="s">Mercado Modelo · 10/11/2026</div>
+        <span class="sel s-verm">✕ Rejeitada</span>
+        <div class="rej">Rejeição: informe o motivo exibido pela SEFAZ aqui.</div>
+        <span class="mini-btn v">Emitir novamente</span><span class="pin">5</span>
+      </div>
+
+      <div class="linha-dev">
+        <div class="t"><span>DEV#205 · pedido #12310</span><span>R$ 59,90</span></div>
+        <div class="s">Lanchonete da Praça · 06/11/2026</div>
+        <span class="sel s-verde">✓ NF 85012</span><div style="font-size:11px;color:#6b756f;margin-top:3px">Série 1</div>
+        <span class="mini-btn o">DANFE</span><span class="mini-btn o">XML</span><span class="pin">6</span>
+      </div>
+
+      <div class="linha-dev" style="background:#f7f6f2">
+        <div class="t"><span>DEV#201 · pedido ZZ#778</span><span>R$ 40,00</span></div>
+        <div class="s">Cliente Exemplo · 03/11/2026</div>
+        <span class="sel s-cinza">Não emite</span><span class="pin">7</span>
+        <div style="font-size:11px;color:#6b756f;margin-top:4px">Pedido especial não gera nota</div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Aba <b>Devoluções</b>, com o total de devoluções do período entre parênteses.</span></div>
+      <div><span class="pin">2</span><span><b>Período</b>: abre em Este mês e lembra a sua escolha (não mexe nas outras abas).</span></div>
+      <div><span class="pin">3</span><span><b>Filtro rápido</b> por situação, com a quantidade de cada uma. A sua escolha fica salva.</span></div>
+      <div><span class="pin">4</span><span><b>Sem nota</b>: devolução registrada sem nota emitida. Se ainda não pode emitir, o motivo aparece embaixo.</span></div>
+      <div><span class="pin">5</span><span><b>Rejeitada</b>: a mensagem da SEFAZ aparece na linha e o botão <b>"Emitir novamente"</b> reenvia (só aparece para quem tem permissão).</span></div>
+      <div><span class="pin">6</span><span><b>Autorizada</b>: mostra o número e a série da nota, com <b>DANFE</b> e <b>XML</b>.</span></div>
+      <div><span class="pin">7</span><span><b>Não emite</b>: o próprio sistema explica por que essa devolução nunca gera nota.</span></div>
+    </div>
+  </div>
+
+  <div class="sec-label">Para começar a usar</div>
+  <div class="passos">
+    <div class="passo"><span class="passo-n">1</span><div>Abra <b>Financeiro → Notas Fiscais</b> e toque em <b>Devoluções</b>.</div></div>
+    <div class="passo"><span class="passo-n">2</span><div>Toque no filtro <b>Sem nota</b> ou <b>Rejeitadas</b> para ver o que ficou pendente.</div></div>
+    <div class="passo"><span class="passo-n">3</span><div>Na linha da devolução, toque em <b>Emitir NF de devolução</b> (ou <b>Emitir novamente</b>).</div></div>
+  </div>
+
+  <p class="rodape"><strong>Hardt App</strong> · dúvidas? Pergunte ao Clippy. 📎</p>
+</div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.closest('.acc');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', acc.classList.contains('aberto'));
+  }
+</script>
+</body>
+</html>

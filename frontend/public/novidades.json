@@ -1,5 +1,11 @@
 [
   {
+    "slug": "devolucoes-notas",
+    "titulo": "Notas de devolução na tela de Notas",
+    "resumo": "Nova aba Devoluções em Notas Fiscais: veja todas as devoluções do mês e a situação da nota de cada uma, emitida ou não, e emita ali mesmo.",
+    "data": "2026-11-24"
+  },
+  {
     "slug": "aprovar-mesmo-dia",
     "titulo": "Aprovar pedido para hoje",
     "resumo": "Em Pedidos Online, quem aprova o pedido do site agora pode escolher a entrega para o mesmo dia. O site do cliente continua sem aceitar.",

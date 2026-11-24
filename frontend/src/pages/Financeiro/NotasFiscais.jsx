@@ -7,6 +7,7 @@ import { formatarDoc } from '../../utils/documento';
 import { explicarRejeicao } from '../../utils/rejeicaoNfe';
 import clienteService from '../../services/clienteService';
 import CanhotosTab from './CanhotosTab';
+import DevolucoesNfTab from './DevolucoesNfTab';
 import {
     FileText, Loader2, RefreshCw, Send, FileDown, FileCode2, AlertTriangle, HelpCircle, Search, Ban, Zap
 } from 'lucide-react';
@@ -215,6 +216,9 @@ const NotasFiscais = () => {
      * preset no período compartilhado mudaria o filtro das outras abas pelas costas.
      */
     const [periodoCanhotos, periodoCanhotosCtl] = usePeriodoSalvo('notas-fiscais-canhotos', 'mes');
+    // Aba Devoluções: memória de período PRÓPRIA (padrão 'mes'), mesmo motivo dos Canhotos.
+    const [periodoDevolucoes, periodoDevolucoesCtl] = usePeriodoSalvo('notas-fiscais-devolucoes', 'mes');
+    const [totalDevolucoes, setTotalDevolucoes] = useState(null); // contador da aba Devoluções
     const [filtroStatus, setFiltroStatus] = useFiltroSalvo('notas-fiscais:status', 'a-emitir');
     const [totalCanhotos, setTotalCanhotos] = useState(null); // contador da aba Canhotos
     const [ambiente, setAmbiente] = useState(null);
@@ -314,7 +318,7 @@ const NotasFiscais = () => {
     // pedidos) e ficaria batendo a cada 10s durante um mutirão de 20 minutos, sem que
     // nada dele apareça nessa aba.
     useEffect(() => {
-        if (!temProcessando || filtroStatus === 'canhotos') return;
+        if (!temProcessando || filtroStatus === 'canhotos' || filtroStatus === 'devolucoes') return;
         const id = setInterval(() => {
             if (!loteAtivoRef.current) carregar(true);
         }, 10000);
@@ -541,7 +545,7 @@ const NotasFiscais = () => {
                     </div>
                     <h1 className="text-base md:text-2xl font-bold text-gray-900 truncate">Notas Fiscais</h1>
                 </div>
-                {filtroStatus !== 'canhotos' && podeEmitir && (pedidosSemNota.length > 0 || selecionadosValidos.length > 0) && (
+                {filtroStatus !== 'canhotos' && filtroStatus !== 'devolucoes' && podeEmitir && (pedidosSemNota.length > 0 || selecionadosValidos.length > 0) && (
                     <button
                         onClick={emitirTodas}
                         disabled={progressoLote != null || emitindo != null}
@@ -567,7 +571,7 @@ const NotasFiscais = () => {
             {/* Período grande demais: a lista veio cortada — avisar em vez de esconder notas.
                 Só nas abas da fila: a aba Canhotos mostra o aviso equivalente dela, e os
                 dois juntos viravam dois banners âmbar quase idênticos na mesma tela. */}
-            {filtroStatus !== 'canhotos' && truncado && (
+            {filtroStatus !== 'canhotos' && filtroStatus !== 'devolucoes' && truncado && (
                 <div className="mx-3 md:mx-6 mt-3 md:mt-4 flex items-start gap-2 bg-amber-100 border border-amber-300 text-amber-800 rounded-lg px-4 py-3 text-sm font-medium">
                     <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
                     <span>O período escolhido tem pedidos demais — mostrando só os {pedidos.length} mais recentes. Escolha um período menor (ex.: um mês) para ver tudo.</span>
@@ -576,7 +580,7 @@ const NotasFiscais = () => {
 
             <div className="p-3 md:p-6 space-y-4">
                 {/* KPIs — da fila de emissão; a aba Canhotos traz os contadores dela */}
-                {filtroStatus !== 'canhotos' && (
+                {filtroStatus !== 'canhotos' && filtroStatus !== 'devolucoes' && (
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
                         <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Sem nota</div>
@@ -609,6 +613,8 @@ const NotasFiscais = () => {
                             className="w-full md:w-auto"
                             ocultarPresets={['todo']}
                         />
+                    ) : filtroStatus === 'devolucoes' ? (
+                        <FiltroPeriodo periodo={periodoDevolucoes} controle={periodoDevolucoesCtl} className="w-full md:w-auto" />
                     ) : (
                         <FiltroPeriodo periodo={periodo} controle={periodoCtl} className="w-full md:w-auto" />
                     )}
@@ -618,6 +624,7 @@ const NotasFiscais = () => {
                             ['emitidas', `Emitidas (${totalEmitidas})`],
                             ['canhotos', totalCanhotos == null ? 'Canhotos' : `Canhotos (${totalCanhotos})`],
                             ['bonificacoes', `Bonificações (${totalBonificacoes})`],
+                            ['devolucoes', totalDevolucoes == null ? 'Devoluções' : `Devoluções (${totalDevolucoes})`],
                             ['todas', 'Todas'],
                         ].map(([valor, rotulo]) => (
                             <button
@@ -636,7 +643,7 @@ const NotasFiscais = () => {
                         clicaria, e receberia o ZIP de UM DIA — mandando para a contabilidade
                         um mês incompleto sem nada na tela denunciar. É ação da fila de
                         emissão, então acompanha o resto da barra. */}
-                    {filtroStatus !== 'canhotos' && (
+                    {filtroStatus !== 'canhotos' && filtroStatus !== 'devolucoes' && (
                     <button
                         onClick={baixarXmlsZip}
                         disabled={baixandoXmls}
@@ -651,7 +658,14 @@ const NotasFiscais = () => {
 
                 {/* Aba Canhotos: o arquivo do mês. Reaproveita o MESMO FiltroPeriodo acima
                     — dois seletores de data na mesma tela fariam a equipe errar o mês. */}
-                {filtroStatus === 'canhotos' ? (
+                {/* Aba Devoluções: fica SEMPRE montada (escondida nas outras abas) para o
+                    número da pílula aparecer antes de abrir a aba. Ela só repolla quando ativa. */}
+                <DevolucoesNfTab
+                    periodo={periodoDevolucoes}
+                    ativa={filtroStatus === 'devolucoes'}
+                    onTotal={setTotalDevolucoes}
+                />
+                {filtroStatus === 'devolucoes' ? null : filtroStatus === 'canhotos' ? (
                     <CanhotosTab periodo={periodoCanhotos} onTotal={setTotalCanhotos} />
                 ) : (
                 <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
