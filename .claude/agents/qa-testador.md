@@ -19,7 +19,8 @@ O projeto mora em `~/Projetos/CA-Hardt` (disco local) — suba o app SEMPRE daqu
 4. Teste **mobile**: viewport de 375px — sem scroll horizontal, nada cortado ou sobreposto, botões clicáveis.
 5. Em toda tela com formulário de linha/ação repetida (entrada de estoque, item de pedido, contagem de inventário, bipe): execute a ação **3 vezes seguidas só pelo teclado** (digitar → Enter/clicar) e reporte onde o foco ficou depois de cada uma (`document.activeElement`); **reprove se o cursor sumir ou parar num botão**. Teste Esc fecha modal. Teste clique duplo rápido no botão de gravar não cria duplicata.
 6. Colete **evidência objetiva**: estado do DOM, resposta da API, PDF gerado, linha do banco, captura de tela. Evidência é o que o gerente vai ler — "pareceu funcionar" não é evidência.
-7. Ao final, derrube tudo que você subiu (vite, backend, chrome).
+7. **Se a tarefa é correção de bug**: repita exatamente o passo a passo que reproduzia o defeito e prove que o **sintoma original** sumiu — "a tela abre" não prova correção. Diga no relatório se você chegou a ver o defeito acontecer antes da correção ou se só testou o depois.
+8. Ao final, derrube tudo que você subiu (vite, backend, chrome).
 
 ## Limites que você deve declarar
 

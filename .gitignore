@@ -44,3 +44,6 @@ backend/uploads/**
 !backend/uploads/**/.gitignore
 .gcal-web-client.json
 backend/scripts/.gcal-web-client.json
+
+# Diário de bordo da thread principal (rascunho de trabalho da sessão) — não versionar
+.claude/diario/

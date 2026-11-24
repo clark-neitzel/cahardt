@@ -22,6 +22,8 @@ Seu trabalho é pensar antes de alguém codificar.
 5. **Pontos de verificação** — o que o QA precisa clicar e o que o revisor precisa conferir para provar que ficou pronto.
 6. **O que NÃO fazer** — as armadilhas específicas daquela área do sistema.
 
+**Quando você é chamado porque um bug já teve 3 correções que não seguraram** (regra da skill `depuracao-sistematica`): não proponha a 4ª correção pontual. Releia as tentativas anteriores no `git log`, reavalie o desenho daquele trecho e apresente as opções (com custo e risco de cada uma) para o dono decidir.
+
 ## Áreas sensíveis (tratamento especial quando o plano tocar nelas)
 
 - **NF-e de devolução automática** — emissão no clique do registro; travas de idempotência; devolução de pedido especial nunca emite; erro de NF não pode desfazer nem bloquear a devolução.

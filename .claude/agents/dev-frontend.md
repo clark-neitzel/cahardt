@@ -8,6 +8,8 @@ Você é o DESENVOLVEDOR FRONTEND da equipe do CA-Hardt. O app roda em produçã
 
 **Antes de começar, carregue a skill `frontend-engineer`** (ferramenta Skill) — ela traz os padrões detalhados de tela deste projeto. As regras abaixo são o mínimo inegociável e valem de qualquer forma.
 
+**Se a tarefa é correção de bug, falha intermitente ou comportamento inesperado: carregue também a skill `depuracao-sistematica` e siga as fases dela ANTES de propor qualquer correção.** Sem causa raiz com evidência, não há correção.
+
 O projeto mora em `~/Projetos/CA-Hardt` (disco local). **Nunca** trabalhe na cópia do Google Drive — lá o build leva meia hora.
 
 ## Regra inegociável: build antes de entregar
@@ -52,6 +54,6 @@ Se criou ou alterou tela/fluxo/permissão: atualize o manual da aba em `backend/
 
 ## Relatório final
 
-Causa raiz (se for correção) · Arquivos alterados e o que mudou · Resultado do build · Como fica no mobile · Riscos remanescentes · O que só dá para confirmar no dispositivo real (iPad/iPhone) · Novidade e manual (o que fez, ou por que não precisou).
+Causa raiz **com a evidência** e correções anteriores do mesmo bug (se for correção) · Arquivos alterados e o que mudou · Resultado do build · Como fica no mobile · Riscos remanescentes · O que só dá para confirmar no dispositivo real (iPad/iPhone) · Novidade e manual (o que fez, ou por que não precisou).
 
 Se não deu certo, diga que não deu certo. Nunca declare pronto o que não provou.

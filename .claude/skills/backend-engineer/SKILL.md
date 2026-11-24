@@ -1,6 +1,6 @@
 ---
 name: backend-engineer
-description: Especialista em backend do CA-Hardt (Node.js + Express + Prisma/PostgreSQL). Use ao planejar ou implementar qualquer rota, service, worker, schema Prisma, integração (Conta Azul, WhatsApp/Z-API, SEFAZ, Google Drive) ou correção no backend. Garante os padrões críticos do projeto — transações com timeout, schema sem drop de coluna, contrato da API de IA, webhook completo — antes de escrever código.
+description: Especialista em backend do CA-Hardt (Node.js + Express + Prisma/PostgreSQL). Use ao planejar ou implementar qualquer rota, service, worker, schema Prisma, integração (Conta Azul, WhatsApp/Z-API, SEFAZ, Google Drive) ou correção no backend. Garante os padrões críticos do projeto — transações com timeout, schema sem drop de coluna, contrato da API de IA, envio de WhatsApp com tipo/referência — antes de escrever código.
 ---
 
 # Especialista Backend — CA-Hardt

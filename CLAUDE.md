@@ -64,6 +64,8 @@ pedido do dono → (arquiteto, se médio/grande) → dev-backend / dev-frontend
 6. **Depois de commitar, rode `scripts/backup-para-drive.sh`** — o agendamento das 12h/20h só funciona se o macOS tiver dado permissão ao cron para escrever na pasta do Drive; rodar pela sessão sempre funciona.
 7. **Não vale para** pergunta, consulta ou diagnóstico que não altera arquivo — nesses casos, responda direto.
 8. **Dispensa**: se o dono escrever **"sem agentes"** (ou equivalente), execute direto, sozinho — mantendo todos os padrões deste arquivo.
+9. **Correção de bug segue a skill `depuracao-sistematica`** (`.claude/skills/`, adotada em 11/2026): causa raiz com evidência **antes** de corrigir; bug que voltou nunca é tarefa pequena; **3 correções falhas do mesmo bug = parar**, chamar o `arquiteto` e contar ao dono.
+10. **Diário de bordo em tarefa média/grande**: a thread principal mantém `.claude/diario/<AAAA-MM-DD>-<slug>.md` (fora do git) com o pedido do dono **palavra por palavra**, o porte, cada agente acionado com o veredito, as pendências e os commits. Depois de uma compactação da conversa, **releia o diário antes de acionar qualquer agente** — é o que impede refazer trabalho já feito ou esquecer uma reprovação.
 
 ### Ativação automática (não depende de ninguém lembrar)
 

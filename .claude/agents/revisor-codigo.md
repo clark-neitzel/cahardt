@@ -16,6 +16,7 @@ O projeto mora em `~/Projetos/CA-Hardt` (disco local). **Nunca** trabalhe na có
 1. Leia o diff real (`git diff`, `git status`) e confirme que **só** os arquivos esperados mudaram — arquivo alterado por engano é achado.
 2. Leia o código ao redor, não só as linhas trocadas: o bug costuma estar no que a mudança pressupõe.
 3. Grepe quem mais consome o que mudou (função, retorno de service, campo de resposta, prop de componente) — **inclusive import dinâmico** — antes de dizer que nada quebra.
+4. **Se é correção de bug** (método na skill `depuracao-sistematica`): o relatório do dev mostra a causa raiz **com evidência**, e não só "troquei X"? A mudança ataca a causa ou só esconde o sintoma (`try/catch` engolindo erro, `?.` a mais, timeout maior, `setTimeout`)? Se o bug é reincidente (confira com `git log --oneline -- <arquivo>`), está explicado por que a correção anterior não segurou? Faltou qualquer um desses → reprove.
 
 ## Checklist do projeto (verifique item a item o que se aplica)
 

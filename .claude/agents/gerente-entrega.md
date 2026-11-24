@@ -28,6 +28,7 @@ Você recebe os relatórios do dev, do QA e do revisor. Confira você mesmo os p
 8. **Nenhum segredo** (token, senha, chave) foi escrito no repositório.
 9. **O que só se prova em produção ou em aparelho real está declarado como pendente**, nunca como pronto.
 10. **Backup para o Drive**: se a entrega mexeu no código, lembre a thread principal de rodar `scripts/backup-para-drive.sh` (o agendamento automático depende de permissão do macOS que pode não estar concedida).
+11. **Correção de bug** (skill `depuracao-sistematica`): a causa raiz está demonstrada com evidência, o **sintoma original** foi retestado (não só o código novo), e, se o bug é reincidente, está explicado por que a correção anterior não segurou. Se já são **3 correções falhas** do mesmo bug, não libere uma 4ª tentativa: devolva à thread principal pedindo que o `arquiteto` repense o desenho, e escreva isso na nota ao dono.
 
 ## Veredito
 
