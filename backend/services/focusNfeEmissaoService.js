@@ -149,8 +149,15 @@ function fmtDataVenc(v) {
  * A última duplicata absorve o arredondamento para que a soma das `dup` bata EXATO
  * com `valor_total` e com `valor_liquido_fatura` (senão a SEFAZ rejeita — erro 851).
  * Devolve {} quando não há parcela válida (nota sai sem o quadro, como à vista).
+ *
+ * Vencimento nunca <= data de emissão (`emissaoYMD`, 'YYYY-MM-DD' de Brasília). A SEFAZ rejeita:
+ *  - venc == emissão → "Dados de cobranca nao devem ser informados para pagamento a vista";
+ *  - venc <  emissão → "Data de vencimento da parcela nao informada ou menor que a Data de Emissao".
+ * Isso acontece quando a nota sai num dia >= vencimento calculado (ex.: à vista = venda+1).
+ * Então a duplicata vai para emissão+1 dia. Muda SÓ a nota: a parcela do Contas a Receber
+ * e o boleto não são tocados. Sem `emissaoYMD` (chamada antiga) nada muda.
  */
-function montarCobranca(pedido, total) {
+function montarCobranca(pedido, total, emissaoYMD) {
     let parcelas;
     if (Array.isArray(pedido.caBoletos) && pedido.caBoletos.length > 0) {
         parcelas = pedido.caBoletos
@@ -167,6 +174,19 @@ function montarCobranca(pedido, total) {
         }).map(p => ({ vencimento: fmtDataVenc(p.dataVencimento), valor: round2(Number(p.valor) || 0) }));
     }
     if (!parcelas.length) return {};
+
+    if (emissaoYMD) {
+        const [y, m, d] = emissaoYMD.split('-').map(Number);
+        const proxDia = new Date(Date.UTC(y, m - 1, d + 1, 12)).toISOString().slice(0, 10); // sem depender do fuso
+        let anterior = null;
+        parcelas = parcelas.map(p => {
+            let venc = p.vencimento;
+            if (!venc || venc <= emissaoYMD) venc = proxDia;
+            if (anterior && venc < anterior) venc = anterior; // ordem não-decrescente
+            anterior = venc;
+            return { ...p, vencimento: venc };
+        });
+    }
 
     // Garante soma(duplicatas) === total: a última parcela absorve qualquer diferença
     // (arredondamento do rateio, ou caBoletos que não fecham o total exato).
@@ -319,14 +339,14 @@ async function montarNotaVenda(pedido) {
     // campos, idêntica ao comportamento de hoje. `indicador_pagamento: 1` (a prazo)
     // vai na forma de pagamento das notas a prazo; à vista não o inclui.
     const aPrazo = ehPedidoAPrazo(pedido);
-    const cobranca = aPrazo ? montarCobranca(pedido, total) : {};
+    const agora = agoraBrasilia(); // mesma constante na emissão e na cobrança (vencimento > emissão)
+    const cobranca = aPrazo ? montarCobranca(pedido, total, agora.slice(0, 10)) : {};
     const formaPag = {
         forma_pagamento: formaPagamento(pedido),
         valor_pagamento: total,
         ...(aPrazo ? { indicador_pagamento: 1 } : {}),
     };
 
-    const agora = agoraBrasilia();
     const notaMontada = {
         natureza_operacao: ehCPF ? 'Venda a Nao Contribuinte' : 'Venda de Mercadorias / Produtos',
         data_emissao: agora,
@@ -1434,7 +1454,7 @@ function resumoNotaParaFront(nota) {
     return { id: nota.id, numero: nota.numero ?? null, serie: nota.serie ?? null, chave: nota.chave ?? null };
 }
 
-module.exports = { linhaNomeFantasia, linhaComObs, montarNotaVenda, montarNotaBonificacao, emitirVenda, emitirDevolucao, sincronizarEventos, consultarAtualizar, consultarPresas, getConfig, notaAutorizadaDoPedido,
+module.exports = { montarCobranca, linhaNomeFantasia, linhaComObs, montarNotaVenda, montarNotaBonificacao, emitirVenda, emitirDevolucao, sincronizarEventos, consultarAtualizar, consultarPresas, getConfig, notaAutorizadaDoPedido,
     // devolução de BONIFICAÇÃO (09/2026)
     montarNotaDevolucaoBonificacao, emitirDevolucaoBonificacao,
     mapaNotasBonificacaoAutorizadas, notaBonificacaoAutorizada, resumoNotaParaFront,
