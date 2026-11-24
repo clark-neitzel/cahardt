@@ -1983,9 +1983,9 @@ async function _recalcularLinhaParcialTx(tx, lancamentoId) {
     });
     const idsPag = grupos.flatMap((g) => g.itens.map((i) => i.pagamentoParcelaPagarId)).filter(Boolean);
     const pags = idsPag.length
-        ? await tx.pagamentoParcelaPagar.findMany({ where: { id: { in: idsPag }, estornado: false }, select: { id: true, valorPago: true } })
+        ? await tx.pagamentoParcelaPagar.findMany({ where: { id: { in: idsPag }, estornado: false }, select: { id: true, valorPago: true, juros: true, multa: true } })
         : [];
-    const valorPag = new Map(pags.map((p) => [p.id, num(p.valorPago)]));
+    const valorPag = new Map(pags.map((p) => [p.id, round2(num(p.valorPago) + num(p.juros) + num(p.multa))]));
     let total = 0;
     for (const g of grupos) {
         // item cuja baixa foi estornada não conta mais — sai do grupo
@@ -2030,7 +2030,7 @@ async function _desfazerParciais({ lancamentoId, gruposParciais, user }) {
         });
         const idsPag = grupos.flatMap((g) => g.itens.map((i) => i.pagamentoParcelaPagarId)).filter(Boolean);
         pagamentos = idsPag.length
-            ? await tx.pagamentoParcelaPagar.findMany({ where: { id: { in: idsPag }, estornado: false }, select: { id: true, parcelaPagarId: true, valorPago: true } })
+            ? await tx.pagamentoParcelaPagar.findMany({ where: { id: { in: idsPag }, estornado: false }, select: { id: true, parcelaPagarId: true, valorPago: true, juros: true, multa: true } })
             : [];
         const parcelaIds = [...new Set(pagamentos.map((p) => p.parcelaPagarId))];
         if (pagamentos.length) {
@@ -2047,7 +2047,7 @@ async function _desfazerParciais({ lancamentoId, gruposParciais, user }) {
         });
     }, { timeout: 20000, maxWait: 10000 });
     await _audit('CONCILIACAO_PARCIAL_DESFEITA', 'ExtratoLancamento', lancamentoId, {
-        baixasEstornadas: pagamentos.map((p) => ({ pagamentoId: p.id, valor: num(p.valorPago) }))
+        baixasEstornadas: pagamentos.map((p) => ({ pagamentoId: p.id, valor: round2(num(p.valorPago) + num(p.juros) + num(p.multa)) }))
     }, user);
     return { message: `Conciliação desfeita — ${pagamentos.length} baixa(s) estornada(s) e o lançamento voltou para pendente.` };
 }
@@ -2164,11 +2164,18 @@ async function opcoesVarios() {
  * Concorrência: títulos travados com FOR UPDATE + updateMany condicionado ao valorConciliado
  * esperado → duplo clique/2 abas geram no máximo 1 baixa por título.
  */
-async function conciliarVarios({ lancamentoId, parcelaPagarIds, metodoPagamento, valorConciliadoEsperado, userId, user = null }) {
+async function conciliarVarios({ lancamentoId, parcelaPagarIds, metodoPagamento, valorConciliadoEsperado, juros = 0, multa = 0, userId, user = null }) {
     const ids = [...new Set((parcelaPagarIds || []).filter(Boolean))].sort();
     if (ids.length === 0) throw erro('Marque ao menos um título.');
     if (ids.length > 300) throw erro('Muitos títulos de uma vez (máximo 300).');
     const esperado = round2(num(valorConciliadoEsperado));
+    // juros/multa opcionais (fecham a diferença extrato × boletos); só vão na baixa do ÚLTIMO título
+    for (const v of [juros, multa]) {
+        if (v !== undefined && v !== null && v !== '' && !Number.isFinite(Number(v))) throw erro('Juros/multa inválido.');
+    }
+    const jur = round2(Math.max(0, num(juros)));
+    const mul = round2(Math.max(0, num(multa)));
+    const extras = round2(jur + mul);
     const metodoBody = String(metodoPagamento || '').toUpperCase();
     if (metodoBody && !contasPagarCaSyncService.METODOS_BAIXA_VALIDOS.has(metodoBody)) throw erro('Forma de pagamento inválida.');
 
@@ -2201,9 +2208,14 @@ async function conciliarVarios({ lancamentoId, parcelaPagarIds, metodoPagamento,
         const aloc = parcelas.map((p) => ({ p, saldo: saldoParcelaPagar(p) }));
         if (aloc.some((a) => a.saldo <= 0)) throw erro('Um dos títulos já não tem saldo em aberto — recarregue a lista.');
         const soma = round2(aloc.reduce((s, a) => s + a.saldo, 0));
-        if (soma > falta + 0.01) {
-            throw erro(`Passou do valor: os títulos marcados somam R$ ${brl(soma)} e faltam só R$ ${brl(falta)} neste lançamento.`);
+        if (round2(soma + extras) > falta + 0.01) {
+            throw erro(`Passou do valor: os títulos marcados somam R$ ${brl(soma)}${extras > 0 ? ` + juros/multa R$ ${brl(extras)}` : ''} e faltam só R$ ${brl(falta)} neste lançamento.`);
         }
+        if (extras > 0 && Math.abs(round2(soma + extras) - falta) > 0.01) {
+            throw erro(`Com juros/multa o total precisa fechar a linha: títulos R$ ${brl(soma)} + juros/multa R$ ${brl(extras)} = R$ ${brl(round2(soma + extras))}, mas faltam R$ ${brl(falta)}. Ajuste os valores de juros/multa.`);
+        }
+        // juros/multa vão no título de maior vencimento (padrão do conciliarUnificado)
+        const ultimoId = [...aloc].sort((x, y) => ymd(x.p.dataVencimento).localeCompare(ymd(y.p.dataVencimento)) || String(x.p.id).localeCompare(String(y.p.id))).pop().p.id;
         // forma de pagamento: a do próprio título; se não tiver, a escolhida na tela
         const formas = new Map();
         for (const a of aloc) {
@@ -2214,7 +2226,7 @@ async function conciliarVarios({ lancamentoId, parcelaPagarIds, metodoPagamento,
         }
 
         // 2) reserva a linha (guarda contra duplo clique): só passa quem viu o mesmo valorConciliado
-        const novoTotal = round2(jaConciliado + soma);
+        const novoTotal = round2(jaConciliado + soma + extras);
         const fechou = round2(num(l.valor) - novoTotal) < 0.01;
         const novoStatus = fechou ? 'CONCILIADO' : 'PARCIAL';
         const r = await tx.extratoLancamento.updateMany({
@@ -2230,7 +2242,9 @@ async function conciliarVarios({ lancamentoId, parcelaPagarIds, metodoPagamento,
                 data: {
                     parcelaPagarId: a.p.id,
                     valorPago: a.saldo,
-                    juros: 0, multa: 0, desconto: 0,
+                    juros: a.p.id === ultimoId ? jur : 0,
+                    multa: a.p.id === ultimoId ? mul : 0,
+                    desconto: 0,
                     dataPagamento: new Date(l.data),
                     formaPagamento: formas.get(a.p.id),
                     contaFinanceiraCaId: l.contaFinanceiraCaId, // o banco do extrato é a verdade
@@ -2240,15 +2254,15 @@ async function conciliarVarios({ lancamentoId, parcelaPagarIds, metodoPagamento,
                     registradoPorId: userId || null
                 }
             });
-            criadas.push({ pagamentoId: pag.id, parcelaPagarId: a.p.id, valor: a.saldo });
+            criadas.push({ pagamentoId: pag.id, parcelaPagarId: a.p.id, valor: a.saldo, juros: a.p.id === ultimoId ? jur : 0, multa: a.p.id === ultimoId ? mul : 0 });
             await contasPagarCaSyncService.recalcularParcelaEConta(tx, a.p.id);
         }
         const grupo = await tx.conciliacaoGrupo.create({
             data: {
                 contaFinanceiraCaId: l.contaFinanceiraCaId,
                 tipo: 'DEBITO',
-                valor: soma,
-                valorBaixas: soma,
+                valor: round2(soma + extras),
+                valorBaixas: round2(soma + extras),
                 diferenca: 0,
                 extratoParcialId: lancamentoId,
                 criadoPorId: userId || null
@@ -2257,11 +2271,11 @@ async function conciliarVarios({ lancamentoId, parcelaPagarIds, metodoPagamento,
         await tx.conciliacaoGrupoItem.createMany({
             data: criadas.map((c) => ({ grupoId: grupo.id, pagamentoParcelaPagarId: c.pagamentoId }))
         });
-        resultado = { status: novoStatus, valorConciliado: novoTotal, falta: Math.max(0, round2(num(l.valor) - novoTotal)), soma, grupoId: grupo.id };
+        resultado = { status: novoStatus, valorConciliado: novoTotal, falta: Math.max(0, round2(num(l.valor) - novoTotal)), soma: round2(soma + extras), juros: jur, multa: mul, grupoId: grupo.id };
     }, { timeout: 20000, maxWait: 10000 });
 
     await _audit('CONCILIACAO_VARIOS', 'ExtratoLancamento', lancamentoId, {
-        grupoId: resultado.grupoId, titulos: criadas, somaRodada: resultado.soma, statusResultante: resultado.status
+        grupoId: resultado.grupoId, titulos: criadas, somaRodada: resultado.soma, juros: resultado.juros, multa: resultado.multa, statusResultante: resultado.status
     }, user || (userId ? { id: userId } : null));
 
     return {
@@ -2289,7 +2303,7 @@ async function parciaisDaLinha({ lancamentoId }) {
         idsPag.length ? prisma.pagamentoParcelaPagar.findMany({
             where: { id: { in: idsPag } },
             select: {
-                id: true, valorPago: true, estornado: true, parcelaPagarId: true,
+                id: true, valorPago: true, juros: true, multa: true, estornado: true, parcelaPagarId: true,
                 parcelaPagar: {
                     select: { contaPagar: { select: { descricao: true, fornecedor: { select: { razaoSocial: true, nomeFantasia: true } } } } }
                 }
@@ -2311,7 +2325,7 @@ async function parciaisDaLinha({ lancamentoId }) {
                 parcelaPagarId: p.parcelaPagarId,
                 fornecedor: cp?.fornecedor?.nomeFantasia || cp?.fornecedor?.razaoSocial || null,
                 descricao: cp?.descricao || null,
-                valor: num(p.valorPago),
+                valor: round2(num(p.valorPago) + num(p.juros) + num(p.multa)),
                 conciliadoEm: g.criadoEm,
                 conciliadoPor: nomePorId.get(g.criadoPorId) || null
             });
@@ -2342,7 +2356,7 @@ async function desfazerTitulo({ lancamentoId, pagamentoId, user = null }) {
         if (!item) throw erro('Este título não faz parte da conciliação deste lançamento (talvez já tenha sido desfeito) — recarregue.');
         const del = await tx.conciliacaoGrupoItem.deleteMany({ where: { id: item.id } });
         if (del.count === 0) throw erro('Este título já foi desfeito — recarregue.');
-        const pag = await tx.pagamentoParcelaPagar.findUnique({ where: { id: pagamentoId }, select: { id: true, parcelaPagarId: true, valorPago: true, estornado: true } });
+        const pag = await tx.pagamentoParcelaPagar.findUnique({ where: { id: pagamentoId }, select: { id: true, parcelaPagarId: true, valorPago: true, juros: true, multa: true, estornado: true } });
         info = pag;
         if (pag && !pag.estornado) {
             await tx.pagamentoParcelaPagar.updateMany({
@@ -2355,7 +2369,7 @@ async function desfazerTitulo({ lancamentoId, pagamentoId, user = null }) {
     }, { timeout: 20000, maxWait: 10000 });
 
     await _audit('CONCILIACAO_TITULO_DESFEITO', 'ExtratoLancamento', lancamentoId, {
-        pagamentoId, parcelaPagarId: info?.parcelaPagarId, valor: num(info?.valorPago), novoStatus: novo?.status
+        pagamentoId, parcelaPagarId: info?.parcelaPagarId, valor: round2(num(info?.valorPago) + num(info?.juros) + num(info?.multa)), novoStatus: novo?.status
     }, user);
     return {
         ok: true,

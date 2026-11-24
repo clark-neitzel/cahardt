@@ -1,5 +1,11 @@
 [
   {
+    "slug": "conciliacao-juros",
+    "titulo": "Juros e multa na conciliação",
+    "resumo": "Ao conciliar vários títulos com uma saída do extrato, se o banco debitou a mais por juros/multa, agora dá para lançar a diferença ali mesmo e a linha fecha como Conciliada.",
+    "data": "2026-11-24"
+  },
+  {
     "slug": "relatorio-contador",
     "titulo": "Relatório completo para o contador",
     "resumo": "Em Contabilidade, o Contas a Pagar por categoria agora mostra fornecedor, nota e produtos, com Pago e Em aberto, e gera o arquivo do Excel com uma linha por produto.",
@@ -16,6 +22,12 @@
     "titulo": "Aprovar pedido para hoje",
     "resumo": "Em Pedidos Online, quem aprova o pedido do site agora pode escolher a entrega para o mesmo dia. O site do cliente continua sem aceitar.",
     "data": "2026-11-23"
+  },
+  {
+    "slug": "conferencia-motorista",
+    "titulo": "Conferir a carga no caminhão",
+    "resumo": "Tela nova para o motorista conferir a carga no celular antes de sair: falta com motivo, bolsas com etiqueta, funciona sem internet. O Embarque mostra quem conferiu e o que faltou.",
+    "data": "2026-11-19"
   },
   {
     "slug": "promocao-ajustes",

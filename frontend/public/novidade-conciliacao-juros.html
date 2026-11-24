@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Juros e multa na conciliação — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<meta property="og:title" content="🏦 Novidade no Hardt App: juros e multa na conciliação">
+<meta property="og:description" content="Pagou boleto atrasado e o banco debitou a mais? Agora você lança o juros/multa na própria conciliação e a linha do extrato fecha.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 96px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 7vw, 40px);
+    font-weight: 800;
+    line-height: 1.12;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.75);
+    font-size: 16px;
+    max-width: 46ch;
+    margin: 0 auto;
+    text-wrap: balance;
+  }
+
+  /* mock da tela flutuando sobre o hero */
+  .mock {
+    max-width: 420px;
+    margin: -68px auto 28px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.28);
+    overflow: hidden;
+    text-align: left;
+  }
+  .mock-top {
+    background: var(--house);
+    color: #fff;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .mock-top small {
+    display: block;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    color: rgba(255,255,255,.55);
+  }
+  .mock-top strong { font-size: 16px; line-height: 1.2; }
+  .mock-ico { font-size: 24px; }
+  .mock-body { padding: 16px 18px 18px; }
+  .mock-label {
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--ink-soft);
+    margin-bottom: 4px;
+  }
+  .mock-input {
+    border: 1.5px solid #d8d5cc;
+    border-radius: 10px;
+    padding: 11px 13px;
+    font-size: 15px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--ink);
+    background: #fff;
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+  }
+  .mock-input.focado { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0,117,74,.14); }
+  .cursor { display: inline-block; width: 2px; height: 18px; background: var(--primary); margin-left: 2px; animation: pisca 1s steps(1) infinite; }
+  @keyframes pisca { 50% { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .cursor { animation: none; } }
+  .mock-campos { margin-top: 14px; display: grid; gap: 9px; }
+  .campo {
+    background: #f6f5f1;
+    border-radius: 9px;
+    padding: 8px 12px;
+    font-size: 13px;
+    color: #b9b5aa;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background .4s, color .4s;
+  }
+  .campo b { font-weight: 700; }
+  .campo.cheio { background: var(--mint); color: var(--primary-dark); }
+  .campo .ck { opacity: 0; transition: opacity .4s; }
+  .campo.cheio .ck { opacity: 1; }
+  .mock-status {
+    margin-top: 12px;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--ink-soft);
+    min-height: 20px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .mock-status.ok { color: var(--primary-dark); }
+
+  /* botão de demo */
+  .demo-cta {
+    display: block;
+    width: 100%;
+    max-width: 420px;
+    margin: 0 auto 8px;
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    font: inherit;
+    font-size: 16px;
+    font-weight: 800;
+    padding: 16px;
+    border-radius: 999px;
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(0,117,74,.35);
+  }
+  .demo-cta:hover { background: var(--primary-dark); }
+  .demo-cta:focus-visible, .acc-head:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .demo-hint { text-align: center; font-size: 12px; color: var(--ink-soft); margin: 0 0 34px; }
+
+  /* ── SEÇÕES / ACCORDION ── */
+  .sec-label {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: var(--primary-dark);
+    margin: 34px 4px 12px;
+  }
+  .acc {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .acc-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: none;
+    border: none;
+    font: inherit;
+    text-align: left;
+    padding: 15px 16px;
+    cursor: pointer;
+    min-height: 56px;
+  }
+  .acc-ico {
+    width: 38px; height: 38px;
+    border-radius: 11px;
+    background: var(--mint);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  /* passos */
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n {
+    width: 30px; height: 30px; flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 800;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .rodape {
+    text-align: center;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 40px;
+  }
+  .rodape strong { color: var(--primary-dark); }
+
+  /* ── MOCKUPS DAS TELAS DO APP ── */
+  .tela {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .tela-titulo {
+    background: var(--house);
+    color: #fff;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .app-card {
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .app-card-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    border-bottom: 1px solid #f0efe9;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: #6b756f;
+  }
+  .app-card-body { padding: 12px; }
+  .app-input {
+    border: 1px solid #d8d5cc;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 12.5px;
+    color: var(--ink);
+    background: #fff;
+    margin-bottom: 8px;
+  }
+  .app-input small { display: block; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: #9aa5a0; margin-bottom: 2px; }
+  .app-input.ok { background: var(--mint); border-color: rgba(0,117,74,.25); }
+  .app-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--primary);
+    color: #fff;
+    font-size: 12.5px;
+    font-weight: 700;
+    padding: 9px 16px;
+    border-radius: 999px;
+  }
+  .app-btn.claro { background: #fff; border: 1.5px solid var(--primary); color: var(--primary); }
+  .app-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+  .app-pill {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 7px 14px;
+    border-radius: 999px;
+    border: 1.5px solid #d8d5cc;
+    color: #6b756f;
+    background: #fff;
+  }
+  .app-pill.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .app-busca {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .app-busca .app-input { flex: 1; margin-bottom: 0; color: #9aa5a0; }
+  .app-toggle-linha {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: #f7f6f2;
+    border: 1px solid #edece6;
+    border-radius: 10px;
+    padding: 9px 12px;
+    font-size: 12.5px;
+  }
+  .app-toggle-linha small { display: block; font-size: 10.5px; color: #9aa5a0; }
+  .app-toggle {
+    width: 38px; height: 22px; flex-shrink: 0;
+    border-radius: 999px;
+    background: var(--primary);
+    position: relative;
+  }
+  .app-toggle::after {
+    content: '';
+    position: absolute;
+    top: 3px; right: 3px;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: #fff;
+  }
+  .pin {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    flex-shrink: 0;
+    vertical-align: 2px;
+    margin-left: 6px;
+  }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+
+  .m-resumo { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; font-size:11px; color:#5f6b66; margin-bottom:8px; }
+  .m-resumo b { display:block; font-size:14px; color:var(--ink); }
+  .m-resumo .falta b { color:#b45309; }
+  .m-barra { height:7px; background:#e5e3dc; border-radius:99px; overflow:hidden; margin-bottom:10px; }
+  .m-barra i { display:block; height:100%; width:88%; background:var(--primary); }
+  .m-linha { font-size:12.5px; color:var(--ink-soft); margin-bottom:8px; }
+  .m-grid2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .m-ok { font-size:12px; font-weight:700; color:var(--primary-dark); margin:8px 0; }
+  .m-titulo { display:flex; justify-content:space-between; gap:8px; font-size:12.5px; padding:8px 10px; border:1px solid #e5e3dc; border-radius:10px; background:#fff; margin-bottom:6px; }
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>Juros e multa na<br>conciliação do extrato</h1>
+    <p>Quando o banco debita mais que a soma dos boletos por causa de juros ou multa, você lança a diferença ali mesmo — sem precisar do modo avançado — e a linha fecha como Conciliada.</p>
+  </div>
+</header>
+<div class="wrap">
+
+  <div class="sec-label" style="margin-top:28px">Como funciona</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" type="button"><span class="acc-ico">🤔</span><strong>O problema de antes</strong><span class="acc-seta">▼</span></button>
+    <div class="acc-corpo">
+      <p>Ao conciliar uma saída do extrato com vários títulos do Contas a Pagar, o sistema baixava cada título pelo valor cheio. Se o banco cobrou juros ou multa por pagamento em atraso, a conta não fechava e a linha ficava <b>Parcial</b>.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" type="button"><span class="acc-ico">✨</span><strong>O que mudou</strong><span class="acc-seta">▼</span></button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Marcou os títulos e ainda <b>falta um valor</b>? Aparece o aviso <b>"Falta R$ X — é juros/multa?"</b>.</li>
+        <li>Clique em <b>Lançar como juros/multa</b>: os campos <b>Juros</b> (já preenchido com a diferença) e <b>Multa</b> aparecem.</li>
+        <li>O app mostra <b>juros + multa = falta</b>. O botão <b>Conciliar com juros/multa</b> só liga quando a soma bate com o que falta.</li>
+        <li>Antes de gravar, o app pede uma <b>confirmação</b> com os valores.</li>
+        <li>O juros/multa entra na baixa do <b>título de maior vencimento</b> e a linha fecha como <b>Conciliada</b>.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" type="button"><span class="acc-ico">⚠️</span><strong>Bom saber</strong><span class="acc-seta">▼</span></button>
+    <div class="acc-corpo">
+      <ul>
+        <li>É <b>opcional</b>: se não for juros/multa, siga com <b>Conciliar parcial</b> como sempre.</li>
+        <li>Mudou os títulos marcados? O bloco de juros/multa some e você abre de novo se precisar.</li>
+        <li>O juros/multa aparece no <b>caixa/extrato</b> e no <b>relatório do contador</b>, mas a <b>DRE não conta como despesa</b>.</li>
+        <li><b>Desconto</b> continua no Modo avançado.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="sec-label">As telas do app</div>
+
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 1 · Conciliação — falta um valor</div>
+    <div class="tela-corpo">
+      <div class="m-resumo">
+        <div>Extrato<b>R$ 1.052,40</b></div>
+        <div>Marcado<b>R$ 1.000,00</b></div>
+        <div class="falta">Falta<b>R$ 52,40</b></div>
+      </div>
+      <div class="m-barra"><i></i></div>
+      <div class="m-linha">Falta R$ 52,40 — é juros/multa?</div>
+      <span class="app-btn claro">Lançar como juros/multa<span class="pin">1</span></span>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Com títulos marcados e valor faltando, este botão aparece <b>abaixo do resumo</b>. Se a conta já fechou, ele não aparece.</span></div>
+    </div>
+  </div>
+
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 2 · Juros e multa</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">Juros e multa<span class="pin">1</span></div>
+        <div class="app-card-body">
+          <div class="m-grid2">
+            <div class="app-input"><small>Juros (R$)</small>45,00<span class="pin">2</span></div>
+            <div class="app-input"><small>Multa (R$)</small>7,40<span class="pin">3</span></div>
+          </div>
+          <div class="m-ok">Juros + multa = R$ 52,40 · Falta R$ 52,40 — confere.<span class="pin">4</span></div>
+          <span class="app-btn">✓ Conciliar com juros/multa<span class="pin">5</span></span>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>O bloco abre dentro da própria janela; <b>Cancelar juros/multa</b> fecha e volta ao normal.</span></div>
+      <div><span class="pin">2</span><span><b>Juros</b>: já vem com a diferença toda. Ajuste se parte for multa.</span></div>
+      <div><span class="pin">3</span><span><b>Multa</b>: começa em zero.</span></div>
+      <div><span class="pin">4</span><span>A conferência: se não bater, o app diz <b>quanto sobra ou falta</b>.</span></div>
+      <div><span class="pin">5</span><span>Só liga quando a soma bate. Ao clicar, o app confirma os valores e a linha fecha como <b>Conciliada</b>.</span></div>
+    </div>
+  </div>
+
+  <div class="rodape"><strong>Hardt App</strong> · Financeiro › Conciliação bancária</div>
+</div>
+<script>
+  document.querySelectorAll('.acc-head').forEach(function (b) {
+    b.addEventListener('click', function () { b.parentElement.classList.toggle('aberto'); });
+  });
+</script>
+</body>
+</html>

@@ -381,6 +381,8 @@ router.post('/:id/conciliar-varios', verificarAuth, checkAcesso, async (req, res
             parcelaPagarIds: req.body.parcelaPagarIds,
             metodoPagamento: req.body.metodoPagamento,
             valorConciliadoEsperado: req.body.valorConciliadoEsperado,
+            juros: req.body.juros,
+            multa: req.body.multa,
             userId: req.user.id,
             user: req.user
         });

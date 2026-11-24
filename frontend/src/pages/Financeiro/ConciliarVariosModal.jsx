@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import conciliacaoService from '../../services/conciliacaoBancariaService';
 import SelectBusca from '../../components/SelectBusca';
 import MultiSelect from '../../components/MultiSelect';
+import CampoNumero from '../../components/CampoNumero';
 import FiltroPeriodo, { usePeriodoSalvo } from '../../components/FiltroPeriodo';
 import { useFiltrosSalvos } from '../../hooks/useFiltrosSalvos';
 
@@ -96,6 +97,10 @@ const ConciliarVariosModal = ({ lancamento, onClose, onSuccess, onAlterou, onAva
     const [sugestao, setSugestao] = useState(null);
     const [erroParciais, setErroParciais] = useState(false);
     const [maisAberto, setMaisAberto] = useState(false);
+    // Bloco opt-in "é juros/multa?" (valores em texto com ponto, vindos do CampoNumero)
+    const [jurosAberto, setJurosAberto] = useState(false);
+    const [jurosTxt, setJurosTxt] = useState('');
+    const [multaTxt, setMultaTxt] = useState('0');
     const reqRef = useRef(0);
 
     const valorLinha = Number(lancamento.valor || 0);
@@ -165,6 +170,12 @@ const ConciliarVariosModal = ({ lancamento, onClose, onSuccess, onAlterou, onAva
     const faltaCents = alvoCents - jaCents - marcadoCents;
     const estoura = faltaCents < -1;
     const fecha = Math.abs(faltaCents) <= 1 && marcadoCents > 0;
+    const podeJuros = faltaCents > 1 && sel.size > 0 && !estoura && !fecha;
+    const jurosCents = cents(jurosTxt);
+    const multaCents = cents(multaTxt);
+    const somaJM = jurosCents + multaCents;
+    const jurosBate = jurosAberto && somaJM > 0 && Math.abs(somaJM - faltaCents) <= 1;
+    const dif = faltaCents - somaJM; // >0 falta preencher; <0 passou
     const pct = alvoCents > 0 ? Math.min(100, ((jaCents + marcadoCents) / alvoCents) * 100) : 0;
     const visiveisIds = useMemo(() => new Set(lista.titulos.map((t) => t.parcelaPagarId)), [lista.titulos]);
     const foraDoFiltro = useMemo(() => Array.from(sel.keys()).filter((id) => !visiveisIds.has(id)).length, [sel, visiveisIds]);
@@ -191,6 +202,13 @@ const ConciliarVariosModal = ({ lancamento, onClose, onSuccess, onAlterou, onAva
         return () => clearTimeout(t);
     }, [lista.titulos, alvoCents, jaCents, carregando]);
 
+    // Mudou a seleção (ou a falta): o bloco de juros/multa é descartado
+    const selKey = Array.from(sel.keys()).sort().join(',');
+    useEffect(() => { setJurosAberto(false); setJurosTxt(''); setMultaTxt('0'); }, [selKey, jaCents]);
+
+    const abrirJuros = () => { setJurosTxt(String(faltaCents / 100)); setMultaTxt('0'); setJurosAberto(true); };
+    const fecharJuros = () => { setJurosAberto(false); setJurosTxt(''); setMultaTxt('0'); };
+
     const sugestaoJaMarcada = sugestao && sugestao.length === sel.size && sugestao.every((t) => sel.has(t.parcelaPagarId));
 
     const alternar = (t) => setSel((m) => {
@@ -211,7 +229,12 @@ const ConciliarVariosModal = ({ lancamento, onClose, onSuccess, onAlterou, onAva
     // ---- Ações ----
     const conciliar = async () => {
         if (marcadoCents === 0 || estoura || salvando || !parciais) return;
-        if (!fecha) {
+        const comJuros = jurosAberto && podeJuros;
+        if (comJuros && !jurosBate) return;
+        if (comJuros) {
+            const ok = window.confirm(`Conciliar com juros/multa:\n\nTítulos marcados: R$ ${fmt(marcadoCents / 100)}\nJuros: R$ ${fmt(jurosCents / 100)}\nMulta: R$ ${fmt(multaCents / 100)}\nTotal que saiu do banco: R$ ${fmt((marcadoCents + somaJM) / 100)}\n\nO juros/multa entra na baixa do título de maior vencimento e a linha fecha como Conciliada. Continuar?`);
+            if (!ok) return;
+        } else if (!fecha) {
             const ok = window.confirm(`Conciliar parcial: ${sel.size} título(s), R$ ${fmt(marcadoCents / 100)}.\n\nVai ficar faltando R$ ${fmt(faltaCents / 100)} nesta linha do extrato (ela fica "Parcial"). As baixas dos títulos marcados são dadas agora. Continuar?`);
             if (!ok) return;
         }
@@ -221,6 +244,7 @@ const ConciliarVariosModal = ({ lancamento, onClose, onSuccess, onAlterou, onAva
                 parcelaPagarIds: Array.from(sel.keys()),
                 valorConciliadoEsperado: jaConciliado
             };
+            if (comJuros) { body.juros = jurosCents / 100; body.multa = multaCents / 100; }
             if (metodo && formasValidas.has(metodo)) body.metodoPagamento = metodo; // servidor só usa como reserva
             const r = await conciliacaoService.conciliarVarios(lancamento.id, body);
             toast.success(r.message || (r.status === 'CONCILIADO' ? 'Conciliado!' : 'Conciliado parcialmente.'));
@@ -252,8 +276,9 @@ const ConciliarVariosModal = ({ lancamento, onClose, onSuccess, onAlterou, onAva
     };
 
     const cls = estoura ? 'text-red-700' : fecha ? 'text-primary' : 'text-amber-700';
-    const rotuloBtn = estoura ? 'Passou do valor' : fecha ? 'Conciliar' : 'Conciliar parcial';
-    const rotuloBtnCurto = estoura ? 'Passou' : fecha ? 'Conciliar' : 'Parcial';
+    const comJurosAtivo = jurosAberto && podeJuros;
+    const rotuloBtn = estoura ? 'Passou do valor' : comJurosAtivo ? 'Conciliar com juros/multa' : fecha ? 'Conciliar' : 'Conciliar parcial';
+    const rotuloBtnCurto = estoura ? 'Passou' : comJurosAtivo ? 'Com juros' : fecha ? 'Conciliar' : 'Parcial';
     const continuando = jaCents > 0;
     const fechar = () => {
         if (sel.size > 0 && !window.confirm(`Descartar ${sel.size} título${sel.size !== 1 ? 's' : ''} marcado${sel.size !== 1 ? 's' : ''}?`)) return;
@@ -353,6 +378,33 @@ const ConciliarVariosModal = ({ lancamento, onClose, onSuccess, onAlterou, onAva
                     <div className="h-1.5 md:h-2 bg-gray-200 rounded-full my-1.5 md:my-2.5 overflow-hidden">
                         <div className={`h-full ${estoura ? 'bg-red-500' : 'bg-primary'}`} style={{ width: `${pct}%` }} />
                     </div>
+                    {podeJuros && !jurosAberto && (
+                        <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-700">
+                            <span>Falta R$ {fmt(faltaCents / 100)} — é juros/multa?</span>
+                            <button type="button" onClick={abrirJuros} className="min-h-[44px] md:min-h-0 px-4 py-1.5 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-semibold">Lançar como juros/multa</button>
+                        </div>
+                    )}
+                    {podeJuros && jurosAberto && (
+                        <div className="mb-2 rounded-xl border border-primary/30 bg-white p-3">
+                            <div className="flex items-center justify-between gap-2 mb-2">
+                                <span className="text-xs font-bold uppercase tracking-widest text-gray-600">Juros e multa</span>
+                                <button type="button" onClick={fecharJuros} className="min-h-[44px] md:min-h-0 px-3 text-xs font-bold text-gray-600 hover:text-gray-900">Cancelar juros/multa</button>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                                <label className="text-sm font-medium text-gray-700">Juros (R$)
+                                    <CampoNumero value={jurosTxt} onChange={(e) => setJurosTxt(e.target.value)} decimal casas={2} placeholder="0,00" className="mt-1 w-full border border-gray-300 rounded-full px-3 py-2 text-sm min-h-[44px] focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
+                                </label>
+                                <label className="text-sm font-medium text-gray-700">Multa (R$)
+                                    <CampoNumero value={multaTxt} onChange={(e) => setMultaTxt(e.target.value)} decimal casas={2} placeholder="0,00" className="mt-1 w-full border border-gray-300 rounded-full px-3 py-2 text-sm min-h-[44px] focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
+                                </label>
+                            </div>
+                            <p className={`mt-2 text-xs font-semibold ${jurosBate ? 'text-primary' : 'text-amber-700'}`}>
+                                Juros + multa = R$ {fmt(somaJM / 100)} · Falta R$ {fmt(faltaCents / 100)}
+                                {jurosBate ? ' — confere.' : dif > 1 ? ` — ainda faltam R$ ${fmt(dif / 100)}.` : dif < -1 ? ` — passou R$ ${fmt(-dif / 100)}.` : ' — informe o valor.'}
+                            </p>
+                            <p className="mt-1 text-xs text-gray-500">Entra na baixa do título de maior vencimento e a linha fecha como Conciliada.</p>
+                        </div>
+                    )}
                     {erroParciais && (
                         <div className="mb-2 rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-800 flex flex-wrap items-center gap-2">
                             <AlertTriangle className="h-4 w-4 shrink-0" />
@@ -363,7 +415,7 @@ const ConciliarVariosModal = ({ lancamento, onClose, onSuccess, onAlterou, onAva
                     <div className="flex items-center gap-1.5 md:gap-2 md:flex-wrap">
                         <button
                             onClick={conciliar}
-                            disabled={marcadoCents === 0 || estoura || salvando || !parciais || (precisaMetodo && !metodo)}
+                            disabled={marcadoCents === 0 || estoura || salvando || !parciais || (precisaMetodo && !metodo) || (jurosAberto && podeJuros && !jurosBate)}
                             className="flex-1 min-w-0 md:flex-none min-h-[44px] px-3 md:px-5 py-2 whitespace-nowrap bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm inline-flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {salvando ? <Loader2 className="h-4 w-4 animate-spin shrink-0" /> : <Check className="h-4 w-4 shrink-0" />} <span className="md:hidden">{rotuloBtnCurto}</span><span className="hidden md:inline">{rotuloBtn}</span>
