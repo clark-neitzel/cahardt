@@ -23,8 +23,13 @@ const deliveryService = {
     minhaPermissao: async () => (await api.get('/delivery/me')).data,
 
     listarPedidos: async () => (await api.get('/delivery/pedidos')).data,
-    moverEtapa: async (pedidoId, novaEtapa) =>
-        (await api.patch(`/delivery/pedidos/${pedidoId}/etapa`, { novaEtapa })).data,
+    // avisar: undefined → só { novaEtapa } (backend decide pelo flag do card);
+    // true/false → { novaEtapa, avisar } (a escolha da hora vence o flag persistente).
+    // Resposta: DeliveryStatus + { avisarCliente, semMudanca }.
+    moverEtapa: async (pedidoId, novaEtapa, avisar) => {
+        const body = typeof avisar === 'boolean' ? { novaEtapa, avisar } : { novaEtapa };
+        return (await api.patch(`/delivery/pedidos/${pedidoId}/etapa`, body)).data;
+    },
     setSilenciarWhatsapp: async (pedidoId, silenciar) =>
         (await api.patch(`/delivery/pedidos/${pedidoId}/silenciar-whatsapp`, { silenciar })).data,
     setHoraEntrega: async (pedidoId, horaEntrega) =>

@@ -1,6 +1,7 @@
 const prisma = require('../config/database');
 
 const { ordenarItensPorNome } = require('../utils/ordenarItens');
+const { resumoKitFesta } = require('../utils/enderecoEntrega');
 const ETAPAS = ['PEDIDO', 'PRODUCAO', 'SAINDO', 'ENTREGUE'];
 
 const deliveryService = {
@@ -178,7 +179,7 @@ const deliveryService = {
 
     // ── Kanban: listar pedidos de delivery ──
     // Regras de ordenação:
-    //   - etapa ENTREGUE: mais recentes primeiro (scroll, limitado a 10)
+    //   - etapa ENTREGUE: mais recentes primeiro (scroll, limitado a 50)
     //   - demais: data do pedido (dataVenda) — atrasados/hoje primeiro, futuros crescentes
     listarPedidos: async () => {
         const filtros = await deliveryService._produtoWhereFiltros();
@@ -230,7 +231,7 @@ const deliveryService = {
                 // Pedido que nasceu no site do Kit Festa: horário e caixas para as etiquetas
                 kitFestaPedido: {
                     select: {
-                        numero: true, modo: true, data: true, horario: true, nomeCliente: true,
+                        numero: true, modo: true, data: true, horario: true, nomeCliente: true, enderecoEntrega: true,
                         itens: { select: { nomeProduto: true, opcao: true, quantidade: true, unidadesPorCaixa: true } }
                     }
                 }
@@ -279,7 +280,10 @@ const deliveryService = {
                 aberto,
                 statusPagamento,
                 observacoes: p.observacoes,
-                kitFesta: p.kitFestaPedido || null
+                // Kit Festa: dados do site + enderecoEntrega e divergeCadastro (só acréscimo; null p/ pedido comum)
+                kitFesta: p.kitFestaPedido
+                    ? { ...p.kitFestaPedido, ...resumoKitFesta(p.kitFestaPedido, p.cliente) }
+                    : null
             };
         });
 
@@ -306,14 +310,22 @@ const deliveryService = {
         }
         ['PEDIDO', 'PRODUCAO', 'SAINDO'].forEach(e => buckets[e].sort(sortAtivos));
         buckets.ENTREGUE.sort((a, b) => new Date(b.etapaAt) - new Date(a.etapaAt));
-        buckets.ENTREGUE = buckets.ENTREGUE.slice(0, 10);
+        buckets.ENTREGUE = buckets.ENTREGUE.slice(0, 50);
 
         return buckets;
     },
 
+    // Decide se o movimento NÃO avisa o cliente por WhatsApp.
+    //   avisar boolean  -> a escolha deste movimento vence o flag persistente (skip = !avisar)
+    //   avisar ausente  -> comportamento antigo: vale o flag persistente `silenciarWhatsapp`
+    _skipWhatsapp: (avisar, silenciarFlag) => {
+        if (typeof avisar === 'boolean') return !avisar;
+        return !!silenciarFlag;
+    },
+
     // ── Movimentar etapa ──
     // Permite avançar e retroceder. Admin sempre pode; vendedor precisa ter a etapa destino permitida.
-    moverEtapa: async ({ pedidoId, novaEtapa, user }) => {
+    moverEtapa: async ({ pedidoId, novaEtapa, avisar, user }) => {
         if (!ETAPAS.includes(novaEtapa)) {
             throw new Error('Etapa inválida.');
         }
@@ -326,7 +338,10 @@ const deliveryService = {
 
         const atual = await prisma.deliveryStatus.findUnique({ where: { pedidoId } });
         if (!atual) throw new Error('Pedido não está no fluxo de Delivery.');
-        if (atual.etapa === novaEtapa) return atual;
+        if (atual.etapa === novaEtapa) {
+            // Nada mudou: nada é disparado (nem webhook, nem WhatsApp, nem agenda)
+            return { ...atual, avisarCliente: !deliveryService._skipWhatsapp(avisar, atual.silenciarWhatsapp), semMudanca: true };
+        }
 
         // Pedido precisa estar faturado no Conta Azul antes de mover no Kanban,
         // e não pode estar cancelado/excluído/devolvido — mesmo que o card ainda
@@ -362,15 +377,15 @@ const deliveryService = {
         } catch (gErr) { console.error('[Delivery] agenda Produção:', gErr.message); }
 
         // Dispara webhook bot + WhatsApp cliente (detached, não trava a resposta)
-        // Cliente é silenciado quando o card foi marcado para não notificar.
-        const skipWhatsapp = !!atual.silenciarWhatsapp;
+        // `avisar` (escolha deste movimento) vence o flag persistente; sem `avisar`, vale o flag do card.
+        const skipWhatsapp = deliveryService._skipWhatsapp(avisar, atual.silenciarWhatsapp);
         setTimeout(() => {
             const webhookService = require('./webhookService');
             webhookService.notificarDelivery(pedidoId, novaEtapa, { skipWhatsapp })
                 .catch(err => console.error('[Delivery] webhook falhou:', err.message));
         }, 0);
 
-        return atualizado;
+        return { ...atualizado, avisarCliente: !skipWhatsapp, semMudanca: false };
     },
 
     // Reenvia a notificação da etapa atual (bot + whatsapp cliente)

@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Proposta: Delivery com endereço e movimentar sem rolar</title>
+<style>
+  :root{--primary:#00754A;--primaryDark:#006241;--house:#1E3932;--mint:#d4e9e2;--bg:#f2f0eb;--gold:#cba258;--text:rgba(0,0,0,.87);--muted:#6b7280;--border:#e5e7eb}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Manrope,-apple-system,"SF Pro Text",system-ui,sans-serif;letter-spacing:-.01em;background:var(--bg);color:var(--text)}
+  .topo{position:sticky;top:0;z-index:30;background:var(--house);color:#fff;padding:12px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .topo h1{font-size:15px;margin:0 auto 0 0;font-weight:700}
+  .seg{display:flex;background:rgba(255,255,255,.12);border-radius:999px;padding:3px}
+  .seg button{border:0;background:transparent;color:#fff;padding:6px 14px;border-radius:999px;font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+  .seg button.on{background:#fff;color:var(--house)}
+  .wrap{max-width:1100px;margin:0 auto;padding:16px}
+  .intro,.dec{background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:16px;font-size:14px;line-height:1.55}
+  .intro h2,.dec h2{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#4b5563;margin:0 0 8px}
+  .intro b,.dec li b{color:var(--primaryDark)}
+  .prob{display:grid;gap:10px;margin-top:10px}
+  body.desk .prob{grid-template-columns:repeat(3,1fr)}
+  .prob>div{border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:#fafaf8;font-size:13px}
+  .prob>div>b:first-child{display:block;color:#b91c1c;margin-bottom:2px}
+  .prob>div em{display:block;font-style:normal;color:var(--primaryDark);font-weight:700;margin-top:6px;font-size:12px}
+  .tela{background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:0 1px 2px rgba(0,0,0,.05);overflow:hidden;margin-bottom:16px}
+  .tela>.hd{display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid #f3f4f6;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#4b5563}
+  .tela>.bd{padding:16px;background:var(--bg)}
+  .pin{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:999px;background:var(--gold);color:#fff;font-size:11px;font-weight:800;vertical-align:middle;flex:none}
+  .legenda{list-style:none;margin:14px 0 0;padding:0;font-size:13px;color:#374151}
+  .legenda li{display:flex;gap:8px;margin:7px 0;line-height:1.45}
+  .dica{font-size:12px;color:var(--muted);margin:0 0 10px}
+  .app{background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px;margin:0 auto;transition:max-width .25s;position:relative;overflow:hidden}
+  body.desk .app{max-width:1040px} body.mob .app{max-width:375px}
+  .app.estreito{max-width:760px} body.mob .app.estreito{max-width:375px}
+  .pagehd{display:flex;align-items:center;gap:8px;padding-bottom:10px;margin-bottom:10px;border-bottom:1px solid #f3f4f6}
+  .ico{width:30px;height:30px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-size:15px}
+  .pagehd b{font-size:15px}
+  .busca{border:1px solid #d1d5db;border-radius:999px;padding:6px 12px;font-size:12px;color:#9ca3af;margin-bottom:10px}
+  /* abas de etapa (mobile) */
+  .etapas{display:none;gap:6px;margin-bottom:10px;position:sticky;top:0;z-index:2;background:#fff;padding-bottom:2px}
+  body.mob .etapas{display:flex}
+  .etapas button{flex:1;border:1px solid var(--border);background:#fff;border-radius:12px;padding:6px 2px;font:inherit;font-size:11px;font-weight:700;color:#4b5563;cursor:pointer;line-height:1.2}
+  .etapas button b{display:block;font-size:16px;color:var(--text)}
+  .etapas button.on{border-color:var(--primary);background:var(--mint);color:var(--primaryDark)}
+  .etapas button.on b{color:var(--primaryDark)}
+  /* colunas */
+  .cols{display:grid;gap:10px;grid-template-columns:1fr}
+  body.desk .cols{grid-template-columns:repeat(4,1fr);align-items:start}
+  .col{border-radius:12px;border:2px solid;display:flex;flex-direction:column}
+  .col.c0{border-color:#93c5fd;background:#eff6ff}.col.c1{border-color:#fcd34d;background:#fffbeb}.col.c2{border-color:#d8b4fe;background:#faf5ff}.col.c3{border-color:#86efac;background:#f0fdf4}
+  .col .ch{padding:8px 10px;font-size:13px;font-weight:800;display:flex;justify-content:space-between;align-items:center}
+  .col .ch span{background:#fff;border-radius:999px;padding:0 8px;font-size:11px}
+  .col .lista{padding:0 8px 8px;display:grid;gap:8px}
+  body.mob .col.fora{display:none}
+  .vazio{text-align:center;font-size:12px;color:#9ca3af;padding:14px 0}
+  /* card */
+  .card{background:#fff;border:1px solid var(--border);border-radius:10px;padding:10px;font-size:12px;box-shadow:0 1px 2px rgba(0,0,0,.05)}
+  .card .l1{display:flex;justify-content:space-between;gap:6px;align-items:flex-start}
+  .card .nome{font-weight:800;font-size:14px;line-height:1.2}
+  .card .num{font-size:11px;color:#9ca3af}
+  .quando{display:inline-flex;gap:4px;align-items:center;font-size:11px;font-weight:800;border-radius:6px;padding:2px 7px;border:1px solid;margin-top:4px}
+  .quando.hoje{background:#ffedd5;color:#9a3412;border-color:#fdba74}
+  .quando.amanha{background:#dbeafe;color:#1e40af;border-color:#93c5fd}
+  .quando.fut{background:#f3f4f6;color:#374151;border-color:#d1d5db}
+  .entregar{margin-top:8px;border:2px solid var(--primary);background:#ecf7f2;border-radius:10px;padding:7px 9px}
+  .entregar .t{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--primaryDark);display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+  .entregar .e{font-size:13px;font-weight:700;line-height:1.3;margin-top:2px}
+  .entregar.retira{border-color:#9ca3af;background:#f3f4f6}
+  .entregar.retira .t{color:#374151}
+  .diverge{margin-top:6px;font-size:11px;background:#fef3c7;border:1px solid #fcd34d;color:#92400e;border-radius:8px;padding:4px 7px;line-height:1.35}
+  .mapabtn{display:inline-flex;gap:4px;align-items:center;margin-top:6px;font-size:11px;font-weight:700;color:var(--primary);border:1px solid var(--primary);border-radius:999px;padding:3px 10px;background:#fff;cursor:pointer}
+  .resumo{margin-top:8px;font-size:12px;color:#4b5563;display:flex;justify-content:space-between;gap:6px;align-items:center}
+  .tag{display:inline-flex;align-items:center;border-radius:999px;padding:1px 8px;font-size:10px;font-weight:700}
+  .tag.red{background:#fee2e2;color:#b91c1c}.tag.em{background:#d1fae5;color:#065f46}.tag.amb{background:#fef3c7;color:#b45309}
+  .acoes{display:flex;gap:6px;margin-top:8px;align-items:stretch}
+  .btn-av{flex:1;min-height:44px;border:0;border-radius:999px;background:var(--primary);color:#fff;font:inherit;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
+  .btn-av:active{background:var(--primaryDark)}
+  .btn-mais{min-height:44px;min-width:44px;border:1px solid #d1d5db;border-radius:999px;background:#fff;font-size:18px;color:#4b5563;cursor:pointer;font-weight:800}
+  .feito{flex:1;text-align:center;font-size:12px;font-weight:800;color:#15803d;padding:10px 0}
+  /* sheet */
+  .veu{position:absolute;inset:0;background:rgba(0,0,0,.45);display:none;z-index:10}
+  .veu.on{display:block}
+  .sheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:18px 18px 0 0;padding:14px 14px 16px;z-index:11;transform:translateY(105%);transition:transform .22s;max-height:92%;overflow:auto;box-shadow:0 -4px 20px rgba(0,0,0,.2)}
+  body.desk .sheet{left:50%;right:auto;width:420px;bottom:auto;top:50%;transform:translate(-50%,-40%) scale(.96);opacity:0;pointer-events:none;border-radius:16px;transition:all .18s}
+  .sheet.on{transform:translateY(0)}
+  body.desk .sheet.on{transform:translate(-50%,-50%) scale(1);opacity:1;pointer-events:auto}
+  .sheet .alca{width:40px;height:4px;border-radius:9px;background:#d1d5db;margin:0 auto 10px}
+  body.desk .sheet .alca{display:none}
+  .sheet h4{margin:0 0 2px;font-size:15px}
+  .sheet .sub{font-size:12px;color:var(--muted);margin-bottom:10px}
+  .opc{display:flex;gap:10px;align-items:center;border:2px solid var(--border);border-radius:12px;padding:10px 12px;margin-bottom:8px;font-size:14px;font-weight:700;min-height:48px;cursor:pointer}
+  .opc.sel{border-color:var(--primary);background:#ecf7f2}
+  .opc small{display:block;font-weight:500;color:var(--muted);font-size:11px}
+  .opc .r{width:18px;height:18px;border-radius:99px;border:2px solid #9ca3af;flex:none}
+  .opc.sel .r{border-color:var(--primary);background:radial-gradient(circle,var(--primary) 45%,#fff 50%)}
+  .opc.off{opacity:.4;cursor:not-allowed}
+  .zap{display:flex;gap:10px;align-items:center;background:#e7ffdb;border-radius:12px;padding:8px 10px;font-size:12px;margin:10px 0;line-height:1.35}
+  .zap input{width:18px;height:18px;accent-color:var(--primary);flex:none}
+  .row2{display:flex;gap:8px}
+  .row2 button{min-height:46px;border-radius:999px;font:inherit;font-size:14px;font-weight:800;cursor:pointer}
+  .bcanc{border:1px solid #d1d5db;background:#fff;color:#374151;padding:0 16px}
+  .bok{flex:1;border:0;background:var(--primary);color:#fff}
+  .toast{position:absolute;left:50%;top:10px;transform:translateX(-50%);background:#111827;color:#fff;font-size:12px;font-weight:700;padding:8px 14px;border-radius:999px;z-index:20;opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap}
+  .toast.on{opacity:1}
+  /* HOJE (problema) */
+  .hoje-col{border:2px solid #fcd34d;background:#fffbeb;border-radius:12px;height:230px;overflow:hidden;position:relative;max-width:300px;margin:0 auto}
+  .hoje-col .in{height:100%;overflow:auto;padding:8px}
+  .hoje-col .menu{position:absolute;left:150px;top:196px;width:150px;background:#fff;border:1px solid #d1d5db;border-radius:6px;box-shadow:0 4px 10px rgba(0,0,0,.2);font-size:11px}
+  .hoje-col .menu div{padding:6px 10px}
+  .corte{position:absolute;left:0;right:0;bottom:0;height:34px;background:repeating-linear-gradient(45deg,rgba(185,28,28,.12),rgba(185,28,28,.12) 6px,transparent 6px,transparent 12px);border-top:2px dashed #b91c1c;font-size:10px;font-weight:800;color:#b91c1c;text-align:center;padding-top:9px}
+  .duas{display:grid;gap:14px;grid-template-columns:1fr} body.desk .duas{grid-template-columns:1fr 1fr}
+  .rot{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
+  .rot.r{color:#b91c1c}.rot.g{color:var(--primaryDark)}
+  .mini{border:1px solid var(--border);border-radius:8px;background:#fff;padding:7px;font-size:11px;margin-bottom:6px;color:#6b7280}
+  /* detalhe */
+  .det h3{margin:0;font-size:16px}
+  .det .sub2{font-size:11px;color:var(--muted);margin-bottom:8px}
+  .det .sec{margin-top:10px}
+  .det .sec .k{font-size:10px;font-weight:800;text-transform:uppercase;color:#9ca3af;letter-spacing:.06em;margin-bottom:2px}
+  .det .itens{border:1px solid var(--border);border-radius:8px;font-size:12px}
+  .det .itens div{display:flex;justify-content:space-between;padding:5px 8px;border-top:1px solid #f3f4f6}
+  .det .itens div:first-child{border-top:0}
+  .det .rodape{position:sticky;bottom:0;background:#fff;border-top:1px solid var(--border);margin:12px -12px -12px;padding:10px 12px;display:flex;gap:8px}
+  /* pedidos */
+  .abas{display:flex;gap:14px;border-bottom:1px solid var(--border);font-size:13px;font-weight:600;color:#6b7280;margin-bottom:10px;overflow-x:auto}
+  .abas span{padding:6px 2px;white-space:nowrap}.abas span.on{color:var(--primary);border-bottom:2px solid var(--primary)}
+  .pcard{border:1px solid var(--border);border-radius:12px;padding:10px 12px;background:#fff;margin-bottom:8px;font-size:12px}
+  .pcard .p1{display:flex;justify-content:space-between;font-weight:800;font-size:14px;gap:8px}
+  .pcard .p2{color:var(--muted);margin-top:3px;font-size:11px}
+  .lista-pedidos{display:grid;gap:8px} body.desk .lista-pedidos{grid-template-columns:1fr 1fr}
+  .decs{margin:0;padding-left:20px}
+  .decs li{margin:6px 0}
+  .arq{font-family:ui-monospace,Menlo,monospace;font-size:12px;background:#f3f4f6;border-radius:5px;padding:1px 5px}
+  /* ===== v2: topo compacto, período, instâncias ===== */
+  .par{display:grid;gap:16px;grid-template-columns:1fr;align-items:start}
+  /* celular em cima (centralizado), computador embaixo em largura total */
+  #app-d{grid-column:auto}
+  .app.fix{max-width:none}
+  #app-m{max-width:375px;min-height:640px;margin:0 auto;width:100%}
+  #app-d{min-height:560px;max-width:none}
+  body.mob #app-d{max-width:none}
+  .rotulo{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#4b5563;margin-bottom:6px}
+  .topm{display:flex;align-items:center;gap:6px;margin-bottom:8px}
+  .topm .tit{font-weight:800;font-size:15px;margin-right:auto;display:flex;align-items:center;gap:6px}
+  .ib{width:36px;height:36px;border:1px solid var(--border);border-radius:999px;background:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;flex:none}
+  .chipper{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--primary);color:var(--primaryDark);background:#fff;border-radius:999px;padding:0 12px;min-height:36px;font:inherit;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap}
+  .chipper small{font-weight:600;color:var(--muted)}
+  .e4{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px}
+  .e4 button{border:1px solid var(--border);border-top-width:4px;background:#fff;border-radius:10px;padding:5px 2px 6px;font:inherit;font-size:11px;font-weight:700;color:#4b5563;cursor:pointer;line-height:1.15;min-height:52px}
+  .e4 button b{display:block;font-size:20px;color:var(--text);line-height:1.1}
+  .e4 button.k0{border-top-color:#60a5fa}.e4 button.k1{border-top-color:#fbbf24}.e4 button.k2{border-top-color:#c084fc}.e4 button.k3{border-top-color:#4ade80}
+  .e4 button.on{background:var(--mint);border-color:var(--primary);border-top-color:var(--primary);color:var(--primaryDark)}
+  .e4 button.on b{color:var(--primaryDark)}
+  .e4 button.zero b{color:#9ca3af}
+  .avisos{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;font-size:11px;font-weight:700}
+  .av1{background:#fee2e2;color:#b91c1c;border-radius:999px;padding:4px 10px;display:inline-flex;gap:4px;align-items:center}
+  .av2{background:#f3f4f6;color:#374151;border-radius:999px;padding:4px 10px;cursor:pointer;text-decoration:underline}
+  .tool{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+  .tool .busca{margin:0;flex:1;min-width:180px}
+  .lista1{display:grid;gap:8px}
+  body.desk #app-d .lista1{}
+  .col-unica .lista1{}
+  .opc.peq{min-height:44px;padding:8px 12px}
+  /* janela do celular = sempre sobe de baixo, dentro da moldura de 375px */
+  body.desk #app-m .sheet{left:0;right:0;width:auto;top:auto;bottom:0;transform:translateY(105%);opacity:1;pointer-events:auto;border-radius:18px 18px 0 0}
+  body.desk #app-m .sheet.on{transform:none}
+  body.desk #app-m .sheet .alca{display:block}
+  #app-m .sheet.on{animation:subir .2s}
+  @keyframes subir{from{transform:translateY(40px);opacity:.4}to{transform:none;opacity:1}}
+  /* mock genéricos tela 5 */
+  .campo{border:1px solid #d1d5db;border-radius:6px;padding:6px 8px;font-size:12px;background:#fff;min-height:32px}
+  .lbl{font-size:10px;font-weight:800;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin:6px 0 2px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .box{border:1px solid var(--border);border-radius:12px;padding:10px 12px;background:#fff;margin-top:10px}
+  .box.dest{border:2px solid var(--primary);background:#f6fbf8}
+  .box .bt{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#4b5563;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+  .trava{font-size:11px;background:#f3f4f6;border-radius:8px;padding:4px 8px;color:#4b5563;margin-top:6px}
+  .sw{display:inline-block;width:34px;height:20px;border-radius:99px;background:var(--primary);position:relative;vertical-align:middle}
+  .sw::after{content:"";position:absolute;right:2px;top:2px;width:16px;height:16px;border-radius:99px;background:#fff}
+  .mapa2{position:relative;height:170px;border-radius:10px;background:#e8efe9;background-image:linear-gradient(#dfe7e0 1px,transparent 1px),linear-gradient(90deg,#dfe7e0 1px,transparent 1px);background-size:26px 26px;overflow:hidden;margin-top:8px}
+  .p2{position:absolute;display:flex;gap:4px;align-items:center;font-size:11px;font-weight:700}
+  .p2 .d{width:22px;height:22px;border-radius:99px;display:inline-flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 1px 2px rgba(0,0,0,.3);background:#2563eb;color:#fff}
+  .p2 .lb{background:#fff;border-radius:6px;padding:2px 7px;box-shadow:0 1px 2px rgba(0,0,0,.15)}
+  .chat{background:#efeae2;border-radius:12px;padding:10px;display:grid;gap:6px}
+  .bol{max-width:86%;border-radius:10px;padding:7px 10px;font-size:12px;line-height:1.4;box-shadow:0 1px 1px rgba(0,0,0,.1)}
+  .bol.c{background:#fff;justify-self:start}.bol.a{background:#d9fdd3;justify-self:end}
+  .etp{display:grid;gap:10px;grid-template-columns:1fr} body.desk .etp{grid-template-columns:repeat(3,1fr)}
+  .etp>div{border:1px solid var(--border);border-radius:12px;background:#fff;padding:12px;font-size:13px;line-height:1.5}
+  .etp>div h3{margin:0 0 4px;font-size:13px}
+  .etp .nao{color:#b91c1c;font-weight:700}
+</style>
+</head>
+<body class="desk">
+<div class="topo">
+  <h1>Proposta v2 · Delivery: topo por etapa, período para frente, endereço e local de entrega</h1>
+  <div class="seg"><button class="on" onclick="modo('desk',this)">Computador</button><button onclick="modo('mob',this)">Celular</button></div>
+</div>
+
+<div class="wrap">
+
+  <div class="intro">
+    <h2>O que eu encontrei no sistema</h2>
+    Conferi o código. Os problemas que você descreveu são reais e têm causa clara:
+    <div class="prob" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr))">
+      <div><b>1 · Endereço errado (o mais grave)</b>
+        O card do Delivery mostra o endereço do <b>cadastro do cliente</b>. No Kit Festa o cliente informa o <b>endereço da entrega no pedido</b>. Esse endereço existe no sistema, mas <b>não aparece</b> no Delivery nem em Pedidos.
+        <em>→ Mostrar o endereço do pedido em destaque.</em></div>
+      <div><b>2 · Tem que rolar tudo</b>
+        No celular as 4 etapas ficam empilhadas, cada uma com rolagem própria.
+        <em>→ Quatro botões no topo, com a contagem de cada etapa.</em></div>
+      <div><b>3 · "Movimentar" fica preso</b>
+        O menu abre dentro da coluna com rolagem e é cortado pela borda.
+        <em>→ Janela por cima de tudo, nunca cortada.</em></div>
+      <div><b>4 · Compra num lugar, recebe em outro</b>
+        O cliente tem <u>um só</u> endereço e <u>um só</u> GPS. Quem compra em Jaraguá e recebe em Joinville força o GPS a brigar com o cadastro, e o mapa mostra um texto e um ponto que não combinam.
+        <em>→ "Local de entrega" separado do cadastro (Tela 5). <u>Não mexe na nota fiscal.</u></em></div>
+    </div>
+  </div>
+
+  <!-- TELA 1 -->
+  <div class="tela">
+    <div class="hd">Tela 1 · Delivery — celular e computador (clique de verdade)</div>
+    <div class="bd">
+      <p class="dica">Os dois quadros abaixo são <b>funcionais e ligados entre si</b>. Toque nos <b>4 botões do topo</b>, troque o período em <b>📅</b>, avance um pedido com o botão verde — o que você mexer num aparece no outro.</p>
+      <div class="par">
+        <div>
+          <div class="rotulo">📱 Celular</div>
+          <div class="app" id="app-m"></div>
+        </div>
+        <div>
+          <div class="rotulo">💻 Computador / iPad</div>
+          <div class="app" id="app-d"></div>
+        </div>
+      </div>
+      <ul class="legenda">
+        <li><span class="pin">1</span><span><b>Os 4 botões no topo são o menu de etapas:</b> Pedido · Produção · Saindo · Entregue, cada um com o <b>número de pedidos</b> daquela etapa (0 fica apagado). Tocou no botão, aparece só a lista daquela etapa. Acabou a rolagem para chegar na próxima etapa. Ocupa uma linha só.</span></li>
+        <li><span class="pin">2</span><span><b>Período da entrega (📅 Hoje ▾),</b> olhando para a frente: <b>Hoje · Amanhã · Próximos 7 dias · Próximos 30 dias · Este mês · Todo o período · Personalizado</b>. Vale para as quatro etapas, inclusive as Entregues. Abre como janela embaixo e lembra a última escolha de cada usuário. Abre sempre em <b>Hoje</b>.</span></li>
+        <li><span class="pin">3</span><span><b>Atrasado nunca some:</b> pedido que ainda não foi entregue e cuja data já passou aparece sempre, em vermelho, mesmo que o período seja "Hoje". E uma linha avisa quantos pedidos ficaram <b>fora do período</b> ("+4 em outras datas · ver") para ninguém achar que o pedido sumiu.</span></li>
+        <li><span class="pin">4</span><span><b>"Entregar em"</b> em verde, logo abaixo do cliente — o endereço do pedido. Cinza "Retirada na loja" quando o cliente busca.</span></li>
+        <li><span class="pin">5</span><span><b>Aviso amarelo</b> quando o endereço do pedido é diferente do cadastro.</span></li>
+        <li><span class="pin">6</span><span><b>"Abrir no mapa":</b> abre o Google Maps no celular (link externo, abre fora do app).</span></li>
+        <li><span class="pin">7</span><span><b>Botão grande verde com o próximo passo escrito.</b> Ele abre a janela de confirmação (Tela 2).</span></li>
+        <li><span class="pin">8</span><span><b>"…"</b> abre a mesma janela com todas as etapas (voltar ou pular uma).</span></li>
+      </ul>
+    </div>
+  </div>
+
+<!-- TELA 2 -->
+  <div class="tela">
+    <div class="hd">Tela 2 · A janela "Movimentar" — antes × depois</div>
+    <div class="bd">
+      <div class="duas">
+        <div>
+          <div class="rot r">Hoje — o menu fica cortado dentro da coluna</div>
+          <div class="hoje-col">
+            <div class="in">
+              <div class="mini"><b style="color:#111">Buffet Doce Encanto</b><br>Rua das Palmeiras, 320…<br>(cadastro do cliente)</div>
+              <div class="mini">4× Kit Festa 50 un<br>2× Mini coxinha…<br>Total R$ 389,00</div>
+              <div class="mini" style="color:#111"><div style="display:flex;gap:4px;margin-top:4px"><span style="background:#e5e7eb;border-radius:5px;padding:4px 7px">←</span><span style="flex:1;background:var(--primary);color:#fff;border-radius:5px;padding:4px;text-align:center;font-weight:800">Movimentar ▾</span></div></div>
+            </div>
+            <div class="menu"><div>→ Em Produção</div><div>→ Saindo Entrega</div><div style="color:#d1d5db">→ Entregue</div></div>
+            <div class="corte">⬆ o menu é cortado aqui — precisa rolar a janelinha</div>
+          </div>
+        </div>
+        <div>
+          <div class="rot g">Proposta — janela por cima de tudo, nunca cortada</div>
+          <div style="background:#fff;border:1px solid var(--border);border-radius:14px;padding:12px;max-width:360px;margin:0 auto">
+            <div style="text-align:center"><div style="width:40px;height:4px;border-radius:9px;background:#d1d5db;margin:0 auto 10px"></div></div>
+            <h4 style="margin:0 0 2px;font-size:15px">Buffet Doce Encanto <span class="pin" style="margin-left:4px">1</span></h4>
+            <div class="sub" style="font-size:12px;color:var(--muted);margin-bottom:10px">Pedido #412 · agora em <b>Pedido</b></div>
+            <div class="opc sel"><span class="r"></span><div>Em Produção <span class="pin" style="margin-left:4px">2</span><small>próximo passo</small></div></div>
+            <div class="opc"><span class="r"></span><div>Saindo Entrega<small>pular a produção</small></div></div>
+            <div class="opc off"><span class="r"></span><div>Entregue<small>sem permissão para esta etapa</small></div></div>
+            <div class="zap" style="background:#fff7ed;border:1px solid #fdba74"><span>💬 <b>Avisar o cliente no WhatsApp?</b> <span class="pin" style="margin-left:4px">3</span><br><small style="color:#4b5563">Pedido parado há dias? Escolha "sem avisar" e só o quadro muda.</small></span></div>
+            <div style="display:grid;gap:8px"><button class="bok" style="min-height:46px;border-radius:999px;font:inherit;font-weight:800;border:0;color:#fff;background:var(--primary)">Mover e avisar o cliente <span class="pin" style="margin-left:4px;background:#fff;color:var(--gold)">4</span></button><button class="bcanc" style="min-height:46px;border-radius:999px;font:inherit;font-weight:800;border:2px solid var(--primary);color:var(--primaryDark);background:#fff">Mover sem avisar</button><button class="bcanc" style="border:0;background:transparent;min-height:36px;font:inherit;font-weight:700;color:#6b7280">Cancelar</button></div>
+          </div>
+        </div>
+      </div>
+      <ul class="legenda">
+        <li><span class="pin">1</span><span>Mostra <b>qual pedido</b> você está mexendo — evita mover o card errado com a tela cheia.</span></li>
+        <li><span class="pin">2</span><span>A <b>próxima etapa já vem marcada</b>. No caso comum é só confirmar. Etapas sem permissão aparecem apagadas, como hoje.</span></li>
+        <li><span class="pin">3</span><span><b>Toda vez que mover, o sistema pergunta se avisa o cliente.</b> Mover manda WhatsApp (conferi no código). Desde abril/2026 isso só podia ser decidido <u>antes</u>, no ícone de balão do card, sem pergunta na hora de mover — por isso você sentiu falta. Agora a pergunta é obrigatória e a escolha é sua a cada movimento. Se o card já estava silenciado, o botão "sem avisar" vem em destaque.</span></li>
+        <li><span class="pin">4</span><span>Dois botões grandes: <b>avisar</b> ou <b>sem avisar</b>. Não existe "padrão escondido". No <b>celular</b> a janela sobe de baixo (cobre só a parte de baixo, tudo cabe sem rolar). No <b>computador</b> abre no centro da tela. Em qualquer caso fica por cima de tudo — não depende do espaço do card.</span></li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- TELA 3 -->
+  <div class="tela">
+    <div class="hd">Tela 3 · Detalhe do pedido (toque no card) — Delivery e Pedidos</div>
+    <div class="bd">
+      <div class="app estreito det">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+          <div><h3>Buffet Doce Encanto</h3><div class="sub2">Pedido #412 · Entrega 26/11 às 14:00 · Pedido</div></div>
+          <span style="font-size:20px;color:#9ca3af">✕</span>
+        </div>
+        <div class="entregar">
+          <div class="t">📍 Entregar em <span class="pin">1</span> <span class="tag em" style="margin-left:auto">Endereço do pedido</span></div>
+          <div class="e">Rua das Palmeiras, 320 — Apto 12<br>Velha · Blumenau/SC · CEP 89036-100</div>
+          <span class="mapabtn">🗺 Abrir no mapa</span><span class="pin" style="margin-left:6px">2</span>
+        </div>
+        <div class="diverge">⚠ <b>Diferente do cadastro</b> do cliente (Av. Brasil, 1500 — Centro). Vale o do pedido. <span class="pin" style="margin-left:2px">3</span></div>
+        <div class="sec"><div class="k">Telefone</div><div style="display:flex;justify-content:space-between;font-size:13px">(47) 99999-0000 <span style="color:#15803d;font-weight:700;text-decoration:underline">Abrir WhatsApp</span></div></div>
+        <div class="sec"><div class="k">Itens (6 un)</div>
+          <div class="itens"><div><span>4× Kit Festa 50 un</span><span>R$ 320,00</span></div><div><span>2× Mini coxinha 100 un</span><span>R$ 49,00</span></div><div><span>Frete</span><span>R$ 20,00</span></div><div style="background:#f9fafb;font-weight:800"><span>Total</span><span>R$ 389,00</span></div></div></div>
+        <div class="sec" style="display:flex;gap:16px"><div><div class="k">Pagamento</div><b style="color:#15803d;font-size:13px">Quitado</b></div><div><div class="k">Faturamento</div><b style="color:#15803d;font-size:13px">FATURADO</b></div></div>
+        <div class="rodape"><button class="btn-mais" style="min-width:auto;padding:0 14px;font-size:13px;font-weight:700">Fechar</button><button class="btn-av">▶ Iniciar produção <span class="pin" style="background:#fff;color:var(--gold)">4</span></button></div>
+      </div>
+      <ul class="legenda">
+        <li><span class="pin">1</span><span><b>"Entregar em" é o primeiro bloco da janela</b>, antes de telefone e itens. Hoje o endereço é uma linha de texto cinza no meio da janela.</span></li>
+        <li><span class="pin">2</span><span><b>Abrir no mapa</b> — um toque e o celular já traça a rota.</span></li>
+        <li><span class="pin">3</span><span><b>Aviso de divergência</b> só aparece quando o endereço do pedido é diferente do cadastro. Quando for igual, o aviso não aparece (menos barulho).</span></li>
+        <li><span class="pin">4</span><span><b>Rodapé fixo com o botão de avançar:</b> o corpo da janela rola, mas o botão fica sempre visível embaixo. Hoje a janela do detalhe nem tem botão de mover — precisa fechar e achar o card.</span></li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- TELA 4 -->
+  <div class="tela">
+    <div class="hd">Tela 4 · Pedidos (lista e detalhe) — pedidos que vieram do Kit Festa</div>
+    <div class="bd">
+      <div class="app estreito">
+        <div class="pagehd"><span class="ico" style="background:#d4e9e2">🧾</span><b>Pedidos</b></div>
+        <div class="abas"><span class="on">Pedidos</span><span>Amostras</span><span>Devoluções</span></div>
+        <div class="lista-pedidos">
+          <div class="pcard">
+            <div class="p1"><span>Buffet Doce Encanto</span><span>R$ 389,00</span></div>
+            <div class="p2"><b style="color:#111">Entrega: 26/11 14:00</b> | Criação: 24/11 18:32</div>
+            <div class="entregar" style="margin-top:6px;padding:5px 8px"><div class="t" style="font-size:9px">📍 Entregar em <span class="pin">1</span></div><div class="e" style="font-size:12px">Rua das Palmeiras, 320 — Apto 12 · Velha, Blumenau</div></div>
+            <div class="diverge" style="margin-top:4px">⚠ Diferente do cadastro</div>
+          </div>
+          <div class="pcard">
+            <div class="p1"><span>Maria Helena Souza</span><span>R$ 214,00</span></div>
+            <div class="p2"><b style="color:#111">Entrega: 26/11 16:00</b> | Criação: 25/11 09:10</div>
+            <div class="entregar retira" style="margin-top:6px;padding:5px 8px"><div class="t" style="font-size:9px">🏪 Retirada na loja <span class="pin">2</span></div></div>
+          </div>
+          <div class="pcard">
+            <div class="p1"><span>Padaria Pão Quente</span><span>R$ 842,00</span></div>
+            <div class="p2"><b style="color:#111">Entrega: 26/11</b> | Vendedor: João</div>
+            <div class="p2" style="text-transform:uppercase">Blumenau - Centro <span class="pin" style="margin-left:4px">3</span></div>
+          </div>
+        </div>
+      </div>
+      <ul class="legenda">
+        <li><span class="pin">1</span><span>Pedido do Kit Festa para <b>entrega</b>: o endereço do pedido aparece no card da lista (hoje só aparece "CIDADE - BAIRRO" do cadastro) e também no detalhe do pedido, igual à Tela 3.</span></li>
+        <li><span class="pin">2</span><span>Pedido do Kit Festa de <b>retirada</b>: o card diz "Retirada na loja" — fica claro que não há entrega.</span></li>
+        <li><span class="pin">3</span><span><b>Pedido normal de vendedor</b> (não veio do site): continua igual. Esses pedidos não têm endereço próprio — o sistema usa o do cadastro, como hoje.</span></li>
+      </ul>
+    </div>
+  </div>
+
+    <!-- TELA 5 -->
+  <div class="tela">
+    <div class="hd">Tela 5 · Local de entrega — cliente que compra num lugar e recebe em outro (Entrega 2)</div>
+    <div class="bd">
+      <div class="duas">
+        <div>
+          <div class="rot g">5A · Ficha do cliente (Clientes → Detalhe)</div>
+          <div class="app estreito" style="max-width:none">
+            <div style="font-weight:800;font-size:15px">Rede Sabor do Vale Ltda</div>
+            <div style="font-size:11px;color:var(--muted)">CNPJ 12.345.678/0001-90</div>
+            <div class="box"><div class="bt">🧾 Endereço do cadastro</div>
+              <div style="font-size:13px;margin-top:4px">Rua Walter Marquardt, 1200 — Czerniewicz<br><b>Jaraguá do Sul/SC</b> · CEP 89256-000</div>
+              <div class="trava">🔒 Usado só para documentos e cobrança. <b>A nota fiscal não é alterada</b> por nada abaixo. <span class="pin">1</span></div></div>
+            <div class="box dest"><div class="bt">📍 Local de entrega <span class="pin">2</span><span style="margin-left:auto;display:flex;gap:6px;align-items:center;font-size:11px;text-transform:none;letter-spacing:0">Entrega em outro local <span class="sw"></span></span></div>
+              <div class="grid2"><div style="grid-column:1/3"><div class="lbl">Rua</div><div class="campo">Av. Santos Dumont, 3040</div></div>
+              <div><div class="lbl">Bairro</div><div class="campo">Aníbal Moura</div></div><div><div class="lbl">Cidade / UF</div><div class="campo"><b>Joinville</b>/SC</div></div>
+              <div><div class="lbl">CEP</div><div class="campo">89201-000</div></div><div><div class="lbl">Referência</div><div class="campo">Portão lateral, unidade 2</div></div></div>
+              <div class="lbl">Ponto no mapa (GPS) <span class="pin">3</span></div>
+              <div class="campo" style="display:flex;justify-content:space-between"><span>-26.3045, -48.8487</span><span style="color:var(--primary);font-weight:800">Marcar no mapa</span></div>
+              <div class="trava" style="background:#ecf7f2">Mapa de entrega, motorista, etiqueta e Delivery usam <b>este</b> local. O GPS fica aqui, sem brigar com o cadastro. <span class="pin">4</span></div></div>
+          </div>
+        </div>
+        <div>
+          <div class="rot g">5B · Novo pedido — onde entregar</div>
+          <div class="app estreito" style="max-width:none">
+            <div style="font-weight:800;font-size:14px">Novo pedido · Rede Sabor do Vale</div>
+            <div class="box"><div class="bt">🚚 Entregar em <span class="pin">5</span></div>
+              <div class="opc sel" style="margin-top:8px"><span class="r"></span><div>Local de entrega do cliente<small>Av. Santos Dumont, 3040 — Joinville/SC</small></div></div>
+              <div class="opc"><span class="r"></span><div>Endereço do cadastro<small>Rua Walter Marquardt, 1200 — Jaraguá do Sul/SC</small></div></div>
+              <div class="opc"><span class="r"></span><div>Outro endereço só para este pedido<small>digitar rua, cidade… (não muda o cliente)</small></div></div></div>
+            <div class="rot g" style="margin-top:14px">5C · Mapa de entrega e Saúde GPS</div>
+            <div class="mapa2">
+              <div class="p2" style="left:30%;top:38%"><span class="d">1</span><span class="lb">Rede Sabor do Vale<br><small style="color:#15803d">📍 local de entrega · Joinville</small></span></div>
+              <div class="p2" style="left:8%;top:12%;opacity:.6"><span class="d" style="background:#9ca3af">2</span><span class="lb">Padaria Central</span></div>
+            </div>
+            <div class="diverge" style="margin-top:8px">ℹ️ Cadastro em Jaraguá do Sul. Entrega em Joinville (local de entrega do cliente). <span class="pin">6</span></div>
+            <div class="mini" style="margin-top:6px;color:#111"><b>Saúde GPS:</b> cliente com local de entrega próprio — <b>sem sugestão de trocar o GPS</b>. <span class="pin">7</span></div>
+          </div>
+        </div>
+      </div>
+      <ul class="legenda">
+        <li><span class="pin">1</span><span><b>O cadastro continua do jeito que está</b> (Jaraguá) e é o que sai nos documentos. Esta proposta <b>não mexe em nota fiscal</b>.</span></li>
+        <li><span class="pin">2</span><span><b>Local de entrega</b> é opcional. Só liga o botão quem recebe em lugar diferente. Quem não liga continua usando o cadastro, igual hoje.</span></li>
+        <li><span class="pin">3</span><span><b>O GPS passa a ser do local de entrega.</b> Dá para marcar no mapa ou usar a busca pelo endereço digitado. O histórico de endereço já existente registra quem mudou e quando.</span></li>
+        <li><span class="pin">4</span><span>O mapa de entrega, o motorista, a etiqueta e o Delivery passam a usar esse local.</span></li>
+        <li><span class="pin">5</span><span><b>No pedido você escolhe</b> entre o local de entrega do cliente (já vem marcado), o cadastro ou um endereço digitado só para aquele pedido. <b>Ordem de prioridade:</b> endereço do pedido → local de entrega do cliente → cadastro. O pedido do Kit Festa continua trazendo o endereço que o cliente digitou no site.</span></li>
+        <li><span class="pin">6</span><span>No mapa o texto e o ponto passam a bater: os dois falam de Joinville, com uma nota explicando que o cadastro é outro.</span></li>
+        <li><span class="pin">7</span><span><b>Fim da sugestão semanal de trocar o GPS</b> desse cliente. A Saúde GPS passa a comparar as entregas com o local de entrega, e não com o cadastro.</span></li>
+      </ul>
+
+      <div class="rot g" style="margin-top:18px">5D · A Ana grava o endereço (Entrega 3)</div>
+      <div class="app estreito" style="max-width:420px">
+        <div class="chat">
+          <div class="bol c">Boa tarde! Pode entregar na quinta no endereço novo? Av. Santos Dumont, 3040, Joinville.</div>
+          <div class="bol a">Anotei: <b>Av. Santos Dumont, 3040 — Aníbal Moura, Joinville/SC</b>. Posso gravar como local de entrega das suas próximas compras?</div>
+          <div class="bol c">Pode</div>
+          <div class="bol a">Pronto, gravei ✅ O endereço da nota fiscal continua o mesmo.</div>
+        </div>
+      </div>
+      <ul class="legenda"><li><span class="pin">8</span><span>A Ana só grava <b>depois que o cliente confirma</b>, identifica o cliente pelo <b>telefone</b> (nunca por CPF solto) e grava <b>só no local de entrega</b>, nunca no cadastro. Cada gravação entra no histórico de endereço. Quando não achar o ponto no mapa, a gravação fica marcada para a equipe conferir o GPS. É um endpoint novo no nosso sistema, sem acesso direto ao banco.</span></li></ul>
+    </div>
+  </div>
+
+  <div class="dec">
+    <h2>Regra única do endereço — sem perguntar ao motorista</h2>
+    <div class="etp" style="grid-template-columns:1fr">
+      <div style="background:#ecf7f2;border-color:var(--primary)">
+        <b>1º</b> endereço <b>do pedido</b> (se foi informado) → <b>2º</b> <b>local de entrega</b> do cliente (se tiver) → <b>3º</b> <b>endereço do cadastro</b>.<br>
+        O sistema escolhe sozinho. O motorista vê "Entregar em:" com o endereço escolhido e o botão <b>Maps</b> leva a esse endereço. Não aparece pergunta nenhuma a mais na rota.<br>
+        <b>Kit Festa:</b> cada pedido leva o endereço que o cliente informou (empresa num dia, casa no outro). Isso já é assim hoje e <b>nunca volta para o cadastro</b> — vamos só passar a mostrar e a usar na entrega.
+      </div>
+    </div>
+  </div>
+
+  <div class="dec">
+    <h2>O que ainda precisa ser ajustado no projeto (levantado no código)</h2>
+    <ol class="decs">
+      <li><b>Botão Maps do motorista</b> (<span class="arq">PainelMotorista.jsx</span>): hoje abre o GPS do cliente ou, se não tem, o endereço do cadastro. Passa a abrir o endereço escolhido pela regra acima, e mostra qual é antes do toque.</li>
+      <li><b>Mapa de entrega e roteirização</b> (<span class="arq">MapaExpedicao.jsx</span>, <span class="arq">roteirizacao.js</span>): hoje usam o GPS e o texto do cadastro. Passam a usar o local escolhido, para texto e ponto baterem.</li>
+      <li><b>"Você está na porta?" e Saúde GPS</b> (<span class="arq">gpsClientesRoutes.js</span>, <span class="arq">gpsClientesService.js</span>) — é o ponto mais delicado. Hoje cada entrega conta como "voto" para o GPS do cliente; e se o cliente <u>não tem GPS</u>, a primeira entrega vira o ponto dele na hora. Com dois endereços isso erra: a entrega na casa viraria o ponto do escritório. Regra nova: o voto vai para <b>o lugar onde se entregou</b> (local de entrega → GPS do local de entrega); endereço avulso do pedido <b>não ensina</b> o GPS do cliente. O comportamento atual (cliente com um endereço só) <b>não muda</b>.</li>
+      <li><b>Pedido comum não tem campo de endereço</b> — só o pedido que veio do site do Kit Festa guarda o endereço (<span class="arq">kitfesta_pedidos.endereco_entrega</span>). A Entrega 2 cria o campo no pedido (só acrescenta, nada sai).</li>
+      <li><b>Impressões de entrega</b> (romaneio, etiqueta do Delivery, pedido impresso): ainda mostram o cadastro. Passam a mostrar o endereço de entrega. <b>Nota fiscal fica fora</b>.</li>
+      <li><b>WhatsApp ao cliente e Agenda Google</b>: já usam o endereço do Kit Festa; passam a usar o mesmo endereço escolhido para os pedidos comuns.</li>
+      <li><b>Ana:</b> no Kit Festa pelo WhatsApp ela já grava o endereço no pedido. Falta só mostrar no sistema (Entrega 1) e, na Entrega 3, gravar como "local de entrega" <b>somente se o cliente pedir para ser o padrão</b> — nunca por conta própria.</li>
+    </ol>
+  </div>
+
+  <div class="dec">
+    <h2>Como entregar (3 etapas)</h2>
+    <div class="etp">
+      <div><h3>Entrega 1 · Delivery e endereço do pedido</h3>Topo com 4 botões e contagem, período para frente, "Entregar em", janela de movimentar, detalhe com rodapé fixo, endereço também na aba Pedidos.<br><span class="nao">Não mexe em nota fiscal.</span></div>
+      <div><h3>Entrega 2 · Local de entrega</h3>Campo no cliente e no pedido, mapa de entrega e etiquetas usando o local, Saúde GPS sem a sugestão repetida.<br><span class="nao">Não mexe em nota fiscal.</span> Etapa maior: começa com o arquiteto.</div>
+      <div><h3>Entrega 3 · Ana</h3>Endpoint novo na API da Ana para gravar o local de entrega, com confirmação do cliente, histórico e documentação. Só acrescenta; não quebra o que a Ana já usa.<br>Depende da Entrega 2.</div>
+    </div>
+  </div>
+
+  <div class="dec">
+    <h2>O que muda por trás (se você aprovar)</h2>
+    <ol class="decs">
+      <li><b>Entrega 1:</b> <span class="arq">deliveryService.js</span> passa a trazer endereço e modo do pedido do Kit Festa (só acrescenta campo). <span class="arq">DeliveryKanban.jsx</span> ganha os 4 botões no topo, o filtro de período e a janela de mover. <span class="arq">FiltroPeriodo.jsx</span> ganha os períodos "Amanhã" e "Próximos N dias" (sem mudar os atuais). <span class="arq">ListaPedidos.jsx</span> mostra o "Entregar em".</li>
+      <li><b>Entrega 2:</b> campos novos no cliente e no pedido (só acrescentam; nenhum campo atual sai). Ficha do cliente, novo pedido, mapa de entrega, etiquetas e Saúde GPS passam a ler o local de entrega.</li>
+      <li><b>Entrega 3:</b> rota nova na API da Ana + documentação.</li>
+      <li><b>Não muda:</b> nota fiscal, permissões de etapa, bloqueio de pedido não faturado, WhatsApp, etiquetas, horário de entrega, atualização a cada 30s.</li>
+      <li>Em cada entrega: build, teste clicando (celular e computador), manual do Clippy e página de novidade para o grupo.</li>
+    </ol>
+  </div>
+
+  <div class="dec">
+    <h2>Decisões que adotei (me diga se quiser outra)</h2>
+    <ul class="decs">
+      <li><b>Abrir em "Hoje"</b> e lembrar a última escolha de cada usuário. Atrasado nunca esconde.</li>
+      <li><b>Mover = 2 toques</b> (botão → confirmar), porque mover manda WhatsApp ao cliente. Se preferir 1 toque com "Desfazer" por 5 segundos, é só dizer.</li>
+      <li>O <b>pedido do Kit Festa</b> continua com o endereço digitado no site; os demais pedidos usam local de entrega do cliente ou cadastro.</li>
+    </ul>
+  </div>
+
+</div>
+
+<script>
+function modo(m,btn){
+  document.body.className=m;
+  document.querySelectorAll('.seg button').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+}
+const ET=['Pedido','Em Produção','Saindo Entrega','Entregue'];
+const ETC=['Pedido','Produção','Saindo','Entregue'];
+const PROX=['▶ Iniciar produção','🚚 Saiu para entrega','✔ Marcar entregue'];
+const HOJE=new Date(); HOJE.setHours(12,0,0,0);
+const fimMes=Math.round((new Date(HOJE.getFullYear(),HOJE.getMonth()+1,0,12)-HOJE)/864e5);
+const PERIODOS=[['hoje','Hoje',[0,0]],['amanha','Amanhã',[1,1]],['p7','Próximos 7 dias',[0,7]],['p30','Próximos 30 dias',[0,30]],['mes','Este mês',[0,fimMes]],['todos','Todo o período',null]];
+const dd=(d)=>{const x=new Date(HOJE.getTime()+d*864e5);return x.toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit'}).replace('.','')};
+const cards=[
+ {id:1,n:412,nome:'Buffet Doce Encanto',d:0,h:'14:00',modo:'entrega',end:'Rua das Palmeiras, 320 — Apto 12 · Velha, Blumenau',cad:'Av. Brasil, 1500 — Centro, Blumenau',itens:4,total:'389,00',pag:'Quitado',etapa:0},
+ {id:6,n:410,nome:'Restaurante Sabor da Serra',d:-1,h:'',modo:'entrega',end:'Rua Itajaí, 210 — Garcia, Blumenau',cad:'Rua Itajaí, 210 — Garcia, Blumenau',itens:3,total:'198,00',pag:'Em aberto',etapa:0},
+ {id:2,n:413,nome:'Maria Helena Souza',d:0,h:'16:00',modo:'retirada',itens:2,total:'214,00',pag:'Em aberto',etapa:0},
+ {id:7,n:415,nome:'Rosa Mara Buffet',d:3,h:'10:00',modo:'entrega',end:'Rua Amazonas, 55 — Garcia, Blumenau',cad:'Rua Amazonas, 55 — Garcia, Blumenau',itens:5,total:'760,00',pag:'Parcial',etapa:0},
+ {id:8,n:418,nome:'Festas & Cia',d:12,h:'',modo:'entrega',end:'Rua Bahia, 900 — Itoupava Norte, Blumenau',cad:'Rua Bahia, 900 — Itoupava Norte, Blumenau',itens:7,total:'1.340,00',pag:'Quitado',etapa:0},
+ {id:3,n:409,nome:'Clube Recreativo Gaspar',d:1,h:'',modo:'entrega',end:'Rua XV de Novembro, 88 — Centro, Gaspar',cad:'Rua XV de Novembro, 88 — Centro, Gaspar',itens:6,total:'1.120,00',pag:'Parcial',etapa:1},
+ {id:4,n:405,nome:'Ana Paula Ribeiro',d:0,h:'11:30',modo:'entrega',end:'Rua das Flores, 45 — Itoupava, Blumenau',cad:'Rua das Flores, 45 — Itoupava, Blumenau',itens:3,total:'276,00',pag:'Quitado',etapa:2},
+ {id:5,n:398,nome:'Escola Pequeno Mundo',d:0,h:'09:40',modo:'entrega',end:'Av. Beira Rio, 700 — Ponta Aguda, Blumenau',cad:'Av. Beira Rio, 700 — Ponta Aguda, Blumenau',itens:8,total:'2.040,00',pag:'Quitado',etapa:3},
+ {id:9,n:392,nome:'Condomínio Vista Verde',d:-1,h:'15:00',modo:'entrega',end:'Rua Progresso, 12 — Vila Nova, Blumenau',cad:'Rua Progresso, 12 — Vila Nova, Blumenau',itens:4,total:'530,00',pag:'Quitado',etapa:3}
+];
+let periodo='hoje';
+const S={m:{aba:0,sheet:null,sel:null,destino:null,avisar:true,toast:''},d:{aba:0,sheet:null,sel:null,destino:null,avisar:true,toast:''}};
+const range=()=>PERIODOS.find(p=>p[0]===periodo)[2];
+const noPeriodo=c=>{const r=range();return !r||(c.d>=r[0]&&c.d<=r[1])};
+const atrasado=c=>c.etapa<3&&c.d<0;
+const visivel=c=>atrasado(c)||noPeriodo(c);
+const nomePer=()=>PERIODOS.find(p=>p[0]===periodo)[1];
+function quando(c){
+  const base=c.d===0?'Hoje':c.d===1?'Amanhã':c.d<0?'':dd(c.d);
+  if(atrasado(c)) return {cls:'hoje',t:dd(c.d)+' · Atrasado '+(-c.d)+'d'};
+  if(c.d<0) return {cls:'fut',t:dd(c.d)};
+  return {cls:c.d===0?'hoje':c.d===1?'amanha':'fut',t:base+(c.h?' · '+c.h:'')};
+}
+function cardHtml(c,pins){
+  const pin=n=>pins?'<span class="pin">'+n+'</span>':'';
+  let ent='';
+  if(c.modo==='retirada') ent='<div class="entregar retira"><div class="t">🏪 Retirada na loja '+pin(4)+'</div></div>';
+  else{
+    const dif=c.cad&&c.cad!==c.end;
+    ent='<div class="entregar"><div class="t">📍 Entregar em '+pin(4)+'</div><div class="e">'+c.end+'</div><span class="mapabtn">🗺 Abrir no mapa</span> '+pin(6)+'</div>'
+      +(dif?'<div class="diverge">⚠ <b>Diferente do cadastro:</b> '+c.cad+' '+pin(5)+'</div>':'');
+  }
+  const pg=c.pag==='Quitado'?'em':(c.pag==='Parcial'?'amb':'red');
+  const q=quando(c);
+  return '<div class="card" style="'+(atrasado(c)?'border-color:#fca5a5;box-shadow:0 0 0 2px #fecaca':'')+'"><div class="l1"><div><div class="nome">'+c.nome+'</div><div class="num">Pedido #'+c.n+'</div><span class="quando '+q.cls+'">📅 '+q.t+'</span></div><span style="font-size:15px;color:#6b7280;letter-spacing:4px">🕒🏷💬</span></div>'
+   +ent
+   +'<div class="resumo"><span>'+c.itens+' itens · R$ '+c.total+'</span><span class="tag '+pg+'">'+c.pag+'</span></div>'
+   +'<div class="acoes">'+(c.etapa<3
+      ?'<button class="btn-av" onclick="abrir(\'I\','+c.id+')">'+PROX[c.etapa]+' '+pin(7)+'</button><button class="btn-mais" title="Todas as etapas" onclick="abrir(\'I\','+c.id+')">…</button>'+pin(8)
+      :'<div class="feito">Entregue ✓</div>')+'</div></div>';
+}
+function render(){ ['m','d'].forEach(draw); }
+function draw(i){
+  const mob=i==='m', st=S[i], root=document.getElementById('app-'+i);
+  const cnt=ET.map((_,k)=>cards.filter(c=>c.etapa===k&&visivel(c)).length);
+  const atr=cards.filter(atrasado).length;
+  const fora=cards.filter(c=>!visivel(c)).length;
+  const chip='<button class="chipper" onclick="abrirPer(\''+i+'\')">📅 '+nomePer()+' ▾</button>'+(mob?'<span class="pin">2</span>':'');
+  const avisos=(atr||fora)?'<div class="avisos">'+(atr?'<span class="av1">⚠ '+atr+' atrasado'+(atr>1?'s':'')+' <span class="pin" style="width:16px;height:16px;font-size:9px">3</span></span>':'')+(fora?'<span class="av2" onclick="periodo=\'todos\';render()">+'+fora+' em outras datas · ver</span>':'')+'</div>':'';
+  let h='<div class="toast'+(st.toast?' on':'')+'">'+st.toast+'</div>';
+  if(mob){
+    h+='<div class="topm"><span class="tit">🛵 Delivery</span><span class="ib" title="Buscar">🔍</span><span class="ib" title="Atualizar">🔄</span></div>'
+      +'<div style="display:flex;gap:6px;align-items:center;margin-bottom:8px">'+chip+'</div>';
+    h+='<div class="e4">'+ET.map((_,k)=>'<button class="k'+k+(st.aba===k?' on':'')+(cnt[k]?'':' zero')+'" onclick="S.m.aba='+k+';draw(\'m\')"><b>'+cnt[k]+'</b>'+ETC[k]+(k===0?' <span class="pin" style="width:16px;height:16px;font-size:9px">1</span>':'')+'</button>').join('')+'</div>';
+    h+=avisos;
+    const l=cards.filter(c=>c.etapa===st.aba&&visivel(c)).sort((a,b)=>a.d-b.d);
+    h+='<div class="lista1">'+(l.length?l.map((c,k)=>cardHtml(c,k===0&&st.aba===0)).join('').replace(/'I'/g,"'m'"):'<div class="vazio">Nenhum pedido em '+ET[st.aba]+' neste período</div>')+'</div>';
+  }else{
+    h+='<div class="pagehd"><span class="ico" style="background:#fef3c7">🛵</span><b>Delivery — Kit Festa</b><span style="margin-left:auto;font-size:11px;color:#6b7280">🔄 atualizado agora</span></div>'
+      +'<div class="tool"><div class="busca">🔍 Buscar por cliente ou nº do pedido…</div>'+chip+'</div>'+avisos
+      +'<div class="cols">'+ET.map((e,k)=>{const l=cards.filter(c=>c.etapa===k&&visivel(c)).sort((a,b)=>a.d-b.d);
+        return '<div class="col c'+k+'"><div class="ch">'+e+'<span>'+cnt[k]+'</span></div><div class="lista">'+(l.length?l.map(c=>cardHtml(c,false)).join('').replace(/'I'/g,"'d'"):'<div class="vazio">Nenhum pedido</div>')+'</div></div>'}).join('')+'</div>';
+  }
+  // sheet
+  h+='<div class="veu'+(st.sheet?' on':'')+'" onclick="fechar(\''+i+'\')"></div><div class="sheet'+(st.sheet?' on':'')+'">'+(st.sheet==='mover'?sheetMover(i):st.sheet==='per'?sheetPer(i):'')+'</div>';
+  root.innerHTML=h;
+}
+function abrir(i,id){const st=S[i];st.sel=cards.find(c=>c.id===id);st.destino=st.sel.etapa+1;st.avisar=true;st.sheet='mover';draw(i);}
+function abrirPer(i){S[i].sheet='per';draw(i);}
+function fechar(i){S[i].sheet=null;draw(i);}
+function sheetMover(i){
+  const st=S[i],c=st.sel;let o='';
+  ET.forEach((e,k)=>{ if(k===c.etapa)return;
+    const sub=k===c.etapa+1?'próximo passo':(k<c.etapa?'voltar':'pular etapa');
+    o+='<div class="opc peq '+(k===st.destino?'sel':'')+'" onclick="S.'+i+'.destino='+k+';draw(\''+i+'\')"><span class="r"></span><div>'+e+'<small>'+sub+'</small></div></div>';});
+  return '<div class="alca"></div><h4>'+c.nome+'</h4><div class="sub">Pedido #'+c.n+' · agora em <b>'+ET[c.etapa]+'</b></div>'+o
+   +'<div class="zap" style="background:#fff7ed;border:1px solid #fdba74"><span>💬 <b>Avisar o cliente no WhatsApp?</b><br><small style="color:#4b5563">Pedido parado? Escolha "sem avisar".</small></span></div>'
+   +'<div style="display:grid;gap:8px"><button class="bok" style="min-height:46px;border-radius:999px;font:inherit;font-weight:800;border:0;color:#fff;background:var(--primary);cursor:pointer" onclick="confirmar(\''+i+'\',true)">Mover e avisar o cliente</button><button style="min-height:46px;border-radius:999px;font:inherit;font-weight:800;border:2px solid var(--primary);color:var(--primaryDark);background:#fff;cursor:pointer" onclick="confirmar(\''+i+'\',false)">Mover sem avisar</button><button style="border:0;background:transparent;min-height:36px;font:inherit;font-weight:700;color:#6b7280;cursor:pointer" onclick="fechar(\''+i+'\')">Cancelar</button></div>';
+}
+function sheetPer(i){
+  return '<div class="alca"></div><h4>Período da entrega</h4><div class="sub">Pedidos atrasados aparecem sempre.</div>'
+   +PERIODOS.map(p=>'<div class="opc peq '+(p[0]===periodo?'sel':'')+'" onclick="periodo=\''+p[0]+'\';S.m.sheet=null;S.d.sheet=null;render()"><span class="r"></span><div>'+p[1]+'<small>'+(p[2]?(p[2][0]===p[2][1]?dd(p[2][0]):dd(p[2][0])+' a '+dd(p[2][1])):'sem limite de data')+'</small></div></div>').join('')
+   +'<div class="opc peq off"><span class="r"></span><div>Personalizado<small>De / Até dentro do menu (igual ao Contas a Pagar)</small></div></div>';
+}
+function confirmar(i,avisar){
+  const st=S[i];st.avisar=avisar;st.sel.etapa=st.destino;const msg='→ '+ET[st.destino]+(st.avisar?' · cliente avisado no WhatsApp':' · sem aviso ao cliente');
+  S.m.sheet=null;S.d.sheet=null;S.m.aba=st.destino;
+  render(); S[i].toast=msg; draw(i); setTimeout(()=>{S[i].toast='';draw(i)},2200);
+}
+render();
+</script>
+</body>
+</html>

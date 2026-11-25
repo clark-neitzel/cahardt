@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Delivery com endereço e mover pedido — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp (sem og:image: cartão compacto) -->
+<meta property="og:title" content="🚚 Novidade no Hardt App: Delivery com o endereço da entrega">
+<meta property="og:description" content="O Delivery agora mostra ONDE entregar (o endereço do pedido do Kit Festa), tem 4 botões de etapa no topo e uma janela para mover o pedido escolhendo se avisa o cliente.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* HERO */
+  .hero { background: linear-gradient(168deg, var(--house) 0%, #16302a 100%); color: #fff; padding: 40px 16px 96px; }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow { display: inline-block; background: var(--gold); color: #2b230f; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .14em; padding: 6px 14px; border-radius: 999px; margin-bottom: 18px; }
+  .hero h1 { font-size: clamp(28px, 7vw, 40px); font-weight: 800; line-height: 1.12; margin: 0 0 12px; text-wrap: balance; }
+  .hero p { color: rgba(255,255,255,.75); font-size: 16px; max-width: 46ch; margin: 0 auto; text-wrap: balance; }
+
+  .mock { max-width: 420px; margin: -68px auto 28px; background: #fff; border-radius: 20px; box-shadow: 0 18px 44px rgba(20,40,34,.28); overflow: hidden; text-align: left; }
+  .mock-top { background: var(--house); color: #fff; padding: 14px 18px; display: flex; align-items: center; gap: 12px; }
+  .mock-top small { display: block; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .14em; color: rgba(255,255,255,.55); }
+  .mock-top strong { font-size: 16px; line-height: 1.2; }
+  .mock-ico { font-size: 24px; }
+  .mock-body { padding: 16px 18px 18px; background: #f7f6f2; }
+
+  /* SEÇÕES / ACCORDION */
+  .sec-label { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .16em; color: var(--primary-dark); margin: 34px 4px 12px; }
+  .acc { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; margin-bottom: 10px; overflow: hidden; box-shadow: 0 1px 2px rgba(30,57,50,.05); }
+  .acc-head { width: 100%; display: flex; align-items: center; gap: 12px; background: none; border: none; font: inherit; text-align: left; padding: 15px 16px; cursor: pointer; min-height: 56px; }
+  .acc-head:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .acc-ico { width: 38px; height: 38px; border-radius: 11px; background: var(--mint); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n { width: 30px; height: 30px; flex-shrink: 0; border-radius: 50%; background: var(--primary); color: #fff; font-weight: 800; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+  .rodape { text-align: center; font-size: 13px; color: var(--ink-soft); margin-top: 40px; }
+  .rodape strong { color: var(--primary-dark); }
+
+  /* MOCKUPS DAS TELAS DO APP */
+  .tela { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; overflow: hidden; margin-bottom: 12px; box-shadow: 0 1px 2px rgba(30,57,50,.05); }
+  .tela-titulo { background: var(--house); color: #fff; padding: 12px 16px; font-size: 13px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .pin { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background: var(--gold); color: #2b230f; font-size: 11px; font-weight: 800; flex-shrink: 0; vertical-align: 2px; margin-left: 6px; }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+
+  /* peças dos mocks */
+  .app-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; background: var(--primary); color: #fff; font-size: 12.5px; font-weight: 800; padding: 11px 16px; border-radius: 999px; }
+  .app-btn.claro { background: #fff; border: 2px solid var(--primary); color: var(--primary-dark); }
+  .app-btn.cinza { background: transparent; color: #6b7280; font-weight: 700; }
+  .periodo { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--primary); border-radius: 999px; padding: 8px 14px; background: #fff; font-size: 12px; font-weight: 800; color: var(--primary-dark); margin-bottom: 8px; }
+  .e4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 8px; }
+  .e4 span { border: 1px solid #e5e3dc; border-top-width: 4px; background: #fff; border-radius: 10px; padding: 5px 2px 6px; font-size: 10.5px; font-weight: 700; color: #4b5563; text-align: center; line-height: 1.15; }
+  .e4 span b { display: block; font-size: 19px; color: var(--ink); line-height: 1.1; }
+  .e4 .k0 { border-top-color: #60a5fa; } .e4 .k1 { border-top-color: #fbbf24; } .e4 .k2 { border-top-color: #c084fc; } .e4 .k3 { border-top-color: #4ade80; }
+  .e4 .on { background: var(--mint); border-color: var(--primary); border-top-color: var(--primary); color: var(--primary-dark); }
+  .e4 .on b { color: var(--primary-dark); }
+  .e4 .zero b { color: #9ca3af; }
+  .avisos { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; font-size: 11px; font-weight: 700; }
+  .av1 { background: #fee2e2; color: #b91c1c; border-radius: 999px; padding: 4px 10px; }
+  .av2 { background: #f3f4f6; color: #374151; border-radius: 999px; padding: 4px 10px; text-decoration: underline; }
+  .card { background: #fff; border: 1px solid #e5e3dc; border-radius: 12px; padding: 10px; font-size: 12px; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+  .card .nome { font-weight: 800; font-size: 14px; line-height: 1.2; }
+  .card .num { font-size: 11px; color: #6b7280; }
+  .quando { display: inline-flex; gap: 4px; align-items: center; font-size: 11px; font-weight: 800; border-radius: 6px; padding: 2px 7px; border: 1px solid #fdba74; background: #ffedd5; color: #9a3412; margin-top: 4px; }
+  .entregar { margin-top: 8px; border: 2px solid var(--primary); background: #ecf7f2; border-radius: 12px; padding: 7px 9px; }
+  .entregar .t { font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--primary-dark); display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .entregar .e { font-size: 13px; font-weight: 700; line-height: 1.3; margin-top: 2px; }
+  .entregar.retira { border-color: #9ca3af; background: #f3f4f6; }
+  .entregar.retira .t { color: #374151; }
+  .tag { display: inline-flex; align-items: center; border-radius: 999px; padding: 1px 8px; font-size: 10px; font-weight: 700; background: #d1fae5; color: #065f46; margin-left: auto; text-transform: none; letter-spacing: 0; }
+  .diverge { margin-top: 6px; font-size: 11px; background: #fef3c7; border: 1px solid #fcd34d; color: #92400e; border-radius: 8px; padding: 4px 7px; line-height: 1.35; }
+  .mapabtn { display: inline-flex; gap: 4px; align-items: center; margin-top: 6px; font-size: 11px; font-weight: 700; color: var(--primary); border: 1px solid var(--primary); border-radius: 999px; padding: 6px 12px; background: #fff; }
+  .resumo { margin-top: 8px; font-size: 12px; font-weight: 700; color: #374151; display: flex; justify-content: space-between; border-top: 1px solid #f0efe9; padding-top: 8px; }
+  .acoes { display: flex; gap: 6px; margin-top: 8px; align-items: stretch; }
+  .btn-av { flex: 1; min-height: 44px; border-radius: 999px; background: var(--primary); color: #fff; font-size: 13px; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 6px; }
+  .btn-mais { min-height: 44px; min-width: 44px; border: 1px solid #d1d5db; border-radius: 999px; background: #fff; font-size: 18px; color: #4b5563; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+  .janela { background: #fff; border-radius: 16px; padding: 14px; max-width: 360px; margin: 0 auto; box-shadow: 0 6px 20px rgba(0,0,0,.12); }
+  .janela h4 { margin: 0 0 2px; font-size: 15px; }
+  .janela .sub { font-size: 12px; color: #6b7280; margin-bottom: 10px; }
+  .opc { display: flex; gap: 10px; align-items: center; border: 2px solid #e5e7eb; border-radius: 12px; padding: 8px 12px; margin-bottom: 8px; font-size: 14px; font-weight: 700; min-height: 48px; }
+  .opc.sel { border-color: var(--primary); background: #ecf7f2; }
+  .opc.off { opacity: .4; }
+  .opc small { display: block; font-weight: 500; color: #6b7280; font-size: 11px; }
+  .opc .r { width: 18px; height: 18px; border-radius: 99px; border: 2px solid #9ca3af; flex: none; }
+  .opc.sel .r { border-color: var(--primary); background: radial-gradient(circle, var(--primary) 45%, #fff 50%); }
+  .nota { font-size: 11px; color: #6b7280; margin: 4px 0 10px; }
+  .botoes { display: grid; gap: 8px; }
+  .det-sec { margin-top: 10px; }
+  .det-sec .k { font-size: 10px; font-weight: 800; text-transform: uppercase; color: #6b7280; letter-spacing: .06em; margin-bottom: 2px; }
+  .det-itens { border: 1px solid #e5e3dc; border-radius: 8px; font-size: 12px; background: #fff; }
+  .det-itens div { display: flex; justify-content: space-between; padding: 5px 8px; border-top: 1px solid #f3f4f6; }
+  .det-itens div:first-child { border-top: 0; }
+  .det-rodape { display: flex; gap: 8px; margin: 12px -16px -16px; padding: 10px 16px; border-top: 1px solid #e5e3dc; background: #fff; }
+  .pcard { border: 1px solid #e5e3dc; border-radius: 12px; padding: 10px 12px; background: #fff; margin-bottom: 8px; font-size: 12px; }
+  .pcard .p1 { display: flex; justify-content: space-between; font-weight: 800; font-size: 14px; gap: 8px; }
+  .pcard .p2 { color: #6b7280; margin-top: 3px; font-size: 11px; }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>Delivery: agora o motorista<br>vê onde entregar</h1>
+    <p>O endereço que o cliente digitou no pedido do Kit Festa aparece em destaque, com botão para abrir no mapa. E ficou mais fácil mover o pedido de etapa, sem rolar a tela.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- mock hero: cartão com "Entregar em" -->
+  <div class="mock" aria-hidden="true">
+    <div class="mock-top">
+      <span class="mock-ico">🚚</span>
+      <div>
+        <small>Delivery · Pedido #412</small>
+        <strong>Buffet Doce Encanto</strong>
+      </div>
+    </div>
+    <div class="mock-body">
+      <div class="entregar" style="margin-top:0">
+        <div class="t">📍 Entregar em <span class="tag">Endereço do pedido</span></div>
+        <div class="e">Rua das Palmeiras, 320 — Apto 12<br>Velha · Blumenau/SC · CEP 89036-100</div>
+        <span class="mapabtn">🗺 Abrir no mapa</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec-label">O que mudou</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">📍</span>
+      <strong>"Entregar em": o endereço certo, em destaque</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Antes, o Delivery mostrava só o endereço do <b>cadastro</b> do cliente. No Kit Festa o cliente digita no pedido <b>onde quer receber</b> — e esse endereço não aparecia. Agora aparece:</p>
+      <ul>
+        <li><b>Quadro verde "Entregar em"</b> logo abaixo do nome do cliente, com a etiqueta "Endereço do pedido".</li>
+        <li><b>Abrir no mapa:</b> um toque e o Google Maps abre já nesse endereço.</li>
+        <li><b>Aviso amarelo</b> quando o endereço do pedido é <b>diferente do cadastro</b> do cliente.</li>
+        <li><b>Retirada na loja</b> (cinza) quando o cliente vai buscar — fica claro que não tem entrega.</li>
+        <li>Pedido normal (que não veio do site) mostra o endereço do cadastro, como sempre.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🔢</span>
+      <strong>4 botões de etapa no topo</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>No celular não precisa mais rolar a tela inteira para achar a próxima etapa. Os botões <b>Pedido · Produção · Saindo · Entregue</b> ficam no topo, cada um com o número de pedidos. Toque e aparece só a lista daquela etapa. No computador, as 4 colunas continuam lado a lado.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">📅</span>
+      <strong>Período para a frente (e atrasado nunca some)</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>O filtro de data virou o seletor de período: <b>Hoje · Amanhã · Próximos 7 dias · Próximos 30 dias · Este mês · Todo o período · Personalizado</b>. Ele lembra a sua última escolha e abre em <b>Hoje</b>.</p>
+      <ul>
+        <li>Pedido <b>atrasado</b> (data já passou e ainda não foi entregue) aparece <b>sempre</b>, em vermelho, mesmo fora do período.</li>
+        <li>Uma linha avisa quantos pedidos estão em <b>outras datas</b> ("+4 em outras datas · ver") — um toque mostra todos.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">▶️</span>
+      <strong>Mover o pedido: botão grande + janela que pergunta se avisa</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Cada card tem um <b>botão verde com o próximo passo escrito</b> ("▶ Iniciar produção", "🚚 Saiu para entrega", "✔ Marcar entregue") e um botão <b>"…"</b> para voltar ou pular uma etapa. Os dois abrem uma janela por cima de tudo (nunca mais cortada pela coluna):</p>
+      <ul>
+        <li>A <b>próxima etapa já vem marcada</b> — no caso comum é só confirmar.</li>
+        <li><b>Toda vez</b> o sistema pergunta: <b>"Mover e avisar o cliente"</b> ou <b>"Mover sem avisar"</b>. Não tem escolha escondida — pedido parado há dias? Mova sem avisar e só o quadro muda.</li>
+        <li>A equipe interna continua sendo avisada normalmente.</li>
+        <li>Se der erro, a janela fica aberta e mostra o motivo — o pedido só muda de coluna depois de dar certo.</li>
+        <li>Pedido <b>não faturado</b> continua bloqueado, como antes.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🧾</span>
+      <strong>Também na aba Pedidos</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Pedido que veio do Kit Festa mostra o mesmo bloco <b>"Entregar em"</b> (ou "Retirada na loja") na lista e no detalhe do pedido. Pedido normal de vendedor continua igual.</p>
+    </div>
+  </div>
+
+  <div class="sec-label">As telas do app, sem mistério</div>
+
+  <!-- TELA 1 -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 1 · Delivery no celular</div>
+    <div class="tela-corpo">
+      <div class="periodo">📅 Entrega: Hoje ▾ <span class="pin">2</span></div>
+      <div class="e4">
+        <span class="k0 on"><b>5</b>Pedido <span class="pin" style="margin:0">1</span></span>
+        <span class="k1"><b>3</b>Produção</span>
+        <span class="k2"><b>2</b>Saindo</span>
+        <span class="k3 zero"><b>0</b>Entregue</span>
+      </div>
+      <div class="avisos">
+        <span class="av1">⚠ 1 atrasado <span class="pin" style="margin:0 0 0 4px">3</span></span>
+        <span class="av2">+4 em outras datas · ver</span>
+      </div>
+      <div class="card">
+        <div class="nome">Buffet Doce Encanto</div>
+        <div class="num">Pedido #412</div>
+        <span class="quando">📅 26/11 · Amanhã · 14:00</span>
+        <div class="entregar">
+          <div class="t">📍 Entregar em <span class="pin" style="margin:0">4</span> <span class="tag">Endereço do pedido</span></div>
+          <div class="e">Rua das Palmeiras, 320 — Apto 12<br>Velha · Blumenau/SC</div>
+          <span class="mapabtn">🗺 Abrir no mapa <span class="pin" style="margin:0 0 0 4px">6</span></span>
+        </div>
+        <div class="diverge">⚠ <b>Diferente do cadastro:</b> Av. Brasil, 1500 — Centro <span class="pin" style="margin:0 0 0 2px">5</span></div>
+        <div class="resumo"><span>4 itens</span><span>R$ 389,00</span></div>
+        <div class="acoes">
+          <div class="btn-av">▶ Iniciar produção <span class="pin" style="background:#fff;margin:0">7</span></div>
+          <div class="btn-mais">…</div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Os 4 botões do topo</b> mostram quantos pedidos há em cada etapa (zero fica apagado). Toque para ver só aquela etapa.</span></div>
+      <div><span class="pin">2</span><span><b>Período da entrega:</b> Hoje, Amanhã, Próximos 7 ou 30 dias, Este mês, Todo o período ou Personalizado. Lembra a sua escolha.</span></div>
+      <div><span class="pin">3</span><span><b>Atrasado nunca some</b> e a linha ao lado avisa quantos pedidos estão em outras datas.</span></div>
+      <div><span class="pin">4</span><span><b>"Entregar em":</b> o endereço do pedido, em verde, logo abaixo do cliente.</span></div>
+      <div><span class="pin">5</span><span><b>Aviso amarelo</b> só aparece quando o endereço do pedido é diferente do cadastro.</span></div>
+      <div><span class="pin">6</span><span><b>Abrir no mapa:</b> abre o Google Maps no celular, já no endereço.</span></div>
+      <div><span class="pin">7</span><span><b>Botão grande verde</b> = próximo passo (abre a janela da Tela 2). O <b>"…"</b> abre a mesma janela para voltar ou pular uma etapa.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 2 -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 2 · A janela "Mover pedido"</div>
+    <div class="tela-corpo">
+      <div class="janela">
+        <div style="text-align:center"><div style="width:40px;height:4px;border-radius:9px;background:#d1d5db;margin:0 auto 10px"></div></div>
+        <h4>Buffet Doce Encanto <span class="pin">1</span></h4>
+        <div class="sub">Pedido #412 · agora em <b>Pedido</b></div>
+        <div class="opc sel"><span class="r"></span><div>Em Produção <span class="pin">2</span><small>próximo passo</small></div></div>
+        <div class="opc"><span class="r"></span><div>Saindo Entrega<small>pular etapa</small></div></div>
+        <div class="opc off"><span class="r"></span><div>Entregue<small>sem permissão para esta etapa</small></div></div>
+        <div class="nota">A equipe interna continua sendo avisada.</div>
+        <div class="botoes">
+          <div class="app-btn">Mover e avisar o cliente <span class="pin" style="background:#fff;margin:0">3</span></div>
+          <div class="app-btn claro">Mover sem avisar</div>
+          <div class="app-btn cinza">Cancelar</div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Mostra <b>qual pedido</b> você está mexendo — evita mover o card errado.</span></div>
+      <div><span class="pin">2</span><span><b>A próxima etapa já vem marcada.</b> Etapas em que você não tem permissão aparecem apagadas.</span></div>
+      <div><span class="pin">3</span><span><b>Dois botões, sem padrão escondido:</b> avisar o cliente no WhatsApp ou mover sem avisar. Se o pedido estava com o WhatsApp silenciado, a janela avisa e destaca "Mover sem avisar". No celular a janela sobe de baixo; no computador abre no centro.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 3 -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 3 · Detalhe do pedido (toque no card)</div>
+    <div class="tela-corpo">
+      <div style="background:#fff;border-radius:16px;padding:16px;box-shadow:0 6px 20px rgba(0,0,0,.1)">
+        <div style="font-weight:800;font-size:16px">Buffet Doce Encanto</div>
+        <div style="font-size:11px;color:#6b7280;margin-bottom:8px">Pedido #412 · Entrega 26/11 · 14:00 · Pedido</div>
+        <div class="entregar" style="margin-top:0">
+          <div class="t">📍 Entregar em <span class="pin" style="margin:0">1</span> <span class="tag">Endereço do pedido</span></div>
+          <div class="e">Rua das Palmeiras, 320 — Apto 12<br>Velha · Blumenau/SC · CEP 89036-100</div>
+          <span class="mapabtn">🗺 Abrir no mapa</span>
+        </div>
+        <div class="det-sec"><div class="k">Itens (6 un)</div>
+          <div class="det-itens"><div><span>4× Kit Festa 50 un</span><span>R$ 320,00</span></div><div><span>2× Mini coxinha 100 un</span><span>R$ 49,00</span></div><div><span>Frete</span><span>R$ 20,00</span></div><div style="font-weight:800;background:#f9fafb"><span>Total</span><span>R$ 389,00</span></div></div></div>
+        <div class="det-rodape">
+          <div class="btn-mais" style="padding:0 14px;font-size:13px;font-weight:700">Fechar</div>
+          <div class="btn-av">▶ Iniciar produção <span class="pin" style="background:#fff;margin:0">2</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>"Entregar em" é o primeiro bloco</b> do detalhe, antes de telefone e itens.</span></div>
+      <div><span class="pin">2</span><span><b>Rodapé fixo com o botão de avançar:</b> o corpo da janela rola, mas o botão fica sempre à vista. Dá para mover o pedido sem fechar o detalhe.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 4 -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 4 · Pedidos — pedidos do Kit Festa</div>
+    <div class="tela-corpo">
+      <div class="pcard">
+        <div class="p1"><span>Buffet Doce Encanto</span><span>R$ 389,00</span></div>
+        <div class="p2"><b style="color:#111">Entrega: 26/11 14:00</b> | Criação: 24/11 18:32</div>
+        <div class="entregar" style="padding:5px 8px"><div class="t" style="font-size:9px">📍 Entregar em <span class="pin" style="margin:0">1</span></div><div class="e" style="font-size:12px">Rua das Palmeiras, 320 — Apto 12 · Velha, Blumenau</div></div>
+        <div class="diverge" style="margin-top:4px">⚠ Diferente do cadastro</div>
+      </div>
+      <div class="pcard">
+        <div class="p1"><span>Maria Helena Souza</span><span>R$ 214,00</span></div>
+        <div class="p2"><b style="color:#111">Entrega: 26/11 16:00</b></div>
+        <div class="entregar retira" style="padding:5px 8px"><div class="t" style="font-size:9px">🏪 Retirada na loja <span class="pin" style="margin:0">2</span></div></div>
+      </div>
+      <div class="pcard">
+        <div class="p1"><span>Padaria Pão Quente</span><span>R$ 842,00</span></div>
+        <div class="p2"><b style="color:#111">Entrega: 26/11</b> | Vendedor: João</div>
+        <div class="p2" style="text-transform:uppercase">Blumenau - Centro <span class="pin" style="margin:0 0 0 4px">3</span></div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Pedido do Kit Festa para <b>entrega</b>: o endereço do pedido aparece na lista e também no detalhe.</span></div>
+      <div><span class="pin">2</span><span>Pedido do Kit Festa de <b>retirada</b>: o card diz "Retirada na loja".</span></div>
+      <div><span class="pin">3</span><span><b>Pedido normal de vendedor</b> continua igual a antes.</span></div>
+    </div>
+  </div>
+
+  <div class="sec-label">Para começar a usar</div>
+  <div class="passos">
+    <div class="passo"><span class="passo-n">1</span><div>Abra o <b>Delivery</b> e toque num dos <b>4 botões de etapa</b> no topo.</div></div>
+    <div class="passo"><span class="passo-n">2</span><div>Confira o quadro verde <b>"Entregar em"</b> no card — é o endereço do pedido. Toque em <b>Abrir no mapa</b> se precisar da rota.</div></div>
+    <div class="passo"><span class="passo-n">3</span><div>Para avançar, toque no <b>botão verde</b> com o próximo passo e escolha <b>Mover e avisar o cliente</b> ou <b>Mover sem avisar</b>.</div></div>
+    <div class="passo"><span class="passo-n">4</span><div>Para ver outro dia, troque o <b>período</b> (📅). Pedido atrasado aparece sempre.</div></div>
+  </div>
+
+  <p class="rodape">Dúvidas? Pergunte ao <strong>Clippy</strong> dentro do app — ele já conhece a tela nova.<br>— Hardt Salgados</p>
+</div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.parentElement;
+    const abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>

@@ -16,10 +16,11 @@ Kanban de acompanhamento de pedidos de entrega (Kit Festa). Os pedidos faturados
 
 ## O que dá pra fazer aqui
 
-- Ver todos os pedidos de entrega organizados em 4 colunas: Pedido, Produção, Saindo e Entregue
-- Mover um pedido de uma etapa para outra (apenas para frente, exceto retroceder com permissão)
+- Ver os pedidos de entrega organizados em 4 etapas: Pedido, Produção, Saindo e Entregue. No **celular** (e no iPad em pé) ficam **4 botões no topo** (Pedido · Produção · Saindo · Entregue), cada um com a **contagem** de pedidos (zero fica apagado) — toque num botão e aparece só a lista daquela etapa, sem rolar a tela. No computador (tela larga) as 4 colunas ficam lado a lado e a página inteira rola (a coluna não tem rolagem própria)
+- Ver **onde entregar** em cada card: bloco **"Entregar em"** logo abaixo do cliente (veja a seção abaixo)
+- Mover um pedido de uma etapa para outra pela **janela "Mover pedido"** (avançar, pular ou voltar), escolhendo na hora se avisa o cliente no WhatsApp
 - Buscar pedido por cliente ou número
-- Filtrar por data de entrega
+- Filtrar pelo **período da entrega** (seletor de período, que olha para a frente — veja a seção abaixo)
 - Reenviar mensagem de WhatsApp manualmente para o cliente
 - Silenciar o WhatsApp de um pedido específico (não envia mais notificações automáticas)
 - Definir/ajustar o **horário de entrega** do pedido pelo **ícone de relógio** no cartão (sem abrir o pedido; vazio = sem horário). Quem pode ver o quadro pode ajustar
@@ -43,14 +44,27 @@ Kanban de acompanhamento de pedidos de entrega (Kit Festa). Os pedidos faturados
 ## Como fazer (passo a passo real)
 
 ### Mover um pedido de etapa
-1. Localize o card na coluna atual
-2. Clique no botão de avançar (seta) no card
-3. Selecione a etapa destino
-4. O sistema verifica se o pedido está faturado — se não estiver, bloqueia
-5. Uma mensagem de WhatsApp é enviada automaticamente ao cliente (salvo se silenciado)
+1. Localize o card (no celular, toque primeiro no botão da etapa no topo)
+2. Toque no **botão verde grande** do card, que traz o **próximo passo escrito** ("▶ Iniciar produção", "🚚 Saiu para entrega" ou "✔ Marcar entregue"), ou no botão **"…"** (voltar ou pular uma etapa). Também dá para abrir o card (detalhe) e usar o botão do rodapé fixo. Card já Entregue mantém só o "…" (para poder voltar)
+3. Abre a janela **"Mover pedido"** por cima de tudo (no celular sobe de baixo; no computador fica no centro). Ela lista as **outras 3 etapas** com o subtítulo "próximo passo", "pular etapa" ou "voltar". **A próxima etapa já vem marcada** (se você tiver permissão). Etapa sem permissão aparece apagada e não dá para escolher
+4. A janela **sempre pergunta se avisa o cliente**, com dois botões do mesmo tamanho e peso: **"Mover e avisar o cliente"** (verde) ou **"Mover sem avisar"** (cinza-escuro), sob o quadro laranja "Avisar o cliente no WhatsApp?" (não existe padrão escondido). Se o pedido está com o **WhatsApp silenciado**, a janela mostra "WhatsApp silenciado neste pedido" e destaca o "Mover sem avisar"; escolher "Mover e avisar" manda o aviso mesmo com o WhatsApp silenciado (a escolha na hora vale mais que o ícone de balão de mensagem). Ao mover **para a etapa Pedido** o sistema não manda mensagem ao cliente: nesse caso o quadro laranja "Avisar o cliente no WhatsApp?" **não aparece** (só o quadro azul avisando que nessa etapa não há mensagem ao cliente) e os dois botões continuam disponíveis. A **equipe interna continua sendo avisada** nos dois casos
+5. O sistema verifica se o pedido está faturado — se **não** estiver, só aparece o aviso de bloqueio e a janela nem abre
+6. Se der erro (rede, etapa inválida), a janela **fica aberta**, mostra o motivo e libera os botões para tentar de novo; o card só muda de coluna **depois** de dar certo. Os botões ficam travados durante o envio (um duplo clique não move duas vezes)
+7. O aviso na tela diz "→ Etapa · aviso ao cliente solicitado" ou "→ Etapa · sem aviso ao cliente" (ao mover para Pedido: "nesta etapa não há mensagem ao cliente") — o WhatsApp sai em segundo plano e pode ser pulado (cliente sem WhatsApp, optou por não receber), então a tela não afirma que o cliente "foi avisado". Se o pedido já estava na etapa escolhida (alguém moveu antes), o aviso é "Pedido já estava nesta etapa" e nada é enviado
+8. A atualização automática (30 s) não atrapalha: a janela sempre mostra o estado atual do pedido; se o pedido sair da lista enquanto ela está aberta, ela fecha com um aviso
+
+### Entregar em (onde entregar o pedido)
+Cada card e o detalhe do pedido têm o bloco **"Entregar em"**:
+- **Verde, com a etiqueta "Endereço do pedido":** pedido que veio do **Kit Festa** com **entrega** — mostra o endereço que o cliente digitou no pedido (pode ser diferente do cadastro: empresa num dia, casa no outro)
+- **Aviso amarelo "Diferente do cadastro: …":** aparece **só** quando o endereço do pedido é diferente do endereço do cadastro do cliente (quando é igual, não aparece)
+- **Cinza "Retirada na loja":** Kit Festa de retirada (não há entrega)
+- **Etiqueta "Endereço do cadastro":** pedido comum (que não veio do Kit Festa) ou Kit Festa sem endereço próprio — usa o endereço cadastrado do cliente, sem aviso
+- **Sem endereço nenhum:** mostra "Endereço não informado"
+- **Abrir no mapa:** botão que abre o Google Maps (fora do app) já nesse endereço
+No **detalhe do pedido** (toque no card) o "Entregar em" é o **primeiro bloco** e o botão de avançar fica num **rodapé fixo** (o corpo rola, o botão fica à vista).
 
 ### Silenciar WhatsApp de um pedido
-- Clique no ícone de sino no card do pedido
+- Clique no ícone de balão de mensagem no card do pedido
 - O ícone muda para "silenciado" — nenhuma mensagem será mais enviada para esse pedido
 - Clique novamente para reativar
 
@@ -66,7 +80,7 @@ Kanban de acompanhamento de pedidos de entrega (Kit Festa). Os pedidos faturados
   - **"Entrou na fila — será enviada em breve"** — o bot está temporariamente indisponível (limite de envios, instabilidade); a mensagem sai sozinha em minutos/horas
   - **"Cliente sem WhatsApp cadastrado (nem celular nem telefone)"** — não há para onde mandar
   - **"Cliente optou por não receber avisos"** — o cadastro do cliente está marcado para não receber
-  - **"Card com WhatsApp silenciado"** — o sino desse pedido está desligado
+  - **"Card com WhatsApp silenciado"** — o ícone de balão de mensagem desse pedido está desligado (silenciado)
   - Qualquer outro erro do bot aparece com o motivo relatado por ele
 - **Importante:** a mensagem automática (disparada sozinha ao mover o card) continua sem enviar nada ao cliente na etapa "Pedido Criado" — a confirmação do pedido já saiu na criação. Isso só muda quando alguém aperta reenviar manualmente nessa etapa.
 - O texto de "Taxa de entrega" (quando o pedido tem frete) aparece só nas mensagens de Delivery para o cliente — não é a mesma coisa que o "Frete" mostrado em outras telas do sistema.
@@ -75,8 +89,13 @@ Kanban de acompanhamento de pedidos de entrega (Kit Festa). Os pedidos faturados
 Cada card tem um **ícone de impressora** (primeiro ícone da linha, antes do de silenciar WhatsApp). Clicar abre o **mesmo painel de opções da aba Kit Festa** (frase nas caixas, a cada quantas caixas, tirar o sufixo do nome, rolo de 2 colunas) e o botão **Imprimir etiquetas** imprime, na impressora de etiquetas **Zebra TLP 2844** (rolo de 40 × 25 mm, 2 colunas), **1 etiqueta por caixa** (estilo "Caseira") com o nome do sabor em uma linha, o QR code da página do Kit Festa, **Pedido #número**, as unidades e uma **frase de agradecimento diferente em cada caixa**; e **a cada 4 caixas, 1 etiqueta do pedido** (estilo "Clássica", sem borda) com "Feito com carinho para", cliente, entrega/retirada com data e horário e "Pedido #N · caixas X–Y de Z". As opções (a cada quantas caixas, tirar o "C/25-HF", rolo de 2 colunas) são as mesmas salvas na aba **Kit Festa** do Pedidos Online. Pedido que nasceu no site do Kit Festa sai com o horário e as unidades por caixa do site; pedido que não nasceu no site sai com a data de entrega, sem horário, e com a quantidade de cada item como número de caixas. Na janela de impressão: escolher a TLP 2844, margem 0, escala 100% (tamanho de papel do driver: 84 × 25 mm). **(10/2026)** O painel tem também o botão verde **Imprimir na Zebra**: envia pela fila direto para a Zebra pequena da cozinha, sem janela de impressão (o **Imprimir pelo navegador** é o caminho de antes). Mostra o estado da impressora (online / instável / PC desligado — a etiqueta espera 15 minutos na fila) e os passos Preparando → Na fila → Imprimindo → Saiu; com erro, **Tentar de novo** ou **Cancelar e imprimir pelo navegador**. Quem tem acesso à tela Delivery pode imprimir pela Zebra por aqui, mesmo sem a permissão do Kit Festa.
 
 ### Buscar / filtrar
-- Use a caixa de busca para encontrar por nome do cliente ou número do pedido
-- Use o campo de data para filtrar pedidos com entrega em um dia específico
+- Use a caixa de busca para encontrar por nome do cliente ou número do pedido (a busca vale por cima do período)
+- Use o **seletor de período da entrega** (estilo Conta Azul, com setas para pular o período): **Hoje · Amanhã · Próximos 7 dias · Próximos 30 dias · Este mês · Todo o período · Período personalizado** (De/Até). Vale para as 4 etapas, inclusive Entregue. O sistema **abre em "Hoje"** e **lembra a última escolha** de cada usuário; se a tela ficar aberta de um dia para o outro, o "Hoje" acompanha a virada do dia
+- **Pedido atrasado nunca some:** se a data de entrega já passou e o pedido ainda não foi entregue, ele aparece sempre (em vermelho), mesmo fora do período. Aparece também o selo **"⚠ N atrasados"**
+- A linha **"+N em outras datas · ver"** avisa quantos pedidos (que passam na busca) estão fora do período; tocar nela mostra **todas as datas só nesta visita** (nada é gravado como preferência) e aparece o botão **"Mostrando todas as datas · Voltar ao período"**; mexer no seletor de período também volta ao período
+- As contagens dos botões de etapa seguem exatamente o que a lista mostra (período + busca + atrasados)
+- A etapa **Entregue** mostra até os **50** pedidos entregues mais recentes
+- "Limpar filtros" volta a busca e o período ao padrão (Hoje)
 
 ---
 
@@ -128,7 +147,10 @@ Exemplo em uso: o usuário **Produção** foi liberado em 15/10/2026 para ver a 
 | `frontend/src/pages/Delivery/DeliveryKanban.jsx` | Tela principal do Kanban |
 | `frontend/src/pages/Delivery/DeliveryConfig.jsx` | Configurações de categorias e permissões |
 | `frontend/src/services/deliveryService.js` | Chamadas de API do delivery |
-| `backend/src/routes/delivery.js` | Rotas do backend |
+| `frontend/src/pages/Delivery/JanelaMoverEtapa.jsx` | Janela "Mover pedido" (escolha da etapa + avisar ou não o cliente) |
+| `frontend/src/components/EntregarEm.jsx` | Bloco "Entregar em" (usado no Delivery e em Pedidos) |
+| `frontend/src/components/FiltroPeriodo.jsx` | Seletor de período (presets "para a frente": Amanhã, Próximos 7/30 dias) |
+| `backend/routes/deliveryRoutes.js` e `backend/services/deliveryService.js` | Rotas e regras do backend |
 
 
 ## Pedido grande: mensagens em várias partes (novo — 10/2026)

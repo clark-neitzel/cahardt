@@ -146,10 +146,15 @@ module.exports = {
 
     moverEtapa: async (req, res) => {
         try {
-            const { novaEtapa } = req.body;
+            const { novaEtapa, avisar } = req.body;
+            // `avisar` é opcional; se vier, tem que ser boolean (a escolha deste movimento vence o flag do card)
+            if (avisar !== undefined && typeof avisar !== 'boolean') {
+                return res.status(400).json({ error: 'avisar deve ser true ou false.' });
+            }
             const out = await deliveryService.moverEtapa({
                 pedidoId: req.params.pedidoId,
                 novaEtapa,
+                avisar,
                 user: req.user
             });
             res.json(out);

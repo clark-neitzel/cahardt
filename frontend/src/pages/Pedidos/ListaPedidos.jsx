@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Search, X, AlertCircle, AlertTriangle, Package, ChevronDown, ChevronUp, Printer, CheckSquare, Square, Trash2, Calendar, User, Filter, Pencil, CheckCircle, RotateCcw, MessageCircle, XCircle, Loader2, List, FileEdit, Send, RefreshCw, FileCheck, Receipt, Bell, FileText, ExternalLink, Truck, CircleDollarSign, Zap, MapPin, Clock, Ban, QrCode, Tag } from 'lucide-react';
 import pedidoService from '../../services/pedidoService';
+import EntregarEm, { enderecoDoCadastro } from '../../components/EntregarEm';
 import api, { API_URL } from '../../services/api';
 import amostraService from '../../services/amostraService';
 import { dataLocalHoje } from '../../utils/dataLocal';
@@ -1572,6 +1573,15 @@ const ListaPedidos = () => {
                                         <div className="uppercase text-gray-500">
                                             {pedido.cliente?.End_Cidade || ''}{pedido.cliente?.End_Bairro ? ` - ${pedido.cliente.End_Bairro}` : ''}
                                         </div>
+                                        {pedido.kitFestaPedido && (
+                                            <EntregarEm
+                                                compacto
+                                                modo={pedido.kitFestaPedido.modo ?? null}
+                                                enderecoPedido={pedido.kitFestaPedido.enderecoEntrega ?? null}
+                                                divergeCadastro={pedido.kitFestaPedido.divergeCadastro ?? null}
+                                                enderecoCadastro={enderecoDoCadastro(pedido.cliente)}
+                                            />
+                                        )}
                                         <div className="text-[10px] text-gray-500">Vendedor: {pedido.vendedor?.nome || '-'}</div>
                                         {pedido.embarque && (
                                             <div className="text-[10px] text-gray-500 flex items-center gap-1 flex-wrap">
@@ -2087,6 +2097,19 @@ const ListaPedidos = () => {
                                 <div><p className="text-[10px] uppercase font-bold text-gray-500">Emissão</p><p className="font-medium">{new Date(selectedPedido.createdAt).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })} {new Date(selectedPedido.createdAt).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' })}</p>{(detalheExtra?.usuarioLancamento || selectedPedido.usuarioLancamento)?.nome && <p className="text-[11px] text-gray-500 truncate">por {(detalheExtra?.usuarioLancamento || selectedPedido.usuarioLancamento).nome}</p>}</div>
                                 <div className="col-span-2"><p className="text-[10px] uppercase font-bold text-gray-500">Pagamento</p><p className="font-medium">{selectedPedido.nomeCondicaoPagamento || 'N/D'}</p></div>
                             </div>
+
+                            {/* Pedido do Kit Festa: onde entregar (endereço do pedido) */}
+                            {(detalheExtra?.kitFestaPedido ?? selectedPedido.kitFestaPedido) && (() => {
+                                const kf = detalheExtra?.kitFestaPedido ?? selectedPedido.kitFestaPedido;
+                                return (
+                                    <EntregarEm
+                                        modo={kf.modo ?? null}
+                                        enderecoPedido={kf.enderecoEntrega ?? null}
+                                        divergeCadastro={kf.divergeCadastro ?? null}
+                                        enderecoCadastro={enderecoDoCadastro(detalheExtra?.cliente || selectedPedido.cliente)}
+                                    />
+                                );
+                            })()}
 
                             {/* Especial convertido — faixa de origem */}
                             {(detalheExtra?.avisosConversao || selectedPedido.avisosConversao || []).length > 0 && (() => {

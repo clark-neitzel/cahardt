@@ -7,6 +7,7 @@ const estoqueService = require('./estoqueService');
 const { calcularFlexDinamico, obterRegrasCategoria } = require('./flexService');
 const { camposFaltandoParaNota } = require('../utils/cadastroFiscal');
 const { ordenarItensPorNome } = require('../utils/ordenarItens');
+const { resumoKitFesta } = require('../utils/enderecoEntrega');
 
 // ── Horário de entrega (11/2026) ─────────────────────────────────────────────
 // Opcional, "HH:MM". null/""/undefined → sem horário (null). Formato inválido → erro 400.
@@ -81,6 +82,18 @@ function anexarNotaApp(items) {
         const n = (p.notasFiscaisApp || []).find(x => x.ref === `${prefixo}${p.id}`) || null;
         p.notaApp = n ? { id: n.id, status: n.status, numero: n.numero, chave: n.chave } : null;
         if (Array.isArray(p.itens)) p.itens = ordenarItensPorNome(p.itens); // itens em ordem alfabética (só leitura)
+    }
+    return items;
+}
+
+/**
+ * Troca `kitFestaPedido` (cru) por { numero, modo, enderecoEntrega, divergeCadastro } ou null.
+ * Só ADIÇÃO de campo na listagem paginada; precisa de cliente.End_Logradouro/End_Numero no select.
+ */
+function anexarKitFesta(items) {
+    if (!Array.isArray(items)) return items;
+    for (const p of items) {
+        p.kitFestaPedido = resumoKitFesta(p.kitFestaPedido, p.cliente);
     }
     return items;
 }
@@ -359,13 +372,21 @@ const pedidoService = {
                 where,
                 skip,
                 take: tam,
-                include: includePedido,
+                // Só o modo paginado ganha estes campos (o legado fica idêntico):
+                //  - cliente.End_Logradouro/End_Numero: base do `divergeCadastro`
+                //  - kitFestaPedido: selo/endereço do Kit Festa na linha da lista
+                include: {
+                    ...includePedido,
+                    cliente: { select: { ...includePedido.cliente.select, End_Logradouro: true, End_Numero: true } },
+                    kitFestaPedido: { select: { numero: true, modo: true, enderecoEntrega: true } }
+                },
                 orderBy: { createdAt: 'desc' }
             }),
             prisma.pedido.count({ where }),
         ]);
 
         anexarNotaApp(items);
+        anexarKitFesta(items);
 
         // Contagem dos chips só na 1ª página (não recalcula a cada "Carregar mais")
         let contagens = null;
@@ -970,9 +991,12 @@ const pedidoService = {
                 notasFiscaisApp: {
                     select: { id: true, tipo: true, status: true, numero: true, serie: true, criadoEm: true, atualizadoEm: true },
                     orderBy: { criadoEm: 'asc' }
-                }
+                },
+                // Kit Festa: só o resumo p/ a tela (selo + endereço de entrega + aviso de divergência)
+                kitFestaPedido: { select: { numero: true, modo: true, enderecoEntrega: true } }
             }
         });
+        if (pedido) pedido.kitFestaPedido = resumoKitFesta(pedido.kitFestaPedido, pedido.cliente); // cliente vem inteiro (include: true)
         if (pedido && Array.isArray(pedido.itens)) pedido.itens = ordenarItensPorNome(pedido.itens);
         // Forma/conta EFETIVAS das parcelas: baixa via conciliação/Asaas só grava o
         // ledger e o popup do pedido mostrava "Forma: -". Derivação na leitura, pelo

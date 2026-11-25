@@ -41,6 +41,14 @@ export const PRESETS_PERIODO = [
     { id: 'perso', rotulo: 'Período personalizado' },
 ];
 
+// Presets "para frente" (opt-in via prop `presets`; ex.: Delivery). NÃO entram no menu padrão.
+export const PRESETS_FUTURO = [
+    { id: 'amanha', rotulo: 'Amanhã' },
+    { id: 'prox7', rotulo: 'Próximos 7 dias' },
+    { id: 'prox30', rotulo: 'Próximos 30 dias' },
+];
+const TODOS_PRESETS = [...PRESETS_PERIODO, ...PRESETS_FUTURO];
+
 /** Resolve o preset (+ navegação das setas) em datas concretas 'YYYY-MM-DD'. */
 export function resolverPeriodo(preset, off = 0, deBase = '', ateBase = '') {
     const h = hoje();
@@ -48,6 +56,9 @@ export function resolverPeriodo(preset, off = 0, deBase = '', ateBase = '') {
         case 'hoje': { const d = addDias(h, off); return { de: ymd(d), ate: ymd(d) }; }
         case '7d': { const fim = addDias(h, off * 7); return { de: ymd(addDias(fim, -6)), ate: ymd(fim) }; }
         case '30d': { const fim = addDias(h, off * 30); return { de: ymd(addDias(fim, -29)), ate: ymd(fim) }; }
+        case 'amanha': { const d = addDias(h, 1 + off); return { de: ymd(d), ate: ymd(d) }; }
+        case 'prox7': { const ini = addDias(h, off * 7); return { de: ymd(ini), ate: ymd(addDias(ini, 6)) }; }
+        case 'prox30': { const ini = addDias(h, off * 30); return { de: ymd(ini), ate: ymd(addDias(ini, 29)) }; }
         case 'ano': { const a = h.getFullYear() + off; return { de: `${a}-01-01`, ate: `${a}-12-31` }; }
         case 'todo': return { de: '', ate: '' };
         case 'perso': {
@@ -68,6 +79,11 @@ export function resolverPeriodo(preset, off = 0, deBase = '', ateBase = '') {
 function rotuloPeriodo(preset, off, de, ate) {
     if (preset === 'todo') return { nome: 'Todo o período', datas: '' };
     if (preset === 'hoje') return off === 0 ? { nome: 'Hoje', datas: dmy(de) } : { nome: dmy(de), datas: '' };
+    if (preset === 'amanha') return off === 0 ? { nome: 'Amanhã', datas: dmy(de) } : { nome: dmy(de), datas: '' };
+    if (preset === 'prox7' || preset === 'prox30') {
+        const nome = off === 0 ? `Próximos ${preset === 'prox7' ? 7 : 30} dias` : `${dmy(de)} até ${dmy(ate)}`;
+        return { nome, datas: off === 0 ? `${dm(de)} – ${dm(ate)}` : '' };
+    }
     if (preset === 'mes') {
         const d = parseYMD(de);
         const nome = off === 0 ? 'Este mês' : `${MESES[d.getMonth()]}/${d.getFullYear()}`;
@@ -87,11 +103,22 @@ function rotuloPeriodo(preset, off, de, ate) {
  *   periodo  = { preset, off, de, ate, padrao: bool }  (de/ate já resolvidos)
  *   controle = { escolher(preset, de?, ate?), navegar(delta), limpar() }
  */
-export function usePeriodoSalvo(chave, presetPadrao = 'mes') {
+export function usePeriodoSalvo(chave, presetPadrao = 'mes', opcoes = {}) {
+    // opcoes.virarDia (opt-in): para telas que ficam abertas de um dia para o outro —
+    // recalcula "hoje" na virada do dia. Sem a opção, nada muda.
+    const virarDia = !!opcoes?.virarDia;
+    const [diaRef, setDiaRef] = useState(() => ymd(hoje()));
+    useEffect(() => {
+        if (!virarDia) return undefined;
+        const checar = () => setDiaRef((atual) => { const n = ymd(hoje()); return n === atual ? atual : n; });
+        const id = setInterval(checar, 60000);
+        document.addEventListener('visibilitychange', checar);
+        return () => { clearInterval(id); document.removeEventListener('visibilitychange', checar); };
+    }, [virarDia]);
     const [salvo, setSalvo] = useFiltrosSalvos(`${chave}:periodo`, { preset: presetPadrao, de: '', ate: '' });
     // Preset salvo que não existe (tela antiga / chave digitada errada no código) volta
     // ao padrão — senão resolveria como "mes" para sempre e o Limpar parecia não limpar.
-    const preset = PRESETS_PERIODO.some((p) => p.id === salvo.preset) ? salvo.preset : presetPadrao;
+    const preset = TODOS_PRESETS.some((p) => p.id === salvo.preset) ? salvo.preset : presetPadrao;
     const deBase = salvo.de || '';
     const ateBase = salvo.ate || '';
 
@@ -113,7 +140,7 @@ export function usePeriodoSalvo(chave, presetPadrao = 'mes') {
             preset, off, de, ate,
             padrao: preset === presetPadrao && off === 0,
         };
-    }, [preset, off, deBase, ateBase, presetPadrao]);
+    }, [preset, off, deBase, ateBase, presetPadrao, diaRef]); // diaRef só muda com virarDia
 
     const controle = useMemo(() => ({
         escolher: (novoPreset, de = '', ate = '') => {
@@ -132,7 +159,9 @@ export function usePeriodoSalvo(chave, presetPadrao = 'mes') {
 
 // `ocultarPresets`: ids de PRESETS_PERIODO a esconder do menu (ex.: ['todo'] quando
 // o backend da tela exige um intervalo de datas obrigatório).
-const FiltroPeriodo = ({ periodo, controle, rotulo, className = '', ocultarPresets = [] }) => {
+// `presets` (opcional): ids, em ordem, dos presets a mostrar (PRESETS_PERIODO + PRESETS_FUTURO).
+// Sem a prop o menu é exatamente o padrão de sempre.
+const FiltroPeriodo = ({ periodo, controle, rotulo, className = '', ocultarPresets = [], presets }) => {
     const [aberto, setAberto] = useState(false);
     const [de, setDe] = useState('');
     const [ate, setAte] = useState('');
@@ -200,7 +229,8 @@ const FiltroPeriodo = ({ periodo, controle, rotulo, className = '', ocultarPrese
 
             {aberto && (
                 <div className="absolute top-[calc(100%+6px)] left-1/2 -translate-x-1/2 w-[250px] max-w-[calc(100vw-24px)] bg-white border border-gray-200 rounded-xl shadow-lg p-1.5 z-50">
-                    {PRESETS_PERIODO.filter(p => !ocultarPresets.includes(p.id)).map(p => {
+                    {(presets ? presets.map(id => TODOS_PRESETS.find(p => p.id === id)).filter(Boolean) : PRESETS_PERIODO)
+                        .filter(p => !ocultarPresets.includes(p.id)).map(p => {
                         const ativo = periodo.preset === p.id;
                         return (
                             <button

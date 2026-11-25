@@ -186,6 +186,7 @@ Ao clicar em qualquer pedido, além dos itens e valores, o app mostra (desde jul
 - **Entrega**: status (Entregue / Parcial / Devolvido), data e hora, número da carga (embarque) e motorista, link **"Ver GPS da entrega no mapa"** (abre o ponto exato no Google Maps) e a observação do motorista
 - **O que aconteceu com este pedido**: linha do tempo completa — criação (e por quem), faturamento, saída na carga, entrega, pagamentos (PIX/boleto/parcelas), conversão de especial (bolinhas douradas), devoluções e NF-e emitidas
 - Se o pedido nasceu especial, uma **faixa âmbar** no topo mostra o ZZ# de origem, quando foi convertido e quanto já tinha sido recebido
+- **Entregar em (pedido do Kit Festa):** o detalhe mostra o bloco **"Entregar em"** com o endereço do pedido, a etiqueta "Endereço do pedido", o botão **Abrir no mapa** (Google Maps, abre fora do app) e, **só quando for diferente do cadastro**, o aviso amarelo "Diferente do cadastro: …". Kit Festa de retirada mostra "Retirada na loja". Pedido que não veio do Kit Festa não ganha esse bloco
 
 ### Ver link de cobrança (PIX/Boleto)
 - Clique no ícone de cifrão ao lado do pedido faturado
@@ -204,6 +205,7 @@ Lista todos os pedidos normais (`especial = false`, `bonificacao = false`). Incl
 - Filtros por data de entrega, criação, vencimento, embarque e motorista
 - Filtros por status rápido clicáveis no painel de pendências
 - Seleção em lote para impressão (pedidos FATURADO)
+- **Pedido que veio do Kit Festa** (site) mostra no card da lista o bloco **"Entregar em"** (compacto): quadro verde com o **endereço do pedido** (o que o cliente digitou no site), ou cinza **"Retirada na loja"** quando é retirada, com um aviso amarelo **"Diferente do cadastro"** quando o endereço do pedido não é o do cadastro. Pedido normal de vendedor continua mostrando só "Cidade - Bairro" do cadastro, como antes
 
 ### Especiais
 Lista pedidos do tipo **Especial** (`ZZ#`). São pedidos com condições diferenciadas de preço ou prazo, que requerem aprovação antes de serem faturados.
