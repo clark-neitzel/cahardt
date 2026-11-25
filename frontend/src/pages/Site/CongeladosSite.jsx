@@ -51,6 +51,8 @@ export default function CongeladosSite() {
   const [open, setOpen] = useState(false);
   const [confirm, setConfirm] = useState(null);
   const [enviando, setEnviando] = useState(false);
+  // trava SÍNCRONA contra clique/toque duplo em "Enviar pedido" (o state só atualiza no próximo render)
+  const enviandoRef = useRef(false);
   const [erroEnvio, setErroEnvio] = useState('');
   const [loginModal, setLoginModal] = useState(false);
 
@@ -247,7 +249,9 @@ export default function CongeladosSite() {
   };
 
   async function finalizar() {
+    if (enviandoRef.current) return; // 2º toque rápido: o 1º ainda está enviando
     if (!hdr.dataEntrega) { setErroData('Escolha a data de entrega.'); return; }
+    enviandoRef.current = true;
     setErroEnvio(''); setEnviando(true);
     const itens = Object.keys(cart).map(id => ({ congeladosProdutoId: id, quantidade: cart[id] }));
     const payload = {
@@ -262,9 +266,12 @@ export default function CongeladosSite() {
       const pedido = await publicApi.criarPedido(payload);
       setConfirm(pedido);
       setCart({}); setOpen(false);
+      // sucesso: a trava (enviandoRef) fica ligada de propósito; só é liberada em "Fazer outro pedido"
+      setEnviando(false);
     } catch (e) {
       setErroEnvio(e?.response?.data?.error || e.message || 'Não foi possível enviar o pedido.');
-    } finally { setEnviando(false); }
+      enviandoRef.current = false; setEnviando(false); // erro: libera para o cliente tentar de novo
+    }
   }
 
   if (booting) return <div className="hd cg cg-boot"><Icon n="cart" w={28} /></div>;
@@ -314,7 +321,7 @@ export default function CongeladosSite() {
             <a className="hd-btn hd-btn-lg cg-block" href={waLink} target="_blank" rel="noreferrer">
               <WhatsIcon w={19} /> Enviar pedido pelo WhatsApp
             </a>
-            <button type="button" className="hd-btn hd-btn-outline hd-btn-lg cg-block" onClick={() => setConfirm(null)}>Fazer outro pedido</button>
+            <button type="button" className="hd-btn hd-btn-outline hd-btn-lg cg-block" onClick={() => { enviandoRef.current = false; setConfirm(null); }}>Fazer outro pedido</button>
             <p className="cg-confirm-note"><Link to="/inicio">← voltar ao site</Link></p>
           </div>
         </main>

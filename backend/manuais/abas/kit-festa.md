@@ -24,7 +24,7 @@ O Kit Festa é a linha de salgados de festa (caixas de 25 unidades, mínimo de 4
 4. **Checkout (passo a passo — cada etapa aparece após preencher a anterior):**
    - **Como receber:** retirada (mostra o endereço da loja + link "ver no mapa") ou **entrega**.
    - **Endereço (entrega):** se o cliente tem endereço no cadastro, ele aparece e o cliente escolhe "entregar neste endereço" ou "outro endereço". Se for outro, ou se não tiver cadastro (obrigatório informar), ele digita o **CEP** → o sistema busca (ViaCEP) e preenche rua + bairro → informa **número** e complemento. **Não há seleção de bairro.** Ao informar o CEP, o sistema verifica **automaticamente pela distância (raio de cobertura)** se atendemos aquela região: mostra verde ("Entregamos na sua região"), vermelho ("Ainda não entregamos aí — escolha retirar na loja") ou amarelo (não deu para confirmar pelo CEP; a equipe confere depois). A **taxa de entrega não aparece no site: é "a combinar"** pelo WhatsApp conforme o endereço.
-   - **Dia e horário:** calendário liberado pela cozinha + horário com vaga.
+   - **Dia e horário:** calendário liberado pela cozinha + horário com vaga. O calendário respeita o tipo escolhido: com **Entrega** só ficam liberados os dias que têm horário de entrega (e com **Retirada**, os que têm horário de retirada); a lotação de cada dia também conta só os pedidos daquele tipo.
    - **Observações** (opcional).
 5. **Confirma o WhatsApp:** o cliente confirma o número (ou informa, se não tiver) — fica registrado no pedido.
 6. **Finaliza:** o pedido é salvo e aparece a tela "Pedido registrado!" com o botão **"Enviar pedido pelo WhatsApp"** (o cliente pode, opcionalmente, abrir a conversa com a loja por ali). Além disso, **assim que o pedido é finalizado, o WhatsApp da Hardt envia automaticamente uma mensagem de confirmação para o celular do cliente**, com o resumo do pedido (itens, data/horário, retirada ou entrega e total). Se o número for novo/corrigido, o pedido é marcado como **"celular alterado"** para a equipe atualizar no cadastro. O pagamento é combinado depois (pix ou na entrega).
@@ -65,7 +65,7 @@ Os horários são definidos **por data** (não é mais um template que vale pra 
 **Calendário + editor do dia** (bloco de baixo):
 - O calendário mostra cada dia: bolinha verde (tem horários), cinza escuro (fechado), cinza claro (sem horários) e o nº de pedidos no canto.
 - Clique num dia para **editar manualmente**: **fechar/reabrir** o dia, e ajustar os horários de **retirada** e **entrega** um a um (mudar a capacidade de um horário, adicionar ou remover horário). Use para fechar dias específicos ou ajustar conforme demandas externas.
-- A capacidade pode variar por horário; no site, horários cheios aparecem como "esgotado" e dias sem vaga como "esgotado/fechado".
+- A capacidade pode variar por horário; no site, horários cheios aparecem como "esgotado". A legenda do calendário é **Disponível / Últimas vagas / Indisponível**: dia fechado, sem vaga ou sem horário no tipo escolhido (Retirada ou Entrega) aparece como Indisponível.
 
 ### 3. Produtos
 Define quais **produtos do app** aparecem no site. Busca e filtro (Todos / No site / Fora).

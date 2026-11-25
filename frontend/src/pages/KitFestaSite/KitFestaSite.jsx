@@ -477,12 +477,16 @@ const DOW = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 function CalendarPicker({ selected, onSelect, modo }) {
   const today = useMemo(() => new Date(), []);
   const [view, setView] = useState({ y: today.getFullYear(), m: today.getMonth() });
-  const [avail, setAvail] = useState({});
+  // avail: undefined = carregando (nenhum dia clicável) · objeto = agenda do mês · false = falha de rede
+  const [avail, setAvail] = useState(undefined);
 
   useEffect(() => {
+    let vivo = true;
+    setAvail(undefined);
     const ini = `${view.y}-${String(view.m + 1).padStart(2, '0')}-01`;
     const fim = `${view.y}-${String(view.m + 1).padStart(2, '0')}-${new Date(view.y, view.m + 1, 0).getDate()}`;
-    publicApi.agenda(ini, fim, modo).then(setAvail).catch(() => setAvail({}));
+    publicApi.agenda(ini, fim, modo).then(r => { if (vivo) setAvail(r || {}); }).catch(() => { if (vivo) setAvail(false); });
+    return () => { vivo = false; };
   }, [view.y, view.m, modo]);
 
   const firstDow = new Date(view.y, view.m, 1).getDay();
@@ -497,7 +501,9 @@ function CalendarPicker({ selected, onSelect, modo }) {
   for (let i = 0; i < firstDow; i++) cells.push(null);
   for (let d = 1; d <= days; d++) {
     const key = `${view.y}-${String(view.m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-    let status = avail[key] || 'open';
+    // A API só devolve os dias que TÊM horário cadastrado. Dia ausente = sem horário = indisponível.
+    // (Se a agenda falhar na rede, avail === false: mantém liberado e a lista de horários trava o avanço.)
+    let status = avail === false ? 'open' : (avail?.[key] || 'closed');
     if (key < todayKey) status = 'closed';
     cells.push({ d, key, status });
   }
@@ -516,7 +522,7 @@ function CalendarPicker({ selected, onSelect, modo }) {
           const open = c.status === 'open' || c.status === 'few';
           const sel = selected === c.key;
           return (
-            <div key={i} className={`cal-cell ${c.status}${sel ? ' sel' : ''}`} onClick={() => open && onSelect(c.key)}>
+            <div key={i} className={`cal-cell ${c.status}${sel ? ' sel' : ''}`} aria-disabled={!open} onClick={() => open && onSelect(c.key)}>
               {c.d}{open && !sel && <span className="dot" />}
             </div>
           );
@@ -525,7 +531,7 @@ function CalendarPicker({ selected, onSelect, modo }) {
       <div className="cal-legend">
         <span><i style={{ background: '#fff', border: '1.5px solid rgba(18,130,64,.4)' }} />Disponível</span>
         <span><i style={{ background: 'var(--yellow)' }} />Últimas vagas</span>
-        <span><i style={{ background: '#e3dac8' }} />Esgotado</span>
+        <span><i style={{ background: '#e3dac8' }} />Indisponível</span>
       </div>
     </div>
   );

@@ -56,7 +56,11 @@ const kitFestaController = {
         catch (e) { erro(res, e, 'config'); }
     },
     agenda: async (req, res) => {
-        try { res.json(await svc.agendaPublico({ inicio: req.query.inicio, fim: req.query.fim })); }
+        try {
+            // modo: 'retirada' | 'entrega'. Ausente/inválido = sem filtro (comportamento antigo).
+            const modo = ['retirada', 'entrega'].includes(req.query.modo) ? req.query.modo : undefined;
+            res.json(await svc.agendaPublico({ inicio: req.query.inicio, fim: req.query.fim, modo }));
+        }
         catch (e) { erro(res, e, 'agenda'); }
     },
     slots: async (req, res) => {

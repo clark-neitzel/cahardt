@@ -48,7 +48,7 @@ mencionada na mensagem. Assim a mudança nunca pega o app de surpresa.
 | GET | `/kitfesta/catalogo` | — | Lista de produtos (nome, preço, unidades por caixa, opções, tags) |
 | GET | `/kitfesta/categorias` | — | Categorias de filtro do site |
 | GET | `/kitfesta/config` | — | Dados da loja, regras (ex.: mínimo de caixas), textos institucionais |
-| GET | `/kitfesta/agenda` | `?inicio=YYYY-MM-DD&fim=YYYY-MM-DD` | Mapa de status por dia: `open`\|`few`\|`full`\|`closed` |
+| GET | `/kitfesta/agenda` | `?inicio=YYYY-MM-DD&fim=YYYY-MM-DD[&modo=retirada\|entrega]` | Mapa de status por dia: `open`\|`few`\|`full`\|`closed`. `modo` é opcional e aditivo: com ele, só entram dias que têm horário daquele tipo e a lotação conta só pedidos do tipo; sem ele (ou com valor inválido) o comportamento é o de sempre (todos os tipos somados). Formato da resposta inalterado. |
 | GET | `/kitfesta/slots` | `?data=YYYY-MM-DD&modo=retirada\|entrega` | Horários daquele dia com capacidade/lotação |
 | POST | `/kitfesta/validar-cupom` | `{ codigo, totalCaixas }` | Validação do cupom (tipo, valor, mínimo de caixas) |
 | POST | `/kitfesta/verificar-entrega` | `{ cep }` | `{ atende: true\|false\|null, distanciaKm, raioKm, endereco }` |
