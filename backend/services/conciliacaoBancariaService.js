@@ -2593,6 +2593,11 @@ async function corrigirContaBaixa({ tipo, pagamentoId, novaContaId, userId }) {
         if (eraAguardando) await recalcularParcelaReceber(tx, pg.parcelaId);
     }, { timeout: 20000, maxWait: 10000 });
 
+    // Confirmar o Pix/cartão informado pode QUITAR a parcela → cancela boleto/PIX aberto no
+    // Asaas (senão o cliente paga em dobro). Fora da transação; nunca lança.
+    let asaasCancelados = 0;
+    if (eraAguardando) asaasCancelados = await _cancelarAsaasDasParcelasQuitadas([pg.parcelaId]);
+
     // Crédito de pedido ESPECIAL confirmado no extrato do banco: o pedido vira normal (fila de NF-e; NF-e NÃO automática).
     let avisoConversao = '';
     if (eraAguardando) {
@@ -2605,8 +2610,10 @@ async function corrigirContaBaixa({ tipo, pagamentoId, novaContaId, userId }) {
     return {
         message: (eraAguardando
             ? `Confirmado! O Pix/cartão informado no Caixa bateu com o extrato — vinculado a ${conta.nomeBanco} e a parcela foi atualizada.`
-            : `Baixa movida para ${conta.nomeBanco} no app.`) + avisoConversao,
-        caAtualizado: false
+            : `Baixa movida para ${conta.nomeBanco} no app.`) + avisoConversao
+            + (asaasCancelados > 0 ? ` · ${asaasCancelados} cobrança(s) Asaas cancelada(s)` : ''),
+        caAtualizado: false,
+        boletosAsaasCancelados: asaasCancelados
     };
 }
 
@@ -2866,6 +2873,72 @@ async function parcelasReceberEmAberto({ valor, busca, de, ate }) {
         .filter((p) => p.saldo > 0)
         .sort((a, b) => (b.bate - a.bate) || b.vencimento.localeCompare(a.vencimento))
         .slice(0, 60);
+}
+
+/**
+ * Depois de dar baixa em contas a receber pela conciliação (PIX/transferência direto na
+ * chave da empresa), o boleto/PIX que ficou em aberto no Asaas precisa morrer — senão o
+ * cliente ainda pode pagá-lo (pagamento em dobro). Mesma regra do Caixa e do Contas a
+ * Receber: só cancela se a parcela FICOU QUITADA (baixa parcial não cancela) e, se a conta
+ * do pedido ficou QUITADA, varre também as cobranças do pedido (PIX de entrega nasce sem
+ * parcela). `cancelarCobrancasDa*` só toca cobranças PENDENTE/EXPIRADO — a cobrança RECEBIDA
+ * que originou o crédito (fluxo _conciliarPorRefAsaas) fica de fora pelo filtro de status.
+ *
+ * Roda FORA da transação (rede). Melhor esforço: NUNCA lança — falha do Asaas não desfaz a
+ * conciliação. Devolve quantas cobranças foram canceladas.
+ */
+async function _cancelarAsaasDasParcelasQuitadas(parcelaIds) {
+    let canceladas = 0;
+    try {
+        const ids = [...new Set((parcelaIds || []).filter(Boolean))];
+        if (ids.length === 0) return 0;
+        const asaasService = require('./asaasService');
+        const parcelas = await prisma.parcela.findMany({
+            where: { id: { in: ids } },
+            select: { id: true, status: true, contaReceber: { select: { id: true, status: true, pedidoId: true } } }
+        });
+        const pedidosQuitados = new Set();
+        const falhasParcela = new Set(); // paymentIds que o Asaas recusou na varredura da parcela
+        for (const p of parcelas) {
+            if (p.status !== 'PAGO') continue; // parcial/aguardando: o cliente ainda vai pagar o saldo
+            try {
+                const r = await asaasService.cancelarCobrancasDaParcela(p.id, 'baixa pela conciliação bancária');
+                canceladas += r?.canceladas || 0;
+                if (r?.erros?.length) {
+                    r.erros.forEach((x) => x.paymentId && falhasParcela.add(x.paymentId));
+                    console.error(`[Conciliacao] Asaas não cancelou cobrança da parcela ${p.id} (baixa já efetivada):`, r.erros.map((x) => x.erro).join('; '));
+                }
+            } catch (e) {
+                console.error(`[Conciliacao] Falha ao cancelar cobrança Asaas da parcela ${p.id} (baixa já efetivada):`, e.message);
+            }
+            if (p.contaReceber?.status === 'QUITADO' && p.contaReceber.pedidoId) pedidosQuitados.add(p.contaReceber.pedidoId);
+        }
+        for (const pedidoId of pedidosQuitados) {
+            try {
+                // Evita DELETE repetido: se a varredura da parcela já cancelou (status local virou
+                // CANCELADO) ou já foi recusada pelo Asaas, não há nada novo para o pedido — só o
+                // QR PIX de entrega (sem parcela) ainda aberto justifica a 2ª varredura.
+                // Falha na consulta → segue e varre (a função do Asaas é idempotente).
+                try {
+                    const abertas = await prisma.cobrancaAsaas.findMany({
+                        where: { pedidoId, status: { in: ['PENDENTE', 'EXPIRADO'] } },
+                        select: { asaasPaymentId: true }
+                    });
+                    if (abertas.every((c) => falhasParcela.has(c.asaasPaymentId))) continue;
+                } catch (_) { /* segue e varre */ }
+                const r = await asaasService.cancelarCobrancasDoPedido(pedidoId, 'conta quitada pela conciliação bancária');
+                canceladas += r?.canceladas || 0;
+                if (r?.erros?.length) {
+                    console.error(`[Conciliacao] Asaas não cancelou cobrança do pedido ${pedidoId} (baixa já efetivada):`, r.erros.map((x) => x.erro).join('; '));
+                }
+            } catch (e) {
+                console.error(`[Conciliacao] Falha ao cancelar cobrança Asaas do pedido ${pedidoId} (baixa já efetivada):`, e.message);
+            }
+        }
+    } catch (e) {
+        console.error('[Conciliacao] Falha na varredura de cancelamento Asaas (baixa já efetivada):', e.message);
+    }
+    return canceladas;
 }
 
 /**
@@ -3160,6 +3233,13 @@ async function conciliarUnificado({
         }
     }, { timeout: 30000, maxWait: 10000 });
 
+    // Recebimento que quitou a conta a receber → boleto/PIX ainda aberto no Asaas é cancelado
+    // (senão o cliente pode pagar em dobro). Fora da transação; nunca lança.
+    let asaasCancelados = 0;
+    if (alocacoesReceber.length > 0) {
+        asaasCancelados = await _cancelarAsaasDasParcelasQuitadas(alocacoesReceber.map((a) => a.parcela.id));
+    }
+
     // Pedidos ESPECIAIS cujas baixas acabaram de casar com o crédito do extrato viram pedido normal.
     let convertidosEspeciais = [];
     if (tipo === 'CREDITO') convertidosEspeciais = await converterEspeciaisDasBaixas([...idsPag, ...criadas], userId);
@@ -3179,7 +3259,8 @@ async function conciliarUnificado({
     if (idsPag.length > 0) partes.push(`${idsPag.length} baixa(s) já registrada(s) amarrada(s)`);
     if (convertidosEspeciais.length > 0) partes.push(`${convertidosEspeciais.length} pedido(s) especial(is) convertido(s) em pedido com NF (emitir NF-e)`);
     if (temDiferenca) partes.push(`diferença de R$ ${Math.abs(diferenca).toFixed(2)} registrada: ${rotuloMotivo}`);
-    return { message: `Conciliado! ${partes.join(' · ')}.` };
+    if (asaasCancelados > 0) partes.push(`${asaasCancelados} cobrança(s) Asaas cancelada(s)`);
+    return { message: `Conciliado! ${partes.join(' · ')}.`, boletosAsaasCancelados: asaasCancelados };
 }
 
 // ─────────────────────────────────────────────────────────────
