@@ -175,6 +175,11 @@ app.use('/api/webhooks', focusNfeWebhookRoutes); // Focus NFe: webhook público 
 app.use('/api/notas-fiscais', authMiddleware, notasFiscaisRoutes); // NF-e emitida pelo app (Focus NFe)
 app.use('/api/canhotos', authMiddleware, canhotoRoutes); // Canhoto da NF assinado (bipe da DANFE, arquivo do mês)
 app.use('/api/produtos', authMiddleware, produtoRoutes);
+// Local de entrega (Entrega 2): rotas novas, auth POR ROTA dentro do arquivo; ANTES dos routers antigos de clientes/pedidos
+const localEntregaRoutes = require('./routes/localEntrega');
+app.use('/api/clientes', localEntregaRoutes.clientes);
+app.use('/api/pedidos', localEntregaRoutes.pedidos);
+app.use('/api/local-entrega', localEntregaRoutes.config);
 app.use('/api/clientes', authMiddleware, clienteRoutes);
 app.use('/api/cadastro-pendencias', authMiddleware, require('./routes/cadastroPendenciasRoutes')); // cadastros pra acertar + fila de inativação (pedidos dos agentes)
 app.use('/api/inadimplencia', authMiddleware, require('./routes/inadimplenciaRoutes')); // Inadimplência visível: config (selo, carência, trava)

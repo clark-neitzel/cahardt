@@ -262,6 +262,10 @@ model Cliente {
   enderecoLogs ClienteEnderecoLog[] // só relação — não cria coluna em clientes
   gpsSinais    ClienteGpsSinal[]
 
+  // Local de entrega (Entrega 2, 11/2026): tabela lateral 1-1 + trilha — só relação, NENHUMA coluna em clientes
+  localEntrega     ClienteLocalEntrega?
+  localEntregaLogs ClienteLocalEntregaLog[]
+
   kitFestaCliente   KitFestaCliente?
   congeladosCliente CongeladosCliente?
 
@@ -629,10 +633,104 @@ model ClienteGpsSinal {
   autorNome   String? @map("autor_nome")
   fotoFachada String? @map("foto_fachada")
 
+  // Em que ponto o sinal vota (Entrega 2): CADASTRO (Cliente.Ponto_GPS, como sempre) | LOCAL (local de entrega do cliente)
+  alvo String @default("CADASTRO")
+
   createdAt DateTime @default(now()) @map("created_at")
 
   @@index([clienteUuid])
   @@map("clientes_gps_sinais")
+}
+
+// Local de entrega do cliente (Entrega 2, 11/2026) — ONDE ENTREGAR, quando é diferente do endereço do cadastro.
+// O cadastro (clientes.End_*) segue sendo o endereço dos DOCUMENTOS (NF-e, boleto, cobrança) e nada aqui o altera.
+// Tabela lateral 1-1 (a `clientes` está no teto de colunas do Postgres — mesma razão da ClienteFiscal).
+// O ponto GPS mora AQUI (pontoGps) e nunca cai no Cliente.Ponto_GPS.
+model ClienteLocalEntrega {
+  clienteUuid String  @id @map("cliente_uuid")
+  cliente     Cliente @relation(fields: [clienteUuid], references: [UUID], onDelete: Cascade)
+
+  ativo       Boolean @default(true)
+  logradouro  String?
+  numero      String?
+  complemento String?
+  bairro      String?
+  cidade      String?
+  estado      String?
+  cep         String?
+  referencia  String? @db.Text
+  pontoGps    String? @map("ponto_gps") // "lat,lng"
+
+  // Selo de confiança do ponto do local (voto GPS próprio — Fatia F2); null = sem sinais suficientes
+  selo     String?
+  sugestao String? // "lat,lng"
+  seloEm   DateTime? @map("selo_em")
+
+  criadoPorId       String? @map("criado_por_id")
+  criadoPorNome     String? @map("criado_por_nome")
+  atualizadoPorNome String? @map("atualizado_por_nome")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("clientes_local_entrega")
+}
+
+// Trilha do local de entrega (quem, quando, de onde para onde). 1 linha = 1 gravação. Log PRÓPRIO — não reaproveita
+// ClienteEnderecoLog (aquele é snapshot do CADASTRO e o restaurar() gravaria em `clientes`).
+model ClienteLocalEntregaLog {
+  id          String  @id @default(uuid())
+  clienteUuid String  @map("cliente_uuid")
+  cliente     Cliente @relation(fields: [clienteUuid], references: [UUID], onDelete: Cascade)
+
+  tipo   String  @default("ALTERACAO") // CRIACAO | ALTERACAO | DESATIVACAO | REATIVACAO | PONTO  (String livre; sem enum)
+  origem String? // CADASTRO | MOTORISTA | ANA | ...
+
+  antes           Json?
+  depois          Json
+  camposAlterados String[] @default([]) @map("campos_alterados")
+
+  autorId      String? @map("autor_id")
+  autorNome    String? @map("autor_nome")
+  posicaoAutor String? @map("posicao_autor")
+  motivo       String? @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([clienteUuid, createdAt])
+  @@map("clientes_local_entrega_log")
+}
+
+// Local de entrega de UM pedido (Entrega 2) — tabela lateral 1-1 (a `pedidos` tem 66 colunas e índices que o db push
+// derrubaria; nada é alterado nela). A linha só existe quando há avulso (modo AVULSO), cadastro forçado (modo CADASTRO)
+// ou carimbo de onde se entregou (destinoConcluido). Pedido sem linha = comportamento de sempre.
+model PedidoLocalEntrega {
+  pedidoId String @id @map("pedido_id")
+  pedido   Pedido @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+
+  modo String? // 'AVULSO' | 'CADASTRO' | null
+
+  logradouro  String?
+  numero      String?
+  complemento String?
+  bairro      String?
+  cidade      String?
+  estado      String?
+  cep         String?
+  referencia  String? @db.Text
+  pontoGps    String? @map("ponto_gps") // "lat,lng" opcional (avulso sem ponto = sem localização no mapa, nunca cai no cadastro)
+
+  // Carimbo do lugar onde a entrega foi feita (gravado no /concluir — Fatia F2)
+  destinoConcluido String?   @map("destino_concluido") // 'PEDIDO' | 'LOCAL_CLIENTE' | 'CADASTRO'
+  concluidoEm      DateTime? @map("concluido_em")
+
+  atualizadoPorId   String? @map("atualizado_por_id")
+  atualizadoPorNome String? @map("atualizado_por_nome")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("pedidos_local_entrega")
 }
 
 model Pedido {
@@ -779,6 +877,10 @@ model Pedido {
   //   Mesma publicação segura dos dois acima: CREATE INDEX CONCURRENTLY pedidos_embarque_id_idx
   //   em produção ANTES do deploy, para o `db push` achar pronto e não travar escrita.
   @@index([embarqueId])
+
+  // Local de entrega do pedido (Entrega 2) — só relação para a tabela lateral; NENHUMA coluna em pedidos
+  localEntrega PedidoLocalEntrega?
+
   @@map("pedidos")
 }
 
