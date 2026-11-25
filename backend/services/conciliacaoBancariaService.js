@@ -373,12 +373,12 @@ async function carregarPools(contaFinanceiraCaId, deYmd, ateYmd) {
         prisma.pagamentoParcela.findMany({
             where: { estornado: false, contaFinanceiraCaId, dataPagamento: { gte, lte } },
             select: {
-                id: true, valorRecebido: true, dataPagamento: true, formaPagamento: true,
+                id: true, valorRecebido: true, dataPagamento: true, formaPagamento: true, parcelaId: true,
                 parcela: {
                     select: {
                         numeroParcela: true, valor: true, dataVencimento: true,
                         // ContaReceber NÃO tem numeroNota (só ContaPagar) — não adicionar aqui
-                        contaReceber: { select: { pedido: { select: { numero: true, nfeNumero: true } }, cliente: { select: { Nome: true, NomeFantasia: true } } } }
+                        contaReceber: { select: { pedidoId: true, pedido: { select: { numero: true, nfeNumero: true } }, cliente: { select: { Nome: true, NomeFantasia: true } } } }
                     }
                 }
             }
@@ -413,7 +413,10 @@ async function carregarPools(contaFinanceiraCaId, deYmd, ateYmd) {
                 parcela: r.parcela?.numeroParcela ?? null,
                 vencimento: r.parcela?.dataVencimento ? ymd(r.parcela.dataVencimento) : null,
                 valorParcela: num(r.parcela?.valor),
-                formaPagamento: r.formaPagamento || null
+                formaPagamento: r.formaPagamento || null,
+                // p/ não sugerir a baixa de OUTRO título a um crédito de cobrança Asaas conhecida
+                parcelaId: r.parcelaId || null,
+                pedidoId: r.parcela?.contaReceber?.pedidoId || null
             }
         };
     });
@@ -1060,6 +1063,38 @@ async function _identificarPendentes(linhas, usados) {
     return mapa;
 }
 
+/**
+ * A baixa (pela parcela dela) pertence à cobrança Asaas? Função PURA.
+ * Pertence = parcela da baixa é a parcela da cobrança OU está na conta a receber do pedido
+ * da cobrança. `parcelasDoPedido` aceita Array (ids das parcelas da conta do pedido) ou um
+ * pedidoId string (quando só se conhece o pedido da baixa, como nas sugestões da tela).
+ */
+function baixaPertenceACobranca(parcelaIdDaBaixa, cob, parcelasDoPedido = []) {
+    if (!parcelaIdDaBaixa || !cob) return false;
+    if (cob.parcelaId && cob.parcelaId === parcelaIdDaBaixa) return true;
+    if (!cob.pedidoId) return false;
+    if (typeof parcelasDoPedido === 'string') return parcelasDoPedido === cob.pedidoId;
+    return (parcelasDoPedido || []).includes(parcelaIdDaBaixa);
+}
+
+/** Cobranças Asaas (por pay_) dos créditos PENDENTES da lista que têm destino (parcela ou pedido). */
+async function _cobrancasDosCreditosPendentes(linhas) {
+    const pays = [...new Set(linhas
+        .filter((l) => l.status === 'PENDENTE' && l.tipo === 'CREDITO' && /^pay_/.test(String(l.refNum || '')))
+        .map((l) => l.refNum))];
+    if (pays.length === 0) return new Map();
+    try {
+        const cobs = await prisma.cobrancaAsaas.findMany({
+            where: { asaasPaymentId: { in: pays } },
+            select: { asaasPaymentId: true, parcelaId: true, pedidoId: true }
+        });
+        return new Map(cobs.filter((c) => c.parcelaId || c.pedidoId).map((c) => [c.asaasPaymentId, c]));
+    } catch (e) {
+        console.error('[Conciliação] cobranças dos créditos pendentes (sugestões sem filtro):', e.message);
+        return new Map();
+    }
+}
+
 async function listar({ contaFinanceiraCaId, de, ate, status }) {
     const where = {
         contaFinanceiraCaId,
@@ -1068,10 +1103,11 @@ async function listar({ contaFinanceiraCaId, de, ate, status }) {
     };
     const linhas = await prisma.extratoLancamento.findMany({ where, orderBy: [{ data: 'desc' }, { valor: 'desc' }] });
 
-    const [pools, usados, pistas] = await Promise.all([
+    const [pools, usados, pistas, cobrancaPorPay] = await Promise.all([
         carregarPools(contaFinanceiraCaId, de, ate),
         idsUsados(contaFinanceiraCaId),
-        pistasDeDebito(linhas.filter((l) => l.status === 'PENDENTE' && l.tipo === 'DEBITO'))
+        pistasDeDebito(linhas.filter((l) => l.status === 'PENDENTE' && l.tipo === 'DEBITO')),
+        _cobrancasDosCreditosPendentes(linhas)
     ]);
     const labelPorId = new Map([...pools.entradas, ...pools.saidas].map((p) => [p.id, p.label]));
 
@@ -1211,7 +1247,10 @@ async function listar({ contaFinanceiraCaId, de, ate, status }) {
             // com valor E vencimento EXATOS (regra do usuário: só o que bate dos dois lados
             // vira sugestão; o resto ele escolhe na busca). Conciliar num item ABERTO dá a
             // baixa na hora, com a data e o banco do extrato.
+            const cobReservada = l.tipo === 'CREDITO' ? cobrancaPorPay.get(String(l.refNum || '')) : null;
             const sugBaixas = candidatosPara({ data: ymd(l.data), valor: num(l.valor), tipo: l.tipo }, pools, usados)
+                // crédito de cobrança Asaas conhecida: só sugere baixa da PRÓPRIA cobrança
+                .filter((s) => !cobReservada || baixaPertenceACobranca(s.detalhe?.parcelaId, cobReservada, s.detalhe?.pedidoId))
                 .map((s) => ({ ...s, origem: 'BAIXA' }));
             const sugAbertas = (p?.abertasExatas || []).map((a) => ({
                 id: a.id,
@@ -1404,12 +1443,20 @@ async function converterEspeciaisDasBaixas(pagamentoIds, userId = null) {
  * Conservador: só fecha quando a cobrança leva a EXATAMENTE UMA baixa livre na
  * conta, e diferença só é aceita como juros até 10% do crédito (mín. R$ 5) —
  * acima disso, ou crédito MENOR que a baixa, fica para análise manual.
- * Devolve { conciliados, ids } (ids dos lançamentos fechados aqui).
+ * Devolve { conciliados, ids, reservados }:
+ *   ids        = lançamentos fechados aqui;
+ *   reservados = créditos cuja cobrança JÁ É CONHECIDA e tem destino (parcela ou pedido),
+ *                fechados ou não. O casamento por valor ±0,01 NÃO pode mexer neles: o
+ *                dinheiro é daquela cobrança, e a baixa dela pode só não ter nascido
+ *                ainda (PIX de entrega: a baixa do pedido só existe depois do Caixa).
+ *                Caso real 23/10: crédito do PIX do Jerry (234,45) caiu na baixa do
+ *                boleto do Auto Posto (234,44) por 1 centavo e trocou os dois vínculos.
  */
 async function _conciliarPorRefAsaas(pendentes, contaFinanceiraCaId, usados, userId) {
     const feitos = new Set();
+    const reservados = new Set();
     const creditos = pendentes.filter((l) => l.tipo === 'CREDITO' && /^pay_/.test(String(l.refNum || '')));
-    if (creditos.length === 0) return { conciliados: 0, ids: feitos };
+    if (creditos.length === 0) return { conciliados: 0, ids: feitos, reservados };
 
     const cobrancas = await prisma.cobrancaAsaas.findMany({
         where: { asaasPaymentId: { in: creditos.map((l) => l.refNum) } },
@@ -1431,6 +1478,10 @@ async function _conciliarPorRefAsaas(pendentes, contaFinanceiraCaId, usados, use
     for (const l of creditos) {
         const cob = porPay.get(l.refNum);
         if (!cob) continue;
+        // Cobrança conhecida COM destino: reserva o crédito ANTES de qualquer `continue`
+        // (sem baixa livre, 2+ livres, dif negativa, juros acima do teto…). Sem destino
+        // (parcelaId e pedidoId nulos) não reserva — segue casando por valor como antes.
+        if (cob.parcelaId || cob.pedidoId) reservados.add(l.id);
         const parcelaIds = cob.parcelaId ? [cob.parcelaId] : (parcelasPorPedido.get(cob.pedidoId) || []);
         if (parcelaIds.length === 0) continue;
 
@@ -1488,7 +1539,7 @@ async function _conciliarPorRefAsaas(pendentes, contaFinanceiraCaId, usados, use
         } catch (_) { /* corrida/duplo clique — segue para o próximo */ }
     }
     if (baixasConciliadas.length > 0) await converterEspeciaisDasBaixas(baixasConciliadas, userId);
-    return { conciliados, ids: feitos };
+    return { conciliados, ids: feitos, reservados };
 }
 
 /** Concilia sozinho os PENDENTES com exatamente 1 candidato (exato ou tarifa do boleto CA). */
@@ -1507,6 +1558,9 @@ async function conciliarAutomatico({ contaFinanceiraCaId, de, ate, userId }) {
     const baixasAuto = [];
     for (const l of pendentes) {
         if (porRef.ids.has(l.id)) continue;
+        // Crédito de cobrança Asaas conhecida: só fecha pelo pay_ exato (próxima rodada,
+        // quando a baixa do pedido existir) — nunca pela baixa de OUTRO título por valor.
+        if (porRef.reservados.has(l.id)) continue;
         const cands = candidatosPara({ data: ymd(l.data), valor: num(l.valor), tipo: l.tipo }, pools, usados);
         if (cands.length !== 1) continue;
         const alvo = cands[0];
@@ -1533,6 +1587,311 @@ async function conciliarAutomatico({ contaFinanceiraCaId, de, ate, userId }) {
     }
     if (baixasAuto.length > 0) await converterEspeciaisDasBaixas(baixasAuto, userId);
     return { conciliados, restantes: pendentes.length - conciliados };
+}
+
+// ─────────────────────────────────────────────────────────────
+// Vínculos CRUZADOS (crédito Asaas ligado à baixa de OUTRO título) — corretor + diagnóstico
+// Caso real 23/10: PIX de entrega do Jerry (pedido 3818, 234,45) e boleto do Auto Posto
+// (pedido 3641, 234,44) trocaram de baixa por 1 centavo. Prevenção: `reservados` em
+// _conciliarPorRefAsaas. Aqui: achar (diag) e consertar (troca) o que já está gravado.
+// ─────────────────────────────────────────────────────────────
+
+/** Cobranças Asaas por pay_ (com pedido/cliente p/ mostrar na tela) + parcelas da conta de cada pedido. */
+async function _cobrancasEParcelas(pays) {
+    const cobs = pays.length === 0 ? [] : await prisma.cobrancaAsaas.findMany({
+        where: { asaasPaymentId: { in: pays } },
+        select: {
+            asaasPaymentId: true, parcelaId: true, pedidoId: true,
+            pedido: { select: { numero: true } },
+            cliente: { select: { Nome: true, NomeFantasia: true } },
+            parcela: { select: { contaReceber: { select: { pedidoId: true, pedido: { select: { numero: true } } } } } }
+        }
+    });
+    const pedidosIds = [...new Set(cobs.map((c) => c.pedidoId || c.parcela?.contaReceber?.pedidoId).filter(Boolean))];
+    const contas = pedidosIds.length === 0 ? [] : await prisma.contaReceber.findMany({
+        where: { pedidoId: { in: pedidosIds } },
+        select: { pedidoId: true, parcelas: { select: { id: true } } }
+    });
+    return {
+        porPay: new Map(cobs.map((c) => [c.asaasPaymentId, c])),
+        parcelasPorPedido: new Map(contas.map((c) => [c.pedidoId, c.parcelas.map((p) => p.id)]))
+    };
+}
+
+/** Baixas (PagamentoParcela) com pedido/cliente, por id. */
+async function _baixasComPedido(ids) {
+    const lista = ids.length === 0 ? [] : await prisma.pagamentoParcela.findMany({
+        where: { id: { in: ids } },
+        select: {
+            id: true, parcelaId: true, valorRecebido: true, estornado: true, contaFinanceiraCaId: true,
+            parcela: {
+                select: {
+                    contaReceber: {
+                        select: {
+                            pedidoId: true,
+                            pedido: { select: { numero: true } },
+                            cliente: { select: { Nome: true, NomeFantasia: true } }
+                        }
+                    }
+                }
+            }
+        }
+    });
+    return new Map(lista.map((b) => [b.id, b]));
+}
+
+/** Parcelas que a cobrança "possui": a própria + as da conta do pedido. */
+function _parcelasDaCobranca(cob, parcelasPorPedido) {
+    if (!cob) return [];
+    const pedidoId = cob.pedidoId || cob.parcela?.contaReceber?.pedidoId || null;
+    return [...new Set([cob.parcelaId, ...(pedidoId ? (parcelasPorPedido.get(pedidoId) || []) : [])].filter(Boolean))];
+}
+
+/** O pedido "cobrado" por uma cobrança (para exibir). */
+function _descCobranca(cob) {
+    if (!cob) return null;
+    return {
+        pedido: cob.pedido?.numero ?? cob.parcela?.contaReceber?.pedido?.numero ?? null,
+        cliente: cob.cliente?.NomeFantasia || cob.cliente?.Nome || null
+    };
+}
+function _descBaixa(b) {
+    if (!b) return null;
+    const cr = b.parcela?.contaReceber;
+    return {
+        baixa: b.id,
+        valorBaixa: round2(b.valorRecebido),
+        pedido: cr?.pedido?.numero ?? null,
+        cliente: cr?.cliente?.NomeFantasia || cr?.cliente?.Nome || null
+    };
+}
+
+/**
+ * Corretor de dados: TROCA os vínculos de 2 créditos do extrato que ficaram cada um na baixa
+ * do outro (cruzados). Mexe SÓ em extrato_lancamentos.pagamentoParcelaId — não toca baixas,
+ * parcelas, contas, conciliadoAuto/conciliadoEm nem converte especiais.
+ *
+ * @param trocas  [{ lancamentoA, lancamentoB }] — IDs vêm do chamador (nunca fixos no código)
+ * @param dryRun  padrão TRUE: só simula. Só grava com `dryRun === false` explícito.
+ * Por par: { ok, jaCorrigido?, aplicado?, status, erro?, antes, depois }.
+ * Recusa (sem gravar) qualquer par que não passe em TODAS as validações.
+ */
+async function trocarVinculosCruzados({ trocas, dryRun = true, user = null } = {}) {
+    if (!Array.isArray(trocas) || trocas.length === 0) throw erro('Informe trocas: [{ "lancamentoA": "...", "lancamentoB": "..." }].');
+    if (trocas.length > 20) throw erro('No máximo 20 trocas por chamada.');
+    const simular = dryRun !== false;
+    const resultados = [];
+    for (const t of trocas) resultados.push(await _trocarUmPar(t || {}, simular, user));
+    return {
+        ok: resultados.every((r) => r.ok),
+        dryRun: simular,
+        gravadas: resultados.filter((r) => r.aplicado).length,
+        resultados
+    };
+}
+
+async function _trocarUmPar({ lancamentoA, lancamentoB }, simular, user) {
+    const base = { lancamentoA: lancamentoA || null, lancamentoB: lancamentoB || null };
+    const recusa = (status, msg, extra = {}) => ({ ...base, ok: false, status, erro: msg, ...extra });
+    if (!lancamentoA || !lancamentoB || lancamentoA === lancamentoB) return recusa(400, 'Informe dois lançamentos diferentes (lancamentoA e lancamentoB).');
+
+    const lancs = await prisma.extratoLancamento.findMany({
+        where: { id: { in: [lancamentoA, lancamentoB] } },
+        select: { id: true, tipo: true, status: true, valor: true, data: true, refNum: true, contaFinanceiraCaId: true, pagamentoParcelaId: true }
+    });
+    const A = lancs.find((l) => l.id === lancamentoA);
+    const B = lancs.find((l) => l.id === lancamentoB);
+    if (!A || !B) return recusa(404, `Lançamento não encontrado: ${!A ? lancamentoA : lancamentoB}.`);
+    for (const [rot, l] of [['A', A], ['B', B]]) {
+        if (l.tipo !== 'CREDITO') return recusa(422, `O lançamento ${rot} não é um crédito.`);
+        if (l.status !== 'CONCILIADO') return recusa(422, `O lançamento ${rot} não está CONCILIADO (está ${l.status}).`);
+        if (!l.pagamentoParcelaId) return recusa(422, `O lançamento ${rot} não tem vínculo direto com uma baixa (pagamentoParcelaId vazio).`);
+        if (!/^pay_/.test(String(l.refNum || ''))) return recusa(422, `O lançamento ${rot} não tem referência de cobrança Asaas (pay_).`);
+    }
+    if (A.contaFinanceiraCaId !== B.contaFinanceiraCaId) return recusa(422, 'Os lançamentos são de contas financeiras diferentes.');
+
+    const baixaIdA = A.pagamentoParcelaId;
+    const baixaIdB = B.pagamentoParcelaId;
+    if (baixaIdA === baixaIdB) return recusa(422, 'Os dois lançamentos apontam para a MESMA baixa — não é um cruzamento.');
+
+    // Lançamento ou baixa dentro de um GRUPO (juros/vários títulos) não se troca por aqui.
+    const emGrupo = await prisma.conciliacaoGrupoItem.findMany({
+        where: { OR: [{ extratoLancamentoId: { in: [A.id, B.id] } }, { pagamentoParcelaId: { in: [baixaIdA, baixaIdB] } }] },
+        select: { id: true }
+    });
+    if (emGrupo.length > 0) return recusa(422, 'Lançamento ou baixa faz parte de um grupo de conciliação (juros/vários títulos) — troca recusada.');
+
+    const [baixas, { porPay, parcelasPorPedido }] = await Promise.all([
+        _baixasComPedido([baixaIdA, baixaIdB]),
+        _cobrancasEParcelas([A.refNum, B.refNum])
+    ]);
+    const bA = baixas.get(baixaIdA);
+    const bB = baixas.get(baixaIdB);
+    if (!bA || !bB) return recusa(422, 'Baixa vinculada não encontrada.');
+    if (bA.estornado || bB.estornado) return recusa(422, 'Uma das baixas está estornada.');
+    if (bA.contaFinanceiraCaId !== A.contaFinanceiraCaId || bB.contaFinanceiraCaId !== A.contaFinanceiraCaId) {
+        return recusa(422, 'As baixas não estão na mesma conta financeira do extrato.');
+    }
+    const cobA = porPay.get(A.refNum);
+    const cobB = porPay.get(B.refNum);
+    if (!cobA || !cobB) return recusa(422, 'Cobrança Asaas (pay_) de um dos créditos não existe no app — não dá para provar o cruzamento.');
+
+    const pA = _parcelasDaCobranca(cobA, parcelasPorPedido);
+    const pB = _parcelasDaCobranca(cobB, parcelasPorPedido);
+    const resumo = (l, b, cob) => ({ lancamento: l.id, valor: round2(l.valor), ..._descBaixa(b), cobrancaDe: _descCobranca(cob) });
+    const antes = [resumo(A, bA, cobA), resumo(B, bB, cobB)];
+
+    const a_naA = pA.includes(bA.parcelaId), a_naB = pB.includes(bA.parcelaId);
+    const b_naA = pA.includes(bB.parcelaId), b_naB = pB.includes(bB.parcelaId);
+    const valoresAntes = valorBate(A.valor, bA.valorRecebido) && valorBate(B.valor, bB.valorRecebido);
+
+    // Já está certo: cada crédito na baixa da PRÓPRIA cobrança
+    if (a_naA && b_naB) {
+        return { ...base, ok: true, jaCorrigido: true, aplicado: false, status: 200, dryRun: simular, antes, depois: antes };
+    }
+    // Cruzamento: a baixa de A é da cobrança de B e a de B é da cobrança de A (e de mais nenhuma outra)
+    const cruzado = a_naB && !a_naA && b_naA && !b_naB;
+    if (!cruzado) {
+        return recusa(409, 'Estado diferente do esperado: os vínculos não estão cruzados nem já corrigidos (baixa de A não é só da cobrança de B, ou baixa de B não é só da cobrança de A). Nada foi gravado.', { antes });
+    }
+    // Depois da troca A fica na baixa de B e vice-versa: os valores têm que fechar (±0,01) nos dois
+    if (!valorBate(A.valor, bB.valorRecebido) || !valorBate(B.valor, bA.valorRecebido)) {
+        return recusa(422, `Depois da troca os valores não fecham (A ${brl(A.valor)} × baixa ${brl(bB.valorRecebido)}; B ${brl(B.valor)} × baixa ${brl(bA.valorRecebido)}). Troca recusada.`, { antes });
+    }
+    const depois = [resumo(A, bB, cobA), resumo(B, bA, cobB)];
+    const saida = { ...base, ok: true, jaCorrigido: false, status: 200, dryRun: simular, valoresAntesBatiam: valoresAntes, antes, depois };
+    if (simular) return { ...saida, aplicado: false };
+
+    try {
+        await prisma.$transaction(async (tx) => {
+            // Guardado: só troca se cada linha ainda estiver CONCILIADA e na baixa esperada
+            const rA = await tx.extratoLancamento.updateMany({
+                where: { id: A.id, status: 'CONCILIADO', pagamentoParcelaId: baixaIdA },
+                data: { pagamentoParcelaId: baixaIdB }
+            });
+            if (rA.count !== 1) throw erro('O lançamento A mudou durante a troca — nada foi gravado.', 409);
+            const rB = await tx.extratoLancamento.updateMany({
+                where: { id: B.id, status: 'CONCILIADO', pagamentoParcelaId: baixaIdB },
+                data: { pagamentoParcelaId: baixaIdA }
+            });
+            if (rB.count !== 1) throw erro('O lançamento B mudou durante a troca — nada foi gravado.', 409);
+        }, { timeout: 20000, maxWait: 10000 });
+    } catch (e) {
+        return recusa(e.status || 500, e.message, { antes });
+    }
+    await _audit('TROCAR_VINCULOS_EXTRATO', 'ExtratoLancamento', A.id, {
+        lancamentoA: A.id, lancamentoB: B.id,
+        antes: { [A.id]: baixaIdA, [B.id]: baixaIdB },
+        depois: { [A.id]: baixaIdB, [B.id]: baixaIdA },
+        resumoAntes: antes, resumoDepois: depois
+    }, user || { id: 'admin-exec', nome: 'admin-exec' });
+    return { ...saida, aplicado: true };
+}
+
+/**
+ * Diagnóstico (SOMENTE LEITURA): créditos CONCILIADOS do Asaas (pay_) cuja baixa ligada NÃO é
+ * da própria cobrança. Cobre vínculo direto e itens de grupo. Baixa em OUTRA parcela do mesmo
+ * pedido não é cruzada; grupo com juros é legítimo (só conta como cruzado se a baixa do grupo
+ * estiver fora do conjunto esperado). Pares simétricos saem com `trocaSugerida`.
+ */
+async function diagnosticarVinculosCruzados({ contaFinanceiraCaId, de, ate, limite = 500 } = {}) {
+    const hoje = ymd(new Date());
+    const ateYmd = ate || hoje;
+    const deYmd = de || somaDias(ateYmd, -60);
+    const teto = Math.min(Math.max(parseInt(limite, 10) || 500, 1), 500);
+
+    const lancs = await prisma.extratoLancamento.findMany({
+        where: {
+            contaFinanceiraCaId, tipo: 'CREDITO', status: 'CONCILIADO',
+            refNum: { startsWith: 'pay_' },
+            data: { gte: dataSP(deYmd), lte: dataSP(ateYmd) }
+        },
+        select: { id: true, data: true, valor: true, refNum: true, pagamentoParcelaId: true },
+        orderBy: { data: 'desc' },
+        take: teto
+    });
+
+    // Baixas ligadas: direto, ou pelos itens do grupo do lançamento
+    const itensDosLancs = lancs.length === 0 ? [] : await prisma.conciliacaoGrupoItem.findMany({
+        where: { extratoLancamentoId: { in: lancs.map((l) => l.id) } },
+        select: { grupoId: true, extratoLancamentoId: true }
+    });
+    const grupoIds = [...new Set(itensDosLancs.map((i) => i.grupoId))];
+    const itensDosGrupos = grupoIds.length === 0 ? [] : await prisma.conciliacaoGrupoItem.findMany({
+        where: { grupoId: { in: grupoIds }, pagamentoParcelaId: { not: null } },
+        select: { grupoId: true, pagamentoParcelaId: true }
+    });
+    const baixasDoGrupo = new Map();
+    for (const it of itensDosGrupos) {
+        if (!baixasDoGrupo.has(it.grupoId)) baixasDoGrupo.set(it.grupoId, []);
+        baixasDoGrupo.get(it.grupoId).push(it.pagamentoParcelaId);
+    }
+    const grupoDoLanc = new Map(itensDosLancs.map((i) => [i.extratoLancamentoId, i.grupoId]));
+
+    const ligadas = new Map(); // lancamentoId → { baixaIds, viaGrupo }
+    for (const l of lancs) {
+        if (l.pagamentoParcelaId) { ligadas.set(l.id, { baixaIds: [l.pagamentoParcelaId], viaGrupo: false }); continue; }
+        const g = grupoDoLanc.get(l.id);
+        const ids = g ? (baixasDoGrupo.get(g) || []) : [];
+        if (ids.length > 0) ligadas.set(l.id, { baixaIds: ids, viaGrupo: true });
+    }
+    const candidatos = lancs.filter((l) => ligadas.has(l.id));
+    const todasBaixas = [...new Set(candidatos.flatMap((l) => ligadas.get(l.id).baixaIds))];
+    const [baixas, { porPay, parcelasPorPedido }] = await Promise.all([
+        _baixasComPedido(todasBaixas),
+        _cobrancasEParcelas([...new Set(candidatos.map((l) => l.refNum))])
+    ]);
+
+    let semCobrancaLocal = 0, semDestino = 0, ok = 0;
+    const cruzados = [];
+    for (const l of candidatos) {
+        const cob = porPay.get(l.refNum);
+        if (!cob) { semCobrancaLocal++; continue; }
+        const esperadas = _parcelasDaCobranca(cob, parcelasPorPedido);
+        // Cobrança conhecida SEM destino (sem parcela e sem pedido/conta com parcelas): não há como
+        // dizer qual baixa seria a certa — mesma regra do _conciliarPorRefAsaas. Não é "cruzado".
+        if (esperadas.length === 0) { semDestino++; continue; }
+        const lig = ligadas.get(l.id);
+        const bs = lig.baixaIds.map((id) => baixas.get(id)).filter(Boolean);
+        const fora = bs.filter((b) => !esperadas.includes(b.parcelaId));
+        if (fora.length === 0) { ok++; continue; }
+        cruzados.push({
+            lancamentoId: l.id,
+            data: ymd(l.data),
+            valor: round2(l.valor),
+            refNum: l.refNum,
+            viaGrupo: lig.viaGrupo,
+            esperado: _descCobranca(cob),
+            ligado: fora.map(_descBaixa),
+            _parcelasLigadas: bs.map((b) => b.parcelaId),
+            _esperadas: esperadas
+        });
+    }
+    // Pares simétricos: a baixa ligada de A é da cobrança de B e a de B é da cobrança de A
+    const sugestoes = new Set();
+    for (const x of cruzados) {
+        for (const y of cruzados) {
+            if (x.lancamentoId >= y.lancamentoId) continue;
+            if (x.viaGrupo || y.viaGrupo) continue;
+            const xNaY = x._parcelasLigadas.some((p) => y._esperadas.includes(p));
+            const yNaX = y._parcelasLigadas.some((p) => x._esperadas.includes(p));
+            if (xNaY && yNaX) {
+                x.trocaSugerida = { lancamentoA: x.lancamentoId, lancamentoB: y.lancamentoId };
+                y.trocaSugerida = { lancamentoA: x.lancamentoId, lancamentoB: y.lancamentoId };
+                sugestoes.add(`${x.lancamentoId}|${y.lancamentoId}`);
+            }
+        }
+    }
+    cruzados.forEach((c) => { delete c._parcelasLigadas; delete c._esperadas; });
+    return {
+        contaFinanceiraCaId,
+        periodo: { de: deYmd, ate: ateYmd },
+        limite: teto,
+        analisados: candidatos.length,
+        contadores: { semCobrancaLocal, semDestino, ok, cruzados: cruzados.length },
+        paresSugeridos: sugestoes.size,
+        cruzados
+    };
 }
 
 /** Concilia UM lançamento com a baixa escolhida pelo usuário. */
@@ -3626,5 +3985,8 @@ module.exports = {
     chaveIdentidade,
     rotuloIdentidade,
     candidatosPara,
-    validarSomaGrupo
+    validarSomaGrupo,
+    baixaPertenceACobranca,
+    trocarVinculosCruzados,
+    diagnosticarVinculosCruzados
 };

@@ -313,4 +313,4 @@ async function statusBackup() {
     return { status, pgDump, servidor, driveConfigurado: driveOk };
 }
 
-module.exports = { executarBackupBanco, executarBackupUploads, statusBackup };
+module.exports = { executarBackupBanco, executarBackupUploads, statusBackup, ambienteLocal };

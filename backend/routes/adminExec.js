@@ -2219,6 +2219,37 @@ router.post('/asaas-cancelar-qr-pedido-quitado', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/diag-asaas-faxina — SOMENTE LEITURA. Estado da faxina automática
+// (services/asaasFaxinaService.js): última execução (app_configs.asaas_faxina_ultima), o que é
+// elegível agora, o que está em espera (backoff em memória — zera a cada deploy) e as cobranças
+// IGNORADAS por terem sido criadas depois da quitação.
+router.get('/diag-asaas-faxina', async (req, res) => {
+    try {
+        const asaasService = require('../services/asaasService');
+        const faxina = require('../services/asaasFaxinaService');
+        const [ultima, busca] = await Promise.all([
+            prisma.appConfig.findUnique({ where: { key: faxina.CHAVE_RESUMO } }),
+            faxina.buscarElegiveis({ agora: new Date() })
+        ]);
+        const desligada = process.env.ASAAS_FAXINA_DESLIGADA === '1';
+        res.json({
+            ok: true,
+            ambiente: asaasService.AMBIENTE,
+            asaasConfigurado: asaasService.configurado(),
+            ambienteLocal: require('../services/backupService').ambienteLocal(),
+            desligadaPorEnv: desligada,
+            ultimaExecucao: ultima?.value || null,
+            elegiveisAgora: busca.elegiveis.length,
+            elegiveis: busca.elegiveis,
+            emCarencia: busca.emCarencia.length,
+            ignoradaPorSerPosterior: busca.ignoradaPorSerPosterior,
+            emBackoff: faxina.estadoBackoff()
+        });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
 // GET /api/admin-exec/diag-asaas-qr-vivos?limit=100&conferirAsaas=1 — SOMENTE LEITURA.
 // Lista TODA cobrança Asaas ainda aberta (PENDENTE/EXPIRADO) do ambiente atual, com o
 // estado do pedido e da conta a receber. SEM filtro `especial: false` de propósito: a
@@ -2264,8 +2295,8 @@ router.get('/diag-asaas-qr-vivos', async (req, res) => {
                 parcelaId: c.parcelaId,
                 parcela: c.parcela ? { n: c.parcela.numeroParcela, status: c.parcela.status } : null,
                 statusConta,
-                // Conta quitada + cobrança aberta = dinheiro podendo entrar duas vezes
-                deveriaEstarMorta: statusConta === 'QUITADO'
+                // Conta quitada (ou parcela PAGO/CANCELADO) + cobrança aberta = dinheiro podendo entrar duas vezes
+                deveriaEstarMorta: statusConta === 'QUITADO' || ['PAGO', 'CANCELADO'].includes(c.parcela?.status)
             };
         });
 
@@ -3078,6 +3109,53 @@ router.post('/extrato-remover-importacao', async (req, res) => {
         });
     } catch (e) {
         res.status(500).json({ ok: false, erro: e.message, stack: (e.stack || '').split('\n').slice(0, 12) });
+    }
+});
+
+// GET /api/admin-exec/diag-conciliacao-vinculos-cruzados?contaId=&de=YYYY-MM-DD&ate=YYYY-MM-DD&limite=500
+// SOMENTE LEITURA. Créditos CONCILIADOS do Asaas (pay_) ligados à baixa de OUTRO título
+// (ex.: PIX de entrega × boleto com 1 centavo de diferença, 23/10). Padrão: conta Asaas
+// (app_configs.asaas_conta_financeira_ca_id), últimos 60 dias. Pares simétricos saem com
+// `trocaSugerida` — é o que se manda para POST /conciliacao-trocar-vinculos.
+router.get('/diag-conciliacao-vinculos-cruzados', async (req, res) => {
+    try {
+        const conciliacaoService = require('../services/conciliacaoBancariaService');
+        let contaId = req.query.contaId || null;
+        if (!contaId) {
+            const cfg = await prisma.appConfig.findUnique({ where: { key: 'asaas_conta_financeira_ca_id' } });
+            contaId = cfg?.value || null;
+        }
+        if (!contaId) return res.status(400).json({ ok: false, error: 'Informe ?contaId= (conta Asaas não vinculada).' });
+        const ymdOk = (v) => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)) ? v : undefined;
+        res.json({
+            ok: true,
+            ...(await conciliacaoService.diagnosticarVinculosCruzados({
+                contaFinanceiraCaId: contaId, de: ymdOk(req.query.de), ate: ymdOk(req.query.ate), limite: req.query.limite
+            }))
+        });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
+// POST /api/admin-exec/conciliacao-trocar-vinculos  body: { trocas:[{lancamentoA, lancamentoB}], dryRun }
+// Corrige créditos do extrato que ficaram cada um na baixa do OUTRO (ver o diag acima). PADRÃO dryRun
+// (só mostra antes/depois); só grava com "dryRun": false EXPLÍCITO. Mexe só em
+// extrato_lancamentos.pagamentoParcelaId — não toca baixa/parcela/conta. IDs vêm do body, nunca fixos.
+// Resposta: 200 se todas as trocas ok (ou já corrigidas); senão o status do 1º problema (409 = estado
+// divergente do esperado, 422 = validação, 404 = lançamento inexistente) e NADA daquele par é gravado.
+router.post('/conciliacao-trocar-vinculos', async (req, res) => {
+    try {
+        const conciliacaoService = require('../services/conciliacaoBancariaService');
+        const r = await conciliacaoService.trocarVinculosCruzados({
+            trocas: req.body?.trocas,
+            dryRun: req.body?.dryRun === false ? false : true,
+            user: { id: 'admin-exec', nome: 'admin-exec' }
+        });
+        const problema = r.resultados.find((x) => !x.ok);
+        res.status(problema ? (problema.status || 422) : 200).json(r);
+    } catch (e) {
+        res.status(e.status || 500).json({ ok: false, error: e.message });
     }
 });
 

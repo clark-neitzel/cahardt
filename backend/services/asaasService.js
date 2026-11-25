@@ -430,9 +430,16 @@ const asaasService = {
                 } catch (e) {
                     if (e.response?.status !== 404) throw e; // 404 = já não existe lá, cancela local
                 }
-                await prisma.cobrancaAsaas.update({ where: { id: cob.id }, data: { status: 'CANCELADO', canceladoEm: new Date(), canceladoMotivo: /devolu/i.test(motivo) ? 'DEVOLUCAO' : 'PARCELA_QUITADA' } });
-                canceladas++;
-                console.log(`[Asaas] Cobrança ${cob.asaasPaymentId} (${cob.tipo}) cancelada — ${motivo}.`);
+                // updateMany guardado: se o webhook marcou RECEBIDO enquanto falávamos com o Asaas,
+                // NÃO sobrescreve com CANCELADO (a guarda de status faz o count ser 0).
+                const upd = await prisma.cobrancaAsaas.updateMany({ where: { id: cob.id, status: { in: ['PENDENTE', 'EXPIRADO'] } }, data: { status: 'CANCELADO', canceladoEm: new Date(), canceladoMotivo: /devolu/i.test(motivo) ? 'DEVOLUCAO' : 'PARCELA_QUITADA' } });
+                // count 0 = o webhook já marcou RECEBIDO enquanto falávamos com o Asaas: não é cancelada.
+                if (upd.count > 0) {
+                    canceladas++;
+                    console.log(`[Asaas] Cobrança ${cob.asaasPaymentId} (${cob.tipo}) cancelada — ${motivo}.`);
+                } else {
+                    console.warn(`[Asaas] Cobrança ${cob.asaasPaymentId} mudou de status durante o cancelamento (webhook?) — não marcada como cancelada.`);
+                }
             } catch (e) {
                 const desc = e.response?.data?.errors?.map(x => x.description).join('; ') || e.message;
                 erros.push({ paymentId: cob.asaasPaymentId, erro: desc });
@@ -467,9 +474,16 @@ const asaasService = {
                 } catch (e) {
                     if (e.response?.status !== 404) throw e; // 404 = já não existe lá, cancela local
                 }
-                await prisma.cobrancaAsaas.update({ where: { id: cob.id }, data: { status: 'CANCELADO', canceladoEm: new Date(), canceladoMotivo: /devolu/i.test(motivo) ? 'DEVOLUCAO' : 'PEDIDO_QUITADO' } });
-                canceladas++;
-                console.log(`[Asaas] Cobrança ${cob.asaasPaymentId} (${cob.tipo}) do pedido cancelada — ${motivo}.`);
+                // updateMany guardado: se o webhook marcou RECEBIDO enquanto falávamos com o Asaas,
+                // NÃO sobrescreve com CANCELADO (a guarda de status faz o count ser 0).
+                const upd = await prisma.cobrancaAsaas.updateMany({ where: { id: cob.id, status: { in: ['PENDENTE', 'EXPIRADO'] } }, data: { status: 'CANCELADO', canceladoEm: new Date(), canceladoMotivo: /devolu/i.test(motivo) ? 'DEVOLUCAO' : 'PEDIDO_QUITADO' } });
+                // count 0 = o webhook já marcou RECEBIDO enquanto falávamos com o Asaas: não é cancelada.
+                if (upd.count > 0) {
+                    canceladas++;
+                    console.log(`[Asaas] Cobrança ${cob.asaasPaymentId} (${cob.tipo}) do pedido cancelada — ${motivo}.`);
+                } else {
+                    console.warn(`[Asaas] Cobrança ${cob.asaasPaymentId} mudou de status durante o cancelamento (webhook?) — não marcada como cancelada.`);
+                }
             } catch (e) {
                 const desc = e.response?.data?.errors?.map(x => x.description).join('; ') || e.message;
                 erros.push({ paymentId: cob.asaasPaymentId, erro: desc });

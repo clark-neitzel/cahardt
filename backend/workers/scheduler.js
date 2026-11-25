@@ -399,6 +399,33 @@ function startSchedulers() {
     setTimeout(_runExtratoAsaas, 240000);          // 4min após o start
     setInterval(_runExtratoAsaas, 30 * 60 * 1000); // a cada 30 minutos
 
+    // === 10b. FAXINA ASAAS: título quitado no app → cobrança aberta sai do Asaas sozinha ===
+    // O cancelamento no instante da baixa é "melhor esforço": se o Asaas recusou/estava fora, ninguém
+    // repetia (boleto vencido continua pagável; QR de entrega vive 12 meses → cliente pode pagar em dobro).
+    // A cada 20 min refaz o cancelamento das cobranças PENDENTE/EXPIRADO de título já quitado, com
+    // carência de 10 min, teto de 30 por ciclo e backoff em memória p/ as que o Asaas recusa.
+    // Inerte no ambiente local, sem ASAAS_API_KEY ou com ASAAS_FAXINA_DESLIGADA=1. Só loga se houve ação.
+    let _faxinaAsaasRodando = false;
+    let _faxinaAsaasAvisouPulo = false; // o aviso de "pulada" sai 1x por processo, não a cada 20 min
+    const _runFaxinaAsaas = async () => {
+        if (_faxinaAsaasRodando) return;
+        _faxinaAsaasRodando = true;
+        try {
+            const r = await require('../services/asaasFaxinaService').executar();
+            if (r.pulado) {
+                if (!_faxinaAsaasAvisouPulo) { console.log(`[AsaasFaxina] pulada: ${r.motivo}.`); _faxinaAsaasAvisouPulo = true; }
+            } else if (r.ok && (r.canceladas || r.recusadas || r.emBackoff)) {
+                console.log(`[AsaasFaxina] ${r.canceladas} cancelada(s), ${r.recusadas} recusada(s), ${r.emBackoff} em espera.`);
+            }
+        } catch (err) {
+            console.error('⚠️ Faxina Asaas Error:', err.message);
+        } finally {
+            _faxinaAsaasRodando = false;
+        }
+    };
+    setTimeout(_runFaxinaAsaas, 6 * 60 * 1000);     // 6min após o start
+    setInterval(_runFaxinaAsaas, 20 * 60 * 1000);   // a cada 20 minutos
+
     // === 11. TRANSFERÊNCIAS DO CONTA AZUL → SALDOS POR CONTA — DESLIGADO (Fase 4 da
     // remoção do CA, 09/2026) ===
     // Puxava transferências/despesas/recebimentos lançados direto no CA a cada 3h.
