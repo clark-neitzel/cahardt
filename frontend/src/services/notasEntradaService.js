@@ -13,8 +13,10 @@ const notasEntradaService = {
     },
     // Busca UNIFICADA de produtos + insumos para vincular:
     // [{ tipo:'PRODUTO'|'PCP', id, value:'PROD:<id>'|'PCP:<id>', nome, unidade, sub }]
+    // `incluirInativos=1`: devolve também produtos DESATIVADOS (cada opção de produto traz `ativo: boolean`);
+    // a tela mostra o desativado diferente e só deixa vincular depois de ativar.
     itensPcp: async (busca = '') => {
-        const response = await api.get('/notas-entrada/itens-pcp', { params: busca ? { busca } : {} });
+        const response = await api.get('/notas-entrada/itens-pcp', { params: { ...(busca ? { busca } : {}), incluirInativos: 1 } });
         return response.data;
     },
     // Gera a Conta a Pagar da nota; itens vinculados somam no estoque.
@@ -115,6 +117,15 @@ const notasEntradaService = {
         const response = await api.post('/notas-entrada/importar-xml', xmlText, {
             headers: { 'Content-Type': 'text/plain' }
         });
+        return response.data;
+    },
+    // Cria o PRODUTO no cadastro na hora (a partir de um item da nota) — fica no cadastro mesmo
+    // que a nota não seja salva. payload: { itemId?, nome, categoria, categoriaProdutoId?, controlaEstoque?, unidade, ean?, ncm? }
+    // → 201 { ok, jaExistia, produto, opcao:{value:'PROD:<id>',...}, opcaoPcp:{value:'PCP:<id>',...}|null, itemPcpId }
+    //   (ler `opcao`/`opcaoPcp`, NUNCA `produto`)
+    // → 409 { error, codigo:'PRODUTO_DUPLICADO', existente:<opcao> } | 400/403/404 { error }
+    criarProduto: async (id, payload) => {
+        const response = await api.post(`/notas-entrada/${id}/criar-produto`, payload);
         return response.data;
     },
     // Lança uma nota manualmente (sem XML) — { tipo, fornecedorCnpj, fornecedorNome, numero, emissao, valorTotal }.

@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Produto novo direto da nota — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp (cartão compacto: só título e descrição) -->
+<meta property="og:title" content="🧾 Novidade no Hardt App: criar produto direto da nota">
+<meta property="og:description" content="Na conferência da nota de entrada, o produto novo agora é criado na hora no cadastro e já fica vinculado ao item. Produto desativado só é usado depois de ativado, e a conversão de quantidade é pedida na hora.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 96px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 7vw, 40px);
+    font-weight: 800;
+    line-height: 1.12;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.75);
+    font-size: 16px;
+    max-width: 46ch;
+    margin: 0 auto;
+    text-wrap: balance;
+  }
+
+  /* mock da tela flutuando sobre o hero */
+  .mock {
+    max-width: 420px;
+    margin: -68px auto 28px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.28);
+    overflow: hidden;
+    text-align: left;
+  }
+  .mock-top {
+    background: var(--house);
+    color: #fff;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .mock-top small {
+    display: block;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    color: rgba(255,255,255,.55);
+  }
+  .mock-top strong { font-size: 16px; line-height: 1.2; }
+  .mock-ico { font-size: 24px; }
+  .mock-body { padding: 16px 18px 18px; }
+  .mock-label {
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--ink-soft);
+    margin-bottom: 4px;
+  }
+  .mock-input {
+    border: 1.5px solid #d8d5cc;
+    border-radius: 10px;
+    padding: 11px 13px;
+    font-size: 15px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--ink);
+    background: #fff;
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+  }
+  .mock-input.focado { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0,117,74,.14); }
+  .cursor { display: inline-block; width: 2px; height: 18px; background: var(--primary); margin-left: 2px; animation: pisca 1s steps(1) infinite; }
+  @keyframes pisca { 50% { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .cursor { animation: none; } }
+  .mock-campos { margin-top: 14px; display: grid; gap: 9px; }
+  .campo {
+    background: #f6f5f1;
+    border-radius: 9px;
+    padding: 8px 12px;
+    font-size: 13px;
+    color: #b9b5aa;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background .4s, color .4s;
+  }
+  .campo b { font-weight: 700; }
+  .campo.cheio { background: var(--mint); color: var(--primary-dark); }
+  .campo .ck { opacity: 0; transition: opacity .4s; }
+  .campo.cheio .ck { opacity: 1; }
+  .mock-status {
+    margin-top: 12px;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--ink-soft);
+    min-height: 20px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .mock-status.ok { color: var(--primary-dark); }
+
+  /* botão de demo */
+  .demo-cta {
+    display: block;
+    width: 100%;
+    max-width: 420px;
+    margin: 0 auto 8px;
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    font: inherit;
+    font-size: 16px;
+    font-weight: 800;
+    padding: 16px;
+    border-radius: 999px;
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(0,117,74,.35);
+  }
+  .demo-cta:hover { background: var(--primary-dark); }
+  .demo-cta:focus-visible, .acc-head:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .demo-hint { text-align: center; font-size: 12px; color: var(--ink-soft); margin: 0 0 34px; }
+
+  /* ── SEÇÕES / ACCORDION ── */
+  .sec-label {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: var(--primary-dark);
+    margin: 34px 4px 12px;
+  }
+  .acc {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .acc-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: none;
+    border: none;
+    font: inherit;
+    text-align: left;
+    padding: 15px 16px;
+    cursor: pointer;
+    min-height: 56px;
+  }
+  .acc-ico {
+    width: 38px; height: 38px;
+    border-radius: 11px;
+    background: var(--mint);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  /* passos */
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n {
+    width: 30px; height: 30px; flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 800;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .rodape {
+    text-align: center;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 40px;
+  }
+  .rodape strong { color: var(--primary-dark); }
+
+  /* ── MOCKUPS DAS TELAS DO APP ── */
+  .tela {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .tela-titulo {
+    background: var(--house);
+    color: #fff;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .app-card {
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .app-card-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    border-bottom: 1px solid #f0efe9;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: #6b756f;
+  }
+  .app-card-body { padding: 12px; }
+  .app-input {
+    border: 1px solid #d8d5cc;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 12.5px;
+    color: var(--ink);
+    background: #fff;
+    margin-bottom: 8px;
+  }
+  .app-input small { display: block; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: #9aa5a0; margin-bottom: 2px; }
+  .app-input.ok { background: var(--mint); border-color: rgba(0,117,74,.25); }
+  .app-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--primary);
+    color: #fff;
+    font-size: 12.5px;
+    font-weight: 700;
+    padding: 9px 16px;
+    border-radius: 999px;
+  }
+  .app-btn.claro { background: #fff; border: 1.5px solid var(--primary); color: var(--primary); }
+  .app-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+  .app-pill {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 7px 14px;
+    border-radius: 999px;
+    border: 1.5px solid #d8d5cc;
+    color: #6b756f;
+    background: #fff;
+  }
+  .app-pill.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .app-busca {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .app-busca .app-input { flex: 1; margin-bottom: 0; color: #9aa5a0; }
+  .app-toggle-linha {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: #f7f6f2;
+    border: 1px solid #edece6;
+    border-radius: 10px;
+    padding: 9px 12px;
+    font-size: 12.5px;
+  }
+  .app-toggle-linha small { display: block; font-size: 10.5px; color: #9aa5a0; }
+  .app-toggle {
+    width: 38px; height: 22px; flex-shrink: 0;
+    border-radius: 999px;
+    background: var(--primary);
+    position: relative;
+  }
+  .app-toggle::after {
+    content: '';
+    position: absolute;
+    top: 3px; right: 3px;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: #fff;
+  }
+  .pin {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    flex-shrink: 0;
+    vertical-align: 2px;
+    margin-left: 6px;
+  }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+
+  .mock-botoes { display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap; }
+  .b-vazio, .b-cheio { display:inline-flex; align-items:center; justify-content:center; min-height:36px; padding:8px 18px; border-radius:999px; font-size:12.5px; font-weight:700; }
+  .b-vazio { background:#fff; border:1.5px solid #d8d5cc; color:#4a554f; }
+  .b-cheio { background:var(--primary); border:1.5px solid var(--primary); color:#fff; }
+  .etq-desat { display:inline-block; font-size:10px; font-weight:700; padding:1px 8px; border-radius:999px; background:#f3f4f6; color:#374151; margin-left:6px; vertical-align:1px; }
+  .app-lista .apagado { color:#6b7280; }
+  .bloco-aviso { background:#fff8e6; border:1px solid #ecd9a6; border-radius:12px; padding:10px 12px; font-size:12.5px; color:#6b5a1f; margin-top:10px; }
+  .dlg { background:#fff; border-radius:16px; box-shadow:0 8px 24px rgba(20,40,34,.18); padding:14px; border:1px solid #e5e3dc; }
+  .dlg h4 { margin:0 0 6px; font-size:14px; }
+  .dlg p { margin:0 0 8px; font-size:12.5px; color:var(--ink-soft); }
+  .dlg .linha-btn { display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap; }
+  .app-sel { display:flex; align-items:center; justify-content:space-between; gap:8px; border:1px solid #d8d5cc; border-radius:8px; padding:8px 10px; font-size:12.5px; background:#fff; margin-bottom:8px; }
+  .app-sel .atu { font-size:10.5px; color:#6b756f; }
+  .app-lista { border:1px solid #e5e3dc; border-radius:10px; background:#fff; overflow:hidden; margin-bottom:8px; }
+  .app-lista div { padding:8px 10px; font-size:12.5px; border-bottom:1px solid #f0efe9; }
+  .app-lista div:last-child { border-bottom:0; }
+  .app-lista .novo { background:var(--mint); font-weight:700; color:var(--primary-dark); }
+  .app-lista .grp { font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.1em; color:#6b756f; background:#faf9f5; }
+</style>
+</head>
+<body>
+
+<!-- ══════════ HERO ══════════ -->
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>Produto novo<br>direto da nota de entrada</h1>
+    <p>Ao conferir uma nota, se o item ainda não existe no cadastro, você cria o produto ali mesmo: o app pede uma confirmação, cria na hora em Produtos e já vincula ao item.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- mock da confirmação -->
+  <div class="mock" aria-hidden="true">
+    <div class="mock-top">
+      <span class="mock-ico">🧾</span>
+      <div>
+        <small>Notas Recebidas · Conferência</small>
+        <strong>Criar este produto?</strong>
+      </div>
+    </div>
+    <div class="mock-body">
+      <p style="font-size:13px;color:#5f6b66;margin:0 0 6px;">Vai criar <b style="color:#000">Farinha de trigo tipo 1</b> em Produtos, categoria <b style="color:#000">Matéria-prima</b>, unidade KG.</p>
+      <p style="font-size:12px;color:#5f6b66;margin:0 0 12px;">Fica no cadastro mesmo que você não salve a nota. Confirmar?</p>
+      <div class="mock-botoes"><span class="b-vazio">Cancelar</span><span class="b-cheio">Criar produto</span></div>
+    </div>
+  </div>
+
+  <!-- ══════════ O QUE MUDOU ══════════ -->
+  <div class="sec-label">O que mudou</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">➕</span>
+      <strong>Criar produto novo agora cria de verdade, na hora</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Antes, o produto só nascia no cadastro <b>depois</b> que você salvava a nota inteira. Agora ele nasce <b>assim que você confirma</b>.</li>
+        <li>Na conferência (e também em <b>Corrigir entrada</b> / <b>Lançar entrada</b>), toque em <b>"Criar produto novo"</b>, preencha e toque em <b>"Criar produto"</b>.</li>
+        <li>O app mostra uma <b>confirmação simples</b> (Cancelar / Criar produto). Sem senha e sem precisar de aprovação de ninguém.</li>
+        <li>Criou, o item da nota já fica <b>vinculado</b> ao produto novo, com a conversão que você digitou.</li>
+      </ul>
+      <div class="bloco-aviso">⚠️ O produto <b>fica no cadastro mesmo que você não salve a nota</b>. Se desistir da nota, o produto continua em Produtos (é só desativar lá, se não quiser).</div>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🔄</span>
+      <strong>A busca "Nosso produto" sempre vem atualizada</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Toda vez que você abre a busca de produto, a lista é <b>recarregada</b>. Apareceu "Atualizando lista…" no rodapé? Pode continuar digitando, ela não trava.</li>
+        <li>Produto criado em <b>outra nota</b> ou em <b>Produtos</b> aparece na busca <b>sem precisar recarregar a página</b>.</li>
+        <li>Dois itens da mesma nota com o mesmo produto: crie no primeiro e <b>ache no segundo</b>.</li>
+        <li>Se a internet falhar na atualização, a lista anterior continua na tela e o app só avisa.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🧯</span>
+      <strong>Proteções contra produto duplicado</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li><b>Clicou duas vezes?</b> Só um produto é criado.</li>
+        <li><b>Já existe um produto com esse nome?</b> O app avisa: <i>"Já existe o produto X. Usar o existente neste item?"</i> — você escolhe <b>Usar existente</b> ou <b>Voltar</b>.</li>
+        <li><b>Deu erro</b> (categoria inexistente, internet caindo…)? A janela <b>continua aberta com tudo o que você digitou</b>, é só corrigir e tentar de novo.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🚫</span>
+      <strong>Produto desativado: só usa depois de ativar</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Produto <b>desativado</b> continua aparecendo na busca "Nosso produto", mas <b>apagado, com a etiqueta "desativado"</b>. Ele <b>não vincula direto</b>.</li>
+        <li>Quem tem a permissão de <b>Produtos (editar)</b> vê <i>"Este produto está desativado. Ativar para usar?"</i> — toca em <b>Ativar e usar</b> e o app ativa o produto e vincula ao item. Se a unidade da nota for diferente, ele pergunta a conversão primeiro e <b>só ativa o produto quando você confirma a conversão</b>. <b>Cancelar</b>, em qualquer passo, não muda nada no cadastro.</li>
+        <li>Quem <b>não tem</b> essa permissão vê o aviso <i>"Peça a quem tem a permissão de Produtos (editar) para ativá-lo"</i> e o item continua como estava.</li>
+        <li>Vale também para o <b>"Usar existente"</b> e para o vínculo que o app lembrou de uma nota anterior: se o produto foi desativado depois, o item avisa e pede para ativar ou escolher outro.</li>
+        <li>Nota antiga que <b>já estava vinculada</b> a um produto que depois foi desativado continua aparecendo normalmente, só com a etiqueta discreta "desativado". Dá para <b>reconferir ou corrigir mantendo o mesmo produto</b>, mesmo para quem não tem a permissão de Produtos.</li>
+        <li>Se o sistema recusar um item por causa de produto desativado (por exemplo, alguém o desativou enquanto você trabalhava), a <b>linha do item fica vermelha</b> e a tela rola até ela.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">⚖️</span>
+      <strong>Conversão de quantidade pedida na hora</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Escolheu um produto que <b>já existe</b> e a unidade da nota é <b>diferente</b> da do produto (ex.: nota em <b>SC</b>, produto em <b>KG</b>)? O app pergunta na hora: <i>"1 SC = ? KG"</i>. O campo é obrigatório.</li>
+        <li>Unidades <b>iguais</b>? A conversão fica 1 e o app <b>não pergunta nada</b>. Apelidos da mesma unidade contam como iguais (UN = UND = UNID = Unidade; KG = Quilo; L = Litro; CX = Caixa; PC = Peça). Já <b>LT</b> (pode ser lata), <b>PCT × PC</b> e <b>M² × M</b> o app <b>pergunta</b>.</li>
+        <li>Pode digitar <b>1.000,5</b> (ponto de milhar e vírgula) ou <b>12,5</b> / <b>12.5</b>. Abaixo do campo o app mostra como <b>entendeu</b> o número (ex.: <i>= 1.000,5</i>). Número confuso (como <b>1.5.0</b>) é recusado com um aviso. <b>1.000</b> sozinho também é recusado, porque pode ser mil ou um: digite <b>1000</b> para mil ou <b>1,0</b> para um.</li>
+        <li>O valor vai para a coluna <b>"Conversão de quantidade"</b> do item e fica <b>salvo por fornecedor + código do produto na nota</b> — na próxima nota desse fornecedor já vem preenchido.</li>
+        <li>Corrigido: o "Usar existente" <b>não herda mais</b> a conversão digitada no formulário do produto novo.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">↩️</span>
+      <strong>Trocou de ideia depois de criar?</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>O botão "Cancelar" do produto novo saiu — não existe mais "rascunho". Para desfazer o vínculo, é só <b>escolher outro produto</b> na busca.</li>
+        <li>O produto que você criou <b>permanece no cadastro</b>, pronto para ser usado depois.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ══════════ AS TELAS DO APP ══════════ -->
+  <div class="sec-label">As telas do app, sem mistério</div>
+
+  <!-- TELA 1 -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 1 · Conferência da nota — escolhendo o produto</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">Item 1 · FARINHA TRIGO T1 25KG</div>
+        <div class="app-card-body">
+          <div style="font-size:11px;font-weight:700;color:#444;margin-bottom:6px;">O que fazer com este item?</div>
+          <div class="app-pills" style="margin-bottom:10px;">
+            <span class="app-pill on">Vincular a um produto</span>
+            <span class="app-pill">➕ Criar produto novo<span class="pin">1</span></span>
+            <span class="app-pill">Não é estoque</span>
+          </div>
+          <div style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:#9aa5a0;margin-bottom:3px;">Nosso produto</div>
+          <div class="app-sel"><span>Buscar produto…</span><span>▾</span></div>
+          <div class="app-lista">
+            <div class="grp">Produtos</div>
+            <div>Farinha de rosca (KG)</div>
+            <div class="novo">Farinha de trigo tipo 1 (KG)<span class="pin">2</span></div>
+            <div style="font-size:11px;color:#6b756f;display:flex;justify-content:space-between;"><span>3 itens</span><span>Atualizando lista…<span class="pin">3</span></span></div>
+          </div>
+          <div class="app-lista"><div style="color:#006241;font-weight:700;">+ Criar produto novo…<span class="pin">4</span></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>"Criar produto novo"</b> abre o formulário do produto (nome, categoria, unidade, conversão…).</span></div>
+      <div><span class="pin">2</span><span>Produto criado há pouco (nesta ou em outra nota) <b>já aparece na lista</b>, sem recarregar a página.</span></div>
+      <div><span class="pin">3</span><span>Ao abrir a busca, a lista é atualizada. O aviso <b>"Atualizando lista…"</b> some sozinho e não impede de digitar.</span></div>
+      <div><span class="pin">4</span><span>O atalho <b>"+ Criar produto novo…"</b> no fim da busca abre o mesmo formulário.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 2 -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 2 · Formulário e confirmação</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">Criar produto a partir da nota</div>
+        <div class="app-card-body">
+          <div class="app-input"><small>Nome do produto *</small>Farinha de trigo tipo 1</div>
+          <div class="app-input"><small>Categoria *</small>Matéria-prima</div>
+          <div style="display:flex;gap:8px;">
+            <div class="app-input" style="flex:1;"><small>Unidade nossa *</small>KG</div>
+            <div class="app-input" style="flex:1;"><small>Conversão *</small>1 SC = 25 KG</div>
+          </div>
+          <div style="text-align:right;"><span class="app-btn">Criar produto<span class="pin">1</span></span></div>
+        </div>
+      </div>
+      <div class="dlg">
+        <h4>Criar este produto?<span class="pin">2</span></h4>
+        <p>Vai criar <b>Farinha de trigo tipo 1</b> em Produtos, categoria <b>Matéria-prima</b>, unidade KG. Fica no cadastro mesmo que você não salve a nota. Confirmar?</p>
+        <div class="linha-btn"><span class="app-btn claro">Cancelar</span><span class="app-btn">Criar produto</span></div>
+      </div>
+      <div class="dlg" style="margin-top:10px;">
+        <h4>Esse produto já existe<span class="pin">3</span></h4>
+        <p>Já existe o produto <b>Farinha de trigo tipo 1</b> (KG). Usar o existente neste item?</p>
+        <div class="linha-btn"><span class="app-btn claro">Voltar</span><span class="app-btn">Usar existente</span></div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>O botão final agora é <b>"Criar produto"</b>. Os campos obrigatórios continuam sendo conferidos antes.</span></div>
+      <div><span class="pin">2</span><span>A <b>confirmação</b> aparece por cima: só depois de tocar em <b>"Criar produto"</b> nela o produto é criado. <b>Cancelar</b> volta ao formulário sem criar nada.</span></div>
+      <div><span class="pin">3</span><span>Se já existir produto com o mesmo nome, o app oferece <b>"Usar existente"</b> em vez de duplicar.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 3 -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 3 · Produto desativado e conversão na hora</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">Item 2 · ÓLEO DE SOJA CX 20L</div>
+        <div class="app-card-body">
+          <div style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:#9aa5a0;margin-bottom:3px;">Nosso produto</div>
+          <div class="app-lista">
+            <div class="grp">Produtos</div>
+            <div>Óleo de soja (L)</div>
+            <div class="apagado">Óleo de soja antigo (L)<span class="etq-desat">desativado</span><span class="pin">1</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="dlg">
+        <h4>Ativar para usar?<span class="pin">2</span></h4>
+        <p>Este produto está desativado. Ativar para usar?<br><b>Óleo de soja antigo</b> <span class="etq-desat">desativado</span></p>
+        <div class="linha-btn"><span class="app-btn claro">Cancelar</span><span class="app-btn">Ativar e usar</span></div>
+      </div>
+      <div class="dlg" style="margin-top:10px;">
+        <h4>Sem a permissão de Produtos<span class="pin">3</span></h4>
+        <p>Este produto está desativado. Peça a quem tem a permissão de Produtos (editar) para ativá-lo.</p>
+        <div class="linha-btn"><span class="app-btn">Entendi</span></div>
+      </div>
+      <div class="dlg" style="margin-top:10px;">
+        <h4>Conversão de quantidade<span class="pin">4</span></h4>
+        <p>Na nota a unidade é <b>CX</b> e no produto <b>Óleo de soja</b> é <b>L</b>. Quanto vale cada unidade da nota?</p>
+        <div class="app-input" style="display:inline-block;">1 CX = <b>20</b> L<span class="pin">5</span></div>
+        <div class="linha-btn"><span class="app-btn claro">Cancelar</span><span class="app-btn">Usar este produto</span></div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Produto desativado aparece <b>apagado, com a etiqueta "desativado"</b>. Dá para tocar nele, mas ele nunca vincula sozinho.</span></div>
+      <div><span class="pin">2</span><span>Com a permissão de Produtos (editar): <b>"Ativar e usar"</b> ativa o produto e vincula (se pedir a conversão, só ativa ao confirmá-la). Se não conseguir ativar, o app mostra o erro e <b>não vincula</b>; cancelar não muda nada.</span></div>
+      <div><span class="pin">3</span><span>Sem a permissão: só o aviso. Nada é ativado nem vinculado — peça a quem pode.</span></div>
+      <div><span class="pin">4</span><span>Unidade da nota diferente da do produto: o app pergunta a conversão <b>na hora</b>.</span></div>
+      <div><span class="pin">5</span><span>O número digitado vai para a coluna <b>Conversão de quantidade</b> do item e fica salvo por fornecedor + código da nota.</span></div>
+    </div>
+  </div>
+
+  <!-- ══════════ COMO USAR ══════════ -->
+  <div class="sec-label">Para criar um produto pela nota</div>
+  <div class="passos">
+    <div class="passo">
+      <span class="passo-n">1</span>
+      <div><b>Atualize o app:</b> toque no ícone de atualizar ↻ (ou feche e abra o app).</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">2</span>
+      <div>Abra <b>Notas Recebidas</b>, escolha a nota e, no item sem produto, toque em <b>"Criar produto novo"</b>.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">3</span>
+      <div>Confira nome, categoria, unidade e conversão e toque em <b>"Criar produto"</b>; depois confirme na janela que aparece.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">4</span>
+      <div>Pronto: o produto já está no cadastro e vinculado ao item. Finalize a nota normalmente. ✅</div>
+    </div>
+  </div>
+
+  <p class="rodape">Dúvidas? Pergunte ao <strong>Clippy</strong> dentro do app — ele já conhece a tela.<br>— Hardt Salgados</p>
+</div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.parentElement;
+    const abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>

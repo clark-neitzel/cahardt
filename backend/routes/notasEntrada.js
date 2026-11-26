@@ -32,6 +32,7 @@ const custoForaDaCurva = require('../services/custoForaDaCurvaService');
 const produtoService = require('../services/produtoService');
 const categoriaEstoqueService = require('../services/categoriaEstoqueService');
 const pcpItemService = require('../services/pcpItemService');
+const estoqueService = require('../services/estoqueService');
 // CNPJ ALFANUMÉRICO: documento/chave podem conter letras — normalizar preservando-as.
 const { normalizarDoc, normalizarChaveNFe } = require('../utils/documento');
 // App é o dono do financeiro: com esta chave ligada, a conta a pagar gerada da nota
@@ -95,6 +96,19 @@ const checkCorrigirEstoque = async (req, res, next) => {
     req._perms = perms;
     if (!perms.admin && !perms.Pode_Corrigir_Entrada_Estoque) {
         return res.status(403).json({ error: 'Sem permissão para corrigir a entrada de estoque de uma nota já lançada.' });
+    }
+    next();
+};
+
+// "Criar produto novo" direto da nota (11/2026): é o mesmo ato que a conferência já faz
+// (checkEscrita) e que o painel de correção/lançamento abre para quem tem só
+// Pode_Corrigir_Entrada_Estoque — por isso aceita QUALQUER das duas, sem permissão nova.
+// Chaves lidas uma a uma (permissão é OBJETO no projeto — nunca `!!perms.x` num objeto pai).
+const checkCriarProdutoNota = async (req, res, next) => {
+    const perms = req._perms || await getPerms(req.user.id);
+    req._perms = perms;
+    if (!perms.admin && !perms.Pode_Baixar_Contas_Pagar && !perms.Pode_Corrigir_Entrada_Estoque) {
+        return res.status(403).json({ error: 'Sem permissão para criar produto a partir de uma nota.' });
     }
     next();
 };
@@ -191,6 +205,33 @@ const LABEL_MOTIVO_ENTRADA = {
 
 // Rótulo do tipo do insumo do PCP (usado no subtítulo das opções de /itens-pcp)
 const LABEL_TIPO_ITEM_PCP = { MP: 'Matéria-prima', SUB: 'Subproduto', PA: 'Produto acabado', EMB: 'Embalagem' };
+
+// Formato ÚNICO das opções do de-para (11/2026): usado por GET /itens-pcp E pela resposta de
+// POST /:id/criar-produto — o front insere `resp.opcao`/`resp.opcaoPcp` na lista como se
+// tivessem vindo de /itens-pcp, então os dois TÊM que sair idênticos.
+// `controlaEstoque` (boolean) é opcional: só entra na opção quando é boolean.
+// `ativo` (boolean, 11/2026) SEMPRE presente: produto desativado aparece na busca (com
+// ?incluirInativos=1), mas a tela o mostra diferente e o servidor recusa vínculo NOVO a ele.
+const montarOpcaoProduto = (p, controlaEstoque) => ({
+    tipo: 'PRODUTO',
+    grupo: 'Produtos',
+    id: p.id,
+    value: `PROD:${p.id}`,
+    nome: p.nome,
+    unidade: p.unidade,
+    sub: `Produto${p.codigo ? ` · ${p.codigo}` : ''}${p.categoria ? ` · ${p.categoria}` : ''}`,
+    ativo: p.ativo !== false,
+    ...(typeof controlaEstoque === 'boolean' ? { controlaEstoque } : {})
+});
+const montarOpcaoItemPcp = (i) => ({
+    tipo: 'ITEM_PCP',
+    grupo: 'Insumos (PCP)',
+    id: i.id,
+    value: `PCP:${i.id}`,
+    nome: i.nome,
+    unidade: i.unidade,
+    sub: `Insumo${i.codigo ? ` · ${i.codigo}` : ''}${i.tipo ? ` · ${LABEL_TIPO_ITEM_PCP[i.tipo] || i.tipo}` : ''}`
+});
 
 // Ação escolhida no app quando a soma vinculada ≠ valor da nota → tipoDiferenca gravado.
 const ACOES_DIFERENCA = ['NENHUMA', 'AJUSTAR_PARCELA', 'DESCONTO', 'ACRESCIMO'];
@@ -472,12 +513,16 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
 // CRIANDO um novo, mesmo quando o insumo já existia. Agora os ItemPcp ativos também aparecem.
 // Produtos vêm primeiro; dentro de cada grupo, por nome.
 // Sem limite: a tela carrega tudo e filtra a busca no cliente. `?busca=` filtra também no banco.
+// `?incluirInativos=1` (11/2026): devolve TAMBÉM os produtos desativados (cada opção de PRODUTO traz
+// `ativo: boolean`; os inativos vêm com `ativo:false`). Sem o parâmetro: só ativos, como sempre
+// (a opção ganhou o campo `ativo:true` — só adição). Insumos PCP continuam só os ativos.
 router.get('/itens-pcp', verificarAuth, checkAcesso, async (req, res) => {
     try {
         const busca = req.query.busca?.trim();
         const b = busca || '';
 
-        const whereProd = { ativo: true };
+        const incluirInativos = ['1', 'true'].includes(String(req.query.incluirInativos || '').toLowerCase());
+        const whereProd = incluirInativos ? {} : { ativo: true };
         if (busca) {
             whereProd.OR = [
                 { nome: { contains: b, mode: 'insensitive' } },
@@ -496,7 +541,7 @@ router.get('/itens-pcp', verificarAuth, checkAcesso, async (req, res) => {
         const [produtos, itensPcp] = await Promise.all([
             prisma.produto.findMany({
                 where: whereProd,
-                select: { id: true, codigo: true, nome: true, unidade: true, categoria: true },
+                select: { id: true, codigo: true, nome: true, unidade: true, categoria: true, controlaEstoque: true, ativo: true },
                 orderBy: { nome: 'asc' }
             }),
             prisma.itemPcp.findMany({
@@ -506,25 +551,23 @@ router.get('/itens-pcp', verificarAuth, checkAcesso, async (req, res) => {
             })
         ]);
 
+        // `controlaEstoque` efetivo por produto (campo A MAIS, 11/2026): o do próprio produto
+        // quando definido; senão o da categoria (mesma regra de estoqueService.produtoControlaEstoque).
+        // Se a leitura das categorias falhar, as opções saem sem o campo — nunca derruba a rota.
+        let controlaPorCategoria = null;
+        try {
+            controlaPorCategoria = new Map((await categoriaEstoqueService.flagsCategorias()).map((c) => [c.nome, c.controlaEstoque === true]));
+        } catch (e) {
+            console.warn('[NotasEntrada] itens-pcp sem controlaEstoque (categorias indisponíveis):', e.message);
+        }
+        const controlaEfetivo = (p) => {
+            if (p.controlaEstoque === true || p.controlaEstoque === false) return p.controlaEstoque;
+            return controlaPorCategoria ? (controlaPorCategoria.get(p.categoria) === true) : undefined;
+        };
+
         const opcoes = [
-            ...produtos.map((p) => ({
-                tipo: 'PRODUTO',
-                grupo: 'Produtos',
-                id: p.id,
-                value: `PROD:${p.id}`,
-                nome: p.nome,
-                unidade: p.unidade,
-                sub: `Produto${p.codigo ? ` · ${p.codigo}` : ''}${p.categoria ? ` · ${p.categoria}` : ''}`
-            })),
-            ...itensPcp.map((i) => ({
-                tipo: 'ITEM_PCP',
-                grupo: 'Insumos (PCP)',
-                id: i.id,
-                value: `PCP:${i.id}`,
-                nome: i.nome,
-                unidade: i.unidade,
-                sub: `Insumo${i.codigo ? ` · ${i.codigo}` : ''}${i.tipo ? ` · ${LABEL_TIPO_ITEM_PCP[i.tipo] || i.tipo}` : ''}`
-            }))
+            ...produtos.map((p) => montarOpcaoProduto(p, controlaEfetivo(p))),
+            ...itensPcp.map(montarOpcaoItemPcp)
         ];
 
         res.json(opcoes);
@@ -821,7 +864,7 @@ router.get('/:id', verificarAuth, checkAcesso, async (req, res) => {
                 where: { fornecedorCnpj: nota.fornecedorCnpj },
                 include: {
                     itemPcp: { select: { id: true, nome: true, unidade: true } },
-                    produto: { select: { id: true, nome: true, unidade: true } }
+                    produto: { select: { id: true, nome: true, unidade: true, ativo: true } }
                 }
             })
             : [];
@@ -896,6 +939,9 @@ router.get('/:id', verificarAuth, checkAcesso, async (req, res) => {
                         value: alvo.value,          // "PROD:<id>" | "PCP:<id>" | null
                         nome: alvo.nome,            // nome do produto/insumo vinculado
                         unidade: alvo.unidade,      // unidade "nossa" (para conversão/custo)
+                        // (11/2026) produto sugerido está ativo? false = desativado (a tela avisa; vínculo novo é
+                        // recusado no servidor). null quando o alvo não é Produto (insumo PCP / sem alvo).
+                        ativo: !marcadoSemEstoque && v.produtoId ? v.produto?.ativo !== false : null,
                         // legado — mantido para telas antigas de detalhe:
                         itemPcpId: marcadoSemEstoque ? null : (v.itemPcpId || null),
                         itemPcpNome: alvo.nome,
@@ -926,9 +972,21 @@ router.get('/:id', verificarAuth, checkAcesso, async (req, res) => {
         const entradaEstoque = await notaEstoqueService.entradaAplicada(prisma, nota.id);
         const estoqueAplicado = entradaEstoque.length > 0;
 
+        // Produtos que o servidor considera "já gravados" nesta nota (MESMA função da trava de
+        // produto desativado): a tela usa para não bloquear reconferência/correção de um produto
+        // que foi desativado depois. Sempre array (vazio se nenhum). Falha aqui não derruba a nota.
+        let produtosJaGravadosIds = [];
+        try {
+            produtosJaGravadosIds = [...(await produtosJaGravadosNaNota(prisma, nota.id))];
+        } catch (e) {
+            console.error('[NotasEntrada] produtosJaGravadosIds:', e.message);
+        }
+
         res.json({
             id: nota.id,
             tipo: nota.tipo,
+            // ids de Produto já gravados nesta nota (ledger/compras, inclusive estornados)
+            produtosJaGravadosIds,
             chave: nota.chave,
             nsu: nota.nsu,
             numero: nota.numero,
@@ -1398,6 +1456,140 @@ const temDestinoExplicito = (it) => {
     return !!(produtoId || itemPcpId || it.criarProduto || lerSemEstoque(it));
 };
 
+// Validação do bloco `criarProduto` (nome, unidade, categoria existente). Devolve a mensagem de
+// erro (string) ou null. Compartilhada por validarItensBody (gerar-conta/registrar-entrada/
+// correção) e por POST /:id/criar-produto — mesmas regras, mesmas mensagens.
+// `itemNota` (opcional) só entra na mensagem de categoria inexistente.
+const validarCriarProduto = async (cp, itemNota = null) => {
+    const { nome, categoria, unidade } = cp || {};
+    if (!nome?.trim()) return 'Informe o nome do novo produto.';
+    if (!unidade?.trim()) return 'Informe a unidade do novo produto.';
+    if (!categoria?.trim()) return 'Escolha a categoria de estoque do novo produto.';
+    const categoriaCanonica = await categoriaEstoqueService.canonizarNome(categoria);
+    const categoriaExiste = await prisma.categoriaEstoque.findUnique({ where: { nome: categoriaCanonica }, select: { nome: true } });
+    if (!categoriaExiste) {
+        return `Categoria de estoque "${categoria}" não encontrada${itemNota ? ` (item "${itemNota.descricao || itemNota.id}")` : ''}. Cadastre-a em Configurações → Categorias de Estoque antes de usá-la.`;
+    }
+    return null;
+};
+
+/**
+ * Cria o Produto novo de um item da nota (+ espelho no PCP quando a categoria é Matéria-Prima/
+ * Embalagem). Roda DENTRO da transação `tx` — só banco, sem rede. Núcleo único usado pela
+ * conferência (`processarItensConferencia`, via `criarProduto` no corpo) e por
+ * POST /:id/criar-produto.
+ * `itemNota` pode ser null (criação sem item): aí EAN/NCM/nomeOrigemNota vêm só do corpo.
+ * @returns {{ produto, criado: {id,nome,codigo,categoria,itemPcpId}, itemPcp: object|null }}
+ */
+const criarProdutoDoItem = async (tx, nota, itemNota, cp, usuarioId) => {
+    const { produto } = await produtoService.criar({
+        nome: cp.nome,
+        categoria: cp.categoria,
+        categoriaProdutoId: cp.categoriaProdutoId || null,
+        controlaEstoque: cp.controlaEstoque,
+        unidade: cp.unidade,
+        ean: cp.ean?.trim() || itemNota?.ean || null,
+        // NCM do XML do fornecedor/da tela: inválido (≠ 8 dígitos) vira null — NUNCA trava a conferência.
+        ncm: [cp.ncm, itemNota?.ncm].map(v => ncmValido(v) ? normalizarNcm(v) : null).find(Boolean) || null,
+        nomeOrigemNota: itemNota?.descricao || null,
+        notaOrigemId: nota.id
+    }, { id: usuarioId }, tx);
+    const criado = { id: produto.id, nome: produto.nome, codigo: produto.codigo, categoria: produto.categoria, itemPcpId: null };
+
+    // Categoria Matéria-Prima/Embalagem: o produto vira TAMBÉM o espelho no PCP —
+    // é a regra de fundo (MP/EMB só nascem de um Produto do cadastro, via importar)
+    // passando a valer também na conferência da nota. O vínculo do ITEM DA NOTA
+    // (o que entra no estoque e no de-para do fornecedor) continua sendo o
+    // produtoId — por isso o chamador NÃO atribui `itemPcpId` (só vai no retorno, para
+    // o toast/telas de PCP mostrarem o espelho criado junto).
+    let itemPcp = null;
+    const tipoPcp = tipoPcpDaCategoria(produto.categoria);
+    if (tipoPcp) {
+        itemPcp = await pcpItemService.importar({ produtoId: produto.id, tipo: tipoPcp }, tx);
+        criado.itemPcpId = itemPcp.id;
+    }
+    return { produto, criado, itemPcp };
+};
+
+/**
+ * FONTE ÚNICA de "produtos já gravados nesta nota" (11/2026) — usada pela trava de produto
+ * desativado (`checarProdutosInativosNovos`) E pelo `GET /:id` (campo `produtosJaGravadosIds`,
+ * para a tela saber exatamente o que o servidor aceita sem exigir permissão de Produtos).
+ *
+ * Um produto conta como "já gravado" quando existe linha DELE (estornada ou não) no ledger de
+ * estoque da nota (`NotaEntradaEstoqueMov`) ou no histórico de compras da nota (`CompraItem`,
+ * que também guarda a compra de produto que NÃO controla estoque, com `semEstoque:true`, e o
+ * formato antigo). A memória do de-para (`FornecedorProdutoVinculo`) NÃO conta: ela só sugere —
+ * e uma sugestão de produto desativado numa nota nova é justamente o caso que o dono quer travar.
+ *
+ * LIMITAÇÃO CONHECIDA (sem mudar schema não há como fechar): `NotaEntradaItem` NÃO guarda o
+ * produto vinculado ao item. Logo, um produto que não deixou NENHUMA linha — ex.: produto que
+ * não controla estoque numa `registrar-entrada` SEM custo (não gera CompraItem), ou item com
+ * quantidade convertida 0 (pulado) — não é reconhecido como "já gravado"; se for desativado
+ * depois, reenviar o mesmo vínculo recebe 400 PRODUTO_INATIVO (ativar o produto resolve).
+ *
+ * @param {object} db         prisma ou tx
+ * @param {string} notaId
+ * @param {string[]} [somenteIds] restringe a consulta a estes produtos (otimização da trava)
+ * @returns {Promise<Set<string>>} ids de Produto
+ */
+const produtosJaGravadosNaNota = async (db, notaId, somenteIds = null) => {
+    const filtroProduto = Array.isArray(somenteIds) ? { in: somenteIds } : { not: null };
+    const [movs, compras] = await Promise.all([
+        db.notaEntradaEstoqueMov.findMany({ where: { notaEntradaId: notaId, produtoId: filtroProduto }, select: { produtoId: true } }),
+        db.compraItem.findMany({ where: { notaEntradaId: notaId, produtoId: filtroProduto }, select: { produtoId: true } })
+    ]);
+    return new Set([...movs, ...compras].map((m) => m.produtoId).filter(Boolean));
+};
+
+/**
+ * Trava de PRODUTO DESATIVADO (11/2026, pedido do dono). Defesa no servidor, além da tela:
+ * um item NÃO pode ser vinculado (PROD:<id>) a produto inativo sem que alguém com a permissão
+ * "Produtos → editar" o ative antes (PATCH /api/produtos/:id/status { ativo:true }).
+ *
+ * Só vale para vínculo NOVO. "Já gravado" = `produtosJaGravadosNaNota` (ver critério e
+ * limitação lá): o vínculo com um produto inativo é aceito se esse MESMO produto já esteve
+ * ligado a esta nota. Assim reabrir/reconferir (cancelar-conferencia + gerar-conta de novo) e
+ * corrigir mantendo o mesmo vínculo continuam funcionando.
+ * Granularidade: por NOTA (o ledger tem o item, o CompraItem antigo não) — trocar o produto de um
+ * item por outro inativo que já era de OUTRO item da mesma nota passa; é raro e inofensivo.
+ * `PCP:` (insumo) e produto novo (`criarProduto`, nasce ativo) não são afetados.
+ * @returns {Promise<null|{error:string,codigo:string,itensPendentes:Array}>}
+ */
+const checarProdutosInativosNovos = async (itensBody, itensNota, nota) => {
+    const alvos = [];
+    for (const it of itensBody) {
+        const { produtoId } = decodeVinculo(it?.vinculo);
+        if (produtoId && itensNota.has(it.itemId)) alvos.push({ itemNota: itensNota.get(it.itemId), produtoId });
+    }
+    if (alvos.length === 0) return null;
+    const ids = [...new Set(alvos.map((a) => a.produtoId))];
+    const inativos = await prisma.produto.findMany({ where: { id: { in: ids }, ativo: false }, select: { id: true, nome: true } });
+    if (inativos.length === 0) return null;
+
+    const jaGravados = await produtosJaGravadosNaNota(prisma, nota.id, inativos.map((p) => p.id));
+    const nomePorId = new Map(inativos.map((p) => [p.id, p.nome]));
+
+    const itensPendentes = alvos
+        .filter((a) => nomePorId.has(a.produtoId) && !jaGravados.has(a.produtoId))
+        .map((a) => ({
+            id: a.itemNota.id,
+            descricao: a.itemNota.descricao,
+            codigoFornecedor: a.itemNota.codigoFornecedor,
+            produtoId: a.produtoId,
+            produtoNome: nomePorId.get(a.produtoId)
+        }));
+    if (itensPendentes.length === 0) return null;
+
+    const nomes = [...new Set(itensPendentes.map((i) => i.produtoNome))];
+    const quais = nomes.length === 1 ? `O produto "${nomes[0]}" está desativado` : `Os produtos ${nomes.map((n) => `"${n}"`).join(', ')} estão desativados`;
+    return {
+        error: `${quais}. Peça a quem tem a permissão de Produtos para ativá-lo antes de usar.`,
+        codigo: 'PRODUTO_INATIVO',
+        itensPendentes
+    };
+};
+
 // Validação dos itens do de-para (mesma para gerar-conta, registrar-entrada e correção).
 // Devolve null se tudo OK, ou { error, itensPendentes? } — o chamador responde 400 com
 // { ok:false, ...retorno }. `itensPendentes` só aparece na trava de destino obrigatório.
@@ -1410,11 +1602,13 @@ const temDestinoExplicito = (it) => {
 // era descartado em silêncio (não somava estoque nem gerava custo/CompraItem); a partir de
 // 08/2026 a conferência trava. NFS-e continua isenta (serviço não vira estoque).
 //
+// `travarInativos`: recusa vínculo NOVO a produto desativado (ver checarProdutosInativosNovos).
+//
 // `criarItemPcp` (nome antigo do botão "+ Criar item PCP") foi DESATIVADO em 09/2026: a
 // conferência criava um insumo do PCP solto, sem produto por trás (112 casos em produção,
 // ver docs/entrada-notas/plano-etapa1.md) — quem manda um corpo assim recebe 400 com a
 // orientação de usar `criarProduto`.
-const validarItensBody = async (itensBody, itensNota, { nota = null, exigirDestino = false } = {}) => {
+const validarItensBody = async (itensBody, itensNota, { nota = null, exigirDestino = false, travarInativos = false } = {}) => {
     for (const it of itensBody) {
         if (!it?.itemId || !itensNota.has(it.itemId)) {
             return { error: 'Item informado não pertence a esta nota.' };
@@ -1423,16 +1617,8 @@ const validarItensBody = async (itensBody, itensNota, { nota = null, exigirDesti
             return { error: 'Criar item PCP direto da conferência não é mais permitido — crie um produto (categoria Matéria-Prima ou Embalagem vira insumo do PCP automaticamente).' };
         }
         if (it.criarProduto) {
-            const { nome, categoria, unidade } = it.criarProduto;
-            if (!nome?.trim()) return { error: 'Informe o nome do novo produto.' };
-            if (!unidade?.trim()) return { error: 'Informe a unidade do novo produto.' };
-            if (!categoria?.trim()) return { error: 'Escolha a categoria de estoque do novo produto.' };
-            const categoriaCanonica = await categoriaEstoqueService.canonizarNome(categoria);
-            const categoriaExiste = await prisma.categoriaEstoque.findUnique({ where: { nome: categoriaCanonica }, select: { nome: true } });
-            if (!categoriaExiste) {
-                const itemNota = itensNota.get(it.itemId);
-                return { error: `Categoria de estoque "${categoria}" não encontrada (item "${itemNota?.descricao || it.itemId}"). Cadastre-a em Configurações → Categorias de Estoque antes de usá-la.` };
-            }
+            const erroProduto = await validarCriarProduto(it.criarProduto, itensNota.get(it.itemId));
+            if (erroProduto) return { error: erroProduto };
         }
         const semEstoque = lerSemEstoque(it);
         if (semEstoque) {
@@ -1460,6 +1646,12 @@ const validarItensBody = async (itensBody, itensNota, { nota = null, exigirDesti
         if (itensPendentes.length > 0) {
             return { error: 'Há itens sem destino definido.', itensPendentes };
         }
+    }
+
+    // Produto DESATIVADO: vínculo novo recusado (gerar-conta, registrar-entrada, correção).
+    if (travarInativos && nota && nota.tipo !== 'NFSE') {
+        const erroInativo = await checarProdutosInativosNovos(itensBody, itensNota, nota);
+        if (erroInativo) return erroInativo;
     }
     return null;
 };
@@ -1491,33 +1683,8 @@ const processarItensConferencia = async (tx, nota, itensBody, itensNota, { catPa
         // Decodifica o vínculo unificado (PROD:/PCP:) ou cria um Produto novo.
         let { produtoId, itemPcpId } = decodeVinculo(it.vinculo);
         if (!produtoId && !itemPcpId && it.criarProduto) {
-            const cp = it.criarProduto;
-            const { produto } = await produtoService.criar({
-                nome: cp.nome,
-                categoria: cp.categoria,
-                categoriaProdutoId: cp.categoriaProdutoId || null,
-                controlaEstoque: cp.controlaEstoque,
-                unidade: cp.unidade,
-                ean: cp.ean?.trim() || itemNota.ean || null,
-                // NCM do XML do fornecedor/da tela: inválido (≠ 8 dígitos) vira null — NUNCA trava a conferência.
-                ncm: [cp.ncm, itemNota.ncm].map(v => ncmValido(v) ? normalizarNcm(v) : null).find(Boolean) || null,
-                nomeOrigemNota: itemNota.descricao,
-                notaOrigemId: nota.id
-            }, { id: usuarioId }, tx);
+            const { produto, criado } = await criarProdutoDoItem(tx, nota, itemNota, it.criarProduto, usuarioId);
             produtoId = produto.id;
-            const criado = { id: produto.id, nome: produto.nome, codigo: produto.codigo, categoria: produto.categoria, itemPcpId: null };
-
-            // Categoria Matéria-Prima/Embalagem: o produto vira TAMBÉM o espelho no PCP —
-            // é a regra de fundo (MP/EMB só nascem de um Produto do cadastro, via importar)
-            // passando a valer também na conferência da nota. O vínculo do ITEM DA NOTA
-            // (o que entra no estoque e no de-para do fornecedor) continua sendo o
-            // produtoId — por isso NÃO atribuímos a `itemPcpId` aqui (só no retorno, para
-            // o toast/telas de PCP mostrarem o espelho criado junto).
-            const tipoPcp = tipoPcpDaCategoria(produto.categoria);
-            if (tipoPcp) {
-                const itemPcpCriado = await pcpItemService.importar({ produtoId: produto.id, tipo: tipoPcp }, tx);
-                criado.itemPcpId = itemPcpCriado.id;
-            }
             produtosCriados.push(criado);
         }
         const temProduto = !!(produtoId || itemPcpId);
@@ -1696,6 +1863,137 @@ router.post('/:id/avaliar-custo', verificarAuth, checkAcesso, async (req, res) =
     }
 });
 
+// ── POST /:id/criar-produto — cria o Produto NA HORA a partir de um item da nota (11/2026) ──
+// Body: { itemId?, nome, categoria, categoriaProdutoId?, controlaEstoque? (true|false|null),
+//         unidade, ean?, ncm? }   (o `fator` de conversão NÃO vem aqui — fica na tela)
+// O produto fica no cadastro mesmo que a nota nunca seja salva (decisão do dono). Vincular o
+// item da nota ao produto é feito DEPOIS, pela conferência/correção normal (`PROD:<id>`).
+//   201 { ok, jaExistia:false, produto, opcao, opcaoPcp|null, itemPcpId|null }
+//   200 { ... jaExistia:true }   → já existe produto desse nome criado POR ESTA nota (idempotente:
+//                                   duplo clique / reenvio devolvem o mesmo produto, nunca outro)
+//   409 { error, codigo:'PRODUTO_DUPLICADO', existente:<opcao> } → nome já usado por produto de OUTRA origem
+//   400 validação / categoria inexistente / item de outra nota / NFS-e · 403 · 404
+// `opcao`/`opcaoPcp` saem no MESMO formato de GET /itens-pcp (o front insere na lista direto).
+class ProdutoDuplicadoNota extends Error {
+    constructor(existente) { super('PRODUTO_DUPLICADO'); this.existente = existente; }
+}
+router.post('/:id/criar-produto', verificarAuth, checkAcesso, checkCriarProdutoNota, async (req, res) => {
+    try {
+        const corpo = req.body || {};
+        const cp = {
+            nome: typeof corpo.nome === 'string' ? corpo.nome.trim() : '',
+            categoria: typeof corpo.categoria === 'string' ? corpo.categoria.trim() : '',
+            unidade: typeof corpo.unidade === 'string' ? corpo.unidade.trim() : '',
+            categoriaProdutoId: typeof corpo.categoriaProdutoId === 'string' && corpo.categoriaProdutoId ? corpo.categoriaProdutoId : null,
+            controlaEstoque: corpo.controlaEstoque === true || corpo.controlaEstoque === false ? corpo.controlaEstoque : null,
+            ean: typeof corpo.ean === 'string' ? corpo.ean : null,
+            ncm: typeof corpo.ncm === 'string' || typeof corpo.ncm === 'number' ? String(corpo.ncm) : null
+        };
+
+        // Leituras FORA da transação.
+        const nota = await prisma.notaEntrada.findUnique({ where: { id: req.params.id }, select: { id: true, tipo: true } });
+        if (!nota) return res.status(404).json({ error: 'Nota não encontrada.' });
+        if (nota.tipo === 'NFSE') {
+            return res.status(400).json({ error: 'Nota de serviço (NFS-e) não gera produto de estoque.' });
+        }
+        let itemNota = null;
+        if (corpo.itemId != null && corpo.itemId !== '') {
+            itemNota = typeof corpo.itemId === 'string'
+                ? await prisma.notaEntradaItem.findFirst({ where: { id: corpo.itemId, notaEntradaId: nota.id } })
+                : null;
+            if (!itemNota) return res.status(400).json({ error: 'Item informado não pertence a esta nota.' });
+        }
+        const erroValidacao = await validarCriarProduto(cp, itemNota);
+        if (erroValidacao) return res.status(400).json({ error: erroValidacao });
+
+        let resultado;
+        try {
+            resultado = await prisma.$transaction(async (tx) => {
+                // Trava por NOME: duas requisições simultâneas com o mesmo nome (duplo clique)
+                // se enfileiram aqui; a 2ª já enxerga o produto da 1ª e cai na idempotência.
+                await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'criar-produto:' + cp.nome.toLowerCase()}::text))`;
+
+                const existente = await tx.produto.findFirst({
+                    where: { nome: { equals: cp.nome, mode: 'insensitive' } },
+                    select: { id: true, codigo: true, nome: true, unidade: true, categoria: true, controlaEstoque: true, notaOrigemId: true, ativo: true }
+                });
+                if (existente) {
+                    const controla = await estoqueService.produtoControlaEstoque(existente, tx);
+                    const opcao = montarOpcaoProduto(existente, controla);
+                    if (existente.notaOrigemId !== nota.id) {
+                        throw new ProdutoDuplicadoNota({ ...opcao, ativo: existente.ativo !== false });
+                    }
+                    const espelho = tipoPcpDaCategoria(existente.categoria)
+                        ? await tx.itemPcp.findFirst({ where: { produtoId: existente.id }, select: { id: true, codigo: true, nome: true, unidade: true, tipo: true } })
+                        : null;
+                    return { jaExistia: true, produto: existente, itemPcp: espelho, controla };
+                }
+
+                const { produto, itemPcp } = await criarProdutoDoItem(tx, nota, itemNota, cp, req.user.id);
+                const controla = await estoqueService.produtoControlaEstoque(produto, tx);
+                return { jaExistia: false, produto, itemPcp, controla };
+            }, { timeout: 20000, maxWait: 10000 });
+        } catch (e) {
+            if (e instanceof ProdutoDuplicadoNota) {
+                return res.status(409).json({
+                    error: `Já existe um produto chamado "${e.existente.nome}" no cadastro.`,
+                    codigo: 'PRODUTO_DUPLICADO',
+                    existente: e.existente
+                });
+            }
+            throw e;
+        }
+
+        const { produto, itemPcp, jaExistia, controla } = resultado;
+
+        // Auditoria FORA da transação: log lento ou com defeito nunca desfaz o produto já criado.
+        if (!jaExistia) {
+            try {
+                let usuarioNome = req.user.nome || null;
+                if (!usuarioNome) {
+                    const v = await prisma.vendedor.findUnique({ where: { id: req.user.id }, select: { nome: true } });
+                    usuarioNome = v?.nome || null;
+                }
+                usuarioNome = usuarioNome || '(sem nome)';
+                await prisma.auditLog.create({
+                    data: {
+                        acao: 'CRIAR_PRODUTO_NOTA',
+                        entidade: 'Produto',
+                        entidadeId: produto.id,
+                        detalhes: `Produto "${produto.nome}" (categoria ${produto.categoria}) criado a partir da nota ${nota.id}${itemNota ? ` / item "${itemNota.descricao}"` : ''} por ${usuarioNome}.`,
+                        usuarioId: req.user.id,
+                        usuarioNome
+                    }
+                });
+            } catch (logErr) {
+                console.error('[NotasEntrada] falha no log de criar-produto (produto JÁ criado):', logErr.message);
+            }
+        }
+
+        res.status(jaExistia ? 200 : 201).json({
+            ok: true,
+            jaExistia,
+            produto: {
+                id: produto.id,
+                codigo: produto.codigo,
+                nome: produto.nome,
+                categoria: produto.categoria,
+                unidade: produto.unidade,
+                controlaEstoque: controla
+            },
+            opcao: montarOpcaoProduto(produto, controla),
+            opcaoPcp: itemPcp ? montarOpcaoItemPcp(itemPcp) : null,
+            itemPcpId: itemPcp?.id || null
+        });
+    } catch (error) {
+        if (error?.status && error.status >= 400 && error.status < 500) {
+            return res.status(error.status).json({ error: error.message });
+        }
+        console.error('Erro ao criar produto a partir da nota:', error);
+        res.status(500).json({ error: 'Erro ao criar o produto.' });
+    }
+});
+
 // ── POST /:id/gerar-conta — cria a Conta a Pagar a partir da nota ──
 router.post('/:id/gerar-conta', verificarAuth, checkEscrita, async (req, res) => {
     try {
@@ -1785,7 +2083,7 @@ router.post('/:id/gerar-conta', verificarAuth, checkEscrita, async (req, res) =>
         const itensBody = Array.isArray(itens) ? itens : [];
         const itensNota = new Map(nota.itens.map((i) => [i.id, i]));
         // Trava: em nota que não é NFS-e, todo item precisa de destino (vínculo ou "não é estoque").
-        const erroItens = await validarItensBody(itensBody, itensNota, { nota, exigirDestino: true });
+        const erroItens = await validarItensBody(itensBody, itensNota, { nota, exigirDestino: true, travarInativos: true });
         if (erroItens) return res.status(400).json({ ok: false, ...erroItens });
         // Trava de custo fora da curva (409 sem a confirmação explícita) — antes de qualquer gravação.
         if (await bloquearSeCustoSuspeito(req, res, nota, itensBody, { checarCusto: true }, 'gerar-conta')) return;
@@ -2008,7 +2306,7 @@ router.post('/:id/registrar-entrada', verificarAuth, checkEscrita, async (req, r
         const itensBody = Array.isArray(req.body?.itens) ? req.body.itens : [];
         const itensNota = new Map(nota.itens.map((i) => [i.id, i]));
         // Trava: em nota que não é NFS-e, todo item precisa de destino (vínculo ou "não é estoque").
-        const erroItens = await validarItensBody(itensBody, itensNota, { nota, exigirDestino: true });
+        const erroItens = await validarItensBody(itensBody, itensNota, { nota, exigirDestino: true, travarInativos: true });
         if (erroItens) return res.status(400).json({ ok: false, ...erroItens });
         // Entrada sem pagamento não mexe em custo: a trava aqui só olha embalagem com fator 1.
         if (await bloquearSeCustoSuspeito(req, res, nota, itensBody, { checarCusto: false }, 'registrar-entrada')) return;
@@ -2463,7 +2761,7 @@ router.post('/:id/corrigir-entrada-estoque', verificarAuth, checkAcesso, checkCo
         // (inclusive nota antiga, conferida antes da trava) e tem guarda própria logo abaixo —
         // travar aqui deixaria a nota velha sem caminho de correção. A marcação "não é estoque"
         // que vier no corpo continua sendo validada e gravada.
-        const erroItens = await validarItensBody(itensBody, itensNota, { nota });
+        const erroItens = await validarItensBody(itensBody, itensNota, { nota, travarInativos: true });
         if (erroItens) return res.status(400).json({ ok: false, ...erroItens });
         // Nada aplicado hoje E nada vinculado agora = pedido vazio (não é "corrigir para zero").
         const vaiVincular = itensBody.some((i) => i.vinculo || i.criarProduto);

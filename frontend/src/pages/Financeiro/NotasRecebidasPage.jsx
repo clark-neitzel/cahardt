@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import useConfirmarCustoForaDaCurva, { gravarComAvisoDeCusto } from '../../hooks/useConfirmarCustoForaDaCurva';
 import notasEntradaService from '../../services/notasEntradaService';
+import produtoService from '../../services/produtoService';
 import contasPagarService from '../../services/contasPagarService';
 import categoriaProdutoService from '../../services/categoriaProdutoService';
 import api from '../../services/api';
@@ -34,8 +35,62 @@ const toYMD = (d) => d ? new Date(d).toLocaleDateString('en-CA', { timeZone: 'Am
 const hojeYMD = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
 // Dinheiro pt-BR ("2.425,00") → número
 const parseNum = (v) => parseFloat(String(v ?? '').replace(/\./g, '').replace(',', '.')) || 0;
-// Fator de conversão ("0,5" / "50") → número (sem tratar ponto como milhar)
-const parseFator = (v) => parseFloat(String(v ?? '').trim().replace(',', '.')) || 0;
+// Fator de conversão → número. SÓ aceita formato claro; qualquer ambiguidade NÃO vira número em silêncio:
+//  - inteiro ("50"); decimal com UM separador, vírgula ou ponto ("12,5", "12.5", "0,333", ",5");
+//  - milhar com ponto + decimal com vírgula ("1.000,5") ou milhar com vírgula + decimal com ponto ("1,000.5");
+//  - só milhar bem formado, grupos de 3 dígitos ("1.000.000", "1,000,000", "1 000").
+// AMBÍGUO ("1.000", "1,000", "2.500": um separador + exatamente 3 dígitos, sem zero na frente): pode ser mil ou um
+// decimal — quem digita "1.000" quase sempre quer mil; ler como 1 gravaria estoque 1000x menor. Pede para digitar
+// 1000 (mil) ou 1,0 (um). Fora do limite do banco (Decimal(12,4)): arredondado a 4 casas <= 0 ou > 99999999,9999.
+// Inválidos: "1.5.0", "1.2.3", "1,2,3", "0,5.", "1,5.", "1e3", "-3", "12kg"…
+const FATOR_MAX = 99999999.9999;
+const FATOR_PADROES = [
+    { re: /^\d+$/, conv: s => s },
+    { re: /^\d*[.,]\d+$/, conv: s => s.replace(',', '.') },
+    { re: /^\d{1,3}(\.\d{3})+,\d+$/, conv: s => s.replace(/\./g, '').replace(',', '.') },
+    { re: /^\d{1,3}(,\d{3})+\.\d+$/, conv: s => s.replace(/,/g, '') },
+    { re: /^\d{1,3}( \d{3})+([.,]\d+)?$/, conv: s => s.replace(/ /g, '').replace(',', '.') },
+    { re: /^\d{1,3}(\.\d{3}){2,}$/, conv: s => s.replace(/\./g, '') },
+    { re: /^\d{1,3}(,\d{3}){2,}$/, conv: s => s.replace(/,/g, '') }
+];
+const FATOR_AMBIGUO = /^[1-9]\d{0,2}[.,]\d{3}$/;
+// → { estado: 'vazio' | 'ok' | 'invalido' | 'ambiguo' | 'limite', valor }  (valor 0 quando não for 'ok')
+const analisarFator = (v) => {
+    const s = String(v ?? '').replace(/\u00a0/g, ' ').trim();
+    if (!s) return { estado: 'vazio', valor: 0 };
+    if (FATOR_AMBIGUO.test(s)) return { estado: 'ambiguo', valor: 0 };
+    for (const { re, conv } of FATOR_PADROES) {
+        if (re.test(s)) {
+            const n = parseFloat(conv(s));
+            if (!Number.isFinite(n)) return { estado: 'invalido', valor: 0 };
+            if (Math.round(n * 10000) / 10000 <= 0 || n > FATOR_MAX) return { estado: 'limite', valor: 0 };
+            return { estado: 'ok', valor: n };
+        }
+    }
+    return { estado: 'invalido', valor: 0 };
+};
+const parseFator = (v) => analisarFator(v).valor;
+// Mensagem de cada problema (null = sem problema / campo vazio)
+const MSG_FATOR = {
+    invalido: 'Número não entendido — use por exemplo 12,5 ou 1.000,5.',
+    ambiguo: 'Número ambíguo — digite 1000 para mil ou 1,0 para um (use vírgula para decimais).',
+    limite: 'Valor fora do limite (mínimo 0,0001; máximo 99.999.999,9999).'
+};
+const problemaFator = (v) => MSG_FATOR[analisarFator(v).estado] || null;
+// Como o sistema ENTENDEU o que foi digitado (pt-BR): "1.5" → "= 1,5"; "1.000,5" → "= 1.000,5".
+const fmtFator = (n) => n.toLocaleString('pt-BR', { maximumFractionDigits: 4 });
+// Mostra abaixo do campo como o número foi entendido, ou avisa quando não dá para entender.
+// `discreto`: nas tabelas só aparece quando o texto digitado difere do entendido (ex.: "12.5" → "= 12,5") ou é problema.
+const FatorEntendido = ({ texto, discreto = false }) => {
+    const { estado, valor } = analisarFator(texto);
+    if (estado === 'vazio') return null;
+    if (estado !== 'ok') {
+        return <p className="text-[11px] text-amber-700 mt-1 break-words" role="alert">{MSG_FATOR[estado]}</p>;
+    }
+    const entendido = fmtFator(valor);
+    if (discreto && entendido === String(texto).trim()) return null;
+    return <p className="text-[11px] text-gray-600 mt-1 break-words">= {entendido}</p>;
+};
 const round2 = (v) => Math.round(Number(v || 0) * 100) / 100;
 // 4 casas — precisão do fator de conversão gravado no banco (Decimal(12,4))
 const round4 = (v) => Math.round(Number(v || 0) * 10000) / 10000;
@@ -462,7 +517,7 @@ const NotasRecebidasPage = () => {
     const [loadingDetalhe, setLoadingDetalhe] = useState(false);
 
     const [itensPcp, setItensPcp] = useState([]);
-    const [itensPcpCarregados, setItensPcpCarregados] = useState(false);
+    const [itensPcpAtualizando, setItensPcpAtualizando] = useState(false);
     const [categorias, setCategorias] = useState([]);
     const [categoriasErro, setCategoriasErro] = useState(false);
 
@@ -506,21 +561,66 @@ const NotasRecebidasPage = () => {
             .catch(() => setCategoriasErro(true));
     }, []);
 
-    const carregarItensPcp = useCallback(async () => {
-        try {
-            const itens = await notasEntradaService.itensPcp();
-            setItensPcp(Array.isArray(itens) ? itens : []);
-            setItensPcpCarregados(true);
-        } catch {
-            toast.error('Erro ao carregar a lista de produtos');
-        }
+    // Lista de produtos/insumos do combo "Nosso produto". Recarregada TODA vez que o combo é aberto
+    // (e ao abrir a nota) — produto criado em outra nota/tela aparece sem recarregar a página.
+    // Corrida: `reqRef` numera cada pedido e só a ÚLTIMA resposta vale; `vooRef` guarda a promise em
+    // andamento para não duplicar chamada quando o usuário abre o combo várias vezes seguidas.
+    const itensPcpReqRef = useRef(0);
+    const itensPcpVooRef = useRef(null);
+    const recarregarItensPcp = useCallback(() => {
+        if (itensPcpVooRef.current) return itensPcpVooRef.current;
+        const meu = ++itensPcpReqRef.current;
+        setItensPcpAtualizando(true);
+        const promessa = notasEntradaService.itensPcp()
+            .then(itens => {
+                if (meu !== itensPcpReqRef.current) return; // resposta velha (um produto foi adicionado no meio)
+                setItensPcp(Array.isArray(itens) ? itens : []);
+            })
+            .catch(() => {
+                if (meu !== itensPcpReqRef.current) return;
+                // Falha de recarga mantém a lista que já está na tela — só avisa, sem travar nada.
+                toast.error('Não consegui atualizar a lista de produtos. Mostrando a anterior.', { id: 'itens-pcp-erro' });
+            })
+            .finally(() => {
+                if (meu !== itensPcpReqRef.current) return;
+                itensPcpVooRef.current = null;
+                setItensPcpAtualizando(false);
+            });
+        itensPcpVooRef.current = promessa;
+        return promessa;
     }, []);
+    // Insere o produto recém-criado (e o espelho PCP, se houver) sem duplicar por `value`, e
+    // INVALIDA qualquer recarga em andamento (ela pode ter sido pedida antes do produto existir).
+    const adicionarOpcaoItensPcp = useCallback((opcao, opcaoPcp) => {
+        itensPcpReqRef.current += 1;
+        itensPcpVooRef.current = null;
+        setItensPcpAtualizando(false);
+        const novas = [opcao, opcaoPcp].filter(o => o && o.value);
+        if (novas.length === 0) return;
+        setItensPcp(prev => {
+            const ja = new Set(prev.map(p => String(p.value)));
+            const faltam = novas.filter(o => !ja.has(String(o.value)));
+            return faltam.length ? [...prev, ...faltam] : prev;
+        });
+    }, []);
+    // Produto acabou de ser ATIVADO por aqui: a opção na lista passa a vir como ativa já, sem esperar
+    // o próximo reload (e invalida recarga em voo — ela pode ter sido pedida antes da ativação).
+    const marcarOpcaoAtiva = useCallback((value) => {
+        itensPcpReqRef.current += 1;
+        itensPcpVooRef.current = null;
+        setItensPcpAtualizando(false);
+        setItensPcp(prev => prev.map(p => (String(p.value) === String(value) ? { ...p, ativo: true } : p)));
+    }, []);
+    const itensPcpCtl = useMemo(
+        () => ({ recarregar: recarregarItensPcp, adicionar: adicionarOpcaoItensPcp, marcarAtivo: marcarOpcaoAtiva, carregando: itensPcpAtualizando }),
+        [recarregarItensPcp, adicionarOpcaoItensPcp, marcarOpcaoAtiva, itensPcpAtualizando]
+    );
 
     const abrirNota = async (nota) => {
         setExpandedId(nota.id);
         setDetalhe(null);
         setLoadingDetalhe(true);
-        if (!itensPcpCarregados) carregarItensPcp();
+        recarregarItensPcp();
         try {
             const d = await notasEntradaService.detalhe(nota.id);
             setDetalhe(d);
@@ -767,6 +867,7 @@ const NotasRecebidasPage = () => {
                                         nota={detalhe}
                                         podeOperar={podeOperar}
                                         itensPcp={itensPcp}
+                                        itensPcpCtl={itensPcpCtl}
                                         categorias={categorias}
                                         categoriasErro={categoriasErro}
                                         onClose={fecharNota}
@@ -1175,7 +1276,7 @@ const ImportarXmlModal = ({ onClose, onChanged }) => {
 // ═══════════════════════════════════════════════════════════
 // NOTA EXPANDIDA (conferência editável ou detalhes)
 // ═══════════════════════════════════════════════════════════
-const NotaExpandida = ({ nota, podeOperar, itensPcp, categorias, categoriasErro, onClose, onChanged, onRecarregar }) => {
+const NotaExpandida = ({ nota, podeOperar, itensPcp, itensPcpCtl, categorias, categoriasErro, onClose, onChanged, onRecarregar }) => {
     const emConferencia = nota.status === 'NOVA' && podeOperar;
 
     return (
@@ -1213,13 +1314,14 @@ const NotaExpandida = ({ nota, podeOperar, itensPcp, categorias, categoriasErro,
                 <ConferenciaNota
                     nota={nota}
                     itensPcp={itensPcp}
+                    itensPcpCtl={itensPcpCtl}
                     categorias={categorias}
                     categoriasErro={categoriasErro}
                     onChanged={onChanged}
                     onRecarregar={onRecarregar}
                 />
             ) : (
-                <DetalheNota nota={nota} podeOperar={podeOperar} itensPcp={itensPcp} onChanged={onChanged} onRecarregar={onRecarregar} />
+                <DetalheNota nota={nota} podeOperar={podeOperar} itensPcp={itensPcp} itensPcpCtl={itensPcpCtl} onChanged={onChanged} onRecarregar={onRecarregar} />
             )}
         </>
     );
@@ -1293,14 +1395,15 @@ const grupoDaOpcao = (p) => {
     return g || 'Produtos';
 };
 
-const ComboProduto = ({ value, itens, onSelect, onCriarNovo, invalido }) => {
+const ComboProduto = ({ value, itens, onSelect, onCriarNovo, invalido, onAbrir, carregando }) => {
     const options = useMemo(() => {
         const mapeadas = itens.map(p => ({
             value: p.value,
             label: `${p.nome}${p.unidade ? ` (${p.unidade})` : ''}`,
             sub: p.sub || (p.tipo && tipoItemLabel(p.tipo) !== p.tipo ? tipoItemLabel(p.tipo) : ''),
             grupo: grupoDaOpcao(p),
-            insumo: ehInsumoPcp(p)
+            insumo: ehInsumoPcp(p),
+            desativado: p.ativo === false // só PRODUTO traz `ativo`; insumo do PCP (sem o campo) = ativo
         }));
         // Produtos primeiro, insumos do PCP depois — o ComboBusca desenha o cabeçalho de
         // cada grupo. O sort é estável, então a ordem alfabética do backend é preservada
@@ -1317,9 +1420,226 @@ const ComboProduto = ({ value, itens, onSelect, onCriarNovo, invalido }) => {
             buscaPlaceholder="Digite: espetinho, óleo, caixa…"
             vazioTexto="Nenhum produto encontrado."
             invalido={invalido}
+            onAbrir={onAbrir}
+            carregando={carregando}
             extraAction={{ label: '+ Criar produto novo…', onClick: onCriarNovo }}
         />
     );
+};
+
+// ─── Escolha de produto JÁ existente (combo "Nosso produto" e "usar existente") ───────────────────────
+// Duas regras num lugar só (vale na Conferência e no painel Corrigir/Lançar entrada):
+//  1) Produto DESATIVADO não vincula direto: quem tem Produtos → editar confirma "Ativar e usar"; quem não
+//     tem recebe o aviso para pedir a quem pode. (Permissão é OBJETO — `hasPermission('produtos','edit')`,
+//     igual ao backend `exigeEdicaoProdutos`; `perms.produtos` sozinho é sempre verdadeiro.)
+//  2) FATOR DE CONVERSÃO nunca é herdado: trocou de produto e a unidade da nota difere da do produto →
+//     pergunta "1 {unidade da nota} = ? {unidade do produto}" na hora. Unidades iguais → fator 1 sem perguntar.
+// `aplicar(idx, opcao, fator)`: `fator == null` = só trocar o vínculo (manter o que já está na coluna Conversão).
+// `lembrado(idx)`: vínculo lembrado pelo backend (de-para fornecedor+código) — só pré-preenche o campo.
+// Servidor recusou vincular a produto DESATIVADO (400 PRODUTO_INATIVO) — ex.: ativado/desativado por outra
+// pessoa depois que a lista foi carregada. Mensagem clara; a lista é recarregada pelo combo ao abrir.
+// Devolve o Set de itemId (itens da nota) que o servidor recusou — quem chama destaca as linhas e rola até a 1ª.
+const avisarProdutoInativo = (dados) => {
+    toast.error(
+        dados?.error || 'Um dos produtos escolhidos está desativado. Ative-o em Produtos (ou escolha outro) e tente de novo.',
+        { duration: 9000, id: 'produto-inativo' }
+    );
+    const lista = Array.isArray(dados?.itensPendentes) ? dados.itensPendentes : [];
+    return new Set(lista.map(p => p?.id).filter(Boolean));
+};
+
+// Unidades equivalentes por apelido (caixa/acento/ponto não importam): "UN" = "UND" = "UNID." = "Unidade".
+// Só apelidos óbvios da MESMA grandeza — CX×UN, PC×UN, PCT×PC, LT×L, M²×M continuam diferentes (perguntam o fator).
+const GRUPOS_UNIDADE = [
+    ['UN', 'UND', 'UNID', 'UNIDADE', 'UNIDADES', 'UNIT', 'UNT'],
+    ['KG', 'QUILO', 'QUILOS', 'QUILOGRAMA', 'QUILOGRAMAS'],
+    ['G', 'GR', 'GRAMA', 'GRAMAS'],
+    ['L', 'LITRO', 'LITROS'], // LT/LTS ficam de fora de propósito: em NF-e de alimento LT costuma ser "lata"
+    ['ML', 'MILILITRO', 'MILILITROS'],
+    ['M', 'MT', 'MTS', 'METRO', 'METROS'],
+    ['CX', 'CAIXA', 'CAIXAS'],
+    ['PC', 'PCA', 'PECA', 'PECAS'],
+    ['PCT', 'PACOTE', 'PACOTES', 'PCTE']
+];
+const normalizarUnidade = (u) => {
+    // ² e ³ viram 2 e 3 ANTES de limpar: M² e M³ são unidades DIFERENTES de M (e entre si)
+    const x = String(u ?? '').replace(/²/g, '2').replace(/³/g, '3')
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (!x) return '';
+    const idx = GRUPOS_UNIDADE.findIndex(g => g.includes(x));
+    return idx >= 0 ? `#${idx}` : x;
+};
+const mesmaUnidade = (a, b) => {
+    const x = normalizarUnidade(a);
+    const y = normalizarUnidade(b);
+    return !!x && !!y && x === y;
+};
+
+// ── Produto desativado × "já gravado nesta nota" (o SERVIDOR é a fonte da verdade) ──
+// GET /notas-entrada/:id devolve `produtosJaGravadosIds` = ids de Produto que ele já considera gravados nesta
+// nota (mesma regra da trava 400 PRODUTO_INATIVO). Produto desativado nessa lista é vínculo VÁLIDO (nota
+// antiga, produto desativado depois): reconferir/corrigir mantendo o mesmo produto passa. Vincular um
+// desativado NOVO continua exigindo ativar (com permissão) ou escolher outro. Campo ausente = lista vazia.
+const gravadosDaNota = (nota) => new Set((Array.isArray(nota?.produtosJaGravadosIds) ? nota.produtosJaGravadosIds : []).map(String));
+const idProdutoDaOpcao = (o) => {
+    const m = /^PROD:(.+)$/.exec(String(o?.value ?? ''));
+    return m ? m[1] : (o?.id != null && o?.tipo === 'PRODUTO' ? String(o.id) : null);
+};
+const inativoBloqueante = (opcao, gravados) => opcao?.ativo === false && !(gravados && gravados.has(idProdutoDaOpcao(opcao)));
+
+const useEscolhaProduto = ({ itensPcp, ctl, aplicar, lembrado, gravados }) => {
+    const { hasPermission } = useAuth();
+    const podeEditarProdutos = hasPermission('produtos', 'edit');
+    // { etapa: 'ativar'|'bloqueio'|'fator', idx, itemNota, opcao, atualValue, ativarAntes?, aviso? }
+    // `ativarAntes` = o usuário já aceitou ativar, mas o PATCH SÓ sai ao concluir (nada muda no banco antes).
+    const [pedido, setPedido] = useState(null);
+    const [fatorTxt, setFatorTxt] = useState('');
+    const [ativando, setAtivando] = useState(false);
+    const ativandoRef = useRef(false);
+
+    // Último passo: (se foi aceito) ativa o produto, vincula e só então avisa. Falha ao ativar = NÃO vincula
+    // e o diálogo continua aberto. Trava de reentrância contra clique duplo.
+    const efetivar = async (p, opcao, fator) => {
+        if (ativandoRef.current) return;
+        let opcaoFinal = opcao;
+        if (p.ativarAntes) {
+            ativandoRef.current = true;
+            setAtivando(true);
+            try {
+                await produtoService.alterarStatus(opcao.id, true);
+                ctl?.marcarAtivo?.(opcao.value); // a lista local já passa a vir como ativa
+                toast.success(`Produto "${opcao.nome}" ativado`);
+                opcaoFinal = { ...opcao, ativo: true };
+            } catch (e) {
+                toast.error(e?.response?.data?.error || 'Não consegui ativar o produto. Tente de novo.');
+                return;
+            } finally {
+                ativandoRef.current = false;
+                setAtivando(false);
+            }
+        }
+        aplicar(p.idx, opcaoFinal, fator);
+        setPedido(null);
+        if (p.aviso) toast.success(p.aviso); // só agora o vínculo foi de fato feito
+    };
+
+    // Já escolhido o produto: decide entre vincular direto ou perguntar o fator.
+    const seguir = (p, opcao) => {
+        if (String(opcao.value) === String(p.atualValue)) { efetivar(p, opcao, null); return; }
+        const lemb = lembrado?.(p.idx);
+        const fatorLembrado = lemb && String(lemb.value) === String(opcao.value) && Number(lemb.fatorConversao) > 0
+            ? String(lemb.fatorConversao).replace('.', ',')
+            : '';
+        if (mesmaUnidade(p.itemNota?.unidade, opcao.unidade)) {
+            efetivar(p, opcao, fatorLembrado || '1');
+        } else {
+            setFatorTxt(fatorLembrado);
+            setPedido({ ...p, opcao, etapa: 'fator' });
+        }
+    };
+
+    const escolher = (idx, itemNota, valorOuOpcao, atualValue, extra) => {
+        const valor = typeof valorOuOpcao === 'object' && valorOuOpcao ? valorOuOpcao.value : valorOuOpcao;
+        if (!valor) { aplicar(idx, { value: '' }, null); return; } // "Limpar seleção"
+        const opcao = itensPcp.find(o => String(o.value) === String(valor))
+            || (typeof valorOuOpcao === 'object' ? valorOuOpcao : null);
+        if (!opcao) { aplicar(idx, { value: valor }, null); return; }
+        const p = { idx, itemNota, atualValue, aviso: extra?.aviso || '' };
+        if (inativoBloqueante(opcao, gravados)) {
+            // "Ativar para usar?" só REGISTRA a intenção; o PATCH sai ao concluir (vinculo feito ou fator confirmado).
+            setPedido(podeEditarProdutos ? { ...p, opcao, etapa: 'ativar', ativarAntes: true } : { ...p, opcao, etapa: 'bloqueio' });
+            return;
+        }
+        seguir(p, opcao);
+    };
+
+    const ativarEUsar = () => {
+        if (ativandoRef.current || !pedido) return;
+        seguir(pedido, pedido.opcao);
+    };
+
+    const confirmarFator = () => {
+        if (!pedido || ativandoRef.current) return;
+        { const pf = problemaFator(fatorTxt); if (pf) { toast.error(pf); return; } }
+        if (parseFator(fatorTxt) <= 0) { toast.error('Informe a conversão de quantidade (maior que zero).'); return; }
+        efetivar(pedido, pedido.opcao, fatorTxt.trim());
+    };
+
+    const fechar = () => { if (!ativandoRef.current) setPedido(null); };
+    const botaoSec = 'w-full md:w-auto px-4 py-3 md:py-2 min-h-[44px] bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-full font-medium text-sm disabled:opacity-50';
+    const botaoPri = 'w-full md:w-auto px-4 py-3 md:py-2 min-h-[44px] bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm inline-flex items-center justify-center gap-1.5 disabled:opacity-60';
+
+    const dialogo = pedido && (
+        <div className="fixed inset-0 z-[60] flex items-end md:items-center justify-center bg-black/40 p-0 md:p-4" onClick={fechar}>
+            <div className="bg-white rounded-t-2xl md:rounded-2xl w-full max-w-md p-5 space-y-4" onClick={e => e.stopPropagation()}>
+                {pedido.etapa === 'ativar' && (
+                    <>
+                        <h3 className="text-base font-bold text-gray-900">Ativar para usar?</h3>
+                        <p className="text-sm text-gray-700">Este produto está desativado. Ativar para usar?</p>
+                        <p className="text-sm text-gray-900 break-words">
+                            <strong>{pedido.opcao.nome}</strong>
+                            <span className="ml-2 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-gray-100 text-gray-700 align-middle">desativado</span>
+                        </p>
+                        <p className="text-xs text-gray-600">Ele volta a aparecer ativo no cadastro de Produtos. Se você cancelar, nada muda.</p>
+                        <div className="flex flex-col-reverse md:flex-row md:justify-end gap-2">
+                            <button onClick={fechar} disabled={ativando} className={botaoSec}>Cancelar</button>
+                            <button onClick={ativarEUsar} disabled={ativando} className={botaoPri}>
+                                {ativando ? (<><Loader2 className="h-4 w-4 animate-spin" /> Ativando…</>) : 'Ativar e usar'}
+                            </button>
+                        </div>
+                    </>
+                )}
+                {pedido.etapa === 'bloqueio' && (
+                    <>
+                        <h3 className="text-base font-bold text-gray-900">Produto desativado</h3>
+                        <p className="text-sm text-gray-700 break-words">
+                            Este produto está desativado. Peça a quem tem a permissão de Produtos (editar) para ativá-lo.
+                        </p>
+                        <p className="text-xs text-gray-600 break-words">Produto: <strong>{pedido.opcao.nome}</strong></p>
+                        <div className="flex md:justify-end">
+                            <button onClick={fechar} className={botaoPri}>Entendi</button>
+                        </div>
+                    </>
+                )}
+                {pedido.etapa === 'fator' && (
+                    <>
+                        <h3 className="text-base font-bold text-gray-900">Conversão de quantidade</h3>
+                        <p className="text-sm text-gray-700 break-words">
+                            Na nota a unidade é <strong>{pedido.itemNota?.unidade || '?'}</strong> e no produto <strong>{pedido.opcao.nome}</strong> é <strong>{pedido.opcao.unidade || '?'}</strong>. Quanto vale cada unidade da nota?
+                        </p>
+                        <div className="flex items-center gap-2 text-sm text-gray-700 min-h-[44px]">
+                            <span className="whitespace-nowrap">1 {pedido.itemNota?.unidade || 'un'} =</span>
+                            <input
+                                value={fatorTxt}
+                                onChange={e => setFatorTxt(e.target.value)}
+                                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); confirmarFator(); } }}
+                                inputMode="decimal"
+                                placeholder="?"
+                                autoFocus
+                                disabled={ativando}
+                                aria-label="Conversão de quantidade"
+                                className={`w-24 border rounded px-2 py-2 text-sm text-right focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none ${parseFator(fatorTxt) > 0 ? 'border-gray-300' : 'border-amber-300'}`}
+                            />
+                            <span className="truncate">{pedido.opcao.unidade || '?'}</span>
+                        </div>
+                        <FatorEntendido texto={fatorTxt} />
+                        {pedido.ativarAntes && (
+                            <p className="text-xs text-gray-600">O produto está desativado: ele só é ativado ao confirmar aqui. Se você cancelar, nada muda.</p>
+                        )}
+                        <div className="flex flex-col-reverse md:flex-row md:justify-end gap-2">
+                            <button onClick={fechar} disabled={ativando} className={botaoSec}>Cancelar</button>
+                            <button onClick={confirmarFator} disabled={ativando} className={botaoPri}>
+                                {ativando
+                                    ? (<><Loader2 className="h-4 w-4 animate-spin" /> Ativando…</>)
+                                    : (pedido.ativarAntes ? 'Ativar e usar este produto' : 'Usar este produto')}
+                            </button>
+                        </div>
+                    </>
+                )}
+            </div>
+        </div>
+    );
+    return [escolher, dialogo];
 };
 
 // Controle de estoque do produto novo: 'segue' (omitido/null = segue a categoria),
@@ -1331,11 +1651,14 @@ const CONTROLE_ESTOQUE_OPCOES = [
     { value: 'false', label: 'Nunca controlar' }
 ];
 
-// Modal "Criar produto a partir da nota" (Tela 2 da proposta aprovada) — usado tanto na
-// conferência quanto na correção de entrada. Cria só o RASCUNHO do produto: a criação de
-// verdade acontece junto do POST de conferência/correção (campo `criarProduto` no item),
-// nunca aqui — este modal só preenche o objeto que entra no payload.
-const ModalCriarProdutoNota = ({ aberto, itemNota, valorInicial, onCancelar, onConfirmar }) => {
+// Modal "Criar produto a partir da nota" — usado tanto na conferência quanto na correção/lançamento
+// de entrada. O produto é criado NA HORA no cadastro (POST /notas-entrada/:id/criar-produto), depois
+// de um diálogo de confirmação simples (Confirmar/Cancelar — sem senha nem aprovação de terceiro).
+// Fica no cadastro mesmo que a nota não seja salva. Em qualquer erro o modal PERMANECE aberto com
+// tudo o que foi digitado. Ao terminar chama `onCriado(opcao, fator)`: quem usa só precisa
+// vincular o item a `opcao.value` ('PROD:<id>') e guardar o fator na coluna Conversão.
+// `ctl` = { recarregar, adicionar, carregando } da lista do combo "Nosso produto".
+const ModalCriarProdutoNota = ({ aberto, notaId, itemNota, ctl, onCancelar, onCriado }) => {
     const [nome, setNome] = useState('');
     const [categoria, setCategoria] = useState('');
     const [categoriaProdutoId, setCategoriaProdutoId] = useState('');
@@ -1347,17 +1670,27 @@ const ModalCriarProdutoNota = ({ aberto, itemNota, valorInicial, onCancelar, onC
     const [categoriasEstoque, setCategoriasEstoque] = useState([]);
     const [categoriasProduto, setCategoriasProduto] = useState([]);
     const [carregando, setCarregando] = useState(false);
+    // Confirmação ("Vai criar X em Produtos…") e produto já existente (409) — diálogos por cima do modal
+    const [confirmando, setConfirmando] = useState(null); // null | payload pronto p/ a API
+    const [duplicado, setDuplicado] = useState(null);     // null | opcao do produto que já existe
+    const [criando, setCriando] = useState(false);
+    const criandoRef = useRef(false); // trava de reentrância: clique duplo = 1 chamada só
 
+    // Só ao ABRIR: preenche com o que veio na nota. Erro de API NÃO reabre nem limpa (aberto não muda).
     useEffect(() => {
         if (!aberto) return;
-        setNome(valorInicial?.nome || itemNota?.descricao || '');
-        setCategoria(valorInicial?.categoria || '');
-        setCategoriaProdutoId(valorInicial?.categoriaProdutoId || '');
-        setEan(valorInicial?.ean || itemNota?.ean || '');
-        { const n0 = valorInicial?.ncm || itemNota?.ncm || ''; setNcm(ncmValido(n0) ? normalizarNcm(n0) : ''); }
-        setUnidade(valorInicial?.unidade || itemNota?.unidade || '');
-        setFator(valorInicial?.fator || '1');
-        setControle(valorInicial?.controlaEstoque === true ? 'true' : valorInicial?.controlaEstoque === false ? 'false' : 'segue');
+        setNome(itemNota?.descricao || '');
+        setCategoria('');
+        setCategoriaProdutoId('');
+        setEan(itemNota?.ean || '');
+        { const n0 = itemNota?.ncm || ''; setNcm(ncmValido(n0) ? normalizarNcm(n0) : ''); }
+        setUnidade(itemNota?.unidade || '');
+        setFator('1');
+        setControle('segue');
+        setConfirmando(null);
+        setDuplicado(null);
+        setCriando(false);
+        criandoRef.current = false;
         setCarregando(true);
         Promise.all([
             api.get('/categorias-estoque').then(r => (Array.isArray(r?.data) ? r.data : [])).catch(() => []),
@@ -1366,7 +1699,7 @@ const ModalCriarProdutoNota = ({ aberto, itemNota, valorInicial, onCancelar, onC
             setCategoriasEstoque(ce);
             setCategoriasProduto(Array.isArray(cp) ? cp : []);
         }).finally(() => setCarregando(false));
-    }, [aberto, itemNota, valorInicial]);
+    }, [aberto, itemNota]);
 
     if (!aberto) return null;
 
@@ -1379,41 +1712,87 @@ const ModalCriarProdutoNota = ({ aberto, itemNota, valorInicial, onCancelar, onC
                 : 'Esta categoria controla estoque.')
             : ''; // categoria digitada/legada que não está na lista carregada — sem dica
 
+    // Valida como sempre e ABRE o diálogo de confirmação — a API só é chamada depois do "Criar produto" dele.
     const confirmar = () => {
+        if (criandoRef.current) return;
         if (!nome.trim()) { toast.error('Informe o nome do produto.'); return; }
         if (!categoria.trim()) { toast.error('Escolha a categoria do produto — é obrigatória.'); return; }
         if (!unidade.trim()) { toast.error('Informe a unidade do produto.'); return; }
         if (!ncmValido(ncm)) { toast.error(MSG_NCM_INVALIDO); return; }
         const fatorNum = parseFator(fator);
+        { const pf = problemaFator(fator); if (pf) { toast.error(pf); return; } }
         if (fatorNum <= 0) { toast.error('Informe a conversão de quantidade (maior que zero).'); return; }
-        onConfirmar({
+        setConfirmando({
+            itemId: itemNota?.id || undefined,
             nome: nome.trim(),
             categoria: categoria.trim(),
-            categoriaProdutoId: categoriaProdutoId || null,
+            categoriaProdutoId: categoriaProdutoId || undefined,
             controlaEstoque: controle === 'segue' ? null : controle === 'true',
-            // Resolvido só para a PRÉVIA na tela (nunca vai no payload da API — quem decide de
-            // verdade é o backend, na criação do produto). Mesma regra da dica acima: override
-            // explícito da pílula, senão o que a categoria escolhida diz; categoria fora da lista
-            // carregada (digitada/legada) = desconhecido (null), não chuta.
-            controlaEstoqueResolvido: controle !== 'segue'
-                ? controle === 'true'
-                : (categoriaEscolhida ? categoriaEscolhida.controlaEstoque !== false : null),
             unidade: unidade.trim(),
-            ean: ean.trim() || null,
-            ncm: normalizarNcm(ncm) || null,
-            fator: fator
+            ean: ean.trim() || undefined,
+            ncm: normalizarNcm(ncm) || undefined
         });
     };
 
+    // `existente` = o produto JÁ existia (409 "usar existente" ou jaExistia): o fator digitado aqui vale para o
+    // produto NOVO que seria criado, nunca para o antigo — quem recebe pergunta o fator na hora (e trata
+    // produto desativado). Produto recém-criado: o fator digitado vai para a coluna Conversão.
+    const finalizar = (opcao, opcaoPcp, mensagem, existente = false) => {
+        ctl?.adicionar?.(opcao, opcaoPcp || null); // entra no combo sem recarregar a página
+        // Produto novo: o vínculo é imediato → avisa já. Produto que JÁ existia passa pelo fluxo de escolha
+        // (pode abrir "Ativar para usar?" / fator): o aviso vai junto e só aparece quando o vínculo for feito.
+        if (!existente) toast.success(mensagem);
+        setConfirmando(null);
+        setDuplicado(null);
+        onCriado(opcao, existente ? null : fator, { existente, mensagem });
+    };
+
+    const criarAgora = async () => {
+        if (criandoRef.current || !confirmando) return;
+        criandoRef.current = true;
+        setCriando(true);
+        const payload = confirmando;
+        try {
+            const resp = await notasEntradaService.criarProduto(notaId, payload);
+            const opcao = resp?.opcao; // LER `opcao`/`opcaoPcp` — nunca `produto`
+            if (!opcao?.value) {
+                toast.error('O produto foi criado, mas a resposta veio incompleta. Abra a lista de produtos e escolha-o.');
+                setConfirmando(null);
+                ctl?.recarregar?.();
+                return;
+            }
+            const nomeOk = opcao.nome || payload.nome;
+            finalizar(opcao, resp?.opcaoPcp, resp?.jaExistia
+                ? `Produto "${nomeOk}" já estava no cadastro`
+                : `Produto "${nomeOk}" criado no cadastro${resp?.opcaoPcp ? ' (e no PCP)' : ''}`, !!resp?.jaExistia);
+        } catch (e) {
+            const d = e?.response?.data;
+            setConfirmando(null); // volta para o formulário, que continua com tudo digitado
+            if (e?.response?.status === 409 && d?.codigo === 'PRODUTO_DUPLICADO' && d?.existente?.value) {
+                setDuplicado(d.existente);
+            } else {
+                toast.error(d?.error || 'Não consegui criar o produto. Confira a conexão e tente de novo.');
+            }
+        } finally {
+            criandoRef.current = false;
+            setCriando(false);
+        }
+    };
+
+    const usarExistente = () => {
+        if (!duplicado) return;
+        finalizar(duplicado, null, `Usando o produto "${duplicado.nome || 'existente'}"`, true);
+    };
+
     return (
-        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/40 p-0 md:p-4" onClick={onCancelar}>
+        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/40 p-0 md:p-4" onClick={() => { if (!criando) onCancelar(); }}>
             <div className="bg-white rounded-t-2xl md:rounded-2xl w-full max-w-lg max-h-[92vh] overflow-y-auto p-5 space-y-4" onClick={e => e.stopPropagation()}>
                 <div className="flex items-center justify-between">
                     <div>
                         <h2 className="text-lg font-bold text-gray-900">Criar produto a partir da nota</h2>
-                        <p className="text-xs text-gray-500 mt-0.5">Nasce no cadastro de Produtos, igual a um produto criado à mão.</p>
+                        <p className="text-xs text-gray-500 mt-0.5">O produto é criado na hora no cadastro de Produtos, igual a um produto criado à mão.</p>
                     </div>
-                    <button onClick={onCancelar} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 shrink-0">
+                    <button onClick={onCancelar} disabled={criando} aria-label="Fechar" className="p-2 min-h-[44px] min-w-[44px] inline-flex items-center justify-center text-gray-500 hover:text-gray-700 rounded-full hover:bg-gray-100 shrink-0 disabled:opacity-50">
                         <X className="h-5 w-5" />
                     </button>
                 </div>
@@ -1507,6 +1886,7 @@ const ModalCriarProdutoNota = ({ aberto, itemNota, valorInicial, onCancelar, onC
                             />
                             <span className="truncate">{unidade || '?'}</span>
                         </div>
+                        <FatorEntendido texto={fator} />
                     </div>
                 </div>
 
@@ -1536,12 +1916,68 @@ const ModalCriarProdutoNota = ({ aberto, itemNota, valorInicial, onCancelar, onC
                     </button>
                     <button
                         onClick={confirmar}
-                        className="w-full md:w-auto px-4 py-3 md:py-2 min-h-[44px] bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm"
+                        disabled={criando}
+                        className="w-full md:w-auto px-4 py-3 md:py-2 min-h-[44px] bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm disabled:opacity-50"
                     >
-                        Criar e vincular
+                        Criar produto
                     </button>
                 </div>
             </div>
+
+            {/* Confirmação — por cima do modal (bottom-sheet no celular) */}
+            {confirmando && (
+                <div className="fixed inset-0 z-[60] flex items-end md:items-center justify-center bg-black/40 p-0 md:p-4" onClick={e => e.stopPropagation()}>
+                    <div className="bg-white rounded-t-2xl md:rounded-2xl w-full max-w-md p-5 space-y-4" onClick={e => e.stopPropagation()}>
+                        <h3 className="text-base font-bold text-gray-900">Criar este produto?</h3>
+                        <p className="text-sm text-gray-700 break-words">
+                            Vai criar <strong>{confirmando.nome}</strong> em Produtos, categoria <strong>{confirmando.categoria}</strong>, unidade {confirmando.unidade}.
+                        </p>
+                        <p className="text-xs text-gray-600">Fica no cadastro mesmo que você não salve a nota. Confirmar?</p>
+                        <div className="flex flex-col-reverse md:flex-row md:justify-end gap-2">
+                            <button
+                                onClick={() => setConfirmando(null)}
+                                disabled={criando}
+                                className="w-full md:w-auto px-4 py-3 md:py-2 min-h-[44px] bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-full font-medium text-sm disabled:opacity-50"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={criarAgora}
+                                disabled={criando}
+                                className="w-full md:w-auto px-4 py-3 md:py-2 min-h-[44px] bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm inline-flex items-center justify-center gap-1.5 disabled:opacity-60"
+                            >
+                                {criando ? (<><Loader2 className="h-4 w-4 animate-spin" /> Criando…</>) : 'Criar produto'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Produto com o mesmo nome já existe (409 PRODUTO_DUPLICADO) */}
+            {duplicado && (
+                <div className="fixed inset-0 z-[60] flex items-end md:items-center justify-center bg-black/40 p-0 md:p-4" onClick={e => e.stopPropagation()}>
+                    <div className="bg-white rounded-t-2xl md:rounded-2xl w-full max-w-md p-5 space-y-4" onClick={e => e.stopPropagation()}>
+                        <h3 className="text-base font-bold text-gray-900">Esse produto já existe</h3>
+                        <p className="text-sm text-gray-700 break-words">
+                            Já existe o produto <strong>{duplicado.nome || 'com esse nome'}</strong>{duplicado.unidade ? ` (${duplicado.unidade})` : ''}. Usar o existente neste item?
+                        </p>
+                        <div className="flex flex-col-reverse md:flex-row md:justify-end gap-2">
+                            <button
+                                onClick={() => setDuplicado(null)}
+                                className="w-full md:w-auto px-4 py-3 md:py-2 min-h-[44px] bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-full font-medium text-sm"
+                            >
+                                Voltar
+                            </button>
+                            <button
+                                onClick={usarExistente}
+                                className="w-full md:w-auto px-4 py-3 md:py-2 min-h-[44px] bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm"
+                            >
+                                Usar existente
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
@@ -2399,7 +2835,7 @@ const PainelManifestacao = ({ nota, modo, onCancelar, onChanged, onFalha }) => {
 // ═══════════════════════════════════════════════════════════
 // CONFERÊNCIA (nota NOVA, com permissão)
 // ═══════════════════════════════════════════════════════════
-const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged, onRecarregar }) => {
+const ConferenciaNota = ({ nota, itensPcp, itensPcpCtl, categorias, categoriasErro, onChanged, onRecarregar }) => {
     const { hasPermission } = useAuth();
     // Recusar é ato fiscal irreversível — permissão própria, espelhando o backend (nome idêntico)
     const podeRecusar = hasPermission('Pode_Recusar_Nota_Fiscal');
@@ -2418,7 +2854,6 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
         vinculoValue: it.vinculo?.value || '',
         fator: it.vinculo?.fatorConversao != null ? String(it.vinculo.fatorConversao).replace('.', ',') : '',
         categoria: it.vinculo?.categoria || '', // categoria de custo por item (lembrada quando houver)
-        novo: null, // { nome, tipo, unidade } quando "+ Criar produto novo…"
         // Escape "Este item não é estoque" — mutuamente exclusivo com o vínculo.
         // Vem preenchido quando a nota já foi conferida assim (backend devolve no GET).
         // `semEstoqueAtivo` separa "marcado" de "motivo escolhido": o botão marca o item,
@@ -2431,6 +2866,10 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
 
     // Itens que o BACKEND recusou por falta de destino (HTTP 400 com `itensPendentes`) — Set de itemId.
     const [pendentesBackend, setPendentesBackend] = useState(() => new Set());
+    // Itens que o servidor recusou por produto DESATIVADO (400 PRODUTO_INATIVO + `itensPendentes`) — Set de itemId.
+    const [inativosBackend, setInativosBackend] = useState(() => new Set());
+    // Produtos que o servidor JÁ considera gravados nesta nota (desativado nessa lista = vínculo válido)
+    const gravados = useMemo(() => gravadosDaNota(nota), [nota]);
     // Ação em massa: motivo escolhido para marcar todos os itens ainda pendentes
     const [motivoEmMassa, setMotivoEmMassa] = useState('');
     const [obsEmMassa, setObsEmMassa] = useState('');
@@ -2521,29 +2960,38 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
     const setVinculo = (idx, patch) => {
         setVinculos(prev => prev.map((v, i) => (i === idx ? { ...v, ...patch } : v)));
         // Qualquer edição na linha limpa a marcação de pendência que veio do backend
-        setPendentesBackend(prev => {
-            const id = vinculos[idx]?.itemId;
+        const id = vinculos[idx]?.itemId;
+        const sem = (prev) => {
             if (!id || !prev.has(id)) return prev;
             const n = new Set(prev); n.delete(id); return n;
-        });
+        };
+        setPendentesBackend(sem);
+        setInativosBackend(sem);
     };
 
     // ── Destino do item: vincular produto e "não é estoque" são MUTUAMENTE EXCLUSIVOS ──
     // Vincular (ou criar produto novo) apaga a marcação; marcar "não é estoque" apaga o vínculo.
     const escolherProduto = (idx, val) =>
-        setVinculo(idx, { vinculoValue: val, novo: null, semEstoqueAtivo: false, semEstoqueMotivo: '', semEstoqueObs: '' });
+        setVinculo(idx, { vinculoValue: val, semEstoqueAtivo: false, semEstoqueMotivo: '', semEstoqueObs: '' });
 
-    // `dados` vem do ModalCriarProdutoNota: { nome, categoria, categoriaProdutoId,
-    // controlaEstoque, unidade, ean, ncm, fator }. O `fator` alimenta o MESMO campo de
-    // conversão que o vínculo a produto existente usa (coluna "Conversão" do item).
-    const criarProdutoNovo = (idx, dados) => {
-        const { fator, ...novo } = dados;
-        setVinculo(idx, { novo, vinculoValue: '', fator: fator || '1', semEstoqueAtivo: false, semEstoqueMotivo: '', semEstoqueObs: '' });
-    };
+    // O produto novo JÁ foi criado no cadastro pelo ModalCriarProdutoNota (POST criar-produto):
+    // aqui só vinculamos o item a ele. O fator digitado no modal vai para a coluna "Conversão".
+    const produtoCriado = (idx, opcao, fator) =>
+        setVinculo(idx, { vinculoValue: opcao.value, fator: fator || '1', semEstoqueAtivo: false, semEstoqueMotivo: '', semEstoqueObs: '' });
+
+    // Escolha de produto JÁ existente (combo ou "usar existente"): trata produto desativado e pergunta o
+    // fator quando a unidade da nota difere da do produto. `fator == null` = só trocou o vínculo.
+    const [escolherProdutoExistente, dialogoEscolhaProduto] = useEscolhaProduto({
+        itensPcp,
+        ctl: itensPcpCtl,
+        lembrado: (idx) => itensNota[idx]?.vinculo,
+        gravados,
+        aplicar: (idx, opcao, fator) => (fator == null ? escolherProduto(idx, opcao.value) : produtoCriado(idx, opcao, fator))
+    });
 
     // Marca o item SEM escolher motivo — ele fica pendente até a pessoa escolher.
     const marcarSemEstoque = (idx) =>
-        setVinculo(idx, { semEstoqueAtivo: true, semEstoqueMotivo: '', semEstoqueObs: '', vinculoValue: '', novo: null, fator: '' });
+        setVinculo(idx, { semEstoqueAtivo: true, semEstoqueMotivo: '', semEstoqueObs: '', vinculoValue: '', fator: '' });
 
     // Trocar para OUTRO preserva o texto já digitado; sair de OUTRO limpa (o campo some).
     const definirMotivoSemEstoque = (idx, motivo) =>
@@ -2627,18 +3075,16 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
     const infoItem = (idx) => {
         const it = itensNota[idx];
         const v = vinculos[idx];
-        const opcao = v.novo ? null : itensPcp.find(p => String(p.value) === String(v.vinculoValue));
-        const unidadeNossa = v.novo ? (v.novo.unidade || '?') : (opcao?.unidade || '?');
-        const vinculado = !!v.novo || !!v.vinculoValue;
+        const opcao = itensPcp.find(p => String(p.value) === String(v.vinculoValue));
+        const unidadeNossa = opcao?.unidade || '?';
+        const vinculado = !!v.vinculoValue;
         const semEstoque = !!v.semEstoqueAtivo || !!v.semEstoqueMotivo;
         const fator = parseFator(v.fator);
         const entrada = fator > 0 ? Number(it.quantidade || 0) * fator : 0;
         const custo = entrada > 0 ? Number(it.valorTotal || 0) / entrada : 0;
-        // Esse item vai mesmo somar estoque? Para produto NOVO a gente sabe (resolvido no modal,
-        // mesma regra da dica "controla estoque"). Para produto JÁ EXISTENTE vinculado, o combo
-        // de /itens-pcp não devolve controlaEstoque — fica desconhecido (null), então o texto
-        // continua otimista como sempre foi (não dá pra saber sem consultar de novo).
-        const controlaEstoqueItem = v.novo ? (v.novo.controlaEstoqueResolvido ?? null) : null;
+        // Esse item vai mesmo somar estoque? A opção do combo traz `controlaEstoque` (o produto recém-criado
+        // já vem com o valor efetivo). Opção sem o campo = desconhecido (null) e o texto continua otimista.
+        const controlaEstoqueItem = opcao?.controlaEstoque ?? null;
         // O que falta neste item para ele ter um DESTINO válido ('' = está resolvido)
         let pendencia = '';
         if (semEstoque) {
@@ -2647,12 +3093,12 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
             } else if (v.semEstoqueMotivo === 'OUTRO' && !String(v.semEstoqueObs || '').trim()) {
                 pendencia = 'Explique em poucas palavras o que é este item.';
             }
-        } else if (v.novo) {
-            if (!v.novo.nome.trim() || !v.novo.unidade.trim()) pendencia = 'Preencha nome e unidade do produto novo.';
-            else if (!v.novo.categoria) pendencia = 'Escolha a categoria do produto novo.';
-            else if (fator <= 0) pendencia = 'Informe a conversão de quantidade.';
         } else if (v.vinculoValue) {
-            if (fator <= 0) pendencia = 'Informe a conversão de quantidade.';
+            // Produto DESATIVADO (ex.: sugestão lembrada do de-para): o servidor recusa vínculo novo a ele.
+            // Escolher o mesmo produto de novo no combo abre o "Ativar para usar?"; ou escolher outro.
+            // Exceto se o servidor já tem este produto gravado nesta nota (aí o desativado é vínculo válido).
+            if (inativoBloqueante(opcao, gravados)) pendencia = 'Produto desativado: escolha-o de novo para ativar (quem tem a permissão de Produtos) ou escolha outro.';
+            else if (fator <= 0) pendencia = problemaFator(v.fator) || 'Informe a conversão de quantidade.';
         } else {
             pendencia = 'Escolha o nosso produto ou marque "Este item não é estoque".';
         }
@@ -2689,21 +3135,9 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
     // Payload de itens (destino + conversão) — MESMO formato no gerar-conta e no registrar-entrada
     const montarItensBase = () => vinculos.map(v => ({
         itemId: v.itemId,
-        vinculo: v.novo || v.semEstoqueMotivo ? null : (v.vinculoValue || null),
+        // Produto novo já foi criado no cadastro pelo modal — chega aqui como vínculo comum ('PROD:<id>').
+        vinculo: v.semEstoqueMotivo ? null : (v.vinculoValue || null),
         fatorConversao: !v.semEstoqueMotivo && parseFator(v.fator) > 0 ? parseFator(v.fator) : null,
-        // `criarItemPcp` foi desativado pelo backend — todo produto novo nasce por aqui,
-        // via `criarProduto` (o PCP ganha o espelho sozinho quando a categoria for de produção).
-        criarProduto: v.novo && !v.semEstoqueMotivo
-            ? {
-                nome: v.novo.nome.trim(),
-                categoria: v.novo.categoria,
-                categoriaProdutoId: v.novo.categoriaProdutoId || undefined,
-                controlaEstoque: v.novo.controlaEstoque,
-                unidade: v.novo.unidade.trim(),
-                ean: v.novo.ean || undefined,
-                ncm: normalizarNcm(v.novo.ncm) || undefined
-            }
-            : null,
         semEstoqueMotivo: v.semEstoqueMotivo || null,
         semEstoqueObs: v.semEstoqueMotivo === 'OUTRO' ? (String(v.semEstoqueObs || '').trim() || null) : null
     }));
@@ -2725,9 +3159,10 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
         if (!ok) return;
         const set = new Set(alvos);
         setVinculos(prev => prev.map((v, i) => (set.has(i)
-            ? { ...v, semEstoqueAtivo: true, semEstoqueMotivo: motivoEmMassa, semEstoqueObs: motivoEmMassa === 'OUTRO' ? obsEmMassa.trim() : '', vinculoValue: '', novo: null, fator: '' }
+            ? { ...v, semEstoqueAtivo: true, semEstoqueMotivo: motivoEmMassa, semEstoqueObs: motivoEmMassa === 'OUTRO' ? obsEmMassa.trim() : '', vinculoValue: '', fator: '' }
             : v)));
         setPendentesBackend(new Set());
+        setInativosBackend(new Set());
         toast.success(`${alvos.length} ${alvos.length === 1 ? 'item marcado' : 'itens marcados'} como "não é estoque" (${rotulo}).`);
     };
 
@@ -2735,10 +3170,20 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
     // as linhas que ele apontou, rola até a primeira e avisa. → true se tratou o erro aqui.
     const tratarErroDestino = (e) => {
         const dados = e?.response?.data;
+        if (dados?.codigo === 'PRODUTO_INATIVO') {
+            const ids = avisarProdutoInativo(dados);
+            setInativosBackend(ids);
+            setPendentesBackend(new Set());
+            const primeiro = itensNota.findIndex(it => ids.has(it.id));
+            const el = primeiro >= 0 ? refsItens.current[primeiro] : null;
+            if (el?.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            return true;
+        }
         const lista = Array.isArray(dados?.itensPendentes) ? dados.itensPendentes : [];
         if (lista.length === 0) return false;
         const ids = new Set(lista.map(p => p?.id).filter(Boolean));
         setPendentesBackend(ids);
+        setInativosBackend(new Set());
         const nomes = lista
             .slice(0, 3)
             .map(p => String(p?.descricao || p?.codigoFornecedor || '').trim() || 'item sem descrição');
@@ -2895,6 +3340,7 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
     return (
         <div className="p-4 md:p-5 space-y-4">
             {modalCusto}
+            {dialogoEscolhaProduto}
             {/* Tentativa de manifestação recusada pela SEFAZ deixa a nota em NOVA — ou seja,
                 nesta tela. É aqui que o usuário precisa ver o que aconteceu. */}
             {!entradaAberta && <ManifestacoesRecusadas nota={nota} />}
@@ -2984,7 +3430,8 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                     {itensNota.map((it, idx) => {
                         const { v, vinculado, semEstoque, unidadeNossa, fator, entrada, custo, pendencia, controlaEstoqueItem } = infoItem(idx);
                         const lembrado = !!it.vinculo?.lembrado;
-                        const apontadoPeloBackend = pendentesBackend.has(it.id);
+                        const inativoRecusado = inativosBackend.has(it.id);
+                        const apontadoPeloBackend = pendentesBackend.has(it.id) || inativoRecusado;
                         if (ehServico) {
                             return (
                                 <div key={it.id} className="rounded-lg p-3 md:p-4 border border-gray-200">
@@ -3050,8 +3497,10 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                                     a tela ache que está tudo certo (ele é a palavra final). */}
                                 {apontadoPeloBackend ? (
                                     <div className="mt-2 text-xs font-medium text-red-700">
-                                        O sistema recusou este item por falta de destino.
-                                        {pendencia ? ` ${pendencia}` : ' Confira o destino e envie de novo.'}
+                                        {inativoRecusado
+                                            ? 'O sistema recusou este item: o produto escolhido está desativado. Ative-o em Produtos (ou escolha outro) e envie de novo.'
+                                            : 'O sistema recusou este item por falta de destino.'}
+                                        {inativoRecusado ? '' : (pendencia ? ` ${pendencia}` : ' Confira o destino e envie de novo.')}
                                     </div>
                                 ) : pendencia ? (
                                     <div className="mt-2 text-xs font-medium text-amber-800">{pendencia}</div>
@@ -3072,15 +3521,15 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                                 <div className="mt-1.5 flex flex-wrap gap-1.5">
                                     <button
                                         type="button"
-                                        onClick={() => { if (v.novo) setVinculo(idx, { novo: null }); if (semEstoque) desmarcarSemEstoque(idx); }}
-                                        className={`px-3 py-2 min-h-[44px] rounded-full text-xs font-semibold border inline-flex items-center gap-1.5 ${!semEstoque && !v.novo ? 'bg-primary border-primary text-white' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'}`}
+                                        onClick={() => { if (semEstoque) desmarcarSemEstoque(idx); }}
+                                        className={`px-3 py-2 min-h-[44px] rounded-full text-xs font-semibold border inline-flex items-center gap-1.5 ${!semEstoque ? 'bg-primary border-primary text-white' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'}`}
                                     >
                                         <Link2 className="h-3.5 w-3.5" /> Vincular a um produto
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => setModalProdutoIdx(idx)}
-                                        className={`px-3 py-2 min-h-[44px] rounded-full text-xs font-semibold border inline-flex items-center gap-1.5 ${v.novo ? 'bg-primary border-primary text-white' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'}`}
+                                        className="px-3 py-2 min-h-[44px] rounded-full text-xs font-semibold border inline-flex items-center gap-1.5 bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
                                     >
                                         <Plus className="h-3.5 w-3.5" /> Criar produto novo
                                     </button>
@@ -3129,27 +3578,15 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                                     {/* Nosso produto */}
                                     <div>
                                         <label className="text-xs font-medium text-gray-500">Nosso produto</label>
-                                        {v.novo ? (
-                                            <div className="mt-1 space-y-1 border border-primary/40 rounded-lg p-2 bg-mint/20">
-                                                <div className="text-sm font-semibold text-gray-900">{v.novo.nome}</div>
-                                                <div className="flex flex-wrap items-center gap-1.5">
-                                                    <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded-full bg-mint text-primaryDark">{v.novo.categoria}</span>
-                                                    <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded-full bg-green-100 text-green-800">produto novo</span>
-                                                </div>
-                                                <div className="flex gap-3 pt-1">
-                                                    <button onClick={() => setModalProdutoIdx(idx)} className="text-xs text-primary hover:underline">Editar</button>
-                                                    <button onClick={() => setVinculo(idx, { novo: null, vinculoValue: '' })} className="text-xs text-gray-500 hover:text-gray-700 underline">Cancelar</button>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <ComboProduto
-                                                value={v.vinculoValue || ''}
-                                                itens={itensPcp}
-                                                invalido={!vinculado}
-                                                onSelect={val => escolherProduto(idx, val)}
-                                                onCriarNovo={() => setModalProdutoIdx(idx)}
-                                            />
-                                        )}
+                                        <ComboProduto
+                                            value={v.vinculoValue || ''}
+                                            itens={itensPcp}
+                                            invalido={!vinculado}
+                                            onSelect={val => escolherProdutoExistente(idx, it, val, v.vinculoValue)}
+                                            onCriarNovo={() => setModalProdutoIdx(idx)}
+                                            onAbrir={itensPcpCtl?.recarregar}
+                                            carregando={!!itensPcpCtl?.carregando}
+                                        />
                                     </div>
 
                                     {/* Conversão — só pede quando a unidade da nota difere da nossa */}
@@ -3167,6 +3604,7 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                                             />
                                             <span className="truncate">{unidadeNossa}</span>
                                         </div>
+                                        <FatorEntendido texto={v.fator} discreto />
                                     </div>
 
                                     {/* Entrada convertida */}
@@ -3198,10 +3636,15 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
 
                                 <ModalCriarProdutoNota
                                     aberto={modalProdutoIdx === idx}
+                                    notaId={nota.id}
                                     itemNota={it}
-                                    valorInicial={v.novo ? { ...v.novo, fator: v.fator } : null}
+                                    ctl={itensPcpCtl}
                                     onCancelar={() => setModalProdutoIdx('')}
-                                    onConfirmar={(dados) => { criarProdutoNovo(idx, dados); setModalProdutoIdx(''); }}
+                                    onCriado={(opcao, fator, info) => {
+                                        setModalProdutoIdx('');
+                                        if (info?.existente) escolherProdutoExistente(idx, it, opcao, v.vinculoValue, { aviso: info.mensagem });
+                                        else produtoCriado(idx, opcao, fator);
+                                    }}
                                 />
 
                                 {/* Categoria da DESPESA (Contas a Pagar / DRE) — não confundir com a categoria
@@ -3477,6 +3920,14 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                     </span>
                 </div>
             )}
+            {inativosBackend.size > 0 && (
+                <div className="flex flex-wrap items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2.5 text-sm text-red-800">
+                    <span>
+                        <span className="font-semibold">O sistema recusou {inativosBackend.size} {inativosBackend.size === 1 ? 'item' : 'itens'}</span> porque o produto está desativado
+                        (marcados em vermelho acima). Escolha o produto de novo para ativá-lo (quem tem a permissão de Produtos) ou escolha outro.
+                    </span>
+                </div>
+            )}
 
             {/* Trava: nenhum item pode ficar sem destino */}
             {temPendencia && (
@@ -3580,7 +4031,7 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
 //   'lancar'   → a nota nunca somou nada (conferência só financeira, sem item
 //                vinculado) e a entrada vai ser lançada agora.
 // ═══════════════════════════════════════════════════════════
-const PainelCorrigirEntrada = ({ nota, itensPcp, modo = 'corrigir', onCancelar, onChanged }) => {
+const PainelCorrigirEntrada = ({ nota, itensPcp, itensPcpCtl, modo = 'corrigir', onCancelar, onChanged }) => {
     const lancando = modo === 'lancar';
     const itensNota = useMemo(() => Array.isArray(nota.itens) ? nota.itens : [], [nota]);
     // O que está somado HOJE no estoque por esta nota (ledger), por item da nota.
@@ -3611,8 +4062,7 @@ const PainelCorrigirEntrada = ({ nota, itensPcp, modo = 'corrigir', onCancelar, 
         return {
             itemId: it.id,
             vinculoValue: ap?.vinculo || it.vinculo?.value || '',
-            fator: fator > 0 ? String(round4(fator)).replace('.', ',') : '',
-            novo: null
+            fator: fator > 0 ? String(round4(fator)).replace('.', ',') : ''
         };
     }));
     const [salvando, setSalvando] = useState(false);
@@ -3620,31 +4070,49 @@ const PainelCorrigirEntrada = ({ nota, itensPcp, modo = 'corrigir', onCancelar, 
     const [modalCusto, confirmarCusto] = useConfirmarCustoForaDaCurva();
     // Índice do item com o modal "Criar produto a partir da nota" aberto ('' = fechado)
     const [modalProdutoIdx, setModalProdutoIdx] = useState('');
+    // Itens que o servidor recusou por produto DESATIVADO (400 PRODUTO_INATIVO + `itensPendentes`) — Set de itemId
+    const [inativosBackend, setInativosBackend] = useState(() => new Set());
+    const refsLinhas = useRef([]);
+    // Produtos que o servidor JÁ considera gravados nesta nota (desativado nessa lista = vínculo válido)
+    const gravados = useMemo(() => gravadosDaNota(nota), [nota]);
 
-    const setVinculo = (idx, patch) => setVinculos(prev => prev.map((v, i) => (i === idx ? { ...v, ...patch } : v)));
-    // `dados` vem do ModalCriarProdutoNota — mesmo formato usado na conferência.
-    const criarProdutoNovo = (idx, dados) => {
-        const { fator, ...novo } = dados;
-        setVinculo(idx, { novo, vinculoValue: '', fator: fator || '1' });
+    const setVinculo = (idx, patch) => {
+        setVinculos(prev => prev.map((v, i) => (i === idx ? { ...v, ...patch } : v)));
+        const id = vinculos[idx]?.itemId;
+        setInativosBackend(prev => {
+            if (!id || !prev.has(id)) return prev;
+            const n = new Set(prev); n.delete(id); return n;
+        });
     };
+    // O produto novo JÁ foi criado no cadastro pelo ModalCriarProdutoNota — aqui só vincula o item a ele.
+    const produtoCriado = (idx, opcao, fator) => setVinculo(idx, { vinculoValue: opcao.value, fator: fator || '1' });
+    // Escolha de produto JÁ existente (combo ou "usar existente"): desativado só vincula depois de ativar
+    // e o fator é perguntado na hora quando as unidades diferem.
+    const [escolherProdutoExistente, dialogoEscolhaProduto] = useEscolhaProduto({
+        itensPcp,
+        ctl: itensPcpCtl,
+        lembrado: (idx) => itensNota[idx]?.vinculo,
+        gravados,
+        aplicar: (idx, opcao, fator) => setVinculo(idx, fator == null ? { vinculoValue: opcao.value } : { vinculoValue: opcao.value, fator })
+    });
 
     // Situação de cada item: como está hoje × como vai ficar.
     const linhas = useMemo(() => itensNota.map((it, idx) => {
         const v = vinculos[idx];
         const ap = aplicadoPorItem.get(it.id) || null;
-        const opcao = v.novo ? null : itensPcp.find(p => String(p.value) === String(v.vinculoValue));
-        const unidadeNova = v.novo ? (v.novo.unidade || '?') : (opcao?.unidade || ap?.unidade || '?');
-        const vinculado = !!v.novo || !!v.vinculoValue;
+        const opcao = itensPcp.find(p => String(p.value) === String(v.vinculoValue));
+        const unidadeNova = opcao?.unidade || ap?.unidade || '?';
+        const vinculado = !!v.vinculoValue;
         const fator = parseFator(v.fator);
         const qtdNova = vinculado && fator > 0 ? Number(it.quantidade || 0) * fator : 0;
         const custoNovo = qtdNova > 0 ? Number(it.valorTotal || 0) / qtdNova : 0;
         // Mudou de produto? (comparado com o que está aplicado hoje)
-        const trocouProduto = !!ap && !v.novo && String(v.vinculoValue || '') !== String(ap.vinculo || '');
+        const trocouProduto = !!ap && String(v.vinculoValue || '') !== String(ap.vinculo || '');
         const mudou = !ap
             ? vinculado
-            : (trocouProduto || !!v.novo || Math.abs(qtdNova - Number(ap.quantidade || 0)) > 0.0005);
+            : (trocouProduto || Math.abs(qtdNova - Number(ap.quantidade || 0)) > 0.0005);
         // Diferença que entra/sai do estoque HOJE (só faz sentido no mesmo produto)
-        const difEstoque = ap && !trocouProduto && !v.novo ? qtdNova - Number(ap.quantidade || 0) : null;
+        const difEstoque = ap && !trocouProduto ? qtdNova - Number(ap.quantidade || 0) : null;
         return { it, v, ap, opcao, unidadeNova, vinculado, fator, qtdNova, custoNovo, trocouProduto, mudou, difEstoque };
     }), [itensNota, vinculos, aplicadoPorItem, itensPcp]);
 
@@ -3652,11 +4120,14 @@ const PainelCorrigirEntrada = ({ nota, itensPcp, modo = 'corrigir', onCancelar, 
 
     const validar = () => {
         for (let i = 0; i < linhas.length; i++) {
-            const { v, it, vinculado, fator } = linhas[i];
-            if (v.novo && (!v.novo.nome.trim() || !v.novo.unidade.trim() || !v.novo.categoria)) {
-                return `Preencha nome, categoria e unidade do produto novo do item "${it.descricao || i + 1}".`;
+            const { it, vinculado, fator, opcao } = linhas[i];
+            // Produto desativado só passa se o SERVIDOR já o tem gravado nesta nota (`produtosJaGravadosIds`);
+            // vínculo NOVO a desativado ele recusa.
+            if (vinculado && inativoBloqueante(opcao, gravados)) {
+                return `O produto do item "${it.descricao || i + 1}" está desativado. Escolha-o de novo para ativar (quem tem a permissão de Produtos) ou escolha outro.`;
             }
             if (vinculado && fator <= 0) {
+                { const pf = problemaFator(linhas[i].v.fator); if (pf) return `Conversão do item "${it.descricao || i + 1}": ${pf}`; }
                 return `Informe a conversão de quantidade do item "${it.descricao || i + 1}" (ou desfaça o vínculo).`;
             }
         }
@@ -3675,20 +4146,8 @@ const PainelCorrigirEntrada = ({ nota, itensPcp, modo = 'corrigir', onCancelar, 
         try {
             const itensCorrecao = vinculos.map(v => ({
                     itemId: v.itemId,
-                    vinculo: v.novo ? null : (v.vinculoValue || null),
-                    fatorConversao: parseFator(v.fator) > 0 ? parseFator(v.fator) : null,
-                    // `criarItemPcp` foi desativado pelo backend — produto novo nasce via `criarProduto`.
-                    criarProduto: v.novo
-                        ? {
-                            nome: v.novo.nome.trim(),
-                            categoria: v.novo.categoria,
-                            categoriaProdutoId: v.novo.categoriaProdutoId || undefined,
-                            controlaEstoque: v.novo.controlaEstoque,
-                            unidade: v.novo.unidade.trim(),
-                            ean: v.novo.ean || undefined,
-                            ncm: normalizarNcm(v.novo.ncm) || undefined
-                        }
-                        : null
+                    vinculo: v.vinculoValue || null,
+                    fatorConversao: parseFator(v.fator) > 0 ? parseFator(v.fator) : null
                 }));
             const r = await gravarComAvisoDeCusto({
                 confirmar: confirmarCusto,
@@ -3706,7 +4165,13 @@ const PainelCorrigirEntrada = ({ nota, itensPcp, modo = 'corrigir', onCancelar, 
             for (const aviso of (resp?.avisos || [])) toast(aviso, { icon: '⚠️', duration: 8000 });
             onChanged();
         } catch (e) {
-            toast.error(e.response?.data?.error || 'Não foi possível corrigir a entrada.');
+            if (e.response?.data?.codigo === 'PRODUTO_INATIVO') {
+                const ids = avisarProdutoInativo(e.response.data);
+                setInativosBackend(ids);
+                const primeiro = itensNota.findIndex(it => ids.has(it.id));
+                const el = primeiro >= 0 ? refsLinhas.current[primeiro] : null;
+                if (el?.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            } else toast.error(e.response?.data?.error || 'Não foi possível corrigir a entrada.');
         } finally {
             setSalvando(false);
             setConfirmando(false);
@@ -3716,6 +4181,7 @@ const PainelCorrigirEntrada = ({ nota, itensPcp, modo = 'corrigir', onCancelar, 
     return (
         <div className="border-2 border-amber-400 rounded-xl overflow-hidden bg-white">
             {modalCusto}
+            {dialogoEscolhaProduto}
             <div className="px-4 md:px-5 py-3.5 border-b border-gray-100 flex items-start justify-between gap-2">
                 <div className="min-w-0">
                     <div className="flex items-center gap-2">
@@ -3763,9 +4229,15 @@ const PainelCorrigirEntrada = ({ nota, itensPcp, modo = 'corrigir', onCancelar, 
 
                 <div className="space-y-3">
                     {linhas.map((l, idx) => {
-                        const { it, v, ap, unidadeNova, vinculado, fator, qtdNova, custoNovo, trocouProduto, mudou, difEstoque } = l;
+                        const { it, v, ap, opcao, unidadeNova, vinculado, fator, qtdNova, custoNovo, trocouProduto, mudou, difEstoque } = l;
+                        const inativoRecusado = inativosBackend.has(it.id);
+                        const inativoNovo = vinculado && inativoBloqueante(opcao, gravados);
                         return (
-                            <div key={it.id} className={`rounded-lg p-3 md:p-4 border ${mudou ? 'border-amber-300 bg-amber-50/40' : 'border-gray-200'}`}>
+                            <div
+                                key={it.id}
+                                ref={el => { refsLinhas.current[idx] = el; }}
+                                className={`rounded-lg p-3 md:p-4 border ${inativoRecusado ? 'border-red-300 bg-red-50 ring-1 ring-red-300' : mudou ? 'border-amber-300 bg-amber-50/40' : 'border-gray-200'}`}
+                            >
                                 <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-1">
                                     <div className="min-w-0">
                                         <div className="text-sm font-medium text-gray-900 whitespace-pre-wrap break-words">
@@ -3789,6 +4261,16 @@ const PainelCorrigirEntrada = ({ nota, itensPcp, modo = 'corrigir', onCancelar, 
                                         )}
                                     </div>
                                 </div>
+
+                                {inativoRecusado ? (
+                                    <div className="mt-2 text-xs font-medium text-red-700">
+                                        O sistema recusou este item: o produto escolhido está desativado. Escolha-o de novo para ativar (quem tem a permissão de Produtos) ou escolha outro.
+                                    </div>
+                                ) : inativoNovo ? (
+                                    <div className="mt-2 text-xs font-medium text-amber-800">
+                                        Produto desativado: escolha-o de novo para ativar (quem tem a permissão de Produtos) ou escolha outro.
+                                    </div>
+                                ) : null}
 
                                 {/* Como está hoje no estoque */}
                                 <div className="mt-2 text-xs text-gray-600">
@@ -3820,15 +4302,8 @@ const PainelCorrigirEntrada = ({ nota, itensPcp, modo = 'corrigir', onCancelar, 
                                 <div className="flex flex-wrap gap-1.5 mt-1">
                                     <button
                                         type="button"
-                                        onClick={() => { if (v.novo) setVinculo(idx, { novo: null }); }}
-                                        className={`px-3 py-2 min-h-[44px] rounded-full text-xs font-semibold border inline-flex items-center gap-1.5 ${!v.novo ? 'bg-primary border-primary text-white' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'}`}
-                                    >
-                                        <Link2 className="h-3.5 w-3.5" /> Vincular a um produto
-                                    </button>
-                                    <button
-                                        type="button"
                                         onClick={() => setModalProdutoIdx(idx)}
-                                        className={`px-3 py-2 min-h-[44px] rounded-full text-xs font-semibold border inline-flex items-center gap-1.5 ${v.novo ? 'bg-primary border-primary text-white' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'}`}
+                                        className="px-3 py-2 min-h-[44px] rounded-full text-xs font-semibold border inline-flex items-center gap-1.5 bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
                                     >
                                         <Plus className="h-3.5 w-3.5" /> Criar produto novo
                                     </button>
@@ -3837,35 +4312,28 @@ const PainelCorrigirEntrada = ({ nota, itensPcp, modo = 'corrigir', onCancelar, 
                                     {/* Nosso produto */}
                                     <div>
                                         <label className="text-xs font-medium text-gray-500">Nosso produto</label>
-                                        {v.novo ? (
-                                            <div className="mt-1 space-y-1 border border-primary/40 rounded-lg p-2 bg-mint/20">
-                                                <div className="text-sm font-semibold text-gray-900">{v.novo.nome}</div>
-                                                <div className="flex flex-wrap items-center gap-1.5">
-                                                    <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded-full bg-mint text-primaryDark">{v.novo.categoria}</span>
-                                                    <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded-full bg-green-100 text-green-800">produto novo</span>
-                                                </div>
-                                                <div className="flex gap-3 pt-1">
-                                                    <button onClick={() => setModalProdutoIdx(idx)} className="text-xs text-primary hover:underline">Editar</button>
-                                                    <button onClick={() => setVinculo(idx, { novo: null, vinculoValue: '' })} className="text-xs text-gray-500 hover:text-gray-700 underline">Cancelar</button>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <ComboProduto
-                                                value={v.vinculoValue || ''}
-                                                itens={itensPcp}
-                                                invalido={!vinculado}
-                                                onSelect={val => setVinculo(idx, { vinculoValue: val })}
-                                                onCriarNovo={() => setModalProdutoIdx(idx)}
-                                            />
-                                        )}
+                                        <ComboProduto
+                                            value={v.vinculoValue || ''}
+                                            itens={itensPcp}
+                                            invalido={!vinculado}
+                                            onSelect={val => escolherProdutoExistente(idx, it, val, v.vinculoValue)}
+                                            onCriarNovo={() => setModalProdutoIdx(idx)}
+                                            onAbrir={itensPcpCtl?.recarregar}
+                                            carregando={!!itensPcpCtl?.carregando}
+                                        />
                                     </div>
 
                                     <ModalCriarProdutoNota
                                         aberto={modalProdutoIdx === idx}
+                                        notaId={nota.id}
                                         itemNota={it}
-                                        valorInicial={v.novo ? { ...v.novo, fator: v.fator } : null}
+                                        ctl={itensPcpCtl}
                                         onCancelar={() => setModalProdutoIdx('')}
-                                        onConfirmar={(dados) => { criarProdutoNovo(idx, dados); setModalProdutoIdx(''); }}
+                                        onCriado={(opcao, fator, info) => {
+                                            setModalProdutoIdx('');
+                                            if (info?.existente) escolherProdutoExistente(idx, it, opcao, v.vinculoValue, { aviso: info.mensagem });
+                                            else produtoCriado(idx, opcao, fator);
+                                        }}
                                     />
 
                                     {/* Conversão */}
@@ -3883,6 +4351,7 @@ const PainelCorrigirEntrada = ({ nota, itensPcp, modo = 'corrigir', onCancelar, 
                                             />
                                             <span className="truncate">{unidadeNova}</span>
                                         </div>
+                                        <FatorEntendido texto={v.fator} discreto />
                                     </div>
 
                                     {/* Vai ficar */}
@@ -3984,7 +4453,7 @@ const PainelCorrigirEntrada = ({ nota, itensPcp, modo = 'corrigir', onCancelar, 
     );
 };
 
-const DetalheNota = ({ nota, podeOperar, itensPcp = [], onChanged, onRecarregar }) => {
+const DetalheNota = ({ nota, podeOperar, itensPcp = [], itensPcpCtl, onChanged, onRecarregar }) => {
     const { hasPermission } = useAuth();
     const [reativando, setReativando] = useState(false);
     const [cancelando, setCancelando] = useState(false);
@@ -4156,6 +4625,7 @@ const DetalheNota = ({ nota, podeOperar, itensPcp = [], onChanged, onRecarregar 
                 <PainelCorrigirEntrada
                     nota={nota}
                     itensPcp={itensPcp}
+                    itensPcpCtl={itensPcpCtl}
                     modo={podeCorrigirEstoque ? 'corrigir' : 'lancar'}
                     onCancelar={() => setCorrigirAberto(false)}
                     onChanged={onChanged}

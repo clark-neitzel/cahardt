@@ -5,11 +5,15 @@ import { chaveBusca } from '../utils/cidade';
 
 // Combobox de busca REUTILIZÁVEL — substitui os <select> nativos grandes do projeto.
 // Digite para filtrar (por label + sub); navegação por teclado; rolagem SEM limite de itens.
-// options: [{ value, label, sub? }]. extraAction?: { label, onClick } (rodapé, ex.: "criar novo").
+// options: [{ value, label, sub?, desativado? }]. `desativado` (opcional): a opção aparece apagada, com a etiqueta
+// "desativado" — continua clicável (quem usa decide o que fazer). extraAction?: { label, onClick } (rodapé, ex.: "criar novo").
 const ComboBusca = ({
     value, options, onChange, placeholder = 'Buscar…', buscaPlaceholder = 'Digite para buscar…',
     vazioTexto = 'Nada encontrado.', extraAction, invalido = false, allowClear = true, className = '',
-    permitirNovo = false, novoTexto = 'Usar'
+    permitirNovo = false, novoTexto = 'Usar',
+    // Opcionais: `onAbrir` dispara só na transição fechado→aberto (clique no botão);
+    // `carregando` mostra "Atualizando lista…" no menu sem bloquear busca nem a lista exibida.
+    onAbrir, carregando = false
 }) => {
     const [open, setOpen] = useState(false);
     const [query, setQuery] = useState('');
@@ -69,7 +73,8 @@ const ComboBusca = ({
             window.removeEventListener('resize', posicionar);
         };
     }, [open, posicionar]);
-    useEffect(() => { if (open && inputRef.current) inputRef.current.focus(); }, [open]);
+    // `!!coords`: o input só existe depois que o menu é posicionado — sem isso a 1ª abertura não focava a busca.
+    useEffect(() => { if (open && inputRef.current) inputRef.current.focus(); }, [open, !!coords]);
 
     const escolher = (o) => { onChange(o.value); setOpen(false); setQuery(''); };
     const usarNovo = () => { if (!podeCriar) return; onChange(textoNovo); setOpen(false); setQuery(''); };
@@ -89,12 +94,15 @@ const ComboBusca = ({
         <div className={`relative ${className}`} ref={boxRef}>
             <button
                 type="button"
-                onClick={() => setOpen(o => !o)}
+                onClick={() => { if (!open && onAbrir) { try { onAbrir(); } catch { /* recarga é opcional */ } } setOpen(o => !o); }}
                 className={`w-full min-h-[44px] md:min-h-0 flex items-center justify-between gap-2 border rounded px-3 py-2 text-sm bg-white text-left focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none ${invalido ? 'border-amber-300' : 'border-gray-300'}`}
             >
                 <span className={`truncate ${selecionado || (permitirNovo && value) ? 'text-gray-900' : 'text-gray-400'}`}>
                     {selecionado ? selecionado.label : (permitirNovo && value ? String(value) : placeholder)}
                 </span>
+                {selecionado?.desativado && (
+                    <span className="ml-auto shrink-0 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-gray-100 text-gray-700">desativado</span>
+                )}
                 <ChevronDown className="h-4 w-4 text-gray-400 shrink-0" />
             </button>
             {open && coords && createPortal(
@@ -138,16 +146,20 @@ const ComboBusca = ({
                                 type="button"
                                 onMouseEnter={() => setHi(i)}
                                 onClick={() => escolher(o)}
-                                className={`w-full text-left px-3 py-2 text-sm flex flex-col gap-0.5 ${i === hi ? 'bg-blue-50' : 'hover:bg-gray-50'} ${String(o.value) === String(value) ? 'font-semibold text-primary' : 'text-gray-800'}`}
+                                className={`w-full text-left px-3 py-2 text-sm flex flex-col gap-0.5 ${i === hi ? 'bg-blue-50' : 'hover:bg-gray-50'} ${String(o.value) === String(value) ? 'font-semibold text-primary' : (o.desativado ? 'text-gray-500' : 'text-gray-800')}`}
                             >
-                                <span className="break-words">{o.label}</span>
+                                <span className="break-words flex items-start gap-2">
+                                    <span className="min-w-0 break-words">{o.label}</span>
+                                    {o.desativado && <span className="shrink-0 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-gray-100 text-gray-700">desativado</span>}
+                                </span>
                                 {o.sub && <span className="text-xs text-gray-500">{o.sub}</span>}
                             </button>
                             </React.Fragment>
                         ))}
                     </div>
-                    <div className="px-3 py-1.5 border-t border-gray-100 text-[11px] text-gray-400">
-                        {filtrados.length} {filtrados.length === 1 ? 'item' : 'itens'}
+                    <div className="px-3 py-1.5 border-t border-gray-100 text-[11px] text-gray-500 flex items-center justify-between gap-2">
+                        <span>{filtrados.length} {filtrados.length === 1 ? 'item' : 'itens'}</span>
+                        {carregando && <span className="animate-pulse">Atualizando lista…</span>}
                     </div>
                     {extraAction && (
                         <div className="p-2 border-t border-gray-100">
