@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 import FiltroPeriodo, { usePeriodoSalvo } from '../../components/FiltroPeriodo';
 import ConciliarVariosModal from './ConciliarVariosModal';
+import ComprovanteLink from './ComprovanteLink';
 
 const fmt = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 const fmtData = (ymd) => `${ymd.slice(8)}/${ymd.slice(5, 7)}/${ymd.slice(0, 4)}`;
@@ -397,10 +398,13 @@ const BuscarModal = ({ lancamento, pendentes, contaId, onClose, onSuccess, onCri
                             {fmtData(lancamento.data)} · <span className={`font-semibold ${ehSaida ? 'text-red-700' : 'text-green-700'}`}>{ehSaida ? '−' : '+'} R$ {fmt(lancamento.valor)}</span> · {lancamento.descricao || 'sem descrição'}
                         </p>
                         <h2 className="font-bold text-gray-900">O que é este lançamento no sistema?</h2>
+                        <div><ComprovanteLink url={lancamento.comprovanteUrl} /></div>
                         {onVarios && (
-                            <button type="button" onClick={onVarios} className="text-xs font-bold text-primary hover:text-primaryDark underline min-h-[44px] md:min-h-0">
-                                Conciliar vários títulos de uma vez
-                            </button>
+                            <div>
+                                <button type="button" onClick={onVarios} className="text-xs font-bold text-primary hover:text-primaryDark underline min-h-[44px] md:min-h-0">
+                                    Conciliar vários títulos de uma vez
+                                </button>
+                            </div>
                         )}
                     </div>
                     <button onClick={onClose} className="p-3 -m-2 md:p-1.5 md:m-0 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 shrink-0"><X className="w-5 h-5" /></button>
@@ -775,6 +779,7 @@ const DespesaModal = ({ lancamento, onClose, onSuccess }) => {
                         <div className="text-gray-800 break-words">{lancamento.descricao || '(sem descrição)'}</div>
                         {lancamento.detalhes?.nome && <div className="text-gray-600 text-xs">Beneficiário no banco: <strong>{lancamento.detalhes.nome}</strong></div>}
                         {lancamento.detalhes?.documento && <div className="text-gray-600 text-xs">Documento: {lancamento.detalhes.documento}</div>}
+                        <ComprovanteLink url={lancamento.comprovanteUrl} />
                     </div>
 
                     {opcoes === null ? (
@@ -1677,6 +1682,7 @@ const ConciliacaoBancariaPage = () => {
                         {l.detalhes.documento && <span>doc {l.detalhes.documento}</span>}
                     </div>
                 )}
+                <ComprovanteLink url={l.comprovanteUrl} />
                 {/* Quem é? CNPJ/CPF que o banco escondeu no texto do PIX */}
                 {p?.fornecedorDoDocumento && (
                     <div className="text-xs mt-0.5 truncate">

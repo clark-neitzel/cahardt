@@ -2663,6 +2663,104 @@ router.post('/asaas-sincronizar-vencimentos', async (req, res) => {
     }
 });
 
+// POST /api/admin-exec/asaas-comprovantes-backfill {limite=25 (máx 40 por chamada), dias=null}
+// Preenche o LINK do comprovante (PIX/pagamento) dos lançamentos do extrato Asaas que ainda
+// não têm. O worker de 30 min já faz 25 por rodada; aqui dá para acelerar os antigos em lotes.
+// Teto de 40 por chamada: com ~0,8 s por chamada ao Asaas, 40 chamadas ficam em ~30-40 s,
+// abaixo do prazo típico de proxy. Para muitos pendentes, REPITA a chamada até `pendentesAntes`
+// parar de cair. Atenção: linhas que sempre dão erro 5xx/rede não gastam tentativa, então
+// `pendentesAntes` pode NÃO chegar a zero — isso é esperado, não é falha. Não baixa PDF, só o link.
+router.post('/asaas-comprovantes-backfill', async (req, res) => {
+    try {
+        const asaasExtratoService = require('../services/asaasExtratoService');
+        const r = await asaasExtratoService.completarComprovantes({
+            limite: Math.max(1, Math.min(40, Number(req.body?.limite) || 25)),
+            dias: Number(req.body?.dias) || null
+        });
+        res.json(r);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// GET /api/admin-exec/diag-asaas-comprovante?data=YYYY-MM-DD&amostra=3 — SÓ LEITURA no Asaas.
+// PASSO ZERO do comprovante: mostra (a) o que o /financialTransactions de 1 dia traz de verdade
+// (tipos, quais têm paymentId/transferId, se algum item já traz campo de link) e (b) o que
+// GET /payments/{id} e GET /transfers/{id} devolvem em transactionReceiptUrl. O link é
+// devolvido só como prefixo (host + começo do caminho) — nunca inteiro; no `exemplo` do item
+// cru, qualquer valor string que comece com http também é cortado em ~45 caracteres.
+router.get('/diag-asaas-comprovante', async (req, res) => {
+    try {
+        const axios = require('axios');
+        let key = process.env.ASAAS_API_KEY || '';
+        if (!key) return res.status(503).json({ error: 'Sem ASAAS_API_KEY neste ambiente.' });
+        if (key.startsWith('aact_')) key = '$' + key;
+        const asaas = axios.create({
+            baseURL: key.includes('hmlg') ? 'https://api-sandbox.asaas.com/v3' : 'https://api.asaas.com/v3',
+            timeout: 20000,
+            headers: { access_token: key, 'User-Agent': 'CA-Hardt-App' }
+        });
+        const ontem = new Date(Date.now() - 24 * 3600 * 1000).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+        const data = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.data || '')) ? String(req.query.data) : ontem;
+        const amostra = Math.max(1, Math.min(6, Number(req.query.amostra) || 3));
+
+        // (a) itens crus do dia
+        const itens = [];
+        let offset = 0;
+        for (let pg = 0; pg < 10; pg++) {
+            const r = await asaas.get('/financialTransactions', { params: { startDate: data, finishDate: data, offset, limit: 100, order: 'asc' } });
+            const lote = r.data?.data || [];
+            itens.push(...lote);
+            if (!r.data?.hasMore || lote.length === 0) break;
+            offset += lote.length;
+        }
+        const porTipo = {};
+        const chaves = new Set();
+        const camposComUrl = new Set();
+        for (const t of itens) {
+            const p = (porTipo[t.type] ||= { qtd: 0, comPaymentId: 0, comTransferId: 0, sinal: new Set(), exemplo: null });
+            p.qtd++;
+            if (t.paymentId) p.comPaymentId++;
+            if (t.transferId) p.comTransferId++;
+            p.sinal.add(Number(t.value) < 0 ? 'DEBITO' : 'CREDITO');
+            if (!p.exemplo) p.exemplo = Object.fromEntries(Object.entries(t).map(([k, v]) => [k, (typeof v === 'string' && /^https?:\/\//i.test(v)) ? v.slice(0, 45) + '…' : v]));
+            for (const [k, v] of Object.entries(t)) {
+                chaves.add(k);
+                if (typeof v === 'string' && /^https?:\/\//i.test(v)) camposComUrl.add(k);
+            }
+        }
+        const resumoTipos = Object.fromEntries(Object.entries(porTipo).map(([k, v]) => [k, { ...v, sinal: [...v.sinal] }]));
+
+        // (b) comprovante de amostras reais
+        const mascara = (u) => (u ? String(u).slice(0, 45) + '…' : null);
+        const pays = itens.filter((t) => t.paymentId && Number(t.value) > 0).slice(0, amostra);
+        const trfs = itens.filter((t) => t.transferId).slice(0, amostra);
+        const lerPay = async (id) => {
+            try { const r = await asaas.get(`/payments/${id}`); return { id, status: r.data?.status, billingType: r.data?.billingType, temTransactionReceiptUrl: !!r.data?.transactionReceiptUrl, urlPrefixo: mascara(r.data?.transactionReceiptUrl), campoPresente: 'transactionReceiptUrl' in (r.data || {}) }; }
+            catch (e) { return { id, erroHttp: e.response?.status || e.message }; }
+        };
+        const lerTrf = async (id) => {
+            try { const r = await asaas.get(`/transfers/${id}`); return { id, type: r.data?.type, operationType: r.data?.operationType, status: r.data?.status, temTransactionReceiptUrl: !!r.data?.transactionReceiptUrl, urlPrefixo: mascara(r.data?.transactionReceiptUrl), campoPresente: 'transactionReceiptUrl' in (r.data || {}) }; }
+            catch (e) { return { id, erroHttp: e.response?.status || e.message }; }
+        };
+        const pagamentos = [];
+        for (const t of pays) { pagamentos.push({ trnType: t.type, ...(await lerPay(t.paymentId)) }); await new Promise((r) => setTimeout(r, 200)); }
+        const transferencias = [];
+        for (const t of trfs) { transferencias.push({ trnType: t.type, valor: t.value, ...(await lerTrf(t.transferId)) }); await new Promise((r) => setTimeout(r, 200)); }
+
+        res.json({
+            data, totalItens: itens.length,
+            chavesDosItens: [...chaves].sort(),
+            camposDoItemQueTrazemUrl: [...camposComUrl],
+            porTipo: resumoTipos,
+            comprovantesPagamentos: pagamentos,
+            comprovantesTransferencias: transferencias
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message, httpAsaas: e.response?.status || null });
+    }
+});
+
 // GET /api/admin-exec/diag-extrato-asaas-pendentes — SÓ LEITURA. Cruza os CRÉDITOS
 // pendentes do extrato Asaas (conciliação) com as cobranças/pedidos/parcelas do app
 // para achar descompasso: dinheiro que entrou no Asaas mas cuja parcela está aberta

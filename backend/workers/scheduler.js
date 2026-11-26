@@ -388,7 +388,7 @@ function startSchedulers() {
     console.log('⏰ Iniciando Worker do extrato Asaas (conciliação bancária)...');
     const asaasExtratoService = require('../services/asaasExtratoService');
     const _runExtratoAsaas = () => {
-        asaasExtratoService.sincronizar({ dias: 7 })
+        asaasExtratoService.sincronizar({ dias: 7, limiteComprovantes: asaasExtratoService.LIMITE_COMPROVANTES_WORKER })
             .then((r) => {
                 if (r.ok && (r.novos || r.conciliadosAuto)) {
                     console.log(`[AsaasExtrato] ${r.novos} lançamento(s) novo(s), ${r.conciliadosAuto} conciliado(s) automaticamente.`);

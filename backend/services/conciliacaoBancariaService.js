@@ -1198,6 +1198,8 @@ async function listar({ contaFinanceiraCaId, de, ate, status }) {
             status: l.status,
             obs: l.obs,
             conciliadoAuto: l.conciliadoAuto,
+            // Link do comprovante do Asaas (PIX/pagamento) — null quando ainda não buscado/indisponível
+            comprovanteUrl: l.comprovanteUrl || null,
             // Rodadas "vários títulos": quanto já foi conciliado e quanto falta (0 em PENDENTE/outros)
             valorConciliado: num(l.valorConciliado),
             falta: l.status === 'PARCIAL' ? Math.max(0, round2(num(l.valor) - num(l.valorConciliado))) : 0,

@@ -17,6 +17,7 @@ Para a conta do **Asaas** (onde caem os PIX da entrega e os boletos emitidos pel
 
 - Aparece o botão **"Buscar do Asaas"** no topo (contorno verde) — busca o extrato na hora, para quem não quer esperar os 30 minutos. O aviso abaixo dos filtros mostra a data/hora da última busca.
 - O restante do fluxo é idêntico ao de qualquer banco (conciliar, buscar, ignorar).
+- **Link "Comprovante" (desde 11/2026):** nos lançamentos do Asaas que têm recibo (PIX e pagamentos feitos, recebimentos), aparece um link **Comprovante** logo abaixo da descrição — na lista (celular e computador) e também nas janelas "O que é este lançamento no sistema?" (inclusive a padrão de conciliar um débito, onde aparece no cabeçalho) e "Cadastrar a despesa". Ao tocar, abre o comprovante do Asaas em outra aba. O link aparece logo depois que o lançamento entra (na mesma busca ou na próxima rodada automática); os lançamentos **antigos ganham o link aos poucos** (o sistema busca os comprovantes em segundo plano, sem precisar fazer nada). **Não aparece link** quando o Asaas não emite recibo daquele lançamento (ex.: tarifas) nem nos lançamentos de outro banco (OFX/PDF).
 - Se o botão não aparece, a integração Asaas não está configurada no servidor ou a conta financeira do Asaas não foi vinculada (falar com o administrador).
 
 ## Fluxo de uso (demais bancos — via arquivo OFX ou PDF)

@@ -12,6 +12,12 @@
     "data": "2026-11-26"
   },
   {
+    "slug": "comprovante-asaas",
+    "titulo": "Comprovante do Asaas na Conciliação",
+    "resumo": "Na Conciliação Bancária, os PIX e pagamentos do Asaas agora têm o link Comprovante: um toque e o recibo abre em outra aba. Os lançamentos antigos ganham o link aos poucos.",
+    "data": "2026-11-26"
+  },
+  {
     "slug": "delivery-endereco",
     "titulo": "Delivery mostra onde entregar",
     "resumo": "O Delivery agora mostra o endereço da entrega do pedido do Kit Festa com botão de mapa, tem 4 botões de etapa no topo, período para a frente e uma janela para mover o pedido escolhendo se avisa o cliente.",

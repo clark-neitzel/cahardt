@@ -29,6 +29,9 @@ const http = axios.create({
     }
 });
 
+// Timeout das buscas de comprovante (passo secundário — não pode segurar a tela).
+const TIMEOUT_COMPROVANTE_MS = 10000;
+
 function configurado() {
     return !!API_KEY;
 }
@@ -49,6 +52,16 @@ function erroAsaas(e, contexto) {
     const err = new Error(`Asaas (${contexto}): ${desc}`);
     err.statusCode = e.response?.status === 401 ? 503 : 502;
     console.error(`[Asaas] Erro em ${contexto}:`, e.response?.status, e.response?.data || e.message);
+    return err;
+}
+
+// Erro de busca de comprovante: guarda o status HTTP (o `http` daqui não trata 429 à parte)
+// e loga só o status — sem corpo de resposta, para o link nunca cair no log.
+function erroComprovante(e, contexto) {
+    const status = e.response?.status || null;
+    const err = new Error(`Asaas (${contexto}): ${status ? `HTTP ${status}` : e.message}`);
+    err.httpStatus = status;
+    err.statusCode = status === 401 ? 503 : 502;
     return err;
 }
 
@@ -1020,6 +1033,32 @@ const asaasService = {
             return { itens: r.data?.data || [], temMais: !!r.data?.hasMore };
         } catch (e) {
             throw erroAsaas(e, 'extrato financeiro');
+        }
+    },
+
+    // ── Comprovante (link) do extrato ──
+    // Só o LINK (transactionReceiptUrl) — o PDF fica no Asaas. Devolve string ou null
+    // (o campo vem null até o pagamento/transferência ser confirmado). Em erro, lança
+    // com `httpStatus` (404, 429, 5xx…) para o chamador decidir se desiste ou segue.
+    // O link NÃO vai para log. Timeout de 10 s por chamada (o padrão do `http` é 20 s) para um
+    // Asaas lento não segurar o botão "Buscar do Asaas" da tela.
+    comprovantePagamento: async (paymentId) => {
+        exigirConfig();
+        try {
+            const r = await http.get(`/payments/${encodeURIComponent(paymentId)}`, { timeout: TIMEOUT_COMPROVANTE_MS });
+            return r.data?.transactionReceiptUrl || null;
+        } catch (e) {
+            throw erroComprovante(e, 'comprovante da cobrança');
+        }
+    },
+
+    comprovanteTransferencia: async (transferId) => {
+        exigirConfig();
+        try {
+            const r = await http.get(`/transfers/${encodeURIComponent(transferId)}`, { timeout: TIMEOUT_COMPROVANTE_MS });
+            return r.data?.transactionReceiptUrl || null;
+        } catch (e) {
+            throw erroComprovante(e, 'comprovante da transferência');
         }
     },
 

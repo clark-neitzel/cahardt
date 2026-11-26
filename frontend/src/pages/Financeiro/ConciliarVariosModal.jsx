@@ -7,6 +7,7 @@ import MultiSelect from '../../components/MultiSelect';
 import CampoNumero from '../../components/CampoNumero';
 import FiltroPeriodo, { usePeriodoSalvo } from '../../components/FiltroPeriodo';
 import { useFiltrosSalvos } from '../../hooks/useFiltrosSalvos';
+import ComprovanteLink from './ComprovanteLink';
 
 const fmt = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtData = (ymd) => (ymd ? `${ymd.slice(8, 10)}/${ymd.slice(5, 7)}/${ymd.slice(0, 4)}` : '');
@@ -357,6 +358,7 @@ const ConciliarVariosModal = ({ lancamento, onClose, onSuccess, onAlterou, onAva
                             {fmtData(lancamento.data)} · <span className="font-semibold text-red-700">− R$ {fmt(valorLinha)}</span> · {lancamento.descricao || 'sem descrição'}
                         </p>
                         <h2 className="font-bold text-gray-900 text-sm md:text-lg">O que é este lançamento no sistema?</h2>
+                        <div><ComprovanteLink url={lancamento.comprovanteUrl} /></div>
                     </div>
                     <button onClick={fechar} className="w-11 h-11 -mr-1 inline-flex items-center justify-center text-gray-500 hover:text-gray-700 rounded-full hover:bg-gray-100 shrink-0" title="Fechar" aria-label="Fechar"><X className="w-5 h-5" /></button>
                 </div>

@@ -4533,6 +4533,12 @@ model ExtratoLancamento {
   conciliadoEm            DateTime? @map("conciliado_em")
   obs                     String? // motivo do "ignorar" (tarifa, transferência interna...)
 
+  // Link do comprovante (PIX/pagamento) do Asaas — só o LINK, o PDF fica lá. Preenchido em segundo plano
+  // por asaasExtratoService.completarComprovantes (GET /payments/{id} ou /transfers/{id} → transactionReceiptUrl).
+  comprovanteUrl        String?   @map("comprovante_url") @db.Text
+  comprovanteTentativas Int       @default(0) @map("comprovante_tentativas") // buscas que voltaram sem link (teto 5)
+  comprovanteBuscadoEm  DateTime? @map("comprovante_buscado_em")
+
   @@unique([contaFinanceiraCaId, fitId])
   @@index([status])
   @@index([contaFinanceiraCaId, data])
