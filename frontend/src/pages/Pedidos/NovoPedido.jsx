@@ -22,6 +22,8 @@ import ModalErroEstoque from '../../components/ModalErroEstoque';
 import ModalPontoGps from '../../components/ModalPontoGps';
 import ModalWhatsappCliente from '../../components/ModalWhatsappCliente';
 import AvisoWhatsappFaltante from '../../components/AvisoWhatsappFaltante';
+import ModalCadastroACorrigir from '../../components/ModalCadastroACorrigir';
+import { erroCadastroACorrigir } from '../../utils/cadastroACorrigir';
 import whatsappClientesService, { numeroWhatsappValido } from '../../services/whatsappClientesService';
 import { somAviso } from '../../utils/sons';
 import { rotuloFormaAConfirmar } from '../../components/SeloInadimplencia';
@@ -257,6 +259,7 @@ const NovoPedido = () => {
     const [whatsappBloqueio, setWhatsappBloqueio] = useState(null);   // { clienteUuid, clienteNome, mensagem, statusEnvio }
     const [whatsappModalAberto, setWhatsappModalAberto] = useState(false);
     const [avisoWhatsappDismissed, setAvisoWhatsappDismissed] = useState(false);
+    const [cadastroBloqueio, setCadastroBloqueio] = useState(null);   // corpo do 403 CADASTRO_A_CORRIGIR (popup)
     // Interruptor do módulo (GET /whatsapp-clientes/config), lido UMA vez ao abrir a
     // tela. Enquanto estiver desligado, a tarja âmbar não aparece para ninguém.
     const [exigeWhatsapp, setExigeWhatsapp] = useState(false);
@@ -1060,6 +1063,7 @@ const NovoPedido = () => {
         // Guarda contra a condição de corrida: catálogo ainda carregando/vazio marcaria tudo como
         // "fora do catálogo" por engano — o botão já fica desabilitado nessa janela, isto é reforço.
         if (carregandoProdutos || produtos.length === 0) return;
+        if (clienteSelecionado?.cadastroACorrigir?.bloqueia) return;
 
         const resultado = calcularDivergenciasRepetirPedido();
         if (!resultado) return;
@@ -1083,7 +1087,7 @@ const NovoPedido = () => {
         });
         const total = itens.reduce((s, l) => s + l.valorUnitario * l.quantidade, 0);
         setModalRepetir({ divergencias: [], itens, candidato, condicaoUltimo, substituir: itensMap.size > 0, total });
-    }, [ultimoPedido, carregandoProdutos, produtos, calcularDivergenciasRepetirPedido, itensMap]);
+    }, [ultimoPedido, carregandoProdutos, produtos, calcularDivergenciasRepetirPedido, itensMap, clienteSelecionado]);
 
     const fecharModalRepetir = useCallback(() => {
         if (aplicandoRepetir) return;
@@ -1293,6 +1297,17 @@ const NovoPedido = () => {
         // Guarda contra clique duplo/duplo toque: se já tem um salvamento em andamento, ignora
         // silenciosamente a chamada extra (ref é síncrono, não espera o re-render do `saving`).
         if (savingRef.current) return;
+        // Cadastro a corrigir (CPF sem sobrenome com a chave ligada): o servidor recusa — avisa já, sem ir ao servidor
+        // Só pedido NOVO ou ENVIAR: o servidor deixa salvar rascunho ABERTO de cliente bloqueado
+        if (clienteSelecionado?.cadastroACorrigir?.bloqueia && (!editId || statusEnvio === 'ENVIAR')) {
+            setCadastroBloqueio({
+                clienteId: clienteSelecionado.UUID,
+                clienteNome: clienteSelecionado.NomeFantasia || clienteSelecionado.Nome,
+                error: clienteSelecionado.cadastroACorrigir.mensagem,
+                motivos: [clienteSelecionado.cadastroACorrigir],
+            });
+            return;
+        }
         // Bloqueio de estoque: ENVIAR não pode com item acima do disponível (salvar pode)
         if (statusEnvio === 'ENVIAR' && estourosEstoque.length > 0) {
             setErroEstoqueMsg(mensagemErroEstoque());
@@ -1404,8 +1419,11 @@ const NovoPedido = () => {
             });
         } catch (error) {
             const msg = error.response?.data?.error || "Erro ao salvar pedido.";
+            const bloqueioCadastro = erroCadastroACorrigir(error);
             // Bloqueio de estoque vindo do servidor: popup do sistema com som de erro
-            if (error.response?.status === 403 && msg.startsWith('Estoque insuficiente')) {
+            if (bloqueioCadastro) {
+                setCadastroBloqueio({ clienteNome: clienteSelecionado?.NomeFantasia || clienteSelecionado?.Nome || '', clienteId: clienteId, ...bloqueioCadastro });
+            } else if (error.response?.status === 403 && msg.startsWith('Estoque insuficiente')) {
                 setErroEstoqueMsg(msg);
             } else if (error.response?.status === 403 && error.response?.data?.codigo === 'SEM_GPS') {
                 // Cliente sem ponto GPS: popup com atalho "Definir ponto agora"
@@ -2038,6 +2056,30 @@ const NovoPedido = () => {
                     );
                 })()}
 
+                {/* Cadastro a corrigir: vermelho = bloqueia pedido; âmbar = só aviso discreto */}
+                {clienteId && clienteSelecionado?.cadastroACorrigir && (
+                    clienteSelecionado.cadastroACorrigir.bloqueia ? (
+                        <div data-aviso-cadastro="vermelho" className="mx-3 mt-1 mb-1 px-3 py-2.5 rounded-lg border bg-red-50 border-red-300 text-red-800 flex flex-col sm:flex-row sm:items-center gap-2 text-sm">
+                            <div className="flex items-start gap-2.5 flex-1 min-w-0">
+                                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                                <div>
+                                    <p className="font-semibold leading-tight">Corrigir cadastro: este cliente está bloqueado para novos pedidos</p>
+                                    <p className="text-xs mt-0.5 opacity-90">{clienteSelecionado.cadastroACorrigir.mensagem || 'O nome precisa ter nome e sobrenome.'}</p>
+                                </div>
+                            </div>
+                            <button type="button" onClick={() => navigate(`/clientes/${clienteSelecionado.UUID}`)}
+                                className="min-h-[44px] sm:min-h-0 px-4 py-2 rounded-full bg-white border border-current text-sm font-semibold shrink-0">
+                                Corrigir cadastro
+                            </button>
+                        </div>
+                    ) : (
+                        <div data-aviso-cadastro="ambar" className="mx-3 mt-1 mb-1 px-3 py-1.5 rounded-lg border bg-amber-50 border-amber-200 text-amber-800 flex items-start gap-2 text-xs">
+                            <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                            <span>{clienteSelecionado.cadastroACorrigir.mensagem || 'Cadastro com nome a corrigir.'} <button type="button" onClick={() => navigate(`/clientes/${clienteSelecionado.UUID}`)} className="underline font-semibold">Abrir ficha</button></span>
+                        </div>
+                    )
+                )}
+
                 {/* Aviso amigável: cliente sem WhatsApp. NÃO bloqueia — quem bloqueia é o
                     servidor no ENVIAR. Só aparece com a exigência LIGADA (o módulo nasce
                     desligado; o dono liga quando quiser, sem deploy). O número já vem na
@@ -2444,7 +2486,8 @@ const NovoPedido = () => {
                         último pedido de verdade do cliente e o catálogo já carregou (evita marcar
                         tudo como "fora do catálogo" durante a troca de tipo de pedido, ex. Especial). */}
                     {ultimoPedido && (() => {
-                        const catalogoIndisponivel = carregandoProdutos || produtos.length === 0;
+                        const cadastroBloqueado = !!clienteSelecionado?.cadastroACorrigir?.bloqueia;
+                        const catalogoIndisponivel = carregandoProdutos || produtos.length === 0 || cadastroBloqueado;
                         const nItens = (ultimoPedido.itens || []).length;
                         return (
                             <button
@@ -2455,7 +2498,9 @@ const NovoPedido = () => {
                             >
                                 <Clock className="h-3.5 w-3.5 shrink-0" />
                                 <span className="text-xs font-bold">
-                                    {catalogoIndisponivel
+                                    {cadastroBloqueado
+                                        ? 'Repetir último pedido indisponível: corrija o cadastro do cliente'
+                                        : catalogoIndisponivel
                                         ? 'Carregando catálogo…'
                                         : <>Repetir último pedido <span className="font-medium text-primaryDark/70">(#{ultimoPedido.numero} · {fmtData(ultimoPedido.dataVenda || ultimoPedido.createdAt)} · {nItens} {nItens === 1 ? 'item' : 'itens'})</span></>
                                     }
@@ -2989,6 +3034,8 @@ const NovoPedido = () => {
                     }
                 }}
             />
+
+            <ModalCadastroACorrigir dados={cadastroBloqueio} onFechar={() => setCadastroBloqueio(null)} />
 
             {/* Bloqueio do servidor: cliente sem WhatsApp não envia (resolve na hora, com o cliente na frente) */}
             {whatsappBloqueio && !whatsappModalAberto && (

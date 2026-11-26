@@ -32,6 +32,9 @@ const aberta = (a) => STATUS_ABERTOS.includes(a.status) && !a.embarqueId;
 const amostraService = {
 
     criar: async ({ leadId, clienteId, dataEntrega, observacao, solicitadoPorId, itens }) => {
+        // Cadastro a corrigir (11/2026): amostra para CLIENTE com CPF de nome único não sai (chave ligada;
+        // fail-open). Amostra de LEAD (sem clienteId) não é afetada.
+        if (clienteId) await require('./clienteNomeCadastroService').exigirCadastroOk(clienteId, { acao: 'criar amostra' });
         const criada = await prisma.amostra.create({
             data: {
                 leadId: leadId || null,

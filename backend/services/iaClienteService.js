@@ -3,6 +3,7 @@
 // conversa, não só pedido de congelados — e por não existir endpoint pra isso, o bot anterior
 // rodava SQL direto no banco de produção (ver backend/docs/ia-consulta-api.md, seção de segurança).
 const prisma = require('../config/database');
+const nomeCadastroSvc = require('./clienteNomeCadastroService'); // v1.8.0: aviso `cadastroACorrigir`
 const leadService = require('./leadService');
 const { normalizarDoc } = require('../utils/documento');
 const { normalizarCidade } = require('../utils/cidade'); // grafia oficial da cidade (Fase 1)
@@ -74,6 +75,12 @@ function enderecoParaIA(c) {
         uf: c.End_Estado || null,
         cep: c.End_CEP || null,
     };
+}
+
+// v1.8.0 (aditivo): `cadastroACorrigir` = null | { bloqueado, tipo, mensagem }. Nunca derruba a resposta.
+async function cadastroACorrigirParaIA(c) {
+    try { return nomeCadastroSvc.paraIA(c, await nomeCadastroSvc.getConfig()); }
+    catch (e) { console.error('[IA] cadastroACorrigir falhou (segue null):', e.message); return null; }
 }
 
 // Acha o Cliente cadastrado cujo telefone bate com o informado — base de todo reconhecimento
@@ -182,6 +189,7 @@ const iaClienteService = {
                 ? { nome: cliente.vendedor.nome, nomeBot: cliente.vendedor.nomeVendedorBotHardt || null, ativo: true }
                 : null,
             endereco: enderecoParaIA(cliente),
+            cadastroACorrigir: await cadastroACorrigirParaIA(cliente), // v1.8.0
         };
     },
 
@@ -433,6 +441,8 @@ const iaClienteService = {
 
         // Ordem: clientes primeiro, fornecedores depois; `limite` vale para o total combinado.
         // Documento existindo nos dois cadastros: aparecem os dois itens (tipos diferentes).
+        let cfgNome = null;
+        try { cfgNome = await nomeCadastroSvc.getConfig(); } catch (_) { /* fail-open */ }
         const listaClientes = achadosClientes.map(c => ({
             tipo: 'CLIENTE',
             documento: c.Documento,
@@ -443,6 +453,7 @@ const iaClienteService = {
             ativo: c.Ativo,
             telefones: listaTelefones(c),
             whatsapps: listaWhatsapps(c),
+            cadastroACorrigir: nomeCadastroSvc.paraIA(c, cfgNome), // v1.8.0
         }));
         const listaFornecedores = achadosFornecedores.map(f => ({
             tipo: 'FORNECEDOR',
@@ -454,6 +465,7 @@ const iaClienteService = {
             ativo: f.ativo,
             telefones: [f.telefone].map(soDigitos).filter(Boolean),
             whatsapps: [],
+            cadastroACorrigir: null, // v1.8.0 — fornecedor não tem a regra
         }));
 
         return { clientes: [...listaClientes, ...listaFornecedores].slice(0, limite) };
@@ -507,6 +519,7 @@ const iaClienteService = {
                 whatsapps: listaWhatsapps(cliente),
                 telefones: listaTelefones(cliente),
                 horaCorte: await iaConsultaConfig.horaCorte(), // v1.6.0 — mesma informação do reconhecimento
+                cadastroACorrigir: await cadastroACorrigirParaIA(cliente), // v1.8.0
             };
         }
 
@@ -532,6 +545,7 @@ const iaClienteService = {
             whatsapps: [],
             telefones: [fornecedor.telefone].map(soDigitos).filter(Boolean),
             horaCorte: null, // fornecedor não tem hora de corte — campo mantido p/ o shape ficar igual ao do cliente
+            cadastroACorrigir: null, // v1.8.0 — fornecedor não tem a regra
             fornecedor: {
                 ...(fornecedor.email ? { email: fornecedor.email } : {}),
                 ...(fornecedor.telefone ? { telefone: fornecedor.telefone } : {}),

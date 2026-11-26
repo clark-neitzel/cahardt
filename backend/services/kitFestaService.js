@@ -1168,6 +1168,10 @@ const kitFestaService = {
             throw new Error('Cliente sem cadastro no app. Cadastre o cliente em Clientes → Novo e vincule antes de aprovar.');
         }
 
+        // Cadastro a corrigir (11/2026): CPF de nome único não converte (chave ligada; fail-open). O pedido
+        // da fila continua AGUARDANDO; a entrada na fila (criarPedidoSite) NUNCA passa por aqui.
+        await require('./clienteNomeCadastroService').exigirCadastroOk(clienteId, { acao: 'aprovar pedido do Kit Festa' });
+
         // Monta itens do Pedido (precisa do produtoId do app)
         const itensData = [];
         for (const it of kp.itens) {
@@ -1324,10 +1328,11 @@ const kitFestaService = {
                 Perfis: JSON.stringify([{ perfil: 'CLIENTE' }]),
                 Perfil_Filtro: 'PADRAO',
                 Data_Criacao: new Date(),
-                Observacoes_Gerais: `Pré-cadastro a partir do Kit Festa #${kp.numero}. A equipe deve completar os 4 campos (dia de venda, dia de entrega, tabela de preço e vendedor).`,
+                Observacoes_Gerais: `Pré-cadastro a partir do Kit Festa #${kp.numero}. A equipe deve completar os 4 campos (dia de venda, dia de entrega, tabela de preço e vendedor) e conferir o nome (CPF exige nome e sobrenome; CNPJ exige razão social e nome fantasia).`,
             },
         });
 
+        try { require('./clienteNomeCadastroService').limparCache(); } catch (_) { /* cache de 60s se recupera sozinho */ }
         await this.adminVincularCliente(id, cliente.UUID);
         return {
             ok: true,

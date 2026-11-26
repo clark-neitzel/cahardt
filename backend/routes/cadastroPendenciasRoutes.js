@@ -4,6 +4,8 @@ const express = require('express');
 const fichaSvc = require('../services/analyticsClienteFichaService');
 const inativacao = require('../services/clienteInativacaoService');
 const classif = require('../services/clienteClassificacaoService');
+const nomeSvc = require('../services/clienteNomeCadastroService');
+const prisma = require('../config/database');
 
 const router = express.Router();
 
@@ -42,6 +44,48 @@ router.use(exigirPermissao);
 
 router.get('/pendentes', asyncRoute(async (req, res) => {
     res.json(await fichaSvc.cadastrosPendentes(req.query));
+}));
+
+// "Cadastros a corrigir (nome)" — CPF com nome de 1 palavra (BLOQUEIA a venda quando a chave está ligada)
+// e CNPJ sem fantasia (só aviso). Estado derivado, sem coluna. Mesma permissão do router (edita clientes).
+// ?vendedor=<id>&tipo=CPF_NOME_UNICO|CNPJ_SEM_FANTASIA&ativo=todos|false&limite=<=500&pagina=1
+router.get('/nome', asyncRoute(async (req, res) => {
+    const tipo = nomeSvc.TIPOS.includes(String(req.query.tipo || '')) ? String(req.query.tipo) : undefined;
+    res.json(await nomeSvc.painel({
+        vendedor: req.query.vendedor ? String(req.query.vendedor) : undefined,
+        tipo,
+        ativo: req.query.ativo ? String(req.query.ativo) : undefined,
+        limite: req.query.limite,
+        pagina: req.query.pagina,
+    }));
+}));
+
+// Liga/desliga o bloqueio (SÓ ADMIN — o dono liga quando os cadastros estiverem acertados). Vale NA HORA.
+router.post('/nome/config', asyncRoute(async (req, res) => {
+    if (!permissoes(req).admin) {
+        return res.status(403).json({ error: 'Só o administrador liga ou desliga este bloqueio.', codigo: 'SO_ADMIN' });
+    }
+    const valor = (req.body || {}).bloquearCpfNomeUnico;
+    if (typeof valor !== 'boolean') {
+        return res.status(400).json({ error: 'Informe { bloquearCpfNomeUnico: true|false }.' });
+    }
+    const { anterior, atual } = await nomeSvc.salvarConfig({ bloquearCpfNomeUnico: valor });
+    // Auditoria FORA do caminho crítico: a chave JÁ está gravada; log com defeito não desfaz.
+    try {
+        await prisma.auditLog.create({
+            data: {
+                acao: 'ALTERAR_CADASTRO_NOME_BLOQUEIO',
+                entidade: 'AppConfig',
+                entidadeId: nomeSvc.CHAVE,
+                detalhes: `Bloqueio de venda para CPF com nome incompleto: ${anterior.bloquearCpfNomeUnico ? 'LIGADO' : 'desligado'} → ${atual.bloquearCpfNomeUnico ? 'LIGADO' : 'desligado'}`,
+                usuarioId: req.user.id,
+                usuarioNome: req.user.nome || '(sem nome)',
+            },
+        });
+    } catch (logErr) {
+        console.error('[CadastroPendencias] audit do bloqueio de nome falhou (a chave JÁ foi gravada):', logErr.message);
+    }
+    res.json({ config: { bloquearCpfNomeUnico: atual.bloquearCpfNomeUnico } });
 }));
 
 // A equipe classifica (CLIENTE | FORNECEDOR | CLIENTE_FORNECEDOR | automatica). Ator = usuário logado.

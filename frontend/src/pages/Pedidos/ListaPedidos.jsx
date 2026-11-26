@@ -28,6 +28,8 @@ import EstadoVazio from '../../components/EstadoVazio';
 import SeloInadimplencia from '../../components/SeloInadimplencia';
 import PopupContasEmAberto from '../../components/PopupContasEmAberto';
 import CampoNumero from '../../components/CampoNumero';
+import ModalCadastroACorrigir from '../../components/ModalCadastroACorrigir';
+import { erroCadastroACorrigir, mensagemCadastroACorrigir } from '../../utils/cadastroACorrigir';
 
 // Encaixe de entrega: NÃO é campo do Pedido — o NovoPedido.jsx grava o prefixo "ENCAIXE DE
 // ENTREGA" na 1ª linha de `observacoes` (com ou sem o resto do texto do vendedor embaixo).
@@ -221,6 +223,7 @@ const ListaPedidos = () => {
     const [contagensNota, setContagensNota] = useState(null); // { com, sem, pendente } do backend
     const [menuAcoes, setMenuAcoes] = useState(null);         // pedidoId com o menu Ações aberto
     const [mudandoNota, setMudandoNota] = useState(null);     // pedidoId trocando com/sem nota
+    const [cadastroBloqueio, setCadastroBloqueio] = useState(null); // 403 CADASTRO_A_CORRIGIR ao emitir NF
     const [emitindoNota, setEmitindoNota] = useState(null);   // pedidoId em emissão de NF-e
     const emitindoNotaRef = useRef(null);                     // guarda síncrona: o state só trava após o render
     // Aviso de reversão de bonificação com NF-e autorizada. É MODAL DO APP, não
@@ -648,7 +651,9 @@ const ListaPedidos = () => {
             toast.success(`NF-e da bonificação BN#${pedido.numero} enviada para emissão.`);
             recarregarLista();
         } catch (error) {
-            toast.error(error.response?.data?.error || 'Erro ao emitir a NF-e da bonificação.', { duration: 7000 });
+            const b = erroCadastroACorrigir(error);
+            if (b) setCadastroBloqueio({ clienteNome: pedido.cliente?.Nome || pedido.cliente?.nome || '', ...b });
+            else toast.error(error.response?.data?.error || 'Erro ao emitir a NF-e da bonificação.', { duration: 7000 });
             recarregarLista();
         } finally {
             emitindoNotaRef.current = null;
@@ -2463,6 +2468,7 @@ const ListaPedidos = () => {
                     }}
                 />
             )}
+            <ModalCadastroACorrigir dados={cadastroBloqueio} onFechar={() => setCadastroBloqueio(null)} textoExtra="A nota só pode ser emitida depois que o nome do cliente for corrigido." />
             {cancelandoAmostra && (
                 <ModalCancelarAmostra
                     amostra={cancelandoAmostra}

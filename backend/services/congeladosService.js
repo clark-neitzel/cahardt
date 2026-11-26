@@ -785,6 +785,13 @@ const congeladosService = {
             vendedorInfo: vendedor && vendedor.ativo !== false
                 ? { nome: vendedor.nome, nomeBot: vendedor.nomeVendedorBotHardt || null, ativo: true }
                 : null,
+            // v1.8.0 (aditivo): null | { bloqueado, tipo, mensagem } — cadastro a corrigir (CPF sem sobrenome...)
+            cadastroACorrigir: await (async () => {
+                try {
+                    const n = require('./clienteNomeCadastroService');
+                    return n.paraIA(cliente, await n.getConfig());
+                } catch (e) { console.error('[Congelados] cadastroACorrigir falhou (segue null):', e.message); return null; }
+            })(),
         };
     },
 
@@ -1471,6 +1478,10 @@ const congeladosService = {
             cId = c?.UUID;
         }
         if (!cId) throw new Error('Cliente sem cadastro no app. Cadastre o cliente em Clientes → Novo e vincule antes de aprovar.');
+
+        // Cadastro a corrigir (11/2026): CPF de nome único não converte (chave ligada; fail-open). O pedido
+        // da fila continua AGUARDANDO; a entrada na fila (criarPedidoSite) NUNCA passa por aqui.
+        await require('./clienteNomeCadastroService').exigirCadastroOk(cId, { acao: 'aprovar pedido dos Congelados' });
 
         const cliente = await prisma.cliente.findUnique({ where: { UUID: cId }, select: { idVendedor: true, Dia_de_entrega: true } });
 

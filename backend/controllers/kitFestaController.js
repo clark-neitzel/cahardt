@@ -1,6 +1,9 @@
 const svc = require('../services/kitFestaService');
 
 const erro = (res, e, ctx) => {
+    // "Cadastro a corrigir" (11/2026): 403 no formato do contrato (codigo/clienteId/clienteNome/motivos).
+    // O pedido da fila continua AGUARDANDO — a trava roda antes de qualquer escrita.
+    if (e.codigo === 'CADASTRO_A_CORRIGIR' && e.payload) return res.status(403).json(e.payload);
     console.error(`[KitFesta] ${ctx}:`, e.message);
     // Campos extras do cadastro de cidades (codigo/cidade/sugestoes) seguem para a tela, quando existem.
     res.status(e.status && e.status < 500 ? e.status : 400).json({

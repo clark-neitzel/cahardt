@@ -10,6 +10,8 @@ import SelectBusca from '../../components/SelectBusca';
 import { normalizarDoc } from '../../utils/documento'; // inclui CNPJ ALFANUMÉRICO
 import { LINK_KIT_FESTA, precarregarFontesEtiqueta } from './etiquetasCaixas';
 import PainelEtiquetas from './PainelEtiquetas';
+import ModalCadastroACorrigir from '../../components/ModalCadastroACorrigir';
+import { erroCadastroACorrigir } from '../../utils/cadastroACorrigir';
 import { BarraBuscaPedidos, ChipsStatusPedidos, PendentesPedidos, ListaLinhasPedidos, LinhaPedidoOnline } from '../PedidosOnline/listaEstiloPedidos';
 import { List, Hourglass, UserX, CheckCircle, XCircle, Ban, MessageCircle } from 'lucide-react';
 
@@ -144,6 +146,7 @@ function ModalPedido({ pedido, isAdmin, onClose, onChanged }) {
   const [tipo, setTipo] = useState(tipoSugerido(pedido));
   const [vendedorId, setVendedorId] = useState('');
   const [processando, setProcessando] = useState(false);
+  const [cadastroBloqueio, setCadastroBloqueio] = useState(null); // 403 CADASTRO_A_CORRIGIR: o pedido continua aguardando
 
   // Vínculo de cliente (para pedidos sem cadastro)
   const [buscaCli, setBuscaCli] = useState('');
@@ -202,7 +205,10 @@ function ModalPedido({ pedido, isAdmin, onClose, onChanged }) {
       await kitFestaService.aprovarPedido(pedido.id, { tipoConversao: tipo, vendedorId: vendedorId || null, clienteUuid: clienteVinc?.UUID });
       toast.success('Pedido aprovado e convertido!');
       onChanged();
-    } catch (e) { toast.error(e.response?.data?.error || 'Erro ao aprovar'); }
+    } catch (e) {
+      if (erroCadastroACorrigir(e)) setCadastroBloqueio({ clienteNome: clienteVinc?.NomeFantasia || clienteVinc?.Nome || pedido.nome || '', ...e.response.data });
+      else toast.error(e.response?.data?.error || 'Erro ao aprovar');
+    }
     finally { setProcessando(false); }
   };
 
@@ -227,6 +233,7 @@ function ModalPedido({ pedido, isAdmin, onClose, onChanged }) {
 
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <ModalCadastroACorrigir dados={cadastroBloqueio} onFechar={() => setCadastroBloqueio(null)} textoExtra="O pedido continua aguardando na fila. Depois de corrigir o nome, aprove de novo." />
       <div className="bg-white rounded-2xl w-full max-w-lg max-h-[92vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between p-4 border-b border-gray-100 sticky top-0 bg-white">
           <div>

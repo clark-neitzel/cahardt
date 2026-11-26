@@ -21,6 +21,7 @@ import { resolverCidadeDaReceita, erroCidadeNaoCadastrada } from '../../services
 import CampoWhatsapps from '../../components/CampoWhatsapps';
 import SeloMatrizFilial from '../../components/SeloMatrizFilial';
 import { normalizarDoc, formatarDoc, mascaraDoc, validarDoc } from '../../utils/documento'; // inclui CNPJ ALFANUMÉRICO
+import { validarNomeCadastro, rotulosNome, tipoDoc } from '../../utils/validarNomeCadastro';
 import toast from 'react-hot-toast';
 import gpsClientesService from '../../services/gpsClientesService';
 import ModalPontoGps from '../../components/ModalPontoGps';
@@ -446,10 +447,25 @@ const DetalheCliente = () => {
         const doc = normalizarDoc(formData.Documento);
         const uf = (formData.End_Estado || '').trim().toUpperCase();
         const erros = [];
+        // Mesmo critério do servidor: compara com o que está salvo (a ficha manda o formulário
+        // inteiro a cada Salvar — cadastro antigo "ruim" segue salvando outros campos).
+        const mudouNome = (formData.Nome || '').trim() !== (cliente.Nome || '').trim();
+        const mudouFantasia = (formData.NomeFantasia || '').trim() !== (cliente.NomeFantasia || '').trim();
+        const mudouDoc = doc !== normalizarDoc(cliente.Documento);
+        const reativando = !cliente.Ativo && !!formData.ehCliente;
+        const nomeDocMudou = podeEditarCadastroCA && (mudouNome || mudouFantasia || mudouDoc);
         if (podeEditarCadastroCA) {
             if (!formData.Nome.trim()) erros.push('Razão social / nome não pode ficar vazio');
             if (!doc) erros.push('CNPJ/CPF não pode ficar vazio');
             else if (!validarDoc(doc)) erros.push('CNPJ/CPF inválido (confira os dígitos)');
+            // CPF: nome mudou / documento mudou / reativação. CNPJ: nome, fantasia ou documento mudou.
+            if (doc && validarDoc(doc) && formData.Nome.trim()) {
+                const gatilho = tipoDoc(doc) === 'CPF' ? (mudouNome || mudouDoc || reativando) : nomeDocMudou;
+                if (gatilho) {
+                    const m = validarNomeCadastro({ documento: doc, nome: formData.Nome, nomeFantasia: formData.NomeFantasia });
+                    if (m) erros.push(m);
+                }
+            }
         }
         if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) erros.push('E-mail inválido');
         if (celular && (celular.length < 10 || celular.length > 11)) erros.push('Celular deve ter 10 ou 11 dígitos (com DDD)');
@@ -472,7 +488,11 @@ const DetalheCliente = () => {
                 Telefone_Celular: celular,
                 Telefone: telefone,
                 Inscricao_Estadual: ie,
-                Documento: doc,
+                // Nome/Fantasia/Documento só vão quando mudaram (os 3 juntos): o servidor só valida
+                // a regra CPF/CNPJ quando eles chegam — cadastro antigo salva outros campos normalmente.
+                ...(nomeDocMudou
+                    ? { Documento: doc }
+                    : { Nome: undefined, NomeFantasia: undefined, Documento: undefined }),
                 End_Estado: uf,
                 origem: 'CADASTRO'
             });
@@ -506,6 +526,20 @@ const DetalheCliente = () => {
 
     const handleCancel = () => {
         navigate('/clientes');
+    };
+
+    // "Corrigir agora" da faixa de cadastro a corrigir: abre a aba Cadastro e põe o cursor no
+    // campo certo (Nome no CPF; Fantasia no CNPJ).
+    const irParaCampoCorrigir = () => {
+        const campo = cliente?.cadastroACorrigir?.campo === 'NomeFantasia' ? 'campo-fantasia-cliente' : 'campo-nome-cliente';
+        setAbaAtiva('operacional');
+        setTimeout(() => {
+            const el = document.getElementById(campo);
+            if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                el.focus();
+            }
+        }, 80);
     };
 
     // Recarrega só o pedacinho necessário depois de ajustar o ponto/WhatsApp
@@ -618,6 +652,35 @@ const DetalheCliente = () => {
                         className="min-h-[44px] sm:min-h-0 px-4 py-2 rounded-full bg-white border border-current text-sm font-semibold shrink-0">
                         Ver contas
                     </button>
+                </div>
+            )}
+
+            {/* Faixa fixa de "Corrigir cadastro" — nome de CPF sem sobrenome / CNPJ sem fantasia */}
+            {cliente.cadastroACorrigir && (
+                <div data-faixa-corrigir-cadastro={cliente.cadastroACorrigir.bloqueia ? 'vermelha' : 'ambar'}
+                    className={`mb-4 rounded-xl border px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 ${cliente.cadastroACorrigir.bloqueia ? 'bg-red-50 border-red-300 text-red-800' : 'bg-amber-50 border-amber-300 text-amber-900'}`}>
+                    <div className="flex items-start gap-2 flex-1 min-w-0">
+                        <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                        <div className="text-sm min-w-0">
+                            {cliente.cadastroACorrigir.bloqueia ? (
+                                <>
+                                    <p className="font-bold">Corrigir cadastro: este cliente está bloqueado para novos pedidos, amostras e notas até o nome ficar com nome e sobrenome</p>
+                                    {cliente.cadastroACorrigir.mensagem && <p className="text-xs opacity-90 mt-0.5">{cliente.cadastroACorrigir.mensagem}</p>}
+                                </>
+                            ) : (
+                                <>
+                                    <p className="font-bold">Corrigir cadastro</p>
+                                    {cliente.cadastroACorrigir.mensagem && <p className="text-xs opacity-90 mt-0.5">{cliente.cadastroACorrigir.mensagem}</p>}
+                                </>
+                            )}
+                        </div>
+                    </div>
+                    {podeEditarCadastroCA && (
+                        <button type="button" onClick={irParaCampoCorrigir}
+                            className="min-h-[44px] sm:min-h-0 px-4 py-2 rounded-full bg-white border border-current text-sm font-semibold shrink-0">
+                            Corrigir agora
+                        </button>
+                    )}
                 </div>
             )}
 
@@ -1673,16 +1736,16 @@ const DetalheCliente = () => {
                         {podeEditarCadastroCA ? (
                             <>
                                 <div className="col-span-2">
-                                    <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Razão Social / Nome</label>
-                                    <input type="text"
+                                    <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">{rotulosNome(formData.Documento).nome}</label>
+                                    <input type="text" id="campo-nome-cliente"
                                         className="block w-full border border-gray-200 rounded-lg p-2.5 text-sm bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                         value={formData.Nome}
                                         onChange={(e) => setFormData({ ...formData, Nome: e.target.value })}
                                     />
                                 </div>
                                 <div className="col-span-2">
-                                    <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Nome Fantasia</label>
-                                    <input type="text"
+                                    <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">{rotulosNome(formData.Documento).fantasia}</label>
+                                    <input type="text" id="campo-fantasia-cliente"
                                         className="block w-full border border-gray-200 rounded-lg p-2.5 text-sm bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                         value={formData.NomeFantasia}
                                         onChange={(e) => setFormData({ ...formData, NomeFantasia: e.target.value })}

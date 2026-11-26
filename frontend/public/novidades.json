@@ -1,5 +1,11 @@
 [
   {
+    "slug": "cadastro-nome",
+    "titulo": "Corrigir cadastro de cliente",
+    "resumo": "CPF agora pede nome e sobrenome; CNPJ pede razão social e nome fantasia. Cadastro antigo fora da regra ganha o aviso \"Corrigir cadastro\" (selo na lista, faixa na ficha e aba Corrigir nome em Cadastros a acertar). CNPJ sem fantasia só avisa; CPF sem sobrenome, quando o dono ligar o bloqueio, fica parado até corrigir: sem pedido novo, amostra, aprovações (especial, bonificação e fila do site) e nota de venda. Devolução, baixa e visita seguem livres.",
+    "data": "2026-11-26"
+  },
+  {
     "slug": "delivery-endereco",
     "titulo": "Delivery mostra onde entregar",
     "resumo": "O Delivery agora mostra o endereço da entrega do pedido do Kit Festa com botão de mapa, tem 4 botões de etapa no topo, período para a frente e uma janela para mover o pedido escolhendo se avisa o cliente.",

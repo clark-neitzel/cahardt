@@ -15,6 +15,7 @@ const amostraController = {
             });
             res.status(201).json(amostra);
         } catch (error) {
+            if (error.codigo === 'CADASTRO_A_CORRIGIR' && error.payload) return res.status(403).json(error.payload);
             console.error('Erro ao criar amostra:', error);
             res.status(500).json({ error: 'Erro ao criar amostra.' });
         }

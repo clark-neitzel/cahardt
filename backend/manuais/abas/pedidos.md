@@ -441,6 +441,16 @@ Regras:
 - Acompanhamento por vendedor: tela **Pendências de WhatsApp** (`/clientes/pendencias-whatsapp`).
 
 
+## Pedido recusado por "cadastro a corrigir" (novo — 11/2026)
+
+Quando o administrador **liga** o bloqueio (tela Clientes → Cadastros a acertar; vem **desligado** de fábrica), o app **recusa** a venda para cliente **CPF com nome de uma palavra só** (precisa de nome e sobrenome) com a mensagem *"<Nome> está com o cadastro a corrigir: CPF exige nome e sobrenome (ex.: Maria Silva). Peça a quem edita clientes para corrigir (Clientes → abrir o cliente)."* (erro 403). A recusa vale para:
+- **Criar pedido** de qualquer tipo (normal, especial, bonificação) e **Enviar** um pedido salvo ou **trocar o cliente** de um pedido (salvar de novo como rascunho no mesmo cliente continua liberado);
+- **Aprovar/converter** pedido da fila do **Kit Festa** e dos **Congelados**: a mensagem aparece na tela da fila e o pedido **continua aguardando**, nada fica pela metade;
+- **Aprovar pedido especial** (botão de aprovar na aba Especiais), **aprovar bonificação** (aba Bonificação — é essa aprovação que libera a NF-e da bonificação "com nota") e **converter especial em pedido com NF** (conversão manual): o app recusa **antes de gravar qualquer coisa**, então o pedido continua exatamente como estava (pendente/especial). A conversão **automática** de especial por PIX recebido **não** é barrada — o dinheiro já entrou;
+- **Amostra** para o cliente e **emitir NF-e de venda** (inclusive a NF de bonificação "com nota").
+
+**Não é bloqueado:** pedido que o cliente faz pelo site ou pela Ana (entra na fila normalmente), devolução e NF-e de devolução, baixa/Caixa/cobrança, atendimento e edição do cadastro. **CNPJ sem nome fantasia só gera aviso**, nunca recusa. A solução é corrigir o nome na ficha do cliente (quem edita clientes); depois disso o pedido passa. Detalhes em Clientes → "Cadastro a corrigir — nome incompleto".
+
 ## Confirmação de pedido grande chega em várias mensagens (novo — 10/2026)
 
 A confirmação do pedido que o cliente recebe no WhatsApp traz **todos os itens**. Se o pedido é grande e não cabe numa mensagem só (limite do WhatsApp do bot), ela sai **em partes numeradas** — "*(1/3)*", "*(2/3)*", "*(3/3)*" — em sequência, sem quebrar nenhum item. O total, a condição de pagamento, a observação e a despedida vêm **na última parte**. Pedido pequeno continua saindo numa mensagem só, igual a antes.

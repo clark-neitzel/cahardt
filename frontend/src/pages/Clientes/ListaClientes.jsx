@@ -11,6 +11,7 @@ import { Search, MapPin, Phone, User, Filter, Settings, X, Save, AlertTriangle, 
 import SelectBusca from '../../components/SelectBusca';
 import SeloRegime, { clienteEhPJ } from '../../components/SeloRegime';
 import SeloInadimplencia from '../../components/SeloInadimplencia';
+import SeloCorrigirCadastro from '../../components/SeloCorrigirCadastro';
 import PopupContasEmAberto from '../../components/PopupContasEmAberto';
 import SeloWhatsappCliente, { LegendaSeloWhatsapp } from '../../components/SeloWhatsappCliente';
 import whatsappClientesService from '../../services/whatsappClientesService';
@@ -88,6 +89,7 @@ const ListaClientes = () => {
     const podeCadastrar = permsUser.admin || permsUser.clientes?.edit;
     const podeVerFornecedores = permsUser.admin || permsUser.Pode_Acessar_Fornecedores;
     const [pedidosInativacao, setPedidosInativacao] = useState(0); // selo do botão "Cadastros a acertar"
+    const [nomesACorrigir, setNomesACorrigir] = useState(0); // total de nomes a corrigir (CPF 1 palavra + CNPJ sem fantasia)
 
     const getSaved = (key, defaultVal) => {
         const saved = localStorage.getItem(`clientesFiltro_${key}`);
@@ -154,6 +156,8 @@ const ListaClientes = () => {
     // Congelado no 1º render para não depender da ordem em que os efeitos rodam (o
     // efeito de sync reescreve a URL a partir do estado logo em seguida).
     const [regime, setRegime] = useFiltroSalvo('lista-clientes:regime', 'todos');
+    // Filtro "Cadastro a corrigir" ('' = todos | '1' = só os que precisam de correção de nome)
+    const [cadastroACorrigir, setCadastroACorrigir] = useFiltroSalvo('lista-clientes:cadastroACorrigir', '');
     const [whatsappDaUrl] = useState(() => searchParams.get('whatsapp'));
     useEffect(() => {
         const bruto = whatsappDaUrl !== null ? whatsappDaUrl : whatsapp;
@@ -189,6 +193,9 @@ const ListaClientes = () => {
     useEffect(() => {
         if (!podeCadastrar) return;
         cadastroPendenciasService.contagemInativacoes().then((r) => setPedidosInativacao(r?.pendentes || 0)).catch(() => {});
+        cadastroPendenciasService.nomePendencias()
+            .then((r) => setNomesACorrigir((r?.contagem?.cpfNomeUnico || 0) + (r?.contagem?.cnpjSemFantasia || 0)))
+            .catch(() => {});
     }, [podeCadastrar]);
 
     // Carregar dados de apoio
@@ -226,6 +233,7 @@ const ListaClientes = () => {
         if (perfil) params.perfil = perfil;
         if (whatsapp) params.whatsapp = whatsapp;
         if (regime && regime !== 'todos') params.regime = regime;
+        if (cadastroACorrigir) params.cadastroACorrigir = cadastroACorrigir;
         setSearchParams(params, { replace: true });
 
         saveToLocal('search', search);
@@ -244,7 +252,7 @@ const ListaClientes = () => {
         // usuário). Aqui ele entra só no sync da URL — e PRECISA estar nas deps abaixo,
         // senão o endereço não acompanha a troca do filtro e o link copiado abriria
         // outra situação.
-    }, [search, page, limit, idVendedor, diaEntrega, diaVenda, condicaoPagamento, condicaoPermitida, semVenda, semVendaDe, semVendaAte, perfil, whatsapp, regime, activeTab, setSearchParams]);
+    }, [search, page, limit, idVendedor, diaEntrega, diaVenda, condicaoPagamento, condicaoPermitida, semVenda, semVendaDe, semVendaAte, perfil, whatsapp, regime, cadastroACorrigir, activeTab, setSearchParams]);
 
     const fetchClientes = async () => {
         setLoading(true);
@@ -259,7 +267,8 @@ const ListaClientes = () => {
                 semVendaAte: semVenda === 'faixa' ? semVendaAte : undefined,
                 // `|| undefined` para "Todos" não virar `whatsapp=` vazio na query.
                 whatsapp: whatsapp || undefined,
-                regime: regime && regime !== 'todos' ? regime : undefined
+                regime: regime && regime !== 'todos' ? regime : undefined,
+                cadastroACorrigir: cadastroACorrigir ? 1 : undefined
             });
             setClientes(data.data);
             setTotalPages(data.meta.totalPages);
@@ -281,7 +290,7 @@ const ListaClientes = () => {
     useEffect(() => {
         const t = setTimeout(fetchClientes, 300);
         return () => clearTimeout(t);
-    }, [page, limit, search, activeTab, idVendedor, diaEntrega, diaVenda, condicaoPagamento, condicaoPermitida, semVenda, semVendaDe, semVendaAte, perfil, whatsapp, regime]);
+    }, [page, limit, search, activeTab, idVendedor, diaEntrega, diaVenda, condicaoPagamento, condicaoPermitida, semVenda, semVendaDe, semVendaAte, perfil, whatsapp, regime, cadastroACorrigir]);
 
     // Busca também na tabela de fornecedores (cadastros que só existem como fornecedor —
     // ex.: importados do Conta Azul — não aparecem na lista de clientes; sem isso o usuário
@@ -317,10 +326,11 @@ const ListaClientes = () => {
         setPerfil('');
         setWhatsapp('');
         setRegime('todos');
+        setCadastroACorrigir('');
         setPage(1);
     };
 
-    const activeFiltersCount = [idVendedor, diaEntrega, diaVenda, condicaoPagamento, condicaoPermitida, semVenda, perfil, whatsapp, regime !== 'todos' ? regime : ''].filter(Boolean).length;
+    const activeFiltersCount = [idVendedor, diaEntrega, diaVenda, condicaoPagamento, condicaoPermitida, semVenda, perfil, whatsapp, regime !== 'todos' ? regime : '', cadastroACorrigir].filter(Boolean).length;
 
     // Situação escolhida, só quando é uma das conhecidas E não é "Todos" — é o que
     // libera a linha de ajuda. Sem esta busca, um valor estranho renderizaria um
@@ -353,7 +363,7 @@ const ListaClientes = () => {
         if (!window.confirm(msg)) return;
         try {
             const resp = await clienteService.atualizarLote({ ids: selectedIds, dados: dadosParaEnviar });
-            alert(resp?.message || "Atualização em lote realizada com sucesso!");
+            alert((resp?.message || "Atualização em lote realizada com sucesso!") + textoPulados(resp));
             setIsBatchModalOpen(false);
             setSelectedIds([]);
             setBatchData({ idVendedor: '', Dia_de_entrega: '', Dia_de_venda: '', ehCliente: '', tambemFornecedor: '' });
@@ -362,6 +372,15 @@ const ListaClientes = () => {
             console.error("Erro na atualização em lote", error);
             alert("Erro ao atualizar clientes.");
         }
+    };
+
+    // Quem o servidor NÃO reativou (CPF com nome de uma palavra só) e por quê.
+    const textoPulados = (resp) => {
+        const pulados = Array.isArray(resp?.pulados) ? resp.pulados : [];
+        if (pulados.length === 0) return '';
+        const linhas = pulados.slice(0, 15).map(p => `• ${p?.Nome || 'Cliente'}${p?.motivo ? ` — ${p.motivo}` : ''}`);
+        const extra = pulados.length > 15 ? `\n… e mais ${pulados.length - 15}.` : '';
+        return `\n\nNão foram reativados (${pulados.length}) — corrija o nome na ficha e tente de novo:\n${linhas.join('\n')}${extra}`;
     };
 
     // Desativa (ou reativa, na aba Inativos) o LADO CLIENTE dos selecionados.
@@ -373,8 +392,11 @@ const ListaClientes = () => {
             : `Desativar ${selectedIds.length} cliente(s) como CLIENTE?\n\nEles somem das listas de venda, rota e dashboards, mas o cadastro continua no sistema (e como fornecedor, quando for o caso). O histórico e as cobranças em aberto são preservados. Dá para reativar depois na aba "Apenas Inativos".`;
         if (!window.confirm(msg)) return;
         try {
-            await clienteService.atualizarLote({ ids: selectedIds, dados: { Ativo: novoAtivo } });
-            alert(novoAtivo ? 'Clientes reativados!' : 'Clientes desativados! Veja-os na aba "Apenas Inativos".');
+            const resp = await clienteService.atualizarLote({ ids: selectedIds, dados: { Ativo: novoAtivo } });
+            const pulados = Array.isArray(resp?.pulados) ? resp.pulados : [];
+            alert((novoAtivo
+                ? (pulados.length ? 'Reativação concluída, mas alguns clientes NÃO foram reativados.' : 'Clientes reativados!')
+                : 'Clientes desativados! Veja-os na aba "Apenas Inativos".') + textoPulados(resp));
             setSelectedIds([]);
             fetchClientes();
         } catch (error) {
@@ -505,8 +527,16 @@ const ListaClientes = () => {
                             className="relative shrink-0 px-3 py-2 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-sm flex items-center gap-1.5 min-h-[38px]"
                         >
                             📋<span className="hidden lg:inline">Cadastros a acertar</span>
+                            {/* Desktop: dois selos (inativações em vermelho, nomes a corrigir em âmbar) */}
                             {pedidosInativacao > 0 && (
-                                <span className="px-1.5 min-w-[20px] text-center text-xs font-semibold rounded-full bg-red-600 text-white">{pedidosInativacao}</span>
+                                <span className="hidden md:inline px-1.5 min-w-[20px] text-center text-xs font-semibold rounded-full bg-red-600 text-white">{pedidosInativacao}</span>
+                            )}
+                            {nomesACorrigir > 0 && (
+                                <span title={`${nomesACorrigir} nome(s) a corrigir`} className="hidden md:inline px-1.5 min-w-[20px] text-center text-xs font-semibold rounded-full bg-amber-500 text-white">{nomesACorrigir}</span>
+                            )}
+                            {/* Mobile: um selo só, no canto do botão, para não alargar a barra de ícones */}
+                            {(pedidosInativacao + nomesACorrigir) > 0 && (
+                                <span className={`md:hidden absolute -top-1.5 -right-1.5 px-1 min-w-[18px] text-center text-[10px] leading-[18px] font-bold rounded-full text-white ${pedidosInativacao > 0 ? 'bg-red-600' : 'bg-amber-500'}`}>{pedidosInativacao + nomesACorrigir}</span>
                             )}
                         </button>
                     )}
@@ -670,6 +700,18 @@ const ListaClientes = () => {
                         </SelectBusca>
                     </div>
 
+                    <div>
+                        <label className="block text-[11px] font-medium text-gray-500 mb-1">Cadastro a corrigir</label>
+                        <SelectBusca
+                            className="w-full"
+                            value={cadastroACorrigir}
+                            onChange={(e) => { setCadastroACorrigir(e.target.value); setPage(1); }}
+                        >
+                            <option value="">Todos</option>
+                            <option value="1">Só os que precisam corrigir</option>
+                        </SelectBusca>
+                    </div>
+
                     <div className="flex items-end col-span-2 sm:col-span-1">
                         <button
                             onClick={handleClearFilters}
@@ -799,6 +841,7 @@ const ListaClientes = () => {
                                                 estático — nunca um botão que não leva a lugar nenhum. */}
                                             <SeloWhatsappCliente cliente={cliente} mostrar={mostrarSeloWhats} />
                                             {clienteEhPJ(cliente) && <SeloRegime regimeFiscal={cliente.regimeFiscal} compacto />}
+                                            <SeloCorrigirCadastro info={cliente.cadastroACorrigir} />
                                         </div>
                                     </td>
                                     <td className="px-3 py-2 text-xs text-gray-600 whitespace-nowrap">
@@ -911,6 +954,7 @@ const ListaClientes = () => {
                                 )}
                                 <SeloWhatsappCliente cliente={cliente} mostrar={mostrarSeloWhats} />
                                 {clienteEhPJ(cliente) && <SeloRegime regimeFiscal={cliente.regimeFiscal} compacto />}
+                                <SeloCorrigirCadastro info={cliente.cadastroACorrigir} />
                                 {cliente.Formas_Atendimento && cliente.Formas_Atendimento.length > 0 && (
                                     <div className="flex gap-0.5 ml-auto">
                                         {cliente.Formas_Atendimento.map(forma => {

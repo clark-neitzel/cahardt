@@ -43,6 +43,7 @@ Cadastro completo de clientes da empresa — **o cadastro agora é 100% do app**
 2. Escolha o tipo de cadastro: **Cliente**, **Fornecedor** ou **Cliente + Fornecedor**. Fornecedor vai para a lista de Fornecedores (usada no Contas a Pagar e Notas de Entrada); "Cliente + Fornecedor" grava nos dois lugares
 3. Digite o CNPJ. Assim que ele fica completo e válido, o app consulta a Receita Federal e a SEFAZ e preenche razão social, fantasia, endereço, telefone, e-mail e Inscrição Estadual automaticamente. Se aparecer "CNPJ não encontrado nas bases públicas", normalmente é empresa aberta há pouco tempo (ainda não consta nas bases gratuitas) — preencha os dados na mão; se aparecer "serviços da Receita indisponíveis", o problema é a consulta fora do ar, tente de novo depois
 4. Confira/edite os campos (todos são editáveis). Endereço completo é obrigatório para emitir NF-e depois. CNPJ/CPF é **obrigatório** e o dígito verificador é validado
+4a. **Nome conforme o documento (11/2026):** **CPF** exige **nome e sobrenome** (pelo menos duas palavras, ex.: *Maria Silva*); **CNPJ** exige **razão social e nome fantasia**. Se faltar, o cadastro é recusado com "CPF exige nome e sobrenome (ex.: Maria Silva)" ou "CNPJ exige razão social e nome fantasia". Vale para todos os tipos (cliente, fornecedor, cliente + fornecedor)
 4b. **WhatsApp (campo Celular)** — vira **campo obrigatório em cadastro de cliente quando a exigência estiver LIGADA** na tela Pendências de WhatsApp (é o mesmo interruptor do bloqueio de envio de pedido; ele vem desligado de fábrica). **Enquanto estiver desligado, o cadastro continua salvando sem o número, como sempre foi.** É por esse número que sai a confirmação do pedido, o boleto/PIX e a cobrança, e é como o escritório fala com o cliente quando o vendedor falta. Com a exigência ligada, antes de salvar o app ainda **pergunta ao WhatsApp da empresa se o número existe** (é uma consulta — **nenhuma mensagem é enviada ao cliente**): se a resposta for que não existe, o cadastro é recusado com "Esse número não tem WhatsApp. Confira com o cliente."; se não der para perguntar na hora (WhatsApp da empresa fora do ar), **o cadastro salva normalmente** e fica marcado como "não deu para perguntar". Cadastro que é **só fornecedor** nunca pede WhatsApp
 5. Clique em **Cadastrar**. Para cliente, o código sequencial é gerado automaticamente e a tela abre no detalhe; fornecedor puro leva à tela de Fornecedores
 6. Também funciona com CPF (pessoa física), mas aí não há busca automática — preencha manualmente
@@ -143,7 +144,7 @@ Aba padrão ao abrir o detalhe. Contém tudo que é editável pelo time comercia
 - Campo de texto livre com anotações sobre o cliente
 
 **Informações do Cadastro** (editável por quem tem `clientes.edit`/`Pode_Editar_GPS`/admin)
-- Razão social, nome fantasia e CNPJ/CPF (editáveis). O **Nome Fantasia** sai na 1ª linha das Informações Complementares da NF-e (só CNPJ, só quando diferente da razão social) — por isso vale conferir se está preenchido e correto
+- Razão social, nome fantasia e CNPJ/CPF (editáveis). **Regra do nome (11/2026):** CPF = nome e sobrenome; CNPJ = razão social e nome fantasia. A regra só é conferida quando você **muda** nome, fantasia ou documento (editar outro campo de um cadastro antigo "incompleto" continua salvando). **Reativar** um CPF de nome único também é recusado até corrigir o nome. O **Nome Fantasia** sai na 1ª linha das Informações Complementares da NF-e (só CNPJ, só quando diferente da razão social) — por isso vale conferir se está preenchido e correto
 - Toggle **"É cliente"**: liga/desliga o lado cliente do cadastro. Desligado, o cadastro some de TODAS as telas de venda (lista de clientes ativos, Rota, Novo Pedido, Catálogo, dashboards, metas do dia) — mas o histórico (pedidos, financeiro, atendimentos) fica preservado na ficha e dá para religar a qualquer momento
 - Toggle **"Também é fornecedor"**: liga/desliga o espelho deste cadastro na lista de Fornecedores (Contas a Pagar / Notas de Entrada)
 - **Combinações dos dois toggles**: os dois ligados = cadastro completo; só "fornecedor" = vira **SÓ FORNECEDOR** (selo âmbar no topo da ficha — caso do cliente que parou de comprar mas continua nos vendendo); só "cliente" = cliente normal; os dois desligados = cadastro **INATIVO** por completo (o app pede confirmação antes de salvar assim)
@@ -398,6 +399,29 @@ Botão **📋 Cadastros a acertar** na lista de clientes (só para quem edita cl
   - **Telefone incompleto (nov/2026):** também aparece aqui o cliente com um número que não dá para usar no WhatsApp — sem DDD, com DDD que não existe, com dígito a menos ou a mais, ou com **55 no lugar do DDD** (ex.: `55 99629-3920`). O selo vermelho mostra o número e o motivo. **Não precisa digitar o 55**: número com DDD (`47 99999-8888`) já está certo, o 55 entra sozinho no envio.
 - **Classificar:** cadastros ativos **sem nenhum movimento** (sem contas a receber, sem pedidos, sem contas a pagar — em geral importados). O sistema classifica sozinho: só contas a pagar = fornecedor; contas a receber/pedidos = cliente; os dois = cliente e fornecedor. Os que não têm nada ficam aqui para a equipe escolher **Cliente**, **Fornecedor** ou **Cliente e fornecedor** (some da lista e a escolha fica no histórico do cadastro), ou **Pedir inativação** (escolhe o motivo; o pedido vai para a aba de pedidos). A Ana não trata cadastro sem classificação como cliente normal e não atende fornecedor.
 - **Pedidos de inativação:** quando a Ana percebe que um cliente fechou, trocou de dono, parou de comprar ou está com número errado, ela **pede** para inativar — ela nunca inativa sozinha. Aqui a equipe decide: **Inativar cliente** (o cliente fica inativo, como se fosse feito na ficha, e a mudança entra na aba Alterações com o motivo e quem pediu) ou **Manter ativo** (recusa; o cliente segue ativo). Em ambos dá para escrever uma observação. Um pedido por cliente por vez; depois de decidido, a Ana pode pedir de novo. O filtro mostra aguardando, aprovadas, recusadas ou todas.
+
+## Cadastro a corrigir — nome incompleto (11/2026)
+
+Cadastros **antigos** (anteriores à regra do nome) podem estar com o nome incompleto. O app marca esses clientes com o aviso **"Corrigir cadastro"** (na lista e na ficha do cliente) e dá para filtrar a lista só por eles. São dois casos:
+
+- **CPF com nome de uma palavra só** (ex.: "Maria"): precisa de **nome e sobrenome**. É o caso que **pode bloquear a venda** (ver abaixo).
+- **CNPJ sem nome fantasia** (ou sem razão social): **só aviso** — nunca bloqueia nada.
+
+Cliente sem documento, ou com documento que não é CPF/CNPJ, não entra. O aviso some sozinho assim que o nome é corrigido.
+
+**Bloqueio (chave desligada de fábrica):** só o **administrador** liga ou desliga o bloqueio (um interruptor na própria tela dos cadastros a corrigir; a mudança fica registrada no histórico). Enquanto estiver **desligado**, nada muda: o aviso aparece, mas todo mundo vende normalmente. Quando o administrador **liga**, vale **na hora**, sem prazo, e para CPF de nome único o app **recusa**:
+- criar pedido (qualquer tipo: normal, especial, bonificação) e **enviar** um pedido salvo, ou trocar o cliente de um pedido;
+- **aprovar/converter** pedido da fila do site (Kit Festa e Congelados) — o pedido da fila **continua lá, aguardando**, e a mensagem de erro aparece na tela da fila;
+- criar **amostra** para o cliente;
+- emitir a **NF-e de venda** desse cliente.
+
+Mensagem: *"<Nome> está com o cadastro a corrigir: CPF exige nome e sobrenome (ex.: Maria Silva). Peça a quem edita clientes para corrigir (Clientes → abrir o cliente)."*
+
+**O que nunca bloqueia, nem com a chave ligada:** o pedido que o cliente faz pelo site ou pela Ana **entra na fila normalmente**; registrar devolução e emitir a NF-e de devolução; baixa, Caixa, boleto/PIX e cobrança; atendimento/visita; abrir ou editar o cadastro (é justamente onde se corrige); catálogo personalizado. Se o app não conseguir checar (erro de leitura), **a venda segue liberada** — a checagem nunca derruba a operação.
+
+**Como corrigir:** quem edita clientes abre a ficha (Clientes → abrir o cliente), ajusta o **nome** (CPF) ou o **nome fantasia** (CNPJ) e salva. **Reativar em lote** pula os CPFs de nome único e mostra quais foram pulados; corrija o nome e reative de novo.
+
+**Onde ver a lista:** em **Cadastros a acertar** (mesma permissão: `clientes.edit`, `Pode_Editar_GPS` ou admin), com contagem por tipo e filtro por vendedor. A Ana também recebe o aviso do cadastro (ela continua tirando o pedido, que cai na fila, mas a equipe não consegue aprovar enquanto o CPF estiver com nome incompleto e o bloqueio ligado).
 
 ## Ordem dos telefones no WhatsApp (11/2026)
 

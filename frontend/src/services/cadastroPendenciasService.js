@@ -24,6 +24,16 @@ const cadastroPendenciasService = {
     // { pendentes: number } — usado no selo do botão
     contagemInativacoes: async () => (await api.get('/cadastro-pendencias/inativacoes/contagem')).data,
 
+    // Cadastros com nome a corrigir (CPF de 1 palavra / CNPJ sem fantasia).
+    // { config:{bloquearCpfNomeUnico}, contagem:{cpfNomeUnico,cnpjSemFantasia},
+    //   itens:[{UUID,Codigo,Nome,NomeFantasia,Documento,tipo,Tipo_Pessoa,Ativo,idVendedor,vendedorNome,telefone}] }
+    nomePendencias: async ({ vendedor, tipo } = {}) =>
+        (await api.get('/cadastro-pendencias/nome', { params: { vendedor: vendedor || undefined, tipo: tipo || undefined } })).data,
+
+    // SÓ ADMIN. Liga/desliga o bloqueio de venda de CPF com nome de uma palavra só.
+    salvarConfigNome: async (bloquearCpfNomeUnico) =>
+        (await api.post('/cadastro-pendencias/nome/config', { bloquearCpfNomeUnico: !!bloquearCpfNomeUnico })).data,
+
     aprovar: async (id, observacao) =>
         (await api.post(`/cadastro-pendencias/inativacoes/${id}/aprovar`, { observacao: observacao || undefined })).data,
 

@@ -1,7 +1,9 @@
 const crypto = require('crypto');
 const prisma = require('../config/database');
 const consultaCnpjService = require('../services/consultaCnpjService');
-const { normalizarDoc, validarDoc, ehCnpj } = require('../utils/documento');
+const { normalizarDoc, validarDoc, ehCnpj, ehCpf } = require('../utils/documento');
+const nomeCadastroSvc = require('../services/clienteNomeCadastroService'); // "cadastro a corrigir" derivado + chave + trava
+const nomeCadastro = require('../utils/nomeCadastro'); // regra única: CPF = nome+sobrenome; CNPJ = razão+fantasia
 const { normalizarCidade } = require('../utils/cidade'); // grafia oficial da cidade (Fase 1 — blindagem da escrita)
 const enderecoHistorico = require('../services/clienteEnderecoHistoricoService'); // trilha do endereço (quem/quando/restaurar)
 const cidadeService = require('../services/cidadeService'); // cadastro oficial de cidades (09/2026): só aceita cidade da lista
@@ -97,7 +99,7 @@ const clienteController = {
     // Listar clientes com paginação e busca
     listar: async (req, res) => {
         try {
-            const { page = 1, limit = 10, search = '', ativo, idVendedor, diaEntrega, diaVenda, condicaoPagamento, condicaoPermitida, semVenda, semVendaDe, semVendaAte, perfil, whatsapp, excluirPausados, regime } = req.query;
+            const { page = 1, limit = 10, search = '', ativo, idVendedor, diaEntrega, diaVenda, condicaoPagamento, condicaoPermitida, semVenda, semVendaDe, semVendaAte, perfil, whatsapp, excluirPausados, regime, cadastroACorrigir: filtroCorrigir } = req.query;
             const skip = (page - 1) * limit;
 
             const where = {};
@@ -221,6 +223,20 @@ const clienteController = {
                 }
             }
 
+            // ?cadastroACorrigir=1 → só clientes com cadastro a corrigir (CPF de nome único e CNPJ sem
+            // fantasia). Derivado (sem coluna): os UUIDs saem do helper (cache 60s) e entram no MESMO
+            // `where` do count — o total e a paginação acertam sozinhos. `=CPF_NOME_UNICO` ou
+            // `=CNPJ_SEM_FANTASIA` restringe a um tipo. Falha no cálculo NÃO derruba a lista.
+            if (filtroCorrigir === '1' || filtroCorrigir === 'true' || nomeCadastroSvc.TIPOS.includes(String(filtroCorrigir))) {
+                try {
+                    const tipoFiltro = nomeCadastroSvc.TIPOS.includes(String(filtroCorrigir)) ? String(filtroCorrigir) : undefined;
+                    const idsCorrigir = await nomeCadastroSvc.idsAfetados({ tipo: tipoFiltro });
+                    where.AND = [...(where.AND || []), { UUID: { in: idsCorrigir } }];
+                } catch (corrigirErr) {
+                    console.error('[Clientes] filtro cadastroACorrigir falhou (lista segue sem o filtro):', corrigirErr.message);
+                }
+            }
+
             // ?excluirPausados=1 (lista da Rota): esconde clientes com visitas pausadas (pausadoAte > agora).
             // As demais telas que usam /clientes (NovoPedido, Catálogo...) NÃO passam o param e seguem vendo todos.
             if (excluirPausados === '1' || excluirPausados === 'true') {
@@ -313,6 +329,10 @@ const clienteController = {
             // cadastro, em vez de descobrir com a nota travada no Financeiro.
             const { fiscalApto } = require('../utils/cadastroFiscal');
             const { paraRegimeFiscal } = require('../services/regimeTributarioService');
+            // `cadastroACorrigir` (11/2026, aditivo): null se ok; senão { tipo, campo, mensagem, bloqueia }.
+            // Calculado do próprio registro (Documento/Nome/NomeFantasia) — sem query extra além da chave
+            // (cache 30s, fail-open).
+            const cfgNome = await nomeCadastroSvc.getConfig();
             const clientesComFlag = clientes.map(({ pausa, fiscal, ...c }) => ({
                 ...c,
                 pausadoAte: pausa?.pausadoAte || null,
@@ -323,7 +343,8 @@ const clienteController = {
                 diasMaisAntiga: situacaoMap.get(c.UUID)?.diasMaisAntiga ?? null,
                 aConfirmar: situacaoMap.get(c.UUID)?.aConfirmar || null,
                 bloqueiaVenda: situacaoMap.get(c.UUID)?.bloqueiaVenda || false,
-                fiscalApto: fiscalApto(c)
+                fiscalApto: fiscalApto(c),
+                cadastroACorrigir: nomeCadastroSvc.cadastroACorrigir(c, cfgNome)
             }));
 
             res.json({
@@ -460,6 +481,8 @@ const clienteController = {
 
             // Pode receber nota fiscal? (só adição — ver comentário em `listar`)
             cliente.fiscalApto = require('../utils/cadastroFiscal').fiscalApto(cliente);
+            // Cadastro a corrigir (11/2026, aditivo): null se ok
+            cliente.cadastroACorrigir = nomeCadastroSvc.cadastroACorrigir(cliente, await nomeCadastroSvc.getConfig());
 
             // Este cadastro também é fornecedor? (tabela fornecedores, por documento)
             const docNorm = normalizarDoc(cliente.Documento);
@@ -564,6 +587,12 @@ const clienteController = {
             if (!nome) erros.push('Razão social / nome é obrigatório');
             if (!docNorm) erros.push('CNPJ/CPF é obrigatório');
             else if (!validarDoc(docNorm)) erros.push('CNPJ/CPF inválido (confira os dígitos)');
+            // CPF exige nome e sobrenome; CNPJ exige razão social e fantasia (todos os perfis).
+            // Só roda com documento válido — documento ruim já tem a própria mensagem acima.
+            if (docNorm && validarDoc(docNorm)) {
+                const vNome = nomeCadastro.validarNomeCadastro({ documento: docNorm, nome, nomeFantasia: b.NomeFantasia });
+                if (!vNome.ok) erros.push(vNome.erro);
+            }
             const emailNorm = String(b.Email || '').trim();
             if (emailNorm && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailNorm)) erros.push('E-mail inválido');
             const celularNorm = soDigitos(b.Telefone_Celular);
@@ -794,6 +823,7 @@ const clienteController = {
                 catch (fornErr) { console.error('Cliente criado, mas falhou o espelho em fornecedores:', fornErr); }
             }
 
+            nomeCadastroSvc.limparCache(); // lista de "cadastro a corrigir" recalcula na próxima leitura
             cliente.Inscricao_Estadual = ieNorm || null;
             cliente.regimeFiscal = null;
             // Regime tributário: consulta DEPOIS de salvar, sem bloquear a resposta (erro nunca derruba o cadastro)
@@ -899,9 +929,31 @@ const clienteController = {
                 docNorm = normalizarDoc(Documento);
                 if (!docNorm) erros.push('CNPJ/CPF não pode ficar vazio');
                 else if (!validarDoc(docNorm)) erros.push('CNPJ/CPF inválido (confira os dígitos)');
-                else if (docNorm !== atual.Documento) {
+                else if (nomeCadastro.documentoMudou(atual.Documento, docNorm)) {
                     const outro = await prisma.cliente.findUnique({ where: { Documento: docNorm } });
                     if (outro && outro.UUID !== uuid) erros.push(`Documento já usado pelo cliente ${outro.Nome}`);
+                }
+            }
+            // Regra de nome (CPF = nome+sobrenome; CNPJ = razão+fantasia). Só confere quando o
+            // payload REALMENTE muda nome/fantasia/documento em relação ao que está salvo —
+            // várias telas mandam o formulário inteiro a cada Salvar, e editar outro campo de um
+            // cadastro antigo "ruim" não pode ser bloqueado. Reativar CPF de nome único também recusa.
+            if (podeEditarCadastro) {
+                const nomeFinal = nomeNorm !== undefined ? nomeNorm : atual.Nome;
+                const fantasiaFinal = NomeFantasia !== undefined ? String(NomeFantasia || '').trim() : atual.NomeFantasia;
+                const docFinal = docNorm !== undefined ? docNorm : atual.Documento;
+                const mudouNome = nomeNorm !== undefined && nomeNorm !== String(atual.Nome || '').trim();
+                const mudouFantasia = NomeFantasia !== undefined && String(NomeFantasia || '').trim() !== String(atual.NomeFantasia || '').trim();
+                const mudouDoc = docNorm !== undefined && nomeCadastro.documentoMudou(atual.Documento, docNorm); // normaliza o salvo (cadastro antigo pode ter pontuação)
+                const reativando = Ativo !== undefined && !!Ativo && atual.Ativo === false;
+                if (docFinal && validarDoc(docFinal)) {
+                    const gatilho = ehCpf(docFinal)
+                        ? (mudouNome || mudouDoc || reativando)
+                        : (mudouNome || mudouFantasia || mudouDoc);
+                    if (gatilho) {
+                        const vNome = nomeCadastro.validarNomeCadastro({ documento: docFinal, nome: nomeFinal, nomeFantasia: fantasiaFinal });
+                        if (!vNome.ok) erros.push(vNome.erro);
+                    }
                 }
             }
             const ufFinal = End_Estado !== undefined ? String(End_Estado || '').trim().toUpperCase() : atual.End_Estado;
@@ -1107,6 +1159,7 @@ const clienteController = {
                 throw updErr;
             }
             await gravarTrilhaEndereco(enderecoHistorico.snapshotDe(cliente));
+            nomeCadastroSvc.limparCache(); // lista de "cadastro a corrigir" recalcula na próxima leitura
 
             // Histórico de alterações (campo a campo, só o que mudou). Best-effort: nunca
             // lança. O Ponto_GPS fica de fora — quem grava é o serviço de GPS.
@@ -1470,6 +1523,36 @@ const clienteController = {
                 return res.status(400).json({ error: 'Nenhum campo válido para atualização (Vendedor, Entrega, Venda, Atendimento, Cliente/Fornecedor).' });
             }
 
+            // Reativar em lote NÃO burla a regra de nome (11/2026): CPF de nome único não reativa (igual ao
+            // PATCH individual). Esses cadastros são PULADOS do lote inteiro e voltam em `pulados`.
+            // Só olha quem está INATIVO agora (quem já está ativo não muda de estado).
+            const pulados = [];
+            let idsAlvo = ids;
+            if (dados.Ativo !== undefined && !!dados.Ativo) {
+                const inativos = await prisma.cliente.findMany({
+                    where: { UUID: { in: ids }, Ativo: false },
+                    select: { UUID: true, Nome: true, NomeFantasia: true, Documento: true }
+                });
+                for (const c of inativos) {
+                    const sit = nomeCadastroSvc.situacaoDe(c);
+                    if (sit && sit.tipo === 'CPF_NOME_UNICO') {
+                        pulados.push({ UUID: c.UUID, Nome: c.Nome, motivo: `${sit.mensagem}. Corrija o nome no cadastro e reative de novo.` });
+                    }
+                }
+                if (pulados.length > 0) {
+                    const fora = new Set(pulados.map(p => p.UUID));
+                    idsAlvo = ids.filter(id => !fora.has(id));
+                }
+                if (idsAlvo.length === 0) {
+                    return res.json({
+                        message: 'Nenhum cadastro foi reativado: todos os selecionados são CPF com nome incompleto (corrija o nome e reative de novo).',
+                        count: 0,
+                        semDocumento: 0,
+                        pulados
+                    });
+                }
+            }
+
             // Auditoria (audit_logs) — mesma trilha do PATCH individual (CAMPOS_AUDITADOS_CLIENTE).
             // O updateMany é único (mesmo "para" pra todo mundo); o "de" varia por cliente, então
             // lê o valor ANTES de cada um aqui (1 query) para montar o {de, para} por linha depois.
@@ -1477,7 +1560,7 @@ const clienteController = {
             // (o select também traz os demais campos do lote — o histórico de alterações precisa do "antes" de todos)
             const clientesAntesLote = Object.keys(dadosAtualizacao).length > 0
                 ? await prisma.cliente.findMany({
-                    where: { UUID: { in: ids } },
+                    where: { UUID: { in: idsAlvo } },
                     select: {
                         UUID: true, NomeFantasia: true, Nome: true,
                         ...Object.fromEntries(Object.keys(dadosAtualizacao).map(c => [c, true]))
@@ -1487,10 +1570,10 @@ const clienteController = {
 
             const resultado = Object.keys(dadosAtualizacao).length > 0
                 ? await prisma.cliente.updateMany({
-                    where: { UUID: { in: ids } },
+                    where: { UUID: { in: idsAlvo } },
                     data: dadosAtualizacao
                 })
-                : { count: ids.length };
+                : { count: idsAlvo.length };
 
             // Fora da operação principal, best-effort: nunca desfaz nem falha a atualização em
             // lote já aplicada. Sem isso, rotaHistoricaService não enxerga a mudança e o caixa
@@ -1543,7 +1626,7 @@ const clienteController = {
             if (dados.tambemFornecedor !== undefined) {
                 const ligar = !!dados.tambemFornecedor;
                 const clientesSel = await prisma.cliente.findMany({
-                    where: { UUID: { in: ids } },
+                    where: { UUID: { in: idsAlvo } },
                     select: {
                         UUID: true, Documento: true, Nome: true, NomeFantasia: true, Email: true,
                         Telefone: true, Telefone_Celular: true, End_Cidade: true, End_Estado: true,
@@ -1586,12 +1669,14 @@ const clienteController = {
                 }
             }
 
+            nomeCadastroSvc.limparCache();
             res.json({
                 message: semDocumento > 0
                     ? `Atualização concluída. ${semDocumento} cadastro(s) sem CNPJ/CPF não puderam virar fornecedor.`
                     : 'Atualização em lote concluída com sucesso.',
                 count: resultado.count,
-                semDocumento
+                semDocumento,
+                pulados // aditivo (11/2026): cadastros CPF de nome único que NÃO foram reativados
             });
 
         } catch (error) {

@@ -97,7 +97,13 @@
 // · 1.7.0 (2026-10-08) campo novo `grupoDescricao` (descrição da categoria comercial) no objeto
 // de produto e `descricao` nos itens de GET congelados/grupos — para a Ana saber se o produto
 // vem pronto p/ aquecer ou cru. Só leitura, tudo aditivo.
-const VERSAO_API = '1.7.0';
+// · 1.8.0 (2026-11-26) campo novo `cadastroACorrigir` = null | { bloqueado:boolean, tipo:'CPF_NOME_UNICO'|
+// 'CNPJ_SEM_FANTASIA', mensagem } em cliente/reconhecer-telefone, congelados/reconhecer-telefone,
+// cliente/buscar (por item; fornecedor = null) e cliente/ficha. Avisa a Ana de que o cadastro está
+// incompleto (CPF sem sobrenome / CNPJ sem fantasia); `bloqueado:true` = a equipe NÃO consegue aprovar
+// pedido deste cliente até corrigir (o POST do pedido continua entrando na fila normalmente). Os POSTs de
+// pedido NÃO mudam. Tudo aditivo — nenhum campo removido/renomeado.
+const VERSAO_API = '1.8.0';
 
 const AVISOS = [
     // AVISO INFORMATIVO (v1.6.4, não é quebra de contrato): nenhum campo removido/renomeado —

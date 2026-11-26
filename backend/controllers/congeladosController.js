@@ -6,6 +6,8 @@ const svc = require('../services/congeladosService');
 // `itensSemEstoque` (09/2026, aditivo): erro SEM_ESTOQUE da aprovação leva a lista de itens
 // em falta junto, para a tela montar o alerta sem precisar de uma segunda chamada.
 const erro = (res, e, ctx) => {
+    // "Cadastro a corrigir" (11/2026): 403 no formato do contrato. O pedido da fila continua AGUARDANDO.
+    if (e.codigo === 'CADASTRO_A_CORRIGIR' && e.payload) return res.status(403).json(e.payload);
     console.error(`[Congelados] ${ctx}:`, e.message);
     const body = { error: e.message };
     if (e.code) body.code = e.code;

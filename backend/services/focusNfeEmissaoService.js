@@ -734,6 +734,11 @@ async function emitirVenda(pedidoId) {
     if (!pedido.numero) throw new Error('Pedido ainda sem número de venda.');
     if (pedido.nfeChave) throw new Error(`Este pedido já tem NF-e antiga emitida (nº ${pedido.nfeNumero || '—'}).`);
 
+    // Cadastro a corrigir (11/2026): a NF-e de VENDA não sai com CPF sem sobrenome (chave ligada; fail-open).
+    // SÓ a venda — emitirDevolucao NÃO tem esta trava (devolução/NF de devolução nunca bloqueiam). Roda antes
+    // de qualquer escrita em NotaFiscalApp e antes de qualquer chamada à Focus.
+    await require('./clienteNomeCadastroService').exigirCadastroOk(pedido.clienteId, { acao: 'emitir NF-e de venda' });
+
     // Pedido da era Conta Azul (anterior a hoje) sem chave em cache: conferir no CA antes de
     // emitir — o app só guardava a chave quando alguém imprimia a DANFE, então "sem nota" aqui
     // pode ser nota que o CA emitiu e nós não sabemos. Fecha o risco de nota em DOBRO enquanto

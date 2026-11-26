@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Corrigir cadastro de cliente — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp -->
+<meta property="og:title" content="✏️ Novidade no Hardt App: Corrigir cadastro de cliente">
+<meta property="og:description" content="CPF agora pede nome e sobrenome; CNPJ pede razão social e fantasia. Cadastro antigo ganha o aviso Corrigir cadastro. Veja como acertar.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 96px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 7vw, 40px);
+    font-weight: 800;
+    line-height: 1.12;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.75);
+    font-size: 16px;
+    max-width: 46ch;
+    margin: 0 auto;
+    text-wrap: balance;
+  }
+
+  /* mock da tela flutuando sobre o hero */
+  .mock {
+    max-width: 420px;
+    margin: -68px auto 28px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.28);
+    overflow: hidden;
+    text-align: left;
+  }
+  .mock-top {
+    background: var(--house);
+    color: #fff;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .mock-top small {
+    display: block;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    color: rgba(255,255,255,.55);
+  }
+  .mock-top strong { font-size: 16px; line-height: 1.2; }
+  .mock-ico { font-size: 24px; }
+  .mock-body { padding: 16px 18px 18px; }
+  .mock-label {
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--ink-soft);
+    margin-bottom: 4px;
+  }
+  .mock-input {
+    border: 1.5px solid #d8d5cc;
+    border-radius: 10px;
+    padding: 11px 13px;
+    font-size: 15px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--ink);
+    background: #fff;
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+  }
+  .mock-input.focado { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0,117,74,.14); }
+  .cursor { display: inline-block; width: 2px; height: 18px; background: var(--primary); margin-left: 2px; animation: pisca 1s steps(1) infinite; }
+  @keyframes pisca { 50% { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .cursor { animation: none; } }
+  .mock-campos { margin-top: 14px; display: grid; gap: 9px; }
+  .campo {
+    background: #f6f5f1;
+    border-radius: 9px;
+    padding: 8px 12px;
+    font-size: 13px;
+    color: #b9b5aa;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background .4s, color .4s;
+  }
+  .campo b { font-weight: 700; }
+  .campo.cheio { background: var(--mint); color: var(--primary-dark); }
+  .campo .ck { opacity: 0; transition: opacity .4s; }
+  .campo.cheio .ck { opacity: 1; }
+  .mock-status {
+    margin-top: 12px;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--ink-soft);
+    min-height: 20px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .mock-status.ok { color: var(--primary-dark); }
+
+  /* botão de demo */
+  .demo-cta {
+    display: block;
+    width: 100%;
+    max-width: 420px;
+    margin: 0 auto 8px;
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    font: inherit;
+    font-size: 16px;
+    font-weight: 800;
+    padding: 16px;
+    border-radius: 999px;
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(0,117,74,.35);
+  }
+  .demo-cta:hover { background: var(--primary-dark); }
+  .demo-cta:focus-visible, .acc-head:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .demo-hint { text-align: center; font-size: 12px; color: var(--ink-soft); margin: 0 0 34px; }
+
+  /* ── SEÇÕES / ACCORDION ── */
+  .sec-label {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: var(--primary-dark);
+    margin: 34px 4px 12px;
+  }
+  .acc {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .acc-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: none;
+    border: none;
+    font: inherit;
+    text-align: left;
+    padding: 15px 16px;
+    cursor: pointer;
+    min-height: 56px;
+  }
+  .acc-ico {
+    width: 38px; height: 38px;
+    border-radius: 11px;
+    background: var(--mint);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  /* passos */
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n {
+    width: 30px; height: 30px; flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 800;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .rodape {
+    text-align: center;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 40px;
+  }
+  .rodape strong { color: var(--primary-dark); }
+
+  /* ── MOCKUPS DAS TELAS DO APP ── */
+  .tela {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .tela-titulo {
+    background: var(--house);
+    color: #fff;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .app-card {
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .app-card-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    border-bottom: 1px solid #f0efe9;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: #6b756f;
+  }
+  .app-card-body { padding: 12px; }
+  .app-input {
+    border: 1px solid #d8d5cc;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 12.5px;
+    color: var(--ink);
+    background: #fff;
+    margin-bottom: 8px;
+  }
+  .app-input small { display: block; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: #9aa5a0; margin-bottom: 2px; }
+  .app-input.ok { background: var(--mint); border-color: rgba(0,117,74,.25); }
+  .app-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--primary);
+    color: #fff;
+    font-size: 12.5px;
+    font-weight: 700;
+    padding: 9px 16px;
+    border-radius: 999px;
+  }
+  .app-btn.claro { background: #fff; border: 1.5px solid var(--primary); color: var(--primary); }
+  .app-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+  .app-pill {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 7px 14px;
+    border-radius: 999px;
+    border: 1.5px solid #d8d5cc;
+    color: #6b756f;
+    background: #fff;
+  }
+  .app-pill.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .app-busca {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .app-busca .app-input { flex: 1; margin-bottom: 0; color: #9aa5a0; }
+  .app-toggle-linha {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: #f7f6f2;
+    border: 1px solid #edece6;
+    border-radius: 10px;
+    padding: 9px 12px;
+    font-size: 12.5px;
+  }
+  .app-toggle-linha small { display: block; font-size: 10.5px; color: #9aa5a0; }
+  .app-toggle {
+    width: 38px; height: 22px; flex-shrink: 0;
+    border-radius: 999px;
+    background: var(--primary);
+    position: relative;
+  }
+  .app-toggle::after {
+    content: '';
+    position: absolute;
+    top: 3px; right: 3px;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: #fff;
+  }
+  .pin {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    flex-shrink: 0;
+    vertical-align: 2px;
+    margin-left: 6px;
+  }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+
+  /* extras desta página */
+  .faixa { border-radius: 12px; border: 1px solid; padding: 10px 12px; font-size: 12.5px; display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+  .faixa b { display: block; font-size: 13px; }
+  .faixa small { display: block; font-size: 11px; opacity: .85; margin-top: 2px; }
+  .faixa.verm { background: #fef2f2; border-color: #fca5a5; color: #991b1b; }
+  .faixa.amb { background: #fffbeb; border-color: #fcd34d; color: #78350f; }
+  .faixa .btn-f { align-self: flex-start; background: #fff; border: 1.5px solid currentColor; border-radius: 999px; padding: 7px 14px; font-weight: 700; font-size: 12px; }
+  .selo { display: inline-block; font-size: 10.5px; font-weight: 700; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
+  .selo.verm { background: #fee2e2; color: #b91c1c; }
+  .selo.amb { background: #fef3c7; color: #b45309; }
+  .linha-cli { background: #fff; border: 1px solid #e5e3dc; border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; font-size: 12.5px; }
+  .linha-cli strong { display: block; font-size: 13.5px; margin-bottom: 4px; }
+  .linha-cli .sub { color: #9aa5a0; font-size: 11px; margin-bottom: 6px; }
+  .conta { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+  .conta div { background: #fff; border: 1px solid #e5e3dc; border-radius: 12px; padding: 10px 12px; }
+  .conta small { display: block; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: #6b756f; }
+  .conta b { font-size: 22px; }
+  .tab-pills { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+  .app-toggle.off { background: #cfcdc4; }
+  .app-toggle.off::after { right: auto; left: 3px; }
+  .aviso-ped { border-radius: 10px; padding: 9px 12px; font-size: 12px; margin-bottom: 8px; }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>Cadastro de cliente<br>com nome completo</h1>
+    <p>CPF precisa de nome e sobrenome; CNPJ precisa de razão social e nome fantasia. Cadastro antigo fica com o aviso <b>"Corrigir cadastro"</b> até alguém acertar.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="mock" aria-hidden="true">
+    <div class="mock-top">
+      <span class="mock-ico">✏️</span>
+      <div>
+        <small>Clientes · Ficha do cliente</small>
+        <strong>Corrigir cadastro</strong>
+      </div>
+    </div>
+    <div class="mock-body">
+      <div class="faixa amb" style="margin-bottom:10px;">
+        <div><b>Corrigir cadastro</b><small>CNPJ sem nome fantasia: informe como o cliente é conhecido.</small></div>
+        <span class="btn-f">Corrigir agora</span>
+      </div>
+      <div class="faixa verm" style="margin-bottom:0;">
+        <div><b>Corrigir cadastro: este cliente está bloqueado para novos pedidos, amostras e notas até o nome ficar com nome e sobrenome</b></div>
+        <span class="btn-f">Corrigir agora</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec-label">O que mudou</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🪪</span>
+      <strong>A regra do nome</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li><b>CPF (pessoa física):</b> o nome precisa ter <b>nome e sobrenome</b> — "Maria" não vale, "Maria Souza" vale.</li>
+        <li><b>CNPJ (empresa):</b> precisa de <b>razão social</b> e de <b>nome fantasia</b> (o nome pelo qual o cliente é conhecido).</li>
+        <li>Vale ao <b>cadastrar</b> e ao <b>editar</b> o cliente — o app avisa na hora o que falta.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">⚠️</span>
+      <strong>E os cadastros antigos?</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Quem já estava cadastrado fora da regra ganha o selo <b>"Corrigir cadastro"</b> na lista e uma faixa na ficha do cliente.</li>
+        <li><b>CNPJ sem fantasia:</b> só <b>avisa</b> (selo âmbar). Continua vendendo normalmente.</li>
+        <li><b>CPF com nome de uma palavra só:</b> também começa só como aviso. Quando o dono ligar o bloqueio, o selo fica <b>vermelho</b> e esse cliente fica <b>parado</b> até alguém corrigir o nome: não dá para fazer <b>pedido novo</b>, <b>enviar pedido</b>, pedir <b>amostra</b>, aprovar pedido <b>especial ou bonificação</b>, converter especial, aprovar pedido da <b>fila do site</b> (Kit Festa e Congelados) nem <b>emitir nota de venda</b>.</li>
+        <li>O bloqueio vale também para o que <b>já estava feito</b> e ainda não saiu: a nota de venda de um pedido antigo <b>não é emitida</b> enquanto o nome não for corrigido.</li>
+        <li>Continua <b>liberado</b> para esse cliente: corrigir o cadastro, receber e dar baixa, devolução e nota de devolução, registrar visita, e o pedido do site <b>entrar na fila</b> (só a aprovação fica parada).</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🛠️</span>
+      <strong>Quem corrige e como</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Quem edita clientes (escritório e quem já mexe no cadastro) abre a ficha e toca em <b>"Corrigir agora"</b> — o cursor vai direto no campo certo.</li>
+        <li>Na lista de Clientes tem o filtro <b>"Cadastro a corrigir"</b> para ver só quem precisa de ajuste.</li>
+        <li>Em <b>Clientes → Cadastros a acertar</b> tem a nova aba <b>"Corrigir nome"</b>, com todos os casos, por vendedor.</li>
+        <li>Só o <b>administrador</b> liga o bloqueio, no topo dessa aba.</li>
+        <li>Vendedor: se o cliente estiver bloqueado, o app avisa ao escolher o cliente no pedido e leva você até a ficha.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="sec-label">As telas do app, sem mistério</div>
+
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 1 · Ficha do cliente — a faixa de aviso</div>
+    <div class="tela-corpo">
+      <div class="faixa verm">
+        <div><b>Corrigir cadastro: este cliente está bloqueado para novos pedidos, amostras e notas até o nome ficar com nome e sobrenome<span class="pin">1</span></b></div>
+        <span class="btn-f">Corrigir agora<span class="pin">2</span></span>
+      </div>
+      <div class="faixa amb">
+        <div><b>Corrigir cadastro<span class="pin">3</span></b><small>CNPJ sem nome fantasia: informe como o cliente é conhecido.</small></div>
+        <span class="btn-f">Corrigir agora</span>
+      </div>
+      <div class="app-card">
+        <div class="app-card-head">🏢 Informações do Cadastro</div>
+        <div class="app-card-body">
+          <div class="app-input" style="border-color:var(--primary);"><small>Nome (CPF) · Razão social (CNPJ)</small>Maria<span class="pin">4</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Faixa vermelha:</b> o bloqueio está ligado e o cliente é CPF sem sobrenome — fica parado: sem pedido novo, envio, amostra, aprovação (especial, bonificação e fila do site) nem nota de venda.</span></div>
+      <div><span class="pin">2</span><span><b>"Corrigir agora"</b> abre o cadastro e põe o cursor no campo do nome. Só aparece para quem pode editar clientes.</span></div>
+      <div><span class="pin">3</span><span><b>Faixa âmbar:</b> só um aviso (CNPJ sem fantasia, ou CPF enquanto o bloqueio está desligado). Não impede nada.</span></div>
+      <div><span class="pin">4</span><span>Corrija o nome, toque em <b>Salvar</b> — a faixa some sozinha.</span></div>
+    </div>
+  </div>
+
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 2 · Lista de Clientes — selo e filtro</div>
+    <div class="tela-corpo">
+      <div class="app-input" style="margin-bottom:8px;"><small>Cadastro a corrigir</small>Só os que precisam corrigir<span class="pin">1</span></div>
+      <div class="linha-cli">
+        <strong>Maria</strong>
+        <div class="sub">123.456.789-00 · Cidade Exemplo</div>
+        <span class="selo verm">⚠ Corrigir cadastro</span><span class="pin">2</span>
+      </div>
+      <div class="linha-cli">
+        <strong>Panificadora Exemplo</strong>
+        <div class="sub">12.345.678/0001-90 · Cidade Exemplo</div>
+        <span class="selo amb">⚠ Corrigir cadastro</span><span class="pin">3</span>
+      </div>
+      <div style="margin-top:6px;"><span class="app-btn claro">📋 Cadastros a acertar <span class="selo amb" style="background:#f59e0b;color:#fff;">12</span></span><span class="pin">4</span></div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Filtro <b>"Cadastro a corrigir"</b>: mostra só quem precisa de ajuste. O app lembra a sua escolha.</span></div>
+      <div><span class="pin">2</span><span>Selo <b>vermelho</b>: cliente bloqueado para vender até corrigir.</span></div>
+      <div><span class="pin">3</span><span>Selo <b>âmbar</b>: só aviso, segue vendendo.</span></div>
+      <div><span class="pin">4</span><span>O botão <b>Cadastros a acertar</b> mostra o total de nomes a corrigir.</span></div>
+    </div>
+  </div>
+
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 3 · Cadastros a acertar → aba "Corrigir nome"</div>
+    <div class="tela-corpo">
+      <div class="tab-pills">
+        <span class="app-pill on">Corrigir nome <span class="pin" style="background:#fff;">12</span></span>
+        <span class="app-pill">Classificar</span>
+        <span class="app-pill">Pedidos de inativação</span>
+      </div>
+      <div class="conta">
+        <div><small>CPF sem sobrenome</small><b>7</b></div>
+        <div><small>CNPJ sem fantasia</small><b>5</b><span class="pin">1</span></div>
+      </div>
+      <div class="app-toggle-linha" style="margin-bottom:10px;">
+        <span><b>Bloquear venda de CPF sem sobrenome</b><small>Só administrador. Ao ligar, vale na hora.</small></span>
+        <span class="app-toggle off"></span><span class="pin">2</span>
+      </div>
+      <div class="app-input"><small>Vendedor</small>Todos os vendedores<span class="pin">3</span></div>
+      <div class="linha-cli">
+        <strong>Maria</strong>
+        <div class="sub">Vendedor: Fulano · 123.456.789-00</div>
+        <span class="selo amb">CPF sem sobrenome</span> <span style="font-size:11px;color:var(--primary);font-weight:700;">Abrir ficha ›</span><span class="pin">4</span>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Contadores dos dois tipos de caso.</span></div>
+      <div><span class="pin">2</span><span><b>Interruptor do bloqueio</b> (só para administrador). O app pede confirmação antes de ligar: ao ligar, <b>vale na hora</b>: esses clientes ficam parados (pedido, amostra, aprovações e nota de venda) até corrigir. Devolução, baixa e visita seguem normais.</span></div>
+      <div><span class="pin">3</span><span>Filtro por vendedor, para cada um acertar a sua carteira.</span></div>
+      <div><span class="pin">4</span><span>Toque na linha para abrir a ficha e corrigir.</span></div>
+    </div>
+  </div>
+
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 4 · Novo pedido — cliente bloqueado</div>
+    <div class="tela-corpo">
+      <div class="aviso-ped" style="background:#fef2f2;border:1px solid #fca5a5;color:#991b1b;">
+        <b>Corrigir cadastro: este cliente está bloqueado para novos pedidos</b><span class="pin">1</span><br>
+        <span style="font-size:11px;">O nome precisa ter nome e sobrenome.</span><br>
+        <span class="btn-f" style="display:inline-block;margin-top:6px;background:#fff;border:1.5px solid currentColor;border-radius:999px;padding:6px 12px;font-weight:700;font-size:11.5px;">Corrigir cadastro</span><span class="pin">2</span>
+      </div>
+      <div class="aviso-ped" style="background:#fffbeb;border:1px solid #fde68a;color:#78350f;font-size:11.5px;">
+        CNPJ sem nome fantasia — só um lembrete, o pedido segue normal.<span class="pin">3</span>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Ao escolher um cliente bloqueado, o aviso vermelho aparece e o pedido novo <b>não é enviado</b> (nem "Repetir último pedido" nem amostra). Rascunho já aberto desse cliente ainda pode ser salvo.</span></div>
+      <div><span class="pin">2</span><span>O botão leva direto para a ficha do cliente.</span></div>
+      <div><span class="pin">3</span><span>Aviso âmbar é discreto: não impede o pedido.</span></div>
+    </div>
+  </div>
+
+  <div class="sec-label">Para acertar um cadastro</div>
+  <div class="passos">
+    <div class="passo"><span class="passo-n">1</span><div><b>Atualize o app:</b> toque no ícone de atualizar ↻ (ou feche e abra o app).</div></div>
+    <div class="passo"><span class="passo-n">2</span><div>Abra <b>Clientes</b> e use o filtro <b>"Cadastro a corrigir"</b> (ou entre em <b>Cadastros a acertar → Corrigir nome</b>).</div></div>
+    <div class="passo"><span class="passo-n">3</span><div>Toque no cliente, depois em <b>"Corrigir agora"</b>, ajuste o nome e toque em <b>Salvar</b>.</div></div>
+    <div class="passo"><span class="passo-n">4</span><div>Pronto: o selo e a faixa somem sozinhos. ✅</div></div>
+  </div>
+
+  <p class="rodape">Dúvidas? Pergunte ao <strong>Clippy</strong> dentro do app — ele já conhece a tela nova.<br>— Hardt Salgados</p>
+</div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.parentElement;
+    const abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>

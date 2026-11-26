@@ -435,6 +435,12 @@ const pedidoService = {
             throw new Error('Cliente e itens são obrigatórios');
         }
 
+        // Rede de segurança do "cadastro a corrigir" (11/2026): cobre o caminho que NÃO passa pelo
+        // pedidoController — a APROVAÇÃO/conversão da fila do Kit Festa e dos Congelados. Roda ANTES
+        // de qualquer escrita (nada fica meio feito: o pedido da fila continua AGUARDANDO). Chave
+        // desligada ou erro na checagem = não bloqueia (fail-open, dentro de exigirCadastroOk).
+        await require('./clienteNomeCadastroService').exigirCadastroOk(clienteId, { acao: 'criar pedido' });
+
         // Verificar se o vendedor está ativo
         if (vendedorId) {
             const vendedor = await prisma.vendedor.findUnique({ where: { id: vendedorId }, select: { ativo: true } });

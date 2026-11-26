@@ -5,6 +5,7 @@ const axios = require('axios');
 const contaAzulService = require('../services/contaAzulService');
 const estoqueService = require('../services/estoqueService');
 const pcpReceitaService = require('../services/pcpReceitaService');
+const nomeCadastroSvc = require('../services/clienteNomeCadastroService'); // trava "cadastro a corrigir" (CPF sem sobrenome)
 
 // Condição de pagamento precisa estar liberada para o cliente (mesma regra da tela:
 // lista `condicoes_pagamento_permitidas` do cadastro, ou a condição padrão quando a lista
@@ -456,6 +457,17 @@ const pedidoController = {
                 }
             }
 
+            // Cadastro a corrigir (11/2026): CPF com nome de 1 palavra não vende — vale p/ TODOS os tipos
+            // (normal, especial, bonificação) e p/ qualquer status. Só age com a chave LIGADA
+            // (Configurações) e é fail-open: erro na checagem nunca bloqueia a venda.
+            if (dadosPedido.clienteId) {
+                try { await nomeCadastroSvc.exigirCadastroOk(dadosPedido.clienteId, { acao: 'criar pedido' }); }
+                catch (eCad) {
+                    if (nomeCadastroSvc.ehErroBloqueio(eCad)) return res.status(403).json(eCad.payload);
+                    throw eCad;
+                }
+            }
+
             // Verificar inadimplência do cliente (apenas pedidos normais — especial e bonificação são isentos aqui).
             // FONTE ÚNICA: services/inadimplenciaService. Só trava quando `bloqueiaVenda` (atraso há >= carência
             // dias E soma >= valor mínimo, ambos configuráveis); atraso menor aparece como selo mas não trava.
@@ -557,6 +569,7 @@ const pedidoController = {
                     .catch(err => console.error('[Insight] Erro ao recalcular após pedido:', err.message));
             }
         } catch (error) {
+            if (nomeCadastroSvc.ehErroBloqueio(error)) return res.status(403).json(error.payload);
             console.error('Erro ao criar pedido:', error);
             res.status(400).json({ error: error.message });
         }
@@ -615,6 +628,19 @@ const pedidoController = {
                 if (erroEstoque) return res.status(403).json({ error: erroEstoque });
             }
 
+            // Cadastro a corrigir (11/2026): ao ENVIAR o pedido ou ao TROCAR o cliente, CPF com nome de
+            // 1 palavra não passa (chave ligada; fail-open). Salvar rascunho ABERTO do mesmo cliente continua livre.
+            {
+                const trocouCliente = !!dadosPedido.clienteId && dadosPedido.clienteId !== pedidoAtual.clienteId;
+                if (statusFinal === 'ENVIAR' || trocouCliente) {
+                    try { await nomeCadastroSvc.exigirCadastroOk(dadosPedido.clienteId || pedidoAtual.clienteId, { acao: 'enviar pedido' }); }
+                    catch (eCad) {
+                        if (nomeCadastroSvc.ehErroBloqueio(eCad)) return res.status(403).json(eCad.payload);
+                        throw eCad;
+                    }
+                }
+            }
+
             // Cliente precisa de ponto GPS (ou ser balcão) para ENVIAR
             if (statusFinal === 'ENVIAR') {
                 const clienteAlvo = dadosPedido.clienteId || pedidoAtual.clienteId;
@@ -649,6 +675,7 @@ const pedidoController = {
             const pedidoAtualizado = await pedidoService.editar(id, dadosPedido);
             res.json(pedidoAtualizado);
         } catch (error) {
+            if (nomeCadastroSvc.ehErroBloqueio(error)) return res.status(403).json(error.payload);
             console.error('Erro ao atualizar pedido:', error);
             res.status(error.statusHttp || 400).json({ error: error.message });
         }
@@ -774,6 +801,11 @@ const pedidoController = {
             if (!pedido.especial) return res.status(400).json({ error: 'Este pedido não é especial.' });
             if (pedido.statusEnvio === 'RECEBIDO') return res.status(400).json({ error: 'Este pedido já foi aprovado.' });
 
+            // Cadastro a corrigir (11/2026): aprovação HUMANA do especial não passa com CPF de nome único
+            // (chave ligada; fail-open). Antes de qualquer escrita. A conversão automática por PIX recebido
+            // NÃO passa por aqui (o dinheiro já entrou).
+            await nomeCadastroSvc.exigirCadastroOk(pedido.clienteId, { acao: 'aprovar pedido especial' });
+
             // Trava de inadimplência (back de verdade): vendedor sem Pode_Vender_Inadimplente leva 403.
             const trava = await travaInadimplenciaAprovacao(req, res, pedido);
             if (trava.resposta) return;
@@ -826,6 +858,7 @@ const pedidoController = {
 
             res.json({ message: 'Pedido especial aprovado com sucesso.', pedido: pedidoAprovado });
         } catch (error) {
+            if (nomeCadastroSvc.ehErroBloqueio(error)) return res.status(403).json(error.payload);
             console.error('Erro ao aprovar pedido especial:', error);
             res.status(500).json({ error: 'Erro ao aprovar pedido especial.' });
         }
@@ -951,6 +984,9 @@ const pedidoController = {
             // Trava de inadimplência: só a conversão HUMANA (a automática por PIX não passa por aqui).
             // Ignora a conta do próprio especial (já faturado, a parcela nasce vencida).
             const alvo = await prisma.pedido.findUnique({ where: { id: req.params.id }, select: { id: true, clienteId: true, observacoes: true, especial: true, nomeCondicaoPagamento: true } });
+            // Cadastro a corrigir (11/2026): conversão HUMANA (gera NF-e) não passa com CPF de nome único
+            // (chave ligada; fail-open). A conversão AUTOMÁTICA por PIX recebido nunca passa por este controller.
+            if (alvo?.clienteId) await nomeCadastroSvc.exigirCadastroOk(alvo.clienteId, { acao: 'converter pedido especial' });
             // Condição que não permite pedido comum: recusa ANTES de qualquer pergunta de inadimplência.
             if (alvo?.especial && await pedidoConversaoService.condicaoBloqueiaConversao(alvo.nomeCondicaoPagamento)) {
                 return res.status(409).json({ error: pedidoConversaoService.MSG_CONDICAO_BLOQUEADA(alvo.nomeCondicaoPagamento) });
@@ -995,6 +1031,7 @@ const pedidoController = {
                 ...resultado
             });
         } catch (error) {
+            if (nomeCadastroSvc.ehErroBloqueio(error)) return res.status(403).json(error.payload);
             console.error('Erro ao converter pedido especial:', error);
             res.status(error.statusHttp || 400).json({ error: error.message || 'Erro ao converter pedido especial.' });
         }
@@ -1009,10 +1046,14 @@ const pedidoController = {
                 return res.status(403).json({ error: 'Você não tem permissão para aprovar pedidos de bonificação.' });
             }
 
-            const pedido = await prisma.pedido.findUnique({ where: { id }, select: { bonificacao: true, statusEnvio: true } });
+            const pedido = await prisma.pedido.findUnique({ where: { id }, select: { bonificacao: true, statusEnvio: true, clienteId: true } });
             if (!pedido) return res.status(404).json({ error: 'Pedido não encontrado.' });
             if (!pedido.bonificacao) return res.status(400).json({ error: 'Este pedido não é uma bonificação.' });
             if (pedido.statusEnvio === 'RECEBIDO') return res.status(400).json({ error: 'Este pedido já foi aprovado.' });
+
+            // Cadastro a corrigir (11/2026): aprovar a bonificação (que também libera a NF-e da BN# "com nota")
+            // não passa com CPF de nome único (chave ligada; fail-open). Antes de qualquer escrita.
+            await nomeCadastroSvc.exigirCadastroOk(pedido.clienteId, { acao: 'aprovar bonificação' });
 
             const pedidoAprovado = await prisma.pedido.update({
                 where: { id },
@@ -1032,6 +1073,7 @@ const pedidoController = {
 
             res.json({ message: 'Bonificação aprovada com sucesso.', pedido: pedidoAprovado });
         } catch (error) {
+            if (nomeCadastroSvc.ehErroBloqueio(error)) return res.status(403).json(error.payload);
             console.error('Erro ao aprovar bonificação:', error);
             res.status(500).json({ error: 'Erro ao aprovar bonificação.' });
         }

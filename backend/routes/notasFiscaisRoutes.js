@@ -304,6 +304,8 @@ router.post('/emitir/:pedidoId', checkEmitir, async (req, res) => {
         const nota = await emissao.emitirVenda(req.params.pedidoId);
         res.json({ ok: true, nota });
     } catch (e) {
+        // Cadastro a corrigir (11/2026): 403 no formato do contrato (nada foi gravado nem enviado à Focus)
+        if (e.codigo === 'CADASTRO_A_CORRIGIR' && e.payload) return res.status(403).json(e.payload);
         res.status(400).json({ error: e.message });
     }
 });

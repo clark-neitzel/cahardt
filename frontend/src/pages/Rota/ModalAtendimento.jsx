@@ -298,6 +298,11 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId, onAbrirAmostra,
 
         // Se ação abre pedido de amostra, chama callback antes de salvar
         if (acaoSelecionada?.abrePedidoAmostra && onAbrirAmostra) {
+            // Cliente com cadastro a corrigir (bloqueado): não abre a amostra — o servidor recusaria
+            if (!isLead && item?.cadastroACorrigir?.bloqueia) {
+                toast.error(`Corrigir cadastro: ${item.cadastroACorrigir.mensagem || 'este cliente está bloqueado para amostras até o nome ficar com nome e sobrenome.'}`, { duration: 7000 });
+                return;
+            }
             onAbrirAmostra({
                 form,
                 acaoSelecionada,

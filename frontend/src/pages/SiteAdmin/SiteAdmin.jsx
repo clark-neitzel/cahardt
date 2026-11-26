@@ -9,6 +9,8 @@ import { List, Hourglass, UserX, CheckCircle, XCircle, Ban, MessageCircle as Ico
 import SeloInadimplencia from '../../components/SeloInadimplencia';
 import PopupContasEmAberto from '../../components/PopupContasEmAberto';
 import { useAuth } from '../../contexts/AuthContext';
+import ModalCadastroACorrigir from '../../components/ModalCadastroACorrigir';
+import { erroCadastroACorrigir } from '../../utils/cadastroACorrigir';
 import { BarraBuscaPedidos, ChipsStatusPedidos, PendentesPedidos, ListaLinhasPedidos, LinhaPedidoOnline } from '../PedidosOnline/listaEstiloPedidos';
 
 const money = (n) => 'R$ ' + Number(n || 0).toFixed(2).replace('.', ',');
@@ -475,6 +477,7 @@ function AprovarModal({ pedido, onClose, onDone, onAtualizarFila }) {
   // bloqueioConfirmado: descoberto na hora do clique (SEM_ESTOQUE no POST /aprovar), mesmo que
   // por algum motivo o array venha vazio — nesse caso ainda assim é um bloqueio real e recente.
   const [bloqueioConfirmado, setBloqueioConfirmado] = useState(false);
+  const [cadastroBloqueio, setCadastroBloqueio] = useState(null); // 403 CADASTRO_A_CORRIGIR: o pedido continua aguardando
   const bloqueado = pedido.semEstoque === true || bloqueioConfirmado || (Array.isArray(itensSemEstoque) && itensSemEstoque.length > 0);
   const confirmar = async () => {
     setErro(''); setBusy(true);
@@ -488,6 +491,10 @@ function AprovarModal({ pedido, onClose, onDone, onAtualizarFila }) {
         setItensSemEstoque(e.response.data.itensSemEstoque || []);
         setBloqueioConfirmado(true);
         onAtualizarFila?.();
+      } else if (erroCadastroACorrigir(e)) {
+        const d = e.response.data;
+        setCadastroBloqueio({ clienteNome: pedido.clienteNome || pedido.nome || '', ...d });
+        setErro(d.error || 'Cadastro do cliente a corrigir antes de aprovar. O pedido continua aguardando.');
       } else {
         setErro(e?.response?.data?.error || 'Erro ao aprovar.');
       }
@@ -495,6 +502,7 @@ function AprovarModal({ pedido, onClose, onDone, onAtualizarFila }) {
   };
   return (
     <Modal onClose={onClose} title={`Aprovar pedido #${pedido.numero}`}>
+      <ModalCadastroACorrigir dados={cadastroBloqueio} onFechar={() => setCadastroBloqueio(null)} textoExtra="O pedido continua aguardando na fila. Depois de corrigir o nome, aprove de novo." />
       {bloqueado && (
         <div className="rounded-lg border border-red-200 bg-red-50 p-3 mb-3">
           <div className="text-xs font-bold uppercase tracking-widest text-red-700 flex items-center gap-1.5 mb-1.5">

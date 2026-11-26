@@ -8,6 +8,8 @@ import { explicarRejeicao } from '../../utils/rejeicaoNfe';
 import clienteService from '../../services/clienteService';
 import CanhotosTab from './CanhotosTab';
 import DevolucoesNfTab from './DevolucoesNfTab';
+import ModalCadastroACorrigir from '../../components/ModalCadastroACorrigir';
+import { erroCadastroACorrigir, mensagemCadastroACorrigir } from '../../utils/cadastroACorrigir';
 import {
     FileText, Loader2, RefreshCw, Send, FileDown, FileCode2, AlertTriangle, HelpCircle, Search, Ban, Zap
 } from 'lucide-react';
@@ -230,6 +232,7 @@ const NotasFiscais = () => {
     const [baixando, setBaixando] = useState(null);       // `${notaId}:danfe|xml`
     const [progressoLote, setProgressoLote] = useState(null); // { atual, total }
     const [cancelando, setCancelando] = useState(null);   // pedidoId em cancelamento
+    const [cadastroBloqueio, setCadastroBloqueio] = useState(null); // 403 CADASTRO_A_CORRIGIR ao emitir NF de venda
     const [selecionados, setSelecionados] = useState(() => new Set()); // pedidoIds marcados p/ emitir
     const loteAtivoRef = useRef(false);
 
@@ -333,7 +336,9 @@ const NotasFiscais = () => {
             toast.success(`NF-e de ${rotuloPedido(pedido)} enviada para emissão.`);
             await carregar(true);
         } catch (e) {
-            toast.error(msgErroApi(e, 'Erro ao emitir a NF-e.'));
+            const b = erroCadastroACorrigir(e);
+            if (b) setCadastroBloqueio({ clienteNome: pedido.cliente?.nome || '', ...b });
+            else toast.error(msgErroApi(e, 'Erro ao emitir a NF-e.'));
         } finally {
             setEmitindo(null);
         }
@@ -376,7 +381,8 @@ const NotasFiscais = () => {
                     await api.post(`/notas-fiscais/emitir/${pedido.id}`);
                 } catch (e) {
                     erros++;
-                    toast.error(`${rotuloPedido(pedido)}: ${msgErroApi(e, 'erro ao emitir')}`);
+                    const b = erroCadastroACorrigir(e);
+                    toast.error(`${rotuloPedido(pedido)}: ${b ? `cadastro a corrigir — ${mensagemCadastroACorrigir(b)}` : msgErroApi(e, 'erro ao emitir')}`, { duration: b ? 9000 : 4000 });
                 }
             }
         } finally {
@@ -537,6 +543,7 @@ const NotasFiscais = () => {
 
     return (
         <div className="max-w-full overflow-x-hidden -mx-4 sm:-mx-6 lg:-mx-8">
+            <ModalCadastroACorrigir dados={cadastroBloqueio} onFechar={() => setCadastroBloqueio(null)} textoExtra="A nota só pode ser emitida depois que o nome do cliente for corrigido." />
             {/* Topbar */}
             <div className="flex items-center justify-between gap-2 p-3 md:p-6 bg-white border-b border-gray-200">
                 <div className="flex items-center gap-2 min-w-0">

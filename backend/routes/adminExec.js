@@ -13206,4 +13206,94 @@ router.get('/diag-ncm-produtos', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/clientes-cadastro-a-corrigir — SIMULAÇÃO SOMENTE LEITURA (11/2026).
+// "Se o dono ligar o bloqueio agora, quem para?" Não grava NADA. Entre clientes ATIVOS:
+//   totais por tipo; quantos com pedido nos últimos 90 dias; recorrentes (>=3 pedidos em 6 meses);
+//   com título em aberto; com pedido AGUARDANDO na fila (Kit Festa/Congelados); ranking top 100 por
+//   movimento (pedidos em 6 meses) e contagem por vendedor. O que BLOQUEIA é só CPF_NOME_UNICO.
+router.get('/clientes-cadastro-a-corrigir', async (req, res) => {
+    try {
+        const nomeSvc = require('../services/clienteNomeCadastroService');
+        const mapa = await nomeSvc.mapaAfetados();
+        const ativos = [...mapa.entries()].filter(([, s]) => s.Ativo === true);
+        const ids = ativos.map(([id]) => id);
+        const dias = (n) => new Date(Date.now() - n * 24 * 3600 * 1000);
+        const base = { clienteId: { in: ids }, bonificacao: false, cancelado: false, statusEnvio: { not: 'EXCLUIDO' } };
+
+        const [ped90, ped180, abertos, kfFila, cgFila, cfg] = ids.length ? await Promise.all([
+            prisma.pedido.groupBy({ by: ['clienteId'], where: { ...base, dataVenda: { gte: dias(90) } }, _count: { _all: true } }),
+            prisma.pedido.groupBy({ by: ['clienteId'], where: { ...base, dataVenda: { gte: dias(180) } }, _count: { _all: true } }),
+            prisma.contaReceber.groupBy({ by: ['clienteId'], where: { clienteId: { in: ids }, status: { in: ['ABERTO', 'PARCIAL'] } }, _count: { _all: true } }),
+            prisma.kitFestaPedido.findMany({ where: { status: 'AGUARDANDO' }, select: { cpfCliente: true, kitFestaCliente: { select: { clienteUuid: true } } } }),
+            prisma.congeladosPedido.findMany({ where: { status: { in: ['AGUARDANDO', 'PENDENTE_CADASTRO'] } }, select: { documentoCliente: true, congeladosCliente: { select: { clienteUuid: true } } } }),
+            nomeSvc.getConfig(),
+        ]) : [[], [], [], [], [], await nomeSvc.getConfig()];
+
+        const m90 = new Map(ped90.map(g => [g.clienteId, g._count._all]));
+        const m180 = new Map(ped180.map(g => [g.clienteId, g._count._all]));
+        const setAberto = new Set(abertos.map(g => g.clienteId));
+
+        const docDe = new Map();
+        if (ids.length) {
+            const docs = await prisma.cliente.findMany({ where: { UUID: { in: ids } }, select: { UUID: true, Documento: true, NomeFantasia: true, Codigo: true } });
+            docs.forEach(c => docDe.set(c.UUID, c));
+        }
+        const { normalizarDoc } = require('../utils/documento');
+        const idPorDoc = new Map();
+        for (const [id, c] of docDe) if (c.Documento) idPorDoc.set(normalizarDoc(c.Documento), id);
+        const filaPorCliente = new Map(); // clienteId -> qtde de pedidos na fila
+        const contaFila = (clienteUuid, doc) => {
+            const id = (clienteUuid && mapa.has(clienteUuid)) ? clienteUuid : idPorDoc.get(normalizarDoc(doc || ''));
+            if (id) filaPorCliente.set(id, (filaPorCliente.get(id) || 0) + 1);
+        };
+        kfFila.forEach(k => contaFila(k.kitFestaCliente?.clienteUuid, k.cpfCliente));
+        cgFila.forEach(k => contaFila(k.congeladosCliente?.clienteUuid, k.documentoCliente));
+
+        const vendedores = await prisma.vendedor.findMany({ select: { id: true, nome: true } });
+        const nomeVend = new Map(vendedores.map(v => [v.id, v.nome]));
+
+        const porTipo = {
+            CPF_NOME_UNICO: { total: 0, comPedido90d: 0, recorrentes: 0, comTituloAberto: 0, comPedidoNaFila: 0 },
+            CNPJ_SEM_FANTASIA: { total: 0, comPedido90d: 0, recorrentes: 0, comTituloAberto: 0, comPedidoNaFila: 0 },
+        };
+        const porVendedor = {};
+        const linhas = [];
+        for (const [id, s] of ativos) {
+            const t = porTipo[s.tipo];
+            t.total++;
+            const p90 = m90.get(id) || 0, p180 = m180.get(id) || 0;
+            if (p90 > 0) t.comPedido90d++;
+            if (p180 >= 3) t.recorrentes++;
+            if (setAberto.has(id)) t.comTituloAberto++;
+            if (filaPorCliente.has(id)) t.comPedidoNaFila++;
+            const vNome = s.idVendedor ? (nomeVend.get(s.idVendedor) || s.idVendedor) : '(sem vendedor)';
+            const v = porVendedor[vNome] || (porVendedor[vNome] = { CPF_NOME_UNICO: 0, CNPJ_SEM_FANTASIA: 0 });
+            v[s.tipo]++;
+            linhas.push({
+                UUID: id, Codigo: docDe.get(id)?.Codigo || null, Nome: s.Nome, NomeFantasia: docDe.get(id)?.NomeFantasia || null,
+                tipo: s.tipo, vendedor: vNome, pedidos90d: p90, pedidos6m: p180,
+                tituloAberto: setAberto.has(id), pedidosNaFila: filaPorCliente.get(id) || 0,
+            });
+        }
+        const ranking = linhas
+            .filter(l => l.pedidos6m > 0 || l.pedidosNaFila > 0 || l.tituloAberto)
+            .sort((a, b) => (b.pedidos6m - a.pedidos6m) || (b.pedidos90d - a.pedidos90d) || a.Nome.localeCompare(b.Nome, 'pt-BR'))
+            .slice(0, 100);
+
+        res.json({
+            somenteLeitura: true,
+            bloqueioLigadoAgora: cfg.bloquearCpfNomeUnico,
+            observacao: 'Só CPF_NOME_UNICO bloqueia (quando o dono liga a chave). CNPJ_SEM_FANTASIA é só aviso. Pedidos = não bonificação, não cancelados, por data de entrega.',
+            totaisAtivos: { CPF_NOME_UNICO: porTipo.CPF_NOME_UNICO.total, CNPJ_SEM_FANTASIA: porTipo.CNPJ_SEM_FANTASIA.total },
+            impactoSeLigarAgora: porTipo.CPF_NOME_UNICO,
+            avisoSomente: porTipo.CNPJ_SEM_FANTASIA,
+            porVendedor,
+            rankingTop100PorMovimento: ranking,
+        });
+    } catch (err) {
+        console.error('[clientes-cadastro-a-corrigir]', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 module.exports = router;

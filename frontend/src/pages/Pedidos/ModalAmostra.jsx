@@ -5,6 +5,8 @@ import amostraService from '../../services/amostraService';
 import configService from '../../services/configService';
 import toast from 'react-hot-toast';
 import CampoNumero from '../../components/CampoNumero';
+import ModalCadastroACorrigir from '../../components/ModalCadastroACorrigir';
+import { erroCadastroACorrigir } from '../../utils/cadastroACorrigir';
 
 const ModalAmostra = ({ dados, onClose, onCriada }) => {
     // dados: { leadId?, clienteId?, nomeDestinatario, vendedorId }
@@ -18,6 +20,7 @@ const ModalAmostra = ({ dados, onClose, onCriada }) => {
     const [dataEntrega, setDataEntrega] = useState('');
     const [observacao, setObservacao] = useState('');
     const searchInputRef = useRef(null);
+    const [cadastroBloqueio, setCadastroBloqueio] = useState(null); // 403 CADASTRO_A_CORRIGIR
 
     useEffect(() => {
         carregarProdutos();
@@ -92,7 +95,9 @@ const ModalAmostra = ({ dados, onClose, onCriada }) => {
             onCriada(amostra.id);
         } catch (error) {
             console.error('Erro ao criar amostra:', error);
-            toast.error('Erro ao criar amostra.');
+            const bloqueio = erroCadastroACorrigir(error);
+            if (bloqueio) setCadastroBloqueio({ clienteNome: nomeDestinatario, clienteId, ...bloqueio });
+            else toast.error(error.response?.data?.error || 'Erro ao criar amostra.');
         } finally {
             setSaving(false);
         }
@@ -100,6 +105,7 @@ const ModalAmostra = ({ dados, onClose, onCriada }) => {
 
     return (
         <div className="fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm flex items-end">
+            <ModalCadastroACorrigir dados={cadastroBloqueio} onFechar={() => setCadastroBloqueio(null)} />
             <div className="bg-white w-full rounded-t-2xl max-h-[95vh] flex flex-col">
                 {/* Header */}
                 <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 sticky top-0 bg-white z-10 rounded-t-2xl">

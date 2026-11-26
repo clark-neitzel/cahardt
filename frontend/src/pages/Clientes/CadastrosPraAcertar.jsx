@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, ClipboardCheck, RefreshCw, Loader2, ChevronRight, UserX, CheckCircle2, X } from 'lucide-react';
+import { ArrowLeft, ClipboardCheck, RefreshCw, Loader2, ChevronRight, UserX, CheckCircle2, X, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import cadastroPendenciasService from '../../services/cadastroPendenciasService';
 import vendedorService from '../../services/vendedorService';
@@ -8,6 +8,7 @@ import { opcoesVendedorFiltro } from '../../utils/vendedoresFiltro';
 import SelectBusca from '../../components/SelectBusca';
 import EstadoVazio from '../../components/EstadoVazio';
 import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
+import { useAuth } from '../../contexts/AuthContext';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Cadastros pra acertar + pedidos de inativação.
@@ -481,14 +482,235 @@ function AbaInativacoes({ onMudou }) {
     );
 }
 
+// ── Aba Corrigir nome ────────────────────────────────────────────────────
+// CPF com nome de uma palavra só (bloqueia venda quando a chave está ligada) e
+// CNPJ sem nome fantasia (só aviso). A chave é SÓ DE ADMIN (igual ao backend).
+const TAMANHO_PAGINA_NOME = 50;
+const ehCpf = (it) => String(it?.tipo || '').startsWith('CPF');
+
+function ModalConfirmarBloqueio({ ligar, total, salvando, onConfirmar, onFechar }) {
+    // Escape fecha (ouvido no document: o div do modal não tem foco, então onKeyDown nele não dispara)
+    useEffect(() => {
+        const aoTeclar = (e) => { if (e.key === 'Escape' && !salvando) onFechar(); };
+        document.addEventListener('keydown', aoTeclar);
+        return () => document.removeEventListener('keydown', aoTeclar);
+    }, [salvando, onFechar]);
+    return (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-end md:items-center justify-center p-0 md:p-4" onClick={() => !salvando && onFechar()}>
+            <div className="bg-white w-full md:max-w-md rounded-t-2xl md:rounded-2xl shadow-xl p-5" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-start justify-between gap-2">
+                    <h2 className="text-base font-bold text-gray-900">{ligar ? 'Bloquear venda de CPF sem sobrenome?' : 'Desligar o bloqueio?'}</h2>
+                    <button onClick={onFechar} disabled={salvando} aria-label="Fechar" className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"><X className="h-4 w-4" /></button>
+                </div>
+                <p className="text-sm text-gray-700 mt-2">
+                    {ligar
+                        ? <>Ao ligar, <strong>vale na hora</strong>: esses clientes ficam sem pedido, amostra e nota até corrigir{total > 0 ? ` (hoje são ${total})` : ''}.</>
+                        : 'Ao desligar, os CPFs com nome de uma palavra só voltam a poder fazer pedido, amostra e nota. O aviso "Corrigir cadastro" continua aparecendo.'}
+                </p>
+                <div className="flex gap-3 mt-4">
+                    <button onClick={onFechar} disabled={salvando} className="flex-1 px-4 py-2 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-sm min-h-[44px]">Cancelar</button>
+                    <button onClick={onConfirmar} disabled={salvando}
+                        className={`flex-1 px-4 py-2 text-white rounded-full font-semibold text-sm min-h-[44px] disabled:opacity-60 flex items-center justify-center gap-2 ${ligar ? 'bg-red-600 hover:bg-red-700' : 'bg-primary hover:bg-primaryDark'}`}>
+                        {salvando && <Loader2 className="h-4 w-4 animate-spin" />}
+                        {salvando ? 'Salvando…' : ligar ? 'Ligar bloqueio' : 'Desligar'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function AbaCorrigirNome({ vendedores, onMudou }) {
+    const navigate = useNavigate();
+    const { user } = useAuth();
+    const ehAdmin = !!user?.permissoes?.admin; // mesmo gate do backend (só admin liga a chave)
+    const [vendedorId, setVendedorId] = useFiltroSalvo('cadastros-pra-acertar:vendedorNome', 'todos');
+    const [tipo, setTipo] = useFiltroSalvo('cadastros-pra-acertar:tipoNome', 'todos');
+    const [mostrar, setMostrar] = useState(TAMANHO_PAGINA_NOME);
+    const [dados, setDados] = useState(null);
+    const [carregando, setCarregando] = useState(true);
+    const [erro, setErro] = useState('');
+    const [confirmando, setConfirmando] = useState(false);
+    const [salvandoChave, setSalvandoChave] = useState(false);
+
+    const carregar = useCallback(async () => {
+        setCarregando(true);
+        setErro('');
+        try {
+            setDados(await cadastroPendenciasService.nomePendencias({ vendedor: vendedorId === 'todos' ? undefined : vendedorId }));
+        } catch (e) {
+            setErro(msgErro(e, 'Não deu para carregar agora.'));
+        } finally {
+            setCarregando(false);
+        }
+    }, [vendedorId]);
+
+    useEffect(() => { carregar(); }, [carregar]);
+
+    const ligado = !!dados?.config?.bloquearCpfNomeUnico;
+    const cont = dados?.contagem || { cpfNomeUnico: 0, cnpjSemFantasia: 0 };
+    const todos = dados?.itens || [];
+    const filtrados = todos.filter((it) => tipo === 'todos' || (tipo === 'cpf' ? ehCpf(it) : !ehCpf(it)));
+    const visiveis = filtrados.slice(0, mostrar);
+
+    const trocarChave = async () => {
+        if (salvandoChave) return;
+        setSalvandoChave(true);
+        try {
+            const novo = !ligado;
+            await cadastroPendenciasService.salvarConfigNome(novo);
+            toast.success(novo ? 'Bloqueio ligado: CPF sem sobrenome não faz mais pedido, amostra nem nota.' : 'Bloqueio desligado.');
+            setConfirmando(false);
+            await carregar();
+            onMudou();
+        } catch (e) {
+            toast.error(msgErro(e, 'Não foi possível salvar agora.'));
+        } finally {
+            setSalvandoChave(false);
+        }
+    };
+
+    const chip = (it) => ehCpf(it)
+        ? <span className={`px-2 py-1 text-xs font-semibold rounded-full ${ligado ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>{ligado ? 'CPF sem sobrenome — bloqueado' : 'CPF sem sobrenome'}</span>
+        : <span className="px-2 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-700">CNPJ sem nome fantasia</span>;
+
+    return (
+        <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+                <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+                    <p className="text-xs font-bold uppercase tracking-widest text-gray-600">CPF sem sobrenome</p>
+                    <p className="text-2xl font-bold text-gray-900 mt-1" data-contagem="cpf">{dados ? cont.cpfNomeUnico : '…'}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{ligado ? 'Bloqueados para pedido, amostra e nota' : 'Só aviso por enquanto'}</p>
+                </div>
+                <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+                    <p className="text-xs font-bold uppercase tracking-widest text-gray-600">CNPJ sem fantasia</p>
+                    <p className="text-2xl font-bold text-gray-900 mt-1" data-contagem="cnpj">{dados ? cont.cnpjSemFantasia : '…'}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Só aviso — não bloqueia</p>
+                </div>
+            </div>
+
+            {ehAdmin && dados && (
+                <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+                    <div className="flex items-start gap-2 flex-1 min-w-0">
+                        <AlertTriangle className={`h-4 w-4 shrink-0 mt-0.5 ${ligado ? 'text-red-600' : 'text-amber-600'}`} />
+                        <div className="text-sm min-w-0">
+                            <p className="font-bold text-gray-900">Bloquear venda de CPF sem sobrenome</p>
+                            <p className="text-xs text-gray-500">{ligado ? 'LIGADO: CPF com nome de uma palavra só não faz pedido, amostra nem nota até corrigir.' : 'DESLIGADO: hoje é só aviso. Ao ligar, vale na hora.'}</p>
+                        </div>
+                    </div>
+                    <button type="button" role="switch" aria-checked={ligado} aria-label="Bloquear venda de CPF sem sobrenome"
+                        onClick={() => setConfirmando(true)} disabled={salvandoChave}
+                        className="shrink-0 min-h-[44px] flex items-center gap-2 px-2 disabled:opacity-60">
+                        <span className={`relative inline-block h-6 w-11 rounded-full transition-colors ${ligado ? 'bg-primary' : 'bg-gray-300'}`}>
+                            <span className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${ligado ? 'translate-x-5' : ''}`} />
+                        </span>
+                        <span className="text-sm font-semibold text-gray-700 w-16 text-left">{ligado ? 'Ligado' : 'Desligado'}</span>
+                    </button>
+                </div>
+            )}
+
+            <div className="flex flex-col md:flex-row md:items-center gap-2">
+                <SelectBusca value={vendedorId} onChange={(e) => { setVendedorId(e.target.value); setMostrar(TAMANHO_PAGINA_NOME); }} className="w-full md:w-64">
+                    <option value="todos">Todos os vendedores</option>
+                    {opcoesVendedorFiltro(vendedores)}
+                </SelectBusca>
+                <SelectBusca value={tipo} onChange={(e) => { setTipo(e.target.value); setMostrar(TAMANHO_PAGINA_NOME); }} className="w-full md:w-56">
+                    <option value="todos">CPF e CNPJ</option>
+                    <option value="cpf">Só CPF (nome sem sobrenome)</option>
+                    <option value="cnpj">Só CNPJ (sem fantasia)</option>
+                </SelectBusca>
+                <p className="text-sm text-gray-600 md:ml-auto">
+                    {dados ? <><strong className="text-gray-900">{filtrados.length}</strong> {filtrados.length === 1 ? 'cadastro a corrigir' : 'cadastros a corrigir'}</> : ''}
+                </p>
+            </div>
+
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+                {carregando && !dados ? (
+                    <div className="p-10 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+                ) : erro ? (
+                    <div className="p-6 text-center">
+                        <p className="text-sm font-bold text-gray-900">Não deu para carregar agora</p>
+                        <p className="text-xs text-gray-500 mt-1">{erro}</p>
+                        <button onClick={carregar} className="mt-4 px-5 py-2.5 bg-primary hover:bg-primaryDark text-white rounded-full text-sm font-semibold min-h-[44px]">Tentar de novo</button>
+                    </div>
+                ) : filtrados.length === 0 ? (
+                    <EstadoVazio icon={CheckCircle2} titulo="Nenhum nome a corrigir" descricao="Todos os CPFs têm nome e sobrenome e todos os CNPJs têm razão social e fantasia." />
+                ) : (
+                    <>
+                        {/* Mobile: cards */}
+                        <div className="md:hidden space-y-3 p-3">
+                            {visiveis.map((it) => (
+                                <button key={it.UUID} type="button" onClick={() => navigate(`/clientes/${it.UUID}`)} className="raio-proprio w-full text-left bg-white rounded-xl border border-gray-200 shadow-sm p-4 min-h-[44px]">
+                                    <div className="flex items-center justify-between gap-2 mb-1">
+                                        <span className="font-semibold text-gray-900 truncate">{it.Nome || 'Sem nome'}</span>
+                                        <ChevronRight className="h-4 w-4 text-gray-400 shrink-0" />
+                                    </div>
+                                    {it.NomeFantasia && <p className="text-xs text-gray-600 truncate">Fantasia: {it.NomeFantasia}</p>}
+                                    <p className="text-xs text-gray-500 mb-2">{[it.Documento, it.vendedorNome && `Vendedor: ${it.vendedorNome}`, it.telefone].filter(Boolean).join(' · ') || 'Sem vendedor'}</p>
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {chip(it)}
+                                        {it.Ativo === false && <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700">Inativo</span>}
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+                        {/* Desktop: tabela */}
+                        <div className="hidden md:block overflow-x-auto">
+                            <table className="min-w-full divide-y divide-gray-200">
+                                <thead className="bg-gray-50">
+                                    <tr>
+                                        <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Cliente</th>
+                                        <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Documento</th>
+                                        <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Vendedor</th>
+                                        <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">O que corrigir</th>
+                                        <th className="px-5 py-3" />
+                                    </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200 text-sm">
+                                    {visiveis.map((it) => (
+                                        <tr key={it.UUID} className="hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/clientes/${it.UUID}`)}>
+                                            <td className="px-5 py-3 text-gray-900 font-medium">{it.Nome || 'Sem nome'}<div className="text-xs text-gray-500 font-normal">{it.NomeFantasia ? `Fantasia: ${it.NomeFantasia}` : 'Sem fantasia'}</div></td>
+                                            <td className="px-5 py-3 text-gray-600 font-mono text-xs">{it.Documento || '—'}</td>
+                                            <td className="px-5 py-3 text-gray-600">{it.vendedorNome || <span className="text-gray-500">—</span>}</td>
+                                            <td className="px-5 py-3">
+                                                <div className="flex flex-wrap gap-1.5">
+                                                    {chip(it)}
+                                                    {it.Ativo === false && <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700">Inativo</span>}
+                                                </div>
+                                            </td>
+                                            <td className="px-5 py-3 text-right">
+                                                <span className="inline-flex items-center gap-1 text-primary font-semibold text-xs">Abrir ficha <ChevronRight className="h-3.5 w-3.5" /></span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                        {filtrados.length > visiveis.length && (
+                            <div className="flex justify-center px-4 py-3 border-t border-gray-100">
+                                <button onClick={() => setMostrar((m) => m + TAMANHO_PAGINA_NOME)} className="px-5 py-2 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-sm min-h-[44px]">
+                                    Mostrar mais ({filtrados.length - visiveis.length} restantes)
+                                </button>
+                            </div>
+                        )}
+                    </>
+                )}
+            </div>
+
+            {confirmando && <ModalConfirmarBloqueio ligar={!ligado} total={cont.cpfNomeUnico} salvando={salvandoChave} onConfirmar={trocarChave} onFechar={() => setConfirmando(false)} />}
+        </div>
+    );
+}
+
 // ── Página ───────────────────────────────────────────────────────────────
 export default function CadastrosPraAcertar() {
     const navigate = useNavigate();
     const [params, setParams] = useSearchParams();
-    const aba = ['inativacoes', 'classificar'].includes(params.get('aba')) ? params.get('aba') : 'cadastros';
+    const aba = ['inativacoes', 'classificar', 'nome'].includes(params.get('aba')) ? params.get('aba') : 'cadastros';
     const [vendedores, setVendedores] = useState([]);
     const [pendentes, setPendentes] = useState(0);
     const [contagens, setContagens] = useState({ acertar: 0, classificar: 0 });
+    const [nomesACorrigir, setNomesACorrigir] = useState(0);
     const [versao, setVersao] = useState(0);
 
     useEffect(() => {
@@ -498,11 +720,15 @@ export default function CadastrosPraAcertar() {
     useEffect(() => {
         cadastroPendenciasService.contagemInativacoes().then((r) => setPendentes(r?.pendentes || 0)).catch(() => {});
         // limit 1: só interessa o `contagens` (as duas abas contadas no mesmo passeio do servidor)
+        cadastroPendenciasService.nomePendencias()
+            .then((r) => setNomesACorrigir((r?.contagem?.cpfNomeUnico || 0) + (r?.contagem?.cnpjSemFantasia || 0)))
+            .catch(() => {});
         cadastroPendenciasService.pendentes({ limit: 1 }).then((r) => r?.contagens && setContagens(r.contagens)).catch(() => {});
     }, [versao]);
 
     const abas = [
         { id: 'cadastros', rotulo: 'Cadastros pra acertar', badge: contagens.acertar },
+        { id: 'nome', rotulo: 'Corrigir nome', badge: nomesACorrigir },
         { id: 'classificar', rotulo: 'Classificar', badge: contagens.classificar },
         { id: 'inativacoes', rotulo: 'Pedidos de inativação', badge: pendentes },
     ];
@@ -519,7 +745,7 @@ export default function CadastrosPraAcertar() {
                     </div>
                     <div className="min-w-0">
                         <h1 className="text-base md:text-2xl font-bold text-gray-900 truncate">Cadastros pra acertar</h1>
-                        <p className="text-xs md:text-sm text-gray-500 truncate">Clientes com cadastro incompleto e cadastros sem classificação</p>
+                        <p className="text-xs md:text-sm text-gray-500 truncate">Cadastro incompleto, nome a corrigir e cadastros sem classificação</p>
                     </div>
                 </div>
                 <button onClick={() => setVersao((v) => v + 1)} aria-label="Atualizar contagem" className="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100">
@@ -538,6 +764,7 @@ export default function CadastrosPraAcertar() {
                     ))}
                 </div>
                 {aba === 'cadastros' && <AbaCadastros vendedores={vendedores} />}
+                {aba === 'nome' && <AbaCorrigirNome vendedores={vendedores} onMudou={() => setVersao((v) => v + 1)} />}
                 {aba === 'classificar' && <AbaClassificar vendedores={vendedores} onMudou={() => setVersao((v) => v + 1)} />}
                 {aba === 'inativacoes' && <AbaInativacoes onMudou={() => setVersao((v) => v + 1)} />}
             </div>

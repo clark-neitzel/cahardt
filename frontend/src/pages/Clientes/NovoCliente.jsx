@@ -11,6 +11,7 @@ import { resolverCidadeDaReceita, erroCidadeNaoCadastrada } from '../../services
 import CampoWhatsapps from '../../components/CampoWhatsapps';
 import ModalPontoGps from '../../components/ModalPontoGps';
 import { mascaraDoc, normalizarDoc, validarDoc } from '../../utils/documento';
+import { validarNomeCadastro, rotulosNome } from '../../utils/validarNomeCadastro';
 import whatsappClientesService from '../../services/whatsappClientesService';
 
 const UFS = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'];
@@ -68,6 +69,7 @@ const NovoCliente = () => {
     // Erro do WhatsApp — do backend (mensagem pronta) ou da validação daqui.
     // Serve para os dois: mostra o texto E marca o campo de vermelho.
     const [erroWhatsapp, setErroWhatsapp] = useState('');
+    const [erroNome, setErroNome] = useState(''); // regra CPF/CNPJ do nome (mesma mensagem do servidor)
     // Cidade da Receita fora do cadastro oficial → modal "cadastrar ou escolher outra".
     // Enquanto não resolver, End_Cidade fica vazio e o campo marcado.
     const [cidadeReceita, setCidadeReceita] = useState(null); // { nome, uf, sugestoes }
@@ -106,6 +108,7 @@ const NovoCliente = () => {
     const docNorm = normalizarDoc(documento);
     const docCompleto = docNorm.length === 11 || docNorm.length === 14;
     const docValido = docCompleto && validarDoc(docNorm);
+    const rotulos = rotulosNome(documento);
     // Exige WhatsApp só quando o módulo está LIGADO e o cadastro é (também) de cliente.
     // Fornecedor puro não vende e não recebe aviso de pedido — nunca exige.
     const exigeWhatsapp = exigirWhatsappConfig && perfil !== 'FORNECEDOR';
@@ -164,7 +167,10 @@ const NovoCliente = () => {
         const erros = [];
         if (!docNorm) erros.push('Informe o CNPJ ou CPF');
         else if (!docValido) erros.push('CNPJ/CPF inválido (confira os dígitos)');
+        const msgNome = form.Nome.trim() ? validarNomeCadastro({ documento: docNorm, nome: form.Nome, nomeFantasia: form.NomeFantasia }) : '';
         if (!form.Nome.trim()) erros.push('Informe a razão social / nome');
+        else if (msgNome) erros.push(msgNome);
+        setErroNome(msgNome);
         // WhatsApp obrigatório no cliente: é por ele que o cliente recebe a confirmação
         // do pedido e o escritório fala com ele quando o vendedor falta. (10-11 dígitos,
         // a mesma regra que o backend valida.)
@@ -185,7 +191,9 @@ const NovoCliente = () => {
         if (erros.length) {
             alert('Corrija antes de salvar:\n• ' + erros.join('\n• '));
             // Depois do alerta: leva o cursor direto ao campo marcado
-            if (msgWhatsapp) document.getElementById('campoCelularCliente')?.focus();
+            // Foca o primeiro campo marcado na ordem da tela (Nome vem antes do WhatsApp)
+            if (msgNome) document.getElementById('campoNomeCliente')?.focus();
+            else if (msgWhatsapp) document.getElementById('campoCelularCliente')?.focus();
             return;
         }
         setSalvando(true);
@@ -219,6 +227,10 @@ const NovoCliente = () => {
                 setCidadeInvalida(true);
                 alert(`A cidade "${cidade}" não está no cadastro. Cadastre-a ou escolha outra da lista.`);
                 setAbrirCadastroCidade({ nome: cidade, n: Date.now() });
+            } else if (resp?.error && /^(CPF exige nome|CNPJ exige raz)/.test(resp.error)) {
+                // Mesma regra validada no servidor — mostra a mensagem dele junto do campo
+                setErroNome(resp.error);
+                document.getElementById('campoNomeCliente')?.focus();
             } else if (resp?.codigo === 'WHATSAPP_NAO_EXISTE') {
                 // Mensagem pronta do backend — mostrada com destaque no campo do celular
                 setErroWhatsapp(resp.error);
@@ -335,12 +347,23 @@ const NovoCliente = () => {
                 {/* ─── IDENTIFICAÇÃO ─── */}
                 <SectionCard icon={Building} title="Identificação">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <Campo label="Razão Social / Nome *">
-                            <input type="text" className={inputCls} value={form.Nome} onChange={(e) => set('Nome', e.target.value)} />
+                        <Campo label={rotulos.nome} hint={erroNome ? undefined : rotulos.dicaNome}>
+                            <input id="campoNomeCliente" type="text"
+                                className={`${inputCls} ${erroNome ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
+                                value={form.Nome} onChange={(e) => { set('Nome', e.target.value); setErroNome(''); }} />
                         </Campo>
-                        <Campo label="Nome Fantasia">
-                            <input type="text" className={inputCls} value={form.NomeFantasia} onChange={(e) => set('NomeFantasia', e.target.value)} />
+                        <Campo label={rotulos.fantasia} hint={erroNome ? undefined : rotulos.dicaFantasia}>
+                            <input id="campoFantasiaCliente" type="text"
+                                className={`${inputCls} ${erroNome && rotulos.fantasiaObrigatoria && !form.NomeFantasia.trim() ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
+                                value={form.NomeFantasia}
+                                placeholder={rotulos.fantasiaObrigatoria && form.Nome.trim() ? `Ex.: ${form.Nome.trim()}` : ''}
+                                onChange={(e) => { set('NomeFantasia', e.target.value); setErroNome(''); }} />
                         </Campo>
+                        {erroNome && (
+                            <p className="md:col-span-2 text-sm font-medium text-red-600 flex items-start gap-1.5" role="alert">
+                                <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" /> <span>{erroNome}</span>
+                            </p>
+                        )}
                         <Campo label="Inscrição Estadual" hint={form.End_Estado === 'SC' ? '9 dígitos (SC). Vazio = sem IE.' : 'Só números. Vazio = sem IE.'}>
                             <input type="text" inputMode="numeric" maxLength={14} className={inputCls}
                                 value={form.Inscricao_Estadual}
