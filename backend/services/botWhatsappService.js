@@ -33,7 +33,8 @@
  * ─────────────────────────────────────────────────────────────────────────
  */
 const prisma = require('../config/database');
-const { numeroWhatsapp } = require('../utils/telefoneWhatsapp');
+const { numeroWhatsapp, avaliarTelefone } = require('../utils/telefoneWhatsapp');
+const { chaveTelefone } = require('../utils/telefoneChave');
 
 const LIMITE_TEXTO = 2000;
 const TIMEOUT_MS = 30000; // folgado de propósito: o bot espaça os envios (5s) e a chamada espera na fila
@@ -70,6 +71,25 @@ const getConfig = () => ({
  * NÃO é mais mandado para a Z-API (antes ia "55996293920" e o envio falhava calado).
  */
 const normalizarTelefone = (raw) => numeroWhatsapp(raw);
+
+/**
+ * Igual a normalizarTelefone, mas aceita o "55 no lugar do DDD" quando a equipe confirmou na tela
+ * do cliente que o 55 é DDD (RS) — cliente daqui com telefone de lá (nov/2026). Nunca lança.
+ */
+const resolverTelefone = async (raw) => {
+    const direto = normalizarTelefone(raw);
+    if (direto) return direto;
+    const av = avaliarTelefone(raw);
+    if (av.motivo !== 'ddd_55') return null;
+    try {
+        const p = await prisma.clienteTelefonePreferencia.findFirst({
+            where: { ddd55Confirmados: { has: chaveTelefone(raw) } }, select: { id: true },
+        });
+        return p ? avaliarTelefone(raw, { ddd55Confirmado: true }).numero : null;
+    } catch {
+        return null;
+    }
+};
 
 /**
  * Corta o texto em 2000 caracteres SEM cortar no meio de uma linha — o bot
@@ -294,7 +314,7 @@ const botWhatsappService = {
      * tratar como "vai sair depois", não como erro definitivo.
      */
     enviar: async ({ telefone, texto, tipo, origem, referencia }) => {
-        const phone = normalizarTelefone(telefone);
+        const phone = await resolverTelefone(telefone);
         if (!phone) return { ok: false, codigo: 'telefone_invalido', motivo: 'Telefone celular inválido ou ausente' };
         if (!texto || !String(texto).trim()) return { ok: false, codigo: 'texto_vazio', motivo: 'Mensagem vazia' };
 
@@ -357,7 +377,7 @@ const botWhatsappService = {
             const referencia = `${referenciaBase}-p${k}`;
             if (reagendado) {
                 // Uma parte anterior ficou na fila: esta espera na fila também (ordem garantida).
-                const phone = normalizarTelefone(telefone);
+                const phone = await resolverTelefone(telefone);
                 const quando = new Date(Date.now() + BACKOFF_MIN[0] * 60000 + (k - 1) * 1000);
                 await enfileirar({ telefone: phone, texto: lista[i], tipo, origem, referencia, proximaEm: quando });
                 resultados.push({ ok: false, reagendado: true, codigo: 'aguardando_parte_anterior' });

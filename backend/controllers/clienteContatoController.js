@@ -48,6 +48,14 @@ const clienteContatoController = {
         res.json(await telefones.definirOrdem(req.params.uuid, req.body, ator(req)));
     }),
 
+    // "O 55 deste número é DDD (RS)" — body { telefone, confirmar } (confirmar:false desfaz).
+    confirmarDdd55: asyncRoute(async (req, res) => {
+        if (!podeEditar(req)) {
+            return res.status(403).json({ error: 'Sem permissão para editar os telefones do cliente.', codigo: 'SEM_PERMISSAO' });
+        }
+        res.json(await telefones.confirmarDdd55(req.params.uuid, req.body, ator(req)));
+    }),
+
     listar: asyncRoute(async (req, res) => {
         res.json(await contato.listar(req.params.uuid));
     }),

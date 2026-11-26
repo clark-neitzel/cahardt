@@ -42,6 +42,7 @@ const chaveDe = (raw) => chaveTelefone(raw) || String(raw ?? '').replace(/\D/g, 
 function montarTelefones(cli, contatos = [], pref = null) {
     const c = cli || {};
     const uf = c.End_Estado || null;
+    const confirmados55 = new Set(pref?.ddd55Confirmados || []);
     const porChave = new Map();
     const ordemPadrao = [];
     const add = (raw, fonte, extra = {}) => {
@@ -50,7 +51,8 @@ function montarTelefones(cli, contatos = [], pref = null) {
         const chave = chaveDe(bruto);
         let item = porChave.get(chave);
         if (!item) {
-            const av = avaliarTelefone(bruto, { uf });
+            const ddd55Confirmado = confirmados55.has(chave);
+            const av = avaliarTelefone(bruto, { uf, ddd55Confirmado });
             item = {
                 chave,
                 numero: av.numero,                 // 55 + DDD + número (o que vai para a Z-API) ou null
@@ -60,6 +62,7 @@ function montarTelefones(cli, contatos = [], pref = null) {
                 valido: !!av.numero,
                 motivo: av.motivo,
                 rotuloMotivo: av.rotulo,
+                ddd55Confirmado,                   // a equipe confirmou que o 55 é DDD (RS)
                 fontes: [],
                 pessoas: [],
             };
@@ -229,4 +232,69 @@ async function marcarFuncionando(clienteId, body, ator) {
     return listar(cli.UUID);
 }
 
-module.exports = { FONTES, montarTelefones, pendenciaTelefone, listar, definirOrdem, marcarFuncionando, lerPreferencia, SEL_TEL };
+/**
+ * PUT — "o 55 deste número é DDD (RS), não o código do país" (cliente daqui com telefone de lá).
+ * body: { telefone, confirmar = true }. Só vale para número que caiu em "55 no lugar do DDD"
+ * (ou para desfazer uma confirmação). Grava a chave em `ddd55Confirmados` + histórico.
+ */
+async function confirmarDdd55(clienteId, body, ator) {
+    const cli = await exigirCliente(clienteId);
+    const k = chaveDe(body?.telefone);
+    const confirmar = body?.confirmar !== false;
+    const atual = await listar(cli.UUID);
+    const tel = atual.telefones.find((t) => t.chave === k);
+    if (!k || !tel) throw erro(400, 'Esse telefone não está no cadastro deste cliente.', 'TELEFONE_NAO_E_DO_CLIENTE');
+    if (confirmar && !tel.ddd55Confirmado && tel.motivo !== 'ddd_55') {
+        throw erro(400, 'Esse número não está com dúvida sobre o DDD 55.', 'NAO_E_DDD_55');
+    }
+    const pref = await lerPreferencia(cli.UUID);
+    const lista = new Set(pref?.ddd55Confirmados || []);
+    if (confirmar) lista.add(k); else lista.delete(k);
+    const ddd55Confirmados = [...lista];
+    const quem = quemDe(ator);
+    await prisma.clienteTelefonePreferencia.upsert({
+        where: { clienteId: cli.UUID },
+        create: { clienteId: cli.UUID, ordem: [], ddd55Confirmados, ...quem.dados },
+        update: { ddd55Confirmados, ...quem.dados },
+    });
+    if (confirmar !== tel.ddd55Confirmado) {
+        await historico.registrar({
+            clienteId: cli.UUID, ator: quem.historico, tela: quem.porAgente ? 'API /analytics/v1' : TELA,
+            mudancas: [{
+                campo: 'telefoneDdd55',
+                de: confirmar ? `…${tel.final}: 55 no lugar do DDD` : `…${tel.final}: DDD 55 (RS)`,
+                para: confirmar ? `…${tel.final}: DDD 55 (RS)` : `…${tel.final}: 55 no lugar do DDD`,
+            }],
+        });
+    }
+    return listar(cli.UUID);
+}
+
+/** Chaves confirmadas como DDD 55 de todos os clientes (para listas em lote). Sem a coluna → vazio. */
+async function ddd55ConfirmadosPorCliente() {
+    try {
+        const rows = await prisma.clienteTelefonePreferencia.findMany({
+            where: { NOT: { ddd55Confirmados: { isEmpty: true } } },
+            select: { clienteId: true, ddd55Confirmados: true },
+        });
+        return new Map(rows.map((r) => [r.clienteId, r.ddd55Confirmados || []]));
+    } catch (e) {
+        console.error('[ClienteTelefones] confirmações de DDD 55 indisponíveis:', e?.message || e);
+        return new Map();
+    }
+}
+
+/** O número (cru) foi confirmado como DDD 55 em algum cadastro? Usado no envio pela Z-API. */
+async function ehDdd55Confirmado(raw) {
+    const k = chaveDe(raw);
+    if (!k) return false;
+    try {
+        const p = await prisma.clienteTelefonePreferencia.findFirst({ where: { ddd55Confirmados: { has: k } }, select: { id: true } });
+        return !!p;
+    } catch (e) {
+        console.error('[ClienteTelefones] consulta de DDD 55 indisponível:', e?.message || e);
+        return false;
+    }
+}
+
+module.exports = { FONTES, montarTelefones, pendenciaTelefone, listar, definirOrdem, marcarFuncionando, confirmarDdd55, ddd55ConfirmadosPorCliente, ehDdd55Confirmado, lerPreferencia, SEL_TEL };

@@ -100,6 +100,12 @@ const clienteService = {
         return response.data;
     },
 
+    // "O 55 deste número é DDD (RS)" — confirmar=false desfaz
+    confirmarDdd55: async (uuid, telefone, confirmar = true) => {
+        const response = await api.put(`/clientes/${uuid}/telefones/ddd55`, { telefone, confirmar });
+        return response.data;
+    },
+
     listarContatos: async (uuid) => {
         const response = await api.get(`/clientes/${uuid}/contatos`);
         return response.data;

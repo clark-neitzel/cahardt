@@ -24,6 +24,7 @@ router.patch('/:uuid/retomar-visitas', clienteController.retomarVisitas); // ANT
 router.get('/:uuid/alteracoes', clienteHistoricoController.listar); // histórico de alterações (somente leitura)
 router.get('/:uuid/telefones', clienteContatoController.listarTelefones); // ordem preferida do WhatsApp
 router.put('/:uuid/telefones/ordem', clienteContatoController.ordenarTelefones);
+router.put('/:uuid/telefones/ddd55', clienteContatoController.confirmarDdd55); // "o 55 é DDD (RS)"
 router.get('/:uuid/contatos', clienteContatoController.listar);
 router.post('/:uuid/contatos', clienteContatoController.criar);
 router.patch('/:uuid/contatos/:contatoId', clienteContatoController.atualizar);

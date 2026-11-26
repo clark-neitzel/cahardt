@@ -147,6 +147,12 @@ function mockBanco({ clientes, receber = [], contatos = [], prefs = [] }) {
         },
         clienteTelefonePreferencia: {
             findUnique: async ({ where }) => { const p = mem.prefs.find((x) => x.clienteId === where.clienteId); return p ? { ...p } : null; },
+            findMany: async ({ where } = {}) => mem.prefs.filter((p) => !(where?.NOT?.ddd55Confirmados?.isEmpty && !(p.ddd55Confirmados || []).length)).map((p) => ({ ...p })),
+            findFirst: async ({ where } = {}) => {
+                const k = where?.ddd55Confirmados?.has;
+                const p = mem.prefs.find((x) => !k || (x.ddd55Confirmados || []).includes(k));
+                return p ? { ...p } : null;
+            },
             upsert: async ({ where, create, update }) => {
                 const p = mem.prefs.find((x) => x.clienteId === where.clienteId);
                 if (p) { Object.assign(p, update); return { ...p }; }
@@ -293,5 +299,55 @@ test('app: GET /clientes/:uuid/telefones; PUT ordem exige permissão de editar c
         assert.equal(r.body.preferido, '5547991117038');
         assert.deepEqual([mem.prefs[0].atualizadoPorTipo, mem.prefs[0].atualizadoPorId, mem.prefs[0].atualizadoPorNome], ['usuario', 'u3', 'Leticia']);
         assert.deepEqual([mem.historico[0].autorTipo, mem.historico[0].autorNome, mem.historico[0].tela], ['usuario', 'Leticia', 'Cadastro > Telefones do WhatsApp']);
+    } finally { await ok.close(); }
+});
+
+test('DDD 55 confirmado: cliente de SC com telefone do RS vira válido, sai de pendentes e pode desfazer', async () => {
+    // 1. função pura
+    assert.equal(avaliarTelefone('55996293920', { uf: 'SC' }).motivo, 'ddd_55');
+    assert.deepEqual(avaliarTelefone('55996293920', { uf: 'SC', ddd55Confirmado: true }), {
+        status: 'normalizado', numero: '5555996293920', motivo: null, rotulo: null,
+    });
+
+    // 2. PUT /clientes/:uuid/telefones/ddd55 (permissão, confirmar, desfazer, validações)
+    const mem = mockBanco({
+        clientes: [cli('c-rs', { End_Estado: 'SC', Telefone_Celular: '55996293920', Telefone: '47988095072' })],
+        receber: ['c-rs'],
+    });
+    const sem = await startTestServer(appClientes(mem, { id: 'u1', nome: 'Zé', permissoes: { clientes: { view: true } } }));
+    try {
+        assert.equal((await sem.request('PUT', '/api/clientes/c-rs/telefones/ddd55', { body: { telefone: '55996293920' } })).status, 403);
+    } finally { await sem.close(); }
+
+    const ok = await startTestServer(appClientes(mem, { id: 'u3', nome: 'Leticia', permissoes: { clientes: { edit: true } } }));
+    try {
+        // número que não está com dúvida de DDD 55 → 400
+        const nao55 = await ok.request('PUT', '/api/clientes/c-rs/telefones/ddd55', { body: { telefone: '47988095072' } });
+        assert.equal(nao55.status, 400);
+        assert.equal(nao55.body.codigo, 'NAO_E_DDD_55');
+
+        // confirma que o 55 é DDD (RS)
+        const c1 = await ok.request('PUT', '/api/clientes/c-rs/telefones/ddd55', { body: { telefone: '55996293920', confirmar: true } });
+        assert.equal(c1.status, 200);
+        assert.equal(c1.body.preferido, '5555996293920');
+        assert.equal(c1.body.pendencia, null);
+        assert.equal(c1.body.telefones[0].ddd55Confirmado, true);
+        assert.equal(c1.body.telefones[0].valido, true);
+        assert.equal(mem.historico.at(-1).campo, 'telefoneDdd55');
+
+        // em cadastros-pendentes, não aparece mais como telefone incompleto
+        await comApp(mem, async (request) => {
+            const p = await request('GET', '/api/analytics/v1/cadastros-pendentes?grupo=telefone', { headers: LEITURA });
+            assert.equal(p.status, 200);
+            assert.equal(p.body.data.length, 0);
+        });
+
+        // desfaz a confirmação → volta a ficar incompleto
+        const c2 = await ok.request('PUT', '/api/clientes/c-rs/telefones/ddd55', { body: { telefone: '55996293920', confirmar: false } });
+        assert.equal(c2.status, 200);
+        assert.equal(c2.body.telefones[0].ddd55Confirmado, false);
+        assert.equal(c2.body.telefones[0].motivo, 'ddd_55');
+        assert.equal(c2.body.preferido, '5547988095072');
+        assert.equal(mem.historico.filter((h) => h.campo === 'telefoneDdd55').length, 2);
     } finally { await ok.close(); }
 });

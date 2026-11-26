@@ -74,6 +74,22 @@ export default function TelefonesPreferenciaCliente({ clienteId, podeEditar }) {
         }
     };
 
+    // "55 no lugar do DDD": cliente daqui com telefone do RS — a equipe confirma que o 55 é DDD.
+    const confirmarDdd55 = async (t, confirmar) => {
+        if (salvando) return;
+        setSalvando(true);
+        try {
+            const r = await clienteService.confirmarDdd55(clienteId, t.bruto, confirmar);
+            setDados(r);
+            setOrdem(r?.telefones || []);
+            toast.success(confirmar ? 'Pronto: o 55 desse número é DDD (RS).' : 'Confirmação do DDD 55 desfeita.');
+        } catch (e) {
+            toast.error(msgErro(e, 'Não foi possível salvar agora.'));
+        } finally {
+            setSalvando(false);
+        }
+    };
+
     if (!carregando && !erro && ordem.length === 0) return null; // sem telefone: nada para ordenar
 
     return (
@@ -110,6 +126,22 @@ export default function TelefonesPreferenciaCliente({ clienteId, podeEditar }) {
                                             )}
                                             {!t.valido && (
                                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full bg-amber-100 text-amber-700"><AlertTriangle className="h-3 w-3" /> Incompleto: {t.rotuloMotivo}</span>
+                                            )}
+                                            {podeEditar && t.motivo === 'ddd_55' && (
+                                                <button type="button" onClick={() => confirmarDdd55(t, true)} disabled={salvando || mudou}
+                                                    title={mudou ? 'Salve ou desfaça a ordem antes' : 'O cliente é daqui, mas o número é do RS'}
+                                                    className="px-3 py-1 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-xs min-h-[44px] md:min-h-0 disabled:opacity-50">
+                                                    É DDD 55 (RS)
+                                                </button>
+                                            )}
+                                            {t.ddd55Confirmado && (
+                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full bg-gray-100 text-gray-700">
+                                                    DDD 55 (RS)
+                                                    {podeEditar && (
+                                                        <button type="button" onClick={() => confirmarDdd55(t, false)} disabled={salvando || mudou}
+                                                            className="ml-1 underline text-gray-500 hover:text-gray-800 disabled:opacity-50">desfazer</button>
+                                                    )}
+                                                </span>
                                             )}
                                         </div>
                                         <p className="text-xs text-gray-500 mt-0.5">

@@ -445,6 +445,7 @@ model ClienteTelefonePreferencia {
   funcionandoChave  String?   @map("funcionando_chave")
   funcionandoEm     DateTime? @map("funcionando_em")
   funcionandoPor    String?   @map("funcionando_por")
+  ddd55Confirmados  String[]  @default([]) @map("ddd55_confirmados") // chaves dos números em que o 55 é DDD (RS) — confirmado na tela
   atualizadoPorTipo String    @default("usuario") @map("atualizado_por_tipo") // usuario | agente
   atualizadoPorId   String?   @map("atualizado_por_id")
   atualizadoPorNome String?   @map("atualizado_por_nome")

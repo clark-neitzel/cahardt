@@ -30,6 +30,7 @@ const MOTIVOS = {
 /**
  * Avalia um telefone do cadastro.
  *  - `uf`: estado do cliente (opcional). Só serve para aceitar o DDD 55 de quem é do RS.
+ *  - `ddd55Confirmado`: a equipe confirmou que o 55 deste número é DDD (RS), não o código do país.
  * Devolve { status, numero, motivo, rotulo }:
  *  - status 'ok'          → já estava com 55 + DDD + número;
  *  - status 'normalizado' → tinha DDD + número; o 55 foi colocado (seguro, sem incomodar ninguém);
@@ -37,7 +38,7 @@ const MOTIVOS = {
  *  - status 'vazio'       → sem número.
  * `numero` = só dígitos com 55 (o formato da Z-API) quando dá para usar; senão null.
  */
-function avaliarTelefone(raw, { uf } = {}) {
+function avaliarTelefone(raw, { uf, ddd55Confirmado = false } = {}) {
     let d = String(raw ?? '').replace(/\D/g, '');
     if (!d) return { status: 'vazio', numero: null, motivo: null, rotulo: null };
     d = d.replace(/^0+/, ''); // "047 ..." (zero do interurbano)
@@ -55,8 +56,9 @@ function avaliarTelefone(raw, { uf } = {}) {
     if (numero.length === 9 && numero[0] !== '9') return incompleto('celular_sem_9');
     if (numero[0] === '0' || numero[0] === '1') return incompleto('numero_invalido');
     // "55" + número sem DDD ("55996293920") é indistinguível de DDD 55 (RS). Só aceita o DDD 55
-    // se o cadastro diz que o cliente é do RS.
-    if (status === 'normalizado' && ddd === 55 && String(uf || '').trim().toUpperCase() !== 'RS') return incompleto('ddd_55');
+    // se o cadastro diz que o cliente é do RS OU se a equipe confirmou na tela que o número é
+    // mesmo do RS (cliente daqui com telefone de lá — `ddd55Confirmado`, nov/2026).
+    if (status === 'normalizado' && ddd === 55 && !ddd55Confirmado && String(uf || '').trim().toUpperCase() !== 'RS') return incompleto('ddd_55');
     return { status, numero: `55${nacional}`, motivo: null, rotulo: null };
 }
 

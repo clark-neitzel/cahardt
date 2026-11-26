@@ -172,9 +172,10 @@ async function cadastrosPendentes(query = {}) {
             whatsapp: { select: { numeros: true } },
         },
     });
-    const [mapa, telContatos] = await Promise.all([
+    const [mapa, telContatos, conf55] = await Promise.all([
         classif.classificacaoDeClientes(rows, { todos: true }),
         telefonesDosContatos(),
+        telefonesSvc.ddd55ConfirmadosPorCliente(), // "o 55 é DDD (RS)" confirmado na tela não é pendência
     ]);
     const contagens = { acertar: 0, classificar: 0, telefone: 0 };
     const doGrupo = [];
@@ -182,7 +183,8 @@ async function cadastrosPendentes(query = {}) {
         const k = mapa.get(c.UUID);
         const cadastro = completo.avaliarLinha(c, tabelas);
         const ehCliente = k.valor === 'CLIENTE' || k.valor === 'CLIENTE_FORNECEDOR';
-        const telefone = ehCliente ? telefonesSvc.montarTelefones(c, telContatos.get(c.UUID) || []).pendencia : null;
+        const prefTel = conf55.has(c.UUID) ? { ddd55Confirmados: conf55.get(c.UUID) } : null;
+        const telefone = ehCliente ? telefonesSvc.montarTelefones(c, telContatos.get(c.UUID) || [], prefTel).pendencia : null;
         if (ehCliente && (!cadastro.completo || telefone)) {
             contagens.acertar += 1;
             if (telefone) contagens.telefone += 1;
