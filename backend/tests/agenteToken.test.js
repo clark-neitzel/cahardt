@@ -132,6 +132,12 @@ test('token válido: passa e monta req.user (agente, permissões vivas do banco)
         assert.equal(m.body.agente, true);
         assert.deepEqual(m.body.permissoes, { Pode_Ver_X: true });
         assert.ok(m.body.caminhosPermitidos.length >= 2);
+        // campo acrescentado (contrato do Luke): token em uso, sem segredo/hash
+        assert.equal(m.body.token.prefixo, row.prefixo);
+        assert.deepEqual(Object.keys(m.body.token).sort(), ['diasRestantes', 'expiraEm', 'prefixo']);
+        assert.equal(m.body.token.expiraEm, null); // token de teste sem validade
+        assert.equal(m.body.token.diasRestantes, null);
+        assert.equal(JSON.stringify(m.body).includes(row.hash), false);
         // permissão muda no banco → vale na próxima chamada (sem cache)
         db.vendedores.get('luke').permissoes = { Pode_Ver_Y: true };
         const m2 = await srv.request('GET', '/api/agente/v1/meu-acesso', { headers: bearer(claro) });

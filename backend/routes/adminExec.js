@@ -64,7 +64,7 @@ router.get('/ping', (req, res) => {
         ok: true,
         // Marcador de deploy: bumpar a cada mudança de backend que precise de confirmação
         // em produção (não há outro jeito de saber de fora qual versão está no ar).
-        deployMarker: 'agente-criar-2026-11-27',
+        deployMarker: 'agente-token-rotacao-2026-11-27',
         uptimeSegundos: Math.round(process.uptime()),
         timestamp: new Date().toISOString(),
         openaiConfigurada: !!process.env.OPENAI_API_KEY,
@@ -13413,6 +13413,37 @@ router.post('/agente-criar', async (req, res) => {
         console.error('[admin-exec] agente-criar:', err && err.message); // nunca loga corpo/token
         res.status(500).json({ error: 'Erro ao criar o agente.' });
     }
+});
+
+// POST /api/admin-exec/agente-token-revogar[?confirmar=1]   — "interruptor de emergência" do token do agente
+// POST /api/admin-exec/agente-token-rotacionar[?confirmar=1] — revoga os anteriores e gera 1 token novo
+// Sem ?confirmar=1 (o valor tem que ser exatamente "1") é DRY-RUN: não grava nada nem devolve segredo.
+// O token novo em claro aparece SÓ na resposta do rotacionar com confirmar — grave direto em arquivo (0600), nunca em chat.
+// Corpo revogar:    { agente (nome exato ou id), tokens: 'todos' | ['<prefixo de 8 chars>'], motivo? }
+// Corpo rotacionar: { agente, revogarAnteriores? (padrão true), tokenNome?, validadeDias?, limitePorMinuto? }
+// Ver backend/docs/agente-token.md.
+function tratarErroAgenteToken(res, err, rotulo) {
+    if (err && err.status) {
+        return res.status(err.status).json({ error: err.message, ...(err.extra || {}) });
+    }
+    console.error(`[admin-exec] ${rotulo}:`, require('../services/agenteCriarService').semSegredo(err && err.message).slice(0, 300)); // nunca loga corpo/token
+    return res.status(500).json({ error: `Erro em ${rotulo}. Veja o log do servidor.` });
+}
+
+router.post('/agente-token-revogar', async (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    try {
+        const svc = require('../services/agenteTokenAdminService');
+        res.json(await svc.revogar(req.body, { confirmar: req.query.confirmar === '1' }));
+    } catch (err) { tratarErroAgenteToken(res, err, 'agente-token-revogar'); }
+});
+
+router.post('/agente-token-rotacionar', async (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    try {
+        const svc = require('../services/agenteTokenAdminService');
+        res.json(await svc.rotacionar(req.body, { confirmar: req.query.confirmar === '1' }));
+    } catch (err) { tratarErroAgenteToken(res, err, 'agente-token-rotacionar'); }
 });
 
 module.exports = router;

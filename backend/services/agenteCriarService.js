@@ -292,4 +292,4 @@ function ordenar(obj) {
     return obj;
 }
 
-module.exports = { executar, validarCorpo, normalizarPermissoes, chavesLigadas, montarPermissoesDoAgente, CHAVES_NAO_COPIAR };
+module.exports = { executar, validarCorpo, semSegredo, normalizarPermissoes, chavesLigadas, montarPermissoesDoAgente, CHAVES_NAO_COPIAR };

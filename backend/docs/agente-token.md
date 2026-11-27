@@ -64,4 +64,71 @@ Atenção:
 3. A resposta temporária contém o token: deixe-a só na pasta temporária (`mktemp -d`) e apague com `rm -P` (macOS; no Linux, `shred -u`) assim que o token estiver no arquivo definitivo.
 4. Limitação conhecida: a trava contra dois "confirmar" simultâneos é em memória (vale para uma instância do backend, que é o caso do EasyPanel); não há advisory lock no banco.
 
-Antes de qualquer teste real: o deploy precisa ter subido (`GET /api/admin-exec/ping` com `deployMarker: "agente-criar-2026-11-27"`).
+## Revogar e rotacionar o token SEM sessão de admin: `agente-token-revogar` e `agente-token-rotacionar`
+
+Duas rotas de manutenção (header `x-admin-secret`), no mesmo padrão do `agente-criar`: **sem `?confirmar=1` (valor exatamente `1`) é DRY-RUN** — não grava nada e nunca devolve token nem hash. `?confirmar=true`, `=0`, repetido etc. NÃO executam. Resposta com `Cache-Control: no-store`. O corpo vai no POST (nunca o token na URL). AuditLog (`usuarioId: admin-exec`, só ids e prefixo): `AGENTE_TOKEN_REVOGADO`, `AGENTE_TOKEN_CRIADO`.
+
+O **prefixo** é o identificador de 8 caracteres de cada token (aparece no dry-run, em `tokenPrefixo` e em `GET /api/agente/v1/meu-acesso`); diferencia maiúscula de minúscula.
+
+### 1) Interruptor de emergência — `POST /api/admin-exec/agente-token-revogar`
+
+Corpo: `agente` (nome exato, sem diferenciar caixa/espaços, ou id; **obrigatório**), `tokens` (**obrigatório**: `"todos"` ou lista de prefixos), `motivo` (opcional, até 200 caracteres; vai para o AuditLog). Vale mesmo com o agente inativo. Já revogado = ignorado com aviso (idempotente). Prefixo que não existe → 404 listando os prefixos ativos (e nada é revogado). Agente inexistente → 404; nome duplicado → 409.
+
+```bash
+# dry-run: mostra os tokens ATIVOS (prefixo, nome, criadoEm, expiraEm, ultimoUsoEm, ultimoUsoIp, totalUsos)
+curl -s -X POST "$URL/api/admin-exec/agente-token-revogar" -H "x-admin-secret: $ADMIN_SECRET" \
+  -H 'Content-Type: application/json' -d '{"agente":"Luke (agente)","tokens":"todos"}'
+
+# revogar de verdade (vale na próxima chamada do agente)
+curl -s -X POST "$URL/api/admin-exec/agente-token-revogar?confirmar=1" -H "x-admin-secret: $ADMIN_SECRET" \
+  -H 'Content-Type: application/json' -d '{"agente":"Luke (agente)","tokens":"todos","motivo":"token apareceu em chat"}'
+```
+
+### 2) Rotação — `POST /api/admin-exec/agente-token-rotacionar`
+
+Corpo: `agente` (obrigatório), `revogarAnteriores` (padrão `true`: revoga **todos** os tokens ativos do agente), `tokenNome` (padrão `luke-bpo`, até 80), `validadeDias` (padrão 90, 1–365), `limitePorMinuto` (opcional, 1–600; padrão do serviço, 120). Agente inativo → 409.
+
+- Ordem no `?confirmar=1`: **primeiro revoga os anteriores, depois cria o novo** (um token vazado cai antes de o novo existir). Se a criação falhar, os antigos JÁ estão revogados — a resposta 500 diz isso, com mensagem fixa (sem repassar erro do banco) — e **repetir é seguro**: não revoga de novo o que já foi e gera 1 token novo.
+- Dois `confirmar` simultâneos: o 2º recebe 409 (trava em memória; vale para 1 instância do backend, que é o caso do EasyPanel).
+- Resposta: `{ ok, agente, revogados:[prefixos], token:"cah_ag_…" (SÓ aqui, uma vez), tokenPrefixo, expiraEm, avisos }`.
+
+```bash
+# dry-run: quem seria revogado + o que seria gerado (sem segredo)
+curl -s -X POST "$URL/api/admin-exec/agente-token-rotacionar" -H "x-admin-secret: $ADMIN_SECRET" \
+  -H 'Content-Type: application/json' -d '{"agente":"Luke (agente)"}'
+
+# rotacionar: a resposta vai para arquivo temporário protegido (nunca para terminal/chat)
+umask 077
+TMP=$(mktemp -d)
+ALVO=/caminho/luke.token
+# ATENÇÃO (flag 'wx' não sobrescreve): o arquivo do token ANTIGO precisa sair do caminho ANTES —
+# ele já foi revogado e não serve mais. Mova ou apague agora:
+[ -e "$ALVO" ] && mv "$ALVO" "$ALVO.revogado"     # (ou rm -P "$ALVO"; no Linux, shred -u)
+curl -s -X POST "$URL/api/admin-exec/agente-token-rotacionar?confirmar=1" -H "x-admin-secret: $ADMIN_SECRET" \
+  -H 'Content-Type: application/json' -d '{"agente":"Luke (agente)"}' > "$TMP/resp.json"
+
+# grava o token SÓ se veio um (flag 'wx' = nunca sobrescreve) e imprime só o resumo, sem token
+ALVO="$ALVO" RESP="$TMP/resp.json" node -e '
+const fs = require("fs");
+let r; try { r = JSON.parse(fs.readFileSync(process.env.RESP, "utf8")); } catch { console.log("Resposta ilegível/vazia — nada gravado."); process.exit(1); }
+let tokenArquivo = "não (sem token novo)";
+if (r.token) {
+  try { fs.writeFileSync(process.env.ALVO, r.token, { mode: 0o600, flag: "wx" }); tokenArquivo = "sim: " + process.env.ALVO; }
+  catch (e) { tokenArquivo = "NÃO GRAVADO (" + e.code + ") — o arquivo de destino já existe? O token novo ficou só na resposta temporária: guarde-o ANTES de apagá-la."; process.exitCode = 2; }
+}
+console.log(JSON.stringify({ ok: r.ok === true, erro: r.error || null, agenteId: r.agente?.id || r.agenteId || null,
+  revogados: r.revogados || [], tokenGerado: !!r.token, prefixo: r.tokenPrefixo || null,
+  expiraEm: r.expiraEm || null, tokenArquivo, avisos: r.avisos || [] }, null, 2));
+'
+chmod 600 "$ALVO" 2>/dev/null
+rm -P "$TMP/resp.json"; rmdir "$TMP"   # só depois de confirmar acima que o token foi gravado
+```
+
+Se a resposta se perder depois do `confirmar`, o token novo já está ativo e ninguém o tem: rode `agente-token-rotacionar?confirmar=1` outra vez (revoga o órfão e gera outro).
+
+### Quando rotacionar (o token vence em 90 dias)
+
+- **Rotacione a cada 60–80 dias**, sem esperar vencer (token vencido = agente fora do ar).
+- O próprio agente enxerga o prazo: `GET /api/agente/v1/meu-acesso` devolve `token: { prefixo, expiraEm, diasRestantes }` (sem segredo). **Quando `diasRestantes` ≤ 14, avise o dono** para rotacionar. `diasRestantes` é `null` se o token não tem validade.
+- Suspeitou de vazamento (token em chat, URL, log, print)? Não espere: `agente-token-revogar` com `"tokens":"todos"` e depois rotacione.
+- Antes de qualquer uso real: o deploy precisa ter subido (`GET /api/admin-exec/ping` com `deployMarker: "agente-token-rotacao-2026-11-27"`).
