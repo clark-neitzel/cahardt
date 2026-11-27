@@ -73,7 +73,7 @@ async function lerConfig() {
 async function obterConfig() {
     const cfg = await lerConfig();
     const vends = await prisma.vendedor.findMany({
-        where: { ativo: true },
+        where: { ativo: true, agente: false }, // agente de IA nunca é candidato a aviso
         select: { id: true, nome: true, telefone: true, permissoes: true },
         orderBy: { nome: 'asc' },
     });

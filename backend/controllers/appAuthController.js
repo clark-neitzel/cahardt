@@ -18,7 +18,8 @@ const appAuthController = {
                 where: { login: { equals: login.trim(), mode: 'insensitive' } }
             });
 
-            if (!vendedor) {
+            // Usuário-agente (token de API) nunca entra por login/senha — mesma mensagem de "não existe".
+            if (!vendedor || vendedor.agente === true) {
                 return res.status(401).json({ error: 'Usuário não encontrado ou credenciais inválidas.' });
             }
 

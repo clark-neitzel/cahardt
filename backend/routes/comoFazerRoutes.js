@@ -11,6 +11,7 @@ const painel = require('../services/comoFazerPainelService');
 const upl = require('../middlewares/uploadComoFazerMiddleware');
 const agenda = require('../services/comoFazerAgendaService');
 const pdfSvc = require('../services/comoFazerPdfService');
+const { mascararUrlLog } = require('../utils/mascararUrlLog'); // log nunca grava token na URL
 
 const { erro, exigirPermissao } = auth;
 
@@ -28,7 +29,7 @@ const h = (fn) => async (req, res) => {
         await fn(req, res);
     } catch (e) {
         if (e instanceof ErroCF) return erro(res, e.status, e.codigo, e.message, e.extra);
-        console.error(`[ComoFazer] ${req.method} ${req.originalUrl}:`, e);
+        console.error(`[ComoFazer] ${req.method} ${mascararUrlLog(req.originalUrl)}:`, e);
         return erro(res, 500, 'ERRO_INTERNO', 'Não consegui concluir. Tente de novo.');
     }
 };
@@ -154,7 +155,7 @@ const hPdf = (fn) => async (req, res) => {
     try { await fn(req, res); }
     catch (e) {
         if (e instanceof ErroCF) return erro(res, e.status, e.codigo, e.message, e.extra);
-        console.error(`[ComoFazer][pdf] ${req.method} ${req.originalUrl}:`, e);
+        console.error(`[ComoFazer][pdf] ${req.method} ${mascararUrlLog(req.originalUrl)}:`, e);
         return erro(res, 500, 'PDF_FALHOU', 'Não deu para gerar o PDF agora. Tente de novo.');
     }
 };

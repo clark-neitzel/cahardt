@@ -97,6 +97,7 @@ const notasEntradaRoutes = require('./routes/notasEntrada'); // Financeiro: Nota
 const financeiroGerencialRoutes = require('./routes/financeiroGerencial'); // Financeiro: Fluxo de Caixa e DRE (Fase 5)
 const conciliacaoBancariaRoutes = require('./routes/conciliacaoBancaria'); // Financeiro: conciliação bancária (extrato OFX)
 const authMiddleware = require('./middlewares/authMiddleware'); // Middleware de Autenticação
+const { mascararUrlLog } = require('./utils/mascararUrlLog'); // log nunca grava mt= nem token cah_ag_
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -129,7 +130,7 @@ const jsonGlobal = express.json();
 app.use((req, res, next) => (req.path.startsWith('/api/como-fazer') ? next() : jsonGlobal(req, res, next)));
 app.use((req, res, next) => {
     // Log básico para debug
-    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url.replace(/([?&]mt=)[^&]*/g, '$1***')}`);
+    console.log(`[${new Date().toISOString()}] ${req.method} ${mascararUrlLog(req.url)}`);
     next();
 });
 
@@ -189,6 +190,8 @@ app.use('/api/gps-clientes', authMiddleware, require('./routes/gpsClientesRoutes
 app.use('/api/whatsapp-clientes', authMiddleware, require('./routes/whatsappClienteRoutes')); // WhatsApp do cliente: obrigatório, verificado e com selo
 app.use('/api/mapa-clientes', authMiddleware, require('./routes/mapaClientesRoutes')); // Mapa de Clientes (reorganização por dia/região)
 app.use('/api/vendedores', authMiddleware, vendedorRoutes);
+app.use('/api/agentes', require('./routes/agenteRoutes')); // Gestão de usuários-agente e tokens de API (só admin; authMiddleware + exigirAdminHumano dentro do router)
+app.use('/api/agente/v1', authMiddleware, require('./routes/agenteApiV1Routes')); // O que o agente (token cah_ag_) alcança — allowlist em config/agenteAcesso.js
 app.use('/api/config', authMiddleware, configRoutes);
 app.use('/api/tabela-precos', authMiddleware, tabelaPrecoRoutes);
 app.use('/api/condicoes-pagamento', authMiddleware, condicaoPagamentoRoutes);

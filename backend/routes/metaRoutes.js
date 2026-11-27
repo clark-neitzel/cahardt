@@ -2,9 +2,10 @@ const express = require('express');
 const router = express.Router();
 const metaController = require('../controllers/metaController');
 const verificarAuth = require('../middlewares/authMiddleware');
+const { mascararUrlLog } = require('../utils/mascararUrlLog');
 
 router.use((req, res, next) => {
-    console.log(`[Router Metas] ${req.method} ${req.url}`);
+    console.log(`[Router Metas] ${req.method} ${mascararUrlLog(req.url)}`);
     next();
 });
 router.use(verificarAuth);

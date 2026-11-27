@@ -1007,6 +1007,13 @@ model Vendedor {
   // tarefas, cobrança, delivery). Só a tela Usuários e o painel de permissões mostram.
   acessoExterno Boolean @default(false) @map("acesso_externo")
 
+  // Agente de IA (ex.: "Luke"): usuário sem login/senha que acessa a API com token
+  // próprio (tabela agente_tokens). Coluna real, NÃO dentro de `permissoes`, para que
+  // ninguém vire agente (nem deixe de ser) por edição de permissões. Agente nunca é admin.
+  agente Boolean @default(false)
+
+  agenteTokens AgenteToken[]
+
   clientes                 Cliente[]
   pedidos                  Pedido[]
   pedidosLancados          Pedido[]         @relation("UsuarioLancamento")
@@ -1068,6 +1075,29 @@ model Vendedor {
   notasEntradaRegistradas NotaEntrada[] @relation("NotasEntradaRegistradas")
 
   @@map("vendedores")
+}
+
+// Token de API de um usuário-agente (Vendedor.agente = true). Só o hash SHA-256 é guardado;
+// o token em claro (cah_ag_...) aparece UMA vez, na criação. Revogação vale na hora.
+model AgenteToken {
+  id              String    @id @default(uuid())
+  vendedorId      String    @map("vendedor_id")
+  nome            String
+  prefixo         String // 8 primeiros caracteres do segredo (só para exibir/identificar)
+  hash            String    @unique // SHA-256 hex do token completo
+  criadoPorId     String    @map("criado_por_id")
+  expiraEm        DateTime? @map("expira_em")
+  revogadoEm      DateTime? @map("revogado_em")
+  ultimoUsoEm     DateTime? @map("ultimo_uso_em")
+  ultimoUsoIp     String?   @map("ultimo_uso_ip")
+  totalUsos       Int       @default(0) @map("total_usos")
+  limitePorMinuto Int       @default(120) @map("limite_por_minuto")
+  criadoEm        DateTime  @default(now()) @map("criado_em")
+
+  vendedor Vendedor @relation(fields: [vendedorId], references: [id], onDelete: Cascade)
+
+  @@index([vendedorId])
+  @@map("agente_tokens")
 }
 
 // ─────────── Histórico de permissões (auditoria + restaurar versão) ───────────

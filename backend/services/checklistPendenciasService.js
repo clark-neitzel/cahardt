@@ -60,7 +60,7 @@ async function lerVoltaInicio() {
 async function obterConfigResponsaveis() {
     const cfg = await lerResponsaveis();
     const vends = await prisma.vendedor.findMany({
-        where: { ativo: true },
+        where: { ativo: true, agente: false }, // agente de IA nunca é candidato a responsável
         select: { id: true, nome: true, telefone: true, permissoes: true },
         orderBy: { nome: 'asc' },
     });
