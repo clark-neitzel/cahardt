@@ -1,12 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
-import { Bot, KeyRound, Plus, RefreshCw, UserCog, ChevronDown, ChevronRight, AlertTriangle, Loader2, Ban } from 'lucide-react';
+import { Bot, BookOpen, KeyRound, Plus, RefreshCw, ShieldCheck, ChevronDown, ChevronRight, AlertTriangle, Loader2, Ban } from 'lucide-react';
 import { useAuth } from '../../../contexts/AuthContext';
 import PageHeader from '../../../components/PageHeader';
 import EstadoVazio from '../../../components/EstadoVazio';
 import agenteService, { mensagemErro } from '../../../services/agenteService';
 import { ModalBase, ConfirmModal, BtnPrimario, BtnSecundario, BtnPerigoContorno } from './ModalBase';
 import TokenModal from './TokenModal';
+import MatrizApiModal from './MatrizApiModal';
+import KitConexaoModal from './KitConexaoModal';
 import { fmtData, diasRestantes, haQuanto } from './util';
 
 const AVISO_DIAS = 14;
@@ -48,6 +50,8 @@ function LinhaToken({ t, onRevogar }) {
 
 function CartaoAgente({ agente, onMudou }) {
     const [tokenModal, setTokenModal] = useState(null); // 'novo' | 'rotacionar'
+    const [matrizAberta, setMatrizAberta] = useState(false);
+    const [kitAberto, setKitAberto] = useState(false);
     const [revogar, setRevogar] = useState(null);
     const [revogando, setRevogando] = useState(false);
     const [verInativos, setVerInativos] = useState(false);
@@ -133,13 +137,39 @@ function CartaoAgente({ agente, onMudou }) {
                 )}
             </div>
 
-            {/* permissões: ficam no cadastro de usuário */}
-            <div className="border-t border-gray-100 px-4 py-3.5">
-                <div className="flex items-start gap-2 rounded-lg bg-mint/40 border border-mint p-3 text-sm text-gray-800" data-testid="aviso-permissoes">
-                    <UserCog className="h-4 w-4 shrink-0 mt-0.5 text-primaryDark" />
-                    <span className="min-w-0">As permissões deste agente serão configuradas em Usuários numa entrega futura; por enquanto o ajuste é feito pela equipe técnica.</span>
+            {/* permissões da API (módulo × ação) */}
+            <div className="border-t border-gray-100 px-4 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gray-50/50 rounded-b-xl">
+                <div className="flex items-start gap-2.5 min-w-0">
+                    <ShieldCheck className="h-4 w-4 shrink-0 mt-0.5 text-primaryDark" />
+                    <div className="min-w-0">
+                        <p className="text-sm font-semibold text-gray-900">Permissões da API (módulo × ação)</p>
+                        <p className="text-xs text-gray-600">Escolha por módulo o que é bloqueado (NÃO), pede autorização (PEDE) ou executa direto (SIM).</p>
+                    </div>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-2 shrink-0">
+                    <BtnSecundario onClick={() => setKitAberto(true)} className="inline-flex items-center justify-center gap-1.5" data-testid="btn-kit-conexao">
+                        <BookOpen className="h-4 w-4" /> Kit de conexão
+                    </BtnSecundario>
+                    <BtnPrimario onClick={() => setMatrizAberta(true)} className="inline-flex items-center justify-center gap-1.5" data-testid="btn-permissoes-api">
+                        <ShieldCheck className="h-4 w-4" /> Permissões da API
+                    </BtnPrimario>
                 </div>
             </div>
+
+            {kitAberto && (
+                <KitConexaoModal
+                    agente={agente}
+                    onFechar={() => setKitAberto(false)}
+                />
+            )}
+
+            {matrizAberta && (
+                <MatrizApiModal
+                    agente={agente}
+                    onFechar={() => setMatrizAberta(false)}
+                    onSalvo={onMudou}
+                />
+            )}
 
             {tokenModal && (
                 <TokenModal
@@ -196,7 +226,7 @@ function NovoAgenteModal({ onFechar, onCriado }) {
                     placeholder="Ex.: Luke (agente)"
                     className="mt-1 w-full border border-gray-300 rounded px-3 py-2.5 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
             </label>
-            <p className="text-xs text-gray-500">O agente nasce sem acesso a nada: você libera função por função na política de acesso.</p>
+            <p className="text-xs text-gray-500">O agente nasce com as permissões de base necessárias (nunca administrador) e acessa a API exclusivamente por token, obedecendo à Matriz de Permissões da API (SIM · PEDE · NÃO).</p>
             {erro && <p className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg p-3" role="alert">{erro}</p>}
         </ModalBase>
     );

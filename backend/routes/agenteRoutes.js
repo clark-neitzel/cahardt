@@ -9,6 +9,7 @@ const svc = require('../services/agenteTokenService');
 const politica = require('../services/agentePoliticaService');
 const solicitacoes = require('../services/agenteSolicitacaoService');
 const matriz = require('../services/agenteMatrizService');
+const kit = require('../services/agenteKitService');
 
 const router = express.Router();
 
@@ -96,8 +97,14 @@ router.get('/', async (req, res) => {
 
 router.post('/', async (req, res) => {
     try {
-        const agente = await svc.criarAgente({ nome: req.body?.nome });
-        await auditar(req, 'AGENTE_CRIADO', 'Agente', agente.id, { nome: agente.nome });
+        const agente = await svc.criarAgente(
+            { nome: req.body?.nome, copiarPermissoesBase: req.body?.copiarPermissoesBase === true },
+            req.user
+        );
+        await auditar(req, 'AGENTE_CRIADO', 'Agente', agente.id, {
+            nome: agente.nome,
+            copiouPermissoesBase: req.body?.copiarPermissoesBase === true,
+        });
         res.status(201).json(agente);
     } catch (e) { tratar(res, e, 'Erro ao criar agente.'); }
 });
@@ -220,7 +227,11 @@ router.put('/:id/matriz', async (req, res) => {
 router.post('/:id/permissoes-base/sincronizar', async (req, res) => {
     try {
         const agente = await svc.agentePorId(req.params.id);
-        const r = await matriz.sincronizarPermissoesBase(agente.id, { id: req.user.id, nome: req.user.nome, permissoes: req.user.permissoes });
+        const r = await matriz.sincronizarPermissoesBase(
+            agente.id,
+            { id: req.user.id, nome: req.user.nome, permissoes: req.user.permissoes },
+            { incluirModulos: req.body?.incluirModulos === true }
+        );
         if (r.alterou) {
             await auditar(req, 'AGENTE_PERMISSOES_BASE_SINCRONIZADAS', 'Agente', agente.id, {
                 agenteId: agente.id, agenteNome: agente.nome, origemId: req.user.id, ligadasAntes: r.ligadasAntes, ligadasDepois: r.ligadasDepois,
@@ -229,6 +240,15 @@ router.post('/:id/permissoes-base/sincronizar', async (req, res) => {
         }
         res.json(r);
     } catch (e) { tratarMatriz(res, e, 'Erro ao sincronizar as permissões de base do agente.'); }
+});
+
+// Kit de conexão (.md pronto para copiar ou baixar, sem nenhum segredo).
+router.get('/:id/kit', async (req, res) => {
+    try {
+        const agente = await svc.agentePorId(req.params.id);
+        res.set('Cache-Control', 'no-store');
+        res.json(await kit.gerarKit(req.app, agente, { baseUrl: kit.baseUrlDe(req) }));
+    } catch (e) { tratarMatriz(res, e, 'Erro ao gerar o kit de conexão do agente.'); }
 });
 
 module.exports = router;

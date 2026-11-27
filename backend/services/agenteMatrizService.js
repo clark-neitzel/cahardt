@@ -277,12 +277,14 @@ function acrescentar(alvo, origem, raiz = true) {
  * É o que faz a rota não devolver 403 pelo check dela mesma. O agente NUNCA vira admin.
  * Devolve { ok, alterou, ligadasAntes, ligadasDepois, adicionadas, removidas: [] }. Histórico fora do caminho crítico.
  */
-async function sincronizarPermissoesBase(agenteId, admin) {
+async function sincronizarPermissoesBase(agenteId, admin, { incluirModulos = false } = {}) {
     const { normalizarPermissoes, chavesLigadas } = require('./agenteCriarService');
+    const { permissoesBaseDosModulos } = require('./agenteTokenService');
     const origem = normalizarPermissoes(admin.permissoes);
     if (origem.admin !== true) throw erro(403, 'Só um administrador pode servir de referência para as permissões do agente.');
     const antes = await permissoesDoAgente(agenteId);
-    const depois = acrescentar(antes, origem);
+    const base = incluirModulos ? acrescentar(antes, permissoesBaseDosModulos()) : antes;
+    const depois = acrescentar(base, origem);
     if (vazio(depois.Isento_Ponto)) depois.Isento_Ponto = true; // agente não bate ponto
     if (depois.admin === true && antes.admin !== true) throw erro(500, 'Cópia de permissões inválida (o agente nunca é administrador). Nada foi gravado.');
     const la = new Set(chavesLigadas(antes));

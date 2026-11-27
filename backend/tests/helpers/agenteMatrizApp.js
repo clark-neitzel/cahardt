@@ -21,7 +21,8 @@ const CACHE = ['middlewares/authMiddleware.js', 'services/agenteTokenService.js'
     'services/agentePoliticaService.js', 'services/agenteAuditoriaService.js', 'services/agenteCatalogoRotas.js',
     'config/agentePoliticaPadrao.js', 'utils/agenteContexto.js', 'services/agenteSolicitacaoService.js', 'config/agenteAntes.js', 'config/agenteTelas.js',
     'config/agenteModulos.js', 'config/agenteClassificacao.js', 'config/agenteGuardas.js', 'services/agenteMatrizService.js',
-    'services/agenteMatrizSeedService.js', 'services/agenteIdempotenciaService.js', 'services/agenteCriarService.js'];
+    'services/agenteMatrizSeedService.js', 'services/agenteIdempotenciaService.js', 'services/agenteCriarService.js',
+    'services/agenteKitService.js', 'config/agenteExemplos.js'];
 const JWT_SECRET = process.env.JWT_SECRET;
 const hash = (t) => crypto.createHash('sha256').update(t).digest('hex');
 const UUID = '3f2b8a1c-9d4e-4b7a-8c11-5e6f7a8b9c0d';
@@ -123,6 +124,11 @@ function memoria() {
         vendedor: {
             findUnique: async ({ where, select }) => { const v = vendedores.get(where.id); return v ? pick(v, select) : null; },
             findMany: async ({ where, select }) => [...vendedores.values()].filter((v) => (where && where.agente !== undefined ? v.agente === where.agente : true)).map((v) => pick(v, select)),
+            create: async ({ data, select }) => {
+                const v = { ativo: true, createdAt: new Date(), maxDescontoFlex: 100, ...data };
+                vendedores.set(v.id, v);
+                return pick(v, select);
+            },
             update: async ({ where, data }) => { const v = vendedores.get(where.id); Object.assign(v, data); return { ...v }; },
         },
         agenteToken: {

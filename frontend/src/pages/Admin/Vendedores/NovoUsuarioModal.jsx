@@ -1,16 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, Search, UserPlus, Link2, Loader2, CheckCircle, Building2 } from 'lucide-react';
+import { X, Search, UserPlus, Link2, Loader2, CheckCircle, Building2, Bot, Users } from 'lucide-react';
 import clienteService from '../../../services/clienteService';
 import vendedorService from '../../../services/vendedorService';
 import fornecedorService from '../../../services/fornecedorService';
+import agenteService, { mensagemErro } from '../../../services/agenteService';
 import toast from 'react-hot-toast';
 
 // Modal de 2 passos: busca a pessoa no cadastro de clientes (futuro cadastro de pessoas)
 // e cria o usuário (modo 'criar') ou vincula um usuário existente ao cadastro (modo 'vincular').
-// Desde 25/07/2026 o usuário nasce daqui — o sync de vendedores com o Conta Azul foi desligado.
+// Desde 11/2026 no modo 'criar' o administrador também pode escolher "Conexão por API" (agente).
 const NovoUsuarioModal = ({ modo = 'criar', vendedor = null, onClose, onDone }) => {
     const navigate = useNavigate();
+    const [tipoConta, setTipoConta] = useState('pessoa'); // 'pessoa' | 'api'
+    const [nomeAgente, setNomeAgente] = useState('');
     const [busca, setBusca] = useState('');
     const [resultados, setResultados] = useState([]);
     const [fornecedores, setFornecedores] = useState([]);
@@ -96,6 +99,20 @@ const NovoUsuarioModal = ({ modo = 'criar', vendedor = null, onClose, onDone }) 
         }
     };
 
+    const criarConexaoApi = async () => {
+        if (!nomeAgente.trim() || salvando) return;
+        setSalvando(true);
+        try {
+            const criado = await agenteService.criar(nomeAgente.trim());
+            toast.success(`Conexão "${criado.nome}" criada! Agora ajuste a Matriz da API e gere o token em Agentes de IA.`);
+            onDone?.({ ...criado, agente: true });
+        } catch (e) {
+            toast.error(mensagemErro(e, 'Erro ao criar conexão por API'));
+        } finally {
+            setSalvando(false);
+        }
+    };
+
     const criar = async () => {
         const erros = [];
         if (!form.nome.trim()) erros.push('Informe o nome completo');
@@ -141,11 +158,63 @@ const NovoUsuarioModal = ({ modo = 'criar', vendedor = null, onClose, onDone }) 
                             </p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"><X className="h-5 w-5" /></button>
+                    <button onClick={onClose} aria-label="Fechar" className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 shrink-0"><X className="h-5 w-5" /></button>
                 </div>
 
+                {/* Escolha Pessoa × Conexão por API (só no modo criar) */}
+                {modo === 'criar' && !pessoa && (
+                    <div className="px-5 pt-4">
+                        <div className="raio-proprio grid grid-cols-2 gap-1 bg-gray-100 p-1 rounded-full">
+                            <button
+                                type="button"
+                                onClick={() => setTipoConta('pessoa')}
+                                className={`raio-proprio min-h-[44px] px-3 py-2 rounded-full text-xs font-bold inline-flex items-center justify-center gap-1.5 transition-colors ${
+                                    tipoConta === 'pessoa' ? 'bg-white text-primaryDark shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                                }`}
+                            >
+                                <Users className="h-3.5 w-3.5" /> Pessoa da equipe
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setTipoConta('api')}
+                                className={`raio-proprio min-h-[44px] px-3 py-2 rounded-full text-xs font-bold inline-flex items-center justify-center gap-1.5 transition-colors ${
+                                    tipoConta === 'api' ? 'bg-white text-primaryDark shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                                }`}
+                                data-testid="aba-conexao-api"
+                            >
+                                <Bot className="h-3.5 w-3.5" /> Conexão por API
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Modo Conexão por API */}
+                {modo === 'criar' && tipoConta === 'api' && (
+                    <div className="p-5 space-y-3">
+                        <div>
+                            <label className={labelCls}>Nome da conexão / agente *</label>
+                            <input
+                                type="text"
+                                autoFocus
+                                maxLength={80}
+                                value={nomeAgente}
+                                onChange={(e) => setNomeAgente(e.target.value)}
+                                onKeyDown={(e) => { if (e.key === 'Enter') criarConexaoApi(); }}
+                                placeholder="Ex.: Luke (BPO financeiro), Sistema Contábil…"
+                                className={`${inputCls} bg-white text-gray-900`}
+                            />
+                        </div>
+                        <div className="rounded-xl bg-mint/40 border border-mint p-3.5 text-xs text-gray-800 space-y-1">
+                            <p className="font-bold text-primaryDark">Como funciona uma Conexão por API:</p>
+                            <p>• Entra somente por <b>token de API</b> (gerado em <b>Admin → Agentes de IA</b>), sem login nem senha.</p>
+                            <p>• Já nasce com as permissões de base (sem nunca ser administrador) e você escolhe módulo por módulo o que é <b>NÃO</b>, <b>PEDE</b> ou <b>SIM</b>.</p>
+                            <p>• Não aparece como vendedor, motorista nem caixa a fechar.</p>
+                        </div>
+                    </div>
+                )}
+
                 {/* Passo 1 — buscar no cadastro */}
-                {!pessoa && (
+                {(modo !== 'criar' || tipoConta === 'pessoa') && !pessoa && (
                     <div className="p-5">
                         <div className="relative">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -271,7 +340,7 @@ const NovoUsuarioModal = ({ modo = 'criar', vendedor = null, onClose, onDone }) 
                 {/* Rodapé */}
                 <div className="flex justify-end gap-3 px-5 py-4 border-t border-gray-100 bg-gray-50/60 rounded-b-2xl">
                     <button onClick={onClose} className="px-4 py-2 bg-white border border-gray-300 text-gray-600 rounded-full font-medium text-sm min-h-[44px]">Cancelar</button>
-                    {modo === 'criar' && (
+                    {modo === 'criar' && tipoConta === 'pessoa' && (
                         <button
                             onClick={criar}
                             disabled={!pessoa || salvando}
@@ -279,6 +348,16 @@ const NovoUsuarioModal = ({ modo = 'criar', vendedor = null, onClose, onDone }) 
                         >
                             {salvando && <Loader2 className="h-4 w-4 animate-spin" />}
                             {salvando ? 'Criando…' : 'Criar usuário'}
+                        </button>
+                    )}
+                    {modo === 'criar' && tipoConta === 'api' && (
+                        <button
+                            onClick={criarConexaoApi}
+                            disabled={!nomeAgente.trim() || salvando}
+                            className="px-5 py-2 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm disabled:opacity-50 flex items-center gap-2 min-h-[44px]"
+                        >
+                            {salvando && <Loader2 className="h-4 w-4 animate-spin" />}
+                            {salvando ? 'Criando…' : 'Criar conexão por API'}
                         </button>
                     )}
                 </div>

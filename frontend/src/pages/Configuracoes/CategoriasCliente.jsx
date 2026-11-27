@@ -3,8 +3,15 @@ import toast from 'react-hot-toast';
 import { Pencil, Trash2, Plus, Save, X } from 'lucide-react';
 import categoriaClienteService from '../../services/categoriaClienteService';
 import CampoNumero from '../../components/CampoNumero';
+import { useAuth } from '../../contexts/AuthContext';
 
 const CategoriasCliente = () => {
+    const { user } = useAuth();
+    const perms = user?.permissoes || {};
+    const podeEditar = perms.admin === true
+        || perms.configuracoes === true
+        || (perms.configuracoes && typeof perms.configuracoes === 'object' && perms.configuracoes.edit === true)
+        || perms.clientes?.edit === true;
     const [categorias, setCategorias] = useState([]);
     const [loading, setLoading] = useState(true);
     const [editingId, setEditingId] = useState(null);
@@ -97,7 +104,7 @@ const CategoriasCliente = () => {
                     <h1 className="text-2xl font-bold text-gray-800">Categorias de Cliente (Comercial)</h1>
                     <p className="text-gray-500 text-sm">Segmente clientes para definir comportamento e frequência de venda esperada.</p>
                 </div>
-                {!isCreating && !editingId && (
+                {podeEditar && !isCreating && !editingId && (
                     <button
                         onClick={handleCreateNew}
                         className="flex items-center px-4 py-2 bg-primary text-white rounded hover:bg-blue-700 transition"
@@ -225,20 +232,24 @@ const CategoriasCliente = () => {
                                     <div className="text-xs text-gray-500 text-right mr-4 whitespace-nowrap">
                                         Ciclo: {cat.cicloPadraoDias} dias
                                     </div>
-                                    <button
-                                        onClick={() => handleEdit(cat)}
-                                        className="text-blue-600 hover:text-blue-900 p-1"
-                                        title="Editar"
-                                    >
-                                        <Pencil className="h-5 w-5" />
-                                    </button>
-                                    <button
-                                        onClick={() => handleDelete(cat.id)}
-                                        className="text-red-600 hover:text-red-900 p-1"
-                                        title="Excluir"
-                                    >
-                                        <Trash2 className="h-5 w-5" />
-                                    </button>
+                                    {podeEditar && (
+                                        <>
+                                            <button
+                                                onClick={() => handleEdit(cat)}
+                                                className="text-blue-600 hover:text-blue-900 p-1"
+                                                title="Editar"
+                                            >
+                                                <Pencil className="h-5 w-5" />
+                                            </button>
+                                            <button
+                                                onClick={() => handleDelete(cat.id)}
+                                                className="text-red-600 hover:text-red-900 p-1"
+                                                title="Excluir"
+                                            >
+                                                <Trash2 className="h-5 w-5" />
+                                            </button>
+                                        </>
+                                    )}
                                 </div>
                             </li>
                         ))

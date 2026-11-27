@@ -167,6 +167,9 @@ const vendedorController = {
                 return res.status(403).json({ error: 'Apenas administradores podem alterar permissões, login, senha ou status de usuários.' });
             }
 
+            const alvoExistente = await prisma.vendedor.findUnique({ where: { id }, select: { id: true, agente: true, permissoes: true } });
+            const alvoEhAgente = alvoExistente?.agente === true;
+
             const dataToUpdate = {};
             if (email !== undefined) dataToUpdate.email = email;
             if (telefone !== undefined) dataToUpdate.telefone = telefone;
@@ -175,8 +178,19 @@ const vendedorController = {
             if (maxDescontoFlex !== undefined) dataToUpdate.maxDescontoFlex = maxDescontoFlex;
             if (percentualFlex !== undefined) dataToUpdate.percentualFlex = percentualFlex;
             if (ativo !== undefined) dataToUpdate.ativo = ativo;
-            if (login !== undefined) dataToUpdate.login = login || null;
-            if (permissoes !== undefined) dataToUpdate.permissoes = permissoes;
+            if (login !== undefined) dataToUpdate.login = alvoEhAgente ? null : (login || null);
+            if (permissoes !== undefined) {
+                if (alvoEhAgente && permissoes && typeof permissoes === 'object' && !Array.isArray(permissoes)) {
+                    const limpas = { ...permissoes };
+                    for (const k of Object.keys(limpas)) {
+                        const kl = k.trim().toLowerCase();
+                        if (kl === 'admin' || kl === 'usuario_externo') delete limpas[k];
+                    }
+                    dataToUpdate.permissoes = limpas;
+                } else {
+                    dataToUpdate.permissoes = permissoes;
+                }
+            }
             if (formasAtendimentoVisiveis !== undefined) dataToUpdate.formasAtendimentoVisiveis = formasAtendimentoVisiveis;
             if (alertaFaturamento !== undefined) dataToUpdate.alertaFaturamento = alertaFaturamento;
             if (alertaPedidoConvertido !== undefined) dataToUpdate.alertaPedidoConvertido = alertaPedidoConvertido;
@@ -195,9 +209,10 @@ const vendedorController = {
 
             // Acesso externo (contabilidade/parceiro): tira a pessoa de todo seletor de
             // vendedor/motorista/equipe. Só admin — muda o que a operação inteira enxerga.
+            // Usuário-agente (conexão por API) SEMPRE mantém acessoExterno=true para não aparecer nos seletores operacionais.
             if (acessoExterno !== undefined) {
                 if (!isAdmin) return res.status(403).json({ error: 'Apenas administradores podem marcar acesso externo.' });
-                dataToUpdate.acessoExterno = acessoExterno === true;
+                dataToUpdate.acessoExterno = alvoEhAgente ? true : (acessoExterno === true);
             }
 
             // Vincular usuário antigo ao cadastro de pessoas (um cadastro por usuário)
@@ -213,7 +228,7 @@ const vendedorController = {
                 dataToUpdate.clienteUuid = clienteUuid || null;
             }
 
-            if (senha && senha.trim() !== '') {
+            if (!alvoEhAgente && senha && senha.trim() !== '') {
                 const salt = await bcrypt.genSalt(10);
                 dataToUpdate.senha = await bcrypt.hash(senha, salt);
             }
@@ -221,8 +236,7 @@ const vendedorController = {
             // Histórico de permissões: captura o estado ANTES da gravação
             let permissoesAnteriores;
             if (permissoes !== undefined) {
-                const atual = await prisma.vendedor.findUnique({ where: { id }, select: { permissoes: true } });
-                permissoesAnteriores = atual?.permissoes ?? {};
+                permissoesAnteriores = alvoExistente?.permissoes ?? {};
                 if (typeof permissoesAnteriores === 'string') {
                     try { permissoesAnteriores = JSON.parse(permissoesAnteriores); } catch { permissoesAnteriores = {}; }
                 }

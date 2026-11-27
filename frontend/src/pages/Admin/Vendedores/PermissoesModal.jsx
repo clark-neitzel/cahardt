@@ -7,7 +7,7 @@ import {
     Settings, DollarSign, Warehouse, TrendingUp,
     Factory, Package, BookOpen as BookOpenIcon, Play, Calendar, Lightbulb, BarChart3, BarChart2,
     Clock, CalendarOff, ClipboardCheck, Tag, PartyPopper, Inbox, Building2, CalendarCheck, BellRing,
-    KeyRound, History, Zap, UsersRound, ChevronRight, ArrowLeft, FolderOpen, Landmark
+    KeyRound, History, Zap, UsersRound, ChevronRight, ArrowLeft, FolderOpen, Landmark, Bot, ShieldCheck
 } from 'lucide-react';
 import vendedorService from '../../../services/vendedorService';
 import configService from '../../../services/configService';
@@ -49,6 +49,7 @@ const DEFAULT_PERMISSIONS = {
     Pode_Editar_GPS: false,
     Pode_Autorizar_Ponto_Gps: false,
     Pode_Liberar_Cliente_Balcao: false,
+    Pode_Ver_Todos_Clientes: false,
     // Módulo Caixa Diário e Despesas
     Pode_Acessar_Caixa: false,
     Pode_Editar_Caixa: false,
@@ -62,6 +63,7 @@ const DEFAULT_PERMISSIONS = {
     Pode_Autorizar_Desconsiderar_Devolucao: false,
     Pode_Conferir_Dinheiro_Caixa: false,
     Pode_Autorizar_Diferenca_Caixa: false,
+    Pode_Liberar_Nota_Sem_Canhoto: false,
     // Módulo de Veículos
     Pode_Acessar_Veiculos: false,
     Pode_Acessar_Contabilidade: false,
@@ -102,6 +104,7 @@ const DEFAULT_PERMISSIONS = {
     Pode_Baixar_Contas_Receber_Manual: false,
     Pode_Cancelar_QR_Pix: false,
     Pode_Dar_Desconto_Baixa: false,
+    Pode_Reverter_Cancelamento_CR: false,
     Pode_Vender_Inadimplente: false,
     Pode_Acessar_Contas_Pagar: false,
     Pode_Baixar_Contas_Pagar: false,
@@ -320,12 +323,14 @@ const BOOL_INDEX = [
     { sec: 'logistica', path: 'Pode_Cobrar_Titulo_Rota', nome: 'Cobrar Títulos em Rota', desc: 'Aba Cobranças no roteiro: cobra títulos em aberto na rua (a baixa sai só no Caixa)', kw: 'cobranca titulo rota rua motorista vendedor cobrar parcela' },
     { sec: 'logistica', path: 'Pode_Autorizar_Ponto_Gps', nome: 'Autorizar Ponto GPS (Logística)', desc: 'Libera ponto perto de outro cliente, aprova mudança de ponto confirmado, desfaz mudanças e liga o bloqueio de pedido sem GPS', kw: 'gps ponto autorizar aprovar logistica pendencia mapa', danger: true },
     { sec: 'logistica', path: 'Pode_Liberar_Cliente_Balcao', nome: 'Liberar Cliente Balcão', desc: 'Marca cliente que compra e retira na empresa (vende sem exigir ponto GPS)', kw: 'balcao retira empresa gps sem ponto cliente' },
+    { sec: 'logistica', path: 'Pode_Ver_Todos_Clientes', nome: 'Roteirizar Carteira de Qualquer Vendedor', desc: 'Permite escolher outro vendedor/motorista na roteirização por mapa (OSRM)', kw: 'roteirizar roteirizacao todos clientes carteira vendedor mapa', noBulk: true },
     // Financeiro
     { sec: 'financeiro', path: 'Pode_Acessar_Contas_Receber', nome: 'Contas a Receber', desc: 'Parcelas em aberto, boletos, inadimplência', kw: 'receber boleto parcela menu inadimplencia' },
     { sec: 'financeiro', path: 'Pode_Baixar_Contas_Receber', nome: 'Dar Baixa em Parcelas', desc: 'Registrar pagamentos (inclusive parciais) e estornar baixas', kw: 'baixa quitar pagamento estorno receber' },
     { sec: 'financeiro', path: 'Pode_Baixar_Contas_Receber_Manual', nome: 'Baixa Manual no Contas a Receber', desc: 'Quitar título digitando na tela (só dinheiro/cheque, e o valor cai no caixa do dia de quem baixou). Sem isto, o recebimento entra pela Conciliação Bancária ou pelo Caixa', kw: 'baixa manual mao dinheiro cheque caixa conciliacao excecao', danger: true },
     { sec: 'financeiro', path: 'Pode_Cancelar_QR_Pix', nome: 'Cancelar QR PIX de pedido', desc: 'Cancelar um QR PIX já gerado para o pedido (cada QR custa R$ 1,90; o app usa um QR só por pedido). Fechar a janela não cancela', kw: 'qr pix cancelar cobrança asaas', danger: true },
     { sec: 'financeiro', path: 'Pode_Dar_Desconto_Baixa', nome: 'Dar Desconto na Baixa', desc: 'Reduz o valor a receber (até 100%) sem confirmação de pagamento', kw: 'desconto abater perdoar reduzir baixa', danger: true },
+    { sec: 'financeiro', path: 'Pode_Reverter_Cancelamento_CR', nome: 'Reverter Cancelamento no Contas a Receber', desc: 'Reabre uma conta a receber que foi cancelada, restaurando suas parcelas', kw: 'reverter reabrir cancelamento cancelada contas receber parcela', danger: true, noBulk: true },
     { sec: 'financeiro', path: 'Pode_Acessar_Cobranca', nome: 'Régua de Cobrança', desc: 'Cobranças automáticas por WhatsApp/e-mail (desligar aqui desliga o editar junto)', kw: 'regua cobranca whatsapp lembrete automatico menu' },
     { sec: 'financeiro', path: 'Pode_Editar_Cobranca', nome: 'Editar Régua de Cobrança', desc: 'Ligar/desligar a régua, configurar mensagens/canais, executar e cobrar manualmente', kw: 'regua editar configurar executar cobrar' },
     { sec: 'financeiro', path: 'Pode_Acessar_Contas_Pagar', nome: 'Contas a Pagar', desc: 'Despesas e boletos a pagar da empresa', kw: 'pagar despesa boleto fornecedor menu' },
@@ -358,6 +363,7 @@ const BOOL_INDEX = [
     { sec: 'caixa', path: 'Pode_Conferir_Dinheiro_Caixa', nome: 'Conferir Dinheiro do Caixa', desc: 'Recebe o dinheiro, conta na calculadora e assina a conferência que libera o fechamento', kw: 'conferir dinheiro contar cedulas notas caixa prestacao' },
     { sec: 'caixa', path: 'Pode_Autorizar_Diferenca_Caixa', nome: 'Autorizar Diferença no Caixa', desc: 'A senha desta pessoa libera diferença acima da quebra de quem está conferindo', kw: 'autorizar diferenca quebra falta sobra dinheiro senha', danger: true },
     { sec: 'caixa', path: 'Pode_Autorizar_Desconsiderar_Devolucao', nome: 'Autorizar Desconsiderar Devolução', desc: 'A senha desta pessoa libera falta de devolução sem cobrança ao motorista', kw: 'senha autorizar liberar falta perdoar motorista', danger: true },
+    { sec: 'caixa', path: 'Pode_Liberar_Nota_Sem_Canhoto', nome: 'Liberar Nota Sem Canhoto', desc: 'Permite liberar conferência de nota fiscal mesmo sem o canhoto assinado', kw: 'canhoto nota liberar sem assinatura caixa', danger: true, noBulk: true },
     // Administração
     { sec: 'admin', path: 'produtos.view', nome: 'Ver Produtos (Admin)', desc: 'Menu Produtos visível', kw: 'menu produtos admin cadastro' },
     { sec: 'admin', path: 'vendedores.view', nome: 'Ver Usuários', desc: 'A tela de equipe/acessos', kw: 'menu usuarios equipe vendedores' },
@@ -425,7 +431,8 @@ const PERFIS = {
 // helpers de caminho ('a.b' → permissoes.a.b)
 const lerPath = (obj, path) => path.split('.').reduce((o, k) => (o == null ? o : o[k]), obj);
 
-const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
+const PermissoesModal = ({ vendedor, onClose, onUpdated, onAbrirMatrizApi }) => {
+    const ehAgente = vendedor?.agente === true;
     const [login, setLogin] = useState('');
     const [senha, setSenha] = useState('');
     const [permissoes, setPermissoes] = useState(DEFAULT_PERMISSIONS);
@@ -506,7 +513,10 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                 if (typeof sourcePerms === 'string') {
                     try { sourcePerms = JSON.parse(sourcePerms); } catch (e) { sourcePerms = {}; }
                 }
-                setPermissoes({ ...DEFAULT_PERMISSIONS, ...sourcePerms });
+                const limpas = ehAgente
+                    ? { ...DEFAULT_PERMISSIONS, ...sourcePerms, admin: false, Usuario_Externo: false, Isento_Ponto: true }
+                    : { ...DEFAULT_PERMISSIONS, ...sourcePerms };
+                setPermissoes(limpas);
                 toast.success(`Permissões copiadas de ${source.nome}! Revise e clique em Salvar.`);
                 setVendedorOrigemId('');
                 setPopover(null);
@@ -555,6 +565,7 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
     // Escrever por path do índice — reusa os toggles existentes p/ manter o
     // comportamento (ex.: Régua desliga o editar junto)
     const setBoolPath = (path, val) => {
+        if (ehAgente && (path === 'admin' || path === 'Usuario_Externo')) return;
         if (path === 'Pode_Acessar_Cobranca') {
             if (!!permissoes.Pode_Acessar_Cobranca !== val) toggleAcessoCobranca();
             return;
@@ -610,12 +621,16 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
     const handleSave = async () => {
         try {
             setSaving(true);
+            const permsParaSalvar = ehAgente
+                ? { ...permissoes, admin: false, Usuario_Externo: false }
+                : permissoes;
             const data = {
-                login, permissoes,
+                ...(ehAgente ? {} : { login }),
+                permissoes: permsParaSalvar,
                 tabelaCobrancaFaltaId: tabelaCobrancaFaltaId || null,
                 quebraCaixa: Number(String(quebraCaixa).replace(',', '.')) || 0,
             };
-            if (senha && senha.trim() !== '') data.senha = senha;
+            if (!ehAgente && senha && senha.trim() !== '') data.senha = senha;
             await vendedorService.atualizar(vendedor.id, data);
             toast.success('Permissões e acessos salvos!');
             onUpdated();
@@ -665,7 +680,8 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
         return { ligadas, desligadas };
     };
     const restaurarVersao = (row) => {
-        setPermissoes({ ...DEFAULT_PERMISSIONS, ...(row.permissoesAntes || {}) });
+        const base = { ...DEFAULT_PERMISSIONS, ...(row.permissoesAntes || {}) };
+        setPermissoes(ehAgente ? { ...base, admin: false, Usuario_Externo: false } : base);
         toast.success('Versão restaurada (como estava antes daquela mudança) — revise e clique em Salvar.');
     };
     const fmtData = (iso) => {
@@ -678,18 +694,22 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
 
     const pcpPerms = permissoes.pcp || {};
 
+    const boolIndexVisivel = ehAgente
+        ? BOOL_INDEX.filter(e => e.path !== 'admin' && e.path !== 'Usuario_Externo')
+        : BOOL_INDEX;
+
     // contagem de ativas por seção (menu lateral)
     const contagemSecao = (sec) => {
-        let n = BOOL_INDEX.filter(e => e.sec === sec && getBoolPath(e.path)).length;
+        let n = boolIndexVisivel.filter(e => e.sec === sec && getBoolPath(e.path)).length;
         if (sec === 'estoque') n += (permissoes.estoque || []).length;
         return n;
     };
-    const totalAtivas = BOOL_INDEX.filter(e => getBoolPath(e.path)).length + (permissoes.estoque || []).length;
+    const totalAtivas = boolIndexVisivel.filter(e => getBoolPath(e.path)).length + (permissoes.estoque || []).length;
 
     // busca: nome + descrição + palavras do dia a dia
     const q = busca.trim().toLowerCase();
     const resultadosBusca = q ? {
-        toggles: BOOL_INDEX.filter(e => `${e.nome} ${e.desc} ${e.kw}`.toLowerCase().includes(q)),
+        toggles: boolIndexVisivel.filter(e => `${e.nome} ${e.desc} ${e.kw}`.toLowerCase().includes(q)),
         links: LINK_INDEX.filter(e => `${e.nome} ${e.desc} ${e.kw}`.toLowerCase().includes(q)),
     } : null;
 
@@ -748,30 +768,37 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                 </div>
             </div>
 
-            {/* ── Login / Senha ── */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <label className="block text-sm font-medium text-gray-700">Login</label>
-                    <input type="text" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2"
-                        value={login} onChange={e => setLogin(e.target.value)} placeholder="Ex: Clark" />
+            {/* ── Login / Senha (oculto para conexão por API) ── */}
+            {!ehAgente && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Login</label>
+                        <input type="text" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2 bg-white text-gray-900"
+                            value={login} onChange={e => setLogin(e.target.value)} placeholder="Ex: Clark" />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Nova Senha</label>
+                        <input type="text" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2 bg-white text-gray-900"
+                            value={senha} onChange={e => setSenha(e.target.value)} placeholder="Deixe vazio para manter" />
+                    </div>
                 </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700">Nova Senha</label>
-                    <input type="text" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2"
-                        value={senha} onChange={e => setSenha(e.target.value)} placeholder="Deixe vazio para manter" />
-                </div>
-            </div>
+            )}
 
             {/* ── Admin Global ── */}
-            <div className="flex items-center justify-between bg-indigo-50 p-4 rounded-lg border border-indigo-200">
+            <div className={`flex items-center justify-between bg-indigo-50 p-4 rounded-lg border border-indigo-200 ${ehAgente ? 'opacity-60' : ''}`}>
                 <div>
                     <h4 className="font-bold text-indigo-900 text-sm">Administrador Global</h4>
-                    <p className="text-xs text-indigo-700 mt-0.5">Acesso irrestrito, pula trava de ponto/veículo</p>
+                    <p className="text-xs text-indigo-700 mt-0.5">
+                        {ehAgente
+                            ? 'Bloqueado para conexões por API (agente nunca pode ser administrador).'
+                            : 'Acesso irrestrito, pula trava de ponto/veículo'}
+                    </p>
                 </div>
                 <button
                     type="button" role="switch" aria-checked={!!permissoes.admin}
-                    onClick={() => toggleBool('admin')}
-                    className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${permissoes.admin ? 'bg-indigo-600' : 'bg-gray-200'}`}
+                    disabled={ehAgente}
+                    onClick={() => !ehAgente && toggleBool('admin')}
+                    className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${permissoes.admin ? 'bg-indigo-600' : 'bg-gray-200'} ${ehAgente ? 'cursor-not-allowed' : ''}`}
                 >
                     <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${permissoes.admin ? 'translate-x-5' : 'translate-x-0'}`} />
                 </button>
@@ -795,7 +822,7 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
             )}
 
             {/* ── Usuário externo (contador) ── */}
-            {!permissoes.admin && (
+            {!permissoes.admin && !ehAgente && (
                 <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
                     <div className="flex items-center justify-between gap-3">
                         <div className="min-w-0">
@@ -1225,6 +1252,8 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                     label="Administrador Financeiro de Entrega" sublabel="Desmanchar/alterar devoluções ou pagamentos do motorista" danger />
                 <Toggle checked={!!permissoes.Pode_Cobrar_Titulo_Rota} onChange={() => toggleBool('Pode_Cobrar_Titulo_Rota')}
                     label="Cobrar Títulos em Rota" sublabel="Aba Cobranças no roteiro: cobra títulos em aberto na rua (a baixa sai só no Caixa)" />
+                <Toggle checked={!!permissoes.Pode_Ver_Todos_Clientes} onChange={() => toggleBool('Pode_Ver_Todos_Clientes')}
+                    label="Roteirizar Carteira de Qualquer Vendedor" sublabel="Permite escolher outro vendedor/motorista na roteirização por mapa (OSRM)" />
             </div>
         </div>
     );
@@ -1272,6 +1301,8 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                         <Toggle checked={!!permissoes.Pode_Dar_Desconto_Baixa} onChange={() => toggleBool('Pode_Dar_Desconto_Baixa')}
                             label="Dar Desconto na Baixa" sublabel="Reduz o valor a receber (até 100%) sem confirmação de pagamento — use com critério" danger />
                     )}
+                    <Toggle checked={!!permissoes.Pode_Reverter_Cancelamento_CR} onChange={() => toggleBool('Pode_Reverter_Cancelamento_CR')}
+                        label="Reverter Cancelamento no Contas a Receber" sublabel="Reabre uma conta a receber cancelada, restaurando suas parcelas" danger />
                 </div>
             )}
 
@@ -1344,6 +1375,8 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                         label="Conferir Devoluções no Caixa" sublabel="Recebe a mercadoria que voltou e digita a contagem física na conferência" />
                     <Toggle checked={!!permissoes.Pode_Autorizar_Desconsiderar_Devolucao} onChange={() => toggleBool('Pode_Autorizar_Desconsiderar_Devolucao')}
                         label="Autorizar Desconsiderar Devolução" sublabel="A senha desta pessoa libera falta de devolução sem cobrança ao motorista" danger />
+                    <Toggle checked={!!permissoes.Pode_Liberar_Nota_Sem_Canhoto} onChange={() => toggleBool('Pode_Liberar_Nota_Sem_Canhoto')}
+                        label="Liberar Nota Sem Canhoto" sublabel="Permite liberar conferência de nota fiscal mesmo sem o canhoto assinado" danger />
                     <Toggle checked={!!permissoes.Pode_Conferir_Dinheiro_Caixa} onChange={() => toggleBool('Pode_Conferir_Dinheiro_Caixa')}
                         label="Conferir Dinheiro do Caixa" sublabel="Recebe o dinheiro, conta na calculadora e assina a conferência que libera o fechamento" />
 
@@ -1606,8 +1639,8 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                 Mostrando {soAtivas ? 'só as ativas' : ''}{soAtivas && soRisco ? ' e ' : ''}{soRisco ? 'só a zona de risco' : ''} desta seção.
                 Desligue os filtros no topo para ver a seção completa (listas, horários e campos especiais aparecem lá).
             </p>
-            {listaFiltrada(BOOL_INDEX.filter(e => e.sec === secAtiva)).map(e => <ToggleIndex key={e.path} entry={e} />)}
-            {listaFiltrada(BOOL_INDEX.filter(e => e.sec === secAtiva)).length === 0 && (
+            {listaFiltrada(boolIndexVisivel.filter(e => e.sec === secAtiva)).map(e => <ToggleIndex key={e.path} entry={e} />)}
+            {listaFiltrada(boolIndexVisivel.filter(e => e.sec === secAtiva)).length === 0 && (
                 <p className="text-sm text-gray-400 text-center py-8">Nada nesta seção com esses filtros.</p>
             )}
         </div>
@@ -1698,6 +1731,27 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                         <X className="h-5 w-5" />
                     </button>
                 </div>
+
+                {/* ══ Faixa de aviso quando o usuário é Conexão por API (agente) ══ */}
+                {ehAgente && (
+                    <div className="px-4 md:px-6 py-2.5 bg-purple-50 border-b border-purple-200 flex flex-wrap items-center justify-between gap-2" data-testid="aviso-usuario-agente">
+                        <div className="flex items-start gap-2 min-w-0 text-xs text-purple-900">
+                            <Bot className="h-4 w-4 shrink-0 mt-0.5 text-purple-700" />
+                            <span>
+                                <b>Conexão por API (agente):</b> aqui ficam só as permissões de base do sistema. O que ele faz direto (<b>SIM</b>), pede autorização (<b>PEDE</b>) ou não faz (<b>NÃO</b>) é controlado na <b>Matriz de Permissões da API</b> (copiar/restaurar aqui não apaga a matriz).
+                            </span>
+                        </div>
+                        {onAbrirMatrizApi && (
+                            <button
+                                type="button"
+                                onClick={onAbrirMatrizApi}
+                                className="px-3 py-1.5 bg-primary hover:bg-primaryDark text-white rounded-full text-xs font-semibold inline-flex items-center gap-1.5 shrink-0 min-h-[44px] md:min-h-[36px]"
+                            >
+                                <ShieldCheck className="h-3.5 w-3.5" /> Abrir Permissões da API
+                            </button>
+                        )}
+                    </div>
+                )}
 
                 {/* ══ Ferramentas: perfis, copiar, filtros, histórico ══ */}
                 <div className="px-4 md:px-6 py-2 border-b border-gray-100 bg-gray-50/60 flex items-center gap-2 overflow-x-auto flex-nowrap md:flex-wrap [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">

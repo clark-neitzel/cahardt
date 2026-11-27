@@ -7,7 +7,7 @@ const d = (r) => r.data;
 const agenteService = {
     // ── Agentes e tokens ──
     listar: () => api.get('/agentes').then(d),
-    criar: (nome) => api.post('/agentes', { nome }).then(d),
+    criar: (nome) => api.post('/agentes', { nome, copiarPermissoesBase: true }).then(d),
     // O token em claro vem SÓ nesta resposta (campo `token`). Quem chama não pode guardá-lo em lugar nenhum.
     criarToken: (agenteId, corpo) => api.post(`/agentes/${agenteId}/tokens`, corpo).then(d),
     revogarToken: (agenteId, tokenId) => api.delete(`/agentes/${agenteId}/tokens/${tokenId}`).then(d),
@@ -20,6 +20,15 @@ const agenteService = {
     recusar: (id, observacao) => api.post(`/agentes/solicitacoes/${id}/recusar`, { observacao: observacao || '' }).then(d),
     // `corpo` leva { confirmarRepeticao: true } depois que o dono marcou "Entendi"; sem isso o servidor devolve 409 CONFIRMAR_REPETICAO.
     repetir: (id, corpo) => api.post(`/agentes/solicitacoes/${id}/repetir`, corpo || {}).then(d),
+
+    // ── Matriz de permissões da API (módulo × ação: NAO / PEDE / SIM) ──
+    lerMatriz: (agenteId) => api.get(`/agentes/${agenteId}/matriz`).then(d),
+    gravarMatriz: (agenteId, corpo) => api.put(`/agentes/${agenteId}/matriz`, corpo).then(d),
+    funcoesMatriz: (agenteId, params) => api.get(`/agentes/${agenteId}/matriz/funcoes`, { params }).then(d),
+    sincronizarPermissoesBase: (agenteId) => api.post(`/agentes/${agenteId}/permissoes-base/sincronizar`, { incluirModulos: true }).then(d),
+
+    // ── Kit de conexão (D3) ──
+    lerKit: (agenteId) => api.get(`/agentes/${agenteId}/kit`).then(d),
 };
 
 export default agenteService;

@@ -1644,6 +1644,8 @@ const RotaLeads = () => {
     const [metaConversaoHoje, setMetaConversaoHoje] = useState(null);
     const [metaAdminHoje, setMetaAdminHoje] = useState([]);
     const podeEscolherVendedor = user?.permissoes?.pedidos?.clientes === 'todos';
+    // Roteirização OSRM de outro motorista = espelho exato de backend/routes/roteirizacao.js (admin ou Pode_Ver_Todos_Clientes)
+    const podeRoteirizarQualquer = !!(user?.permissoes?.admin) || !!(user?.permissoes?.Pode_Ver_Todos_Clientes);
 
     // Pode filtrar entregas por motorista = mesma regra do backend (admin ou Pode_Ver_Todas_Entregas)
     const podeVerTodasEntregas = !!(user?.permissoes?.admin) || !!(user?.permissoes?.Pode_Ver_Todas_Entregas);
@@ -1677,16 +1679,16 @@ const RotaLeads = () => {
     const [vendedorFiltro, setVendedorFiltro] = useFiltroSalvo('rota-leads:vendedorFiltro', 'todos');
     const [vendedores, setVendedores] = useState([]);
 
-    // Carrega vendedores para o select (quem pode escolher vendedor)
+    // Carrega vendedores para o select (quem pode escolher vendedor na carteira ou roteirizar qualquer motorista)
     useEffect(() => {
-        if (podeEscolherVendedor) {
+        if (podeEscolherVendedor || podeRoteirizarQualquer) {
             import('../../services/vendedorService').then(module => {
                 module.default.listar().then(vends => {
                     setVendedores(vends.filter(v => v.ativo));
                 }).catch(console.error);
             });
         }
-    }, [podeEscolherVendedor]);
+    }, [podeEscolherVendedor, podeRoteirizarQualquer]);
 
     const handleFiltroVendedor = (e) => {
         setVendedorFiltro(e.target.value);
@@ -2261,8 +2263,8 @@ const RotaLeads = () => {
         }
     };
 
-    // ID do motorista cuja rota está sendo visualizada (admin pode ver de outro vendedor)
-    const rotaVendedorId = podeEscolherVendedor
+    // ID do motorista cuja rota está sendo visualizada (admin ou Pode_Ver_Todos_Clientes pode roteirizar outro vendedor)
+    const rotaVendedorId = podeRoteirizarQualquer
         ? (vendedorFiltro === 'todos' ? undefined : vendedorFiltro)
         : undefined;
 
@@ -2529,7 +2531,7 @@ const RotaLeads = () => {
                                                     />
                                                 </div>
                                             </div>
-                                            {podeEscolherVendedor && vendedores.length > 0 && (
+                                            {podeRoteirizarQualquer && vendedores.length > 0 && (
                                                 <div className="mb-3">
                                                     <label className="text-[10px] font-semibold text-gray-500 uppercase mb-1 block">Motorista</label>
                                                     <SelectBusca

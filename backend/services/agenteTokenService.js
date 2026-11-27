@@ -101,14 +101,35 @@ async function validarToken(tokenEmClaro) {
 }
 
 // ---- gestão (rotas só admin) ----
-async function criarAgente({ nome }) {
+function permissoesBaseDosModulos() {
+    const { MODULOS } = require('../config/agenteModulos');
+    const base = { Isento_Ponto: true };
+    for (const m of MODULOS) {
+        for (const p of m.permissoesBase || []) {
+            const partes = String(p.chave).split('.');
+            if (partes.length === 1) base[partes[0]] = true;
+            else if (partes.length === 2) base[partes[0]] = { ...(base[partes[0]] || {}), [partes[1]]: true };
+        }
+    }
+    return base;
+}
+
+async function criarAgente({ nome, copiarPermissoesBase = false }, admin = null) {
     const limpo = String(nome || '').trim();
     if (!limpo) { const e = new Error('Informe o nome do agente.'); e.status = 400; throw e; }
+    let permissoes = {};
+    if (copiarPermissoesBase) {
+        const { acrescentar } = require('./agenteMatrizService');
+        const { normalizarPermissoes } = require('./agenteCriarService');
+        permissoes = acrescentar(permissoesBaseDosModulos(), normalizarPermissoes(admin?.permissoes));
+        delete permissoes.admin;
+        delete permissoes.Usuario_Externo;
+    }
     // login/senha ficam null: agente não entra pelo login do app. `login` é @unique,
     // e o Postgres aceita vários NULL — por isso nunca gravar '' aqui.
     return prisma.vendedor.create({
-        data: { id: crypto.randomUUID(), nome: limpo, login: null, senha: null, permissoes: {}, acessoExterno: true, agente: true, ativo: true },
-        select: { id: true, nome: true, ativo: true, agente: true, createdAt: true },
+        data: { id: crypto.randomUUID(), nome: limpo, login: null, senha: null, permissoes, acessoExterno: true, agente: true, ativo: true },
+        select: { id: true, nome: true, ativo: true, agente: true, permissoes: true, createdAt: true },
     });
 }
 
@@ -160,5 +181,5 @@ async function revogarToken(agenteId, tokenId) {
 
 module.exports = {
     PREFIXO_TOKEN, hashToken, gerarToken, pareceTokenAgente, validarToken, conta, excedeu, varrer, foiValidoRecentemente, limparContadores, registrarUso,
-    criarAgente, listarAgentes, criarTokenParaAgente, revogarToken, agentePorId,
+    criarAgente, listarAgentes, criarTokenParaAgente, revogarToken, agentePorId, permissoesBaseDosModulos,
 };

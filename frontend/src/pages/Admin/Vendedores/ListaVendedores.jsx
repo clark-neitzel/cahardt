@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Pencil, Save, X, Search, Plus, Mail, Shield, UserX, UserCheck, User, MessageCircle, Phone, Bell, BellOff, Repeat, Package, Check, Link2, Bot } from 'lucide-react';
+import { Pencil, Save, X, Search, Plus, Mail, Shield, ShieldCheck, BookOpen, UserX, UserCheck, User, MessageCircle, Phone, Bell, BellOff, Repeat, Package, Check, Link2, Bot } from 'lucide-react';
 import vendedorService from '../../../services/vendedorService';
 import PermissoesModal from './PermissoesModal';
 import NovoUsuarioModal from './NovoUsuarioModal';
+import MatrizApiModal from '../Agentes/MatrizApiModal';
+import KitConexaoModal from '../Agentes/KitConexaoModal';
 import { useAuth } from '../../../contexts/AuthContext';
 import toast from 'react-hot-toast';
 import CampoNumero from '../../../components/CampoNumero';
@@ -26,6 +28,8 @@ const ListaVendedores = () => {
     const [editingId, setEditingId] = useState(null);
     const [editForm, setEditForm] = useState({});
     const [permissionsModalVendedor, setPermissionsModalVendedor] = useState(null);
+    const [matrizAgente, setMatrizAgente] = useState(null);
+    const [kitAgente, setKitAgente] = useState(null);
     // Modal de criação/vínculo com o cadastro de pessoas (sync com o CA desligado em 25/07/2026)
     const [novoModal, setNovoModal] = useState(null); // null | { modo: 'criar' } | { modo: 'vincular', vendedor }
 
@@ -138,11 +142,12 @@ const ListaVendedores = () => {
         }
     };
 
-    // Após criar: recarrega e já abre o painel de permissões do usuário novo
+    // Após criar: recarrega e já abre o painel de permissões (ou a matriz da API quando for agente)
     const handleCriado = (criado) => {
         setNovoModal(null);
         fetchVendedores();
-        if (criado) setPermissionsModalVendedor(criado);
+        if (criado?.agente === true) setMatrizAgente(criado);
+        else if (criado) setPermissionsModalVendedor(criado);
     };
 
     const filtered = vendedores.filter(v => {
@@ -152,18 +157,41 @@ const ListaVendedores = () => {
     });
 
     // Vínculo com o cadastro de pessoas — posição fixa sob o nome (substitui o código do CA)
-    const Vinculo = ({ vendedor }) => vendedor.clienteUuid ? (
-        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary mt-0.5">
-            <Check className="h-3 w-3" /> Cadastro vinculado
-        </span>
-    ) : (
-        <button
-            onClick={() => setNovoModal({ modo: 'vincular', vendedor })}
-            className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-600 hover:text-amber-800 border-b border-dashed border-amber-400 mt-0.5"
-        >
-            <Plus className="h-3 w-3" /> Vincular cadastro
-        </button>
-    );
+    const Vinculo = ({ vendedor }) => {
+        if (vendedor.agente === true) {
+            return isAdmin ? (
+                <div className="hidden md:inline-flex items-center gap-2 mt-0.5">
+                    <button
+                        type="button"
+                        onClick={() => setMatrizAgente(vendedor)}
+                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:text-primaryDark"
+                    >
+                        <ShieldCheck className="h-3 w-3" /> Permissões da API
+                    </button>
+                    <span className="text-gray-300">·</span>
+                    <button
+                        type="button"
+                        onClick={() => setKitAgente(vendedor)}
+                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-gray-600 hover:text-primary"
+                    >
+                        <BookOpen className="h-3 w-3" /> Kit
+                    </button>
+                </div>
+            ) : null;
+        }
+        return vendedor.clienteUuid ? (
+            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary mt-0.5">
+                <Check className="h-3 w-3" /> Cadastro vinculado
+            </span>
+        ) : (
+            <button
+                onClick={() => setNovoModal({ modo: 'vincular', vendedor })}
+                className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-600 hover:text-amber-800 border-b border-dashed border-amber-400 mt-0.5"
+            >
+                <Plus className="h-3 w-3" /> Vincular cadastro
+            </button>
+        );
+    };
 
     // Nome usado no Bot Hardt (integração do site com o WhatsApp) — mostrado sob o nome
     const BotNome = ({ vendedor }) => vendedor.nomeVendedorBotHardt ? (
@@ -176,13 +204,22 @@ const ListaVendedores = () => {
 
     const AJUDA_EXTERNO = 'Acesso externo (contabilidade, parceiro): a pessoa continua entrando no app e usando o que a permissão liberar, mas some de todo seletor de vendedor, motorista e equipe — caixa, pedidos, clientes, metas, tarefas, cobrança e delivery.';
 
-    // Selo na linha: avisa que a pessoa não faz parte da operação
-    const SeloExterno = ({ vendedor }) => vendedor.acessoExterno ? (
-        <span className="text-[9px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full font-bold flex-shrink-0" title={AJUDA_EXTERNO}>EXTERNO</span>
-    ) : null;
+    // Selo na linha: avisa que a pessoa não faz parte da operação ou é conexão por API
+    const SeloExterno = ({ vendedor }) => {
+        if (vendedor.agente === true) {
+            return (
+                <span className="inline-flex items-center gap-1 text-[9px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full font-bold flex-shrink-0" title="Conexão por API (agente) — acessa via token e obedece à Matriz de Permissões da API">
+                    <Bot className="h-2.5 w-2.5" /> CONEXÃO POR API
+                </span>
+            );
+        }
+        return vendedor.acessoExterno ? (
+            <span className="text-[9px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full font-bold flex-shrink-0" title={AJUDA_EXTERNO}>EXTERNO</span>
+        ) : null;
+    };
 
-    // Só admin grava o campo (o backend recusa os demais) — para os outros nem aparece
-    const CampoExterno = () => isAdmin ? (
+    // Só admin grava o campo (o backend recusa os demais); para agente nunca aparece (sempre acessoExterno=true)
+    const CampoExterno = ({ vendedor }) => (isAdmin && vendedor?.agente !== true) ? (
         <label className="flex items-start gap-2 mt-2 cursor-pointer" title={AJUDA_EXTERNO}>
             <input
                 type="checkbox"
@@ -229,6 +266,9 @@ const ListaVendedores = () => {
             <button onClick={() => handleToggleAvisoAmostra(vendedor)} className={`p-2 rounded-full hover:bg-gray-100 ${vendedor.avisoAmostraWhatsapp ? 'text-teal-600' : 'text-gray-300'}`} title={tituloAvisoAmostra(vendedor)}>
                 <Package className="h-4 w-4" />
             </button>
+            {isAdmin && vendedor.agente === true && (
+                <button onClick={() => setMatrizAgente(vendedor)} className="p-2 rounded-full hover:bg-mint/50 text-primary" title="Permissões da API (módulo × ação)"><ShieldCheck className="h-4 w-4" /></button>
+            )}
             <button onClick={() => setPermissionsModalVendedor(vendedor)} className="p-2 rounded-full hover:bg-gray-100 text-indigo-500" title="Acessos e Permissões"><Shield className="h-4 w-4" /></button>
             <button onClick={() => handleEdit(vendedor)} className="p-2 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600" title="Editar"><Pencil className="h-4 w-4" /></button>
             <button onClick={() => handleToggleAtivo(vendedor)} className={`p-2 rounded-full hover:bg-gray-100 ${vendedor.ativo === false ? 'text-green-600' : 'text-red-400'}`} title={vendedor.ativo === false ? 'Reativar' : 'Inativar'}>
@@ -307,7 +347,7 @@ const ListaVendedores = () => {
                                                 <label className="text-[10px] text-gray-500 block mb-0.5" title={AJUDA_BOT}>Nome usado no Bot Hardt</label>
                                                 <input className={inputEditCls} value={editForm.nomeVendedorBotHardt} onChange={e => setEditForm({ ...editForm, nomeVendedorBotHardt: e.target.value })} placeholder="ex.: João" title={AJUDA_BOT} />
                                             </div>
-                                            <CampoExterno />
+                                            <CampoExterno vendedor={vendedor} />
                                         </td>
                                         <td className="px-4 py-3"><input className={inputEditCls} value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })} type="email" /></td>
                                         <td className="px-4 py-3"><input className={inputEditCls} value={editForm.telefone} onChange={e => setEditForm({ ...editForm, telefone: e.target.value })} type="tel" placeholder="(xx) xxxxx-xxxx" /></td>
@@ -389,10 +429,28 @@ const ListaVendedores = () => {
                                         </div>
                                     </div>
                                     <div className="flex gap-0.5 flex-shrink-0">
-                                        <button onClick={() => setPermissionsModalVendedor(vendedor)} className="p-2 rounded-full text-indigo-500 hover:bg-gray-100" title="Acessos e Permissões"><Shield className="h-4 w-4" /></button>
-                                        <button onClick={() => handleEdit(vendedor)} className="p-2 rounded-full text-gray-400 hover:bg-gray-100" title="Editar"><Pencil className="h-4 w-4" /></button>
+                                        <button onClick={() => setPermissionsModalVendedor(vendedor)} className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-full text-indigo-500 hover:bg-gray-100" title="Acessos e Permissões"><Shield className="h-4 w-4" /></button>
+                                        <button onClick={() => handleEdit(vendedor)} className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-full text-gray-400 hover:bg-gray-100" title="Editar"><Pencil className="h-4 w-4" /></button>
                                     </div>
                                 </div>
+                                {isAdmin && vendedor.agente === true && (
+                                    <div className="flex flex-wrap gap-2 mt-2.5">
+                                        <button
+                                            type="button"
+                                            onClick={() => setMatrizAgente(vendedor)}
+                                            className="min-h-[44px] px-3.5 py-2 bg-primary hover:bg-primaryDark text-white rounded-full text-xs font-semibold inline-flex items-center gap-1.5"
+                                        >
+                                            <ShieldCheck className="h-4 w-4" /> Permissões da API
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setKitAgente(vendedor)}
+                                            className="min-h-[44px] px-3.5 py-2 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full text-xs font-semibold inline-flex items-center gap-1.5"
+                                        >
+                                            <BookOpen className="h-4 w-4" /> Kit de conexão
+                                        </button>
+                                    </div>
+                                )}
 
                                 {editingId === vendedor.id ? (
                                     <div className="space-y-2 mt-3 pt-3 border-t border-gray-100">
@@ -403,7 +461,7 @@ const ListaVendedores = () => {
                                             <input className={inputEditCls} value={editForm.nomeVendedorBotHardt} onChange={e => setEditForm({ ...editForm, nomeVendedorBotHardt: e.target.value })} placeholder="ex.: João" title={AJUDA_BOT} />
                                             <p className="text-[10px] text-gray-400 mt-0.5">{AJUDA_BOT}</p>
                                         </div>
-                                        <CampoExterno />
+                                        <CampoExterno vendedor={vendedor} />
                                         <div className="grid grid-cols-2 gap-2">
                                             <div>
                                                 <label className="text-[10px] text-gray-500 block mb-0.5">% Flex (sobre vendas 30d)</label>
@@ -473,6 +531,26 @@ const ListaVendedores = () => {
                     vendedor={permissionsModalVendedor}
                     onClose={() => setPermissionsModalVendedor(null)}
                     onUpdated={() => { setPermissionsModalVendedor(null); fetchVendedores(); }}
+                    onAbrirMatrizApi={isAdmin && permissionsModalVendedor.agente === true ? () => {
+                        const alvo = permissionsModalVendedor;
+                        setPermissionsModalVendedor(null);
+                        setMatrizAgente(alvo);
+                    } : undefined}
+                />
+            )}
+
+            {matrizAgente && (
+                <MatrizApiModal
+                    agente={matrizAgente}
+                    onFechar={() => setMatrizAgente(null)}
+                    onSalvo={fetchVendedores}
+                />
+            )}
+
+            {kitAgente && (
+                <KitConexaoModal
+                    agente={kitAgente}
+                    onFechar={() => setKitAgente(null)}
                 />
             )}
 

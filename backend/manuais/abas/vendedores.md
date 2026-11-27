@@ -18,7 +18,8 @@ Gerenciamento de todos os usuários do sistema (chamados de "vendedores", mas in
 
 ## O que dá pra fazer aqui
 
-- **Criar um usuário novo** (botão "Novo Usuário", só admin): busca a pessoa no cadastro de clientes, os dados (nome, e-mail, telefone) vêm preenchidos, define login e senha — e o painel de permissões abre sozinho em seguida
+- **Criar um usuário novo ou uma Conexão por API** (botão "Novo Usuário", só admin): escolha **Pessoa da equipe** (busca no cadastro de clientes/fornecedores e define login e senha) ou **Conexão por API** (cria um usuário-agente com token de API, sem login/senha, e já abre a Matriz de Permissões da API)
+- **Configurar Permissões da API e Kit de Conexão** (nas linhas com selo roxo **CONEXÃO POR API**, só admin): define por módulo × ação o que é `NÃO`, `PEDE` ou `SIM`, e baixa o guia `.md` de integração
 - **Vincular um usuário antigo ao cadastro** (link "Vincular cadastro" sob o nome, quando ainda não tem vínculo)
 - Listar todos os usuários (ativos e inativos)
 - Buscar por nome

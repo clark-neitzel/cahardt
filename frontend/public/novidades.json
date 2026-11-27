@@ -1,5 +1,11 @@
 [
   {
+    "slug": "permissoes-api-agente",
+    "titulo": "Permissões da API e Kit de Conexão",
+    "resumo": "Administradores agora contam com a Matriz de Permissões da API (módulo × ação: NÃO, PEDE ou SIM) em Usuários e Agentes de IA, criação direta de Conexão por API em Novo Usuário e o Kit de Conexão (.md + OpenAPI vivo) pronto para integrar agentes com segurança e idempotência.",
+    "data": "2026-11-27"
+  },
+  {
     "slug": "cadastro-nome",
     "titulo": "Corrigir cadastro de cliente",
     "resumo": "CPF agora pede nome e sobrenome; CNPJ pede razão social e nome fantasia. Cadastro antigo fora da regra ganha o aviso \"Corrigir cadastro\" (selo na lista, faixa na ficha e aba Corrigir nome em Cadastros a acertar). CNPJ sem fantasia só avisa; CPF sem sobrenome, quando o dono ligar o bloqueio, fica parado até corrigir: sem pedido novo, amostra, aprovações (especial, bonificação e fila do site) e nota de venda. Devolução, baixa e visita seguem livres.",

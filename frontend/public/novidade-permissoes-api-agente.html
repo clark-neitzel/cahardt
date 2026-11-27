@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Matriz de Permissões da API e Kit de Conexão — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp (sem og:image para cartão compacto) -->
+<meta property="og:title" content="🤖 Novidade no Hardt App: Matriz de Permissões da API e Kit de Conexão">
+<meta property="og:description" content="Agora o administrador controla módulo por módulo o que cada agente de IA faz direto (SIM), o que pede autorização (PEDE) e o que é bloqueado (NÃO), com Kit de Conexão pronto para integração.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 640px; margin: 0 auto; padding: 0 16px 56px; }
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 92px;
+  }
+  .hero-inner { max-width: 640px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 16px;
+  }
+  .hero h1 { font-size: clamp(26px, 6.5vw, 38px); font-weight: 800; line-height: 1.14; margin: 0 0 12px; }
+  .hero p { color: rgba(255,255,255,.78); font-size: 15.5px; max-width: 48ch; margin: 0 auto; }
+
+  .mock {
+    max-width: 460px;
+    margin: -64px auto 28px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.26);
+    overflow: hidden;
+  }
+  .mock-top {
+    background: var(--house);
+    color: #fff;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .mock-top strong { font-size: 15px; }
+  .badge-ativa {
+    background: var(--mint);
+    color: var(--primary-dark);
+    font-size: 11px;
+    font-weight: 800;
+    padding: 4px 10px;
+    border-radius: 999px;
+  }
+  .mock-body { padding: 14px 16px 16px; }
+  .linha-mod {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 9px 0;
+    border-bottom: 1px solid #efede7;
+    font-size: 13px;
+  }
+  .linha-mod:last-child { border-bottom: none; }
+  .seg {
+    display: inline-flex;
+    background: #f4f3ef;
+    border: 1px solid #e1dfd8;
+    border-radius: 999px;
+    padding: 2px;
+    gap: 2px;
+  }
+  .seg span {
+    font-size: 10.5px;
+    font-weight: 800;
+    padding: 4px 9px;
+    border-radius: 999px;
+    color: #6b756f;
+  }
+  .seg span.sim { background: var(--primary); color: #fff; }
+  .seg span.pede { background: #f59e0b; color: #fff; }
+  .seg span.nao { background: #374151; color: #fff; }
+
+  .sec-label {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: var(--primary-dark);
+    margin: 32px 4px 12px;
+  }
+  .acc {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+  }
+  .acc-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: none;
+    border: none;
+    font: inherit;
+    text-align: left;
+    padding: 15px 16px;
+    cursor: pointer;
+  }
+  .acc-ico {
+    width: 38px; height: 38px;
+    border-radius: 11px;
+    background: var(--mint);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 440px) { .acc-corpo { padding-left: 16px; } }
+
+  .tela {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 14px;
+  }
+  .tela-titulo {
+    background: var(--house);
+    color: #fff;
+    padding: 11px 16px;
+    font-size: 13px;
+    font-weight: 800;
+  }
+  .tela-corpo { padding: 14px; background: #f7f6f2; }
+  .app-card {
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 10px;
+  }
+  .pin {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    margin-right: 4px;
+    vertical-align: middle;
+  }
+  .legenda {
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 13px;
+    color: var(--ink-soft);
+  }
+  .legenda div + div { margin-top: 6px; }
+  .legenda b { color: var(--ink); }
+  .app-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: var(--primary);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 7px 14px;
+    border-radius: 999px;
+  }
+  .app-btn.sec { background: #fff; color: var(--primary); border: 1.5px solid var(--primary); }
+  .rodape { text-align: center; font-size: 13px; color: var(--ink-soft); margin-top: 36px; }
+</style>
+</head>
+<body>
+  <header class="hero">
+    <div class="hero-inner">
+      <span class="eyebrow">Administração &amp; Agentes de IA</span>
+      <h1>Matriz de Permissões da API e Kit de Conexão</h1>
+      <p>Controle em uma única tabela o que o Luke (ou qualquer conexão por API) faz sozinho, o que pede autorização e o que fica bloqueado.</p>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="mock" aria-label="Resumo visual da matriz">
+      <div class="mock-top">
+        <strong>Permissões da API — Luke (agente)</strong>
+        <span class="badge-ativa">Matriz ativa</span>
+      </div>
+      <div class="mock-body">
+        <div class="linha-mod">
+          <div><b>Contas a pagar</b><br><small style="color:#6b756f">Criar despesa em aberto</small></div>
+          <div class="seg"><span>NÃO</span><span>PEDE</span><span class="sim">SIM</span></div>
+        </div>
+        <div class="linha-mod">
+          <div><b>Contas a pagar</b><br><small style="color:#6b756f">Dar baixa / Estornar</small></div>
+          <div class="seg"><span>NÃO</span><span class="pede">PEDE</span><span>SIM</span></div>
+        </div>
+        <div class="linha-mod">
+          <div><b>Pedidos de venda</b><br><small style="color:#6b756f">Criar / Aprovar</small></div>
+          <div class="seg"><span>NÃO</span><span class="pede">PEDE</span><span>SIM</span></div>
+        </div>
+      </div>
+    </section>
+
+    <div class="sec-label">O que mudou</div>
+
+    <div class="acc aberto">
+      <button class="acc-head" type="button" onclick="this.parentElement.classList.toggle('aberto')">
+        <span class="acc-ico">🛡️</span>
+        <strong>Tabela Módulo × Ação (NÃO · PEDE · SIM)</strong>
+        <span class="acc-seta">▼</span>
+      </button>
+      <div class="acc-corpo">
+        <ul>
+          <li><b>NÃO:</b> a API recusa na hora (403).</li>
+          <li><b>PEDE:</b> nada é gravado; o pedido entra na fila de <b>Solicitações</b> para o administrador autorizar ou recusar.</li>
+          <li><b>SIM:</b> o agente lança direto, exigindo chave anti-duplicidade (<code>Idempotency-Key</code>). Mesmo em SIM, despesas já pagas, lotes grandes, ajustes fora da curva e suspeitas de duplicata continuam pedindo autorização automaticamente.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="acc aberto">
+      <button class="acc-head" type="button" onclick="this.parentElement.classList.toggle('aberto')">
+        <span class="acc-ico">📘</span>
+        <strong>Kit de Conexão e Tipo "Conexão por API"</strong>
+        <span class="acc-seta">▼</span>
+      </button>
+      <div class="acc-corpo">
+        <ul>
+          <li><b>Novo Usuário → Conexão por API:</b> cria um agente sem login/senha já com as permissões de base (sem nunca dar administrador).</li>
+          <li><b>Kit de Conexão (.md):</b> guia pronto para copiar ou baixar (sem expor nenhum token secreto) com endereço base, matriz atual, códigos de resposta e exemplos <code>curl</code>.</li>
+          <li><b>OpenAPI vivo:</b> o próprio agente consulta <code>/api/agente/v1/openapi.json</code> e recebe apenas as funções que pode usar.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="sec-label">As telas do app</div>
+
+    <div class="tela">
+      <div class="tela-titulo">Tela 1 · Admin → Agentes de IA / Usuários</div>
+      <div class="tela-corpo">
+        <div class="app-card">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+            <div>
+              <strong>Luke (agente)</strong>
+              <span style="background:#f3e8ff;color:#7e22ce;font-size:10px;font-weight:800;padding:2px 8px;border-radius:999px;margin-left:6px;">CONEXÃO POR API</span>
+            </div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              <span class="app-btn sec"><span class="pin">1</span>Kit de conexão</span>
+              <span class="app-btn"><span class="pin">2</span>Permissões da API</span>
+            </div>
+          </div>
+        </div>
+        <div class="legenda">
+          <div><span class="pin">1</span><b>Kit de conexão:</b> baixa ou copia o manual técnico atualizado da conexão (sem segredos).</div>
+          <div><span class="pin">2</span><b>Permissões da API:</b> abre a matriz Módulo × Ação (também disponível na tela de Usuários).</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tela">
+      <div class="tela-titulo">Tela 2 · Modal Permissões da API</div>
+      <div class="tela-corpo">
+        <div class="app-card">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+            <span><span class="pin">1</span><b>Matriz ligada</b></span>
+            <span class="app-btn sec"><span class="pin">2</span>Sincronizar permissões de base</span>
+          </div>
+          <div class="linha-mod">
+            <span><b>Notas recebidas</b> · Criar <small style="color:#00754A">(3 funções)</small></span>
+            <span><span class="pin">3</span><span class="seg"><span>NÃO</span><span>PEDE</span><span class="sim">SIM</span></span></span>
+          </div>
+        </div>
+        <div class="legenda">
+          <div><span class="pin">1</span><b>Chave geral:</b> liga ou desliga a matriz inteira sem perder o que já foi configurado.</div>
+          <div><span class="pin">2</span><b>Prontidão:</b> garante em um clique que faltas de permissão-base não travem os módulos liberados.</div>
+          <div><span class="pin">3</span><b>Controle em pílula:</b> funciona em tabela no computador e em cartões no celular; clicar em "N funções" mostra exatamente quais rotas estão dentro.</div>
+        </div>
+      </div>
+    </div>
+
+    <p class="rodape"><strong>Hardt Salgados</strong> · Segurança e autonomia sob controle do administrador</p>
+  </main>
+</body>
+</html>

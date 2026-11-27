@@ -26,7 +26,7 @@ export function ModalBase({ titulo, onFechar, children, rodape, largura = 'md:ma
                     )}
                 </div>
                 <div className="p-4 space-y-3 overflow-y-auto">{children}</div>
-                {rodape && <div className="px-4 py-3 border-t border-gray-100 flex flex-col-reverse sm:flex-row gap-2 sm:justify-end">{rodape}</div>}
+                {rodape && <div className="px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] border-t border-gray-100 flex flex-col-reverse sm:flex-row gap-2 sm:justify-end">{rodape}</div>}
             </div>
         </div>
     );

@@ -8,18 +8,20 @@ permissao: admin
 
 ## O que é
 
-Tela só para **administradores**. Mostra os agentes de IA do sistema (por exemplo, o **Luke**): usuários-robô que entram no sistema por um **token de acesso** (uma "senha longa" que começa com `cah_ag_`) em vez de login e senha. Aqui você controla os tokens de cada agente. **As permissões do agente (o que ele pode ver, criar, editar...) não ficam nesta tela.** A tela traz um aviso: elas serão configuradas em Usuários numa entrega futura; por enquanto o ajuste é feito pela equipe técnica, a pedido do dono.
+Tela só para **administradores**. Mostra os agentes de IA e conexões por API do sistema (por exemplo, o **Luke**): usuários-robô que entram no sistema por um **token de acesso** (uma "senha longa" que começa com `cah_ag_`) em vez de login e senha. Aqui você controla os tokens, a **Matriz de Permissões da API (módulo × ação)** e baixa o **Kit de Conexão** de cada agente.
 
 ---
 
 ## O que dá pra fazer aqui
 
 - Ver cada agente: nome, selo **AGENTE**, se está ativo e quantos tokens ativos tem
+- **Permissões da API**: abrir a matriz módulo × ação (`Ver`, `Criar`, `Editar`, `Excluir`, `Estornar`, `Dar baixa`), escolhendo em cada célula **NÃO** (bloqueado), **PEDE** (cai na fila de Solicitações para o dono autorizar) ou **SIM** (executa direto, com `Idempotency-Key` e guardas de segurança). Também permite ligar/desligar a matriz, aplicar a regra padrão e sincronizar permissões de base
+- **Kit de conexão**: copiar ou baixar o guia `.md` (sem segredo) com URL base, matriz atual, regras de idempotência, códigos de erro e exemplos `curl` prontos para o integrador (além do catálogo vivo `GET /api/agente/v1/openapi.json`)
 - **Gerar novo token** (escolhe o nome e a validade: 30, 90, 180 dias ou 1 ano)
 - **Rotacionar** o token: gera um novo e oferece revogar os antigos com um clique
 - **Revogar** um token (o agente que usa esse token perde o acesso na hora)
 - Ver o último uso de cada token (quando e de qual endereço), quantos usos teve e o limite por minuto
-- **Novo agente**: cria um agente novo (ele nasce sem acesso a nada; as permissões são dadas em Usuários)
+- **Novo agente**: cria uma conexão nova já com as permissões de base (sem administrador)
 
 ---
 
@@ -71,5 +73,6 @@ Tokens revogados ou vencidos ficam recolhidos em "Tokens revogados ou vencidos".
 ## Perguntas frequentes
 
 **Perdi o token, como vejo de novo?** Não dá. Gere um novo e revogue o antigo.
-**Onde mudo o que o agente pode fazer?** Hoje, por um técnico, a pedido do dono. Em uma entrega futura ficará em Usuários → (agente) → Permissões.
+**Onde mudo o que o agente pode fazer?** Clique em **Permissões da API** no cartão do agente (ou em **Admin → Usuários**, na linha com o selo **CONEXÃO POR API**). Escolha `NÃO`, `PEDE` ou `SIM` em cada módulo/ação e salve.
+**Como passo a documentação técnica para integrar o agente?** Clique em **Kit de conexão** (copia ou baixa `.md`, sem expor nenhum token). O próprio agente também pode consultar `/api/agente/v1/openapi.json`.
 **O agente parou de funcionar de repente.** Veja se o token venceu ou foi revogado; gere um novo e coloque no agente.

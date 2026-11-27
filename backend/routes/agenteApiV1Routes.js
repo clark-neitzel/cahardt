@@ -6,6 +6,7 @@ const prisma = require('../config/database');
 const { caminhosPermitidos } = require('../config/agenteAcesso');
 const politica = require('../services/agentePoliticaService');
 const solicitacoes = require('../services/agenteSolicitacaoService');
+const kit = require('../services/agenteKitService');
 
 const router = express.Router();
 
@@ -88,6 +89,14 @@ router.get('/solicitacoes', async (req, res) => {
 router.get('/solicitacoes/:id', async (req, res) => {
     try { res.json(await solicitacoes.doAgente(req.user.id, req.params.id)); }
     catch (e) { tratar(res, e, 'Erro ao ler a solicitação.'); }
+});
+
+// Catálogo vivo em formato OpenAPI 3.1.0 filtrado para ESTE agente (sem rotas em NÃO nem bloqueios fixos).
+router.get('/openapi.json', async (req, res) => {
+    try {
+        res.set('Cache-Control', 'no-store');
+        res.json(await kit.gerarOpenApi(req.app, req.user.id, { baseUrl: kit.baseUrlDe(req) }));
+    } catch (e) { tratar(res, e, 'Erro ao gerar a especificação OpenAPI.'); }
 });
 
 module.exports = router;
