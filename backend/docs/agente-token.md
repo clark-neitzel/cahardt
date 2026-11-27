@@ -103,6 +103,190 @@ Limitação conhecida: o cache de overrides é em memória por instância (o bac
 - Logs: o logger global mascara também o VALOR de parâmetros de query `senha|password|passwd|token|secret|authorization|api_key` (`?token=***`), além de `mt=` e `cah_ag_`.
 - Ticket na URL → 400 `TOKEN_NA_URL` como qualquer `cah_ag_`. Pedido de função de WhatsApp/NF-e/SEFAZ continua impossível: são bloqueios fixos.
 
+## MATRIZ de permissões da API: módulo × ação (D1)
+
+O dono decide, por **módulo** e por **ação**, o que o agente pode fazer: **NÃO**, **PEDE AUTORIZAÇÃO** ou **SIM**.
+Em código ficam só os bloqueios fixos e as guardas de segurança.
+
+> **Sem o marcador de ativação nada muda.** A matriz só vale para um agente depois do seed
+> (`agente-matriz-seed`) ou de um `PUT .../matriz` com `ativar: true`. Até lá, tudo o que está descrito nas
+> seções PR-A e PR-B acima continua valendo, linha por linha.
+
+### Onde mora
+
+Na tabela `agente_politicas` (a mesma das exceções) — **nunca** em `Vendedor.permissoes` ("copiar permissões",
+"restaurar versão" e o `agente-criar` apagariam a matriz sem erro):
+
+| escopo | chave | nivel |
+|---|---|---|
+| `MODULO` | `<modulo>.<acao>` (ex.: `contas_pagar.criar`) | `LIBERADO` (= SIM) · `PEDE` · `BLOQUEADO` (= NÃO) |
+| `MATRIZ` | `ativa` | `LIBERADO` — é o **marcador**: existe = a matriz vale para o agente |
+| `FUNCAO` | `MÉTODO /api/caminho/:p` | exceção do dono; **vence a célula** |
+| `FAMILIA` | `/api/familia` | **ignorada** enquanto a matriz estiver ativa |
+
+Ações: `ver`, `criar`, `editar`, `excluir`, `estornar`, `baixar`. Módulos (14): `contas_pagar`, `notas_recebidas`,
+`contas_receber`, `caixa`, `conciliacao`, `dre_categorias`, `contabilidade`, `indicadores`, `cadastros`, `produtos`,
+`estoque`, `pcp`, `pedidos`, `expedicao` — definidos em `backend/config/agenteModulos.js` (famílias de rota de cada
+um e as permissões "humanas" que a rota exige). Célula sem nenhuma função é "não se aplica" ("—") e não é gravável —
+ex.: `contas_receber.criar` e `contas_receber.editar` (a única criação da família é `admin/sincronizar`, só de
+administrador, e não há função de editar).
+
+Qual ação cada função de **escrita** é: `backend/config/agenteClassificacao.js` (fonte: `docs/agente-classificacao-escrita.md`).
+`GET` de família com módulo vale `ver` (as exceções de leitura que gravam/chamam serviço externo continuam fora).
+
+### Ordem de decisão (com a matriz ativa)
+
+1. caminho tortuoso → **403** `AGENTE_BLOQUEADO`
+2. bloqueio fixo (prefixo **ou** uma das 13 rotas de envio/consulta externa) → **403** `AGENTE_BLOQUEADO`, `fixo: true`
+3. sempre liberado (`GET /api/auth/me`, `GET /api/agente/v1/*`)
+4. rota com regex no caminho, rota desconhecida ou família sem módulo → **403** `AGENTE_BLOQUEADO`
+5. função só de administrador → **403** `AGENTE_SO_ADMIN` (não vira solicitação: o agente nunca é admin)
+6. exceção por FUNÇÃO do dono
+7. célula da matriz:
+   - **NÃO** → **403** `AGENTE_SEM_PERMISSAO` com `{ modulo, acao }`
+   - **PEDE** → fila de solicitações (**202**, igual ao PR-B)
+   - **SIM** (escrita) → exige `Idempotency-Key` e **consulta a chave** (repetição de algo já feito devolve a resposta
+     guardada, sem passar pelas guardas) → guardas (podem **rebaixar para PEDE**; nada fica reservado) → reserva a chave → executa
+
+URL que casa com mais de uma função continua valendo a **mais restritiva**. Célula sem linha = NÃO.
+
+**Contrato do 403:** os três códigos trazem `nivel: "BLOQUEADO"` no corpo, como antes. Muda só `codigo`
+(`AGENTE_BLOQUEADO` → `AGENTE_SEM_PERMISSAO` quando é a célula que nega; `AGENTE_SO_ADMIN` quando é função de
+administrador) e entram `modulo`/`acao`. Cliente que olha `nivel` não precisa mudar nada.
+
+**Rota de escrita nova** (ainda não classificada): nasce em **PEDE** se `editar` do módulo não for NÃO; senão 403.
+Nunca nasce em SIM. O teste `tests/agenteClassificacao.test.js` falha listando a chave até alguém classificar.
+
+### Bloqueios fixos por chave (13) — só com a matriz ativa
+
+`POST /api/contas-pagar/:p/reenviar-ca` · `POST /api/conciliacao-bancaria/sincronizar-asaas` ·
+`POST /api/conciliacao-bancaria/identificar-debitos-ca` · `POST /api/contas-receber/:p/sync-ca` ·
+`POST /api/contas-receber/sync-ca/todas` · `POST /api/estoque/sync-produto/:p` ·
+`POST /api/pedidos/:p/enviar-whatsapp` · `POST /api/pedidos/:p/consultar-ca` · `POST /api/pedidos/imprimir-lote` ·
+`POST /api/pedidos/imprimir-lote/checar` · `POST /api/pedidos/imprimir-lote/checar-pedido` ·
+`POST /api/embarques/sugerir-divisao` · `POST /api/embarques/estimar-rotas`
+
+Nem exceção do dono libera. (Sem a matriz essas rotas seguem como PEDE; o efeito externo já é cortado por `assertNaoAgente`.)
+
+### Só de administrador (403 `AGENTE_SO_ADMIN`)
+
+`PUT /api/caixa/conferencia-dinheiro/config` · `POST /api/caixa/reabrir-pendentes` ·
+`POST /api/contas-receber/admin/sincronizar` · `POST /api/estoque/produto/:p/recalcular` ·
+`PATCH /api/categorias-estoque/:p` · `PUT /api/indicadores-gestao/config` · `PUT /api/indicadores-gestao/metas` ·
+`POST /api/pedidos/avisos-pagamento-apos-quitacao/:p/ciente`
+
+### Guardas: quando um SIM vira pedido de autorização
+
+O servidor não confia em "confirmo que não é duplicata" vindo de um agente: na dúvida a chamada vai para a fila
+(**202**, com o campo `motivoGuarda`; o motivo vai no **fim** do `resumo` que o dono lê, entre colchetes, sem cortar a descrição). `backend/config/agenteGuardas.js`.
+
+| Situação | Onde |
+|---|---|
+| `pago: true` ou `dataPagamento` (lançar já pago é dar baixa) | `POST /contas-pagar`, `.../gerar-conta` |
+| Categoria fora da DRE, ou que não existe (seria criada por texto livre) | `POST /contas-pagar`, `.../gerar-conta` |
+| `confirmarCustoForaDaCurva` no corpo (confirmar custo fora da curva é decisão de pessoa) | **qualquer** função (`POST /contas-pagar`, `gerar-conta`, `PUT /contas-pagar/:p/itens`, `corrigir-entrada-estoque`...) |
+| Despesa com `itens` (dá entrada no estoque e muda o custo sem nota) | `POST /contas-pagar` |
+| Suspeita de duplicata (mesmo fornecedor + nº do documento, ou parcela de mesmo valor e vencimento) | `POST /contas-pagar` |
+| Nota manual sem CNPJ, ou com mesmo número / mesmo valor de outra do fornecedor | `POST /notas-entrada/lancar-manual` |
+| Fornecedor sem CNPJ/CPF; cliente sem CPF/CNPJ | `POST /fornecedores`, `POST /clientes` |
+| Produto com `estoqueInicial` ou `valorVenda` | `POST /produtos` |
+| Receita sem `status: "rascunho"` | `POST /pcp/receitas` |
+| Item de PCP com nome que já existe; lote acima de 20 itens | `POST /pcp/itens`, `.../importar-lote` |
+| **Sempre pede**, mesmo com `criar = SIM` | `registrar-entrada`, `despesas-lote`, `:p/criar-despesa`, `por-conta/ajuste`, `grupos-dre`, `receitas/:p/clonar` |
+| `forcar` na importação de extrato | recusado com **422** `AGENTE_GUARDA` dentro da rota (o upload não entra na fila) |
+
+Se o banco falhar na hora de conferir, a chamada **vira pedido** (fecha, não libera). Na execução de um pedido já
+autorizado as guardas não rodam de novo — o dono já viu o motivo.
+
+### Idempotência das escritas (`Idempotency-Key`)
+
+Vale para **toda escrita** feita **direto** pelo agente com a célula (ou exceção) em **SIM** — criar, e também
+editar/excluir/estornar/baixar quando o dono liberar. Não vale para leitura, para o que vai para a fila (PEDE) nem
+para a execução de solicitação autorizada.
+
+| Situação | Resposta |
+|---|---|
+| Sem o header (ou inválido: 8 a 200 caracteres visíveis, sem espaço) | **400** `AGENTE_IDEMPOTENCIA_OBRIGATORIA` — nada executa |
+| Mesma chave + mesmo pedido, já concluído | a **resposta guardada**, com o header `Idempotent-Replay: true` — a rota não roda e as guardas não são reavaliadas |
+| Mesma chave + pedido diferente (função, caminho, query ou corpo) | **422** `AGENTE_IDEMPOTENCIA_CONFLITO` |
+| Mesma chave ainda em andamento | **409** `AGENTE_IDEMPOTENCIA_EM_ANDAMENTO` |
+| Desfecho incerto: a rota respondeu **5xx**, ou está em andamento há mais de 10 min (o servidor caiu no meio) | **409** `AGENTE_IDEMPOTENCIA_INDETERMINADA` — conferir pela leitura; só se NÃO foi feito, usar chave nova |
+
+- **A chave é consultada antes das guardas.** O retry de uma criação que deu certo devolve o replay mesmo que a guarda
+  de duplicata agora enxergue o registro criado pela própria 1ª chamada. Chave **nova** com o mesmo conteúdo, aí sim,
+  é tratada como suspeita de duplicata (202).
+- Guarda que rebaixa para PEDE **não reserva** a chave.
+- O desfecho é gravado **quando a rota responde**, não quando o cliente recebe: se a conexão cair, a chave não fica presa.
+- A rota recusou com **4xx** → a chave é solta (dá para corrigir o corpo e repetir com a mesma). **5xx nunca é
+  repetido como resposta**: vira indeterminada.
+- Impressão digital do pedido: método + caminho + query + corpo:
+  - **JSON**: o conteúdo (a ordem das chaves não importa);
+  - **corpo cru (XML/texto — ex.: `importar-xml`)**: sha256 do **conteúdo**. O servidor lê o corpo (até 25 MB) antes de
+    decidir, com ou sem `Content-Length` (`Transfer-Encoding: chunked` funciona). Mesma chave + XML diferente, ainda
+    que com o mesmo número de bytes, dá **422**. Corpo comprimido (`Content-Encoding`) é recusado com **415**
+    `AGENTE_IDEMPOTENCIA_CORPO`;
+  - **upload (multipart — ex.: extrato, anexo)**: tipo + **tamanho** do envio (o arquivo só é lido dentro da rota).
+    Sem `Content-Length` → **411** `AGENTE_IDEMPOTENCIA_SEM_TAMANHO`. **Limitação conhecida:** dois arquivos
+    diferentes com exatamente o mesmo número de bytes, enviados com a **mesma** chave na mesma rota, são tratados
+    como o mesmo pedido (o segundo recebe o replay do primeiro). Use sempre uma chave nova por arquivo.
+- Tabela `agente_idempotencia` (`status`: `EM_ANDAMENTO` | `CONCLUIDA` | `INDETERMINADA`); linhas com mais de 30 dias
+  são apagadas 1x por dia pelo scheduler.
+
+```bash
+curl -s -X POST "$BASE/api/contas-pagar" -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" -H "Idempotency-Key: $(uuidgen)" \
+  -d '{"descricao":"Luz de novembro","fornecedorId":"...","categoria":"Energia","parcelas":[{"valor":100,"dataVencimento":"2026-12-10"}]}'
+```
+
+### `avisosAgente`: efeito externo que ficou para uma pessoa
+
+Rotas que continuam na matriz mas têm um efeito externo que o agente **não dispara** (confirmação na SEFAZ, XML no
+Drive, cancelamento no Asaas, WhatsApp, NF-e, Conta Azul, consulta à Receita) devolvem, na resposta de sucesso em
+objeto, o campo **aditivo** `avisosAgente: ["..."]`. A operação principal é feita; o aviso diz o que uma pessoa
+precisa conferir ou fazer na tela. Vale na chamada direta e no resultado da solicitação autorizada.
+
+### `GET /api/agente/v1/meu-acesso` — campo novo `matriz`
+
+`matriz: null` enquanto a matriz não está ativa. Ativa:
+`{ ativa: true, modulos: [{ modulo, rotulo, familias, acoes: { ver: "SIM", criar: "SIM", editar: "PEDE", ... } }], legenda }`.
+Os campos antigos (`politica`, `caminhosPermitidos`, `solicitacoes`, ...) não mudaram.
+
+### Rotas do dono (só admin humano)
+
+| Rota | O que faz |
+|---|---|
+| `GET /api/agentes/:id/matriz` | a matriz (células com `nivel` SIM/PEDE/NAO, `aplicavel`, nº de funções, `padrao`), `ativa`, `prontidao`, o que é sempre bloqueado e por quê, exceções por função, linhas de família ignoradas |
+| `PUT /api/agentes/:id/matriz` | grava um lote: `{ celulas: [{ modulo, acao, nivel }], ativar?: true\|false }`. Tudo ou nada. `ver` só aceita SIM/NAO. Auditoria `AGENTE_MATRIZ_ALTERADA` |
+| `GET /api/agentes/:id/matriz/funcoes?modulo=&acao=` | as funções dentro da célula, com o nível efetivo de cada uma |
+| `POST /api/agentes/:id/permissoes-base/sincronizar` | **acrescenta** ao agente as permissões que o admin logado tem e ele não (nunca `admin` nem `Usuario_Externo`). Aditivo: não remove nem desliga nada |
+
+**Prontidão:** a matriz não substitui o check de permissão da própria rota. Se o agente não tem a permissão "humana"
+que a rota exige (ex.: `Pode_Baixar_Contas_Pagar`), a rota devolve 403 mesmo com a célula em SIM — o `GET .../matriz`
+mostra em cada célula o que falta, e o `sincronizar` resolve. O agente **nunca** recebe `admin`.
+
+### Ligar e desligar: `agente-matriz-seed` e `agente-matriz-desligar`
+
+```bash
+# 1) ver o que o seed faria (não grava nada)
+curl -s -X POST "$BASE/api/admin-exec/agente-matriz-seed" -H "x-admin-secret: $ADMIN_SECRET"
+# 2) gravar (o valor tem que ser exatamente 1)
+curl -s -X POST "$BASE/api/admin-exec/agente-matriz-seed?confirmar=1" -H "x-admin-secret: $ADMIN_SECRET"
+# rollback sem deploy: o agente volta à política antiga na hora
+curl -s -X POST "$BASE/api/admin-exec/agente-matriz-desligar?confirmar=1" -H "x-admin-secret: $ADMIN_SECRET"
+```
+
+- Sem `agenteId` só funciona se existir exatamente um agente; senão `?agenteId=<id>`.
+- O dry-run mostra a tabela que ficaria, as exceções por FUNÇÃO **mantidas** e as de FAMÍLIA que passam a ser **ignoradas**.
+- **O seed não reabre o que o dono fechou por família.** Linha `FAMILIA = BLOQUEADO` vira **NAO** em todas as células
+  do módulo daquela família; `FAMILIA = PEDE` deixa `ver` em NAO e as escritas no máximo em PEDE (nem `sobrescrever`
+  desfaz). O dry-run mostra a tradução em `familiasIgnoradas[].traducao` e nas células `FECHAR_POR_FAMILIA`.
+  Família restritiva **sem módulo** na matriz: `podeConfirmar: false` e o `?confirmar=1` responde **422** sem gravar.
+- Regra padrão: `ver` = SIM; `criar` = SIM em contas a pagar, notas recebidas, cadastros, produtos, PCP, conciliação e
+  DRE/categorias; todo o resto = PEDE. Célula que o dono já ajustou é **mantida** (`&sobrescrever=1` volta ao padrão).
+- `desligar` apaga só o marcador: as células ficam guardadas.
+- A mudança vale na hora nesta instância e em até 15 s nas outras (cache da política).
+- Publicação: `GET /api/admin-exec/ping` → `deployMarker: "agente-matriz-2026-11-27"`.
+
 ## Logs: onde o token pode vazar (e o que controlamos)
 
 - O token só vale no header `Authorization`. Se vier na URL, o backend responde 400 e o logger do `index.js` grava `cah_ag_***` (máscara em `utils/mascararUrlLog.js`, que decodifica a URL antes de mascarar: cobre `cah%5Fag%5F`, `CAH_AG_` e qualquer parâmetro).

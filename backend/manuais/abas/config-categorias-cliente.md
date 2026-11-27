@@ -56,6 +56,10 @@ Cadastro de segmentos ou perfis de cliente. Exemplos: "Supermercado", "Buffet", 
 | Permissão | Efeito |
 |-----------|--------|
 | `admin` | Acesso total |
+| Configurações com edição (`configuracoes.edit`) | Pode **criar, editar e excluir** categorias (a tela fica dentro de Configurações) |
+| Gerenciar Clientes (`clientes.edit`) | Também pode **criar, editar e excluir** categorias (a mesma permissão de editar o cadastro de clientes) |
+
+> Para **gravar** (criar, editar ou excluir uma categoria) é preciso ser administrador, **ou** poder editar Configurações, **ou** ter a permissão **Gerenciar Clientes**. Quem só enxerga a tela (Configurações somente leitura), sem nenhuma das três, recebe o aviso "Sem permissão para alterar categorias de cliente" ao salvar. A lista de categorias continua aparecendo para todos (é usada nos cadastros de cliente e de lead).
 
 ---
 

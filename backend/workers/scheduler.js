@@ -583,6 +583,24 @@ function startSchedulers() {
             _solAgenteRodando = false;
         }
     }, 5 * 60 * 1000);
+
+    // === Idempotência do agente (matriz, D1) ===
+    // 1x por dia (e 2 min depois de subir): apaga as chaves de idempotência com mais de 30 dias. Só banco.
+    let _idemAgenteRodando = false;
+    const limparIdempotenciaAgente = async () => {
+        if (_idemAgenteRodando) return;
+        _idemAgenteRodando = true;
+        try {
+            const n = await require('../services/agenteIdempotenciaService').limparAntigas();
+            if (n) console.log(`[AgenteIdempotencia] limpeza: ${n} chave(s) antiga(s) apagada(s)`);
+        } catch (err) {
+            console.error('⚠️ Idempotência do agente (limpeza) Error:', err.message);
+        } finally {
+            _idemAgenteRodando = false;
+        }
+    };
+    setTimeout(limparIdempotenciaAgente, 2 * 60 * 1000);
+    setInterval(limparIdempotenciaAgente, 24 * 60 * 60 * 1000);
 }
 
 module.exports = { startSchedulers };

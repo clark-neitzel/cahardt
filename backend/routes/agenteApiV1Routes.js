@@ -41,6 +41,14 @@ router.get('/meu-acesso', async (req, res) => {
     } catch (e) {
         console.error('[Agente] meu-acesso: falha ao resumir a política:', e.message);
     }
+    // `matriz` (acrescentado, D1): null enquanto a matriz não está ativa para este agente (política antiga);
+    // ativa -> o que cada módulo permite por ação (SIM / PEDE / NAO).
+    let matrizResumo = null;
+    try {
+        matrizResumo = await require('../services/agenteMatrizService').resumoParaAgente(req.app, req.user.id);
+    } catch (e) {
+        console.error('[Agente] meu-acesso: falha ao resumir a matriz:', e.message);
+    }
     let pendentes = 0;
     try {
         pendentes = await solicitacoes.pendentesDoAgente(req.user.id);
@@ -55,8 +63,12 @@ router.get('/meu-acesso', async (req, res) => {
         caminhosPermitidos: caminhosPermitidos(),
         token: await infoTokenEmUso(req.user.agenteTokenId),
         politica: resumo,
+        matriz: matrizResumo,
         solicitacoes: { pendentes },
-        observacao: 'A política vale por função (MÉTODO + caminho): LIBERADO passa; PEDE guarda o pedido e responde 202 (o dono autoriza ou recusa; acompanhe em /api/agente/v1/solicitacoes/:id); BLOQUEADO nega. Função nova nasce BLOQUEADA. Escrita nunca é liberada direto: sempre passa pela autorização do dono.',
+        // sem a matriz o texto é o de sempre; com ela ativa, a frase "escrita nunca é liberada direto" deixaria de ser verdade
+        observacao: matrizResumo
+            ? 'A matriz de permissões (campo `matriz`) vale por módulo e ação: SIM executa direto (criar exige o header Idempotency-Key, e o servidor pode rebaixar para PEDE por segurança — veja `motivoGuarda` na resposta 202); PEDE guarda o pedido e responde 202 (o dono autoriza ou recusa; acompanhe em /api/agente/v1/solicitacoes/:id); NAO responde 403 AGENTE_SEM_PERMISSAO. Bloqueios fixos e funções só de administrador não mudam.'
+            : 'A política vale por função (MÉTODO + caminho): LIBERADO passa; PEDE guarda o pedido e responde 202 (o dono autoriza ou recusa; acompanhe em /api/agente/v1/solicitacoes/:id); BLOQUEADO nega. Função nova nasce BLOQUEADA. Escrita nunca é liberada direto: sempre passa pela autorização do dono.',
     });
 });
 

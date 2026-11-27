@@ -2,12 +2,19 @@
 // gerencia as exceções do dono (tabela agente_politicas).
 //
 // Ordem de resolução: bloqueio fixo -> sempre liberado -> override FUNCAO -> override FAMILIA -> seed -> BLOQUEADO.
+//
+// MATRIZ (módulo × ação): quando o agente tem o marcador `escopo=MATRIZ, chave=ativa` em agente_politicas, a ordem passa a
+// ser: bloqueio fixo (prefixo OU chave) -> sempre liberado -> rota complexa -> só-admin -> exceção FUNCAO -> célula da
+// matriz (`escopo=MODULO`, chave `<modulo>.<acao>`). Linhas FAMILIA são ignoradas. SEM o marcador nada muda: a
+// resolução é a de cima, linha por linha. Ver config/agenteModulos.js e config/agenteClassificacao.js.
 // Quando a URL casa com mais de uma função do catálogo, vale a MAIS RESTRITIVA (BLOQUEADO > PEDE > LIBERADO).
 // Token e permissões do agente continuam lidos do banco a cada chamada (agenteTokenService); só os overrides
 // ficam em cache (TTL curto + invalidação imediata ao alterar pela API).
 const prisma = require('../config/database');
 const padrao = require('../config/agentePoliticaPadrao');
 const { rotuloDe } = require('../config/agenteRotulos');
+const modulos = require('../config/agenteModulos');
+const classificacao = require('../config/agenteClassificacao');
 const catalogo = require('./agenteCatalogoRotas');
 
 const TTL_MS = 15 * 1000;
@@ -22,12 +29,16 @@ function erro(status, msg, codigo) { const e = new Error(msg); e.status = status
 function montarMapas(linhas) {
     const funcao = new Map();
     const familia = new Map();
+    const modulo = new Map(); // `<modulo>.<acao>` -> nivel (células da matriz)
+    let matrizAtiva = false;
     for (const l of linhas) {
         if (!padrao.NIVEIS.includes(l.nivel)) continue; // linha inválida é ignorada
         if (l.escopo === 'FUNCAO') funcao.set(String(l.chave), l.nivel);
         else if (l.escopo === 'FAMILIA') familia.set(String(l.chave), l.nivel);
+        else if (l.escopo === 'MODULO') { if (modulos.lerChaveCelula(l.chave)) modulo.set(String(l.chave), l.nivel); }
+        else if (l.escopo === 'MATRIZ' && l.chave === 'ativa' && l.nivel === 'LIBERADO') matrizAtiva = true;
     }
-    return { funcao, familia };
+    return { funcao, familia, modulo, matrizAtiva };
 }
 
 async function overridesDe(vendedorId) {
@@ -62,11 +73,53 @@ function invalidar(vendedorId) {
 }
 
 // ───────────────────────── resolução de uma função do catálogo ─────────────────────────
-/** { nivel, origem: fixo|override|seed|padrao, fixo } de UMA função, dados os overrides do agente. */
+/**
+ * Função resolvida pela MATRIZ (só chamada com o marcador ativo, depois de bloqueio fixo / sempre liberado / complexa).
+ * Devolve os campos de sempre { nivel, origem, fixo } MAIS (aditivos): matriz:true, modulo, acao, classificada,
+ * codigo (AGENTE_SO_ADMIN | AGENTE_SEM_PERMISSAO quando nega) e motivoGuarda (quando um SIM é rebaixado a PEDE).
+ */
+function resolverPelaMatriz(entrada, ov) {
+    const mod = modulos.moduloDaFamilia(entrada.familia);
+    if (!mod) return { nivel: padrao.PADRAO_DESCONHECIDO, origem: 'padrao', fixo: false, matriz: true }; // família sem módulo: como hoje
+    const cls = classificacao.classificar(entrada.chave);
+    const ehGet = entrada.metodo === 'GET';
+    const base = { fixo: false, matriz: true, modulo: mod.chave };
+    // só-admin: o agente nunca é admin -> nem adianta pedir (o pedido autorizado voltaria 403 da própria rota)
+    if (cls && cls.soAdmin) return { ...base, nivel: 'BLOQUEADO', origem: 'so_admin', acao: cls.acao, classificada: true, codigo: 'AGENTE_SO_ADMIN' };
+    if (cls && cls.morta) return { ...base, nivel: 'BLOQUEADO', origem: 'padrao', acao: cls.acao, classificada: true };
+    const acao = cls ? cls.acao : (ehGet ? 'ver' : null);
+    // exceção por FUNÇÃO (do dono) vence a célula. LIBERADO só para leitura ou função de escrita CLASSIFICADA
+    // (escrita não classificada nunca ganha autonomia: cai na regra abaixo).
+    const nf = ov.funcao.get(entrada.chave);
+    if (nf && padrao.NIVEIS.includes(nf) && (nf !== 'LIBERADO' || ehGet || cls)) {
+        return { ...base, nivel: nf, origem: 'override', acao: acao || 'editar', classificada: !!(cls || ehGet) };
+    }
+    // GET que grava / chama serviço externo / é pesado: segue fora (só exceção FUNCAO explícita libera)
+    if (ehGet && padrao.EXCECOES_LEITURA[entrada.chave]) return { ...base, nivel: 'BLOQUEADO', origem: 'padrao', acao: 'ver', classificada: true };
+    if (!acao) {
+        // escrita NÃO classificada em família com módulo: nasce em PEDE (se `editar` do módulo não for NÃO), nunca em SIM
+        const ed = ov.modulo.get(modulos.chaveCelula(mod.chave, 'editar'));
+        if (ed && ed !== 'BLOQUEADO') return { ...base, nivel: 'PEDE', origem: 'matriz', acao: 'editar', classificada: false };
+        return { ...base, nivel: 'BLOQUEADO', origem: 'matriz', acao: 'editar', classificada: false, codigo: 'AGENTE_SEM_PERMISSAO' };
+    }
+    let nivel = ov.modulo.get(modulos.chaveCelula(mod.chave, acao)) || 'BLOQUEADO'; // célula sem linha = NÃO (nega por padrão)
+    if (acao === 'ver' && nivel === 'PEDE') nivel = 'BLOQUEADO'; // `ver` não aceita PEDE (o PUT recusa; linha torta fecha)
+    if (nivel === 'BLOQUEADO') return { ...base, nivel, origem: 'matriz', acao, classificada: true, codigo: 'AGENTE_SEM_PERMISSAO' };
+    if (nivel === 'LIBERADO' && cls && cls.semprePede) {
+        return { ...base, nivel: 'PEDE', origem: 'matriz', acao, classificada: true, motivoGuarda: cls.semprePede };
+    }
+    return { ...base, nivel, origem: 'matriz', acao, classificada: true };
+}
+
+/** { nivel, origem: fixo|override|seed|padrao|matriz|so_admin, fixo } de UMA função, dados os overrides do agente. */
 function resolverEntrada(entrada, ov) {
     if (padrao.ehBloqueioFixo(entrada.metodo, entrada.exemplo)) return { nivel: 'BLOQUEADO', origem: 'fixo', fixo: true };
+    const matrizAtiva = !!(ov && ov.matrizAtiva);
+    // bloqueio fixo POR CHAVE (envio/consulta externa): só existe para agente com a matriz ativa
+    if (matrizAtiva && padrao.ehBloqueioFixoPorChave(entrada.chave)) return { nivel: 'BLOQUEADO', origem: 'fixo', fixo: true, matriz: true };
     if (padrao.ehSempreLiberado(entrada.metodo, entrada.exemplo)) return { nivel: 'LIBERADO', origem: 'fixo', fixo: true };
     if (entrada.complexa) return { nivel: 'BLOQUEADO', origem: 'padrao', fixo: false };
+    if (matrizAtiva) return resolverPelaMatriz(entrada, ov);
     const leitura = padrao.ehLeitura(entrada);
     const nf = ov && ov.funcao.get(entrada.chave);
     if (nf && padrao.NIVEIS.includes(nf) && (nf !== 'LIBERADO' || leitura)) return { nivel: nf, origem: 'override', fixo: false };
@@ -110,6 +163,8 @@ async function avaliar(app, vendedorId, metodo, urlOriginal) {
         const r = { ...resolverEntrada(e, ov), chave: e.chave, familia: e.familia };
         pior = pior ? maisRestritivo(pior, r) : r;
     }
+    // aditivo: quando a URL casa com mais de uma função, as guardas olham todas
+    if (entradas.length > 1) pior = { ...pior, chavesCasadas: entradas.map((e) => e.chave) };
     return pior;
 }
 
@@ -124,6 +179,7 @@ function paraItem(e, ov, info) {
     return {
         chave: e.chave, metodo: e.metodo, exemplo: e.exemplo, familia: e.familia,
         rotulo: rotuloDe(e.chave), nivelEfetivo: r.nivel, origem: r.origem, fixo: r.fixo,
+        ...(r.matriz ? { modulo: r.modulo || null, acao: r.acao || null } : {}),
         ...(linha ? { motivo: linha.motivo || null, atualizadoPorNome: linha.atualizadoPorNome, atualizadoEm: linha.atualizadoEm, escopoOverride: linha.escopo } : {}),
     };
 }
@@ -134,7 +190,8 @@ async function contexto(app, vendedorId) {
     const info = { funcao: new Map(), familia: new Map() };
     for (const l of linhas) {
         if (!padrao.NIVEIS.includes(l.nivel)) continue;
-        (l.escopo === 'FUNCAO' ? info.funcao : info.familia).set(String(l.chave), l);
+        if (l.escopo === 'FUNCAO') info.funcao.set(String(l.chave), l);
+        else if (l.escopo === 'FAMILIA') info.familia.set(String(l.chave), l);
     }
     return { cat: catalogo.catalogoDe(app), ov, info, linhas };
 }
@@ -198,7 +255,7 @@ function normalizarChaveFamilia(texto) {
 }
 
 // Valida e normaliza um pedido de override. Devolve { escopo, chave, nivel, entrada?, familiaEntradas? } ou lança 400/422.
-function validarOverride(app, { escopo, chave, nivel }) {
+function validarOverride(app, { escopo, chave, nivel }, { matrizAtiva = false } = {}) {
     const esc = String(escopo || '').toUpperCase();
     const niv = String(nivel || '').toUpperCase();
     if (esc !== 'FUNCAO' && esc !== 'FAMILIA') throw erro(400, 'escopo deve ser FUNCAO ou FAMILIA.');
@@ -213,7 +270,19 @@ function validarOverride(app, { escopo, chave, nivel }) {
             if (niv === 'BLOQUEADO' && r.nivel === 'BLOQUEADO') return { escopo: esc, chave: k, nivel: niv, semEfeito: true };
             throw erro(422, 'Bloqueio fixo (ou acesso sempre liberado): não pode ser alterado.');
         }
-        if (niv === 'LIBERADO' && !padrao.ehLeitura(entrada)) throw erro(422, 'Liberar escrita para o agente ainda não é permitido (só leitura por enquanto).');
+        if (matrizAtiva && padrao.ehBloqueioFixoPorChave(k)) {
+            if (niv === 'BLOQUEADO') return { escopo: esc, chave: k, nivel: niv, semEfeito: true };
+            throw erro(422, 'Bloqueio fixo (efeito externo): não pode ser alterado.');
+        }
+        if (niv === 'LIBERADO' && !padrao.ehLeitura(entrada)) {
+            // Com a MATRIZ ativa, o dono pode liberar por exceção uma escrita CLASSIFICADA (as guardas e a
+            // Idempotency-Key continuam valendo). Sem a matriz, ou função não classificada / só-admin: como antes.
+            const cls = classificacao.classificar(k);
+            const liberavel = matrizAtiva && cls && !cls.soAdmin && !cls.morta;
+            if (!liberavel) throw erro(422, matrizAtiva
+                ? 'Esta função não pode ser liberada direto para o agente (não classificada ou só de administrador).'
+                : 'Liberar escrita para o agente ainda não é permitido (só leitura por enquanto).');
+        }
         return { escopo: esc, chave: k, nivel: niv, entrada };
     }
     const f = normalizarChaveFamilia(chave);
@@ -226,8 +295,22 @@ function validarOverride(app, { escopo, chave, nivel }) {
     return { escopo: esc, chave: f, nivel: niv };
 }
 
+// Só consulta o banco quando a resposta depende da matriz (liberar escrita, ou mexer num bloqueio fixo por chave).
+async function matrizAtivaSeImporta(vendedorId, body) {
+    const b = body || {};
+    if (String(b.escopo || '').toUpperCase() !== 'FUNCAO') return false;
+    const k = normalizarChaveFuncao(b.chave);
+    if (!k) return false;
+    const liberandoEscrita = String(b.nivel || '').toUpperCase() === 'LIBERADO' && !/^GET /.test(k) && !padrao.POST_LEITURA.has(k);
+    if (!liberandoEscrita && !padrao.ehBloqueioFixoPorChave(k)) return false;
+    const marcador = await prisma.agentePolitica.findUnique({
+        where: { vendedorId_escopo_chave: { vendedorId, escopo: 'MATRIZ', chave: 'ativa' } }, select: { nivel: true },
+    });
+    return !!(marcador && marcador.nivel === 'LIBERADO');
+}
+
 async function definirOverride(app, vendedorId, body, autor) {
-    const v = validarOverride(app, body || {});
+    const v = validarOverride(app, body || {}, { matrizAtiva: await matrizAtivaSeImporta(vendedorId, body) });
     if (v.semEfeito) return { ok: true, semEfeito: true, escopo: v.escopo, chave: v.chave, nivel: v.nivel, antes: null };
     const motivo = body.motivo == null ? null : String(body.motivo).trim().slice(0, 300) || null;
     const onde = { vendedorId, escopo: v.escopo, chave: v.chave };
@@ -259,7 +342,7 @@ async function removerOverride(app, vendedorId, body) {
 function limparCache() { cache.clear(); carregando.clear(); geracao.clear(); }
 
 module.exports = {
-    avaliar, resolverEntrada, overridesDe, invalidar, limparCache,
+    avaliar, resolverEntrada, overridesDe, invalidar, limparCache, montarMapas, linhasFrescas,
     listar, resumoPorFamilia, resumoCurto, definirOverride, removerOverride,
     normalizarChaveFuncao, normalizarChaveFamilia, TTL_MS, STALE_MAX_MS,
 };

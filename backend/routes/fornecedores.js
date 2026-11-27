@@ -271,7 +271,8 @@ router.post('/:id/excluir', verificarAuth, checkEscrita, async (req, res) => {
 // um cadastro de pessoa (tabela clientes), e fornecedor importado do CA não tem um. Cria a
 // pessoa DESATIVADA para vendas (Ativo=false, perfil FORNECEDOR) — padrão "só fornecedor":
 // não aparece em rota, pedido nem catálogo. Idempotente pelo documento.
-router.post('/:id/cadastro-pessoa', verificarAuth, checkAcesso, async (req, res) => {
+// Permissão: ESCRITA (checkEscrita) — esta rota GRAVA em `clientes`; antes passava só com a de leitura.
+router.post('/:id/cadastro-pessoa', verificarAuth, checkEscrita, async (req, res) => {
     try {
         const fornecedor = await prisma.fornecedor.findUnique({ where: { id: req.params.id } });
         if (!fornecedor) return res.status(404).json({ error: 'Fornecedor não encontrado.' });

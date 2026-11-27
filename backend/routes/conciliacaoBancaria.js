@@ -58,6 +58,8 @@ router.post('/importar', verificarAuth, checkAcesso, uploadOfx.single('arquivo')
         // "forcar" só chega quando o usuário confirmou, na tela, que quer importar mesmo
         // o arquivo tendo sido recusado pela trava de conta errada.
         const forcar = req.body.forcar === '1' || req.body.forcar === 'true' || req.body.forcar === true;
+        // Agente de IA nunca força a trava de conta errada (a tela de um humano é que confirma). Humano: nada muda.
+        if (require('../config/agenteGuardas').recusarSeAgente(res, forcar, 'Importar o extrato com "forcar" ignora a trava de conta errada: não é permitido ao agente.')) return;
         // Impressão digital do arquivo: pega o MESMO arquivo subindo em duas contas.
         const hashArquivo = crypto.createHash('sha256').update(req.file.buffer).digest('hex');
 

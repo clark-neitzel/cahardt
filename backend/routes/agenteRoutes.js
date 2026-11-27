@@ -8,6 +8,7 @@ const authMiddleware = require('../middlewares/authMiddleware');
 const svc = require('../services/agenteTokenService');
 const politica = require('../services/agentePoliticaService');
 const solicitacoes = require('../services/agenteSolicitacaoService');
+const matriz = require('../services/agenteMatrizService');
 
 const router = express.Router();
 
@@ -171,6 +172,63 @@ router.delete('/:id/politicas', async (req, res) => {
         }
         res.json(r);
     } catch (e) { tratar(res, e, 'Erro ao restaurar o padrão da política do agente.'); }
+});
+
+// ───────────── MATRIZ de permissões da API (módulo × ação) ─────────────
+// O dono decide, por módulo e por ação (ver/criar/editar/excluir/estornar/baixar): NAO · PEDE · SIM.
+// Mora em agente_politicas (escopo MODULO) — nunca em Vendedor.permissoes. Só vale para o agente quando a matriz
+// está ATIVA (marcador); sem isso a política antiga segue idêntica. Só admin humano (router.use acima).
+function tratarMatriz(res, e, msg) {
+    if (e && e.status) return res.status(e.status).json({ error: e.message, ...(e.codigo ? { codigo: e.codigo } : {}) });
+    console.error(msg, e && e.message);
+    return res.status(500).json({ error: msg });
+}
+
+// Matriz atual + prontidão (permissões-base que faltam) + o que é sempre bloqueado e por quê.
+router.get('/:id/matriz', async (req, res) => {
+    try {
+        const agente = await svc.agentePorId(req.params.id);
+        res.json(await matriz.ler(req.app, { id: agente.id, nome: agente.nome, permissoes: await matriz.permissoesDoAgente(agente.id) }));
+    } catch (e) { tratarMatriz(res, e, 'Erro ao ler a matriz do agente.'); }
+});
+
+// Funções dentro de um módulo (e, opcionalmente, de uma ação): ?modulo=contas_pagar&acao=criar
+router.get('/:id/matriz/funcoes', async (req, res) => {
+    try {
+        const agente = await svc.agentePorId(req.params.id);
+        res.json({ agente: { id: agente.id, nome: agente.nome }, ...(await matriz.funcoes(req.app, agente.id, { modulo: req.query.modulo, acao: req.query.acao })) });
+    } catch (e) { tratarMatriz(res, e, 'Erro ao listar as funções da matriz.'); }
+});
+
+// Grava um lote de células. Body: { celulas: [{ modulo, acao, nivel: 'SIM'|'PEDE'|'NAO' }], ativar?: true|false }
+// Tudo ou nada (transação com timeout); a auditoria vem DEPOIS, fora dela.
+router.put('/:id/matriz', async (req, res) => {
+    try {
+        const agente = await svc.agentePorId(req.params.id);
+        const r = await matriz.gravar(req.app, agente.id, req.body || {}, { id: req.user.id, nome: req.user.nome });
+        if (!r.semMudanca) {
+            await auditar(req, 'AGENTE_MATRIZ_ALTERADA', 'AgentePolitica', `${agente.id}:MATRIZ`, {
+                agenteId: agente.id, agenteNome: agente.nome, alteradas: r.alteradas, marcador: r.marcador, ativa: r.ativa,
+            });
+        }
+        res.json(r);
+    } catch (e) { tratarMatriz(res, e, 'Erro ao gravar a matriz do agente.'); }
+});
+
+// ACRESCENTA ao agente as permissões que o administrador logado tem e o agente não (nunca `admin` nem
+// `Usuario_Externo`). Aditivo: não remove nem desliga nada do que o agente já tem.
+router.post('/:id/permissoes-base/sincronizar', async (req, res) => {
+    try {
+        const agente = await svc.agentePorId(req.params.id);
+        const r = await matriz.sincronizarPermissoesBase(agente.id, { id: req.user.id, nome: req.user.nome, permissoes: req.user.permissoes });
+        if (r.alterou) {
+            await auditar(req, 'AGENTE_PERMISSOES_BASE_SINCRONIZADAS', 'Agente', agente.id, {
+                agenteId: agente.id, agenteNome: agente.nome, origemId: req.user.id, ligadasAntes: r.ligadasAntes, ligadasDepois: r.ligadasDepois,
+                adicionadas: r.adicionadas.slice(0, 200), removidas: r.removidas.slice(0, 200),
+            });
+        }
+        res.json(r);
+    } catch (e) { tratarMatriz(res, e, 'Erro ao sincronizar as permissões de base do agente.'); }
 });
 
 module.exports = router;

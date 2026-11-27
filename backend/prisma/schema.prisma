@@ -1107,7 +1107,7 @@ model AgenteToken {
 model AgentePolitica {
   id                String   @id @default(uuid())
   vendedorId        String   @map("vendedor_id")
-  escopo            String // FUNCAO | FAMILIA
+  escopo            String // FUNCAO | FAMILIA | MODULO (célula da matriz: chave = "<modulo>.<acao>") | MATRIZ (marcador: chave = "ativa")
   chave             String
   nivel             String // LIBERADO | PEDE | BLOQUEADO
   motivo            String?
@@ -1162,6 +1162,25 @@ model AgenteSolicitacao {
   @@index([status, createdAt])
   @@index([agenteId, status])
   @@map("agente_solicitacoes")
+}
+
+// Idempotência das ESCRITAS feitas direto pelo agente (matriz em SIM): o header `Idempotency-Key` é
+// obrigatório; repetir a mesma chave com o mesmo corpo devolve a resposta guardada em vez de executar de novo.
+// Uma linha por (agente, chave). Linhas com mais de 30 dias são apagadas pelo scheduler. Nunca guarda token.
+model AgenteIdempotencia {
+  id             String   @id @default(uuid())
+  vendedorId     String   @map("vendedor_id")
+  chave          String // valor do header Idempotency-Key
+  funcao         String // função do catálogo: "MÉTODO /api/caminho/:p"
+  corpoHash      String   @map("corpo_hash")
+  status         String   @default("EM_ANDAMENTO") // EM_ANDAMENTO | CONCLUIDA | INDETERMINADA (a rota respondeu 5xx: pode ter gravado pela metade)
+  respostaStatus Int?     @map("resposta_status")
+  resposta       Json?
+  criadoEm       DateTime @default(now()) @map("criado_em")
+
+  @@unique([vendedorId, chave])
+  @@index([criadoEm])
+  @@map("agente_idempotencia")
 }
 
 // ─────────── Histórico de permissões (auditoria + restaurar versão) ───────────

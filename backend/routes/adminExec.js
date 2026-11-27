@@ -64,7 +64,7 @@ router.get('/ping', (req, res) => {
         ok: true,
         // Marcador de deploy: bumpar a cada mudança de backend que precise de confirmação
         // em produção (não há outro jeito de saber de fora qual versão está no ar).
-        deployMarker: 'agente-solicitacoes-2026-11-27',
+        deployMarker: 'agente-matriz-2026-11-27',
         uptimeSegundos: Math.round(process.uptime()),
         timestamp: new Date().toISOString(),
         openaiConfigurada: !!process.env.OPENAI_API_KEY,
@@ -13413,6 +13413,42 @@ router.post('/agente-criar', async (req, res) => {
         console.error('[admin-exec] agente-criar:', err && err.message); // nunca loga corpo/token
         res.status(500).json({ error: 'Erro ao criar o agente.' });
     }
+});
+
+// POST /api/admin-exec/agente-matriz-seed[?confirmar=1][&agenteId=][&sobrescrever=1]
+// Liga a MATRIZ de permissões da API (módulo × ação) para um agente: grava as células com a regra padrão do dono
+// (ver = SIM; criar = SIM só no trabalho de lançamento; o resto = PEDE) e o marcador de ativação.
+// Sem ?confirmar=1 (exatamente "1") é DRY-RUN: mostra a matriz que ficaria, as exceções por FUNÇÃO mantidas e as
+// de FAMÍLIA que passam a ser ignoradas — e não grava nada. Célula que o dono já ajustou é mantida (sobrescrever=1 força).
+// Sem agenteId: só funciona se existir exatamente um agente.
+//
+// POST /api/admin-exec/agente-matriz-desligar[?confirmar=1][&agenteId=]
+// Rollback sem deploy: apaga só o marcador. O agente volta na hora à política antiga; as células ficam guardadas.
+// Ver backend/docs/agente-token.md.
+function tratarErroAgenteMatriz(res, err, rotulo) {
+    if (err && err.status) return res.status(err.status).json({ error: err.message, ...(err.agentes ? { agentes: err.agentes } : {}), ...(err.extra || {}) });
+    console.error(`[admin-exec] ${rotulo}:`, err && err.message);
+    return res.status(500).json({ error: 'Erro na matriz do agente.' });
+}
+
+router.post('/agente-matriz-seed', async (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    try {
+        const seed = require('../services/agenteMatrizSeedService');
+        res.json(await seed.semear(req.app, {
+            agenteId: req.query.agenteId || (req.body && req.body.agenteId) || null,
+            confirmar: req.query.confirmar === '1',
+            sobrescrever: req.query.sobrescrever === '1',
+        }));
+    } catch (err) { tratarErroAgenteMatriz(res, err, 'agente-matriz-seed'); }
+});
+
+router.post('/agente-matriz-desligar', async (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    try {
+        const seed = require('../services/agenteMatrizSeedService');
+        res.json(await seed.desligar({ agenteId: req.query.agenteId || (req.body && req.body.agenteId) || null, confirmar: req.query.confirmar === '1' }));
+    } catch (err) { tratarErroAgenteMatriz(res, err, 'agente-matriz-desligar'); }
 });
 
 // POST /api/admin-exec/agente-token-revogar[?confirmar=1]   — "interruptor de emergência" do token do agente

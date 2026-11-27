@@ -241,7 +241,10 @@ async function criarOuReaproveitar({ pedido, decisao, vendedor, tokenPrefixo }) 
                 id, agenteId: vendedor.id, agenteNome: vendedor.nome || 'agente', tokenPrefixo: tokenPrefixo || null,
                 metodo: pedido.metodo, caminho: pedido.caminho, query: pedido.query, chave: decisao.chave,
                 body: pedido.body === null ? undefined : pedido.body, corpoHash: pedido.corpoHash,
-                resumo: resumoDe(decisao.chave, pedido.metodo, pedido.caminho, pedido.body, pedido.query),
+                // guarda da matriz rebaixou um SIM para PEDE: o motivo vai DEPOIS da descrição, com limite próprio
+                // (a descrição do pedido nunca é cortada por causa dele; a coluna é texto livre)
+                resumo: resumoDe(decisao.chave, pedido.metodo, pedido.caminho, pedido.body, pedido.query)
+                    .concat(decisao.motivoGuarda ? ` [Pede por segurança: ${String(decisao.motivoGuarda).slice(0, 220)}]` : ''),
                 antes: antes === null ? undefined : antes,
                 status: 'PENDENTE', expiraEm: new Date(Date.now() + VALIDADE_MS), idempotencyKey: `sol-${id}`,
             },

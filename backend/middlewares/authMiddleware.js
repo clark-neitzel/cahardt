@@ -7,6 +7,9 @@ const agenteTokens = require('../services/agenteTokenService');
 const politica = require('../services/agentePoliticaService');
 const auditoriaAgente = require('../services/agenteAuditoriaService');
 const solicitacoes = require('../services/agenteSolicitacaoService');
+const guardasAgente = require('../config/agenteGuardas');
+const idempotenciaAgente = require('../services/agenteIdempotenciaService');
+const { avisoDe } = require('../config/agenteClassificacao');
 const { rodarComoAgente } = require('../utils/agenteContexto');
 const { mascararUrlLog, decodificarParaBusca } = require('../utils/mascararUrlLog');
 
@@ -44,6 +47,45 @@ function tokenAgenteNaUrl(urlOriginal) {
 
 const ORIENTACAO_BLOQUEIO = 'Esta função não está liberada para o agente. O dono pode liberar leituras em /api/agentes/:id/politicas; bloqueios fixos não mudam.';
 
+// Corpo do 403. Sem a MATRIZ ativa `decisao.codigo` não existe e a resposta é a de sempre (AGENTE_BLOQUEADO).
+// Com a matriz: NÃO na célula -> AGENTE_SEM_PERMISSAO {modulo, acao}; função só de administrador -> AGENTE_SO_ADMIN.
+// `nivel: 'BLOQUEADO'` continua no corpo nos três casos (contrato do cliente do agente).
+function respostaNegada(decisao) {
+    const base = {
+        error: 'Rota não liberada para o agente.', codigo: 'AGENTE_BLOQUEADO', nivel: 'BLOQUEADO', chave: decisao.chave, fixo: decisao.fixo === true,
+        orientacao: ORIENTACAO_BLOQUEIO,
+    };
+    if (decisao.codigo === 'AGENTE_SO_ADMIN') {
+        return {
+            ...base, error: 'Esta função só pode ser feita por um administrador (pessoa).', codigo: 'AGENTE_SO_ADMIN', modulo: decisao.modulo || null, acao: decisao.acao || null,
+            orientacao: 'O agente nunca é administrador: esta função não pode ser liberada nem pedida. Peça a uma pessoa para fazer pela tela.',
+        };
+    }
+    if (decisao.codigo === 'AGENTE_SEM_PERMISSAO') {
+        return {
+            ...base, error: 'O dono não liberou esta ação para o agente.', codigo: 'AGENTE_SEM_PERMISSAO', modulo: decisao.modulo || null, acao: decisao.acao || null,
+            orientacao: 'Quem muda isto é o dono, na matriz de permissões da API do agente (módulo × ação).',
+        };
+    }
+    return base;
+}
+
+// Rota com efeito EXTERNO que o agente não dispara (assertNaoAgente corta): a resposta de sucesso ganha o campo
+// aditivo `avisosAgente`, para o agente saber o que ficou para uma pessoa fazer. Só com a matriz ativa.
+function instalarAvisos(res, aviso) {
+    if (!aviso || typeof res.json !== 'function') return;
+    const jsonOriginal = res.json.bind(res);
+    res.json = (b) => {
+        try {
+            if (res.statusCode >= 200 && res.statusCode < 300 && b && typeof b === 'object' && !Array.isArray(b)) {
+                const ja = Array.isArray(b.avisosAgente) ? b.avisosAgente : [];
+                return jsonOriginal({ ...b, avisosAgente: [...ja, aviso] });
+            }
+        } catch (_) { /* aviso é cortesia: nunca derruba a resposta */ }
+        return jsonOriginal(b);
+    };
+}
+
 // PEDE: o sistema NÃO executa a rota. Guarda o pedido na fila de solicitações e responde 202 (o dono decide na aba
 // Solicitações). Pedido com arquivo/corpo grande -> 422; teto de pendentes por agente -> 429. Nunca chama `next`.
 async function pedirAutorizacao(req, res, r, decisao) {
@@ -65,7 +107,10 @@ async function pedirAutorizacao(req, res, r, decisao) {
         // fora do caminho crítico: falha de log nunca derruba nem atrasa a resposta
         solicitacoes.auditar('AGENTE_SOLICITACAO_CRIADA', criada.solicitacao, { id: r.vendedor.id, nome: r.vendedor.nome }, { tokenPrefixo: r.token.prefixo || null });
     }
-    return res.status(202).json(solicitacoes.resposta202(criada.solicitacao, criada.duplicada));
+    return res.status(202).json({
+        ...solicitacoes.resposta202(criada.solicitacao, criada.duplicada),
+        ...(decisao.motivoGuarda ? { motivoGuarda: decisao.motivoGuarda } : {}),
+    });
 }
 
 // Chamada LOCAL de execução de uma solicitação autorizada (Bearer cah_ag_exec_...): o ticket de uso único É a
@@ -101,11 +146,9 @@ async function autenticarTicket(req, res, next, ticket) {
     }
     if (decisao.nivel === 'BLOQUEADO') {
         auditoriaAgente.registrarNegacao(req, res, { reqId, vendedor: t.vendedor, tokenPrefixo: null, ip, decisao, inicio: Date.now() });
-        return res.status(403).json({
-            error: 'Rota não liberada para o agente.', codigo: 'AGENTE_BLOQUEADO', nivel: 'BLOQUEADO', chave: decisao.chave, fixo: decisao.fixo === true,
-            orientacao: ORIENTACAO_BLOQUEIO,
-        });
+        return res.status(403).json(respostaNegada(decisao));
     }
+    if (decisao.matriz) instalarAvisos(res, avisoDe(decisao.chave));
     req.user = {
         id: t.vendedor.id, login: null, nome: t.vendedor.nome, permissoes: t.permissoes, maxDescontoFlex: t.vendedor.maxDescontoFlex,
         agente: true, agenteTokenId: null, agenteSolicitacaoId: t.solicitacao.id,
@@ -149,15 +192,38 @@ async function autenticarAgente(req, res, next, token) {
         }
         throw e;
     }
+    // MATRIZ em SIM numa ESCRITA feita direto pelo agente. Ordem (importa):
+    //  1) Idempotency-Key obrigatória e CONSULTADA primeiro: repetição de algo já concluído devolve a resposta guardada
+    //     sem passar pelas guardas (senão a guarda de duplicata veria o registro criado pela própria 1ª chamada);
+    //  2) guardas de segurança — podem REBAIXAR a chamada para pedido de autorização (nada é reservado nesse caso);
+    //  3) reserva da chave (mais abaixo, logo antes de a rota rodar).
+    // Sem a matriz nada disto roda.
+    const escritaLiberadaPelaMatriz = decisao.matriz === true && decisao.nivel === 'LIBERADO' && !!decisao.acao && decisao.acao !== 'ver' && req.method !== 'GET';
+    let idemPedido = null;
+    if (escritaLiberadaPelaMatriz && !req._agenteInstrumentado) { // o mesmo request pode passar por mais de um authMiddleware (mount + rota)
+        const prep = await idempotenciaAgente.preparar(req, res, { vendedorId: r.vendedor.id, funcao: decisao.chave });
+        if (prep.respondeu) return undefined;
+        const motivos = [];
+        for (const chave of (decisao.chavesCasadas || [decisao.chave])) {
+            const g = await guardasAgente.avaliar(chave, req);
+            if (g.rebaixar) motivos.push(...g.motivos);
+        }
+        if (motivos.length) decisao = { ...decisao, nivel: 'PEDE', rebaixada: true, motivoGuarda: [...new Set(motivos)].join('; ').slice(0, 400) };
+        else idemPedido = prep;
+    }
     if (decisao.nivel !== 'LIBERADO') {
         console.warn('[Agente]', decisao.nivel === 'PEDE' ? 'pediu autorização' : 'bloqueado', r.vendedor.id, req.method, mascararUrlLog(String(req.originalUrl || '').split('?')[0]), decisao.nivel);
         auditoriaAgente.registrarNegacao(req, res, { reqId, vendedor: r.vendedor, tokenPrefixo: r.token.prefixo, ip, decisao, inicio });
         if (decisao.nivel === 'PEDE') return pedirAutorizacao(req, res, r, decisao);
-        return res.status(403).json({
-            error: 'Rota não liberada para o agente.',
-            codigo: 'AGENTE_BLOQUEADO', nivel: 'BLOQUEADO', chave: decisao.chave, fixo: decisao.fixo === true,
-            orientacao: ORIENTACAO_BLOQUEIO,
-        });
+        return res.status(403).json(respostaNegada(decisao));
+    }
+    if (decisao.matriz === true && !req._agenteInstrumentado) {
+        req._agenteInstrumentado = true; // 2ª passada do mesmo request não consulta/reserva a chave de novo (daria 409 em si mesma)
+        if (idemPedido) {
+            const respondeu = await idempotenciaAgente.reservar(req, res, idemPedido);
+            if (respondeu) return undefined;
+        }
+        instalarAvisos(res, avisoDe(decisao.chave)); // depois da captura da idempotência: a resposta guardada já leva o aviso
     }
     agenteTokens.registrarUso(r.token.id, ip);
     req.user = {

@@ -28,11 +28,32 @@ async function parcelaPagar(caminho) {
     return p ? { tipo: 'parcela_pagar', id: p.id, status: p.status, valor: num(p.valor), valorPago: num(p.valorPago), atualizadoEm: iso(p.atualizadoEm) } : null;
 }
 
+// Contas a receber: api / contas-receber / <parcela> / baixa | pagamentos/<id>
+async function parcelaReceber(caminho) {
+    const id = segs(caminho)[2];
+    if (!id) return null;
+    const p = await prisma.parcela.findUnique({ where: { id }, select: { id: true, status: true, valor: true, valorPago: true, dataPagamento: true } });
+    return p ? { tipo: 'parcela_receber', id: p.id, status: p.status, valor: num(p.valor), valorPago: num(p.valorPago), dataPagamento: iso(p.dataPagamento) } : null;
+}
+
+// Fornecedor: api / fornecedores / <id> [/ excluir]
+async function fornecedor(caminho) {
+    const id = segs(caminho)[2];
+    if (!id) return null;
+    const f = await prisma.fornecedor.findUnique({ where: { id }, select: { id: true, razaoSocial: true, cnpjCpf: true, ativo: true, atualizadoEm: true } });
+    return f ? { tipo: 'fornecedor', id: f.id, razaoSocial: f.razaoSocial, cnpjCpf: f.cnpjCpf, ativo: f.ativo, atualizadoEm: iso(f.atualizadoEm) } : null;
+}
+
 const REGISTRO = {
     'POST /api/contas-pagar/:p/cancelar': contaPagar,
     'PUT /api/contas-pagar/:p': contaPagar,
     'POST /api/contas-pagar/:p/parcelas/:p/baixar': parcelaPagar,
     'POST /api/contas-pagar/:p/parcelas/:p/estorno': parcelaPagar,
+    'POST /api/contas-receber/:p/baixa': parcelaReceber,
+    'DELETE /api/contas-receber/:p/baixa': parcelaReceber,
+    'DELETE /api/contas-receber/:p/pagamentos/:p': parcelaReceber,
+    'PUT /api/fornecedores/:p': fornecedor,
+    'POST /api/fornecedores/:p/excluir': fornecedor,
 };
 
 /** Foto do estado do alvo da função (ou null quando a função não tem "antes" registrado / o alvo não existe). */
