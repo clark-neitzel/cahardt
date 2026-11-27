@@ -13,13 +13,14 @@ process.env.JWT_SECRET = process.env.JWT_SECRET || 'segredo-teste-jwt-0123456789
 
 const { makeMockPrisma, stubModule, limparCacheContendo } = require('./helpers/mockPrisma');
 const { startTestServer } = require('./helpers/httpServer');
+const { modeloSolicitacoes, transacaoSolicitacoes } = require('./helpers/memSolicitacoes');
 
 const RAIZ = path.join(__dirname, '..');
 const DATABASE_MODULE = path.join(RAIZ, 'config/database.js');
 const CACHE = ['middlewares/authMiddleware.js', 'services/agenteTokenService.js', 'routes/agenteRoutes.js',
     'routes/agenteApiV1Routes.js', 'config/agenteAcesso.js', 'controllers/appAuthController.js',
     'services/agentePoliticaService.js', 'services/agenteAuditoriaService.js', 'services/agenteCatalogoRotas.js',
-    'config/agentePoliticaPadrao.js', 'utils/agenteContexto.js'];
+    'config/agentePoliticaPadrao.js', 'utils/agenteContexto.js', 'services/agenteSolicitacaoService.js', 'config/agenteAntes.js', 'config/agenteTelas.js'];
 const JWT_SECRET = process.env.JWT_SECRET;
 const hash = (t) => crypto.createHash('sha256').update(t).digest('hex');
 const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -49,6 +50,7 @@ function memoria() {
     };
     const pick = (obj, sel) => { if (!sel) return { ...obj }; const o = {}; for (const k of Object.keys(sel)) if (sel[k] === true) o[k] = obj[k]; return o; };
     const achar = (w) => politicas.find((p) => p.vendedorId === w.vendedorId && p.escopo === w.escopo && p.chave === w.chave);
+    const solModelo = modeloSolicitacoes(db);
     const prisma = makeMockPrisma({
         vendedor: {
             findUnique: async ({ where, select }) => { const v = vendedores.get(where.id); return v ? pick(v, select) : null; },
@@ -72,6 +74,8 @@ function memoria() {
             },
             delete: async ({ where }) => { const p = achar(where.vendedorId_escopo_chave); politicas.splice(politicas.indexOf(p), 1); return p; },
         },
+        agenteSolicitacao: solModelo,
+        $transaction: transacaoSolicitacoes(solModelo),
         auditLog: { create: async ({ data }) => { if (db.falharAudit) throw new Error('banco lento'); audits.push(data); return data; } },
         funcionario: { findFirst: async () => null },
     });
@@ -169,12 +173,13 @@ const SEFAZ = ['POST /api/notas-entrada/consultar-agora', 'POST /api/notas-entra
 
 function esperado(e) {
     const p = e.exemplo;
+    if (e.chave === 'GET /api/agente/v1/solicitacoes/:p') return { status: 404 }; // liberada; o id de teste não existe -> 404 da própria rota
     if (e.chave === 'GET /api/auth/me' || p.startsWith('/api/agente/v1')) return { status: 200 };
     if (FIXOS_PREFIXOS.some((f) => p.startsWith(f)) || p.startsWith('/api/auth') || SEFAZ.includes(e.chave)) return { status: 403, codigo: 'AGENTE_BLOQUEADO', fixo: true };
     if (SEED.includes(e.familia)) {
         if (FORA_DO_SEED.includes(e.chave)) return { status: 403, codigo: 'AGENTE_BLOQUEADO', fixo: false };
         if (e.metodo === 'GET' || PREVIAS.includes(e.chave)) return { status: 200 };
-        return { status: 403, codigo: 'AGENTE_PEDE_AUTORIZACAO', fixo: false };
+        return { status: 202, codigo: 'AGENTE_PEDE_AUTORIZACAO' }; // PR-B: PEDE guarda o pedido (fila) e responde 202
     }
     return { status: 403, codigo: 'AGENTE_BLOQUEADO', fixo: false };
 }
@@ -237,30 +242,34 @@ test('matriz completa: TODA rota real responde conforme a política padrão (lei
         const { claro } = cenario(db);
         const cat = catalogoReal().filter((e) => e.exemplo.startsWith('/api/') && !e.exemplo.startsWith('/api/agentes'));
         const falhas = [];
+        db.semTeto = true; // o teto de 200 pendentes é testado à parte; aqui cada escrita vira uma solicitação
         const contagem = { 200: 0, PEDE: 0, BLOQ: 0, FIXO: 0 };
         for (let i = 0; i < cat.length; i += 25) {
             await Promise.all(cat.slice(i, i + 25).map(async (e) => {
                 const r = await srv.request(e.metodo, url(e), { headers: bearer(claro), body: e.metodo === 'GET' ? undefined : {} });
                 const x = esperado(e);
-                const ok = r.status === x.status && (x.status === 200 || (r.body.codigo === x.codigo && r.body.nivel === (x.codigo === 'AGENTE_PEDE_AUTORIZACAO' ? 'PEDE' : 'BLOQUEADO') && r.body.fixo === x.fixo && r.body.chave === e.chave && typeof r.body.orientacao === 'string'));
+                const ok = r.status === x.status && (x.status === 200 || x.status === 404 || (x.status === 202
+                    ? (r.body.codigo === x.codigo && r.body.status === 'PENDENTE' && typeof r.body.solicitacaoId === 'string' && typeof r.body.orientacao === 'string')
+                    : (r.body.codigo === x.codigo && r.body.nivel === 'BLOQUEADO' && r.body.fixo === x.fixo && r.body.chave === e.chave && typeof r.body.orientacao === 'string')));
                 if (!ok) falhas.push(`${e.chave}: esperado ${JSON.stringify(x)}, veio ${r.status} ${r.texto.slice(0, 160)}`);
-                if (r.status === 200) contagem[200] += 1; else if (r.body?.fixo) contagem.FIXO += 1; else if (r.body?.codigo === 'AGENTE_PEDE_AUTORIZACAO') contagem.PEDE += 1; else contagem.BLOQ += 1;
+                if (r.status === 200 || r.status === 404) contagem[200] += 1; else if (r.status === 202) contagem.PEDE += 1; else if (r.body?.fixo) contagem.FIXO += 1; else if (r.body?.codigo === 'AGENTE_PEDE_AUTORIZACAO') contagem.PEDE += 1; else contagem.BLOQ += 1;
             }));
         }
         assert.deepEqual(falhas, []);
         console.log(`[matriz] ${cat.length} rotas: ${contagem[200]} liberadas, ${contagem.PEDE} PEDE, ${contagem.BLOQ} bloqueadas, ${contagem.FIXO} bloqueio fixo`);
         assert.ok(contagem[200] > 100);
-        // NENHUMA escrita liberada: toda rota 200 é GET ou prévia conhecida
+        // NENHUMA escrita é EXECUTADA: toda rota 200 é GET ou prévia conhecida; escrita é 403 (bloqueada) ou 202 (só guardada)
         for (const e of cat) {
             if (e.metodo === 'GET') continue;
             if (PREVIAS.includes(e.chave)) continue;
             const r = await srv.request(e.metodo, url(e), { headers: bearer(claro), body: {} });
-            assert.equal(r.status, 403, `${e.chave} deveria negar (${r.status})`);
+            assert.ok(r.status === 403 || r.status === 202, `${e.chave} não pode executar (${r.status})`);
+            assert.notEqual(r.body && r.body.user, 'luke', `${e.chave} executou a rota`);
         }
     } finally { await srv.close(); }
 });
 
-test('cada família do seed: GET liberado responde 200 e POST/PUT/PATCH/DELETE é PEDE (403 sem fila)', async () => {
+test('cada família do seed: GET liberado responde 200 e POST/PUT/PATCH/DELETE é PEDE (202: guardado na fila, NÃO executado)', async () => {
     const { db, srv } = await subir();
     try {
         const { claro } = cenario(db);
@@ -273,9 +282,9 @@ test('cada família do seed: GET liberado responde 200 e POST/PUT/PATCH/DELETE �
             const escrita = cat.find((e) => e.familia === fam && e.metodo !== 'GET' && !PREVIAS.includes(e.chave) && !SEFAZ.includes(e.chave));
             if (escrita) {
                 const w = await srv.request(escrita.metodo, url(escrita), { headers: bearer(claro), body: {} });
-                assert.equal(w.status, 403, escrita.chave);
+                assert.equal(w.status, 202, escrita.chave);
                 assert.equal(w.body.codigo, 'AGENTE_PEDE_AUTORIZACAO', escrita.chave);
-                assert.match(w.body.error, /ainda não estão disponíveis/);
+                assert.equal(w.body.status, 'PENDENTE'); assert.equal(w.body.user, undefined, 'a rota não pode ter executado');
             }
         }
     } finally { await srv.close(); }
@@ -373,10 +382,10 @@ test('override FUNCAO e FAMILIA mudam o resultado; PUT invalida o cache na hora;
         // família LIBERADA não abre exceção "grava/externo": caixa/resumo só por FUNCAO
         await srv.request('PUT', '/api/agentes/luke/politicas', { headers: A, body: { escopo: 'FAMILIA', chave: '/api/caixa', nivel: 'LIBERADO' } });
         assert.equal((await srv.request('GET', '/api/caixa/resumo', { headers: H })).status, 403);
-        // PEDE é aceito e responde 403 AGENTE_PEDE_AUTORIZACAO
+        // PEDE é aceito e responde 202 AGENTE_PEDE_AUTORIZACAO (guardado na fila; a rota não roda)
         await srv.request('PUT', '/api/agentes/luke/politicas', { headers: A, body: { escopo: 'FUNCAO', chave: 'GET /api/produtos', nivel: 'PEDE' } });
         const pede = await srv.request('GET', '/api/produtos', { headers: H });
-        assert.equal(pede.status, 403); assert.equal(pede.body.codigo, 'AGENTE_PEDE_AUTORIZACAO'); assert.equal(pede.body.nivel, 'PEDE');
+        assert.equal(pede.status, 202); assert.equal(pede.body.codigo, 'AGENTE_PEDE_AUTORIZACAO'); assert.equal(pede.body.status, 'PENDENTE'); assert.equal(pede.body.user, undefined);
         // DELETE restaura
         r = await srv.request('DELETE', '/api/agentes/luke/politicas', { headers: A, body: { escopo: 'FAMILIA', chave: '/api/pedidos' } });
         assert.equal(r.status, 200); assert.equal(r.body.removido, true); assert.equal(r.body.antes, 'BLOQUEADO');
@@ -415,7 +424,7 @@ test('linha de override inválida no banco é ignorada (nível estranho, LIBERAD
         db.addPolitica({ vendedorId: 'luke', escopo: 'FAMILIA', chave: '/api/produtos', nivel: 'LIBERADO' });
         assert.equal((await srv.request('GET', '/api/produtos', { headers: bearer(claro) })).status, 200);
         const w = await srv.request('POST', '/api/produtos', { headers: bearer(claro), body: {} });
-        assert.equal(w.status, 403); assert.equal(w.body.codigo, 'AGENTE_PEDE_AUTORIZACAO');
+        assert.equal(w.status, 202); assert.equal(w.body.codigo, 'AGENTE_PEDE_AUTORIZACAO');
     } finally { await srv.close(); }
 });
 

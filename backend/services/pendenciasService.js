@@ -600,6 +600,29 @@ async function blocoAmostrasSemCarga(limite) {
     };
 }
 
+// ── Bloco: solicitacoes_luke ─────────────────────────────────────────────────────
+// Pedidos de autorização do agente de IA (fila PR-B). SÓ para admin humano (é quem decide); os demais não veem o bloco.
+async function blocoSolicitacoesLuke(limite, usuario) {
+    const base = { chave: 'solicitacoes_luke', titulo: 'Solicitações do Luke', severidade: 'ambar', contador: 0, itens: [], rotaVerTodos: '/admin/agentes/solicitacoes' };
+    if (usuario?.permissoes?.admin !== true || usuario?.agente === true) return { ...base, oculto: true };
+    const svc = require('./agenteSolicitacaoService');
+    await svc.expirarVencidas();
+    const where = { status: 'PENDENTE' };
+    const prisma = require('../config/database');
+    const [contador, linhas] = await Promise.all([
+        prisma.agenteSolicitacao.count({ where }),
+        prisma.agenteSolicitacao.findMany({ where, orderBy: { createdAt: 'asc' }, take: limite, select: { id: true, resumo: true, agenteNome: true, createdAt: true } }),
+    ]);
+    return {
+        ...base,
+        contador,
+        itens: linhas.map((l) => ({
+            id: l.id, titulo: l.resumo, subtitulo: `Pedido de ${l.agenteNome}`, dataRef: l.createdAt, severidade: 'ambar',
+            rota: '/admin/agentes/solicitacoes', rotaAbrir: '/admin/agentes/solicitacoes',
+        })),
+    };
+}
+
 // ── Agregador ─────────────────────────────────────────────────────────────────
 const DEFINICOES = [
     { chave: 'pedidos_aprovar', fn: (l, u, c) => blocoPedidosAprovar(l, c) },
@@ -613,6 +636,7 @@ const DEFINICOES = [
     { chave: 'tarefas_atrasadas', fn: (l, u) => blocoTarefasAtrasadas(l, u) },
     { chave: 'veiculos_pendencias', fn: (l) => blocoVeiculosPendencias(l) },
     { chave: 'amostras_sem_carga', fn: (l) => blocoAmostrasSemCarga(l) },
+    { chave: 'solicitacoes_luke', fn: (l, u) => blocoSolicitacoesLuke(l, u) },
 ];
 
 const TITULOS = {
@@ -627,6 +651,7 @@ const TITULOS = {
     tarefas_atrasadas: 'Tarefas atrasadas (minhas)',
     veiculos_pendencias: 'Veículos: volta sem foto',
     amostras_sem_carga: 'Amostras sem carga',
+    solicitacoes_luke: 'Solicitações do Luke',
 };
 
 const ROTAS_VER_TODOS = {
@@ -641,13 +666,14 @@ const ROTAS_VER_TODOS = {
     tarefas_atrasadas: '/tarefas',
     veiculos_pendencias: '/veiculos/pendencias',
     amostras_sem_carga: '/pedidos?aba=amostras&semCarga=1',
+    solicitacoes_luke: '/admin/agentes/solicitacoes',
 };
 
 const listarPendencias = async ({ usuario, limitePorBloco = 5 } = {}) => {
     const limite = Math.max(1, Math.min(20, Number(limitePorBloco) || 5));
 
     const ctx = {}; // compartilhado entre blocos (liberacao_inadimplente × pedidos_aprovar)
-    const resultados = await Promise.all(DEFINICOES.map(async (def) => {
+    const resultadosBrutos = await Promise.all(DEFINICOES.map(async (def) => {
         try {
             return await def.fn(limite, usuario, ctx);
         } catch (e) {
@@ -663,6 +689,8 @@ const listarPendencias = async ({ usuario, limitePorBloco = 5 } = {}) => {
             };
         }
     }));
+
+    const resultados = resultadosBrutos.filter((b) => !b.oculto); // bloco restrito a admin some para os demais
 
     const total = resultados.reduce((s, b) => s + (b.contador || 0), 0);
     const dinheiroParado = round2(

@@ -160,7 +160,12 @@ async function revogarLista(agente, lista, motivo) {
             console.error('[agente-token-admin] falha ao revogar token', t.prefixo, ':', semSegredo(e && e.message).slice(0, 300));
         }
     }
-    return { revogados, falhas };
+    // token(s) revogado(s): os pedidos PENDENTES do agente na fila de solicitações são recusados na hora (o EXECUTANDO segue)
+    let recusadasAutomaticamente = 0;
+    if (revogados.length) {
+        recusadasAutomaticamente = await require('./agenteSolicitacaoService').recusarPendentesDoAgente(agente.id, 'token revogado/rotacionado (admin-exec)', { id: AUTOR_ID, nome: AUTOR_NOME });
+    }
+    return { revogados, falhas, recusadasAutomaticamente };
 }
 
 // ---------------- revogar ----------------
@@ -205,12 +210,12 @@ async function revogar(body, { confirmar }) {
         };
     }
 
-    const { revogados, falhas } = await revogarLista(agente, alvo, p.motivo);
+    const { revogados, falhas, recusadasAutomaticamente } = await revogarLista(agente, alvo, p.motivo);
     if (falhas.length) {
         throw erro(500, `Falha ao revogar o(s) token(s) ${falhas.join(', ')}; veja o log do servidor. Já revogados nesta chamada: ${revogados.length ? revogados.join(', ') : '(nenhum)'}. Repita a chamada: é seguro (o que já foi revogado é ignorado).`,
             { revogados, falhas });
     }
-    return { ok: true, ...base, revogados, jaRevogados, avisos };
+    return { ok: true, ...base, revogados, jaRevogados, recusadasAutomaticamente, avisos };
 }
 
 // ---------------- rotacionar ----------------
@@ -254,7 +259,7 @@ async function rodarRotacao(p, confirmar) {
     }
 
     // 1) revoga os anteriores PRIMEIRO: um token vazado tem que cair antes de o novo existir.
-    const { revogados, falhas } = await revogarLista(agente, aRevogar, 'rotação de token (admin-exec)');
+    const { revogados, falhas, recusadasAutomaticamente } = await revogarLista(agente, aRevogar, 'rotação de token (admin-exec)');
     if (falhas.length) {
         throw erro(500, `Falha ao revogar o(s) token(s) antigo(s) ${falhas.join(', ')}; NENHUM token novo foi gerado. Já revogados: ${revogados.length ? revogados.join(', ') : '(nenhum)'}. Veja o log do servidor e repita a chamada (é seguro).`,
             { agenteId: agente.id, revogados, falhas });
@@ -279,6 +284,7 @@ async function rodarRotacao(p, confirmar) {
         ok: true,
         ...base,
         revogados,
+        recusadasAutomaticamente,
         token: r.token, // em claro SÓ aqui, uma vez
         tokenPrefixo: r.registro.prefixo,
         expiraEm: r.registro.expiraEm,

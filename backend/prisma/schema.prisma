@@ -1122,6 +1122,48 @@ model AgentePolitica {
   @@map("agente_politicas")
 }
 
+// Fila de SOLICITAÇÕES do agente (PR-B): quando a política de uma função é PEDE, o authMiddleware NÃO
+// executa a rota — guarda o pedido aqui e responde 202. O dono (admin humano) autoriza (o sistema executa
+// a chamada guardada COMO o usuário do agente, por loopback, com um ticket de uso único) ou recusa.
+// Tabela lateral SEM FK/relação (padrão ClienteInativacaoSolicitacao): sobrevive à troca/remoção do agente.
+// `body` é o corpo ORIGINAL (dado do negócio, ≤100 KB, nunca contém token cah_ag_): só é exibido REDIGIDO.
+// `execHash` = SHA-256 do ticket de execução (o ticket em claro nunca é gravado); zera no 1º uso.
+model AgenteSolicitacao {
+  id                String    @id @default(uuid())
+  agenteId          String    @map("agente_id")
+  agenteNome        String    @map("agente_nome")
+  tokenPrefixo      String?   @map("token_prefixo")
+  metodo            String
+  caminho           String // concreto, sem query
+  query             String    @default("") @db.Text
+  chave             String // função do catálogo: "MÉTODO /api/caminho/:p"
+  body              Json?
+  corpoHash         String    @map("corpo_hash")
+  resumo            String    @db.Text
+  antes             Json?
+  status            String    @default("PENDENTE") // PENDENTE | EXECUTANDO | AUTORIZADA | RECUSADA | ERRO | ERRO_INDETERMINADO | EXPIRADA
+  expiraEm          DateTime  @map("expira_em")
+  decididoPorId     String?   @map("decidido_por_id")
+  decididoPorNome   String?   @map("decidido_por_nome")
+  decididoEm        DateTime? @map("decidido_em")
+  observacaoDecisao String?   @map("observacao_decisao") @db.Text
+  resultadoStatus   Int?      @map("resultado_status")
+  resultado         Json?
+  idsResultado      Json?     @map("ids_resultado")
+  execHash          String?   @unique @map("exec_hash")
+  execComecouEm     DateTime? @map("exec_comecou_em")
+  idempotencyKey    String?   @map("idempotency_key")
+  repetidoPorId     String?   @map("repetido_por_id") // quem mandou REPETIR (ERRO_INDETERMINADO): a decisão original em decididoPor* não é sobrescrita
+  repetidoPorNome   String?   @map("repetido_por_nome")
+  repetidoEm        DateTime? @map("repetido_em")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  @@index([status, createdAt])
+  @@index([agenteId, status])
+  @@map("agente_solicitacoes")
+}
+
 // ─────────── Histórico de permissões (auditoria + restaurar versão) ───────────
 // Uma linha por save que ALTEROU as permissões: guarda o estado antes e depois,
 // quem mudou e quando. "Restaurar" no frontend só re-aplica um estado antigo e

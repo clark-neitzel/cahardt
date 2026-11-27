@@ -8,7 +8,7 @@ Entra na API com `Authorization: Bearer cah_ag_<32 bytes base64url>` — nunca p
 - Permissões vivas: lidas do banco a cada chamada (mesmo princípio do JWT).
 - **Agente nunca é admin**: se alguém der `permissoes.admin = true` ao vendedor-agente (por exemplo, pela tela de Usuários), o `authMiddleware` passa a recusar o token (403 `AGENTE_ADMIN_PROIBIDO`). Não há como virar/deixar de ser agente pelas rotas de usuários: `agente` não está na lista de campos aceitos pelo `PUT /api/vendedores/:id`.
 - JWT de vendedor-agente e `POST /api/auth/app-login` com esse usuário → 401.
-- **Nega por padrão — POLÍTICA do agente (PR-A)**: o que o agente alcança é decidido por função, em 3 níveis (seção abaixo). `config/agenteAcesso.js` virou só um *shim* de compatibilidade (cobre apenas o "sempre liberado"). O que não é LIBERADO → 403 (`AGENTE_BLOQUEADO` ou `AGENTE_PEDE_AUTORIZACAO`).
+- **Nega por padrão — POLÍTICA do agente (PR-A)**: o que o agente alcança é decidido por função, em 3 níveis (seção abaixo). `config/agenteAcesso.js` virou só um *shim* de compatibilidade (cobre apenas o "sempre liberado"). O que não é LIBERADO → `AGENTE_BLOQUEADO` (403) ou, se for PEDE, o pedido é guardado na fila de solicitações (202, PR-B).
 - Rotas de gestão (`/api/agentes`, só admin humano): `POST /`, `GET /`, `POST /:id/tokens`, `DELETE /:id/tokens/:tid`, e a política: `GET/PUT/DELETE /:id/politicas`, `GET /:id/politicas/familias` (abaixo).
 
 ## Política do agente: LIBERADO / PEDE AUTORIZAÇÃO / BLOQUEADO (PR-A)
@@ -17,7 +17,7 @@ Cada **função** do sistema é uma rota real, identificada por `MÉTODO /api/ca
 
 **Níveis**
 - `LIBERADO` — passa (a permissão do vendedor-agente ainda vale dentro da rota: pode dar 200 ou o 403 de permissão).
-- `PEDE` — exigiria autorização do dono. **Neste PR ainda não existe fila de autorização**: responde 403 `AGENTE_PEDE_AUTORIZACAO` (falha segura). Toda escrita (POST/PUT/PATCH/DELETE) em família do seed resolve como `PEDE`.
+- `PEDE` — exige autorização do dono: o sistema **NÃO executa**; guarda o pedido e responde **202** `AGENTE_PEDE_AUTORIZACAO` (fila de solicitações, seção abaixo). Toda escrita (POST/PUT/PATCH/DELETE) em família do seed resolve como `PEDE`.
 - `BLOQUEADO` — 403 `AGENTE_BLOQUEADO` com `{ nivel, chave, fixo, orientacao }`.
 
 **Ordem de resolução** (`services/agentePoliticaService.js`): bloqueio fixo → sempre liberado → override do dono `FUNCAO` → override do dono `FAMILIA` → seed (padrão) → BLOQUEADO.
@@ -64,6 +64,44 @@ Regras da API: `422` ao tentar `LIBERADO`/`PEDE` em bloqueio fixo (ou mudar o se
 `GET /api/agente/v1/meu-acesso` mantém todos os campos antigos e acrescenta `politica: { liberado, pede, bloqueado, familias: [{ familia, liberado, pede, bloqueado }] }` (resumo, sem listar as ~1280 rotas) e `observacao`.
 
 Limitação conhecida: o cache de overrides é em memória por instância (o backend roda em 1 instância no EasyPanel); com mais de uma, a mudança do dono pode levar até 15 s para valer nas outras.
+
+## Fila de SOLICITAÇÕES: PEDE → 202 → o dono autoriza (PR-B)
+
+**O que o agente vê.** Função com política `PEDE` (toda escrita das famílias do seed) NÃO executa. O `authMiddleware` guarda o pedido (tabela `agente_solicitacoes`, model `AgenteSolicitacao`) e responde **202**:
+
+```json
+{ "codigo": "AGENTE_PEDE_AUTORIZACAO", "status": "PENDENTE", "solicitacaoId": "<uuid>", "resumo": "Criar conta a pagar — descrição: ...",
+  "consulta": "/api/agente/v1/solicitacoes/<uuid>", "expiraEm": "<+72 h>", "duplicada": false, "orientacao": "..." }
+```
+- Pedido idêntico (mesmo agente + função + caminho + query + corpo) enquanto PENDENTE → devolve a mesma solicitação com `duplicada:true` (não cria outra). A criação roda numa transação (timeout 20 s) com `pg_advisory_xact_lock` por agente: dois pedidos simultâneos viram UMA solicitação e o teto de 200 não estoura por corrida.
+- `422 AGENTE_SOLICITACAO_INVALIDA` (nada guardado, nada executado): multipart/arquivo, corpo > 100 KB, corpo que não é JSON, corpo/query contendo um token `cah_ag_`, método fora de GET/POST/PUT/PATCH/DELETE, e **corpo que excede os limites de exibição** (500 itens por lista, 500 campos por objeto, 2000 caracteres por texto, 8 níveis: "corpo grande demais para o dono revisar" — o que o dono vê é exatamente o que será executado; o item traz `bodyTruncado:false` sempre). **Limitação v1: sem anexos/multipart** (ex.: `POST /api/contas-pagar/:id/pdf` e `/anexos` não entram na fila) e **sem agrupamento** (cada chamada é uma solicitação).
+- `429 AGENTE_SOLICITACOES_EXCESSO`: 200 pendentes do mesmo agente. O limite por minuto do token vale como sempre.
+- Leitura, LIBERADO e BLOQUEADO não mudam. O 403 `AGENTE_PEDE_AUTORIZACAO` da versão anterior **não existe mais**: PEDE agora é 202.
+
+**Como o agente acompanha** (rotas sempre liberadas, só do PRÓPRIO agente; o corpo completo não volta):
+- `GET /api/agente/v1/solicitacoes?status=&page=&limit=` → `{ page, limit, total, data:[...] }`
+- `GET /api/agente/v1/solicitacoes/:id` → `{ id, status, resumo, resultadoStatus, resultado, idsResultado, decididoPorNome, observacaoDecisao, createdAt, expiraEm }`
+- `GET /api/agente/v1/meu-acesso` ganhou `solicitacoes: { pendentes: N }` (todos os campos antigos continuam).
+- **Estados**: `PENDENTE` (aguarda o dono) · `EXECUTANDO` (autorizada, rodando) · `AUTORIZADA` (rota respondeu 2xx: `resultadoStatus`, `resultado` ≤ 16 KB e `idsResultado`) · `RECUSADA` (nada foi executado; `observacaoDecisao`) · `ERRO` (autorizada, mas a rota recusou com 4xx/5xx: a mensagem está em `resultado.error`; corrija e peça de novo) · `ERRO_INDETERMINADO` (queda/timeout no meio: **não se sabe** se executou; o dono confere e decide repetir) · `EXPIRADA` (ninguém decidiu em 72 h; nada foi executado).
+- `idsResultado`: campos `id`, `*Id` e `numero` da resposta, até 2 níveis, no máximo 20, chave = caminho pontuado (`id`, `conta.id`, `numero`). **Dependência encadeada** (fornecedor novo → conta): v1 é sequencial — o agente pede o fornecedor, consulta a solicitação até `AUTORIZADA` e usa `idsResultado.id` no pedido seguinte.
+
+**Como o dono decide** (só admin humano; agente → 403 bloqueio fixo; JWT não-admin → 403; sem token → 401). Declaradas ANTES das rotas `/:id` do router:
+- `GET /api/agentes/solicitacoes?status=&agenteId=&page=&limit=` → `{ page, limit, total, data:[item] }` (lê expira as PENDENTES vencidas na hora); `GET /api/agentes/solicitacoes/contagem` → `{ pendentes, comErro }` (comErro = ERRO_INDETERMINADO + ERRO dos últimos 7 dias); `GET /api/agentes/solicitacoes/:id`.
+- `POST /api/agentes/solicitacoes/:id/autorizar` `{ confirmarMudanca?: bool }` — **executa** e responde o item já com o resultado. Duplo clique → o 2º recebe 409 `SOLICITACAO_JA_DECIDIDA` (a reivindicação é um `updateMany ... where status='PENDENTE'` atômico).
+- `POST .../recusar` `{ observacao ≤ 500 }` — RECUSADA, não executa.
+- `POST .../repetir` `{ confirmarRepeticao:true }` — só `ERRO_INDETERMINADO`, só **≥ 5 min depois do início da execução anterior** (ela pode ainda estar rodando) e só com a confirmação. Cedo demais → 409 `REPETIR_MUITO_CEDO` `{ liberaEm, aviso }`; sem confirmar → 409 `CONFIRMAR_REPETICAO` `{ aviso, destino:{rota,rotulo}|null, antes }`. O item traz `repetirLiberaEm` (ISO; só em ERRO_INDETERMINADO) para a UI desabilitar o botão antes do clique, e o AuditLog `DECIDIDA` do repetir inclui `mensagemAnterior`. O `aviso` diz que as rotas ainda não leem `Idempotency-Key` e que repetir uma CRIAÇÃO pode duplicar (conferir a tela de destino). Ao reivindicar, `resultado`/`idsResultado`/`resultadoStatus` da tentativa anterior são limpos e quem repetiu fica em `repetidoPorId/Nome/Em` (a decisão original em `decididoPor*` não muda).
+- Item: `{ id, agenteId, agenteNome, metodo, caminho, chave, rotulo, resumo, body (REDIGIDO), status, expiraEm, createdAt, decididoPorNome, decididoEm, observacaoDecisao, resultadoStatus, resultado, idsResultado, telaDestino:{rota,rotulo}|null, antes, mudouDesdePedido, query, bodyTruncado, possivelDuplicata, repetidoPorNome, repetidoEm, [agora], [mensagemErro] }`. `query` = a query string redigida (sem `?`, campos sensíveis ocultos; também entra no `resumo`) ou null. `possivelDuplicata:true` = existe outra solicitação idêntica (mesmo agente+função+caminho+corpo) PENDENTE ou AUTORIZADA nas últimas 24 h (só calculado para PENDENTE). `body`/`resultado` saem sem campos `senha|password|token|secret|authorization|apiKey|credencial|cookie` (viram `[oculto]`) e sem qualquer texto com `cah_ag_`; o corpo ORIGINAL fica guardado só para a execução.
+- **"Antes"** (`config/agenteAntes.js`): para cancelar/estornar/baixar de contas a pagar e `PUT` de conta, o pedido guarda uma foto do alvo (status, valor, atualizadoEm). Se mudou até o dono autorizar, `autorizar` responde **409 `MUDOU_DESDE_O_PEDIDO`** com `{ mudouDesdePedido:true, antes, depois }` e só executa com `confirmarMudanca:true`. A lista/item mostra `mudouDesdePedido` (e `agora`) para PENDENTE.
+- Se a política da função virou `BLOQUEADO` depois do pedido: `autorizar` marca a solicitação RECUSADA (decidida por "Sistema (política mudou)") e responde 409 `AGENTE_POLITICA_BLOQUEADA`; nada executa.
+- **Selo/pendências**: bloco `solicitacoes_luke` em `GET /api/pendencias` (só para admin humano) e `GET /api/agentes/solicitacoes/contagem` para o selo do menu.
+
+**Como a execução funciona (loopback + ticket de uso único).** `autorizar` faz uma chamada HTTP para `127.0.0.1:<porta real do servidor>` (a porta da própria conexão que chegou; `AGENTE_LOOPBACK_PORT` sobrescreve), **fora de qualquer `$transaction`**, pelo pipeline real do Express — mesmas validações, permissões e histórico das telas (o efeito aparece como "Luke (agente)"). A credencial é um **ticket** `Authorization: Bearer cah_ag_exec_<32 bytes base64url>`: só o SHA-256 vai para `execHash`; vale **uma vez**, para **este método + caminho + query exatos**, por **2 minutos**, e **só de conexão local** (endereço remoto 127.0.0.1/::1 **e sem** `X-Forwarded-For`, `Forwarded` ou `X-Real-IP` — a chamada local legítima nunca os envia; com eles → 401). No ramo do ticket o `authMiddleware` carrega o vendedor-agente do banco (permissões VIVAS, ativo, agente, nunca admin); **só o PEDE da função passa** — bloqueio fixo, `BLOQUEADO`, permissões do vendedor e `assertNaoAgente` (WhatsApp, NF-e, SEFAZ…) continuam valendo. Headers enviados: `Idempotency-Key: sol-<id>` e `X-Agente-Solicitacao: <id>`.
+- Resposta 2xx → `AUTORIZADA`; 4xx/5xx → `ERRO` (em 5xx a mensagem avisa "a rota pode ter executado parcialmente: confira a tela de destino antes de pedir de novo"); sem conexão com o servidor (nunca chegou) → `ERRO`; queda/timeout (90 s) no meio → `ERRO_INDETERMINADO`. **Nunca reexecuta sozinho.** `repetir` reexecuta com a MESMA `Idempotency-Key` e ticket novo. **Atenção:** as rotas do sistema ainda NÃO leem `Idempotency-Key`, então repetir uma criação pode duplicar — o dono precisa conferir a tela de destino antes.
+- **Token revogado ou rotacionado** (`DELETE /api/agentes/:id/tokens/:tid`, `admin-exec/agente-token-revogar` e `agente-token-rotacionar` com confirmar, quando algum token é de fato revogado): **todas** as solicitações PENDENTES **do agente** (não só as feitas com aquele token, mesmo que ele tenha outros tokens válidos) são recusadas na hora (`RECUSADA`, "Token do agente revogado/rotacionado — todos os pedidos pendentes DO AGENTE foram recusados", AuditLog `AGENTE_SOLICITACOES_RECUSADAS_AUTO`) e a resposta traz `recusadasAutomaticamente:N`. As `EXECUTANDO` em andamento não são afetadas.
+- Varredura no `workers/scheduler.js` (5 min, só banco, vale para várias instâncias): `PENDENTE` vencida → `EXPIRADA`; `EXECUTANDO` há > 5 min → `ERRO_INDETERMINADO`.
+- Auditoria (`audit_logs`): `AGENTE_REQUISICAO` (como antes, agora com status 202), `AGENTE_SOLICITACAO_CRIADA`, `AGENTE_SOLICITACAO_DECIDIDA` (decisão + quem decidiu) e `AGENTE_SOLICITACAO_EXECUTADA` (estado final). Nunca token, ticket, hash nem corpo.
+- Logs: o logger global mascara também o VALOR de parâmetros de query `senha|password|passwd|token|secret|authorization|api_key` (`?token=***`), além de `mt=` e `cah_ag_`.
+- Ticket na URL → 400 `TOKEN_NA_URL` como qualquer `cah_ag_`. Pedido de função de WhatsApp/NF-e/SEFAZ continua impossível: são bloqueios fixos.
 
 ## Logs: onde o token pode vazar (e o que controlamos)
 

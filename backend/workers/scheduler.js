@@ -566,6 +566,23 @@ function startSchedulers() {
             _impressaoRodando = false;
         }
     }, 60 * 1000);
+
+    // === Solicitações do agente (PR-B) ===
+    // A cada 5 min, direto no banco (vale para qualquer instância): PENDENTE vencida (72 h) vira EXPIRADA e EXECUTANDO há
+    // mais de 5 min (servidor caiu no meio da execução) vira ERRO_INDETERMINADO. NUNCA reexecuta nada sozinho.
+    let _solAgenteRodando = false;
+    setInterval(async () => {
+        if (_solAgenteRodando) return;
+        _solAgenteRodando = true;
+        try {
+            const r = await require('../services/agenteSolicitacaoService').varredura();
+            if (r.expiradas || r.indeterminadas) console.log(`[AgenteSolicitacao] varredura: ${r.expiradas} expirada(s), ${r.indeterminadas} indeterminada(s)`);
+        } catch (err) {
+            console.error('⚠️ Solicitações do agente (varredura) Error:', err.message);
+        } finally {
+            _solAgenteRodando = false;
+        }
+    }, 5 * 60 * 1000);
 }
 
 module.exports = { startSchedulers };

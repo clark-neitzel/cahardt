@@ -1,10 +1,11 @@
 // /api/agente/v1 — as rotas que o PRÓPRIO agente (token cah_ag_) alcança neste PR.
 // A autenticação e a POLÍTICA do agente (authMiddleware -> services/agentePoliticaService.js) são aplicadas na montagem.
-// Só leitura: nenhuma rota daqui escreve nada.
+// Só leitura: nenhuma rota daqui escreve nada (as solicitações só são LIDAS; quem decide é o dono, em /api/agentes/solicitacoes).
 const express = require('express');
 const prisma = require('../config/database');
 const { caminhosPermitidos } = require('../config/agenteAcesso');
 const politica = require('../services/agentePoliticaService');
+const solicitacoes = require('../services/agenteSolicitacaoService');
 
 const router = express.Router();
 
@@ -40,6 +41,12 @@ router.get('/meu-acesso', async (req, res) => {
     } catch (e) {
         console.error('[Agente] meu-acesso: falha ao resumir a política:', e.message);
     }
+    let pendentes = 0;
+    try {
+        pendentes = await solicitacoes.pendentesDoAgente(req.user.id);
+    } catch (e) {
+        console.error('[Agente] meu-acesso: falha ao contar as solicitações:', e.message);
+    }
     res.json({
         id: req.user.id,
         nome: req.user.nome,
@@ -48,8 +55,27 @@ router.get('/meu-acesso', async (req, res) => {
         caminhosPermitidos: caminhosPermitidos(),
         token: await infoTokenEmUso(req.user.agenteTokenId),
         politica: resumo,
-        observacao: 'A política vale por função (MÉTODO + caminho): LIBERADO passa; PEDE exige autorização do dono (ainda indisponível, recusa); BLOQUEADO nega. Função nova nasce BLOQUEADA. Escrita não é liberada nesta versão.',
+        solicitacoes: { pendentes },
+        observacao: 'A política vale por função (MÉTODO + caminho): LIBERADO passa; PEDE guarda o pedido e responde 202 (o dono autoriza ou recusa; acompanhe em /api/agente/v1/solicitacoes/:id); BLOQUEADO nega. Função nova nasce BLOQUEADA. Escrita nunca é liberada direto: sempre passa pela autorização do dono.',
     });
+});
+
+function tratar(res, e, msg) {
+    if (e && e.status) return res.status(e.status).json({ error: e.message });
+    console.error(msg, e && e.message);
+    return res.status(500).json({ error: msg });
+}
+
+// As solicitações do PRÓPRIO agente (nunca as de outro): andamento e resultado de cada pedido de autorização.
+// { status, resultadoStatus, resultado, idsResultado, decididoPorNome, observacaoDecisao, createdAt, expiraEm } (+ id, resumo).
+router.get('/solicitacoes', async (req, res) => {
+    try { res.json(await solicitacoes.listarDoAgente(req.user.id, req.query || {})); }
+    catch (e) { tratar(res, e, 'Erro ao listar as suas solicitações.'); }
+});
+
+router.get('/solicitacoes/:id', async (req, res) => {
+    try { res.json(await solicitacoes.doAgente(req.user.id, req.params.id)); }
+    catch (e) { tratar(res, e, 'Erro ao ler a solicitação.'); }
 });
 
 module.exports = router;

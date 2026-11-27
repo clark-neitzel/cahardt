@@ -90,6 +90,8 @@ Authorization: Bearer <token>
 
 ## Os 11 blocos (`liberacao_inadimplente` entrou em 10/2026; `veiculos_pendencias` em 10/2026; `amostras_sem_carga` em 11/2026)
 
+> **Bloco extra (PR-B, aditivo):** `solicitacoes_luke` — "Solicitações do Luke": pedidos PENDENTES do agente de IA aguardando autorização do dono. **Só aparece para administrador humano** (para os demais o bloco é omitido da resposta). `rotaVerTodos` = `/admin/agentes/solicitacoes`; entra no `totais.total` do admin. Não conta em `vencidas`/`avisos`.
+
 ### `pedidos_aprovar` — Pedidos aguardando aprovação
 - **Fonte:** mesmo critério de `ListaPedidos.jsx` (aba de aprovação) / `pedidoController.aprovarEspecial`
   e `aprovarBonificacao` (`backend/controllers/pedidoController.js`).

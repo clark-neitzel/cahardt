@@ -86,3 +86,6 @@ Os totais do topo:
 
 ## Bloco "Veículos: volta sem foto" (Dia 3 do checklist de veículo)
 Mostra os dias em que o motorista saiu de carro e não mandou as fotos da volta (nem recebeu OK). Clicar abre `/veiculos/pendencias`, onde administrador ou quem está em "Quem libera e dá OK" dá o OK com motivo. Detalhes em *Veículos*.
+
+## Bloco "Solicitações do Luke" (só administrador)
+Mostra os pedidos do agente de IA (o "Luke") que estão **aguardando a sua autorização** — coisas que ele quer fazer no sistema (por exemplo, lançar uma conta a pagar) mas que só acontecem se o dono autorizar. **Só o administrador vê este bloco**; para os demais usuários ele nem aparece. Cada linha mostra o resumo do pedido (o que ele quer fazer) e o nome do agente; clicar (ou "Ver todos") leva para `/admin/agentes/solicitacoes`, onde você confere, **autoriza** (o sistema executa na hora, como o Luke) ou **recusa** (nada é feito). O contador do bloco entra no **Total** do topo — ou seja, para o administrador o número do selo passa a incluir as solicitações pendentes do Luke. Pedido que ninguém decide em 72 horas expira sozinho e some do bloco.

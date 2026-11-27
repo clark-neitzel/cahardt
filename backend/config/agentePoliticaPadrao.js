@@ -5,9 +5,9 @@
 // -> override FAMILIA do dono -> SEED abaixo -> BLOQUEADO. Função/família NOVA nasce BLOQUEADA: nada fica
 // liberado sem alguém decidir.
 //
-// PR-A (este): só LEITURA (GET) é liberada. Escrita (POST/PUT/PATCH/DELETE) em família do seed resolve
-// como PEDE — e PEDE ainda não tem fila de autorização, então o middleware responde 403 (falha segura).
-// Mexer em REGRA de LIBERAR escrita é decisão do PR-D, não daqui.
+// PR-A: só LEITURA (GET) é liberada. Escrita (POST/PUT/PATCH/DELETE) em família do seed resolve como PEDE.
+// PR-B: PEDE tem fila — o middleware NÃO executa, guarda o pedido (agente_solicitacoes) e responde 202; o dono
+// autoriza ou recusa (services/agenteSolicitacaoService.js). Mexer em REGRA de LIBERAR escrita é decisão do PR-D.
 const NIVEIS = ['LIBERADO', 'PEDE', 'BLOQUEADO'];
 const RESTRICAO = { LIBERADO: 0, PEDE: 1, BLOQUEADO: 2 }; // maior = mais restritivo
 const PADRAO_DESCONHECIDO = 'BLOQUEADO';
@@ -89,7 +89,7 @@ function nivelSeed(entrada) {
     if (FAMILIAS_LEITURA.includes(entrada.familia)) {
         if (EXCECOES_LEITURA[entrada.chave]) return { nivel: 'BLOQUEADO', origem: 'padrao' };
         if (entrada.metodo === 'GET' || POST_LEITURA.has(entrada.chave)) return { nivel: 'LIBERADO', origem: 'seed' };
-        return { nivel: 'PEDE', origem: 'seed' }; // escrita em família com política: PEDE (sem fila neste PR => 403)
+        return { nivel: 'PEDE', origem: 'seed' }; // escrita em família com política: PEDE (fila de solicitações: 202)
     }
     return { nivel: PADRAO_DESCONHECIDO, origem: 'padrao' };
 }
