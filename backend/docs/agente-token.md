@@ -16,3 +16,52 @@ Entra na API com `Authorization: Bearer cah_ag_<32 bytes base64url>` — nunca p
 - O token só vale no header `Authorization`. Se vier na URL, o backend responde 400 e o logger do `index.js` grava `cah_ag_***` (máscara em `utils/mascararUrlLog.js`, que decodifica a URL antes de mascarar: cobre `cah%5Fag%5F`, `CAH_AG_` e qualquer parâmetro).
 - **Atenção:** o access log do proxy do EasyPanel (na frente do backend) também grava a query string e NÃO é controlável por este código. Por isso o token nunca deve ir na URL — quem integrar o agente deve usar sempre o header. Se um token aparecer numa URL, trate como vazado: revogue (`DELETE /api/agentes/:id/tokens/:tid`) e gere outro.
 - Freio de falhas: 30 tokens `cah_ag_` inválidos por minuto por IP → 429 sem consultar o banco. Só conta quem manda `cah_ag_` inválido (JWT nunca conta); token que já autenticou nos últimos 5 min não é barrado pelo freio (mas continua sendo validado no banco a cada chamada).
+
+## Criar o agente "Luke" + token SEM sessão de admin no navegador: `POST /api/admin-exec/agente-criar`
+
+Rota de manutenção (header `x-admin-secret`, como as demais do admin-exec). Mesma lógica do roteiro de console `docs/criar-luke-console.js`, no servidor. Idempotente.
+
+Corpo JSON: `copiarPermissoesDe` (**obrigatório**: nome exato ou id de um administrador humano ativo; recusa se não achar, se houver 2+ com o mesmo nome, se for agente ou se não tiver `admin`), `nome` (padrão `Luke (agente)`), `tokenNome` (padrão `luke-bpo`), `validadeDias` (padrão 90, máx. 365), `novoToken` (padrão false), `sobrescrever` (padrão false).
+
+- **Sem `?confirmar=1` = DRY-RUN**: não grava nada e não devolve segredo. Mostra origem, se o agente já existe, quantas permissões seriam copiadas, quais chaves ficam ligadas, token ativo existente e avisos.
+- **Com `?confirmar=1`**: cria (ou reaproveita, ignorando maiúsculas/espaços) o agente; permissões = todas as chaves da origem **exceto `admin` e `Usuario_Externo`**, **mais `Isento_Ponto: true`** (grava também a linha em `vendedor_permissoes_historico`, autor `admin-exec`); se o agente já tem permissões diferentes elas são **mantidas** (aviso) a menos que `sobrescrever:true`; gera o token só se não houver um ativo com o mesmo nome (ou se `novoToken:true`). Agente existente **inativo** → 409. Se o token falhar depois das permissões, a resposta 500 diz isso e repetir a chamada reaproveita tudo (não duplica).
+- O token (`cah_ag_…`) aparece **só nessa resposta** (`"token"`; `null` se não gerou agora). Nunca vai para log, AuditLog nem dry-run. AuditLog: `AGENTE_CRIADO`, `AGENTE_TOKEN_CRIADO`, `AGENTE_CRIAR_ADMIN_EXEC` (usuarioId `admin-exec`; só ids, prefixo e quantidades).
+
+```bash
+# 1) simulação (não grava nada)
+curl -s -X POST "$URL/api/admin-exec/agente-criar" -H "x-admin-secret: $ADMIN_SECRET" \
+  -H 'Content-Type: application/json' -d '{"copiarPermissoesDe":"NOME EXATO DO ADMIN"}'
+
+# 2) executar: a resposta vai para um arquivo temporário protegido (nunca para o terminal/chat)
+umask 077
+TMP=$(mktemp -d)                       # pasta temporária (modo 700)
+ALVO=/caminho/luke.token               # destino final do token
+curl -s -X POST "$URL/api/admin-exec/agente-criar?confirmar=1" -H "x-admin-secret: $ADMIN_SECRET" \
+  -H 'Content-Type: application/json' -d '{"copiarPermissoesDe":"NOME EXATO DO ADMIN"}' > "$TMP/resp.json"
+
+# 3) grava o token SÓ se veio um (flag 'wx' = nunca sobrescreve arquivo existente) e imprime só o resumo, sem token
+ALVO="$ALVO" RESP="$TMP/resp.json" node -e '
+const fs = require("fs");
+let r; try { r = JSON.parse(fs.readFileSync(process.env.RESP, "utf8")); } catch { console.log("Resposta ilegível/vazia — nada gravado."); process.exit(1); }
+let tokenArquivo = "não (sem token novo)";
+if (r.token) {
+  try { fs.writeFileSync(process.env.ALVO, r.token, { mode: 0o600, flag: "wx" }); tokenArquivo = "sim: " + process.env.ALVO; }
+  catch (e) { tokenArquivo = "NÃO GRAVADO (" + e.code + ") — o arquivo de destino já existe? O token novo ficou só na resposta temporária: guarde-o ANTES de apagá-la."; process.exitCode = 2; }
+}
+console.log(JSON.stringify({ ok: r.ok === true, erro: r.error || null, agenteId: r.agente?.id || r.agenteId || null,
+  permissoesCopiadas: r.permissoes?.copiadas ?? null, tokenGerado: !!r.token, prefixo: r.tokenPrefixo || null,
+  expiraEm: r.expiraEm || null, tokenArquivo, avisos: r.avisos || [] }, null, 2));
+'
+chmod 600 "$ALVO" 2>/dev/null
+# 4) só apague a resposta depois de confirmar acima que o token foi gravado (ou que não havia token novo)
+rm -P "$TMP/resp.json"; rmdir "$TMP"
+```
+
+Atenção:
+
+1. **Reexecutar sem `novoToken` NÃO devolve o token** (`token: null`, só o prefixo do existente). O token em claro existe uma única vez, na resposta da criação.
+2. **Se a resposta se perder depois da gravação** (rede caiu, `curl` interrompido), o token novo já está ativo no banco mas ninguém o tem (token órfão). Gere outro com `"novoToken": true` e revogue o órfão (pelo prefixo mostrado na listagem `GET /api/agentes`) com `DELETE /api/agentes/:id/tokens/:tid`.
+3. A resposta temporária contém o token: deixe-a só na pasta temporária (`mktemp -d`) e apague com `rm -P` (macOS; no Linux, `shred -u`) assim que o token estiver no arquivo definitivo.
+4. Limitação conhecida: a trava contra dois "confirmar" simultâneos é em memória (vale para uma instância do backend, que é o caso do EasyPanel); não há advisory lock no banco.
+
+Antes de qualquer teste real: o deploy precisa ter subido (`GET /api/admin-exec/ping` com `deployMarker: "agente-criar-2026-11-27"`).

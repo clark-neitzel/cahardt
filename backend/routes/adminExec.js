@@ -64,7 +64,7 @@ router.get('/ping', (req, res) => {
         ok: true,
         // Marcador de deploy: bumpar a cada mudança de backend que precise de confirmação
         // em produção (não há outro jeito de saber de fora qual versão está no ar).
-        deployMarker: 'caixa-sem-externos-2026-11-27',
+        deployMarker: 'agente-criar-2026-11-27',
         uptimeSegundos: Math.round(process.uptime()),
         timestamp: new Date().toISOString(),
         openaiConfigurada: !!process.env.OPENAI_API_KEY,
@@ -13391,6 +13391,27 @@ router.get('/clientes-cadastro-a-corrigir', async (req, res) => {
     } catch (err) {
         console.error('[clientes-cadastro-a-corrigir]', err);
         res.status(500).json({ error: err.message });
+    }
+});
+
+// POST /api/admin-exec/agente-criar[?confirmar=1]
+// Cria (ou reaproveita) o usuário-agente "Luke (agente)", copia as permissões de um admin humano
+// (sem `admin`/`Usuario_Externo`, com `Isento_Ponto`) e gera o token de API (cah_ag_...).
+// Sem ?confirmar=1 é DRY-RUN (não grava nada, não devolve segredo). Idempotente.
+// O token em claro aparece SÓ na resposta do confirmar — grave direto em arquivo (chmod 600), nunca em chat.
+// Corpo: { copiarPermissoesDe (obrigatório), nome?, tokenNome?, validadeDias?, novoToken?, sobrescrever? }
+// Ver backend/docs/agente-token.md.
+router.post('/agente-criar', async (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    try {
+        const agenteCriarService = require('../services/agenteCriarService');
+        res.json(await agenteCriarService.executar(req.body, { confirmar: req.query.confirmar === '1' }));
+    } catch (err) {
+        if (err && err.status) {
+            return res.status(err.status).json({ error: err.message, ...(err.agenteId ? { agenteId: err.agenteId } : {}) });
+        }
+        console.error('[admin-exec] agente-criar:', err && err.message); // nunca loga corpo/token
+        res.status(500).json({ error: 'Erro ao criar o agente.' });
     }
 });
 
