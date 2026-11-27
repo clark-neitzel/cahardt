@@ -1,0 +1,1053 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Preview · Luke, o assistente do CA-Hardt</title>
+<link rel="icon" href="data:,">
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --primary:#00754A; --primaryDark:#006241; --house:#1E3932; --mint:#d4e9e2; --creme:#f2f0eb;
+  --ouro:#cba258; --tinta:rgba(0,0,0,.87); --g9:#111827; --g7:#374151; --g6:#4b5563; --g5:#6b7280;
+  --g3:#d1d5db; --g2:#e5e7eb; --g1:#f3f4f6; --g05:#f9fafb;
+  --pelo:#1d1a18; --pelo2:#322b26; --caramelo:#c8782f; --caramelo2:#a8621f;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--creme);color:var(--tinta);font-family:Manrope,"SF Pro Text",system-ui,sans-serif;
+  letter-spacing:-.01em;font-variant-numeric:tabular-nums;line-height:1.45;overflow-x:hidden}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none;padding:0;letter-spacing:inherit}
+input{font:inherit;letter-spacing:inherit}
+h1,h2,h3,p{margin:0}
+.so-pc{display:none!important}
+body.pc .so-pc{display:revert!important}
+body.pc .so-cel{display:none!important}
+[hidden]{display:none!important}
+
+/* ───────── Barra do preview ───────── */
+.barra{position:sticky;top:0;z-index:60;background:var(--house);color:#fff;padding:10px 12px;
+  display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}
+.barra-t{font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px;min-width:0}
+.barra-t small{font-weight:500;opacity:.75;font-size:12px}
+.seg{display:inline-flex;background:rgba(255,255,255,.12);border-radius:999px;padding:3px}
+.seg button{min-height:38px;padding:0 14px;border-radius:999px;font-size:13px;font-weight:700;color:#fff;display:inline-flex;align-items:center;gap:6px}
+.seg button[aria-pressed="true"]{background:#fff;color:var(--house)}
+.seg button:disabled{opacity:.4;cursor:not-allowed}
+.seg svg{width:16px;height:16px}
+.seg.claro{background:var(--g1)}
+.seg.claro button{color:var(--g6);min-height:36px;font-size:12.5px}
+.seg.claro button[aria-pressed="true"]{background:var(--primary);color:#fff}
+
+/* ───────── Coluna ───────── */
+.coluna{width:375px;max-width:100%;margin:0 auto;padding:16px 12px 56px}
+body.pc .coluna{width:auto;max-width:1180px;padding:28px 24px 80px}
+.hero{margin-bottom:18px}
+.hero h1{font-size:22px;font-weight:800;color:var(--house);line-height:1.2}
+.hero p{font-size:14px;color:var(--g6);margin-top:6px}
+body.pc .hero h1{font-size:30px}
+body.pc .hero p{font-size:15px;max-width:720px}
+.secao{margin-top:34px}
+.secao-cab{margin-bottom:12px}
+.rot{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.14em;color:var(--primary)}
+.secao-cab h2{font-size:19px;font-weight:800;color:var(--g9);margin-top:2px}
+.secao-cab p{font-size:13.5px;color:var(--g6);margin-top:4px}
+body.pc .secao-cab h2{font-size:22px}
+.card{background:#fff;border:1px solid var(--g2);border-radius:12px;box-shadow:0 1px 2px rgba(0,0,0,.05)}
+
+/* ───────── Controles do palco ───────── */
+.controles{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+.btn-sec{min-height:40px;padding:0 14px;border-radius:999px;border:1px solid var(--primary);background:#fff;color:var(--primary);font-size:12.5px;font-weight:700}
+.btn-sec[aria-pressed="true"]{background:var(--mint)}
+.dica{font-size:12.5px;color:var(--g5);margin-top:10px}
+
+/* ───────── Palco (tela simulada) ───────── */
+.palco{position:relative;overflow:hidden;background:var(--creme);width:100%;height:700px;border-radius:26px;
+  border:1px solid var(--g3)}
+@media (min-width:430px){ body.cel .palco{box-shadow:0 0 0 9px #18181b,0 18px 40px rgba(0,0,0,.25);margin:12px 0 22px} }
+body.pc .palco{height:780px;border-radius:16px;box-shadow:0 12px 32px rgba(30,57,50,.14)}
+.fundo{position:absolute;inset:0;display:flex;pointer-events:none;user-select:none}
+.fundo .lado{width:196px;background:var(--house);padding:18px 14px;flex-shrink:0}
+.fundo .logo{color:#fff;font-weight:800;font-size:16px;margin-bottom:22px}
+.fundo .item{display:flex;align-items:center;gap:10px;color:rgba(255,255,255,.72);font-size:13px;font-weight:600;padding:9px 10px;border-radius:10px}
+.fundo .item i{width:16px;height:16px;border-radius:5px;background:rgba(255,255,255,.28);flex-shrink:0}
+.fundo .item.at{background:rgba(255,255,255,.12);color:#fff}
+.fundo .meio{flex:1;min-width:0;display:flex;flex-direction:column}
+.fundo .topo{background:#fff;border-bottom:1px solid var(--g2);padding:12px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+body.pc .fundo .topo{padding:18px 24px}
+.fundo .tit{display:flex;align-items:center;gap:8px;font-weight:800;font-size:16px;color:var(--g9)}
+body.pc .fundo .tit{font-size:22px}
+.fundo .chipi{width:30px;height:30px;border-radius:8px;background:#fef3c7;display:block}
+.fundo .falso-btn{background:var(--primary);color:#fff;font-size:12px;font-weight:700;border-radius:999px;padding:7px 12px}
+.fundo .conteudo{padding:12px;opacity:.55;display:flex;flex-direction:column;gap:10px}
+body.pc .fundo .conteudo{padding:24px;gap:16px}
+.fundo .kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+body.pc .fundo .kpis{grid-template-columns:repeat(4,1fr);gap:16px}
+.fundo .kpi{padding:12px}
+.fundo .kpi b{display:block;font-size:17px;color:var(--g9)}
+.fundo .kpi span{font-size:11px;color:var(--g5);font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.fundo .lin{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 16px;border-bottom:1px solid var(--g1);font-size:13px;color:var(--g7)}
+.fundo .lin:last-child{border-bottom:0}
+.fundo .lin em{font-style:normal;font-size:11px;font-weight:700;border-radius:999px;padding:3px 9px}
+.fundo .lin span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fundo .mcard{padding:13px}
+.fundo .mcard .l1{display:flex;justify-content:space-between;gap:8px;font-weight:700;font-size:13.5px;color:var(--g9)}
+.fundo .mcard .l2{font-size:12.5px;color:var(--g5);margin-top:4px;display:flex;justify-content:space-between}
+
+/* ───────── O cachorro (SVG) ───────── */
+.luke{display:block;width:100%;height:auto;overflow:visible}
+.luke *{transform-box:view-box}
+.lk-vira{transform-origin:68px 60px}
+.lk-tudo{transform-origin:68px 73px}
+.lk-pose-corpo,.lk-pose-cabeca{transition:transform .55s cubic-bezier(.3,1.2,.5,1)}
+.lk-resp{transform-origin:70px 59px}
+.lk-rabo{transform-origin:102px 45px}
+.lk-cabeca{transform-origin:40px 40px}
+.lk-orelha{transform-origin:35px 19px}
+.lk-olho{transform-origin:25.5px 26.5px}
+.lk-pf{transform-origin:46px 52px}
+.lk-olho-f,.lk-olho-feliz,.lk-lingua,.lk-zzz,.lk-pontos,.lk-coracao{opacity:0}
+.lk-zzz text,.lk-pontos circle,.lk-coracao{transform-box:fill-box;transform-origin:center}
+
+@keyframes lk-resp{0%,100%{transform:scaleY(1)}50%{transform:scaleY(1.035)}}
+@keyframes lk-rabo{0%,100%{transform:rotate(-14deg)}50%{transform:rotate(16deg)}}
+@keyframes lk-pisca{0%,91%,100%{transform:scaleY(1)}95%{transform:scaleY(.1)}}
+@keyframes lk-olha{0%,100%{transform:rotate(0)}12%,28%{transform:rotate(-11deg)}40%,58%{transform:rotate(9deg)}70%{transform:rotate(0)}}
+@keyframes lk-vira{0%,44%{transform:scaleX(1)}50%,88%{transform:scaleX(-1)}94%,100%{transform:scaleX(1)}}
+@keyframes lk-estica{0%,15%,85%,100%{transform:rotate(0) scaleX(1)}35%,65%{transform:rotate(-8deg) scaleX(1.05)}}
+@keyframes lk-estica-pf{0%,15%,85%,100%{transform:scaleY(1)}35%,65%{transform:scaleY(.6)}}
+@keyframes lk-estica-cab{0%,15%,85%,100%{transform:rotate(0)}35%,65%{transform:rotate(14deg)}}
+@keyframes lk-some{0%,22%,78%,100%{opacity:1}30%,70%{opacity:0}}
+@keyframes lk-surge{0%,22%,78%,100%{opacity:0}30%,70%{opacity:1}}
+@keyframes lk-dorme{0%,100%{transform:scaleY(1)}50%{transform:scaleY(1.06)}}
+@keyframes lk-z{0%{opacity:0;transform:translate(0,0) scale(.6)}20%{opacity:1}100%{opacity:0;transform:translate(9px,-20px) scale(1.15)}}
+@keyframes lk-pulo{0%,78%,100%{transform:translateY(0) scale(1,1)}10%{transform:translateY(0) scale(1.04,.93)}28%{transform:translateY(-11px) scale(.98,1.03)}46%{transform:translateY(0) scale(1.04,.95)}58%{transform:translateY(-5px) scale(1,1)}70%{transform:translateY(0) scale(1.02,.98)}}
+@keyframes lk-orelha{0%,100%{transform:rotate(0)}50%{transform:rotate(-15deg)}}
+@keyframes lk-pensa{0%,100%{transform:rotate(8deg)}50%{transform:rotate(13deg)}}
+@keyframes lk-ponto{0%,60%,100%{opacity:.25;transform:translateY(0)}30%{opacity:1;transform:translateY(-3px)}}
+@keyframes lk-feliz{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+@keyframes lk-coracao{0%{opacity:0;transform:translateY(4px) scale(.5)}25%{opacity:1}100%{opacity:0;transform:translateY(-13px) scale(1.15)}}
+
+/* parado */
+.luke .lk-resp{animation:lk-resp 2.6s ease-in-out infinite}
+.luke .lk-rabo{animation:lk-rabo .9s ease-in-out infinite}
+.luke .lk-olho{animation:lk-pisca 4.2s infinite}
+/* olhando / virando */
+.is-olhando .lk-cabeca{animation:lk-olha 3.5s ease-in-out infinite}
+.is-olhando .lk-vira{animation:lk-vira 7s cubic-bezier(.6,0,.4,1) infinite}
+/* espreguiçando */
+.is-preguica .lk-tudo{animation:lk-estica 4s ease-in-out infinite;transform-origin:95px 73px}
+.is-preguica .lk-pf{animation:lk-estica-pf 4s ease-in-out infinite}
+.is-preguica .lk-cabeca{animation:lk-estica-cab 4s ease-in-out infinite}
+.is-preguica .lk-olho{animation:lk-some 4s infinite}
+.is-preguica .lk-olho-f{animation:lk-surge 4s infinite}
+.is-preguica .lk-rabo{animation-duration:2s}
+/* dormindo */
+.is-dormindo .lk-pose-corpo{transform:translateY(13px)}
+.is-dormindo .lk-pose-cabeca{transform:translate(-3px,12px) rotate(-4deg)}
+.is-dormindo .lk-resp{animation:lk-dorme 3.4s ease-in-out infinite}
+.is-dormindo .lk-rabo{animation:none;transform:rotate(38deg)}
+.is-dormindo .lk-olho{animation:none;opacity:0}
+.is-dormindo .lk-olho-f{opacity:1}
+.is-dormindo .lk-zzz{opacity:1}
+.is-dormindo .lk-zzz text{animation:lk-z 3s ease-out infinite}
+.is-dormindo .lk-zzz text:nth-child(2){animation-delay:1s}
+.is-dormindo .lk-zzz text:nth-child(3){animation-delay:2s}
+/* novidade */
+.is-novidade .lk-tudo{animation:lk-pulo 1.5s ease-in-out infinite}
+.is-novidade .lk-rabo{animation-duration:.28s}
+.is-novidade .lk-orelha{animation:lk-orelha .75s ease-in-out infinite}
+.is-novidade .lk-lingua{opacity:1}
+/* pensando */
+.is-pensando .lk-cabeca{animation:lk-pensa 2.4s ease-in-out infinite}
+.is-pensando .lk-pupila{transform:translate(.9px,-1.2px)}
+.is-pensando .lk-rabo{animation-duration:2.2s}
+.is-pensando .lk-pontos{opacity:1}
+.is-pensando .lk-pontos circle{animation:lk-ponto 1.2s infinite}
+.is-pensando .lk-pontos circle:nth-child(2){animation-delay:.18s}
+.is-pensando .lk-pontos circle:nth-child(3){animation-delay:.36s}
+/* feliz */
+.is-feliz .lk-tudo{animation:lk-feliz .55s ease-in-out infinite}
+.is-feliz .lk-rabo{animation-duration:.25s}
+.is-feliz .lk-olho{animation:none;opacity:0}
+.is-feliz .lk-olho-feliz,.is-feliz .lk-lingua{opacity:1}
+.is-feliz .lk-coracao{animation:lk-coracao 1.6s ease-out infinite}
+
+/* ───────── Luke no canto ───────── */
+.luke-btn{position:absolute;right:12px;bottom:16px;z-index:20;width:76px;min-height:52px;padding:2px;display:block;
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation}
+body.pc .luke-btn{width:92px;right:18px;bottom:14px}
+.luke-btn:focus-visible{outline:2px solid var(--primary);outline-offset:4px;border-radius:14px}
+.bolinha{position:absolute;top:-4px;right:0;min-width:20px;height:20px;padding:0 5px;border-radius:999px;background:#dc2626;color:#fff;
+  font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid var(--creme)}
+@keyframes pop{from{opacity:0;transform:translateY(8px) scale(.96)}to{opacity:1;transform:none}}
+@keyframes sobe{from{transform:translateY(100%)}to{transform:none}}
+@keyframes pisca{0%,100%{opacity:.3}50%{opacity:1}}
+
+.balao{position:absolute;right:12px;bottom:80px;z-index:19;width:250px;max-width:calc(100% - 24px);background:#fff;border:1px solid var(--g2);
+  border-radius:16px 16px 4px 16px;box-shadow:0 10px 28px rgba(0,0,0,.16);padding:12px 12px 12px 14px;animation:pop .25s ease-out}
+body.pc .balao{right:22px;bottom:86px;width:272px}
+.balao .topo{display:flex;align-items:center;gap:6px;margin-bottom:4px}
+.selo-nov{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--primaryDark);background:var(--mint);padding:3px 8px;border-radius:999px}
+.balao .mais{font-size:11px;color:var(--g5);font-weight:600}
+.balao .x{margin-left:auto;width:32px;height:32px;margin-top:-6px;margin-right:-6px;border-radius:999px;color:var(--g5);display:flex;align-items:center;justify-content:center}
+.balao .x:hover{background:var(--g1)}
+.balao h3{font-size:14px;font-weight:800;color:var(--g9);line-height:1.25}
+.balao p{font-size:12.5px;color:var(--g6);margin-top:3px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.balao .ver{margin-top:10px;min-height:40px;width:100%;border-radius:999px;background:var(--primary);color:#fff;font-size:13px;font-weight:700}
+.balao .ver:hover{background:var(--primaryDark)}
+
+/* ───────── Chat ───────── */
+.chat{position:absolute;inset:0;z-index:30;background:#fff;display:flex;flex-direction:column;overflow:hidden;animation:sobe .28s cubic-bezier(.2,.9,.3,1)}
+body.cel .palco.teclado-on .chat{bottom:232px}
+body.pc .chat{inset:auto 18px 88px auto;width:400px;height:620px;max-height:calc(100% - 104px);border-radius:16px;border:1px solid var(--g2);
+  box-shadow:0 20px 50px rgba(0,0,0,.22);animation:pop .2s ease-out}
+.chat-cab{background:var(--house);color:#fff;display:flex;align-items:center;gap:8px;padding:8px 8px;flex-shrink:0}
+body.pc .chat-cab{padding:10px 10px 10px 14px}
+.ic-btn{width:44px;height:44px;border-radius:999px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:inherit}
+.ic-btn svg{width:22px;height:22px}
+.chat-cab .ic-btn:hover{background:rgba(255,255,255,.12)}
+.avatar{width:44px;height:44px;border-radius:999px;background:var(--mint);flex-shrink:0;overflow:hidden;display:flex;align-items:flex-end;justify-content:center}
+.avatar.p{width:28px;height:28px}
+.chat-cab .quem{flex:1;min-width:0}
+.chat-cab .quem b{display:block;font-size:16px;font-weight:800;line-height:1.1}
+.chat-cab .quem span{font-size:12px;opacity:.85;display:flex;align-items:center;gap:5px}
+.chat-cab .quem span i{width:7px;height:7px;border-radius:50%;background:#4ade80;display:block}
+.chat-cab .quem span.pens i{background:var(--ouro);animation:pisca 1s infinite}
+.abas{display:flex;gap:4px;padding:8px 10px;border-bottom:1px solid var(--g2);flex-shrink:0;background:#fff}
+.abas button{flex:1 1 auto;min-height:40px;padding:0 8px;border-radius:999px;font-size:12.5px;font-weight:700;color:var(--g6);white-space:nowrap}
+.abas button[aria-selected="true"]{background:var(--mint);color:var(--primaryDark)}
+.abas .n{display:inline-block;min-width:17px;padding:0 4px;border-radius:999px;background:#dc2626;color:#fff;font-size:10.5px;line-height:17px;margin-left:3px}
+.painel{flex:1;min-height:0;display:flex;flex-direction:column}
+.msgs{flex:1;min-height:0;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px;background:#faf9f6;-webkit-overflow-scrolling:touch}
+.dia{align-self:center;font-size:11px;font-weight:700;color:var(--g5);background:#fff;border:1px solid var(--g2);border-radius:999px;padding:3px 10px}
+.m{display:flex;gap:8px;align-items:flex-end;max-width:100%}
+.m.eu{justify-content:flex-end}
+.m .col{max-width:82%;min-width:0;display:flex;flex-direction:column;gap:6px}
+.m.eu .col{align-items:flex-end}
+.bolha{padding:9px 12px;font-size:14px;line-height:1.4;border-radius:16px 16px 16px 4px;background:#fff;border:1px solid var(--g2);color:var(--g7);overflow-wrap:anywhere}
+.m.eu .bolha{background:var(--primary);border-color:var(--primary);color:#fff;border-radius:16px 16px 4px 16px}
+.bolha ol{margin:6px 0 0;padding-left:18px}
+.bolha li{margin-bottom:3px}
+.bolha.aviso{background:#fffbeb;border-color:#fde68a;color:#92400e}
+.status{font-size:11px;color:var(--g5);font-weight:600}
+.digit{display:flex;gap:4px;padding:12px 14px}
+.digit i{width:6px;height:6px;border-radius:50%;background:var(--g5);animation:pisca 1s infinite}
+.digit i:nth-child(2){animation-delay:.15s}.digit i:nth-child(3){animation-delay:.3s}
+.acao{min-height:44px;padding:0 14px;border-radius:999px;background:#fff;border:1px solid var(--primary);color:var(--primary);font-size:13px;font-weight:700;display:inline-flex;align-items:center;gap:6px}
+.acao:hover{background:var(--mint)}
+.acao svg{width:16px;height:16px}
+.comprov{width:128px;background:#fff;border-radius:10px;padding:10px;color:var(--g7);font-size:10px;line-height:1.35;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.comprov b{display:block;font-size:13px;color:var(--g9)}
+.comprov u{display:block;height:4px;border-radius:2px;background:var(--g2);margin-top:5px;text-decoration:none}
+.comprov .ok{color:var(--primary);font-weight:800;font-size:9.5px;text-transform:uppercase;letter-spacing:.06em}
+.foto{padding:5px;border-radius:14px 14px 4px 14px;background:var(--primary)}
+.sol{background:#fff;border:1px solid var(--g2);border-radius:12px;width:100%;min-width:230px;overflow:hidden}
+.sol .t{display:flex;align-items:center;gap:6px;padding:9px 12px;border-bottom:1px solid var(--g1);font-size:10.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--g6)}
+.sol .t svg{width:14px;height:14px;color:var(--primary)}
+.sol .c{padding:10px 12px}
+.sol .c b{font-size:14px;color:var(--g9);display:block}
+.sol .v{font-size:20px;font-weight:800;color:var(--g9);margin:2px 0}
+.sol .d{font-size:12.5px;color:var(--g6)}
+.badge{display:inline-block;padding:4px 9px;font-size:11.5px;font-weight:700;border-radius:999px}
+.b-ambar{background:#fef3c7;color:#b45309}.b-verde{background:#dcfce7;color:#166534}.b-verm{background:#fee2e2;color:#b91c1c}
+.b-cinza{background:var(--g1);color:var(--g7)}.b-azul{background:#dbeafe;color:#1e40af}
+.sol .st{margin-top:8px}
+.sol .bts{display:flex;flex-wrap:wrap;gap:6px;padding:0 12px 12px}
+.sol .bts button{min-height:44px;padding:0 14px;border-radius:999px;font-size:13px;font-weight:700;flex:1 1 auto}
+.b-pri{background:var(--primary);color:#fff}.b-pri:hover{background:var(--primaryDark)}
+.b-rec{background:#fff;border:1px solid #fca5a5;color:#b91c1c}
+.b-out{background:#fff;border:1px solid var(--primary);color:var(--primary)}
+.sol .nota{font-size:12px;color:var(--g5);padding:0 12px 12px}
+.lemb{display:flex;gap:10px;align-items:center;background:#fff;border:1px solid var(--g2);border-left:4px solid var(--ouro);border-radius:12px;padding:10px 12px;font-size:13px;color:var(--g7)}
+.lemb b{display:block;color:var(--g9);font-size:13.5px}
+.lemb .rel{width:34px;height:34px;border-radius:10px;background:#fef3c7;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+
+.compor{flex-shrink:0;border-top:1px solid var(--g2);background:#fff;padding:8px 10px calc(8px + env(safe-area-inset-bottom))}
+.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;scrollbar-width:none;margin:0 -10px;padding-left:10px;padding-right:10px}
+.chips::-webkit-scrollbar{display:none}
+.chips button{flex-shrink:0;min-height:44px;padding:0 12px;border-radius:999px;border:1px solid var(--g2);background:#fff;font-size:12.5px;font-weight:600;color:var(--g7);white-space:nowrap}
+.chips button:hover{border-color:var(--primary);color:var(--primary)}
+.anexo{display:flex;align-items:center;gap:8px;background:var(--g05);border:1px solid var(--g2);border-radius:12px;padding:6px 4px 6px 8px;margin-bottom:8px}
+.anexo .pdf{width:34px;height:40px;border-radius:6px;background:#fee2e2;color:#b91c1c;font-size:9.5px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.anexo .nm{flex:1;min-width:0;font-size:12.5px;color:var(--g7)}
+.anexo .nm b{display:block;font-size:13px;color:var(--g9);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.anexo .ic-btn{color:var(--g5)}
+.anexo .ic-btn:hover{background:var(--g2)}
+.linha-txt{display:flex;gap:8px;align-items:center}
+.linha-txt input{flex:1;min-width:0;height:46px;border-radius:999px;border:1px solid var(--g3);background:var(--g05);padding:0 16px;font-size:16px;color:var(--g9);outline:none}
+.linha-txt input:focus{border-color:var(--primary);background:#fff}
+.enviar{width:46px;height:46px;border-radius:999px;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.enviar:hover{background:var(--primaryDark)}
+.enviar svg{width:20px;height:20px}
+.linha-ic{display:flex;align-items:center;gap:0;margin-top:2px;color:var(--g6)}
+.linha-ic .ic-btn:hover{background:var(--g1);color:var(--primary)}
+.limite{margin-left:auto;text-align:right;font-size:11px;color:var(--g5);font-weight:600;padding-right:4px}
+.limite .tr{display:block;width:104px;height:4px;border-radius:2px;background:var(--g2);margin-top:4px;margin-left:auto;overflow:hidden}
+.limite .tr i{display:block;height:100%;width:100%;background:var(--primary);transform-origin:left;transform:scaleX(.4)}
+
+.rolagem{flex:1;min-height:0;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px;background:#faf9f6}
+.nov{padding:13px 14px}
+.nov .l{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.nov h3{font-size:14.5px;font-weight:800;color:var(--g9);line-height:1.25}
+.nov time{font-size:11.5px;color:var(--g5);font-weight:600;white-space:nowrap}
+.nov p{font-size:13px;color:var(--g6);margin-top:4px}
+.nov .acao{margin-top:10px}
+.nov.nova{border-color:var(--primary)}
+.filtros{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;flex-shrink:0;padding:10px 12px;background:#fff;border-bottom:1px solid var(--g2)}
+.filtros::-webkit-scrollbar{display:none}
+.filtros button{flex-shrink:0;min-height:44px;padding:0 13px;border-radius:999px;border:1px solid var(--g2);font-size:12.5px;font-weight:700;color:var(--g6);background:#fff}
+.filtros button[aria-pressed="true"]{background:var(--house);border-color:var(--house);color:#fff}
+.conv{padding:12px;display:flex;gap:10px;align-items:flex-start}
+.conv .ini{width:38px;height:38px;border-radius:999px;background:var(--mint);color:var(--primaryDark);font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.conv .tx{flex:1;min-width:0}
+.conv .l1{display:flex;justify-content:space-between;gap:8px}
+.conv .l1 b{font-size:14px;color:var(--g9);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.conv .l1 time{font-size:11.5px;color:var(--g5);font-weight:600;flex-shrink:0}
+.conv .ult{font-size:13px;color:var(--g6);margin-top:1px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.conv .sel{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.leitura{font-size:12px;color:var(--g5);text-align:center;padding:4px 8px 8px}
+
+.teclado{position:absolute;left:0;right:0;bottom:0;height:232px;z-index:31;background:#d1d5db;padding:8px 4px;display:none;flex-direction:column;gap:7px}
+body.cel .palco.teclado-on .teclado{display:flex}
+.teclado div{display:flex;gap:5px;justify-content:center;flex:1}
+.teclado span{flex:1;max-width:34px;background:#fff;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;color:#111;font-weight:500}
+.teclado .esp{max-width:190px;flex:5}.teclado .lg{max-width:80px;flex:2;background:#aeb4bd;font-size:12px}
+
+/* ───────── Galeria ───────── */
+.galeria{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+body.pc .galeria{grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+.est{overflow:hidden;display:flex;flex-direction:column}
+.est .chao{background:linear-gradient(#f7f5f0 0 72%,#e9e5dc 72% 100%);padding:22px 10px 8px;display:flex;justify-content:center}
+.est .chao > span{display:block;width:112px;max-width:100%}
+body.pc .est .chao{padding:30px 10px 12px}
+body.pc .est .chao > span{width:150px}
+.est .leg{padding:10px 12px 12px}
+.est .leg b{font-size:13.5px;color:var(--g9);display:block;line-height:1.25}
+.est .leg span{font-size:12px;color:var(--g6);display:block;margin-top:3px}
+.est .qd{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--primary);margin-bottom:3px;display:block}
+.tamanhos{margin-top:12px;padding:14px;display:flex;align-items:flex-end;gap:18px;flex-wrap:wrap}
+.tamanhos figure{margin:0;text-align:center;font-size:11.5px;color:var(--g5);font-weight:600}
+.tamanhos p{font-size:13px;color:var(--g6);flex:1 1 180px;align-self:center}
+
+/* ───────── Permissões ───────── */
+.perm-grid{display:grid;grid-template-columns:1fr;gap:12px}
+body.pc .perm-grid{grid-template-columns:1.2fr 1fr;gap:16px;align-items:start}
+.card-cab{display:flex;align-items:center;gap:8px;padding:13px 16px;border-bottom:1px solid var(--g1);font-size:11.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--g6)}
+.card-cab svg{width:16px;height:16px;color:var(--primary);flex-shrink:0}
+.card-corpo{padding:14px 16px}
+.usuario{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.usuario .ini{width:40px;height:40px;border-radius:999px;background:var(--mint);color:var(--primaryDark);font-weight:800;display:flex;align-items:center;justify-content:center}
+.usuario b{display:block;font-size:15px;color:var(--g9)}
+.usuario span{font-size:12.5px;color:var(--g5)}
+.interr{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid var(--g1);width:100%;text-align:left;min-height:56px}
+.interr b{display:block;font-size:14px;color:var(--g9)}
+.interr small{display:block;font-size:12.5px;color:var(--g6);margin-top:2px}
+.chave{width:48px;height:28px;border-radius:999px;background:var(--g3);flex-shrink:0;position:relative}
+.chave::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform .18s}
+.interr[aria-checked="true"] .chave{background:var(--primary)}
+.interr[aria-checked="true"] .chave::after{transform:translateX(20px)}
+.campo{padding-top:12px;border-top:1px solid var(--g1)}
+.campo label{font-size:14px;font-weight:600;color:var(--g7);display:block;margin-bottom:6px}
+.campo input{width:120px;height:44px;border:1px solid var(--g3);border-radius:6px;padding:0 12px;font-size:16px;outline:none}
+.campo input:focus{border-color:var(--primary);box-shadow:0 0 0 1px var(--primary)}
+.campo small{display:block;font-size:12.5px;color:var(--g5);margin-top:6px}
+.salvar{margin-top:14px;min-height:44px;padding:0 20px;border-radius:999px;background:var(--primary);color:#fff;font-weight:700;font-size:14px}
+.kp{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:14px}
+.kp div{background:var(--g05);border-radius:10px;padding:10px 12px}
+.kp b{display:block;font-size:20px;font-weight:800;color:var(--g9)}
+.kp span{font-size:11px;font-weight:700;color:var(--g5);text-transform:uppercase;letter-spacing:.06em}
+.rank{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:6px 10px;align-items:center;font-size:13px;color:var(--g7)}
+.rank .pos{font-weight:800;color:var(--g5);width:16px}
+.rank .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rank .qt{font-weight:700;color:var(--g9);text-align:right}
+.rank .br{grid-column:2 / 4;height:6px;border-radius:3px;background:var(--g1);overflow:hidden;margin:-2px 0 6px}
+.rank .br i{display:block;height:100%;background:var(--primary);border-radius:3px}
+.lista-simples{margin:0;padding-left:18px;font-size:13.5px;color:var(--g6)}
+.lista-simples li{margin-bottom:6px}
+
+/* ───────── Ajustes: duas abas, novidade no topo, bandeja, limite ───────── */
+.abas{background:var(--house);border-bottom:0;padding:0 10px 10px;gap:6px}
+.abas button{background:rgba(255,255,255,.12);color:rgba(255,255,255,.85);min-height:44px;font-size:13.5px;flex:1 1 0}
+.abas button[aria-selected="true"]{background:#fff;color:var(--house)}
+#abas[hidden] + .nov-topo{margin-top:0}
+.sino{position:relative}
+.sino i{position:absolute;top:5px;right:4px;min-width:17px;height:17px;padding:0 4px;border-radius:999px;background:#dc2626;color:#fff;font-size:10.5px;font-weight:800;font-style:normal;line-height:17px;text-align:center}
+.nov-topo{flex-shrink:0;display:flex;align-items:center;gap:8px;background:var(--mint);padding:8px 4px 8px 12px}
+.nov-topo .tx{flex:1;min-width:0;font-size:12.5px;color:var(--g7)}
+.nov-topo .tx b{display:block;font-size:13.5px;color:var(--house);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nov-topo .tx > span:last-child{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nov-topo .selo-nov{background:#fff;display:inline-block;margin-bottom:2px}
+.nov-topo .acao{flex-shrink:0;background:var(--primary);color:#fff;border-color:var(--primary)}
+.nov-topo .ic-btn{color:var(--house)}
+.nov-topo .ic-btn svg{width:18px;height:18px}
+.sub{flex-shrink:0;font-size:12.5px;color:var(--g6);padding:8px 12px;background:#fff;border-bottom:1px solid var(--g2)}
+.sub b{color:var(--g9)}
+.sub.voltar{padding:2px 6px}
+.sub.voltar button{min-height:44px;padding:0 8px;display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:var(--primary)}
+.link-pedido{min-height:44px;text-align:left;font-size:12.5px;color:var(--g6);padding:0 2px;display:none}
+.link-pedido b{color:var(--primary);text-decoration:underline;text-underline-offset:2px}
+.com-chat .link-pedido{display:block}
+.bandeja{display:flex;gap:8px;align-items:center;overflow-x:auto;scrollbar-width:none;padding-bottom:8px}
+.bandeja::-webkit-scrollbar{display:none}
+.anx{flex-shrink:0;display:flex;align-items:center;gap:6px;background:var(--g05);border:1px solid var(--g2);border-radius:12px;padding:2px 0 2px 5px;max-width:190px}
+.anx .mini{width:36px;height:36px;border-radius:8px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:9.5px;font-weight:800}
+.anx .mini.pdf{background:#fee2e2;color:#b91c1c}
+.anx .mini.foto{background:#fff;border:1px solid var(--g2)}
+.anx .mini.foto i{display:block;width:20px;height:3px;border-radius:2px;background:var(--g3)}
+.anx .mini.foto i:first-child{background:var(--primary);width:14px}
+.anx .nm{font-size:12.5px;font-weight:600;color:var(--g7);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.anx button{width:44px;height:44px;border-radius:999px;color:var(--g5);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.anx button:hover{background:var(--g2)}
+.bandeja .cont{flex-shrink:0;font-size:11.5px;font-weight:700;color:var(--g5)}
+.ic-btn.cam{background:var(--mint);color:var(--primaryDark);margin-right:4px}
+.ic-btn.embreve{opacity:.35;cursor:default}
+.limite{color:#b45309}
+.limite .tr i{background:#d97706;transform:scaleX(.8)}
+.guarda{background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:10px;margin-bottom:8px;font-size:13px;color:#92400e;font-weight:600}
+.guarda div{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.guarda button{min-height:44px;padding:0 14px;border-radius:999px;font-size:13px;font-weight:700;flex:1 1 auto}
+.cheio{flex-shrink:0;border-top:1px solid var(--g2);background:#fffbeb;padding:14px 14px calc(14px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:4px;align-items:flex-start}
+.cheio b{font-size:14.5px;color:#92400e}
+.cheio span{font-size:13px;color:var(--g7)}
+.cheio button{margin-top:8px;min-height:44px;padding:0 16px;border-radius:999px;font-size:13px;font-weight:700}
+body.cel .palco.teclado-on .nov-topo,body.cel .palco.teclado-on .sub{display:none}
+.limite{white-space:nowrap}
+.barra-acao{margin-top:auto;background:#fff;border-top:1px solid var(--g2);padding:12px 16px;display:flex;gap:12px;opacity:.75}
+.barra-acao span{flex:1;text-align:center;border:1px solid var(--primary);color:var(--primary);border-radius:999px;padding:11px 0;font-size:13px;font-weight:700}
+.barra-acao span.p{background:var(--primary);color:#fff}
+body.cel .luke-btn{bottom:84px}
+body.cel .balao{bottom:146px}
+.controles .perfis{flex-wrap:wrap;border-radius:20px}
+.adm{overflow:hidden}
+.adm .filtros{border-bottom:1px solid var(--g1)}
+.adm-lista{display:grid;grid-template-columns:1fr;gap:10px;padding:12px}
+body.pc .adm-lista{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:16px}
+.adm-lista .conv{box-shadow:none}
+
+@media (prefers-reduced-motion:reduce){
+  .luke *,.digit i,.chat,.balao,.chat-cab .quem span i{animation:none!important;transition:none!important}
+}
+</style>
+</head>
+<body class="cel">
+
+<div class="barra">
+  <div class="barra-t"><span>Preview · Luke</span><small class="so-pc">só visual, nada aqui mexe no sistema</small></div>
+  <div class="seg" role="group" aria-label="Tamanho da tela">
+    <button id="mPc" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>Computador</button>
+    <button id="mCel" aria-pressed="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="2.5"/><path d="M11 18h2"/></svg>Celular</button>
+  </div>
+</div>
+
+<div class="coluna">
+  <div class="hero">
+    <h1>Luke, o novo assistente</h1>
+    <p>O salsicha da empresa mora no cantinho do sistema: avisa das novidades, tira dúvidas na hora e recebe pedidos do financeiro. No computador e no celular. Clique nele para abrir a conversa.</p>
+  </div>
+
+  <!-- ═════════ 1. NO SISTEMA ═════════ -->
+  <section class="secao" style="margin-top:0">
+    <div class="secao-cab">
+      <span class="rot">1 · No sistema</span>
+      <h2>Como ele aparece na tela</h2>
+      <p>Ele fica no canto de baixo, se mexendo sozinho. Quando tem novidade, pula e mostra o balão.</p>
+    </div>
+    <div class="controles">
+      <div class="seg claro perfis" id="perfis" role="group" aria-label="Tipo de usuário">
+        <button data-p="ajuda" aria-pressed="false">Só novidades e ajuda</button>
+        <button data-p="chat" aria-pressed="true">Com chat</button>
+        <button data-p="limite" aria-pressed="false">No limite do dia</button>
+      </div>
+      <button class="btn-sec" id="bAdmin" aria-pressed="false">Ver como administrador</button>
+      <button class="btn-sec" id="bNov">Mostrar novidade</button>
+      <button class="btn-sec" id="bDemo">Repetir pedido</button>
+      <button class="btn-sec so-cel" id="bTec" aria-pressed="false">Teclado aberto</button>
+    </div>
+
+    <div class="palco" id="palco">
+      <div class="fundo" aria-hidden="true">
+        <div class="lado so-pc">
+          <div class="logo">CA-Hardt</div>
+          <div class="item"><i></i>Pedidos</div><div class="item"><i></i>Clientes</div><div class="item"><i></i>Produtos</div>
+          <div class="item at"><i></i>Contas a Pagar</div><div class="item"><i></i>Contas a Receber</div><div class="item"><i></i>Caixa</div>
+          <div class="item"><i></i>Expedição</div><div class="item"><i></i>PCP</div><div class="item"><i></i>Tarefas</div>
+        </div>
+        <div class="meio">
+          <div class="topo"><div class="tit"><i class="chipi"></i>Contas a Pagar</div><span class="falso-btn">Nova conta</span></div>
+          <div class="conteudo">
+            <div class="kpis">
+              <div class="card kpi"><span>Vence hoje</span><b>R$ 2.480,00</b></div>
+              <div class="card kpi"><span>Na semana</span><b>R$ 11.930,00</b></div>
+              <div class="card kpi so-pc"><span>Vencidas</span><b>R$ 640,00</b></div>
+              <div class="card kpi so-pc"><span>Pagas no mês</span><b>R$ 48.210,00</b></div>
+            </div>
+            <div class="card so-pc" id="fLinhas"></div>
+            <div class="so-cel" id="fCards" style="display:flex;flex-direction:column;gap:10px"></div>
+          </div>
+          <div class="barra-acao so-cel"><span>Filtrar</span><span class="p">Nova conta</span></div>
+        </div>
+      </div>
+
+      <div class="balao" id="balao">
+        <div class="topo">
+          <span class="selo-nov">Novidade</span><span class="mais">+2 para ver</span>
+          <button class="x" id="balaoX" aria-label="Fechar aviso"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+        </div>
+        <h3>O Luke chegou ao celular</h3>
+        <p>Novidades e ajuda de "como faço" agora também no telefone.</p>
+        <button class="ver" id="balaoVer">Ver novidade</button>
+      </div>
+
+      <button class="luke-btn" id="lukeBtn" aria-label="Abrir conversa com o Luke">
+        <span data-luke id="lukeCanto"></span>
+        <span class="bolinha" id="bolinha">3</span>
+      </button>
+
+      <div class="chat" id="chat" hidden>
+        <div class="chat-cab">
+          <button class="ic-btn so-cel" data-fechar aria-label="Voltar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+          <span class="avatar"><span data-luke="cabeca" id="lukeCab" style="width:40px;display:block"></span></span>
+          <div class="quem"><b>Luke</b><span id="estadoTxt"><i></i>online</span></div>
+          <button class="ic-btn sino" id="bLista" aria-label="Ver todas as novidades" title="Novidades"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 10a6 6 0 0112 0c0 5 2 6 2 6H4s2-1 2-6M10 20a2 2 0 004 0"/></svg><i id="sinoN">3</i></button>
+          <button class="ic-btn so-pc" data-fechar aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+        </div>
+        <div class="abas" id="abas" role="tablist">
+          <button role="tab" data-aba="duvida" aria-selected="false">Tirar dúvida</button>
+          <button role="tab" data-aba="pedir" aria-selected="true">Pedir ao Luke</button>
+        </div>
+
+        <div class="nov-topo" id="novTopo">
+          <div class="tx"><span class="selo-nov">Novidade</span><b>O Luke chegou ao celular</b><span>Novidades e ajuda agora também no telefone.</span></div>
+          <button class="acao" id="novAbrir">Abrir</button>
+          <button class="ic-btn" id="novX" aria-label="Dispensar novidade"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+        </div>
+
+        <!-- TIRAR DÚVIDA -->
+        <div class="painel" data-painel="duvida" hidden>
+          <div class="sub"><b>Resposta na hora.</b> Como faz, o que faz, onde fica.</div>
+          <div class="msgs" id="msgsD">
+            <div class="m eu"><div class="col"><div class="bolha">Como faço uma devolução?</div></div></div>
+            <div class="m"><span class="avatar p"><span data-luke="cabeca" style="width:26px;display:block"></span></span><div class="col">
+              <div class="bolha">É na conferência do Caixa:
+                <ol><li>Abra <b>Caixa</b> e escolha o motorista.</li><li>No pedido, toque em <b>Devolução</b>.</li><li>Marque os produtos e a quantidade.</li><li>Salve. A nota de devolução sai sozinha.</li></ol></div>
+              <button class="acao">Ir para a tela <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+            </div></div>
+            <div class="m eu"><div class="col"><div class="bolha">Como dou baixa num boleto?</div></div></div>
+            <div class="m"><span class="avatar p"><span data-luke="cabeca" style="width:26px;display:block"></span></span><div class="col">
+              <div class="bolha aviso">Você não tem permissão para dar baixa. Peça ao administrador.</div>
+              <button class="link-pedido" data-pedido="Dar baixa no boleto da Padaria Sol">Isto é um pedido? <b>Mandar para o Luke</b></button>
+            </div></div>
+          </div>
+          <div class="compor">
+            <div class="chips">
+              <button data-sug="Como lanço um pedido?">Como lanço um pedido?</button>
+              <button data-sug="Onde vejo o que o cliente me deve?">Onde vejo o que o cliente deve?</button>
+              <button data-sug="Como faço uma devolução?">Como faço devolução?</button>
+            </div>
+            <form class="linha-txt" id="formD">
+              <input id="txtD" type="text" placeholder="Qual é a sua dúvida?" autocomplete="off" aria-label="Dúvida">
+              <button class="enviar" aria-label="Enviar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
+            </form>
+          </div>
+        </div>
+
+        <!-- PEDIR AO LUKE -->
+        <div class="painel" data-painel="pedir">
+          <div class="sub"><b>O Luke responde em alguns minutos.</b> Pode fechar: ele avisa aqui.</div>
+          <div class="msgs" id="msgs">
+            <span class="dia">Ontem</span>
+            <div class="m eu"><div class="col"><div class="bolha">Me lembra de pagar o aluguel dia 5</div><span class="status">Luke recebeu · 16:20</span></div></div>
+            <div class="m"><span class="avatar p"><span data-luke="cabeca" style="width:26px;display:block"></span></span><div class="col">
+              <div class="lemb"><span class="rel">⏰</span><div><b>Lembrete agendado para 05/12</b>Pagar o aluguel. Eu aviso você aqui às 8h.</div></div>
+            </div></div>
+            <span class="dia">Hoje</span>
+            <div id="demo" style="display:flex;flex-direction:column;gap:10px"></div>
+          </div>
+          <div class="compor" id="comporP">
+            <div class="guarda" id="guarda" hidden>
+              <span>Parece uma dúvida de uso. Quer a resposta na hora?</span>
+              <div><button class="b-pri" id="gDuvida">Tirar dúvida agora</button><button class="b-out" id="gPedir">É um pedido mesmo</button></div>
+            </div>
+            <div class="chips">
+              <button data-chip="pag">📎 Lançar pagamento</button>
+              <button data-chip="nota">🧾 Enviar nota</button>
+              <button data-chip="como">❓ Como faço…</button>
+              <button data-chip="lemb">⏰ Lembrar depois</button>
+            </div>
+            <div class="bandeja" id="bandeja"></div>
+            <form class="linha-txt" id="form">
+              <input id="txt" type="text" placeholder="Diga ao Luke o que precisa…" autocomplete="off" aria-label="Pedido">
+              <button class="enviar" aria-label="Enviar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
+            </form>
+            <div class="linha-ic">
+              <button class="ic-btn cam" type="button" id="bCam" aria-label="Tirar foto" title="Tirar foto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></button>
+              <button class="ic-btn" type="button" id="bImg" aria-label="Escolher imagem" title="Escolher imagem da galeria"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="9" cy="10" r="1.8"/><path d="M21 16l-5-5-9 9"/></svg></button>
+              <button class="ic-btn" type="button" id="bPdf" aria-label="Anexar PDF" title="Anexar PDF"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11.5l-8.2 8.2a5 5 0 01-7.1-7.1l8.5-8.5a3.4 3.4 0 014.8 4.8l-8.4 8.4a1.8 1.8 0 01-2.5-2.5l7.7-7.7"/></svg></button>
+              <button class="ic-btn embreve" type="button" aria-label="Áudio, em breve" title="Áudio (em breve)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg></button>
+              <div class="limite" id="saldo"><span id="limTxt">Restam 4 pedidos hoje</span><span class="tr"><i id="limBar"></i></span></div>
+            </div>
+          </div>
+          <div class="cheio" id="cheio" hidden>
+            <b>Você usou os 20 pedidos de hoje.</b>
+            <span>Volta amanhã ou fale com o administrador. As dúvidas continuam liberadas.</span>
+            <button class="b-out" id="cheioDuvida">Tirar dúvida</button>
+          </div>
+        </div>
+
+        <!-- NOVIDADES (lista) -->
+        <div class="painel" data-painel="novidades" hidden>
+          <div class="sub voltar"><button id="novVoltar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>Voltar para a conversa</button></div>
+          <div class="rolagem">
+            <div class="card nov nova"><div class="l"><h3>O Luke chegou ao celular</h3><time>27/11</time></div>
+              <p>O cachorro agora aparece também no telefone, com as novidades e a ajuda de "como faço".</p>
+              <button class="acao">Abrir <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button></div>
+            <div class="card nov nova"><div class="l"><h3>Etiqueta nova para os pedidos</h3><time>25/11</time></div>
+              <p>Toda caixa sai com etiqueta numerada (1/2, 2/2) e o nome do cliente em letra grande.</p>
+              <button class="acao">Abrir <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button></div>
+            <div class="card nov nova"><div class="l"><h3>Filtro de data mais fácil</h3><time>21/11</time></div>
+              <p>Um botão só para escolher hoje, a semana ou o mês, com setas para andar no período.</p>
+              <button class="acao">Abrir <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button></div>
+            <div class="card nov"><div class="l"><h3>Repetir o último pedido</h3><time>14/11</time></div>
+              <p>Um toque e o pedido anterior do cliente volta pronto para conferir e salvar.</p>
+              <button class="acao">Abrir <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="teclado" aria-hidden="true">
+        <div><span>q</span><span>w</span><span>e</span><span>r</span><span>t</span><span>y</span><span>u</span><span>i</span><span>o</span><span>p</span></div>
+        <div><span>a</span><span>s</span><span>d</span><span>f</span><span>g</span><span>h</span><span>j</span><span>k</span><span>l</span></div>
+        <div><span>z</span><span>x</span><span>c</span><span>v</span><span>b</span><span>n</span><span>m</span></div>
+        <div><span class="lg">123</span><span class="esp">espaço</span><span class="lg">enviar</span></div>
+      </div>
+    </div>
+    <p class="dica">Experimente: clique no cachorro, troque o tipo de usuário, escreva algo e toque nos atalhos. Em <b>Ver como administrador</b> aparecem os botões de autorizar no cartão.</p>
+  </section>
+
+  <!-- ═════════ 2. O LUKE ═════════ -->
+  <section class="secao">
+    <div class="secao-cab">
+      <span class="rot">2 · O Luke</span>
+      <h2>O que ele faz sozinho</h2>
+      <p>Parado ele nunca fica. Cada jeito abaixo tem um motivo.</p>
+    </div>
+    <div class="galeria" id="galeria"></div>
+    <div class="card tamanhos">
+      <figure><span data-luke style="display:block;width:64px"></span>Celular · 64</figure>
+      <figure><span data-luke style="display:block;width:76px"></span>iPad · 76</figure>
+      <figure><span data-luke style="display:block;width:92px"></span>Computador · 92</figure>
+      <p>Tamanho de verdade na tela. Desenho simples de propósito: pequeno assim ele continua nítido.</p>
+    </div>
+  </section>
+
+  <!-- ═════════ 3. PERMISSÕES ═════════ -->
+  <section class="secao">
+    <div class="secao-cab">
+      <span class="rot">3 · Quem pode usar</span>
+      <h2>Permissões no cadastro do usuário</h2>
+      <p>Você decide, pessoa por pessoa, quem vê o Luke e quem pode mandar pedido do financeiro.</p>
+    </div>
+    <div class="perm-grid">
+      <div class="card">
+        <div class="card-cab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 4.5-3.2 8-8 9-4.8-1-8-4.5-8-9V6z"/></svg>Luke · permissões</div>
+        <div class="card-corpo">
+          <div class="usuario"><span class="ini">JA</span><div><b>Juliana Alves</b><span>Financeiro</span></div></div>
+          <button class="interr" role="switch" aria-checked="true"><span><b>Ver o Luke (novidades e ajuda)</b><small>O cachorro aparece, mostra as novidades e responde "como faço" na hora.</small></span><span class="chave"></span></button>
+          <button class="interr" role="switch" aria-checked="true"><span><b>Conversar com o Luke — financeiro (BPO)</b><small>Ganha a aba "Pedir ao Luke": manda comprovante, nota e pede lançamento. O que mexe em dinheiro espera a sua autorização.</small></span><span class="chave"></span></button>
+          <div class="campo"><label for="lim">Limite de pedidos por dia</label><input id="lim" type="number" inputmode="numeric" value="20" min="0">
+            <small>Chegou no limite, o Luke avisa e volta no dia seguinte. Novidades e dúvidas não gastam pedido.</small></div>
+          <button class="salvar">Salvar</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-cab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Uso do mês · novembro</div>
+        <div class="card-corpo">
+          <div class="kp"><div><b>412</b><span>Pedidos ao Luke</span></div><div><b>37</b><span>Viraram solicitação</span></div><div><b>58</b><span>Anexos</span></div><div><b>3</b><span>Bateram no limite</span></div></div>
+          <div class="rank">
+            <span class="pos">1</span><span class="nm">Juliana Alves</span><span class="qt">148</span><span class="br"><i style="width:100%"></i></span>
+            <span class="pos">2</span><span class="nm">Cida Martins</span><span class="qt">96</span><span class="br"><i style="width:65%"></i></span>
+            <span class="pos">3</span><span class="nm">Rafael Souza</span><span class="qt">71</span><span class="br"><i style="width:48%"></i></span>
+            <span class="pos">4</span><span class="nm">Tânia Becker</span><span class="qt">58</span><span class="br"><i style="width:39%"></i></span>
+            <span class="pos">5</span><span class="nm">Paulo Lima</span><span class="qt">39</span><span class="br"><i style="width:26%"></i></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="secao">
+    <div class="secao-cab">
+      <span class="rot">4 · Depois (fase 2)</span>
+      <h2>Administrador vê todas as conversas</h2>
+      <p>Uma tela separada, só para o administrador, com os pedidos que cada pessoa fez ao Luke. As dúvidas de "como faço" não ficam guardadas.</p>
+    </div>
+    <div class="card adm">
+      <div class="filtros" id="filtros">
+        <button data-f="todas" aria-pressed="true">Todas</button>
+        <button data-f="aguard" aria-pressed="false">Aguardando autorização</button>
+        <button data-f="anexo" aria-pressed="false">Com anexo</button>
+        <button data-f="hoje" aria-pressed="false">Hoje</button>
+      </div>
+      <div class="adm-lista" id="listaConv">
+        <div class="card conv" data-t="aguard anexo hoje"><span class="ini">JA</span><div class="tx"><div class="l1"><b>Juliana Alves</b><time>10:41</time></div>
+          <div class="ult">Lança esse pagamento</div><div class="sel"><span class="badge b-ambar">Aguardando autorização</span><span class="badge b-cinza">1 anexo</span></div></div></div>
+        <div class="card conv" data-t="anexo hoje"><span class="ini">CM</span><div class="tx"><div class="l1"><b>Cida Martins</b><time>08:30</time></div>
+          <div class="ult">Nota do fornecedor de embalagem, R$ 1.280,00</div><div class="sel"><span class="badge b-verde">Lançado</span><span class="badge b-cinza">1 anexo</span></div></div></div>
+        <div class="card conv" data-t="hoje"><span class="ini">RS</span><div class="tx"><div class="l1"><b>Rafael Souza</b><time>07:52</time></div>
+          <div class="ult">Me lembra de cobrar a Padaria Sol na sexta</div><div class="sel"><span class="badge b-azul">Lembrete agendado</span></div></div></div>
+        <div class="card conv" data-t="aguard"><span class="ini">TB</span><div class="tx"><div class="l1"><b>Tânia Becker</b><time>Ontem</time></div>
+          <div class="ult">Cria a conta da energia de novembro, R$ 2.114,37</div><div class="sel"><span class="badge b-ambar">Aguardando autorização</span></div></div></div>
+        <div class="card conv" data-t="anexo"><span class="ini">PL</span><div class="tx"><div class="l1"><b>Paulo Lima</b><time>Ontem</time></div>
+          <div class="ult">Boleto do frete, pode lançar</div><div class="sel"><span class="badge b-verm">Recusado</span><span class="badge b-cinza">2 anexos</span></div></div></div>
+      </div>
+      <p class="leitura">Somente leitura. O administrador acompanha, sem escrever no lugar de ninguém.</p>
+    </div>
+  </section>
+
+  <section class="secao">
+    <div class="secao-cab"><span class="rot">Para saber</span><h2>O que é só desenho neste preview</h2></div>
+    <div class="card card-corpo">
+      <ul class="lista-simples">
+        <li>As respostas do Luke aqui são fixas, só para mostrar o visual. Nada é lançado de verdade.</li>
+        <li>Os nomes, valores e o ranking são inventados.</li>
+        <li>Câmera, galeria e PDF aqui só colocam um anexo de mentira na bandeja. O áudio está apagado porque fica para depois.</li>
+        <li>O tempo de resposta está acelerado. No sistema, "Pedir ao Luke" leva alguns minutos.</li>
+        <li>No sistema de verdade, "Abrir" mostra a página da novidade e "Ir para a tela" leva para a tela certa.</li>
+      </ul>
+    </div>
+  </section>
+</div>
+
+<script>
+// ───────── SVG do Luke (desenho original) ─────────
+function lukeSVG(tipo){
+  var vb = tipo === 'cabeca' ? '1 12 52 40' : '0 0 128 84';
+  return '<svg class="luke is-idle" viewBox="'+vb+'" aria-hidden="true">'
+  + (tipo==='cabeca' ? '' : '<ellipse cx="68" cy="75" rx="40" ry="3.2" fill="#000" opacity=".13"/>')
+  + '<g class="lk-vira"><g class="lk-tudo">'
+  +   '<g class="lk-pf"><rect x="50" y="52" width="7" height="20" rx="3.5" fill="#322b26"/><rect x="48" y="67.5" width="9.5" height="5.5" rx="2.75" fill="#a8621f"/></g>'
+  +   '<rect x="84" y="52" width="7" height="20" rx="3.5" fill="#322b26"/><rect x="82" y="67.5" width="9.5" height="5.5" rx="2.75" fill="#a8621f"/>'
+  +   '<g class="lk-pose-corpo"><g class="lk-resp">'
+  +     '<g class="lk-rabo"><path d="M101 46 C110 45 116 38 119 27" stroke="#1d1a18" stroke-width="4.6" stroke-linecap="round" fill="none"/></g>'
+  +     '<rect x="34" y="36" width="72" height="23" rx="11.5" fill="#1d1a18"/>'
+  +     '<circle cx="43" cy="46" r="13" fill="#1d1a18"/>'
+  +     '<path d="M54 40 H92" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity=".13"/>'
+  +     '<ellipse cx="37.5" cy="52.5" rx="5" ry="4.3" fill="#c8782f"/>'
+  +     '<path d="M31.5 43.8 L48.5 37.6" stroke="#00754A" stroke-width="5" stroke-linecap="round"/>'
+  +     '<circle cx="38.6" cy="46.6" r="2.6" fill="#cba258"/>'
+  +     '<g class="lk-pose-cabeca"><g class="lk-cabeca">'
+  +       '<ellipse cx="31" cy="29" rx="13.5" ry="12.5" fill="#1d1a18"/>'
+  +       '<rect x="6" y="28.5" width="25" height="11.5" rx="5.75" fill="#c8782f"/>'
+  +       '<path d="M11 27.6 H31 V32.6 H9.5 Q8 32.6 8.4 30.6 Q9 27.6 11 27.6Z" fill="#1d1a18"/>'
+  +       '<circle cx="27.5" cy="36" r="4.6" fill="#c8782f"/>'
+  +       '<path class="lk-lingua" d="M13.2 39.2 Q13.6 45.5 16.3 45.5 Q19 45.5 19.2 39.2Z" fill="#ef6b81"/>'
+  +       '<path d="M10 37.3 Q16 39.6 22.5 37.2" stroke="#7a4514" stroke-width="1.1" stroke-linecap="round" fill="none"/>'
+  +       '<ellipse cx="7.8" cy="31.4" rx="3.5" ry="3" fill="#000"/><circle cx="6.9" cy="30.4" r=".8" fill="#fff" opacity=".55"/>'
+  +       '<ellipse cx="25" cy="20.6" rx="2.6" ry="1.8" fill="#c8782f"/>'
+  +       '<g class="lk-olho"><circle cx="25.5" cy="26.5" r="3.4" fill="#fff"/><g class="lk-pupila"><circle cx="24.9" cy="26.8" r="2.2" fill="#111"/><circle cx="24.1" cy="25.9" r=".75" fill="#fff"/></g></g>'
+  +       '<path class="lk-olho-f" d="M22.2 26.6 Q25.5 29.2 28.8 26.6" stroke="#ecdcc8" stroke-width="1.6" stroke-linecap="round" fill="none"/>'
+  +       '<path class="lk-olho-feliz" d="M22.2 27.8 Q25.5 24.2 28.8 27.8" stroke="#ecdcc8" stroke-width="1.7" stroke-linecap="round" fill="none"/>'
+  +       '<g class="lk-orelha"><path d="M33 17.6 C42 15.6 47.4 23.5 46 34 C45 42 40.5 47.4 37 45.4 C33.2 43.2 32.2 36 32.6 30 Z" fill="#322b26"/></g>'
+  +     '</g></g>'
+  +   '</g></g>'
+  +   '<g class="lk-pf"><rect x="42" y="52" width="7.5" height="20" rx="3.75" fill="#1d1a18"/><rect x="39.5" y="67" width="11" height="6" rx="3" fill="#c8782f"/></g>'
+  +   '<rect x="92" y="52" width="7.5" height="20" rx="3.75" fill="#1d1a18"/><rect x="89.5" y="67" width="11" height="6" rx="3" fill="#c8782f"/>'
+  + '</g></g>'
+  + '<g class="lk-zzz" fill="#6b7280" font-family="Manrope,sans-serif" font-weight="800"><text x="44" y="38" font-size="9">z</text><text x="48" y="34" font-size="11">z</text><text x="53" y="30" font-size="13">Z</text></g>'
+  + '<g class="lk-pontos" fill="#00754A"><circle cx="40" cy="8" r="2.5"/><circle cx="48" cy="8" r="2.5"/><circle cx="56" cy="8" r="2.5"/></g>'
+  + '<path class="lk-coracao" d="M52 17 C48 13.5 45.5 11.5 45.5 9.2 C45.5 7.4 46.9 6 48.6 6 C49.9 6 51.2 6.8 52 8 C52.8 6.8 54.1 6 55.4 6 C57.1 6 58.5 7.4 58.5 9.2 C58.5 11.5 56 13.5 52 17Z" fill="#ef4444"/>'
+  + '</svg>';
+}
+var ESTADOS = ['idle','olhando','preguica','dormindo','novidade','pensando','feliz'];
+function estado(el, e){
+  var svg = el && (el.tagName === 'svg' ? el : el.querySelector('svg'));
+  if(!svg) return;
+  ESTADOS.forEach(function(x){ svg.classList.remove('is-'+x); });
+  svg.classList.add('is-'+e);
+}
+function $(id){ return document.getElementById(id); }
+function todos(sel, raiz){ return Array.prototype.slice.call((raiz||document).querySelectorAll(sel)); }
+function montaLukes(raiz){ todos('[data-luke]', raiz).forEach(function(s){ if(!s.firstChild) s.innerHTML = lukeSVG(s.getAttribute('data-luke')); }); }
+
+// Galeria
+var GAL = [
+  ['idle','Sempre','Parado, respirando','Abana o rabo, pisca e respira. É o jeito normal dele.'],
+  ['olhando','De vez em quando','Olhando e virando','Olha para um lado, para o outro, e vira de costas.'],
+  ['preguica','De vez em quando','Espreguiçando','Estica as patas da frente e fecha os olhos. Pura preguiça.'],
+  ['dormindo','Tela parada há um tempo','Dormindo','Deita e solta o "zzz". Acorda quando você clica.'],
+  ['novidade','Tem novidade','Animado, dando pulinhos','Pula, abana rápido e mostra a bolinha vermelha.'],
+  ['pensando','Você mandou algo','Pensando','Inclina a cabeça enquanto lê o comprovante ou a pergunta.'],
+  ['feliz','Respondeu ou lançou','Feliz','Língua de fora e coraçãozinho: deu tudo certo.']
+];
+$('galeria').innerHTML = GAL.map(function(g){
+  return '<div class="card est"><div class="chao"><span data-luke data-est="'+g[0]+'"></span></div><div class="leg"><span class="qd">'+g[1]+'</span><b>'+g[2]+'</b><span>'+g[3]+'</span></div></div>';
+}).join('');
+montaLukes();
+todos('[data-est]').forEach(function(s){ estado(s, s.getAttribute('data-est')); });
+
+// Fundo simulado
+var CONTAS = [['Gás do Vale','R$ 350,00','Vence hoje','#fef3c7','#b45309'],['Embalagens Sul','R$ 1.280,00','Aberto','#dbeafe','#1e40af'],['Energia · novembro','R$ 2.114,37','Aberto','#dbeafe','#1e40af'],['Farinha Bom Trigo','R$ 6.900,00','Pago','#dcfce7','#166534'],['Aluguel do galpão','R$ 4.200,00','Aberto','#dbeafe','#1e40af'],['Óleo vegetal 20L','R$ 1.745,00','Vencido','#fee2e2','#b91c1c'],['Internet','R$ 189,90','Pago','#dcfce7','#166534'],['Contador','R$ 980,00','Aberto','#dbeafe','#1e40af'],['Manutenção fritadeira','R$ 620,00','Pago','#dcfce7','#166534']];
+$('fLinhas').innerHTML = CONTAS.map(function(c){ return '<div class="lin"><span>'+c[0]+'</span><span>'+c[1]+'</span><em style="background:'+c[3]+';color:'+c[4]+'">'+c[2]+'</em></div>'; }).join('');
+$('fCards').innerHTML = CONTAS.slice(0,6).map(function(c){ return '<div class="card mcard"><div class="l1"><span>'+c[0]+'</span><span>'+c[1]+'</span></div><div class="l2"><span>Vencimento 27/11</span><span style="color:'+c[4]+';font-weight:700">'+c[2]+'</span></div></div>'; }).join('');
+
+// ───────── Estado geral ─────────
+var palco = $('palco'), chat = $('chat'), balao = $('balao'), canto = $('lukeCanto'), cab = $('lukeCab');
+var admin = false, aberto = false, temNovidade = true, ocupado = false;
+var perfil = 'chat', LIMITE = 20, usados = 16, abaAtual = 'pedir', abaAntes = 'pedir';
+var semMovimento = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// Ciclo ocioso do cachorro do canto
+var CICLO = [['idle',4500],['olhando',7000],['idle',3500],['preguica',4000],['idle',3000],['dormindo',7000]];
+var iCiclo = 0, tCiclo = 0;
+function ciclo(){
+  clearTimeout(tCiclo);
+  if(ocupado || document.hidden) return;
+  if(temNovidade && !aberto){ estado(canto,'novidade'); return; }
+  if(semMovimento){ estado(canto,'idle'); return; }
+  var c = CICLO[iCiclo % CICLO.length]; iCiclo++;
+  estado(canto, c[0]);
+  tCiclo = setTimeout(ciclo, c[1]);
+}
+document.addEventListener('visibilitychange', ciclo);
+function humor(e, txt){
+  ocupado = e !== 'idle';
+  estado(cab, e);
+  $('estadoTxt').innerHTML = '<i></i>' + (txt || 'online');
+  $('estadoTxt').className = e === 'pensando' ? 'pens' : '';
+  if(ocupado){ clearTimeout(tCiclo); estado(canto, e); } else { iCiclo = 0; ciclo(); }
+}
+
+function modo(m){
+  var estreito = window.innerWidth < 900;
+  if(estreito) m = 'cel';
+  document.body.className = m;
+  $('mPc').setAttribute('aria-pressed', m === 'pc'); $('mCel').setAttribute('aria-pressed', m === 'cel');
+  $('mPc').disabled = estreito;
+  if(m === 'pc'){ palco.classList.remove('teclado-on'); $('bTec').setAttribute('aria-pressed','false'); }
+  rolar();
+}
+$('mPc').onclick = function(){ modo('pc'); };
+$('mCel').onclick = function(){ modo('cel'); };
+var pref = window.innerWidth >= 900 ? 'pc' : 'cel';
+window.addEventListener('resize', function(){ modo(document.body.className); });
+
+function novidadeVista(){
+  temNovidade = false; $('bolinha').hidden = true; $('sinoN').hidden = true; balao.hidden = true; $('novTopo').hidden = true;
+}
+function aba(nome){
+  if(nome !== 'novidades') abaAtual = nome; else abaAntes = abaAtual;
+  todos('#abas button').forEach(function(b){ b.setAttribute('aria-selected', b.getAttribute('data-aba') === nome); });
+  todos('[data-painel]').forEach(function(p){ p.hidden = p.getAttribute('data-painel') !== nome; });
+  $('abas').hidden = nome === 'novidades' || perfil === 'ajuda';
+  if(nome === 'novidades') novidadeVista();
+  rolar();
+}
+todos('#abas button').forEach(function(b){ b.onclick = function(){ aba(b.getAttribute('data-aba')); }; });
+$('bLista').onclick = function(){ aba('novidades'); };
+$('novAbrir').onclick = function(){ aba('novidades'); };
+$('novVoltar').onclick = function(){ aba(abaAntes); };
+$('novX').onclick = novidadeVista;
+
+var jaTocou = false;
+function abrir(qual){
+  aberto = true; chat.hidden = false; balao.hidden = true;
+  $('lukeBtn').setAttribute('aria-label','Fechar conversa com o Luke');
+  aba(qual || abaAtual);
+  if(!ocupado){ clearTimeout(tCiclo); estado(canto,'idle'); }
+  if(!jaTocou && abaAtual === 'pedir' && perfil === 'chat'){ jaTocou = true; tocarDemo(); }
+  rolar();
+}
+function fechar(){
+  aberto = false; chat.hidden = true; palco.classList.remove('teclado-on'); $('bTec').setAttribute('aria-pressed','false');
+  $('lukeBtn').setAttribute('aria-label','Abrir conversa com o Luke');
+  if(temNovidade) balao.hidden = false;
+  ciclo();
+}
+$('lukeBtn').onclick = function(){ aberto ? fechar() : abrir(); };
+todos('[data-fechar]').forEach(function(b){ b.onclick = fechar; });
+$('balaoX').onclick = function(){ balao.hidden = true; };
+$('balaoVer').onclick = function(){ abrir('novidades'); };
+$('bNov').onclick = function(){
+  if(aberto) fechar();
+  temNovidade = true; $('bolinha').hidden = false; $('sinoN').hidden = false; $('novTopo').hidden = false; balao.hidden = false; ocupado = false; ciclo();
+};
+$('bTec').onclick = function(){ if(!aberto) abrir(); var on = palco.classList.toggle('teclado-on'); this.setAttribute('aria-pressed', on); rolar(); };
+
+// Três tipos de usuário
+function saldo(){
+  var resta = Math.max(LIMITE - usados, 0), cheio = perfil === 'limite' || resta === 0;
+  $('limTxt').textContent = 'Restam ' + resta + ' pedidos hoje';
+  $('limBar').style.transform = 'scaleX(' + (usados / LIMITE) + ')';
+  $('saldo').hidden = resta > 5;
+  $('comporP').hidden = cheio; $('cheio').hidden = !cheio;
+}
+function setPerfil(p){
+  perfil = p;
+  todos('#perfis button').forEach(function(b){ b.setAttribute('aria-pressed', b.getAttribute('data-p') === p); });
+  palco.classList.toggle('com-chat', p !== 'ajuda');
+  usados = p === 'limite' ? LIMITE : 16;
+  ficha++; humor('idle'); saldo();
+  if(p === 'ajuda'){ abaAtual = 'duvida'; }
+  else {
+    abaAtual = 'pedir'; jaTocou = true;
+    if(p === 'chat') tocarDemo(); else historicoPronto();
+  }
+  if(aberto) aba(abaAtual); else abrir(abaAtual);
+}
+todos('#perfis button').forEach(function(b){ b.onclick = function(){ setPerfil(b.getAttribute('data-p')); }; });
+$('bAdmin').onclick = function(){
+  admin = !admin; this.setAttribute('aria-pressed', admin);
+  if(perfil !== 'chat') setPerfil('chat'); else { jaTocou = true; if(!aberto) abrir('pedir'); else aba('pedir'); tocarDemo(); }
+};
+$('cheioDuvida').onclick = function(){ aba('duvida'); };
+
+// ───────── Conversa ─────────
+var demo = $('demo'), ficha = 0;
+function rolar(){ todos('.msgs').forEach(function(m){ m.scrollTop = m.scrollHeight; }); }
+function hora(){ var d = new Date(); return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2); }
+function txtSeguro(s){ var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function add(html, onde){ var d = document.createElement('div'); d.innerHTML = html; var n = d.firstChild; (onde||demo).appendChild(n); montaLukes(n); rolar(); return n; }
+function doLuke(conteudo, onde){ return add('<div class="m"><span class="avatar p"><span data-luke="cabeca" style="width:26px;display:block"></span></span><div class="col">'+conteudo+'</div></div>', onde); }
+function digitando(onde){ return doLuke('<div class="bolha digit"><i></i><i></i><i></i></div>', onde); }
+function depois(ms, fn, f){ setTimeout(function(){ if(f === ficha) fn(); }, semMovimento ? Math.min(ms, 300) : ms); }
+var SETA = ' <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
+var COMPROV = '<div class="foto"><div class="comprov"><span class="ok">Pix enviado</span><b>R$ 350,00</b>Gás do Vale Ltda<br>27/11 · 10:38<u></u><u style="width:70%"></u></div></div>';
+function cartao(st, cls, rodape){
+  return '<div class="sol"><div class="t"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6z"/><path d="M9 12h7M9 16h5"/></svg>Solicitação</div>'
+    + '<div class="c"><b>Criar conta a pagar</b><div class="v">R$ 350,00</div><div class="d">Gás do Vale · Pix em 27/11 · já paga</div><div class="st"><span class="badge '+cls+'" id="solSt">'+st+'</span></div></div>' + rodape + '</div>';
+}
+
+// Pedido do comprovante: Enviado → Luke lendo → cartão → autorização → pronto
+function tocarDemo(){
+  var f = ++ficha; demo.innerHTML = ''; humor('idle');
+  var eu = add('<div class="m eu"><div class="col">'+COMPROV+'<div class="bolha">Lança esse pagamento</div><span class="status">Enviando…</span></div></div>');
+  depois(700, function(){ eu.querySelector('.status').textContent = 'Enviado · 10:41'; }, f);
+  var d;
+  depois(1500, function(){ humor('pensando','pensando…'); eu.querySelector('.status').textContent = 'Luke recebeu · está lendo o comprovante'; d = digitando(); }, f);
+  depois(3800, function(){
+    d.remove(); eu.querySelector('.status').textContent = 'Luke recebeu · 10:41'; humor('idle');
+    doLuke('<div class="bolha">Li o comprovante. É um Pix de <b>R$ 350,00</b> para a Gás do Vale. Preparei o lançamento:</div>'
+      + cartao('Aguardando autorização', 'b-ambar', admin
+          ? '<div class="bts" id="solBts"><button class="b-pri" data-a="ok">Autorizar</button><button class="b-rec" data-a="nao">Recusar</button><button class="b-out" data-a="abrir">Abrir tela</button></div>'
+          : '<div class="nota" id="solBts">O administrador recebeu o pedido. Eu aviso quando ele responder.</div>'));
+    todos('#solBts button').forEach(function(b){ b.onclick = function(){ var a = b.getAttribute('data-a'); if(a !== 'abrir') decidir(a === 'ok', f); }; });
+    if(!admin) depois(3800, function(){ decidir(true, f, 'Marina (administradora) autorizou'); }, f);
+  }, f);
+}
+function decidir(ok, f, quem){
+  if(f !== ficha || !$('solBts')) return;
+  $('solSt').className = 'badge ' + (ok ? 'b-verde' : 'b-verm');
+  $('solSt').textContent = ok ? 'Autorizado' : 'Recusado';
+  $('solBts').outerHTML = '<div class="nota">' + (quem || (ok ? 'Você autorizou' : 'Você recusou')) + ' às ' + hora() + '.</div>';
+  if(ok){
+    doLuke('<div class="bolha">Pronto, lançado. A conta de R$ 350,00 da Gás do Vale já está em Contas a Pagar como paga.</div>');
+    humor('feliz','online'); depois(3200, function(){ humor('idle'); }, f);
+  } else {
+    doLuke('<div class="bolha">Tudo bem, não lancei nada. O pedido ficou guardado como recusado.</div>');
+  }
+}
+// Mesma conversa já terminada (usada na variação "no limite do dia")
+function historicoPronto(){
+  demo.innerHTML = '';
+  add('<div class="m eu"><div class="col">'+COMPROV+'<div class="bolha">Lança esse pagamento</div><span class="status">Luke recebeu · 10:41</span></div></div>');
+  doLuke('<div class="bolha">Li o comprovante. É um Pix de <b>R$ 350,00</b> para a Gás do Vale.</div>' + cartao('Autorizado', 'b-verde', '<div class="nota">Marina (administradora) autorizou às 10:44.</div>')
+    + '<div class="bolha">Pronto, lançado.</div>');
+}
+
+// Bandeja de anexos (fictícia)
+var anexos = [{ t: 'pdf', n: 'nota-4521.pdf' }];
+function bandeja(){
+  var b = $('bandeja');
+  b.hidden = !anexos.length;
+  b.innerHTML = anexos.map(function(a, i){
+    return '<div class="anx"><span class="mini '+a.t+'">'+(a.t === 'pdf' ? 'PDF' : '<i></i><i></i><i></i>')+'</span><span class="nm">'+a.n+'</span>'
+      + '<button type="button" data-rm="'+i+'" aria-label="Remover '+a.n+'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>';
+  }).join('') + (anexos.length ? '<span class="cont">'+anexos.length+' de 5</span>' : '');
+  todos('[data-rm]', b).forEach(function(x){ x.onclick = function(){ anexos.splice(+x.getAttribute('data-rm'), 1); bandeja(); }; });
+  rolar();
+}
+function anexar(t, n){ if(anexos.length < 5){ anexos.push({ t: t, n: n }); bandeja(); } }
+$('bCam').onclick = function(){ anexar('foto', 'foto-' + (anexos.length + 1) + '.jpg'); };
+$('bImg').onclick = function(){ anexar('foto', 'galeria-' + (anexos.length + 1) + '.jpg'); };
+$('bPdf').onclick = function(){ anexar('pdf', 'boleto-' + (anexos.length + 1) + '.pdf'); };
+
+// Enviar pedido
+function pareceDuvida(t){ return /^(como|onde|o que|qual tela)\b/i.test(t); }
+function enviarPedido(t){
+  var f = ++ficha, d;
+  var anx = anexos.map(function(a){ return '<div class="bolha">'+(a.t === 'pdf' ? '📄 ' : '📷 ')+a.n+'</div>'; }).join('');
+  var eu = add('<div class="m eu"><div class="col">' + anx + (t ? '<div class="bolha">'+txtSeguro(t)+'</div>' : '') + '<span class="status">Enviado · '+hora()+'</span></div></div>');
+  $('txt').value = ''; anexos = []; bandeja(); $('guarda').hidden = true;
+  usados++; saldo();
+  depois(900, function(){ humor('pensando','pensando…'); eu.querySelector('.status').textContent = 'Luke recebeu · ' + hora(); d = digitando(); }, f);
+  depois(2800, function(){
+    d.remove();
+    if(/lembr/i.test(t)) doLuke('<div class="lemb"><span class="rel">⏰</span><div><b>Lembrete agendado</b>Eu aviso você aqui no dia combinado.</div></div>');
+    else doLuke('<div class="bolha">Recebi. Neste preview eu não faço o serviço de verdade; no sistema eu leio o que você mandou e respondo aqui em alguns minutos.</div>');
+    humor('feliz','online'); depois(2600, function(){ humor('idle'); }, f);
+  }, f);
+}
+$('form').onsubmit = function(ev){
+  ev.preventDefault();
+  var t = $('txt').value.trim();
+  if(!t && !anexos.length) return;
+  if(!anexos.length && pareceDuvida(t)){ $('guarda').hidden = false; rolar(); return; }
+  enviarPedido(t);
+};
+$('gPedir').onclick = function(){ enviarPedido($('txt').value.trim()); };
+$('gDuvida').onclick = function(){ var t = $('txt').value.trim(); $('txt').value = ''; $('guarda').hidden = true; aba('duvida'); perguntar(t); };
+todos('[data-chip]').forEach(function(b){ b.onclick = function(){
+  var c = b.getAttribute('data-chip');
+  if(c === 'pag') tocarDemo();
+  else if(c === 'nota') anexar('pdf', 'nota-' + (4521 + anexos.length) + '.pdf');
+  else { $('txt').value = c === 'como' ? 'Como faço ' : 'Me lembra de '; $('txt').focus(); }
+}; });
+
+// Tirar dúvida (resposta na hora)
+var msgsD = $('msgsD');
+function linkPedido(t){ return '<button class="link-pedido" data-pedido="'+txtSeguro(t).replace(/"/g,'&quot;')+'">Isto é um pedido? <b>Mandar para o Luke</b></button>'; }
+function perguntar(t){
+  if(!t) return;
+  var f = ++ficha, p = t.toLowerCase(), d;
+  add('<div class="m eu"><div class="col"><div class="bolha">'+txtSeguro(t)+'</div></div></div>', msgsD);
+  humor('pensando','pensando…'); d = digitando(msgsD);
+  depois(1100, function(){
+    d.remove();
+    var r;
+    if(p.indexOf('devolu') >= 0) r = '<div class="bolha">Devolução é na conferência do <b>Caixa</b>: abra o pedido, toque em Devolução, marque os produtos e salve.</div><button class="acao">Ir para a tela'+SETA+'</button>';
+    else if(p.indexOf('pedido') >= 0) r = '<div class="bolha">Em <b>Pedidos</b>, toque em Novo pedido, escolha o cliente e os produtos e salve.</div><button class="acao">Ir para a tela'+SETA+'</button>';
+    else if(p.indexOf('deve') >= 0) r = '<div class="bolha">Abra o cliente em <b>Clientes</b> e veja o quadro "Em aberto". Lá aparece cada título e o vencimento.</div><button class="acao">Ir para a tela'+SETA+'</button>';
+    else r = '<div class="bolha">Aqui é só o preview, então eu ainda não sei responder de verdade. No sistema, eu explico o passo a passo e mostro o botão para ir até a tela.</div>';
+    doLuke(r + linkPedido(t), msgsD);
+    humor('feliz','online'); depois(2200, function(){ humor('idle'); }, f);
+  }, f);
+}
+$('formD').onsubmit = function(ev){ ev.preventDefault(); var t = $('txtD').value.trim(); $('txtD').value = ''; perguntar(t); };
+todos('[data-sug]').forEach(function(b){ b.onclick = function(){ perguntar(b.getAttribute('data-sug')); }; });
+msgsD.addEventListener('click', function(ev){
+  var b = ev.target.closest ? ev.target.closest('.link-pedido') : null;
+  if(!b) return;
+  aba('pedir'); $('txt').value = b.getAttribute('data-pedido'); $('txt').focus();
+});
+$('bDemo').onclick = function(){ admin = admin; if(perfil !== 'chat') { setPerfil('chat'); return; } jaTocou = true; if(!aberto) abrir('pedir'); else aba('pedir'); tocarDemo(); };
+
+// Filtros (seção do administrador)
+todos('#filtros button').forEach(function(b){ b.onclick = function(){
+  var f = b.getAttribute('data-f');
+  todos('#filtros button').forEach(function(x){ x.setAttribute('aria-pressed', x === b); });
+  todos('#listaConv .conv').forEach(function(c){ c.hidden = f !== 'todas' && (' '+c.getAttribute('data-t')+' ').indexOf(' '+f+' ') < 0; });
+}; });
+// Interruptores
+todos('.interr').forEach(function(b){ b.onclick = function(){ b.setAttribute('aria-checked', b.getAttribute('aria-checked') !== 'true'); }; });
+
+palco.classList.add('com-chat');
+bandeja(); saldo();
+modo(pref);
+ciclo();
+</script>
+</body>
+</html>
