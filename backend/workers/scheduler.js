@@ -601,6 +601,17 @@ function startSchedulers() {
     };
     setTimeout(limparIdempotenciaAgente, 2 * 60 * 1000);
     setInterval(limparIdempotenciaAgente, 24 * 60 * 60 * 1000);
+
+    // === Webhook de saída para o Luke (Fatia A) ===
+    // A cada 15 s: varre solicitações que chegaram a estado final desde o marco e envia eventos pendentes (com trava interna).
+    // Sem LUKE_WEBHOOK_URL/LUKE_WEBHOOK_SECRET no ambiente, não faz chamada externa (marca DESLIGADO).
+    const lukeWebhookService = require('../services/lukeWebhookService');
+    const _runLukeWebhook = () => {
+        lukeWebhookService.processarFila()
+            .catch(err => console.error('⚠️ Webhook do Luke Error:', err.message));
+    };
+    setTimeout(_runLukeWebhook, 20 * 1000);
+    setInterval(_runLukeWebhook, 15 * 1000);
 }
 
 module.exports = { startSchedulers };

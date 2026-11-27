@@ -78,6 +78,8 @@ function grupoBloqueioFixo(metodo, caminho) {
 const REGRAS_SEMPRE_LIBERADO = [
     { metodos: ['GET'], caminho: /^\/api\/auth\/me\/?$/ },
     { metodos: ['GET'], caminho: /^\/api\/agente\/v1(\/|$)/ },
+    // Resposta do Luke no chat (o router /api/agente/v1/chat ainda confere se é o agente habilitado em AppConfig 'chat_luke'):
+    { metodos: ['POST'], caminho: /^\/api\/agente\/v1\/chat\/conversas\/[^/]+\/mensagens\/?$/ },
 ];
 function ehSempreLiberado(metodo, caminho) {
     const m = String(metodo || '').toUpperCase();

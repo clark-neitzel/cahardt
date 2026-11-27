@@ -191,6 +191,8 @@ app.use('/api/whatsapp-clientes', authMiddleware, require('./routes/whatsappClie
 app.use('/api/mapa-clientes', authMiddleware, require('./routes/mapaClientesRoutes')); // Mapa de Clientes (reorganização por dia/região)
 app.use('/api/vendedores', authMiddleware, vendedorRoutes);
 app.use('/api/agentes', require('./routes/agenteRoutes')); // Gestão de usuários-agente e tokens de API (só admin; authMiddleware + exigirAdminHumano dentro do router)
+app.use('/api/agentes-webhook', require('./routes/lukeWebhookAdminRoutes')); // Log e reenvio do webhook do Luke (só admin humano; bloqueio fixo ^/api/agentes)
+app.use('/api/agente/v1/chat', authMiddleware, require('./routes/agenteChatV1Routes')); // ANTES de /api/agente/v1: chat atendido pelo agente configurado do Luke
 app.use('/api/agente/v1', authMiddleware, require('./routes/agenteApiV1Routes')); // O que o agente (token cah_ag_) alcança — allowlist em config/agenteAcesso.js
 app.use('/api/config', authMiddleware, configRoutes);
 app.use('/api/tabela-precos', authMiddleware, tabelaPrecoRoutes);
@@ -263,7 +265,8 @@ app.use('/api/mensagens-agendadas', authMiddleware, mensagemAgendadaRoutes); // 
 app.use('/api/migrations', authMiddleware, migrationRoutes); // Migration endpoint (protegido)
 app.use('/api/curriculos', curriculoRoutes); // RH: Submissão pública de currículos
 app.use('/api/rh', authMiddleware, rhRoutes); // RH: Painel interno (protegido)
-app.use('/api/copiloto', authMiddleware, copilotoRoutes); // Copiloto (Clippy): assistente de negócio com IA
+app.use('/api/copiloto', authMiddleware, copilotoRoutes); // Copiloto (Clippy/Luke): assistente de negócio com IA
+app.use('/api/chat-luke', authMiddleware, require('./routes/chatLukeRoutes')); // Chat do Luke (BPO financeiro — usuários com permissão)
 app.use('/api/comissoes', authMiddleware, comissaoRoutes); // Módulo de Comissões
 app.use('/api/kitfesta', authMiddleware, kitFestaRoutes); // Kit Festa: painel admin (agenda, produtos, pedidos)
 app.use('/api/congelados', authMiddleware, congeladosRoutes); // Site Congelados: painel admin (produtos, pedidos)

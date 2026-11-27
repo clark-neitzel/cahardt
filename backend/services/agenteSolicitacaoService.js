@@ -194,7 +194,11 @@ function lerPedido(req) {
     if (Buffer.byteLength(serial) > MAX_BODY_BYTES) return { ok: false, motivo: 'Corpo maior que 100 KB não entra na fila de autorização.' };
     if (body !== null && excedeLimitesDeExibicao(body)) return { ok: false, motivo: 'Corpo grande demais para o dono revisar (limites: 500 itens por lista, 500 campos por objeto, 2000 caracteres por texto, 8 níveis). Divida em pedidos menores.' };
     if (/cah_ag_/i.test(serial) || /cah_ag_/i.test(query)) return { ok: false, motivo: 'O pedido contém um token de agente no corpo ou nos parâmetros; remova-o.' };
-    return { ok: true, metodo, caminho, query, body, corpoHash: sha256(estavel(body)) };
+    const reUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const hConv = String(req.headers['x-origem-conversa'] || '').trim();
+    const hMsg = String(req.headers['x-origem-mensagem'] || '').trim();
+    const origem = reUuid.test(hConv) ? { conversaId: hConv, mensagemId: reUuid.test(hMsg) ? hMsg : null } : null;
+    return { ok: true, metodo, caminho, query, body, corpoHash: sha256(estavel(body)), origem };
 }
 
 // ───────────────────────── criação ─────────────────────────
@@ -212,6 +216,15 @@ function resposta202(s, duplicada) {
  * Guarda o pedido (ou devolve o PENDENTE idêntico que já existe). `pedido` = retorno de lerPedido; `decisao` = politica.avaliar.
  * Devolve { solicitacao, duplicada }. Lança erro(429) no teto de pendentes.
  */
+async function vincularOrigemSegura(solicitacaoId, origem, vendedorId) {
+    if (!origem || !origem.conversaId) return;
+    try {
+        await require('./chatLukeService').vincularOrigem(solicitacaoId, origem, vendedorId);
+    } catch (e) {
+        console.warn('[AgenteSolicitacao] falha ao vincular X-Origem-* (solicitação segue válida):', e.message);
+    }
+}
+
 async function criarOuReaproveitar({ pedido, decisao, vendedor, tokenPrefixo }) {
     const filtroIgual = () => ({
         agenteId: vendedor.id, status: 'PENDENTE', chave: decisao.chave, caminho: pedido.caminho, query: pedido.query,
@@ -219,7 +232,10 @@ async function criarOuReaproveitar({ pedido, decisao, vendedor, tokenPrefixo }) 
     });
     // caminho rápido (sem lock): pedido idêntico já pendente
     const existente = await prisma.agenteSolicitacao.findFirst({ where: filtroIgual() });
-    if (existente) return { solicitacao: existente, duplicada: true };
+    if (existente) {
+        await vincularOrigemSegura(existente.id, pedido.origem, vendedor.id);
+        return { solicitacao: existente, duplicada: true };
+    }
     let antes = null;
     if (temAntes(decisao.chave)) {
         try { antes = await lerAntes(decisao.chave, pedido.caminho); }
@@ -228,7 +244,7 @@ async function criarOuReaproveitar({ pedido, decisao, vendedor, tokenPrefixo }) 
     const id = crypto.randomUUID();
     // Só banco aqui dentro. O lock (por agente, até o fim da transação) serializa pedidos simultâneos do mesmo agente:
     // dois pedidos idênticos em paralelo viram UMA solicitação e o teto de pendentes não estoura por corrida.
-    return prisma.$transaction(async (tx) => {
+    const res = await prisma.$transaction(async (tx) => {
         await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`agente-solicitacao|${vendedor.id}`}))`;
         const ja = await tx.agenteSolicitacao.findFirst({ where: filtroIgual() });
         if (ja) return { solicitacao: ja, duplicada: true };
@@ -251,6 +267,8 @@ async function criarOuReaproveitar({ pedido, decisao, vendedor, tokenPrefixo }) 
         });
         return { solicitacao, duplicada: false };
     }, { timeout: 20000, maxWait: 10000 });
+    await vincularOrigemSegura(res.solicitacao.id, pedido.origem, vendedor.id);
+    return res;
 }
 
 // ───────────────────────── auditoria (fora do fluxo principal) ─────────────────────────

@@ -5736,3 +5736,92 @@ model ConferenciaMotoristaConclusao {
   @@index([conferenciaId])
   @@map("conferencia_motorista_conclusoes")
 }
+
+// ─────────── Chat do Luke + webhook de saída (Fatias A e B1 — só adições) ───────────
+// Anexos do chat NÃO têm tabela própria: usam `anexos` com entidadeTipo='CHAT_LUKE' e entidadeId=<id da mensagem>.
+// Config (AppConfig): 'chat_luke' = { agenteId, ativo, limites } e 'luke_webhook_inicio' (marco de ativação do webhook).
+model ChatLukeConversa {
+  id               String             @id @default(uuid())
+  usuarioId        String             @unique @map("usuario_id")
+  usuarioNome      String             @map("usuario_nome")
+  ultimaMensagemEm DateTime?          @map("ultima_mensagem_em")
+  lidaUsuarioEm    DateTime?          @map("lida_usuario_em")
+  criadoEm         DateTime           @default(now()) @map("criado_em")
+  atualizadoEm     DateTime           @updatedAt @map("atualizado_em")
+  mensagens        ChatLukeMensagem[]
+
+  @@index([ultimaMensagemEm])
+  @@map("chat_luke_conversas")
+}
+
+model ChatLukeMensagem {
+  id                String                        @id @default(uuid())
+  conversaId        String                        @map("conversa_id")
+  autor             String // USUARIO | LUKE | SISTEMA
+  usuarioId         String?                       @map("usuario_id")
+  texto             String?                       @db.Text
+  assunto           String? // LANCAMENTO | NOTA | CORRECAO | DUVIDA | FECHAMENTO
+  tipo              String                        @default("TEXTO") // TEXTO | PENDENCIA (fase 2)
+  status            String                        @default("ENVIADO") // ENVIADO | PROCESSANDO | RESPONDIDO | ERRO ("aguardando autorização" é derivado na leitura)
+  respondeA         String?                       @map("responde_a")
+  pendenciaAberta   Boolean                       @default(false) @map("pendencia_aberta")
+  chaveIdempotencia String?                       @map("chave_idempotencia")
+  qtdAnexos         Int                           @default(0) @map("qtd_anexos")
+  criadoEm          DateTime                      @default(now()) @map("criado_em")
+  atualizadoEm      DateTime                      @updatedAt @map("atualizado_em")
+  conversa          ChatLukeConversa              @relation(fields: [conversaId], references: [id])
+  solicitacoes      ChatLukeMensagemSolicitacao[]
+
+  @@unique([conversaId, chaveIdempotencia])
+  @@index([conversaId, criadoEm])
+  @@index([conversaId, atualizadoEm])
+  @@index([usuarioId, criadoEm])
+  @@map("chat_luke_mensagens")
+}
+
+model ChatLukeMensagemSolicitacao {
+  mensagemId    String           @map("mensagem_id")
+  solicitacaoId String           @map("solicitacao_id") // sem FK de propósito (a tabela de solicitações é de outro módulo)
+  origem        String           @default("LUKE") // LUKE (solicitacaoIds da resposta) | HEADER (X-Origem-*)
+  criadoEm      DateTime         @default(now()) @map("criado_em")
+  mensagem      ChatLukeMensagem @relation(fields: [mensagemId], references: [id])
+
+  @@id([mensagemId, solicitacaoId])
+  @@index([solicitacaoId])
+  @@map("chat_luke_mensagem_solicitacoes")
+}
+
+// Limite diário individual (sobrepõe o padrão de AppConfig 'chat_luke'). Fora de Vendedor.permissoes de propósito:
+// "copiar permissões" e "restaurar versão" apagariam. Campo nulo = vale o padrão geral.
+model ChatLukeLimite {
+  usuarioId         String   @id @map("usuario_id")
+  pedidosDia        Int?     @map("pedidos_dia")
+  anexosDia         Int?     @map("anexos_dia")
+  duvidasDia        Int?     @map("duvidas_dia") // limite diário da ajuda (Clippy/Luke "Tirar dúvida")
+  atualizadoPorNome String?  @map("atualizado_por_nome")
+  atualizadoEm      DateTime @updatedAt @map("atualizado_em")
+
+  @@map("chat_luke_limites")
+}
+
+// Fila do webhook de saída (CA-Hardt -> Luke). Espelha bot_whatsapp_envios. O corpo é MAGRO (só ids); segredo nunca entra aqui.
+model LukeWebhookEvento {
+  id            String    @id @default(uuid()) // = eventoId (não muda nos reenvios)
+  tipo          String // solicitacao.atualizada | chat.mensagem
+  chaveDedupe   String    @unique @map("chave_dedupe")
+  status        String    @default("PENDENTE") // PENDENTE | ENVIADO | FALHA | DESLIGADO
+  tentativas    Int       @default(0)
+  proximaEm     DateTime? @map("proxima_em")
+  httpStatus    Int?      @map("http_status")
+  ultimoErro    String?   @map("ultimo_erro")
+  solicitacaoId String?   @map("solicitacao_id")
+  conversaId    String?   @map("conversa_id")
+  mensagemId    String?   @map("mensagem_id")
+  payload       Json
+  criadoEm      DateTime  @default(now()) @map("criado_em")
+  enviadoEm     DateTime? @map("enviado_em")
+
+  @@index([status, proximaEm])
+  @@index([tipo, criadoEm])
+  @@map("luke_webhook_eventos")
+}

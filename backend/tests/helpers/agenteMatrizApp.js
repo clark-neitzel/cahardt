@@ -22,7 +22,7 @@ const CACHE = ['middlewares/authMiddleware.js', 'services/agenteTokenService.js'
     'config/agentePoliticaPadrao.js', 'utils/agenteContexto.js', 'services/agenteSolicitacaoService.js', 'config/agenteAntes.js', 'config/agenteTelas.js',
     'config/agenteModulos.js', 'config/agenteClassificacao.js', 'config/agenteGuardas.js', 'services/agenteMatrizService.js',
     'services/agenteMatrizSeedService.js', 'services/agenteIdempotenciaService.js', 'services/agenteCriarService.js',
-    'services/agenteKitService.js', 'config/agenteExemplos.js'];
+    'services/agenteKitService.js', 'config/agenteExemplos.js', 'routes/agenteChatV1Routes.js', 'services/chatLukeService.js'];
 const JWT_SECRET = process.env.JWT_SECRET;
 const hash = (t) => crypto.createHash('sha256').update(t).digest('hex');
 const UUID = '3f2b8a1c-9d4e-4b7a-8c11-5e6f7a8b9c0d';
@@ -145,6 +145,7 @@ function memoria() {
         agenteIdempotencia: modeloIdempotencia(db),
         $transaction: transacao,
         auditLog: { create: async ({ data }) => { if (db.falharAudit) throw new Error('banco lento'); audits.push(data); return data; } },
+        appConfig: { findUnique: async () => null },
         vendedorPermissoesHistorico: { create: async ({ data }) => { historico.push(data); return data; } },
         funcionario: { findFirst: async () => null },
         // leituras das guardas e do "antes"
@@ -169,6 +170,7 @@ async function subir(opts = {}) {
     limparCacheContendo(...CACHE);
     const authMiddleware = require('../../middlewares/authMiddleware');
     const agenteRoutes = require('../../routes/agenteRoutes');
+    const agenteChat = require('../../routes/agenteChatV1Routes');
     const agenteApi = require('../../routes/agenteApiV1Routes');
     const politicaSvc = require('../../services/agentePoliticaService');
     const matrizSvc = require('../../services/agenteMatrizService');
@@ -220,6 +222,7 @@ async function subir(opts = {}) {
         app.use(`/api/${seg}`, authMiddleware, authMiddleware, router);
     }
     app.use('/api/agentes', agenteRoutes);
+    app.use('/api/agente/v1/chat', authMiddleware, agenteChat);
     app.use('/api/agente/v1', authMiddleware, agenteApi);
     app.use((err, req, res, _n) => { console.error(err); res.status(500).json({ error: 'erro' }); });
     const srv = await startTestServer(app);

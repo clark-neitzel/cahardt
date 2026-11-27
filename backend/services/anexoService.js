@@ -22,7 +22,7 @@ const PDF_DIR_LEGADO = path.join(__dirname, '../../uploads/contas-pagar'); // s�
 
 const LIMITE_BYTES = 30 * 1024 * 1024;
 const TIPOS = ['COMPROVANTE', 'NF', 'BOLETO', 'CONTRATO', 'OUTRO'];
-const ENTIDADES = ['CONTA_PAGAR', 'DESPESA', 'NOTA_ENTRADA'];
+const ENTIDADES = ['CONTA_PAGAR', 'DESPESA', 'NOTA_ENTRADA', 'CHAT_LUKE']; // CHAT_LUKE: só abre pelas rotas do chat (routes/anexos.js bloqueia)
 
 try { fs.mkdirSync(TMP_DIR, { recursive: true }); } catch (e) { console.warn('[Anexos] não criou pasta temp:', e.message); }
 
@@ -204,8 +204,13 @@ async function salvar({ entidadeTipo, entidadeId, tipo = 'OUTRO', arquivo, usuar
 
         const avisos = [];
         try {
+            // Escopos separados: o aviso das telas financeiras IGNORA os anexos do chat (privacidade) e o do chat só olha o que a
+            // PRÓPRIA pessoa já mandou ao Luke.
+            const escopo = entidadeTipo === 'CHAT_LUKE'
+                ? { entidadeTipo: 'CHAT_LUKE', criadoPorId: usuario?.id || '__sem-usuario__' }
+                : { entidadeTipo: { not: 'CHAT_LUKE' } };
             const iguais = await prisma.anexo.findMany({
-                where: { sha256, ativo: true, NOT: { id: criado.id } },
+                where: { sha256, ativo: true, NOT: { id: criado.id }, ...escopo },
                 select: { id: true, entidadeTipo: true, entidadeId: true, nomeOriginal: true, criadoEm: true },
                 take: 5
             });

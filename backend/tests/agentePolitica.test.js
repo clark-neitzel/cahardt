@@ -18,7 +18,7 @@ const { modeloSolicitacoes, transacaoSolicitacoes } = require('./helpers/memSoli
 const RAIZ = path.join(__dirname, '..');
 const DATABASE_MODULE = path.join(RAIZ, 'config/database.js');
 const CACHE = ['middlewares/authMiddleware.js', 'services/agenteTokenService.js', 'routes/agenteRoutes.js',
-    'routes/agenteApiV1Routes.js', 'config/agenteAcesso.js', 'controllers/appAuthController.js',
+    'routes/agenteApiV1Routes.js', 'routes/agenteChatV1Routes.js', 'services/chatLukeService.js', 'config/agenteAcesso.js', 'controllers/appAuthController.js',
     'services/agentePoliticaService.js', 'services/agenteAuditoriaService.js', 'services/agenteCatalogoRotas.js',
     'config/agentePoliticaPadrao.js', 'utils/agenteContexto.js', 'services/agenteSolicitacaoService.js', 'config/agenteAntes.js', 'config/agenteTelas.js'];
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -77,6 +77,7 @@ function memoria() {
         agenteSolicitacao: solModelo,
         $transaction: transacaoSolicitacoes(solModelo),
         auditLog: { create: async ({ data }) => { if (db.falharAudit) throw new Error('banco lento'); audits.push(data); return data; } },
+        appConfig: { findUnique: async () => null },
         funcionario: { findFirst: async () => null },
     });
     return { db, prisma };
@@ -89,6 +90,7 @@ async function subir(db0) {
     limparCacheContendo(...CACHE);
     const authMiddleware = require('../middlewares/authMiddleware');
     const agenteRoutes = require('../routes/agenteRoutes');
+    const agenteChat = require('../routes/agenteChatV1Routes');
     const agenteApi = require('../routes/agenteApiV1Routes');
     const politicaSvc = require('../services/agentePoliticaService');
     const auditoria = require('../services/agenteAuditoriaService');
@@ -120,6 +122,7 @@ async function subir(db0) {
         app.use(`/api/${seg}`, authMiddleware, router);
     }
     app.use('/api/agentes', agenteRoutes);
+    app.use('/api/agente/v1/chat', authMiddleware, agenteChat);
     app.use('/api/agente/v1', authMiddleware, agenteApi);
     app.use((err, req, res, _n) => { console.error(err); res.status(500).json({ error: 'erro' }); });
     const srv = await startTestServer(app);
@@ -174,6 +177,7 @@ const SEFAZ = ['POST /api/notas-entrada/consultar-agora', 'POST /api/notas-entra
 function esperado(e) {
     const p = e.exemplo;
     if (e.chave === 'GET /api/agente/v1/solicitacoes/:p') return { status: 404 }; // liberada; o id de teste não existe -> 404 da própria rota
+    if (p.startsWith('/api/agente/v1/chat/')) return { status: 403, codigo: 'AGENTE_CHAT_NAO_HABILITADO', proprioRouter: true }; // passa na política, mas exige agente configurado em AppConfig
     if (e.chave === 'GET /api/auth/me' || p.startsWith('/api/agente/v1')) return { status: 200 };
     if (FIXOS_PREFIXOS.some((f) => p.startsWith(f)) || p.startsWith('/api/auth') || SEFAZ.includes(e.chave)) return { status: 403, codigo: 'AGENTE_BLOQUEADO', fixo: true };
     if (SEED.includes(e.familia)) {
@@ -248,9 +252,11 @@ test('matriz completa: TODA rota real responde conforme a política padrão (lei
             await Promise.all(cat.slice(i, i + 25).map(async (e) => {
                 const r = await srv.request(e.metodo, url(e), { headers: bearer(claro), body: e.metodo === 'GET' ? undefined : {} });
                 const x = esperado(e);
-                const ok = r.status === x.status && (x.status === 200 || x.status === 404 || (x.status === 202
-                    ? (r.body.codigo === x.codigo && r.body.status === 'PENDENTE' && typeof r.body.solicitacaoId === 'string' && typeof r.body.orientacao === 'string')
-                    : (r.body.codigo === x.codigo && r.body.nivel === 'BLOQUEADO' && r.body.fixo === x.fixo && r.body.chave === e.chave && typeof r.body.orientacao === 'string')));
+                const ok = r.status === x.status && (x.status === 200 || x.status === 404 || (x.proprioRouter
+                    ? r.body.codigo === x.codigo
+                    : (x.status === 202
+                        ? (r.body.codigo === x.codigo && r.body.status === 'PENDENTE' && typeof r.body.solicitacaoId === 'string' && typeof r.body.orientacao === 'string')
+                        : (r.body.codigo === x.codigo && r.body.nivel === 'BLOQUEADO' && r.body.fixo === x.fixo && r.body.chave === e.chave && typeof r.body.orientacao === 'string'))));
                 if (!ok) falhas.push(`${e.chave}: esperado ${JSON.stringify(x)}, veio ${r.status} ${r.texto.slice(0, 160)}`);
                 if (r.status === 200 || r.status === 404) contagem[200] += 1; else if (r.status === 202) contagem.PEDE += 1; else if (r.body?.fixo) contagem.FIXO += 1; else if (r.body?.codigo === 'AGENTE_PEDE_AUTORIZACAO') contagem.PEDE += 1; else contagem.BLOQ += 1;
             }));
@@ -316,9 +322,9 @@ test('bloqueios fixos: 403 `fixo:true` mesmo com override LIBERADO inserido dire
     try {
         const { claro, adminJwt } = cenario(db);
         const alvos = [['GET', '/api/vendedores'], ['GET', '/api/config'], ['GET', '/api/admin-exec/ping'], ['GET', '/api/rh/funcionarios'], ['GET', '/api/ponto-publico/x'],
-            ['GET', '/api/notas-fiscais'], ['GET', '/api/auth/midia-token'], ['POST', '/api/auth/app-login'], ['GET', '/api/asaas/x'], ['GET', '/api/copiloto/x'],
-            ['POST', `/api/notas-entrada/${UUID}/manifestar`], ['POST', '/api/notas-entrada/consultar-agora'], ['POST', '/api/notas-entrada/buscar-chave'],
-            ['POST', '/api/notas-entrada/buscar-chave/agendar'], ['GET', '/api/agentes'], ['GET', '/api/impressao/x'], ['GET', '/api/cobranca/x'], ['GET', '/api/config-notas']];
+        ['GET', '/api/notas-fiscais'], ['GET', '/api/auth/midia-token'], ['POST', '/api/auth/app-login'], ['GET', '/api/asaas/x'], ['GET', '/api/copiloto/x'],
+        ['POST', `/api/notas-entrada/${UUID}/manifestar`], ['POST', '/api/notas-entrada/consultar-agora'], ['POST', '/api/notas-entrada/buscar-chave'],
+        ['POST', '/api/notas-entrada/buscar-chave/agendar'], ['GET', '/api/agentes'], ['GET', '/api/impressao/x'], ['GET', '/api/cobranca/x'], ['GET', '/api/config-notas']];
         db.addPolitica({ vendedorId: 'luke', escopo: 'FAMILIA', chave: '/api/vendedores', nivel: 'LIBERADO' });
         db.addPolitica({ vendedorId: 'luke', escopo: 'FUNCAO', chave: 'GET /api/vendedores', nivel: 'LIBERADO' });
         db.addPolitica({ vendedorId: 'luke', escopo: 'FUNCAO', chave: 'POST /api/notas-entrada/:p/manifestar', nivel: 'LIBERADO' });
@@ -332,8 +338,8 @@ test('bloqueios fixos: 403 `fixo:true` mesmo com override LIBERADO inserido dire
         }
         // a API de política também recusa
         for (const body of [{ escopo: 'FUNCAO', chave: 'GET /api/vendedores', nivel: 'LIBERADO' }, { escopo: 'FUNCAO', chave: 'POST /api/notas-entrada/:p/manifestar', nivel: 'PEDE' },
-            { escopo: 'FAMILIA', chave: '/api/config', nivel: 'LIBERADO' }, { escopo: 'FAMILIA', chave: '/api/rh', nivel: 'PEDE' }, { escopo: 'FUNCAO', chave: 'GET /api/auth/me', nivel: 'BLOQUEADO' },
-            { escopo: 'FUNCAO', chave: 'POST /api/notas-entrada/consultar-agora', nivel: 'LIBERADO' }]) {
+        { escopo: 'FAMILIA', chave: '/api/config', nivel: 'LIBERADO' }, { escopo: 'FAMILIA', chave: '/api/rh', nivel: 'PEDE' }, { escopo: 'FUNCAO', chave: 'GET /api/auth/me', nivel: 'BLOQUEADO' },
+        { escopo: 'FUNCAO', chave: 'POST /api/notas-entrada/consultar-agora', nivel: 'LIBERADO' }]) {
             const r = await srv.request('PUT', '/api/agentes/luke/politicas', { headers: bearer(adminJwt), body });
             assert.equal(r.status, 422, JSON.stringify(body) + ' → ' + r.texto);
         }
@@ -613,7 +619,7 @@ test('API da política: só admin humano (agente 403, não-admin 403, sem token 
     try {
         const { claro, vendJwt, adminJwt } = cenario(db);
         for (const [m, u, b] of [['GET', '/api/agentes/luke/politicas'], ['GET', '/api/agentes/luke/politicas/familias'],
-            ['PUT', '/api/agentes/luke/politicas', { escopo: 'FAMILIA', chave: '/api/produtos', nivel: 'BLOQUEADO' }], ['DELETE', '/api/agentes/luke/politicas', { escopo: 'FAMILIA', chave: '/api/produtos' }]]) {
+        ['PUT', '/api/agentes/luke/politicas', { escopo: 'FAMILIA', chave: '/api/produtos', nivel: 'BLOQUEADO' }], ['DELETE', '/api/agentes/luke/politicas', { escopo: 'FAMILIA', chave: '/api/produtos' }]]) {
             const ag = await srv.request(m, u, { headers: bearer(claro), body: b });
             assert.equal(ag.status, 403, `agente ${m} ${u}`); assert.equal(ag.body.codigo, 'AGENTE_BLOQUEADO'); assert.equal(ag.body.fixo, true);
             const nv = await srv.request(m, u, { headers: bearer(vendJwt), body: b });
@@ -785,7 +791,7 @@ test('D1: limite por minuto (Retry-After) também não quebra com `res` falso �
 
 test('D1: setHeaderSeguro nunca lança, com res mock sem set/setHeader, com set que lança, ou nulo', () => {
     const { setHeaderSeguro } = require('../middlewares/authMiddleware');
-    assert.doesNotThrow(() => setHeaderSeguro({ status() {}, json() {} }, 'X-Request-Id', 'a'));
+    assert.doesNotThrow(() => setHeaderSeguro({ status() { }, json() { } }, 'X-Request-Id', 'a'));
     assert.doesNotThrow(() => setHeaderSeguro({ set() { throw new Error('x'); } }, 'X', 'y'));
     assert.doesNotThrow(() => setHeaderSeguro(null, 'X', 'y'));
     const visto = [];
@@ -816,7 +822,7 @@ test('D2: token cah_ag_ em segmento de caminho (cru, codificado, em maiúsculas)
         const { claro, adminJwt } = cenario(db);
         const sufixo = claro.slice(7);
         const alvos = [`/api/pedidos/${claro}`, `/api/pedidos/cah%5Fag%5F${sufixo}`, `/api/pedidos/%63ah_ag_${sufixo}`, `/api/pedidos/cah%255Fag%255F${sufixo}`,
-            `/api/pedidos/${claro.toUpperCase()}`, `/api/pedidos/${claro}/danfe`, `/api/pedidos?x=${claro}`, `/api/pedidos/cah_%0Aag_${sufixo}`];
+        `/api/pedidos/${claro.toUpperCase()}`, `/api/pedidos/${claro}/danfe`, `/api/pedidos?x=${claro}`, `/api/pedidos/cah_%0Aag_${sufixo}`];
         for (const u of alvos) {
             for (const tok of [claro, adminJwt, 'lixo']) {
                 const r = await crua(srv.baseUrl, u, tok);
@@ -834,8 +840,10 @@ test('D2: token cah_ag_ em segmento de caminho (cru, codificado, em maiúsculas)
 // M1/M2/B1 — exceções novas e fixos novos (a matriz já cobre; aqui o nível e o motivo explícitos)
 test('exceções do revisor: embarques/mapa, nota-fiscal, caixa config/autorizadores/audit-logs ficam fora do seed (só FUNCAO libera)', async () => {
     const padrao = require('../config/agentePoliticaPadrao');
-    const novas = { 'GET /api/embarques/mapa': 'externo', 'GET /api/pedidos/:p/nota-fiscal': 'externo', 'GET /api/caixa/conferencia-dinheiro/config': 'grava',
-        'GET /api/caixa/conferencia-dinheiro/autorizadores': 'grava', 'GET /api/caixa/audit-logs': 'sensivel' };
+    const novas = {
+        'GET /api/embarques/mapa': 'externo', 'GET /api/pedidos/:p/nota-fiscal': 'externo', 'GET /api/caixa/conferencia-dinheiro/config': 'grava',
+        'GET /api/caixa/conferencia-dinheiro/autorizadores': 'grava', 'GET /api/caixa/audit-logs': 'sensivel'
+    };
     for (const [k, motivo] of Object.entries(novas)) assert.equal(padrao.EXCECOES_LEITURA[k], motivo, k);
     const { db, srv } = await subir();
     try {

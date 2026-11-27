@@ -38,6 +38,8 @@ const pode = (req, tipoEntidade, acao) => {
 
 /** Permissão sobre UM anexo. Despesa: dono da despesa (escrever só com o caixa aberto) ou escritório; demais: REGRAS. */
 async function podeNoAnexo(req, a, acao) {
+    // Anexo do chat do Luke só abre pelas rotas do chat (/api/chat-luke/anexos, /api/agente/v1/chat/anexos) — nem admin passa aqui.
+    if (a.entidadeTipo === 'CHAT_LUKE') return { ok: false, mensagem: 'Anexos do chat do Luke só abrem pelo próprio chat.' };
     if (pode(req, a.entidadeTipo, acao)) return { ok: true };
     if (a.entidadeTipo !== 'DESPESA') return { ok: false };
     const d = await prisma.despesa.findUnique({ where: { id: a.entidadeId }, select: { vendedorId: true, criadoPor: true, dataReferencia: true } });
@@ -150,7 +152,8 @@ router.get('/anexos/:id/arquivo', verificarAuth, async (req, res) => {
     try {
         const a = await anexoService.porId(req.params.id);
         if (!a || !a.ativo) return erro(res, 404, 'Anexo não encontrado.', 'NAO_ENCONTRADO');
-        if (!(await podeNoAnexo(req, a, 'ver')).ok) return erro(res, 403, 'Sem permissão para abrir este anexo.', 'SEM_PERMISSAO');
+        const pVer = await podeNoAnexo(req, a, 'ver');
+        if (!pVer.ok) return erro(res, 403, pVer.mensagem || 'Sem permissão para abrir este anexo.', 'SEM_PERMISSAO');
         const { stream } = anexoService.abrirStream(a);
         res.setHeader('Content-Type', a.mime);
         res.setHeader('Content-Disposition', `inline; filename*=UTF-8''${encodeURIComponent(a.nomeOriginal)}`);

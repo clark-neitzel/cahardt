@@ -34,10 +34,26 @@ router.get('/status', (req, res) => {
 router.post('/chat', async (req, res) => {
     try {
         const { pergunta, historico } = req.body || {};
+        const perms = req.user?.permissoes || {};
+        if (req.user?.id) {
+            try {
+                const lim = await require('../services/chatLukeService').checarLimiteDuvidas(req.user.id, perms);
+                if (!lim.ok) {
+                    return res.status(429).json({
+                        error: `Você usou as ${lim.limite} dúvidas de hoje. Volta amanhã ou fale com o administrador.`,
+                        codigo: 'AJUDA_LIMITE_DIA',
+                        limite: lim.limite,
+                        usadas: lim.usadas,
+                    });
+                }
+            } catch (eLim) {
+                console.error('[copiloto] falha ao conferir limite diário de dúvidas (segue sem bloquear):', eLim.message);
+            }
+        }
         const data = await copilotoService.responderAjuda({
             pergunta,
             historico: Array.isArray(historico) ? historico : [],
-            perms: req.user?.permissoes || {},
+            perms,
             usuarioId: req.user?.id || null,
             usuarioNome: req.user?.nome || null,
         });

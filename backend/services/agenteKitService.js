@@ -33,16 +33,20 @@ function slugNome(nome) {
 async function rotasVisiveisParaAgente(app, vendedorId) {
     // Fail-closed: se o banco de políticas estiver indisponível, propaga 503 em vez de cair no seed aberto.
     const ov = await politica.overridesDe(vendedorId);
+    let agenteChatId = null;
+    try { agenteChatId = (await require('./chatLukeService').lerConfig()).agenteId; } catch (_) { /* sem chat configurado */ }
     const cat = catalogo.catalogoDe(app);
     const itens = [];
     for (const e of cat.rotas) {
         if (e.complexa) continue;
         if (padrao.ehBloqueioFixo(e.metodo, e.exemplo)) continue;
         if (padrao.ehBloqueioFixoPorChave(e.chave)) continue;
+        if (e.exemplo.startsWith('/api/agente/v1/chat/') && agenteChatId !== vendedorId) continue;
         const cls = classificacao.classificar(e.chave);
         if (cls && (cls.soAdmin || cls.morta)) continue;
         const r = politica.resolverEntrada(e, ov);
         if (!r || (r.nivel !== 'LIBERADO' && r.nivel !== 'PEDE')) continue;
+        const ehChat = e.exemplo.startsWith('/api/agente/v1/chat/');
         const mod = modulos.moduloDaFamilia(e.familia);
         const acao = r.acao || (cls ? cls.acao : (e.metodo === 'GET' ? 'ver' : 'editar'));
         itens.push({
@@ -50,13 +54,14 @@ async function rotasVisiveisParaAgente(app, vendedorId) {
             metodo: e.metodo,
             caminho: e.chave.slice(e.metodo.length + 1),
             familia: e.familia,
-            modulo: mod ? mod.chave : 'sistema',
-            rotuloModulo: mod ? mod.rotulo : 'Autodescoberta e Solicitações',
+            modulo: mod ? mod.chave : (ehChat ? 'chat_luke' : 'sistema'),
+            rotuloModulo: mod ? mod.rotulo : (ehChat ? 'Chat do Luke' : 'Autodescoberta e Solicitações'),
             acao,
             nivel: modulos.NIVEL_PARA_TELA[r.nivel] || (r.nivel === 'LIBERADO' ? 'SIM' : 'PEDE'),
             rotulo: rotuloDe(e.chave),
             semprePede: (cls && cls.semprePede) || null,
             avisoExterno: (cls && cls.aviso) || null,
+            ehChat,
         });
     }
     itens.sort((a, b) => a.modulo.localeCompare(b.modulo) || a.acao.localeCompare(b.acao) || a.chave.localeCompare(b.chave));
@@ -89,13 +94,21 @@ async function gerarOpenApi(app, vendedorId, { baseUrl } = {}) {
         const ex = exemploDe(it.chave);
         const paramsOp = [...parameters];
 
-        if (ov.matrizAtiva === true && ehEscrita && it.nivel === 'SIM') {
+        if (ov.matrizAtiva === true && ehEscrita && it.nivel === 'SIM' && !it.ehChat) {
             paramsOp.push({
                 name: 'Idempotency-Key',
                 in: 'header',
                 required: true,
                 description: 'Identificador único da operação (8 a 200 caracteres visíveis, sem espaço, ex.: UUID). Repita a MESMA chave com o MESMO corpo em caso de falha de rede.',
                 schema: { type: 'string', minLength: 8, maxLength: 200 },
+            });
+        } else if (ehEscrita && it.ehChat) {
+            paramsOp.push({
+                name: 'Idempotency-Key',
+                in: 'header',
+                required: false,
+                description: 'Identificador de idempotência da resposta no chat (1 a 100 caracteres visíveis, sem espaço).',
+                schema: { type: 'string', minLength: 1, maxLength: 100 },
             });
         }
 
