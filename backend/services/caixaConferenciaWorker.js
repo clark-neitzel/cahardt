@@ -15,6 +15,7 @@ const prisma = require('../config/database');
 const cfgConferencia = require('../config/caixaConferenciaConfig');
 const confService = require('./caixaConferenciaService');
 const bot = require('./botWhatsappService');
+const { vendedorOperaCaixa, SELECT_OPERA_CAIXA } = require('./vendedorCaixa');
 const { ehFimDeSemana, dataCaixaDe } = require('../utils/diasUteisCaixa');
 
 const p2 = (n) => String(n).padStart(2, '0');
@@ -40,7 +41,7 @@ const enviarCaixasDaVirada = async () => {
             enviadoConferenciaEm: null,
             dataReferencia: { lt: hoje, gte: inicioJanela },
         },
-        select: { id: true, vendedorId: true, dataReferencia: true },
+        select: { id: true, vendedorId: true, dataReferencia: true, vendedor: { select: SELECT_OPERA_CAIXA } },
         take: 300,
     });
 
@@ -50,6 +51,8 @@ const enviarCaixasDaVirada = async () => {
         // Com "só dias úteis" ligado, caixa de sáb/dom não existe: o movimento é
         // prestado na segunda, então esses registros não entram na fila.
         if (cfg.soDiasUteis && ehFimDeSemana(c.dataReferencia)) continue;
+        // Externo (contador, agente de IA) não tem caixa a conferir: nunca entra na fila.
+        if (!vendedorOperaCaixa(c.vendedor)) continue;
         try {
             // Caixa sem NENHUM movimento no dia (sem entrega, despesa, adiantamento
             // ou cobrança) não vira pendência de conferência — não há dinheiro
@@ -92,10 +95,14 @@ const avisarCaixasAtrasados = async () => {
             enviadoConferenciaEm: { not: null },
             dataReferencia: { lte: limiteStr, ...(cfgConferencia.dataCorte(cfg) ? { gte: cfgConferencia.dataCorte(cfg) } : {}) },
         },
-        include: { vendedor: { select: { nome: true } } },
+        include: { vendedor: { select: { nome: true, ...SELECT_OPERA_CAIXA } } },
         orderBy: { dataReferencia: 'asc' },
         take: 40,
     });
+    // Externo (contador, agente de IA) não tem caixa: não entra no aviso de "caixa parado".
+    for (let i = atrasados.length - 1; i >= 0; i--) {
+        if (!vendedorOperaCaixa(atrasados[i].vendedor)) atrasados.splice(i, 1);
+    }
     if (!atrasados.length) return { ok: true, caixas: 0, avisados: 0 };
 
     // Valor atual de cada um (o do fechamento ainda não existe)

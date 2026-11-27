@@ -8,6 +8,7 @@ const { CA_SOMENTE_LEITURA } = require('../config/contaAzulModo');
 // Conferência do dinheiro (passo antes de fechar). A trava só vale com a chave
 // ligada em Configurações → Caixa; ver backend/config/caixaConferenciaConfig.js.
 const confService = require('../services/caixaConferenciaService');
+const { vendedorOperaCaixa, SELECT_OPERA_CAIXA } = require('../services/vendedorCaixa');
 const { garantirContaFinanceira } = require('../services/contaFinanceiraGuardService');
 // Baixa de pedido ESPECIAL: sempre com linha de ledger (pagamentos_parcela) e
 // PAGO só quando o recebido cobre o valor — ver services/recebimentoEntregaService.js
@@ -2379,7 +2380,7 @@ router.get('/vendedores-do-dia', async (req, res) => {
         const fimDia = new Date(data + 'T23:59:59.999Z');
 
         const [ativos, caixas, despesas, diarios, embarques] = await Promise.all([
-            prisma.vendedor.findMany({ where: { ativo: true, acessoExterno: false }, select: { id: true, nome: true }, orderBy: { nome: 'asc' } }),
+            prisma.vendedor.findMany({ where: { ativo: true, acessoExterno: false }, select: { id: true, nome: true, permissoes: true }, orderBy: { nome: 'asc' } }),
             prisma.caixaDiario.findMany({
                 where: { dataReferencia: data, OR: [{ status: { not: 'ABERTO' } }, { adiantamento: { gt: 0 } }] },
                 select: { vendedorId: true }
@@ -2400,18 +2401,22 @@ router.get('/vendedores-do-dia', async (req, res) => {
             ...embarques.map(e => e.responsavelId).filter(Boolean)
         ]);
 
+        // Externo (contador, agente de IA) nunca tem caixa — nem como "inativo com movimento".
+        // Antes o filtro só valia para a lista de ativos; um externo ativo com qualquer
+        // linha de caixa/diário caía aqui embaixo e aparecia no seletor como "teveCaixa".
+        const ativosOperam = ativos.filter(vendedorOperaCaixa);
         const idsAtivos = new Set(ativos.map(v => v.id));
         const idsInativosComMov = [...comMovimento].filter(id => !idsAtivos.has(id));
         const inativos = idsInativosComMov.length
-            ? await prisma.vendedor.findMany({
+            ? (await prisma.vendedor.findMany({
                 where: { id: { in: idsInativosComMov } },
-                select: { id: true, nome: true },
+                select: { id: true, nome: true, ...SELECT_OPERA_CAIXA },
                 orderBy: { nome: 'asc' }
-            })
+            })).filter(vendedorOperaCaixa)
             : [];
 
         res.json([
-            ...ativos.map(v => ({ id: v.id, nome: v.nome, ativo: true })),
+            ...ativosOperam.map(v => ({ id: v.id, nome: v.nome, ativo: true })),
             ...inativos.map(v => ({ id: v.id, nome: v.nome, ativo: false, teveCaixa: true }))
         ].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')));
     } catch (error) {

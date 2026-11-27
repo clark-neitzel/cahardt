@@ -23,6 +23,7 @@ const {
     diasDoCaixa, intervaloDoCaixa, ehFimDeSemana, dataCaixaDe, fromStr, toStr, hojeStr,
 } = require('../utils/diasUteisCaixa');
 const { ehResponsavelPelaCobranca } = require('./recebimentoEntregaService');
+const { vendedorOperaCaixa, idsQueOperamCaixa, SELECT_OPERA_CAIXA } = require('./vendedorCaixa');
 
 const PERM_CONFERIR = 'Pode_Conferir_Dinheiro_Caixa';
 const PERM_AUTORIZAR_DIF = 'Pode_Autorizar_Diferenca_Caixa';
@@ -492,13 +493,15 @@ const listarAConferir = async ({ usuario, perms, incluirHoje = false }) => {
             // O dono nunca confere o próprio caixa — some da fila dele.
             ...(perms.admin ? {} : { vendedorId: { not: usuario.id } }),
         },
-        include: { vendedor: { select: { nome: true } } },
+        include: { vendedor: { select: { nome: true, ...SELECT_OPERA_CAIXA } } },
         orderBy: { dataReferencia: 'asc' },
         take: 60,
     });
 
     const fila = [];
     for (const c of caixas) {
+        // Externo (contador, agente de IA) não tem caixa para conferir/fechar.
+        if (!vendedorOperaCaixa(c.vendedor)) continue;
         const calc = await calcularValorAPrestar(c.vendedorId, c.dataReferencia, cfg);
         // Já conferido e ainda válido não é pendência.
         if (c.dinheiroConferido && !conferenciaDesatualizada(c, calc.valorAPrestar)) continue;
@@ -530,13 +533,15 @@ const listarAFechar = async ({ usuario, perms }) => {
             // Quem conferiu não fecha o mesmo caixa — some da fila dele.
             ...(perms.admin ? {} : { dinheiroConferidoPorId: { not: usuario.id } }),
         },
-        include: { vendedor: { select: { nome: true } } },
+        include: { vendedor: { select: { nome: true, ...SELECT_OPERA_CAIXA } } },
         orderBy: { dataReferencia: 'asc' },
         take: 60,
     });
 
     const fila = [];
     for (const c of caixas) {
+        // Externo (contador, agente de IA) não tem caixa para conferir/fechar.
+        if (!vendedorOperaCaixa(c.vendedor)) continue;
         const calc = await calcularValorAPrestar(c.vendedorId, c.dataReferencia, cfg);
         if (conferenciaDesatualizada(c, calc.valorAPrestar)) continue; // voltou para conferência
         fila.push({
@@ -762,7 +767,10 @@ const resumoDoDia = async (data, { usuario, podeVerOutros }) => {
     ]);
     candidatos.delete(usuario.id);
 
-    const outrosIds = podeVerOutros ? [...candidatos] : [];
+    // Externo (contador, agente de IA como o Luke) pode ter "atividade" (atendimento
+    // registrado em nome dele, diário) ou linha de caixa antiga, mas NÃO opera caixa:
+    // não ganha pílula, nem "Aberto R$ 0,00".
+    const outrosIds = podeVerOutros ? [...await idsQueOperamCaixa(candidatos)] : [];
     const todosIds = [usuario.id, ...outrosIds];
 
     const vendedoresInfo = await prisma.vendedor.findMany({
@@ -833,6 +841,12 @@ const resumoDoDia = async (data, { usuario, podeVerOutros }) => {
             select: { vendedorId: true, dataReferencia: true },
         })
         : [];
+    if (caixasAbertosAntes.length) {
+        const operam = await idsQueOperamCaixa(caixasAbertosAntes.map(c => c.vendedorId));
+        for (let i = caixasAbertosAntes.length - 1; i >= 0; i--) {
+            if (!operam.has(caixasAbertosAntes[i].vendedorId)) caixasAbertosAntes.splice(i, 1);
+        }
+    }
 
     // Mesmo motivo do bloco acima: paraleliza o cálculo dos caixas dos 7 dias
     // anteriores em vez de uma query por vez, em série.

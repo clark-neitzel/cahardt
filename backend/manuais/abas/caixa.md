@@ -108,6 +108,8 @@ A cor da pílula conta o status, e um pontinho piscando avisa quando precisa de 
 
 A **própria pílula do usuário sempre aparece**, mesmo sem nenhum movimento no dia. As pílulas de **outras pessoas** só aparecem para quem pode ver outros vendedores (`admin`/`Pode_Editar_Caixa`) e entram na faixa quando a pessoa **usou qualquer coisa que aparece no caixa** naquele dia: dinheiro (entrega, despesa, adiantamento, cobrança em rota, baixa de título) **ou** atividade sem dinheiro — **Diário do Dia** (KM do veículo / ponto presencial ou home office) e **atendimento registrado** (feito pela pessoa ou em nome dela). Quem só teve KM aparece como "Aberto · R$ 0,00" — é o caixa da pessoa, mesmo sem dinheiro. Quem não teve nada mesmo não aparece ali (mas segue acessível pelo **"+ outros"**).
 
+**Quem nunca tem caixa:** usuários de **acesso externo** (o contador, e agentes de IA como o Luke) não operam caixa — não ganham pílula, não aparecem em "+ outros", na fila "a conferir"/"a fechar" da agenda nem no aviso de caixa parado, mesmo que tenham registrado atendimento ou alguma linha antiga de caixa. Se alguém disser que o Luke ou a Kontisa "têm caixa para fechar", isso não existe: eles não fecham caixa.
+
 No cabeçalho da faixa fica um resumo contando quantas pílulas há de cada status (ex.: "3 a conferir · 1 aberto"). No celular a faixa rola para o lado com o dedo.
 
 **Aviso de dias anteriores pendentes:** se existir algum caixa de um dia **diferente** do que está na tela ainda esperando conferência (A conferir ou Devolução pendente), aparece uma faixa amarela avisando, com a data e a quantidade — tocar na data pula direto para aquele dia. Sem `admin`/`Pode_Editar_Caixa`, esse aviso conta só os caixas do próprio usuário.
