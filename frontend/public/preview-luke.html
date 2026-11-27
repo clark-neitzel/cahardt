@@ -97,91 +97,20 @@ body.pc .fundo .kpis{grid-template-columns:repeat(4,1fr);gap:16px}
 .fundo .mcard .l1{display:flex;justify-content:space-between;gap:8px;font-weight:700;font-size:13.5px;color:var(--g9)}
 .fundo .mcard .l2{font-size:12.5px;color:var(--g5);margin-top:4px;display:flex;justify-content:space-between}
 
-/* ───────── O cachorro (SVG) ───────── */
-.luke{display:block;width:100%;height:auto;overflow:visible}
-.luke *{transform-box:view-box}
-.lk-vira{transform-origin:68px 60px}
-.lk-tudo{transform-origin:68px 73px}
-.lk-pose-corpo,.lk-pose-cabeca{transition:transform .55s cubic-bezier(.3,1.2,.5,1)}
-.lk-resp{transform-origin:70px 59px}
-.lk-rabo{transform-origin:102px 45px}
-.lk-cabeca{transform-origin:40px 40px}
-.lk-orelha{transform-origin:35px 19px}
-.lk-olho{transform-origin:25.5px 26.5px}
-.lk-pf{transform-origin:46px 52px}
-.lk-olho-f,.lk-olho-feliz,.lk-lingua,.lk-zzz,.lk-pontos,.lk-coracao{opacity:0}
-.lk-zzz text,.lk-pontos circle,.lk-coracao{transform-box:fill-box;transform-origin:center}
-
-@keyframes lk-resp{0%,100%{transform:scaleY(1)}50%{transform:scaleY(1.035)}}
-@keyframes lk-rabo{0%,100%{transform:rotate(-14deg)}50%{transform:rotate(16deg)}}
-@keyframes lk-pisca{0%,91%,100%{transform:scaleY(1)}95%{transform:scaleY(.1)}}
-@keyframes lk-olha{0%,100%{transform:rotate(0)}12%,28%{transform:rotate(-11deg)}40%,58%{transform:rotate(9deg)}70%{transform:rotate(0)}}
-@keyframes lk-vira{0%,44%{transform:scaleX(1)}50%,88%{transform:scaleX(-1)}94%,100%{transform:scaleX(1)}}
-@keyframes lk-estica{0%,15%,85%,100%{transform:rotate(0) scaleX(1)}35%,65%{transform:rotate(-8deg) scaleX(1.05)}}
-@keyframes lk-estica-pf{0%,15%,85%,100%{transform:scaleY(1)}35%,65%{transform:scaleY(.6)}}
-@keyframes lk-estica-cab{0%,15%,85%,100%{transform:rotate(0)}35%,65%{transform:rotate(14deg)}}
-@keyframes lk-some{0%,22%,78%,100%{opacity:1}30%,70%{opacity:0}}
-@keyframes lk-surge{0%,22%,78%,100%{opacity:0}30%,70%{opacity:1}}
-@keyframes lk-dorme{0%,100%{transform:scaleY(1)}50%{transform:scaleY(1.06)}}
-@keyframes lk-z{0%{opacity:0;transform:translate(0,0) scale(.6)}20%{opacity:1}100%{opacity:0;transform:translate(9px,-20px) scale(1.15)}}
-@keyframes lk-pulo{0%,78%,100%{transform:translateY(0) scale(1,1)}10%{transform:translateY(0) scale(1.04,.93)}28%{transform:translateY(-11px) scale(.98,1.03)}46%{transform:translateY(0) scale(1.04,.95)}58%{transform:translateY(-5px) scale(1,1)}70%{transform:translateY(0) scale(1.02,.98)}}
-@keyframes lk-orelha{0%,100%{transform:rotate(0)}50%{transform:rotate(-15deg)}}
-@keyframes lk-pensa{0%,100%{transform:rotate(8deg)}50%{transform:rotate(13deg)}}
-@keyframes lk-ponto{0%,60%,100%{opacity:.25;transform:translateY(0)}30%{opacity:1;transform:translateY(-3px)}}
-@keyframes lk-feliz{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
-@keyframes lk-coracao{0%{opacity:0;transform:translateY(4px) scale(.5)}25%{opacity:1}100%{opacity:0;transform:translateY(-13px) scale(1.15)}}
-
-/* parado */
-.luke .lk-resp{animation:lk-resp 2.6s ease-in-out infinite}
-.luke .lk-rabo{animation:lk-rabo .9s ease-in-out infinite}
-.luke .lk-olho{animation:lk-pisca 4.2s infinite}
-/* olhando / virando */
-.is-olhando .lk-cabeca{animation:lk-olha 3.5s ease-in-out infinite}
-.is-olhando .lk-vira{animation:lk-vira 7s cubic-bezier(.6,0,.4,1) infinite}
-/* espreguiçando */
-.is-preguica .lk-tudo{animation:lk-estica 4s ease-in-out infinite;transform-origin:95px 73px}
-.is-preguica .lk-pf{animation:lk-estica-pf 4s ease-in-out infinite}
-.is-preguica .lk-cabeca{animation:lk-estica-cab 4s ease-in-out infinite}
-.is-preguica .lk-olho{animation:lk-some 4s infinite}
-.is-preguica .lk-olho-f{animation:lk-surge 4s infinite}
-.is-preguica .lk-rabo{animation-duration:2s}
-/* dormindo */
-.is-dormindo .lk-pose-corpo{transform:translateY(13px)}
-.is-dormindo .lk-pose-cabeca{transform:translate(-3px,12px) rotate(-4deg)}
-.is-dormindo .lk-resp{animation:lk-dorme 3.4s ease-in-out infinite}
-.is-dormindo .lk-rabo{animation:none;transform:rotate(38deg)}
-.is-dormindo .lk-olho{animation:none;opacity:0}
-.is-dormindo .lk-olho-f{opacity:1}
-.is-dormindo .lk-zzz{opacity:1}
-.is-dormindo .lk-zzz text{animation:lk-z 3s ease-out infinite}
-.is-dormindo .lk-zzz text:nth-child(2){animation-delay:1s}
-.is-dormindo .lk-zzz text:nth-child(3){animation-delay:2s}
-/* novidade */
-.is-novidade .lk-tudo{animation:lk-pulo 1.5s ease-in-out infinite}
-.is-novidade .lk-rabo{animation-duration:.28s}
-.is-novidade .lk-orelha{animation:lk-orelha .75s ease-in-out infinite}
-.is-novidade .lk-lingua{opacity:1}
-/* pensando */
-.is-pensando .lk-cabeca{animation:lk-pensa 2.4s ease-in-out infinite}
-.is-pensando .lk-pupila{transform:translate(.9px,-1.2px)}
-.is-pensando .lk-rabo{animation-duration:2.2s}
-.is-pensando .lk-pontos{opacity:1}
-.is-pensando .lk-pontos circle{animation:lk-ponto 1.2s infinite}
-.is-pensando .lk-pontos circle:nth-child(2){animation-delay:.18s}
-.is-pensando .lk-pontos circle:nth-child(3){animation-delay:.36s}
-/* feliz */
-.is-feliz .lk-tudo{animation:lk-feliz .55s ease-in-out infinite}
-.is-feliz .lk-rabo{animation-duration:.25s}
-.is-feliz .lk-olho{animation:none;opacity:0}
-.is-feliz .lk-olho-feliz,.is-feliz .lk-lingua{opacity:1}
-.is-feliz .lk-coracao{animation:lk-coracao 1.6s ease-out infinite}
+/* ───────── O cachorro (GIFs do dono, fundo transparente) ───────── */
+[data-luke]{position:relative;display:block}
+[data-luke] img{display:block;width:100%;height:auto;position:relative;z-index:1;user-select:none;-webkit-user-drag:none}
+[data-luke=""]::after{content:"";position:absolute;left:14%;width:72%;bottom:1%;height:7%;border-radius:50%;background:#000;opacity:.13}
+.avatar{position:relative}
+.avatar [data-luke]{position:absolute;inset:0;width:auto!important}
+.avatar [data-luke] img{position:absolute;width:230%;max-width:none;left:-92%;top:-68%}
 
 /* ───────── Luke no canto ───────── */
-.luke-btn{position:absolute;right:12px;bottom:16px;z-index:20;width:76px;min-height:52px;padding:2px;display:block;
+.luke-btn{position:absolute;right:8px;bottom:16px;z-index:20;width:96px;min-height:52px;padding:0;display:block;
   -webkit-tap-highlight-color:transparent;touch-action:manipulation}
-body.pc .luke-btn{width:92px;right:18px;bottom:14px}
+body.pc .luke-btn{width:118px;right:14px;bottom:10px}
 .luke-btn:focus-visible{outline:2px solid var(--primary);outline-offset:4px;border-radius:14px}
-.bolinha{position:absolute;top:-4px;right:0;min-width:20px;height:20px;padding:0 5px;border-radius:999px;background:#dc2626;color:#fff;
+.bolinha{position:absolute;top:30%;right:2px;z-index:2;min-width:20px;height:20px;padding:0 5px;border-radius:999px;background:#dc2626;color:#fff;
   font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid var(--creme)}
 @keyframes pop{from{opacity:0;transform:translateY(8px) scale(.96)}to{opacity:1;transform:none}}
 @keyframes sobe{from{transform:translateY(100%)}to{transform:none}}
@@ -189,7 +118,7 @@ body.pc .luke-btn{width:92px;right:18px;bottom:14px}
 
 .balao{position:absolute;right:12px;bottom:80px;z-index:19;width:250px;max-width:calc(100% - 24px);background:#fff;border:1px solid var(--g2);
   border-radius:16px 16px 4px 16px;box-shadow:0 10px 28px rgba(0,0,0,.16);padding:12px 12px 12px 14px;animation:pop .25s ease-out}
-body.pc .balao{right:22px;bottom:86px;width:272px}
+body.pc .balao{right:22px;bottom:122px;width:272px}
 .balao .topo{display:flex;align-items:center;gap:6px;margin-bottom:4px}
 .selo-nov{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--primaryDark);background:var(--mint);padding:3px 8px;border-radius:999px}
 .balao .mais{font-size:11px;color:var(--g5);font-weight:600}
@@ -203,7 +132,7 @@ body.pc .balao{right:22px;bottom:86px;width:272px}
 /* ───────── Chat ───────── */
 .chat{position:absolute;inset:0;z-index:30;background:#fff;display:flex;flex-direction:column;overflow:hidden;animation:sobe .28s cubic-bezier(.2,.9,.3,1)}
 body.cel .palco.teclado-on .chat{bottom:232px}
-body.pc .chat{inset:auto 18px 88px auto;width:400px;height:620px;max-height:calc(100% - 104px);border-radius:16px;border:1px solid var(--g2);
+body.pc .chat{inset:auto 18px 122px auto;width:400px;height:620px;max-height:calc(100% - 138px);border-radius:16px;border:1px solid var(--g2);
   box-shadow:0 20px 50px rgba(0,0,0,.22);animation:pop .2s ease-out}
 .chat-cab{background:var(--house);color:#fff;display:flex;align-items:center;gap:8px;padding:8px 8px;flex-shrink:0}
 body.pc .chat-cab{padding:10px 10px 10px 14px}
@@ -321,10 +250,10 @@ body.cel .palco.teclado-on .teclado{display:flex}
 .galeria{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 body.pc .galeria{grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
 .est{overflow:hidden;display:flex;flex-direction:column}
-.est .chao{background:linear-gradient(#f7f5f0 0 72%,#e9e5dc 72% 100%);padding:22px 10px 8px;display:flex;justify-content:center}
-.est .chao > span{display:block;width:112px;max-width:100%}
-body.pc .est .chao{padding:30px 10px 12px}
-body.pc .est .chao > span{width:150px}
+.est .chao{background:linear-gradient(#f7f5f0 0 74%,#e9e5dc 74% 100%);padding:4px 6px 10px;display:flex;justify-content:center}
+.est .chao > span{display:block;width:140px;max-width:100%}
+body.pc .est .chao{padding:6px 10px 14px}
+body.pc .est .chao > span{width:190px}
 .est .leg{padding:10px 12px 12px}
 .est .leg b{font-size:13.5px;color:var(--g9);display:block;line-height:1.25}
 .est .leg span{font-size:12px;color:var(--g6);display:block;margin-top:3px}
@@ -420,7 +349,7 @@ body.cel .palco.teclado-on .nov-topo,body.cel .palco.teclado-on .sub{display:non
 .barra-acao span{flex:1;text-align:center;border:1px solid var(--primary);color:var(--primary);border-radius:999px;padding:11px 0;font-size:13px;font-weight:700}
 .barra-acao span.p{background:var(--primary);color:#fff}
 body.cel .luke-btn{bottom:84px}
-body.cel .balao{bottom:146px}
+body.cel .balao{bottom:174px}
 .controles .perfis{flex-wrap:wrap;border-radius:20px}
 .adm{overflow:hidden}
 .adm .filtros{border-bottom:1px solid var(--g1)}
@@ -428,8 +357,33 @@ body.cel .balao{bottom:146px}
 body.pc .adm-lista{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:16px}
 .adm-lista .conv{box-shadow:none}
 
+/* ───────── Autorizações (administrador) ───────── */
+.abas .rc{display:none}
+body.cel .chat.tres .abas .rl{display:none}
+body.cel .chat.tres .abas .rc{display:inline}
+.chat.tres .abas button{font-size:13px;padding:0 4px}
+.selo-nov.ambar{background:#fef3c7;color:#b45309}
+.az{overflow:hidden;flex-shrink:0}
+.az-c{padding:12px 14px 4px}
+.az-c b{display:block;font-size:15px;font-weight:800;color:var(--g9)}
+.az-c p{font-size:13.5px;color:var(--g7);margin-top:2px}
+.az-q{display:block;font-size:12px;color:var(--g5);margin-top:4px}
+.az-links{display:flex;gap:4px;padding:0 6px}
+.az-links button{min-height:44px;padding:0 8px;font-size:12.5px;font-weight:700;color:var(--primary);text-decoration:underline;text-underline-offset:2px}
+.az-mais{margin:0 14px 10px;padding:10px 12px;background:var(--g05);border-radius:10px;font-size:12.5px;color:var(--g7)}
+.az-mais div{display:flex;gap:8px;padding:2px 0}
+.az-mais div span:first-child{flex-shrink:0;width:52px;font-weight:700;color:var(--g5)}
+.az-b{display:flex;gap:8px;padding:0 14px 14px}
+.az-b button{flex:1 1 0;min-height:48px;border-radius:999px;font-size:14.5px;font-weight:800}
+.az-fim{margin:0 14px 14px;padding:11px 12px;border-radius:10px;font-size:13.5px;font-weight:800}
+.az-fim small{display:block;font-size:12px;font-weight:600;opacity:.85;margin-top:1px}
+.az-fim.ok{background:#dcfce7;color:#166534}
+.az-fim.nao{background:#fee2e2;color:#b91c1c}
+.az-vazio{text-align:center;padding:18px 12px;font-size:14.5px;font-weight:800;color:var(--primaryDark);background:var(--mint);border-radius:12px;flex-shrink:0}
+.az-hist{align-self:center;min-height:44px;padding:0 10px;font-size:13px;font-weight:700;color:var(--primary);text-decoration:underline;text-underline-offset:2px;flex-shrink:0}
+
 @media (prefers-reduced-motion:reduce){
-  .luke *,.digit i,.chat,.balao,.chat-cab .quem span i{animation:none!important;transition:none!important}
+.digit i,.chat,.balao,.chat-cab .quem span i{animation:none!important;transition:none!important}
 }
 </style>
 </head>
@@ -464,6 +418,7 @@ body.pc .adm-lista{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;paddin
       </div>
       <button class="btn-sec" id="bAdmin" aria-pressed="false">Ver como administrador</button>
       <button class="btn-sec" id="bNov">Mostrar novidade</button>
+      <button class="btn-sec" id="bLemb">Mostrar lembrete de autorização</button>
       <button class="btn-sec" id="bDemo">Repetir pedido</button>
       <button class="btn-sec so-cel" id="bTec" aria-pressed="false">Teclado aberto</button>
     </div>
@@ -502,6 +457,16 @@ body.pc .adm-lista{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;paddin
         <button class="ver" id="balaoVer">Ver novidade</button>
       </div>
 
+      <div class="balao" id="balaoA" hidden>
+        <div class="topo">
+          <span class="selo-nov ambar">Autorização</span>
+          <button class="x" id="balaoAX" aria-label="Fechar aviso"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+        </div>
+        <h3 id="balaoATit">Você tem 3 pedidos esperando autorização</h3>
+        <p>O Luke já deixou tudo pronto. Falta só o seu sim ou não.</p>
+        <button class="ver" id="balaoAVer">Ver agora</button>
+      </div>
+
       <button class="luke-btn" id="lukeBtn" aria-label="Abrir conversa com o Luke">
         <span data-luke id="lukeCanto"></span>
         <span class="bolinha" id="bolinha">3</span>
@@ -510,14 +475,15 @@ body.pc .adm-lista{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;paddin
       <div class="chat" id="chat" hidden>
         <div class="chat-cab">
           <button class="ic-btn so-cel" data-fechar aria-label="Voltar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
-          <span class="avatar"><span data-luke="cabeca" id="lukeCab" style="width:40px;display:block"></span></span>
+          <span class="avatar"><span data-luke="cabeca" id="lukeCab"></span></span>
           <div class="quem"><b>Luke</b><span id="estadoTxt"><i></i>online</span></div>
           <button class="ic-btn sino" id="bLista" aria-label="Ver todas as novidades" title="Novidades"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 10a6 6 0 0112 0c0 5 2 6 2 6H4s2-1 2-6M10 20a2 2 0 004 0"/></svg><i id="sinoN">3</i></button>
           <button class="ic-btn so-pc" data-fechar aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
         </div>
         <div class="abas" id="abas" role="tablist">
-          <button role="tab" data-aba="duvida" aria-selected="false">Tirar dúvida</button>
-          <button role="tab" data-aba="pedir" aria-selected="true">Pedir ao Luke</button>
+          <button role="tab" data-aba="duvida" aria-selected="false"><span class="rl">Tirar dúvida</span><span class="rc">Dúvida</span></button>
+          <button role="tab" data-aba="pedir" aria-selected="true"><span class="rl">Pedir ao Luke</span><span class="rc">Pedir</span></button>
+          <button role="tab" data-aba="autz" id="abaAutz" aria-selected="false" hidden><span class="rl">Autorizações</span><span class="rc">Autorizar</span><span class="n" id="autzN">3</span></button>
         </div>
 
         <div class="nov-topo" id="novTopo">
@@ -531,13 +497,13 @@ body.pc .adm-lista{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;paddin
           <div class="sub"><b>Resposta na hora.</b> Como faz, o que faz, onde fica.</div>
           <div class="msgs" id="msgsD">
             <div class="m eu"><div class="col"><div class="bolha">Como faço uma devolução?</div></div></div>
-            <div class="m"><span class="avatar p"><span data-luke="cabeca" style="width:26px;display:block"></span></span><div class="col">
+            <div class="m"><span class="avatar p"><span data-luke="cabeca"></span></span><div class="col">
               <div class="bolha">É na conferência do Caixa:
                 <ol><li>Abra <b>Caixa</b> e escolha o motorista.</li><li>No pedido, toque em <b>Devolução</b>.</li><li>Marque os produtos e a quantidade.</li><li>Salve. A nota de devolução sai sozinha.</li></ol></div>
               <button class="acao">Ir para a tela <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
             </div></div>
             <div class="m eu"><div class="col"><div class="bolha">Como dou baixa num boleto?</div></div></div>
-            <div class="m"><span class="avatar p"><span data-luke="cabeca" style="width:26px;display:block"></span></span><div class="col">
+            <div class="m"><span class="avatar p"><span data-luke="cabeca"></span></span><div class="col">
               <div class="bolha aviso">Você não tem permissão para dar baixa. Peça ao administrador.</div>
               <button class="link-pedido" data-pedido="Dar baixa no boleto da Padaria Sol">Isto é um pedido? <b>Mandar para o Luke</b></button>
             </div></div>
@@ -561,7 +527,7 @@ body.pc .adm-lista{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;paddin
           <div class="msgs" id="msgs">
             <span class="dia">Ontem</span>
             <div class="m eu"><div class="col"><div class="bolha">Me lembra de pagar o aluguel dia 5</div><span class="status">Luke recebeu · 16:20</span></div></div>
-            <div class="m"><span class="avatar p"><span data-luke="cabeca" style="width:26px;display:block"></span></span><div class="col">
+            <div class="m"><span class="avatar p"><span data-luke="cabeca"></span></span><div class="col">
               <div class="lemb"><span class="rel">⏰</span><div><b>Lembrete agendado para 05/12</b>Pagar o aluguel. Eu aviso você aqui às 8h.</div></div>
             </div></div>
             <span class="dia">Hoje</span>
@@ -598,6 +564,12 @@ body.pc .adm-lista{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;paddin
           </div>
         </div>
 
+        <!-- AUTORIZAÇÕES (só administrador) -->
+        <div class="painel" data-painel="autz" hidden>
+          <div class="sub"><b>Pedidos do Luke esperando você.</b> Autorize ou recuse aqui mesmo.</div>
+          <div class="rolagem" id="autzLista"></div>
+        </div>
+
         <!-- NOVIDADES (lista) -->
         <div class="painel" data-painel="novidades" hidden>
           <div class="sub voltar"><button id="novVoltar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>Voltar para a conversa</button></div>
@@ -625,7 +597,7 @@ body.pc .adm-lista{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;paddin
         <div><span class="lg">123</span><span class="esp">espaço</span><span class="lg">enviar</span></div>
       </div>
     </div>
-    <p class="dica">Experimente: clique no cachorro, troque o tipo de usuário, escreva algo e toque nos atalhos. Em <b>Ver como administrador</b> aparecem os botões de autorizar no cartão.</p>
+    <p class="dica">Experimente: clique no cachorro, troque o tipo de usuário, escreva algo e toque nos atalhos. Em <b>Ver como administrador</b> aparece a aba <b>Autorizações</b> e os botões de autorizar dentro da conversa.</p>
   </section>
 
   <!-- ═════════ 2. O LUKE ═════════ -->
@@ -637,10 +609,10 @@ body.pc .adm-lista{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;paddin
     </div>
     <div class="galeria" id="galeria"></div>
     <div class="card tamanhos">
-      <figure><span data-luke style="display:block;width:64px"></span>Celular · 64</figure>
-      <figure><span data-luke style="display:block;width:76px"></span>iPad · 76</figure>
-      <figure><span data-luke style="display:block;width:92px"></span>Computador · 92</figure>
-      <p>Tamanho de verdade na tela. Desenho simples de propósito: pequeno assim ele continua nítido.</p>
+      <figure><span data-luke style="width:96px"></span>Celular</figure>
+      <figure><span data-luke style="width:106px"></span>iPad</figure>
+      <figure><span data-luke style="width:118px"></span>Computador</figure>
+      <p>Tamanho de verdade na tela. São os desenhos que você mandou, com o fundo retirado para ele ficar solto em cima de qualquer tela.</p>
     </div>
   </section>
 
@@ -714,6 +686,7 @@ body.pc .adm-lista{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;paddin
       <ul class="lista-simples">
         <li>As respostas do Luke aqui são fixas, só para mostrar o visual. Nada é lançado de verdade.</li>
         <li>Os nomes, valores e o ranking são inventados.</li>
+        <li>Autorizar e recusar aqui só mudam o cartão. No sistema, autorizar executa o pedido na hora e "Ver histórico completo" abre Admin → Solicitações.</li>
         <li>Câmera, galeria e PDF aqui só colocam um anexo de mentira na bandeja. O áudio está apagado porque fica para depois.</li>
         <li>O tempo de resposta está acelerado. No sistema, "Pedir ao Luke" leva alguns minutos.</li>
         <li>No sistema de verdade, "Abrir" mostra a página da novidade e "Ir para a tela" leva para a tela certa.</li>
@@ -723,51 +696,22 @@ body.pc .adm-lista{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;paddin
 </div>
 
 <script>
-// ───────── SVG do Luke (desenho original) ─────────
+// ───────── Luke: GIFs do dono (fundo transparente) ─────────
+// Publicado: /preview-luke.html com os arquivos em /preview-luke-gifs/. Local: pasta gifs-t/.
+var BASE = /preview-luke\.html$/.test(location.pathname) ? 'preview-luke-gifs/' : 'gifs-t/';
+var ARQ = { idle: 'luke_tranquilo', olhando: 'luke_curioso', preguica: 'luke_espreguicando', dormindo: 'luke_dormindo', novidade: 'luke_novidade', pensando: 'luke_pensando', feliz: 'luke_feliz' };
+var PARADO = BASE + 'luke_tranquilo.png';
+var semMov = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+var pre = Object.keys(ARQ).map(function(k){ var i = new Image(); i.src = BASE + ARQ[k] + '.gif'; return i; });
 function lukeSVG(tipo){
-  var vb = tipo === 'cabeca' ? '1 12 52 40' : '0 0 128 84';
-  return '<svg class="luke is-idle" viewBox="'+vb+'" aria-hidden="true">'
-  + (tipo==='cabeca' ? '' : '<ellipse cx="68" cy="75" rx="40" ry="3.2" fill="#000" opacity=".13"/>')
-  + '<g class="lk-vira"><g class="lk-tudo">'
-  +   '<g class="lk-pf"><rect x="50" y="52" width="7" height="20" rx="3.5" fill="#322b26"/><rect x="48" y="67.5" width="9.5" height="5.5" rx="2.75" fill="#a8621f"/></g>'
-  +   '<rect x="84" y="52" width="7" height="20" rx="3.5" fill="#322b26"/><rect x="82" y="67.5" width="9.5" height="5.5" rx="2.75" fill="#a8621f"/>'
-  +   '<g class="lk-pose-corpo"><g class="lk-resp">'
-  +     '<g class="lk-rabo"><path d="M101 46 C110 45 116 38 119 27" stroke="#1d1a18" stroke-width="4.6" stroke-linecap="round" fill="none"/></g>'
-  +     '<rect x="34" y="36" width="72" height="23" rx="11.5" fill="#1d1a18"/>'
-  +     '<circle cx="43" cy="46" r="13" fill="#1d1a18"/>'
-  +     '<path d="M54 40 H92" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity=".13"/>'
-  +     '<ellipse cx="37.5" cy="52.5" rx="5" ry="4.3" fill="#c8782f"/>'
-  +     '<path d="M31.5 43.8 L48.5 37.6" stroke="#00754A" stroke-width="5" stroke-linecap="round"/>'
-  +     '<circle cx="38.6" cy="46.6" r="2.6" fill="#cba258"/>'
-  +     '<g class="lk-pose-cabeca"><g class="lk-cabeca">'
-  +       '<ellipse cx="31" cy="29" rx="13.5" ry="12.5" fill="#1d1a18"/>'
-  +       '<rect x="6" y="28.5" width="25" height="11.5" rx="5.75" fill="#c8782f"/>'
-  +       '<path d="M11 27.6 H31 V32.6 H9.5 Q8 32.6 8.4 30.6 Q9 27.6 11 27.6Z" fill="#1d1a18"/>'
-  +       '<circle cx="27.5" cy="36" r="4.6" fill="#c8782f"/>'
-  +       '<path class="lk-lingua" d="M13.2 39.2 Q13.6 45.5 16.3 45.5 Q19 45.5 19.2 39.2Z" fill="#ef6b81"/>'
-  +       '<path d="M10 37.3 Q16 39.6 22.5 37.2" stroke="#7a4514" stroke-width="1.1" stroke-linecap="round" fill="none"/>'
-  +       '<ellipse cx="7.8" cy="31.4" rx="3.5" ry="3" fill="#000"/><circle cx="6.9" cy="30.4" r=".8" fill="#fff" opacity=".55"/>'
-  +       '<ellipse cx="25" cy="20.6" rx="2.6" ry="1.8" fill="#c8782f"/>'
-  +       '<g class="lk-olho"><circle cx="25.5" cy="26.5" r="3.4" fill="#fff"/><g class="lk-pupila"><circle cx="24.9" cy="26.8" r="2.2" fill="#111"/><circle cx="24.1" cy="25.9" r=".75" fill="#fff"/></g></g>'
-  +       '<path class="lk-olho-f" d="M22.2 26.6 Q25.5 29.2 28.8 26.6" stroke="#ecdcc8" stroke-width="1.6" stroke-linecap="round" fill="none"/>'
-  +       '<path class="lk-olho-feliz" d="M22.2 27.8 Q25.5 24.2 28.8 27.8" stroke="#ecdcc8" stroke-width="1.7" stroke-linecap="round" fill="none"/>'
-  +       '<g class="lk-orelha"><path d="M33 17.6 C42 15.6 47.4 23.5 46 34 C45 42 40.5 47.4 37 45.4 C33.2 43.2 32.2 36 32.6 30 Z" fill="#322b26"/></g>'
-  +     '</g></g>'
-  +   '</g></g>'
-  +   '<g class="lk-pf"><rect x="42" y="52" width="7.5" height="20" rx="3.75" fill="#1d1a18"/><rect x="39.5" y="67" width="11" height="6" rx="3" fill="#c8782f"/></g>'
-  +   '<rect x="92" y="52" width="7.5" height="20" rx="3.75" fill="#1d1a18"/><rect x="89.5" y="67" width="11" height="6" rx="3" fill="#c8782f"/>'
-  + '</g></g>'
-  + '<g class="lk-zzz" fill="#6b7280" font-family="Manrope,sans-serif" font-weight="800"><text x="44" y="38" font-size="9">z</text><text x="48" y="34" font-size="11">z</text><text x="53" y="30" font-size="13">Z</text></g>'
-  + '<g class="lk-pontos" fill="#00754A"><circle cx="40" cy="8" r="2.5"/><circle cx="48" cy="8" r="2.5"/><circle cx="56" cy="8" r="2.5"/></g>'
-  + '<path class="lk-coracao" d="M52 17 C48 13.5 45.5 11.5 45.5 9.2 C45.5 7.4 46.9 6 48.6 6 C49.9 6 51.2 6.8 52 8 C52.8 6.8 54.1 6 55.4 6 C57.1 6 58.5 7.4 58.5 9.2 C58.5 11.5 56 13.5 52 17Z" fill="#ef4444"/>'
-  + '</svg>';
+  var parado = tipo === 'cabeca' || semMov;
+  return '<img alt="" draggable="false" width="240" height="217" src="' + (parado ? PARADO : BASE + ARQ.idle + '.gif') + '"' + (tipo === 'cabeca' ? ' data-fixo' : '') + '>';
 }
-var ESTADOS = ['idle','olhando','preguica','dormindo','novidade','pensando','feliz'];
 function estado(el, e){
-  var svg = el && (el.tagName === 'svg' ? el : el.querySelector('svg'));
-  if(!svg) return;
-  ESTADOS.forEach(function(x){ svg.classList.remove('is-'+x); });
-  svg.classList.add('is-'+e);
+  var img = el && (el.tagName === 'IMG' ? el : el.querySelector('img'));
+  if(!img || img.hasAttribute('data-fixo') || semMov) return;
+  var src = BASE + ARQ[e] + '.gif';
+  if(img.getAttribute('src') !== src) img.setAttribute('src', src);
 }
 function $(id){ return document.getElementById(id); }
 function todos(sel, raiz){ return Array.prototype.slice.call((raiz||document).querySelectorAll(sel)); }
@@ -775,12 +719,12 @@ function montaLukes(raiz){ todos('[data-luke]', raiz).forEach(function(s){ if(!s
 
 // Galeria
 var GAL = [
-  ['idle','Sempre','Parado, respirando','Abana o rabo, pisca e respira. É o jeito normal dele.'],
-  ['olhando','De vez em quando','Olhando e virando','Olha para um lado, para o outro, e vira de costas.'],
-  ['preguica','De vez em quando','Espreguiçando','Estica as patas da frente e fecha os olhos. Pura preguiça.'],
+  ['idle','Sempre','Tranquilo','Em pé, abanando o rabo. É o jeito normal dele.'],
+  ['olhando','De vez em quando','Curioso','Dá uma corridinha e fareja o que está acontecendo.'],
+  ['preguica','De vez em quando','Espreguiçando','Estica as patas da frente e boceja. Pura preguiça.'],
   ['dormindo','Tela parada há um tempo','Dormindo','Deita e solta o "zzz". Acorda quando você clica.'],
-  ['novidade','Tem novidade','Animado, dando pulinhos','Pula, abana rápido e mostra a bolinha vermelha.'],
-  ['pensando','Você mandou algo','Pensando','Inclina a cabeça enquanto lê o comprovante ou a pergunta.'],
+  ['novidade','Tem novidade ou autorização','Animado, com o sininho','Pula, abana rápido e mostra o sininho de aviso.'],
+  ['pensando','Você mandou algo','Pensando','Olha para cima com a interrogação enquanto lê o que você mandou.'],
   ['feliz','Respondeu ou lançou','Feliz','Língua de fora e coraçãozinho: deu tudo certo.']
 ];
 $('galeria').innerHTML = GAL.map(function(g){
@@ -798,7 +742,8 @@ $('fCards').innerHTML = CONTAS.slice(0,6).map(function(c){ return '<div class="c
 var palco = $('palco'), chat = $('chat'), balao = $('balao'), canto = $('lukeCanto'), cab = $('lukeCab');
 var admin = false, aberto = false, temNovidade = true, ocupado = false;
 var perfil = 'chat', LIMITE = 20, usados = 16, abaAtual = 'pedir', abaAntes = 'pedir';
-var semMovimento = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+var lembrete = false, jaTocou = false;
+var semMovimento = semMov;
 
 // Ciclo ocioso do cachorro do canto
 var CICLO = [['idle',4500],['olhando',7000],['idle',3500],['preguica',4000],['idle',3000],['dormindo',7000]];
@@ -806,7 +751,7 @@ var iCiclo = 0, tCiclo = 0;
 function ciclo(){
   clearTimeout(tCiclo);
   if(ocupado || document.hidden) return;
-  if(temNovidade && !aberto){ estado(canto,'novidade'); return; }
+  if((temNovidade || lembrete) && !aberto){ estado(canto,'novidade'); return; }
   if(semMovimento){ estado(canto,'idle'); return; }
   var c = CICLO[iCiclo % CICLO.length]; iCiclo++;
   estado(canto, c[0]);
@@ -836,14 +781,17 @@ var pref = window.innerWidth >= 900 ? 'pc' : 'cel';
 window.addEventListener('resize', function(){ modo(document.body.className); });
 
 function novidadeVista(){
-  temNovidade = false; $('bolinha').hidden = true; $('sinoN').hidden = true; balao.hidden = true; $('novTopo').hidden = true;
+  temNovidade = false; $('sinoN').hidden = true; balao.hidden = true; $('novTopo').hidden = true; contadores();
 }
 function aba(nome){
   if(nome !== 'novidades') abaAtual = nome; else abaAntes = abaAtual;
   todos('#abas button').forEach(function(b){ b.setAttribute('aria-selected', b.getAttribute('data-aba') === nome); });
   todos('[data-painel]').forEach(function(p){ p.hidden = p.getAttribute('data-painel') !== nome; });
   $('abas').hidden = nome === 'novidades' || perfil === 'ajuda';
+  if(nome === 'autz'){ lembrete = false; $('balaoA').hidden = true; }
+  if(nome === 'pedir' && !jaTocou && perfil === 'chat'){ jaTocou = true; tocarDemo(); }
   if(nome === 'novidades') novidadeVista();
+  $('novTopo').hidden = !temNovidade || nome === 'autz';
   rolar();
 }
 todos('#abas button').forEach(function(b){ b.onclick = function(){ aba(b.getAttribute('data-aba')); }; });
@@ -852,19 +800,18 @@ $('novAbrir').onclick = function(){ aba('novidades'); };
 $('novVoltar').onclick = function(){ aba(abaAntes); };
 $('novX').onclick = novidadeVista;
 
-var jaTocou = false;
 function abrir(qual){
-  aberto = true; chat.hidden = false; balao.hidden = true;
+  aberto = true; chat.hidden = false; balao.hidden = true; $('balaoA').hidden = true;
   $('lukeBtn').setAttribute('aria-label','Fechar conversa com o Luke');
   aba(qual || abaAtual);
   if(!ocupado){ clearTimeout(tCiclo); estado(canto,'idle'); }
-  if(!jaTocou && abaAtual === 'pedir' && perfil === 'chat'){ jaTocou = true; tocarDemo(); }
   rolar();
 }
 function fechar(){
   aberto = false; chat.hidden = true; palco.classList.remove('teclado-on'); $('bTec').setAttribute('aria-pressed','false');
   $('lukeBtn').setAttribute('aria-label','Abrir conversa com o Luke');
-  if(temNovidade) balao.hidden = false;
+  if(lembrete && admin && pendentes() > 0) $('balaoA').hidden = false;
+  else if(temNovidade) balao.hidden = false;
   ciclo();
 }
 $('lukeBtn').onclick = function(){ aberto ? fechar() : abrir(); };
@@ -873,7 +820,8 @@ $('balaoX').onclick = function(){ balao.hidden = true; };
 $('balaoVer').onclick = function(){ abrir('novidades'); };
 $('bNov').onclick = function(){
   if(aberto) fechar();
-  temNovidade = true; $('bolinha').hidden = false; $('sinoN').hidden = false; $('novTopo').hidden = false; balao.hidden = false; ocupado = false; ciclo();
+  lembrete = false; $('balaoA').hidden = true;
+  temNovidade = true; $('sinoN').hidden = false; $('novTopo').hidden = false; balao.hidden = false; ocupado = false; contadores(); ciclo();
 };
 $('bTec').onclick = function(){ if(!aberto) abrir(); var on = palco.classList.toggle('teclado-on'); this.setAttribute('aria-pressed', on); rolar(); };
 
@@ -886,6 +834,7 @@ function saldo(){
   $('comporP').hidden = cheio; $('cheio').hidden = !cheio;
 }
 function setPerfil(p){
+  if(p !== 'chat') setAdmin(false);
   perfil = p;
   todos('#perfis button').forEach(function(b){ b.setAttribute('aria-pressed', b.getAttribute('data-p') === p); });
   palco.classList.toggle('com-chat', p !== 'ajuda');
@@ -900,9 +849,74 @@ function setPerfil(p){
 }
 todos('#perfis button').forEach(function(b){ b.onclick = function(){ setPerfil(b.getAttribute('data-p')); }; });
 $('bAdmin').onclick = function(){
-  admin = !admin; this.setAttribute('aria-pressed', admin);
-  if(perfil !== 'chat') setPerfil('chat'); else { jaTocou = true; if(!aberto) abrir('pedir'); else aba('pedir'); tocarDemo(); }
+  var a = !admin;
+  if(perfil !== 'chat') setPerfil('chat');
+  setAdmin(a); lembrete = false;
+  jaTocou = true; if(!aberto) abrir('pedir'); else aba('pedir'); tocarDemo();
 };
+
+// ───────── Autorizações (administrador decide dentro do chat) ─────────
+var PEND = [
+  { id: 'gas', t: 'Criar conta a pagar', r: 'Gás do Vale · R$ 350,00 · Pix em 27/11, já paga', q: 'Juliana Alves · conversa de hoje · há 3 min',
+    d: [['Envia', 'Conta nova de R$ 350,00, fornecedor Gás do Vale'], ['Antes', 'Não existe essa conta'], ['Depois', 'Conta lançada como paga em 27/11']] },
+  { id: 'est', t: 'Estornar baixa', r: 'Padaria Sol · boleto de R$ 480,00 baixado em 25/11', q: 'Cida Martins · conversa de hoje · há 40 min',
+    d: [['Envia', 'Estorno da baixa de R$ 480,00'], ['Antes', 'Título quitado em 25/11'], ['Depois', 'Título volta a ficar em aberto']] },
+  { id: 'exc', t: 'Excluir despesa', r: 'Embalagens Sul · R$ 1.280,00 · lançada em dobro', q: 'Tânia Becker · conversa de ontem · há 2 h',
+    d: [['Envia', 'Exclusão da despesa repetida'], ['Antes', 'Duas despesas iguais de R$ 1.280,00'], ['Depois', 'Fica só uma']] }
+];
+PEND.forEach(function(p){ p.st = 'pend'; });
+var detAberto = {};
+function item(id){ return PEND.filter(function(p){ return p.id === id; })[0]; }
+function pendentes(){ return PEND.filter(function(p){ return p.st === 'pend'; }).length; }
+function contadores(){
+  var n = pendentes(), total = (temNovidade ? 3 : 0) + (admin ? n : 0);
+  $('autzN').textContent = n; $('autzN').hidden = !n;
+  $('bolinha').textContent = total; $('bolinha').hidden = !total;
+  $('balaoATit').textContent = n === 1 ? 'Você tem 1 pedido esperando autorização' : 'Você tem ' + n + ' pedidos esperando autorização';
+  if(!n){ lembrete = false; $('balaoA').hidden = true; }
+}
+function renderAutz(){
+  var html = pendentes() ? '' : '<div class="az-vazio">Nada esperando sua autorização 🎉</div>';
+  html += PEND.map(function(p){
+    var fim = p.st === 'ok' ? '<div class="az-fim ok">Autorizado ✓ — executado<small>' + txtSeguro(p.por || 'Você autorizou') + ' às ' + p.h + '</small></div>'
+            : p.st === 'nao' ? '<div class="az-fim nao">Recusado<small>' + txtSeguro(p.por || 'Você recusou') + ' às ' + p.h + '. Nada foi alterado.</small></div>'
+            : '<div class="az-b"><button class="b-pri" data-az="ok">Autorizar</button><button class="b-rec" data-az="nao">Recusar</button></div>';
+    return '<div class="card az" data-id="' + p.id + '"><div class="az-c"><b>' + p.t + '</b><p>' + p.r + '</p><span class="az-q">Pedido por ' + p.q + '</span></div>'
+      + '<div class="az-links"><button data-az="det" aria-expanded="' + !!detAberto[p.id] + '">' + (detAberto[p.id] ? 'Fechar detalhes' : 'Ver detalhes') + '</button><button data-az="tela">Abrir tela</button></div>'
+      + (detAberto[p.id] ? '<div class="az-mais">' + p.d.map(function(l){ return '<div><span>' + l[0] + '</span><span>' + l[1] + '</span></div>'; }).join('') + '</div>' : '')
+      + fim + '</div>';
+  }).join('');
+  html += '<button class="az-hist" title="No sistema: abre Admin → Solicitações">Ver histórico completo</button>';
+  $('autzLista').innerHTML = html;
+}
+$('autzLista').addEventListener('click', function(ev){
+  var b = ev.target.closest('[data-az]'); if(!b) return;
+  var id = b.closest('.az').getAttribute('data-id'), a = b.getAttribute('data-az');
+  if(a === 'det'){ detAberto[id] = !detAberto[id]; renderAutz(); }
+  else if(a === 'ok' || a === 'nao') decidirItem(id, a === 'ok');
+});
+function decidirItem(id, ok, por){
+  var p = item(id); if(!p || p.st !== 'pend') return;
+  p.st = ok ? 'ok' : 'nao'; p.h = hora(); p.por = por || '';
+  renderAutz(); contadores();
+  if(id === 'gas') cartaoChat();
+}
+function reiniciaPend(){ PEND.forEach(function(p){ p.st = 'pend'; }); detAberto = {}; renderAutz(); contadores(); }
+function setAdmin(a){
+  admin = a; $('bAdmin').setAttribute('aria-pressed', a);
+  $('abaAutz').hidden = !a; chat.classList.toggle('tres', a);
+  if(!a){ lembrete = false; $('balaoA').hidden = true; if(!document.querySelector('[data-painel="autz"]').hidden) aba('pedir'); }
+  contadores();
+}
+$('bLemb').onclick = function(){
+  if(perfil !== 'chat') setPerfil('chat');
+  ficha++; humor('idle'); demo.innerHTML = ''; jaTocou = false;
+  setAdmin(true); reiniciaPend();
+  if(aberto) fechar();
+  lembrete = true; balao.hidden = true; $('balaoA').hidden = false; ocupado = false; ciclo();
+};
+$('balaoAX').onclick = function(){ lembrete = false; $('balaoA').hidden = true; ciclo(); };
+$('balaoAVer').onclick = function(){ abrir('autz'); };
 $('cheioDuvida').onclick = function(){ aba('duvida'); };
 
 // ───────── Conversa ─────────
@@ -911,7 +925,7 @@ function rolar(){ todos('.msgs').forEach(function(m){ m.scrollTop = m.scrollHeig
 function hora(){ var d = new Date(); return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2); }
 function txtSeguro(s){ var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 function add(html, onde){ var d = document.createElement('div'); d.innerHTML = html; var n = d.firstChild; (onde||demo).appendChild(n); montaLukes(n); rolar(); return n; }
-function doLuke(conteudo, onde){ return add('<div class="m"><span class="avatar p"><span data-luke="cabeca" style="width:26px;display:block"></span></span><div class="col">'+conteudo+'</div></div>', onde); }
+function doLuke(conteudo, onde){ return add('<div class="m"><span class="avatar p"><span data-luke="cabeca"></span></span><div class="col">'+conteudo+'</div></div>', onde); }
 function digitando(onde){ return doLuke('<div class="bolha digit"><i></i><i></i><i></i></div>', onde); }
 function depois(ms, fn, f){ setTimeout(function(){ if(f === ficha) fn(); }, semMovimento ? Math.min(ms, 300) : ms); }
 var SETA = ' <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
@@ -924,6 +938,7 @@ function cartao(st, cls, rodape){
 // Pedido do comprovante: Enviado → Luke lendo → cartão → autorização → pronto
 function tocarDemo(){
   var f = ++ficha; demo.innerHTML = ''; humor('idle');
+  item('gas').st = 'pend'; renderAutz(); contadores();
   var eu = add('<div class="m eu"><div class="col">'+COMPROV+'<div class="bolha">Lança esse pagamento</div><span class="status">Enviando…</span></div></div>');
   depois(700, function(){ eu.querySelector('.status').textContent = 'Enviado · 10:41'; }, f);
   var d;
@@ -934,12 +949,14 @@ function tocarDemo(){
       + cartao('Aguardando autorização', 'b-ambar', admin
           ? '<div class="bts" id="solBts"><button class="b-pri" data-a="ok">Autorizar</button><button class="b-rec" data-a="nao">Recusar</button><button class="b-out" data-a="abrir">Abrir tela</button></div>'
           : '<div class="nota" id="solBts">O administrador recebeu o pedido. Eu aviso quando ele responder.</div>'));
-    todos('#solBts button').forEach(function(b){ b.onclick = function(){ var a = b.getAttribute('data-a'); if(a !== 'abrir') decidir(a === 'ok', f); }; });
-    if(!admin) depois(3800, function(){ decidir(true, f, 'Marina (administradora) autorizou'); }, f);
+    todos('#solBts button').forEach(function(b){ b.onclick = function(){ var a = b.getAttribute('data-a'); if(a !== 'abrir' && f === ficha) decidirItem('gas', a === 'ok'); }; });
+    if(item('gas').st !== 'pend') cartaoChat();
+    if(!admin) depois(3800, function(){ decidirItem('gas', true, 'Marina (administradora) autorizou'); }, f);
   }, f);
 }
-function decidir(ok, f, quem){
-  if(f !== ficha || !$('solBts')) return;
+function cartaoChat(){
+  var p = item('gas'), ok = p.st === 'ok', quem = p.por, f = ficha;
+  if(p.st === 'pend' || !$('solBts')) return;
   $('solSt').className = 'badge ' + (ok ? 'b-verde' : 'b-verm');
   $('solSt').textContent = ok ? 'Autorizado' : 'Recusado';
   $('solBts').outerHTML = '<div class="nota">' + (quem || (ok ? 'Você autorizou' : 'Você recusou')) + ' às ' + hora() + '.</div>';
@@ -953,6 +970,7 @@ function decidir(ok, f, quem){
 // Mesma conversa já terminada (usada na variação "no limite do dia")
 function historicoPronto(){
   demo.innerHTML = '';
+  var g = item('gas'); g.st = 'ok'; g.h = '10:44'; g.por = 'Marina (administradora) autorizou'; renderAutz(); contadores();
   add('<div class="m eu"><div class="col">'+COMPROV+'<div class="bolha">Lança esse pagamento</div><span class="status">Luke recebeu · 10:41</span></div></div>');
   doLuke('<div class="bolha">Li o comprovante. É um Pix de <b>R$ 350,00</b> para a Gás do Vale.</div>' + cartao('Autorizado', 'b-verde', '<div class="nota">Marina (administradora) autorizou às 10:44.</div>')
     + '<div class="bolha">Pronto, lançado.</div>');
@@ -1045,7 +1063,7 @@ todos('#filtros button').forEach(function(b){ b.onclick = function(){
 todos('.interr').forEach(function(b){ b.onclick = function(){ b.setAttribute('aria-checked', b.getAttribute('aria-checked') !== 'true'); }; });
 
 palco.classList.add('com-chat');
-bandeja(); saldo();
+bandeja(); saldo(); renderAutz(); contadores();
 modo(pref);
 ciclo();
 </script>
