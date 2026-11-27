@@ -1,4 +1,5 @@
 const prisma = require('../config/database');
+const { chaveSensivel } = require('../config/configChavesSensiveis');
 
 // Ação padrão que TODA lista de ações de atendimento precisa ter, mesmo a customizada pelo dono
 // (senão o botão "Pausar visitas" nunca apareceria em produção). Entra só se ausente; se o dono
@@ -28,7 +29,12 @@ const configController = {
             const p = req.user?.permissoes || {};
             const c0 = p.configuracoes;
             const veConfig = p.admin === true || c0 === true || (c0 && typeof c0 === 'object' && (c0.view === true || c0.edit === true));
-            configs.forEach(c => { if (!c.key.startsWith('ia_') || veConfig) configObj[c.key] = mesclarAcoes(c.key, c.value); }); // ia_* só para quem vê Configurações
+            // ia_* só para quem vê Configurações; chaves sensíveis (senha SMTP, tokens...) só para admin
+            configs.forEach(c => {
+                if (c.key.startsWith('ia_') && !veConfig) return;
+                if (chaveSensivel(c.key) && p.admin !== true) return;
+                configObj[c.key] = mesclarAcoes(c.key, c.value);
+            });
             res.json(configObj);
         } catch (error) {
             console.error(error);

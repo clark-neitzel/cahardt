@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const estoqueService = require('../services/estoqueService');
 const prisma = require('../config/database');
+const { exigeEdicaoProdutos } = require('../middlewares/permissaoProdutos');
 
 // Busca permissões frescas do banco (o JWT pode estar desatualizado)
 async function getPermsFromDB(userId) {
@@ -301,7 +302,8 @@ router.get('/historico', async (req, res) => {
 });
 
 // POST /api/estoque/sync-produto/:produtoId — sincroniza um produto específico com o CA
-router.post('/sync-produto/:produtoId', async (req, res) => {
+// Admin OU produtos.edit (mesmo middleware das rotas de escrita de /api/produtos) — antes qualquer logado chamava o CA.
+router.post('/sync-produto/:produtoId', exigeEdicaoProdutos, async (req, res) => {
     try {
         const produto = await prisma.produto.findUnique({
             where: { id: req.params.produtoId },

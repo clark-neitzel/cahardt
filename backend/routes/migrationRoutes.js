@@ -2,6 +2,14 @@ const express = require('express');
 const router = express.Router();
 const migrationController = require('../controllers/migrationController');
 
+// DDL cru e sincronização em massa: só admin (antes qualquer usuário logado atravessava).
+router.use((req, res, next) => {
+    if (req.user?.permissoes?.admin !== true) {
+        return res.status(403).json({ error: 'Apenas administradores podem executar migrations.' });
+    }
+    next();
+});
+
 // Rota para aplicar migration de NCM
 router.post('/apply-ncm', migrationController.applyNcmMigration);
 

@@ -25,7 +25,7 @@ Organização dos scripts auxiliares do backend.
 | `apply_migration.sh` | Wrapper shell para aplicar migração Prisma. |
 | `run_clientes_migration.js` / `run_clientes_update_01.js` | Migrações pontuais de clientes. |
 | `run_custom_sql.js` | Executa SQL arbitrário (dev). |
-| `sync-from-production.js` | Import one-off de dados de produção. |
+| `sync-from-production.js` | Import one-off de dados de produção. Atenção: `/api/vendedores` não devolve mais o hash da senha, então vendedor NOVO criado localmente por este script fica sem senha (os que já existem no banco local mantêm a deles). |
 
 ### Sync / seed / manutenção
 | Script | Finalidade |

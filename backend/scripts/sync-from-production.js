@@ -80,7 +80,8 @@ async function syncVendedores() {
         maxDescontoFlex: v.maxDescontoFlex || 100,
         ativo: v.ativo !== false,
         login: v.login || null,
-        senha: v.senha || null,
+        // /api/vendedores não devolve mais o hash da senha: não apagar a senha local no update
+        ...(v.senha ? { senha: v.senha } : {}),
         permissoes: v.permissoes || null,
       },
       create: {

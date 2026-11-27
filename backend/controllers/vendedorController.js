@@ -23,7 +23,7 @@ const vendedorController = {
             const ids = vendedores.map(v => v.id);
             const flexMap = await calcularFlexBulk(ids);
 
-            const resultado = vendedores.map(v => {
+            const resultado = vendedores.map(({ senha: _hashSenha, ...v }) => { // nunca devolver o hash da senha
                 const flex = flexMap.get(v.id) || { percentualFlex: Number(v.percentualFlex || 0), vendasLiquidas: 0, orcamento: 0, flexUsado: 0, disponivel: 0 };
                 return {
                     ...v,
@@ -50,7 +50,8 @@ const vendedorController = {
             const { id } = req.params;
             const vendedor = await prisma.vendedor.findUnique({ where: { id } });
             if (!vendedor) return res.status(404).json({ error: 'Vendedor não encontrado' });
-            res.json(vendedor);
+            const { senha: _hashSenha, ...semSenha } = vendedor; // nunca devolver o hash da senha
+            res.json(semSenha);
         } catch (error) {
             console.error('Erro ao obter vendedor:', error);
             res.status(500).json({ error: 'Erro ao obter vendedor' });

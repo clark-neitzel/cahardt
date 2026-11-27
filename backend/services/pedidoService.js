@@ -956,8 +956,9 @@ const pedidoService = {
             where: { id },
             include: {
                 cliente: true,
-                vendedor: true,
-                usuarioLancamento: true,
+                // Mesmos campos de antes, MENOS o hash da senha (este objeto vai inteiro para o navegador em GET /pedidos/:id)
+                vendedor: { omit: { senha: true } },
+                usuarioLancamento: { omit: { senha: true } },
                 itens: {
                     include: { produto: true }
                 },
