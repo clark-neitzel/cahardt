@@ -35,6 +35,7 @@
 const prisma = require('../config/database');
 const { numeroWhatsapp, avaliarTelefone } = require('../utils/telefoneWhatsapp');
 const { chaveTelefone } = require('../utils/telefoneChave');
+const { assertNaoAgente } = require('../utils/agenteContexto');
 
 const LIMITE_TEXTO = 2000;
 const TIMEOUT_MS = 30000; // folgado de propósito: o bot espaça os envios (5s) e a chamada espera na fila
@@ -314,6 +315,7 @@ const botWhatsappService = {
      * tratar como "vai sair depois", não como erro definitivo.
      */
     enviar: async ({ telefone, texto, tipo, origem, referencia }) => {
+        assertNaoAgente('WHATSAPP'); // agente de IA nunca dispara isto (utils/agenteContexto.js)
         const phone = await resolverTelefone(telefone);
         if (!phone) return { ok: false, codigo: 'telefone_invalido', motivo: 'Telefone celular inválido ou ausente' };
         if (!texto || !String(texto).trim()) return { ok: false, codigo: 'texto_vazio', motivo: 'Mensagem vazia' };
@@ -361,6 +363,7 @@ const botWhatsappService = {
      * Retorna { ok, reagendado, status, motivo, codigo, partes:[resultado por parte] } — nunca lança.
      */
     enviarEmPartes: async ({ telefone, partes, tipo, origem, referenciaBase }) => {
+        assertNaoAgente('WHATSAPP');
         const lista = (partes || []).filter(p => p && String(p).trim());
         if (!lista.length) return { ok: false, codigo: 'texto_vazio', motivo: 'Mensagem vazia', partes: [] };
 
@@ -407,6 +410,7 @@ const botWhatsappService = {
      * de 200/h é dele). Chamado pelo scheduler.
      */
     processarFila: async () => {
+        assertNaoAgente('WHATSAPP');
         const agora = new Date();
         const pendentes = await prisma.botWhatsappEnvio.findMany({
             where: { status: 'PENDENTE', proximaEm: { lte: agora } },

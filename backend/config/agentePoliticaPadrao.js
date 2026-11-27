@@ -1,0 +1,108 @@
+// POLÍTICA PADRÃO do usuário-agente (token cah_ag_...): o que o agente pode fazer em cada função do sistema.
+// Três níveis: LIBERADO (passa) · PEDE (precisa de autorização do dono) · BLOQUEADO (nega).
+//
+// Resolução (services/agentePoliticaService.js): bloqueio fixo -> sempre liberado -> override FUNCAO do dono
+// -> override FAMILIA do dono -> SEED abaixo -> BLOQUEADO. Função/família NOVA nasce BLOQUEADA: nada fica
+// liberado sem alguém decidir.
+//
+// PR-A (este): só LEITURA (GET) é liberada. Escrita (POST/PUT/PATCH/DELETE) em família do seed resolve
+// como PEDE — e PEDE ainda não tem fila de autorização, então o middleware responde 403 (falha segura).
+// Mexer em REGRA de LIBERAR escrita é decisão do PR-D, não daqui.
+const NIVEIS = ['LIBERADO', 'PEDE', 'BLOQUEADO'];
+const RESTRICAO = { LIBERADO: 0, PEDE: 1, BLOQUEADO: 2 }; // maior = mais restritivo
+const PADRAO_DESCONHECIDO = 'BLOQUEADO';
+
+// ───────────────────────── bloqueios FIXOS (nem override do dono libera) ─────────────────────────
+// Prefixos (sem fronteira: `/api/config*` pega config-notas e config-gcal; `/api/admin*` pega admin-exec...).
+const BLOQUEIO_PREFIXOS = /^\/api\/(agentes|admin|vendedores|migrations|config|notas-fiscais|asaas|whatsapp-clientes|mensagens-agendadas|cobranca|cobrancas-rota|impressao|copiloto|rh|ponto|curriculos|funcionarios|comissoes|ia-uso|ia-logs|visitors|diarios|gps-clientes)/;
+// `/api/auth/*` inteiro, EXCETO `GET /api/auth/me` (tratado em ehBloqueioFixo).
+const AUTH_TUDO = /^\/api\/auth(\/|$)/;
+const AUTH_ME = /^\/api\/auth\/me\/?$/;
+// Consultas/manifestação na SEFAZ (notasEntrada.js): ato fiscal, nunca do agente.
+const BLOQUEIO_SEFAZ = [
+    /^POST \/api\/notas-entrada\/consultar-agora\/?$/,
+    /^POST \/api\/notas-entrada\/buscar-chave\/?$/,
+    /^POST \/api\/notas-entrada\/buscar-chave\/agendar\/?$/,
+    /^POST \/api\/notas-entrada\/[^/]+\/manifestar\/?$/,
+];
+
+/** `caminho`: minúsculo, sem query. Vale tanto para o caminho do catálogo (`:p`) quanto para a URL crua. */
+function ehBloqueioFixo(metodo, caminho) {
+    const m = String(metodo || '').toUpperCase();
+    const c = String(caminho || '').toLowerCase();
+    if (BLOQUEIO_PREFIXOS.test(c)) return true;
+    if (AUTH_TUDO.test(c) && !(m === 'GET' && AUTH_ME.test(c))) return true;
+    const mc = `${m} ${c}`;
+    return BLOQUEIO_SEFAZ.some((re) => re.test(mc));
+}
+
+// ───────────────────────── sempre liberado ─────────────────────────
+const REGRAS_SEMPRE_LIBERADO = [
+    { metodos: ['GET'], caminho: /^\/api\/auth\/me\/?$/ },
+    { metodos: ['GET'], caminho: /^\/api\/agente\/v1(\/|$)/ },
+];
+function ehSempreLiberado(metodo, caminho) {
+    const m = String(metodo || '').toUpperCase();
+    const c = String(caminho || '').toLowerCase();
+    return REGRAS_SEMPRE_LIBERADO.some((r) => r.metodos.includes(m) && r.caminho.test(c));
+}
+
+// ───────────────────────── SEED de leitura ─────────────────────────
+// Famílias cujas rotas GET entram LIBERADAS. Família fora desta lista = BLOQUEADA por padrão.
+const FAMILIAS_LEITURA = [
+    '/api/contas-pagar', '/api/anexos', '/api/contas-receber', '/api/fornecedores', '/api/notas-entrada',
+    '/api/financeiro-gerencial', '/api/conciliacao-bancaria', '/api/contas-financeiras', '/api/categorias-estoque',
+    '/api/pcp/itens', '/api/pcp/receitas', '/api/pcp/estoque', '/api/produtos', '/api/estoque', '/api/pedidos',
+    '/api/clientes', '/api/indicadores-gestao', '/api/dashboards', '/api/caixa', '/api/embarques', '/api/entregas',
+    '/api/contabilidade',
+];
+
+// POST que é só PRÉVIA/leitura (não grava): entram LIBERADOS como as leituras.
+const POST_LEITURA = new Set([
+    'POST /api/contas-pagar/avaliar-custo',
+    'POST /api/notas-entrada/:p/avaliar-custo',
+]);
+
+// GET de família liberada que fica FORA do seed (relatado ao dono). Só um override FUNCAO explícito libera.
+// motivo: 'pesado' (gera arquivo grande) · 'grava' (o GET escreve no banco/disco) · 'externo' (chama API de terceiro)
+//         · 'sensivel' (devolve dado de todo o sistema).
+const EXCECOES_LEITURA = {
+    'GET /api/contabilidade/pacote-mes': 'pesado',
+    'GET /api/contabilidade/notas-entrada-zip': 'pesado',
+    'GET /api/caixa/resumo': 'grava',                           // cria o CaixaDiario do dia se não existir
+    'GET /api/caixa/conferencia-dinheiro/config': 'grava',      // semeia a configuração padrão na 1ª leitura (1 linha)
+    'GET /api/caixa/conferencia-dinheiro/autorizadores': 'grava', // idem (config semeada na leitura)
+    'GET /api/caixa/audit-logs': 'sensivel',                    // devolve as últimas 50 ações de TODO o sistema
+    'GET /api/embarques/mapa': 'externo',                       // geocodifica endereços de clientes em serviço externo
+    'GET /api/pedidos/:p/nota-fiscal': 'externo',               // chama o Conta Azul até 12x e grava cache nfeChave/nfeNumero
+    'GET /api/pedidos/:p/danfe': 'grava',                       // baixa XML da Focus/CA e grava cópia em disco
+    'GET /api/pedidos/:p/cobrancas-ca': 'externo',              // consulta a API do Conta Azul
+    'GET /api/clientes/consulta-cnpj/:p': 'externo',            // BrasilAPI/CNPJá + SEFAZ (IE)
+    'GET /api/clientes/:p/endereco-historico/:p/geocode': 'externo', // serviço de geocodificação
+    'GET /api/financeiro-gerencial/categorias-despesa': 'grava', // semeia/ajusta categorias e grupos DRE
+    'GET /api/financeiro-gerencial/grupos-dre': 'grava',         // semeia os grupos padrão
+};
+
+/** Seed para uma entrada do catálogo { chave, metodo, familia, complexa }. Devolve { nivel, origem }. */
+function nivelSeed(entrada) {
+    if (entrada.complexa) return { nivel: 'BLOQUEADO', origem: 'padrao' };
+    if (FAMILIAS_LEITURA.includes(entrada.familia)) {
+        if (EXCECOES_LEITURA[entrada.chave]) return { nivel: 'BLOQUEADO', origem: 'padrao' };
+        if (entrada.metodo === 'GET' || POST_LEITURA.has(entrada.chave)) return { nivel: 'LIBERADO', origem: 'seed' };
+        return { nivel: 'PEDE', origem: 'seed' }; // escrita em família com política: PEDE (sem fila neste PR => 403)
+    }
+    return { nivel: PADRAO_DESCONHECIDO, origem: 'padrao' };
+}
+
+/** Esta função é "leitura" (pode receber LIBERADO)? GET ou POST de prévia. */
+function ehLeitura(entrada) {
+    return entrada.metodo === 'GET' || POST_LEITURA.has(entrada.chave);
+}
+
+module.exports = {
+    NIVEIS, RESTRICAO, PADRAO_DESCONHECIDO,
+    BLOQUEIO_PREFIXOS, BLOQUEIO_SEFAZ, REGRAS_SEMPRE_LIBERADO,
+    ehBloqueioFixo, ehSempreLiberado,
+    FAMILIAS_LEITURA, POST_LEITURA, EXCECOES_LEITURA,
+    nivelSeed, ehLeitura,
+};

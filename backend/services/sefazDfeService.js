@@ -51,6 +51,7 @@ const toArray = (v) => (v == null ? [] : (Array.isArray(v) ? v : [v]));
 // CNPJ ALFANUMÉRICO (NT 2026.004): CNPJ do emitente/destinatário e a CHAVE de 44 posições
 // podem conter letras. normalizarDoc preserva letras; soDigitos fica só p/ CEP e NSU (numéricos).
 const { normalizarDoc, normalizarChaveNFe } = require('../utils/documento');
+const { assertNaoAgente } = require('../utils/agenteContexto');
 const soDigitos = (v) => String(v || '').replace(/\D/g, '');
 const numOuNull = (v) => {
     if (v == null || v === '') return null;
@@ -470,6 +471,7 @@ async function registrarEvento(xmlString) {
 // ─────────────────────────────────────────────────────────────
 
 async function manifestarCiencia(cert, pfx, senha) {
+    assertNaoAgente('SEFAZ'); // agente de IA nunca dispara isto (utils/agenteContexto.js)
     const pendentes = await prisma.notaEntrada.findMany({
         // `manifestacaoTipo: null` é IGUALDADE a null de propósito: no Prisma, `not`/`notIn`
         // EXCLUEM as linhas null — usar `not` aqui deixaria de fora justamente as notas que
@@ -631,6 +633,7 @@ function normalizarJustificativa(texto) {
  *             | REDE | REJEITADA | GRAVACAO
  */
 async function manifestar({ notaId, tipo, justificativa, usuarioId, automatica = false } = {}) {
+    assertNaoAgente('SEFAZ'); // agente de IA nunca dispara isto (utils/agenteContexto.js)
     // Único efeito do modo: o teto de espera da chamada HTTP (ver as constantes acima).
     // A regra fiscal é IDÊNTICA nos dois caminhos — nada de "automático marca mais fácil".
     const timeoutMs = automatica ? MANIFESTACAO_TIMEOUT_AUTO_MS : MANIFESTACAO_TIMEOUT_MS;
@@ -818,6 +821,7 @@ async function manifestar({ notaId, tipo, justificativa, usuarioId, automatica =
 let _rodando = false;
 
 async function executarCiclo({ manual = false } = {}) {
+    assertNaoAgente('SEFAZ'); // agente de IA nunca dispara isto (utils/agenteContexto.js)
     if (_rodando) return { ok: false, motivo: 'Já existe um ciclo de captura em execução.' };
     _rodando = true;
     try {
@@ -968,6 +972,7 @@ async function _salvarResultado(texto) {
  * A rota consulta a nota gravada pela própria chave.
  */
 async function buscarPorChave(chave) {
+    assertNaoAgente('SEFAZ'); // agente de IA nunca dispara isto (utils/agenteContexto.js)
     const ch = normalizarChaveNFe(chave); // chave pode ser alfanumérica (emitente com CNPJ alfanumérico)
     if (!ch) return { ok: false, motivo: 'A chave de acesso precisa ter 44 posições.' };
 
@@ -1038,6 +1043,7 @@ async function buscarPorChave(chave) {
  * Uma por vez: a própria trava garante ~1 consulta por hora.
  */
 async function processarBuscasAgendadas() {
+    assertNaoAgente('SEFAZ');
     let item;
     try {
         item = await prisma.notaBuscaAgendada.findFirst({ where: { status: 'PENDENTE' }, orderBy: { criadoEm: 'asc' } });

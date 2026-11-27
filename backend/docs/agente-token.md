@@ -1,4 +1,4 @@
-# Usuário-agente com token de API (PR1)
+# Usuário-agente com token de API (PR1) + política de acesso (PR-A)
 
 O agente de IA (ex.: "Luke") é um `Vendedor` com `agente = true` (coluna real; `acessoExterno = true`, `login`/`senha` nulos).
 Entra na API com `Authorization: Bearer cah_ag_<32 bytes base64url>` — nunca por login/senha, nunca por query string (400 `TOKEN_NA_URL`).
@@ -8,8 +8,62 @@ Entra na API com `Authorization: Bearer cah_ag_<32 bytes base64url>` — nunca p
 - Permissões vivas: lidas do banco a cada chamada (mesmo princípio do JWT).
 - **Agente nunca é admin**: se alguém der `permissoes.admin = true` ao vendedor-agente (por exemplo, pela tela de Usuários), o `authMiddleware` passa a recusar o token (403 `AGENTE_ADMIN_PROIBIDO`). Não há como virar/deixar de ser agente pelas rotas de usuários: `agente` não está na lista de campos aceitos pelo `PUT /api/vendedores/:id`.
 - JWT de vendedor-agente e `POST /api/auth/app-login` com esse usuário → 401.
-- **Nega por padrão**: o agente só alcança o que está em `config/agenteAcesso.js` (`REGRAS_AGENTE`). Neste PR: `GET /api/auth/me` e `GET /api/agente/v1/*`. O resto → 403 `AGENTE_BLOQUEADO`. Liberar uma família de rotas = acrescentar uma regra lá (e espelhar a permissão do banco no agente).
-- Rotas de gestão (`/api/agentes`, só admin humano): `POST /`, `GET /`, `POST /:id/tokens`, `DELETE /:id/tokens/:tid`.
+- **Nega por padrão — POLÍTICA do agente (PR-A)**: o que o agente alcança é decidido por função, em 3 níveis (seção abaixo). `config/agenteAcesso.js` virou só um *shim* de compatibilidade (cobre apenas o "sempre liberado"). O que não é LIBERADO → 403 (`AGENTE_BLOQUEADO` ou `AGENTE_PEDE_AUTORIZACAO`).
+- Rotas de gestão (`/api/agentes`, só admin humano): `POST /`, `GET /`, `POST /:id/tokens`, `DELETE /:id/tokens/:tid`, e a política: `GET/PUT/DELETE /:id/politicas`, `GET /:id/politicas/familias` (abaixo).
+
+## Política do agente: LIBERADO / PEDE AUTORIZAÇÃO / BLOQUEADO (PR-A)
+
+Cada **função** do sistema é uma rota real, identificada por `MÉTODO /api/caminho/:p` (todo parâmetro vira `:p`, minúsculo, sem barra final; ex.: `GET /api/contas-pagar/:p/anexos`). A **família** é o prefixo (`/api/contas-pagar`; em PCP, `/api/pcp/itens`). O catálogo (`services/agenteCatalogoRotas.js`, ~1280 funções) é montado uma vez, na 1ª requisição de agente, lendo as rotas registradas no Express — por isso **função/rota nova nasce BLOQUEADA** e só passa a valer depois de alguém decidir. Rota com regex no caminho (não dá para normalizar) fica sempre BLOQUEADA. URL que o catálogo não conhece → BLOQUEADO. URL que casa com mais de uma função vale a **mais restritiva**.
+
+**Níveis**
+- `LIBERADO` — passa (a permissão do vendedor-agente ainda vale dentro da rota: pode dar 200 ou o 403 de permissão).
+- `PEDE` — exigiria autorização do dono. **Neste PR ainda não existe fila de autorização**: responde 403 `AGENTE_PEDE_AUTORIZACAO` (falha segura). Toda escrita (POST/PUT/PATCH/DELETE) em família do seed resolve como `PEDE`.
+- `BLOQUEADO` — 403 `AGENTE_BLOQUEADO` com `{ nivel, chave, fixo, orientacao }`.
+
+**Ordem de resolução** (`services/agentePoliticaService.js`): bloqueio fixo → sempre liberado → override do dono `FUNCAO` → override do dono `FAMILIA` → seed (padrão) → BLOQUEADO.
+
+**Bloqueios FIXOS** (nem override do dono libera; a API recusa com 422; checados na chave E no caminho cru): `/api/agentes*`, `/api/admin*` (inclui admin-exec), `/api/vendedores*`, `/api/migrations*`, `/api/config*` (inclui config-notas e config-gcal), `/api/notas-fiscais*` (emissão NF-e), `/api/asaas*`, `/api/whatsapp-clientes*`, `/api/mensagens-agendadas*`, `/api/cobranca*`, `/api/cobrancas-rota*`, `/api/impressao*`, `/api/copiloto*`, `/api/rh*`, `/api/ponto*`, `/api/curriculos*`, `/api/funcionarios*`, `/api/comissoes*`, `/api/ia-uso*`, `/api/ia-logs*`, `/api/visitors*`, `/api/diarios*`, `/api/gps-clientes*`, `/api/auth/*` (exceto `GET /api/auth/me`) e, em notas recebidas, as chamadas à SEFAZ: `POST /api/notas-entrada/consultar-agora`, `/buscar-chave`, `/buscar-chave/agendar`, `/:p/manifestar`. **Sempre liberado**: `GET /api/auth/me` e `GET /api/agente/v1/**`.
+
+**Seed (padrão) deste PR — só LEITURA**: todo `GET` das famílias `contas-pagar` (inclui anexos e `/api/anexos/:p/arquivo`), `contas-receber`, `fornecedores`, `notas-entrada`, `financeiro-gerencial`, `conciliacao-bancaria`, `contas-financeiras`, `categorias-estoque`, `pcp/itens`, `pcp/receitas`, `pcp/estoque`, `produtos`, `estoque`, `pedidos`, `clientes`, `indicadores-gestao`, `dashboards`, `caixa`, `embarques`, `entregas`, `contabilidade`; mais as duas prévias que não gravam: `POST /api/contas-pagar/avaliar-custo` e `POST /api/notas-entrada/:p/avaliar-custo`. **Ficam de fora (BLOQUEADOS por padrão; só override `FUNCAO` explícito libera — override de FAMILIA nunca abre estas)** (`EXCECOES_LEITURA` em `config/agentePoliticaPadrao.js`):
+- *pesado*: `GET /api/contabilidade/pacote-mes`, `/notas-entrada-zip`;
+- *grava*: `GET /api/caixa/resumo` (cria o caixa do dia), `GET /api/caixa/conferencia-dinheiro/config` e `/autorizadores` (semeiam a configuração padrão na 1ª leitura), `GET /api/pedidos/:p/danfe` (baixa XML da Focus/CA e grava em disco), `GET /api/financeiro-gerencial/categorias-despesa` e `/grupos-dre` (semeiam/ajustam dados);
+- *externo*: `GET /api/pedidos/:p/cobrancas-ca` (Conta Azul), `GET /api/pedidos/:p/nota-fiscal` (Conta Azul até 12x **e** grava cache `nfeChave/nfeNumero`), `GET /api/clientes/consulta-cnpj/:p` (BrasilAPI/CNPJá + SEFAZ), `GET /api/clientes/:p/endereco-historico/:p/geocode` e `GET /api/embarques/mapa` (geocodificação de endereços de clientes em serviço externo);
+- *sensível*: `GET /api/caixa/audit-logs` (devolve as últimas 50 ações de todo o sistema).
+
+**Liberados que "gravam por idempotência (1 linha)"**: `GET /api/contas-pagar/:p/anexos` cria, se faltar, o espelho do PDF legado como anexo (1 linha, a mesma coisa que a tela humana faz ao abrir). **Liberados que "leem do Conta Azul, igual à tela humana"** (só consulta, sem efeito; só quando há token do CA): `GET /api/financeiro-gerencial/por-conta` e `/dashboard`, `GET /api/contas-pagar/categorias` e `/opcoes-baixa`, `GET /api/contas-receber/contas-financeiras`, `GET /api/conciliacao-bancaria/opcoes-despesa`.
+
+Qualquer outra família (kitfesta, delivery, tarefas, checklists-veiculo, veículos, leads, despesas, devoluções…) → BLOQUEADA. **Nenhuma escrita é LIBERADA neste PR.**
+
+**Como o dono muda por API** (só admin humano; token de agente → 403; todo PUT/DELETE grava `AuditLog` `AGENTE_POLITICA_ALTERADA` com antes→depois; o cache de overrides do agente — TTL 15 s — é invalidado na hora):
+
+```bash
+# catálogo mesclado (filtros: familia, nivel, semRegra=1, q, pagina, porPagina<=200)
+curl -s -H "Authorization: Bearer $JWT_ADMIN" "$URL/api/agentes/$AGENTE_ID/politicas?familia=/api/pedidos&nivel=LIBERADO"
+#   itens: { chave, metodo, exemplo, familia, rotulo, nivelEfetivo, origem: fixo|override|seed|padrao, fixo, [motivo, atualizadoPorNome] }
+# contagem por família e nível
+curl -s -H "Authorization: Bearer $JWT_ADMIN" "$URL/api/agentes/$AGENTE_ID/politicas/familias"
+# mudar uma função (escopo FUNCAO) ou uma família inteira (escopo FAMILIA)
+curl -s -X PUT -H "Authorization: Bearer $JWT_ADMIN" -H 'Content-Type: application/json' "$URL/api/agentes/$AGENTE_ID/politicas" \
+  -d '{"escopo":"FUNCAO","chave":"GET /api/pedidos/:p/danfe","nivel":"LIBERADO","motivo":"preciso conferir DANFE"}'
+# voltar ao padrão
+curl -s -X DELETE -H "Authorization: Bearer $JWT_ADMIN" -H 'Content-Type: application/json' "$URL/api/agentes/$AGENTE_ID/politicas" \
+  -d '{"escopo":"FUNCAO","chave":"GET /api/pedidos/:p/danfe"}'
+```
+Regras da API: `422` ao tentar `LIBERADO`/`PEDE` em bloqueio fixo (ou mudar o sempre-liberado); `422` ao tentar `LIBERADO` em função de **escrita** (só depois do PR de escrita); `422` para chave que não existe no catálogo. Override `FAMILIA` = `LIBERADO` só vale para leitura e não abre as exceções acima. Linha inválida no banco é ignorada pelo resolver.
+
+**Auditoria `AGENTE_REQUISICAO`**: toda **negação** do agente vira uma linha no `audit_logs` (detalhes: `reqId` — o mesmo do header `X-Request-Id` —, método, caminho sem query, chave, nível, fixo, status, ms, `tokenPrefixo`, ip; nunca token/hash/cabeçalhos). Repetição igual (mesmo agente+chave+status) na janela de 60 s grava 1 linha + 1 linha-resumo com `repeticoes`. Leitura liberada não é gravada (o uso já é contado em `agente_tokens`).
+
+**Limites e fail-safes do resolver/auditoria**: caminho com mais de 300 caracteres → BLOQUEADO antes do memo (nada de memória/auditoria inchando); o memo é LRU (descarta ~10% dos mais antigos ao encher, nunca zera); se o catálogo tiver rota com **regex no caminho**, toda URL sob o prefixo literal dela é BLOQUEADA (hoje há 0 dessas); cache de política "stale" (banco de políticas fora) vale no máximo **5 min**, depois 503 `AGENTE_POLITICA_INDISPONIVEL` (fail-closed; `/auth/me`, `/agente/v1/*` e os bloqueios fixos não dependem desse banco). Auditoria `AGENTE_REQUISICAO`: dedupe por agente+**método+família**+status (URLs diferentes da mesma família não viram uma linha por tentativa) e teto de **30 linhas por agente por minuto** — acima disso só um contador em memória e 1 linha-resumo (`motivo:'teto_por_minuto'`, `suprimidas`) quando a janela fecha.
+
+**Token na URL**: `cah_ag_` em QUALQUER parte da URL (caminho ou query, mesmo codificado/em maiúsculas) → 400 `TOKEN_NA_URL`, sem ecoar o valor (vale para qualquer requisição que passe pelo `authMiddleware`).
+
+**Rotas que chamam o `authMiddleware` com um `res` falso** (hoje só `services/comoFazerAuthService.js`): o ramo do agente só usa `status`/`json` e `setHeaderSeguro` (nunca lança se o `res` não tem `set`); o proxy do Como Fazer repassa `set/setHeader/on/statusCode` ao `res` de verdade. Agente nessas rotas → 403 `NAO_AUTENTICADO` (formato do módulo), nunca 500.
+
+**Defesa em profundidade**: o `authMiddleware` roda a requisição do agente dentro de um contexto (`utils/agenteContexto.js`, AsyncLocalStorage). `botWhatsappService.enviar`, `focusNfeEmissaoService` (emitirVenda/emitirDevolucao/emitirDevolucaoBonificacao), `focusNfeService` (emitir/cancelar), `sefazDfeService` (manifestar/executarCiclo/buscarPorChave/manifestarCiencia) `sefazDfeService.processarBuscasAgendadas`, `focusNfeService` (cartaCorrecao/enviarEmail também), `botWhatsappService` (enviarEmPartes/processarFila), `emailService` (enviar/testarConexao), `asaasService` (ensureCustomer, cancelar*, marcarRecebida, criarBoletoParcela, registrarWebhook, salvarConfig, criarPixPedidoInterno), `googleCalendarService` (criar/atualizar/removerEvento), `googleDriveService.salvarXmlNota` e `consultaCnpjService.consultarIeSefaz` chamam `assertNaoAgente()` e **lançam** se for requisição de agente. Requisição humana, worker e script não têm contexto → comportamento idêntico ao de antes.
+
+`GET /api/agente/v1/meu-acesso` mantém todos os campos antigos e acrescenta `politica: { liberado, pede, bloqueado, familias: [{ familia, liberado, pede, bloqueado }] }` (resumo, sem listar as ~1280 rotas) e `observacao`.
+
+Limitação conhecida: o cache de overrides é em memória por instância (o backend roda em 1 instância no EasyPanel); com mais de uma, a mudança do dono pode levar até 15 s para valer nas outras.
 
 ## Logs: onde o token pode vazar (e o que controlamos)
 
@@ -131,4 +185,4 @@ Se a resposta se perder depois do `confirmar`, o token novo já está ativo e ni
 - **Rotacione a cada 60–80 dias**, sem esperar vencer (token vencido = agente fora do ar).
 - O próprio agente enxerga o prazo: `GET /api/agente/v1/meu-acesso` devolve `token: { prefixo, expiraEm, diasRestantes }` (sem segredo). **Quando `diasRestantes` ≤ 14, avise o dono** para rotacionar. `diasRestantes` é `null` se o token não tem validade.
 - Suspeitou de vazamento (token em chat, URL, log, print)? Não espere: `agente-token-revogar` com `"tokens":"todos"` e depois rotacione.
-- Antes de qualquer uso real: o deploy precisa ter subido (`GET /api/admin-exec/ping` com `deployMarker: "agente-token-rotacao-2026-11-27"`).
+- Antes de qualquer uso real: o deploy precisa ter subido (`GET /api/admin-exec/ping` com `deployMarker: "agente-politica-2026-11-27"`).

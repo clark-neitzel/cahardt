@@ -14,6 +14,7 @@
 
 const { google } = require('googleapis');
 const prisma = require('../config/database');
+const { assertNaoAgente } = require('../utils/agenteContexto');
 const gdrive = require('./googleDriveService');
 
 const TZ = 'America/Sao_Paulo';
@@ -105,6 +106,7 @@ async function _contexto() {
 
 /** Cria o evento. Devolve { ok, id } */
 async function criarEvento({ titulo, descricao, dataYmd, horario, duracaoMin: dur }) {
+    assertNaoAgente('AGENDA');
     try {
         const c = await _contexto();
         if (!c.cal) return { ok: false, motivo: c.motivo };
@@ -121,6 +123,7 @@ async function criarEvento({ titulo, descricao, dataYmd, horario, duracaoMin: du
 
 /** Atualiza o evento. Se ele não existe mais na agenda (404/410), devolve { ok:false, naoExiste:true }. */
 async function atualizarEvento(eventId, { titulo, descricao, dataYmd, horario, duracaoMin: dur }) {
+    assertNaoAgente('AGENDA');
     try {
         const c = await _contexto();
         if (!c.cal) return { ok: false, motivo: c.motivo };
@@ -139,6 +142,7 @@ async function atualizarEvento(eventId, { titulo, descricao, dataYmd, horario, d
 
 /** Remove o evento (já inexistente conta como sucesso). */
 async function removerEvento(eventId) {
+    assertNaoAgente('AGENDA');
     try {
         const c = await _contexto();
         if (!c.cal) return { ok: false, motivo: c.motivo };

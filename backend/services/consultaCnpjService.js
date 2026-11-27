@@ -13,6 +13,7 @@
  */
 
 const axios = require('axios');
+const { assertNaoAgente } = require('../utils/agenteContexto');
 const https = require('https');
 const prisma = require('../config/database');
 const { normalizarDoc } = require('../utils/documento');
@@ -141,6 +142,7 @@ function _extrairTag(xml, tag) {
  *  { ok: false, motivo }                    — não foi possível consultar (sem certificado, UF sem endpoint, erro)
  */
 async function consultarIeSefaz(cnpj, uf) {
+    assertNaoAgente('SEFAZ'); // agente de IA nunca dispara isto (utils/agenteContexto.js)
     const ufNorm = String(uf || '').trim().toUpperCase();
     const url = CAD_ENDPOINTS[ufNorm];
     if (!url) return { ok: false, motivo: `Consulta automática de IE indisponível para a UF ${ufNorm || '?'}` };

@@ -8,6 +8,7 @@
 const prisma = require('../config/database');
 const { ordenarItensPorNome } = require('../utils/ordenarItens');
 const focusNfe = require('./focusNfeService');
+const { assertNaoAgente } = require('../utils/agenteContexto');
 const { gerarParcelasData, ehPedidoAPrazo } = require('./pedidoCalculos');
 const { normalizarChaveNFeTolerante } = require('../utils/documento');
 const { ncmDoItem } = require('../utils/ncm');
@@ -715,6 +716,7 @@ function aplicarRetornoFocus(dadosFocus) {
  * prender a ref que a produção vai usar.
  */
 async function emitirVenda(pedidoId) {
+    assertNaoAgente('NFE'); // agente de IA nunca dispara isto (utils/agenteContexto.js)
     const pedido = await prisma.pedido.findUnique({
         where: { id: pedidoId },
         include: { cliente: { include: { fiscal: true } }, itens: { include: { produto: true } } },
@@ -1119,6 +1121,7 @@ async function registrarErroNotaDevolucao({ ref, ambiente, pedidoId, mensagem })
  * status nenhum). Sem `$transaction` — o arquivo não tem nenhuma.
  */
 async function emitirDevolucaoBonificacao(dev) {
+    assertNaoAgente('NFE'); // agente de IA nunca dispara isto (utils/agenteContexto.js)
     const pedido = dev.pedidoOriginal;
     if (!pedido) throw new Error('Devolução sem pedido de origem.');
     if (pedido.especial) throw new Error('Devolução de pedido especial não gera nota fiscal (pedido sem nota).');
@@ -1194,6 +1197,7 @@ async function emitirDevolucaoBonificacao(dev) {
  * barra a BN# sem nota é a trava própria de lá ("não tem NF-e autorizada").
  */
 async function emitirDevolucao(devolucaoId) {
+    assertNaoAgente('NFE'); // agente de IA nunca dispara isto (utils/agenteContexto.js)
     const dev = await prisma.devolucao.findUnique({
         where: { id: devolucaoId },
         include: {

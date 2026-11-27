@@ -1,0 +1,48 @@
+// Rótulos legíveis (português simples) das funções, para a tela/relatório de política do agente.
+// chave ("MÉTODO /api/caminho/:p") -> texto. Opcional: função sem rótulo aparece só pelo caminho.
+const ROTULOS = {
+    'GET /api/contas-pagar': 'Listar contas a pagar',
+    'GET /api/contas-pagar/:p/detalhe': 'Ver detalhe de uma conta a pagar',
+    'GET /api/contas-pagar/:p/pdf': 'Baixar o PDF da conta a pagar',
+    'GET /api/contas-pagar/:p/anexos': 'Listar anexos da conta a pagar',
+    'POST /api/contas-pagar/avaliar-custo': 'Prévia: o custo está fora da curva? (não grava)',
+    'POST /api/contas-pagar': 'Criar conta a pagar',
+    'POST /api/contas-pagar/:p/parcelas/:p/baixar': 'Dar baixa (pagar) em uma parcela a pagar',
+    'GET /api/contas-receber': 'Listar contas a receber',
+    'GET /api/contas-receber/:p': 'Ver uma conta a receber',
+    'POST /api/contas-receber/:p/baixa': 'Dar baixa em uma parcela a receber',
+    'GET /api/fornecedores': 'Listar fornecedores',
+    'GET /api/notas-entrada': 'Listar notas fiscais recebidas',
+    'GET /api/notas-entrada/:p': 'Ver uma nota fiscal recebida',
+    'POST /api/notas-entrada/:p/avaliar-custo': 'Prévia: custo da nota fora da curva? (não grava)',
+    'POST /api/notas-entrada/:p/manifestar': 'Manifestar a nota na SEFAZ (ato fiscal — fixo bloqueado)',
+    'POST /api/notas-entrada/consultar-agora': 'Consultar a SEFAZ agora (fixo bloqueado)',
+    'GET /api/financeiro-gerencial/fluxo-caixa': 'Fluxo de caixa',
+    'GET /api/financeiro-gerencial/dre': 'DRE (resultado)',
+    'GET /api/financeiro-gerencial/por-conta': 'Saldos por conta financeira',
+    'GET /api/conciliacao-bancaria/lancamentos': 'Lançamentos do extrato bancário',
+    'GET /api/contas-financeiras': 'Listar bancos/caixas',
+    'GET /api/produtos': 'Listar produtos',
+    'GET /api/produtos/:p': 'Ver um produto',
+    'GET /api/estoque/posicao': 'Posição de estoque',
+    'GET /api/pedidos': 'Listar pedidos',
+    'GET /api/pedidos/:p': 'Ver um pedido',
+    'GET /api/pedidos/relatorio-vendas': 'Relatório de vendas',
+    'GET /api/clientes': 'Listar clientes',
+    'GET /api/clientes/:p': 'Ver um cliente',
+    'GET /api/indicadores-gestao/resumo': 'Indicadores de gestão: resumo',
+    'GET /api/dashboards/geral/vendas': 'Dashboard geral: vendas',
+    'GET /api/caixa/resumo-dia': 'Resumo do caixa do dia',
+    'GET /api/embarques': 'Listar cargas/embarques',
+    'GET /api/entregas/pendentes': 'Entregas pendentes',
+    'GET /api/contabilidade/relatorio-receber': 'Relatório contábil: a receber',
+    'GET /api/contabilidade/relatorio-pagar': 'Relatório contábil: a pagar',
+    'GET /api/auth/me': 'Quem sou eu (sempre liberado)',
+    'GET /api/agente/v1/meu-acesso': 'Meu acesso (sempre liberado)',
+};
+
+function rotuloDe(chave) {
+    return ROTULOS[chave] || null;
+}
+
+module.exports = { ROTULOS, rotuloDe };

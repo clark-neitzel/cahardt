@@ -15,7 +15,8 @@ const { startTestServer } = require('./helpers/httpServer');
 const RAIZ = path.join(__dirname, '..');
 const DATABASE_MODULE = path.join(RAIZ, 'config/database.js');
 const CACHE = ['middlewares/authMiddleware.js', 'services/agenteTokenService.js', 'routes/agenteRoutes.js',
-    'routes/agenteApiV1Routes.js', 'config/agenteAcesso.js', 'controllers/appAuthController.js'];
+    'routes/agenteApiV1Routes.js', 'config/agenteAcesso.js', 'controllers/appAuthController.js',
+    'services/agentePoliticaService.js', 'services/agenteAuditoriaService.js'];
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const hash = (t) => crypto.createHash('sha256').update(t).digest('hex');
@@ -373,11 +374,14 @@ test('gestão: admin cria agente, gera token (claro uma vez), lista sem segredo,
         r = await srv.request('DELETE', `/api/agentes/${id}/tokens/${tid}`, { headers: H });
         assert.equal(r.status, 200); assert.equal(r.body.jaRevogado, true);
 
-        const acoes = db.audits.map((a) => a.acao);
-        assert.deepEqual(acoes, ['AGENTE_CRIADO', 'AGENTE_TOKEN_CRIADO', 'AGENTE_TOKEN_REVOGADO']);
+        await esperar(30); // negações do agente (PR-A) são gravadas em segundo plano
+        // gestão (feita pelo admin): só as 3 ações; as 2 negações do agente entram como AGENTE_REQUISICAO (outro autor)
+        const gestao = db.audits.filter((a) => a.acao !== 'AGENTE_REQUISICAO');
+        assert.deepEqual(gestao.map((a) => a.acao), ['AGENTE_CRIADO', 'AGENTE_TOKEN_CRIADO', 'AGENTE_TOKEN_REVOGADO']);
+        assert.equal(db.audits.filter((a) => a.acao === 'AGENTE_REQUISICAO').length, 2);
         const textoAudit = JSON.stringify(db.audits);
         assert.ok(!textoAudit.includes(claro) && !textoAudit.includes(hash(claro)));
-        assert.ok(db.audits.every((a) => a.usuarioId === 'adm' && a.usuarioNome === 'Adm'));
+        assert.ok(gestao.every((a) => a.usuarioId === 'adm' && a.usuarioNome === 'Adm'));
 
         // validações
         assert.equal((await srv.request('POST', '/api/agentes', { headers: H, body: { nome: '  ' } })).status, 400);

@@ -1013,6 +1013,7 @@ model Vendedor {
   agente Boolean @default(false)
 
   agenteTokens AgenteToken[]
+  agentePoliticas AgentePolitica[]
 
   clientes                 Cliente[]
   pedidos                  Pedido[]
@@ -1098,6 +1099,27 @@ model AgenteToken {
 
   @@index([vendedorId])
   @@map("agente_tokens")
+}
+
+// Política do agente (PR-A): exceções do dono sobre o padrão de config/agentePoliticaPadrao.js.
+// Uma linha por (agente, escopo, chave). escopo FUNCAO: chave = "MÉTODO /api/caminho/:p"; escopo FAMILIA:
+// chave = "/api/familia". Bloqueio fixo nunca é afetado por linha daqui (o resolver ignora).
+model AgentePolitica {
+  id                String   @id @default(uuid())
+  vendedorId        String   @map("vendedor_id")
+  escopo            String // FUNCAO | FAMILIA
+  chave             String
+  nivel             String // LIBERADO | PEDE | BLOQUEADO
+  motivo            String?
+  atualizadoPorId   String   @map("atualizado_por_id")
+  atualizadoPorNome String   @map("atualizado_por_nome")
+  atualizadoEm      DateTime @default(now()) @updatedAt @map("atualizado_em")
+
+  vendedor Vendedor @relation(fields: [vendedorId], references: [id], onDelete: Cascade)
+
+  @@unique([vendedorId, escopo, chave])
+  @@index([vendedorId])
+  @@map("agente_politicas")
 }
 
 // ─────────── Histórico de permissões (auditoria + restaurar versão) ───────────

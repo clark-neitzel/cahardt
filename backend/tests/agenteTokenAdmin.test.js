@@ -16,7 +16,8 @@ const { startTestServer } = require('./helpers/httpServer');
 const RAIZ = path.join(__dirname, '..');
 const DATABASE_MODULE = path.join(RAIZ, 'config/database.js');
 const CACHE = ['services/agenteCriarService.js', 'services/agenteTokenService.js', 'services/agenteTokenAdminService.js',
-    'routes/adminExec.js', 'routes/agenteApiV1Routes.js', 'middlewares/authMiddleware.js', 'config/agenteAcesso.js'];
+    'routes/adminExec.js', 'routes/agenteApiV1Routes.js', 'middlewares/authMiddleware.js', 'config/agenteAcesso.js',
+    'services/agentePoliticaService.js', 'services/agenteAuditoriaService.js'];
 
 const hashDe = (t) => crypto.createHash('sha256').update(t).digest('hex');
 

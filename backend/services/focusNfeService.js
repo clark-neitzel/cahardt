@@ -3,6 +3,8 @@
 // Envs (EasyPanel): FOCUS_NFE_AMBIENTE ('homologacao'|'producao'),
 //   FOCUS_NFE_TOKEN_HOMOLOGACAO, FOCUS_NFE_TOKEN_PRODUCAO, FOCUS_NFE_TOKEN_CONTA.
 
+const { assertNaoAgente } = require('../utils/agenteContexto');
+
 const URLS = {
     producao: 'https://api.focusnfe.com.br',
     homologacao: 'https://homologacao.focusnfe.com.br',
@@ -55,6 +57,7 @@ module.exports = {
 
     /** POST /v2/nfe?ref= — aceita para processamento (202) ou devolve erro de validação (422). */
     emitir(ref, nota) {
+        assertNaoAgente('NFE'); // agente de IA nunca emite NF-e (utils/agenteContexto.js)
         return chamar('POST', `/v2/nfe?ref=${encodeURIComponent(ref)}`, nota);
     },
 
@@ -65,16 +68,19 @@ module.exports = {
 
     /** DELETE /v2/nfe/REF — cancelamento (prazo legal ~24h; justificativa 15–255 chars). */
     cancelar(ref, justificativa) {
+        assertNaoAgente('NFE');
         return chamar('DELETE', `/v2/nfe/${encodeURIComponent(ref)}`, { justificativa });
     },
 
     /** POST /v2/nfe/REF/carta_correcao — CCe (15–1000 chars; não corrige valores/destinatário). */
     cartaCorrecao(ref, correcao) {
+        assertNaoAgente('NFE');
         return chamar('POST', `/v2/nfe/${encodeURIComponent(ref)}/carta_correcao`, { correcao });
     },
 
     /** POST /v2/nfe/REF/email — reenvia DANFE/XML por e-mail (máx. 10 destinatários). */
     enviarEmail(ref, emails) {
+        assertNaoAgente('NFE');
         return chamar('POST', `/v2/nfe/${encodeURIComponent(ref)}/email`, { emails });
     },
 

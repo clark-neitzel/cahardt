@@ -331,4 +331,7 @@ const startServer = async () => {
     }
 };
 
-startServer();
+// Testes/scripts de diagnóstico carregam o app SEM subir o servidor (CAH_SEM_LISTEN=1).
+// Em produção a variável não existe: comportamento idêntico ao de antes.
+if (process.env.CAH_SEM_LISTEN !== '1') startServer();
+module.exports = app;

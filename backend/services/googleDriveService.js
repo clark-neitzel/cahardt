@@ -21,6 +21,7 @@
 const fs = require('fs');
 const { google } = require('googleapis');
 const prisma = require('../config/database');
+const { assertNaoAgente } = require('../utils/agenteContexto');
 
 // ID padrão da pasta "Envio Contabilidade" (pode ser sobreposto pela config).
 const ENVIO_CONTABILIDADE_ID_PADRAO = '166d0hUqFgY62HKwF4T2j5r0WIi5NSE8L';
@@ -125,6 +126,7 @@ async function jaExiste(drive, nome, paiId) {
  * @returns {Promise<{ok, motivo?, id?, link?, pulado?}>}
  */
 async function salvarXmlNota(nota, xmlAbsPath, opts = {}) {
+    assertNaoAgente('DRIVE');
     try {
         const drive = await getDrive();
         if (!drive) return { ok: false, motivo: 'nao_configurado' };

@@ -129,6 +129,11 @@ function chamarAuthApp(req, res, next) {
         _status: 200,
         status(c) { this._status = c; return this; },
         json(corpo) { return res.status(this._status).json({ erro: corpo?.error || 'Não autenticado.', codigo: 'NAO_AUTENTICADO' }); },
+        // o ramo do agente do authMiddleware seta headers e liga auditoria no fim da resposta: repassa ao res de verdade
+        set(...a) { return res.set(...a); },
+        setHeader(...a) { return res.setHeader(...a); },
+        on(...a) { return res.on(...a); },
+        get statusCode() { return res.statusCode; },
     };
     return authMiddleware(req, proxy, next);
 }

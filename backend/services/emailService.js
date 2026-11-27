@@ -1,4 +1,5 @@
 const prisma = require('../config/database');
+const { assertNaoAgente } = require('../utils/agenteContexto');
 
 /**
  * Envio de e-mail via SMTP (nodemailer).
@@ -34,6 +35,7 @@ function limparCacheConfig() {
  * Nunca lança — quem chama decide o que fazer com a falha.
  */
 async function enviar(para, assunto, html) {
+    assertNaoAgente('EMAIL');
     try {
         const cfg = await carregarConfig();
         if (!cfg.ativo) return { ok: false, motivo: 'Envio de e-mail desativado nas configurações' };
@@ -66,6 +68,7 @@ async function enviar(para, assunto, html) {
 
 /** Testa a conexão SMTP com as credenciais salvas (sem enviar nada). */
 async function testarConexao() {
+    assertNaoAgente('EMAIL');
     try {
         limparCacheConfig();
         const cfg = await carregarConfig();

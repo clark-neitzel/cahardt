@@ -9,6 +9,7 @@
 // =====================================================================
 const axios = require('axios');
 const prisma = require('../config/database');
+const { assertNaoAgente } = require('../utils/agenteContexto');
 
 // Toda chave do Asaas começa com "$aact_". O EasyPanel engole o "$" inicial
 // (interpolação de variável), então recolocamos se estiver faltando.
@@ -130,6 +131,7 @@ function buscarPixVivo(db, pedidoId) {
 }
 
 async function criarPixPedidoInterno({ pedidoId, valor, descricao, criadoPorId, validadeDias = 0, vincularParcela = false, substituirPendente = false, usuario = null }) {
+    assertNaoAgente('ASAAS');
     exigirConfig();
 
     const pedido = await prisma.pedido.findUnique({
@@ -312,6 +314,7 @@ const asaasService = {
 
     // ── Cliente do app ↔ customer no Asaas (cria uma vez, reutiliza sempre) ──
     ensureCustomer: async (clienteUuid) => {
+        assertNaoAgente('ASAAS');
         exigirConfig();
 
         const vinculo = await prisma.clienteAsaas.findUnique({ where: { clienteUuid } });
@@ -430,6 +433,7 @@ const asaasService = {
     // dobro. Melhor esforço: se o Asaas recusar (ex.: acabou de ser pago lá), NÃO
     // marca cancelado local — o webhook resolve.
     cancelarCobrancasDaParcela: async (parcelaId, motivo = 'parcela quitada fora do Asaas') => {
+        assertNaoAgente('ASAAS');
         if (!configurado() || !parcelaId) return { canceladas: 0, erros: [] };
         const abertas = await prisma.cobrancaAsaas.findMany({
             where: { parcelaId, status: { in: ['PENDENTE', 'EXPIRADO'] }, ambiente: AMBIENTE }
@@ -474,6 +478,7 @@ const asaasService = {
     // (ex.: acabou de ser pago lá) NÃO marca CANCELADO local — o webhook resolve.
     // RECEBIDO/ESTORNADO/CANCELADO ficam de fora pelo filtro de status.
     cancelarCobrancasDoPedido: async (pedidoId, motivo = 'pedido quitado fora do Asaas') => {
+        assertNaoAgente('ASAAS');
         if (!configurado() || !pedidoId) return { canceladas: 0, erros: [] };
         const abertas = await prisma.cobrancaAsaas.findMany({
             where: { pedidoId, status: { in: ['PENDENTE', 'EXPIRADO'] }, ambiente: AMBIENTE }
@@ -509,6 +514,7 @@ const asaasService = {
     // { motivo, usuario:{id,nome} } opcional: grava quem/quando/por quê. Sem o 2º argumento
     // mantém o comportamento antigo (grava só canceladoEm).
     cancelarCobranca: async (cobrancaId, { motivo, usuario } = {}) => {
+        assertNaoAgente('ASAAS');
         exigirConfig();
         const cobranca = await prisma.cobrancaAsaas.findUnique({ where: { id: cobrancaId } });
         if (!cobranca) throw new Error('Cobrança não encontrada.');
@@ -540,6 +546,7 @@ const asaasService = {
 
     // ── Marcar cobrança como recebida (idempotente — webhook e poll podem correr juntos) ──
     marcarRecebida: async (cobrancaId, { valorRecebido, recebidoEm } = {}) => {
+        assertNaoAgente('ASAAS');
         const { count } = await prisma.cobrancaAsaas.updateMany({
             where: { id: cobrancaId, status: { not: 'RECEBIDO' } },
             data: {
@@ -604,6 +611,7 @@ const asaasService = {
     // ── Criar boleto de UMA parcela do Contas a Receber ──
     // Idempotente: se já existe boleto PENDENTE da parcela, devolve o existente.
     criarBoletoParcela: async ({ parcelaId, criadoPorId }) => {
+        assertNaoAgente('ASAAS');
         exigirConfig();
 
         const parcela = await prisma.parcela.findUnique({
@@ -941,6 +949,7 @@ const asaasService = {
 
     // ── Registrar/atualizar o webhook lá no painel do Asaas (setup via admin-exec) ──
     registrarWebhook: async (urlPublica) => {
+        assertNaoAgente('ASAAS');
         exigirConfig();
         const token = process.env.ASAAS_WEBHOOK_TOKEN;
         if (!token) throw new Error('Falta ASAAS_WEBHOOK_TOKEN no servidor.');
@@ -988,6 +997,7 @@ const asaasService = {
     obterConfig: obterConfigAsaas,
 
     salvarConfig: async (dados) => {
+        assertNaoAgente('ASAAS');
         const atual = await obterConfigAsaas();
         const num = (v, padrao) => (Number.isFinite(Number(v)) ? Number(v) : padrao);
         const novo = {

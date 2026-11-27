@@ -160,5 +160,5 @@ async function revogarToken(agenteId, tokenId) {
 
 module.exports = {
     PREFIXO_TOKEN, hashToken, gerarToken, pareceTokenAgente, validarToken, conta, excedeu, varrer, foiValidoRecentemente, limparContadores, registrarUso,
-    criarAgente, listarAgentes, criarTokenParaAgente, revogarToken,
+    criarAgente, listarAgentes, criarTokenParaAgente, revogarToken, agentePorId,
 };
