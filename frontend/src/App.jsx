@@ -19,6 +19,8 @@ const PendenciasWhatsapp = lazyComRetry(() => import('./pages/Clientes/Pendencia
 const CadastrosPraAcertar = lazyComRetry(() => import('./pages/Clientes/CadastrosPraAcertar'));
 const MapaClientes = lazyComRetry(() => import('./pages/Clientes/MapaClientes'));
 const ListaVendedores = lazyComRetry(() => import('./pages/Admin/Vendedores/ListaVendedores'));
+const AgentesIA = lazyComRetry(() => import('./pages/Admin/Agentes/AgentesIA'));
+const SolicitacoesAgente = lazyComRetry(() => import('./pages/Admin/Agentes/SolicitacoesAgente'));
 const Configuracoes = lazyComRetry(() => import('./pages/Admin/Configuracoes/Configuracoes'));
 const TabelaPrecos = lazyComRetry(() => import('./pages/Configuracoes/TabelaPrecos'));
 const ContasFinanceiras = lazyComRetry(() => import('./pages/Configuracoes/ContasFinanceiras'));
@@ -132,11 +134,12 @@ import {
   Settings, DollarSign, Building2, TrendingUp, FolderOpen, Warehouse,
   Package, BookOpen as BookOpenIcon, Factory, Play, ClipboardList as ClipboardListIcon, Calendar as CalendarIcon, Lightbulb, BarChart3, BarChart2, History, Sparkles, BellRing, UserCheck, Tag, DatabaseZap, Percent, Clock, Fingerprint, Inbox, Landmark, CalendarCheck, Star, AlertTriangle, ShoppingBag, MapPin, Gauge, Printer, ChefHat
 } from 'lucide-react';
-import { BookOpenCheck, Bot, CalendarDays, Snowflake } from 'lucide-react';
+import { BookOpenCheck, Bot, CalendarDays, Snowflake, ShieldCheck } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { useMenuFavoritos } from './hooks/useMenuFavoritos';
 import { usePerfil } from './hooks/usePerfil';
 import { useFiltroSalvo } from './hooks/useFiltrosSalvos';
+import { useContagemSolicitacoesAgente } from './hooks/useSolicitacoesAgente';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { usePodeVerComoFazer } from './pages/ComoFazer/hooks/useComoFazerMe';
 import { DiarioProvider } from './contexts/DiarioContext';
@@ -235,8 +238,13 @@ const SidebarSection = ({ label }) => (
   </div>
 );
 
+// Selo vermelho com número (ex.: solicitações do agente esperando o dono). Só aparece com n > 0.
+const SeloMenu = ({ n, className = '' }) => (n > 0 ? (
+  <span className={`inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-red-600 text-white text-[11px] font-bold leading-none shrink-0 ${className}`} aria-label={`${n} pendente(s)`}>{n > 99 ? '99+' : n}</span>
+) : null);
+
 // Item dentro do submenu (flyout) do desktop — com estrela para fixar no topo do menu
-const FlyItem = ({ to, icon: Icon, label, end, favorito, onToggleFav }) => (
+const FlyItem = ({ to, icon: Icon, label, end, favorito, onToggleFav, selo }) => (
   <NavLink
     to={to}
     end={end}
@@ -245,6 +253,7 @@ const FlyItem = ({ to, icon: Icon, label, end, favorito, onToggleFav }) => (
   >
     {Icon && <Icon className="h-4 w-4 shrink-0" />}
     <span className="truncate flex-1">{label}</span>
+    <SeloMenu n={selo} />
     {onToggleFav && (
       <button
         onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleFav(to); }}
@@ -258,7 +267,7 @@ const FlyItem = ({ to, icon: Icon, label, end, favorito, onToggleFav }) => (
 );
 
 // Tela favoritada fixa na barra lateral (ícone visível mesmo com a barra recolhida)
-const SidebarFavItem = ({ to, icon: Icon, label, onRemove }) => {
+const SidebarFavItem = ({ to, icon: Icon, label, onRemove, selo }) => {
   const location = useLocation();
   const isActive = location.pathname.startsWith(to);
   return (
@@ -272,6 +281,7 @@ const SidebarFavItem = ({ to, icon: Icon, label, onRemove }) => {
     >
       <Icon className="h-5 w-5 shrink-0" />
       <span className="flex-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap overflow-hidden">{label}</span>
+      <SeloMenu n={selo} className="opacity-0 group-hover:opacity-100" />
       <button
         onClick={(e) => { e.preventDefault(); e.stopPropagation(); onRemove(to); }}
         title="Remover dos favoritos"
@@ -304,7 +314,10 @@ const SidebarCat = ({ icon: Icon, label, items, twoCols, favoritos, onToggleFav 
   return (
     <div className="relative group/cat" onMouseEnter={posicionarFly}>
       <div className={`flex items-center gap-3 mx-2 px-3 py-2 rounded-lg text-[13px] cursor-default overflow-hidden transition-colors ${active ? 'bg-primary/25 text-white font-semibold' : 'text-white/70 group-hover/cat:bg-white/10 group-hover/cat:text-white'}`}>
-        <Icon className="h-5 w-5 shrink-0" />
+        <span className="relative shrink-0">
+          <Icon className="h-5 w-5" />
+          {items.some(i => i.selo > 0) && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-red-600 border border-house" aria-label="Há pendências nesta seção" />}
+        </span>
         <span className="flex-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">{label}</span>
         <ChevronRight className="h-4 w-4 shrink-0 opacity-0 group-hover:opacity-50" />
       </div>
@@ -363,7 +376,7 @@ const ROTAS_ANTIGAS_PARA_NOVA = {
 };
 
 // Componente de seção colapsável do menu mobile
-const MobileMenuSection = ({ label, icon: Icon, children, defaultOpen = false }) => {
+const MobileMenuSection = ({ label, icon: Icon, children, defaultOpen = false, temSelo = false }) => {
   const [open, setOpen] = useState(defaultOpen);
   const hasActiveChild = React.Children.toArray(children).some(child => child?.props?.className?.includes?.('text-primary'));
   return (
@@ -375,6 +388,7 @@ const MobileMenuSection = ({ label, icon: Icon, children, defaultOpen = false })
         <div className="flex items-center gap-2.5">
           {Icon && <Icon className="h-4 w-4 text-gray-400" />}
           <span>{label}</span>
+          {temSelo && <span className="w-2.5 h-2.5 rounded-full bg-red-600" aria-label="Há pendências nesta seção" />}
         </div>
         <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
       </button>
@@ -410,6 +424,8 @@ const Layout = ({ children }) => {
   const { favoritos, toggle: toggleFavorito, limite: limiteFavoritos } = useMenuFavoritos(user?.id);
   const perfil = usePerfil();
   const podeVerComoFazer = usePodeVerComoFazer(externo ? null : user?.id);
+  // Selo vermelho das solicitações do agente de IA: só admin humano consulta (não-admin nunca dispara a chamada).
+  const solicitacoesAgente = useContagemSolicitacoesAgente(!!user?.permissoes?.admin && !externo);
   const [menuCompleto, setMenuCompleto] = useFiltroSalvo('menu:completo', false);
   // Dica de descoberta (correção pós-revisão): na 1ª vez que o filtro de
   // perfil esconder algum grupo, mostrar uma linha discreta oferecendo "Ver
@@ -491,6 +507,8 @@ const Layout = ({ children }) => {
       hasPermission('produtos') && { to: '/admin/produtos', icon: Box, label: 'Produtos' },
       hasPermission('vendedores') && { to: '/admin/vendedores', icon: UserCog, label: 'Usuários' },
       isAdmin && { to: '/admin/mensagens', icon: BellRing, label: 'Mensagens' },
+      isAdmin && { to: '/admin/agentes-ia', icon: Bot, label: 'Agentes de IA' },
+      isAdmin && { to: '/admin/agentes/solicitacoes', icon: ShieldCheck, label: 'Solicitações', selo: solicitacoesAgente.pendentes },
       (user?.permissoes?.admin || hasPermission('Pode_Acessar_Veiculos')) && { to: '/admin/veiculos', icon: Car, label: 'Veículos' },
       hasPermission('Pode_Acessar_Contabilidade') && { to: '/admin/contabilidade', icon: Landmark, label: 'Contabilidade' },
     ].filter(Boolean) },
@@ -605,7 +623,7 @@ const Layout = ({ children }) => {
                 <div className="h-px bg-white/10 mt-1"></div>
               </div>
               {itensFavoritos.map(i => (
-                <SidebarFavItem key={i.to} to={i.to} icon={i.icon} label={i.label} onRemove={handleToggleFavorito} />
+                <SidebarFavItem key={i.to} to={i.to} icon={i.icon} label={i.label} selo={i.selo} onRemove={handleToggleFavorito} />
               ))}
               <div className="mx-2 mt-2 mb-1 px-3"><div className="h-px bg-white/10"></div></div>
             </>
@@ -693,9 +711,10 @@ const Layout = ({ children }) => {
               {!externo && <DiarioCheckout />}
               <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="inline-flex items-center justify-center p-2 rounded-md text-white/60 hover:text-white hover:bg-white/10"
+                className="relative inline-flex items-center justify-center p-2 rounded-md text-white/60 hover:text-white hover:bg-white/10"
               >
                 {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+                {!isMobileMenuOpen && solicitacoesAgente.pendentes > 0 && <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-red-600" aria-label="Há solicitações do agente esperando você" />}
               </button>
             </div>
           </div>
@@ -759,6 +778,7 @@ const Layout = ({ children }) => {
                     <NavLink to={i.to} onClick={closeMobile} className={({ isActive }) => `flex-1 min-w-0 flex items-center gap-2.5 px-4 py-2.5 text-sm font-medium ${isActive ? 'text-primary bg-primary-50/50' : 'text-gray-700 hover:bg-gray-50'}`}>
                       <i.icon className="h-4 w-4 text-primary shrink-0" />
                       <span className="truncate">{i.label}</span>
+                      <SeloMenu n={i.selo} className="ml-auto" />
                     </NavLink>
                     <button onClick={() => handleToggleFavorito(i.to)} title="Remover dos favoritos" className="p-2.5 mr-1.5 rounded-full hover:bg-gray-100 shrink-0">
                       <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
@@ -771,10 +791,10 @@ const Layout = ({ children }) => {
             {/* Categorias — mesmas seções e permissões do menu desktop, filtradas pelo
                 mesmo perfil (A2), com estrela para favoritar */}
             {desktopSectionsVisiveis.map(s => (
-              <MobileMenuSection key={s.label} label={s.label} icon={s.icon}>
+              <MobileMenuSection key={s.label} label={s.label} icon={s.icon} temSelo={s.items.some(i => i.selo > 0)}>
                 {s.items.map(i => (
                   <div key={i.to} className="flex items-center">
-                    <NavLink to={i.to} onClick={closeMobile} className={({ isActive }) => `${mobileLink(isActive)} flex-1 min-w-0`}>{i.label}</NavLink>
+                    <NavLink to={i.to} onClick={closeMobile} className={({ isActive }) => `${mobileLink(isActive)} flex-1 min-w-0`}>{i.label}<SeloMenu n={i.selo} className="ml-auto" /></NavLink>
                     <button
                       onClick={() => handleToggleFavorito(i.to)}
                       title={favoritos.includes(i.to) ? 'Remover dos favoritos' : 'Fixar no topo do menu'}
@@ -1040,6 +1060,8 @@ function App() {
               <Route path="/admin/auditoria-entregas" element={<PrivateRoute tab="Pode_Ver_Todas_Entregas"><AuditoriaEntregas /></PrivateRoute>} />
               <Route path="/admin/vendedores" element={<PrivateRoute tab="vendedores"><ListaVendedores /></PrivateRoute>} />
               <Route path="/admin/mensagens" element={<PrivateRoute><MensagensAgendadas /></PrivateRoute>} />
+              <Route path="/admin/agentes-ia" element={<PrivateRoute tab="admin"><AgentesIA /></PrivateRoute>} />
+              <Route path="/admin/agentes/solicitacoes" element={<PrivateRoute tab="admin"><SolicitacoesAgente /></PrivateRoute>} />
               <Route path="/admin/veiculos" element={<PrivateRoute tab="Pode_Acessar_Veiculos"><Veiculos /></PrivateRoute>} />
               <Route path="/admin/contabilidade" element={<PrivateRoute tab="Pode_Acessar_Contabilidade"><ContabilidadePage /></PrivateRoute>} />
               <Route path="/admin/config" element={<PrivateRoute tab="configuracoes"><Configuracoes /></PrivateRoute>} />
