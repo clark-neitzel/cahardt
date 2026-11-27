@@ -76,7 +76,7 @@ const ABAS = [
     { slug: 'notas-fiscais',      nome: 'Notas Fiscais (emissão e canhotos)', rota: '/notas-fiscais',                 perm: 'Pode_Acessar_Notas_Fiscais' },
     { slug: 'regua-cobranca',     nome: 'Régua de Cobrança',            rota: '/financeiro/cobranca',                perm: 'Pode_Acessar_Cobranca' },
     { slug: 'contas-a-pagar',     nome: 'Contas a Pagar',               rota: '/contas-pagar',                       perm: 'Pode_Acessar_Contas_Pagar' },
-    { slug: 'fornecedores',       nome: 'Fornecedores',                 rota: '/fornecedores',                       perm: 'Pode_Acessar_Fornecedores' },
+    { slug: 'fornecedores',       nome: 'Fornecedores',                 rota: '/fornecedores',                       perm: ['Pode_Acessar_Fornecedores', 'clientes.edit'] },
     { slug: 'notas-recebidas',    nome: 'Notas Recebidas',              rota: '/notas-recebidas',                    perm: 'Pode_Acessar_Notas_Recebidas' },
     { slug: 'financeiro-visao-geral', nome: 'Financeiro — Visão Geral', rota: '/financeiro/dashboard',               perm: 'Pode_Acessar_Financeiro_Gerencial' },
     { slug: 'fluxo-caixa',        nome: 'Fluxo de Caixa',               rota: '/financeiro/fluxo-caixa',             perm: 'Pode_Acessar_Financeiro_Gerencial' },

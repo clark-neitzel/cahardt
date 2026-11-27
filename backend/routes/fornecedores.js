@@ -1,9 +1,13 @@
 /**
  * Fornecedores — Fase 1 do módulo financeiro (Contas a Pagar).
  *
+ * Cliente e Fornecedor são UM cadastro só (pessoas): não existe permissão separada de edição.
+ * Quem tem "Gerenciar Clientes" (permissoes.clientes.edit) também lê e grava fornecedores.
+ *
  * Permissões:
- *   ver              → admin ou Pode_Acessar_Fornecedores
- *   escrever/importar → admin ou Pode_Editar_Fornecedores
+ *   ver              → admin, Pode_Acessar_Fornecedores ou clientes.edit
+ *   escrever/importar → admin, Pode_Editar_Fornecedores (legado) ou clientes.edit
+ *   (clientes.view sozinho NÃO dá acesso a esta tela)
  */
 
 const express = require('express');
@@ -28,10 +32,14 @@ const getPerms = async (userId) => {
         : (vendedor?.permissoes || {});
 };
 
+// Regras puras (exportadas p/ teste). clientes.edit = "Gerenciar Clientes".
+const podeAcessarFornecedores = (p) => !!(p && (p.admin || p.Pode_Acessar_Fornecedores || p.clientes?.edit));
+const podeEscreverFornecedores = (p) => !!(p && (p.admin || p.Pode_Editar_Fornecedores || p.clientes?.edit));
+
 const checkAcesso = async (req, res, next) => {
     const perms = req._perms || await getPerms(req.user.id);
     req._perms = perms;
-    if (!perms.admin && !perms.Pode_Acessar_Fornecedores) {
+    if (!podeAcessarFornecedores(perms)) {
         return res.status(403).json({ error: 'Sem permissão para acessar fornecedores.' });
     }
     next();
@@ -40,7 +48,7 @@ const checkAcesso = async (req, res, next) => {
 const checkEscrita = async (req, res, next) => {
     const perms = req._perms || await getPerms(req.user.id);
     req._perms = perms;
-    if (!perms.admin && !perms.Pode_Editar_Fornecedores) {
+    if (!podeEscreverFornecedores(perms)) {
         return res.status(403).json({ error: 'Sem permissão para editar fornecedores.' });
     }
     next();
@@ -324,4 +332,6 @@ router.post('/:id/cadastro-pessoa', verificarAuth, checkAcesso, async (req, res)
     }
 });
 
+router.podeAcessarFornecedores = podeAcessarFornecedores; // exposto p/ teste
+router.podeEscreverFornecedores = podeEscreverFornecedores;
 module.exports = router;

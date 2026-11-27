@@ -87,7 +87,7 @@ const ListaClientes = () => {
     const { user } = useAuth();
     const permsUser = user?.permissoes || {};
     const podeCadastrar = permsUser.admin || permsUser.clientes?.edit;
-    const podeVerFornecedores = permsUser.admin || permsUser.Pode_Acessar_Fornecedores;
+    const podeVerFornecedores = permsUser.admin || permsUser.Pode_Acessar_Fornecedores || permsUser.clientes?.edit;
     const [pedidosInativacao, setPedidosInativacao] = useState(0); // selo do botão "Cadastros a acertar"
     const [nomesACorrigir, setNomesACorrigir] = useState(0); // total de nomes a corrigir (CPF 1 palavra + CNPJ sem fantasia)
 

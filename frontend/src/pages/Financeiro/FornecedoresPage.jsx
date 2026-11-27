@@ -17,7 +17,9 @@ const fmtCnpjCpf = (v) => (normalizarDoc(v) ? formatarDoc(v) : '—');
 
 const FornecedoresPage = () => {
     const { hasPermission } = useAuth();
-    const podeEditar = hasPermission('Pode_Editar_Fornecedores');
+    // Espelha o backend (routes/fornecedores.js): admin, Pode_Editar_Fornecedores (legado) ou
+    // clientes.edit ("Gerenciar Clientes" — cliente e fornecedor são um cadastro só).
+    const podeEditar = hasPermission('Pode_Editar_Fornecedores') || hasPermission('clientes', 'edit');
 
     // ?busca= na URL chega da tela de Clientes (atalho "Encontrado nos Fornecedores")
     const [searchParams] = useSearchParams();

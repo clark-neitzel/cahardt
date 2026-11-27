@@ -162,7 +162,7 @@ import { useVersionCheck } from './hooks/useVersionCheck';
 import SemTelaExterno from './components/SemTelaExterno';
 import { rotaPermitidaExterno, homeDoExterno } from './utils/usuarioExterno';
 
-const PrivateRoute = ({ children, tab }) => {
+const PrivateRoute = ({ children, tab, editTab }) => {
   const { signed, loading, hasPermission, erroConexao, usandoSnapshot, user, ehExterno } = useAuth();
   const { pathname } = useLocation();
   if (loading) return <div className="p-8 text-center text-gray-500">Validando sessão...</div>;
@@ -177,7 +177,9 @@ const PrivateRoute = ({ children, tab }) => {
     if (!home) return <SemTelaExterno />;
     if (!rotaPermitidaExterno(pathname)) return <Navigate to={home} replace />;
   }
-  const temAcesso = !tab || (Array.isArray(tab) ? tab.some(t => hasPermission(t, 'view')) : hasPermission(tab, 'view'));
+  // editTab (opcional): também libera quem tem permissão de EDIÇÃO desse módulo (ex.: clientes.edit → Fornecedores)
+  const temAcesso = !tab || (Array.isArray(tab) ? tab.some(t => hasPermission(t, 'view')) : hasPermission(tab, 'view'))
+    || (!!editTab && hasPermission(editTab, 'edit'));
   if (!temAcesso) return <div className="p-8 text-center text-red-600 font-bold">Acesso Negado a esta tela.</div>;
   return children;
 };
@@ -493,7 +495,7 @@ const Layout = ({ children }) => {
       hasPermission('Pode_Acessar_Contas_Pagar') && { to: '/contas-pagar', icon: Wallet, label: 'Contas a Pagar' },
       hasPermission('Pode_Acessar_Notas_Recebidas') && { to: '/notas-recebidas', icon: Inbox, label: 'Notas Recebidas' },
       hasPermission('Pode_Acessar_Notas_Fiscais') && { to: '/notas-fiscais', icon: FileText, label: 'Notas Fiscais' },
-      hasPermission('Pode_Acessar_Fornecedores') && { to: '/fornecedores', icon: Building2, label: 'Fornecedores' },
+      (hasPermission('Pode_Acessar_Fornecedores') || hasPermission('clientes', 'edit')) && { to: '/fornecedores', icon: Building2, label: 'Fornecedores' },
       hasPermission('Pode_Acessar_Financeiro_Gerencial') && { to: '/financeiro/dashboard', icon: Wallet, label: 'Visão Geral' },
       hasPermission('Pode_Acessar_Financeiro_Gerencial') && { to: '/financeiro/fluxo-caixa', icon: TrendingUp, label: 'Fluxo de Caixa' },
       hasPermission('Pode_Acessar_Financeiro_Gerencial') && { to: '/financeiro/por-conta', icon: Landmark, label: 'Saldos por Conta' },
@@ -1001,7 +1003,7 @@ function App() {
               <Route path="/contas-pagar" element={<PrivateRoute tab="Pode_Acessar_Contas_Pagar"><ContasPagarPage /></PrivateRoute>} />
               <Route path="/notas-recebidas" element={<PrivateRoute tab="Pode_Acessar_Notas_Recebidas"><NotasRecebidasPage /></PrivateRoute>} />
               <Route path="/notas-fiscais" element={<PrivateRoute tab="Pode_Acessar_Notas_Fiscais"><NotasFiscais /></PrivateRoute>} />
-              <Route path="/fornecedores" element={<PrivateRoute tab="Pode_Acessar_Fornecedores"><FornecedoresPage /></PrivateRoute>} />
+              <Route path="/fornecedores" element={<PrivateRoute tab="Pode_Acessar_Fornecedores" editTab="clientes"><FornecedoresPage /></PrivateRoute>} />
               <Route path="/veiculos/pendencias" element={<PrivateRoute><ChecklistPendencias /></PrivateRoute>} />
               <Route path="/pendencias" element={<PrivateRoute tab={['Pode_Acessar_Financeiro_Gerencial', 'Pode_Ver_Pendencias']}><PainelPendencias /></PrivateRoute>} />
               <Route path="/financeiro/fluxo-caixa" element={<PrivateRoute tab="Pode_Acessar_Financeiro_Gerencial"><FluxoCaixaPage /></PrivateRoute>} />

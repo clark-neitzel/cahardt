@@ -1,7 +1,7 @@
 ---
 aba: Fornecedores
 rota: /fornecedores
-permissao: Pode_Acessar_Fornecedores
+permissao: Pode_Acessar_Fornecedores ou clientes.edit
 ---
 
 # Fornecedores
@@ -15,7 +15,7 @@ Cadastro de fornecedores da empresa, usado pelo módulo de Contas a Pagar. Os fo
 ## O que dá pra fazer aqui
 
 - Ver e buscar fornecedores (por nome, nome fantasia ou CNPJ/CPF). A busca por CNPJ/CPF funciona com ou sem pontuação (tanto faz digitar `08.766.459/0001-02` ou `08766459000102`).
-- **A busca da tela de Clientes também encontra fornecedores**: se alguém procurar um cadastro na aba Clientes e ele existir só como fornecedor (ex.: fornecedor antigo importado), aparece um bloco "Encontrado nos Fornecedores" embaixo da lista, com atalho que abre esta aba já filtrada. Só aparece para quem tem a permissão `Pode_Acessar_Fornecedores`.
+- **A busca da tela de Clientes também encontra fornecedores**: se alguém procurar um cadastro na aba Clientes e ele existir só como fornecedor (ex.: fornecedor antigo importado), aparece um bloco "Encontrado nos Fornecedores" embaixo da lista, com atalho que abre esta aba já filtrada. Só aparece para quem tem a permissão `Pode_Acessar_Fornecedores` ou `clientes.edit` ("Gerenciar Clientes").
 - Cadastrar fornecedor: CNPJ/CPF, razão social, nome fantasia, inscrição estadual, e-mail, telefone, cidade/UF e observações. O campo CNPJ/CPF **já aplica a máscara enquanto você digita** e **confere o dígito verificador** — se o número estiver errado, o app avisa e não salva. Aceita o **CNPJ alfanumérico novo** (com letras, ex.: `12.ABC.345/01DE-35`) que a Receita passa a emitir a partir de 07/2026.
 
 > **Grafia da cidade (desde 08/2026):** o nome da cidade é gravado sempre na forma oficial, não
@@ -58,8 +58,11 @@ Fornecedores antigos importados continuam no cadastro normalmente.
 | Permissão | Efeito |
 |-----------|--------|
 | `Pode_Acessar_Fornecedores` | Ver a lista de fornecedores |
-| `Pode_Editar_Fornecedores` | Criar e editar |
+| `Pode_Editar_Fornecedores` | Criar e editar (legado — não há interruptor na tela de permissões) |
 | `admin` | Tudo acima |
+| `clientes.edit` ("Gerenciar Clientes") | Ver, criar e editar fornecedores (mesmo cadastro das pessoas) |
+
+> **Fornecedor e cliente são um cadastro só (pessoas).** Por isso não existe permissão separada de "Editar Fornecedores": quem tem **"Gerenciar Clientes"** (`clientes.edit`) também vê, cadastra e edita fornecedores. Ter só ver clientes (`clientes.view`) não basta.
 
 ---
 
