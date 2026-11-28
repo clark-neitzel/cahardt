@@ -158,8 +158,11 @@ const DEFAULT_PERMISSIONS = {
     Pode_Editar_Ponto: false,
     // Tela inicial preferida
     telaInicial: '/',
-    // Assistente Clippy: ausente = true; só false desliga (vale também para admin)
+    // Assistente Luke (novidades + "Tirar dúvida"; a chave manteve o nome antigo): ausente = true; só false desliga (vale também para admin)
     Pode_Ver_Clippy: true,
+    // Chat do Luke (BPO financeiro): aba "Pedir ao Luke" e ver a conversa de todos. Padrão desligado; admin tem a aba sem precisar.
+    Pode_Usar_Chat_Luke: false,
+    Pode_Ver_Chat_Luke_Todos: false,
     // Barra de visitantes online (site ao vivo no topo do admin)
     Pode_Ver_Barra_Online: false,
     // Tarefas da Equipe (agenda com alertas)
@@ -262,7 +265,9 @@ const BOOL_INDEX = [
     { sec: 'acesso', path: 'admin', nome: 'Administrador Global', desc: 'Acesso irrestrito a tudo; pula trava de ponto/veículo', kw: 'total master mestre tudo liberado irrestrito', danger: true, noBulk: true },
     { sec: 'acesso', path: 'Isento_Ponto', nome: 'Isento de Ponto / Diário', desc: 'Pula a trava de check-in diário (veículo/home office) ao fazer login', kw: 'ponto checkin diario trava bater veiculo' },
     { sec: 'acesso', path: 'Usuario_Externo', nome: 'Usuário externo (contador)', desc: 'Pessoa de fora da empresa: só vê e só acessa a Contabilidade. Sem dashboard, tarefas, veículo, avisos ou assistente. As demais permissões ficam sem efeito.', kw: 'externo contador contabilidade escritorio terceiro parceiro de fora restrito', noBulk: true },
-    { sec: 'acesso', path: 'Pode_Ver_Clippy', nome: 'Assistente Clippy', desc: 'Mostra o balão de ajuda no canto da tela (só no computador). Desligado, a pessoa também não recebe os avisos de novidade do sistema.', kw: 'clippy ajuda assistente balão novidade', noBulk: true },
+    { sec: 'acesso', path: 'Pode_Ver_Clippy', nome: 'Assistente Luke — novidades e ajuda', desc: 'O cachorro Luke aparece no canto da tela (computador e celular), avisa as novidades do sistema e responde "como faço" na hora. Desligado, a pessoa também não recebe os avisos de novidade.', kw: 'luke clippy ajuda assistente cachorro balão novidade duvida', noBulk: true },
+    { sec: 'acesso', path: 'Pode_Usar_Chat_Luke', nome: 'Conversar com o Luke — financeiro (BPO)', desc: 'Libera a aba "Pedir ao Luke": manda comprovante, nota e pede lançamento. O que mexe em dinheiro espera a autorização do administrador.', kw: 'luke chat bpo financeiro comprovante nota pedir lancamento conversa', noBulk: true },
+    { sec: 'acesso', path: 'Pode_Ver_Chat_Luke_Todos', nome: 'Ver as conversas de todos com o Luke', desc: 'Somente leitura: acompanhar os pedidos que cada pessoa fez ao Luke (a tela de acompanhamento chega numa próxima etapa; por enquanto a permissão só fica guardada).', kw: 'luke chat conversas todos ver acompanhar auditoria', noBulk: true },
     { sec: 'acesso', path: 'Pode_Ver_Barra_Online', nome: 'Barra de Visitantes Online', desc: 'Mostra no topo quantas pessoas estão nos sites públicos (Início, Congelados, Kit Festa)', kw: 'site visitantes online ao vivo topo' },
     // Dashboard
     { sec: 'dashboard', path: 'Pode_Ver_Dashboard_Vendas', nome: 'Ver dados de vendas', desc: "Exibe o card 'Vendas (Hoje)' e outros valores financeiros no painel do admin", kw: 'painel vendas hoje valores card' },
@@ -879,11 +884,11 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated, onAbrirMatrizApi }) => 
                 </button>
             </div>
 
-            {/* ── Assistente Clippy (ausente = ligado; só === false desliga) ── */}
+            {/* ── Assistente Luke (chave Pode_Ver_Clippy mantida; ausente = ligado; só === false desliga) ── */}
             <div className="flex items-center justify-between gap-3 bg-teal-50 p-4 rounded-lg border border-teal-200">
                 <div className="min-w-0">
-                    <h4 className="font-bold text-teal-900 text-sm">Assistente Clippy</h4>
-                    <p className="text-xs text-teal-700 mt-0.5">Mostra o balão de ajuda no canto da tela (só no computador). Desligado, a pessoa também não recebe os avisos de novidade do sistema.</p>
+                    <h4 className="font-bold text-teal-900 text-sm">Assistente Luke — novidades e ajuda</h4>
+                    <p className="text-xs text-teal-700 mt-0.5">O cachorro Luke aparece no canto da tela (computador e celular), avisa as novidades e responde "como faço" na hora. Desligado, a pessoa também não recebe os avisos de novidade do sistema.</p>
                 </div>
                 <button
                     type="button" role="switch" aria-checked={permissoes.Pode_Ver_Clippy !== false}
@@ -891,6 +896,34 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated, onAbrirMatrizApi }) => 
                     className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${permissoes.Pode_Ver_Clippy !== false ? 'bg-teal-600' : 'bg-gray-200'}`}
                 >
                     <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${permissoes.Pode_Ver_Clippy !== false ? 'translate-x-5' : 'translate-x-0'}`} />
+                </button>
+            </div>
+
+            <div className="flex items-center justify-between gap-3 bg-teal-50 p-4 rounded-lg border border-teal-200">
+                <div className="min-w-0">
+                    <h4 className="font-bold text-teal-900 text-sm">Conversar com o Luke — financeiro (BPO)</h4>
+                    <p className="text-xs text-teal-700 mt-0.5">Libera a aba "Pedir ao Luke": a pessoa manda comprovante e nota e pede lançamento ao Luke. O que mexe em dinheiro espera a autorização do administrador. Vem desligado; administrador já tem.</p>
+                </div>
+                <button
+                    type="button" role="switch" aria-checked={permissoes.Pode_Usar_Chat_Luke === true}
+                    onClick={() => setPermissoes(prev => ({ ...prev, Pode_Usar_Chat_Luke: prev.Pode_Usar_Chat_Luke !== true }))}
+                    className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${permissoes.Pode_Usar_Chat_Luke === true ? 'bg-teal-600' : 'bg-gray-200'}`}
+                >
+                    <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${permissoes.Pode_Usar_Chat_Luke === true ? 'translate-x-5' : 'translate-x-0'}`} />
+                </button>
+            </div>
+
+            <div className="flex items-center justify-between gap-3 bg-teal-50 p-4 rounded-lg border border-teal-200">
+                <div className="min-w-0">
+                    <h4 className="font-bold text-teal-900 text-sm">Ver as conversas de todos com o Luke</h4>
+                    <p className="text-xs text-teal-700 mt-0.5">Somente leitura: acompanhar os pedidos que cada pessoa fez ao Luke (a tela de acompanhamento chega numa próxima etapa). Vem desligado; administrador já vê.</p>
+                </div>
+                <button
+                    type="button" role="switch" aria-checked={permissoes.Pode_Ver_Chat_Luke_Todos === true}
+                    onClick={() => setPermissoes(prev => ({ ...prev, Pode_Ver_Chat_Luke_Todos: prev.Pode_Ver_Chat_Luke_Todos !== true }))}
+                    className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${permissoes.Pode_Ver_Chat_Luke_Todos === true ? 'bg-teal-600' : 'bg-gray-200'}`}
+                >
+                    <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${permissoes.Pode_Ver_Chat_Luke_Todos === true ? 'translate-x-5' : 'translate-x-0'}`} />
                 </button>
             </div>
         </div>

@@ -9,6 +9,7 @@ import { ModalBase, ConfirmModal, BtnPrimario, BtnSecundario, BtnPerigoContorno 
 import TokenModal from './TokenModal';
 import MatrizApiModal from './MatrizApiModal';
 import KitConexaoModal from './KitConexaoModal';
+import CartaoChatLuke from './CartaoChatLuke';
 import { fmtData, diasRestantes, haQuanto } from './util';
 
 const AVISO_DIAS = 14;
@@ -267,6 +268,8 @@ function Conteudo() {
                 {agentes && agentes.length === 0 && (
                     <EstadoVazio icon={Ban} titulo="Nenhum agente cadastrado" descricao="Crie um agente para dar a ele um token de acesso." acao={{ label: 'Novo agente', onClick: () => setNovo(true) }} />
                 )}
+                {/* Onde se liga o Luke: interruptor geral, agente que atende e limites */}
+                {agentes && <CartaoChatLuke agentes={agentes} />}
                 {agentes && agentes.map((a) => <CartaoAgente key={a.id} agente={a} onMudou={carregar} />)}
             </div>
             {novo && <NovoAgenteModal onFechar={() => setNovo(false)} onCriado={() => { setNovo(false); carregar(); }} />}

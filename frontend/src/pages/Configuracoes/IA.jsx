@@ -181,8 +181,8 @@ export default function ConfigIA() {
             </div>
 
             <div className={CARD}>
-                <div className="px-4 py-3 border-b border-gray-100"><span className={TIT}>Clippy (assistente de ajuda)</span></div>
-                <div className="p-4 text-sm text-gray-700">O Clippy continua como está, no provedor e no modelo configurados no servidor. Esta tela não muda o Clippy.</div>
+                <div className="px-4 py-3 border-b border-gray-100"><span className={TIT}>Luke (assistente de ajuda)</span></div>
+                <div className="p-4 text-sm text-gray-700">O Luke (aba "Tirar dúvida") continua como está, no provedor e no modelo configurados no servidor. Esta tela não muda o Luke.</div>
             </div>
 
             <div className={CARD}>

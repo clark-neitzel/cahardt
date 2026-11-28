@@ -44,7 +44,7 @@ Quem pode usar: administradores e quem tem a permissão **PCP → Etiquetas**. A
 - **Itens PCP**: ao editar um item (PCP → Itens) há os campos **Validade refrigerado (dias)**, **Validade congelado (dias)** e **Grupo na cozinha** (Recheio, Massa, Outro ou nenhum), e a lista tem o filtro **Grupo na cozinha**. Item criado pelo botão Digitar aparece com o selo **Criado na cozinha**.
 - Cada impressão é registrada com quem pediu, quem fabricou e se o prazo foi alterado.
 
-## Dados técnicos (para o Clippy)
+## Dados técnicos (para o Luke)
 
 | Endpoint | O que faz |
 |---|---|

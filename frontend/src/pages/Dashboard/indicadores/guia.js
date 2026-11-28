@@ -1,4 +1,4 @@
-// Textos do "Guia de leitura" — os MESMOS do mock aprovado e do manual do Clippy.
+// Textos do "Guia de leitura" — os MESMOS do mock aprovado e do manual do assistente.
 // escopo: 'dono' = só na visão Dono; 'todos' = também na visão de produção.
 export const GUIA = [
     { chave: 'receitaLiquida', escopo: 'dono', t: 'Receita líquida', conta: 'pedidos faturados (+ especiais) − devoluções ativas − impostos sobre a venda', ler: 'é o dinheiro que de fato sobra da venda para pagar tudo o mais. Toda porcentagem da tela é sobre ela.' },

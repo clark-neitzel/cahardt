@@ -15,7 +15,7 @@ const MIN_DIAS_COBERTURA = 5;   // menos que isso de histórico => "POUCOS_DADOS
 const MAX_DIAS = 90;
 
 const ROTULOS = {
-    CLIPPY: 'Clippy (assistente de ajuda)',
+    CLIPPY: 'Luke (assistente de ajuda)',
     ORIENTACAO_CLIENTE: 'Orientação de atendimento por cliente',
     COMO_FAZER_MONTAR: 'Como Fazer: montar manual com IA',
     COMO_FAZER_REPARO: 'Como Fazer: reparo do JSON',

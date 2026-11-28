@@ -415,10 +415,10 @@ async function enviarMensagemUsuario({ usuario, perms, texto, assunto, arquivos 
         if (lim) {
             const uso = await usoDoDia(usuario.id);
             if (uso.pedidos + 1 > lim.pedidosDia) {
-                throw new ChatErro(429, `Você usou os ${lim.pedidosDia} pedidos de hoje. Volta amanhã ou fale com o administrador.`, 'CHAT_LIMITE_DIA', { limite: lim.pedidosDia, usados: uso.pedidos });
+                throw new ChatErro(429, (lim.pedidosDia === 0 ? 'Seu limite de pedidos de hoje é 0. Fale com o administrador.' : `${lim.pedidosDia === 1 ? 'Você usou o único pedido de hoje.' : `Você usou os ${lim.pedidosDia} pedidos de hoje.`} Volta amanhã ou fale com o administrador.`), 'CHAT_LIMITE_DIA', { limite: lim.pedidosDia, usados: uso.pedidos });
             }
             if (arquivos.length && uso.anexos + arquivos.length > lim.anexosDia) {
-                throw new ChatErro(429, `Você usou os ${lim.anexosDia} anexos de hoje. Volta amanhã ou fale com o administrador.`, 'CHAT_LIMITE_ANEXOS', { limite: lim.anexosDia, usados: uso.anexos });
+                throw new ChatErro(429, (lim.anexosDia === 0 ? 'Seu limite de anexos de hoje é 0. Fale com o administrador.' : `${lim.anexosDia === 1 ? 'Você usou o único anexo de hoje.' : `Você usou os ${lim.anexosDia} anexos de hoje.`} Volta amanhã ou fale com o administrador.`), 'CHAT_LIMITE_ANEXOS', { limite: lim.anexosDia, usados: uso.anexos });
             }
         }
 

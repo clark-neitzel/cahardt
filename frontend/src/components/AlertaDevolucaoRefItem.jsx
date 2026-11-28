@@ -11,9 +11,8 @@ import configNotasService from '../services/configNotasService';
 // a cada 10 minutos na tela do app enquanto ele não acionar a chave, para eu não esquecer".
 // É isso literalmente: pop-up a cada 10 minutos, some quando a chave estiver acionada.
 //
-// Por que este componente e não o Clippy: o Clippy é `hidden lg:block` (não aparece no
-// celular nem no iPad em retrato) e a novidade dele é de uma vez só — ao ver, marca
-// `clippy_novidade_vista` no localStorage e nunca mais volta. Insistência a cada N minutos
+// Por que este componente e não o Luke (o cachorro, que substituiu o Clippy): a novidade dele é de uma vez só —
+// ao ver, marca `clippy_novidade_vista` no localStorage e nunca mais volta. Insistência a cada N minutos
 // já tem mecanismo pronto e em produção neste projeto: a família `Alerta*` do App.jsx
 // (AlertaFaturamento = 10 min, AlertaPedidoConvertido = 5 min, AlertaPedidosNaoEnviados =
 // 30 min). Este arquivo é a mesma receita do `AlertaFaturamento`, sem o bip.

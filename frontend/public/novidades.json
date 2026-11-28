@@ -1,6 +1,13 @@
 [
   {
+    "slug": "luke-assistente",
+    "titulo": "Conheça o Luke",
+    "resumo": "O cachorro Luke tomou o lugar do Clippy e agora aparece também no celular: novidades, dúvidas respondidas na hora e, para quem o administrador liberar, um chat para mandar comprovante e nota ao financeiro. O administrador decide os pedidos do Luke na aba Autorizações e liga o chat em Agentes de IA.",
+    "data": "2026-11-28"
+  },
+  {
     "slug": "permissoes-api-agente",
+    "soAdmin": true,
     "titulo": "Permissões da API e Kit de Conexão",
     "resumo": "Administradores agora contam com a Matriz de Permissões da API (módulo × ação: NÃO, PEDE ou SIM) em Usuários e Agentes de IA, criação direta de Conexão por API em Novo Usuário e o Kit de Conexão (.md + OpenAPI vivo) pronto para integrar agentes com segurança e idempotência.",
     "data": "2026-11-27"

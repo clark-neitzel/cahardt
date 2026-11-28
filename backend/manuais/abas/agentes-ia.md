@@ -14,6 +14,7 @@ Tela só para **administradores**. Mostra os agentes de IA e conexões por API d
 
 ## O que dá pra fazer aqui
 
+- **Cartão "Chat do Luke"** (no topo da tela): é onde se **liga o Luke**. Veja a seção abaixo
 - Ver cada agente: nome, selo **AGENTE**, se está ativo e quantos tokens ativos tem
 - **Permissões da API**: abrir a matriz módulo × ação (`Ver`, `Criar`, `Editar`, `Excluir`, `Estornar`, `Dar baixa`), escolhendo em cada célula **NÃO** (bloqueado), **PEDE** (cai na fila de Solicitações para o dono autorizar) ou **SIM** (executa direto, com `Idempotency-Key` e guardas de segurança). Também permite ligar/desligar a matriz, aplicar a regra padrão e sincronizar permissões de base
 - **Kit de conexão**: copiar ou baixar o guia `.md` (sem segredo) com URL base, matriz atual, regras de idempotência, códigos de erro e exemplos `curl` prontos para o integrador (além do catálogo vivo `GET /api/agente/v1/openapi.json`)
@@ -76,3 +77,16 @@ Tokens revogados ou vencidos ficam recolhidos em "Tokens revogados ou vencidos".
 **Onde mudo o que o agente pode fazer?** Clique em **Permissões da API** no cartão do agente (ou em **Admin → Usuários**, na linha com o selo **CONEXÃO POR API**). Escolha `NÃO`, `PEDE` ou `SIM` em cada módulo/ação e salve.
 **Como passo a documentação técnica para integrar o agente?** Clique em **Kit de conexão** (copia ou baixa `.md`, sem expor nenhum token). O próprio agente também pode consultar `/api/agente/v1/openapi.json`.
 **O agente parou de funcionar de repente.** Veja se o token venceu ou foi revogado; gere um novo e coloque no agente.
+
+---
+
+## Cartão "Chat do Luke" (onde liga o Luke)
+
+Fica no topo da tela e só aparece para administrador. Controla a aba **"Pedir ao Luke"** do cachorro Luke (veja o manual `chat-luke`).
+
+- **Chat do Luke ligado/desligado** (interruptor grande): desligar corta a aba "Pedir ao Luke" para **todos**, na hora, e pede confirmação. Pedidos já enviados continuam guardados; novidades e "Tirar dúvida" seguem funcionando. Pode ligar de novo quando quiser.
+- **Qual agente atende o chat**: escolha na lista de agentes ativos (SelectBusca). Só o agente escolhido lê e responde as conversas; sem agente, o usuário vê "Luke ainda não conectado" e os pedidos ficam guardados.
+- **Limites por pessoa, por dia**: pedidos ao Luke (padrão 20), anexos (30) e dúvidas (50). Administrador não tem limite diário. Aceita número inteiro de 0 a 100000; clique em **Salvar alterações** (o botão só habilita quando algo mudou).
+- **Aviso automático ao Luke** (só leitura): mostra se o envio de avisos ao serviço do Luke está **configurado** ou **não configurado**. Isso é feito no EasyPanel (`LUKE_WEBHOOK_URL` e `LUKE_WEBHOOK_SECRET`); nenhum segredo aparece na tela.
+- **Quem pode conversar**: para uma pessoa usar o chat, ligue **"Conversar com o Luke — financeiro (BPO)"** em Usuários → Permissões da pessoa.
+- Ainda não há tela para ajustar o limite de **uma pessoa só** (a rota existe no servidor; a tela fica para uma próxima etapa).

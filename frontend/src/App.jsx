@@ -156,7 +156,16 @@ import AlertaPedidosSite from './components/AlertaPedidosSite';
 import AlertaAutorizacaoDevolucao from './components/AlertaAutorizacaoDevolucao';
 import AlertaDevolucaoRefItem from './components/AlertaDevolucaoRefItem';
 import AlertaPagamentoAposQuitacao from './components/AlertaPagamentoAposQuitacao';
-import Clippy from './components/Clippy/Clippy';
+import LukeDock from './components/Luke/LukeDock';
+import { lukeVisivel, rotaSemAssistente } from './components/Luke/permissoesLuke';
+
+// Rede de segurança do cachorro: se algo dentro do Luke quebrar, ele some e o app inteiro continua de pé.
+class LukeErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { quebrou: false }; }
+  static getDerivedStateFromError() { return { quebrou: true }; }
+  componentDidCatch(erro) { console.error('[Luke] erro no assistente (o app segue sem ele):', erro); }
+  render() { return this.state.quebrou ? null : this.props.children; }
+}
 import TelaSemConexao from './components/TelaSemConexao';
 import { useVersionCheck } from './hooks/useVersionCheck';
 import SemTelaExterno from './components/SemTelaExterno';
@@ -436,7 +445,7 @@ const Layout = ({ children }) => {
   const [dicaMenuVista, setDicaMenuVista] = useFiltroSalvo('menu:dicaVista', false);
   const { pathname: caminhoAtual } = useLocation();
 
-  // Tablet do setor (/setor/*) é tela NUA: sem menu, sem alertas, sem Clippy — mesmo que o
+  // Tablet do setor (/setor/*) é tela NUA: sem menu, sem alertas, sem Luke — mesmo que o
   // aparelho tenha um login do app guardado.
   if (!user || loading || caminhoAtual.startsWith('/setor/')) return <>{children}</>;
 
@@ -891,9 +900,10 @@ const Layout = ({ children }) => {
             não pode cobrir "pedidos pendentes de faturamento" e afins. */}
         <AlertaDevolucaoRefItem />
 
-        {/* COPILOTO (CLIPPY) — assistente de negócio com IA, só desktop.
-            Só `=== false` desliga (ausente = liga) e vale para TODOS, inclusive administrador — mesma regra de backend/routes/copiloto.js */}
-        {user?.permissoes?.Pode_Ver_Clippy !== false && <Clippy />}
+        {/* LUKE — o cachorro do canto (substituiu o Clippy; computador e celular). Novidades + "Tirar dúvida" com
+            Pode_Ver_Clippy !== false (chave mantida), aba "Pedir ao Luke" com Pode_Usar_Chat_Luke === true ou admin, aba
+            "Autorizações" só admin. Mesma expressão em PainelEstoque.jsx e mesmos checks do backend (copiloto.js / chatLukeService.js). */}
+        {lukeVisivel(user?.permissoes) && !rotaSemAssistente(caminhoAtual) && <LukeErrorBoundary><LukeDock /></LukeErrorBoundary>}
         </>
         )}
 

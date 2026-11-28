@@ -91,6 +91,7 @@ const ABAS = [
     { slug: 'vendedores',         nome: 'Usuários (Vendedores)',        rota: '/admin/vendedores',                   perm: 'vendedores' },
     { slug: 'mensagens-agendadas',nome: 'Mensagens Agendadas',          rota: '/admin/mensagens',                    perm: 'admin' },
     { slug: 'agentes-ia',         nome: 'Agentes de IA',                rota: '/admin/agentes-ia',                   perm: 'admin' },
+    { slug: 'chat-luke',          nome: 'Luke — conversa do financeiro (BPO)', rota: '/',                       perm: 'Pode_Usar_Chat_Luke' }, // aba do cachorro Luke, sem rota própria
     { slug: 'solicitacoes-agente',nome: 'Solicitações dos agentes de IA (Luke)', rota: '/admin/agentes/solicitacoes',  perm: 'admin' },
     { slug: 'veiculos',           nome: 'Veículos',                     rota: '/admin/veiculos',                     perm: ['Pode_Acessar_Veiculos'] },
     { slug: 'contabilidade',      nome: 'Contabilidade',                rota: '/admin/contabilidade',                perm: 'Pode_Acessar_Contabilidade' },

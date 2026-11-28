@@ -40,7 +40,7 @@ router.post('/chat', async (req, res) => {
                 const lim = await require('../services/chatLukeService').checarLimiteDuvidas(req.user.id, perms);
                 if (!lim.ok) {
                     return res.status(429).json({
-                        error: `Você usou as ${lim.limite} dúvidas de hoje. Volta amanhã ou fale com o administrador.`,
+                        error: (lim.limite === 0 ? 'Seu limite de dúvidas de hoje é 0. Fale com o administrador.' : `${lim.limite === 1 ? 'Você usou a única dúvida de hoje.' : `Você usou as ${lim.limite} dúvidas de hoje.`} Volta amanhã ou fale com o administrador.`),
                         codigo: 'AJUDA_LIMITE_DIA',
                         limite: lim.limite,
                         usadas: lim.usadas,

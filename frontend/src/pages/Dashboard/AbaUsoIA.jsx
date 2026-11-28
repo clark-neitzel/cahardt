@@ -184,7 +184,7 @@ const AbaUsoIA = ({ tick = 0 }) => {
             {k.desde && k.retroativoAte && (
                 <Faixa>
                     Histórico parcial: os dados até {dmy(k.retroativoAte)} foram reconstruídos de registros antigos
-                    (contagem exata desde {dmyFull(k.desde)}). Clippy e cupom de despesa contam só a partir do dia da publicação.
+                    (contagem exata desde {dmyFull(k.desde)}). O Luke (ajuda) e o cupom de despesa contam só a partir do dia da publicação.
                 </Faixa>
             )}
             {qtdPoucosDados > 0 && !vazio && (

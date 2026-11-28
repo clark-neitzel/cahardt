@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Luke, o assistente do app — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp: só título e descrição (cartão compacto) -->
+<meta property="og:title" content="🐶 Novidade no Hardt App: conheça o Luke">
+<meta property="og:description" content="O Luke tomou o lugar do Clippy: agora também no celular, com novidades, dúvidas respondidas na hora e um chat para mandar comprovante e nota ao financeiro.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A; --primary-dark: #006241; --house: #1E3932; --mint: #d4e9e2; --cream: #f2f0eb;
+    --gold: #cba258; --ink: rgba(0,0,0,.87); --ink-soft: #5f6b66; letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--cream); color: var(--ink); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1.55; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero { background: linear-gradient(168deg, var(--house) 0%, #16302a 100%); color: #fff; padding: 36px 16px 70px; }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow { display: inline-block; background: var(--gold); color: #2b230f; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .14em; padding: 6px 14px; border-radius: 999px; margin-bottom: 14px; }
+  .hero h1 { font-size: clamp(28px, 7vw, 40px); font-weight: 800; line-height: 1.12; margin: 0 0 12px; text-wrap: balance; }
+  .hero p { color: rgba(255,255,255,.78); font-size: 16px; max-width: 46ch; margin: 0 auto; text-wrap: balance; }
+  .hero img { width: 150px; height: auto; display: block; margin: 0 auto 6px; }
+
+  .sec-label { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .16em; color: var(--primary-dark); margin: 34px 4px 12px; }
+  .acc { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; margin-bottom: 10px; overflow: hidden; box-shadow: 0 1px 2px rgba(30,57,50,.05); }
+  .acc-head { width: 100%; display: flex; align-items: center; gap: 12px; background: none; border: none; font: inherit; text-align: left; padding: 15px 16px; cursor: pointer; min-height: 56px; }
+  .acc-head:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .acc-ico { width: 38px; height: 38px; border-radius: 11px; background: var(--mint); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n { width: 30px; height: 30px; flex-shrink: 0; border-radius: 50%; background: var(--primary); color: #fff; font-weight: 800; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+  .rodape { text-align: center; font-size: 13px; color: var(--ink-soft); margin-top: 40px; }
+  .rodape strong { color: var(--primary-dark); }
+
+  /* ── MOCKUPS DAS TELAS ── */
+  .tela { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; overflow: hidden; margin-bottom: 14px; box-shadow: 0 1px 2px rgba(30,57,50,.05); }
+  .tela-titulo { background: var(--house); color: #fff; padding: 12px 16px; font-size: 13px; font-weight: 800; }
+  .tela-corpo { padding: 14px; background: #f7f6f2; }
+  .pin.abs { position: absolute; margin: 0; z-index: 3; }
+  .pin { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background: var(--gold); color: #2b230f; font-size: 11px; font-weight: 800; flex-shrink: 0; vertical-align: 2px; margin-left: 6px; }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+
+  /* peças dos mockups */
+  .m-fundo { position: relative; height: 260px; border-radius: 12px; background: #fff; border: 1px solid #e5e3dc; overflow: hidden; }
+  .m-fundo .barra { height: 34px; background: var(--house); }
+  .m-fundo .linha { height: 14px; margin: 14px 14px 0; border-radius: 6px; background: #eceae5; }
+  .m-fundo .linha.c { width: 60%; }
+  .m-dog { position: absolute; right: 8px; bottom: 6px; width: 92px; }
+  .m-dog img { width: 100%; display: block; }
+  .m-bol { position: absolute; top: 24%; right: 2px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 999px; background: #dc2626; color: #fff; font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center; border: 2px solid #fff; }
+  .m-balao { position: absolute; right: 10px; bottom: 92px; width: 190px; background: #fff; border: 1px solid #e5e7eb; border-radius: 14px 14px 4px 14px; box-shadow: 0 8px 22px rgba(0,0,0,.16); padding: 10px 12px; }
+  .m-selo { display: inline-block; font-size: 9.5px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--primary-dark); background: var(--mint); padding: 2px 7px; border-radius: 999px; }
+  .m-selo.amb { background: #fef3c7; color: #b45309; }
+  .m-balao b { display: block; font-size: 12.5px; margin-top: 3px; color: #111827; }
+  .m-balao span.t { display: block; font-size: 11px; color: #4b5563; }
+  .m-pill { display: block; text-align: center; background: var(--primary); color: #fff; font-size: 11.5px; font-weight: 700; border-radius: 999px; padding: 7px 0; margin-top: 8px; }
+
+  .m-painel { border: 1px solid #e5e3dc; border-radius: 14px; overflow: hidden; background: #fff; }
+  .m-cab { background: var(--house); color: #fff; padding: 10px 12px 8px; }
+  .m-cab .n { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 14px; }
+  .m-cab .n img { width: 30px; height: 30px; border-radius: 50%; background: var(--mint); object-fit: cover; object-position: 30% 22%; }
+  .m-cab .n small { font-weight: 500; opacity: .8; font-size: 11px; display: block; }
+  .m-abas { display: flex; gap: 5px; margin-top: 8px; }
+  .m-abas span { flex: 1; text-align: center; font-size: 11px; font-weight: 700; padding: 7px 0; border-radius: 999px; background: rgba(255,255,255,.14); color: rgba(255,255,255,.85); white-space: nowrap; }
+  .m-abas span.on { background: #fff; color: var(--house); }
+  .m-faixa { background: var(--mint); padding: 7px 12px; font-size: 11px; color: #374151; display: flex; align-items: center; gap: 8px; }
+  .m-faixa b { color: var(--house); display: block; font-size: 12px; }
+  .m-faixa .ab { margin-left: auto; background: var(--primary); color: #fff; font-weight: 700; font-size: 11px; padding: 6px 12px; border-radius: 999px; }
+  .m-msgs { background: #faf9f6; padding: 10px; display: flex; flex-direction: column; gap: 7px; }
+  .m-b { max-width: 84%; padding: 7px 10px; font-size: 12px; border-radius: 13px 13px 13px 3px; background: #fff; border: 1px solid #e5e7eb; color: #374151; }
+  .m-b.eu { align-self: flex-end; background: var(--primary); border-color: var(--primary); color: #fff; border-radius: 13px 13px 3px 13px; }
+  .m-st { align-self: flex-end; font-size: 10px; color: #6b7280; font-weight: 600; }
+  .m-foto { align-self: flex-end; background: var(--primary); padding: 4px; border-radius: 12px 12px 3px 12px; }
+  .m-foto div { width: 110px; background: #fff; border-radius: 8px; padding: 8px; font-size: 9.5px; color: #374151; line-height: 1.3; }
+  .m-foto b { display: block; font-size: 12px; color: #111827; }
+  .m-acao { align-self: flex-start; border: 1px solid var(--primary); color: var(--primary); background: #fff; font-size: 11px; font-weight: 700; padding: 6px 12px; border-radius: 999px; }
+  .m-link { align-self: flex-start; font-size: 11px; color: #4b5563; }
+  .m-link b { color: var(--primary); text-decoration: underline; }
+  .m-sol { align-self: flex-start; width: 100%; background: #fff; border: 1px solid #e5e7eb; border-radius: 11px; overflow: hidden; }
+  .m-sol .t { padding: 6px 10px; border-bottom: 1px solid #f3f4f6; font-size: 9px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: #4b5563; }
+  .m-sol .c { padding: 8px 10px; font-size: 12px; color: #111827; font-weight: 700; }
+  .m-badge { display: inline-block; margin-top: 5px; padding: 3px 8px; font-size: 10.5px; font-weight: 700; border-radius: 999px; background: #fef3c7; color: #b45309; }
+  .m-bts { display: flex; gap: 6px; padding: 0 10px 10px; }
+  .m-bts span { flex: 1; text-align: center; font-size: 11.5px; font-weight: 700; padding: 8px 0; border-radius: 999px; }
+  .m-bts .ok { background: var(--primary); color: #fff; }
+  .m-bts .no { border: 1px solid #fca5a5; color: #b91c1c; background: #fff; }
+  .m-compor { border-top: 1px solid #e5e7eb; padding: 8px 10px; background: #fff; }
+  .m-chips { display: flex; gap: 5px; margin-bottom: 7px; overflow: hidden; }
+  .m-chips span { flex-shrink: 0; font-size: 10.5px; font-weight: 600; padding: 6px 9px; border: 1px solid #e5e7eb; border-radius: 999px; color: #374151; white-space: nowrap; }
+  .m-chips span.on { background: var(--mint); border-color: var(--primary); color: var(--primary-dark); }
+  .m-campo { display: flex; gap: 6px; align-items: center; }
+  .m-campo i { flex: 1; font-style: normal; font-size: 11.5px; color: #9ca3af; border: 1px solid #d1d5db; background: #f9fafb; border-radius: 999px; padding: 8px 12px; }
+  .m-campo u { width: 32px; height: 32px; border-radius: 50%; background: var(--primary); color: #fff; text-decoration: none; display: flex; align-items: center; justify-content: center; font-size: 15px; }
+  .m-icons { display: flex; align-items: center; gap: 4px; margin-top: 6px; font-size: 15px; }
+  .m-icons .cam { width: 30px; height: 30px; border-radius: 50%; background: var(--mint); display: flex; align-items: center; justify-content: center; }
+  .m-icons .lim { margin-left: auto; font-size: 10.5px; color: #b45309; font-weight: 700; }
+
+  .m-card { background: #fff; border: 1px solid #e5e3dc; border-radius: 12px; overflow: hidden; }
+  .m-card .h { padding: 9px 12px; border-bottom: 1px solid #f0efe9; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .12em; color: #6b756f; }
+  .m-card .b { padding: 12px; font-size: 12.5px; color: #374151; }
+  .m-sw { display: flex; align-items: center; justify-content: space-between; gap: 10px; border: 1px solid #e5e7eb; border-radius: 10px; padding: 10px; margin-bottom: 10px; }
+  .m-sw b { font-size: 13.5px; color: #111827; display: block; }
+  .m-sw .chave { width: 46px; height: 26px; border-radius: 999px; background: var(--primary); position: relative; flex-shrink: 0; }
+  .m-sw .chave::after { content: ""; position: absolute; top: 3px; right: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; }
+  .m-sel { border: 1px solid #d1d5db; border-radius: 999px; padding: 8px 12px; font-size: 12px; margin: 4px 0 10px; display: flex; justify-content: space-between; }
+  .m-lims { display: flex; gap: 6px; }
+  .m-lims div { flex: 1; font-size: 10.5px; color: #4b5563; }
+  .m-lims span { display: block; border: 1px solid #d1d5db; border-radius: 6px; padding: 7px 8px; margin-top: 3px; font-size: 12.5px; color: #111827; }
+  .m-perm { display: flex; gap: 10px; align-items: center; justify-content: space-between; background: #f0fdfa; border: 1px solid #99f6e4; border-radius: 10px; padding: 10px; margin-bottom: 8px; font-size: 12px; color: #115e59; }
+  .m-perm b { display: block; color: #134e4a; font-size: 12.5px; }
+  .m-perm .chave { width: 38px; height: 22px; border-radius: 999px; background: #0d9488; position: relative; flex-shrink: 0; }
+  .m-perm .chave::after { content: ""; position: absolute; top: 2px; right: 2px; width: 18px; height: 18px; border-radius: 50%; background: #fff; }
+  .m-perm .chave.off { background: #e5e7eb; } .m-perm .chave.off::after { right: auto; left: 2px; }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-inner">
+    <img src="/luke/luke_feliz.gif" alt="" width="150" height="136">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>Conheça o Luke,<br>o cachorro do app</h1>
+    <p>Ele tomou o lugar do Clippy e agora mora no canto da tela do computador <b>e do celular</b>: avisa as novidades, tira dúvidas na hora e recebe pedidos do financeiro.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- ══════════ AS TELAS DO APP ══════════ -->
+  <div class="sec-label" style="margin-top:28px">As telas do app</div>
+
+  <!-- Tela 1 -->
+  <div class="tela">
+    <div class="tela-titulo">Tela 1 · O Luke no canto da tela</div>
+    <div class="tela-corpo">
+      <div class="m-fundo" aria-hidden="true">
+        <div class="barra"></div><div class="linha"></div><div class="linha c"></div><div class="linha"></div>
+        <div class="m-balao"><span class="m-selo">Novidade</span><span class="pin">3</span><b>O Luke chegou</b><span class="t">Novidades e ajuda também no celular.</span><span class="m-pill">Ver novidade</span></div>
+        <div class="m-dog"><img src="/luke/luke_novidade.gif" alt=""><span class="m-bol">2</span><span class="pin abs" style="left:-4px;bottom:4px">1</span><span class="pin abs" style="right:24px;top:20%">2</span></div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>O cachorro.</b> Toque (ou clique) nele para abrir o painel. No computador dá para <b>arrastar</b> para outro canto; no celular ele fica fixo, acima das barras de botões.</span></div>
+      <div><span class="pin">2</span><span><b>Bolinha vermelha.</b> Soma o que está esperando você: novidades, respostas novas do Luke e (para o administrador) pedidos para autorizar.</span></div>
+      <div><span class="pin">3</span><span><b>Balão.</b> Quando sai uma novidade, o Luke pula, mostra o sininho e aparece este aviso. <b>Ver novidade</b> abre a página do anúncio.</span></div>
+    </div>
+  </div>
+
+  <!-- Tela 2 -->
+  <div class="tela">
+    <div class="tela-titulo">Tela 2 · Aba "Tirar dúvida"</div>
+    <div class="tela-corpo">
+      <div class="m-painel" aria-hidden="true">
+        <div class="m-cab">
+          <div class="n"><img src="/luke/luke_tranquilo.png" alt=""><span>Luke<small>● online</small></span><span style="margin-left:auto">🔔</span></div>
+          <div class="m-abas"><span class="on">Tirar dúvida<span class="pin">1</span></span><span>Pedir ao Luke</span></div>
+        </div>
+        <div class="m-faixa"><span><span class="m-selo" style="background:#fff">Novidade</span><b>O Luke chegou<span class="pin">2</span></b></span><span class="ab">Abrir</span></div>
+        <div class="m-msgs">
+          <div class="m-b eu">Como faço uma devolução?</div>
+          <div class="m-b">É na conferência do Caixa:<br>1. Abra o Caixa e escolha o motorista.<br>2. No pedido, toque em Devolução.<br>3. Marque os produtos e salve.</div>
+          <div class="m-acao">Ir para a tela →<span class="pin">3</span></div>
+          <div class="m-link">Isto é um pedido? <b>Mandar para o Luke</b><span class="pin">4</span></div>
+        </div>
+        <div class="m-compor"><div class="m-campo"><i>Qual é a sua dúvida?</i><u>↑</u></div></div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Abas.</b> "Tirar dúvida" responde na hora. "Pedir ao Luke" só aparece para quem tem o chat liberado.</span></div>
+      <div><span class="pin">2</span><span><b>Faixa verde.</b> A novidade mais recente. <b>Abrir</b> mostra o anúncio; o <b>X</b> dispensa. O <b>sininho</b> do topo lista todas.</span></div>
+      <div><span class="pin">3</span><span><b>Ir para a tela.</b> Leva direto para a tela da resposta. Se você não tem acesso à função, o Luke avisa e manda pedir ao administrador.</span></div>
+      <div><span class="pin">4</span><span><b>Mandar para o Luke.</b> Se afinal era um pedido (e não uma dúvida), leva o texto para a outra aba.</span></div>
+    </div>
+  </div>
+
+  <!-- Tela 3 -->
+  <div class="tela">
+    <div class="tela-titulo">Tela 3 · Aba "Pedir ao Luke" (financeiro)</div>
+    <div class="tela-corpo">
+      <div class="m-painel" aria-hidden="true">
+        <div class="m-cab">
+          <div class="n"><img src="/luke/luke_tranquilo.png" alt=""><span>Luke<small>● online</small></span></div>
+          <div class="m-abas"><span>Tirar dúvida</span><span class="on">Pedir ao Luke</span></div>
+        </div>
+        <div class="m-msgs">
+          <div class="m-foto"><div><b>R$ 350,00</b>Pix enviado<br>Gás do Vale Ltda</div></div>
+          <div class="m-b eu">Lança esse pagamento</div>
+          <div class="m-st">Enviado · 10:41<span class="pin">3</span></div>
+          <div class="m-b">Li o comprovante: Pix de <b>R$ 350,00</b> para a Gás do Vale. Preparei o lançamento:</div>
+          <div class="m-sol"><div class="t">Solicitação<span class="pin">4</span></div><div class="c">Criar conta a pagar — Gás do Vale, R$ 350,00<br><span class="m-badge">Aguardando autorização</span></div></div>
+        </div>
+        <div class="m-compor">
+          <div class="m-chips"><span class="on">📎 Lançar pagamento<span class="pin">2</span></span><span>🧾 Enviar nota</span><span>✏️ Corrigir</span></div>
+          <div class="m-campo"><i>Diga ao Luke o que precisa…</i><u>↑</u></div>
+          <div class="m-icons"><span class="cam">📷</span><span class="pin">1</span><span>🖼️</span><span>📎</span><span class="lim">Restam 4 pedidos hoje<span class="pin">5</span></span></div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Câmera.</b> Tira a foto do comprovante na hora (3 toques: câmera, foto, enviar). Ao lado: <b>galeria</b> e <b>PDF</b>. No computador também dá para colar ou arrastar a imagem.</span></div>
+      <div><span class="pin">2</span><span><b>Atalhos de assunto.</b> <i>Lançar pagamento</i>, <i>Enviar nota</i>, <i>Corrigir</i> e <i>Dúvida</i> ajudam o Luke a entender o que você quer.</span></div>
+      <div><span class="pin">3</span><span><b>Estado da mensagem.</b> Enviando, Enviado, Luke está lendo, Respondido. Sem internet aparece "Não enviada — tentar de novo" (e não duplica).</span></div>
+      <div><span class="pin">4</span><span><b>Cartão de solicitação.</b> O que mexe em dinheiro <b>espera a autorização do administrador</b>. O cartão muda sozinho para Autorizado ou Recusado.</span></div>
+      <div><span class="pin">5</span><span><b>Limite do dia.</b> Quando restam 5 pedidos ou menos, o contador aparece. Ao zerar, o Luke avisa e as dúvidas continuam liberadas.</span></div>
+    </div>
+  </div>
+
+  <!-- Tela 4 -->
+  <div class="tela">
+    <div class="tela-titulo">Tela 4 · Aba "Autorizações" (só administrador)</div>
+    <div class="tela-corpo">
+      <div class="m-painel" aria-hidden="true">
+        <div class="m-cab">
+          <div class="n"><img src="/luke/luke_tranquilo.png" alt=""><span>Luke<small>● online</small></span></div>
+          <div class="m-abas"><span>Dúvida</span><span>Pedir</span><span class="on">Autorizar 2<span class="pin">1</span></span></div>
+        </div>
+        <div class="m-msgs">
+          <div class="m-sol"><div class="t">Aguardando você · há 3 min</div><div class="c">Criar conta a pagar<br><span style="font-weight:500;color:#4b5563;font-size:11.5px">Gás do Vale · R$ 350,00 · Pix em 27/11, já paga</span><br><span style="color:var(--primary);font-size:11px;text-decoration:underline">› Ver o que será enviado<span class="pin">2</span></span></div>
+            <div class="m-bts"><span class="ok">Autorizar<span class="pin">3</span></span><span class="no">Recusar</span></div></div>
+          <div class="m-sol"><div class="t">Aguardando você · há 40 min</div><div class="c">Estornar baixa<br><span style="font-weight:500;color:#4b5563;font-size:11.5px">Padaria Sol · boleto de R$ 480,00</span></div>
+            <div class="m-bts"><span class="ok">Autorizar</span><span class="no">Recusar</span></div></div>
+          <div class="m-link" style="align-self:center">Ver histórico completo<span class="pin">4</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Contador.</b> O número na aba (e na bolinha do cachorro) é quantos pedidos esperam você. O Luke também avisa com um balão.</span></div>
+      <div><span class="pin">2</span><span><b>Ver o que será enviado.</b> Mostra exatamente o que será feito. Se algo mudou desde o pedido, aparece um aviso com o "antes × agora" e só autoriza com "Autorizar mesmo assim".</span></div>
+      <div><span class="pin">3</span><span><b>Autorizar</b> faz a ação de verdade (depois de uma confirmação). <b>Recusar</b> não altera nada e deixa uma observação para o Luke.</span></div>
+      <div><span class="pin">4</span><span><b>Ver histórico completo</b> (no fim da lista) abre Admin → Solicitações dos agentes, onde ficam o histórico, os erros e o "tentar de novo".</span></div>
+    </div>
+  </div>
+
+  <!-- Tela 5 -->
+  <div class="tela">
+    <div class="tela-titulo">Tela 5 · Admin → Agentes de IA → "Chat do Luke"</div>
+    <div class="tela-corpo">
+      <div class="m-card" aria-hidden="true">
+        <div class="h">💬 Chat do Luke</div>
+        <div class="b">
+          <div class="m-sw"><span><b>Chat do Luke ligado<span class="pin">1</span></b>Quem tem permissão pode mandar pedidos.</span><span class="chave"></span></div>
+          <div style="font-size:12px;color:#374151">Qual agente atende o chat<span class="pin">2</span></div>
+          <div class="m-sel"><span>Luke (agente)</span><span>▾</span></div>
+          <div style="font-size:12px;color:#374151">Limites por pessoa, por dia<span class="pin">3</span></div>
+          <div class="m-lims" style="margin-top:4px"><div>Pedidos<span>20</span></div><div>Anexos<span>30</span></div><div>Dúvidas<span>50</span></div></div>
+          <div class="m-pill" style="margin-top:12px">Salvar alterações</div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Interruptor.</b> É aqui que se liga e desliga o chat para todos (desligar pede confirmação). Novidades e "Tirar dúvida" continuam funcionando.</span></div>
+      <div><span class="pin">2</span><span><b>Agente que atende.</b> Escolha qual agente lê e responde as conversas. Sem agente, o usuário vê "Luke ainda não conectado".</span></div>
+      <div><span class="pin">3</span><span><b>Limites do dia.</b> Pedidos, anexos e dúvidas por pessoa (administrador não tem limite). Clique em <b>Salvar alterações</b>.</span></div>
+    </div>
+  </div>
+
+  <!-- Tela 6 -->
+  <div class="tela">
+    <div class="tela-titulo">Tela 6 · Usuários → Permissões → Acesso e Conta</div>
+    <div class="tela-corpo">
+      <div aria-hidden="true">
+        <div class="m-perm"><span><b>Assistente Luke — novidades e ajuda<span class="pin">1</span></b>O cachorro, as novidades e "Tirar dúvida".</span><span class="chave"></span></div>
+        <div class="m-perm"><span><b>Conversar com o Luke — financeiro (BPO)<span class="pin">2</span></b>Libera a aba "Pedir ao Luke".</span><span class="chave off"></span></div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Assistente Luke</b> (antes "Assistente Clippy"): vem ligado para todos.</span></div>
+      <div><span class="pin">2</span><span><b>Conversar com o Luke:</b> vem <b>desligado</b>. O administrador liga pessoa por pessoa.</span></div>
+    </div>
+  </div>
+
+  <!-- ══════════ O QUE MUDOU ══════════ -->
+  <div class="sec-label">O que mudou</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🐶</span><strong>O Luke no lugar do Clippy</strong><span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>O cachorro aparece <b>no computador e no celular</b> (o Clippy nunca existiu no celular).</li>
+        <li>Tudo o que o Clippy fazia continua: <b>novidades</b> e <b>dúvidas de "como faço"</b>.</li>
+        <li>Quem já tinha desligado o assistente continua com ele desligado.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">❓</span><strong>Tirar dúvida: resposta na hora</strong><span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Pergunte como ou onde fazer algo. A resposta vem em segundos, só com as telas a que <b>você</b> tem acesso.</li>
+        <li>Há um limite de dúvidas por dia. Passou dele, o Luke avisa e você volta no dia seguinte.</li>
+        <li>As dúvidas <b>não ficam guardadas</b>.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">📎</span><strong>Pedir ao Luke: comprovante e nota pelo celular</strong><span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Para quem o administrador liberou. Mande a foto do comprovante ou da nota (ou um PDF) e diga o que precisa; o Luke responde em alguns minutos, na própria conversa.</p>
+      <ul>
+        <li>O que <b>mexe em dinheiro</b> só acontece depois da <b>autorização do administrador</b>.</li>
+        <li>Se o mesmo comprovante já foi enviado, o Luke avisa ("já foi enviado antes").</li>
+        <li>A administração pode ver esta conversa.</li>
+        <li>Se faltar internet a mensagem fica "não enviada"; é só tentar de novo, sem duplicar.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">✅</span><strong>Administrador: autorizar sem sair da conversa</strong><span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>A aba <b>Autorizações</b> reúne os pedidos do Luke esperando você, com Autorizar e Recusar.</li>
+        <li>As travas de segurança são as mesmas da tela de Solicitações (confirmação, aviso de "os dados mudaram", resultado incerto).</li>
+        <li>O interruptor, o agente e os limites ficam em <b>Admin → Agentes de IA → Chat do Luke</b>.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ══════════ PARA COMEÇAR ══════════ -->
+  <div class="sec-label">Para começar a usar</div>
+  <div class="passos">
+    <div class="passo"><span class="passo-n">1</span><div>Procure o <b>cachorro</b> no canto de baixo da tela e toque nele.</div></div>
+    <div class="passo"><span class="passo-n">2</span><div>Em <b>Tirar dúvida</b>, pergunte o que quiser sobre o sistema.</div></div>
+    <div class="passo"><span class="passo-n">3</span><div>Se você trabalha com o financeiro: peça ao administrador para ligar <b>"Conversar com o Luke"</b> nas suas permissões e use <b>Pedir ao Luke</b>.</div></div>
+    <div class="passo"><span class="passo-n">4</span><div>Administrador: ligue o chat em <b>Agentes de IA → Chat do Luke</b> e decida os pedidos na aba <b>Autorizações</b>.</div></div>
+  </div>
+
+  <p class="rodape">Dúvidas? Pergunte ao <strong>Luke</strong> dentro do app.<br>— Hardt Salgados</p>
+</div>
+
+<script>
+  function alternar(btn) {
+    var acc = btn.parentElement;
+    var abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>

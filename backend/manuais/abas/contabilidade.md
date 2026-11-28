@@ -49,7 +49,7 @@ A área tem 5 abas: **Contas a Receber**, **Contas a Pagar**, **Extratos**, **No
 
 ## Como o contador entra
 - O cadastro do contador (Vendedores → escudo de permissões) leva **Contabilidade (só consulta)** + o interruptor **Usuário externo (contador)**, ambos na seção Acesso e Conta/Administração.
-- Com isso ele entra **direto na Contabilidade**; o menu só mostra Administração → Contabilidade, sem dashboard, tarefas, veículo, avisos ou Clippy. Qualquer outra rota do sistema é barrada no servidor ("acesso restrito à Contabilidade").
+- Com isso ele entra **direto na Contabilidade**; o menu só mostra Administração → Contabilidade, sem dashboard, tarefas, veículo, avisos ou o cachorro Luke. Qualquer outra rota do sistema é barrada no servidor ("acesso restrito à Contabilidade").
 - Se o interruptor estiver ligado e a **Contabilidade desligada**, a pessoa vê "sua conta ainda não tem nenhuma tela liberada" — ligue a permissão.
 - Sem o interruptor, o contador comum continua como antes (acessa a Contabilidade e o que mais tiver liberado).
 

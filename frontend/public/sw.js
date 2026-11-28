@@ -194,7 +194,7 @@ self.addEventListener('fetch', (event) => {
 
     // 3) Ícones, manifest e fontes: serve do cache e revalida em segundo plano.
     const ehEstatico = ehFonte || url.pathname === '/manifest.json'
-        || /\.(png|jpe?g|svg|webp|ico|woff2?)$/i.test(url.pathname);
+        || /\.(png|jpe?g|gif|svg|webp|ico|woff2?)$/i.test(url.pathname);
 
     if (ehEstatico) {
         event.respondWith((async () => {
