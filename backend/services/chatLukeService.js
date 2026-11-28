@@ -27,6 +27,7 @@ const TIPOS_ACEITOS = ['jpeg', 'png', 'webp', 'pdf']; // XML do anexoService NÃ
 const ESTADOS_PENDENTES = ['PENDENTE', 'EXECUTANDO'];
 const ESTADOS_PROBLEMA = ['ERRO', 'ERRO_INDETERMINADO', 'RECUSADA', 'EXPIRADA'];
 const STATUS_LUKE = ['RESPONDIDO', 'ERRO', 'AGUARDANDO_AUTORIZACAO'];
+const STATUS_USUARIO_RESOLVIVEIS = ['ENVIADO', 'PROCESSANDO', 'ERRO']; // o que uma resposta do Luke resolve
 const SOBREPOSICAO_POLLING_MS = 3000; // `depoisDe` relê 3 s para trás (commit tardio): o cliente deduplica por id
 const ROTA_SOLICITACOES = '/admin/agentes/solicitacoes';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -662,11 +663,12 @@ async function responderComoLuke({ agente, conversaId, corpo, chaveIdempotencia 
             if (solicitacaoIds.length) {
                 await tx.chatLukeMensagemSolicitacao.createMany({ data: solicitacaoIds.map((solicitacaoId) => ({ mensagemId, solicitacaoId, origem: 'LUKE' })), skipDuplicates: true });
             }
-            // a(s) mensagem(ns) do usuário que ele respondeu saem de "Luke processando"
+            // a(s) mensagem(ns) do usuário que ele respondeu saem de "Luke processando". ERRO entra de propósito:
+            // se o webhook falhou em definitivo mas o Luke achou a mensagem por polling e respondeu, ela não fica ERRO para sempre.
             await tx.chatLukeMensagem.updateMany({
                 where: respondeA
-                    ? { id: respondeA, status: { in: ['ENVIADO', 'PROCESSANDO'] } }
-                    : { conversaId: conversa.id, autor: 'USUARIO', status: { in: ['ENVIADO', 'PROCESSANDO'] }, criadoEm: { lte: m.criadoEm } },
+                    ? { id: respondeA, status: { in: STATUS_USUARIO_RESOLVIVEIS } }
+                    : { conversaId: conversa.id, autor: 'USUARIO', status: { in: STATUS_USUARIO_RESOLVIVEIS }, criadoEm: { lte: m.criadoEm } },
                 data: { status },
             });
             await tx.chatLukeConversa.update({ where: { id: conversa.id }, data: { ultimaMensagemEm: m.criadoEm } });

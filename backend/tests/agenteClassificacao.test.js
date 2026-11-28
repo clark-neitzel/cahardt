@@ -83,7 +83,7 @@ test('módulos × famílias: toda família de leitura do seed tem módulo, e tod
 
 test('separar FIXO_DURO e FORA_DE_ESCOPO não mudou o bloqueio por prefixo (mesma lista, mesma regex)', () => {
     assert.equal(String(padrao.BLOQUEIO_PREFIXOS),
-        String(/^\/api\/(agentes|admin|vendedores|migrations|config|notas-fiscais|asaas|whatsapp-clientes|mensagens-agendadas|cobranca|cobrancas-rota|impressao|copiloto|rh|ponto|curriculos|funcionarios|comissoes|ia-uso|ia-logs|visitors|diarios|gps-clientes)/));
+        String(/^\/api\/(agentes|admin|vendedores|migrations|config|notas-fiscais|asaas|whatsapp-clientes|mensagens-agendadas|cobranca|cobrancas-rota|impressao|copiloto|rh|ponto|curriculos|funcionarios|comissoes|ia-uso|ia-logs|visitors|diarios|gps-clientes|chat-luke)/));
     assert.equal(padrao.grupoBloqueioFixo('GET', '/api/rh/folha'), 'FORA_DE_ESCOPO');
     assert.equal(padrao.grupoBloqueioFixo('GET', '/api/vendedores'), 'FIXO_DURO');
     assert.equal(padrao.grupoBloqueioFixo('POST', '/api/notas-entrada/abc/manifestar'), 'FIXO_DURO');

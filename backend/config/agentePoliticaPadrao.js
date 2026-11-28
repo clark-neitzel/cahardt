@@ -20,7 +20,7 @@ const PADRAO_DESCONHECIDO = 'BLOQUEADO';
 //  - FORA_DE_ESCOPO: módulos com dado pessoal ou sem uso para o agente; candidatos a virar módulo da matriz
 //    numa etapa futura (decisão 5 do plano). Não afrouxar aqui.
 const FIXO_DURO_PREFIXOS = ['agentes', 'admin', 'vendedores', 'migrations', 'config', 'notas-fiscais', 'asaas', 'whatsapp-clientes', 'mensagens-agendadas', 'cobranca'];
-const FORA_DE_ESCOPO_PREFIXOS = ['cobrancas-rota', 'impressao', 'copiloto', 'rh', 'ponto', 'curriculos', 'funcionarios', 'comissoes', 'ia-uso', 'ia-logs', 'visitors', 'diarios', 'gps-clientes'];
+const FORA_DE_ESCOPO_PREFIXOS = ['cobrancas-rota', 'impressao', 'copiloto', 'rh', 'ponto', 'curriculos', 'funcionarios', 'comissoes', 'ia-uso', 'ia-logs', 'visitors', 'diarios', 'gps-clientes', 'chat-luke'];
 const BLOQUEIO_PREFIXOS = new RegExp(`^\\/api\\/(${[...FIXO_DURO_PREFIXOS, ...FORA_DE_ESCOPO_PREFIXOS].join('|')})`);
 const RE_FORA_DE_ESCOPO = new RegExp(`^\\/api\\/(${FORA_DE_ESCOPO_PREFIXOS.join('|')})`);
 // `/api/auth/*` inteiro, EXCETO `GET /api/auth/me` (tratado em ehBloqueioFixo).

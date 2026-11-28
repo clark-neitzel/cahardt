@@ -537,3 +537,94 @@ test('Adendo B1: POST /api/copiloto/chat aplica limite diário de dúvidas (429 
         await srv.close();
     }
 });
+
+test('Ajustes: resposta do Luke resolve mensagem em ERRO (só a alvo / só da própria conversa) e continua resolvendo ENVIADO', async () => {
+    const mem = criarBancoChat();
+    mem.addVendedor({ id: 'luke', nome: 'Luke (agente)', agente: true, acessoExterno: true, permissoes: {} });
+    mem.configs.set('chat_luke', { agenteId: 'luke', ativo: true });
+    const CONV_A = crypto.randomUUID();
+    const CONV_B = crypto.randomUUID();
+    mem.conversas.push({ id: CONV_A, usuarioId: 'ana', ultimaMensagemEm: new Date(), lidaUsuarioEm: null, criadoEm: new Date(), atualizadoEm: new Date() });
+    mem.conversas.push({ id: CONV_B, usuarioId: 'beto', ultimaMensagemEm: new Date(), lidaUsuarioEm: null, criadoEm: new Date(), atualizadoEm: new Date() });
+    const msg = (id, conversaId, status) => mem.mensagens.push({ id, conversaId, autor: 'USUARIO', usuarioId: conversaId === CONV_A ? 'ana' : 'beto', texto: 'x', tipo: 'TEXTO', status, qtdAnexos: 0, criadoEm: new Date(Date.now() - 60000), atualizadoEm: new Date(), respondeA: null, chaveIdempotencia: null });
+    const ID_ERRO_ALVO = crypto.randomUUID();
+    const ID_ERRO_OUTRA_MSG = crypto.randomUUID();
+    const ID_ERRO_OUTRA_CONV = crypto.randomUUID();
+    const ID_ENVIADO = crypto.randomUUID();
+    msg(ID_ERRO_ALVO, CONV_A, 'ERRO');
+    msg(ID_ERRO_OUTRA_MSG, CONV_A, 'ERRO');
+    msg(ID_ERRO_OUTRA_CONV, CONV_B, 'ERRO');
+    msg(ID_ENVIADO, CONV_A, 'ENVIADO');
+    const st = (id) => mem.mensagens.find((m) => m.id === id).status;
+
+    const restaurar = stubModule(DATABASE_MODULE, mem.prisma);
+    limparCacheContendo(...CACHE);
+    const chatSvc = require('../services/chatLukeService');
+    restaurar();
+    try {
+        const agente = { id: 'luke', nome: 'Luke (agente)' };
+        // com respondeA: só a mensagem alvo (que estava em ERRO) vira RESPONDIDO
+        const r = await chatSvc.responderComoLuke({ agente, conversaId: CONV_A, corpo: { texto: 'Recebi seu pedido pelo polling.', respondeA: ID_ERRO_ALVO }, chaveIdempotencia: 'ajuste-1' });
+        assert.equal(r.duplicada, false);
+        assert.equal(st(ID_ERRO_ALVO), 'RESPONDIDO');
+        assert.equal(st(ID_ERRO_OUTRA_MSG), 'ERRO', 'outra mensagem ERRO da mesma conversa não é o alvo');
+        assert.equal(st(ID_ERRO_OUTRA_CONV), 'ERRO', 'ERRO de outra conversa intocado');
+        assert.equal(st(ID_ENVIADO), 'ENVIADO', 'mensagem não-alvo não muda quando vem respondeA');
+
+        // sem respondeA: resolve ENVIADO e ERRO da própria conversa, nunca de outra conversa
+        await chatSvc.responderComoLuke({ agente, conversaId: CONV_A, corpo: { texto: 'Resposta geral.' }, chaveIdempotencia: 'ajuste-2' });
+        assert.equal(st(ID_ENVIADO), 'RESPONDIDO');
+        assert.equal(st(ID_ERRO_OUTRA_MSG), 'RESPONDIDO');
+        assert.equal(st(ID_ERRO_OUTRA_CONV), 'ERRO', 'ERRO de outra conversa continua intocado');
+    } finally {
+        chatSvc._resetarParaTeste();
+    }
+});
+
+test('Ajustes: orientação "Pedir ao Luke" na ajuda só aparece com chat configurado+ligado e usuário com permissão', async () => {
+    const mem = criarBancoChat();
+    mem.addVendedor({ id: 'adm', nome: 'Clark', permissoes: { admin: true } });
+    const sistemas = [];
+    const restaurarDb = stubModule(DATABASE_MODULE, mem.prisma);
+    const restaurarAi = stubModule(path.join(RAIZ, 'services/aiProvider.js'), {
+        isConfigured: () => true, providerAtual: () => 'mock', modeloAtual: () => 'mock-1',
+        gerarTexto: async ({ system }) => { sistemas.push(system); return { texto: JSON.stringify({ resposta: 'ok', atalhos: [] }), modelo: 'mock-1', provider: 'mock' }; },
+    });
+    limparCacheContendo(...CACHE, 'services/copilotoService.js');
+    const chatSvc = require('../services/chatLukeService');
+    const copiloto = require('../services/copilotoService');
+    restaurarAi();
+    restaurarDb();
+    const perguntar = async (perms) => {
+        chatSvc._resetarParaTeste();
+        sistemas.length = 0;
+        await copiloto.responderAjuda({ pergunta: 'Como lançar uma conta a pagar?', perms, usuarioId: 'u', usuarioNome: 'U' });
+        return sistemas[0];
+    };
+    try {
+        const FIN = 'encaminhar ao setor financeiro';
+        const LUKE = 'Pedir ao Luke';
+        // sem config (agenteId ausente): admin NÃO recebe a orientação do Luke
+        assert.ok((await perguntar({ admin: true })).includes(FIN));
+        assert.equal((await perguntar({ admin: true })).includes(LUKE), false);
+        // agente configurado mas chat desligado
+        mem.configs.set('chat_luke', { agenteId: 'luke', ativo: false });
+        assert.equal((await perguntar({ admin: true })).includes(LUKE), false);
+        // configurado e ligado: admin e usuário com permissão recebem; usuário sem permissão não
+        mem.configs.set('chat_luke', { agenteId: 'luke', ativo: true });
+        assert.ok((await perguntar({ admin: true })).includes(LUKE));
+        assert.ok((await perguntar({ Pode_Usar_Chat_Luke: true })).includes(LUKE));
+        const semPerm = await perguntar({ clientes: { view: true } });
+        assert.equal(semPerm.includes(LUKE), false);
+        assert.ok(semPerm.includes(FIN));
+        // falha ao ler a config: não inclui (e não derruba a ajuda)
+        const originalGet = mem.configs.get.bind(mem.configs);
+        mem.configs.get = () => { throw new Error('banco fora'); };
+        const falhou = await perguntar({ admin: true });
+        mem.configs.get = originalGet;
+        assert.equal(falhou.includes(LUKE), false);
+        assert.ok(falhou.includes(FIN));
+    } finally {
+        chatSvc._resetarParaTeste();
+    }
+});

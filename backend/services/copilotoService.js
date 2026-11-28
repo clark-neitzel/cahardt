@@ -296,8 +296,18 @@ async function responderAjuda({ pergunta, historico = [], perms = {}, usuarioId 
 
     const acessiveis = ABAS.filter((a) => podeAcessar(perms, a.perm));
     const naoAcessiveis = ABAS.filter((a) => !podeAcessar(perms, a.perm)).map((a) => `- ${a.nome}`).join('\n');
-    const temChatLuke = perms?.admin === true || perms?.Pode_Usar_Chat_Luke === true;
-    const orientacaoBpo = temChatLuke
+    // A aba "Pedir ao Luke" só entra na orientação quando o chat está de fato utilizável:
+    // agente configurado + chat ligado + usuário com permissão (ou admin). Falha ao ler a config = não inclui.
+    let chatLukeUtilizavel = false;
+    if (perms?.admin === true || perms?.Pode_Usar_Chat_Luke === true) {
+        try {
+            const cfg = await require('./chatLukeService').lerConfig();
+            chatLukeUtilizavel = !!(cfg && cfg.agenteId && cfg.ativo === true);
+        } catch (e) {
+            console.error('[Copiloto] Falha ao ler a config do chat do Luke (orientação cai no financeiro):', e.message);
+        }
+    }
+    const orientacaoBpo = chatLukeUtilizavel
         ? '- Pedidos operacionais de lançamento de conta/nota, correção financeira ou fechamento NÃO são executados nesta aba de dúvidas: oriente o usuário a usar a aba "Pedir ao Luke" para enviar o comprovante ou pedido.'
         : '- Pedidos operacionais de lançamento de conta/nota, correção financeira ou fechamento NÃO são executados por você aqui: oriente o usuário a encaminhar ao setor financeiro.';
 

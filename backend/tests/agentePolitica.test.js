@@ -161,7 +161,7 @@ function politicaComMock() {
 // ───────── expectativa INDEPENDENTE do código sob teste (regras do pedido do dono, escritas à parte) ─────────
 const FIXOS_PREFIXOS = ['/api/agentes', '/api/admin', '/api/vendedores', '/api/migrations', '/api/config', '/api/notas-fiscais', '/api/asaas',
     '/api/whatsapp-clientes', '/api/mensagens-agendadas', '/api/cobranca', '/api/impressao', '/api/copiloto', '/api/rh', '/api/ponto',
-    '/api/curriculos', '/api/funcionarios', '/api/comissoes', '/api/ia-uso', '/api/ia-logs', '/api/visitors', '/api/diarios', '/api/gps-clientes'];
+    '/api/curriculos', '/api/funcionarios', '/api/comissoes', '/api/ia-uso', '/api/ia-logs', '/api/visitors', '/api/diarios', '/api/gps-clientes', '/api/chat-luke'];
 const SEED = ['/api/contas-pagar', '/api/anexos', '/api/contas-receber', '/api/fornecedores', '/api/notas-entrada', '/api/financeiro-gerencial',
     '/api/conciliacao-bancaria', '/api/contas-financeiras', '/api/categorias-estoque', '/api/pcp/itens', '/api/pcp/receitas', '/api/pcp/estoque',
     '/api/produtos', '/api/estoque', '/api/pedidos', '/api/clientes', '/api/indicadores-gestao', '/api/dashboards', '/api/caixa',
