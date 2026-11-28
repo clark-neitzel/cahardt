@@ -64,7 +64,7 @@ router.get('/ping', (req, res) => {
         ok: true,
         // Marcador de deploy: bumpar a cada mudança de backend que precise de confirmação
         // em produção (não há outro jeito de saber de fora qual versão está no ar).
-        deployMarker: 'chat-luke-b1-2026-11-27',
+        deployMarker: 'chat-luke-config-2026-11-28',
         uptimeSegundos: Math.round(process.uptime()),
         timestamp: new Date().toISOString(),
         openaiConfigurada: !!process.env.OPENAI_API_KEY,
@@ -13480,6 +13480,23 @@ router.post('/agente-token-rotacionar', async (req, res) => {
         const svc = require('../services/agenteTokenAdminService');
         res.json(await svc.rotacionar(req.body, { confirmar: req.query.confirmar === '1' }));
     } catch (err) { tratarErroAgenteToken(res, err, 'agente-token-rotacionar'); }
+});
+
+// POST /api/admin-exec/chat-luke-config[?confirmar=1] — liga/desliga o chat do Luke e escolhe o agente, sem login humano.
+// Sem ?confirmar=1 (exatamente "1") é DRY-RUN: devolve { atual, novo, webhook } e não grava. Com confirmar, chama
+// chatLukeService.salvarConfig (mesma validação/auditoria do PUT /api/chat-luke/config), ator "admin-exec".
+// Corpo: { agenteId?, agenteNome? (nome exato de agente ativo), ativo? }. Nunca devolve segredo.
+// Ver backend/docs/chat-luke-api.md.
+router.post('/chat-luke-config', async (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    try {
+        const svc = require('../services/chatLukeAdminService');
+        res.json(await svc.executar(req.body, { confirmar: req.query.confirmar === '1' }));
+    } catch (err) {
+        if (err && err.status) return res.status(err.status).json({ error: err.message, ...(err.codigo ? { codigo: err.codigo } : {}), ...(err.extra || {}) });
+        console.error('[admin-exec] chat-luke-config:', err && err.message);
+        res.status(500).json({ error: 'Erro ao configurar o chat do Luke.' });
+    }
 });
 
 module.exports = router;
